@@ -61,7 +61,7 @@
 | **Esri World Imagery** | satellite view on (off by default) | your IP, tile coordinates, and the view's bounds (to label the imagery date) | nothing else |
 | **Photon (komoot, OpenStreetMap geocoder)** | typing text that starts with a house number; every search when "Use Vela without Google" is on | your IP, the typed text, a bias point (the map center, or your position) | nothing else |
 | **OSM Nominatim** | long-pressing to drop a pin, tapping a house number, a building or an unnamed map icon | your IP, that one lat/lng | nothing else |
-| **Transitous** (open GTFS transit data) | transit stop icons at street zoom, and every departure board you open (refreshed every 30 s while it is open) | your IP, the map area, or the stop's id or coordinate | nothing else |
+| **Transitous** (open GTFS transit data) | transit stop icons at street zoom, the colored rail lines while "Highlight transit lines" is on, and every departure board you open (refreshed every 30 s while it is open) | your IP, the map area, or the stop's id or coordinate | nothing else |
 | **AWS (terrarium DEM)** | hillshade relief | your IP, tile coordinates | nothing else |
 | **FOSSGIS OSRM** | every route you plan, and every re-route while navigating | your IP, origin/destination (and waypoint) coordinates; during a re-route your current position and heading | the primary turn-by-turn router; Google is queried in parallel only for the traffic ETA |
 | **FOSSGIS Valhalla** | bike routes with Settings > Navigation "Bike routes prefer bike lanes and quiet streets" on (the default), where no downloaded region covers the trip | your IP, origin/destination (and stop) coordinates | nothing else |

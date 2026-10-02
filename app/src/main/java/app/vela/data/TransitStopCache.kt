@@ -66,6 +66,7 @@ class TransitStopCache(private val context: Context) {
                                 lat = st.optDouble("la"),
                                 lon = st.optDouble("lo"),
                                 siblingIds = sib?.let { arr -> List(arr.length()) { arr.getString(it) } } ?: emptyList(),
+                                modes = st.optJSONArray("md")?.let { arr -> List(arr.length()) { arr.getString(it) } } ?: emptyList(),
                             ),
                         )
                     }
@@ -87,7 +88,8 @@ class TransitStopCache(private val context: Context) {
                         JSONObject()
                             .put("n", st.name).put("i", st.stopId).put("p", st.parentId ?: "")
                             .put("la", st.lat).put("lo", st.lon)
-                            .put("sib", JSONArray(st.siblingIds)),
+                            .put("sib", JSONArray(st.siblingIds))
+                            .put("md", JSONArray(st.modes)),
                     )
                 }
                 arr.put(

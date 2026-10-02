@@ -42,6 +42,19 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.TransitLayer.set(context, it) },
             hint = stringResource(R.string.settings_transit_layer_hint),
         )
+        // Which kinds of line (discussion #648). Shown only while the lines are on.
+        if (app.vela.ui.TransitLayer.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_transit_lines_metro),
+                checked = app.vela.ui.TransitLayer.metro.value,
+                onCheckedChange = { app.vela.ui.TransitLayer.setMetro(context, it) },
+            )
+            ToggleRow(
+                label = stringResource(R.string.settings_transit_lines_trains),
+                checked = app.vela.ui.TransitLayer.trains.value,
+                onCheckedChange = { app.vela.ui.TransitLayer.setTrains(context, it) },
+            )
+        }
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_topography),

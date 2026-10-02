@@ -9,6 +9,7 @@ import app.vela.core.model.TransitStep
 import app.vela.core.model.TransitStopTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
@@ -53,6 +54,8 @@ object Transitous {
         val parentId: String? = null,
         val lat: Double = 0.0,
         val lon: Double = 0.0,
+        // What stops here ("BUS", "SUBWAY", "TRAM", "REGIONAL_RAIL", ...), as the service names them.
+        val modes: List<String> = emptyList(),
         // Same-named directional siblings folded into this icon (never on the wire - filled by
         // mergeDirectionalPairs). Their boards merge into this stop's board.
         val siblingIds: List<String> = emptyList(),
@@ -89,6 +92,99 @@ object Transitous {
     fun stopsInBox(http: OkHttpClient, south: Double, west: Double, north: Double, east: Double): List<MapStop>? {
         val body = get(http, "$BASE/api/v1/map/stops?min=$south,$west&max=$north,$east") ?: return null
         return runCatching { json.decodeFromString<List<MapStop>>(body) }.getOrNull()
+    }
+
+    /** Which of the three kinds the map lets a rider pick a stop or a line belongs to. */
+    enum class Kind { BUS, METRO, TRAIN }
+
+    /** The kind a service mode name is: metro covers subway, tram, light rail, funicular and
+     *  cable car; train every kind of rail; everything on a road is a bus. Null for boats and air. */
+    fun kindOf(mode: String): Kind? = when {
+        mode == "SUBWAY" || mode == "METRO" || mode == "TRAM" || mode == "FUNICULAR" || mode == "CABLE_CAR" || mode == "AERIAL_LIFT" -> Kind.METRO
+        mode.contains("RAIL") || mode == "SUBURBAN" || mode == "LONG_DISTANCE" || mode == "TRANSIT" -> Kind.TRAIN
+        mode == "BUS" || mode == "COACH" || mode == "ODM" || mode == "FLEX" -> Kind.BUS
+        else -> null
+    }
+
+    /** One stretch of track with the colors of the lines that run on it. */
+    data class MapLine(val points: List<LatLng>, val colors: List<String>, val kind: Kind)
+
+    @Serializable private data class RoutesReply(val routes: List<RouteDto> = emptyList(), val polylines: List<PolyDto> = emptyList())
+    @Serializable private data class RouteDto(val mode: String = "", val transitRoutes: List<RouteNameDto> = emptyList())
+    @Serializable private data class RouteNameDto(val color: String? = null)
+    @Serializable private data class PolyDto(val polyline: EncodedDto = EncodedDto(), val routeIndexes: List<Int> = emptyList())
+    @Serializable private data class EncodedDto(val points: String = "", val precision: Int = 6)
+
+    /**
+     * The rail lines in a box, each stretch with its lines' own colors (discussion #648): the
+     * service's `map/routes`, which answers every route's shape in the box. Buses, coaches and
+     * boats are dropped here (most of the answer); what is left is metro and train track,
+     * thinned to [LINE_SIMPLIFY_M]. [zoom] is the service's own filter: under about 9 it sends
+     * long-distance rail only, which keeps a wide view's answer small. Null on any failure.
+     * The endpoint is marked experimental upstream, so a changed shape reads as "no lines" and
+     * the map keeps its plain rail highlight.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun linesInBox(http: OkHttpClient, south: Double, west: Double, north: Double, east: Double, zoom: Int): List<MapLine>? = runCatching {
+        http.newCall(Request.Builder().url("$BASE/api/experimental/map/routes?min=$south,$west&max=$north,$east&zoom=$zoom").header("User-Agent", UA).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return null
+            val body = resp.body ?: return null
+            // Read as a stream: a city's answer is tens of megabytes of text once unpacked.
+            linesOf(json.decodeFromStream(RoutesReply.serializer(), body.byteStream()))
+        }
+    }.getOrNull()
+
+    /** Public for the parser test. */
+    fun parseLines(text: String): List<MapLine> = runCatching { linesOf(json.decodeFromString(RoutesReply.serializer(), text)) }.getOrDefault(emptyList())
+
+    private fun linesOf(reply: RoutesReply): List<MapLine> {
+        val out = ArrayList<MapLine>()
+        for (p in reply.polylines) {
+            val routes = p.routeIndexes.mapNotNull { reply.routes.getOrNull(it) }
+            val rail = routes.filter { kindOf(it.mode).let { k -> k == Kind.METRO || k == Kind.TRAIN } }
+            if (rail.isEmpty()) continue
+            val kind = if (rail.any { kindOf(it.mode) == Kind.METRO }) Kind.METRO else Kind.TRAIN
+            val colors = rail.mapNotNull { r -> r.transitRoutes.firstOrNull()?.color?.trim()?.lowercase()?.takeIf { c -> c.length == 6 && c.all { it in '0'..'9' || it in 'a'..'f' } } }
+                .distinct().take(MAX_LINE_COLORS).map { "#$it" }
+            val pts = runCatching { app.vela.core.data.google.PolylineCodec.decode(p.polyline.points, p.polyline.precision) }.getOrNull() ?: continue
+            if (pts.size < 2) continue
+            // A feed with no shapes gives a straight chord from stop to stop. Between two subway
+            // stations that is close enough; between two cities it is a ruler line across the
+            // map (a first look at Manhattan was a fan of them), so sparse long ones are left out
+            // and the plain highlight shows that track instead.
+            var len = 0.0
+            for (i in 1 until pts.size) len += distM(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng)
+            if (len / (pts.size - 1) > CHORD_MAX_M) continue
+            out += MapLine(simplify(pts, LINE_SIMPLIFY_M), colors, kind)
+        }
+        return out
+    }
+
+    const val MAX_LINE_COLORS = 4
+    private const val LINE_SIMPLIFY_M = 4.0
+    /** Average spacing of a shape's points above which it is a chord, not a drawn track. */
+    private const val CHORD_MAX_M = 700.0
+
+    /** Douglas-Peucker: drops points that sit within [tolM] of the line through their neighbors. */
+    internal fun simplify(pts: List<LatLng>, tolM: Double): List<LatLng> {
+        if (pts.size <= 2) return pts
+        val keep = BooleanArray(pts.size); keep[0] = true; keep[pts.lastIndex] = true
+        val stack = ArrayDeque<Pair<Int, Int>>(); stack.addLast(0 to pts.lastIndex)
+        val k = Math.cos(Math.toRadians(pts[0].lat))
+        fun off(p: LatLng, a: LatLng, b: LatLng): Double {
+            val ax = (a.lng - p.lng) * k * 111_320.0; val ay = (a.lat - p.lat) * 111_320.0
+            val bx = (b.lng - p.lng) * k * 111_320.0; val by = (b.lat - p.lat) * 111_320.0
+            val dx = bx - ax; val dy = by - ay; val l2 = dx * dx + dy * dy
+            val t = if (l2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / l2).coerceIn(0.0, 1.0)
+            return Math.hypot(ax + t * dx, ay + t * dy)
+        }
+        while (stack.isNotEmpty()) {
+            val (i, j) = stack.removeLast()
+            var worst = -1; var worstD = tolM
+            for (m in i + 1 until j) { val d = off(pts[m], pts[i], pts[j]); if (d > worstD) { worstD = d; worst = m } }
+            if (worst >= 0) { keep[worst] = true; stack.addLast(i to worst); stack.addLast(worst to j) }
+        }
+        return pts.filterIndexed { idx, _ -> keep[idx] }
     }
 
     /** Transit stops within roughly [radiusM] of the point, nearest first. Empty on any failure. */

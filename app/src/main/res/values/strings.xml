@@ -111,7 +111,12 @@
     <string name="settings_live_traffic">Live traffic overlay</string>
     <string name="settings_live_traffic_hint">Shades roads by congestion while browsing. Navigation already colors your route by traffic.</string>
     <string name="settings_transit_layer">Highlight transit lines</string>
-    <string name="settings_transit_layer_hint">Draws train and subway lines on the map.</string>
+    <string name="settings_transit_layer_hint">Draws train and subway lines on the map, each line in its own color where the open transit data has one.</string>
+    <string name="settings_transit_lines_metro">Subway, tram and light rail lines</string>
+    <string name="settings_transit_lines_trains">Train lines</string>
+    <string name="settings_transit_stops_bus">Bus stops</string>
+    <string name="settings_transit_stops_metro">Subway and tram stops</string>
+    <string name="settings_transit_stops_train">Train stations</string>
     <string name="settings_topography">Terrain shading</string>
     <string name="settings_topography_hint">Shades hills and mountains on the map. Off by default.</string>
     <string name="settings_flock" translatable="false">Surveillance cameras</string>

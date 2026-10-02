@@ -2840,6 +2840,21 @@ newer cells under the same Wi-Fi / mobile setting as the region patches.
 
 The stack mixes two sources deliberately.
 
+**Lines on the map.** With "Highlight transit lines" on, rail track is drawn twice over: a plain
+highlight from the basemap's `transportation` layer (class `rail` one color, class `transit`
+another, no network), and above it the track in each line's own color from Transitous
+`/api/experimental/map/routes` (`Transitous.linesInBox`). The service answers every route in the
+box and has no mode parameter; buses, coaches and boats are dropped on the phone, shapes whose
+points average over `CHORD_MAX_M` (700 m) apart are dropped as chords, the rest is thinned to
+4 m. The request's `zoom` is 8 (long-distance and regional rail only) while the view is under
+`TRANSIT_LINES_METRO_ZOOM` (10.5) and 12 from there; nothing is asked under
+`TRANSIT_LINES_MIN_ZOOM` (8), on a constrained link, or during a drive. A fetched box (the view
+padded by half) is kept while the view lies inside it. A stretch shared by several lines is
+drawn as side-by-side strands (at most 4). The plain highlight is hidden for a kind (metro,
+train) while colored lines of that kind are in view. Kinds are settings (`TransitLayer`): lines
+metro / trains, stop icons bus / metro / train, all on by default; a stop's kinds come from the
+`modes` Transitous gives it. An unreadable reply is "no lines".
+
 | Piece | Source | Why |
 | --- | --- | --- |
 | Departure boards | Transitous (MOTIS) first, Google's place page as fallback | The open feeds return every route at a stop with realtime lateness and the agency's own colors; a multi-bay center merges through its parent station. Google's anonymous page embeds as little as one route at a large hub. |

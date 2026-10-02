@@ -237,6 +237,9 @@ data class MapUiState(
     val routeBarEnabled: Boolean = false,
     val speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (OSM), opt-in layer
     val transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops (Transitous), high zoom
+    // Rail track around the view with each line's own color (Transitous map/routes), while
+    // "Highlight transit lines" is on; empty where the service has none or the view is too wide.
+    val transitLines: List<app.vela.core.data.transit.Transitous.MapLine> = emptyList(),
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -719,6 +722,12 @@ class MapViewModel @Inject constructor(
         }
 
         nav.bind()
+        // Turning the transit lines on (or off) acts at once, not at the next pan.
+        viewModelScope.launch {
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.TransitLayer.on.value }.collect {
+                viewport?.let { v -> refreshTransitLines(v[0], v[1], v[2], v[3], v[4]) }
+            }
+        }
     }
 
     /** Decide the displayed position from a new fix. Rejects GPS OUTLIERS — a coarse NETWORK /
@@ -6667,6 +6676,7 @@ class MapViewModel @Inject constructor(
         refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
         refreshSpeedCams(south, west, north, east, zoom) // + fixed radar cameras when that layer is on
         refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
+        refreshTransitLines(south, west, north, east, zoom) // + rail lines in their own colors, when that layer is on
         refreshImageryYear(south, west, north, east) // + the capture year for the satellite attribution
         refreshSatDeep(south, west, north, east, zoom) // + deep-zoom imagery availability (issue #244)
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
@@ -8057,6 +8067,52 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    private var transitLinesBox: DoubleArray? = null // s, w, n, e, and the service zoom it was fetched at
+    private var transitLinesJob: Job? = null
+
+    /**
+     * Rail lines in their own colors (discussion #648). One request per area, like the stop
+     * icons: a box padded half a view each way, kept while the view's center stays in its inner
+     * half. The service's own zoom filter is used as a size cap: under [TRANSIT_LINES_METRO_ZOOM]
+     * it is asked at zoom 8, which answers long-distance and regional rail only (a metro area's
+     * buses and subway are most of a full answer), from there at 12, everything. Off below
+     * [TRANSIT_LINES_MIN_ZOOM], on a constrained link, and during a drive (the layer is hidden
+     * there). A failed fetch keeps what is drawn and is tried again on the next settle.
+     */
+    private fun refreshTransitLines(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        val off = !app.vela.ui.TransitLayer.on.value || zoom < TRANSIT_LINES_MIN_ZOOM ||
+            app.vela.core.data.LowDataMode.enabled || (_state.value.navigating && _state.value.travelMode == TravelMode.DRIVE)
+        if (off) {
+            transitLinesBox = null
+            transitLinesJob?.cancel()
+            if (_state.value.transitLines.isNotEmpty()) _state.update { it.copy(transitLines = emptyList()) }
+            return
+        }
+        val apiZoom = if (zoom >= TRANSIT_LINES_METRO_ZOOM) 12 else 8
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        transitLinesBox?.let { b ->
+            // Kept while the WHOLE view is inside the fetched box (zooming out from a small box
+            // left its center inside while most of the view had no lines).
+            if (b[4].toInt() == apiZoom && south >= b[0] && west >= b[1] && north <= b[2] && east <= b[3]) return
+        }
+        transitLinesJob?.cancel()
+        transitLinesJob = viewModelScope.launch {
+            delay(500)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s0 = south - padLat; val n0 = north + padLat; val w0 = west - padLng; val e0 = east + padLng
+            val t0 = System.currentTimeMillis()
+            val lines = withContext(Dispatchers.IO) {
+                runCatching { app.vela.core.data.transit.Transitous.linesInBox(transitLinesHttp, s0, w0, n0, e0, apiZoom) }.getOrNull()
+            } ?: return@launch
+            android.util.Log.i("VelaTransit", "lines: ${lines.size} stretches of track (service zoom $apiZoom) in ${System.currentTimeMillis() - t0} ms")
+            transitLinesBox = doubleArrayOf(s0, w0, n0, e0, apiZoom.toDouble())
+            _state.update { it.copy(transitLines = lines) }
+        }
+    }
+
+    /** A city's routes answer is megabytes: the shared client's 12 s call cap would cut it off. */
+    private val transitLinesHttp by lazy { http.newBuilder().callTimeout(40, java.util.concurrent.TimeUnit.SECONDS).build() }
+
     private fun refreshTransitStops(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         // No stop icons during turn-by-turn (user drive 2026-07-14) - the layer hides in the nav
         // declutter effect, and skipping the fetch here saves the per-viewport Transitous calls a
@@ -8096,7 +8152,9 @@ class MapViewModel @Inject constructor(
             // board carries both directions (Transitous.mergeDirectionalPairs; user 2026-07-13 -
             // the two curbs reading as a doubled stop). Direction-suffixed names differ, so a
             // "NB Station"/"SB Station" pair naturally stays separate.
-            val deduped = stops.groupBy { it.parentId ?: it.stopId }.map { (_, group) -> group.first() }
+            // (The icon stands for the whole station, so it carries every mode its bays have: the
+            // stop filter in Settings asks "does anything of this kind stop here".)
+            val deduped = stops.groupBy { it.parentId ?: it.stopId }.map { (_, group) -> group.first().copy(modes = group.flatMap { it.modes }.distinct()) }
             _state.update { it.copy(transitStops = app.vela.core.data.transit.Transitous.mergeDirectionalPairs(deduped)) }
         }
     }
@@ -8771,6 +8829,8 @@ class MapViewModel @Inject constructor(
         const val AUTO_PATCH_POLL_MS = 3 * 60 * 60 * 1000L
         const val AUTO_PATCH_NET_DELAY_MS = 15_000L
         const val KEY_AUTO_PATCH_AT = "region_autopatch_at"
+        const val TRANSIT_LINES_MIN_ZOOM = 8.0   // colored rail lines: trains from here
+        const val TRANSIT_LINES_METRO_ZOOM = 10.5 // and subway, tram and light rail from here
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed

@@ -6611,6 +6611,29 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   never a raw badge per camera; the browse-13/route-11 minZoom gate lives on the cluster layer. Route camera COUNTS stay per-head on purpose. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
+- **TRANSIT LINES IN THEIR OWN COLORS (2026-10-02, discussion #648).** `Transitous.linesInBox`
+  reads the service's `/api/experimental/map/routes?min=&max=&zoom=` (routes with mode and color,
+  polylines with the routes on them; marked experimental upstream, so any other shape parses to
+  "no lines" and the plain highlight stays). Buses, coaches and boats are dropped; a polyline is
+  METRO if any metro route runs on it (`Transitous.kindOf`: subway, tram, funicular, cable car),
+  else TRAIN; its colors are its rail routes' own (at most `MAX_LINE_COLORS` 4). A shape whose
+  points average over `CHORD_MAX_M` (700 m) apart is a stop-to-stop chord from a feed with no
+  shapes and is dropped (the first look at Manhattan was a fan of ruler lines to other cities).
+  Stream-parsed (`decodeFromStream`): Manhattan's answer is 1.4 MB gzipped, 12 MB unpacked, mostly
+  buses. THERE IS NO MODE PARAMETER; the only size lever is the service's own zoom filter, so
+  `refreshTransitLines` asks at zoom 8 (long-distance and regional rail only) while the view is
+  under `TRANSIT_LINES_METRO_ZOOM` (10.5) and at 12 from there, never below
+  `TRANSIT_LINES_MIN_ZOOM` (8), on a constrained link or in a drive. One box per area (padded
+  half a view), refetched when the view is no longer INSIDE it or the service zoom changes; its
+  own 40 s client. Map: `ensureTransitLines` (GeoJSON, one feature per color with a `slot`, drawn
+  as side-by-side strands by a zoom-scaled `line-offset`) above the plain `vela-transit` accent,
+  which is filtered off per kind once colored lines of that kind are in view (`accentMetro` /
+  `accentTrains`, part of `ensureKey`). `TransitLayer` holds the five kinds (lines: metro,
+  trains; stops: bus, metro, train; all default on); stops carry `modes` now (kept through the
+  parent merge and the disk cache as `md`) and `TransitLayer.showsStop` filters the icons in
+  MapSurface. Checked on the 4a over Midtown: the subway trunks in red, blue, orange, yellow,
+  green and purple, 738 stretches in 4.2 s. Not done: line names on the map, a legend, and the
+  merged curb pairs keep only one side's modes.
 - **Transitous is the PRIMARY departure-board source (2026-07-13, phase 1 of the GTFS adoption).**
   `core/data/transit/Transitous` talks to the community MOTIS instance at `api.transitous.org` - the
   open-GTFS + GTFS-Realtime aggregator (transit's FOSSGIS-OSRM: keyless, fair-use, identifying UA sent).

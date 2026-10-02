@@ -145,6 +145,24 @@ internal fun PlacesOnMapGroup() {
             onCheckedChange = { app.vela.ui.MapPoiPrefs.setShowTransit(context, it) },
             hint = stringResource(R.string.settings_show_transit_stops_hint),
         )
+        // Which kinds of stop (discussion #648). Shown only while stops are on.
+        if (app.vela.ui.MapPoiPrefs.showTransit.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_transit_stops_bus),
+                checked = app.vela.ui.TransitLayer.stopBus.value,
+                onCheckedChange = { app.vela.ui.TransitLayer.setStopBus(context, it) },
+            )
+            ToggleRow(
+                label = stringResource(R.string.settings_transit_stops_metro),
+                checked = app.vela.ui.TransitLayer.stopMetro.value,
+                onCheckedChange = { app.vela.ui.TransitLayer.setStopMetro(context, it) },
+            )
+            ToggleRow(
+                label = stringResource(R.string.settings_transit_stops_train),
+                checked = app.vela.ui.TransitLayer.stopTrain.value,
+                onCheckedChange = { app.vela.ui.TransitLayer.setStopTrain(context, it) },
+            )
+        }
         GroupDivider()
         androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
             Text(

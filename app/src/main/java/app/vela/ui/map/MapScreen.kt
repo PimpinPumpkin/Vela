@@ -3796,6 +3796,9 @@ private fun MapSurface(
         // the user explicitly enables it in Settings → Map.
         trafficOn = Traffic.on.value,
         transitOn = app.vela.ui.TransitLayer.on.value,
+        transitMetro = app.vela.ui.TransitLayer.metro.value,
+        transitTrains = app.vela.ui.TransitLayer.trains.value,
+        transitLines = state.transitLines,
         satelliteOn = app.vela.ui.SatelliteLayer.on.value,
         satDeep = state.satDeep,
         topographyOn = app.vela.ui.Topography.on.value,
@@ -3866,7 +3869,7 @@ private fun MapSurface(
         // Hide the tapped stop's own badge while it is selected - the red selected-place pin
         // drops at the same coordinate and the two bus glyphs stacked read as a glitch
         // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
-        transitStops = state.transitStops.filterNot { st -> state.selected?.id == "gtfs:${st.stopId}" },
+        transitStops = state.transitStops.filter { st -> state.selected?.id != "gtfs:${st.stopId}" && app.vela.ui.TransitLayer.showsStop(st.modes) },
         onTransitStopTap = vm::onTransitStopTap,
         navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
         navBarTopPx = navBarTopPx,

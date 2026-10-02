@@ -707,6 +707,9 @@ fun VelaMapView(
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
+    transitMetro: Boolean = true,  // ...subway, tram and light rail among them
+    transitTrains: Boolean = true, // ...and trains
+    transitLines: List<app.vela.core.data.transit.Transitous.MapLine> = emptyList(), // track in each line's own color, drawn over the plain highlight
     satelliteOn: Boolean = false, // Esri World Imagery raster under the symbol layers (map button)
     satDeep: Int = 0, // deep imagery for this area (issue #244): 0 none, 20..22 Esri native level, -1 Google fallback
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
@@ -2055,6 +2058,16 @@ fun VelaMapView(
         }
     }
 
+    // The plain two-color highlight steps aside for a kind once that kind has colored lines in
+    // view (two drawings of one track, a few meters apart, read as a smear).
+    val accentMetro = transitMetro && transitLines.none { it.kind == app.vela.core.data.transit.Transitous.Kind.METRO }
+    val accentTrains = transitTrains && transitLines.none { it.kind == app.vela.core.data.transit.Transitous.Kind.TRAIN }
+    val driveNavNow = navMode && navDriveMode
+    LaunchedEffect(transitLines, transitOn, transitMetro, transitTrains, styleRef, driveNavNow) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains) }
+        runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
+    }
     LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { style.removeLayer(it) } }
@@ -4215,7 +4228,7 @@ fun VelaMapView(
                 ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                 // The traffic raster is Google's tile server; off entirely without Google.
                 ensureTraffic(style, trafficOn && !app.vela.ui.GoogleFree.on.value)
-                ensureTransit(style, transitOn)
+                ensureTransit(style, transitOn, accentMetro, accentTrains)
                 ensureTopography(style, topographyOn)
             }
         } else {
@@ -4228,13 +4241,14 @@ fun VelaMapView(
                 // them unconditionally on a fresh style.
                 val ensureKey = (if (satelliteOn) 1 else 0) or (if (trafficOn) 2 else 0) or
                     (if (transitOn) 4 else 0) or (if (topographyOn) 8 else 0) or
-                    (if (navMode) 16 else 0) or (if (darkTheme) 32 else 0)
+                    (if (navMode) 16 else 0) or (if (darkTheme) 32 else 0) or
+                    (if (accentMetro) 64 else 0) or (if (accentTrains) 128 else 0)
                 if (ensureKey != lastEnsureKey[0]) {
                     lastEnsureKey[0] = ensureKey
                     ensureNavRoadLabels(it, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                     ensureSatellite(it, satelliteOn)
                     ensureTraffic(it, trafficOn)
-                    ensureTransit(it, transitOn)
+                    ensureTransit(it, transitOn, accentMetro, accentTrains)
                     ensureTopography(it, topographyOn)
                 }
             }
@@ -6316,8 +6330,18 @@ private fun ensureTraffic(style: Style, on: Boolean) {
  *  No new data or network — just a colored LineLayer over the existing tiles, inserted below the first
  *  symbol layer so station/road labels stay on top. No-op if the basemap isn't OpenMapTiles (e.g. a
  *  MapTiler variant whose source id differs, or the demo style); removed cleanly when off. */
-private fun ensureTransit(style: Style, on: Boolean) {
+private fun ensureTransit(style: Style, on: Boolean, metro: Boolean = true, trains: Boolean = true) {
     val present = style.getLayer(TRANSIT_LAYER) != null
+    // Which kinds the plain highlight draws: the Settings choice, less a kind the colored lines
+    // already cover in this view. Set every call, the layer may outlive the choice.
+    (style.getLayer(TRANSIT_LAYER) as? LineLayer)?.let { l ->
+        if (on) l.setFilter(
+            Expression.any(
+                Expression.all(Expression.literal(trains), Expression.eq(Expression.get("class"), Expression.literal("rail"))),
+                Expression.all(Expression.literal(metro), Expression.eq(Expression.get("class"), Expression.literal("transit"))),
+            ),
+        )
+    }
     if (on && !present) {
         val basemapSource = basemapSrc(style) ?: return
         val layer = LineLayer(TRANSIT_LAYER, basemapSource).apply {
@@ -6325,8 +6349,8 @@ private fun ensureTransit(style: Style, on: Boolean) {
             // class = "rail" (heavy rail) or "transit" (subway / light_rail / tram / monorail).
             setFilter(
                 Expression.any(
-                    Expression.eq(Expression.get("class"), Expression.literal("rail")),
-                    Expression.eq(Expression.get("class"), Expression.literal("transit")),
+                    Expression.all(Expression.literal(trains), Expression.eq(Expression.get("class"), Expression.literal("rail"))),
+                    Expression.all(Expression.literal(metro), Expression.eq(Expression.get("class"), Expression.literal("transit"))),
                 ),
             )
             setProperties(
@@ -6360,6 +6384,89 @@ private fun ensureTransit(style: Style, on: Boolean) {
         }
     } else if (!on && present) {
         runCatching { style.removeLayer(TRANSIT_LAYER) }
+    }
+}
+
+private const val TRANSIT_LINES_SRC = "vela-transit-lines-src"
+private const val TRANSIT_LINES_LAYER = "vela-transit-lines"
+private var lastTransitLines: List<app.vela.core.data.transit.Transitous.MapLine>? = null
+
+/**
+ * Rail track in each line's own color (discussion #648), from the open transit data. One
+ * feature per line color on a stretch: where several lines share the track (a trunk under an
+ * avenue) each gets its own strand, side by side, by a line offset that grows with zoom. A
+ * line with no color of its own takes the plain highlight's color for its kind. Drawn where the
+ * plain highlight is, under the labels. The source is rebuilt only when the list changes.
+ */
+private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean, trains: Boolean) {
+    val src = style.getSourceAs<GeoJsonSource>(TRANSIT_LINES_SRC)
+    if (lines.isEmpty()) {
+        if (src != null) {
+            runCatching { style.removeLayer(TRANSIT_LINES_LAYER) }
+            runCatching { style.removeSource(TRANSIT_LINES_SRC) }
+        }
+        lastTransitLines = null
+        return
+    }
+    if (src == null || lines !== lastTransitLines) {
+        val features = ArrayList<Feature>(lines.size * 2)
+        for (l in lines) {
+            val geom = LineString.fromLngLats(l.points.map { Point.fromLngLat(it.lng, it.lat) })
+            val isMetro = l.kind == app.vela.core.data.transit.Transitous.Kind.METRO
+            val colors = l.colors.ifEmpty { listOf(if (isMetro) TRANSIT_SUBWAY else TRANSIT_RAIL) }
+            colors.forEachIndexed { i, c ->
+                features += Feature.fromGeometry(geom).apply {
+                    addStringProperty("color", c)
+                    addStringProperty("kind", if (isMetro) "metro" else "train")
+                    // Strand position across the track, centered: -0.5 and 0.5 for two lines, -1, 0, 1 for three.
+                    addNumberProperty("slot", i - (colors.size - 1) / 2.0)
+                }
+            }
+        }
+        val fc = FeatureCollection.fromFeatures(features)
+        if (src == null) style.addSource(GeoJsonSource(TRANSIT_LINES_SRC, fc, GeoJsonOptions().withMaxZoom(14))) else src.setGeoJson(fc)
+        lastTransitLines = lines
+    }
+    val filter = Expression.any(
+        Expression.all(Expression.literal(metro), Expression.eq(Expression.get("kind"), Expression.literal("metro"))),
+        Expression.all(Expression.literal(trains), Expression.eq(Expression.get("kind"), Expression.literal("train"))),
+    )
+    val existing = style.getLayer(TRANSIT_LINES_LAYER) as? LineLayer
+    if (existing != null) { existing.setFilter(filter); return }
+    fun width(z: Float) = when { z <= 8f -> 1.2f; z <= 11f -> 2.0f; z <= 14f -> 3.2f; else -> 4.6f }
+    val layer = LineLayer(TRANSIT_LINES_LAYER, TRANSIT_LINES_SRC).apply {
+        setFilter(filter)
+        setProperties(
+            PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(8, width(8f)), Expression.stop(11, width(11f)), Expression.stop(14, width(14f)), Expression.stop(17, width(17f)),
+                ),
+            ),
+            // Each strand sits one line-width from the next.
+            PropertyFactory.lineOffset(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(8, Expression.product(Expression.get("slot"), Expression.literal(width(8f)))),
+                    Expression.stop(11, Expression.product(Expression.get("slot"), Expression.literal(width(11f)))),
+                    Expression.stop(14, Expression.product(Expression.get("slot"), Expression.literal(width(14f)))),
+                    Expression.stop(17, Expression.product(Expression.get("slot"), Expression.literal(width(17f)))),
+                ),
+            ),
+            PropertyFactory.lineOpacity(0.95f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        )
+    }
+    val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
+    val accent = style.getLayer(TRANSIT_LAYER)
+    val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+    when {
+        accent != null -> style.addLayerAbove(layer, accent.id)
+        satTop != null -> style.addLayerAbove(layer, satTop.id)
+        firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
+        else -> style.addLayer(layer)
     }
 }
 
