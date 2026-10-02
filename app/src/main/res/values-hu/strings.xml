@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="cat_restaurants">Éttermek</string>
     <string name="cat_coffee">Kávé</string>
@@ -605,7 +606,7 @@
     <string name="map_parking_clear">Parkolás törlése</string>
     <string name="map_parking_moved">Parkolás áthelyezve ide</string>
     <string name="map_import_needs_google">Megosztott Google Maps-lista nem nyitható meg, amíg a Vela Google nélkül fut.</string>
-    <string name="map_link_needs_google">A \"Megosztott Google Maps-linkek megnyitása\" ki van kapcsolva a Beállítások > Adatvédelem alatt.</string>
+    <string name="map_link_needs_google">A \"Megosztott Google Maps-linkek megnyitása\" ki van kapcsolva a Beállítások &gt; Adatvédelem alatt.</string>
     <string name="map_link_unreadable">Nem sikerült megnyitni ezt a linket.</string>
     <string name="settings_performance">Teljesítmény</string>
     <string name="settings_hub_performance_sub">Előre betöltés, térképrajzolás</string>
@@ -1028,9 +1029,11 @@
     <string name="settings_details_retry_hint">A Google az első válaszból gyakran kihagyja a forgalmas időszakokat, ezért a Vela legfeljebb még kétszer rákérdez. Ki = helyenként egy kérés, és a forgalmas időszakok hiányozhatnak.</string>
     <string name="place_show_photos">Fotók megjelenítése</string>
     <string name="place_no_photos">Még nincsenek fotók</string>
-    <string name="place_all_n_reviews_open">Mind a(z) %1$d értékelés</string> <!-- format -->
+    <string name="place_all_n_reviews_open">Mind a(z) %1$d értékelés</string>
+    <!-- format -->
     <string name="place_updates">Hírek</string>
-    <string name="place_updates_all">Mind a(z) %1$d hír megjelenítése</string> <!-- format -->
+    <string name="place_updates_all">Mind a(z) %1$d hír megjelenítése</string>
+    <!-- format -->
     <string name="settings_nav_north_up">Útvonalak indítása északra tájolva</string>
     <string name="settings_nav_north_up_hint">Vezetés közben a térkép lapos marad, fent az északkal. Útközben az iránytűre koppintva válthatsz.</string>
     <string name="settings_puck_shape">Navigációs ikon</string>
@@ -1116,7 +1119,7 @@
     <string name="settings_two_finger_tilt_hint">Húzd két ujjal fel vagy le a térkép 3D-s megdöntéséhez. Kikapcsolva: a csippentés csak nagyít.</string>
     <string name="settings_speed_display">Sebesség és sebességhatár megjelenítése</string>
     <string name="settings_speed_display_hint">A sebességed és a kitáblázott sebességhatár vezetés közben, a telefonon és az autó kijelzőjén</string>
-    <string name="mapvm_area_pack_big">Az offline keresés itt a teljes %1$s helycsomagját használja. Töltsd le itt: Beállítások > Offline térképek.</string>
+    <string name="mapvm_area_pack_big">Az offline keresés itt a teljes %1$s helycsomagját használja. Töltsd le itt: Beállítások &gt; Offline térképek.</string>
     <string name="settings_places_shared_pack">A helyek a teljes %1$s területét lefedik (%2$s)</string>
     <string name="mapscreen_download_voice">%1$s letöltése (%2$d MB)</string>
     <string name="place_choose_icon">Ikon választása</string>
