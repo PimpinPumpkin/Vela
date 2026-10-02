@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Настройки</string>
     <string name="settings_back">Назад</string>
@@ -85,7 +86,8 @@
     <string name="settings_routing_downloading">Загрузка… %1$d%%</string>
     <string name="settings_routing_installed">Установлено · маршруты офлайн здесь</string>
     <string name="settings_routing_installed_places">Установлено · места доступны офлайн</string>
-    <string name="settings_routing_places_downloading">Сохранение мест · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">Сохранение мест · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">Скачать места</string>
     <string name="settings_update_places">Обновить места</string>
     <string name="settings_routing_update_available">Установлено · доступно обновление мест</string>
@@ -133,7 +135,8 @@
     <string name="settings_collapse">Свернуть</string>
     <string name="settings_expand">Развернуть</string>
     <string name="settings_voice_lib_empty_hint">★ отмечает рекомендуемые голоса. Все голоса работают офлайн на телефоне.</string>
-    <string name="settings_voice_lib_installed_hint">Установлено: %1$d МБ · %2$d голос(ов).</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">Установлено: %1$d МБ · %2$d голос(ов).</string>
+    <!-- format -->
     <string name="settings_voice_lib_lang_hint">Язык приложения, %1$s. Загрузите голос (%2$s) ниже, чтобы голосовые подсказки совпадали (английский голос неправильно произнёс бы названия улиц (%3$s)).</string>
     <string name="settings_voice_search">Поиск голосов</string>
     <string name="settings_voice_show_more">Показать ещё %1$d</string>
@@ -163,10 +166,14 @@
     <string name="place_temporarily_closed">Временно закрыто</string>
     <string name="map_voice_downloading">Загрузка голоса Vela · %1$d %%</string>
     <string name="map_voice_installing">Установка голоса Vela…</string>
-    <string name="map_region_downloading">Загрузка маршрутов: %1$s · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">Сохранение мест региона %1$s для офлайн-поиска · %2$d%%</string> <!-- format -->
-    <string name="mapvm_poipack_ready">Места региона %1$s теперь доступны для офлайн-поиска</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">Для региона %1$s пока нет пакета мест. Он появится здесь после публикации.</string> <!-- format -->
+    <string name="map_region_downloading">Загрузка маршрутов: %1$s · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">Сохранение мест региона %1$s для офлайн-поиска · %2$d%%</string>
+    <!-- format -->
+    <string name="mapvm_poipack_ready">Места региона %1$s теперь доступны для офлайн-поиска</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">Для региона %1$s пока нет пакета мест. Он появится здесь после публикации.</string>
+    <!-- format -->
     <string name="settings_demo_drive">Симуляция поездки (демо)</string>
     <string name="settings_demo_drive_hint">Кнопка Старт проезжает маршрут как симуляцию вместо GPS. Отключите для настоящей навигации.</string>
     <string name="settings_sim_location">Симулировать местоположение (демо)</string>
@@ -224,7 +231,8 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Поиск по отзывам</string>
     <string name="place_sort_reviews">Сортировать отзывы</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="one">%1$d отзыв</item>
         <item quantity="few">%1$d отзыва</item>
         <item quantity="many">%1$d отзывов</item>
@@ -277,7 +285,8 @@
     <string name="mapscreen_got_it">Понятно</string>
     <string name="mapscreen_heads_up">Обратите внимание</string>
     <string name="mapscreen_dismiss">Закрыть</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="one">%1$d результат</item>
         <item quantity="few">%1$d результата</item>
         <item quantity="many">%1$d результатов</item>
@@ -363,7 +372,8 @@
     <string name="mapvm_search_needs_recalibration">Поиску нужна перекалибровка: %1$s</string>
     <string name="mapvm_offline_no_data">Нет подключения. Загрузите область в Настройках ▸ Офлайн, чтобы искать без сети.</string>
     <string name="mapvm_offline_no_match">Нет офлайн-результатов для \"%1$s\" в сохранённой области. Офлайн-поиск охватывает загруженные места OpenStreetMap.</string>
-    <string name="mapvm_no_results">Нет результатов по запросу \"%1$s\".</string> <!-- format -->
+    <string name="mapvm_no_results">Нет результатов по запросу \"%1$s\".</string>
+    <!-- format -->
     <string name="mapvm_offline_results">Офлайн-результаты (нет подключения)</string>
     <string name="mapvm_search_failed_reason">Не удалось выполнить поиск: %1$s</string>
     <string name="mapvm_none_found_along_route">«%1$s» не найдено вдоль вашего маршрута</string>
@@ -395,7 +405,8 @@
     <string name="mapvm_offline_routing_failed">Не удалось загрузить офлайн-маршрутизацию</string>
     <string name="mapvm_offline_routing_removed">Офлайн-маршрутизация удалена</string>
     <string name="mapvm_saved_places_offline">Сохранено %1$d мест для офлайн-поиска</string>
-    <string name="mapvm_saved_addresses_offline">Сохранено %1$d адресов и %2$d улиц для офлайн-маршрутов</string> <!-- format -->
+    <string name="mapvm_saved_addresses_offline">Сохранено %1$d адресов и %2$d улиц для офлайн-маршрутов</string>
+    <!-- format -->
     <string name="navservice_notif_title_arrived">Прибытие</string>
     <string name="navservice_notif_title_navigating">Навигация</string>
     <string name="navservice_notif_title_in_distance">Через %1$s · %2$s</string>
@@ -413,7 +424,8 @@
     <string name="cat_atms">Банкоматы</string>
     <string name="cat_parks">Парки</string>
     <!-- Resume-navigation prompt (persisted nav session) -->
-    <string name="mapscreen_resume_nav">Возобновить навигацию до %1$s?</string> <!-- format -->
+    <string name="mapscreen_resume_nav">Возобновить навигацию до %1$s?</string>
+    <!-- format -->
     <string name="mapscreen_resume">Возобновить</string>
     <string name="mapscreen_your_destination">пункта назначения</string>
     <string name="mapvm_resume_waiting_gps">Ожидание GPS для возобновления навигации…</string>
@@ -429,31 +441,42 @@
     <string name="settings_update_checking">Проверка…</string>
     <string name="settings_update_none">У вас самая новая версия.</string>
     <string name="settings_place_pages">Страницы мест</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="one">%1$d остановка</item>
         <item quantity="few">%1$d остановки</item>
         <item quantity="many">%1$d остановок</item>
         <item quantity="other">%1$d остановки</item>
     </plurals>
-    <string name="place_transit_stop_id">Остановка %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">Остановка %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">Билеты и информация</string>
     <string name="route_detail_unavailable">Сведения о маршруте недоступны</string>
     <string name="place_transit_now">Отправляется</string>
-    <string name="place_transit_in_min">через %1$d мин</string> <!-- format -->
-    <string name="place_transit_in_duration">через %1$s</string> <!-- format -->
-    <string name="place_transit_more_times">ещё %1$d</string> <!-- format -->
+    <string name="place_transit_in_min">через %1$d мин</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">через %1$s</string>
+    <!-- format -->
+    <string name="place_transit_more_times">ещё %1$d</string>
+    <!-- format -->
     <string name="place_transit_view_stops">Остановки</string>
     <string name="place_transit_live">Онлайн</string>
     <string name="place_transit_scheduled">По расписанию</string>
     <string name="place_transit_cancelled">Отменён</string>
     <string name="place_departures">Отправления</string>
-    <string name="place_every">Каждые %1$s</string> <!-- format -->
+    <string name="place_every">Каждые %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">Вы прибыли.</string>
-    <string name="transit_nav_walk">Идите %1$s</string> <!-- format -->
-    <string name="transit_nav_take">Сядьте на %1$s</string> <!-- format -->
-    <string name="transit_nav_towards">в сторону %1$s</string> <!-- format -->
-    <string name="transit_nav_from">от %1$s</string> <!-- format -->
-    <string name="transit_nav_get_off">Выйдите на %1$s</string> <!-- format -->
+    <string name="transit_nav_walk">Идите %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">Сядьте на %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">в сторону %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_from">от %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">Выйдите на %1$s</string>
+    <!-- format -->
     <string name="transit_nav_next">Далее</string>
     <string name="place_last_available">Последний рейс</string>
     <!-- Android Auto -->
@@ -499,7 +522,8 @@
     <string name="settings_update_nightly_hint">Обновляться до новейшей ночной сборки (предрелиз), а не только до стабильных версий. Ночные свежее, но менее протестированы.</string>
     <string name="settings_lists_export_hint">Сохраните списки в файл или восстановите их на другом устройстве.</string>
     <string name="settings_lists_imported">Импортировано списков: %1$d</string>
-    <string name="settings_places_imported">Импортировано мест: %1$d</string> <!-- format -->
+    <string name="settings_places_imported">Импортировано мест: %1$d</string>
+    <!-- format -->
     <string name="settings_no_lists">Пока нет списков для экспорта</string>
     <string name="mapvm_export_lists_subject">Списки Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Экспорт списков</string>
@@ -517,13 +541,18 @@
     <string name="voice_capture_done">Готово</string>
     <string name="mapvm_asr_ready">Голос Vela готов</string>
     <string name="mapvm_asr_download_failed">Не удалось загрузить голосовую модель. Проверьте подключение и повторите попытку.</string>
-    <string name="mapvm_closing_soon">%1$s закрывается в %2$s, вы приедете около %3$s</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s закрывается в %2$s, раньше вашего приезда (около %3$s)</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s закрывается в %2$s, вы приедете около %3$s</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s закрывается в %2$s, раньше вашего приезда (около %3$s)</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Голос Vela</string>
-    <string name="settings_voice_search_model_hint">Голос Vela превращает речь в поиск прямо на телефоне: без других приложений и без выгрузки данных. Разовая загрузка %1$d МБ.</string>  <!-- format -->
-    <string name="settings_voice_search_download">Загрузить (%1$d МБ)</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Голос Vela превращает речь в поиск прямо на телефоне: без других приложений и без выгрузки данных. Разовая загрузка %1$d МБ.</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">Загрузить (%1$d МБ)</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">Удалить</string>
-    <string name="settings_voice_search_downloading">Загрузка… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">Загрузка… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">Установка…</string>
     <string name="settings_voice_search_engine_title">При нажатии на микрофон</string>
     <string name="settings_voice_search_engine_auto">Голос Vela</string>
@@ -608,9 +637,11 @@
     <string name="root_diag_trips_desc">Записывает GPS-треки навигации, чтобы поездки можно было воспроизвести для проверки. Раскрывает больше - это ваши точные маршруты.</string>
     <string name="root_diag_save">Сохранить выбор</string>
     <string name="root_voice_tts_title">Произносить подсказки вслух</string>
-    <string name="root_voice_tts_desc">Голосовые подсказки на каждом повороте. Рекомендуем. Разовая загрузка %1$d МБ.</string> <!-- format -->
+    <string name="root_voice_tts_desc">Голосовые подсказки на каждом повороте. Рекомендуем. Разовая загрузка %1$d МБ.</string>
+    <!-- format -->
     <string name="root_voice_mic_title">Поиск голосом</string>
-    <string name="root_voice_mic_desc">Диктуйте запросы без набора текста. Без этого микрофон использует Google. Разовая загрузка %1$d МБ.</string> <!-- format -->
+    <string name="root_voice_mic_desc">Диктуйте запросы без набора текста. Без этого микрофон использует Google. Разовая загрузка %1$d МБ.</string>
+    <!-- format -->
     <string name="root_voice_none_picked">Выберите вариант или нажмите «Не сейчас».</string>
     <string name="root_offline_title">Офлайн-карты</string>
     <string name="root_offline_body">Vela получает места, поиск и маршруты из Google, поэтому без сигнала будут работать только загруженные вами области. Настройте область сейчас, чтобы оставаться на связи при потере сети.</string>
@@ -619,13 +650,14 @@
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">Речь становится поиском на телефоне. Ничего не отправляется. Выберите движок микрофона.</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d МБ</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d МБ</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Все языки, которые поддерживает Vela</string>
     <string name="settings_asr_langs_sensevoice">английский, китайский, японский, корейский, кантонский</string>
     <string name="settings_asr_langs_moonshine">Только английский</string>
     <string name="settings_asr_active">Активно</string>
     <string name="settings_asr_use">Выбрать</string>
- <!-- format -->
+    <!-- format -->
     <string name="no_browser_installed">На вашем устройстве нет браузера</string>
     <string name="street_view_none">No Street View imagery here</string>
     <string name="street_view_move">Move here</string>
@@ -895,8 +927,10 @@
     <string name="place_busy_little">немного людно</string>
     <string name="place_busy_usually">обычно людно</string>
     <string name="place_busy_very">очень людно</string>
-    <string name="map_region_placesfile_downloading">Сохранение мест региона %1$s для карты · %2$d%%</string> <!-- format -->
-    <string name="map_region_map_downloading">Загрузка карты региона %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_placesfile_downloading">Сохранение мест региона %1$s для карты · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_map_downloading">Загрузка карты региона %1$s · %2$d%%</string>
+    <!-- format -->
     <string name="mapvm_region_ready">Регион %1$s загружен: карта, маршруты и места работают офлайн</string>
     <string name="mapvm_region_incomplete">Регион %1$s загружен не полностью. Подключитесь к сети и нажмите «Обновить» в Настройках, в разделе офлайн-карт, чтобы завершить загрузку</string>
     <string name="settings_flock_nav_card">Предупреждение о камерах номеров</string>
@@ -914,21 +948,28 @@
     <string name="settings_delete_offline_all_title">Удалить все офлайн-данные?</string>
     <string name="settings_delete_offline_all_body">Будет удалено около %1$s загруженных карт, маршрутов и мест. Сохранённые места, поездки и голоса останутся.</string>
     <string name="mapvm_offline_all_deleted">Офлайн-данные удалены</string>
-    <string name="settings_region_whole_or_pieces">Одним файлом или по частям ниже (%1$d)</string> <!-- format -->
+    <string name="settings_region_whole_or_pieces">Одним файлом или по частям ниже (%1$d)</string>
+    <!-- format -->
     <string name="settings_downloaded_title">Загружено</string>
     <string name="settings_downloaded_none">Пока ничего не загружено. Сохраните видимую область выше или выберите регион или страну ниже.</string>
     <string name="settings_downloaded_area">Сохранённая область</string>
-    <string name="settings_region_group_title">%1$s целиком</string> <!-- format -->
-    <string name="settings_region_group_size">Частей: %1$d, около %2$s после установки</string> <!-- format -->
-    <string name="settings_region_group_partial">Установлено частей: %1$d из %2$d, около %3$s для всех</string> <!-- format -->
-    <string name="settings_region_group_installed">Все части установлены (%1$d)</string> <!-- format -->
-    <string name="settings_region_group_downloading">Загрузка части %1$d из %2$d</string> <!-- format -->
+    <string name="settings_region_group_title">%1$s целиком</string>
+    <!-- format -->
+    <string name="settings_region_group_size">Частей: %1$d, около %2$s после установки</string>
+    <!-- format -->
+    <string name="settings_region_group_partial">Установлено частей: %1$d из %2$d, около %3$s для всех</string>
+    <!-- format -->
+    <string name="settings_region_group_installed">Все части установлены (%1$d)</string>
+    <!-- format -->
+    <string name="settings_region_group_downloading">Загрузка части %1$d из %2$d</string>
+    <!-- format -->
     <string name="settings_region_group_download">Скачать все</string>
     <string name="settings_update_region">Обновить</string>
     <string name="nav_edit_route">Изменить маршрут</string>
     <string name="nav_edit_route_hint">Добавить остановку по пути</string>
     <string name="nav_stops_remove_next">Убрать следующую</string>
-    <string name="nav_stops_remove_confirm">Убрать «%1$s» из этой поездки?</string> <!-- format -->
+    <string name="nav_stops_remove_confirm">Убрать «%1$s» из этой поездки?</string>
+    <!-- format -->
     <string name="nav_stops_remove_action">Убрать</string>
     <string name="nav_stop_offer_remove">Убрать остановку</string>
     <string name="settings_google_session">Сеанс Google</string>
@@ -950,13 +991,17 @@
     <string name="settings_trip_more">Другие действия с поездкой</string>
     <string name="settings_trip_batch_title">Поделиться выбранными поездками</string>
     <string name="settings_trip_batch_explain">Поездки отправляются вместе одним zip-файлом. Каждая обрезается на одно и то же расстояние: все точки рядом с её началом, концом, пунктом назначения, а также с вашим домом и работой удаляются, а середина остаётся с полной точностью.</string>
-    <string name="settings_trip_batch_summary">Поездок в архиве: %1$d из %2$d. Удалено точек: %3$d. Оставлено точек: %4$d.</string> <!-- format -->
-    <string name="settings_trip_batch_left_out">Не вошли, потому что короче радиуса обрезки: %1$d. С радиусом поменьше они могут остаться.</string> <!-- format -->
+    <string name="settings_trip_batch_summary">Поездок в архиве: %1$d из %2$d. Удалено точек: %3$d. Оставлено точек: %4$d.</string>
+    <!-- format -->
+    <string name="settings_trip_batch_left_out">Не вошли, потому что короче радиуса обрезки: %1$d. С радиусом поменьше они могут остаться.</string>
+    <!-- format -->
     <string name="settings_trip_batch_none">Все выбранные поездки короче радиуса обрезки, поэтому делиться нечем. Попробуйте радиус поменьше.</string>
     <string name="settings_trip_batch_confirm">Поделиться архивом</string>
-    <string name="settings_installer_play">Установлено через %1$s. Эта установка настроена для Android Auto; обновление внутри приложения это отменит, поэтому обновляйтесь через тот же установщик.</string> <!-- format -->
+    <string name="settings_installer_play">Установлено через %1$s. Эта установка настроена для Android Auto; обновление внутри приложения это отменит, поэтому обновляйтесь через тот же установщик.</string>
+    <!-- format -->
     <string name="settings_installer_none">Установлено вручную (установщик не записан). Android Auto не покажет эту установку.</string>
-    <string name="settings_installer_other">Установлено через %1$s. Android Auto не покажет эту установку.</string> <!-- format -->
+    <string name="settings_installer_other">Установлено через %1$s. Android Auto не покажет эту установку.</string>
+    <!-- format -->
     <string name="place_source_overture">Overture</string>
     <string name="place_source_atp">AllThePlaces (%1$s)</string>
     <string name="place_source_osm">OpenStreetMap</string>
@@ -991,7 +1036,7 @@
     <string name="car_stop_added">Следующая остановка: %1$s</string>
     <string name="car_continue_on">Продолжайте движение · %1$s</string>
     <string name="map_import_needs_google">Общий список Google Maps нельзя открыть, пока Vela работает без Google.</string>
-    <string name="map_link_needs_google">«Открывать присланные ссылки Google Maps» выключено в Настройках > Конфиденциальность.</string>
+    <string name="map_link_needs_google">«Открывать присланные ссылки Google Maps» выключено в Настройках &gt; Конфиденциальность.</string>
     <string name="map_link_unreadable">Не удалось открыть эту ссылку.</string>
     <string name="settings_performance">Производительность</string>
     <string name="settings_hub_performance_sub">Предварительная загрузка, отрисовка карты</string>
@@ -1036,9 +1081,11 @@
     <string name="settings_details_retry_hint">Google часто не включает загруженность в первый ответ, поэтому Vela переспрашивает до двух раз. Выключено = один запрос на место, и загруженность может не показаться.</string>
     <string name="place_show_photos">Показать фото</string>
     <string name="place_no_photos">Фото пока нет</string>
-    <string name="place_all_n_reviews_open">Все отзывы (%1$d)</string> <!-- format -->
+    <string name="place_all_n_reviews_open">Все отзывы (%1$d)</string>
+    <!-- format -->
     <string name="place_updates">Новости</string>
-    <string name="place_updates_all">Показать все новости (%1$d)</string> <!-- format -->
+    <string name="place_updates_all">Показать все новости (%1$d)</string>
+    <!-- format -->
     <string name="settings_nav_north_up">Начинать поездки с севером вверху</string>
     <string name="settings_nav_north_up_hint">Во время поездки карта остаётся плоской, север вверху. Нажмите на компас во время поездки, чтобы переключить.</string>
     <string name="settings_puck_shape">Значок навигации</string>
@@ -1130,7 +1177,7 @@
     <string name="settings_two_finger_tilt_hint">Проведите двумя пальцами вверх или вниз, чтобы наклонить карту в 3D. Выкл.: щипок только меняет масштаб.</string>
     <string name="settings_speed_display">Показывать скорость и ограничение скорости</string>
     <string name="settings_speed_display_hint">Ваша скорость и действующее ограничение во время поездки, на телефоне и на экране автомобиля</string>
-    <string name="mapvm_area_pack_big">Офлайн-поиск здесь использует пакет мест для всего региона %1$s. Загрузите его в разделе «Настройки» > «Офлайн-карты».</string>
+    <string name="mapvm_area_pack_big">Офлайн-поиск здесь использует пакет мест для всего региона %1$s. Загрузите его в разделе «Настройки» &gt; «Офлайн-карты».</string>
     <string name="settings_places_shared_pack">Места охватывают весь регион %1$s (%2$s)</string>
     <string name="mapscreen_download_voice">Загрузить %1$s (%2$d МБ)</string>
     <string name="place_choose_icon">Выбрать значок</string>
