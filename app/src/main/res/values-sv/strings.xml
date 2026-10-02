@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Inställningar</string>
     <string name="settings_back">Tillbaka</string>
@@ -85,7 +86,8 @@
     <string name="settings_routing_downloading">Hämtar… %1$d %%</string>
     <string name="settings_routing_installed">Installerad · ruttar offline här</string>
     <string name="settings_routing_installed_places">Installerad · platser sökbara offline</string>
-    <string name="settings_routing_places_downloading">Sparar platser · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">Sparar platser · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">Hämta platser</string>
     <string name="settings_update_places">Uppdatera platser</string>
     <string name="settings_routing_update_available">Installerad · platsuppdatering tillgänglig</string>
@@ -134,7 +136,8 @@
     <string name="settings_collapse">Fäll ihop</string>
     <string name="settings_expand">Expandera</string>
     <string name="settings_voice_lib_empty_hint">★ markerar de rekommenderade rösterna. Varje röst fungerar offline på telefonen.</string>
-    <string name="settings_voice_lib_installed_hint">Installerat: %1$d MB · %2$d röst(er).</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">Installerat: %1$d MB · %2$d röst(er).</string>
+    <!-- format -->
     <string name="settings_voice_lib_lang_hint">Ditt appspråk är %1$s, hämta en %2$s-röst nedan så att talade vägbeskrivningar matchar (en engelsk röst skulle uttala %3$s gatunamn fel).</string>
     <string name="settings_voice_search">Sök röster</string>
     <string name="settings_voice_show_more">Visa %1$d till</string>
@@ -164,10 +167,14 @@
     <string name="place_temporarily_closed">Tillfälligt stängt</string>
     <string name="map_voice_downloading">Laddar ner Vela-rösten · %1$d %%</string>
     <string name="map_voice_installing">Installerar Vela-rösten…</string>
-    <string name="map_region_downloading">Laddar ner rutter för %1$s · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">Sparar platser i %1$s för offlinesökning · %2$d%%</string> <!-- format -->
-    <string name="mapvm_poipack_ready">Platser i %1$s går nu att söka offline</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">Inget platspaket för %1$s ännu. Det dyker upp här när det publicerats.</string> <!-- format -->
+    <string name="map_region_downloading">Laddar ner rutter för %1$s · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">Sparar platser i %1$s för offlinesökning · %2$d%%</string>
+    <!-- format -->
+    <string name="mapvm_poipack_ready">Platser i %1$s går nu att söka offline</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">Inget platspaket för %1$s ännu. Det dyker upp här när det publicerats.</string>
+    <!-- format -->
     <string name="settings_demo_drive">Simulera körning (demo)</string>
     <string name="settings_demo_drive_hint">Start kör den planerade rutten som simulering i stället för GPS. Stäng av för att navigera på riktigt.</string>
     <string name="settings_sim_location">Simulera min plats (demo)</string>
@@ -227,7 +234,8 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Sök recensioner</string>
     <string name="place_sort_reviews">Sortera recensioner</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="one">%1$d recension</item>
         <item quantity="other">%1$d recensioner</item>
     </plurals>
@@ -279,7 +287,8 @@
     <string name="mapscreen_got_it">Uppfattat</string>
     <string name="mapscreen_heads_up">Obs</string>
     <string name="mapscreen_dismiss">Stäng</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="one">%1$d resultat</item>
         <item quantity="other">%1$d resultat</item>
     </plurals>
@@ -363,7 +372,8 @@
     <string name="mapvm_search_needs_recalibration">Sökning behöver omkalibrering: %1$s</string>
     <string name="mapvm_offline_no_data">Du är offline. Ladda ner ett område under Inställningar ▸ Offline för att söka utan anslutning.</string>
     <string name="mapvm_offline_no_match">Inga offlineresultat för \"%1$s\" i ditt sparade område. Offlinesökning omfattar de OpenStreetMap-platser du laddat ner.</string>
-    <string name="mapvm_no_results">Inga resultat för \"%1$s\".</string> <!-- format -->
+    <string name="mapvm_no_results">Inga resultat för \"%1$s\".</string>
+    <!-- format -->
     <string name="mapvm_offline_results">Offlineresultat (ingen anslutning)</string>
     <string name="mapvm_search_failed_reason">Sökning misslyckades: %1$s</string>
     <string name="mapvm_none_found_along_route">Inga \"%1$s\" hittades längs din rutt</string>
@@ -395,7 +405,8 @@
     <string name="mapvm_offline_routing_failed">Hämtning av offlineruttning misslyckades</string>
     <string name="mapvm_offline_routing_removed">Offlineruttning borttagen</string>
     <string name="mapvm_saved_places_offline">Sparade %1$d platser för offlinesökning</string>
-    <string name="mapvm_saved_addresses_offline">Sparade %1$d adresser och %2$d gator för offlinevägbeskrivning</string> <!-- format -->
+    <string name="mapvm_saved_addresses_offline">Sparade %1$d adresser och %2$d gator för offlinevägbeskrivning</string>
+    <!-- format -->
     <string name="navservice_notif_title_arrived">Framme</string>
     <string name="navservice_notif_title_navigating">Navigerar</string>
     <string name="navservice_notif_title_in_distance">Om %1$s · %2$s</string>
@@ -413,7 +424,8 @@
     <string name="cat_atms">Bankomater</string>
     <string name="cat_parks">Parker</string>
     <!-- Resume-navigation prompt (persisted nav session) -->
-    <string name="mapscreen_resume_nav">Återuppta navigering till %1$s?</string> <!-- format -->
+    <string name="mapscreen_resume_nav">Återuppta navigering till %1$s?</string>
+    <!-- format -->
     <string name="mapscreen_resume">Återuppta</string>
     <string name="mapscreen_your_destination">ditt mål</string>
     <string name="mapvm_resume_waiting_gps">Väntar på GPS för att återuppta navigeringen…</string>
@@ -429,29 +441,40 @@
     <string name="settings_update_checking">Kontrollerar…</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
     <string name="settings_place_pages">Platssidor</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="one">%1$d hållplats</item>
         <item quantity="other">%1$d hållplatser</item>
     </plurals>
-    <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">Hållplats %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">Biljetter &amp; info</string>
     <string name="route_detail_unavailable">Linjedetaljer ej tillgängliga</string>
     <string name="place_transit_now">Avgår nu</string>
-    <string name="place_transit_in_min">om %1$d min</string> <!-- format -->
-    <string name="place_transit_in_duration">om %1$s</string> <!-- format -->
-    <string name="place_transit_more_times">%1$d till</string> <!-- format -->
+    <string name="place_transit_in_min">om %1$d min</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">om %1$s</string>
+    <!-- format -->
+    <string name="place_transit_more_times">%1$d till</string>
+    <!-- format -->
     <string name="place_transit_view_stops">Hållplatser</string>
     <string name="place_transit_live">Live</string>
     <string name="place_transit_scheduled">Planerad</string>
     <string name="place_transit_cancelled">Inställd</string>
     <string name="place_departures">Avgångar</string>
-    <string name="place_every">Var %1$s</string> <!-- format -->
+    <string name="place_every">Var %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">Du har kommit fram.</string>
-    <string name="transit_nav_walk">Gå %1$s</string> <!-- format -->
-    <string name="transit_nav_take">Ta %1$s</string> <!-- format -->
-    <string name="transit_nav_towards">mot %1$s</string> <!-- format -->
-    <string name="transit_nav_from">från %1$s</string> <!-- format -->
-    <string name="transit_nav_get_off">Gå av vid %1$s</string> <!-- format -->
+    <string name="transit_nav_walk">Gå %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">Ta %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">mot %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_from">från %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">Gå av vid %1$s</string>
+    <!-- format -->
     <string name="transit_nav_next">Nästa</string>
     <string name="place_last_available">Sista tillgängliga</string>
     <!-- Android Auto -->
@@ -497,7 +520,8 @@
     <string name="settings_update_nightly_hint">Uppdatera till den senaste nightly (förhandsversion) istället för bara stabila versioner. Nightlies är färskare men mindre testade.</string>
     <string name="settings_lists_export_hint">Säkerhetskopiera dina listor till en fil eller återställ dem på en annan enhet.</string>
     <string name="settings_lists_imported">Importerade %1$d lista/or</string>
-    <string name="settings_places_imported">Importerade %1$d plats(er)</string> <!-- format -->
+    <string name="settings_places_imported">Importerade %1$d plats(er)</string>
+    <!-- format -->
     <string name="settings_no_lists">Inga listor att exportera än</string>
     <string name="mapvm_export_lists_subject">Vela-listor (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportera listor</string>
@@ -515,13 +539,18 @@
     <string name="voice_capture_done">Klar</string>
     <string name="mapvm_asr_ready">Vela-rösten är klar</string>
     <string name="mapvm_asr_download_failed">Det gick inte att ladda ner röstmodellen. Kontrollera anslutningen och försök igen.</string>
-    <string name="mapvm_closing_soon">%1$s stänger %2$s och du är framme runt %3$s</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s stänger %2$s, innan du är framme (runt %3$s)</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s stänger %2$s och du är framme runt %3$s</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s stänger %2$s, innan du är framme (runt %3$s)</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Vela-röst</string>
-    <string name="settings_voice_search_model_hint">Vela-rösten gör tal till en sökning direkt på telefonen: ingen annan app behövs och inget laddas upp. Engångsnedladdning på %1$d MB.</string>  <!-- format -->
-    <string name="settings_voice_search_download">Ladda ner (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Vela-rösten gör tal till en sökning direkt på telefonen: ingen annan app behövs och inget laddas upp. Engångsnedladdning på %1$d MB.</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">Ladda ner (%1$d MB)</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">Ta bort</string>
-    <string name="settings_voice_search_downloading">Laddar ner… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">Laddar ner… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">Installerar…</string>
     <string name="settings_voice_search_engine_title">När du trycker på mikrofonen</string>
     <string name="settings_voice_search_engine_auto">Vela-röst</string>
@@ -604,9 +633,11 @@
     <string name="root_diag_trips_desc">Spelar in dina navigerings-GPS-spår så att körningar kan spelas upp för testning. Avslöjar mer, dina exakta rutter.</string>
     <string name="root_diag_save">Spara val</string>
     <string name="root_voice_tts_title">Läs upp vägbeskrivningar</string>
-    <string name="root_voice_tts_desc">Talad sväng-för-sväng-guidning. Rekommenderas. Engångsnedladdning på %1$d MB.</string> <!-- format -->
+    <string name="root_voice_tts_desc">Talad sväng-för-sväng-guidning. Rekommenderas. Engångsnedladdning på %1$d MB.</string>
+    <!-- format -->
     <string name="root_voice_mic_title">Sök genom att tala</string>
-    <string name="root_voice_mic_desc">Diktera sökningar utan att skriva. Utan detta använder mikrofonen Google. Engångsnedladdning på %1$d MB.</string> <!-- format -->
+    <string name="root_voice_mic_desc">Diktera sökningar utan att skriva. Utan detta använder mikrofonen Google. Engångsnedladdning på %1$d MB.</string>
+    <!-- format -->
     <string name="root_voice_none_picked">Kryssa i ett alternativ eller välj Inte nu.</string>
     <string name="root_offline_title">Offlinekartor</string>
     <string name="root_offline_body">Vela hämtar platser, sökning och vägbeskrivningar från Google, så utan signal fungerar bara områden du har laddat ner. Ställ in ett område nu så att du är täckt när du tappar täckning.</string>
@@ -615,13 +646,14 @@
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">Tal blir en sokning pa telefonen. Inget laddas upp. Valj motor for mikrofonen.</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Alla språk som Vela stöder</string>
     <string name="settings_asr_langs_sensevoice">Engelska, kinesiska, japanska, koreanska, kantonesiska</string>
     <string name="settings_asr_langs_moonshine">Endast engelska</string>
     <string name="settings_asr_active">Aktiv</string>
     <string name="settings_asr_use">Använd</string>
- <!-- format -->
+    <!-- format -->
     <string name="no_browser_installed">Din enhet har ingen webbläsare</string>
     <string name="street_view_none">No Street View imagery here</string>
     <string name="street_view_move">Move here</string>
@@ -891,8 +923,10 @@
     <string name="place_busy_little">Lite folk</string>
     <string name="place_busy_usually">Brukar vara mycket folk</string>
     <string name="place_busy_very">Mycket folk</string>
-    <string name="map_region_placesfile_downloading">Sparar platser i %1$s för kartan · %2$d%%</string> <!-- format -->
-    <string name="map_region_map_downloading">Hämtar kartan för %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_placesfile_downloading">Sparar platser i %1$s för kartan · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_map_downloading">Hämtar kartan för %1$s · %2$d%%</string>
+    <!-- format -->
     <string name="mapvm_region_ready">%1$s är hämtat: karta, rutter och platser fungerar offline</string>
     <string name="mapvm_region_incomplete">%1$s är bara delvis hämtat. Anslut och tryck på Uppdatera under Inställningar, Offlinekartor för att slutföra</string>
     <string name="settings_flock_nav_card">Varning för nummerplåtskameror</string>
@@ -910,21 +944,28 @@
     <string name="settings_delete_offline_all_title">Ta bort all offlinedata?</string>
     <string name="settings_delete_offline_all_body">Cirka %1$s hämtade kartor, ruttning och platser tas bort. Sparade platser, resor och röster behålls.</string>
     <string name="mapvm_offline_all_deleted">Offlinedata borttagen</string>
-    <string name="settings_region_whole_or_pieces">En fil, eller %1$d delar nedan</string> <!-- format -->
+    <string name="settings_region_whole_or_pieces">En fil, eller %1$d delar nedan</string>
+    <!-- format -->
     <string name="settings_downloaded_title">Hämtat</string>
     <string name="settings_downloaded_none">Inget hämtat ännu. Spara området du tittar på ovan, eller välj en delstat eller ett land nedan.</string>
     <string name="settings_downloaded_area">Sparat område</string>
-    <string name="settings_region_group_title">Hela %1$s</string> <!-- format -->
-    <string name="settings_region_group_size">%1$d delar, cirka %2$s installerat</string> <!-- format -->
-    <string name="settings_region_group_partial">%1$d av %2$d delar installerade, cirka %3$s för alla</string> <!-- format -->
-    <string name="settings_region_group_installed">Alla %1$d delar installerade</string> <!-- format -->
-    <string name="settings_region_group_downloading">Hämtar del %1$d av %2$d</string> <!-- format -->
+    <string name="settings_region_group_title">Hela %1$s</string>
+    <!-- format -->
+    <string name="settings_region_group_size">%1$d delar, cirka %2$s installerat</string>
+    <!-- format -->
+    <string name="settings_region_group_partial">%1$d av %2$d delar installerade, cirka %3$s för alla</string>
+    <!-- format -->
+    <string name="settings_region_group_installed">Alla %1$d delar installerade</string>
+    <!-- format -->
+    <string name="settings_region_group_downloading">Hämtar del %1$d av %2$d</string>
+    <!-- format -->
     <string name="settings_region_group_download">Hämta alla</string>
     <string name="settings_update_region">Uppdatera</string>
     <string name="nav_edit_route">Redigera rutt</string>
     <string name="nav_edit_route_hint">Lägg till ett stopp på vägen</string>
     <string name="nav_stops_remove_next">Ta bort nästa</string>
-    <string name="nav_stops_remove_confirm">Ta bort %1$s från den här körningen?</string> <!-- format -->
+    <string name="nav_stops_remove_confirm">Ta bort %1$s från den här körningen?</string>
+    <!-- format -->
     <string name="nav_stops_remove_action">Ta bort</string>
     <string name="nav_stop_offer_remove">Ta bort stopp</string>
     <string name="settings_google_session">Google-session</string>
@@ -945,13 +986,17 @@
     <string name="settings_trip_more">Mer för den här resan</string>
     <string name="settings_trip_batch_title">Dela valda resor</string>
     <string name="settings_trip_batch_explain">Resorna skickas tillsammans som en zip-fil. Var och en beskärs på samma avstånd: varje punkt nära dess start, slut, mål och ditt Hem och Arbete tas bort, och mitten behålls med full precision.</string>
-    <string name="settings_trip_batch_summary">Resor i zip-filen: %1$d av %2$d. Borttagna punkter: %3$d. Kvarvarande punkter: %4$d.</string> <!-- format -->
-    <string name="settings_trip_batch_left_out">Utelämnade eftersom de är kortare än beskärningsavståndet: %1$d. Ett mindre avstånd kan behålla dem.</string> <!-- format -->
+    <string name="settings_trip_batch_summary">Resor i zip-filen: %1$d av %2$d. Borttagna punkter: %3$d. Kvarvarande punkter: %4$d.</string>
+    <!-- format -->
+    <string name="settings_trip_batch_left_out">Utelämnade eftersom de är kortare än beskärningsavståndet: %1$d. Ett mindre avstånd kan behålla dem.</string>
+    <!-- format -->
     <string name="settings_trip_batch_none">Alla valda resor är kortare än beskärningsavståndet, så det finns inget kvar att dela. Prova ett mindre.</string>
     <string name="settings_trip_batch_confirm">Dela zip-fil</string>
-    <string name="settings_installer_play">Installerad av %1$s. Den här installationen är förberedd för Android Auto; en uppdatering inifrån appen skulle ångra det, så uppdatera via samma installationsprogram.</string> <!-- format -->
+    <string name="settings_installer_play">Installerad av %1$s. Den här installationen är förberedd för Android Auto; en uppdatering inifrån appen skulle ångra det, så uppdatera via samma installationsprogram.</string>
+    <!-- format -->
     <string name="settings_installer_none">Sidladdad (inget installationsprogram registrerat). Android Auto visar inte den här installationen.</string>
-    <string name="settings_installer_other">Installerad av %1$s. Android Auto visar inte den här installationen.</string> <!-- format -->
+    <string name="settings_installer_other">Installerad av %1$s. Android Auto visar inte den här installationen.</string>
+    <!-- format -->
     <string name="place_source_overture">Overture</string>
     <string name="place_source_atp">AllThePlaces (%1$s)</string>
     <string name="place_source_osm">OpenStreetMap</string>
@@ -983,7 +1028,7 @@
     <string name="car_stop_added">%1$s lades till som nästa stopp</string>
     <string name="car_continue_on">Fortsätt på %1$s</string>
     <string name="map_import_needs_google">En delad Google Maps-lista kan inte öppnas medan Vela körs utan Google.</string>
-    <string name="map_link_needs_google">”Öppna delade Google Maps-länkar” är av under Inställningar > Integritet.</string>
+    <string name="map_link_needs_google">”Öppna delade Google Maps-länkar” är av under Inställningar &gt; Integritet.</string>
     <string name="map_link_unreadable">Kunde inte öppna den länken.</string>
     <string name="settings_performance">Prestanda</string>
     <string name="settings_hub_performance_sub">Vad som laddas i förväg, kartritning</string>
@@ -1026,9 +1071,11 @@
     <string name="settings_details_retry_hint">Google utelämnar ofta populära tider i första svaret, så Vela frågar upp till två gånger till. Av = en förfrågan per plats, och populära tider kan saknas.</string>
     <string name="place_show_photos">Visa foton</string>
     <string name="place_no_photos">Inga foton än</string>
-    <string name="place_all_n_reviews_open">Alla %1$d recensioner</string> <!-- format -->
+    <string name="place_all_n_reviews_open">Alla %1$d recensioner</string>
+    <!-- format -->
     <string name="place_updates">Nyheter</string>
-    <string name="place_updates_all">Visa alla %1$d nyheter</string> <!-- format -->
+    <string name="place_updates_all">Visa alla %1$d nyheter</string>
+    <!-- format -->
     <string name="settings_nav_north_up">Starta resor med norr uppåt</string>
     <string name="settings_nav_north_up_hint">Kartan förblir platt med norr uppåt medan du kör. Tryck på kompassen under resan för att växla.</string>
     <string name="settings_puck_shape">Navigeringsikon</string>
@@ -1114,7 +1161,7 @@
     <string name="settings_two_finger_tilt_hint">Dra två fingrar uppåt eller nedåt för att luta kartan till 3D. Av: en nypning zoomar bara.</string>
     <string name="settings_speed_display">Visa hastighet och hastighetsgräns</string>
     <string name="settings_speed_display_hint">Din hastighet och den skyltade gränsen under körning, på telefonen och på bilens skärm</string>
-    <string name="mapvm_area_pack_big">Offlinesökning här använder platspaketet för hela %1$s. Hämta det under Inställningar > Offlinekartor.</string>
+    <string name="mapvm_area_pack_big">Offlinesökning här använder platspaketet för hela %1$s. Hämta det under Inställningar &gt; Offlinekartor.</string>
     <string name="settings_places_shared_pack">Platserna täcker hela %1$s (%2$s)</string>
     <string name="mapscreen_download_voice">Hämta %1$s (%2$d MB)</string>
     <string name="place_choose_icon">Välj ikon</string>
