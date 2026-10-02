@@ -198,7 +198,23 @@ The nav zoom tightens as you slow down:
 | 100 km/h and up | 15.2 |
 
 The zoom buttons step one level (range 2 to 20), and a pan or pinch stops following until
-`RECENTER_MS` has passed or you press recenter. The overview button frames the remaining route
+`RECENTER_MS` has passed or you press recenter.
+
+A pan moves the map center by the finger's travel in ground meters (meters per pixel at the
+current zoom), not by reading a point off the last snapshot. The snapshot's center is the camera
+target, which the renderer offsets into the visible area, so the old pixel lookup added that
+offset to every scroll event and the map flew off; several events landing on one stale snapshot
+also stopped a pan from adding up. A pinch zooms about the fingers, keeping the point under them
+in place. A fling (the host reports one when a finger lifts while moving) keeps the map gliding
+and slows it to a stop:
+
+```
+FLING_TAU_S     = 0.35   // seconds for the glide speed to fall to a third
+FLING_STOP_PX_S = 40.0   // the glide stops below this, in surface pixels per second
+```
+
+Recenter, the zoom buttons, overview and a route preview stop a glide, and the auto-recenter
+waits for it to end. The overview button frames the remaining route
 north-up and stays put until you press it again or recenter.
 
 ### What the car map draws

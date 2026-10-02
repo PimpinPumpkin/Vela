@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.roundToInt
@@ -111,6 +112,9 @@ class CarMapRenderer(
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
     @Volatile private var lastPanMs = 0L // last user pan/zoom; auto-recenter kicks in after RECENTER_MS
+    // A fling's remaining glide, surface pixels per second (right is east, down is south).
+    private var flingVx = 0.0
+    private var flingVy = 0.0
 
     private companion object {
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
@@ -121,12 +125,15 @@ class CarMapRenderer(
         const val ATTRIBUTION = "\u00a9 OpenStreetMap" // the phone's map_osm_attribution, verbatim
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
+        const val FLING_TAU_S = 0.35  // a fling's speed falls to a third in this long
+        const val FLING_STOP_PX_S = 40.0 // and stops below this
     }
 
     private fun navigating() = navSession.state.value.navigating
 
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
+        flingVx = 0.0; flingVy = 0.0
         previewRoute = null
         overview = false
         following = true
@@ -137,6 +144,7 @@ class CarMapRenderer(
     // the driver taps it off (or recenters). The phone has the same toggle.
     @Volatile private var overview = false
     fun toggleOverview() {
+        flingVx = 0.0; flingVy = 0.0
         overview = !overview
         following = !overview
         if (!overview) lastPanMs = 0L
@@ -145,6 +153,7 @@ class CarMapRenderer(
 
     /** Step the zoom (map-control buttons); pins follow off briefly so the change is visible. */
     fun zoomBy(delta: Double) {
+        flingVx = 0.0; flingVy = 0.0
         zoom = (zoom + delta).coerceIn(2.0, 20.0)
         lastPanMs = android.os.SystemClock.uptimeMillis()
         following = false
@@ -153,6 +162,7 @@ class CarMapRenderer(
 
     /** Frame [route] on the surface for the route-preview screen (no live follow). */
     fun showPreview(route: Route?) {
+        flingVx = 0.0; flingVy = 0.0
         previewRoute = route
         following = false
         frameRoute(route)
@@ -291,6 +301,7 @@ class CarMapRenderer(
                 val db = shortestAngleDelta(bearing, targetBearing)
                 if (abs(db) > 0.2) { bearing = normalizeAngle(bearing + db * BEARING_EASE); moved = true }
                 if (abs(zoomTarget - zoom) > 0.004) { zoom += (zoomTarget - zoom) * ZOOM_EASE; moved = true }
+                if (stepFling(dt)) moved = true
                 if (following && previewRoute == null) puck?.let { center = it }
                 if (moved) requestRender()
                 kotlinx.coroutines.delay(TICK_MS)
@@ -400,22 +411,77 @@ class CarMapRenderer(
     private fun safeArea(): Rect = stable?.takeIf { !it.isEmpty && it.width() > 40 && it.height() > 40 }
         ?: visible?.takeIf { !it.isEmpty } ?: Rect(0, 0, width, height)
 
-    override fun onScroll(distanceX: Float, distanceY: Float) {
-        val snap = lastSnapshot ?: return
+    /** The part of the surface the map is framed in: the host's visible area, else all of it. */
+    private fun framingArea(): Rect =
+        visible?.takeIf { !it.isEmpty && it.width() > 0 && it.height() > 0 } ?: Rect(0, 0, width, height)
+
+    /** Ground meters per surface pixel at [lat] for the current zoom (MapLibre's 512 px tiles). */
+    private fun metersPerPixel(lat: Double): Double = 78271.517 * cos(Math.toRadians(lat)) / Math.pow(2.0, zoom)
+
+    /** Moves [center] by a screen offset in surface pixels: right is east, down is south. A pan
+     *  always draws north-up (following is off), so no heading needs rotating in. */
+    private fun shiftCenter(dxPx: Double, dyPx: Double) {
+        val here = center ?: return
+        val mpp = metersPerPixel(here.lat)
+        center = here.destinationPoint(dxPx * mpp, 90.0).destinationPoint(dyPx * mpp, 180.0)
+    }
+
+    private fun stopPanning() {
         following = false
+        flingVx = 0.0; flingVy = 0.0
         lastPanMs = android.os.SystemClock.uptimeMillis()
-        val cx = width / 2f; val cy = height / 2f
-        val ll = runCatching { snap.latLngForPixel(PointF(cx + distanceX, cy + distanceY)) }.getOrNull() ?: return
-        center = LatLng(ll.latitude, ll.longitude)
+    }
+
+    // The scroll used to set the center to the last snapshot's latLngForPixel(surface center +
+    // distance). Panning on Gearslip's preview (2026-10-01) sent the map flying: that snapshot's
+    // center is the camera target, which requestRender offsets into the visible area, so every
+    // scroll event also jumped the map by that offset; and several events landed on one stale
+    // snapshot, so the pan never added up. Each scroll is now a plain metric move of the center.
+    override fun onScroll(distanceX: Float, distanceY: Float) {
+        stopPanning()
+        // GestureDetector convention: distance is previous minus current, so a finger moving
+        // left (positive distanceX) shows more of the map to the east.
+        shiftCenter(distanceX.toDouble(), distanceY.toDouble())
         requestRender()
     }
 
+    // Pinch zoom keeps the point under the fingers where it is, rather than zooming about the
+    // center and sliding what the driver was looking at away.
     override fun onScale(focusX: Float, focusY: Float, scaleFactor: Float) {
         if (scaleFactor <= 0f) return
-        following = false // else the next nav frame overwrites the pinch zoom with navZoom()
-        lastPanMs = android.os.SystemClock.uptimeMillis()
+        stopPanning() // else the next nav frame overwrites the pinch zoom with navZoom()
+        val here = center
+        val before = here?.let { metersPerPixel(it.lat) }
         zoom = (zoom + ln(scaleFactor.toDouble()) / ln(2.0)).coerceIn(2.0, 20.0)
+        if (here != null && before != null) {
+            // While panning, the center is drawn at the middle of the framing area.
+            val area = framingArea()
+            // The focus point's ground offset from the center shrinks by (before - after) meters
+            // per pixel; shiftCenter measures pixels at the new zoom, so divide by that.
+            val after = metersPerPixel(here.lat)
+            val k = (before - after) / after
+            shiftCenter((focusX - area.exactCenterX()) * k, (focusY - area.exactCenterY()) * k)
+        }
         requestRender()
+    }
+
+    // A fling glides on from the scroll and slows to a stop; the render ticker moves it along.
+    override fun onFling(velocityX: Float, velocityY: Float) {
+        stopPanning()
+        // The finger's velocity: the map follows the finger, so the center moves the other way.
+        flingVx = -velocityX.toDouble()
+        flingVy = -velocityY.toDouble()
+    }
+
+    /** One ticker step of a fling, [dt] seconds long. True while the map is still gliding. */
+    private fun stepFling(dt: Double): Boolean {
+        if (flingVx == 0.0 && flingVy == 0.0) return false
+        shiftCenter(flingVx * dt, flingVy * dt)
+        val decay = exp(-dt / FLING_TAU_S)
+        flingVx *= decay; flingVy *= decay
+        if (hypot(flingVx, flingVy) < FLING_STOP_PX_S) { flingVx = 0.0; flingVy = 0.0 }
+        lastPanMs = android.os.SystemClock.uptimeMillis() // the auto-recenter waits for the glide to end
+        return true
     }
 
     /** Zoom that tightens as you slow (more detail at junctions) and widens at speed. */
@@ -472,8 +538,8 @@ class CarMapRenderer(
         // the visible rect and the target is moved by that pixel offset, rotated into the map's
         // heading. Meters per pixel use MapLibre's 512 px tiles (78271.517 at z0), not the 256 px
         // constant that put the puck twice as far down as intended, off the bottom edge.
-        val vis = visible?.takeIf { !it.isEmpty && it.width() > 0 && it.height() > 0 } ?: Rect(0, 0, width, height)
-        val mpp = 78271.517 * cos(Math.toRadians(here.lat)) / Math.pow(2.0, zoom)
+        val vis = framingArea()
+        val mpp = metersPerPixel(here.lat)
         val wantX = vis.exactCenterX()
         val wantY = if (nav && follow) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
         val dx = (wantX - width / 2f).toDouble() * mpp   // the shown point right of center: target goes left

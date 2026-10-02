@@ -1907,6 +1907,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   mis-voweled "take" ("tyke") when the whole ramp sentence was phonemized in one breath; the
   spoken text now inserts a comma before "toward", so the maneuver clause and the sign
   destination are separate beats (Google pauses there too). Banner text unchanged.
+- ✅ **Car map pans, pinches and flings properly (2026-10-01, checked in Gearslip's car preview).**
+  A pan follows the finger instead of flying off in random directions, a pinch zooms about the
+  fingers, and a flick keeps the map gliding before it slows to a stop.
 - ✅ **Car screen round three (2026-09-22, awaiting a head-unit check).** Pause/Resume from the car
   with a "Paused" card, search along the route (fuel, food, coffee, the phone's quick categories)
   with a pick becoming the next stop, camera/speeding/closing-soon alerts as car toasts, a

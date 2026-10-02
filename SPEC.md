@@ -3168,6 +3168,12 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
   VirtualDisplay and Presentation approach is gone. The renderer map-matches the puck to the
   route, gates the feed to GPS-only, and eases puck and heading between the roughly 1 Hz fixes.
 - **One `CarMapRenderer` per session.** Per-screen renderers freeze the map.
+- A pan moves the center by the finger's travel in meters (`shiftCenter`, meters per pixel from
+  512 px tiles); reading the new center off the last snapshot's `latLngForPixel` added the
+  visible-area offset to every scroll event and sent the map flying. A pinch keeps the point under
+  the fingers in place, and a fling glides with exponential decay (`FLING_TAU_S` 0.35 s, stops
+  under `FLING_STOP_PX_S` 40 px/s), stepped by the render ticker and stopped by recenter, zoom,
+  overview and route preview.
 - The turn card needs both `NavigationManager.navigationStarted()` and `updateTrip()`;
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`/`Step`/`Trip`, reading roundabout
   direction and exit number from the route's own geometry rather than assuming.
