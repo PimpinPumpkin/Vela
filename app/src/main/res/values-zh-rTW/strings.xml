@@ -1184,4 +1184,18 @@
     <string name="settings_link_action_directions">開啟路線</string>
     <string name="settings_link_action_start">開始導航</string>
     <string name="settings_link_action_hint">其他應用程式將位置傳給 Vela 時的處理方式。「開始導航」適合接連傳送多個停靠點的外送應用程式。</string>
+    <string name="car_nearby">附近</string>
+    <string name="car_more_nearby">更多附近地點</string>
+    <string name="car_saved">已儲存</string>
+    <string name="car_saved_empty">還沒有已儲存的地點。請在手機上儲存。</string>
+    <string name="car_home">住家</string>
+    <string name="car_work">公司</string>
+    <string name="car_settings">設定</string>
+    <string name="car_setting_voice">語音指引</string>
+    <string name="car_setting_avoid_tolls">避開收費路段</string>
+    <string name="car_setting_avoid_highways">避開高速公路</string>
+    <string name="car_setting_avoid_ferries">避開渡輪</string>
+    <string name="car_location_title">允許存取位置</string>
+    <string name="car_location_body">Vela 需要位置資訊才能顯示你的位置並提供導航</string>
+    <string name="car_location_denied">定位已關閉。請在手機設定中為 Vela 開啟。</string>
 </resources>

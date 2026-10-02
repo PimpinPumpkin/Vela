@@ -1167,4 +1167,18 @@
     <string name="settings_link_action_directions">Route öffnen</string>
     <string name="settings_link_action_start">Navigation starten</string>
     <string name="settings_link_action_hint">Was passiert, wenn eine andere App einen Ort an Vela übergibt. „Navigation starten“ eignet sich für Liefer-Apps, die einen Stopp nach dem anderen senden.</string>
+    <string name="car_nearby">In der Nähe</string>
+    <string name="car_more_nearby">Mehr in der Nähe</string>
+    <string name="car_saved">Gespeichert</string>
+    <string name="car_saved_empty">Noch keine gespeicherten Orte. Speichere einen auf dem Handy.</string>
+    <string name="car_home">Zuhause</string>
+    <string name="car_work">Arbeit</string>
+    <string name="car_settings">Einstellungen</string>
+    <string name="car_setting_voice">Sprachansagen</string>
+    <string name="car_setting_avoid_tolls">Mautstraßen vermeiden</string>
+    <string name="car_setting_avoid_highways">Autobahnen vermeiden</string>
+    <string name="car_setting_avoid_ferries">Fähren vermeiden</string>
+    <string name="car_location_title">Standort erlauben</string>
+    <string name="car_location_body">Vela braucht ihn, um deine Position zu zeigen und dich zu navigieren</string>
+    <string name="car_location_denied">Standort ist aus. Aktiviere ihn für Vela in den Einstellungen deines Handys.</string>
 </resources>

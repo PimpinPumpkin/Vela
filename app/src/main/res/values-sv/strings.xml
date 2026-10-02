@@ -1167,4 +1167,18 @@
     <string name="settings_link_action_directions">Öppna vägbeskrivning</string>
     <string name="settings_link_action_start">Starta navigering</string>
     <string name="settings_link_action_hint">Vad som händer när en annan app skickar en plats till Vela. Starta navigering passar leveransappar som skickar ett stopp i taget.</string>
+    <string name="car_nearby">I närheten</string>
+    <string name="car_more_nearby">Mer i närheten</string>
+    <string name="car_saved">Sparade</string>
+    <string name="car_saved_empty">Inga sparade platser än. Spara en på telefonen.</string>
+    <string name="car_home">Hem</string>
+    <string name="car_work">Arbete</string>
+    <string name="car_settings">Inställningar</string>
+    <string name="car_setting_voice">Röstanvisningar</string>
+    <string name="car_setting_avoid_tolls">Undvik vägtullar</string>
+    <string name="car_setting_avoid_highways">Undvik motorvägar</string>
+    <string name="car_setting_avoid_ferries">Undvik färjor</string>
+    <string name="car_location_title">Tillåt plats</string>
+    <string name="car_location_body">Vela behöver den för att visa var du är och ge vägbeskrivningar</string>
+    <string name="car_location_denied">Plats är avstängd. Slå på den för Vela i telefonens inställningar.</string>
 </resources>

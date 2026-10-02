@@ -1167,4 +1167,18 @@
     <string name="settings_link_action_directions">Ouvrir l\'itinéraire</string>
     <string name="settings_link_action_start">Démarrer la navigation</string>
     <string name="settings_link_action_hint">Ce qui se passe quand une autre appli transmet un lieu à Vela. Démarrer la navigation convient aux applis de livraison qui envoient un arrêt après l\'autre.</string>
+    <string name="car_nearby">À proximité</string>
+    <string name="car_more_nearby">Plus à proximité</string>
+    <string name="car_saved">Enregistrés</string>
+    <string name="car_saved_empty">Aucun lieu enregistré. Enregistrez-en un sur votre téléphone.</string>
+    <string name="car_home">Domicile</string>
+    <string name="car_work">Travail</string>
+    <string name="car_settings">Paramètres</string>
+    <string name="car_setting_voice">Instructions vocales</string>
+    <string name="car_setting_avoid_tolls">Éviter les péages</string>
+    <string name="car_setting_avoid_highways">Éviter les autoroutes</string>
+    <string name="car_setting_avoid_ferries">Éviter les ferries</string>
+    <string name="car_location_title">Autoriser la position</string>
+    <string name="car_location_body">Vela en a besoin pour afficher votre position et vous guider</string>
+    <string name="car_location_denied">La position est désactivée. Activez-la pour Vela dans les paramètres de votre téléphone.</string>
 </resources>

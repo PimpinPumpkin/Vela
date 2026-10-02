@@ -1185,4 +1185,18 @@
     <string name="settings_link_action_directions">経路を開く</string>
     <string name="settings_link_action_start">ナビを開始</string>
     <string name="settings_link_action_hint">他のアプリから Vela に場所が渡されたときの動作です。「ナビを開始」は、配達先を次々に送ってくる配達アプリに向いています。</string>
+    <string name="car_nearby">周辺</string>
+    <string name="car_more_nearby">周辺をもっと見る</string>
+    <string name="car_saved">保存済み</string>
+    <string name="car_saved_empty">保存済みの場所はまだありません。スマートフォンで保存してください。</string>
+    <string name="car_home">自宅</string>
+    <string name="car_work">職場</string>
+    <string name="car_settings">設定</string>
+    <string name="car_setting_voice">音声案内</string>
+    <string name="car_setting_avoid_tolls">有料道路を回避</string>
+    <string name="car_setting_avoid_highways">高速道路を回避</string>
+    <string name="car_setting_avoid_ferries">フェリーを回避</string>
+    <string name="car_location_title">位置情報を許可</string>
+    <string name="car_location_body">現在地の表示とルート案内に必要です</string>
+    <string name="car_location_denied">位置情報がオフです。スマートフォンの設定で Vela の位置情報をオンにしてください。</string>
 </resources>

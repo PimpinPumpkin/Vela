@@ -1185,4 +1185,18 @@
     <string name="settings_link_action_directions">Відкрити маршрут</string>
     <string name="settings_link_action_start">Почати навігацію</string>
     <string name="settings_link_action_hint">Що відбувається, коли інший застосунок передає Vela місцезнаходження. «Почати навігацію» підходить для застосунків доставки, які надсилають одну зупинку за іншою.</string>
+    <string name="car_nearby">Поруч</string>
+    <string name="car_more_nearby">Ще поруч</string>
+    <string name="car_saved">Збережені</string>
+    <string name="car_saved_empty">Збережених місць поки немає. Збережіть місце на телефоні.</string>
+    <string name="car_home">Домівка</string>
+    <string name="car_work">Робота</string>
+    <string name="car_settings">Налаштування</string>
+    <string name="car_setting_voice">Голосові підказки</string>
+    <string name="car_setting_avoid_tolls">Уникати платних доріг</string>
+    <string name="car_setting_avoid_highways">Уникати шосе</string>
+    <string name="car_setting_avoid_ferries">Уникати поромів</string>
+    <string name="car_location_title">Доступ до геоданих</string>
+    <string name="car_location_body">Він потрібен Vela, щоб показувати, де ви, і вести за маршрутом</string>
+    <string name="car_location_denied">Геолокацію вимкнено. Увімкніть її для Vela в налаштуваннях телефона.</string>
 </resources>

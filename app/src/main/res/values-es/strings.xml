@@ -1167,4 +1167,18 @@
     <string name="settings_link_action_directions">Abrir indicaciones</string>
     <string name="settings_link_action_start">Iniciar la navegación</string>
     <string name="settings_link_action_hint">Qué ocurre cuando otra app le pasa una ubicación a Vela. Iniciar la navegación va bien con las apps de reparto que envían una parada tras otra.</string>
+    <string name="car_nearby">Cerca</string>
+    <string name="car_more_nearby">Más cerca</string>
+    <string name="car_saved">Guardados</string>
+    <string name="car_saved_empty">Aún no hay lugares guardados. Guarda uno en tu teléfono.</string>
+    <string name="car_home">Casa</string>
+    <string name="car_work">Trabajo</string>
+    <string name="car_settings">Ajustes</string>
+    <string name="car_setting_voice">Indicaciones por voz</string>
+    <string name="car_setting_avoid_tolls">Evitar peajes</string>
+    <string name="car_setting_avoid_highways">Evitar autopistas</string>
+    <string name="car_setting_avoid_ferries">Evitar ferris</string>
+    <string name="car_location_title">Permitir ubicación</string>
+    <string name="car_location_body">Vela la necesita para mostrar dónde estás y darte indicaciones</string>
+    <string name="car_location_denied">La ubicación está desactivada. Actívala para Vela en los ajustes de tu teléfono.</string>
 </resources>

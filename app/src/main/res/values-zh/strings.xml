@@ -1183,4 +1183,18 @@
     <string name="settings_link_action_directions">打开路线</string>
     <string name="settings_link_action_start">开始导航</string>
     <string name="settings_link_action_hint">其他应用向 Vela 传入位置时的处理方式。“开始导航”适合接连发送多个站点的配送应用。</string>
+    <string name="car_nearby">附近</string>
+    <string name="car_more_nearby">更多附近地点</string>
+    <string name="car_saved">已保存</string>
+    <string name="car_saved_empty">还没有已保存的地点。请在手机上保存。</string>
+    <string name="car_home">家</string>
+    <string name="car_work">公司</string>
+    <string name="car_settings">设置</string>
+    <string name="car_setting_voice">语音播报</string>
+    <string name="car_setting_avoid_tolls">避开收费站</string>
+    <string name="car_setting_avoid_highways">避开高速</string>
+    <string name="car_setting_avoid_ferries">避开轮渡</string>
+    <string name="car_location_title">允许获取位置</string>
+    <string name="car_location_body">Vela 需要位置信息来显示您的位置并提供导航</string>
+    <string name="car_location_denied">位置信息已关闭。请在手机设置中为 Vela 开启。</string>
 </resources>

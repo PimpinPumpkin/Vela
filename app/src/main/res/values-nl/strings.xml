@@ -1167,4 +1167,18 @@
     <string name="settings_link_action_directions">Route openen</string>
     <string name="settings_link_action_start">Navigatie starten</string>
     <string name="settings_link_action_hint">Wat er gebeurt als een andere app een locatie aan Vela doorgeeft. Navigatie starten past bij bezorgapps die de ene stop na de andere sturen.</string>
+    <string name="car_nearby">In de buurt</string>
+    <string name="car_more_nearby">Meer in de buurt</string>
+    <string name="car_saved">Opgeslagen</string>
+    <string name="car_saved_empty">Nog geen opgeslagen plaatsen. Sla er een op via je telefoon.</string>
+    <string name="car_home">Thuis</string>
+    <string name="car_work">Werk</string>
+    <string name="car_settings">Instellingen</string>
+    <string name="car_setting_voice">Gesproken aanwijzingen</string>
+    <string name="car_setting_avoid_tolls">Tolwegen vermijden</string>
+    <string name="car_setting_avoid_highways">Snelwegen vermijden</string>
+    <string name="car_setting_avoid_ferries">Veerboten vermijden</string>
+    <string name="car_location_title">Locatie toestaan</string>
+    <string name="car_location_body">Vela heeft die nodig om te tonen waar je bent en je de weg te wijzen</string>
+    <string name="car_location_denied">Locatie staat uit. Zet die aan voor Vela in de instellingen van je telefoon.</string>
 </resources>

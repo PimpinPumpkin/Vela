@@ -1174,4 +1174,18 @@
     <string name="settings_link_action_directions">פתח מסלול</string>
     <string name="settings_link_action_start">התחל ניווט</string>
     <string name="settings_link_action_hint">מה קורה כשאפליקציה אחרת מעבירה מיקום אל Vela. \"התחל ניווט\" מתאים לאפליקציות משלוחים ששולחות עצירה אחרי עצירה.</string>
+    <string name="car_nearby">בסביבה</string>
+    <string name="car_more_nearby">עוד בסביבה</string>
+    <string name="car_saved">שמורים</string>
+    <string name="car_saved_empty">אין עדיין מקומות שמורים. שמור מקום בטלפון.</string>
+    <string name="car_home">בית</string>
+    <string name="car_work">עבודה</string>
+    <string name="car_settings">הגדרות</string>
+    <string name="car_setting_voice">הוראות מדוברות</string>
+    <string name="car_setting_avoid_tolls">הימנע מכבישי אגרה</string>
+    <string name="car_setting_avoid_highways">הימנע מכבישים מהירים</string>
+    <string name="car_setting_avoid_ferries">הימנע ממעבורות</string>
+    <string name="car_location_title">אישור מיקום</string>
+    <string name="car_location_body">Vela צריכה אותו כדי להציג איפה אתה ולתת הוראות נסיעה</string>
+    <string name="car_location_denied">המיקום כבוי. הפעל אותו עבור Vela בהגדרות הטלפון.</string>
 </resources>
