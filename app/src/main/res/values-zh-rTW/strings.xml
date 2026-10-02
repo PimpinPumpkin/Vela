@@ -1,6 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Vela Maps</string>
-
     <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
     <string name="cat_restaurants">餐廳</string>
     <string name="cat_coffee">咖啡</string>
@@ -10,7 +10,6 @@
     <string name="cat_pharmacy">藥局</string>
     <string name="cat_atms">ATM</string>
     <string name="cat_parks">公園</string>
-
     <!-- settings: SettingsScreen.kt -->
     <string name="settings_title">設定</string>
     <string name="settings_back">返回</string>
@@ -36,7 +35,8 @@
     <string name="search_voice_prompt">請說出要搜尋的內容</string>
     <string name="settings_voice">語音</string>
     <string name="settings_voice_fallback_name">語音</string>
-    <string name="settings_voice_downloading">正在下載 %1$s… %2$d%%</string> <!-- format -->
+    <string name="settings_voice_downloading">正在下載 %1$s… %2$d%%</string>
+    <!-- format -->
     <string name="settings_voice_none_hint">尚未安裝語音。開啟下方的語音庫，即可下載自然的裝置端語音（不需帳戶，舊手機也能即時運作）。你另外安裝的系統文字轉語音引擎也會出現在這裡供選擇。</string>
     <string name="settings_voice_test">測試語音</string>
     <string name="settings_voice_system_settings">系統語音設定</string>
@@ -47,10 +47,13 @@
     <string name="settings_voice_nav_sample_text">四百公尺後右轉進入中山路，接著目的地就在左側。</string>
     <string name="settings_voice_speak">朗讀</string>
     <string name="settings_voice_nav_sample">導航範例</string>
-    <string name="settings_voice_speed">語音速度 · %1$s</string> <!-- format -->
+    <string name="settings_voice_speed">語音速度 · %1$s</string>
+    <!-- format -->
     <string name="settings_voice_speed_hint">讓語音指引更慢或更快。點按 − / +（會朗讀範例）。1.00× 為正常速度。</string>
-    <string name="settings_voice_variant">音色 #%1$d</string> <!-- format -->
-    <string name="settings_voice_variant_of">音色 #%1$d／共 %2$d 個</string> <!-- format -->
+    <string name="settings_voice_variant">音色 #%1$d</string>
+    <!-- format -->
+    <string name="settings_voice_variant_of">音色 #%1$d／共 %2$d 個</string>
+    <!-- format -->
     <string name="settings_voice_variant_field">音色編號</string>
     <string name="settings_voice_variant_go">前往</string>
     <string name="settings_voice_variant_hint">這個語音內含數百種音色。點按 ◀ ▶ 逐一試聽，或輸入音色編號後點「前往」直接跳到該音色（會朗讀範例）。保留你喜歡的那一個。</string>
@@ -65,10 +68,14 @@
     <string name="settings_keep_screen_on_hint">導航期間讓螢幕保持喚醒。</string>
     <string name="map_voice_downloading">正在下載 Vela 語音 · %1$d%%</string>
     <string name="map_voice_installing">正在安裝 Vela 語音…</string>
-    <string name="map_region_downloading">正在下載 %1$s 的路線規劃資料 · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">正在儲存 %1$s 的地點供離線搜尋 · %2$d%%</string> <!-- format -->
-    <string name="mapvm_poipack_ready">%1$s 的地點現在可以離線搜尋了</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">%1$s 目前還沒有地點資料包，發布後就會出現在這裡。</string> <!-- format -->
+    <string name="map_region_downloading">正在下載 %1$s 的路線規劃資料 · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">正在儲存 %1$s 的地點供離線搜尋 · %2$d%%</string>
+    <!-- format -->
+    <string name="mapvm_poipack_ready">%1$s 的地點現在可以離線搜尋了</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">%1$s 目前還沒有地點資料包，發布後就會出現在這裡。</string>
+    <!-- format -->
     <string name="settings_demo_drive">模擬駕駛（示範）</string>
     <string name="settings_demo_drive_hint">點「開始」後會以模擬方式行駛規劃好的路線，而不使用 GPS。要實際導航請關閉。</string>
     <string name="settings_sim_location">模擬我的位置（示範）</string>
@@ -104,11 +111,14 @@
     <string name="settings_routing_no_regions">目前沒有可用的區域。</string>
     <string name="settings_clear_filter">清除篩選</string>
     <string name="settings_routing_filter_placeholder">搜尋</string>
-    <string name="settings_routing_no_match">沒有符合「%1$s」的區域。</string> <!-- format -->
-    <string name="settings_routing_downloading">下載中… %1$d%%</string> <!-- format -->
+    <string name="settings_routing_no_match">沒有符合「%1$s」的區域。</string>
+    <!-- format -->
+    <string name="settings_routing_downloading">下載中… %1$d%%</string>
+    <!-- format -->
     <string name="settings_routing_installed">已安裝 · 此區域可離線規劃路線</string>
     <string name="settings_routing_installed_places">已安裝 · 地點可離線搜尋</string>
-    <string name="settings_routing_places_downloading">正在儲存地點 · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">正在儲存地點 · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">取得地點</string>
     <string name="settings_update_places">更新地點</string>
     <string name="settings_routing_update_available">已安裝 · 有地點更新可用</string>
@@ -152,31 +162,41 @@
     <string name="settings_support_hint">Vela 免費且無廣告。如果它對你有幫助，捐款能讓開發持續下去。完全自願。</string>
     <string name="settings_support_button">贊助 Vela</string>
     <string name="settings_version">版本</string>
-    <string name="settings_version_line">Vela %1$s（build %2$d）</string> <!-- format -->
+    <string name="settings_version_line">Vela %1$s（build %2$d）</string>
+    <!-- format -->
     <string name="settings_collapse">收合</string>
     <string name="settings_expand">展開</string>
     <string name="settings_voice_lib_empty_hint">★ 代表推薦語音。每個語音都在你的手機上離線執行。</string>
-    <string name="settings_voice_lib_installed_hint">已安裝：%1$d MB · %2$d 個語音。</string> <!-- format -->
-    <string name="settings_voice_lib_lang_hint">你的應用程式語言是%1$s。請在下方下載%2$s語音，讓語音指引與語言相符（英文語音會唸錯%3$s的街道名稱）。</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">已安裝：%1$d MB · %2$d 個語音。</string>
+    <!-- format -->
+    <string name="settings_voice_lib_lang_hint">你的應用程式語言是%1$s。請在下方下載%2$s語音，讓語音指引與語言相符（英文語音會唸錯%3$s的街道名稱）。</string>
+    <!-- format -->
     <string name="settings_voice_search">搜尋語音</string>
     <string name="settings_voice_show_more">再顯示 %1$d 個</string>
     <string name="settings_voice_show_less">顯示較少</string>
     <string name="settings_voice_this_voice">這個語音</string>
-    <string name="settings_voice_remove_title">要移除%1$s嗎？</string> <!-- format -->
+    <string name="settings_voice_remove_title">要移除%1$s嗎？</string>
+    <!-- format -->
     <string name="settings_voice_remove_body">這是你唯一的 Vela 語音。移除後，語音指引會改用系統的文字轉語音引擎（如果一個都沒安裝則會靜音），直到你下載其他語音為止。</string>
     <string name="settings_voice_remove">移除</string>
     <string name="settings_voice_gender_female">女聲</string>
     <string name="settings_voice_gender_male">男聲</string>
-    <string name="settings_voice_gender_multi">%1$d 個語音</string> <!-- format -->
+    <string name="settings_voice_gender_multi">%1$d 個語音</string>
+    <!-- format -->
     <string name="settings_voice_gender_neutral">中性</string>
-    <string name="settings_voice_row_downloading">下載中… %1$d%%</string> <!-- format -->
-    <string name="settings_voice_row_in_use">使用中 · %1$s · %2$s · %3$s MB</string> <!-- format -->
-    <string name="settings_voice_row_downloaded">已下載 · %1$s · %2$s · %3$s MB</string> <!-- format -->
+    <string name="settings_voice_row_downloading">下載中… %1$d%%</string>
+    <!-- format -->
+    <string name="settings_voice_row_in_use">使用中 · %1$s · %2$s · %3$s MB</string>
+    <!-- format -->
+    <string name="settings_voice_row_downloaded">已下載 · %1$s · %2$s · %3$s MB</string>
+    <!-- format -->
     <string name="settings_voice_row_use">使用</string>
-    <string name="settings_voice_row_remove">移除%1$s</string> <!-- format -->
+    <string name="settings_voice_row_remove">移除%1$s</string>
+    <!-- format -->
 
     <!-- place: PlaceSheet.kt -->
-    <string name="place_photo_number">相片 %1$d</string> <!-- format -->
+    <string name="place_photo_number">相片 %1$d</string>
+    <!-- format -->
     <string name="place_photo_category_all">全部</string>
     <string name="place_saved">已儲存</string>
     <string name="place_save">儲存</string>
@@ -195,7 +215,8 @@
     <string name="place_also_at_location">同一地點的其他商家</string>
     <string name="place_open">開啟</string>
     <string name="place_people_also_search">其他人也搜尋</string>
-    <string name="place_photo_caption">相片 · %1$s</string> <!-- format -->
+    <string name="place_photo_caption">相片 · %1$s</string>
+    <!-- format -->
     <string name="place_change_start">變更起點</string>
     <string name="place_move_stop_up">將停靠站上移</string>
     <string name="place_move_stop_down">將停靠站下移</string>
@@ -220,15 +241,21 @@
     <string name="place_leave_now">立即出發</string>
     <string name="place_depart_at">出發時間</string>
     <string name="place_arrive_by">抵達時間</string>
-    <string name="place_depart_arrive">%1$s 出發 · %2$s 抵達</string> <!-- format -->
-    <string name="place_arriveby_leave">%1$s 前抵達 · %2$s 出發</string> <!-- format -->
+    <string name="place_depart_arrive">%1$s 出發 · %2$s 抵達</string>
+    <!-- format -->
+    <string name="place_arriveby_leave">%1$s 前抵達 · %2$s 出發</string>
+    <!-- format -->
     <string name="place_in_typical_traffic">依一般交通狀況</string>
     <string name="place_based_current_traffic">根據目前交通狀況</string>
-    <string name="place_arrive_approx">預計 %1$s 抵達</string> <!-- format -->
-    <string name="place_usually_range">通常 %1$s – %2$s</string> <!-- format -->
+    <string name="place_arrive_approx">預計 %1$s 抵達</string>
+    <!-- format -->
+    <string name="place_usually_range">通常 %1$s – %2$s</string>
+    <!-- format -->
     <string name="place_fastest">最快</string>
-    <string name="place_delta_min">+%1$d 分鐘</string> <!-- format -->
-    <string name="place_via">行經 %1$s</string> <!-- format -->
+    <string name="place_delta_min">+%1$d 分鐘</string>
+    <!-- format -->
+    <string name="place_via">行經 %1$s</string>
+    <!-- format -->
     <string name="place_live_traffic">即時路況</string>
     <string name="place_traffic_light">交通順暢</string>
     <string name="place_traffic_moderate">車流稍多</string>
@@ -238,18 +265,22 @@
     <string name="place_hide_steps">隱藏步驟</string>
     <string name="place_show_steps">顯示步驟</string>
     <string name="place_walk">步行</string>
-    <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
+    <string name="place_gallery_counter">%1$d / %2$d</string>
+    <!-- format -->
     <string name="place_search_reviews">搜尋評論</string>
     <string name="place_sort_reviews">排序評論</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="other">%1$d 篇評論</item>
     </plurals>
-    <string name="place_reviews_so_far">評論 · 目前 %1$d 篇</string> <!-- format -->
+    <string name="place_reviews_so_far">評論 · 目前 %1$d 篇</string>
+    <!-- format -->
     <string name="place_gathering_reviews">正在收集評論…</string>
     <string name="place_reviews_load_failed">無法載入評論。點按即可重試。</string>
     <string name="place_no_reviews">沒有可顯示的評論。</string>
     <string name="place_clear_review_search">清除評論搜尋</string>
-    <string name="place_no_reviews_mention">沒有評論提到「%1$s」（搜尋範圍為已載入的 %2$d 篇）。</string> <!-- format -->
+    <string name="place_no_reviews_mention">沒有評論提到「%1$s」（搜尋範圍為已載入的 %2$d 篇）。</string>
+    <!-- format -->
     <string name="place_back">返回</string>
     <string name="place_street_view">街景服務</string>
     <string name="place_reviews_title">評論</string>
@@ -267,12 +298,12 @@
     <string name="place_coordinates_copied">已複製座標</string>
     <string name="place_share_address">地址</string>
     <string name="place_popular_times">熱門時段</string>
-    <string name="place_busyness_right_now">目前：%1$s</string> <!-- format -->
+    <string name="place_busyness_right_now">目前：%1$s</string>
+    <!-- format -->
     <string name="place_hours">營業時間</string>
     <string name="place_departments">部門</string>
     <string name="place_collapse_hours">收合營業時間</string>
     <string name="place_expand_hours">展開營業時間</string>
-
     <!-- mapscreen: MapScreen.kt -->
     <string name="mapscreen_recenter">重新置中</string>
     <string name="mapscreen_search_this_area">搜尋這個區域</string>
@@ -294,7 +325,8 @@
     <string name="mapscreen_got_it">知道了</string>
     <string name="mapscreen_heads_up">請注意</string>
     <string name="mapscreen_dismiss">關閉</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="other">%1$d 個結果</item>
     </plurals>
     <string name="mapscreen_shrink_list">縮小清單</string>
@@ -317,25 +349,29 @@
     <string name="mapscreen_section_recent">最近</string>
     <string name="mapscreen_clear_recents">清除最近記錄</string>
     <string name="mapscreen_search_empty_hint">搜尋地點、地址和類別。</string>
-    <string name="mapscreen_set_shortcut_address">設定%1$s地址</string> <!-- format -->
-    <string name="mapscreen_edit_shortcut">編輯%1$s</string> <!-- format -->
+    <string name="mapscreen_set_shortcut_address">設定%1$s地址</string>
+    <!-- format -->
+    <string name="mapscreen_edit_shortcut">編輯%1$s</string>
+    <!-- format -->
     <string name="mapscreen_menu_change">變更</string>
     <string name="mapscreen_menu_remove">移除</string>
     <string name="mapscreen_saved_place_options">已儲存地點的選項</string>
     <string name="mapscreen_set_as_home">設為住家</string>
     <string name="mapscreen_set_as_work">設為公司</string>
     <string name="mapscreen_cancel">取消</string>
-    <string name="mapscreen_assign_shortcut_hint">搜尋你的%1$s地址</string> <!-- format -->
+    <string name="mapscreen_assign_shortcut_hint">搜尋你的%1$s地址</string>
+    <!-- format -->
     <string name="mapscreen_pick_stop_hint">選擇要新增為停靠站的地點</string>
     <string name="mapscreen_learn_more">瞭解詳情</string>
     <string name="mapscreen_faster_route_title">更快的路線</string>
-    <string name="mapscreen_faster_route_saves">依目前交通狀況約可節省 %1$s</string> <!-- format -->
+    <string name="mapscreen_faster_route_saves">依目前交通狀況約可節省 %1$s</string>
+    <!-- format -->
     <string name="mapscreen_no">不用</string>
     <string name="mapscreen_switch">切換</string>
-    <string name="mapscreen_resume_nav">要繼續導航到%1$s嗎？</string> <!-- format -->
+    <string name="mapscreen_resume_nav">要繼續導航到%1$s嗎？</string>
+    <!-- format -->
     <string name="mapscreen_resume">繼續</string>
     <string name="mapscreen_your_destination">你的目的地</string>
-
     <!-- root: VelaRoot.kt -->
     <string name="root_not_now">暫時不要</string>
     <string name="root_voice_title">導航語音</string>
@@ -344,7 +380,6 @@
     <string name="root_voice_body_outro">之後隨時可以在「設定 → 語音」中變更。</string>
     <string name="root_voice_download">下載 Vela 語音</string>
     <string name="root_voice_use_system">使用系統語音</string>
-
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">繼續直行</string>
     <string name="nav_gps_lost">正在搜尋 GPS 訊號…</string>
@@ -359,13 +394,11 @@
     <string name="nav_trip_time">行程時間</string>
     <string name="nav_distance">距離</string>
     <string name="nav_done">完成</string>
-
     <!-- steps: StepsSheet.kt -->
     <string name="steps_title">步驟</string>
     <string name="steps_live_traffic">即時路況</string>
     <string name="steps_close_cd">關閉步驟</string>
     <string name="steps_continue">繼續直行</string>
-
     <!-- welcome: WelcomeScreen.kt -->
     <string name="welcome_tagline">地圖與導航，去 Google 化。</string>
     <string name="welcome_feature_no_tracking_title">不追蹤</string>
@@ -379,28 +412,34 @@
     <string name="welcome_donate_body">Vela 免費、無廣告，靠極少的資源開發。如果它對你有幫助，小額的一次性捐款能讓它持續下去。完全自願，而且只會詢問這一次。「設定」中也隨時找得到「贊助」選項。</string>
     <string name="welcome_donate_confirm">贊助 Vela</string>
     <string name="welcome_donate_dismiss">之後再說</string>
-
     <!-- search: SearchBar.kt -->
     <string name="search_close_cd">關閉搜尋</string>
     <string name="search_placeholder">搜尋</string>
     <string name="search_offline">離線</string>
     <string name="search_clear_cd">清除搜尋</string>
     <string name="search_settings_cd">設定</string>
-
     <!-- mapvm: MapViewModel.kt -->
-    <string name="mapvm_shortcut_set">已將%1$s設為「%2$s」</string> <!-- format -->
-    <string name="mapvm_search_needs_recalibration">搜尋功能需要重新校準：%1$s</string> <!-- format -->
+    <string name="mapvm_shortcut_set">已將%1$s設為「%2$s」</string>
+    <!-- format -->
+    <string name="mapvm_search_needs_recalibration">搜尋功能需要重新校準：%1$s</string>
+    <!-- format -->
     <string name="mapvm_offline_no_data">目前離線。請在「設定 ▸ 離線地圖」下載區域，即可在沒有連線時搜尋。</string>
     <string name="mapvm_offline_no_match">已儲存的區域中找不到「%1$s」的離線結果。離線搜尋涵蓋你下載的 OpenStreetMap 地點。</string>
-    <string name="mapvm_no_results">找不到「%1$s」的結果。</string> <!-- format -->
+    <string name="mapvm_no_results">找不到「%1$s」的結果。</string>
+    <!-- format -->
     <string name="mapvm_offline_results">離線結果（無連線）</string>
-    <string name="mapvm_search_failed_reason">搜尋失敗：%1$s</string> <!-- format -->
-    <string name="mapvm_none_found_along_route">沿途找不到「%1$s」</string> <!-- format -->
+    <string name="mapvm_search_failed_reason">搜尋失敗：%1$s</string>
+    <!-- format -->
+    <string name="mapvm_none_found_along_route">沿途找不到「%1$s」</string>
+    <!-- format -->
     <string name="mapvm_search_failed">搜尋失敗</string>
     <string name="mapvm_dropped_pin">已標註的地點</string>
-    <string name="mapvm_no_mode_route_found">找不到%1$s路線</string> <!-- format -->
-    <string name="mapvm_directions_need_recalibration">路線功能需要重新校準：%1$s</string> <!-- format -->
-    <string name="mapvm_routing_failed_reason">路線規劃失敗：%1$s</string> <!-- format -->
+    <string name="mapvm_no_mode_route_found">找不到%1$s路線</string>
+    <!-- format -->
+    <string name="mapvm_directions_need_recalibration">路線功能需要重新校準：%1$s</string>
+    <!-- format -->
+    <string name="mapvm_routing_failed_reason">路線規劃失敗：%1$s</string>
+    <!-- format -->
     <string name="mapvm_no_transit_routes">找不到大眾運輸路線</string>
     <string name="mapvm_trip_default_name">行程</string>
     <string name="mapvm_no_voice_engine">未安裝可用於語音指引的語音</string>
@@ -410,34 +449,46 @@
     <string name="mapvm_resume_waiting_gps">正在等待 GPS 訊號以繼續導航…</string>
     <string name="mapvm_resume_failed">無法繼續導航</string>
     <string name="mapvm_no_track_to_replay">這筆行程沒有可重播的軌跡</string>
-    <string name="mapvm_replaying">正在重播「%1$s」（3 倍速）…</string> <!-- format -->
-    <string name="mapvm_export_saved_subject">Vela 已儲存的地點（%1$d）</string> <!-- format -->
+    <string name="mapvm_replaying">正在重播「%1$s」（3 倍速）…</string>
+    <!-- format -->
+    <string name="mapvm_export_saved_subject">Vela 已儲存的地點（%1$d）</string>
+    <!-- format -->
     <string name="mapvm_export_saved_chooser">匯出已儲存的地點</string>
-    <string name="mapvm_export_trip_subject">Vela 行程：%1$s（%2$d 個定位點）</string> <!-- format -->
+    <string name="mapvm_export_trip_subject">Vela 行程：%1$s（%2$d 個定位點）</string>
+    <!-- format -->
     <string name="mapvm_share_trip_chooser">分享行程</string>
     <string name="mapvm_voice_sample">四百公尺後右轉進入中山路。</string>
-    <string name="mapvm_not_enough_space">可用空間不足，無法下載%1$s（%2$d MB）</string> <!-- format -->
-    <string name="mapvm_voice_downloaded">%1$s 下載完成</string> <!-- format -->
-    <string name="mapvm_voice_download_failed">%1$s 下載失敗</string> <!-- format -->
+    <string name="mapvm_not_enough_space">可用空間不足，無法下載%1$s（%2$d MB）</string>
+    <!-- format -->
+    <string name="mapvm_voice_downloaded">%1$s 下載完成</string>
+    <!-- format -->
+    <string name="mapvm_voice_download_failed">%1$s 下載失敗</string>
+    <!-- format -->
     <string name="mapvm_vela_voice_removed">已移除 Vela 語音</string>
-    <string name="mapvm_opening_installer">正在開啟 %1$s 的安裝程式…</string> <!-- format -->
+    <string name="mapvm_opening_installer">正在開啟 %1$s 的安裝程式…</string>
+    <!-- format -->
     <string name="mapvm_pan_to_area_first">請先開啟地圖並移動到要下載的區域</string>
-    <string name="mapvm_offline_routing_ready">離線路線規劃已就緒：%1$s</string> <!-- format -->
+    <string name="mapvm_offline_routing_ready">離線路線規劃已就緒：%1$s</string>
+    <!-- format -->
     <string name="mapvm_offline_routing_failed">離線路線規劃資料下載失敗</string>
     <string name="mapvm_offline_routing_removed">已移除離線路線規劃資料</string>
-    <string name="mapvm_saved_places_offline">已儲存 %1$d 個地點供離線搜尋</string> <!-- format -->
-    <string name="mapvm_saved_addresses_offline">已儲存 %1$d 個地址和 %2$d 條街道供離線路線規劃</string> <!-- format -->
+    <string name="mapvm_saved_places_offline">已儲存 %1$d 個地點供離線搜尋</string>
+    <!-- format -->
+    <string name="mapvm_saved_addresses_offline">已儲存 %1$d 個地址和 %2$d 條街道供離線路線規劃</string>
+    <!-- format -->
 
     <!-- navservice: NavigationService.kt -->
     <string name="navservice_notif_title_arrived">已抵達</string>
     <string name="navservice_notif_title_navigating">導航中</string>
-    <string name="navservice_notif_title_in_distance">%1$s 後 · %2$s</string> <!-- format -->
-    <string name="navservice_notif_text_remaining">%1$s · %2$s</string> <!-- format -->
-    <string name="navservice_notif_text_faster_saving"> · 有可省 %1$s 的更快路線</string> <!-- format -->
+    <string name="navservice_notif_title_in_distance">%1$s 後 · %2$s</string>
+    <!-- format -->
+    <string name="navservice_notif_text_remaining">%1$s · %2$s</string>
+    <!-- format -->
+    <string name="navservice_notif_text_faster_saving"> · 有可省 %1$s 的更快路線</string>
+    <!-- format -->
     <string name="navservice_notif_text_faster_available"> · 有更快的路線</string>
     <string name="navservice_notif_action_end">結束</string>
     <string name="navservice_channel_name">導航</string>
-
     <string name="update_available_title">Vela %1$s 已推出</string>
     <string name="update_downloading">下載中… %1$d%%</string>
     <string name="update_later">暫時不要</string>
@@ -449,28 +500,39 @@
     <string name="settings_update_checking">檢查中…</string>
     <string name="settings_update_none">你使用的已是最新版本。</string>
     <string name="settings_place_pages">地點頁面</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="other">%1$d 站</item>
     </plurals>
-    <string name="place_transit_stop_id">站牌 %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">站牌 %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">票券與資訊</string>
     <string name="route_detail_unavailable">無法取得路線詳情</string>
     <string name="place_transit_now">即將出發</string>
-    <string name="place_transit_in_min">%1$d 分鐘後</string> <!-- format -->
-    <string name="place_transit_in_duration">%1$s後</string> <!-- format -->
-    <string name="place_transit_more_times">還有 %1$d 個</string> <!-- format -->
+    <string name="place_transit_in_min">%1$d 分鐘後</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">%1$s後</string>
+    <!-- format -->
+    <string name="place_transit_more_times">還有 %1$d 個</string>
+    <!-- format -->
     <string name="place_transit_view_stops">站點</string>
     <string name="place_transit_live">即時</string>
     <string name="place_transit_scheduled">已排定</string>
     <string name="place_transit_cancelled">已取消</string>
     <string name="place_departures">發車時刻</string>
-    <string name="place_every">每 %1$s</string> <!-- format -->
+    <string name="place_every">每 %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">你已抵達目的地。</string>
-    <string name="transit_nav_walk">步行 %1$s</string> <!-- format -->
-    <string name="transit_nav_take">搭乘%1$s</string> <!-- format -->
-    <string name="transit_nav_towards">往%1$s方向</string> <!-- format -->
-    <string name="transit_nav_from">於%1$s上車</string> <!-- format -->
-    <string name="transit_nav_get_off">在%1$s下車</string> <!-- format -->
+    <string name="transit_nav_walk">步行 %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">搭乘%1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">往%1$s方向</string>
+    <!-- format -->
+    <string name="transit_nav_from">於%1$s上車</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">在%1$s下車</string>
+    <!-- format -->
     <string name="transit_nav_next">下一步</string>
     <string name="place_last_available">末班車</string>
     <!-- Android Auto -->
@@ -516,7 +578,8 @@
     <string name="settings_update_nightly_hint">更新到最新的 Nightly 版（預先發布），而不只限於穩定版。Nightly 版較新，但測試較少。</string>
     <string name="settings_lists_export_hint">將清單備份到檔案，或在另一部裝置上還原。</string>
     <string name="settings_lists_imported">已匯入 %1$d 份清單</string>
-    <string name="settings_places_imported">已匯入 %1$d 個地點</string> <!-- format -->
+    <string name="settings_places_imported">已匯入 %1$d 個地點</string>
+    <!-- format -->
     <string name="settings_no_lists">尚無可匯出的清單</string>
     <string name="mapvm_export_lists_subject">Vela 清單（%1$d）</string>
     <string name="mapvm_export_lists_chooser">匯出清單</string>
@@ -534,13 +597,18 @@
     <string name="voice_capture_done">完成</string>
     <string name="mapvm_asr_ready">Vela 語音已就緒</string>
     <string name="mapvm_asr_download_failed">無法下載語音模型。請檢查網路連線後再試一次。</string>
-    <string name="mapvm_closing_soon">%1$s 將於 %2$s 打烊，你預計 %3$s 左右抵達</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s 將於 %2$s 打烊，早於你預計抵達的 %3$s</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s 將於 %2$s 打烊，你預計 %3$s 左右抵達</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s 將於 %2$s 打烊，早於你預計抵達的 %3$s</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Vela 語音</string>
-    <string name="settings_voice_search_model_hint">Vela 語音直接在你的手機上把語音轉成搜尋：不需要其他應用程式，也不會上傳任何內容。只需一次性下載 %1$d MB。</string>  <!-- format -->
-    <string name="settings_voice_search_download">下載（%1$d MB）</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Vela 語音直接在你的手機上把語音轉成搜尋：不需要其他應用程式，也不會上傳任何內容。只需一次性下載 %1$d MB。</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">下載（%1$d MB）</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">移除</string>
-    <string name="settings_voice_search_downloading">下載中… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">下載中… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">安裝中…</string>
     <string name="settings_voice_search_engine_title">點按麥克風時</string>
     <string name="settings_voice_search_engine_auto">Vela 語音</string>
@@ -610,25 +678,28 @@
     <string name="map_asr_downloading">正在下載 Vela Voice 麥克風 · %1$d%%</string>
     <string name="map_asr_installing">正在安裝 Vela Voice 麥克風…</string>
     <string name="map_asr_waiting">Vela Voice 麥克風 · 等待 Vela 語音</string>
-<!-- format -->
+    <!-- format -->
     <string name="place_review_more">更多</string>
     <string name="place_review_less">收合</string>
     <string name="root_voice_tts_title">語音播報路線指引</string>
-    <string name="root_voice_tts_desc">語音逐向導航。建議使用。一次性下載 %1$d MB。</string> <!-- format -->
+    <string name="root_voice_tts_desc">語音逐向導航。建議使用。一次性下載 %1$d MB。</string>
+    <!-- format -->
     <string name="root_voice_mic_title">說話搜尋</string>
-    <string name="root_voice_mic_desc">不用打字，說話就能搜尋。若不下載，麥克風會使用 Google。一次性下載 %1$d MB。</string> <!-- format -->
+    <string name="root_voice_mic_desc">不用打字，說話就能搜尋。若不下載，麥克風會使用 Google。一次性下載 %1$d MB。</string>
+    <!-- format -->
     <string name="root_voice_none_picked">請先勾選一項，或選擇「暫時不要」。</string>
     <string name="mapvm_stop_added">已新增途經點</string>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">語音在手機上變成搜尋。不上傳任何內容。選擇麥克風使用的引擎。</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Vela 支援的所有語言</string>
     <string name="settings_asr_langs_sensevoice">英語、中文、日語、韓語、粤語</string>
     <string name="settings_asr_langs_moonshine">僅英語</string>
     <string name="settings_asr_active">使用中</string>
     <string name="settings_asr_use">使用</string>
- <!-- format -->
+    <!-- format -->
     <string name="mapscreen_filter_top_rated">4.0★</string>
     <string name="mapscreen_section_recent_searches">最近搜尋</string>
     <string name="mapscreen_clear_recent_searches">清除最近搜尋</string>
@@ -899,7 +970,6 @@
     <string name="settings_speeding_alert">超速提醒</string>
     <string name="settings_speeding_alert_hint">當你超過速限數秒後，會唸出「你已超過速限」；減速後又再次超速時會再提醒一次。僅在已知速限（速限標誌顯示的那個）的路段有效。預設關閉，需自行開啟。</string>
     <string name="nav_speeding_alert">你已超過速限</string>
-
     <string name="routing_offer_title">為%1$s下載離線導航?</string>
     <string name="routing_offer_download">下載</string>
     <string name="routing_offer_body">下載該地區的道路、地點和地圖,約 %1$s。重新規劃更快,沒有訊號也能繼續導航。下載內容可在設定的離線地圖中管理。</string>
@@ -1047,9 +1117,11 @@
     <string name="settings_details_retry_hint">Google 常在第一次回覆中省略熱門時段，因此 Vela 最多再詢問兩次。關閉後每個地點只請求一次，可能缺少熱門時段。</string>
     <string name="place_show_photos">顯示相片</string>
     <string name="place_no_photos">尚無相片</string>
-    <string name="place_all_n_reviews_open">全部 %1$d 則評論</string> <!-- format -->
+    <string name="place_all_n_reviews_open">全部 %1$d 則評論</string>
+    <!-- format -->
     <string name="place_updates">最新動態</string>
-    <string name="place_updates_all">顯示全部 %1$d 則動態</string> <!-- format -->
+    <string name="place_updates_all">顯示全部 %1$d 則動態</string>
+    <!-- format -->
     <string name="settings_nav_north_up">導航時以北為上</string>
     <string name="settings_nav_north_up_hint">駕駛時地圖保持平面並以北為上。導航中點按指南針即可切換。</string>
     <string name="settings_puck_shape">導航圖示</string>
@@ -1132,7 +1204,7 @@
     <string name="settings_two_finger_tilt_hint">用兩指向上或向下拖曳，即可將地圖傾斜成 3D 視角。關閉時，雙指捏合只會縮放。</string>
     <string name="settings_speed_display">顯示車速和速限</string>
     <string name="settings_speed_display_hint">開車時在手機和車用螢幕上顯示你的車速和道路速限</string>
-    <string name="mapvm_area_pack_big">這裡的離線搜尋使用整個%1$s的地點套件。請到「設定 > 離線地圖」下載。</string>
+    <string name="mapvm_area_pack_big">這裡的離線搜尋使用整個%1$s的地點套件。請到「設定 &gt; 離線地圖」下載。</string>
     <string name="settings_places_shared_pack">地點涵蓋整個%1$s（%2$s）</string>
     <string name="mapscreen_download_voice">下載 %1$s（%2$d MB）</string>
     <string name="place_choose_icon">選擇圖示</string>
