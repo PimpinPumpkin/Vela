@@ -172,6 +172,9 @@ enum class RouteSource {
     /** Google's line kept as is, turns taken from its bends and each stretch named from the map's
      *  vector tiles (LineNamer). No lanes or sign destinations. */
     GOOGLE_LINE_NAMED,
+    /** Google's line, with the open router's maneuvers where the two routes share the road and
+     *  tile-named turns (LineNamer) where Google leaves it (HybridRoute). */
+    GOOGLE_HYBRID,
     /** On-device OsmAnd obf routing (downloaded region). */
     OBF,
     /** On-device GraphHopper graph (the retired offline engine; kept so old trip files read back). */

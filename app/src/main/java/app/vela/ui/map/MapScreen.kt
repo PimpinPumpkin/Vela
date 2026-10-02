@@ -148,6 +148,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -1321,9 +1322,27 @@ fun MapScreen(
                         .then(if (landscapeChrome) Modifier.padding(start = (sidePanelWidthDp - 260.dp) / 2 + 16.dp) else Modifier)
                         .navigationBarsPadding()
                         .padding(bottom = with(LocalDensity.current) { navBarHeightPx.toDp() } + 16.dp + 10.dp)
-                        // Never reaches the speed-limit sign (left) or the FAB column (right):
-                        // centered, symmetric, ellipsized past this.
-                        .widthIn(max = (LocalConfiguration.current.screenWidthDp - 176).coerceAtLeast(120).dp)
+                        // Never reaches the speed readout (left) or the FAB column (right). The
+                        // room is MEASURED: the readout is wider with a limit sign in it than
+                        // the fixed 88 dp a side this used to allow, and a long name ran under
+                        // it (user 2026-10-02). Centered on the screen while that fits, else
+                        // centered in the gap.
+                        .then(
+                            if (landscapeChrome) Modifier.widthIn(max = (LocalConfiguration.current.screenWidthDp - 176).coerceAtLeast(120).dp)
+                            else Modifier.layout { measurable, constraints ->
+                                val gap = 8.dp.roundToPx()
+                                val left = (if (speedBoxRightPx.intValue > 0) speedBoxRightPx.intValue else 0) + gap
+                                val right = (NAV_FAB_COLUMN_DP + 8.dp).roundToPx()
+                                val w = constraints.maxWidth
+                                val room = (w - left - right).coerceAtLeast(96.dp.roundToPx())
+                                val p = measurable.measure(constraints.copy(minWidth = 0, maxWidth = room))
+                                layout(p.width, p.height) {
+                                    val centered = (w - p.width) / 2
+                                    val x = centered.coerceIn(left, maxOf(left, w - right - p.width))
+                                    p.place(x - centered, 0)
+                                }
+                            },
+                        )
                     else Modifier
                         // Long names would otherwise run off the screen when the puck sits near an edge.
                         .widthIn(max = 260.dp)
@@ -1345,15 +1364,7 @@ fun MapScreen(
                             }
                         },
                 ) {
-                    Text(
-                        shownRoad,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    )
+                    RoadPillText(shownRoad)
                 }
             }
         }
@@ -5899,6 +5910,33 @@ private fun ListEditorDialog(
  * in metric. The number turns red when the current GPS speed exceeds the limit by a tolerance (GPS
  * speed is noisy, so a plain > would flap). [limitKmh] is the OSM value in km/h.
  */
+/** The right edge of the speed readout in window px, 0 while it is not shown. Read in the road
+ *  pill's layout pass, so the pill takes exactly the room beside it. File-level on purpose: a
+ *  `remember` in MapScreen is a composable call, and that function is at the verifier's limit. */
+private val speedBoxRightPx = androidx.compose.runtime.mutableIntStateOf(0)
+
+/** The road name in the floating pill: street words shortened once the name is long, the text
+ *  shrunk to 80 percent before it is cut with an ellipsis. */
+@Composable
+private fun RoadPillText(name: String) {
+    val text = remember(name) { if (name.length > ROAD_PILL_SHORTEN_AT) app.vela.core.util.RoadNameShort.shorten(name) else name }
+    val scale = remember(text) { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    val style = MaterialTheme.typography.titleMedium
+    Text(
+        text,
+        style = style,
+        fontSize = style.fontSize * scale.floatValue,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+        onTextLayout = { if (it.hasVisualOverflow && scale.floatValue > 0.8f) scale.floatValue = (scale.floatValue * 0.94f).coerceAtLeast(0.8f) },
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+    )
+}
+private const val ROAD_PILL_SHORTEN_AT = 16
+
 @Composable
 private fun SpeedWidget(
     speedMps: Float?,
@@ -5906,6 +5944,8 @@ private fun SpeedWidget(
     imperial: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { speedBoxRightPx.intValue = 0 } }
+    val modifier = modifier.onGloballyPositioned { c -> speedBoxRightPx.intValue = (c.positionInWindow().x + c.size.width).roundToInt() }
     val dark = isAppInDarkTheme()
     val amoled = isAppInAmoled()
     // Smooth the DISPLAYED speed (Google shows the fused estimate, not each raw doppler sample - the

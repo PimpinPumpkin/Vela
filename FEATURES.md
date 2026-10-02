@@ -2770,7 +2770,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
   fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
 - ✅ **Tapping a place keeps your zoom (issue #636).** Opening a place pans it above the sheet but no longer zooms the map out to the search level, so you can tap through places at street zoom; from farther out than that it still zooms in.
-- ✅ **Follows Google around road closures (2026-10-02).** When Google's route leaves the open route for a few blocks, the usual sign of a closure, Vela's turn-by-turn route now goes the same way.
+- ✅ **Drives Google's route (2026-10-02).** Wherever Google's route differs from the open router's, a closure detour included, Vela follows Google's line: the open router's lane and exit detail where the two agree, turns named from the map where they do not.
+- ✅ **Road name label fits beside the speed readout (2026-10-02).** Long names are shortened like a street sign ("Rd NE"), shrink a little, and never run under the speed and limit box.
 - ✅ **Route overview shows only your route's cameras (2026-10-02).** With a route on screen the plate-camera layer keeps the ones on it, so a long route pans smoothly.
 - ✅ **Links from other apps can open directions or start the drive (discussion #640).** Settings > Navigation > Links from other apps: show the place, open directions, or start navigation. For delivery apps that send one stop after another.
 - ✅ **Alternate routes stand out (discussion #639).** Alternates draw in a faded blue with a darker outline instead of gray, so they no longer disappear into a dense street grid.

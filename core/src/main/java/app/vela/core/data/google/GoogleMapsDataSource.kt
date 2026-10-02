@@ -1010,28 +1010,47 @@ class GoogleMapsDataSource @Inject constructor(
             // (Only on real divergence, so the normal case stays the fast single OSRM call.)
             val topDivergent = open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
                 RouteGeometry.divergent(open.first(), gTop)
-            // LOCAL DETOURS (2026-10-02, a real drive: Google routed around a closed road, Vela drove
-            // into it twice). The test above samples five points and asks for 700 m, so a detour
-            // of a few blocks reads as "same course" and the open route, which knows nothing of
-            // closures, is kept with Google's time painted on it. Where Google's line leaves the
-            // open route for a real stretch (SavedRoutes.viasAgainst: over 60 m off for 150 m or
-            // more), a point in the middle of each such stretch leads the open router the same way.
-            // DRIVE only: Google's walking and cycling lines are not followed on purpose.
-            val detourVias = if (!topDivergent && mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5)
-                app.vela.core.nav.SavedRoutes.viasAgainst(gTop.polyline, open.first().polyline, maxRunM = DETOUR_MAX_RUN_M) else emptyList()
+            // GOOGLE'S LINE, ALWAYS (2026-10-02, a real drive: Google routed around a closed road,
+            // Vela drove into it twice). The open router knows nothing of closures, and the test
+            // above samples five points and asks for 700 m, so a detour of a few blocks read as
+            // "same course" and the open route was kept with Google's time painted on it. Now,
+            // for DRIVE, wherever Google's line leaves the open route at all the result is
+            // Google's line itself (HybridRoute): the open router's maneuvers where the two share
+            // the road, turns named from the map tiles on the stretches where they do not. Nothing
+            // is routed through sampled points, so it cannot loop. Only the tiles under the
+            // differing stretches are read. When a stretch cannot be named (tiles unreachable,
+            // too little of it on a named street) the older via-snap and plain paths stand.
+            val hybridStretches = if (mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5)
+                app.vela.core.data.naming.HybridRoute.stretches(gTop.polyline, open.first().polyline) else emptyList()
+            val tHybrid = System.currentTimeMillis()
+            val hybrid = if (hybridStretches.isEmpty()) null else kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) {
+                val named = ArrayList<Pair<app.vela.core.data.naming.HybridRoute.Stretch, List<app.vela.core.model.Maneuver>>>()
+                for (st in hybridStretches) {
+                    val piece = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
+                    val len = st.toM - st.fromM
+                    val sub = gTop.copy(
+                        polyline = piece, distanceMeters = len, legs = emptyList(), trafficSpans = emptyList(),
+                        durationSeconds = if (gTop.distanceMeters > 0) gTop.durationSeconds * len / gTop.distanceMeters else 0.0,
+                    )
+                    val ms = app.vela.core.data.naming.RoadNameTiles.linesAlong(piece)
+                        ?.let { app.vela.core.data.naming.LineNamer.name(sub, it, mode)?.maneuvers } ?: return@withTimeoutOrNull null
+                    named += st to ms
+                }
+                app.vela.core.data.naming.HybridRoute.stitch(gTop!!, open.first(), named)
+            }
+            if (hybridStretches.isNotEmpty()) runCatching {
+                android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
+                    "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gTop?.distanceMeters?.toInt()} m, " +
+                    (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size})" else "NOT named, older path") +
+                    " in ${System.currentTimeMillis() - tHybrid} ms")
+            }
             val viaRoute = when {
+                hybrid != null -> hybrid
                 (!urgent || avoidWanted) && topDivergent -> RouteGeometry.routeVia(
                     http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
                     avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
                     tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
                 ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP) // a trip log can tell a jam snap from a plain route
-                detourVias.isNotEmpty() -> RouteGeometry.routeVia(
-                    http, listOf(origin) + detourVias + destination, mode,
-                    avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
-                    tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
-                    // Each via is taken in the direction Google's line runs there.
-                    waypointBearings = listOf<Double?>(null) + detourVias.map { RouteGeometry.headingOnLine(gTop!!.polyline, it) } + listOf<Double?>(null),
-                ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP)
                 else -> null
             }
             // Cheap checks first, the shape test last (it walks the whole route): the via route
@@ -1080,8 +1099,10 @@ class GoogleMapsDataSource @Inject constructor(
             // the same optimiztic speed model, so rebasing them all by one factor keeps the
             // picker's ranking fair.
             val freeFlowCal = gTop?.takeIf { it.durationSeconds > 0 && it.polyline.size >= 5 }?.let { g ->
+                // Never the hybrid: its times ARE Google's, so it says nothing about the open
+                // router's speed model, which is what this factor corrects.
                 val basis = open.firstOrNull()?.takeIf { !RouteGeometry.divergent(it, g) }
-                    ?: trafficRoute?.takeIf { !RouteGeometry.divergent(it, g) }
+                    ?: trafficRoute?.takeIf { it.source != RouteSource.GOOGLE_HYBRID && !RouteGeometry.divergent(it, g) }
                 basis?.takeIf { it.durationSeconds > 0 }?.let { b ->
                     val dScale = if (g.distanceMeters > 0) b.distanceMeters / g.distanceMeters else 1.0
                     ((g.durationSeconds * dScale) / b.durationSeconds).coerceIn(0.5, 3.0)
@@ -1092,8 +1113,10 @@ class GoogleMapsDataSource @Inject constructor(
             // The margin compares Google's live ETA against OSRM's CALIBRATED free-flow: the raw
             // free-flow is the very number the calibration exists to correct, and judged against
             // it a jam-avoiding snap lost to the fiction every time.
+            // The hybrid is Google's own line, the route Google would drive: it leads without the
+            // margin test, which exists to keep a wonky SNAPPED path from winning.
             val snapWorthIt = trafficRoute != null && snapReaches && open.isNotEmpty() && googleEtaS != null &&
-                (avoidWanted || googleEtaS <= open.first().durationSeconds * (freeFlowCal ?: 1.0) * SNAP_ETA_MARGIN)
+                (avoidWanted || hybrid != null || googleEtaS <= open.first().durationSeconds * (freeFlowCal ?: 1.0) * SNAP_ETA_MARGIN)
             // Avoid on, Google answered, but the open router could not be led along its course:
             // Google's own (abbreviated) steps beat a plain route that ignores the avoid.
             // Only when the open route actually left Google's avoiding course; when it already
@@ -1105,7 +1128,7 @@ class GoogleMapsDataSource @Inject constructor(
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
                     "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s spans=${gTop?.trafficSpans?.size} " +
                     "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.2f", t / it) } }}); " +
-                    "rerouted=${trafficRoute != null} detourVias=${detourVias.size} snapKept=$snapWorthIt snapReaches=$snapReaches " +
+                    "rerouted=${trafficRoute != null} hybrid=${hybrid != null} stretches=${hybridStretches.size} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s " +
                     "sameCourse=${open.firstOrNull()?.let { t -> gTop?.takeIf { it.polyline.size >= 5 }?.let { !RouteGeometry.divergent(t, it) } }} " +
                     "cal=${freeFlowCal?.let { String.format(java.util.Locale.US, "%.2f", it) }}); " +
@@ -1120,15 +1143,17 @@ class GoogleMapsDataSource @Inject constructor(
             } else {
                 if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 // With avoid on, the open router's unrestricted routes are not offered as alternates.
-                // After a LOCAL-DETOUR snap the open router's own top route is the way Google chose
-                // not to go (a closure, as far as anyone can tell), and its calibrated time would
-                // tie or beat the snap's and lead the list again: it is not offered.
-                val detourSnap = snapWorthIt && !topDivergent
-                if (detourVias.isNotEmpty()) runCatching {
-                    android.util.Log.i("VelaDirections", "local detour: vias=${detourVias.size} snapped=${viaRoute != null} reaches=$viaReaches shapeOk=${trafficRoute != null} kept=$snapWorthIt " +
-                        "(open ${open.first().distanceMeters.toInt()} m, google ${gTop?.distanceMeters?.toInt()} m, via ${viaRoute?.distanceMeters?.toInt()} m, gEta ${googleEtaS?.toInt()} s, openFF ${open.first().durationSeconds.toInt()} s, cal ${freeFlowCal?.let { "%.2f".format(it) }})")
+                // With the hybrid leading, which of the open router's routes are still offered:
+                // none of them when Google went a genuinely different way (their times are the
+                // open router's uncalibrated free-flow, which would sort ahead of honest ones), and
+                // not its top route otherwise (that is the way Google chose not to go, a closure
+                // as far as anyone can tell, and on time it would tie and lead again).
+                val openOffered = when {
+                    avoidWanted -> emptyList()
+                    hybrid != null -> if (topDivergent) emptyList() else open.drop(1)
+                    else -> open
                 }
-                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else if (detourSnap) open.drop(1) else open)).map { applyTraffic(it, gTop, freeFlowCal) }
+                val primary = if (snapWorthIt) (listOf(applyTraffic(trafficRoute!!, gTop, if (hybrid != null) 1.0 else freeFlowCal)) + openOffered.map { applyTraffic(it, gTop, freeFlowCal) })
                     // Avoid on and the open router's top route already follows Google's avoiding
                     // course: that one route IS the avoiding route, but the open router's OTHER
                     // routes were computed with no avoid at all (it cannot exclude), so they are
@@ -1676,11 +1701,10 @@ class GoogleMapsDataSource @Inject constructor(
         // (its detour is time-competitive with OSRM's ideal → the jam justifies the reroute). Tunable from
         // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
         const val SNAP_ETA_MARGIN = 1.2
-        /** The longest stretch off the open route that still counts as a local detour (a closure,
-         *  a blocked ramp). Past it Google is on another road altogether, which is the alternates'
-         *  business: on a Davis to Sacramento test the two freeways' worth of difference put six
-         *  points down and the led route failed the shape check. */
-        const val DETOUR_MAX_RUN_M = 3_000.0
+        /** How long naming the stretches where Google leaves the open route may take (tile
+         *  fetches, usually cached and under a second) before the older paths are used. */
+        const val HYBRID_WAIT_MS = 4_000L
+        const val HYBRID_WAIT_URGENT_MS = 1_500L
         /** Google's walk is offered only this much shorter than the open router's (issue #478). */
         const val WALK_GOOGLE_SHORTER = 0.15
         private const val WALK_GOOGLE_WAIT_MS = 6_000L

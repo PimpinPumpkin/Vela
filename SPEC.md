@@ -817,6 +817,20 @@ same expression or the "fastest" tag lands on a row that is not first. Naming a 
 provisional route keeps its original Google figures rather than adopting the snap's recomputed
 ETA, for the same reason.
 
+**Google's line (DRIVE).** With a Google answer, the route driven is Google's line wherever it
+leaves the open route (`HybridRoute`, source `GOOGLE_HYBRID`). Stretches: Google's line sampled
+every 20 m, a sample over `OFF_M` (45 m) from the open route is off it, runs of `MIN_RUN_M`
+(120 m) or more count, each padded `PAD_M` (90 m) and merged. Each stretch's slice is named by
+`LineNamer` from the tiles under it. The stitched maneuver list takes the open router's maneuvers
+that project within 40 m of Google's line and outside every stretch, and the named maneuvers
+inside; two within 30 m are one junction and the open router's is kept; step lengths are
+re-measured along Google's line and durations are Google's typical time by share of distance.
+The hybrid leads without the snap's ETA margin and with Google's times as they are; it is never
+the free-flow calibration basis. Offered beside it: no open-router route when
+`RouteGeometry.divergent` holds, otherwise all but the open router's top route. No stretches:
+the open route. A stretch that cannot be named within `HYBRID_WAIT_MS` (4 s; 1.5 s on an urgent
+fetch): the via-snap when divergent, else the open route.
+
 ### 4.3 Avoids and per-mode options
 
 `RoutingPrefs.avoidTolls`, `avoidHighways`, `avoidFerries` mirror the chooser's sticky toggles
@@ -2033,6 +2047,12 @@ result's name or address. A typed address is searched over a window of at least
 `ADDRESS_SEARCH_SPAN_M` (40 km) whatever the zoom; when no matching result lies within that
 distance of the view it is geocoded through the autocomplete request; matching rows lead the list,
 nearest to the view first.
+
+**Road-name pill (BAR placement).** Width = the room between the speed readout's measured right
+edge (`speedBoxRightPx`) plus 8 dp and the FAB column, at least 96 dp; centered on the screen when
+that fits, else within the room. Names over 16 characters are shortened by `RoadNameShort`
+(English street types and edge directions, never the first word); the text shrinks to 80 percent
+before it is ellipsized.
 
 **UI font.** Settings > Appearance > Font: Google Sans Flex (the default; SIL OFL 1.1, variable
 TTF in `res/font`, license text in `assets/licenses`), the system font (pref `ui_font_system`), or a

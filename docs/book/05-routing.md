@@ -278,18 +278,31 @@ without being faster. The comparison uses the *calibrated* OSRM time: against OS
 free-flow, a jam-avoiding snap lost to a fiction every time. With an avoid on, the gate is
 skipped, because Google's avoiding course is slower than the unrestricted one by design.
 
-### Small detours: closures
+### Google's line, with the best steps for each part
 
 The 700 m test above is for jams. A closed road sends Google a few blocks around, far less than
 700 m, and the open router does not know the road is closed, so for a long time Vela kept its own
-route through the closure and only borrowed Google's arrival time. Now, for driving, when the two
-routes count as the same course, Vela still looks for stretches where Google's line leaves the
-open route by more than 60 m for at least 150 m and at most 3 km (longer than that is a
-different road, which the alternates cover). It puts one point in the middle of each such
-stretch, asks the open router for the trip through those points, and leads with that. The open
-router's original route is then left out of the list: it is the way Google chose not to go, and
-on time alone it would tie and take the lead back. If the router cannot be led that way (the same
-reach, length and spur checks as the jam case), the plain route stands.
+route through the closure and only borrowed Google's arrival time.
+
+For driving, the route is now Google's line wherever the two differ at all. Vela walks Google's
+line in 20 m steps and marks every stretch of 120 m or more that sits over 45 m from the open
+route, padded by 90 m at each end so the turn off the shared road and the turn back onto it fall
+inside. Then:
+
+- outside those stretches the open router's steps are kept as they are, with their lane arrows,
+  exit numbers and sign text;
+- inside them the turns come from the bends of Google's own line, named from the map tiles under
+  that stretch (the line namer below). These steps have no lanes or sign text.
+
+Nothing is routed through sampled points, so the result cannot loop or double back, which is what
+the older approach did on a frontage road beside a freeway. Naming costs only the tiles under the
+stretches: 89 ms for three stretches on a Davis to Sacramento test, where 7.8 of 25.3 km differed.
+
+This route leads the list on Google's own times. The open router's routes shown beside it are
+its second and third choices when the two only differ locally, and none when Google went a
+different way altogether (their times are not comparable). If a stretch cannot be named, because
+the tiles cannot be reached or too little of it lies on a named street, Vela falls back to the
+jam rule above, and then to the open route.
 
 ### Google's alternates, named when you pick one
 
