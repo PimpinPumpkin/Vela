@@ -1,6 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Vela Maps</string>
-
     <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
     <string name="cat_restaurants">餐厅</string>
     <string name="cat_coffee">咖啡</string>
@@ -10,7 +10,6 @@
     <string name="cat_pharmacy">药店</string>
     <string name="cat_atms">ATM</string>
     <string name="cat_parks">公园</string>
-
     <!-- settings: SettingsScreen.kt -->
     <string name="settings_title">设置</string>
     <string name="settings_back">返回</string>
@@ -36,7 +35,8 @@
     <string name="search_voice_prompt">请说出要搜索的内容</string>
     <string name="settings_voice">语音</string>
     <string name="settings_voice_fallback_name">语音</string>
-    <string name="settings_voice_downloading">正在下载 %1$s… %2$d%%</string> <!-- format -->
+    <string name="settings_voice_downloading">正在下载 %1$s… %2$d%%</string>
+    <!-- format -->
     <string name="settings_voice_none_hint">尚无语音。打开下方的语音库，下载自然流畅的设备端语音（无需账号，旧手机也能实时合成）。您安装的系统 TTS 引擎也会显示在这里供选择。</string>
     <string name="settings_voice_test">试听语音</string>
     <string name="settings_voice_system_settings">系统语音设置</string>
@@ -47,10 +47,13 @@
     <string name="settings_voice_nav_sample_text">四百米后右转，进入中山路，然后您的目的地在左侧。</string>
     <string name="settings_voice_speak">朗读</string>
     <string name="settings_voice_nav_sample">导航示例</string>
-    <string name="settings_voice_speed">语速 · %1$s</string> <!-- format -->
+    <string name="settings_voice_speed">语速 · %1$s</string>
+    <!-- format -->
     <string name="settings_voice_speed_hint">调慢或调快语音播报。点按 − / +（会朗读示例）。1.00× 为正常语速。</string>
-    <string name="settings_voice_variant">语音变体 #%1$d</string> <!-- format -->
-    <string name="settings_voice_variant_of">语音变体 #%1$d / 共 %2$d 个</string> <!-- format -->
+    <string name="settings_voice_variant">语音变体 #%1$d</string>
+    <!-- format -->
+    <string name="settings_voice_variant_of">语音变体 #%1$d / 共 %2$d 个</string>
+    <!-- format -->
     <string name="settings_voice_variant_field">变体编号</string>
     <string name="settings_voice_variant_go">跳转</string>
     <string name="settings_voice_variant_hint">该语音包含数百位说话人。点按 ◀ ▶ 逐个试听，或输入变体编号后点按“跳转”直接切换（会朗读示例）。保留您喜欢的那一个。</string>
@@ -65,10 +68,14 @@
     <string name="settings_keep_screen_on_hint">逐向导航期间保持屏幕唤醒。</string>
     <string name="map_voice_downloading">正在下载 Vela 语音 · %1$d%%</string>
     <string name="map_voice_installing">正在安装 Vela 语音…</string>
-    <string name="map_region_downloading">正在下载 %1$s 路线数据 · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">正在保存 %1$s 的地点用于离线搜索 · %2$d%%</string> <!-- format -->
-    <string name="mapvm_poipack_ready">%1$s 的地点现在可以离线搜索了</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">%1$s 的地点包尚未发布，发布后会显示在这里。</string> <!-- format -->
+    <string name="map_region_downloading">正在下载 %1$s 路线数据 · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">正在保存 %1$s 的地点用于离线搜索 · %2$d%%</string>
+    <!-- format -->
+    <string name="mapvm_poipack_ready">%1$s 的地点现在可以离线搜索了</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">%1$s 的地点包尚未发布，发布后会显示在这里。</string>
+    <!-- format -->
     <string name="settings_demo_drive">模拟驾驶（演示）</string>
     <string name="settings_demo_drive_hint">点按“开始”后，将以模拟方式行驶规划的路线，而不使用 GPS。实际导航时请关闭。</string>
     <string name="settings_sim_location">模拟我的位置（演示）</string>
@@ -104,11 +111,14 @@
     <string name="settings_routing_no_regions">暂无可用区域。</string>
     <string name="settings_clear_filter">清除筛选</string>
     <string name="settings_routing_filter_placeholder">搜索</string>
-    <string name="settings_routing_no_match">没有与“%1$s”匹配的区域。</string> <!-- format -->
-    <string name="settings_routing_downloading">正在下载… %1$d%%</string> <!-- format -->
+    <string name="settings_routing_no_match">没有与“%1$s”匹配的区域。</string>
+    <!-- format -->
+    <string name="settings_routing_downloading">正在下载… %1$d%%</string>
+    <!-- format -->
     <string name="settings_routing_installed">已安装 · 此处可离线导航</string>
     <string name="settings_routing_installed_places">已安装 · 地点可离线搜索</string>
-    <string name="settings_routing_places_downloading">正在保存地点 · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">正在保存地点 · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">获取地点</string>
     <string name="settings_update_places">更新地点</string>
     <string name="settings_routing_update_available">已安装 · 有地点数据更新</string>
@@ -152,31 +162,41 @@
     <string name="settings_support_hint">Vela 免费且无广告。如果它对您有用，捐助能帮助开发继续下去。完全自愿。</string>
     <string name="settings_support_button">支持 Vela</string>
     <string name="settings_version">版本</string>
-    <string name="settings_version_line">Vela %1$s（构建 %2$d）</string> <!-- format -->
+    <string name="settings_version_line">Vela %1$s（构建 %2$d）</string>
+    <!-- format -->
     <string name="settings_collapse">收起</string>
     <string name="settings_expand">展开</string>
     <string name="settings_voice_lib_empty_hint">★ 为推荐语音。所有语音都在您的手机上离线运行。</string>
-    <string name="settings_voice_lib_installed_hint">已安装：%1$d MB · %2$d 个语音。</string> <!-- format -->
-    <string name="settings_voice_lib_lang_hint">您的应用语言是%1$s。请在下方下载%2$s语音，让语音播报与之匹配（英语语音会读错%3$s街道名称）。</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">已安装：%1$d MB · %2$d 个语音。</string>
+    <!-- format -->
+    <string name="settings_voice_lib_lang_hint">您的应用语言是%1$s。请在下方下载%2$s语音，让语音播报与之匹配（英语语音会读错%3$s街道名称）。</string>
+    <!-- format -->
     <string name="settings_voice_search">搜索语音</string>
     <string name="settings_voice_show_more">再显示 %1$d 个</string>
     <string name="settings_voice_show_less">收起</string>
     <string name="settings_voice_this_voice">此语音</string>
-    <string name="settings_voice_remove_title">要移除%1$s吗？</string> <!-- format -->
+    <string name="settings_voice_remove_title">要移除%1$s吗？</string>
+    <!-- format -->
     <string name="settings_voice_remove_body">这是您唯一的 Vela 语音。移除后，语音播报将回退到系统文字转语音引擎（若未安装任何引擎则保持静音），直到您下载新的语音。</string>
     <string name="settings_voice_remove">移除</string>
     <string name="settings_voice_gender_female">女声</string>
     <string name="settings_voice_gender_male">男声</string>
-    <string name="settings_voice_gender_multi">%1$d 个语音</string> <!-- format -->
+    <string name="settings_voice_gender_multi">%1$d 个语音</string>
+    <!-- format -->
     <string name="settings_voice_gender_neutral">中性</string>
-    <string name="settings_voice_row_downloading">正在下载… %1$d%%</string> <!-- format -->
-    <string name="settings_voice_row_in_use">使用中 · %1$s · %2$s · %3$s MB</string> <!-- format -->
-    <string name="settings_voice_row_downloaded">已下载 · %1$s · %2$s · %3$s MB</string> <!-- format -->
+    <string name="settings_voice_row_downloading">正在下载… %1$d%%</string>
+    <!-- format -->
+    <string name="settings_voice_row_in_use">使用中 · %1$s · %2$s · %3$s MB</string>
+    <!-- format -->
+    <string name="settings_voice_row_downloaded">已下载 · %1$s · %2$s · %3$s MB</string>
+    <!-- format -->
     <string name="settings_voice_row_use">使用</string>
-    <string name="settings_voice_row_remove">移除 %1$s</string> <!-- format -->
+    <string name="settings_voice_row_remove">移除 %1$s</string>
+    <!-- format -->
 
     <!-- place: PlaceSheet.kt -->
-    <string name="place_photo_number">照片 %1$d</string> <!-- format -->
+    <string name="place_photo_number">照片 %1$d</string>
+    <!-- format -->
     <string name="place_photo_category_all">全部</string>
     <string name="place_saved">已保存</string>
     <string name="place_save">保存</string>
@@ -195,7 +215,8 @@
     <string name="place_also_at_location">同一地点还有</string>
     <string name="place_open">打开</string>
     <string name="place_people_also_search">用户还搜索了</string>
-    <string name="place_photo_caption">照片 · %1$s</string> <!-- format -->
+    <string name="place_photo_caption">照片 · %1$s</string>
+    <!-- format -->
     <string name="place_change_start">更改起点</string>
     <string name="place_move_stop_up">上移经停点</string>
     <string name="place_move_stop_down">下移经停点</string>
@@ -220,15 +241,21 @@
     <string name="place_leave_now">立即出发</string>
     <string name="place_depart_at">出发时间</string>
     <string name="place_arrive_by">到达时间</string>
-    <string name="place_depart_arrive">%1$s 出发  ·  %2$s 到达</string> <!-- format -->
-    <string name="place_arriveby_leave">%1$s 前到达  ·  %2$s 出发</string> <!-- format -->
+    <string name="place_depart_arrive">%1$s 出发  ·  %2$s 到达</string>
+    <!-- format -->
+    <string name="place_arriveby_leave">%1$s 前到达  ·  %2$s 出发</string>
+    <!-- format -->
     <string name="place_in_typical_traffic">按通常路况</string>
     <string name="place_based_current_traffic">基于当前路况</string>
-    <string name="place_arrive_approx">预计 %1$s 到达</string> <!-- format -->
-    <string name="place_usually_range">通常 %1$s – %2$s</string> <!-- format -->
+    <string name="place_arrive_approx">预计 %1$s 到达</string>
+    <!-- format -->
+    <string name="place_usually_range">通常 %1$s – %2$s</string>
+    <!-- format -->
     <string name="place_fastest">最快</string>
-    <string name="place_delta_min">+%1$d 分钟</string> <!-- format -->
-    <string name="place_via">途经 %1$s</string> <!-- format -->
+    <string name="place_delta_min">+%1$d 分钟</string>
+    <!-- format -->
+    <string name="place_via">途经 %1$s</string>
+    <!-- format -->
     <string name="place_live_traffic">实时路况</string>
     <string name="place_traffic_light">路况畅通</string>
     <string name="place_traffic_moderate">路况缓行</string>
@@ -238,18 +265,22 @@
     <string name="place_hide_steps">隐藏步骤</string>
     <string name="place_show_steps">显示步骤</string>
     <string name="place_walk">步行</string>
-    <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
+    <string name="place_gallery_counter">%1$d / %2$d</string>
+    <!-- format -->
     <string name="place_search_reviews">搜索评价</string>
     <string name="place_sort_reviews">评价排序</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="other">%1$d 条评价</item>
     </plurals>
-    <string name="place_reviews_so_far">评价 · 已加载 %1$d 条</string> <!-- format -->
+    <string name="place_reviews_so_far">评价 · 已加载 %1$d 条</string>
+    <!-- format -->
     <string name="place_gathering_reviews">正在获取评价…</string>
     <string name="place_reviews_load_failed">无法加载评价。点按重试。</string>
     <string name="place_no_reviews">暂无评价。</string>
     <string name="place_clear_review_search">清除评价搜索</string>
-    <string name="place_no_reviews_mention">没有评价提到“%1$s”（已搜索加载的 %2$d 条）。</string> <!-- format -->
+    <string name="place_no_reviews_mention">没有评价提到“%1$s”（已搜索加载的 %2$d 条）。</string>
+    <!-- format -->
     <string name="place_back">返回</string>
     <string name="place_street_view">街景</string>
     <string name="place_reviews_title">评价</string>
@@ -267,12 +298,12 @@
     <string name="place_coordinates_copied">坐标已复制</string>
     <string name="place_share_address">地址</string>
     <string name="place_popular_times">热门时段</string>
-    <string name="place_busyness_right_now">当前：%1$s</string> <!-- format -->
+    <string name="place_busyness_right_now">当前：%1$s</string>
+    <!-- format -->
     <string name="place_hours">营业时间</string>
     <string name="place_departments">内设部门</string>
     <string name="place_collapse_hours">收起营业时间</string>
     <string name="place_expand_hours">展开营业时间</string>
-
     <!-- mapscreen: MapScreen.kt -->
     <string name="mapscreen_recenter">重新居中</string>
     <string name="mapscreen_search_this_area">搜索此区域</string>
@@ -294,7 +325,8 @@
     <string name="mapscreen_got_it">知道了</string>
     <string name="mapscreen_heads_up">请注意</string>
     <string name="mapscreen_dismiss">忽略</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="other">%1$d 个结果</item>
     </plurals>
     <string name="mapscreen_shrink_list">收起列表</string>
@@ -317,25 +349,29 @@
     <string name="mapscreen_section_recent">最近</string>
     <string name="mapscreen_clear_recents">清除最近记录</string>
     <string name="mapscreen_search_empty_hint">搜索地点、地址和类别。</string>
-    <string name="mapscreen_set_shortcut_address">设置%1$s的地址</string> <!-- format -->
-    <string name="mapscreen_edit_shortcut">编辑%1$s</string> <!-- format -->
+    <string name="mapscreen_set_shortcut_address">设置%1$s的地址</string>
+    <!-- format -->
+    <string name="mapscreen_edit_shortcut">编辑%1$s</string>
+    <!-- format -->
     <string name="mapscreen_menu_change">更改</string>
     <string name="mapscreen_menu_remove">移除</string>
     <string name="mapscreen_saved_place_options">已保存地点的选项</string>
     <string name="mapscreen_set_as_home">设为家</string>
     <string name="mapscreen_set_as_work">设为公司</string>
     <string name="mapscreen_cancel">取消</string>
-    <string name="mapscreen_assign_shortcut_hint">搜索您%1$s的地址</string> <!-- format -->
+    <string name="mapscreen_assign_shortcut_hint">搜索您%1$s的地址</string>
+    <!-- format -->
     <string name="mapscreen_pick_stop_hint">选择要添加为经停点的地点</string>
     <string name="mapscreen_learn_more">了解更多</string>
     <string name="mapscreen_faster_route_title">更快路线</string>
-    <string name="mapscreen_faster_route_saves">按当前路况约可节省 %1$s</string> <!-- format -->
+    <string name="mapscreen_faster_route_saves">按当前路况约可节省 %1$s</string>
+    <!-- format -->
     <string name="mapscreen_no">不用</string>
     <string name="mapscreen_switch">切换</string>
-    <string name="mapscreen_resume_nav">继续导航到%1$s吗？</string> <!-- format -->
+    <string name="mapscreen_resume_nav">继续导航到%1$s吗？</string>
+    <!-- format -->
     <string name="mapscreen_resume">继续</string>
     <string name="mapscreen_your_destination">您的目的地</string>
-
     <!-- root: VelaRoot.kt -->
     <string name="root_not_now">暂不</string>
     <string name="root_voice_title">导航语音</string>
@@ -344,7 +380,6 @@
     <string name="root_voice_body_outro">之后可随时在设置 → 语音中更改。</string>
     <string name="root_voice_download">下载 Vela 语音</string>
     <string name="root_voice_use_system">使用系统语音</string>
-
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">继续直行</string>
     <string name="nav_gps_lost">正在搜索 GPS…</string>
@@ -359,13 +394,11 @@
     <string name="nav_trip_time">行程时间</string>
     <string name="nav_distance">距离</string>
     <string name="nav_done">完成</string>
-
     <!-- steps: StepsSheet.kt -->
     <string name="steps_title">步骤</string>
     <string name="steps_live_traffic">实时路况</string>
     <string name="steps_close_cd">关闭步骤</string>
     <string name="steps_continue">继续直行</string>
-
     <!-- welcome: WelcomeScreen.kt -->
     <string name="welcome_tagline">地图与导航，去谷歌化。</string>
     <string name="welcome_feature_no_tracking_title">无追踪</string>
@@ -379,28 +412,34 @@
     <string name="welcome_donate_body">Vela 免费且无广告，靠微薄的经费开发。如果它对您有用，一笔小额的一次性捐助能帮助它走下去。完全自愿，而且只会问这一次。设置中也始终有“支持”入口。</string>
     <string name="welcome_donate_confirm">支持 Vela</string>
     <string name="welcome_donate_dismiss">以后再说</string>
-
     <!-- search: SearchBar.kt -->
     <string name="search_close_cd">关闭搜索</string>
     <string name="search_placeholder">搜索</string>
     <string name="search_offline">离线</string>
     <string name="search_clear_cd">清除搜索</string>
     <string name="search_settings_cd">设置</string>
-
     <!-- mapvm: MapViewModel.kt -->
-    <string name="mapvm_shortcut_set">已将%1$s设为“%2$s”</string> <!-- format -->
-    <string name="mapvm_search_needs_recalibration">搜索需要重新校准：%1$s</string> <!-- format -->
+    <string name="mapvm_shortcut_set">已将%1$s设为“%2$s”</string>
+    <!-- format -->
+    <string name="mapvm_search_needs_recalibration">搜索需要重新校准：%1$s</string>
+    <!-- format -->
     <string name="mapvm_offline_no_data">您当前离线。请在设置 ▸ 离线地图中下载区域，即可在无网络时搜索。</string>
     <string name="mapvm_offline_no_match">您保存的区域内没有与“%1$s”相关的离线结果。离线搜索涵盖您已下载的 OpenStreetMap 地点。</string>
-    <string name="mapvm_no_results">找不到“%1$s”的结果。</string> <!-- format -->
+    <string name="mapvm_no_results">找不到“%1$s”的结果。</string>
+    <!-- format -->
     <string name="mapvm_offline_results">离线结果（无网络连接）</string>
-    <string name="mapvm_search_failed_reason">搜索失败：%1$s</string> <!-- format -->
-    <string name="mapvm_none_found_along_route">沿途未找到“%1$s”</string> <!-- format -->
+    <string name="mapvm_search_failed_reason">搜索失败：%1$s</string>
+    <!-- format -->
+    <string name="mapvm_none_found_along_route">沿途未找到“%1$s”</string>
+    <!-- format -->
     <string name="mapvm_search_failed">搜索失败</string>
     <string name="mapvm_dropped_pin">已放置的图钉</string>
-    <string name="mapvm_no_mode_route_found">未找到%1$s路线</string> <!-- format -->
-    <string name="mapvm_directions_need_recalibration">路线需要重新校准：%1$s</string> <!-- format -->
-    <string name="mapvm_routing_failed_reason">路线规划失败：%1$s</string> <!-- format -->
+    <string name="mapvm_no_mode_route_found">未找到%1$s路线</string>
+    <!-- format -->
+    <string name="mapvm_directions_need_recalibration">路线需要重新校准：%1$s</string>
+    <!-- format -->
+    <string name="mapvm_routing_failed_reason">路线规划失败：%1$s</string>
+    <!-- format -->
     <string name="mapvm_no_transit_routes">未找到公交路线</string>
     <string name="mapvm_trip_default_name">行程</string>
     <string name="mapvm_no_voice_engine">未安装可用于语音播报的语音</string>
@@ -410,34 +449,46 @@
     <string name="mapvm_resume_waiting_gps">正在等待 GPS 以恢复导航…</string>
     <string name="mapvm_resume_failed">无法恢复导航</string>
     <string name="mapvm_no_track_to_replay">该行程没有可回放的轨迹</string>
-    <string name="mapvm_replaying">正在回放 %1$s（3×）…</string> <!-- format -->
-    <string name="mapvm_export_saved_subject">Vela 已保存的地点（%1$d）</string> <!-- format -->
+    <string name="mapvm_replaying">正在回放 %1$s（3×）…</string>
+    <!-- format -->
+    <string name="mapvm_export_saved_subject">Vela 已保存的地点（%1$d）</string>
+    <!-- format -->
     <string name="mapvm_export_saved_chooser">导出已保存的地点</string>
-    <string name="mapvm_export_trip_subject">Vela 行程：%1$s（%2$d 个点）</string> <!-- format -->
+    <string name="mapvm_export_trip_subject">Vela 行程：%1$s（%2$d 个点）</string>
+    <!-- format -->
     <string name="mapvm_share_trip_chooser">分享行程</string>
     <string name="mapvm_voice_sample">四百米后右转，进入中山路。</string>
-    <string name="mapvm_not_enough_space">可用空间不足，无法下载 %1$s（%2$d MB）</string> <!-- format -->
-    <string name="mapvm_voice_downloaded">%1$s 下载完成</string> <!-- format -->
-    <string name="mapvm_voice_download_failed">%1$s 下载失败</string> <!-- format -->
+    <string name="mapvm_not_enough_space">可用空间不足，无法下载 %1$s（%2$d MB）</string>
+    <!-- format -->
+    <string name="mapvm_voice_downloaded">%1$s 下载完成</string>
+    <!-- format -->
+    <string name="mapvm_voice_download_failed">%1$s 下载失败</string>
+    <!-- format -->
     <string name="mapvm_vela_voice_removed">已移除 Vela 语音</string>
-    <string name="mapvm_opening_installer">正在打开 %1$s 的安装程序…</string> <!-- format -->
+    <string name="mapvm_opening_installer">正在打开 %1$s 的安装程序…</string>
+    <!-- format -->
     <string name="mapvm_pan_to_area_first">请先打开地图并平移到目标区域</string>
-    <string name="mapvm_offline_routing_ready">离线路线规划已就绪：%1$s</string> <!-- format -->
+    <string name="mapvm_offline_routing_ready">离线路线规划已就绪：%1$s</string>
+    <!-- format -->
     <string name="mapvm_offline_routing_failed">离线路线数据下载失败</string>
     <string name="mapvm_offline_routing_removed">已移除离线路线数据</string>
-    <string name="mapvm_saved_places_offline">已保存 %1$d 个地点用于离线搜索</string> <!-- format -->
-    <string name="mapvm_saved_addresses_offline">已保存 %1$d 个地址和 %2$d 条街道用于离线路线规划</string> <!-- format -->
+    <string name="mapvm_saved_places_offline">已保存 %1$d 个地点用于离线搜索</string>
+    <!-- format -->
+    <string name="mapvm_saved_addresses_offline">已保存 %1$d 个地址和 %2$d 条街道用于离线路线规划</string>
+    <!-- format -->
 
     <!-- navservice: NavigationService.kt -->
     <string name="navservice_notif_title_arrived">已到达</string>
     <string name="navservice_notif_title_navigating">导航中</string>
-    <string name="navservice_notif_title_in_distance">%1$s后 · %2$s</string> <!-- format -->
-    <string name="navservice_notif_text_remaining">%1$s · %2$s</string> <!-- format -->
-    <string name="navservice_notif_text_faster_saving"> · 有更快路线，可省 %1$s</string> <!-- format -->
+    <string name="navservice_notif_title_in_distance">%1$s后 · %2$s</string>
+    <!-- format -->
+    <string name="navservice_notif_text_remaining">%1$s · %2$s</string>
+    <!-- format -->
+    <string name="navservice_notif_text_faster_saving"> · 有更快路线，可省 %1$s</string>
+    <!-- format -->
     <string name="navservice_notif_text_faster_available"> · 有更快路线</string>
     <string name="navservice_notif_action_end">结束</string>
     <string name="navservice_channel_name">导航</string>
-
     <string name="update_available_title">Vela %1$s 已发布</string>
     <string name="update_downloading">正在下载… %1$d%%</string>
     <string name="update_later">暂不</string>
@@ -449,28 +500,39 @@
     <string name="settings_update_checking">正在检查…</string>
     <string name="settings_update_none">已是最新版本。</string>
     <string name="settings_place_pages">地点页面</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="other">%1$d 站</item>
     </plurals>
-    <string name="place_transit_stop_id">站点 %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">站点 %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">购票与信息</string>
     <string name="route_detail_unavailable">无法获取线路详情</string>
     <string name="place_transit_now">即将出发</string>
-    <string name="place_transit_in_min">%1$d 分钟后</string> <!-- format -->
-    <string name="place_transit_in_duration">%1$s后</string> <!-- format -->
-    <string name="place_transit_more_times">还有 %1$d 个</string> <!-- format -->
+    <string name="place_transit_in_min">%1$d 分钟后</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">%1$s后</string>
+    <!-- format -->
+    <string name="place_transit_more_times">还有 %1$d 个</string>
+    <!-- format -->
     <string name="place_transit_view_stops">站点</string>
     <string name="place_transit_live">实时</string>
     <string name="place_transit_scheduled">已排定</string>
     <string name="place_transit_cancelled">已取消</string>
     <string name="place_departures">发车时刻</string>
-    <string name="place_every">每 %1$s</string> <!-- format -->
+    <string name="place_every">每 %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">您已到达。</string>
-    <string name="transit_nav_walk">步行 %1$s</string> <!-- format -->
-    <string name="transit_nav_take">乘坐 %1$s</string> <!-- format -->
-    <string name="transit_nav_towards">开往 %1$s 方向</string> <!-- format -->
-    <string name="transit_nav_from">从 %1$s 上车</string> <!-- format -->
-    <string name="transit_nav_get_off">在 %1$s 下车</string> <!-- format -->
+    <string name="transit_nav_walk">步行 %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">乘坐 %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">开往 %1$s 方向</string>
+    <!-- format -->
+    <string name="transit_nav_from">从 %1$s 上车</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">在 %1$s 下车</string>
+    <!-- format -->
     <string name="transit_nav_next">下一步</string>
     <string name="place_last_available">末班车</string>
     <!-- Android Auto -->
@@ -516,7 +578,8 @@
     <string name="settings_update_nightly_hint">更新到最新的每夜版（预发布版本），而不仅限于稳定版。每夜版更新更快，但测试较少。</string>
     <string name="settings_lists_export_hint">将您的列表备份到文件，或在其他设备上恢复。</string>
     <string name="settings_lists_imported">已导入 %1$d 个列表</string>
-    <string name="settings_places_imported">已导入 %1$d 个地点</string> <!-- format -->
+    <string name="settings_places_imported">已导入 %1$d 个地点</string>
+    <!-- format -->
     <string name="settings_no_lists">暂无可导出的列表</string>
     <string name="mapvm_export_lists_subject">Vela 列表（%1$d）</string>
     <string name="mapvm_export_lists_chooser">导出列表</string>
@@ -534,13 +597,18 @@
     <string name="voice_capture_done">完成</string>
     <string name="mapvm_asr_ready">Vela 语音已就绪</string>
     <string name="mapvm_asr_download_failed">无法下载语音模型。请检查网络连接后重试。</string>
-    <string name="mapvm_closing_soon">%1$s 将于 %2$s 打烊，您预计 %3$s 左右到达</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s 将于 %2$s 打烊，早于您 %3$s 左右的预计到达时间</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s 将于 %2$s 打烊，您预计 %3$s 左右到达</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s 将于 %2$s 打烊，早于您 %3$s 左右的预计到达时间</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Vela 语音</string>
-    <string name="settings_voice_search_model_hint">Vela 语音直接在您的手机上将语音转为搜索：无需其他应用，也不会上传任何内容。一次性下载 %1$d MB。</string>  <!-- format -->
-    <string name="settings_voice_search_download">下载（%1$d MB）</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Vela 语音直接在您的手机上将语音转为搜索：无需其他应用，也不会上传任何内容。一次性下载 %1$d MB。</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">下载（%1$d MB）</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">移除</string>
-    <string name="settings_voice_search_downloading">正在下载… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">正在下载… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">正在安装…</string>
     <string name="settings_voice_search_engine_title">点按麦克风时</string>
     <string name="settings_voice_search_engine_auto">Vela 语音</string>
@@ -610,25 +678,28 @@
     <string name="map_asr_downloading">正在下载 Vela Voice 麦克风 · %1$d%%</string>
     <string name="map_asr_installing">正在安装 Vela Voice 麦克风…</string>
     <string name="map_asr_waiting">Vela Voice 麦克风 · 等待 Vela 语音</string>
-<!-- format -->
+    <!-- format -->
     <string name="place_review_more">更多</string>
     <string name="place_review_less">收起</string>
     <string name="root_voice_tts_title">语音播报路线指引</string>
-    <string name="root_voice_tts_desc">语音逐向导航。推荐使用。一次性下载 %1$d MB。</string> <!-- format -->
+    <string name="root_voice_tts_desc">语音逐向导航。推荐使用。一次性下载 %1$d MB。</string>
+    <!-- format -->
     <string name="root_voice_mic_title">说话搜索</string>
-    <string name="root_voice_mic_desc">不用打字，说话就能搜索。不下载时，麦克风将使用 Google。一次性下载 %1$d MB。</string> <!-- format -->
+    <string name="root_voice_mic_desc">不用打字，说话就能搜索。不下载时，麦克风将使用 Google。一次性下载 %1$d MB。</string>
+    <!-- format -->
     <string name="root_voice_none_picked">请先勾选一项，或选择“暂不”。</string>
     <string name="mapvm_stop_added">已添加途经点</string>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">语音在手机上变成搜索。不上传任何内容。选择麦克风使用的引擎。</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Vela 支持的所有语言</string>
     <string name="settings_asr_langs_sensevoice">英语、汉语、日语、韩语、粤语</string>
     <string name="settings_asr_langs_moonshine">仅英语</string>
     <string name="settings_asr_active">使用中</string>
     <string name="settings_asr_use">使用</string>
- <!-- format -->
+    <!-- format -->
     <string name="mapscreen_filter_top_rated">4.0★</string>
     <string name="mapscreen_section_recent_searches">最近搜索</string>
     <string name="mapscreen_clear_recent_searches">清除最近搜索</string>
@@ -676,7 +747,6 @@
     <string name="list_move_up">上移列表</string>
     <string name="list_move_down">下移列表</string>
     <string name="place_route_offline">离线路线，无实时路况</string>
-
     <string name="cat_ev">充电站</string>
     <string name="cat_things_to_do">景点</string>
     <string name="cat_bars">酒吧</string>
@@ -706,18 +776,25 @@
     <string name="settings_nav_trace_hint">记录导航时地图镜头的移动方式，以便诊断画面抖动或漂移。不含位置数据，只有朝向、速度和时间信息，可放心附在问题反馈中。</string>
     <string name="settings_nav_trace_export">分享导航记录</string>
     <string name="settings_nav_trace_empty">尚未记录任何内容。请先导航一次。</string>
-    <string name="settings_voice_vela_name">Vela 语音（%1$s）</string> <!-- format -->
-    <string name="settings_voice_install_vela">安装 Vela 语音（%1$d MB）</string> <!-- format -->
+    <string name="settings_voice_vela_name">Vela 语音（%1$s）</string>
+    <!-- format -->
+    <string name="settings_voice_install_vela">安装 Vela 语音（%1$d MB）</string>
+    <!-- format -->
     <string name="settings_voice_install_vela_hint">推荐的导航语音。语音丢失或下载失败时，可随时在此重新安装。</string>
     <string name="settings_texture_render">兼容渲染模式</string>
     <string name="settings_texture_render_hint">通过兼容渲染路径绘制地图，可规避部分设备的图形驱动缺陷。若地图在启动时导致应用崩溃，会自动开启。速度略慢；需重启应用才能生效。</string>
-    <string name="settings_texture_render_auto_hint">因地图在启动时连续两次崩溃，已在 %1$s 上自动开启。若关闭后地图正常，请保持关闭：它速度更慢，可能导致驾驶中地图卡顿。需重启应用才能生效。</string> <!-- format -->
+    <string name="settings_texture_render_auto_hint">因地图在启动时连续两次崩溃，已在 %1$s 上自动开启。若关闭后地图正常，请保持关闭：它速度更慢，可能导致驾驶中地图卡顿。需重启应用才能生效。</string>
+    <!-- format -->
     <string name="settings_offline_places_with_downloads">下载时包含地点数据</string>
     <string name="settings_offline_places_with_downloads_hint">下载区域时一并获取 Vela 的地点数据，没有信号时地图上也能显示商家。较大的州约需半 GB。关闭则地点仅在联网时加载。</string>
-    <string name="settings_routing_size_installed_here">安装后约 %1$s · 覆盖您所在位置</string> <!-- format -->
-    <string name="settings_routing_size_installed">安装后约 %1$s</string> <!-- format -->
-    <string name="settings_region_confirm_title">要下载%1$s吗？</string> <!-- format -->
-    <string name="settings_region_confirm_body">%1$s 安装后约占用 %2$s 存储空间。日常使用只保存您周边的区域（本页顶部）会小得多。</string> <!-- format -->
+    <string name="settings_routing_size_installed_here">安装后约 %1$s · 覆盖您所在位置</string>
+    <!-- format -->
+    <string name="settings_routing_size_installed">安装后约 %1$s</string>
+    <!-- format -->
+    <string name="settings_region_confirm_title">要下载%1$s吗？</string>
+    <!-- format -->
+    <string name="settings_region_confirm_body">%1$s 安装后约占用 %2$s 存储空间。日常使用只保存您周边的区域（本页顶部）会小得多。</string>
+    <!-- format -->
     <string name="settings_storage_title">存储空间</string>
     <string name="settings_storage_maps">已保存区域与地图缓存</string>
     <string name="settings_storage_routing">离线路线</string>
@@ -730,7 +807,8 @@
     <string name="settings_import_nothing_new">该文件中的内容均已保存。</string>
     <string name="settings_import_unreadable">无法打开该文件。</string>
     <string name="settings_import_wrong_format">该文件中未找到任何地点。Vela 可读取自己导出的文件，以及其他地图应用保存的 GPX、KML 或 GeoJSON 文件。</string>
-    <string name="settings_import_wrong_format_named">该 %1$s 文件中未找到任何地点。</string> <!-- format -->
+    <string name="settings_import_wrong_format_named">该 %1$s 文件中未找到任何地点。</string>
+    <!-- format -->
     <string name="settings_import_no_picker">此设备没有可用的文件选择器，无法选择文件。</string>
     <string name="nav_overview">路线全览</string>
     <string name="settings_map_places">地图上的地点</string>
@@ -772,10 +850,13 @@
     <string name="settings_trip_share_title">分享此行程</string>
     <string name="settings_trip_share_explain">记录的行程从您出发的地方开始，在您到达的地方结束。裁剪会删除起点、终点、目的地以及家和公司附近的所有定位点，中间部分保持完整精度。</string>
     <string name="settings_trip_share_radius">裁剪距离</string>
-    <string name="settings_trip_share_radius_m">%1$d 米</string> <!-- format -->
-    <string name="settings_trip_share_summary">将删除 %1$d 个记录点，保留 %2$d 个。相当于去掉起点 %3$d 米和终点 %4$d 米。</string> <!-- format -->
+    <string name="settings_trip_share_radius_m">%1$d 米</string>
+    <!-- format -->
+    <string name="settings_trip_share_summary">将删除 %1$d 个记录点，保留 %2$d 个。相当于去掉起点 %3$d 米和终点 %4$d 米。</string>
+    <!-- format -->
     <string name="settings_trip_share_also">目的地、行程名称、两端的语音播报以及路线起始段也会一并删除。时间会重新基准化，因此文件不会透露您的出行时间。</string>
-    <string name="settings_trip_share_first">剩余的第一个点：%1$s，%2$s。请确认它不会暴露您的身份。</string> <!-- format -->
+    <string name="settings_trip_share_first">剩余的第一个点：%1$s，%2$s。请确认它不会暴露您的身份。</string>
+    <!-- format -->
     <string name="settings_trip_share_trimmed">分享裁剪后的记录</string>
     <string name="settings_trip_share_full">分享完整轨迹</string>
     <string name="settings_trip_scrub_short">本次行程比裁剪距离还短，没有可分享的中间部分。请换用更小的裁剪距离。</string>
@@ -785,7 +866,8 @@
     <string name="settings_trip_rename_failed">无法重命名该行程</string>
     <string name="settings_trip_select">选择行程</string>
     <string name="settings_trip_select_done">完成</string>
-    <string name="settings_trip_share_selected">分享 %1$d 个</string> <!-- format -->
+    <string name="settings_trip_share_selected">分享 %1$d 个</string>
+    <!-- format -->
     <string name="settings_trip_select_all">全选</string>
     <string name="settings_name_trips">保存时为每个行程命名</string>
     <string name="settings_name_trips_hint">记录的行程结束后，Vela 会询问如何命名。默认关闭；您随时可以在下方列表中重命名行程。</string>
@@ -805,29 +887,37 @@
     <string name="mapscreen_more_results">更多结果</string>
     <string name="intent_home_unset">请先设置“家”（搜索页面，搜索栏下方）</string>
     <string name="intent_work_unset">请先设置“公司”（搜索页面，搜索栏下方）</string>
-    <string name="intent_eta_reply">还需约 %1$s</string> <!-- format -->
+    <string name="intent_eta_reply">还需约 %1$s</string>
+    <!-- format -->
     <string name="intent_eta_not_navigating">请先开始导航，然后再问一次</string>
-    <string name="intent_place_not_found">未找到“%1$s”</string> <!-- format -->
+    <string name="intent_place_not_found">未找到“%1$s”</string>
+    <!-- format -->
     <string name="mapscreen_remove_from_history">从历史记录中移除</string>
     <string name="mapscreen_suggestion_options">建议选项</string>
     <string name="mapscreen_menu_rename">重命名</string>
     <string name="saved_rename_title">重命名收藏的地点</string>
     <string name="saved_rename_action">重命名</string>
-    <string name="whatsnew_title">%1$s 的新变化</string> <!-- format -->
+    <string name="whatsnew_title">%1$s 的新变化</string>
+    <!-- format -->
     <string name="whatsnew_got_it">知道了</string>
     <string name="whatsnew_full_notes">完整说明</string>
     <string name="settings_whatsnew">此版本的新变化</string>
     <string name="settings_whatsnew_hint">当前版本的发行说明。每次更新后也会自动显示一次。</string>
-    <string name="mapvm_export_trips_subject">Vela 行程：%1$d 次驾驶（%2$d 个点）</string> <!-- format -->
-    <string name="mapvm_export_trip_scrubbed_subject">Vela 行程：%1$d 个点，两端已裁剪</string> <!-- format -->
-    <string name="mapvm_area_uses_pack">此区域的地点和地址将随%1$s一起下载</string> <!-- format -->
+    <string name="mapvm_export_trips_subject">Vela 行程：%1$d 次驾驶（%2$d 个点）</string>
+    <!-- format -->
+    <string name="mapvm_export_trip_scrubbed_subject">Vela 行程：%1$d 个点，两端已裁剪</string>
+    <!-- format -->
+    <string name="mapvm_area_uses_pack">此区域的地点和地址将随%1$s一起下载</string>
+    <!-- format -->
     <string name="navservice_channel_turns_name">转向语音提示</string>
     <string name="download_notif_channel">下载</string>
-    <string name="download_notif_title">正在下载%1$s</string> <!-- format -->
+    <string name="download_notif_title">正在下载%1$s</string>
+    <!-- format -->
     <string name="download_label_update">Vela 更新</string>
     <string name="download_label_map_data">地图数据</string>
     <string name="download_label_offline_places">离线地点</string>
-    <string name="map_area_downloading">正在保存此区域供离线使用 · %1$d%%</string> <!-- format -->
+    <string name="map_area_downloading">正在保存此区域供离线使用 · %1$d%%</string>
+    <!-- format -->
     <string name="offline_area_saved">此区域已保存供离线使用</string>
     <string name="offline_area_failed">离线下载失败。请稍后重试。</string>
     <string name="offline_area_too_large">区域过大。请放大后保存较小的区域。</string>
@@ -1046,9 +1136,11 @@
     <string name="settings_details_retry_hint">Google 常在第一次答复中省略热门时段，因此 Vela 最多再询问两次。关闭后每个地点只请求一次，可能缺少热门时段。</string>
     <string name="place_show_photos">显示照片</string>
     <string name="place_no_photos">暂无照片</string>
-    <string name="place_all_n_reviews_open">全部 %1$d 条评价</string> <!-- format -->
+    <string name="place_all_n_reviews_open">全部 %1$d 条评价</string>
+    <!-- format -->
     <string name="place_updates">动态</string>
-    <string name="place_updates_all">显示全部 %1$d 条动态</string> <!-- format -->
+    <string name="place_updates_all">显示全部 %1$d 条动态</string>
+    <!-- format -->
     <string name="settings_nav_north_up">导航时以北为上</string>
     <string name="settings_nav_north_up_hint">驾驶时地图保持平面并以北为上。导航中点按指南针即可切换。</string>
     <string name="settings_puck_shape">导航图标</string>
@@ -1131,7 +1223,7 @@
     <string name="settings_two_finger_tilt_hint">双指向上或向下拖动，可将地图倾斜为 3D 视角。关闭后，双指捏合只会缩放。</string>
     <string name="settings_speed_display">显示车速和限速</string>
     <string name="settings_speed_display_hint">驾驶时在手机和车机屏幕上显示您的车速和道路限速</string>
-    <string name="mapvm_area_pack_big">此处的离线搜索使用整个%1$s的地点包。请在设置 > 离线地图中下载。</string>
+    <string name="mapvm_area_pack_big">此处的离线搜索使用整个%1$s的地点包。请在设置 &gt; 离线地图中下载。</string>
     <string name="settings_places_shared_pack">地点数据覆盖整个%1$s（%2$s）</string>
     <string name="mapscreen_download_voice">下载 %1$s（%2$d MB）</string>
     <string name="place_choose_icon">选择图标</string>
