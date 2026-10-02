@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fail on placeholder drift; WARN (not fail) on missing translations.
 
-Translations come in as pull requests (docs/TRANSLATING.md; Weblate is not live yet): new strings are added to the
-English base only and translators fill the locales via PRs, with untranslated keys falling back
+Translations come in through Weblate or as pull requests (docs/TRANSLATING.md): new strings are added to the
+English base only and translators fill the locales afterwards, with untranslated keys falling back
 to English by design - so a missing key is expected life-cycle state, not a bug, and it prints
 as a warning. What stays FATAL is placeholder drift: a translation whose %1$s / %2$d set differs
 from the default is a runtime crash (a %d fed a String), and translation PRs are hand-merged, so
@@ -61,7 +61,7 @@ def main():
     if missing:
         print(
             f"Translation gaps ({len(missing)} key/locale pairs, English fallback shows until "
-            "Weblate fills them - see docs/TRANSLATING.md):\n  " + "\n  ".join(missing)
+            "translators fill them - see docs/TRANSLATING.md):\n  " + "\n  ".join(missing)
         )
     if problems:
         print("Translation check FAILED (placeholder drift = runtime crash):\n  " + "\n  ".join(problems))

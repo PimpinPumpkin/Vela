@@ -36,12 +36,12 @@ too).
    genuinely needs no doc edit, say why in the commit message.
 6. **Every user-facing string is translatable** (the 15-language matrix is in
    [docs/LANGUAGES.md](docs/LANGUAGES.md)). Add new strings to the English base
-   `res/values/strings.xml`; translations come in as pull requests against `values-<lang>/strings.xml` (see
+   `res/values/strings.xml`; translations come in through Weblate, or as pull requests against `values-<lang>/strings.xml` (see
    [docs/TRANSLATING.md](docs/TRANSLATING.md)), and an untranslated string falls
    back to English until they do. Match placeholder types to the arguments (an Int
    needs `%d`; a `%d` fed a String crashes). Place names, addresses and reviews are
    data and are never translated. Want to translate rather than code? That guide
-   is the place to start; a one-file edit in the GitHub web editor is enough.
+   is the place to start; it all happens in the browser, on Weblate.
 
 ## Practical rules you will hit quickly
 
