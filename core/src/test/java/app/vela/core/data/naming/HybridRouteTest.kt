@@ -109,6 +109,42 @@ class HybridRouteTest {
         assertTrue(out.maneuvers.none { it.road == "Closed Rd" })
     }
 
+    @Test fun anOpenExitThatGoogleDoesNotTakeIsNeverReadOut() {
+        // The open router leaves the shared road on a slow fork: its line peels off at 1.1 km and
+        // is only 25 m away some 300 m later. Google goes straight on.
+        val straight = listOf(p(0.0, 0.0), p(0.04, 0.0))
+        val forked = listOf(p(0.0, 0.0), p(0.01, 0.0), p(0.013, 0.0003), p(0.02, 0.004), p(0.04, 0.004))
+        val openForked = route(
+            forked,
+            listOf(
+                man(ManeuverType.DEPART, p(0.0, 0.0), 1110.0, "First St"),
+                man(ManeuverType.RAMP_RIGHT, p(0.01, 0.0), 3500.0, "Exit 12"),
+                man(ManeuverType.ARRIVE, p(0.04, 0.004), 0.0),
+            ),
+            RouteSource.OSRM,
+        )
+        val g = route(straight, emptyList(), RouteSource.GOOGLE_NAMED)
+        val st = HybridRoute.stretches(straight, forked)
+        assertTrue(st.isNotEmpty())
+        // The stretch reaches back toward the fork, well before where the lines are 25 m apart.
+        assertTrue("from ${st[0].fromM}", st[0].fromM <= 1200.0)
+        val named = st.map { it to listOf(man(ManeuverType.DEPART, p(0.0, 0.0), it.toM - it.fromM), man(ManeuverType.ARRIVE, p(0.04, 0.0), 0.0)) }
+        val out = HybridRoute.stitch(g, openForked, named)!!
+        assertTrue(out.maneuvers.none { it.road == "Exit 12" })
+    }
+
+    @Test fun aRampNamedTwiceIsOneStep() {
+        val s = HybridRoute.stretches(googleLine, openLine).single()
+        val named = listOf(
+            man(ManeuverType.DEPART, p(0.0, 0.0), 100.0),
+            man(ManeuverType.RAMP_RIGHT, p(0.01, 0.0), 40.0, "Big Highway"),
+            man(ManeuverType.RAMP_RIGHT, p(0.0101, 0.0003), 1500.0, "Big Highway"),
+            man(ManeuverType.ARRIVE, p(0.021, 0.0), 0.0),
+        )
+        val out = HybridRoute.stitch(google, open, listOf(s to named))!!
+        assertEquals(1, out.maneuvers.count { it.road == "Big Highway" })
+    }
+
     @Test fun nothingNamedMeansNoHybrid() {
         assertNull(HybridRoute.stitch(google, open, emptyList()))
     }

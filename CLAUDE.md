@@ -2824,17 +2824,27 @@ architecture note.
   open router leads and knows nothing of closures, and Google's line was followed only past
   `RouteGeometry.divergent` (five sample points, 700 m). Now, for DRIVE with a Google answer:
   `HybridRoute.stretches` finds where Google's line leaves the open route (a 20 m sample over
-  45 m off, runs of 120 m or more, padded 90 m each side so the turn off and back on are inside);
+  25 m off, runs of 120 m or more, padded 90 m each side so the turn off and back on are inside);
   each stretch's slice is named from the tiles under it alone (`RoadNameTiles.linesAlong` +
   `LineNamer.name`), and `stitch` builds Google's line with the open router's maneuvers outside
   the stretches (lanes, exit numbers and sign text kept; a maneuver must project within 40 m and
   not fall in a stretch) and the tile-named turns inside. No stretches = the open route as before.
+  **NEVER A WRONG STREET NAME (owner's rule, same day):** a bare "Turn right" is fine, "onto
+  Smith St" at John St is not. So the stretches are named with `LineNamer.name(strict = true)`: no
+  refusal for a thinly named line, a sample with two differently named aligned streets within
+  12 m of each other in distance takes neither, a turn names its street only if the line stays on
+  it 60 m (a ramp or rename 100 m), heritage refs ("US 40 Historic") give no shield. Tiles
+  unreachable or slower than the wait: the SAME hybrid with bare turns (`hybridOf(tiles = false)`),
+  never the open router's own route. And an open-router maneuver is carried over only if the
+  open route's path AFTER it stays within 20 m of Google's line for up to 400 m of its leg
+  (an exit Google does not take peels away slowly and sits before the 25 m mark); each stretch
+  is also walked out to where the lines are within 10 m (at most 600 m) before the 90 m pad.
+  `OFF_M` is 25 m (at 45 a frontage road counted as the freeway beside it).
   The hybrid leads WITHOUT the snap's ETA margin (it is Google's own route), takes Google's times
   uncalibrated (`applyTraffic(.., 1.0)`), is never the calibration basis, and the open router's
   routes offered beside it are none when Google went a different way and all but its top route
-  otherwise. A stretch that cannot be named (tiles unreachable, under 60% on a named street,
-  the 4 s / 1.5 s urgent wait) drops to the older paths: the 12-via jam snap, else the plain
-  route. Checked on the 4a, Davis to Sacramento: 3 stretches, 7.8 of 25.3 km, 16 steps against
+  otherwise. Only a stitch that cannot be placed at all (no departure or arrival) drops to the older
+  paths: the 12-via jam snap, else the plain route. Checked on the 4a, Davis to Sacramento: 3 stretches, 7.8 of 25.3 km, 16 steps against
   the open router's 14, named in 89 ms, freeway steps keeping "Take exit 4A toward ...". The
   first attempt the same night (vias placed on Google's line, `SavedRoutes.viasAgainst`) was
   refused by the spur check on that trip and is gone; `routeVia(waypointBearings=)` and
@@ -2845,8 +2855,8 @@ architecture note.
   a file-level state because MapScreen is at the verifier limit) and the FAB column, centered on
   the screen while that fits and in the gap otherwise; `RoadPillText` shortens street words past
   16 characters (`core/util/RoadNameShort`: "Road Northeast" to "Rd NE", never the first word)
-  and shrinks to 80 percent before the ellipsis. NOT seen on a device: the 4a's demo drive was
-  off and the drive stayed parked.
+  and shrinks to 80 percent before the ellipsis. Seen on the 4a with short names (the pill sits
+  clear of the speed and limit box); a name long enough to need the squeeze was not on that drive.
 - **With a route up, the camera layer shows on-route cameras only (2026-10-02):** `refreshFlock`
   takes `FlockCameras.along` over the shown routes (the chooser's, or the drive's) instead of the
   viewport box, re-keyed when the route set changes. A long route's overview drew every camera in

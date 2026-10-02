@@ -1023,7 +1023,8 @@ class GoogleMapsDataSource @Inject constructor(
             val hybridStretches = if (mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5)
                 app.vela.core.data.naming.HybridRoute.stretches(gTop.polyline, open.first().polyline) else emptyList()
             val tHybrid = System.currentTimeMillis()
-            val hybrid = if (hybridStretches.isEmpty()) null else kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) {
+            // The stretches named with [tiles] (false: from the line's bends alone, no names).
+            suspend fun hybridOf(tiles: Boolean): Route? {
                 val named = ArrayList<Pair<app.vela.core.data.naming.HybridRoute.Stretch, List<app.vela.core.model.Maneuver>>>()
                 for (st in hybridStretches) {
                     val piece = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
@@ -1032,12 +1033,19 @@ class GoogleMapsDataSource @Inject constructor(
                         polyline = piece, distanceMeters = len, legs = emptyList(), trafficSpans = emptyList(),
                         durationSeconds = if (gTop.distanceMeters > 0) gTop.durationSeconds * len / gTop.distanceMeters else 0.0,
                     )
-                    val ms = app.vela.core.data.naming.RoadNameTiles.linesAlong(piece)
-                        ?.let { app.vela.core.data.naming.LineNamer.name(sub, it, mode)?.maneuvers } ?: return@withTimeoutOrNull null
+                    val lines = if (tiles) app.vela.core.data.naming.RoadNameTiles.linesAlong(piece).orEmpty() else emptyList()
+                    val ms = app.vela.core.data.naming.LineNamer.name(sub, lines, mode, strict = true)?.maneuvers ?: return null
                     named += st to ms
                 }
-                app.vela.core.data.naming.HybridRoute.stitch(gTop!!, open.first(), named)
+                return app.vela.core.data.naming.HybridRoute.stitch(gTop!!, open.first(), named)
             }
+            // FAILING TOWARD GOOGLE (the owner's rule, 2026-10-02): when the stretches cannot be
+            // named (tiles unreachable or slow) the route is STILL Google's line, with those turns
+            // read bare ("Turn right"). A missing street name costs nothing; a wrong one, or the
+            // open router's own route through whatever Google went around, sends the driver wrong.
+            val hybrid = if (hybridStretches.isEmpty()) null else
+                kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOf(tiles = true) }
+                    ?: hybridOf(tiles = false)
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gTop?.distanceMeters?.toInt()} m, " +

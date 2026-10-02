@@ -285,7 +285,7 @@ The 700 m test above is for jams. A closed road sends Google a few blocks around
 route through the closure and only borrowed Google's arrival time.
 
 For driving, the route is now Google's line wherever the two differ at all. Vela walks Google's
-line in 20 m steps and marks every stretch of 120 m or more that sits over 45 m from the open
+line in 20 m steps and marks every stretch of 120 m or more that sits over 25 m from the open
 route, padded by 90 m at each end so the turn off the shared road and the turn back onto it fall
 inside. Then:
 
@@ -298,11 +298,23 @@ Nothing is routed through sampled points, so the result cannot loop or double ba
 the older approach did on a frontage road beside a freeway. Naming costs only the tiles under the
 stretches: 89 ms for three stretches on a Davis to Sacramento test, where 7.8 of 25.3 km differed.
 
+A wrong street name is worse than none: "Turn right" sends nobody the wrong way, "Turn right
+onto Smith Street" at John Street does. So on those stretches a turn is given a name only when
+the map is sure. A point with two differently named streets beside it, both running its way,
+takes neither name. A turn names its street only if the line then stays on that street for 60 m,
+a ramp or a name change only for 100 m. If the tiles cannot be read at all, the route is still
+Google's line and those turns are read bare. Vela never falls back to the open router's own
+route here, since that is the route through whatever Google went around.
+
+The open router's steps are checked the same way before they are kept. A step is carried over
+only if the open route's own path after it stays on Google's line (within 20 m, for up to 400 m).
+An exit the open router takes and Google does not peels away slowly, so its "take the exit"
+sits well before the two lines look different; this check is what drops it.
+
 This route leads the list on Google's own times. The open router's routes shown beside it are
 its second and third choices when the two only differ locally, and none when Google went a
-different way altogether (their times are not comparable). If a stretch cannot be named, because
-the tiles cannot be reached or too little of it lies on a named street, Vela falls back to the
-jam rule above, and then to the open route.
+different way altogether (their times are not comparable). Only when the pieces cannot be put together at all does Vela fall
+back to the jam rule above, and then to the open route.
 
 ### Google's alternates, named when you pick one
 

@@ -819,17 +819,24 @@ ETA, for the same reason.
 
 **Google's line (DRIVE).** With a Google answer, the route driven is Google's line wherever it
 leaves the open route (`HybridRoute`, source `GOOGLE_HYBRID`). Stretches: Google's line sampled
-every 20 m, a sample over `OFF_M` (45 m) from the open route is off it, runs of `MIN_RUN_M`
-(120 m) or more count, each padded `PAD_M` (90 m) and merged. Each stretch's slice is named by
+every 20 m, a sample over `OFF_M` (25 m) from the open route is off it, runs of `MIN_RUN_M`
+(120 m) or more count, each walked out to where the lines are within 10 m (at most 600 m), then
+padded `PAD_M` (90 m) and merged. Each stretch's slice is named by
 `LineNamer` from the tiles under it. The stitched maneuver list takes the open router's maneuvers
 that project within 40 m of Google's line and outside every stretch, and the named maneuvers
 inside; two within 30 m are one junction and the open router's is kept; step lengths are
 re-measured along Google's line and durations are Google's typical time by share of distance.
+An open-router maneuver is carried over only when the open route's path
+after it stays within 20 m of Google's line, sampled every 40 m for up to 400 m of its leg. Naming
+is strict (`LineNamer.name(strict = true)`): never refused for a low named share; a sample with
+two differently named aligned streets within 12 m of each other in distance is unnamed; a turn
+carries a street name only when the line stays on it 60 m, a ramp or rename 100 m; refs containing
+"historic" are dropped. Unreadable tiles give the same route with bare turns, never the open route.
 The hybrid leads without the snap's ETA margin and with Google's times as they are; it is never
 the free-flow calibration basis. Offered beside it: no open-router route when
 `RouteGeometry.divergent` holds, otherwise all but the open router's top route. No stretches:
-the open route. A stretch that cannot be named within `HYBRID_WAIT_MS` (4 s; 1.5 s on an urgent
-fetch): the via-snap when divergent, else the open route.
+the open route. Tiles not read within `HYBRID_WAIT_MS` (4 s; 1.5 s on an urgent fetch): bare turns
+on those stretches.
 
 ### 4.3 Avoids and per-mode options
 

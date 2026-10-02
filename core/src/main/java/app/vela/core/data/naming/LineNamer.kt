@@ -33,6 +33,13 @@ object LineNamer {
     private const val SHORT_RUN_M = 40.0
     private const val LOOK_M = 400.0
     private val ELEVATED_ROADS = setOf("motorway", "trunk", "primary", "secondary", "tertiary")
+    /** Strict mode: a turn names its street only when the line stays on it this long after the
+     *  turn, and a ramp or a rename only when the road it reaches runs this long. */
+    private const val STRICT_RUN_M = 60.0
+    private const val STRICT_FAR_RUN_M = 100.0
+    /** Strict mode: two differently named streets this close in distance to a sample, both
+     *  running its way, leave the sample unnamed. */
+    private const val AMBIGUOUS_M = 12.0
     /** Part of the line that must carry a name before the result is trusted. */
     const val MIN_NAMED_SHARE = 0.6
     /** Lower on foot: lanes and paths are often unnamed, and an unnamed stretch reads "Turn left"
@@ -46,7 +53,15 @@ object LineNamer {
      * Google's own step positions are not used: its keyless steps sit at the start of the stretch
      * before the maneuver, a kilometer early on a highway ramp.
      */
-    fun name(route: Route, lines: List<NamedLine>, mode: TravelMode): Route? {
+    /**
+     * [strict] is for driving guidance stitched into a route (HybridRoute), where a wrong street
+     * name is worse than none: "Turn right" sends nobody the wrong way, "Turn right onto Smith
+     * Street" at John Street does. In strict mode the line is never refused for being thinly
+     * named (its turns still come out, bare), a sample between two differently named streets
+     * takes neither name, and a turn or a rename carries a name only when the line then stays on
+     * that street for a real distance.
+     */
+    fun name(route: Route, lines: List<NamedLine>, mode: TravelMode, strict: Boolean = false): Route? {
         val poly = route.polyline
         if (poly.size < 2) return null
         val s = resample(poly)
@@ -58,13 +73,22 @@ object LineNamer {
         val idx = SegIndex(usable)
 
         // 1. A name per sample: the nearest street within maxOff that runs the same way.
-        val names = s.map { p -> idx.nearestAligned(p.pt, p.brg, maxOff) }
+        val names = s.map { p -> idx.nearestAligned(p.pt, p.brg, maxOff, strict) }
         val named = names.count { it != null }.toDouble() / names.size
         lastNamedShare = named
-        if (named < (if (mode == TravelMode.WALK) MIN_NAMED_SHARE_WALK else MIN_NAMED_SHARE)) return null
+        if (!strict && named < (if (mode == TravelMode.WALK) MIN_NAMED_SHARE_WALK else MIN_NAMED_SHARE)) return null
 
         // 2. Runs of one name; short runs (a cross street at a junction) and gaps absorbed.
         val runName = smoothRuns(s, names)
+
+        // Strict: a name counts at sample k only when the same name holds for [minM] onward.
+        fun solid(k: Int, minM: Double): NameRun? {
+            val r = runName.getOrNull(k) ?: return null
+            if (!strict) return r
+            var j = k
+            while (j + 1 < s.size && runName[j + 1]?.name == r.name) j++
+            return if (s[j].m - s[k].m >= minM || j == s.lastIndex && s[j].m - s[k].m >= minM / 2) r else null
+        }
 
         // 3. Turns: local peaks of the heading change across +-TURN_WINDOW_M.
         val w = (TURN_WINDOW_M / STEP_M).toInt().coerceAtLeast(1)
@@ -92,7 +116,7 @@ object LineNamer {
         fun runAround(i: Int, dir: Int): NameRun? {
             var k = (i + dir * w).coerceIn(0, s.lastIndex)
             while (k in s.indices && abs(s[k].m - s[i].m) <= LOOK_M) {
-                runName[k]?.let { return it }
+                (if (dir > 0) solid(k, STRICT_FAR_RUN_M) else runName[k])?.let { return it }
                 k += dir
             }
             return null
@@ -101,7 +125,7 @@ object LineNamer {
             // Names come from right at the turn; the look-around only finds the highway a ramp joins
             // or leaves (an unnamed campus path must not borrow a street 300 m away).
             val before = runName.getOrNull((i - w).coerceAtLeast(0))
-            val after = runName.getOrNull((i + w).coerceAtMost(s.lastIndex))
+            val after = solid((i + w).coerceAtMost(s.lastIndex), STRICT_RUN_M)
             val beforeFar = runAround(i, -1)
             val afterFar = runAround(i, 1)
             val a = delta[i]
@@ -131,7 +155,7 @@ object LineNamer {
         for (i in 1 until s.size) {
             val r = runName[i] ?: continue
             val prev = runName[i - 1]
-            if (prev != null && prev.name != r.name && events.none { abs(s[it.i].m - s[i].m) < EVENT_GAP_M }) {
+            if (prev != null && prev.name != r.name && solid(i, STRICT_FAR_RUN_M) != null && events.none { abs(s[it.i].m - s[i].m) < EVENT_GAP_M }) {
                 renameAt += s[i].m to r
             }
         }
@@ -185,8 +209,12 @@ object LineNamer {
 
     data class NameRun(val name: String, val ref: String?, val cls: String?)
 
+    /** A route number worth a shield. The tiles also carry heritage designations as refs ("US 40
+     *  Historic" on a downtown street), which are not what any sign on the road says. */
+    private fun shieldRef(ref: String?): String? = ref?.takeUnless { it.contains("historic", ignoreCase = true) }
+
     private fun smoothRuns(s: List<Sample>, names: List<NamedLine?>): List<NameRun?> {
-        val raw = names.map { it?.let { l -> NameRun(l.name, l.ref, l.cls) } }.toMutableList()
+        val raw = names.map { it?.let { l -> NameRun(l.name, shieldRef(l.ref), l.cls) } }.toMutableList()
         // Collapse runs shorter than SHORT_RUN_M into the longer neighbor (a cross street's name
         // picked up for a few samples at a junction, or a short gap).
         repeat(3) {
@@ -251,15 +279,22 @@ object LineNamer {
                 for (gx in x0..x1) for (gy in y0..y1) grid.getOrPut(key(gx, gy)) { ArrayList() } += seg
             }
         }
-        fun nearestAligned(p: LatLng, brg: Double, maxOff: Double): NamedLine? {
+        fun nearestAligned(p: LatLng, brg: Double, maxOff: Double, strict: Boolean = false): NamedLine? {
             val gx = (p.lng * kx / cell).toInt(); val gy = (p.lat * 111_320.0 / cell).toInt()
             var best: NamedLine? = null; var bestD = maxOff
+            // The nearest street with ANOTHER name running the same way (a frontage road beside a
+            // highway, the next street of a tight grid): close enough, and the sample is unsure.
+            var otherD = Double.MAX_VALUE
             for (dx in -1..1) for (dy in -1..1) for (seg in grid[key(gx + dx, gy + dy)].orEmpty()) {
                 val diff = abs(RouteGeometry.bearingDelta(brg, seg.brg)).let { if (it > 90.0) 180.0 - it else it }
                 if (diff > ALIGN_DEG) continue
                 val d = segDist(p, seg.a, seg.b)
-                if (d < bestD) { bestD = d; best = seg.line }
+                if (d < bestD) {
+                    if (best != null && best.name != seg.line.name) otherD = minOf(otherD, bestD)
+                    bestD = d; best = seg.line
+                } else if (best != null && seg.line.name != best.name) otherD = minOf(otherD, d)
             }
+            if (strict && best != null && otherD - bestD < AMBIGUOUS_M) return null
             return best
         }
         private fun segDist(p: LatLng, a: LatLng, b: LatLng): Double {

@@ -19,14 +19,29 @@ import app.vela.core.model.distanceTo
  * through points, so the result cannot loop or double back, and it is Google's line exactly.
  */
 object HybridRoute {
-    /** A sample of Google's line this far from the open route is off it. */
-    const val OFF_M = 45.0
+    /** A sample of Google's line this far from the open route is off it. Tight on purpose: at
+     *  45 m a frontage road beside a highway counted as the same road, and the open router's
+     *  steps for the one would have been read out on the other. */
+    const val OFF_M = 25.0
     /** A shorter run off the open route is drawing noise (a ramp traced differently, the other
      *  side of a wide junction), not a different way. */
     const val MIN_RUN_M = 120.0
     /** Each stretch reaches this far into the shared road at both ends, so the turn off the
      *  shared road and the turn back onto it belong to the stretch. */
     const val PAD_M = 90.0
+    /** A stretch really begins where the two lines part, not where they are already [OFF_M]
+     *  apart: an exit ramp runs beside its highway for hundreds of meters first, and the open
+     *  router's "take the exit" sits at the fork. Each end is walked back (and forward) to where
+     *  the lines are within this of each other, at most [WALK_MAX_M], before the pad. */
+    private const val TIGHT_M = 10.0
+    private const val WALK_MAX_M = 600.0
+    /** An open-router maneuver is carried over only when the open route's own path after it
+     *  stays on Google's line: checked every [AGREE_STEP_M] for up to [AGREE_M] of its leg. */
+    private const val AGREE_M = 400.0
+    private const val AGREE_STEP_M = 40.0
+    private const val AGREE_OFF_M = 20.0
+    /** Two tile-named maneuvers this close with the same road are one (a ramp's two bends). */
+    private const val SAME_ROAD_M = 150.0
     private const val STEP_M = 20.0
     /** An open-router maneuver has to sit this close to Google's line to be carried over. */
     private const val SNAP_M = 40.0
@@ -43,21 +58,25 @@ object HybridRoute {
         val grid = RouteGeometry.SegmentGrid(open, cumulative(open))
         val cum = cumulative(google)
         val total = cum.last()
-        val runs = ArrayList<Stretch>()
+        val raw = ArrayList<Stretch>()
         var start = -1.0
         var m = 0.0
-        var i = 1
+        fun farFrom(at: Double, tol: Double) = grid.along(pointAt(google, cum, at), tol) == null
         while (m <= total) {
-            while (i < cum.size - 1 && cum[i] < m) i++
-            val seg = cum[i] - cum[i - 1]
-            val f = if (seg <= 0.0) 0.0 else ((m - cum[i - 1]) / seg).coerceIn(0.0, 1.0)
-            val p = LatLng(google[i - 1].lat + (google[i].lat - google[i - 1].lat) * f, google[i - 1].lng + (google[i].lng - google[i - 1].lng) * f)
-            val off = grid.along(p, OFF_M) == null
+            val off = farFrom(m, OFF_M)
             if (off && start < 0) start = m
-            if (!off && start >= 0) { if (m - start >= MIN_RUN_M) runs += Stretch(start, m); start = -1.0 }
+            if (!off && start >= 0) { if (m - start >= MIN_RUN_M) raw += Stretch(start, m); start = -1.0 }
             m += STEP_M
         }
-        if (start >= 0 && total - start >= MIN_RUN_M) runs += Stretch(start, total)
+        if (start >= 0 && total - start >= MIN_RUN_M) raw += Stretch(start, total)
+        // Walk each end out to where the two lines actually part and meet again.
+        val runs = raw.map { r ->
+            var a = r.fromM
+            while (a > 0.0 && r.fromM - a < WALK_MAX_M && farFrom(a, TIGHT_M)) a -= STEP_M
+            var b = r.toM
+            while (b < total && b - r.toM < WALK_MAX_M && farFrom(b, TIGHT_M)) b += STEP_M
+            Stretch(a.coerceAtLeast(0.0), b.coerceAtMost(total))
+        }
         // Pad, clamp, merge what now touches.
         val out = ArrayList<Stretch>()
         for (r in runs) {
@@ -95,13 +114,28 @@ object HybridRoute {
         data class At(val m: Double, val man: Maneuver, val fromOpen: Boolean)
         val all = ArrayList<At>()
         val openMs = open.maneuvers
+        val openLine = open.polyline
+        val openCum = cumulative(openLine)
+        var openAt = 0.0 // where this maneuver sits along the OPEN route (its steps tile that line)
         for ((k, man) in openMs.withIndex()) {
+            val here = openAt
+            openAt += man.distanceMeters
             val a = when {
                 k == 0 && man.type == ManeuverType.DEPART -> 0.0
                 k == openMs.lastIndex && man.type == ManeuverType.ARRIVE -> total
                 else -> grid.along(man.location, SNAP_M) ?: continue
             }
-            if (!inStretch(a)) all += At(a, man, true)
+            if (inStretch(a)) continue
+            // The open route has to GO Google's way after this maneuver, or the maneuver is the
+            // open router leaving Google's line (an exit Google does not take) and reading it
+            // out would send the driver off the route.
+            var agrees = true
+            var d = AGREE_STEP_M
+            while (agrees && d <= minOf(man.distanceMeters, AGREE_M)) {
+                if (grid.along(pointAt(openLine, openCum, here + d), AGREE_OFF_M) == null) agrees = false
+                d += AGREE_STEP_M
+            }
+            if (agrees) all += At(a, man, true)
         }
         for ((s, ms) in named) {
             var pos = 0.0
@@ -122,6 +156,9 @@ object HybridRoute {
                 if (x.fromOpen && !last.fromOpen) kept[kept.lastIndex] = x
                 continue
             }
+            // A ramp's two bends, both named for the road it reaches: one instruction.
+            if (last != null && !x.fromOpen && !last.fromOpen && x.m - last.m < SAME_ROAD_M &&
+                x.man.road != null && x.man.road == last.man.road && x.man.type == last.man.type) continue
             kept += x
         }
         if (kept.size < 2 || kept.first().man.type != ManeuverType.DEPART || kept.last().man.type != ManeuverType.ARRIVE) return null
