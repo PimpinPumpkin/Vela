@@ -3174,6 +3174,9 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
   the fingers in place, and a fling glides with exponential decay (`FLING_TAU_S` 0.35 s, stops
   under `FLING_STOP_PX_S` 40 px/s), stepped by the render ticker and stopped by recenter, zoom,
   overview and route preview.
+- The landing and route-preview templates carry a map action strip too: recenter, zoom in and
+  zoom out on the landing map; overview (re-frame the selected route), zoom in and zoom out on the
+  preview, which has no puck to recenter on.
 - The turn card needs both `NavigationManager.navigationStarted()` and `updateTrip()`;
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`/`Step`/`Trip`, reading roundabout
   direction and exit number from the route's own geometry rather than assuming.

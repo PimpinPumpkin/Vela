@@ -6,6 +6,8 @@ import androidx.car.app.Screen
 import android.text.SpannableString
 import android.text.Spanned
 import androidx.car.app.model.Action
+import androidx.car.app.model.ActionStrip
+import androidx.car.app.model.CarIcon
 import androidx.car.app.model.CarText
 import androidx.car.app.model.Distance
 import androidx.car.app.model.DistanceSpan
@@ -15,6 +17,7 @@ import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.RoutePreviewNavigationTemplate
+import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -84,8 +87,24 @@ class RoutePreviewCarScreen(
                 .setOnClickListener { startNav() }
                 .build(),
         )
+        // Map controls: zoom in on part of the route, then the overview button frames the whole
+        // route again (here that is the way back, there is no puck to recenter on).
+        val renderer = deps.mapRenderer(carContext)
+        builder.setMapActionStrip(
+            ActionStrip.Builder()
+                .addAction(mapAction(app.vela.R.drawable.ic_car_overview) { renderer.showPreview(shown.getOrNull(selected)) })
+                .addAction(mapAction(app.vela.R.drawable.ic_car_zoom_in) { renderer.zoomBy(1.0) })
+                .addAction(mapAction(app.vela.R.drawable.ic_car_zoom_out) { renderer.zoomBy(-1.0) })
+                .build(),
+        )
         return builder.build()
     }
+
+    private fun mapAction(iconRes: Int, onClick: () -> Unit): Action =
+        Action.Builder()
+            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, iconRes)).build())
+            .setOnClickListener(onClick)
+            .build()
 
     private fun routeRow(r: Route): Row {
         val secs = (r.durationInTrafficSeconds ?: r.durationSeconds).toLong()

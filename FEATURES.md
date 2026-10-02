@@ -1910,6 +1910,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Car map pans, pinches and flings properly (2026-10-01, checked in Gearslip's car preview).**
   A pan follows the finger instead of flying off in random directions, a pinch zooms about the
   fingers, and a flick keeps the map gliding before it slows to a stop.
+- ✅ **Map buttons on the car's home and route preview screens (2026-10-01, checked in Gearslip's
+  car preview).** Recenter and zoom on the home map, and overview and zoom on the route preview,
+  the same round buttons the drive screen has.
 - ✅ **Car screen round three (2026-09-22, awaiting a head-unit check).** Pause/Resume from the car
   with a "Paused" card, search along the route (fuel, food, coffee, the phone's quick categories)
   with a pick becoming the next stop, camera/speeding/closing-soon alerts as car toasts, a

@@ -62,13 +62,26 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
             .setOnClickListener { screenManager.push(SearchCarScreen(carContext, deps)) }
             .build()
 
+        // Map controls, the same set the drive screen has: the landing map pans and pinches, so it
+        // needs a way back to you and a way to zoom without a pinch.
+        val renderer = deps.mapRenderer(carContext)
+        val mapStrip = ActionStrip.Builder()
+            .addAction(mapAction(app.vela.R.drawable.ic_car_recenter) { renderer.follow() })
+            .addAction(mapAction(app.vela.R.drawable.ic_car_zoom_in) { renderer.zoomBy(1.0) })
+            .addAction(mapAction(app.vela.R.drawable.ic_car_zoom_out) { renderer.zoomBy(-1.0) })
+            .build()
+
         return PlaceListNavigationTemplate.Builder()
             .setItemList(list.build())
             .setTitle(carContext.getString(app.vela.R.string.app_name))
             .setHeaderAction(Action.APP_ICON)
             .setActionStrip(ActionStrip.Builder().addAction(search).build())
+            .setMapActionStrip(mapStrip)
             .build()
     }
+
+    private fun mapAction(iconRes: Int, onClick: () -> Unit): Action =
+        Action.Builder().setIcon(icon(iconRes)).setOnClickListener(onClick).build()
 
     private fun destRow(name: String, dest: LatLng): Row =
         Row.Builder()

@@ -316,6 +316,10 @@ action strip:   4 actions   // the template's cap
 map strip:      recenter, zoom in, zoom out, overview
 ```
 
+The landing screen's map strip is recenter, zoom in and zoom out, since its map pans and pinches
+like the drive's. The route preview has no puck to recenter on, so its strip is overview (frame the
+selected route again), zoom in and zoom out.
+
 The drive's strip is mute (or a faster-route offer when one saves at least a minute, which takes
 the mute slot because there is no fifth slot), pause or resume, search along the route, and end.
 Every one is **icon-only** (`ic_car_*`): titled actions are drawn by the host as text pills across
