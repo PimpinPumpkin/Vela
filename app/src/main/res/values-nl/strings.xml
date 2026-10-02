@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Instellingen</string>
     <string name="settings_back">Terug</string>
@@ -89,7 +90,8 @@
     <string name="settings_routing_downloading">Downloaden… %1$d%%</string>
     <string name="settings_routing_installed">Geïnstalleerd · routes hier offline</string>
     <string name="settings_routing_installed_places">Geïnstalleerd · plaatsen offline doorzoekbaar</string>
-    <string name="settings_routing_places_downloading">Plaatsen opslaan · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">Plaatsen opslaan · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">Plaatsen ophalen</string>
     <string name="settings_update_places">Plaatsen bijwerken</string>
     <string name="settings_routing_update_available">Geïnstalleerd · update voor plaatsen beschikbaar</string>
@@ -155,7 +157,8 @@
     <string name="settings_collapse">Inklappen</string>
     <string name="settings_expand">Uitklappen</string>
     <string name="settings_voice_lib_empty_hint">★ markeert de aanbevolen stemmen. Elke stem werkt offline op je telefoon.</string>
-    <string name="settings_voice_lib_installed_hint">Geïnstalleerd: %1$d MB · %2$d stem(men).</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">Geïnstalleerd: %1$d MB · %2$d stem(men).</string>
+    <!-- format -->
     <string name="settings_voice_lib_lang_hint">Uw apptaal is %1$s, download hieronder een %2$s-stem zodat de gesproken instructies overeenkomen (een Engelse stem zou %3$s straatnamen verkeerd uitspreken).</string>
     <string name="settings_voice_search">Stemmen zoeken</string>
     <string name="settings_voice_show_more">%1$d meer tonen</string>
@@ -185,14 +188,18 @@
     <string name="place_temporarily_closed">Tijdelijk gesloten</string>
     <string name="map_voice_downloading">Vela-stem wordt gedownload · %1$d %%</string>
     <string name="map_voice_installing">Vela-stem wordt geïnstalleerd…</string>
-    <string name="map_region_downloading">Routes voor %1$s downloaden · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">Plaatsen in %1$s opslaan voor offline zoeken · %2$d%%</string> <!-- format -->
+    <string name="map_region_downloading">Routes voor %1$s downloaden · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">Plaatsen in %1$s opslaan voor offline zoeken · %2$d%%</string>
+    <!-- format -->
     <string name="map_region_placesfile_downloading">Plaatsen in %1$s opslaan voor de kaart · %2$d%%</string>
     <string name="map_region_map_downloading">Kaart van %1$s downloaden · %2$d%%</string>
     <string name="mapvm_region_ready">%1$s is gedownload: kaart, routes en plaatsen werken offline</string>
     <string name="mapvm_region_incomplete">%1$s is maar deels gedownload. Maak verbinding en tik op Bijwerken in Instellingen, Offlinekaarten om het af te maken</string>
-    <string name="mapvm_poipack_ready">Plaatsen in %1$s zijn nu offline doorzoekbaar</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">Nog geen plaatsenpakket voor %1$s. Het verschijnt hier zodra het is gepubliceerd.</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Plaatsen in %1$s zijn nu offline doorzoekbaar</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">Nog geen plaatsenpakket voor %1$s. Het verschijnt hier zodra het is gepubliceerd.</string>
+    <!-- format -->
     <string name="settings_demo_drive">Rijden simuleren (demo)</string>
     <string name="settings_demo_drive_hint">Start rijdt de geplande route als simulatie in plaats van met gps. Zet uit om echt te navigeren.</string>
     <string name="settings_sim_location">Mijn locatie simuleren (demo)</string>
@@ -258,7 +265,8 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Recensies zoeken</string>
     <string name="place_sort_reviews">Recensies sorteren</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="one">%1$d recensie</item>
         <item quantity="other">%1$d recensies</item>
     </plurals>
@@ -313,7 +321,8 @@
     <string name="mapscreen_got_it">Begrepen</string>
     <string name="mapscreen_heads_up">Let op</string>
     <string name="mapscreen_dismiss">Sluiten</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="one">%1$d resultaat</item>
         <item quantity="other">%1$d resultaten</item>
     </plurals>
@@ -401,7 +410,8 @@
     <string name="mapvm_search_needs_recalibration">Zoeken vereist herkalibratie: %1$s</string>
     <string name="mapvm_offline_no_data">Je bent offline. Download een gebied in Instellingen ▸ Offline om zonder verbinding te zoeken.</string>
     <string name="mapvm_offline_no_match">Geen offlineresultaten voor \"%1$s\" in je opgeslagen gebied. Offline zoeken omvat de OpenStreetMap-plaatsen die je hebt gedownload.</string>
-    <string name="mapvm_no_results">Geen resultaten voor \"%1$s\".</string> <!-- format -->
+    <string name="mapvm_no_results">Geen resultaten voor \"%1$s\".</string>
+    <!-- format -->
     <string name="mapvm_offline_results">Offline resultaten (geen verbinding)</string>
     <string name="mapvm_search_failed_reason">Zoeken mislukt: %1$s</string>
     <string name="mapvm_none_found_along_route">Geen \"%1$s\" gevonden langs uw route</string>
@@ -436,7 +446,8 @@
     <string name="mapvm_offline_routing_removed">Offline routering verwijderd</string>
     <string name="mapvm_graphs_retired">Offline routering is overgestapt op een kleiner formaat. Download je regio\'s opnieuw in Instellingen, Offlinekaarten.</string>
     <string name="mapvm_saved_places_offline">%1$d plaatsen opgeslagen voor offline zoeken</string>
-    <string name="mapvm_saved_addresses_offline">%1$d adressen en %2$d straten opgeslagen voor offline routes</string> <!-- format -->
+    <string name="mapvm_saved_addresses_offline">%1$d adressen en %2$d straten opgeslagen voor offline routes</string>
+    <!-- format -->
     <string name="navservice_notif_title_arrived">Aangekomen</string>
     <string name="navservice_notif_title_navigating">Navigeren</string>
     <string name="navservice_notif_title_in_distance">Over %1$s · %2$s</string>
@@ -456,7 +467,8 @@
     <string name="cat_atms">Geldautomaten</string>
     <string name="cat_parks">Parken</string>
     <!-- Resume-navigation prompt (persisted nav session) -->
-    <string name="mapscreen_resume_nav">Navigatie naar %1$s hervatten?</string> <!-- format -->
+    <string name="mapscreen_resume_nav">Navigatie naar %1$s hervatten?</string>
+    <!-- format -->
     <string name="mapscreen_resume">Hervatten</string>
     <string name="mapscreen_your_destination">uw bestemming</string>
     <string name="mapvm_resume_waiting_gps">Wachten op GPS om de navigatie te hervatten…</string>
@@ -476,30 +488,41 @@
     <string name="settings_update_checking">Controleren…</string>
     <string name="settings_update_none">Je hebt de nieuwste versie.</string>
     <string name="settings_place_pages">Plaatspagina\'s</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="one">%1$d halte</item>
         <item quantity="other">%1$d haltes</item>
     </plurals>
-    <string name="place_transit_stop_id">Halte %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">Halte %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; info</string>
     <string name="route_detail_unavailable">Lijndetails niet beschikbaar</string>
     <string name="place_transit_now">Vertrekt nu</string>
-    <string name="place_transit_in_min">over %1$d min</string> <!-- format -->
-    <string name="place_transit_in_duration">over %1$s</string> <!-- format -->
-    <string name="place_transit_more_times">nog %1$d</string> <!-- format -->
+    <string name="place_transit_in_min">over %1$d min</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">over %1$s</string>
+    <!-- format -->
+    <string name="place_transit_more_times">nog %1$d</string>
+    <!-- format -->
     <string name="place_transit_view_stops">Haltes</string>
     <string name="place_transit_live">Live</string>
     <string name="place_transit_scheduled">Gepland</string>
     <string name="place_transit_cancelled">Geannuleerd</string>
     <string name="place_departures">Vertrektijden</string>
     <string name="place_transit_cached">Laatst gezien %1$s. Geen verbinding, dus de tijden kunnen veranderd zijn.</string>
-    <string name="place_every">Elke %1$s</string> <!-- format -->
+    <string name="place_every">Elke %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">Je bent aangekomen.</string>
-    <string name="transit_nav_walk">Loop %1$s</string> <!-- format -->
-    <string name="transit_nav_take">Neem %1$s</string> <!-- format -->
-    <string name="transit_nav_towards">richting %1$s</string> <!-- format -->
-    <string name="transit_nav_from">vanaf %1$s</string> <!-- format -->
-    <string name="transit_nav_get_off">Stap uit bij %1$s</string> <!-- format -->
+    <string name="transit_nav_walk">Loop %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">Neem %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">richting %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_from">vanaf %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">Stap uit bij %1$s</string>
+    <!-- format -->
     <string name="transit_nav_next">Volgende</string>
     <string name="place_last_available">Laatste beschikbaar</string>
     <!-- Android Auto -->
@@ -552,7 +575,8 @@
     <string name="settings_update_nightly_hint">Werk bij naar de nieuwste nightly (voorlopige versie) in plaats van alleen stabiele versies. Nightlies zijn verser maar minder getest.</string>
     <string name="settings_lists_export_hint">Maak een back-up van je lijsten naar een bestand of herstel ze op een ander apparaat.</string>
     <string name="settings_lists_imported">%1$d lijst(en) geïmporteerd</string>
-    <string name="settings_places_imported">%1$d plaats(en) geïmporteerd</string> <!-- format -->
+    <string name="settings_places_imported">%1$d plaats(en) geïmporteerd</string>
+    <!-- format -->
     <string name="settings_no_lists">Nog geen lijsten om te exporteren</string>
     <string name="mapvm_export_lists_subject">Vela-lijsten (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Lijsten exporteren</string>
@@ -570,13 +594,18 @@
     <string name="voice_capture_done">Klaar</string>
     <string name="mapvm_asr_ready">De Vela-stem is klaar</string>
     <string name="mapvm_asr_download_failed">Kan het spraakmodel niet downloaden. Controleer je verbinding en probeer opnieuw.</string>
-    <string name="mapvm_closing_soon">%1$s sluit om %2$s en je komt rond %3$s aan</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s sluit om %2$s, voordat je rond %3$s aankomt</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s sluit om %2$s en je komt rond %3$s aan</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s sluit om %2$s, voordat je rond %3$s aankomt</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Vela-stem</string>
-    <string name="settings_voice_search_model_hint">De Vela-stem zet spraak direct op je telefoon om in een zoekopdracht: geen andere app nodig en er wordt niets geüpload. Eenmalige download van %1$d MB.</string>  <!-- format -->
-    <string name="settings_voice_search_download">Downloaden (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">De Vela-stem zet spraak direct op je telefoon om in een zoekopdracht: geen andere app nodig en er wordt niets geüpload. Eenmalige download van %1$d MB.</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">Downloaden (%1$d MB)</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">Verwijderen</string>
-    <string name="settings_voice_search_downloading">Downloaden… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">Downloaden… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">Installeren…</string>
     <string name="settings_voice_search_engine_title">Als je op de microfoon tikt</string>
     <string name="settings_voice_search_engine_auto">Vela-stem</string>
@@ -614,7 +643,7 @@
     <string name="map_parking_clear">Parkeerplek wissen</string>
     <string name="map_parking_moved">Parkeerplek hierheen verplaatst</string>
     <string name="map_import_needs_google">Een gedeelde Google Maps-lijst kan niet worden geopend zolang Vela zonder Google draait.</string>
-    <string name="map_link_needs_google">\"Gedeelde Google Maps-links openen\" staat uit in Instellingen > Privacy.</string>
+    <string name="map_link_needs_google">\"Gedeelde Google Maps-links openen\" staat uit in Instellingen &gt; Privacy.</string>
     <string name="map_link_unreadable">Kon die link niet openen.</string>
     <string name="settings_performance">Prestaties</string>
     <string name="settings_hub_performance_sub">Wat vooraf laadt, kaartweergave</string>
@@ -671,9 +700,11 @@
     <string name="root_diag_trips_desc">Legt uw GPS-navigatiesporen vast zodat ritten voor testen kunnen worden herhaald. Onthullender - uw exacte routes.</string>
     <string name="root_diag_save">Keuzes opslaan</string>
     <string name="root_voice_tts_title">Aanwijzingen hardop uitspreken</string>
-    <string name="root_voice_tts_desc">Gesproken navigatie per afslag. Aanbevolen. Eenmalige download van %1$d MB.</string> <!-- format -->
+    <string name="root_voice_tts_desc">Gesproken navigatie per afslag. Aanbevolen. Eenmalige download van %1$d MB.</string>
+    <!-- format -->
     <string name="root_voice_mic_title">Zoeken met je stem</string>
-    <string name="root_voice_mic_desc">Dicteer zoekopdrachten zonder typen. Zonder dit gebruikt de microfoon Google. Eenmalige download van %1$d MB.</string> <!-- format -->
+    <string name="root_voice_mic_desc">Dicteer zoekopdrachten zonder typen. Zonder dit gebruikt de microfoon Google. Eenmalige download van %1$d MB.</string>
+    <!-- format -->
     <string name="root_voice_none_picked">Vink een optie aan of kies Niet nu.</string>
     <string name="root_offline_title">Offlinekaarten</string>
     <string name="root_offline_body">Vela haalt plaatsen, zoekopdrachten en routes van Google, dus zonder signaal werken alleen gebieden die je hebt gedownload. Stel nu een gebied in zodat je gedekt bent als je bereik verliest.</string>
@@ -682,13 +713,14 @@
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">Spraak wordt een zoekopdracht op de telefoon. Niets wordt geupload. Kies de engine voor de mic.</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Alle talen die Vela ondersteunt</string>
     <string name="settings_asr_langs_sensevoice">Engels, Chinees, Japans, Koreaans, Kantonees</string>
     <string name="settings_asr_langs_moonshine">Alleen Engels</string>
     <string name="settings_asr_active">Actief</string>
     <string name="settings_asr_use">Gebruiken</string>
- <!-- format -->
+    <!-- format -->
     <string name="no_browser_installed">Je toestel heeft geen browser</string>
     <string name="street_view_none">No Street View imagery here</string>
     <string name="street_view_move">Move here</string>
@@ -1026,9 +1058,11 @@
     <string name="settings_details_retry_hint">Google laat de drukke tijden vaak weg in het eerste antwoord, dus Vela vraagt tot twee keer opnieuw. Uit = één verzoek per plaats, en de drukke tijden kunnen ontbreken.</string>
     <string name="place_show_photos">Foto\'s tonen</string>
     <string name="place_no_photos">Nog geen foto\'s</string>
-    <string name="place_all_n_reviews_open">Alle %1$d reviews</string> <!-- format -->
+    <string name="place_all_n_reviews_open">Alle %1$d reviews</string>
+    <!-- format -->
     <string name="place_updates">Nieuws</string>
-    <string name="place_updates_all">Alle %1$d berichten tonen</string> <!-- format -->
+    <string name="place_updates_all">Alle %1$d berichten tonen</string>
+    <!-- format -->
     <string name="settings_nav_north_up">Ritten starten met het noorden boven</string>
     <string name="settings_nav_north_up_hint">De kaart blijft plat met het noorden boven terwijl je rijdt. Tik tijdens de rit op het kompas om te wisselen.</string>
     <string name="settings_puck_shape">Navigatiepictogram</string>
@@ -1114,7 +1148,7 @@
     <string name="settings_two_finger_tilt_hint">Sleep met twee vingers omhoog of omlaag om de kaart in 3D te kantelen. Uit: knijpen zoomt alleen.</string>
     <string name="settings_speed_display">Snelheid en snelheidslimiet tonen</string>
     <string name="settings_speed_display_hint">Je snelheid en de aangegeven limiet tijdens het rijden, op de telefoon en op het autoscherm</string>
-    <string name="mapvm_area_pack_big">Offline zoeken gebruikt hier het plaatsenpakket voor heel %1$s. Download het via Instellingen > Offlinekaarten.</string>
+    <string name="mapvm_area_pack_big">Offline zoeken gebruikt hier het plaatsenpakket voor heel %1$s. Download het via Instellingen &gt; Offlinekaarten.</string>
     <string name="settings_places_shared_pack">Plaatsen dekken heel %1$s (%2$s)</string>
     <string name="mapscreen_download_voice">%1$s downloaden (%2$d MB)</string>
     <string name="place_choose_icon">Pictogram kiezen</string>
