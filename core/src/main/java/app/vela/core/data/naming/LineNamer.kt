@@ -35,11 +35,14 @@ object LineNamer {
     private val ELEVATED_ROADS = setOf("motorway", "trunk", "primary", "secondary", "tertiary")
     /** Strict mode: a turn names its street only when the line stays on it this long after the
      *  turn, and a ramp or a rename only when the road it reaches runs this long. */
-    private const val STRICT_RUN_M = 60.0
-    private const val STRICT_FAR_RUN_M = 100.0
+    // Vars, not consts, so the naming study (NamingStudyTest) can sweep them.
+    internal var STRICT_RUN_M = 60.0
+    internal var STRICT_FAR_RUN_M = 100.0
+    /** Strict mode's own matching distance (the lenient one is 30 m driving). */
+    internal var STRICT_MAX_OFF_M = 30.0
     /** Strict mode: two differently named streets this close in distance to a sample, both
      *  running its way, leave the sample unnamed. */
-    private const val AMBIGUOUS_M = 12.0
+    internal var AMBIGUOUS_M = 12.0
     /** Part of the line that must carry a name before the result is trusted. */
     const val MIN_NAMED_SHARE = 0.6
     /** Lower on foot: lanes and paths are often unnamed, and an unnamed stretch reads "Turn left"
@@ -67,7 +70,7 @@ object LineNamer {
         val s = resample(poly)
         if (s.size < 3) return null
         val total = s.last().m
-        val maxOff = if (mode == TravelMode.WALK) 25.0 else 30.0
+        val maxOff = if (strict) STRICT_MAX_OFF_M else if (mode == TravelMode.WALK) 25.0 else 30.0
         // On foot, a road flyover's name never labels the street underneath (issue #478, Dhaka).
         val usable = if (mode == TravelMode.WALK) lines.filterNot { it.bridge && it.cls in ELEVATED_ROADS } else lines
         val idx = SegIndex(usable)

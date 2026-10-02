@@ -2840,6 +2840,16 @@ architecture note.
   (an exit Google does not take peels away slowly and sits before the 25 m mark); each stretch
   is also walked out to where the lines are within 10 m (at most 600 m) before the 90 m pad.
   `OFF_M` is 25 m (at 45 a frontage road counted as the freeway beside it).
+  **Measured (2026-10-02, `NamingStudyTest`, `-DvelaStudy=<routes per area>`):** 90 open-router
+  routes over six areas (Davis, Portland, Boston, Prague, Los Angeles, Houston), each named from
+  the tiles alone and compared turn by turn with the router's own names. At the shipped 60 m run
+  and 30 m match: 345 right, 5 wrong (1.4% of named turns), 108 bare, 50 turns not detected.
+  Run 30 m: 383 / 9 / 65. Run 90 m: 301 / 8 / 150. The match distance (15, 20, 30 m) changes
+  almost nothing. No setting reaches zero wrong; the wrong ones are short-block cases where the
+  CROSS street's name lands on the turn. So thresholds cannot deliver "never a wrong name"; a real
+  map match can (the public Valhalla `trace_route` matched Google's 1,174-point Davis to Sacramento
+  line in 0.7 s with full names, exit numbers and sign text; 200 km limit; it also "matches" a
+  line shifted off the roads, so its result must be checked against the input line).
   The hybrid leads WITHOUT the snap's ETA margin (it is Google's own route), takes Google's times
   uncalibrated (`applyTraffic(.., 1.0)`), is never the calibration basis, and the open router's
   routes offered beside it are none when Google went a different way and all but its top route
