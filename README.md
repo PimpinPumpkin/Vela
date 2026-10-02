@@ -306,7 +306,6 @@ remote-repair channel.
 Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
 release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] Finish the move to Weblate translations (the [project is live](https://hosted.weblate.org/engage/vela-maps/); automatic pull requests back to this repo are the remaining step)
 - [ ] F-Droid submission + reproducible build
 - [ ] A Google Play listing, so Android Auto works on factory head units: a separate build
       with the Google half compiled out (map, offline routing, places from OpenStreetMap and

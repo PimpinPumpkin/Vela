@@ -2727,8 +2727,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the GitHub web editor and opening a PR - no git client, no Android toolchain. See
   [docs/TRANSLATING.md](docs/TRANSLATING.md) for the flow and the rules (placeholders, CLDR plural
   categories, no em dashes). New strings are added to the English base only, and an untranslated
-  string falls back to English, so partial contributions are safe. Weblate's translations are
-  merged into the repo by a maintainer for now; its automatic pull requests are not set up yet.
+  string falls back to English, so partial contributions are safe. Weblate sends its
+  translations back to the repo as pull requests.
 
 ## Added 2026-07-17 (offline routing on pre-Android-14 devices)
 

@@ -13,8 +13,9 @@ happen on Weblate:
 2. Pick your language and translate in the browser. Weblate shows the English
    original next to your text and warns about a missing placeholder as you
    type. No git client and no Android toolchain needed.
-3. Save. A maintainer brings the saved translations into the repo and they
-   ship in the next build. You keep commit credit for your strings.
+3. Save. Weblate sends saved translations to the repo as a pull request, and
+   once a maintainer merges it they ship in the next build. You keep commit
+   credit for your strings.
 
 ## Or translate by pull request
 
@@ -99,13 +100,16 @@ component, `app`, covers the app:
 - A second component, the glossary, was created by Weblate and lives only
   there.
 
-Delivery back to the repo is still manual. Weblate commits translations to its
-own copy of the repo, readable at `https://hosted.weblate.org/git/vela-maps/app/`,
-and a maintainer merges from there. The intended flow is that Weblate opens a
-pull request on GitHub for each batch and a GitHub webhook tells it about new
-strings; neither is wired up yet. Review what comes from Weblate like any other
-change: the em-dash and placeholder rules above are the checklist, and
-`tools/check-translations.py` runs in CI.
+Both directions are automatic. A GitHub webhook on the repo (push events, to
+`https://hosted.weblate.org/hooks/github/`) tells Weblate about new strings.
+Going the other way, the component's version control is set to GitHub pull
+requests with no push URL: Weblate commits translations to its own copy of the
+repo (readable at `https://hosted.weblate.org/git/vela-maps/app/`), pushes them
+to a fork under its own GitHub account and opens a pull request against `main`.
+It holds no write access to this repo. Review that pull request like any
+other: the em-dash and placeholder rules above are the checklist, and
+`tools/check-translations.py` runs in CI. Translators cannot edit the English
+base file or add and remove keys from Weblate; both are switched off.
 
 Adding a new string to the app: add it to the English base
 (`values/strings.xml`) only, in the same commit as the feature. Translators
@@ -113,4 +117,4 @@ fill the locales on Weblate (or by pull request); untranslated strings fall
 back to English in the meantime, and `python3 tools/check-translations.py`
 prints what each language is missing. Hand-editing a `values-<lang>` file
 directly is still fine, but Weblate may hold unmerged changes to the same
-file, so merge those first when a batch is waiting.
+file, so merge its open pull request first when one is waiting.

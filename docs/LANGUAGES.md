@@ -98,5 +98,5 @@ Live since 2026-10-02 at <https://hosted.weblate.org/engage/vela-maps/>, on host
 libre plan. Translators work in the browser there; a pull request against a
 `values-<code>/strings.xml` file still works too. See [TRANSLATING.md](TRANSLATING.md) for both
 flows and for the component settings. New strings go into the English base file only, and a
-missing translation falls back to English. Bringing Weblate's translations back into the repo
-is a manual maintainer step until its pull-request integration is set up.
+missing translation falls back to English. Weblate picks up new strings through a webhook and
+sends translations back as pull requests.

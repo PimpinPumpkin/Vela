@@ -2404,11 +2404,13 @@ Defaults that make the safe path the easy one:
   https://hosted.weblate.org/engage/vela-maps/ (the link that 404ed in issue #285 was an earlier,
   premature one). It runs on hosted Weblate's libre plan, which needs their approval to stay free
   past the trial. README/CONTRIBUTING/FEATURES/LANGUAGES/TRANSLATING describe Weblate first and the
-  PR flow second. **Delivery back to the repo is still MANUAL**: Weblate commits to its own copy
-  (`https://hosted.weblate.org/git/vela-maps/app/`) and has no push or pull-request integration
-  yet, and no GitHub webhook tells it about new strings; the README roadmap keeps that as the open
-  item. Weblate may hold unmerged changes to a `values-<lang>` file, so merge those before a bulk
-  hand-edit of the locales. Match the
+  PR flow second. **Both directions are automatic**: a GitHub webhook (push events) tells Weblate
+  about new strings, and Weblate commits translations to its own copy
+  (`https://hosted.weblate.org/git/vela-maps/app/`), pushes them to a fork under its own GitHub
+  account and opens a pull request against `main` (no write access to this repo). Its commit
+  subjects read `Translations: update <language>`. Weblate may hold unmerged changes to a
+  `values-<lang>` file, so merge its open pull request before a bulk hand-edit of the locales.
+  Match the
   `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
   **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the
   results-count bar is a `<plurals name="mapscreen_results_count">` read via `pluralStringResource(...,
