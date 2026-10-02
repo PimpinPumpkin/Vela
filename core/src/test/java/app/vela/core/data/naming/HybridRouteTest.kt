@@ -178,6 +178,20 @@ class HybridRouteTest {
         assertTrue("the shared right turn is inside a stretch: $st", st.any { 555.0 >= it.fromM && 555.0 <= it.toM })
     }
 
+    @Test fun theStepsLengthsAddUpToWhereEachTurnIs() {
+        // A stretch from the trip's start whose matched path begins 90 m along the line.
+        val g = route(listOf(p(0.0, 0.0), p(0.01, 0.0), p(0.01, 0.01)), emptyList(), RouteSource.GOOGLE_NAMED)
+        val o = route(listOf(p(0.0, 0.0), p(0.0, 0.01), p(0.01, 0.01)), listOf(man(ManeuverType.DEPART, p(0.0, 0.0), 870.0), man(ManeuverType.TURN_LEFT, p(0.0, 0.01), 1110.0), man(ManeuverType.ARRIVE, p(0.01, 0.01), 0.0)), RouteSource.OSRM)
+        val s = HybridRoute.Stretch(0.0, 2100.0)
+        val named = listOf(
+            man(ManeuverType.DEPART, p(0.0008, 0.0), 1020.0),
+            man(ManeuverType.TURN_RIGHT, p(0.01, 0.0), 870.0, "B Street"),
+            man(ManeuverType.ARRIVE, p(0.01, 0.01), 0.0),
+        )
+        val r = HybridRoute.stitch(g, o, listOf(s to named))!!
+        assertEquals("the right turn is 1110 m in", 1110.0, r.maneuvers.first().distanceMeters, 25.0)
+    }
+
     @Test fun aRampNamedTwiceIsOneStep() {
         val s = HybridRoute.stretches(googleLine, openLine).single()
         val named = listOf(

@@ -303,9 +303,12 @@ without something else covering its place.
    what the sign says. The service will happily "match" a line that is not on any road, so the
    answer is kept only if it stays within 22 m of Google's line along its whole length and the
    two lengths agree within 6% (the first and last 150 m of a trip are let off: the loop out of a
-   parking lot). Lane arrows are not part of its answer, so Vela then asks the open router to
-   drive that exact matched path and takes its steps, lanes included, only when its path is the
-   same path to within 8 m.
+   parking lot). A match that leaves the line for a short way in the middle is kept, and on
+   that part nothing it says is used: the turns there are read off the corners of Google's line,
+   without names. Lane arrows are not part of its answer, so Vela then asks the open router to
+   drive that exact matched path and takes its steps, lanes included, when its path is the same
+   path to within 8 m; when it is not, the matcher's steps stay and borrow the open router's
+   lanes turn by turn, wherever both make the same turn at the same junction.
 2. The map tiles, when the match fails. Each turn takes the name of the street the line runs
    along, within 12 m and only where the map is sure. Measured on 90 routes this put a wrong name
    on 1.4% of named turns and left about a quarter bare, which is why it is second.
@@ -356,6 +359,17 @@ checks:
   step within 40 m (three gentle bends, a ramp, a trip that starts in a parking lot, and one turn
   the result puts 81 m further on, where the line actually bends). Of 674 lefts and rights in
   the results, 671 sit on a matching bend of the line.
+- Real Google lines, replayed. Google's directions cannot be fetched from a desk, so a debug
+  switch on the phone logs Google's line for any trip planned, and 39 of them from fourteen
+  cities (San Francisco, Boston, Los Angeles, Portland, Houston, Chicago, New York, Denver,
+  London, Milton Keynes for its roundabouts, Paris, Prague, Tokyo, Tel Aviv, plus an airport, a
+  hospital, a mall and a campus) are kept with the tests. Each is rebuilt into a route and put
+  through the step check, a name check against the road pieces under the whole line, and a
+  simulated drive that confirms every turn is announced, in time, with a cue at the turn. These
+  found what the stand-in never did: a line that loops before setting off shifted every later
+  turn 70 to 100 m early, and a match that strays for 90 m was being thrown away whole. On the
+  current code 46 of 48 stretches match, 178 of 179 lefts and rights sit on a matching bend, and
+  no checked street name fails against the whole line.
 - Trips read by hand on a phone, from a parking lot in Davis: to downtown Sacramento, the
   airport, a mall across Sacramento, the campus, Woodland, Dixon, West Sacramento and San
   Francisco. Of 69 lefts and rights, 68 sit on a matching bend of Google's line; the other is a

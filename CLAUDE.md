@@ -2911,6 +2911,47 @@ architecture note.
   there fell to the tiles, which named the aisle "G Street" from 18 m (`STRICT_MAX_OFF_M` is
   12 m now, was 30); "Turn straight onto X" is "Continue onto X" (`osrmPhrase`). The step list
   is in the chooser: swipe the panel up.
+  **REAL GOOGLE LINES ARE IN THE REPO NOW (same day, third round): `core/src/test/resources/
+  google_lines/<city>-<n>.txt`**, 39 of them (an encoded polyline each, nothing else), captured on
+  the 4a across fourteen cities: `adb shell setprop log.tag.VelaCapture DEBUG`, plan a trip, and
+  the data source logs Google's line in chunks (`VelaCapture: BEGIN/P/END`); `scratchpad/
+  capture.sh name "o" "d"` does it through a `https://www.google.com/maps/dir/?api=1&origin=..
+  &destination=..` intent, which plans between ANY two points without moving the simulated
+  location. NEVER capture or commit a line from the maintainer's own region.
+  `NamingStudyTest.replayCapturedLines` (`-DvelaStudy=1`, 6 min) builds the hybrid from each
+  (the open router's route between the line's ends, then exactly the app's steps) and runs
+  StepAudit, the name check against the edges under the WHOLE line, and `NavReplay` over a
+  simulated drive (`DemoTrace.fromRoute`); `-DvelaOne=1 -DvelaLines=<dir with one file>` prints
+  one trip in full. This is the check to run first: the stand-in study below never showed what
+  these did. FOUND WITH THEM, ALL FIXED: (1) a line that loops before setting off pinned the
+  first step 70 to 100 m into the route, and since every step is found by adding up the lengths
+  before it, EVERY later turn was announced that much early (Paris, Houston): the trip's start is
+  at 0 whatever the matched path's start projects to. (2) A match that leaves the line for 90 m
+  somewhere was thrown away whole, leaving 8 km bare (7 of 48 stretches): `ValhallaRouter.offLine`
+  keeps it when each stray is under `OFF_RUN_MAX_M` (380 m) and they total under 8% (400 m at
+  least), returns the intervals (`Match.off`), and `HybridRoute.stitch(untrusted=)` says nothing
+  of the match's there and reads bare turns off the line's own corners (50 degrees or more).
+  (3) The open router's first and last step are kept even when unvouched (a trip could not be
+  put together at all). (4) Names: an unnamed turn lane or slip road may lead in for
+  `SOFT_LEAD_MAX_M` (150 m; an unnamed ROAD still 60 m), a stub is under `STUB_M` 19 m, and a
+  bare number ("1", "20" in Tokyo) is never the street's name. `ValhallaRouter.onMatchFail` says
+  why a match was refused. LANES: `laneDetail` asks the open router only for the part of the
+  matched path past `MATCH_TRIP_END_SLACK_M` at a trip's ends, and when its path is not the
+  matched path end to end it lends its lanes step by step (same side of turn within
+  `LANE_BORROW_AT_M` 20 m, its path within `LANE_BORROW_PATH_M` 12 m of the matched one 60 m
+  either side). RESULT ON THE 39 LINES (desk): 46 of 48 stretches matched (one is a 250 m lot the
+  matcher returns nothing for, one a tunnel approach it gives up on), every trip put together,
+  178 of 179 lefts and rights on a matching bend, 160 matched turn names kept, 0 stripped,
+  4 changed (three to the road's number where that is all the road pieces carry, one stripped
+  where 33 m of another street come first). PHONE (the same 39 trips planned on the
+  4a, where lane detail runs): no crash, every trip put together, 51 stretches matched, 5 named
+  from the tiles, none bare; 193 of 197 lefts and rights on a matching bend, none the wrong way
+  (the 4 are a garage exit, a gentle bend, and a U-turn at a destination since fixed); lane
+  detail on 32 of 51 matched stretches (29 of 40 before the trim and borrow), 64 of 370 stretch
+  steps carry lanes.
+  KNOWN, NOT THIS CODE: the simulated drive flags one trip, a roundabout taken at its 3rd exit
+  (a 135 m ring): NavEngine's position jumps across the ring, the exit is never called and the
+  next card reads 560 m wrong. The same ring from any router would do it; it is an engine fix.
   **THREE CHECKS FOR THIS CODE, USE THEM BEFORE TRUSTING A CHANGE (same day, second round).**
   (1) `core/nav/StepAudit`: steps against the line (each left or right must sit on a bend that
   way within 40 m of where the step lengths put it; each 60 degree corner needs a step within

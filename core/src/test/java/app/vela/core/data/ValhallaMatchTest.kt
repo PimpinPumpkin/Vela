@@ -116,4 +116,19 @@ class ValhallaMatchTest {
         val (r, edges) = corner("A Street", "A Street")
         assertEquals(2, ValhallaRouter.withUnsaidTurns(r, edges).maneuvers.size)
     }
+
+    @Test fun aShortStrayInTheMiddleIsToleratedAndReported() {
+        // 3 km of line; the match swings 60 m aside for about 150 m in the middle.
+        val long = (0..30).map { LatLng(38.5449, -121.7405 + it * 0.00115) }
+        val stray = long.mapIndexed { i, p -> if (i in 14..15) LatLng(p.lat + 0.00055, p.lng) else p }
+        val off = ValhallaRouter.offLine(stray, long, 0.0, 0.0)
+        assertNotNull(off)
+        assertTrue("around the middle, and only there: $off", off!!.isNotEmpty() && off.first().first > 1000.0 && off.last().second < 1900.0)
+    }
+
+    @Test fun aMatchThatIsElsewhereForAKilometerIsRefused() {
+        val long = (0..30).map { LatLng(38.5449, -121.7405 + it * 0.00115) }
+        val away = long.mapIndexed { i, p -> if (i in 8..18) LatLng(p.lat + 0.00055, p.lng) else p }
+        assertEquals(null, ValhallaRouter.offLine(away, long, 0.0, 0.0))
+    }
 }

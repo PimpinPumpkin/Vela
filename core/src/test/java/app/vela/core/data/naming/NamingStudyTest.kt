@@ -317,4 +317,93 @@ class NamingStudyTest {
         println("E2E audit: $auditTurns turns, $auditAgree agree, $otherWay other way, $noBend no bend, $unsaid bends unsaid")
         notes.forEach { println("E2E $it") }
     }
+
+    /**
+     * REAL GOOGLE LINES, replayed. Google's directions cannot be fetched from a desk, so lines are
+     * captured on a phone (adb shell setprop log.tag.VelaCapture DEBUG, plan a trip, read the
+     * VelaCapture lines) and kept in src/test/resources/google_lines/<name>.txt as an encoded
+     * polyline. Each is built into the hybrid the way the app does (the open router's route between
+     * the line's ends, stretches, match with its checks, tiles, bare) and checked three ways:
+     * StepAudit (steps against the line), the name check against the road pieces under the WHOLE
+     * line, and NavReplay over a simulated drive (every turn announced, in time, with a turn-now
+     * cue). -DvelaLines=<dir> reads another folder; -DvelaStudy=1 turns it on.
+     */
+    @Test fun replayCapturedLines() = runBlocking {
+        Assume.assumeTrue("set -DvelaStudy=1", System.getProperty("velaStudy") != null)
+        val dir = System.getProperty("velaLines")?.let { java.io.File(it) }
+            ?: java.io.File(javaClass.getResource("/google_lines")!!.toURI())
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        var trips = 0; var notPlaced = 0; var noStretch = 0; var baseline = 0
+        val changed = java.util.Collections.synchronizedList(ArrayList<String>())
+        app.vela.core.data.ValhallaRouter.onChanged = { stated, len, runs, out -> if (stated.isNotEmpty()) changed += "'$stated' (step ${len.toInt()} m) -> '$out' | $runs" }
+        val src = IntArray(3); val audit = IntArray(5); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
+        val notes = ArrayList<String>()
+        for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
+            val line = app.vela.core.data.google.PolylineCodec.decode(f.readText().trim())
+            if (line.size < 5) continue
+            val len = app.vela.core.nav.RouteProjection.cumulative(line).last()
+            val google = app.vela.core.model.Route(
+                polyline = line, legs = emptyList(), distanceMeters = len, durationSeconds = len / 13.0, durationInTrafficSeconds = null,
+            )
+            Thread.sleep(1100)
+            val open = RouteGeometry.route(http, line.first(), line.last(), TravelMode.DRIVE).firstOrNull() ?: continue
+            trips++
+            // Baseline: the open router's own route down its own line, through the same replay.
+            baseline += app.vela.core.nav.NavReplay.analyze(open, app.vela.core.location.DemoTrace.fromRoute(open.polyline).map { LatLng(it.lat, it.lng) })
+                .suspects.count { it.type != ManeuverType.STRAIGHT }
+            val st = HybridRoute.stretchesFor(line, open)
+            val tag = f.name.removeSuffix(".txt")
+            if (st.isEmpty()) { noStretch++; continue }
+            Thread.sleep(600)
+            val openChecked = app.vela.core.data.ValhallaRouter.edges(http, open.polyline, timeoutMs = 20_000)
+                ?.let { app.vela.core.data.ValhallaRouter.recheck(open, it, keepUnplaced = true) } ?: open
+            val untrusted = ArrayList<HybridRoute.Stretch>()
+            val named = st.map { s ->
+                Thread.sleep(600)
+                val piece = HybridRoute.slice(line, s.fromM, s.toM)
+                var why = ""
+                app.vela.core.data.ValhallaRouter.onMatchFail = { why = it }
+                val m = app.vela.core.data.ValhallaRouter.matchWithEdges(
+                    http, piece, timeoutMs = 20_000,
+                    startSlackM = if (s.fromM <= 0.0) 150.0 else 0.0, endSlackM = if (s.toM >= len - 1.0) 150.0 else 0.0,
+                )
+                app.vela.core.data.ValhallaRouter.onMatchFail = null
+                if (m != null) { src[0]++; for (k in 0..2) names[k] += m.names[k]; m.off.forEach { untrusted += HybridRoute.Stretch(s.fromM + it.first, s.fromM + it.second) }; return@map s to m.route.maneuvers }
+                notes += "$tag: NO MATCH for stretch ${s.fromM.toInt()}..${s.toM.toInt()} m: $why"
+                val sub = google.copy(polyline = piece, distanceMeters = s.toM - s.fromM)
+                val lines = RoadNameTiles.linesAlong(piece).orEmpty()
+                src[if (lines.isEmpty()) 2 else 1]++
+                s to LineNamer.name(sub, lines, TravelMode.DRIVE, strict = true)?.maneuvers
+            }
+            val hybrid = if (named.any { it.second == null }) null else HybridRoute.stitch(google, openChecked, named.map { it.first to it.second!! }, untrusted)
+            if (hybrid == null) { notPlaced++; notes += "$tag: NOT PLACED (${st.size} stretches)"; continue }
+            steps += hybrid.maneuvers.size; lanes += hybrid.maneuvers.count { it.lanes.isNotEmpty() }
+            val a = app.vela.core.nav.StepAudit.check(hybrid)
+            audit[0] += a.turns; audit[1] += a.agree; audit[2] += a.otherWay; audit[3] += a.noBend; audit[4] += a.unsaid
+            a.findings.forEach { notes += "$tag: AUDIT ${it.atM.toInt()} m ${it.what}" }
+            // Names, against the road pieces under the whole line.
+            if (len <= 180_000.0) {
+                Thread.sleep(600)
+                app.vela.core.data.ValhallaRouter.edges(http, line, timeoutMs = 25_000)?.let { edges ->
+                    val tally = IntArray(4)
+                    val re = app.vela.core.data.ValhallaRouter.recheck(hybrid.maneuvers, edges, keepUnplaced = true, tally = tally)
+                    hybrid.maneuvers.zip(re).forEach { (x, y) -> if (x.road != y.road) notes += "$tag: NAME '${x.road}' fails the whole-line check (would be '${y.road}') | ${x.instruction}" }
+                }
+            }
+            // A simulated drive down the line.
+            val fixes = app.vela.core.location.DemoTrace.fromRoute(line).map { LatLng(it.lat, it.lng) }
+            val rep = app.vela.core.nav.NavReplay.analyze(hybrid, fixes)
+            suspects += rep.suspects.count { it.type != ManeuverType.STRAIGHT }
+            rep.suspects.forEach { notes += "$tag: DRIVE [${it.index}] ${it.type} \"${it.instruction.take(50)}\" ${it.flags.joinToString("; ")}" }
+            var at = 0.0
+            println("LINES $tag ${len.toInt()} m, ${st.size} stretch(es), ${hybrid.maneuvers.size} steps | ${a.summary()} | drive suspects ${rep.suspects.size}")
+            if (System.getProperty("velaOne") != null) rep.summary().lines().forEach { println("LINES    $it") }
+            if (System.getProperty("velaOne") != null) hybrid.maneuvers.forEach { println("LINES    ${at.toInt()} ${it.type} lanes=${it.lanes.size} | ${it.instruction}"); at += it.distanceMeters }
+        }
+        println("LINES trips=$trips sameWay=$noStretch notPlaced=$notPlaced | stretches matched ${src[0]} tiles ${src[1]} bare ${src[2]} | matched turn names kept ${names[0]} renamed ${names[1]} bare ${names[2]}")
+        println("LINES audit: ${audit[0]} turns, ${audit[1]} agree, ${audit[2]} other way, ${audit[3]} no bend, ${audit[4]} bends unsaid | drive suspects $suspects (the open router's own routes: $baseline) | steps $steps, with lanes $lanes")
+        notes.filterNot { " STRAIGHT " in it && "DRIVE" in it }.forEach { println("LINES $it") }
+        app.vela.core.data.ValhallaRouter.onChanged = null
+        changed.distinct().forEach { println("LINES CHANGED $it") }
+    }
 }

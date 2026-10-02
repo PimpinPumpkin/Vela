@@ -833,14 +833,18 @@ ever dropped without a stretch covering its place.
 
 *Steps for a stretch*, in order:
 1. `ValhallaRouter.matchWithEdges`: FOSSGIS Valhalla `trace_route` over the slice, accepted when
-   `followsLine` holds (`MATCH_OFF_M` 22 m both ways, `MATCH_LENGTH_SLACK` 6%; on a stretch that
-   touches the trip's start or end the first or last `MATCH_TRIP_END_SLACK_M` 150 m may differ).
+   `offLine` allows it: lengths within `MATCH_LENGTH_SLACK` 6%, and the two paths within
+   `MATCH_OFF_M` 22 m of each other except for strays of at most `OFF_RUN_MAX_M` (380 m) each and
+   `OFF_TOTAL_SHARE` (8%, 400 m at least) in all; on a stretch that touches the trip's start or
+   end the first or last `MATCH_TRIP_END_SLACK_M` 150 m is not counted. The strays are returned
+   as intervals (`Match.off`) and handed to the stitch as untrusted.
    `trace_attributes` is fetched in parallel for the matched path's edges (names, length, internal
    and turn-channel flags) and three corrections are made from them:
    - **Turn names** (`checkedRoad`, turn types only; ramps, merges and roundabouts name where
-     they lead): the stated street must begin within `LEAD_MAX_M` (60 m) and the step's first
-     half, after only unnamed pieces, junction pieces (named ones `NAMED_LEAD_MAX_M` 40 m at most)
-     or stubs under `STUB_M` (15 m), and hold `HOLD_M` (20 m) or half the step. Otherwise the
+     they lead): the stated street must begin within `LEAD_MAX_M` (60 m; `SOFT_LEAD_MAX_M` 150 m
+     when everything before it is a junction piece) and the step's first half, after only unnamed
+     pieces, junction pieces (named ones `NAMED_LEAD_MAX_M` 40 m at most) or stubs up to `STUB_M`
+     (19 m). A bare number is never the street's name. and hold `HOLD_M` (20 m) or half the step. Otherwise the
      first street held `RENAME_HOLD_M` (40 m) with only stubs before it; otherwise no name.
      Without edges a turn carries no street name.
    - **Unsaid turns** (`withUnsaidTurns`): where the matched line turns `UNSAID_BEND_DEG` (60) or
@@ -852,7 +856,11 @@ ever dropped without a stretch covering its place.
    Off urgent fetches the steps are then replaced by the open router's for the matched path
    (`laneDetail`: vias mid-step, at most `LANE_VIAS_MAX` 20, headings pinned, path equal within
    `LANE_SAME_PATH_M` 8 m), whose turn names pass `recheck` against the same edges (a turn not
-   found on them loses its name).
+   found on them loses its name). At a trip's ends the open router is asked only for the part
+   past `MATCH_TRIP_END_SLACK_M`; when its path is not the matched path end to end, the matcher's
+   steps stay and take the open router's lanes one step at a time (same side of turn within
+   `LANE_BORROW_AT_M` 20 m, its path within `LANE_BORROW_PATH_M` 12 m of the matched path 60 m
+   either side).
 2. `LineNamer` strict over the tiles: never refused for a low named share; `STRICT_MAX_OFF_M`
    12 m; a sample with two differently named aligned streets within 12 m of each other in
    distance is unnamed; a turn names its street only when the line stays on it 60 m, a ramp or
@@ -871,8 +879,13 @@ plain open route, when it is what goes out, is rechecked the same way.
 every stretch and vouched; stretch steps placed by projecting each onto Google's line inside a
 window around where the step lengths plus the drift so far put it (`PLACE_REACH_M` 40 m or 8% of
 the step just driven; 150 m within `TRIP_END_M` 400 m of the trip's ends), never before the
-previous one. A stretch's hard turn (left, right, sharp) is dropped where Google's line bends
-under `FLAT_DEG` (20) within 40 m. An open step and a stretch step within `MERGE_M` (30 m) are
+previous one; the trip's first step is at 0 and its last at the end, whatever the matched path's
+ends project to (every step is found by adding the lengths before it). A stretch's hard turn
+(left, right, sharp) is dropped where Google's line bends under `FLAT_DEG` (20) within
+40 m, and a U-turn where the line turns under `UTURN_DEG` (100).
+Inside an untrusted interval no stretch step is used; each corner of Google's line of
+`UNTRUSTED_BEND_DEG` (50) or more there becomes a bare turn. The open router's first and last
+step are kept whether vouched or not. An open step and a stretch step within `MERGE_M` (30 m) are
 one junction and the open one is kept; two steps of one source are never merged; a ramp's two
 bends named for the same road are one step. Step lengths are re-measured along Google's line and
 durations are Google's typical time by share of distance.
@@ -886,7 +899,9 @@ the open route.
 left or right is looked up where the step lengths put it and the line must bend that way within
 40 m; each bend of 60 degrees or more needs a step within 60 m). `adb shell setprop
 log.tag.VelaSteps DEBUG` adds the whole list with each step's source and the findings.
-`turn straight` is phrased as continue (`osrmPhrase`).
+`turn straight` is phrased as continue (`osrmPhrase`). `log.tag.VelaCapture DEBUG` logs Google's
+line for a trip; captured lines live in `core/src/test/resources/google_lines/` and
+`NamingStudyTest.replayCapturedLines` rebuilds and checks the route from each.
 
 ### 4.3 Avoids and per-mode options
 

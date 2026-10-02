@@ -113,7 +113,7 @@ object ValhallaRouter {
         matchWithEdges(http, shape, costing, timeoutMs)?.route
 
     /** A match and the edges its turn names were checked against (null = none came back). */
-    class Match(val route: Route, val edges: List<Edge>?, val names: IntArray)
+    class Match(val route: Route, val edges: List<Edge>?, val names: IntArray, val off: List<Pair<Double, Double>> = emptyList())
 
     /** The road pieces under [shape], for checking names from another router. Null on failure. */
     fun edges(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 2_500): List<Edge>? {
@@ -248,13 +248,80 @@ object ValhallaRouter {
         // against them (see [checkedRoad]). No edges = no street names on turns.
         val edgesAsync = java.util.concurrent.CompletableFuture.supplyAsync { matchedEdges(client, shape, costing) }
         val text = runCatching {
-            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
-        }.getOrNull() ?: return null
+            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else { onMatchFail?.invoke("http ${resp.code} ${resp.body?.string()?.take(120)}"); null } }
+        }.onFailure { onMatchFail?.invoke("no reply: ${it.javaClass.simpleName}") }.getOrNull() ?: return null
         val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
         val check = NameCheck(edges)
-        val matched = parse(text, check).firstOrNull() ?: return null
-        if (!followsLine(matched.polyline, shape, startSlackM = startSlackM, endSlackM = endSlackM)) return null
-        return Match(if (edges != null) withUnsaidTurns(matched, edges) else matched, edges, check.tally)
+        val matched = parse(text, check).firstOrNull() ?: run { onMatchFail?.invoke("unreadable reply"); return null }
+        // A match that leaves the line for a short way in the middle (the other side of a big
+        // junction, a slip road) is still the match for the rest: throwing it away left 8 km of a
+        // captured trip with bare turns over 90 m of disagreement. It is kept, and the caller is
+        // told where it is off the line: the stitch says nothing of the match's there and reads
+        // the turns off the line's own corners instead.
+        val off = offLine(matched.polyline, shape, startSlackM, endSlackM) ?: run {
+            onMatchFail?.invoke("off the line: " + offReport(matched.polyline, shape))
+            return null
+        }
+        val said = if (edges != null) withUnsaidTurns(matched, edges) else matched
+        return Match(said, edges, check.tally, off)
+    }
+
+    /**
+     * Where [line] and [matched] are not the same path, as intervals along [line] (empty = the
+     * same path throughout), or null when they differ too much to use the match at all: lengths
+     * apart by more than the slack, any one interval over [OFF_RUN_MAX_M], or more than
+     * [OFF_TOTAL_SHARE] of the line (400 m at least) in all. The trip-end slack is not counted.
+     */
+    internal fun offLine(matched: List<LatLng>, line: List<LatLng>, startSlackM: Double, endSlackM: Double): List<Pair<Double, Double>>? {
+        if (matched.size < 2 || line.size < 2) return null
+        fun cum(l: List<LatLng>) = DoubleArray(l.size).also { c -> for (i in 1 until l.size) c[i] = c[i - 1] + l[i - 1].distanceTo(l[i]) }
+        val cm = cum(matched); val cl = cum(line)
+        val lm = cm.last(); val ll = cl.last()
+        if (ll <= 0.0 || lm <= 0.0) return null
+        val gm = RouteGeometry.SegmentGrid(matched, cm); val gl = RouteGeometry.SegmentGrid(line, cl)
+        val marks = ArrayList<Double>() // along the LINE
+        var m = startSlackM
+        while (m <= ll - endSlackM) {
+            if (gm.along(app.vela.core.nav.RouteProjection.pointAt(line, cl, m), MATCH_OFF_M) == null) marks += m
+            m += 30.0
+        }
+        m = 0.0
+        while (m <= lm) {
+            // The match's own strays, put on the line's scale by share of length.
+            if (gl.along(app.vela.core.nav.RouteProjection.pointAt(matched, cm, m), MATCH_OFF_M) == null) {
+                val onLine = m / lm * ll
+                if (onLine >= startSlackM && onLine <= ll - endSlackM) marks += onLine
+            }
+            m += 30.0
+        }
+        marks.sort()
+        val runs = ArrayList<Pair<Double, Double>>()
+        for (x in marks) {
+            val last = runs.lastOrNull()
+            if (last != null && x - last.second <= 90.0) runs[runs.lastIndex] = last.first to x else runs += x to x
+        }
+        val padded = runs.map { (it.first - 40.0).coerceAtLeast(0.0) to (it.second + 40.0).coerceAtMost(ll) }
+        val offTotal = padded.sumOf { it.second - it.first }
+        if (padded.any { it.second - it.first > OFF_RUN_MAX_M } || offTotal > maxOf(400.0, ll * OFF_TOTAL_SHARE)) return null
+        if (kotlin.math.abs(lm - ll) > ll * MATCH_LENGTH_SLACK + 30.0 + startSlackM + endSlackM + offTotal) return null
+        return padded
+    }
+
+    const val OFF_RUN_MAX_M = 380.0
+    const val OFF_TOTAL_SHARE = 0.08
+
+    /** For the studies and the log: why a match was not used. */
+    @Volatile var onMatchFail: ((String) -> Unit)? = null
+
+    private fun offReport(matched: List<LatLng>, line: List<LatLng>): String {
+        fun cum(l: List<LatLng>) = DoubleArray(l.size).also { c -> for (i in 1 until l.size) c[i] = c[i - 1] + l[i - 1].distanceTo(l[i]) }
+        val cm = cum(matched); val cl = cum(line)
+        val gm = RouteGeometry.SegmentGrid(matched, cm); val gl = RouteGeometry.SegmentGrid(line, cl)
+        fun worst(a: List<LatLng>, ca: DoubleArray, g: RouteGeometry.SegmentGrid): String {
+            val off = (0..(ca.last() / 30).toInt()).filter { g.along(app.vela.core.nav.RouteProjection.pointAt(a, ca, it * 30.0), MATCH_OFF_M) == null }
+            return if (off.isEmpty()) "none" else "${off.size} samples from ${off.first() * 30} m to ${off.last() * 30} m"
+        }
+        return "line ${cl.last().toInt()} m, matched ${cm.last().toInt()} m; line off the match: ${worst(line, cl, gm)}; match off the line: ${worst(matched, cm, gl)}"
     }
 
     /** One edge of the matched path: the names the road carries there, in travel order. */
@@ -337,7 +404,7 @@ object ValhallaRouter {
     private class Run(val names: List<String>, val startM: Double, var lenM: Double, var soft: Boolean) {
         val named get() = names.isNotEmpty()
         fun has(n: String) = names.any { it.equals(n, ignoreCase = true) }
-        val primary get() = names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) } ?: names.firstOrNull()
+        val primary get() = names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) && it.any { c -> c.isLetter() } } ?: names.firstOrNull()
     }
 
     /**
@@ -362,25 +429,37 @@ object ValhallaRouter {
             val namedLead = lead.filter { it.named }
             // The name has to begin inside this step's first half: a turn onto an unnamed lane
             // that reaches the street 100 m on, at the NEXT turn, is not a turn onto the street.
-            val leadOk = runs[at].startM <= minOf(LEAD_MAX_M, stepLenM * 0.5) &&
+            // An unnamed turn lane or slip road (a junction piece) may run longer than an unnamed
+            // road proper: a 125 m slip onto a boulevard is still the turn onto the boulevard.
+            val softLead = lead.all { it.soft }
+            val leadOk = runs[at].startM <= minOf(if (softLead) SOFT_LEAD_MAX_M else LEAD_MAX_M, stepLenM * 0.5) &&
                 namedLead.all { it.soft || it.lenM <= STUB_M } && namedLead.sumOf { it.lenM } <= NAMED_LEAD_MAX_M
             if (leadOk && runs[at].lenM >= minOf(HOLD_M, stepLenM * 0.5)) return stated
         }
+        fun told(out: String?): String? {
+            onChanged?.invoke(stated, stepLenM, runs.joinToString(" > ") { "${it.names.joinToString("/").ifEmpty { "-" }}${if (it.soft) "*" else ""} ${it.lenM.toInt()}" }, out)
+            return out
+        }
         for (r in runs) {
             if (!r.named) continue
-            if (r.lenM >= RENAME_HOLD_M && !r.has(stated)) return r.primary
-            if (r.lenM > STUB_M) return null
+            if (r.lenM >= RENAME_HOLD_M && !r.has(stated)) return told(r.primary)
+            if (r.lenM > STUB_M) return told(null)
         }
-        return null
+        return told(null)
     }
+
+    /** For the studies: called whenever a stated name is not kept (stated, step length, the
+     *  path's runs after the turn, what is said instead). */
+    @Volatile internal var onChanged: ((String, Double, String, String?) -> Unit)? = null
 
     const val EDGE_AT_M = 12.0
     const val EDGE_PAST_M = 40.0
     const val LOOK_M = 300.0
     const val HOLD_M = 20.0
     const val RENAME_HOLD_M = 40.0
-    const val STUB_M = 15.0
+    const val STUB_M = 19.0
     const val LEAD_MAX_M = 60.0
+    const val SOFT_LEAD_MAX_M = 150.0
     const val NAMED_LEAD_MAX_M = 40.0
     /** Valhalla maneuver types whose name is a street the car turns onto (not a ramp's
      *  destination, a merge, a roundabout or the start). */

@@ -57,7 +57,9 @@ object HybridRoute {
     /** An open-router maneuver has to sit this close to Google's line to be carried over. */
     private const val SNAP_M = 40.0
     private val HARD_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT)
+    private const val UNTRUSTED_BEND_DEG = 50.0
     private const val FLAT_DEG = 20.0
+    private const val UTURN_DEG = 100.0
     private const val FLAT_REACH_M = 40.0
     private const val FLAT_CHECK_FROM_M = 50.0
     private const val PLACE_REACH_M = 40.0
@@ -208,7 +210,7 @@ object HybridRoute {
      * included, in order). Null when the result would not start with a departure and end with an
      * arrival, which means a piece could not be placed.
      */
-    fun stitch(google: Route, open: Route, named: List<Pair<Stretch, List<Maneuver>>>): Route? {
+    fun stitch(google: Route, open: Route, named: List<Pair<Stretch, List<Maneuver>>>, untrusted: List<Stretch> = emptyList()): Route? {
         val g = google.polyline
         if (g.size < 2 || named.isEmpty()) return null
         val cum = cumulative(g)
@@ -233,7 +235,10 @@ object HybridRoute {
             if (inStretch(a)) continue
             // Only a step the open route both arrives at and leaves along Google's line
             // (stretchesFor has already put the others inside a stretch; this is the backstop).
-            if (unvouched(openMs, k, here, grid, openLine, openCum) == null) all += At(a, man, true)
+            // (The trip's own start and end are places, not turns: they stay whichever way the
+            // open route goes next. Without them the route cannot be put together at all.)
+            val end = (k == 0 && man.type == ManeuverType.DEPART) || (k == openMs.lastIndex && man.type == ManeuverType.ARRIVE)
+            if (end || unvouched(openMs, k, here, grid, openLine, openCum) == null) all += At(a, man, true)
         }
         for ((s, ms) in named) {
             var pos = 0.0
@@ -255,14 +260,28 @@ object HybridRoute {
                 val reach = if (tripEnd) PLACE_REACH_END_M else maxOf(PLACE_REACH_M, prevLen * 0.08)
                 val a = (alongNear(g, cum, man.location, maxOf(byLength - reach, lastPlaced), byLength + reach, SNAP_M) ?: byLength).coerceAtLeast(lastPlaced)
                 lastPlaced = a
+                // Where the match is known to be off the line, nothing it says is used; the
+                // line's own corners are read there instead (below).
+                if (man.type != ManeuverType.DEPART && man.type != ManeuverType.ARRIVE && untrusted.any { a >= it.fromM && a <= it.toM }) {
+                    drift += a - byLength; pos += man.distanceMeters; prevLen = man.distanceMeters; continue
+                }
                 // A hard turn is said only where Google's line turns. The matcher can open a
                 // piece that starts at a junction on the cross street and "turn left" onto the
                 // road the line was on all along (seen at the end of an exit ramp, 2026-10-02).
-                if (man.type in HARD_TURNS && a > FLAT_CHECK_FROM_M && a < total - FLAT_CHECK_FROM_M) {
+                // (Any bend counts for a left or right, not only one its own way: a right and a
+                // left 20 m apart net out to nothing in either's window, and both are real.)
+                // A U-turn needs the line to come back on itself: near a destination the match
+                // can overshoot and turn round where Google's line simply turns in.
+                val uturn = man.type == ManeuverType.UTURN
+                if ((man.type in HARD_TURNS || uturn) && a > FLAT_CHECK_FROM_M && a < total - FLAT_CHECK_FROM_M) {
                     var most = 0.0
                     var o = -FLAT_REACH_M
-                    while (o <= FLAT_REACH_M) { most = maxOf(most, kotlin.math.abs(app.vela.core.nav.StepAudit.bendAt(g, cum, a + o))); o += 10.0 }
-                    if (most < FLAT_DEG) { pos += man.distanceMeters; prevLen = man.distanceMeters; continue }
+                    while (o <= FLAT_REACH_M) {
+                        val bnd = app.vela.core.nav.StepAudit.bendAt(g, cum, a + o)
+                        most = maxOf(most, kotlin.math.abs(bnd))
+                        o += 10.0
+                    }
+                    if (most < (if (uturn) UTURN_DEG else FLAT_DEG)) { pos += man.distanceMeters; prevLen = man.distanceMeters; continue }
                 }
                 drift += a - byLength
                 prevLen = man.distanceMeters
@@ -270,7 +289,26 @@ object HybridRoute {
                 // The slice's own ends are real only where the slice starts or ends the trip.
                 if (man.type == ManeuverType.DEPART && s.fromM > 0.0) continue
                 if (man.type == ManeuverType.ARRIVE && s.toM < total) continue
-                all += At(if (man.type == ManeuverType.ARRIVE) total else a, man, false)
+                // The trip's own start is at 0 and its end at the end, wherever the matched path's
+                // ends project to: every step is found by adding up the lengths before it, so a
+                // start pinned 95 m in (a line that loops before setting off) put every later
+                // turn 95 m early (a captured Paris trip, 2026-10-02).
+                all += At(if (man.type == ManeuverType.ARRIVE) total else if (man.type == ManeuverType.DEPART) 0.0 else a, man, false)
+            }
+        }
+        for (u in untrusted) {
+            var x = u.fromM
+            while (x <= u.toM) {
+                val b = app.vela.core.nav.StepAudit.bendAt(g, cum, x)
+                if (kotlin.math.abs(b) < UNTRUSTED_BEND_DEG) { x += 10.0; continue }
+                var peak = x; var peakB = b
+                var y = x + 10.0
+                while (y <= minOf(x + 60.0, u.toM)) { val by = app.vela.core.nav.StepAudit.bendAt(g, cum, y); if (kotlin.math.abs(by) > kotlin.math.abs(peakB)) { peak = y; peakB = by }; y += 10.0 }
+                x = peak + 60.0
+                if (all.any { kotlin.math.abs(it.m - peak) <= 50.0 }) continue
+                val mod = if (peakB > 0) "right" else "left"
+                val text = RouteGeometry.osrmPhrase("turn", mod, null, null, null, null)
+                all += At(peak, Maneuver(RouteGeometry.osrmType("turn", mod), text, pointAt(g, cum, peak), 0.0, 0.0, instructionNoRoad = text), false)
             }
         }
         all.sortBy { it.m }
@@ -291,7 +329,8 @@ object HybridRoute {
         if (kept.size < 2 || kept.first().man.type != ManeuverType.DEPART || kept.last().man.type != ManeuverType.ARRIVE) return null
         val dur = google.durationSeconds
         val out = kept.mapIndexed { k, x ->
-            val len = if (k == kept.lastIndex) 0.0 else (kept[k + 1].m - x.m).coerceAtLeast(0.0)
+            val from = if (k == 0) 0.0 else x.m // the first step starts the line, whatever it is
+            val len = if (k == kept.lastIndex) 0.0 else (kept[k + 1].m - from).coerceAtLeast(0.0)
             x.man.copy(
                 location = if (x.man.type == ManeuverType.ARRIVE) g.last() else if (k == 0) g.first() else x.man.location,
                 distanceMeters = len,
