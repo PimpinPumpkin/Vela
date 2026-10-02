@@ -2824,7 +2824,7 @@ architecture note.
   open router leads and knows nothing of closures, and Google's line was followed only past
   `RouteGeometry.divergent` (five sample points, 700 m). Now, for DRIVE with a Google answer:
   `HybridRoute.stretches` finds where Google's line leaves the open route (a 20 m sample over
-  15 m off (was 25, see below), runs of 120 m or more, padded 90 m each side so the turn off and back on are inside);
+  15 m off (was 25, see below), runs of 40 m or more (was 120), padded 90 m each side so the turn off and back on are inside);
   each stretch's slice is named from the tiles under it alone (`RoadNameTiles.linesAlong` +
   `LineNamer.name`), and `stitch` builds Google's line with the open router's maneuvers outside
   the stretches (lanes, exit numbers and sign text kept; a maneuver must project within 40 m and
@@ -2871,8 +2871,8 @@ architecture note.
   (Prague). So `match` also asks `trace_attributes` for the matched path's edges (names, length,
   internal / turn-channel flags; in parallel, same timeout) and each TURN's name (types in
   `TURN_TYPES`; not ramps, merges, roundabouts) must be the street the path is on after the turn:
-  it starts after only unnamed pieces, junction pieces (at most 40 m of them named) or stubs
-  under 15 m, and holds 20 m or half the step. If not, the first street the path stays on for
+  it starts within 60 m and the step's first half, after only unnamed pieces, junction pieces
+  (at most 40 m of them named) or stubs under 15 m, and holds 20 m or half the step. If not, the first street the path stays on for
   40 m is said instead; if there is none, no name. No edges (request failed) = no street names
   on turns; exits and signs are kept. The turn is found by the NEAREST edge start going forward
   (the first edge within reach is the tail of the street being left).
@@ -2905,8 +2905,45 @@ architecture note.
   `MATCH_TRIP_END_SLACK_M` (150 m, both ways: the loop out of a lot), since a refused match
   there fell to the tiles, which named the aisle "G Street" from 18 m (`STRICT_MAX_OFF_M` is
   12 m now, was 30); "Turn straight onto X" is "Continue onto X" (`osrmPhrase`). The step list
-  is in the chooser: swipe the panel up. To see which source gave a step, log
-  `open.first().maneuvers`, each `matched.maneuvers` and the hybrid's beside the stretches.
+  is in the chooser: swipe the panel up.
+  **THREE CHECKS FOR THIS CODE, USE THEM BEFORE TRUSTING A CHANGE (same day, second round).**
+  (1) `core/nav/StepAudit`: steps against the line (each left or right must sit on a bend that
+  way within 40 m of where the step lengths put it; each 60 degree corner needs a step within
+  60 m). Every hybrid logs `VelaDirections: steps vs line: ...`; `adb shell setprop
+  log.tag.VelaSteps DEBUG` adds the full list with each step's source (open / stretch), the
+  stretches and the findings (distances along the route only). Known harmless flags: a jog
+  under about 25 m (left then right nets no bend), a road's own 90 degree curve ("bend unsaid").
+  (2) `NamingStudyTest.theHybridEndToEnd` (`-DvelaStudy=<routes per area>`, 15 takes 13 min): the
+  whole hybrid built as the app builds it, with the open router's route THROUGH A THIRD POINT as
+  the stand-in for Google's line, so its own steps are the truth. Trips whose stand-in doubles
+  back at the via are skipped; a turn AT the via is swallowed by the router, so an "EXTRA" there
+  is the truth's fault. `-DvelaOne="lat,lng;lat,lng;lat,lng"` replays one trip and prints the
+  truth, the open steps, each stretch's matched steps and the hybrid: read that before deciding
+  a finding is real. (3) the phone: `scratchpad/trip.sh "<lat,lng>" label` plans a drive on the
+  4a and prints the log lines and the step list (wake the screen first, a dozing phone reads as
+  "not in front").
+  WHAT THOSE FOUND, ALL FIXED: a turn at a stretch's very edge is read by the matcher as the
+  piece's start and lost (`EDGE_CLEAR_M`); an open step dropped by the agreement test left a
+  hole when both routes make the turn and Google leaves 200 m later (`stretchesFor` gives every
+  unvouched step a stretch; do NOT bound the 400 m look-ahead by the next stretch, the slow-fork
+  exit test fails); the open route joining Google's line from a side street had its turn read
+  out on a line that goes straight (the 80 m look-back); `MIN_RUN_M` 120 hid a different way
+  round one block (40 now); nearest-point placement put steps on the wrong pass of a block loop
+  (windowed, drift-tracked, monotonic placement); the matcher leaves out a 90 degree turn that
+  stays on a numbered route (`withUnsaidTurns`), names a roundabout's enter step after the ring,
+  opens a piece on the cross street with a turn the line does not make (a stretch hard turn is
+  dropped where the line bends under 20 degrees), and names a turn onto an unnamed lane after
+  the street that lane reaches 100 m on (`LEAD_MAX_M` 60 m and inside the step's first half);
+  two hard turns onto the same-named road were merged as "a ramp's two bends".
+  LAST RUN (79 trips, 74 of 76 stretches matched, 2 bare, 2 trips not placed): truth named turns
+  615 same name, 1 different (a ramp named for the bridge it leads to), 25 bare, 7 not within
+  40 m (3 slight bends, a ramp placed at its start, a trip start in a lot, and the same Davis
+  turn twice, which the hybrid puts 81 m on where the line really bends). Hybrid hard turns 706,
+  8 with no truth step within 60 m (streets the open router folds away). StepAudit: 674 turns,
+  671 agree. Before this round the same study read 467 / 6 wrong / 17 bare / 12 missed on 60
+  trips. Phone, eight trips from the Davis fixture lot (downtown Sacramento, the airport, a mall
+  across Sacramento, campus, Woodland, Dixon, West Sacramento, San Francisco): every stretch
+  matched, 68 of 69 turns agree with the line (the other is a 22 m jog).
   The wait is 5.5 s (1.5 s urgent);
   past it the stretches go bare.
   The hybrid leads WITHOUT the snap's ETA margin (it is Google's own route), takes Google's times

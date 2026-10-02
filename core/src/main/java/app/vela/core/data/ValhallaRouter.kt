@@ -155,6 +155,75 @@ object ValhallaRouter {
         return route.copy(legs = route.legs.map { leg -> leg.copy(maneuvers = all.subList(k, k + leg.maneuvers.size).toList()).also { k += leg.maneuvers.size } })
     }
 
+    /**
+     * Turns the service left out. Its step text treats staying on a NUMBERED route as going
+     * straight on: "Turn right onto Commonwealth Avenue/MA 2. Continue on MA 2" covers a 90 degree
+     * right onto the next street 200 m later, because MA 2 goes that way (end-to-end study,
+     * 2026-10-02). So: wherever the matched line turns [UNSAID_BEND_DEG] or more with no step
+     * within [UNSAID_NEAR_M], and the street's own name (not its number) changes there, a turn is
+     * put in, named for the street the path then stays on [RENAME_HOLD_M], bare if none. A bend
+     * where the name carries on is the road curving and is left alone.
+     */
+    internal fun withUnsaidTurns(route: Route, edges: List<Edge>): Route {
+        val line = route.polyline
+        if (line.size < 2 || route.legs.size != 1) return route
+        val cum = app.vela.core.nav.RouteProjection.cumulative(line)
+        val total = cum.last()
+        var ms = route.maneuvers
+        fun starts(list: List<Maneuver>): List<Double> { var at = 0.0; return list.map { m -> at.also { at += m.distanceMeters } } }
+        val edgeAt = DoubleArray(edges.size).also { for (i in 1 until edges.size) it[i] = it[i - 1] + edges[i - 1].lengthM }
+        fun primary(e: Edge) = e.names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) }
+        var at = 50.0
+        while (at <= total - 50.0) {
+            val b = app.vela.core.nav.StepAudit.bendAt(line, cum, at)
+            if (kotlin.math.abs(b) < UNSAID_BEND_DEG) { at += 10.0; continue }
+            // The sharpest point of this corner.
+            var peak = at; var peakB = b
+            var x = at + 10.0
+            while (x <= minOf(at + 60.0, total - 50.0)) {
+                val bx = app.vela.core.nav.StepAudit.bendAt(line, cum, x)
+                if (kotlin.math.abs(bx) > kotlin.math.abs(peakB)) { peak = x; peakB = bx }
+                x += 10.0
+            }
+            at = peak + 60.0
+            if (starts(ms).any { kotlin.math.abs(it - peak) <= UNSAID_NEAR_M }) continue
+            val here = app.vela.core.nav.RouteProjection.pointAt(line, cum, peak)
+            val ei = edges.indices.filter { kotlin.math.abs(edgeAt[it] - peak) <= 80.0 }.minByOrNull { edges[it].begin.distanceTo(here) } ?: continue
+            if (edges[ei].begin.distanceTo(here) > 25.0) continue
+            // The street a little way before the corner and a little way after it (the piece that
+            // begins nearest the corner may be the second piece of the new street).
+            fun edgeAtAlong(m: Double) = edges.indices.lastOrNull { edgeAt[it] <= m } ?: 0
+            val bi = edgeAtAlong(peak - UNSAID_SIDE_M); val ai = edgeAtAlong(peak + UNSAID_SIDE_M)
+            val before = (bi downTo maxOf(0, bi - 6)).firstNotNullOfOrNull { primary(edges[it]) }
+            val afterFirst = (ai until minOf(edges.size, ai + 6)).firstNotNullOfOrNull { primary(edges[it]) }
+            val after = checkedRoad("", total, edges.subList(ei, edges.size))?.takeIf { before == null || !it.equals(before, ignoreCase = true) }
+            if (before != null && afterFirst != null && before.equals(afterFirst, ignoreCase = true)) continue // the road curving
+            if (before == null && afterFirst == null) continue // unnamed both sides: a lot or a ramp bending
+            val mod = if (peakB > 0) "right" else "left"
+            val s = starts(ms)
+            val k = s.indexOfLast { it <= peak }.takeIf { it >= 0 && ms[it].type != ManeuverType.ARRIVE } ?: continue
+            val first = peak - s[k]; val rest = ms[k].distanceMeters - first
+            if (first < 0 || rest <= 0) continue
+            val share = if (ms[k].distanceMeters > 0) first / ms[k].distanceMeters else 0.0
+            val turn = Maneuver(
+                type = RouteGeometry.osrmType("turn", mod),
+                instruction = RouteGeometry.osrmPhrase("turn", mod, after, null, null, null),
+                instructionNoRoad = RouteGeometry.osrmPhrase("turn", mod, null, null, null, null),
+                location = edges[ei].begin,
+                distanceMeters = rest,
+                durationSeconds = ms[k].durationSeconds * (1 - share),
+                road = after,
+            )
+            ms = ms.subList(0, k) + ms[k].copy(distanceMeters = first, durationSeconds = ms[k].durationSeconds * share) + turn + ms.subList(k + 1, ms.size)
+        }
+        if (ms === route.maneuvers) return route
+        return route.copy(legs = listOf(route.legs.first().copy(maneuvers = ms)))
+    }
+
+    const val UNSAID_BEND_DEG = 60.0
+    const val UNSAID_NEAR_M = 50.0
+    const val UNSAID_SIDE_M = 45.0
+
     private fun bare(m: Maneuver) = m.copy(instruction = m.instructionNoRoad ?: m.instruction, road = null, ref = null)
     private val UNPLACED = String(charArrayOf('?'))
 
@@ -184,7 +253,8 @@ object ValhallaRouter {
         val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
         val check = NameCheck(edges)
         val matched = parse(text, check).firstOrNull() ?: return null
-        return if (followsLine(matched.polyline, shape, startSlackM = startSlackM, endSlackM = endSlackM)) Match(matched, edges, check.tally) else null
+        if (!followsLine(matched.polyline, shape, startSlackM = startSlackM, endSlackM = endSlackM)) return null
+        return Match(if (edges != null) withUnsaidTurns(matched, edges) else matched, edges, check.tally)
     }
 
     /** One edge of the matched path: the names the road carries there, in travel order. */
@@ -290,7 +360,9 @@ object ValhallaRouter {
         if (at >= 0) {
             val lead = runs.subList(0, at)
             val namedLead = lead.filter { it.named }
-            val leadOk = runs[at].startM <= LEAD_MAX_M &&
+            // The name has to begin inside this step's first half: a turn onto an unnamed lane
+            // that reaches the street 100 m on, at the NEXT turn, is not a turn onto the street.
+            val leadOk = runs[at].startM <= minOf(LEAD_MAX_M, stepLenM * 0.5) &&
                 namedLead.all { it.soft || it.lenM <= STUB_M } && namedLead.sumOf { it.lenM } <= NAMED_LEAD_MAX_M
             if (leadOk && runs[at].lenM >= minOf(HOLD_M, stepLenM * 0.5)) return stated
         }
@@ -308,7 +380,7 @@ object ValhallaRouter {
     const val HOLD_M = 20.0
     const val RENAME_HOLD_M = 40.0
     const val STUB_M = 15.0
-    const val LEAD_MAX_M = 150.0
+    const val LEAD_MAX_M = 60.0
     const val NAMED_LEAD_MAX_M = 40.0
     /** Valhalla maneuver types whose name is a street the car turns onto (not a ramp's
      *  destination, a merge, a roundabout or the start). */
@@ -382,7 +454,12 @@ object ValhallaRouter {
                 // `street_names` ("Turn right onto Atlantic Avenue. Continue on Commercial Street"):
                 // the instruction has to name the first, or it names a street the driver is not
                 // turning onto (found by the naming study, 2026-10-02).
-                val names = (m["begin_street_names"] ?: m["street_names"])?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
+                // At a roundabout the ENTER step carries the roundabout's own name and the exit
+                // step the road taken: "take the 1st exit onto <the ring>" named the wrong thing
+                // (end-to-end study, 2026-10-02). The enter step reads the exit step's names.
+                val exitStep = if (vType == 26) mans.getOrNull(i + 1)?.takeIf { it["type"]?.jsonPrimitive?.intOrNull == 27 } else null
+                val nameSrc = exitStep ?: m
+                val names = (nameSrc["begin_street_names"] ?: nameSrc["street_names"])?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
                 // A route number among the names ("US 50" beside "Capital City Freeway") is the
                 // shield; the first real name is the road. A road with only a number keeps it.
                 // (Not a heritage designation: "US 40 Historic" on a downtown street is on no sign.)
@@ -408,14 +485,18 @@ object ValhallaRouter {
                 val sameRoad = road != null && road == prevRoad
                 val (type, mod) = osrmGrammar(vType, road, sameRoad)
                 val rbExit = m["roundabout_exit_count"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 && type == "roundabout" }
+                // The exit step says the same thing as the enter step ("take the 2nd exit onto X"),
+                // like the open router's pair, rather than "Enter the roundabout onto X".
+                val rbSaid = rbExit ?: if (vType == 27) mans.getOrNull(i - 1)?.takeIf { it["type"]?.jsonPrimitive?.intOrNull == 26 }
+                    ?.get("roundabout_exit_count")?.jsonPrimitive?.intOrNull?.takeIf { it > 0 } else null
                 val begin = m["begin_shape_index"]?.jsonPrimitive?.intOrNull ?: 0
                 val end = m["end_shape_index"]?.jsonPrimitive?.intOrNull ?: begin
                 val at = shape.getOrNull(if (type == "arrive") end else begin) ?: shape.last()
                 val side = if (type == "arrive") mod else null
                 raw += Maneuver(
                     type = RouteGeometry.osrmType(type, mod),
-                    instruction = RouteGeometry.osrmPhrase(type, mod, road, dest, exitNo, rbExit),
-                    instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, dest, exitNo, rbExit),
+                    instruction = RouteGeometry.osrmPhrase(type, mod, road, dest, exitNo, rbSaid),
+                    instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, dest, exitNo, rbSaid),
                     ref = ref,
                     roundaboutExit = rbExit,
                     side = side,

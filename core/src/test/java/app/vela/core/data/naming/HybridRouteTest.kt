@@ -165,6 +165,19 @@ class HybridRouteTest {
         assertTrue(out.maneuvers.none { it.road == "Exit 12" })
     }
 
+    @Test fun aTurnBothMakeBeforeGoogleLeavesIsCoveredByTheStretch() {
+        // Both turn right at 550 m; Google leaves that street 220 m later, the open route does not.
+        val openL = listOf(p(0.0, 0.0), p(0.005, 0.0), p(0.005, 0.03))
+        val googleL = listOf(p(0.0, 0.0), p(0.005, 0.0), p(0.005, 0.0025), p(0.02, 0.0025), p(0.02, 0.03))
+        val o = route(
+            openL,
+            listOf(man(ManeuverType.DEPART, p(0.0, 0.0), 555.0, "First St"), man(ManeuverType.TURN_RIGHT, p(0.005, 0.0), 2600.0, "Pine St"), man(ManeuverType.ARRIVE, p(0.005, 0.03), 0.0)),
+            RouteSource.OSRM,
+        )
+        val st = HybridRoute.stretchesFor(googleL, o)
+        assertTrue("the shared right turn is inside a stretch: $st", st.any { 555.0 >= it.fromM && 555.0 <= it.toM })
+    }
+
     @Test fun aRampNamedTwiceIsOneStep() {
         val s = HybridRoute.stretches(googleLine, openLine).single()
         val named = listOf(

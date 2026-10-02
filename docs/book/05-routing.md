@@ -283,61 +283,88 @@ The 700 m test above is for jams. A closed road sends Google a few blocks around
 700 m, and the open router does not know the road is closed, so for a long time Vela kept its own
 route through the closure and only borrowed Google's arrival time.
 
-For driving, the route is now Google's line wherever the two differ at all. Vela walks Google's
-line in 20 m steps and marks every stretch of 120 m or more that sits over 15 m from the open
-route, padded by 90 m at each end so the turn off the shared road and the turn back onto it fall
-inside. Then:
+For driving, the route is now Google's line wherever the two differ at all. The open router no
+longer decides the path; it only supplies steps for the parts where it and Google go the same way.
 
-- outside those stretches the open router's steps are kept as they are, with their lane arrows,
-  exit numbers and sign text;
-- inside them the turns come from the bends of Google's own line, named from the map tiles under
-  that stretch (the line namer below). These steps have no lanes or sign text.
+**Finding where they differ.** Vela walks Google's line in 20 m steps and marks each point more
+than 15 m from the open route. Fifteen, because at 25 a parking aisle 18 m beside a street was
+taken for the street. Marked runs close together are joined, runs of 40 m or more become
+"stretches", and each stretch is widened by 90 m and kept 60 m clear of any corner, so the turn
+off the shared road and the turn back onto it are inside it and not at its edge. Then every step
+of the open router outside the stretches is tested: does the open route arrive at it and leave it
+along Google's line? If not (it joins Google's line there from a side street, or leaves it on an
+exit Google does not take), that step gets a stretch of its own. No step is ever thrown away
+without something else covering its place.
 
-Nothing is routed through sampled points, so the result cannot loop or double back, which is what
-the older approach did on a frontage road beside a freeway. Naming costs only the tiles under the
-stretches: 89 ms for three stretches on a Davis to Sacramento test, where 7.8 of 25.3 km differed.
-
-**Where the steps on those stretches come from.** In order, per stretch:
+**Where the steps on a stretch come from.** In order:
 
 1. A map match. The stretch is sent to the open Valhalla server, which snaps the line onto the
    road network and answers with the steps of the roads it matched: street names, exit numbers,
-   what the sign says. A name from here is the name of the road the line is on. The service will
-   happily "match" a line that is not on any road, so the answer is kept only if it stays within
-   22 m of Google's line along its whole length and the two lengths agree within 6%. Lane arrows
-   are not part of its answer, so Vela then asks the open router to drive that exact matched path
-   and takes its steps, lanes included, only when its path is the same path to within 8 m.
-   The server's step text is not trusted for a turn's street name. It skips the short pieces
-   inside a junction when it picks one, so a left onto a street that turns into a bridge 120 m
-   later came back as "turn left onto the bridge". Vela asks the same server for the matched
-   road pieces themselves and says a street name only if the path is on that street right after
-   the turn (within a turn lane's length) and stays on it 20 m, or half the step if the step is
-   shorter. When the path is plainly on another street for 40 m, that one is said. Otherwise the
-   turn has no name. On the 90 test routes this removed both real misnames found among 477 named
-   turns. The open router's own turn names, on the parts of the trip where it and Google agree,
-   go through the same check: of 463 on those routes, 5 lost their name (each one a turn where
-   the open router skips a street 10 to 30 m long and names the next).
+   what the sign says. The service will happily "match" a line that is not on any road, so the
+   answer is kept only if it stays within 22 m of Google's line along its whole length and the
+   two lengths agree within 6% (the first and last 150 m of a trip are let off: the loop out of a
+   parking lot). Lane arrows are not part of its answer, so Vela then asks the open router to
+   drive that exact matched path and takes its steps, lanes included, only when its path is the
+   same path to within 8 m.
 2. The map tiles, when the match fails. Each turn takes the name of the street the line runs
-   along, and only where the map is sure (below). Measured on 90 routes in six cities, this put a
-   wrong name on 1.4% of named turns and left about a quarter bare, which is why it is second.
+   along, within 12 m and only where the map is sure. Measured on 90 routes this put a wrong name
+   on 1.4% of named turns and left about a quarter bare, which is why it is second.
 3. The line's bends alone: "Turn right", no name.
 
-A wrong street name is worse than none: "Turn right" sends nobody the wrong way, "Turn right
-onto Smith Street" at John Street does. So on those stretches a turn is given a name only when
-the map is sure. A point with two differently named streets beside it, both running its way,
-takes neither name. A turn names its street only if the line then stays on that street for 60 m,
-a ramp or a name change only for 100 m. If the tiles cannot be read at all, the route is still
-Google's line and those turns are read bare. Vela never falls back to the open router's own
-route here, since that is the route through whatever Google went around.
+If none of this is back in 5.5 seconds, the route still goes out on Google's line with bare turns
+on those stretches. Vela never falls back to the open router's own route here, since that is the
+route through whatever Google went around.
 
-The open router's steps are checked the same way before they are kept. A step is carried over
-only if the open route's own path after it stays on Google's line (within 20 m, for up to 400 m).
-An exit the open router takes and Google does not peels away slowly, so its "take the exit"
-sits well before the two lines look different; this check is what drops it.
+**The server's step text is not trusted as it comes.** Vela asks the same server for the matched
+road pieces themselves (each with its names and length) and corrects three things:
+
+- *A turn's street name.* The text skips the short pieces inside a junction when it picks a
+  name, so a left onto a street that turns into a bridge 120 m later came back as "turn left onto
+  the bridge", and a right onto a bridge as "stay on the embankment" because the first 6 m still
+  carry that name. A name is said only if the path is on that street within the step's first
+  half (and within 60 m) and stays on it 20 m, or half the step if shorter. When the path is
+  plainly on another street for 40 m, that one is said. Otherwise the turn has no name.
+- *Turns it leaves out.* Staying on a numbered route counts as going straight in its text:
+  "Turn right onto Commonwealth Avenue. Continue on MA 2" covered a 90 degree right onto another
+  street 200 m later, because Route 2 goes that way. Where the matched line turns 60 degrees or
+  more with no step near and the street name changes there, Vela adds the turn.
+- *Roundabouts.* Its "enter" step carries the ring's own name. Vela says the street you leave by.
+
+The open router's turn names, on the parts where it and Google agree, go through the same name
+check against the road pieces under its own line. Of 463 on the test routes, 5 lost their name,
+each one a turn where the open router skips a street 10 to 30 m long and names the next.
+
+A wrong street name is worse than none: "Turn right" sends nobody the wrong way, "Turn right
+onto Smith Street" at John Street does. Every rule above fails toward the bare turn.
+
+**Putting it together.** The stretch steps are placed on Google's line by position (not by adding
+up step lengths, which drifts) and in the order the matcher gave them. A left or right from a
+stretch is dropped if Google's line does not actually turn there. Where a stretch step and an
+open step describe one junction, the open one is kept, for its lanes.
+
+**How it was checked.** Counts hide faults that a step list shows at once, so there are three
+checks:
+
+- `StepAudit` compares any route's steps with its line: every left or right must sit where the
+  line bends that way, and every sharp corner of the line must have a step. Each trip logs the
+  result in one line.
+- An end-to-end study (`NamingStudyTest.theHybridEndToEnd`) builds the whole thing for random
+  trips in six cities, using the open router's route through a third point as a stand-in for
+  Google's line, so the true steps are known. On the last run of 79 trips,
+  74 of 76 stretches matched. Of 648 named turns in the truth, the result gave 615 the same
+  name, 25 no name, and 1 a different one (a ramp named for the bridge it leads to); 7 had no
+  step within 40 m (three gentle bends, a ramp, a trip that starts in a parking lot, and one turn
+  the result puts 81 m further on, where the line actually bends). Of 674 lefts and rights in
+  the results, 671 sit on a matching bend of the line.
+- Trips read by hand on a phone, from a parking lot in Davis: to downtown Sacramento, the
+  airport, a mall across Sacramento, the campus, Woodland, Dixon, West Sacramento and San
+  Francisco. Of 69 lefts and rights, 68 sit on a matching bend of Google's line; the other is a
+  22 m jog.
 
 This route leads the list on Google's own times. The open router's routes shown beside it are
 its second and third choices when the two only differ locally, and none when Google went a
-different way altogether (their times are not comparable). Only when the pieces cannot be put together at all does Vela fall
-back to the jam rule above, and then to the open route.
+different way altogether (their times are not comparable). Only when the pieces cannot be put
+together at all does Vela fall back to the jam rule above, and then to the open route.
 
 ### Google's alternates, named when you pick one
 

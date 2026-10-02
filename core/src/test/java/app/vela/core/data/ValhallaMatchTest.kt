@@ -86,4 +86,34 @@ class ValhallaMatchTest {
         assertTrue("the capture has named turns", plain.maneuvers.any { it.type in turns && it.road != null })
         assertTrue("none of them is named unchecked", checked.maneuvers.none { it.type in turns && it.road != null })
     }
+
+    // A corner the step text leaves out: north 555 m on A Street, then east on B Street.
+    private fun q(dLat: Double, dLng: Double) = LatLng(38.54 + dLat, -121.74 + dLng)
+    private fun corner(first: String, second: String): Pair<app.vela.core.model.Route, List<ValhallaRouter.Edge>> {
+        val l = listOf(q(0.0, 0.0), q(0.005, 0.0), q(0.005, 0.005))
+        fun man(type: app.vela.core.model.ManeuverType, d: Double) = app.vela.core.model.Maneuver(type, type.name, l.first(), d, d / 10, road = first)
+        val r = app.vela.core.model.Route(
+            polyline = l, legs = listOf(app.vela.core.model.RouteLeg(990.0, 99.0, null, listOf(man(app.vela.core.model.ManeuverType.DEPART, 990.0), man(app.vela.core.model.ManeuverType.ARRIVE, 0.0)))),
+            distanceMeters = 990.0, durationSeconds = 99.0, durationInTrafficSeconds = null,
+        )
+        val edges = listOf(
+            ValhallaRouter.Edge(listOf(first, "MA 2"), 555.0, l[0], false),
+            ValhallaRouter.Edge(listOf(second, "MA 2"), 435.0, l[1], false),
+        )
+        return r to edges
+    }
+
+    @Test fun aCornerOntoAnotherStreetGetsItsTurn() {
+        val (r, edges) = corner("A Street", "B Street")
+        val out = ValhallaRouter.withUnsaidTurns(r, edges)
+        val turn = out.maneuvers.single { it.type == app.vela.core.model.ManeuverType.TURN_RIGHT }
+        assertEquals("B Street", turn.road)
+        assertEquals(990.0, out.maneuvers.sumOf { it.distanceMeters }, 1.0)
+        assertTrue("placed at the corner: ${out.maneuvers.first().distanceMeters}", kotlin.math.abs(out.maneuvers.first().distanceMeters - 555.0) < 40.0)
+    }
+
+    @Test fun aRoadThatCurvesKeepsItsOneStep() {
+        val (r, edges) = corner("A Street", "A Street")
+        assertEquals(2, ValhallaRouter.withUnsaidTurns(r, edges).maneuvers.size)
+    }
 }

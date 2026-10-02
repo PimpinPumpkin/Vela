@@ -25,11 +25,16 @@ object HybridRoute {
      *  beside a street did (the open router's "Turn left onto G Street" was read out in the lot,
      *  found reading a step list, 2026-10-02). Two drawings of one road are a lane or two apart. */
     const val OFF_M = 15.0
-    /** A shorter run off the open route is drawing noise (a ramp traced differently, the other
-     *  side of a wide junction), not a different way. */
-    const val MIN_RUN_M = 120.0
+    /** A shorter run off the open route is drawing noise (the other side of a wide junction),
+     *  not a different way. It was 120 m, and a different way out of a parking lot or round one
+     *  block went unnoticed: the open router's turn where it rejoins was read out on a line that
+     *  goes straight there, and Google's own turns were not said (end-to-end study, 2026-10-02). */
+    const val MIN_RUN_M = 40.0
     /** Two runs off the open route with less than this of shared road between them are one. */
     const val JOIN_GAP_M = 60.0
+    /** A stretch's edge keeps this far from a corner of the line sharper than [EDGE_BEND_DEG]. */
+    const val EDGE_CLEAR_M = 60.0
+    const val EDGE_BEND_DEG = 35.0
     /** Each stretch reaches this far into the shared road at both ends, so the turn off the
      *  shared road and the turn back onto it belong to the stretch. */
     const val PAD_M = 90.0
@@ -44,12 +49,20 @@ object HybridRoute {
     private const val AGREE_M = 400.0
     private const val AGREE_STEP_M = 40.0
     private const val AGREE_OFF_M = 15.0
+    private const val AGREE_BACK_M = 80.0
+    private const val AGREE_BACK_STEP_M = 20.0
     /** Two tile-named maneuvers this close with the same road are one (a ramp's two bends). */
     private const val SAME_ROAD_M = 150.0
     private const val STEP_M = 20.0
     /** An open-router maneuver has to sit this close to Google's line to be carried over. */
     private const val SNAP_M = 40.0
-    private const val PLACE_SLACK_M = 150.0
+    private val HARD_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT)
+    private const val FLAT_DEG = 20.0
+    private const val FLAT_REACH_M = 40.0
+    private const val FLAT_CHECK_FROM_M = 50.0
+    private const val PLACE_REACH_M = 40.0
+    private const val PLACE_REACH_END_M = 150.0
+    private const val TRIP_END_M = 400.0
     /** Two maneuvers this close together are the same junction; the open router's is kept. */
     private const val MERGE_M = 30.0
 
@@ -90,12 +103,91 @@ object HybridRoute {
             while (b < total && b - r.toM < WALK_MAX_M && farFrom(b, TIGHT_M)) b += STEP_M
             Stretch(a.coerceAtLeast(0.0), b.coerceAtMost(total))
         }
-        // Pad, clamp, merge what now touches.
+        // Pad, clamp, merge what now touches. An end is never left just before or after a
+        // corner of the line: the piece handed to the matcher would begin (or end) AT the turn,
+        // which then reads as its start and is not said (a left 2 m into a stretch was lost).
+        fun clearOfCorner(at: Double, dir: Int): Double {
+            var edge = at
+            repeat(3) {
+                var x = 0.0
+                var corner = -1.0
+                while (x <= EDGE_CLEAR_M) {
+                    val p = edge - dir * x // looking INTO the stretch from its edge
+                    if (p in 0.0..total && kotlin.math.abs(app.vela.core.nav.StepAudit.bendAt(google, cum, p)) >= EDGE_BEND_DEG) { corner = p; break }
+                    x += 10.0
+                }
+                if (corner < 0) return edge
+                edge = (corner + dir * EDGE_CLEAR_M).coerceIn(0.0, total)
+            }
+            return edge
+        }
         val out = ArrayList<Stretch>()
         for (r in runs) {
-            val a = (r.fromM - PAD_M).coerceAtLeast(0.0); val b = (r.toM + PAD_M).coerceAtMost(total)
+            val a = clearOfCorner((r.fromM - PAD_M).coerceAtLeast(0.0), -1); val b = clearOfCorner((r.toM + PAD_M).coerceAtMost(total), 1)
             val last = out.lastOrNull()
             if (last != null && a <= last.toM) out[out.lastIndex] = Stretch(last.fromM, maxOf(last.toM, b)) else out += Stretch(a, b)
+        }
+        return out
+    }
+
+    /**
+     * Null when the open route's maneuver [k] can be read out on Google's line: the open route
+     * COMES Google's way into it (the 80 m before it, or its "turn left" where it joins the line
+     * from a side street is a turn the line does not make) and GOES Google's way after it (up to
+     * 400 m of its leg, the end of the leg always sampled, or it is the open router leaving the
+     * line: an exit Google does not take peels away slowly). Otherwise how far back and how far
+     * on the first disagreement is, as (back, on), 0 for the side that agrees.
+     */
+    private fun unvouched(
+        openMs: List<Maneuver>, k: Int, here: Double, grid: RouteGeometry.SegmentGrid, openLine: List<LatLng>, openCum: DoubleArray,
+    ): Pair<Double, Double>? {
+        val man = openMs[k]
+        val back = minOf(if (k > 0) openMs[k - 1].distanceMeters else 0.0, AGREE_BACK_M)
+        var bk = AGREE_BACK_STEP_M
+        while (bk <= back) {
+            if (grid.along(pointAt(openLine, openCum, here - bk), AGREE_OFF_M) == null) return bk to 0.0
+            bk += AGREE_BACK_STEP_M
+        }
+        val upTo = minOf(man.distanceMeters, AGREE_M)
+        var d = minOf(AGREE_STEP_M, upTo)
+        while (d <= upTo && upTo > 0.0) {
+            if (grid.along(pointAt(openLine, openCum, here + d), AGREE_OFF_M) == null) return 0.0 to d
+            d = if (d < upTo && d + AGREE_STEP_M > upTo) upTo else d + AGREE_STEP_M
+        }
+        return null
+    }
+
+    /**
+     * [stretches], widened so that NO open-route step is left that cannot be read out: a step
+     * outside every stretch that fails [unvouched] gets a stretch of its own around it, out to
+     * where the routes part. Without this such a step was simply dropped and, when both routes
+     * make the turn and Google leaves that street 200 m later, nobody said it (end-to-end
+     * study, 2026-10-02).
+     */
+    fun stretchesFor(google: List<LatLng>, open: Route): List<Stretch> {
+        val base = stretches(google, open.polyline)
+        if (google.size < 2 || open.polyline.size < 2) return base
+        val cum = cumulative(google)
+        val total = cum.last()
+        val grid = RouteGeometry.SegmentGrid(google, cum)
+        val openMs = open.maneuvers
+        val openCum = cumulative(open.polyline)
+        val more = ArrayList<Stretch>(base)
+        var openAt = 0.0
+        for ((k, man) in openMs.withIndex()) {
+            val here = openAt
+            openAt += man.distanceMeters
+            if (k == 0 || k == openMs.lastIndex) continue
+            val a = grid.along(man.location, SNAP_M) ?: continue
+            if (base.any { a >= it.fromM && a <= it.toM }) continue
+            val (bk, on) = unvouched(openMs, k, here, grid, open.polyline, openCum) ?: continue
+            more += Stretch((a - bk - PAD_M).coerceAtLeast(0.0), (a + on + PAD_M).coerceAtMost(total))
+        }
+        if (more.size == base.size) return base
+        val out = ArrayList<Stretch>()
+        for (r in more.sortedBy { it.fromM }) {
+            val last = out.lastOrNull()
+            if (last != null && r.fromM <= last.toM) out[out.lastIndex] = Stretch(last.fromM, maxOf(last.toM, r.toM)) else out += r
         }
         return out
     }
@@ -139,28 +231,41 @@ object HybridRoute {
                 else -> grid.along(man.location, SNAP_M) ?: continue
             }
             if (inStretch(a)) continue
-            // The open route has to GO Google's way after this maneuver, or the maneuver is the
-            // open router leaving Google's line (an exit Google does not take) and reading it
-            // out would send the driver off the route.
-            // (The end of the checked length is always sampled: a leg shorter than one step
-            // used to pass with nothing looked at.)
-            var agrees = true
-            val upTo = minOf(man.distanceMeters, AGREE_M)
-            var d = minOf(AGREE_STEP_M, upTo)
-            while (agrees && d <= upTo && upTo > 0.0) {
-                if (grid.along(pointAt(openLine, openCum, here + d), AGREE_OFF_M) == null) agrees = false
-                d = if (d < upTo && d + AGREE_STEP_M > upTo) upTo else d + AGREE_STEP_M
-            }
-            if (agrees) all += At(a, man, true)
+            // Only a step the open route both arrives at and leaves along Google's line
+            // (stretchesFor has already put the others inside a stretch; this is the backstop).
+            if (unvouched(openMs, k, here, grid, openLine, openCum) == null) all += At(a, man, true)
         }
         for ((s, ms) in named) {
             var pos = 0.0
+            var drift = 0.0   // how far the placed turns have run ahead of the summed step lengths
+            var prevLen = 0.0
+            var lastPlaced = s.fromM
             for (man in ms) {
                 // Where the turn IS on Google's line, when that is near where the steps' lengths
                 // put it: the matched path and the line differ in length by a few percent, and
                 // adding lengths up put a turn 100 m early by the end of a long stretch.
-                val byLength = s.fromM + pos
-                val a = grid.along(man.location, SNAP_M)?.takeIf { kotlin.math.abs(it - byLength) <= maxOf(PLACE_SLACK_M, (s.toM - s.fromM) * 0.08) } ?: byLength
+                // The search is a WINDOW along the line around where the lengths (plus the drift
+                // so far) put the turn, sized by the step just driven: the nearest point of the
+                // whole line is the wrong pass when the line goes round a block.
+                val byLength = s.fromM + pos + drift
+                // Wider in the first and last stretch of a trip, where the match is allowed to go
+                // round by the street while the line cuts through a lot and the lengths disagree
+                // by more. Never before the turn placed just before it: the order is the matcher's.
+                val tripEnd = (s.fromM <= 0.0 && byLength < TRIP_END_M) || (s.toM >= total - 1.0 && byLength > total - TRIP_END_M)
+                val reach = if (tripEnd) PLACE_REACH_END_M else maxOf(PLACE_REACH_M, prevLen * 0.08)
+                val a = (alongNear(g, cum, man.location, maxOf(byLength - reach, lastPlaced), byLength + reach, SNAP_M) ?: byLength).coerceAtLeast(lastPlaced)
+                lastPlaced = a
+                // A hard turn is said only where Google's line turns. The matcher can open a
+                // piece that starts at a junction on the cross street and "turn left" onto the
+                // road the line was on all along (seen at the end of an exit ramp, 2026-10-02).
+                if (man.type in HARD_TURNS && a > FLAT_CHECK_FROM_M && a < total - FLAT_CHECK_FROM_M) {
+                    var most = 0.0
+                    var o = -FLAT_REACH_M
+                    while (o <= FLAT_REACH_M) { most = maxOf(most, kotlin.math.abs(app.vela.core.nav.StepAudit.bendAt(g, cum, a + o))); o += 10.0 }
+                    if (most < FLAT_DEG) { pos += man.distanceMeters; prevLen = man.distanceMeters; continue }
+                }
+                drift += a - byLength
+                prevLen = man.distanceMeters
                 pos += man.distanceMeters
                 // The slice's own ends are real only where the slice starts or ends the trip.
                 if (man.type == ManeuverType.DEPART && s.fromM > 0.0) continue
@@ -180,7 +285,7 @@ object HybridRoute {
             }
             // A ramp's two bends, both named for the road it reaches: one instruction.
             if (last != null && !x.fromOpen && !last.fromOpen && x.m - last.m < SAME_ROAD_M &&
-                x.man.road != null && x.man.road == last.man.road && x.man.type == last.man.type) continue
+                x.man.road != null && x.man.road == last.man.road && x.man.type == last.man.type && x.man.type !in HARD_TURNS) continue
             kept += x
         }
         if (kept.size < 2 || kept.first().man.type != ManeuverType.DEPART || kept.last().man.type != ManeuverType.ARRIVE) return null
@@ -201,6 +306,28 @@ object HybridRoute {
             abbreviatedSteps = false,
             source = RouteSource.GOOGLE_HYBRID,
         )
+    }
+
+    /** Along-distance of the point of [line] nearest [p] between [lo] and [hi] meters along it,
+     *  or null when nothing there is within [tolM]. */
+    private fun alongNear(line: List<LatLng>, cum: DoubleArray, p: LatLng, lo: Double, hi: Double, tolM: Double): Double? {
+        val k = kotlin.math.cos(Math.toRadians(p.lat))
+        var best: Double? = null
+        var bestD = tolM
+        for (i in 0 until line.size - 1) {
+            if (cum[i + 1] < lo) continue
+            if (cum[i] > hi) break
+            val a = line[i]; val b = line[i + 1]
+            val bx = (b.lng - a.lng) * k; val by = b.lat - a.lat
+            val px = (p.lng - a.lng) * k; val py = p.lat - a.lat
+            val len2 = bx * bx + by * by
+            val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+            val along = (cum[i] + (cum[i + 1] - cum[i]) * t).coerceIn(lo, hi)
+            val q = pointAt(line, cum, along)
+            val d = q.distanceTo(p)
+            if (d < bestD) { bestD = d; best = along }
+        }
+        return best
     }
 
     private fun cumulative(line: List<LatLng>): DoubleArray {

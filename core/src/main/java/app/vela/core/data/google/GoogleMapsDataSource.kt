@@ -1032,7 +1032,7 @@ class GoogleMapsDataSource @Inject constructor(
             // differing stretches are read. When a stretch cannot be named (tiles unreachable,
             // too little of it on a named street) the older via-snap and plain paths stand.
             val hybridStretches = if (mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5)
-                app.vela.core.data.naming.HybridRoute.stretches(gTop.polyline, open.first().polyline) else emptyList()
+                app.vela.core.data.naming.HybridRoute.stretchesFor(gTop.polyline, open.first()) else emptyList()
             val tHybrid = System.currentTimeMillis()
             // Each stretch where Google leaves the open route gets its steps from the best source
             // that answers, in this order (how many took each is logged):
@@ -1107,6 +1107,23 @@ class GoogleMapsDataSource @Inject constructor(
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gTop?.distanceMeters?.toInt()} m, " +
                     (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size}); stretches matched ${stretchSource[0]} (${stretchSource[3]} with lane detail), from tiles ${stretchSource[1]}, bare ${stretchSource[2]}; their turn names kept ${stretchNames[0]} renamed ${stretchNames[1]} dropped ${stretchNames[2]}, no edges for ${stretchNames[3]}" else "NOT placed, older path") +
                     " in ${System.currentTimeMillis() - tHybrid} ms")
+                // Do the steps describe Google's line? Counts only (StepAudit).
+                if (hybrid != null) {
+                    val audit = app.vela.core.nav.StepAudit.check(hybrid)
+                    android.util.Log.i("VelaDirections", audit.summary())
+                    // The whole list with where each step came from, for reading a trip by hand:
+                    // adb shell setprop log.tag.VelaSteps DEBUG. Distances along the route only.
+                    if (android.util.Log.isLoggable("VelaSteps", android.util.Log.DEBUG)) {
+                        var at = 0.0
+                        hybrid.maneuvers.forEach { m ->
+                            val from = if (hybridStretches.any { at >= it.fromM && at <= it.toM }) "stretch" else "open"
+                            android.util.Log.d("VelaSteps", "${at.toInt()} m [$from] ${m.type} len=${m.distanceMeters.toInt()} lanes=${m.lanes.size} | ${m.instruction}")
+                            at += m.distanceMeters
+                        }
+                        hybridStretches.forEach { android.util.Log.d("VelaSteps", "stretch ${it.fromM.toInt()}..${it.toM.toInt()} m") }
+                        audit.findings.forEach { android.util.Log.d("VelaSteps", "audit ${it.atM.toInt()} m: ${it.what}") }
+                    }
+                }
             }
             val viaRoute = when {
                 hybrid != null -> hybrid

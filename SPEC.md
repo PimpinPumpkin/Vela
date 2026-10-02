@@ -818,42 +818,75 @@ provisional route keeps its original Google figures rather than adopting the sna
 ETA, for the same reason.
 
 **Google's line (DRIVE).** With a Google answer, the route driven is Google's line wherever it
-leaves the open route (`HybridRoute`, source `GOOGLE_HYBRID`). Stretches: Google's line sampled
-every 20 m, a sample over `OFF_M` (15 m) from the open route is off it, off runs within `JOIN_GAP_M` (60 m) of each other are one, runs of `MIN_RUN_M`
-(120 m) or more count, each walked out to where the lines are within 10 m (at most 600 m), then
-padded `PAD_M` (90 m) and merged. Each stretch's slice is named by
-`LineNamer` from the tiles under it. The stitched maneuver list takes the open router's maneuvers
-that project within 40 m of Google's line and outside every stretch, and the named maneuvers
-inside; two within 30 m are one junction and the open router's is kept; step lengths are
-re-measured along Google's line and durations are Google's typical time by share of distance.
-Steps for a stretch come from, in order: (1) `ValhallaRouter.match`, the FOSSGIS Valhalla
-`trace_route` over the slice, accepted when `followsLine` holds (`MATCH_OFF_M` 22 m both ways,
-`MATCH_LENGTH_SLACK` 6%), then, off urgent fetches, replaced by the open router's steps for the
-matched path (`laneDetail`: vias mid-step, at most `LANE_VIAS_MAX` 20, headings pinned, path equal
-within `LANE_SAME_PATH_M` 8 m) so lane data is present. A matched TURN's street name is checked
-against the matched path's edges (`trace_attributes`, fetched in parallel; `checkedRoad`): the
-name must begin after only unnamed pieces, junction pieces (named ones `NAMED_LEAD_MAX_M` 40 m
-at most) or stubs under `STUB_M` 15 m, within `LEAD_MAX_M` 150 m, and hold `HOLD_M` 20 m or half
-the step; otherwise the first street held `RENAME_HOLD_M` 40 m with only stubs before it is
-used, otherwise none. Without edges a turn carries no street name. Ramps, merges and
-roundabouts are not checked (their name is where they lead). The open router's turn names pass
-the same check (`ValhallaRouter.recheck` over `edges` of its own line, asked for when it
-answers; waited for `OPEN_NAMES_WAIT_MS` 1.5 s, 0.3 s urgent; no answer = names stand; a turn not
-found on the edges keeps its name), as do `laneDetail`'s (not found = no name). A match on a
-stretch that touches the trip's start or end may differ from the line over the first or last
-`MATCH_TRIP_END_SLACK_M` (150 m). Stretch turns are placed by projection onto Google's line; (2) `LineNamer` strict over the tiles;
-(3) `LineNamer` with no lines (bare turns). Stretches over `MATCH_MAX_M` (180 km) skip (1).
-An open-router maneuver is carried over only when the open route's path
-after it stays within 15 m of Google's line, sampled every 40 m and at the end for up to 400 m of its leg. Naming
-is strict (`LineNamer.name(strict = true)`): never refused for a low named share; a sample with
-two differently named aligned streets within 12 m of each other in distance is unnamed; a turn
-carries a street name only when the line stays on it 60 m, a ramp or rename 100 m; refs containing
-"historic" are dropped. Unreadable tiles give the same route with bare turns, never the open route.
-The hybrid leads without the snap's ETA margin and with Google's times as they are; it is never
-the free-flow calibration basis. Offered beside it: no open-router route when
+leaves the open route (`HybridRoute`, source `GOOGLE_HYBRID`); the open router contributes steps,
+never the path.
+
+*Stretches* (`HybridRoute.stretchesFor`). Google's line is sampled every 20 m; a sample over
+`OFF_M` (15 m) from the open route is off it; off runs within `JOIN_GAP_M` (60 m) of each other
+are one; runs of `MIN_RUN_M` (40 m) or more count; each is walked out to where the lines are
+within 10 m (at most 600 m), padded `PAD_M` (90 m), kept `EDGE_CLEAR_M` (60 m) clear of any corner
+of the line sharper than `EDGE_BEND_DEG` (35), and merged. Every open-router step outside the
+stretches that cannot be vouched for gets a stretch around it: vouched means the open route's
+path stays within `AGREE_OFF_M` (15 m) of Google's line for the 80 m before the step and for up
+to 400 m of its leg after it (sampled every 40 m and at the leg's end). So no open-router step is
+ever dropped without a stretch covering its place.
+
+*Steps for a stretch*, in order:
+1. `ValhallaRouter.matchWithEdges`: FOSSGIS Valhalla `trace_route` over the slice, accepted when
+   `followsLine` holds (`MATCH_OFF_M` 22 m both ways, `MATCH_LENGTH_SLACK` 6%; on a stretch that
+   touches the trip's start or end the first or last `MATCH_TRIP_END_SLACK_M` 150 m may differ).
+   `trace_attributes` is fetched in parallel for the matched path's edges (names, length, internal
+   and turn-channel flags) and three corrections are made from them:
+   - **Turn names** (`checkedRoad`, turn types only; ramps, merges and roundabouts name where
+     they lead): the stated street must begin within `LEAD_MAX_M` (60 m) and the step's first
+     half, after only unnamed pieces, junction pieces (named ones `NAMED_LEAD_MAX_M` 40 m at most)
+     or stubs under `STUB_M` (15 m), and hold `HOLD_M` (20 m) or half the step. Otherwise the
+     first street held `RENAME_HOLD_M` (40 m) with only stubs before it; otherwise no name.
+     Without edges a turn carries no street name.
+   - **Unsaid turns** (`withUnsaidTurns`): where the matched line turns `UNSAID_BEND_DEG` (60) or
+     more with no step within `UNSAID_NEAR_M` (50 m) and the street name `UNSAID_SIDE_M` (45 m)
+     before differs from the one after, a turn is inserted, named by the same rule. The service
+     treats staying on a numbered route through a 90 degree corner as going straight.
+   - **Roundabouts**: the enter step takes the exit step's street; the ring's own name is never
+     said.
+   Off urgent fetches the steps are then replaced by the open router's for the matched path
+   (`laneDetail`: vias mid-step, at most `LANE_VIAS_MAX` 20, headings pinned, path equal within
+   `LANE_SAME_PATH_M` 8 m), whose turn names pass `recheck` against the same edges (a turn not
+   found on them loses its name).
+2. `LineNamer` strict over the tiles: never refused for a low named share; `STRICT_MAX_OFF_M`
+   12 m; a sample with two differently named aligned streets within 12 m of each other in
+   distance is unnamed; a turn names its street only when the line stays on it 60 m, a ramp or
+   rename 100 m; refs containing "historic" are dropped.
+3. `LineNamer` with no lines: bare turns.
+Stretches over `MATCH_MAX_M` (180 km) skip (1). Not done within `HYBRID_WAIT_MS` (5.5 s; 1.5 s on
+an urgent fetch): bare turns on those stretches. Never the open router's own route.
+
+*The open router's steps* outside the stretches keep their lanes, exit numbers and sign text.
+Their turn names pass `ValhallaRouter.recheck` against the edges under the open route's own line
+(`ValhallaRouter.edges`, asked for when the open router answers; `OPEN_NAMES_WAIT_MS` 1.5 s,
+0.3 s urgent; no answer = the names stand; a turn not found on the edges keeps its name). The
+plain open route, when it is what goes out, is rechecked the same way.
+
+*Stitch* (`HybridRoute.stitch`). Open steps that project within 40 m of Google's line, outside
+every stretch and vouched; stretch steps placed by projecting each onto Google's line inside a
+window around where the step lengths plus the drift so far put it (`PLACE_REACH_M` 40 m or 8% of
+the step just driven; 150 m within `TRIP_END_M` 400 m of the trip's ends), never before the
+previous one. A stretch's hard turn (left, right, sharp) is dropped where Google's line bends
+under `FLAT_DEG` (20) within 40 m. An open step and a stretch step within `MERGE_M` (30 m) are
+one junction and the open one is kept; two steps of one source are never merged; a ramp's two
+bends named for the same road are one step. Step lengths are re-measured along Google's line and
+durations are Google's typical time by share of distance.
+
+*Leading.* The hybrid leads without the snap's ETA margin and with Google's times as they are;
+it is never the free-flow calibration basis. Offered beside it: no open-router route when
 `RouteGeometry.divergent` holds, otherwise all but the open router's top route. No stretches:
-the open route. Not done within `HYBRID_WAIT_MS` (5.5 s; 1.5 s on an urgent fetch): bare turns
-on those stretches.
+the open route.
+
+*Checking a trip.* Every hybrid logs `steps vs line: N turns, N agree, ...` (`StepAudit`: each
+left or right is looked up where the step lengths put it and the line must bend that way within
+40 m; each bend of 60 degrees or more needs a step within 60 m). `adb shell setprop
+log.tag.VelaSteps DEBUG` adds the whole list with each step's source and the findings.
+`turn straight` is phrased as continue (`osrmPhrase`).
 
 ### 4.3 Avoids and per-mode options
 
