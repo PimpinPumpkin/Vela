@@ -6613,7 +6613,11 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   transit directions when Google is off or answered nothing; `MapViewModel.transitTrips` is the one
   call site (the chooser, the mode-chip ETA and the stop-timeline fallback all go through it). Google
   stays the primary transit router on purpose (its ETAs are traffic/history-aware; GTFS-RT only
-  knows current lateness). The planner's walk legs carry no distance text and the itinerary no fare.
+  knows current lateness). **`planUrl` takes the CHOOSER's time numbering (0 now, 1 depart at, 2
+  arrive by, 3 last): it read 1 and 2 as arrive by, so "Depart at 08:30" listed buses arriving
+  before 08:30 whenever Google's answer was empty and the planner's was shown (issue #649,
+  2026-10-02; Google's own URL form was re-checked in a real browser and is right).**
+ The planner's walk legs carry no distance text and the itinerary no fare.
 - **A board needs no Google listing (2026-09-22):** `fetchStopDepartures` used to return before
   Transitous whenever the place had no Google feature id, and the Google-off tap path never
   called it, so an OpenStreetMap station tapped with Google off showed no departures although

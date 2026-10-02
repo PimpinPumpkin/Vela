@@ -49,4 +49,14 @@ class TransitousPlanTest {
         assertEquals(emptyList<Any>(), Transitous.parsePlan("""{"itineraries":[]}""", origin, dest))
         assertEquals(emptyList<Any>(), Transitous.parsePlan("""{"error":"x"}""", origin, dest))
     }
+
+    @Test fun departAtIsNotArriveBy() {
+        val o = app.vela.core.model.LatLng(38.5449, -121.7405); val d = app.vela.core.model.LatLng(38.5816, -121.4944)
+        val at = 1_791_275_400L
+        val depart = Transitous.planUrl(o, d, 1, at, emptySet())
+        org.junit.Assert.assertTrue(depart.contains("&time=")); org.junit.Assert.assertFalse(depart.contains("arriveBy"))
+        org.junit.Assert.assertTrue(Transitous.planUrl(o, d, 2, at, emptySet()).contains("arriveBy=true"))
+        org.junit.Assert.assertTrue(Transitous.planUrl(o, d, 3, at, emptySet()).contains("arriveBy=true"))
+        org.junit.Assert.assertFalse(Transitous.planUrl(o, d, 0, null, emptySet()).contains("time="))
+    }
 }

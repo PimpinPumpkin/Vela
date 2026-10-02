@@ -400,12 +400,29 @@ object Transitous {
 
     // --- directions (fallback) ---------------------------------------------------------------------
 
+    /** The planner request. [timeMode] is the chooser's own numbering, the one every caller
+     *  passes: 0 leave now, 1 depart at, 2 arrive by, 3 last available. Only the last two are
+     *  "arrive by" to the planner. (It read 1 and 2 as arrive by, so "Depart at 08:30" listed the
+     *  buses that ARRIVE before 08:30 whenever Google's answer was empty and this one was shown:
+     *  issue #649.) */
+    internal fun planUrl(origin: LatLng, destination: LatLng, timeMode: Int, timeEpochSec: Long?, prefer: Set<Int>, max: Int = PLAN_MAX): String = buildString {
+        append(BASE).append("/api/v1/plan?fromPlace=").append(origin.lat).append(',').append(origin.lng)
+        append("&toPlace=").append(destination.lat).append(',').append(destination.lng)
+        append("&numItineraries=").append(max)
+        if (timeEpochSec != null && timeMode != 0) {
+            append("&time=").append(java.time.Instant.ofEpochSecond(timeEpochSec))
+            if (timeMode == 2 || timeMode == 3) append("&arriveBy=true")
+        }
+        val modes = prefer.mapNotNull { PLAN_MODES[it] }
+        if (modes.isNotEmpty()) append("&transitModes=").append(modes.joinToString(","))
+    }
+
     /**
      * Transit itineraries from Transitous' own planner (`/api/v1/plan`), 2026-09-28. The FALLBACK,
      * not the primary: Google's transit directions carry traffic-aware and history-aware times where
      * a GTFS planner knows only the timetable and current lateness, so this runs when Google is off
-     * ("Use Vela without Google") or answered nothing. [timeMode] is Google's: 0 depart at, 1 arrive
-     * by, 2 last available (treated as arrive by). [prefer] is the chooser's vehicle numbering
+     * ("Use Vela without Google") or answered nothing. [timeMode] is the chooser's: 0 leave now, 1 depart
+     * at, 2 arrive by, 3 last available (treated as arrive by). [prefer] is the chooser's vehicle numbering
      * (0 bus, 1 subway, 2 train, 3 tram); empty = every mode. Same [TransitItinerary] shape the
      * Google parser feeds, so the chooser, the map drawing and step-by-step guidance render it unchanged.
      */
@@ -413,17 +430,7 @@ object Transitous {
         http: OkHttpClient, origin: LatLng, destination: LatLng,
         timeMode: Int = 0, timeEpochSec: Long? = null, prefer: Set<Int> = emptySet(), max: Int = PLAN_MAX,
     ): List<TransitItinerary> {
-        val url = buildString {
-            append(BASE).append("/api/v1/plan?fromPlace=").append(origin.lat).append(',').append(origin.lng)
-            append("&toPlace=").append(destination.lat).append(',').append(destination.lng)
-            append("&numItineraries=").append(max)
-            if (timeEpochSec != null) {
-                append("&time=").append(java.time.Instant.ofEpochSecond(timeEpochSec))
-                if (timeMode == 1 || timeMode == 2) append("&arriveBy=true")
-            }
-            val modes = prefer.mapNotNull { PLAN_MODES[it] }
-            if (modes.isNotEmpty()) append("&transitModes=").append(modes.joinToString(","))
-        }
+        val url = planUrl(origin, destination, timeMode, timeEpochSec, prefer, max)
         val body = get(http, url) ?: return emptyList()
         return runCatching { parsePlan(body, origin, destination) }.getOrDefault(emptyList())
     }
