@@ -3697,7 +3697,9 @@ private fun MapSurface(
         },
         // Alternates are a faded version of the route blue with a darker outline (discussion
         // #639): the old gray read as one more road on a dense grid. "fill|edge".
-        altColor = if (mapDark) "#93B2E6|#0E2247" else "#A9C6F8|#4C7FD6",
+        // Second pass the same day: the first fill (#A9C6F8) still read as near white on the
+        // light map, so both are a clearer blue.
+        altColor = if (mapDark) "#7C9FE0|#0E2247" else "#7FA9F0|#3566C4",
         onSelectAlternate = vm::selectRoute,
         // Every route wears its time on the map, placed where it runs apart from the others;
         // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).

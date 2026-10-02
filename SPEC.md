@@ -1336,7 +1336,8 @@ until the car moved; checked on the 4a with a stationary mock fix beside the rou
 ### 4.8 Route line rendering
 
 - **Alternates** in the route chooser draw as a faded route blue with a darker outline:
-  `#A9C6F8` over `#4C7FD6` on the light map, `#93B2E6` over `#0E2247` on the dark one (fill on
+  `#7FA9F0` over `#3566C4` on the light map, `#7C9FE0` over `#0E2247` on the dark one, nearly as
+  wide as the selected route (4.5 / 7 / 10 / 15 px at z10 / 14 / 16 / 18.5 against 5 / 8 / 11 / 17) (fill on
   `ALT_ROUTE_LAYER`, outline on `ALT_ROUTE_EDGE_LAYER` through line-gap-width), below the selected
   route. A plain gray matched the weight of the roads on a dense grid.
 

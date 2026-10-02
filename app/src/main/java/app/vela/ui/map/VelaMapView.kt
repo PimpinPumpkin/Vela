@@ -79,11 +79,13 @@ private const val ROUTE_LAYER = "vela-route"
 // Google-eyeballed: browse ~unchanged, street-level noticeably wider.
 private val ROUTE_WIDTH = Expression.interpolate(
     Expression.exponential(1.5f), Expression.zoom(),
-    Expression.stop(10, 5f), Expression.stop(14, 7f), Expression.stop(16, 10f), Expression.stop(18.5f, 17f),
+    Expression.stop(10, 5f), Expression.stop(14, 8f), Expression.stop(16, 11f), Expression.stop(18.5f, 17f),
 )
+// Alternates draw nearly as wide as the selected route (2026-10-01, discussion #639): at the old
+// 4 to 8 px they were no wider than the streets under them at city zooms and read as roads.
 private val ALT_ROUTE_WIDTH = Expression.interpolate(
     Expression.exponential(1.5f), Expression.zoom(),
-    Expression.stop(10, 4f), Expression.stop(14, 5.5f), Expression.stop(16, 8f), Expression.stop(18.5f, 13f),
+    Expression.stop(10, 4.5f), Expression.stop(14, 7f), Expression.stop(16, 10f), Expression.stop(18.5f, 15f),
 )
 // A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
@@ -4872,7 +4874,7 @@ private fun ensureLayers(style: Style) {
         // same weight (discussion #639).
         val edge = LineLayer(ALT_ROUTE_EDGE_LAYER, ALT_ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#4C7FD6"),
-            PropertyFactory.lineWidth(1.6f),
+            PropertyFactory.lineWidth(2f),
             PropertyFactory.lineGapWidth(ALT_ROUTE_WIDTH),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),

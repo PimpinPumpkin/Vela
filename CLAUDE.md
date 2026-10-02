@@ -2808,7 +2808,7 @@ architecture note.
   address a few miles off lost to a namesake in another state.
   NOT device-checked (the 4a was in use by another project); `AddressQueryTest` pins the rule.
 - **Alternate routes are faded blue with an outline (discussion #639, 2026-10-01):** `altColor` is
-  "fill|edge" (`#A9C6F8|#4C7FD6` light, `#93B2E6|#0E2247` dark), the edge drawn by
+  "fill|edge" (`#7FA9F0|#3566C4` light, `#7C9FE0|#0E2247` dark; the first cut's paler fill still read as near white), nearly as wide as the selected route (`ALT_ROUTE_WIDTH` 4.5/7/10/15 at z10/14/16/18.5; the route itself 5/8/11/17), the edge drawn by
   `ALT_ROUTE_EDGE_LAYER` (line-gap-width over the same source). The gray fill read as one more road
   on a dense grid. Colors chosen from the palette values, NOT yet looked at on a device.
 - **The clock is a setting (discussion #637, 2026-10-01):** Settings > Appearance > Clock, pref
