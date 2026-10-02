@@ -1717,6 +1717,15 @@ Defaults that make the safe path the easy one:
   Don't reach for hide-bars/dim/decor tricks again - they leave strips. The reviews page uses an
   X (left, matching the gallery) and a top-edge pull-down (panel `onOverscroll`/`onOverscrollEnd`
   → `offset` the Surface → dismiss past 120dp).
+- **The update download is KEPT and CHECKED (2026-10-02, user report).** The install prompt is
+  Android's; when the screen locked or the app was left it went away, and the next tap on Update
+  deleted the file and fetched all ~117 MB again. `SelfUpdater.download` now keeps
+  `updates/vela-<code>.apk` until a different version replaces it and returns it at once when it
+  still checks out (logcat `VelaUpdate: download: already here and checked`). The check
+  (`update/ApkCheck`, on download and on reuse): zip magic, the release's byte size, and the
+  SHA-256 GitHub publishes per release asset (`assets[].digest`, "sha256:<hex>", read into
+  `UpdateInfo.sha256`; absent = size only). A wrong file is deleted and never reaches the
+  installer. Downloads go to `.part` and are renamed after the check. Verified on the 4a.
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →

@@ -41,6 +41,9 @@ class SelfUpdater @Inject constructor(
         val apkUrl: String,
         val sizeBytes: Long,
         val notes: String,
+        // The file's SHA-256 as GitHub publishes it for every release asset ("digest"), hex.
+        // Null when the release answer carries none; the size is checked either way.
+        val sha256: String? = null,
     )
 
     // The APK is ~80 MB — same no-call-timeout rule as every large download (the shared
@@ -80,7 +83,7 @@ class SelfUpdater @Inject constructor(
                 val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull() ?: return null
                 val code = 2000 + run
                 val apk = pickApk(o.getJSONArray("assets")) ?: return null
-                return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"))
+                return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"), ApkCheck.digestOf(apk.optString("digest")))
             }
             var requests = 0; var bytes = 0L
             val started = System.currentTimeMillis()
@@ -104,7 +107,7 @@ class SelfUpdater @Inject constructor(
                 val code = Regex("""versionCode:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull()?.let(::legacyCode) ?: return null
                 val name = Regex("""versionName:\s*(\S+)""").find(body)?.groupValues?.get(1) ?: "canary"
                 val apk = pickApk(o.getJSONArray("assets")) ?: return null
-                UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body)
+                UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body, ApkCheck.digestOf(apk.optString("digest")))
             }.getOrNull()
             // THE RELEASES LIST IS NEVER FETCHED (2026-09-22). The repository's data releases
             // (obf-regions, places-overlays, basemap-tiles, road-features) each list ~450 assets,
@@ -173,19 +176,39 @@ class SelfUpdater @Inject constructor(
         return all.first { it.getString("name") == name }
     }
 
-    /** Download [info]'s APK to filesDir/updates/. 0..100 progress. Null on failure or when
-     *  [active] flips false (user cancel - the partial file is deleted by the failure path). */
+    /**
+     * [info]'s APK in filesDir/updates/, downloading it only if a good copy is not already there.
+     * 0..100 progress. Null on failure or when [active] flips false (user cancel).
+     *
+     * A finished download is KEPT until a newer one replaces it: the install prompt is Android's
+     * and goes away when the screen locks or the app is left, and the file used to be deleted and
+     * fetched again (about 110 MB) on the next tap. Now that tap goes straight to the prompt.
+     * The file is checked before it is trusted, on download and on reuse: its size against the
+     * release's, and its SHA-256 against the one GitHub publishes for the asset. A wrong file is
+     * deleted; it never reaches the installer.
+     */
     suspend fun download(info: UpdateInfo, active: () -> Boolean = { true }, onProgress: (Int) -> Unit): File? = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "updates").apply { mkdirs() }
-        // One update on disk at a time — an old half-download or a superseded APK is junk.
-        dir.listFiles()?.forEach { it.delete() }
         val dest = File(dir, "vela-${info.versionCode}.apk")
+        val part = File(dir, "vela-${info.versionCode}.apk.part")
+        // One update on disk at a time: anything that is not this version's file is junk.
+        dir.listFiles()?.forEach { if (it != dest) it.delete() }
+        if (dest.exists()) {
+            val why = ApkCheck.problem(dest, info.sizeBytes, info.sha256)
+            if (why == null) {
+                android.util.Log.i("VelaUpdate", "download: already here and checked (${dest.length()} bytes), not fetched again")
+                onProgress(100)
+                return@withContext dest
+            }
+            android.util.Log.i("VelaUpdate", "download: the copy on disk is not usable ($why), fetching again")
+            dest.delete()
+        }
         runCatching {
             downloadHttp.newCall(Request.Builder().url(info.apkUrl).build()).execute().use { resp ->
                 if (!resp.isSuccessful) error("HTTP ${resp.code}")
                 val total = resp.body!!.contentLength().takeIf { it > 0 } ?: info.sizeBytes
                 resp.body!!.byteStream().use { input ->
-                    dest.outputStream().use { out ->
+                    part.outputStream().use { out ->
                         val buf = ByteArray(64 * 1024)
                         var read = 0L
                         var lastPct = -1
@@ -203,13 +226,14 @@ class SelfUpdater @Inject constructor(
                     }
                 }
             }
-            // An APK is a zip — cheap magic check so a truncated/error body never reaches
-            // the installer (it would fail there too, but with a scarier dialog).
-            check(dest.length() > 4 && dest.inputStream().use { s ->
-                val m = ByteArray(2); s.read(m); m[0] == 'P'.code.toByte() && m[1] == 'K'.code.toByte()
-            }) { "downloaded file is not an APK" }
+            ApkCheck.problem(part, info.sizeBytes, info.sha256)?.let { error(it) }
+            check(part.renameTo(dest)) { "could not keep the download" }
+            android.util.Log.i("VelaUpdate", "download: ${dest.length()} bytes, " + if (info.sha256 != null) "checksum matches" else "no checksum published, size matches")
             dest
-        }.getOrElse { dest.delete(); null }
+        }.getOrElse {
+            android.util.Log.i("VelaUpdate", "download failed: ${it.message}")
+            part.delete(); dest.delete(); null
+        }
     }
 
     /** Hand [apk] to the system package installer (user confirms; OS verifies signature). */
