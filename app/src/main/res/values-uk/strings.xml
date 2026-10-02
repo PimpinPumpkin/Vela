@@ -458,7 +458,6 @@
     <string name="place_last_available">Останній рейс</string>
     <!-- Android Auto -->
     <string name="car_search">Пошук</string>
-    <string name="car_no_destinations">Ще немає збережених або нещодавніх пунктів призначення</string>
     <string name="car_search_hint">Введіть, щоб знайти пункт призначення</string>
     <string name="car_go">Їхати</string>
     <string name="car_end">Завершити</string>

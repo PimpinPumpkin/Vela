@@ -456,7 +456,6 @@
     <string name="place_last_available">Sista tillgängliga</string>
     <!-- Android Auto -->
     <string name="car_search">Sök</string>
-    <string name="car_no_destinations">Inga sparade eller senaste destinationer än</string>
     <string name="car_search_hint">Skriv för att söka efter en destination</string>
     <string name="car_go">Kör</string>
     <string name="car_end">Avsluta</string>

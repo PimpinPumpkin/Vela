@@ -475,7 +475,6 @@
     <string name="place_last_available">末班車</string>
     <!-- Android Auto -->
     <string name="car_search">搜尋</string>
-    <string name="car_no_destinations">尚無已儲存或最近的目的地</string>
     <string name="car_search_hint">輸入文字即可搜尋目的地</string>
     <string name="car_go">出發</string>
     <string name="car_end">結束</string>

@@ -57,12 +57,20 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
         // location. The first row asks here; the map shows the world until the answer comes back.
         val needsLocation = !CarLocationAccess.check(carContext)
         if (needsLocation) list.addItem(locationRow())
-        val shown = rows.take(if (needsLocation) MAX_ROWS - 1 else MAX_ROWS)
+        var free = if (needsLocation) MAX_ROWS - 1 else MAX_ROWS
 
+        // Destinations first (at most MAX_DESTINATIONS; Saved has the rest), then nearby
+        // categories fill what is left, so the list is never empty on a new install. When not
+        // every category fits, the last row opens all of them.
+        val shown = rows.take(minOf(MAX_DESTINATIONS, free))
         shown.forEach { (name, loc) -> list.addItem(destRow(name, loc)) }
-        if (shown.isEmpty() && !needsLocation) {
-            list.setNoItemsMessage(carContext.getString(app.vela.R.string.car_no_destinations))
+        free -= shown.size
+        val categories = NearbyCarScreen.driving()
+        val fit = if (categories.size <= free) categories else categories.take((free - 1).coerceAtLeast(0))
+        fit.forEach { c ->
+            list.addItem(NearbyCarScreen.categoryRow(carContext, c) { screenManager.push(NearbyCarScreen(carContext, deps, c)) })
         }
+        if (fit.size < categories.size && free > 0) list.addItem(moreNearbyRow())
 
         val search = Action.Builder()
             .setTitle(carContext.getString(app.vela.R.string.car_search))
@@ -96,6 +104,14 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
     private fun mapAction(iconRes: Int, onClick: () -> Unit): Action =
         Action.Builder().setIcon(icon(iconRes)).setOnClickListener(onClick).build()
+
+    private fun moreNearbyRow(): Row =
+        Row.Builder()
+            .setTitle(carContext.getString(app.vela.R.string.car_more_nearby))
+            .setImage(icon(app.vela.R.drawable.ic_car_search))
+            .setBrowsable(true)
+            .setOnClickListener { screenManager.push(NearbyCarScreen(carContext, deps)) }
+            .build()
 
     private fun locationRow(): Row =
         Row.Builder()
@@ -133,5 +149,7 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
     private companion object {
         // PlaceListNavigationTemplate hard-caps its list at 6 rows (exceeding it throws at build).
         const val MAX_ROWS = 6
+        // Destinations on the landing list; the rest of the rows are nearby categories.
+        const val MAX_DESTINATIONS = 3
     }
 }

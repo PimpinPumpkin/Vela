@@ -3,7 +3,8 @@
 ## What you see
 
 Plug the phone into a car (or pair it wirelessly) and Vela can show up in the car's launcher as a
-navigation app. The car screen gets a landing list (Home, Work, recent and saved places), a
+navigation app. The car screen gets a landing list (Home, Work, recent and saved places, then nearby gas, food,
+coffee, parking and charging), a
 search box, a route preview with up to three routes and their times, and a drive screen: the map
 with your arrow and the route, a turn card with lane arrows, the arrival estimate, and a row of
 round buttons for mute, pause, search along the route and end. A second row of buttons on the map
@@ -242,11 +243,21 @@ heard none of them.
 ### The screens
 
 **Landing (`MainCarScreen`, `PlaceListNavigationTemplate`).** Home, Work, recents and saved places,
-de-duplicated by location. The template throws if handed more rows than its cap:
+de-duplicated by location, then nearby categories (gas, EV charging, restaurants, coffee,
+parking) in the rows left over, so a new install never shows an empty list. When the categories
+do not all fit, the last row opens every quick category (`NearbyCarScreen` with no category). The
+template throws if handed more rows than its cap:
 
 ```
-MAX_ROWS = 6
+MAX_ROWS         = 6
+MAX_DESTINATIONS = 3   // destinations on the landing list; Saved has the rest
 ```
+
+**Nearby (`NearbyCarScreen`).** Without a category it is a `ListTemplate` of the phone's quick
+categories, each with the map's own marker. With one it searches around the car and shows the
+six nearest results in a `PlaceListNavigationTemplate` over the live map, each row with a distance
+span (the template requires one on a non-browsable row) and the address; a row previews a route.
+It is the pre-drive twin of search along the route, where a pick becomes a stop.
 
 Its action strip is Search, Saved and Settings. **Saved (`SavedCarScreen`, `ListTemplate`)** lists
 Home, Work and every saved place (the landing list shows only six, mixed with recents), up to the
@@ -441,6 +452,8 @@ recorded as the installer, so you can check before and after an update.
   and logs of a real head unit and checked in Gearslip's preview, but not yet on a head unit again.
 - **The map is a slideshow with good easing.** Snapshot rendering caps the frame rate well below
   the phone's. A live car map needs a View-backed renderer the template surface does not offer.
+- **Nearby results are not drawn on the car map.** The renderer draws the route, the puck and
+  the corridor dots, not search results, so the list is the only place they show.
 - **Search along the route searches around the car**, sorted by distance, not along the route
   ahead, and a pick always becomes the next stop.
 - **Few route options on the car.** The preview is driving only and shows at most three routes;

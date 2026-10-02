@@ -504,7 +504,6 @@
     <string name="place_last_available">Laatste beschikbaar</string>
     <!-- Android Auto -->
     <string name="car_search">Zoeken</string>
-    <string name="car_no_destinations">Nog geen opgeslagen of recente bestemmingen</string>
     <string name="car_search_hint">Typ om een bestemming te zoeken</string>
     <string name="car_go">Ga</string>
     <string name="car_end">Beëindigen</string>

@@ -128,6 +128,10 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 
 ## On the radar
 
+- **Pins for the car's nearby results.** The car's nearby list (gas, food, parking and the rest)
+  shows its places only as rows; `CarMapRenderer` draws the route, the puck and the corridor dots
+  but no search results. Drawing the listed places as pins, the way the phone does, would let a
+  driver see which way each one is.
 - **Android Auto on factory head units (pinned #179).** Android Auto lists only navigation apps
   installed from Google Play; a sideload appears only with the "Unknown sources" switch or an
   installer spoof, and any in-app update undoes both. The decision (2026-09-13) is the Play split

@@ -503,7 +503,6 @@
     <string name="transit_nav_next">הבא</string>
     <string name="place_last_available">אחרון זמין</string>
     <string name="car_search">חיפוש</string>
-    <string name="car_no_destinations">אין עדיין יעדים שמורים או אחרונים</string>
     <string name="car_search_hint">הקלד כדי לחפש יעד</string>
     <string name="car_go">צא</string>
     <string name="car_end">סיום</string>

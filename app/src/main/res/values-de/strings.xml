@@ -456,7 +456,6 @@
     <string name="place_last_available">Letzte Verbindung</string>
     <!-- Android Auto -->
     <string name="car_search">Suchen</string>
-    <string name="car_no_destinations">Noch keine gespeicherten oder letzten Ziele</string>
     <string name="car_search_hint">Tippen, um ein Ziel zu suchen</string>
     <string name="car_go">Los</string>
     <string name="car_end">Beenden</string>

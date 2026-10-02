@@ -1921,6 +1921,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   preview).** Saved lists every saved place, Home and Work first. Settings has spoken directions,
   avoid tolls, avoid highways and avoid ferries, shared with the phone. The car's route preview
   now honors the avoid settings; it used to ignore them.
+- ✅ **Nearby places on the car's home screen (2026-10-01, checked in Gearslip's car preview).**
+  Gas, EV charging, restaurants, coffee and parking fill the home list below your top three
+  destinations, with "More nearby" for every other category. A category shows the six nearest
+  places with their distance over the live map, and a place opens the route preview.
 - ✅ **Car screen round three (2026-09-22, awaiting a head-unit check).** Pause/Resume from the car
   with a "Paused" card, search along the route (fuel, food, coffee, the phone's quick categories)
   with a pick becoming the next stop, camera/speeding/closing-soon alerts as car toasts, a

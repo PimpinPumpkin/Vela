@@ -580,7 +580,6 @@
     <string name="transit_nav_next">Következő</string>
     <string name="place_last_available">Utolsó elérhető</string>
     <string name="car_search">Keresés</string>
-    <string name="car_no_destinations">Még nincs mentett vagy legutóbbi célpont</string>
     <string name="car_search_hint">Gépelj a célpont kereséséhez</string>
     <string name="car_go">Indulás</string>
     <string name="car_end">Befejezés</string>

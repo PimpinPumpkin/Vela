@@ -475,7 +475,6 @@
     <string name="place_last_available">最終便</string>
     <!-- Android Auto -->
     <string name="car_search">検索</string>
-    <string name="car_no_destinations">保存済みや最近の目的地はまだありません</string>
     <string name="car_search_hint">入力して目的地を検索</string>
     <string name="car_go">出発</string>
     <string name="car_end">終了</string>
