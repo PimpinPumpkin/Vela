@@ -7,6 +7,7 @@ import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
+import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -41,6 +42,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 object ValhallaRouter {
     private const val BASE = "https://valhalla1.openstreetmap.de/route"
     private const val PRECISION = 6 // Valhalla shapes are polyline6
+    private val ROUTE_NUMBER = Regex("""^(I|US|SR|CR|CA|[A-Z]{1,3})[ -]?\d+""")
 
     /** Costing knobs. `use_roads` low is the whole point; `use_hills` middling so a flat detour
      *  is not taken to absurd lengths; a hybrid bike tolerates the odd gravel path. */
@@ -97,6 +99,61 @@ object ValhallaRouter {
         return emptyList()
     }
 
+    /**
+     * MAP MATCHING (2026-10-02): the road network's own steps for a line that was drawn by
+     * someone else (Google's route). `trace_route` snaps [shape] onto the graph and answers with
+     * the maneuvers of the roads it matched, so a street name here is the name of the road the
+     * line is on, not of the nearest label. Null on any failure, and null when the match does not
+     * FOLLOW the line: the service answers a line shifted 40 m off the roads with a confident,
+     * wrong route, so the result is kept only when it stays within [MATCH_OFF_M] of the input
+     * both ways and its length agrees within [MATCH_LENGTH_SLACK]. One request, no retry (the
+     * caller has a fallback), at most 200 km (the server's own limit; callers send stretches).
+     */
+    fun match(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000): Route? {
+        if (shape.size < 2) return null
+        val body = buildJsonObject {
+            putJsonArray("shape") { shape.forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) } }
+            put("costing", costing)
+            put("shape_match", "map_snap")
+            put("units", "kilometers")
+        }.toString()
+        val req = Request.Builder()
+            .url(BASE.removeSuffix("/route") + "/trace_route")
+            .header("User-Agent", VelaConfig.VELA_UA)
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        val matched = runCatching {
+            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) parse(resp.body?.string().orEmpty()).firstOrNull() else null }
+        }.getOrNull() ?: return null
+        return matched.takeIf { followsLine(it.polyline, shape) }
+    }
+
+    /** How far a matched route may sit from the line it was matched to, and how much their
+     *  lengths may differ. Two drawings of one road differ by a lane or two; another road does not. */
+    const val MATCH_OFF_M = 22.0
+    const val MATCH_LENGTH_SLACK = 0.06
+
+    /** True when [matched] and [line] are the same path: lengths agree and each stays beside
+     *  the other along its whole length (sampled every 30 m, both directions). */
+    fun followsLine(matched: List<LatLng>, line: List<LatLng>, offM: Double = MATCH_OFF_M): Boolean {
+        if (matched.size < 2 || line.size < 2) return false
+        fun cum(l: List<LatLng>) = DoubleArray(l.size).also { c -> for (i in 1 until l.size) c[i] = c[i - 1] + l[i - 1].distanceTo(l[i]) }
+        val cm = cum(matched); val cl = cum(line)
+        val lm = cm.last(); val ll = cl.last()
+        if (ll <= 0.0 || kotlin.math.abs(lm - ll) > ll * MATCH_LENGTH_SLACK + 30.0) return false
+        fun beside(a: List<LatLng>, ca: DoubleArray, b: List<LatLng>, cb: DoubleArray): Boolean {
+            val grid = RouteGeometry.SegmentGrid(b, cb)
+            var m = 0.0
+            while (m <= ca.last()) {
+                if (grid.along(app.vela.core.nav.RouteProjection.pointAt(a, ca, m), offM) == null) return false
+                m += 30.0
+            }
+            return true
+        }
+        return beside(matched, cm, line, cl) && beside(line, cl, matched, cm)
+    }
+
     /** The main trip first, then any alternates. Public for the parser test. */
     fun parse(text: String): List<Route> {
         val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return emptyList()
@@ -128,8 +185,29 @@ object ValhallaRouter {
             var prevRoad: String? = null
             mans.forEachIndexed { i, m ->
                 val vType = m["type"]?.jsonPrimitive?.intOrNull ?: 0
-                val names = m["street_names"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
-                val road = names.firstOrNull()?.takeIf { it.isNotBlank() }
+                // The street AT the turn. When the road changes its name along the step, Valhalla puts
+                // the name it starts with in `begin_street_names` and the one it carries on with in
+                // `street_names` ("Turn right onto Atlantic Avenue. Continue on Commercial Street"):
+                // the instruction has to name the first, or it names a street the driver is not
+                // turning onto (found by the naming study, 2026-10-02).
+                val names = (m["begin_street_names"] ?: m["street_names"])?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
+                // A route number among the names ("US 50" beside "Capital City Freeway") is the
+                // shield; the first real name is the road. A road with only a number keeps it.
+                // (Not a heritage designation: "US 40 Historic" on a downtown street is on no sign.)
+                val ref = names.firstOrNull { ROUTE_NUMBER.containsMatchIn(it) && !it.contains("historic", ignoreCase = true) }
+                val road = (names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) } ?: names.firstOrNull())?.takeIf { it.isNotBlank() }
+                // The sign at a ramp or exit: its number, and where it says it goes (the route
+                // numbers first, then the towns, the open router's "I 5 North: Redding" form).
+                val sign = m["sign"]?.jsonObject
+                fun texts(key: String) = sign?.get(key)?.jsonArray?.mapNotNull { it.jsonObject["text"]?.jsonPrimitive?.contentOrNull }.orEmpty()
+                val exitNo = texts("exit_number_elements").firstOrNull()
+                val branch = texts("exit_branch_elements"); val toward = texts("exit_toward_elements")
+                val dest = when {
+                    branch.isNotEmpty() && toward.isNotEmpty() -> branch.joinToString(", ") + ": " + toward.joinToString(", ")
+                    branch.isNotEmpty() -> branch.joinToString(", ")
+                    toward.isNotEmpty() -> toward.joinToString(", ")
+                    else -> null
+                }
                 val sameRoad = road != null && road == prevRoad
                 val (type, mod) = osrmGrammar(vType, road, sameRoad)
                 val rbExit = m["roundabout_exit_count"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 && type == "roundabout" }
@@ -139,8 +217,9 @@ object ValhallaRouter {
                 val side = if (type == "arrive") mod else null
                 raw += Maneuver(
                     type = RouteGeometry.osrmType(type, mod),
-                    instruction = RouteGeometry.osrmPhrase(type, mod, road, null, null, rbExit),
-                    instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, null, null, rbExit),
+                    instruction = RouteGeometry.osrmPhrase(type, mod, road, dest, exitNo, rbExit),
+                    instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, dest, exitNo, rbExit),
+                    ref = ref,
                     roundaboutExit = rbExit,
                     side = side,
                     location = at,

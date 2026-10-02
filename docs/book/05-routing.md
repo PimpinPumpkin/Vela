@@ -298,6 +298,20 @@ Nothing is routed through sampled points, so the result cannot loop or double ba
 the older approach did on a frontage road beside a freeway. Naming costs only the tiles under the
 stretches: 89 ms for three stretches on a Davis to Sacramento test, where 7.8 of 25.3 km differed.
 
+**Where the steps on those stretches come from.** In order, per stretch:
+
+1. A map match. The stretch is sent to the open Valhalla server, which snaps the line onto the
+   road network and answers with the steps of the roads it matched: street names, exit numbers,
+   what the sign says. A name from here is the name of the road the line is on. The service will
+   happily "match" a line that is not on any road, so the answer is kept only if it stays within
+   22 m of Google's line along its whole length and the two lengths agree within 6%. Lane arrows
+   are not part of its answer, so Vela then asks the open router to drive that exact matched path
+   and takes its steps, lanes included, only when its path is the same path to within 8 m.
+2. The map tiles, when the match fails. Each turn takes the name of the street the line runs
+   along, and only where the map is sure (below). Measured on 90 routes in six cities, this put a
+   wrong name on 1.4% of named turns and left about a quarter bare, which is why it is second.
+3. The line's bends alone: "Turn right", no name.
+
 A wrong street name is worse than none: "Turn right" sends nobody the wrong way, "Turn right
 onto Smith Street" at John Street does. So on those stretches a turn is given a name only when
 the map is sure. A point with two differently named streets beside it, both running its way,

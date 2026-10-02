@@ -826,6 +826,12 @@ padded `PAD_M` (90 m) and merged. Each stretch's slice is named by
 that project within 40 m of Google's line and outside every stretch, and the named maneuvers
 inside; two within 30 m are one junction and the open router's is kept; step lengths are
 re-measured along Google's line and durations are Google's typical time by share of distance.
+Steps for a stretch come from, in order: (1) `ValhallaRouter.match`, the FOSSGIS Valhalla
+`trace_route` over the slice, accepted when `followsLine` holds (`MATCH_OFF_M` 22 m both ways,
+`MATCH_LENGTH_SLACK` 6%), then, off urgent fetches, replaced by the open router's steps for the
+matched path (`laneDetail`: vias mid-step, at most `LANE_VIAS_MAX` 20, headings pinned, path equal
+within `LANE_SAME_PATH_M` 8 m) so lane data is present; (2) `LineNamer` strict over the tiles;
+(3) `LineNamer` with no lines (bare turns). Stretches over `MATCH_MAX_M` (180 km) skip (1).
 An open-router maneuver is carried over only when the open route's path
 after it stays within 20 m of Google's line, sampled every 40 m for up to 400 m of its leg. Naming
 is strict (`LineNamer.name(strict = true)`): never refused for a low named share; a sample with
@@ -835,7 +841,7 @@ carries a street name only when the line stays on it 60 m, a ramp or rename 100 
 The hybrid leads without the snap's ETA margin and with Google's times as they are; it is never
 the free-flow calibration basis. Offered beside it: no open-router route when
 `RouteGeometry.divergent` holds, otherwise all but the open router's top route. No stretches:
-the open route. Tiles not read within `HYBRID_WAIT_MS` (4 s; 1.5 s on an urgent fetch): bare turns
+the open route. Not done within `HYBRID_WAIT_MS` (5.5 s; 1.5 s on an urgent fetch): bare turns
 on those stretches.
 
 ### 4.3 Avoids and per-mode options

@@ -112,4 +112,50 @@ class NamingStudyTest {
         for ((k, v) in wrongExamples) v.forEach { println("STUDY wrong @ $k: $it") }
         LineNamer.STRICT_RUN_M = 60.0; LineNamer.STRICT_FAR_RUN_M = 100.0; LineNamer.STRICT_MAX_OFF_M = 30.0
     }
+
+    /** The same comparison for the MAP MATCH: each open-router line is matched by
+     *  ValhallaRouter.match and its steps compared with the router's own names. */
+    @Test fun mapMatchAgainstTheRoutersNames() = runBlocking {
+        val per = System.getProperty("velaStudy")?.toIntOrNull()
+        Assume.assumeTrue("set -DvelaStudy=<routes per area>", per != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        val t = IntArray(4); var routes = 0; var refused = 0
+        val wrong = ArrayList<String>()
+        val rnd = Random(20261002)
+        for (a in areas) {
+            var got = 0; var tries = 0
+            while (got < per!! && tries < per * 3) {
+                tries++
+                fun pt() = LatLng(a.s + rnd.nextDouble() * (a.n - a.s), a.w + rnd.nextDouble() * (a.e - a.w))
+                val o = pt(); val d = pt()
+                if (o.distanceTo(d) < 800.0) continue
+                Thread.sleep(1100)
+                val r = RouteGeometry.route(http, o, d, TravelMode.DRIVE).firstOrNull() ?: continue
+                Thread.sleep(600)
+                val m = app.vela.core.data.ValhallaRouter.match(http, r.polyline, timeoutMs = 20_000)
+                got++; routes++
+                if (m == null) { refused++; continue }
+                val ours = m.maneuvers.filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+                for (tm in r.maneuvers.filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }) {
+                    val name = tm.road?.takeIf { it.isNotBlank() } ?: continue
+                    val near = ours.minByOrNull { it.location.distanceTo(tm.location) }?.takeIf { it.location.distanceTo(tm.location) <= 40.0 }
+                    val slot = when {
+                        near == null -> 3
+                        near.road == null -> 2
+                        same(near.road!!, name) || (near.ref != null && same(near.ref!!, name)) -> 0
+                        // The same road under its number: the router calls it "Hollywood Freeway"
+                        // (ref US 101), the matcher "US 101 South". Not a wrong name.
+                        tm.ref != null && (same(near.road!!, tm.ref!!) || (near.ref != null && same(near.ref!!, tm.ref!!))) -> 0
+                        else -> 1
+                    }
+                    t[slot]++
+                    if (slot == 1 && wrong.size < 25) wrong += "${a.name}: said '${near!!.road}' (ref ${near.ref}), truth '$name' (${tm.type})"
+                }
+            }
+            println("MATCH area ${a.name}: $got routes")
+        }
+        val named = t[0] + t[1]
+        println("MATCH routes=$routes refused=$refused | right ${t[0]} | WRONG ${t[1]} | bare ${t[2]} | missed ${t[3]} | wrong% of named ${"%.1f".format(if (named > 0) 100.0 * t[1] / named else 0.0)}")
+        wrong.forEach { println("MATCH wrong: $it") }
+    }
 }

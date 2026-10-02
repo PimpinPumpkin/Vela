@@ -2850,6 +2850,26 @@ architecture note.
   map match can (the public Valhalla `trace_route` matched Google's 1,174-point Davis to Sacramento
   line in 0.7 s with full names, exit numbers and sign text; 200 km limit; it also "matches" a
   line shifted off the roads, so its result must be checked against the input line).
+  **THE STRETCHES ARE MAP-MATCHED FIRST (same day, `ValhallaRouter.match`).** Each stretch's
+  slice goes to the FOSSGIS Valhalla `trace_route` (`shape_match: map_snap`, costing auto, 2.5 s;
+  1.2 s urgent; stretches over `MATCH_MAX_M` 180 km skip it, the server refuses 200 km) and the
+  matched ROADS' own steps come back: street names, exit numbers and sign text (`sign` ->
+  `osrmPhrase` dest / exit), the street AT the turn (`begin_street_names` before `street_names`,
+  or a road that renames mid-step is called by its later name), a route number among the names as
+  the shield (heritage ones dropped). The service will "match" anything, so `followsLine` keeps a
+  match only when it stays within 22 m of the slice both ways and its length agrees within 6%.
+  Order per stretch: match, then the tiles (strict), then bare; logged as `stretches matched N
+  (K with lane detail), from tiles N, bare N`. LANE DETAIL: the matcher has no lane arrows, so for
+  a matched stretch (not on urgent fetches) `laneDetail` leads the open router along the MATCHED
+  path with a via mid-step (never at a turn; at most 20; each with the path's heading) and uses
+  its steps only if its path is the matched path within 8 m. Davis to Sacramento on the 4a: both
+  stretches matched, one with lane detail, 0.7 to 1.2 s in all. STUDY
+  (`NamingStudyTest.mapMatchAgainstTheRoutersNames`, six areas): against the open router's own
+  names the matcher gave 381 turns the same name, 8 a different one (2.1%), 8 bare, 21 turns not
+  found. Tiles, strict: 345 / 5 / 108 / 50. One of the 8 was read by hand and was step
+  segmentation, not a wrong name (the matcher announces a 47 m street the open router folds into
+  one "end of road" step); the other seven were NOT inspected. The wait is 5.5 s (1.5 s urgent);
+  past it the stretches go bare.
   The hybrid leads WITHOUT the snap's ETA margin (it is Google's own route), takes Google's times
   uncalibrated (`applyTraffic(.., 1.0)`), is never the calibration basis, and the open router's
   routes offered beside it are none when Google went a different way and all but its top route
