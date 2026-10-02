@@ -45,4 +45,45 @@ class ValhallaMatchTest {
         val detour = line.take(5) + listOf(LatLng(38.5460, -121.7350)) + line.drop(5)
         assertFalse(ValhallaRouter.followsLine(detour, line))
     }
+
+    // The name check: what the matched path is called after a turn, from its own edges.
+    private val at = LatLng(38.5449, -121.7405)
+    private fun e(name: String?, m: Double, soft: Boolean = false) = ValhallaRouter.Edge(listOfNotNull(name), m, at, soft)
+
+    @Test fun aNameThatHoldsAfterTheTurnIsKept() {
+        assertEquals("B Street", ValhallaRouter.checkedRoad("B Street", 400.0, listOf(e("B Street", 30.0), e("B Street", 200.0))))
+    }
+
+    @Test fun aShortStreetBeforeTheNextTurnIsKept() {
+        // 29 m on one street, then a right: the step is short, and so is the hold it needs.
+        assertEquals("B Street", ValhallaRouter.checkedRoad("B Street", 47.0, listOf(e("B Street", 29.0), e("3rd Street", 200.0))))
+    }
+
+    @Test fun aNamedTurnLaneBeforeTheStreetIsALeadIn() {
+        assertEquals("B Street", ValhallaRouter.checkedRoad("B Street", 90.0, listOf(e("A Street", 29.0, soft = true), e(null, 8.0), e("B Street", 62.0))))
+    }
+
+    @Test fun theStreetAtTheTurnWinsOverTheOneItBecomes() {
+        // The step text names the bridge 120 m on; the turn is onto the street that leads to it.
+        val after = listOf(e("Mill Street", 27.0, soft = true), e("Mill Street", 96.0, soft = true), e("Old Bridge", 184.0))
+        assertEquals("Mill Street", ValhallaRouter.checkedRoad("Old Bridge", 1241.0, after))
+    }
+
+    @Test fun aStubOfTheOldRoadDoesNotNameTheTurn() {
+        // "Stay on River Road" when 6 m later the car is on the bridge.
+        assertEquals("Old Bridge", ValhallaRouter.checkedRoad("River Road", 670.0, listOf(e("River Road", 6.0), e("Old Bridge", 262.0))))
+    }
+
+    @Test fun nothingSolidMeansNoName() {
+        assertEquals(null, ValhallaRouter.checkedRoad("C Street", 500.0, listOf(e("A Street", 25.0), e("B Street", 30.0), e("D Street", 300.0))))
+    }
+
+    @Test fun noEdgesMeansNoStreetNamesOnTurns() {
+        val checked = ValhallaRouter.parse(reply, ValhallaRouter.NameCheck(null)).first()
+        val plain = ValhallaRouter.parse(reply).first()
+        assertTrue("exits keep their sign text", checked.maneuvers.any { it.instruction.contains("4A") })
+        val turns = setOf(app.vela.core.model.ManeuverType.TURN_LEFT, app.vela.core.model.ManeuverType.TURN_RIGHT)
+        assertTrue("the capture has named turns", plain.maneuvers.any { it.type in turns && it.road != null })
+        assertTrue("none of them is named unchecked", checked.maneuvers.none { it.type in turns && it.road != null })
+    }
 }

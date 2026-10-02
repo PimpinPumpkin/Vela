@@ -786,8 +786,8 @@ Google's path with full OSRM steps. Constraints:
 
 - Keep the via count modest. A via that lands on a turn is encoded as a via arrive/depart
   rather than a turn: at 60 vias about 1 in 10 named turns is lost.
-- Map-matching would be cleaner and is not available: the public FOSSGIS `/match` caps at 10
-  coordinates and public Valhalla `/trace_route` times out.
+- The public FOSSGIS OSRM `/match` caps at 10 coordinates, so this snap cannot use it. The
+  hybrid route below map-matches with FOSSGIS Valhalla `trace_route` instead.
 - The snap leads only when it earns it. Its live ETA must be within `SNAP_ETA_MARGIN` (1.2) of
   the calibrated OSRM free-flow best, or the clean OSRM route leads. When an avoid is on, the
   Google route is the avoiding one and this gate is skipped.
@@ -830,7 +830,13 @@ Steps for a stretch come from, in order: (1) `ValhallaRouter.match`, the FOSSGIS
 `trace_route` over the slice, accepted when `followsLine` holds (`MATCH_OFF_M` 22 m both ways,
 `MATCH_LENGTH_SLACK` 6%), then, off urgent fetches, replaced by the open router's steps for the
 matched path (`laneDetail`: vias mid-step, at most `LANE_VIAS_MAX` 20, headings pinned, path equal
-within `LANE_SAME_PATH_M` 8 m) so lane data is present; (2) `LineNamer` strict over the tiles;
+within `LANE_SAME_PATH_M` 8 m) so lane data is present. A matched TURN's street name is checked
+against the matched path's edges (`trace_attributes`, fetched in parallel; `checkedRoad`): the
+name must begin after only unnamed pieces, junction pieces (named ones `NAMED_LEAD_MAX_M` 40 m
+at most) or stubs under `STUB_M` 15 m, within `LEAD_MAX_M` 150 m, and hold `HOLD_M` 20 m or half
+the step; otherwise the first street held `RENAME_HOLD_M` 40 m with only stubs before it is
+used, otherwise none. Without edges a turn carries no street name. Ramps, merges and
+roundabouts are not checked (their name is where they lead); (2) `LineNamer` strict over the tiles;
 (3) `LineNamer` with no lines (bare turns). Stretches over `MATCH_MAX_M` (180 km) skip (1).
 An open-router maneuver is carried over only when the open route's path
 after it stays within 20 m of Google's line, sampled every 40 m for up to 400 m of its leg. Naming

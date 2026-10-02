@@ -2863,12 +2863,27 @@ architecture note.
   a matched stretch (not on urgent fetches) `laneDetail` leads the open router along the MATCHED
   path with a via mid-step (never at a turn; at most 20; each with the path's heading) and uses
   its steps only if its path is the matched path within 8 m. Davis to Sacramento on the 4a: both
-  stretches matched, one with lane detail, 0.7 to 1.2 s in all. STUDY
-  (`NamingStudyTest.mapMatchAgainstTheRoutersNames`, six areas): against the open router's own
-  names the matcher gave 381 turns the same name, 8 a different one (2.1%), 8 bare, 21 turns not
-  found. Tiles, strict: 345 / 5 / 108 / 50. One of the 8 was read by hand and was step
-  segmentation, not a wrong name (the matcher announces a 47 m street the open router folds into
-  one "end of road" step); the other seven were NOT inspected. The wait is 5.5 s (1.5 s urgent);
+  stretches matched, one with lane detail, 0.7 to 1.2 s in all.
+  **TURN NAMES ARE CHECKED AGAINST THE MATCHED EDGES (`ValhallaRouter.checkedRoad`, same day).**
+  The service's step text skips junction pieces when it picks a name: a left onto a street that
+  becomes a bridge 120 m on came back "Turn left onto <the bridge>" (Portland), and a right onto
+  a bridge came back "stay on <the embankment>" because the first 6 m still carry that name
+  (Prague). So `match` also asks `trace_attributes` for the matched path's edges (names, length,
+  internal / turn-channel flags; in parallel, same timeout) and each TURN's name (types in
+  `TURN_TYPES`; not ramps, merges, roundabouts) must be the street the path is on after the turn:
+  it starts after only unnamed pieces, junction pieces (at most 40 m of them named) or stubs
+  under 15 m, and holds 20 m or half the step. If not, the first street the path stays on for
+  40 m is said instead; if there is none, no name. No edges (request failed) = no street names
+  on turns; exits and signs are kept. The turn is found by the NEAREST edge start going forward
+  (the first edge within reach is the tail of the street being left).
+  STUDY (`NamingStudyTest.mapMatchAgainstTheRoutersNames`, 90 routes, six areas, against the open
+  router's names, a name counted as given when any matcher step within 60 m carries it): before
+  the check 465 same, 12 different, 8 bare, 23 turns not found; all 12 were read against the
+  edges: 2 real misnames (the two above), 6 where the matcher is more literal than the open
+  router (it announces a 10 to 47 m street the other folds away), 2 ramps named for where they
+  lead, 2 open-router oddities (a 4 m step; a turn lane's name). After the check: 477 / 6 / 2 /
+  23, both misnames gone, the 6 left are of those other kinds. Tiles, strict: 345 / 5 / 108 / 50.
+  The wait is 5.5 s (1.5 s urgent);
   past it the stretches go bare.
   The hybrid leads WITHOUT the snap's ETA margin (it is Google's own route), takes Google's times
   uncalibrated (`applyTraffic(.., 1.0)`), is never the calibration basis, and the open router's

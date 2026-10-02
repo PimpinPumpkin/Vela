@@ -123,11 +123,141 @@ object ValhallaRouter {
             .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
         val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
-        val matched = runCatching {
-            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) parse(resp.body?.string().orEmpty()).firstOrNull() else null }
+        // The matched path's own edges, asked for alongside: every turn's street name is checked
+        // against them (see [checkedRoad]). No edges = no street names on turns.
+        val edgesAsync = java.util.concurrent.CompletableFuture.supplyAsync { matchedEdges(client, shape, costing) }
+        val text = runCatching {
+            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
         }.getOrNull() ?: return null
+        val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
+        val matched = parse(text, NameCheck(edges)).firstOrNull() ?: return null
         return matched.takeIf { followsLine(it.polyline, shape) }
     }
+
+    /** One edge of the matched path: the names the road carries there, in travel order. */
+    data class Edge(val names: List<String>, val lengthM: Double, val begin: LatLng, val soft: Boolean)
+
+    /** The edges `trace_attributes` matched [shape] to, or null. [Edge.soft] marks the pieces
+     *  inside a junction (internal edges, turn channels), which carry whichever street's name
+     *  the mapper gave them. */
+    private fun matchedEdges(client: OkHttpClient, shape: List<LatLng>, costing: String): List<Edge>? {
+        val body = buildJsonObject {
+            putJsonArray("shape") { shape.forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) } }
+            put("costing", costing)
+            put("shape_match", "map_snap")
+            putJsonObject("filters") {
+                putJsonArray("attributes") {
+                    listOf("edge.names", "edge.length", "edge.begin_shape_index", "edge.internal_intersection", "edge.use", "shape").forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) }
+                }
+                put("action", "include")
+            }
+        }.toString()
+        val req = Request.Builder()
+            .url(BASE.removeSuffix("/route") + "/trace_attributes")
+            .header("User-Agent", VelaConfig.VELA_UA)
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        val text = runCatching {
+            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
+        }.getOrNull() ?: return null
+        return parseEdges(text)
+    }
+
+    /** Public for the parser test. */
+    fun parseEdges(text: String): List<Edge>? {
+        val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return null
+        val pts = root["shape"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it, PRECISION) } ?: return null
+        val out = root["edges"]?.jsonArray?.mapNotNull { el ->
+            val e = el.jsonObject
+            val at = pts.getOrNull(e["begin_shape_index"]?.jsonPrimitive?.intOrNull ?: return@mapNotNull null) ?: return@mapNotNull null
+            Edge(
+                names = e["names"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
+                lengthM = (e["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0) * 1000.0,
+                begin = at,
+                soft = e["internal_intersection"]?.jsonPrimitive?.contentOrNull == "true" || e["use"]?.jsonPrimitive?.contentOrNull == "turn_channel",
+            )
+        }
+        return out?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Checks a turn's street name against the road the matched path is on after the turn
+     * (2026-10-02). The service's own step text skips junction pieces when it picks a name, so a
+     * left onto a street that becomes a bridge 120 m on was "Turn left onto <the bridge>", and a
+     * right onto a bridge off an embankment was "stay on <the embankment>" because the first 6 m
+     * still carry that name. The edges say what the road is called where the car is.
+     * No edges at all (the second request failed): turns go out without a street name.
+     */
+    internal class NameCheck(private val edges: List<Edge>?) {
+        private var cursor = 0
+
+        /** The name to say for a turn at [at] that the service calls [stated], or null for none. */
+        fun road(stated: String, at: LatLng, stepLenM: Double): String? {
+            val es = edges ?: return null
+            // The edge that BEGINS at the turn: the nearest one going forward, not the first one
+            // near it (the last piece of the street being left starts a few meters before).
+            var best = -1; var bestD = EDGE_AT_M
+            var i = cursor
+            while (i < es.size) {
+                val d = es[i].begin.distanceTo(at)
+                if (d < bestD) { best = i; bestD = d } else if (best >= 0 && d > bestD + EDGE_PAST_M) break
+                i++
+            }
+            if (best < 0) return null
+            cursor = best
+            return checkedRoad(stated, stepLenM, es.subList(best, es.size))
+        }
+    }
+
+    private class Run(val names: List<String>, val startM: Double, var lenM: Double, var soft: Boolean) {
+        val named get() = names.isNotEmpty()
+        fun has(n: String) = names.any { it.equals(n, ignoreCase = true) }
+        val primary get() = names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) } ?: names.firstOrNull()
+    }
+
+    /**
+     * [stated] if the path really is on that street after the turn: it starts within a short
+     * lead-in (unnamed pieces, junction pieces, stubs under [STUB_M]) and holds [HOLD_M], or half
+     * the step when the step is shorter. Otherwise the first street the path stays on for
+     * [RENAME_HOLD_M] with nothing but stubs before it; otherwise null (say no name).
+     */
+    internal fun checkedRoad(stated: String, stepLenM: Double, after: List<Edge>): String? {
+        val runs = ArrayList<Run>()
+        var acc = 0.0
+        for (e in after) {
+            val last = runs.lastOrNull()
+            val same = last != null && (if (last.named) last.primary?.let { p -> e.names.any { it.equals(p, ignoreCase = true) } } == true else e.names.isEmpty())
+            if (same) { last!!.lenM += e.lengthM; last.soft = last.soft && e.soft } else runs += Run(e.names, acc, e.lengthM, e.soft)
+            acc += e.lengthM
+            if (acc > LOOK_M) break
+        }
+        val at = runs.indexOfFirst { it.has(stated) }
+        if (at >= 0) {
+            val lead = runs.subList(0, at)
+            val namedLead = lead.filter { it.named }
+            val leadOk = runs[at].startM <= LEAD_MAX_M &&
+                namedLead.all { it.soft || it.lenM <= STUB_M } && namedLead.sumOf { it.lenM } <= NAMED_LEAD_MAX_M
+            if (leadOk && runs[at].lenM >= minOf(HOLD_M, stepLenM * 0.5)) return stated
+        }
+        for (r in runs) {
+            if (!r.named) continue
+            if (r.lenM >= RENAME_HOLD_M && !r.has(stated)) return r.primary
+            if (r.lenM > STUB_M) return null
+        }
+        return null
+    }
+
+    const val EDGE_AT_M = 12.0
+    const val EDGE_PAST_M = 40.0
+    const val LOOK_M = 300.0
+    const val HOLD_M = 20.0
+    const val RENAME_HOLD_M = 40.0
+    const val STUB_M = 15.0
+    const val LEAD_MAX_M = 150.0
+    const val NAMED_LEAD_MAX_M = 40.0
+    /** Valhalla maneuver types whose name is a street the car turns onto (not a ramp's
+     *  destination, a merge, a roundabout or the start). */
+    private val TURN_TYPES = setOf(7, 8, 9, 10, 11, 14, 15, 16, 22)
 
     /** How far a matched route may sit from the line it was matched to, and how much their
      *  lengths may differ. Two drawings of one road differ by a lane or two; another road does not. */
@@ -155,14 +285,17 @@ object ValhallaRouter {
     }
 
     /** The main trip first, then any alternates. Public for the parser test. */
-    fun parse(text: String): List<Route> {
+    fun parse(text: String): List<Route> = parse(text, null)
+
+    /** [check] set = a map match: turn names are checked against the matched edges. */
+    internal fun parse(text: String, check: NameCheck?): List<Route> {
         val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return emptyList()
-        val main = root["trip"]?.jsonObject?.let { parseTrip(it) } ?: return emptyList()
+        val main = root["trip"]?.jsonObject?.let { parseTrip(it, check) } ?: return emptyList()
         val alts = root["alternates"]?.jsonArray?.mapNotNull { it.jsonObject["trip"]?.jsonObject?.let { t -> parseTrip(t) } }.orEmpty()
         return listOf(main) + alts
     }
 
-    private fun parseTrip(trip: JsonObject): Route? {
+    private fun parseTrip(trip: JsonObject, check: NameCheck? = null): Route? {
         val legs = trip["legs"]?.jsonArray?.map { it.jsonObject } ?: return null
         if (legs.isEmpty()) return null
         val polyline = ArrayList<LatLng>()
@@ -194,8 +327,12 @@ object ValhallaRouter {
                 // A route number among the names ("US 50" beside "Capital City Freeway") is the
                 // shield; the first real name is the road. A road with only a number keeps it.
                 // (Not a heritage designation: "US 40 Historic" on a downtown street is on no sign.)
-                val ref = names.firstOrNull { ROUTE_NUMBER.containsMatchIn(it) && !it.contains("historic", ignoreCase = true) }
-                val road = (names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) } ?: names.firstOrNull())?.takeIf { it.isNotBlank() }
+                val statedRef = names.firstOrNull { ROUTE_NUMBER.containsMatchIn(it) && !it.contains("historic", ignoreCase = true) }
+                val stated = (names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) } ?: names.firstOrNull())?.takeIf { it.isNotBlank() }
+                val beginAt = shape.getOrNull(m["begin_shape_index"]?.jsonPrimitive?.intOrNull ?: 0) ?: shape.first()
+                val road = if (check != null && stated != null && vType in TURN_TYPES)
+                    check.road(stated, beginAt, (m["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0) * 1000.0) else stated
+                val ref = statedRef?.takeIf { road == stated }
                 // The sign at a ramp or exit: its number, and where it says it goes (the route
                 // numbers first, then the towns, the open router's "I 5 North: Redding" form).
                 val sign = m["sign"]?.jsonObject

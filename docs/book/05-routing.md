@@ -233,9 +233,8 @@ sampleVias: count = 12         // interior points of Google's line fed to OSRM a
 ```
 
 Twelve, not more: a via that lands on a turn is swallowed into a via arrive/depart, and at 60 vias
-about one named turn in ten went missing. Map-matching would be cleaner and is not available on
-public servers (FOSSGIS `/match` caps at 10 coordinates; public Valhalla `/trace_route` times
-out).
+about one named turn in ten went missing. The open router's own map matching caps at 10 coordinates, so it cannot
+be used here; the hybrid route further down matches with the open Valhalla server instead.
 
 A snapped route has to pass every guard or it is thrown away:
 
@@ -307,6 +306,14 @@ stretches: 89 ms for three stretches on a Davis to Sacramento test, where 7.8 of
    22 m of Google's line along its whole length and the two lengths agree within 6%. Lane arrows
    are not part of its answer, so Vela then asks the open router to drive that exact matched path
    and takes its steps, lanes included, only when its path is the same path to within 8 m.
+   The server's step text is not trusted for a turn's street name. It skips the short pieces
+   inside a junction when it picks one, so a left onto a street that turns into a bridge 120 m
+   later came back as "turn left onto the bridge". Vela asks the same server for the matched
+   road pieces themselves and says a street name only if the path is on that street right after
+   the turn (within a turn lane's length) and stays on it 20 m, or half the step if the step is
+   shorter. When the path is plainly on another street for 40 m, that one is said. Otherwise the
+   turn has no name. On the 90 test routes this removed both real misnames found among 477 named
+   turns.
 2. The map tiles, when the match fails. Each turn takes the name of the street the line runs
    along, and only where the map is sure (below). Measured on 90 routes in six cities, this put a
    wrong name on 1.4% of named turns and left about a quarter bare, which is why it is second.

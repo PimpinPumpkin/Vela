@@ -139,8 +139,13 @@ class NamingStudyTest {
                 for (tm in r.maneuvers.filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }) {
                     val name = tm.road?.takeIf { it.isNotBlank() } ?: continue
                     val near = ours.minByOrNull { it.location.distanceTo(tm.location) }?.takeIf { it.location.distanceTo(tm.location) <= 40.0 }
+                    // The two routers cut a junction into steps differently (one says "left onto
+                    // B" where the other says "left onto A" for 30 m, then "right onto B"): the
+                    // name counts as given when any matcher step within 60 m carries it.
+                    val around = ours.filter { it.location.distanceTo(tm.location) <= 60.0 }
                     val slot = when {
                         near == null -> 3
+                        around.any { it.road != null && same(it.road!!, name) } -> 0
                         near.road == null -> 2
                         same(near.road!!, name) || (near.ref != null && same(near.ref!!, name)) -> 0
                         // The same road under its number: the router calls it "Hollywood Freeway"
@@ -150,6 +155,11 @@ class NamingStudyTest {
                     }
                     t[slot]++
                     if (slot == 1 && wrong.size < 25) wrong += "${a.name}: said '${near!!.road}' (ref ${near.ref}), truth '$name' (${tm.type})"
+                    if (slot == 1 && wrong.size <= 25) {
+                        fun ctx(ms: List<app.vela.core.model.Maneuver>) = ms.filter { it.location.distanceTo(tm.location) <= 250.0 }
+                            .joinToString(" | ") { "${it.type} '${it.road}' ref=${it.ref} ${it.location.distanceTo(tm.location).toInt()}m len=${it.distanceMeters.toInt()}" }
+                        wrong += "   at ${"%.5f,%.5f".format(tm.location.lat, tm.location.lng)} trip ${"%.5f,%.5f".format(o.lat, o.lng)} -> ${"%.5f,%.5f".format(d.lat, d.lng)}\n   router:  ${ctx(r.maneuvers)}\n   matcher: ${ctx(m.maneuvers)}"
+                    }
                 }
             }
             println("MATCH area ${a.name}: $got routes")
