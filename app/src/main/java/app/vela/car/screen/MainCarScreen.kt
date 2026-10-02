@@ -66,11 +66,13 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
         shown.forEach { (name, loc) -> list.addItem(destRow(name, loc)) }
         free -= shown.size
         val categories = NearbyCarScreen.driving()
-        val fit = if (categories.size <= free) categories else categories.take((free - 1).coerceAtLeast(0))
+        // The last free row is always "More nearby": with exactly as many categories as rows
+        // (a new install with no destinations) the rest of the categories had no way in.
+        val fit = if (categories.size < free) categories else categories.take((free - 1).coerceAtLeast(0))
         fit.forEach { c ->
             list.addItem(NearbyCarScreen.categoryRow(carContext, c) { screenManager.push(NearbyCarScreen(carContext, deps, c)) })
         }
-        if (fit.size < categories.size && free > 0) list.addItem(moreNearbyRow())
+        if (free > fit.size) list.addItem(moreNearbyRow())
 
         val search = Action.Builder()
             .setTitle(carContext.getString(app.vela.R.string.car_search))

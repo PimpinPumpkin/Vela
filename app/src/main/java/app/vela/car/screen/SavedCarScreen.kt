@@ -28,7 +28,7 @@ class SavedCarScreen(carContext: CarContext, private val deps: CarDeps) : Screen
             deps.savedPlaces.saved().forEach { add(Triple(it.name, it.address, it.location)) }
         }.distinctBy { it.third.lat to it.third.lng }
 
-        // The host says how many rows a list may hold; more throws at build time.
+        // The host says how many rows a list may hold; rows past it are not shown.
         val limit = runCatching {
             carContext.getCarService(ConstraintManager::class.java)
                 .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)

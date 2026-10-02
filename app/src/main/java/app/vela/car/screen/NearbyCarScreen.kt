@@ -114,7 +114,14 @@ class NearbyCarScreen(
     private fun search(c: QuickCategories.Chip) {
         lifecycleScope.launch {
             val here = deps.locationProvider.lastKnown()
-            val found = runCatching { deps.mapDataSource.search(c.query, here).places }.getOrDefault(emptyList())
+            // A cancelled search is rethrown, never turned into "nothing found".
+            val found = try {
+                deps.mapDataSource.search(c.query, here).places
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
             results = here?.let { h -> found.sortedBy { it.location.distanceTo(h) } } ?: found
             invalidate()
         }

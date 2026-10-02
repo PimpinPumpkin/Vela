@@ -471,7 +471,9 @@ class CarMapRenderer(
         val here = center
         val before = here?.let { metersPerPixel(it.lat) }
         zoom = (zoom + ln(scaleFactor.toDouble()) / ln(2.0)).coerceIn(2.0, 20.0)
-        if (here != null && before != null) {
+        // A host with no focal point (a zoom knob or buttons, not fingers) reports a negative
+        // focus; shifting toward it slid the map half a screen per zoom step.
+        if (here != null && before != null && focusX >= 0f && focusY >= 0f) {
             // While panning, the center is drawn at the middle of the framing area.
             val area = framingArea()
             // The focus point's ground offset from the center shrinks by (before - after) meters

@@ -663,6 +663,17 @@ Defaults that make the safe path the easy one:
   What Vela CAN do is not break the workarounds: AAEnabler and King Installer set the INSTALL
   SOURCE to Play and some units accept that, and a self-update overwrites it, so `InstallSource`
   holds the APK back and offers it as a file (see the updater notes).
+  **Car home screen, October 2026 (PRs #642 to #646, Seb3thehacker; checked in Gearslip's car
+  preview, not on a head unit):** the map pans by finger travel, pinches about the fingers and
+  flings (`CarMapRenderer.onScroll/onScale/onFling`; a negative focus = no focal point, zoom about
+  the center); map strips with recenter and zoom on the home and preview screens; `CarLocationAccess`
+  asks for location from the car (a first row on the home list; both location feeds wait on its
+  flow; a world view until the first fix); the home action strip is Search, Saved (`SavedCarScreen`),
+  Settings (`CarSettingsScreen`: voice and the three avoids, the phone's own pref keys; the service
+  applies `spoken_directions` to `VoiceGuide` on a car-only start); the home list is up to three
+  destinations, then nearby categories from `QuickCategories` (`NearbyCarScreen`, one search per
+  tap), its last free row always "More nearby". Known gaps: no offline fallback for nearby, and
+  coarse-only location counts as granted while nav takes GPS fixes only.
   **Full car-side nav** via a `screen/` package: `MainCarScreen` (Home/Work/recent/saved,
   `PlaceListNavigationTemplate`) → `SearchCarScreen` (`SearchTemplate`; **autocomplete while typing,
   full search on submit, 2026-09-22**: it ran the three-page search per keystroke and coroutine
@@ -2807,6 +2818,13 @@ architecture note.
   matching rows lead nearest-first (`addressFirst`): a 50 ft view asked about a 1 km window and an
   address a few miles off lost to a namesake in another state.
   NOT device-checked (the 4a was in use by another project); `AddressQueryTest` pins the rule.
+- **A drive's stop signs must be ON the route (2026-10-01):** `RouteProjection.stopIsOnRoute`
+  (node within `STOP_ON_ROUTE_M` 20 m of the line AND its road aligned), on the raw nodes before
+  clustering. The bearing test alone kept every sign on the parallel street a block over: on a
+  Davis test route, 55 stop nodes in the 120 m corridor, 4 on the route (0 to 8 m), 16 more
+  aligned ones 77 to 105 m away that used to draw. Cross-street signs sit 12 to 25 m off, hence 20.
+- **Alternates on the DARK map (not AMOLED) are a pale fill in a route-blue outline**
+  (`#DCE7FF|#2F7BF0`, third pass for #639): any mid blue is the dark roads' own family.
 - **Alternate routes are faded blue with an outline (discussion #639, 2026-10-01):** `altColor` is
   "fill|edge" (`#7FA9F0|#3566C4` light, `#7C9FE0|#0E2247` dark; the first cut's paler fill still read as near white), nearly as wide as the selected route (`ALT_ROUTE_WIDTH` 4.5/7/10/15 at z10/14/16/18.5; the route itself 5/8/11/17), the edge drawn by
   `ALT_ROUTE_EDGE_LAYER` (line-gap-width over the same source). The gray fill read as one more road
