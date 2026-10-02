@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">הגדרות</string>
     <string name="settings_back">חזרה</string>
@@ -257,7 +258,8 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">חפש בביקורות</string>
     <string name="place_sort_reviews">מיין ביקורות</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="one">ביקורת אחת</item>
         <item quantity="two">%1$d ביקורות</item>
         <item quantity="other">%1$d ביקורות</item>
@@ -313,7 +315,8 @@
     <string name="mapscreen_got_it">הבנתי</string>
     <string name="mapscreen_heads_up">לתשומת לבך</string>
     <string name="mapscreen_dismiss">סגור</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="one">תוצאה אחת</item>
         <item quantity="other">%1$d תוצאות</item>
     </plurals>
@@ -401,7 +404,8 @@
     <string name="mapvm_search_needs_recalibration">החיפוש דורש כיול מחדש: %1$s</string>
     <string name="mapvm_offline_no_data">אתה לא מקוון. הורד אזור בהגדרות ▸ לא מקוון כדי לחפש ללא חיבור.</string>
     <string name="mapvm_offline_no_match">אין תוצאות לא מקוונות עבור \"%1$s\" באזור השמור שלך. חיפוש לא מקוון מכסה מקומות של OpenStreetMap שהורדת.</string>
-    <string name="mapvm_no_results">אין תוצאות עבור \"%1$s\".</string> <!-- format -->
+    <string name="mapvm_no_results">אין תוצאות עבור \"%1$s\".</string>
+    <!-- format -->
     <string name="mapvm_offline_results">תוצאות לא מקוונות (ללא חיבור)</string>
     <string name="mapvm_search_failed_reason">החיפוש נכשל: %1$s</string>
     <string name="mapvm_none_found_along_route">לא נמצא \"%1$s\" לאורך המסלול שלך</string>
@@ -475,7 +479,8 @@
     <string name="settings_update_checking">בודק…</string>
     <string name="settings_update_none">אתה בגרסה העדכנית ביותר.</string>
     <string name="settings_place_pages">עמודי מקומות</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="one">תחנה אחת</item>
         <item quantity="two">%1$d תחנות</item>
         <item quantity="other">%1$d תחנות</item>
@@ -484,16 +489,20 @@
     <string name="place_transit_tickets">כרטיסים &amp; מידע</string>
     <string name="route_detail_unavailable">פרטי הקו אינם זמינים</string>
     <string name="place_transit_now">יוצא כעת</string>
-    <string name="place_transit_in_min">בעוד %1$d דק׳</string> <!-- format -->
-    <string name="place_transit_in_duration">בעוד %1$s</string> <!-- format -->
-    <string name="place_transit_more_times">עוד %1$d</string> <!-- format -->
+    <string name="place_transit_in_min">בעוד %1$d דק׳</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">בעוד %1$s</string>
+    <!-- format -->
+    <string name="place_transit_more_times">עוד %1$d</string>
+    <!-- format -->
     <string name="place_transit_view_stops">תחנות</string>
     <string name="place_transit_live">בשידור חי</string>
     <string name="place_transit_scheduled">מתוכנן</string>
     <string name="place_transit_cancelled">בוטל</string>
     <string name="place_departures">יציאות</string>
     <string name="place_transit_cached">עודכן לאחרונה %1$s. אין חיבור, ולכן ייתכן שהזמנים השתנו.</string>
-    <string name="place_every">כל %1$s</string> <!-- format -->
+    <string name="place_every">כל %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">הגעת.</string>
     <string name="transit_nav_walk">הלך %1$s</string>
     <string name="transit_nav_take">קח %1$s</string>
@@ -615,7 +624,7 @@
     <string name="map_parking_clear">נקה חניה</string>
     <string name="map_parking_moved">מיקום החניה הוזז לכאן</string>
     <string name="map_import_needs_google">אי אפשר לפתוח רשימת Google Maps משותפת כש-Vela פועל בלי Google.</string>
-    <string name="map_link_needs_google">\"פתח קישורי Google Maps משותפים\" כבוי בהגדרות > פרטיות.</string>
+    <string name="map_link_needs_google">\"פתח קישורי Google Maps משותפים\" כבוי בהגדרות &gt; פרטיות.</string>
     <string name="map_link_unreadable">לא ניתן לפתוח את הקישור הזה.</string>
     <string name="settings_performance">ביצועים</string>
     <string name="settings_hub_performance_sub">מה נטען מראש, ציור המפה</string>
@@ -665,9 +674,11 @@
     <string name="map_asr_installing">מתקין את מיקרופון Vela Voice…</string>
     <string name="map_asr_waiting">מיקרופון Vela Voice · ממתין לקול Vela</string>
     <string name="root_voice_tts_title">הקראת הוראות בקול</string>
-    <string name="root_voice_tts_desc">הנחיות מדוברות לכל פנייה. מומלץ. הורדה חד-פעמית של %1$d מ\"ב.</string> <!-- format -->
+    <string name="root_voice_tts_desc">הנחיות מדוברות לכל פנייה. מומלץ. הורדה חד-פעמית של %1$d מ\"ב.</string>
+    <!-- format -->
     <string name="root_voice_mic_title">חיפוש בדיבור</string>
-    <string name="root_voice_mic_desc">הכתב חיפושים בלי להקליד. בלי זה, המיקרופון משתמש ב-Google. הורדה חד-פעמית של %1$d מ\"ב.</string> <!-- format -->
+    <string name="root_voice_mic_desc">הכתב חיפושים בלי להקליד. בלי זה, המיקרופון משתמש ב-Google. הורדה חד-פעמית של %1$d מ\"ב.</string>
+    <!-- format -->
     <string name="root_voice_none_picked">סמן אפשרות אחת או בחר לא עכשיו.</string>
     <string name="mapvm_stop_added">תחנה נוספה</string>
     <string name="settings_asr_engines_hint">דיבור הופך לחיפוש בטלפון. שום דבר לא מועלה. בחרו מנוע למיקרופון.</string>
@@ -1029,9 +1040,11 @@
     <string name="settings_details_retry_hint">גוגל משמיט לעיתים קרובות את שעות העומס בתשובה הראשונה, ולכן Vela שואל עד פעמיים נוספות. כבוי = בקשה אחת לכל מקום, ושעות העומס עלולות לחסור.</string>
     <string name="place_show_photos">הצגת תמונות</string>
     <string name="place_no_photos">אין עדיין תמונות</string>
-    <string name="place_all_n_reviews_open">כל %1$d הביקורות</string> <!-- format -->
+    <string name="place_all_n_reviews_open">כל %1$d הביקורות</string>
+    <!-- format -->
     <string name="place_updates">עדכונים</string>
-    <string name="place_updates_all">הצגת כל %1$d העדכונים</string> <!-- format -->
+    <string name="place_updates_all">הצגת כל %1$d העדכונים</string>
+    <!-- format -->
     <string name="settings_nav_north_up">התחלת נסיעות כשהצפון למעלה</string>
     <string name="settings_nav_north_up_hint">המפה נשארת שטוחה והצפון למעלה בזמן הנהיגה. הקש על המצפן בזמן הנסיעה כדי להחליף.</string>
     <string name="settings_puck_shape">סמל ניווט</string>
@@ -1120,7 +1133,7 @@
     <string name="settings_two_finger_tilt_hint">גרור שתי אצבעות למעלה או למטה כדי להטות את המפה לתלת-ממד. כבוי: צביטה רק משנה את הזום.</string>
     <string name="settings_speed_display">הצג מהירות ומגבלת מהירות</string>
     <string name="settings_speed_display_hint">המהירות שלך והמהירות המותרת בזמן נהיגה, בטלפון ובמסך הרכב</string>
-    <string name="mapvm_area_pack_big">חיפוש לא מקוון כאן משתמש בחבילת המקומות של כל %1$s. אפשר להוריד אותה בהגדרות > מפות לא מקוונות.</string>
+    <string name="mapvm_area_pack_big">חיפוש לא מקוון כאן משתמש בחבילת המקומות של כל %1$s. אפשר להוריד אותה בהגדרות &gt; מפות לא מקוונות.</string>
     <string name="settings_places_shared_pack">המקומות מכסים את כל %1$s (%2$s)</string>
     <string name="mapscreen_download_voice">הורד את %1$s (%2$d מ\"ב)</string>
     <string name="place_choose_icon">בחר סמל</string>
