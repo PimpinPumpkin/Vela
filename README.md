@@ -12,8 +12,9 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 [![Build](https://img.shields.io/github/actions/workflow/status/PimpinPumpkin/Vela/ci.yml?branch=main&label=build)](https://github.com/PimpinPumpkin/Vela/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
+[![Translation status](https://hosted.weblate.org/widget/vela-maps/app/svg-badge.svg)](https://hosted.weblate.org/engage/vela-maps/)
 
-[Install](#install) · [What you get](#what-you-get) · [Docs](https://pimpinpumpkin.github.io/Vela/docs/) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](SPEC.md) · [Build](docs/BUILDING.md) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
+[Install](#install) · [What you get](#what-you-get) · [Docs](https://pimpinpumpkin.github.io/Vela/docs/) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](SPEC.md) · [Build](docs/BUILDING.md) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](https://hosted.weblate.org/engage/vela-maps/)
 
 [<img src="https://img.shields.io/badge/VISIT%20THE%20WEBSITE-149387?style=for-the-badge" alt="Visit the website">](https://pimpinpumpkin.github.io/Vela/)
 
@@ -285,7 +286,7 @@ remote-repair channel.
 | [`SPEC.md`](SPEC.md) | Every technical rule, contract, constant and constraint |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source, module architecture, and the release pipeline |
 | [`docs/LANGUAGES.md`](docs/LANGUAGES.md) | The 15 supported languages, layer by layer (UI, spoken nav, neural voice, dictation), and how to add one |
-| [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | Translating Vela - edit one file, open a PR |
+| [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | Translating Vela - in the browser on [Weblate](https://hosted.weblate.org/engage/vela-maps/), or edit one file and open a PR |
 | [`FEATURES.md`](FEATURES.md) | The full, categorized list of every shipped capability (the encyclopedia) |
 | [`ROADMAP.md`](ROADMAP.md) | What is still open + the big bets (self-hosted tiles, OSM contributions, a Play listing, opt-in telemetry, a Vela-own traffic layer); shipped and dead-end entries live in `docs/ROADMAP-HISTORY.md` |
 | [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives, per request |
@@ -305,7 +306,7 @@ remote-repair channel.
 Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
 release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] Move to Weblate translations (the three-month age bar is cleared; the application is the next step)
+- [ ] Finish the move to Weblate translations (the [project is live](https://hosted.weblate.org/engage/vela-maps/); automatic pull requests back to this repo are the remaining step)
 - [ ] F-Droid submission + reproducible build
 - [ ] A Google Play listing, so Android Auto works on factory head units: a separate build
       with the Google half compiled out (map, offline routing, places from OpenStreetMap and

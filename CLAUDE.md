@@ -2400,12 +2400,15 @@ Defaults that make the safe path the easy one:
   the locales by editing `values-<lang>/strings.xml` (the em-dash + placeholder rules are the review
   checklist) and a missing translation falls back to English. Hand-filling every `values-<lang>/` in
   the same commit (the old rule) is still fine for small batches but no longer required.
-  ⚠️ **WEBLATE IS NOT LIVE and its link 404s - do not point anyone at it** (issue #285, 2026-08-28):
-  hosted Weblate requires a project to be at least THREE MONTHS OLD to qualify. **That bar is
-  cleared as of 2026-09-15** (the repo was created 2026-06-15), so applying is now an open action
-  rather than a wait; until an application is actually accepted the PR flow below is still what
-  the docs describe. README/CONTRIBUTING/FEATURES/TRANSLATING were corrected to describe the PR flow; the README
-  roadmap keeps it as an open item. Rewrite those four the day the project is actually approved. Match the
+  **WEBLATE IS LIVE (2026-10-02):** project `vela-maps`, component `app`, at
+  https://hosted.weblate.org/engage/vela-maps/ (the link that 404ed in issue #285 was an earlier,
+  premature one). It runs on hosted Weblate's libre plan, which needs their approval to stay free
+  past the trial. README/CONTRIBUTING/FEATURES/LANGUAGES/TRANSLATING describe Weblate first and the
+  PR flow second. **Delivery back to the repo is still MANUAL**: Weblate commits to its own copy
+  (`https://hosted.weblate.org/git/vela-maps/app/`) and has no push or pull-request integration
+  yet, and no GitHub webhook tells it about new strings; the README roadmap keeps that as the open
+  item. Weblate may hold unmerged changes to a `values-<lang>` file, so merge those before a bulk
+  hand-edit of the locales. Match the
   `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
   **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the
   results-count bar is a `<plurals name="mapscreen_results_count">` read via `pluralStringResource(...,
@@ -4191,7 +4194,7 @@ architecture note.
   (they have their own Remove). Both buttons are in the settings search now; "Clear map cache"
   never was.
   Old translated locales had the zip-size strings DELETED (orphans fail lint); the new
-  installed-size keys are base-English until a translator fills them (Weblate is still a plan,
+  installed-size keys are base-English until a translator fills them (on Weblate since 2026-10-02,
   see docs/LANGUAGES.md).
 
 ## Working on the scraper
@@ -5344,7 +5347,7 @@ Gotchas:
 - **Translation catch-up (2026-09-14).** Every locale (de es fr hu it iw ja nl pl pt ru sv uk zh zh-rTW)
   had fallen ~205 keys behind English (everything since about August); all 15 are complete again
   (one translation agent per locale, opus, native register matched to each existing file; placeholder
-  multisets, `\n` counts and XML validated per key). Weblate is still not live, so this is the flow:
+  multisets, `\n` counts and XML validated per key). Weblate was not live then, so this was the flow:
   when `values/strings.xml` grows, re-run the per-locale catch-up before a stable. Voice-command
   examples are localized (a French address in fr, Ukrainian places in uk), not transliterated.
 - **Offline round two (user's own list, 2026-09-21).** (1) `TransitBoardCache` keeps every board

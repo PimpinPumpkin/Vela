@@ -94,10 +94,9 @@ them stays English.
 
 ## Weblate
 
-Not live yet, and there is no Weblate project to sign in to. Hosted Weblate is free for open
-source once a project is three months old; Vela passed that mark on 2026-09-15, so the only
-thing missing is the application itself, which has not been made. Until a project is accepted,
-translations come in as ordinary pull requests: see [TRANSLATING.md](TRANSLATING.md). New
-strings go into the English base file only, and a missing translation falls back to English.
-The `values-<code>/strings.xml` layout, the plurals and the placeholder check in CI are what
-Weblate needs, and all three are already in place.
+Live since 2026-10-02 at <https://hosted.weblate.org/engage/vela-maps/>, on hosted Weblate's
+libre plan. Translators work in the browser there; a pull request against a
+`values-<code>/strings.xml` file still works too. See [TRANSLATING.md](TRANSLATING.md) for both
+flows and for the component settings. New strings go into the English base file only, and a
+missing translation falls back to English. Bringing Weblate's translations back into the repo
+is a manual maintainer step until its pull-request integration is set up.
