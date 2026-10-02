@@ -27,6 +27,26 @@ class RouteProjectionTest {
         assertNull(RouteProjection.alongMeters(poly, cum, LatLng(poly[3].lat + 0.003, poly[3].lng)))
     }
 
+    // The route runs east (bearing 90). A sign's road orientation is 0-179.
+    @Test fun `a stop sign on the route, on a road running your way, is yours`() {
+        assertEquals(true, RouteProjection.stopIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.00003, poly[3].lng + 0.004), 90))
+    }
+
+    @Test fun `the sign holding the cross street is not yours`() {
+        // 15 m up the side street, whose road runs north-south.
+        assertEquals(false, RouteProjection.stopIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.000135, poly[3].lng), 0))
+    }
+
+    @Test fun `a sign on the parallel street a block over is not yours`() {
+        // Same direction, 90 m north: inside the corridor, not on the route.
+        assertEquals(false, RouteProjection.stopIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.0008, poly[3].lng + 0.004), 90))
+    }
+
+    @Test fun `a sign with no known road direction is judged on distance alone`() {
+        assertEquals(true, RouteProjection.stopIsOnRoute(poly, cum, LatLng(poly[3].lat, poly[3].lng + 0.004), null))
+        assertEquals(false, RouteProjection.stopIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.0008, poly[3].lng + 0.004), null))
+    }
+
     @Test fun `midway along a segment projects proportionally`() {
         val mid = LatLng(poly[2].lat, (poly[2].lng + poly[3].lng) / 2)
         val along = RouteProjection.alongMeters(poly, cum, mid)!!

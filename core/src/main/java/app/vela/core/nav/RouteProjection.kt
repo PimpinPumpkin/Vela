@@ -32,6 +32,24 @@ object RouteProjection {
         return minOf(d, 180.0 - d) <= toleranceDeg
     }
 
+    /** How close a stop sign's own node has to be to the route to be on it. A sign you stop at is
+     *  a node OF the road you are on: 0 to 8 m from the line on a measured Davis route, where the
+     *  signs facing the cross streets sat 12 to 25 m off and the next street over 77 m or more. */
+    const val STOP_ON_ROUTE_M = 20.0
+
+    /**
+     * True when the stop sign at [loc], on a road running [roadDeg] (0-179, null when unknown),
+     * is one the route stops at: its node is ON the route, and its road runs the way the route
+     * does there. Direction alone kept every sign on the parallel street a block over (same
+     * bearing, inside the 120 m corridor); distance alone would keep the sign holding the cross
+     * street, a few meters from the corner. Call it on the RAW nodes, before any clustering: a
+     * cluster's centroid sits in the middle of the junction, not on the line.
+     */
+    fun stopIsOnRoute(poly: List<LatLng>, cum: DoubleArray, loc: LatLng, roadDeg: Int?): Boolean {
+        val at = alongMeters(poly, cum, loc, STOP_ON_ROUTE_M) ?: return false
+        return roadDeg == null || alignedWithRoad(bearingAt(poly, cum, at), roadDeg)
+    }
+
     /** The point [m] meters along [poly] (clamped to its ends). */
     fun pointAt(poly: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (poly.isEmpty()) return LatLng(0.0, 0.0)

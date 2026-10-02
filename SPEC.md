@@ -1340,6 +1340,14 @@ until the car moved; checked on the 4a with a stationary mock fix beside the rou
   wide as the selected route (4.5 / 7 / 10 / 15 px at z10 / 14 / 16 / 18.5 against 5 / 8 / 11 / 17) (fill on
   `ALT_ROUTE_LAYER`, outline on `ALT_ROUTE_EDGE_LAYER` through line-gap-width), below the selected
   route. A plain gray matched the weight of the roads on a dense grid.
+  On the dark map that is not AMOLED the pair is `#DCE7FF` inside `#2F7BF0`: a pale fill in a
+  route-blue outline, because a mid blue is the dark roads' own family.
+- **Stop signs drawn during a drive** are the ones whose own node lies within `STOP_ON_ROUTE_M`
+  (20 m) of the route and whose road orientation agrees with the route's bearing there within
+  40 degrees (`RouteProjection.stopIsOnRoute`, applied to raw nodes before clustering). The
+  corridor fetch is 120 m wide for lights; a stop sign on a parallel street inside it has the
+  right bearing and the wrong place, and one facing the cross street the right place and the
+  wrong bearing.
 
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**
   and the live traffic color returns on resume. Distinct from the live blue, the congestion amber

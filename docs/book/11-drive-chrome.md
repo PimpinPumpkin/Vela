@@ -242,6 +242,12 @@ During a drive the lights and signs draw from z15.4, just under the camera's 15.
 drawn above the route line's cut piece: anchored on the ahead line alone, the ones nearest the
 driver were exactly the ones the blue line painted over.
 
+A stop sign also has to be ON your route, not just beside it. The fetch takes everything within
+120 m of the route, which on a street grid includes the next street over, and its signs face the
+same way yours do. So a sign is drawn only when its own point is within 20 m of the route line and
+its road runs the way you are driving. On a Davis test route that kept the 4 signs on the route
+and dropped 16 on parallel streets that the direction check alone had let through.
+
 ### The route line during a drive
 
 The line you drive is several pieces, and only one of them changes every frame:

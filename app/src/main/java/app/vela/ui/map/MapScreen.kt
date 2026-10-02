@@ -3699,7 +3699,15 @@ private fun MapSurface(
         // #639): the old gray read as one more road on a dense grid. "fill|edge".
         // Second pass the same day: the first fill (#A9C6F8) still read as near white on the
         // light map, so both are a clearer blue.
-        altColor = if (mapDark) "#7C9FE0|#0E2247" else "#7FA9F0|#3566C4",
+        // Third pass: on the DARK map (not AMOLED) a mid blue is the roads' own family and
+        // still sank in (same reporter, who drives in dark). There the alternate is a pale fill
+        // inside a route-blue outline, lighter than any road and edged in the one color nothing
+        // else on the map uses. AMOLED and light keep the blue fill.
+        altColor = when {
+            mapDark && !mapAmoled -> "#DCE7FF|#2F7BF0"
+            mapDark -> "#7C9FE0|#0E2247"
+            else -> "#7FA9F0|#3566C4"
+        },
         onSelectAlternate = vm::selectRoute,
         // Every route wears its time on the map, placed where it runs apart from the others;
         // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).

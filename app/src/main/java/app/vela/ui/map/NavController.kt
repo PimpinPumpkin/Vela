@@ -1145,20 +1145,16 @@ internal class NavController(
                 }
             }
             val merged = withContext(Dispatchers.Default) {
-                // A STOP SIGN counts when it sits on a road running the way you are going. OSM maps
-                // one sign per approach, so the corridor picks up the sign holding the street that
-                // ENTERS your road, which you never stop for. The baked road bearing is the test
-                // (2026-09-17, after a distance test binned nearly everything: a clustered control
-                // sits at the junction's center, not in your lane). No bearing, no filtering - an
-                // older bake or the live Overpass path keeps every sign, as before.
+                // A STOP SIGN counts when its node is ON the route and its road runs the way you
+                // are going (RouteProjection.stopIsOnRoute, on the raw nodes, before clustering).
+                // OSM maps one sign per approach, so the 120 m corridor also holds the sign for the
+                // street that ENTERS your road (right place, wrong direction) and every sign on
+                // the parallel street a block over (right direction, wrong place); the direction
+                // test alone kept the second kind (user drive 2026-10-01).
                 val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
                 val onRoute = res.filter { c ->
-                    val road = c.roadBearingDeg
-                    if (c.kind != app.vela.core.data.TrafficControl.Kind.STOP || road == null) return@filter true
-                    val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, c.loc, 120.0) ?: return@filter true
-                    app.vela.core.nav.RouteProjection.alignedWithRoad(
-                        app.vela.core.nav.RouteProjection.bearingAt(poly, cum, at), road,
-                    )
+                    c.kind != app.vela.core.data.TrafficControl.Kind.STOP ||
+                        app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
                 }
                 onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, MapViewModel.CONTROLS_CLUSTER_M) { it.loc }
