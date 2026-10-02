@@ -29,6 +29,7 @@ import org.maplibre.android.snapshotter.MapSnapshotter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -85,6 +86,7 @@ class CarMapRenderer(
     @Volatile private var speedLimitKmh: Double? = null
     private var center: LatLng? = null
     private var zoom = 16.5
+    private var showingWorld = false // the no-location placeholder view is up
     private var bearing = 0.0
     private var targetBearing = 0.0
     private var following = true // pan turns this off in browse
@@ -118,7 +120,9 @@ class CarMapRenderer(
 
     private companion object {
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
-        const val TICK_MS = 70L       // render-loop cadence (snapshots gate the real fps below this)
+        val WORLD_CENTER = LatLng(20.0, 0.0)
+        const val WORLD_ZOOM = 1.5
+        const val TICK_MS = 70L      // render-loop cadence (snapshots gate the real fps below this)
         const val BEARING_EASE = 0.22
         const val ZOOM_EASE = 0.06    // per tick, so a speed tier change glides over a second or so
         const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area while following in nav
@@ -227,6 +231,7 @@ class CarMapRenderer(
     fun start() {
         collectJob?.cancel()
         collectJob = scope.launch {
+            CarLocationAccess.granted.first { it } // asked for on the landing screen if missing
             locationProvider.updates().collect { loc ->
                 // Puck feed gate: once we have a good GPS puck, IGNORE network/fused/coarse fixes. The
                 // phone interleaves gps(hAcc≈3 m) with network/fused fixes (hAcc 18–86 m) even while
@@ -245,6 +250,12 @@ class CarMapRenderer(
                 estimator.onFix(here.lat, here.lng, speedMps, course, android.os.SystemClock.elapsedRealtime())
                 targetPuck = here
                 if (puck == null) puck = here // first fix: snap into place, don't glide in from null
+                if (showingWorld) {
+                    // Leave the placeholder world view for the street view the map normally opens at.
+                    showingWorld = false
+                    zoom = 16.5; zoomTarget = 16.5
+                    center = here
+                }
                 // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
                 // The graph LocationIndex snap runs OFF the main thread (this collector is on
                 // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
@@ -341,7 +352,14 @@ class CarMapRenderer(
         rendering = false; dirty = false
         if (width <= 0 || height <= 0) return
         runCatching { MapLibre.getInstance(carContext) }
-        center = center ?: puck ?: locationProvider.lastKnown()
+        center = center ?: puck ?: runCatching { locationProvider.lastKnown() }.getOrNull()
+        // No location yet (permission not granted, or no fix ever): draw the world rather than a
+        // black surface; the first fix flies in to street level.
+        if (center == null) {
+            center = WORLD_CENTER
+            zoom = WORLD_ZOOM; zoomTarget = WORLD_ZOOM
+            showingWorld = true
+        }
         // Reuse the existing snapshotter when the surface size is unchanged. A screen transition
         // (Main→Preview→ActiveNav) re-delivers onSurfaceAvailable at the SAME size; recreating the
         // snapshotter each time span up a fresh `vela-car-map` virtual display and reloaded the whole

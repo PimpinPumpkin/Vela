@@ -67,6 +67,13 @@ phone's screen off and the phone app never opened. It uses the same fix gate as 
 GPS provider only, accuracy <= 50 m    // coarser fixes never drive guidance
 ```
 
+A car can connect before Vela was ever opened on the phone, and then onboarding never asked for
+location. Both location collectors (the session's and the map renderer's) wait on
+`CarLocationAccess.granted` instead of failing, the landing screen leads with an "Allow location"
+row that shows Android's permission prompt on the phone (`CarContext.requestPermissions`), and
+the map draws the world (`WORLD_CENTER`, zoom 1.5) until the first fix brings it to street zoom.
+Before this the renderer had no center to draw around and the car map stayed black.
+
 The phone's view model is the other feeder of the same session. They do not run together in
 projection, and the session's update is atomic, so a double feed is redundant rather than harmful.
 

@@ -2,6 +2,7 @@ package app.vela.car.screen
 
 import androidx.car.app.AppManager
 import androidx.car.app.CarContext
+import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
@@ -13,6 +14,7 @@ import androidx.car.app.navigation.model.PlaceListNavigationTemplate
 import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import app.vela.car.CarLocationAccess
 import app.vela.car.CarMapRenderer
 import app.vela.core.model.LatLng
 import app.vela.core.model.ShortcutKind
@@ -49,10 +51,16 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
             deps.shortcuts.get(ShortcutKind.WORK)?.let { add(it.name to it.location) }
             deps.recentPlaces.recent().forEach { add(it.place.name to it.place.location) }
             deps.savedPlaces.saved().forEach { add(it.name to it.location) }
-        }.distinctBy { it.second.lat to it.second.lng }.take(MAX_ROWS)
+        }.distinctBy { it.second.lat to it.second.lng }
 
-        rows.forEach { (name, loc) -> list.addItem(destRow(name, loc)) }
-        if (rows.isEmpty()) {
+        // A car can connect before Vela was set up on the phone, so onboarding never asked for
+        // location. The first row asks here; the map shows the world until the answer comes back.
+        val needsLocation = !CarLocationAccess.check(carContext)
+        if (needsLocation) list.addItem(locationRow())
+        val shown = rows.take(if (needsLocation) MAX_ROWS - 1 else MAX_ROWS)
+
+        shown.forEach { (name, loc) -> list.addItem(destRow(name, loc)) }
+        if (shown.isEmpty() && !needsLocation) {
             list.setNoItemsMessage(carContext.getString(app.vela.R.string.car_no_destinations))
         }
 
@@ -82,6 +90,29 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
     private fun mapAction(iconRes: Int, onClick: () -> Unit): Action =
         Action.Builder().setIcon(icon(iconRes)).setOnClickListener(onClick).build()
+
+    private fun locationRow(): Row =
+        Row.Builder()
+            .setTitle(carContext.getString(app.vela.R.string.car_location_title))
+            .addText(carContext.getString(app.vela.R.string.car_location_body))
+            .setImage(icon(app.vela.R.drawable.ic_car_recenter))
+            // PlaceListNavigationTemplate throws on a row that is neither browsable nor carries a
+            // distance span; this one leads somewhere (the permission prompt), so browsable.
+            .setBrowsable(true)
+            .setOnClickListener { askForLocation() }
+            .build()
+
+    /** Shows Android's own permission prompt on the phone; the car keeps its screen meanwhile. */
+    private fun askForLocation() {
+        carContext.requestPermissions(CarLocationAccess.PERMISSIONS) { _, _ ->
+            if (CarLocationAccess.check(carContext)) {
+                deps.mapRenderer(carContext).follow()
+            } else {
+                CarToast.makeText(carContext, app.vela.R.string.car_location_denied, CarToast.LENGTH_LONG).show()
+            }
+            invalidate()
+        }
+    }
 
     private fun destRow(name: String, dest: LatLng): Row =
         Row.Builder()

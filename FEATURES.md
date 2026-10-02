@@ -1913,6 +1913,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Map buttons on the car's home and route preview screens (2026-10-01, checked in Gearslip's
   car preview).** Recenter and zoom on the home map, and overview and zoom on the route preview,
   the same round buttons the drive screen has.
+- ✅ **The car asks for location instead of showing a black map (2026-10-01, checked in Gearslip's
+  car preview).** Connecting to a car before opening Vela on the phone left the car map black. The
+  home screen now leads with an "Allow location" row that brings up Android's permission prompt on
+  the phone, and the map shows the world until the first fix arrives.
 - ✅ **Car screen round three (2026-09-22, awaiting a head-unit check).** Pause/Resume from the car
   with a "Paused" card, search along the route (fuel, food, coffee, the phone's quick categories)
   with a pick becoming the next stop, camera/speeding/closing-soon alerts as car toasts, a

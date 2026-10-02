@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -51,7 +52,11 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
                 runCatching { CarToast.makeText(carContext, msg, CarToast.LENGTH_LONG).show() }
             }
         }
+        CarLocationAccess.check(carContext)
         feedJob = scope.launch {
+            // Wait for the permission: the landing screen asks for it when the car connected
+            // before Vela was set up on the phone.
+            CarLocationAccess.granted.first { it }
             deps.locationProvider.updates().collect { loc ->
                 val gps = loc.provider == android.location.LocationManager.GPS_PROVIDER
                 if (gps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {

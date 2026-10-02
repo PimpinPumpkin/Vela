@@ -3168,6 +3168,11 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
   VirtualDisplay and Presentation approach is gone. The renderer map-matches the puck to the
   route, gates the feed to GPS-only, and eases puck and heading between the roughly 1 Hz fixes.
 - **One `CarMapRenderer` per session.** Per-screen renderers freeze the map.
+- Location permission can be missing on the car (a car connected before onboarding ran): the
+  session's feed and the renderer's collector wait on `CarLocationAccess.granted`, the landing
+  list leads with an "Allow location" row that calls `CarContext.requestPermissions`, and the
+  renderer draws a world view (`WORLD_CENTER` 20,0 at zoom 1.5) until the first fix. With no
+  center the renderer never drew and the car map stayed black.
 - A pan moves the center by the finger's travel in meters (`shiftCenter`, meters per pixel from
   512 px tiles); reading the new center off the last snapshot's `latLngForPixel` added the
   visible-area offset to every scroll event and sent the map flying. A pinch keeps the point under
