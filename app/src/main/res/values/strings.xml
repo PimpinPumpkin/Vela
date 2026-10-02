@@ -861,6 +861,15 @@
     <string name="car_along_none">Nothing found nearby</string>
     <string name="car_stop_added">Added %1$s as the next stop</string>
     <string name="car_continue_on">Continue on %1$s</string>
+    <string name="car_saved">Saved</string>
+    <string name="car_saved_empty">No saved places yet. Save one on your phone.</string>
+    <string name="car_home">Home</string>
+    <string name="car_work">Work</string>
+    <string name="car_settings">Settings</string>
+    <string name="car_setting_voice">Spoken directions</string>
+    <string name="car_setting_avoid_tolls">Avoid tolls</string>
+    <string name="car_setting_avoid_highways">Avoid highways</string>
+    <string name="car_setting_avoid_ferries">Avoid ferries</string>
     <string name="car_location_title">Allow location</string>
     <string name="car_location_body">Vela needs it to show where you are and give directions</string>
     <string name="car_location_denied">Location is off. Turn it on for Vela in your phone\'s settings.</string>

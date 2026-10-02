@@ -1917,6 +1917,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   car preview).** Connecting to a car before opening Vela on the phone left the car map black. The
   home screen now leads with an "Allow location" row that brings up Android's permission prompt on
   the phone, and the map shows the world until the first fix arrives.
+- ✅ **Saved and Settings on the car's home screen (2026-10-01, checked in Gearslip's car
+  preview).** Saved lists every saved place, Home and Work first. Settings has spoken directions,
+  avoid tolls, avoid highways and avoid ferries, shared with the phone. The car's route preview
+  now honors the avoid settings; it used to ignore them.
 - ✅ **Car screen round three (2026-09-22, awaiting a head-unit check).** Pause/Resume from the car
   with a "Paused" card, search along the route (fuel, food, coffee, the phone's quick categories)
   with a pick becoming the next stop, camera/speeding/closing-soon alerts as car toasts, a

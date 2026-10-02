@@ -147,7 +147,16 @@ class RoutePreviewCarScreen(
             }
             origin = from
             routes = if (from == null) emptyList()
-            else runCatching { deps.mapDataSource.directions(from, dest, TravelMode.DRIVE) }.getOrDefault(emptyList())
+            else runCatching {
+                // The avoid settings (car Settings or the phone's chooser); without them a car
+                // preview offered toll roads to a driver who had turned tolls off.
+                deps.mapDataSource.directions(
+                    from, dest, TravelMode.DRIVE,
+                    avoidTolls = app.vela.core.data.RoutingPrefs.avoidTolls,
+                    avoidHighways = app.vela.core.data.RoutingPrefs.avoidHighways,
+                    avoidFerries = app.vela.core.data.RoutingPrefs.avoidFerries,
+                )
+            }.getOrDefault(emptyList())
             loading = false
             invalidate()
             deps.mapRenderer(carContext).showPreview(routes.getOrNull(selected)) // frame the route once fetched

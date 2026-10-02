@@ -66,7 +66,7 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
         val search = Action.Builder()
             .setTitle(carContext.getString(app.vela.R.string.car_search))
-            .setIcon(icon(android.R.drawable.ic_menu_search))
+            .setIcon(icon(app.vela.R.drawable.ic_car_search))
             .setOnClickListener { screenManager.push(SearchCarScreen(carContext, deps)) }
             .build()
 
@@ -83,7 +83,13 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
             .setItemList(list.build())
             .setTitle(carContext.getString(app.vela.R.string.app_name))
             .setHeaderAction(Action.APP_ICON)
-            .setActionStrip(ActionStrip.Builder().addAction(search).build())
+            .setActionStrip(
+                ActionStrip.Builder()
+                    .addAction(search)
+                    .addAction(mapAction(app.vela.R.drawable.ic_car_saved) { screenManager.push(SavedCarScreen(carContext, deps)) })
+                    .addAction(mapAction(app.vela.R.drawable.ic_car_settings) { screenManager.push(CarSettingsScreen(carContext, deps)) })
+                    .build(),
+            )
             .setMapActionStrip(mapStrip)
             .build()
     }

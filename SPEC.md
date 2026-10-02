@@ -3160,7 +3160,10 @@ guidance voice is band-limited by the protocol
 
 Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen` (`SearchTemplate`)
 to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarScreen`
-(`NavigationTemplate`). `VelaCarSession` owns its own AOSP location feed into the shared
+(`NavigationTemplate`). The landing strip also opens `SavedCarScreen` (Home, Work and every saved
+place, capped at the host's list limit) and `CarSettingsScreen` (spoken directions and the three
+avoids, written to the phone's `vela_settings` prefs and `RoutingPrefs`). The route preview passes
+`RoutingPrefs` avoids to `directions`. `VelaCarSession` owns its own AOSP location feed into the shared
 `NavSession`, so navigation runs with the phone UI closed, and handles
 `androidx.car.app.action.NAVIGATE` geo intents.
 

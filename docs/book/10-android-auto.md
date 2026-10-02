@@ -248,6 +248,12 @@ de-duplicated by location. The template throws if handed more rows than its cap:
 MAX_ROWS = 6
 ```
 
+Its action strip is Search, Saved and Settings. **Saved (`SavedCarScreen`, `ListTemplate`)** lists
+Home, Work and every saved place (the landing list shows only six, mixed with recents), up to the
+host's list limit (`ConstraintManager.CONTENT_LIMIT_TYPE_LIST`); a row previews a route. **Settings
+(`CarSettingsScreen`, `ListTemplate`)** has toggles for spoken directions and the three avoids,
+written to the same `vela_settings` prefs and `RoutingPrefs` the phone uses.
+
 **Search (`SearchCarScreen`, `SearchTemplate`).** While you type, the autocomplete answers (one
 small request, biased to where the car is); the full search runs only when you submit, or when you
 pick one of the bare query rows the autocomplete returns ("Starbucks"). Contacts, when contact
@@ -270,7 +276,9 @@ the same directions call the phone makes ([chapter 5](05-routing.md)), with live
 500 ms apart) for a first fix. The template takes at most three routes and requires a duration or
 distance span on every row, and it refuses a non-loading list without a Go action, so an empty
 result shows a plain message instead. Pressing Go names a provisional route first, the way the
-phone does, and starts the drive with the Vela voice when it is installed and chosen.
+phone does, and starts the drive with the Vela voice when it is installed and chosen. It passes
+the avoid settings (`RoutingPrefs`) to the directions call; until 2026-10-01 it passed none, so a
+car preview offered toll roads to a driver who had turned tolls off.
 
 **Drive (`ActiveNavCarScreen`, `NavigationTemplate`).** Covered in the next two sections.
 
@@ -435,8 +443,8 @@ recorded as the installer, so you can check before and after an update.
   the phone's. A live car map needs a View-backed renderer the template surface does not offer.
 - **Search along the route searches around the car**, sorted by distance, not along the route
   ahead, and a pick always becomes the next stop.
-- **No route options on the car.** The preview is driving only, shows at most three routes, and
-  has no avoid switches; it uses whatever avoid settings the phone has.
+- **Few route options on the car.** The preview is driving only and shows at most three routes;
+  the avoid switches live in the car's Settings screen, shared with the phone.
 - **A drive started from the car with the phone app never opened** has no navigation controller on
   the phone, so it gets no corridor dots and no alert toasts.
 - **The speed-limit sign needs a downloaded region.** The phone falls back to an online limit
