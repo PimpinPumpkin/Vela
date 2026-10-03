@@ -97,6 +97,26 @@ object PuckStyle {
 /** "Prefer buttons over swipes": keeps a discrete button wherever a gesture has one (today: the
  *  step-list button on the nav bar beside the swipe-up handle). Off by default; keypad-first
  *  devices behave as if it were on. */
+/**
+ * The picture-in-picture layout (user 2026-10-02). Off (the default): one bar along the bottom,
+ * Google's mini map. On: the earlier turn card across the top with the time left along the bottom.
+ */
+object PipTurnCard {
+    val on = mutableStateOf(false)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, false)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "pip_turn_card"
+}
+
 object PreferButtons {
     val on = mutableStateOf(false)
 

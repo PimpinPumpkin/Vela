@@ -800,7 +800,8 @@ Defaults that make the safe path the easy one:
   onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
   and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
   ONE bar along the bottom of the small window, copied from Google's mini map (checked on the 4a
-  2026-10-02; replaced a top turn card plus a bottom time strip, on canary as a test): the turn
+  2026-10-02; the default, and Settings > Navigation "Turn card in the mini map", `PipTurnCard`,
+  pref `pip_turn_card`, brings back the top turn card plus bottom time strip): the turn
   card's `primaryContainer` green, the glyph in a darker column at the left, the road the turn
   enters as the headline, and a dim line with the distance to the turn and the arrival clock.
   Google's own bar shows the arrival clock with no traffic color and no time left. NB the 4a

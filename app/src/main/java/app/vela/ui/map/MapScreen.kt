@@ -3974,7 +3974,9 @@ private fun BoxScope.ClassicDirectionsHost(
  *  launch on Android 14, a silently dead screen on 16). */
 @Composable
 private fun BoxScope.PipNavOverlay(state: MapUiState, pipUi: Boolean) {
-    if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
+    if (pipUi && state.navigating && state.maneuverText.isNotEmpty() && app.vela.ui.PipTurnCard.on.value) {
+        PipTurnCardOverlay(state)
+    } else if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
         // ONE bar along the bottom, Google's mini map (checked on the 4a 2026-10-02): the turn
         // glyph in a darker column at the left, the road the turn enters as the headline, and
         // under it the distance to the turn and the arrival clock. Flush with the window's
@@ -4018,6 +4020,86 @@ private fun BoxScope.PipNavOverlay(state: MapUiState, pipUi: Boolean) {
             }
         }
     }
+}
+
+/** The older picture-in-picture layout, kept as a setting (`PipTurnCard`): a turn card across the
+ *  top, the trip's time left and arrival along the bottom. */
+@Composable
+private fun BoxScope.PipTurnCardOverlay(state: MapUiState) {
+        // Google's earlier shape: the turn card's own green with the glyph, the
+        // distance as the headline and the turn text under it, across the top of the window.
+        // The old dark strip put everything on one small line and read as a caption
+        // (user 2026-09-13: hard to parse next to Google's).
+        val next = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
+        androidx.compose.material3.Surface(
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Row(
+                Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (next != null) {
+                    Icon(
+                        app.vela.ui.nav.maneuverIconFor(next),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Column {
+                    Text(
+                        formatDistance(state.nav.distanceToNextManeuver),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    // The road the turn enters, not the whole sentence: "Turn left o..." said
+                    // nothing at the mini map's width; "County Rte E8" does.
+                    val roadOnly = next?.let { m -> m.ref?.takeIf { it.isNotBlank() } ?: m.road?.takeIf { it.isNotBlank() } }
+                    Text(
+                        roadOnly ?: state.maneuverText,
+                        style = if (roadOnly != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                        maxLines = if (roadOnly != null) 1 else 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        // The trip's own figures along the bottom, as Google's mini map shows them (user
+        // 2026-09-25): time left and arrival, the same numbers the nav bar shows. Distance is
+        // left out: at the mini window's width it only ever showed as a trailing "...".
+        // Same container as the turn card above it, and centered (user 2026-09-28: the gray
+        // strip read as a different kind of thing under the green card). The arrival clock is
+        // formatArrivalClock, which follows the phone's 12/24-hour setting (Clock24).
+        androidx.compose.material3.Surface(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            val secs = state.nav.remainingDuration
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    formatDuration(secs),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Text(
+                    " · " + app.vela.ui.formatArrivalClock(secs),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
 }
 
 @Composable
