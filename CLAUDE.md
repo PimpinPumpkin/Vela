@@ -799,11 +799,11 @@ Defaults that make the safe path the easy one:
   autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
   onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
   and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
-  banner for the small window in Google's shape (2026-09-13, was a one-line dark caption the user
-  found hard to parse): the turn card's own `primaryContainer` green across the top with the
-  maneuver glyph, the distance as a bold headline and the turn text under it. Since 2026-09-25 a
-  second strip along the bottom carries the time left and the arrival clock, like Google's mini map
-  (distance was tried too and only ever showed as a trailing "..." at PiP width). NB the 4a
+  ONE bar along the bottom of the small window, copied from Google's mini map (checked on the 4a
+  2026-10-02; replaced a top turn card plus a bottom time strip, on canary as a test): the turn
+  card's `primaryContainer` green, the glyph in a darker column at the left, the road the turn
+  enters as the headline, and a dim line with the distance to the turn and the arrival clock.
+  Google's own bar shows the arrival clock with no traffic color and no time left. NB the 4a
   (GrapheneOS, Android 14) never entered PiP under adb (Home key, home gesture, the window key,
   app-op "default"). Device-verified later the same day once the app-op was set to `allow` by hand
   (`adb shell appops set app.vela PICTURE_IN_PICTURE allow`; "default" did NOT enter PiP on that
