@@ -249,7 +249,10 @@ class OfflineAddressStore @Inject constructor(
             // (2) interpolate between bracketing house numbers.
             if (houseNo != null) {
                 interpolate(houseNo, onStreet)?.let { loc ->
-                    return listOf(placeAt(loc, "$houseNo $streetPart", onStreet.firstOrNull()?.city, near))
+                    // An estimate, named with the street's own spelling (it used to echo the typed
+                    // text, lowercase and all, as if it were an address on record).
+                    val street = onStreet.firstOrNull { it.street != null }?.street ?: streetPart
+                    return listOf(placeAt(loc, "$houseNo $street", onStreet.firstOrNull()?.city, near, approximate = true))
                 }
             }
             // (3) nearest mapped house on the street.
@@ -263,8 +266,8 @@ class OfflineAddressStore @Inject constructor(
         if (onGeom.isNotEmpty()) {
             val best = onGeom.minByOrNull { near?.distanceTo(LatLng(it.lat, it.lng)) ?: 0.0 } ?: onGeom.first()
             val loc = LatLng(best.lat, best.lng)
-            val label = if (houseNo != null) "$houseNo $streetPart" else best.street
-            return listOf(placeAt(loc, label, null, near))
+            val label = if (houseNo != null) "$houseNo ${best.street}" else best.street
+            return listOf(placeAt(loc, label, null, near, approximate = houseNo != null))
         }
         return emptyList()
     }
@@ -377,6 +380,11 @@ class OfflineAddressStore @Inject constructor(
         val below = numbered.filter { it.first <= target }.maxByOrNull { it.first }
         val above = numbered.filter { it.first >= target }.minByOrNull { it.first }
         return when {
+            // Two numbers far apart are usually two separate stretches of the street (across a park,
+            // a creek, a highway): a blend of them lands between, on neither. Take the nearer number.
+            below != null && above != null && above.first != below.first &&
+                LatLng(below.second.lat, below.second.lng).distanceTo(LatLng(above.second.lat, above.second.lng)) > INTERP_MAX_GAP_M ->
+                (if (target - below.first <= above.first - target) below else above).second.let { LatLng(it.lat, it.lng) }
             below != null && above != null && above.first != below.first -> {
                 val t = (target - below.first).toDouble() / (above.first - below.first)
                 LatLng(
@@ -393,9 +401,9 @@ class OfflineAddressStore @Inject constructor(
     private fun addrLabel(hn: String?, street: String?): String =
         listOfNotNull(hn, street).joinToString(" ").ifBlank { street ?: "Address" }
 
-    private fun placeAt(loc: LatLng, name: String, city: String?, near: LatLng?): Place =
+    private fun placeAt(loc: LatLng, name: String, city: String?, near: LatLng?, approximate: Boolean = false): Place =
         Place(
-            id = "addr:${loc.lat},${loc.lng}",
+            id = (if (approximate) APPROX_PREFIX else "addr:") + "${loc.lat},${loc.lng}",
             name = name,
             location = loc,
             category = "Address",
@@ -404,6 +412,12 @@ class OfflineAddressStore @Inject constructor(
         )
 
     companion object {
+        /** Id prefix of an ESTIMATED address (interpolated between house numbers, or a point on the
+         *  street with the number added): search drops it when any other result has the address. */
+        const val APPROX_PREFIX = "addr~"
+        fun isApproximate(p: Place): Boolean = p.id.startsWith(APPROX_PREFIX)
+        /** Bracketing house numbers farther apart than this are not blended (see interpolate). */
+        private const val INTERP_MAX_GAP_M = 300.0
         private const val LOCALITY_BOX_DEG = 0.006  // ~650 m box the locality vote reads
         private const val LOCALITY_CELL_DEG = 0.005 // cache cell, ~550 m
         private const val LOCALITY_VOTERS = 7

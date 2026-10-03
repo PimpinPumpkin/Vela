@@ -29,6 +29,37 @@ object AddressQuery {
         return m.groupValues[1].lowercase() to street
     }
 
+    private val CANON = mapOf(
+        "n" to "north", "s" to "south", "e" to "east", "w" to "west",
+        "ne" to "northeast", "nw" to "northwest", "se" to "southeast", "sw" to "southwest",
+        "st" to "street", "ave" to "avenue", "av" to "avenue", "rd" to "road", "dr" to "drive", "ln" to "lane",
+        "blvd" to "boulevard", "ct" to "court", "pl" to "place", "cir" to "circle", "ter" to "terrace",
+        "hwy" to "highway", "pkwy" to "parkway", "trl" to "trail",
+    )
+    private val CANON_DIRS = setOf("north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest")
+    private val CANON_TYPES = TYPES.map { CANON[it] ?: it }.toSet() - setOf("apt", "unit", "suite", "ste")
+
+    private fun canon(text: String): List<String> =
+        text.lowercase().split(SPLIT).filter { it.isNotEmpty() }.map { CANON[it] ?: it }
+
+    /**
+     * How well a matching result agrees with the whole typed street, direction and type included:
+     * +1 per typed street word it carries, -1 for a different direction or a different street type.
+     * "1451 W Covell Blvd" scores 3 for "1451 W Covell Blvd", 1 for "1451 East Covell Boulevard",
+     * 0 for "1451 Covell Place"; [matches] alone found all three equal and the nearest led.
+     */
+    fun score(query: String, name: String?, address: String?): Int {
+        val m = LEAD.find(query) ?: return 0
+        val typed = canon(m.groupValues[2].substringBefore(','))
+        val got = canon("${name.orEmpty()} ${address.orEmpty()}").toSet()
+        var score = typed.count { it in got }
+        val typedDirs = typed.filter { it in CANON_DIRS }.toSet()
+        val typedTypes = typed.filter { it in CANON_TYPES }.toSet()
+        if (typedDirs.isNotEmpty() && got.any { it in CANON_DIRS && it !in typedDirs }) score--
+        if (typedTypes.isNotEmpty() && got.any { it in CANON_TYPES && it !in typedTypes }) score--
+        return score
+    }
+
     /** True when a result named [name] at [address] is the address typed in [query]. False when
      *  the query is not an address. */
     fun matches(query: String, name: String?, address: String?): Boolean {

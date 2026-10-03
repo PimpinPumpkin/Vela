@@ -2205,7 +2205,15 @@ word that is not a direction or a street type; `matches` is true when both are w
 result's name or address. A typed address is searched over a window of at least
 `ADDRESS_SEARCH_SPAN_M` (40 km) whatever the zoom; when no matching result lies within that
 distance of the view it is geocoded through the autocomplete request; matching rows lead the list,
-nearest to the view first.
+ordered by `AddressQuery.score` (one point per typed street word the row carries, abbreviations
+folded, minus one for a different direction or a different street type: "1451 W Covell Blvd"
+before "1451 East Covell Boulevard" before "1451 Covell Place"), then nearest to the view.
+The on-device geocoder's ESTIMATES (an interpolated house number, or a point on the street with the
+number added; ids `addr~`, `OfflineAddressStore.isApproximate`) are named with the street's own
+spelling and dropped whenever another result has the address, wherever it is. Two bracketing house
+numbers more than `INTERP_MAX_GAP_M` (300 m) apart are not blended (usually two stretches of one
+street on either side of a park or a creek; the blend landed between them, on neither); the nearer
+number's point is used.
 
 **Road-name pill (BAR placement).** Width = the room between the speed readout's measured right
 edge (`speedBoxRightPx`) plus 8 dp and the FAB column, at least 96 dp; centered on the screen when

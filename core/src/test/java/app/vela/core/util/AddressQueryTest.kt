@@ -34,4 +34,13 @@ class AddressQueryTest {
     @Test fun aBusinessNamedForTheStreetIsNotAMatch() {
         assertFalse(AddressQuery.matches("459 Ralston Ave", "Ralston Hardware", "88 Main St, Springfield"))
     }
+
+    @Test fun `the result that agrees with the whole typed street scores highest`() {
+        val q = "1451 W Covell Blvd, Davis, CA"
+        val exact = AddressQuery.score(q, "1451 W Covell Blvd", "Davis, CA")
+        val east = AddressQuery.score(q, "1451 East Covell Boulevard", "Davis, CA")
+        val place = AddressQuery.score(q, "1451 Covell Place", "Davis, CA")
+        assertTrue(exact > east && exact > place)
+        assertTrue(east > place)
+    }
 }

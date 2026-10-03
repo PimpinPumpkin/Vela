@@ -2259,6 +2259,7 @@ class MapViewModel @Inject constructor(
                 // old substring test found the digits in a ZIP code or a neighbor's number, took
                 // a list of nearby businesses for the address, and never asked (issue #638).
                 fun carries(p: Place) = app.vela.core.util.AddressQuery.matches(q, p.name, p.address)
+                lastAddressQuery = q
                 // Asked whenever no result is the address NEAR the view: a match in another state
                 // does not count, or the nearby one would never be looked up.
                 val geocoded = if (isAddress && res.places.none { carries(it) && (near == null || it.location.distanceTo(near) < ADDRESS_SEARCH_SPAN_M) }) {
@@ -2296,7 +2297,11 @@ class MapViewModel @Inject constructor(
                         withContext(Dispatchers.IO) {
                             runCatching { addressStore.geocode(q, near, limit = 3) }.getOrDefault(emptyList())
                         }.filter { a ->
-                            (geocoded + res.places).none { g -> g.location.distanceTo(a.location) < 120.0 && carries(g) }
+                            // An ESTIMATE goes whenever any other result has the address, wherever it
+                            // is: an estimate between two stretches of a street sat 200 m off in a
+                            // park beside the real house and showed as a second pin (user 2026-10-02).
+                            if (app.vela.core.data.OfflineAddressStore.isApproximate(a)) (geocoded + res.places).none { carries(it) }
+                            else (geocoded + res.places).none { g -> g.location.distanceTo(a.location) < 120.0 && carries(g) }
                         }
                     } else emptyList()
                     // NEARBY MERGE (user 2026-07-18): even with pagination, Google's keyless
@@ -8453,9 +8458,16 @@ class MapViewModel @Inject constructor(
     private fun addressFirst(geocoded: List<Place>, places: List<Place>, near: LatLng?, carries: (Place) -> Boolean): List<Place> {
         val all = geocoded + places.filterNot { p -> geocoded.any { g -> g.name == p.name && g.location.distanceTo(p.location) < 60.0 } }
         val (hits, rest) = all.partition(carries)
-        if (hits.size < 2 || near == null) return hits + rest
-        return hits.sortedBy { it.location.distanceTo(near) } + rest
+        if (hits.size < 2) return hits + rest
+        // The rows that agree with the WHOLE typed street (direction, street type) lead, nearest
+        // first among equals: by distance alone "1451 Covell Place" came before "1451 W Covell Blvd".
+        val q = lastAddressQuery
+        return hits.sortedWith(
+            compareByDescending<Place> { app.vela.core.util.AddressQuery.score(q, it.name, it.address) }
+                .thenBy { if (near == null) 0.0 else it.location.distanceTo(near) },
+        ) + rest
     }
+    private var lastAddressQuery = "" // set by runSearch before addressFirst orders an address query
 
     private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion, update: Boolean = false, chained: Boolean = false): Boolean {
         // The region's own pack, or its parent's for a split country or state (RegionPacks). A big

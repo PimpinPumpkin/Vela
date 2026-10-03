@@ -2844,6 +2844,10 @@ architecture note.
   own choice, the owner's from 2026-09-15.
   Logcat `VelaSearch: without google: own data N hit(s), N near, in N ms; open geocoder ...`.
   On the 4a (Davis, nothing downloaded there, archive streamed): 1.2 to 2.4 s for three names.
+- **Address results (2026-10-02, SPEC 6):** matching rows are ordered by `AddressQuery.score`
+  (whole typed street, direction and type included), and the on-device geocoder's estimates
+  (`addr~` ids) never show beside a result that has the address; numbers more than 300 m apart are
+  not blended. Seen: a second pin labeled with the typed text in a park beside the real house.
 - **A typed address is matched on WHOLE WORDS (issue #638, 2026-10-01, `core/util/AddressQuery`).**
   `runSearch` asks Google's autocomplete to geocode a typed house address only when no result
   already "carries" it. The test was a substring of the digits, which a ZIP code ("616" in
