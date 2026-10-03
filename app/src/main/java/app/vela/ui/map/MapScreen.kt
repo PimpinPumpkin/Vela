@@ -67,6 +67,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -164,6 +165,7 @@ import app.vela.ui.placeStatusColor
 import app.vela.ui.Traffic
 import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
+import app.vela.ui.place.atWidth
 import app.vela.ui.place.sheetDragGestures
 import app.vela.ui.search.SearchBar
 import java.util.Locale
@@ -530,6 +532,10 @@ fun MapScreen(
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(state.results) { if (state.results.isEmpty()) resultsExpanded = false }
+    // Row-level Menu button target: the place id whose sheet should open onto its
+    // Menu tab. Consumed once (a normal pick or close clears it) so reopening the
+    // place later doesn't stick on Menu.
+    var sheetMenuAsk by remember { mutableStateOf<String?>(null) }
     // The results sheet minimized to its short bottom bar — the chrome shows again then, but
     // lifted above the bar so the FAB / scale bar / Search this area never sit on top of it.
     val resultsMinimized = gates.resultsMinimized
@@ -2093,6 +2099,8 @@ fun MapScreen(
                 resolving = state.tapResolvingFor != null && state.tapResolvingFor == state.selected?.id,
                 unlinked = state.tapUnlinkedFor != null && state.tapUnlinkedFor == state.selected?.id,
                 sheetKey = state.selected!!.id.let { id -> state.sheetAlias?.takeIf { it.first == id }?.second ?: id },
+                // Row-level Menu button (results list): open the sheet on its Menu tab.
+                initialTab = sheetMenuAsk?.takeIf { it == state.selected?.id }?.let { "Menu" },
                 onExpandedChange = { placeSheetExpanded = it },
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
@@ -2117,7 +2125,7 @@ fun MapScreen(
                     state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id,
                 stopDeparturesCachedAt = state.stopDeparturesCachedAt?.takeIf { state.stopDeparturesFor == state.selected?.id },
                 onTapRoute = vm::openRouteDetail,
-                onClose = vm::clearSelection,
+                onClose = { sheetMenuAsk = null; vm.clearSelection() },
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
                 onStartNavigation = { vm.startNavToSelected() },
@@ -2166,27 +2174,22 @@ fun MapScreen(
             shapeBarWanted(state, searchOpen) -> ShapeBottomBar(state, vm)
             state.results.isNotEmpty() && (!searchOpen || pickingResults) && state.pickOnMap == null &&
                 state.streetView == null && !state.streetViewLoading -> {
-              SearchResults(
-                results = state.results,
-                onShownChange = { filteredResultIds = it },
-                collapsed = state.resultsCollapsed,
-                expanded = resultsExpanded,
+              ResultsSheet(
+                state = state,
+                vm = vm,
+                focusManager = focusManager,
+                context = context,
+                resultsExpanded = resultsExpanded,
                 onExpandedChange = { resultsExpanded = it },
-                onPick = {
-                    focusManager.clearFocus()
-                    vm.selectPlace(it)
-                },
-                onMinimize = vm::collapseResults,
-                onExpand = vm::expandResults,
-                onClose = vm::clearSearch,
-                listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
-                query = state.query,
+                onShownChange = { filteredResultIds = it },
                 minimizeTick = resultsPanTick,
                 moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
                 loadingMore = state.resultsLoadingMore,
                 moreBranches = state.resultsBranches,
                 mapLayers = mapLayersOf(state, vm),
                 onMore = vm::loadMoreResults,
+                sheetMenuAsk = sheetMenuAsk,
+                onMenuAsk = { sheetMenuAsk = it },
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
@@ -2987,6 +2990,10 @@ private fun SearchResults(
     moreBranches: Boolean = false, // the row reads "Show other locations" (a name search that landed on one place)
     mapLayers: MapLayers? = null, // an open custom map's layers, to show and hide (issue #669)
     onMore: () -> Unit = {},
+    onActionDirections: (Place) -> Unit = {},
+    onActionCall: (Place) -> Unit = {},
+    onActionShare: (Place) -> Unit = {},
+    onActionMenu: (Place) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -3153,10 +3160,11 @@ private fun SearchResults(
     }
     // Same fixed sheet gray as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
+    Box(modifier) {
     Card(
         // statusBarsPadding caps the sheet's growth below the status bar, so the handle pill
         // never slides under the clock / camera cutout when expanded (user 2026-07-09).
-        modifier.statusBarsPadding().padding(top = 8.dp).fillMaxWidth(),
+        Modifier.statusBarsPadding().padding(top = 8.dp).fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = SheetPalette.ink(dark)),
     ) {
@@ -3411,136 +3419,23 @@ private fun SearchResults(
                 state = listState,
             ) {
                 items(shown) { place ->
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .dpadHighlight(RoundedCornerShape(6.dp))
-                        .clickable { onPick(place) }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                ) {
-                    // Bigger, more legible rows (the address/category line read too
-                    // small before): name at titleMedium, the secondary lines bumped
-                    // from bodySmall→bodyMedium with a touch more breathing room.
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // A custom map's marker leads with its own icon, or a dot in its color.
-                        if (place.pinIconUrl != null) {
-                            coil.compose.AsyncImage(model = place.pinIconUrl, contentDescription = null, modifier = Modifier.padding(end = 10.dp).size(26.dp))
-                        } else if (place.pinColor != null) {
-                            Box(Modifier.padding(end = 10.dp).size(14.dp).background(Color(place.pinColor!!), androidx.compose.foundation.shape.CircleShape))
-                        } else if (place.id.startsWith(MapViewModel.ROUTE_ROW_ID)) {
-                            Icon(Sym.Directions, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.padding(end = 10.dp).size(22.dp))
-                        }
-                        Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = SheetPalette.ink(dark))
-                    }
-                    place.rating?.let { r ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 3.dp),
-                        ) {
-                            Text(
-                                String.format(Locale.US, "%.1f", r),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SheetPalette.dim(dark),
-                            )
-                            RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
-                            place.reviewCount?.let {
-                                Text(
-                                    "($it)",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = SheetPalette.dim(dark),
-                                )
-                            }
-                        }
-                    }
-                    val sub = listOfNotNull(
-                        place.priceText,
-                        place.category,
-                        place.distanceMeters?.let { formatDistance(it) },
-                    ).joinToString(" · ")
-                    if (sub.isNotEmpty()) {
-                        Text(
-                            sub,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = SheetPalette.dim(dark),
-                            modifier = Modifier.padding(top = 1.dp),
-                        )
-                    }
-                    // Full address (city/state/zip) to disambiguate similar names
-                    // and identical-looking residential addresses.
-                    place.address?.let { addr ->
-                        Text(
-                            addr,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = SheetPalette.dim(dark),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 1.dp),
-                        )
-                    }
-                    // Gas stations: the live price on its own line under the address, bold with a
-                    // pump glyph in the title ink so it pops out of the row (user 2026-07-10).
-                    place.fuelPrice?.let { fp ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 2.dp),
-                        ) {
-                            Icon(
-                                Sym.LocalGasStation,
-                                contentDescription = null,
-                                tint = SheetPalette.ink(dark),
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                fp,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = SheetPalette.ink(dark),
-                                modifier = Modifier.padding(start = 5.dp),
-                            )
-                        }
-                    }
-                    if (place.permanentlyClosed) {
-                        Text(
-                            stringResource(R.string.mapscreen_permanently_closed),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = SheetPalette.TrafficRed,
-                            modifier = Modifier.padding(top = 3.dp),
-                        )
-                    } else (app.vela.ui.DemoClock.status(place)?.first ?: place.statusText)?.let { status ->
-                        Text(
-                            status,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = placeStatusColor(status, app.vela.ui.DemoClock.status(place)?.second ?: place.openNow),
-                            modifier = Modifier.padding(top = 3.dp),
-                        )
-                    }
-                    // The owner's note on a saved place — the whole point of putting it in a
-                    // list ("this restaurant's fish is better than its chicken"), so the list
-                    // view must show it, not just the place sheet.
-                    place.savedNote?.let { note ->
-                        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Top) {
-                            Icon(
-                                Sym.FormatQuote,
-                                contentDescription = null,
-                                tint = SheetPalette.dim(dark),
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                note,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontStyle = FontStyle.Italic,
-                                color = SheetPalette.ink(dark),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+                    ResultPlaceCard(
+                        place = place,
+                        dark = dark,
+                        onPick = { onPick(place) },
+                        onActionDirections = { onActionDirections(place) },
+                        onActionCall = { onActionCall(place) },
+                        onActionShare = { onActionShare(place) },
+                        onActionMenu = { onActionMenu(place) },
+                    )
+                    // Plain breathing gap between cards, Google-style (no bars/dividers).
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 14.dp)
+                            .height(8.dp),
+                    )
                 }
-                Divider()
-            }
                 // Next pages of the same search, on demand (the first fetch is three pages).
                 if (moreAvailable) item {
                     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
@@ -3553,6 +3448,379 @@ private fun SearchResults(
                 }
         }
             } // if (!collapsed) — list
+        }
+    }
+            // "View map" extended FAB, Google-style: fixed bottom-end over the list, #303134
+            // pill with map glyph + #A8C7FA ink and a real shadow. Collapses the sheet to the
+            // count bar so the map shows again. Lives in the overlay Box scope (NOT inside the
+            // Column above) so BoxScope.align anchors it to the sheet's bottom-end above the list.
+            if (!collapsed) {
+                androidx.compose.material3.ExtendedFloatingActionButton(
+                    onClick = onMinimize,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .padding(end = 16.dp, bottom = 16.dp)
+                        .dpadHighlight(RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = androidx.compose.ui.graphics.Color(0xFF303134),
+                    contentColor = androidx.compose.ui.graphics.Color(0xFFA8C7FA),
+                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 6.dp,
+                        pressedElevation = 8.dp,
+                    ),
+                ) {
+                    Icon(
+                        Sym.Map,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.mapscreen_view_map))
+                }
+            }
+    } // Box overlay for the list FAB
+} // SearchResults end
+
+/** One Google-style result card: photo strip, text block, action pills. Split out of
+ *  SearchResults: the list body overflowed the 64KB per-method bytecode limit. */
+@Composable
+private fun ResultPlaceCard(
+    place: Place,
+    dark: Boolean,
+    onPick: () -> Unit,
+    onActionDirections: () -> Unit,
+    onActionCall: () -> Unit,
+    onActionShare: () -> Unit,
+    onActionMenu: () -> Unit,
+) {
+    // Gallery is display-sized only: the w320-h220 search payloads decode at list
+    // size (400px wide cells) instead of full-res, which was the scroll jank.
+    val gallery = remember(place.id, place.photoUrls) { place.photoUrls.take(3) }
+    // Google-style result card: photo strip FIRST (full-bleed), then the text
+    // block, then the action pills. Cards breathe with a plain gap, no bars.
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .dpadHighlight(RoundedCornerShape(6.dp))
+            .clickable { onPick() },
+    ) {
+        // Photo strip with GROUPED outer corners (16dp outside, square
+        // where images touch), full-bleed above the text, Google-style.
+        // Any photo at all shows: a single photo fills the strip.
+        if (gallery.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                gallery.forEachIndexed { i, url ->
+                    val corners = when {
+                        gallery.size == 1 -> RoundedCornerShape(16.dp)
+                        i == 0 -> RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                        i == gallery.lastIndex -> RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
+                        else -> RoundedCornerShape(0.dp)
+                    }
+                    coil.compose.AsyncImage(
+                        model = url.atWidth(400),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(110.dp)
+                            .clip(corners)
+                            .background(SheetPalette.dim(dark).copy(alpha = 0.2f)),
+                    )
+                }
+            }
+        }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 14.dp),
+        ) {
+        // Bigger, more legible rows (the address/category line read too
+        // small before): name at titleMedium, the secondary lines bumped
+        // from bodySmall→bodyMedium with a touch more breathing room.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // A custom map's marker leads with its own icon, or a dot in its color.
+            if (place.pinIconUrl != null) {
+                coil.compose.AsyncImage(model = place.pinIconUrl, contentDescription = null, modifier = Modifier.padding(end = 10.dp).size(26.dp))
+            } else if (place.pinColor != null) {
+                Box(Modifier.padding(end = 10.dp).size(14.dp).background(Color(place.pinColor!!), androidx.compose.foundation.shape.CircleShape))
+            } else if (place.id.startsWith(MapViewModel.ROUTE_ROW_ID)) {
+                Icon(Sym.Directions, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.padding(end = 10.dp).size(22.dp))
+            }
+            Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = SheetPalette.ink(dark))
+        }
+        place.rating?.let { r ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 3.dp),
+            ) {
+                Text(
+                    String.format(Locale.US, "%.1f", r),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SheetPalette.dim(dark),
+                )
+                RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
+                place.reviewCount?.let {
+                    Text(
+                        "($it)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SheetPalette.dim(dark),
+                    )
+                }
+                // Google puts the distance in the rating row ("4.2 ★★★★ (1,387) · 11 km").
+                place.distanceMeters?.let {
+                    Text(
+                        " · " + formatDistance(it),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SheetPalette.dim(dark),
+                    )
+                }
+            }
+        }
+        val sub = listOfNotNull(
+            place.priceText,
+            place.category,
+        ).joinToString(" · ")
+        if (sub.isNotEmpty()) {
+            Text(
+                sub,
+                style = MaterialTheme.typography.bodyMedium,
+                color = SheetPalette.dim(dark),
+                modifier = Modifier.padding(top = 1.dp),
+            )
+        }
+        // Full address (city/state/zip) to disambiguate similar names
+        // and identical-looking residential addresses.
+        place.address?.let { addr ->
+            Text(
+                addr,
+                style = MaterialTheme.typography.bodyMedium,
+                color = SheetPalette.dim(dark),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 1.dp),
+            )
+        }
+        // Gas stations: the live price on its own line under the address, bold with a
+        // pump glyph in the title ink so it pops out of the row (user 2026-07-10).
+        place.fuelPrice?.let { fp ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 2.dp),
+            ) {
+                Icon(
+                    Sym.LocalGasStation,
+                    contentDescription = null,
+                    tint = SheetPalette.ink(dark),
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    fp,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = SheetPalette.ink(dark),
+                    modifier = Modifier.padding(start = 5.dp),
+                )
+            }
+        }
+        if (place.permanentlyClosed) {
+            Text(
+                stringResource(R.string.mapscreen_permanently_closed),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = SheetPalette.TrafficRed,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        } else (app.vela.ui.DemoClock.status(place)?.first ?: place.statusText)?.let { status ->
+            Text(
+                status,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = placeStatusColor(status, app.vela.ui.DemoClock.status(place)?.second ?: place.openNow),
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+                    // The owner's note on a saved place - the whole point of putting it in a
+        // list ("this restaurant's fish is better than its chicken"), so the list
+        // view must show it, not just the place sheet.
+        place.savedNote?.let { note ->
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Top) {
+                Icon(
+                    Sym.FormatQuote,
+                    contentDescription = null,
+                    tint = SheetPalette.dim(dark),
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    note,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = SheetPalette.ink(dark),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        // Google-style per-row action buttons: Directions (filled) + Call/Share
+        // (outlined). They act on the ROW's place directly, without opening it.
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ResultActionButton(
+                icon = Sym.Directions,
+                label = stringResource(R.string.place_directions),
+                primary = true,
+                onClick = { onActionDirections() },
+            )
+            if (!place.phone.isNullOrBlank()) {
+                ResultActionButton(
+                    icon = Sym.Call,
+                    label = stringResource(R.string.place_call),
+                    primary = false,
+                    onClick = { onActionCall() },
+                )
+            }
+            ResultActionButton(
+                icon = Sym.Share,
+                label = stringResource(R.string.place_share),
+                primary = false,
+                onClick = { onActionShare() },
+            )
+            // Menu opens the sheet straight onto its Menu tab (Google's
+            // row-level Menu button). Only when menu photos exist.
+            if (app.vela.ui.place.hasMenuPhotos(place)) {
+                ResultActionButton(
+                    icon = Sym.List,
+                    label = stringResource(R.string.place_tab_menu),
+                    primary = false,
+                    onClick = { onActionMenu() },
+                )
+            }
+        }
+        } // text column (16dp inset)
+        } // card column
+}
+
+/** Results bottom sheet call, split out of MapScreen: the call-site lambdas overflowed
+ *  the 64KB per-method bytecode limit on the giant MapScreen composable. */
+@Composable
+private fun ResultsSheet(
+    state: MapUiState,
+    vm: MapViewModel,
+    focusManager: androidx.compose.ui.focus.FocusManager,
+    context: android.content.Context,
+    resultsExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onShownChange: (Set<String>?) -> Unit,
+    minimizeTick: Int,
+    sheetMenuAsk: String?,
+    onMenuAsk: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+              SearchResults(
+                results = state.results,
+                onShownChange = onShownChange,
+                collapsed = state.resultsCollapsed,
+                expanded = resultsExpanded,
+                onExpandedChange = onExpandedChange,
+                onPick = {
+                    focusManager.clearFocus()
+                    onMenuAsk(null)
+                    vm.selectPlace(it)
+                },
+                onMinimize = vm::collapseResults,
+                onExpand = vm::expandResults,
+                onClose = vm::clearSearch,
+                listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
+                query = state.query,
+                minimizeTick = minimizeTick,
+                moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
+                loadingMore = state.resultsLoadingMore,
+                moreBranches = state.resultsBranches,
+                onMore = vm::loadMoreResults,
+                onActionDirections = { p ->
+                    focusManager.clearFocus()
+                    vm.selectPlace(p)
+                    vm.routeToSelected()
+                },
+                onActionCall = { p ->
+                    p.phone?.let { ph ->
+                        val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
+                        runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                    }
+                },
+                onActionShare = { p ->
+                    val url = app.vela.ui.place.sharePlaceUrl(p)
+                    runCatching {
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, url)
+                                },
+                                context.getString(R.string.place_share_place),
+                            ),
+                        )
+                    }
+                },
+                onActionMenu = { p ->
+                    focusManager.clearFocus()
+                    onMenuAsk(p.id)
+                    vm.selectPlace(p)
+                },
+                modifier = modifier,
+              )
+}
+
+/** Google result-card action: Directions is the filled primary pill (#A8C7FA bg,
+ *  #062E6F ink); Call/Share are transparent outlined pills (#5F6368 hairline, #A8C7FA ink). */
+@Composable
+private fun ResultActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    primary: Boolean,
+    onClick: () -> Unit,
+) {
+    val pill = androidx.compose.foundation.shape.CircleShape
+    if (primary) {
+        Row(
+            Modifier
+                .clip(pill)
+                .background(androidx.compose.ui.graphics.Color(0xFFA8C7FA))
+                .dpadHighlight(pill)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val ink = androidx.compose.ui.graphics.Color(0xFF062E6F)
+            Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)
+        }
+    } else {
+        Row(
+            Modifier
+                .clip(pill)
+                .border(
+                    androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF5F6368)),
+                    pill,
+                )
+                .dpadHighlight(pill)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val ink = androidx.compose.ui.graphics.Color(0xFFA8C7FA)
+            Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)
         }
     }
 }
