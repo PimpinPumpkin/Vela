@@ -1458,6 +1458,12 @@ pass, which reads region index files on the main thread, the building-overlay ga
 schedule) runs at most once per `IDLE_WORK_GAP_MS` (1 s) while the camera moves, plus once
 `IDLE_WORK_TRAIL_MS` (250 ms) after the last idle event; a pan's end still runs it at once.
 
+**The puck during a gesture.** While the nav camera is detached and a pan, pinch or rotate is
+moving it, the puck is the map's own symbol (the flat image of the chosen shape), not the 3D
+overlay, which comes back `PUCK_GESTURE_SETTLE_MS` (180 ms) after the camera's last move. The
+overlay is drawn by the app window and the map by its own surface; under a moving camera the two
+landed a frame apart and the ship swam against the map (user video, 2026-10-02).
+
 **Audit pass, 2026-10-02 (fps and battery).** Each rule below is in the code with the reason beside it:
 - The free-drive follow loop goes idle when parked after a drive with no route (its driving branch
   counted as settling on every frame) and ignores target moves under `FOLLOW_STILL_DEADBAND_M`

@@ -152,6 +152,9 @@ private const val ROUTE_PENDING_OPACITY = 0.004f
 private const val ROUTE_PENDING_MAX_PASSES = 40
 // Camera-idle work while the camera keeps moving: at most once a second, plus once this long
 // after the last idle event (see the idle listener).
+// The 3D puck overlay waits this long after a gesture's last camera move before it replaces the
+// map's own symbol (see the detached branch of the nav ticker).
+private const val PUCK_GESTURE_SETTLE_MS = 180L
 private const val IDLE_WORK_GAP_MS = 1000L
 private const val IDLE_WORK_TRAIL_MS = 250L
 private const val NAV_CUT_M = 400.0       // cut piece length: 256 gradient texels over 400 m = 1.6 m each
@@ -2724,6 +2727,7 @@ fun VelaMapView(
         val lastCamWrite = DoubleArray(7) { Double.NaN }
         var idleFrames = 0
         val detachedCam = DoubleArray(5) { Double.NaN } // live camera last frame, while detached
+        val detachedMovedMs = longArrayOf(0L) // when the detached camera last moved (a gesture)
         // The dot's source only when it moved: a GeoJSON upload is a re-render, and before the arrow
         // engages (a parked car) this ran on every frame with the same point.
         val lastMe = DoubleArray(3) { Double.NaN }
@@ -3060,8 +3064,6 @@ fun VelaMapView(
                     // jitter the overlay exists to fix (user 2026-09-29).
                     val live = cam?.cameraPosition
                     if (cam != null && live != null) {
-                        val scr = cam.projection.toScreenLocation(MLLatLng(pt.lat, pt.lng))
-                        showPuckOverlay(style, scr.x, scr.y, navPuck.displayBearing - live.bearing, live.tilt)
                         // A parked car slows this loop to NAV_IDLE_TICK_MS; a moving camera (the
                         // user's pan or rotate) must keep it at frame rate or the overlay trails.
                         val t = live.target
@@ -3069,11 +3071,26 @@ fun VelaMapView(
                             kotlin.math.abs(t.longitude - detachedCam[1]) > 1e-7 ||
                             kotlin.math.abs(live.zoom - detachedCam[2]) > 1e-4 ||
                             kotlin.math.abs(live.bearing - detachedCam[3]) > 0.01 || kotlin.math.abs(live.tilt - detachedCam[4]) > 0.01
+                        val nowMs = android.os.SystemClock.uptimeMillis()
                         if (camMoved) {
                             idleFrames = 0
                             detachedCam[0] = t?.latitude ?: 0.0; detachedCam[1] = t?.longitude ?: 0.0
                             detachedCam[2] = live.zoom; detachedCam[3] = live.bearing; detachedCam[4] = live.tilt
+                            detachedMovedMs[0] = nowMs
                         } else idleFrames++
+                        // WHILE THE CAMERA MOVES under a pan, pinch or rotate the puck is the map's own
+                        // symbol (the flat image of the same shape): it renders in the map's frame, so it
+                        // moves in lockstep. The overlay is drawn by the app window, which can land a
+                        // frame apart from the map's surface, and the ship visibly swam against the map
+                        // while the user panned (2026-10-02). The 3D overlay returns once the camera has
+                        // been still for PUCK_GESTURE_SETTLE_MS.
+                        if (nowMs - detachedMovedMs[0] < PUCK_GESTURE_SETTLE_MS) {
+                            dropPuckOverlay()
+                            idleFrames = 0
+                        } else {
+                            val scr = cam.projection.toScreenLocation(MLLatLng(pt.lat, pt.lng))
+                            showPuckOverlay(style, scr.x, scr.y, navPuck.displayBearing - live.bearing, live.tilt)
+                        }
                     } else dropPuckOverlay()
                 }
                 // Keep the driven/ahead cut EXACTLY under the arrow WITHOUT moving geometry for it.
