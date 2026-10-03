@@ -2658,12 +2658,15 @@ the shared-storage app folder for a card.
 
 `tools/routing-regions.json` is the catalog (every Geofabrik country-level extract, US states,
 Canadian provinces, and first-level sub-areas for the countries Geofabrik divides). Rows carry
-`group`, `big`, `skip_obf`, `obf_manual` and `qkprefix` where relevant. A dispatch takes a group
-list or `all-sub`. `obf_manual` (England, 1.6 GB: out of memory at the runner's 12g heap every
-time, so the scheduler retried it forever) drops a row from the obf workflow ONLY; its routing file
-is baked by hand with `JAVA_HEAP=22g scripts/build-obf-region.sh` and merged into both the live and
-staging manifests, and every other bake still covers the row. `skip_obf` would also drop it from the
-basemap and grid-cell bakes.
+`group`, `big`, `skip_obf` and `qkprefix` where relevant. A dispatch takes a group list or
+`all-sub`. A region whose roads-only extract passes `OBF_SPLIT_MB` (250 MB) is SPLIT-BAKED
+(`scripts/build-obf-region.sh`, 2026-10-03): cut into strips across its longer side with
+`osmium extract --strategy smart` (a road or turn restriction crossing a cut stays whole in both
+neighbors), each strip indexed alone, the strips joined into one file with `BinaryInspector -c`,
+then the highway hierarchy added as usual. Indexing holds every node of its input at once, so this is
+what keeps England (1.6 GB, four OOMs in a row at the runner's 12g heap) baking on CI. Checked on
+Delaware forced into 3 strips (`OBF_SPLIT=3 OBF_OUT=<file>` keeps the result unpublished):
+`ObfCellsProbeTest` routes across the seams matched the unsplit file exactly (distance, time, steps).
 
 Selection rules on the phone:
 

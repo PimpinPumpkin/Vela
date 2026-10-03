@@ -862,8 +862,7 @@
       "name": "England (Great Britain)",
       "group": "great-britain-sub",
       "pbf_url": "https://download.geofabrik.de/europe/united-kingdom/england-latest.osm.pbf",
-      "big": true,
-      "obf_manual": true
+      "big": true
     },
     {
       "id": "great-britain-scotland",

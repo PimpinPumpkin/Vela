@@ -4984,10 +4984,10 @@ Gotchas:
   `sea` and whole `russia`). `big:true` from a HEAD sweep at 450 MB. Ten whole-country/state rows
   carry `skip_obf:true` (california, italy, germany, france, great-britain, spain, japan, india,
   indonesia, brazil): they OOM the obf bake even filtered, their sub-area rows cover them, and
-  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. `obf_manual:true`
-  (England since 2026-10-03, OOM at 12g) drops a row from the obf workflow ONLY: bake it by hand with
-  `JAVA_HEAP=22g scripts/build-obf-region.sh` on a 32 GB machine, then merge the entry into the STAGING
-  manifest too (`OBF_MANIFEST_NAME=obf-manifest-staging.json`) or the flip sees it missing. China joined the list 2026-09-12 (1.5 GB, OOM at 12g). **Geofabrik DOES cut China into 33
+  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. A region too big
+  for the runner (England, 1.6 GB) is not skipped: the bake SPLITS it past 250 MB of roads and joins
+  the strips into one file (SPEC 7.x, `OBF_SPLIT`), so CI keeps updating it. Never park an oversized
+  region outside CI; it then never updates. China joined the list 2026-09-12 (1.5 GB, OOM at 12g). **Geofabrik DOES cut China into 33
   sub-extracts now (checked 2026-09-21, issue #599): every province plus Beijing, Shanghai,
   Tianjin, Chongqing, Hong Kong and Macau, the largest 164 MB**, so `china-sub` (ids
   `china-<slug>`, names "<Local> (China)", 458 catalog rows in all) bakes like `germany-sub` and the

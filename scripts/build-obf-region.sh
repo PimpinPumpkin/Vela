@@ -66,9 +66,46 @@ if [[ "${VELA_OBF_SECTIONS:-routing}" == "routing" ]]; then
 fi
 JAVA_HEAP="${JAVA_HEAP:-12g}"
 echo "→ index heap: $JAVA_HEAP"
+# SPLIT BAKE (2026-10-03). Indexing holds every node of the extract at once, so a big region runs
+# out of memory on a 16 GB runner whatever the flags (England, 1.6 GB: four OOMs in a row at 12g).
+# Past OBF_SPLIT_MB of roads the extract is cut into strips across its longer side, each strip is
+# indexed alone, and the strips are joined into the one region file (BinaryInspector -c, the tool
+# the highway-hierarchy step uses). `osmium extract --strategy smart` keeps a road or a turn
+# restriction that crosses a cut whole in BOTH neighbors, so the router joins the strips the way it
+# joins two adjacent map files. OBF_SPLIT=<n> forces n strips (testing).
+ROUT_MB_NOW=$(bake_mib "$WORK/$INDEX_PBF")
+SPLIT="${OBF_SPLIT:-$(( (ROUT_MB_NOW + ${OBF_SPLIT_MB:-250} - 1) / ${OBF_SPLIT_MB:-250} ))}"
 set +e
-bake_obf_index "$WORK" "$INDEX_PBF" "$JAVA_HEAP" "$WORK"
-RC=$?
+if [ "$SPLIT" -gt 1 ]; then
+  echo "→ split bake: ${ROUT_MB_NOW} MB of roads in $SPLIT strips"
+  # The strips' boxes (W,S,E,N), cut across the longer side; python3 is on every runner.
+  BOXES=(); while IFS= read -r line; do BOXES+=("$line"); done < <(python3 -c '
+import json, math, sys
+s, w, n, e = json.loads(sys.argv[1]); k = int(sys.argv[2])
+tall = (n - s) >= (e - w) * math.cos(math.radians((s + n) / 2))
+for i in range(k):
+    if tall: print(f"{w},{s + (n - s) * i / k},{e},{s + (n - s) * (i + 1) / k}")
+    else: print(f"{w + (e - w) * i / k},{s},{w + (e - w) * (i + 1) / k},{n}")
+' "$BBOX" "$SPLIT")
+  RC=0; PARTS=()
+  for i in $(seq 0 $((SPLIT - 1))); do
+    BOX="${BOXES[$i]}"
+    mkdir -p "$WORK/part$i"
+    osmium extract -b "$BOX" --strategy smart "$WORK/$INDEX_PBF" -o "$WORK/part$i/part$i.osm.pbf" --overwrite || { RC=1; break; }
+    echo "→ strip $((i + 1))/$SPLIT: $(bake_mib "$WORK/part$i/part$i.osm.pbf") MB"
+    bake_obf_index "$WORK/part$i" "part$i.osm.pbf" "$JAVA_HEAP" "$WORK" || { RC=$?; break; }
+    PARTS+=("$(ls "$WORK/part$i"/*.obf | head -1)")
+  done
+  if [ $RC -eq 0 ]; then
+    java -Xmx2g -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" net.osmand.obf.BinaryInspector \
+      -c "$WORK/joined.obf" "${PARTS[@]}"
+    RC=$?
+    [ $RC -eq 0 ] && rm -rf "$WORK"/part*
+  fi
+else
+  bake_obf_index "$WORK" "$INDEX_PBF" "$JAVA_HEAP" "$WORK"
+  RC=$?
+fi
 set -e
 if [ $RC -ne 0 ]; then
   # Say WHICH region was too big and how big its source was, so a world bake reports a usable list
@@ -78,7 +115,7 @@ if [ $RC -ne 0 ]; then
        "OutOfMemoryError, this region does not fit a $JAVA_HEAP heap - bake it on a bigger machine."
   exit $RC
 fi
-OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename
+OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename (or joined.obf)
 mv "$OBF" "$WORK/$ID.obf"
 
 # Highway hierarchy for car and bicycle (bake_obf_hh in bake-lib.sh says why). A region too big
@@ -99,6 +136,8 @@ if [[ "${VELA_OBF_HH:-1}" == "1" ]]; then
 fi
 
 SIZE=$(bake_mib "$WORK/$ID.obf")
+# OBF_OUT=<path>: keep the file there and stop (a local test of the bake, nothing published).
+if [ -n "${OBF_OUT:-}" ]; then cp "$WORK/$ID.obf" "$OBF_OUT"; echo "→ kept $OBF_OUT (${SIZE} MB, hh=$HH), not published"; exit 0; fi
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.obf"
 echo "→ $ID: ${SIZE} MB obf (download == installed), bbox $BBOX"
 
