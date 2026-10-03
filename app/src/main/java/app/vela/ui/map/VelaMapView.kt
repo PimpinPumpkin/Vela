@@ -84,18 +84,19 @@ private const val ROUTE_LAYER = "vela-route"
 // Google-eyeballed: browse ~unchanged, street-level noticeably wider. Widened again at street zoom
 // with the roads (2026-10-03): at the old 11-17 px it sat inside a real-width street like a pencil line.
 private fun routeWidth(): Expression = realWidthCurve(ROUTE_BASE_STOPS, ROUTE_REAL_M, ROUTE_CAP_DP)
-private val ROUTE_BASE_STOPS = floatArrayOf(10f, 5f, 14f, 8f, 16f, 13f, 17.5f, 20f, 18.5f, 24f)
+private val ROUTE_BASE_STOPS = floatArrayOf(10f, 4.25f, 14f, 6.8f, 16f, 11f, 17.5f, 17f, 18.5f, 20.4f)
 // The stripe in meters from street zoom in (2026-10-03, "the blue line is thinner than the road"):
-// at the old pixel curve it was half a real-width arterial at nav zoom. 10 m covers a two-lane street
-// and one carriageway of a divided road, the way Google's line sits on the road it follows.
-private const val ROUTE_REAL_M = 10.0
-private const val ROUTE_CAP_DP = 38.0
+// at the old pixel curve it was half a real-width arterial at nav zoom. 8.5 m (10 m until the owner
+// asked for 15% narrower, same day) sits inside a two-lane street or one carriageway of a divided
+// road with a little road showing each side, as Google's does. Every stop is 0.85 of the old one.
+private const val ROUTE_REAL_M = 8.5
+private const val ROUTE_CAP_DP = 32.0
 // Alternates draw nearly as wide as the selected route (2026-10-01, discussion #639): at the old
 // 4 to 8 px they were no wider than the streets under them at city zooms and read as roads.
 private fun altRouteWidth(): Expression = realWidthCurve(ALT_BASE_STOPS, ALT_REAL_M, ALT_CAP_DP)
-private val ALT_BASE_STOPS = floatArrayOf(10f, 4.5f, 14f, 7f, 16f, 12f, 17.5f, 18f, 18.5f, 22f)
-private const val ALT_REAL_M = 9.0
-private const val ALT_CAP_DP = 35.0
+private val ALT_BASE_STOPS = floatArrayOf(10f, 3.8f, 14f, 6f, 16f, 10.2f, 17.5f, 15.3f, 18.5f, 18.7f)
+private const val ALT_REAL_M = 7.65
+private const val ALT_CAP_DP = 30.0
 // The alternate's outline sits INSIDE its width (the gap is the width less both edges), so an
 // alternate with its outline is never wider than the selected route (discussion #639).
 private val ALT_ROUTE_EDGE_WIDTH = Expression.interpolate(

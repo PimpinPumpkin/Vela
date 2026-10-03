@@ -3762,7 +3762,7 @@ architecture note.
   style, so a width change only reaches users through this runtime pass, never the bundled JSON.
   A one-way major road is ONE carriageway (`ROAD_ONEWAY_WIDTH_M`, the tile's `oneway`): at full
   width each half of a divided road merged into a band 3x the route with the route on one edge.
-  The route stripe is meter-based too (`routeWidth()`, 10 m); never go back to a pixel-only curve.
+  The route stripe is meter-based too (`routeWidth()`, 8.5 m); never go back to a pixel-only curve.
   Road edges (`applyRoadEdges`, dial `roadEdge`) and the route outline (`<piece>-ol` layers, dial
   `routeOutline`) are Google's navigation look; every paint of a route piece goes through
   `Style.routeSet` so its outline follows. A new route piece layer needs an outline and routeSet.
