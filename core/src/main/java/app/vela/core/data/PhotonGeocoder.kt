@@ -24,6 +24,9 @@ object PhotonGeocoder {
 
     /** Does this query read as a street address (house number first)? Those are the queries
      *  Google's keyless suggest ranks badly and Photon ranks well. */
+    /** The UI languages Photon answers in. */
+    val LANGS = setOf("en", "de", "fr")
+
     fun looksLikeAddress(q: String): Boolean = Regex("""^\d+\s+\S+""").containsMatchIn(q.trim())
 
     /** Address suggestions near [near], nearest-biased by Photon itself. Empty on any failure. */
@@ -46,7 +49,7 @@ object PhotonGeocoder {
                 }
             }
             // Photon only speaks a few UI languages; anything else falls back to default names.
-            if (lang in setOf("en", "de", "fr")) append("&lang=").append(lang)
+            if (lang in LANGS) append("&lang=").append(lang)
         }
         val body = runCatching {
             http.newCall(Request.Builder().url(url).header("User-Agent", app.vela.core.VelaConfig.VELA_UA).build())
@@ -58,15 +61,26 @@ object PhotonGeocoder {
             if (c.size < 2) return@mapNotNull null
             val loc = LatLng(c[1], c[0])
             val p = f.properties ?: return@mapNotNull null
-            // "123 Main St" style primary line; Photon splits number/street/name.
-            val primary = listOfNotNull(p.housenumber, p.street ?: p.name).joinToString(" ").ifBlank { p.name ?: return@mapNotNull null }
+            // "123 Main St" style street line; Photon splits number/street/name.
+            val streetLine = listOfNotNull(p.housenumber, p.street).joinToString(" ").ifBlank { null }
             val locality = listOfNotNull(p.city ?: p.district, p.state, p.postcode).joinToString(", ").ifBlank { null }
+            // A NAMED feature (a tower, a park, a city, a shop) is its name, with its kind as the
+            // category (issue #652: the Tour Eiffel showed as "5 Avenue Anatole France, Address").
+            // A bare house or street stays an address, as before.
+            val named = p.name != null && p.osm_key != "highway" && !(p.osm_key == "place" && p.osm_value == "house")
+            val primary = when {
+                named -> p.name!!
+                streetLine != null -> streetLine
+                else -> p.name ?: return@mapNotNull null
+            }
+            val kind = if (named) p.osm_value?.replace('_', ' ')?.replaceFirstChar { it.uppercase() } else null
             Place(
                 id = "photon:${p.osm_id ?: "${loc.lat},${loc.lng}"}",
                 name = primary,
                 location = loc,
-                category = "Address",
-                address = listOfNotNull(primary, locality).joinToString(", "),
+                category = kind ?: "Address",
+                address = listOfNotNull(if (named) streetLine else primary, locality, if (named) p.country else null)
+                    .joinToString(", "),
                 distanceMeters = near?.distanceTo(loc),
             )
         }
@@ -91,5 +105,8 @@ object PhotonGeocoder {
         val state: String? = null,
         val postcode: String? = null,
         val osm_id: Long? = null,
+        val osm_key: String? = null,
+        val osm_value: String? = null,
+        val country: String? = null,
     )
 }

@@ -2292,6 +2292,10 @@ class MapViewModel @Inject constructor(
                 // off used to return whatever Photon matched by name (issue #626).
                 // A CATEGORY search without Google is answered by Vela's data alone when it has
                 // anything; Photon is asked only for names and addresses, or when Vela has nothing.
+                // Without Google, over a wide view, a top hit NAMED exactly what was typed opens on
+                // its own, as Google's does ("eiffel tower" from the whole world goes to Paris,
+                // issue #652) instead of framing pins on three continents.
+                var landmarkTop: Place? = null
                 val res = if (!app.vela.ui.GoogleFree.on.value) dataSource.search(q, near, spanM, rankFrom = rankBias(near))
                 else {
                     val t0 = System.currentTimeMillis()
@@ -2302,16 +2306,29 @@ class MapViewModel @Inject constructor(
                     // most of ten seconds, and its hits for the same name in other towns made
                     // the map fly out from the one on screen. It is still asked when nothing
                     // near matches, and for addresses, which it knows better.
-                    val nearM = maxOf(viewSpanM ?: 0.0, GOOGLE_FREE_NEAR_M)
+                    // "Near" is capped at a city (issue #652): from a whole-world view every hit was
+                    // "inside the view", so any business named for the Eiffel Tower answered alone
+                    // and the open geocoder, which knows the real one, was never asked.
+                    val nearM = maxOf(viewSpanM ?: 0.0, GOOGLE_FREE_NEAR_M).coerceAtMost(GOOGLE_FREE_NEAR_CAP_M)
+                    val wideView = (viewSpanM ?: 0.0) > GOOGLE_FREE_WIDE_M
                     val localNear = if (near == null) 0 else local.count { it.location.distanceTo(near) <= nearM }
                     val category = app.vela.core.data.OfflineRank.isCategoryQuery(q)
                     val alone = local.isNotEmpty() && (category || (!isAddress && localNear > 0))
                     android.util.Log.i("VelaSearch", "without google: own data ${local.size} hit(s), ${localNear} near, in $localMs ms; open geocoder ${if (alone) "not asked" else "asked"}")
                     if (alone) app.vela.core.model.SearchResult(q, local)
                     else dataSource.search(q, near, spanM, rankFrom = rankBias(near)).let { r ->
-                        r.copy(places = local + r.places.filterNot { p ->
+                        val open = r.places.filterNot { p ->
                             local.any { l -> l.name.equals(p.name, ignoreCase = true) && l.location.distanceTo(p.location) < 120.0 }
-                        })
+                        }
+                        // Zoomed out, the geocoder's ranking (fame, importance) leads: a landmark is
+                        // what a name typed over a continent means. Close in, Vela's own places lead.
+                        // Over a wide view Vela's own hits are matches near the PHONE, not the place
+                        // meant; only those carrying every typed word stay, five at most.
+                        val words = q.lowercase().split(Regex("\\W+")).filter { it.length > 1 }
+                        val localWide = local.filter { l -> words.all { w -> l.name.lowercase().contains(w) } }.take(5)
+                        fun norm(s: String) = s.lowercase().replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+                        if (wideView && !category) open.firstOrNull()?.takeIf { norm(it.name) == norm(q) }?.let { landmarkTop = it }
+                        r.copy(places = if (wideView && !category) open + localWide else local + open)
                     }
                 }
                 // A typed house address whose results carry no such house number: the search
@@ -2406,6 +2423,9 @@ class MapViewModel @Inject constructor(
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false
                         (localAddrs + addressFirst(geocoded, res.places, near, ::carries)).firstOrNull()?.let { top -> selectPlace(top); routeToSelected() }
+                    } else landmarkTop?.let { top ->
+                        val s = _state.value
+                        if (!s.pickingOrigin && !s.pickingDest && !s.pickingStop) selectPlace(top)
                     }
                 } else {
                     openDirectionsOnResult = false
@@ -8919,6 +8939,10 @@ class MapViewModel @Inject constructor(
         private const val ADDRESS_SEARCH_SPAN_M = 40_000.0
         /** Without Google, a name Vela's own data finds within this of the view's center (or inside the view) is answered without the open geocoder. */
         const val GOOGLE_FREE_NEAR_M = 3_000.0
+        /** The most "near" can mean, however wide the view (issue #652). */
+        const val GOOGLE_FREE_NEAR_CAP_M = 25_000.0
+        /** A view wider than this is a search for a place's fame, not its distance. */
+        const val GOOGLE_FREE_WIDE_M = 50_000.0
         /** A directions link's start this close to the fix is "from here" (Telegram sends the fix). */
         private const val LINK_ORIGIN_HERE_M = 150.0
         private const val ROUTING_OFFER_DONE = "routing_offer_done"

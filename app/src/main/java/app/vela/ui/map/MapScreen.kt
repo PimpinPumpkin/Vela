@@ -4306,6 +4306,29 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
     // search (works in any locale), the label is what the user sees, so the chips localize without
     // changing what's searched.
     val categories = app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }
+    // Settings > Map "Category shortcuts" (issue #654): the row, one chip with a menu, or nothing.
+    when (app.vela.ui.CategoryChipsPref.mode.value) {
+        app.vela.ui.CategoryChipsPref.Mode.HIDDEN -> return
+        app.vela.ui.CategoryChipsPref.Mode.BUTTON -> {
+            var open by remember { mutableStateOf(false) }
+            Box(modifier) {
+                ElevatedAssistChip(
+                    onClick = { open = true },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp)),
+                    label = { Text(stringResource(R.string.cat_menu)) },
+                    leadingIcon = { Icon(Sym.Category, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    shape = CircleShape,
+                )
+                app.vela.ui.VelaMenu(expanded = open, onDismissRequest = { open = false }) {
+                    categories.forEach { (labelRes, query, icon) ->
+                        item(stringResource(labelRes), icon) { open = false; onPick(query) }
+                    }
+                }
+            }
+            return
+        }
+        app.vela.ui.CategoryChipsPref.Mode.ROW -> Unit
+    }
     Row(
         modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

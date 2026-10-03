@@ -1109,6 +1109,12 @@
     <string name="settings_pause_in_bar_hint_buttons">With \"Prefer buttons over swipes\" on, the bar carries pause and the step list button side by side, and the trip figures shrink to fit.</string>
     <string name="nav_steps_handle_cd">Show steps</string>
     <string name="settings_route_trail">Road behind you</string>
+    <string name="cat_menu">Categories</string>
+    <string name="settings_category_chips">Category shortcuts</string>
+    <string name="settings_category_chips_hint">The Restaurants, Coffee, Gas… shortcuts under the search bar. One button folds them into a menu.</string>
+    <string name="settings_category_chips_row">Row</string>
+    <string name="settings_category_chips_button">One button</string>
+    <string name="settings_category_chips_hidden">Hidden</string>
     <string name="mapvm_rechecking_connection">Checking the connection…</string>
     <string name="mapvm_back_online">Back online</string>
     <string name="mapvm_still_offline">Still offline. Vela will notice the moment the connection is back.</string>

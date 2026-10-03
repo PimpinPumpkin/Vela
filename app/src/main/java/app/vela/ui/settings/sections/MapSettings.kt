@@ -97,6 +97,25 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.BuildingOverlay.set(context, it) },
             hint = stringResource(R.string.settings_building_overlay_hint),
         )
+        // Category shortcuts under the search bar (issue #654): the row, one button, or none.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_category_chips),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.CategoryChipsPref.Mode.ROW to stringResource(R.string.settings_category_chips_row),
+            app.vela.ui.CategoryChipsPref.Mode.BUTTON to stringResource(R.string.settings_category_chips_button),
+            app.vela.ui.CategoryChipsPref.Mode.HIDDEN to stringResource(R.string.settings_category_chips_hidden),
+        ).forEach { (mode, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.CategoryChipsPref.mode.value == mode,
+                onClick = { app.vela.ui.CategoryChipsPref.set(context, mode) },
+            )
+        }
+        Hint(stringResource(R.string.settings_category_chips_hint))
         // House numbers: how far out they appear (issue #329). Numbers come from OpenStreetMap
         // and, in the US, OpenAddresses, so a missing number is usually missing data.
         GroupDivider()

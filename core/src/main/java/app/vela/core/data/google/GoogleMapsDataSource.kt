@@ -212,7 +212,11 @@ class GoogleMapsDataSource @Inject constructor(
             // led with fuzzy address rows two states away and the city itself never showed.
             // The two run side by side (one after the other was most of the wait, issue #647).
             val (ranked, nearby) = coroutineScope {
-                val r = async(Dispatchers.IO) { app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 20, hardBox = false) }
+                // Ranked in English when Photon does not speak the UI language (issue #652): with no
+                // language it matched only local names, and "eiffel tower" found a peak in Alberta
+                // before the Tour Eiffel, whose English name is the one people type.
+                val rankLang = if (lang in app.vela.core.data.PhotonGeocoder.LANGS) lang else "en"
+                val r = async(Dispatchers.IO) { app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, rankLang, limit = 20, hardBox = false) }
                 val n = async(Dispatchers.IO) { app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 10) }
                 r.await() to n.await()
             }

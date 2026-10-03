@@ -425,6 +425,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
+- ✅ **Better search without Google (issue #652, 2026-10-03).** Zoomed out, a famous place's name finds it:
+  "eiffel tower" from the whole world opens the Eiffel Tower in Paris instead of a list of look-alikes near you.
+- ✅ **Category shortcuts can fold away (issue #654, 2026-10-03).** Settings > Map: the chip row, one
+  "Categories" button with a menu, or hidden.
 - ✅ **More reliable offline detection (2026-10-03).** Vela no longer decides it is offline after being in the
   background or while the phone dozes; if any request gets an answer it is online, full stop. Tapping the
   offline globe checks the connection again on the spot.

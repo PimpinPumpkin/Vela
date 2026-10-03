@@ -1531,6 +1531,17 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   no length change over 0.5%, no router point more than 12 m from the drawn line
   (`RouteSmoothingTest`). Seen on a Davis demo drive: a notch at a junction where the open router's
   line went 338, 17, 347, 315, 346, 357 degrees over 7-15 m segments.
+- **Search without Google from a wide view** (issue #652, 2026-10-03). "Near" for answering a name
+  from Vela's own data alone is capped at `GOOGLE_FREE_NEAR_CAP_M` (25 km): from a whole-world view
+  every own hit was "inside the view" and the open geocoder was never asked. Over a view wider than
+  `GOOGLE_FREE_WIDE_M` (50 km) a name search leads with the geocoder's ranking and keeps at most five
+  own hits, only those carrying every typed word; a top hit named exactly as typed opens on its own
+  (Google's behavior). Photon is asked in English when it does not speak the UI language (it then
+  matched only local names: "eiffel tower" found a peak in Alberta before the Tour Eiffel). A Photon
+  hit with a name and a kind (not a bare house or street) is that name, its kind the category.
+- **Category shortcuts** (issue #654, `CategoryChipsPref`, Settings > Map): the chip row, ONE
+  "Categories" chip that opens them in a `VelaMenu`, or none. Decided inside `CategoryChips`, so
+  MapScreen's call sites are untouched.
 - **Offline detection** (`MapViewModel.observeConnectivity`, `core/net/NetHealth`, 2026-10-03). The
   offline flag latches only when the SYSTEM has no usable network AND none of Vela's own requests got a
   response for `NetHealth.FRESH_MS` (15 s) with no unreachable-host failure since; the count starts at
