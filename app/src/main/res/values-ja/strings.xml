@@ -1,6 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Vela Maps</string>
-
     <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
     <string name="cat_restaurants">レストラン</string>
     <string name="cat_coffee">コーヒー</string>
@@ -10,7 +10,6 @@
     <string name="cat_pharmacy">薬局</string>
     <string name="cat_atms">ATM</string>
     <string name="cat_parks">公園</string>
-
     <!-- settings: SettingsScreen.kt -->
     <string name="settings_title">設定</string>
     <string name="settings_back">戻る</string>
@@ -36,7 +35,8 @@
     <string name="search_voice_prompt">話しかけて検索</string>
     <string name="settings_voice">音声</string>
     <string name="settings_voice_fallback_name">音声</string>
-    <string name="settings_voice_downloading">%1$s をダウンロード中… %2$d%%</string> <!-- format -->
+    <string name="settings_voice_downloading">%1$s をダウンロード中… %2$d%%</string>
+    <!-- format -->
     <string name="settings_voice_none_hint">音声はまだありません。下の音声ライブラリを開いて、端末上で動く自然な音声をダウンロードしてください（アカウント不要、古い端末でもリアルタイムで動作します）。インストール済みのシステム TTS エンジンもここに表示され、選択できます。</string>
     <string name="settings_voice_test">音声をテスト</string>
     <string name="settings_voice_system_settings">システムの音声設定</string>
@@ -47,10 +47,13 @@
     <string name="settings_voice_nav_sample_text">400メートル先、中央通りを右折です。その先、目的地は左側です。</string>
     <string name="settings_voice_speak">読み上げ</string>
     <string name="settings_voice_nav_sample">ナビのサンプル</string>
-    <string name="settings_voice_speed">音声の速さ · %1$s</string> <!-- format -->
+    <string name="settings_voice_speed">音声の速さ · %1$s</string>
+    <!-- format -->
     <string name="settings_voice_speed_hint">音声案内をゆっくり、または速くします。− / + をタップしてください（サンプルを読み上げます）。標準は 1.00× です。</string>
-    <string name="settings_voice_variant">音声バリエーション #%1$d</string> <!-- format -->
-    <string name="settings_voice_variant_of">音声バリエーション #%1$d / %2$d</string> <!-- format -->
+    <string name="settings_voice_variant">音声バリエーション #%1$d</string>
+    <!-- format -->
+    <string name="settings_voice_variant_of">音声バリエーション #%1$d / %2$d</string>
+    <!-- format -->
     <string name="settings_voice_variant_field">バリエーション番号</string>
     <string name="settings_voice_variant_go">移動</string>
     <string name="settings_voice_variant_hint">この音声には数百人の話者が含まれています。◀ ▶ をタップして 1 人ずつ試聴するか、バリエーション番号を入力して「移動」をタップすると直接切り替えられます（サンプルを読み上げます）。気に入った声を選んでください。</string>
@@ -65,10 +68,14 @@
     <string name="settings_keep_screen_on_hint">ターンバイターン案内中、画面が消灯しないようにします。</string>
     <string name="map_voice_downloading">Vela 音声をダウンロード中 · %1$d%%</string>
     <string name="map_voice_installing">Vela 音声をインストール中…</string>
-    <string name="map_region_downloading">%1$s の経路データをダウンロード中 · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">%1$s の場所をオフライン検索用に保存中 · %2$d%%</string> <!-- format -->
-    <string name="mapvm_poipack_ready">%1$s の場所がオフラインで検索できるようになりました</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">%1$s の場所データはまだ公開されていません。公開され次第、ここに表示されます。</string> <!-- format -->
+    <string name="map_region_downloading">%1$s の経路データをダウンロード中 · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">%1$s の場所をオフライン検索用に保存中 · %2$d%%</string>
+    <!-- format -->
+    <string name="mapvm_poipack_ready">%1$s の場所がオフラインで検索できるようになりました</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">%1$s の場所データはまだ公開されていません。公開され次第、ここに表示されます。</string>
+    <!-- format -->
     <string name="settings_demo_drive">走行シミュレーション（デモ）</string>
     <string name="settings_demo_drive_hint">「開始」をタップすると、GPS を使わずに予定ルートをシミュレーション走行します。実際にナビを使うときはオフにしてください。</string>
     <string name="settings_sim_location">現在地のシミュレーション（デモ）</string>
@@ -104,11 +111,14 @@
     <string name="settings_routing_no_regions">利用できる地域はまだありません。</string>
     <string name="settings_clear_filter">フィルタをクリア</string>
     <string name="settings_routing_filter_placeholder">検索</string>
-    <string name="settings_routing_no_match">「%1$s」に一致する地域はありません。</string> <!-- format -->
-    <string name="settings_routing_downloading">ダウンロード中… %1$d%%</string> <!-- format -->
+    <string name="settings_routing_no_match">「%1$s」に一致する地域はありません。</string>
+    <!-- format -->
+    <string name="settings_routing_downloading">ダウンロード中… %1$d%%</string>
+    <!-- format -->
     <string name="settings_routing_installed">インストール済み · オフライン経路検索に対応</string>
     <string name="settings_routing_installed_places">インストール済み · オフラインで場所を検索可能</string>
-    <string name="settings_routing_places_downloading">場所を保存中 · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">場所を保存中 · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">場所を取得</string>
     <string name="settings_update_places">場所を更新</string>
     <string name="settings_routing_update_available">インストール済み · 場所の更新があります</string>
@@ -152,31 +162,41 @@
     <string name="settings_support_hint">Vela は無料で広告もありません。役に立っていると感じたら、寄付が開発の継続に役立ちます。完全に任意です。</string>
     <string name="settings_support_button">Vela を支援</string>
     <string name="settings_version">バージョン</string>
-    <string name="settings_version_line">Vela %1$s（ビルド %2$d）</string> <!-- format -->
+    <string name="settings_version_line">Vela %1$s（ビルド %2$d）</string>
+    <!-- format -->
     <string name="settings_collapse">折りたたむ</string>
     <string name="settings_expand">展開する</string>
     <string name="settings_voice_lib_empty_hint">★ はおすすめの音声です。すべての音声は端末上でオフライン動作します。</string>
-    <string name="settings_voice_lib_installed_hint">インストール済み：%1$d MB · 音声 %2$d 件。</string> <!-- format -->
-    <string name="settings_voice_lib_lang_hint">アプリの言語は %1$s です。音声案内を合わせるため、下から %2$s の音声をダウンロードしてください（英語の音声では %3$s の通りの名前を正しく発音できません）。</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">インストール済み：%1$d MB · 音声 %2$d 件。</string>
+    <!-- format -->
+    <string name="settings_voice_lib_lang_hint">アプリの言語は %1$s です。音声案内を合わせるため、下から %2$s の音声をダウンロードしてください（英語の音声では %3$s の通りの名前を正しく発音できません）。</string>
+    <!-- format -->
     <string name="settings_voice_search">音声を検索</string>
     <string name="settings_voice_show_more">さらに %1$d 件表示</string>
     <string name="settings_voice_show_less">表示を減らす</string>
     <string name="settings_voice_this_voice">この音声</string>
-    <string name="settings_voice_remove_title">%1$sを削除しますか？</string> <!-- format -->
+    <string name="settings_voice_remove_title">%1$sを削除しますか？</string>
+    <!-- format -->
     <string name="settings_voice_remove_body">これは唯一の Vela 音声です。別の音声をダウンロードするまで、音声案内はシステムのテキスト読み上げエンジンを使用します（未インストールの場合は無音になります）。</string>
     <string name="settings_voice_remove">削除</string>
     <string name="settings_voice_gender_female">女性</string>
     <string name="settings_voice_gender_male">男性</string>
-    <string name="settings_voice_gender_multi">%1$d 人の話者</string> <!-- format -->
+    <string name="settings_voice_gender_multi">%1$d 人の話者</string>
+    <!-- format -->
     <string name="settings_voice_gender_neutral">中性</string>
-    <string name="settings_voice_row_downloading">ダウンロード中… %1$d%%</string> <!-- format -->
-    <string name="settings_voice_row_in_use">使用中 · %1$s · %2$s · %3$s MB</string> <!-- format -->
-    <string name="settings_voice_row_downloaded">ダウンロード済み · %1$s · %2$s · %3$s MB</string> <!-- format -->
+    <string name="settings_voice_row_downloading">ダウンロード中… %1$d%%</string>
+    <!-- format -->
+    <string name="settings_voice_row_in_use">使用中 · %1$s · %2$s · %3$s MB</string>
+    <!-- format -->
+    <string name="settings_voice_row_downloaded">ダウンロード済み · %1$s · %2$s · %3$s MB</string>
+    <!-- format -->
     <string name="settings_voice_row_use">使用</string>
-    <string name="settings_voice_row_remove">%1$sを削除</string> <!-- format -->
+    <string name="settings_voice_row_remove">%1$sを削除</string>
+    <!-- format -->
 
     <!-- place: PlaceSheet.kt -->
-    <string name="place_photo_number">写真 %1$d</string> <!-- format -->
+    <string name="place_photo_number">写真 %1$d</string>
+    <!-- format -->
     <string name="place_photo_category_all">すべて</string>
     <string name="place_saved">保存済み</string>
     <string name="place_save">保存</string>
@@ -195,7 +215,8 @@
     <string name="place_also_at_location">この場所にあるほかのスポット</string>
     <string name="place_open">開く</string>
     <string name="place_people_also_search">他の人はこちらも検索</string>
-    <string name="place_photo_caption">写真 · %1$s</string> <!-- format -->
+    <string name="place_photo_caption">写真 · %1$s</string>
+    <!-- format -->
     <string name="place_change_start">出発地を変更</string>
     <string name="place_move_stop_up">経由地を上へ移動</string>
     <string name="place_move_stop_down">経由地を下へ移動</string>
@@ -220,15 +241,21 @@
     <string name="place_leave_now">今すぐ出発</string>
     <string name="place_depart_at">出発時刻</string>
     <string name="place_arrive_by">到着時刻</string>
-    <string name="place_depart_arrive">%1$s発  ·  %2$s着</string> <!-- format -->
-    <string name="place_arriveby_leave">%1$sまでに到着  ·  %2$s発</string> <!-- format -->
+    <string name="place_depart_arrive">%1$s発  ·  %2$s着</string>
+    <!-- format -->
+    <string name="place_arriveby_leave">%1$sまでに到着  ·  %2$s発</string>
+    <!-- format -->
     <string name="place_in_typical_traffic">通常の交通状況で</string>
     <string name="place_based_current_traffic">現在の交通状況に基づく</string>
-    <string name="place_arrive_approx">%1$s に到着</string> <!-- format -->
-    <string name="place_usually_range">通常 %1$s～%2$s</string> <!-- format -->
+    <string name="place_arrive_approx">%1$s に到着</string>
+    <!-- format -->
+    <string name="place_usually_range">通常 %1$s～%2$s</string>
+    <!-- format -->
     <string name="place_fastest">最速</string>
-    <string name="place_delta_min">+%1$d 分</string> <!-- format -->
-    <string name="place_via">%1$s 経由</string> <!-- format -->
+    <string name="place_delta_min">+%1$d 分</string>
+    <!-- format -->
+    <string name="place_via">%1$s 経由</string>
+    <!-- format -->
     <string name="place_live_traffic">リアルタイムの交通状況</string>
     <string name="place_traffic_light">渋滞なし</string>
     <string name="place_traffic_moderate">やや渋滞</string>
@@ -238,18 +265,22 @@
     <string name="place_hide_steps">詳細を非表示</string>
     <string name="place_show_steps">詳細を表示</string>
     <string name="place_walk">徒歩</string>
-    <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
+    <string name="place_gallery_counter">%1$d / %2$d</string>
+    <!-- format -->
     <string name="place_search_reviews">クチコミを検索</string>
     <string name="place_sort_reviews">クチコミを並べ替え</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="other">クチコミ %1$d 件</item>
     </plurals>
-    <string name="place_reviews_so_far">クチコミ · ここまで %1$d 件</string> <!-- format -->
+    <string name="place_reviews_so_far">クチコミ · ここまで %1$d 件</string>
+    <!-- format -->
     <string name="place_gathering_reviews">クチコミを取得しています…</string>
     <string name="place_reviews_load_failed">クチコミを読み込めませんでした。タップして再試行してください。</string>
     <string name="place_no_reviews">クチコミはありません。</string>
     <string name="place_clear_review_search">クチコミ検索をクリア</string>
-    <string name="place_no_reviews_mention">「%1$s」に触れているクチコミはありません（読み込み済みの %2$d 件を検索）。</string> <!-- format -->
+    <string name="place_no_reviews_mention">「%1$s」に触れているクチコミはありません（読み込み済みの %2$d 件を検索）。</string>
+    <!-- format -->
     <string name="place_back">戻る</string>
     <string name="place_street_view">ストリートビュー</string>
     <string name="place_reviews_title">クチコミ</string>
@@ -267,12 +298,12 @@
     <string name="place_coordinates_copied">座標をコピーしました</string>
     <string name="place_share_address">住所</string>
     <string name="place_popular_times">混雑する時間帯</string>
-    <string name="place_busyness_right_now">現在：%1$s</string> <!-- format -->
+    <string name="place_busyness_right_now">現在：%1$s</string>
+    <!-- format -->
     <string name="place_hours">営業時間</string>
     <string name="place_departments">店内の売り場・サービス</string>
     <string name="place_collapse_hours">営業時間を折りたたむ</string>
     <string name="place_expand_hours">営業時間を展開</string>
-
     <!-- mapscreen: MapScreen.kt -->
     <string name="mapscreen_recenter">現在地に戻す</string>
     <string name="mapscreen_search_this_area">このエリアを検索</string>
@@ -294,7 +325,8 @@
     <string name="mapscreen_got_it">OK</string>
     <string name="mapscreen_heads_up">お知らせ</string>
     <string name="mapscreen_dismiss">閉じる</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="other">%1$d 件の結果</item>
     </plurals>
     <string name="mapscreen_shrink_list">リストを縮小</string>
@@ -317,25 +349,29 @@
     <string name="mapscreen_section_recent">最近</string>
     <string name="mapscreen_clear_recents">履歴を消去</string>
     <string name="mapscreen_search_empty_hint">場所、住所、カテゴリを検索できます。</string>
-    <string name="mapscreen_set_shortcut_address">%1$sの住所を設定</string> <!-- format -->
-    <string name="mapscreen_edit_shortcut">%1$sを編集</string> <!-- format -->
+    <string name="mapscreen_set_shortcut_address">%1$sの住所を設定</string>
+    <!-- format -->
+    <string name="mapscreen_edit_shortcut">%1$sを編集</string>
+    <!-- format -->
     <string name="mapscreen_menu_change">変更</string>
     <string name="mapscreen_menu_remove">削除</string>
     <string name="mapscreen_saved_place_options">保存済みの場所のオプション</string>
     <string name="mapscreen_set_as_home">自宅に設定</string>
     <string name="mapscreen_set_as_work">職場に設定</string>
     <string name="mapscreen_cancel">キャンセル</string>
-    <string name="mapscreen_assign_shortcut_hint">%1$sの住所を検索</string> <!-- format -->
+    <string name="mapscreen_assign_shortcut_hint">%1$sの住所を検索</string>
+    <!-- format -->
     <string name="mapscreen_pick_stop_hint">経由地として追加する場所を選んでください</string>
     <string name="mapscreen_learn_more">詳細</string>
     <string name="mapscreen_faster_route_title">より速いルート</string>
-    <string name="mapscreen_faster_route_saves">現在の交通状況で約 %1$s 短縮できます</string> <!-- format -->
+    <string name="mapscreen_faster_route_saves">現在の交通状況で約 %1$s 短縮できます</string>
+    <!-- format -->
     <string name="mapscreen_no">いいえ</string>
     <string name="mapscreen_switch">切り替える</string>
-    <string name="mapscreen_resume_nav">%1$sへのナビを再開しますか？</string> <!-- format -->
+    <string name="mapscreen_resume_nav">%1$sへのナビを再開しますか？</string>
+    <!-- format -->
     <string name="mapscreen_resume">再開</string>
     <string name="mapscreen_your_destination">目的地</string>
-
     <!-- root: VelaRoot.kt -->
     <string name="root_not_now">後で</string>
     <string name="root_voice_title">ナビの音声</string>
@@ -344,7 +380,6 @@
     <string name="root_voice_body_outro">設定 → 音声 でいつでも変更できます。</string>
     <string name="root_voice_download">Vela 音声をダウンロード</string>
     <string name="root_voice_use_system">システムの音声を使用</string>
-
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">直進</string>
     <string name="nav_gps_lost">GPS を検索しています…</string>
@@ -359,13 +394,11 @@
     <string name="nav_trip_time">所要時間</string>
     <string name="nav_distance">距離</string>
     <string name="nav_done">完了</string>
-
     <!-- steps: StepsSheet.kt -->
     <string name="steps_title">ルート詳細</string>
     <string name="steps_live_traffic">リアルタイムの交通状況</string>
     <string name="steps_close_cd">ルート詳細を閉じる</string>
     <string name="steps_continue">直進</string>
-
     <!-- welcome: WelcomeScreen.kt -->
     <string name="welcome_tagline">地図とナビを、脱Googleで。</string>
     <string name="welcome_feature_no_tracking_title">トラッキングなし</string>
@@ -379,28 +412,34 @@
     <string name="welcome_donate_body">Vela は無料・広告なしで、ごくわずかな資金で開発されています。役に立っていると感じたら、一度きりの少額の寄付が継続の支えになります。完全に任意で、このお願いが表示されるのは今回だけです。設定にはいつでも「支援」の項目があります。</string>
     <string name="welcome_donate_confirm">Vela を支援</string>
     <string name="welcome_donate_dismiss">また今度</string>
-
     <!-- search: SearchBar.kt -->
     <string name="search_close_cd">検索を閉じる</string>
     <string name="search_placeholder">検索</string>
     <string name="search_offline">オフライン</string>
     <string name="search_clear_cd">検索をクリア</string>
     <string name="search_settings_cd">設定</string>
-
     <!-- mapvm: MapViewModel.kt -->
-    <string name="mapvm_shortcut_set">%1$sを「%2$s」に設定しました</string> <!-- format -->
-    <string name="mapvm_search_needs_recalibration">検索の再調整が必要です：%1$s</string> <!-- format -->
+    <string name="mapvm_shortcut_set">%1$sを「%2$s」に設定しました</string>
+    <!-- format -->
+    <string name="mapvm_search_needs_recalibration">検索の再調整が必要です：%1$s</string>
+    <!-- format -->
     <string name="mapvm_offline_no_data">オフラインです。設定 ▸ オフライン マップ でエリアをダウンロードすると、接続なしで検索できます。</string>
     <string name="mapvm_offline_no_match">保存したエリアに「%1$s」のオフライン検索結果はありません。オフライン検索の対象は、ダウンロードした OpenStreetMap の場所です。</string>
-    <string name="mapvm_no_results">「%1$s」の結果はありません。</string> <!-- format -->
+    <string name="mapvm_no_results">「%1$s」の結果はありません。</string>
+    <!-- format -->
     <string name="mapvm_offline_results">オフラインの検索結果（未接続）</string>
-    <string name="mapvm_search_failed_reason">検索に失敗しました：%1$s</string> <!-- format -->
-    <string name="mapvm_none_found_along_route">ルート沿いに「%1$s」は見つかりませんでした</string> <!-- format -->
+    <string name="mapvm_search_failed_reason">検索に失敗しました：%1$s</string>
+    <!-- format -->
+    <string name="mapvm_none_found_along_route">ルート沿いに「%1$s」は見つかりませんでした</string>
+    <!-- format -->
     <string name="mapvm_search_failed">検索に失敗しました</string>
     <string name="mapvm_dropped_pin">指定した地点</string>
-    <string name="mapvm_no_mode_route_found">%1$sのルートが見つかりません</string> <!-- format -->
-    <string name="mapvm_directions_need_recalibration">経路の再調整が必要です：%1$s</string> <!-- format -->
-    <string name="mapvm_routing_failed_reason">ルート検索に失敗しました：%1$s</string> <!-- format -->
+    <string name="mapvm_no_mode_route_found">%1$sのルートが見つかりません</string>
+    <!-- format -->
+    <string name="mapvm_directions_need_recalibration">経路の再調整が必要です：%1$s</string>
+    <!-- format -->
+    <string name="mapvm_routing_failed_reason">ルート検索に失敗しました：%1$s</string>
+    <!-- format -->
     <string name="mapvm_no_transit_routes">公共交通機関のルートが見つかりません</string>
     <string name="mapvm_trip_default_name">移動記録</string>
     <string name="mapvm_no_voice_engine">音声案内に使える音声がインストールされていません</string>
@@ -410,34 +449,46 @@
     <string name="mapvm_resume_waiting_gps">GPS の受信を待ってナビを再開します…</string>
     <string name="mapvm_resume_failed">ナビを再開できませんでした</string>
     <string name="mapvm_no_track_to_replay">この移動記録にはリプレイできる軌跡がありません</string>
-    <string name="mapvm_replaying">%1$s をリプレイ中（3×）…</string> <!-- format -->
-    <string name="mapvm_export_saved_subject">Vela の保存済みの場所（%1$d 件）</string> <!-- format -->
+    <string name="mapvm_replaying">%1$s をリプレイ中（3×）…</string>
+    <!-- format -->
+    <string name="mapvm_export_saved_subject">Vela の保存済みの場所（%1$d 件）</string>
+    <!-- format -->
     <string name="mapvm_export_saved_chooser">保存済みの場所をエクスポート</string>
-    <string name="mapvm_export_trip_subject">Vela の移動記録：%1$s（%2$d 点）</string> <!-- format -->
+    <string name="mapvm_export_trip_subject">Vela の移動記録：%1$s（%2$d 点）</string>
+    <!-- format -->
     <string name="mapvm_share_trip_chooser">移動記録を共有</string>
     <string name="mapvm_voice_sample">400メートル先、中央通りを右折です。</string>
-    <string name="mapvm_not_enough_space">%1$s 用の空き容量が足りません（%2$d MB）</string> <!-- format -->
-    <string name="mapvm_voice_downloaded">%1$s をダウンロードしました</string> <!-- format -->
-    <string name="mapvm_voice_download_failed">%1$s のダウンロードに失敗しました</string> <!-- format -->
+    <string name="mapvm_not_enough_space">%1$s 用の空き容量が足りません（%2$d MB）</string>
+    <!-- format -->
+    <string name="mapvm_voice_downloaded">%1$s をダウンロードしました</string>
+    <!-- format -->
+    <string name="mapvm_voice_download_failed">%1$s のダウンロードに失敗しました</string>
+    <!-- format -->
     <string name="mapvm_vela_voice_removed">Vela 音声を削除しました</string>
-    <string name="mapvm_opening_installer">%1$s のインストーラーを開いています…</string> <!-- format -->
+    <string name="mapvm_opening_installer">%1$s のインストーラーを開いています…</string>
+    <!-- format -->
     <string name="mapvm_pan_to_area_first">先に地図を開いて、保存するエリアを表示してください</string>
-    <string name="mapvm_offline_routing_ready">オフライン経路検索が利用可能になりました：%1$s</string> <!-- format -->
+    <string name="mapvm_offline_routing_ready">オフライン経路検索が利用可能になりました：%1$s</string>
+    <!-- format -->
     <string name="mapvm_offline_routing_failed">オフライン経路データのダウンロードに失敗しました</string>
     <string name="mapvm_offline_routing_removed">オフライン経路データを削除しました</string>
-    <string name="mapvm_saved_places_offline">場所 %1$d 件をオフライン検索用に保存しました</string> <!-- format -->
-    <string name="mapvm_saved_addresses_offline">住所 %1$d 件と道路 %2$d 件をオフライン経路用に保存しました</string> <!-- format -->
+    <string name="mapvm_saved_places_offline">場所 %1$d 件をオフライン検索用に保存しました</string>
+    <!-- format -->
+    <string name="mapvm_saved_addresses_offline">住所 %1$d 件と道路 %2$d 件をオフライン経路用に保存しました</string>
+    <!-- format -->
 
     <!-- navservice: NavigationService.kt -->
     <string name="navservice_notif_title_arrived">到着しました</string>
     <string name="navservice_notif_title_navigating">ナビ中</string>
-    <string name="navservice_notif_title_in_distance">%1$s先 · %2$s</string> <!-- format -->
-    <string name="navservice_notif_text_remaining">%1$s · %2$s</string> <!-- format -->
-    <string name="navservice_notif_text_faster_saving"> · %1$s 速いルートあり</string> <!-- format -->
+    <string name="navservice_notif_title_in_distance">%1$s先 · %2$s</string>
+    <!-- format -->
+    <string name="navservice_notif_text_remaining">%1$s · %2$s</string>
+    <!-- format -->
+    <string name="navservice_notif_text_faster_saving"> · %1$s 速いルートあり</string>
+    <!-- format -->
     <string name="navservice_notif_text_faster_available"> · より速いルートあり</string>
     <string name="navservice_notif_action_end">終了</string>
     <string name="navservice_channel_name">ナビゲーション</string>
-
     <string name="update_available_title">Vela %1$s が利用可能です</string>
     <string name="update_downloading">ダウンロード中… %1$d%%</string>
     <string name="update_later">後で</string>
@@ -449,28 +500,39 @@
     <string name="settings_update_checking">確認しています…</string>
     <string name="settings_update_none">最新バージョンを使用しています。</string>
     <string name="settings_place_pages">場所のページ</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="other">%1$d 停留所</item>
     </plurals>
-    <string name="place_transit_stop_id">停留所 %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">停留所 %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">チケット・運行情報</string>
     <string name="route_detail_unavailable">路線の詳細を取得できません</string>
     <string name="place_transit_now">まもなく発車</string>
-    <string name="place_transit_in_min">%1$d 分後</string> <!-- format -->
-    <string name="place_transit_in_duration">%1$s後</string> <!-- format -->
-    <string name="place_transit_more_times">他 %1$d 件</string> <!-- format -->
+    <string name="place_transit_in_min">%1$d 分後</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">%1$s後</string>
+    <!-- format -->
+    <string name="place_transit_more_times">他 %1$d 件</string>
+    <!-- format -->
     <string name="place_transit_view_stops">停留所</string>
     <string name="place_transit_live">リアルタイム</string>
     <string name="place_transit_scheduled">定刻</string>
     <string name="place_transit_cancelled">運休</string>
     <string name="place_departures">発車時刻</string>
-    <string name="place_every">%1$s ごと</string> <!-- format -->
+    <string name="place_every">%1$s ごと</string>
+    <!-- format -->
     <string name="transit_nav_arrived">目的地に到着しました。</string>
-    <string name="transit_nav_walk">徒歩 %1$s</string> <!-- format -->
-    <string name="transit_nav_take">%1$s に乗車</string> <!-- format -->
-    <string name="transit_nav_towards">%1$s 方面</string> <!-- format -->
-    <string name="transit_nav_from">%1$s から</string> <!-- format -->
-    <string name="transit_nav_get_off">%1$s で降車</string> <!-- format -->
+    <string name="transit_nav_walk">徒歩 %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">%1$s に乗車</string>
+    <!-- format -->
+    <string name="transit_nav_towards">%1$s 方面</string>
+    <!-- format -->
+    <string name="transit_nav_from">%1$s から</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">%1$s で降車</string>
+    <!-- format -->
     <string name="transit_nav_next">次へ</string>
     <string name="place_last_available">最終便</string>
     <!-- Android Auto -->
@@ -516,7 +578,8 @@
     <string name="settings_update_nightly_hint">安定版だけでなく、最新のナイトリー（プレリリース）にも更新します。ナイトリーは新しい分、テストは少なめです。</string>
     <string name="settings_lists_export_hint">リストをファイルにバックアップしたり、別の端末で復元したりできます。</string>
     <string name="settings_lists_imported">リストを %1$d 件インポートしました</string>
-    <string name="settings_places_imported">場所を %1$d 件インポートしました</string> <!-- format -->
+    <string name="settings_places_imported">場所を %1$d 件インポートしました</string>
+    <!-- format -->
     <string name="settings_no_lists">エクスポートするリストはまだありません</string>
     <string name="mapvm_export_lists_subject">Vela のリスト（%1$d 件）</string>
     <string name="mapvm_export_lists_chooser">リストをエクスポート</string>
@@ -534,13 +597,18 @@
     <string name="voice_capture_done">完了</string>
     <string name="mapvm_asr_ready">Vela 音声の準備ができました</string>
     <string name="mapvm_asr_download_failed">音声モデルをダウンロードできませんでした。接続を確認してもう一度お試しください。</string>
-    <string name="mapvm_closing_soon">%1$s は %2$s に閉まりますが、到着は %3$s頃です</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s は %2$s に閉まるため、%3$s頃の到着では間に合いません</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s は %2$s に閉まりますが、到着は %3$s頃です</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s は %2$s に閉まるため、%3$s頃の到着では間に合いません</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Vela 音声</string>
-    <string name="settings_voice_search_model_hint">Vela 音声は、話した言葉を端末上でそのまま検索に変えます。ほかのアプリは不要で、何もアップロードされません。初回のみ %1$d MB のダウンロードです。</string>  <!-- format -->
-    <string name="settings_voice_search_download">ダウンロード（%1$d MB）</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Vela 音声は、話した言葉を端末上でそのまま検索に変えます。ほかのアプリは不要で、何もアップロードされません。初回のみ %1$d MB のダウンロードです。</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">ダウンロード（%1$d MB）</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">削除</string>
-    <string name="settings_voice_search_downloading">ダウンロード中… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">ダウンロード中… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">インストールしています…</string>
     <string name="settings_voice_search_engine_title">マイクをタップしたとき</string>
     <string name="settings_voice_search_engine_auto">Vela 音声</string>
@@ -610,25 +678,28 @@
     <string name="map_asr_downloading">Vela Voice マイクをダウンロード中 · %1$d%%</string>
     <string name="map_asr_installing">Vela Voice マイクをインストール中…</string>
     <string name="map_asr_waiting">Vela Voice マイク · Vela 音声を待機中</string>
-<!-- format -->
+    <!-- format -->
     <string name="place_review_more">もっと見る</string>
     <string name="place_review_less">折りたたむ</string>
     <string name="root_voice_tts_title">音声で案内を読み上げる</string>
-    <string name="root_voice_tts_desc">音声のターンバイターン案内。おすすめです。初回のみ %1$d MB のダウンロード。</string> <!-- format -->
+    <string name="root_voice_tts_desc">音声のターンバイターン案内。おすすめです。初回のみ %1$d MB のダウンロード。</string>
+    <!-- format -->
     <string name="root_voice_mic_title">話して検索する</string>
-    <string name="root_voice_mic_desc">入力せずに音声で検索できます。なしの場合、マイクは Google を使います。初回のみ %1$d MB のダウンロード。</string> <!-- format -->
+    <string name="root_voice_mic_desc">入力せずに音声で検索できます。なしの場合、マイクは Google を使います。初回のみ %1$d MB のダウンロード。</string>
+    <!-- format -->
     <string name="root_voice_none_picked">どちらかを選ぶか、「後で」を押してください。</string>
     <string name="mapvm_stop_added">経由地を追加しました</string>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">音声が端末内で検索になります。何もアップロードされません。マイクのエンジンを選択。</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Vela が対応するすべての言語</string>
     <string name="settings_asr_langs_sensevoice">英語、中国語、日本語、韓国語、広東語</string>
     <string name="settings_asr_langs_moonshine">英語のみ</string>
     <string name="settings_asr_active">使用中</string>
     <string name="settings_asr_use">使う</string>
- <!-- format -->
+    <!-- format -->
     <string name="mapscreen_filter_top_rated">4.0★</string>
     <string name="mapscreen_section_recent_searches">最近の検索</string>
     <string name="mapscreen_clear_recent_searches">最近の検索を消去</string>
@@ -676,8 +747,6 @@
     <string name="list_move_up">リストを上へ</string>
     <string name="list_move_down">リストを下へ</string>
     <string name="place_route_offline">オフライン経路、リアルタイム交通情報なし</string>
-
-
     <!-- added: Japanese translations for previously untranslated keys -->
     <string name="cat_ev">EV充電</string>
     <string name="cat_things_to_do">観光スポット</string>
@@ -1048,9 +1117,11 @@
     <string name="settings_details_retry_hint">Googleは最初の応答で混雑する時間帯を省くことが多いため、Velaは最大2回まで再度問い合わせます。オフにすると場所ごとに1回だけになり、混雑する時間帯が表示されないことがあります。</string>
     <string name="place_show_photos">写真を表示</string>
     <string name="place_no_photos">写真はまだありません</string>
-    <string name="place_all_n_reviews_open">クチコミ %1$d 件をすべて表示</string> <!-- format -->
+    <string name="place_all_n_reviews_open">クチコミ %1$d 件をすべて表示</string>
+    <!-- format -->
     <string name="place_updates">最新情報</string>
-    <string name="place_updates_all">最新情報をすべて表示（%1$d 件）</string> <!-- format -->
+    <string name="place_updates_all">最新情報をすべて表示（%1$d 件）</string>
+    <!-- format -->
     <string name="settings_nav_north_up">北を上にしてナビを開始</string>
     <string name="settings_nav_north_up_hint">運転中は地図を平面のまま北を上に表示します。ナビ中にコンパスをタップすると切り替わります。</string>
     <string name="settings_puck_shape">ナビのアイコン</string>
@@ -1133,7 +1204,7 @@
     <string name="settings_two_finger_tilt_hint">2 本指で上下にドラッグすると地図を 3D に傾けられます。オフにすると、ピンチ操作はズームだけになります。</string>
     <string name="settings_speed_display">速度と制限速度を表示</string>
     <string name="settings_speed_display_hint">運転中の速度と制限速度を、端末と車の画面に表示します</string>
-    <string name="mapvm_area_pack_big">ここでのオフライン検索には %1$s 全域の場所パックを使います。設定 > オフライン マップ でダウンロードしてください。</string>
+    <string name="mapvm_area_pack_big">ここでのオフライン検索には %1$s 全域の場所パックを使います。設定 &gt; オフライン マップ でダウンロードしてください。</string>
     <string name="settings_places_shared_pack">場所データは %1$s 全域が対象です（%2$s）</string>
     <string name="mapscreen_download_voice">%1$s をダウンロード（%2$d MB）</string>
     <string name="place_choose_icon">アイコンを選択</string>

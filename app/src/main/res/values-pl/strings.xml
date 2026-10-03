@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Ustawienia</string>
     <string name="settings_back">Wstecz</string>
@@ -89,7 +90,8 @@
     <string name="settings_routing_downloading">Pobieranie… %1$d%%</string>
     <string name="settings_routing_installed">Zainstalowano · trasy offline tutaj</string>
     <string name="settings_routing_installed_places">Zainstalowano · miejsca dostępne offline</string>
-    <string name="settings_routing_places_downloading">Zapisywanie miejsc · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">Zapisywanie miejsc · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">Pobierz miejsca</string>
     <string name="settings_update_places">Zaktualizuj miejsca</string>
     <string name="settings_routing_update_available">Zainstalowano · dostępna aktualizacja miejsc</string>
@@ -155,7 +157,8 @@
     <string name="settings_collapse">Zwiń</string>
     <string name="settings_expand">Rozwiń</string>
     <string name="settings_voice_lib_empty_hint">★ oznacza polecane głosy. Każdy głos działa offline na telefonie.</string>
-    <string name="settings_voice_lib_installed_hint">Zainstalowano: %1$d MB · %2$d głos(y).</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">Zainstalowano: %1$d MB · %2$d głos(y).</string>
+    <!-- format -->
     <string name="settings_voice_lib_lang_hint">Twój język aplikacji to %1$s, pobierz głos %2$s poniżej, aby wskazówki głosowe pasowały (angielski głos błędnie wymawiałby %3$s nazwy ulic).</string>
     <string name="settings_voice_search">Szukaj głosów</string>
     <string name="settings_voice_show_more">Pokaż %1$d więcej</string>
@@ -185,14 +188,18 @@
     <string name="place_temporarily_closed">Tymczasowo zamknięte</string>
     <string name="map_voice_downloading">Pobieranie głosu Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalowanie głosu Vela…</string>
-    <string name="map_region_downloading">Pobieranie tras: %1$s · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">Zapisywanie miejsc regionu %1$s do wyszukiwania offline · %2$d%%</string> <!-- format -->
+    <string name="map_region_downloading">Pobieranie tras: %1$s · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">Zapisywanie miejsc regionu %1$s do wyszukiwania offline · %2$d%%</string>
+    <!-- format -->
     <string name="map_region_placesfile_downloading">Zapisywanie miejsc regionu %1$s dla mapy · %2$d%%</string>
     <string name="map_region_map_downloading">Pobieranie mapy: %1$s · %2$d%%</string>
     <string name="mapvm_region_ready">Pobrano %1$s: mapa, trasy i miejsca działają offline</string>
     <string name="mapvm_region_incomplete">Region %1$s pobrano tylko częściowo. Połącz się z siecią i dotknij Aktualizuj w Ustawieniach, Mapy offline, aby dokończyć</string>
-    <string name="mapvm_poipack_ready">Miejsca regionu %1$s można teraz wyszukiwać offline</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">Brak jeszcze pakietu miejsc dla regionu %1$s. Pojawi się tutaj po opublikowaniu.</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Miejsca regionu %1$s można teraz wyszukiwać offline</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">Brak jeszcze pakietu miejsc dla regionu %1$s. Pojawi się tutaj po opublikowaniu.</string>
+    <!-- format -->
     <string name="settings_demo_drive">Symuluj jazdę (demo)</string>
     <string name="settings_demo_drive_hint">Start jedzie zaplanowaną trasą jako symulacja zamiast GPS. Wyłącz, aby nawigować naprawdę.</string>
     <string name="settings_sim_location">Symuluj moją lokalizację (demo)</string>
@@ -258,7 +265,8 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Szukaj w opiniach</string>
     <string name="place_sort_reviews">Sortuj opinie</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="one">%1$d opinia</item>
         <item quantity="few">%1$d opinie</item>
         <item quantity="many">%1$d opinii</item>
@@ -315,7 +323,8 @@
     <string name="mapscreen_got_it">OK</string>
     <string name="mapscreen_heads_up">Uwaga</string>
     <string name="mapscreen_dismiss">Odrzuć</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="one">%1$d wynik</item>
         <item quantity="few">%1$d wyniki</item>
         <item quantity="many">%1$d wyników</item>
@@ -405,7 +414,8 @@
     <string name="mapvm_search_needs_recalibration">Wyszukiwanie wymaga rekalibracji: %1$s</string>
     <string name="mapvm_offline_no_data">Jesteś offline. Pobierz obszar w Ustawieniach ▸ Offline, aby wyszukiwać bez połączenia.</string>
     <string name="mapvm_offline_no_match">Brak wyników offline dla \"%1$s\" w zapisanym obszarze. Wyszukiwanie offline obejmuje pobrane miejsca OpenStreetMap.</string>
-    <string name="mapvm_no_results">Brak wyników dla \"%1$s\".</string> <!-- format -->
+    <string name="mapvm_no_results">Brak wyników dla \"%1$s\".</string>
+    <!-- format -->
     <string name="mapvm_offline_results">Wyniki offline (brak połączenia)</string>
     <string name="mapvm_search_failed_reason">Wyszukiwanie nie powiodło się: %1$s</string>
     <string name="mapvm_none_found_along_route">Nie znaleziono „%1$s” wzdłuż Twojej trasy</string>
@@ -440,7 +450,8 @@
     <string name="mapvm_offline_routing_removed">Usunięto trasy offline</string>
     <string name="mapvm_graphs_retired">Trasy offline przeszły na mniejszy format. Pobierz ponownie swoje regiony w Ustawieniach, Mapy offline.</string>
     <string name="mapvm_saved_places_offline">Zapisano %1$d miejsc do wyszukiwania offline</string>
-    <string name="mapvm_saved_addresses_offline">Zapisano %1$d adresów i %2$d ulic do tras offline</string> <!-- format -->
+    <string name="mapvm_saved_addresses_offline">Zapisano %1$d adresów i %2$d ulic do tras offline</string>
+    <!-- format -->
     <string name="navservice_notif_title_arrived">Cel osiągnięty</string>
     <string name="navservice_notif_title_navigating">Nawigacja</string>
     <string name="navservice_notif_title_in_distance">Za %1$s · %2$s</string>
@@ -460,7 +471,8 @@
     <string name="cat_atms">Bankomaty</string>
     <string name="cat_parks">Parki</string>
     <!-- Resume-navigation prompt (persisted nav session) -->
-    <string name="mapscreen_resume_nav">Wznowić nawigację do %1$s?</string> <!-- format -->
+    <string name="mapscreen_resume_nav">Wznowić nawigację do %1$s?</string>
+    <!-- format -->
     <string name="mapscreen_resume">Wznów</string>
     <string name="mapscreen_your_destination">celu</string>
     <string name="mapvm_resume_waiting_gps">Oczekiwanie na GPS, aby wznowić nawigację…</string>
@@ -480,32 +492,43 @@
     <string name="settings_update_checking">Sprawdzanie…</string>
     <string name="settings_update_none">Masz najnowszą wersję.</string>
     <string name="settings_place_pages">Strony miejsc</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="one">%1$d przystanek</item>
         <item quantity="few">%1$d przystanki</item>
         <item quantity="many">%1$d przystanków</item>
         <item quantity="other">%1$d przystanków</item>
     </plurals>
-    <string name="place_transit_stop_id">Przystanek %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">Przystanek %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">Bilety i informacje</string>
     <string name="route_detail_unavailable">Szczegóły linii niedostępne</string>
     <string name="place_transit_now">Odjeżdża</string>
-    <string name="place_transit_in_min">za %1$d min</string> <!-- format -->
-    <string name="place_transit_in_duration">za %1$s</string> <!-- format -->
-    <string name="place_transit_more_times">jeszcze %1$d</string> <!-- format -->
+    <string name="place_transit_in_min">za %1$d min</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">za %1$s</string>
+    <!-- format -->
+    <string name="place_transit_more_times">jeszcze %1$d</string>
+    <!-- format -->
     <string name="place_transit_view_stops">Przystanki</string>
     <string name="place_transit_live">Na żywo</string>
     <string name="place_transit_scheduled">Planowy</string>
     <string name="place_transit_cancelled">Odwołany</string>
     <string name="place_departures">Odjazdy</string>
     <string name="place_transit_cached">Ostatnio widziane %1$s. Brak połączenia, więc godziny mogły się zmienić.</string>
-    <string name="place_every">Co %1$s</string> <!-- format -->
+    <string name="place_every">Co %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">Dotarłeś na miejsce.</string>
-    <string name="transit_nav_walk">Idź %1$s</string> <!-- format -->
-    <string name="transit_nav_take">Wsiądź w %1$s</string> <!-- format -->
-    <string name="transit_nav_towards">w kierunku %1$s</string> <!-- format -->
-    <string name="transit_nav_from">od %1$s</string> <!-- format -->
-    <string name="transit_nav_get_off">Wysiądź na %1$s</string> <!-- format -->
+    <string name="transit_nav_walk">Idź %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">Wsiądź w %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">w kierunku %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_from">od %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">Wysiądź na %1$s</string>
+    <!-- format -->
     <string name="transit_nav_next">Dalej</string>
     <string name="place_last_available">Ostatni dostępny</string>
     <!-- Android Auto -->
@@ -558,7 +581,8 @@
     <string name="settings_update_nightly_hint">Aktualizuj do najnowszej wersji nightly (przedpremierowej) zamiast tylko stabilnych. Nightly są nowsze, ale mniej przetestowane.</string>
     <string name="settings_lists_export_hint">Utwórz kopię zapasową list do pliku lub przywróć je na innym urządzeniu.</string>
     <string name="settings_lists_imported">Zaimportowano %1$d list(y)</string>
-    <string name="settings_places_imported">Zaimportowano %1$d miejsc(a)</string> <!-- format -->
+    <string name="settings_places_imported">Zaimportowano %1$d miejsc(a)</string>
+    <!-- format -->
     <string name="settings_no_lists">Brak list do wyeksportowania</string>
     <string name="mapvm_export_lists_subject">Listy Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Eksportuj listy</string>
@@ -576,13 +600,18 @@
     <string name="voice_capture_done">Gotowe</string>
     <string name="mapvm_asr_ready">Głos Vela jest gotowy</string>
     <string name="mapvm_asr_download_failed">Nie udało się pobrać modelu głosu. Sprawdź połączenie i spróbuj ponownie.</string>
-    <string name="mapvm_closing_soon">%1$s zamyka się o %2$s, a ty dojedziesz około %3$s</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s zamyka się o %2$s, zanim dojedziesz (około %3$s)</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s zamyka się o %2$s, a ty dojedziesz około %3$s</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s zamyka się o %2$s, zanim dojedziesz (około %3$s)</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Głos Vela</string>
-    <string name="settings_voice_search_model_hint">Głos Vela zamienia mowę w wyszukiwanie bezpośrednio na telefonie: bez innej aplikacji i bez wysyłania czegokolwiek. Jednorazowe pobranie %1$d MB.</string>  <!-- format -->
-    <string name="settings_voice_search_download">Pobierz (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Głos Vela zamienia mowę w wyszukiwanie bezpośrednio na telefonie: bez innej aplikacji i bez wysyłania czegokolwiek. Jednorazowe pobranie %1$d MB.</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">Pobierz (%1$d MB)</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">Usuń</string>
-    <string name="settings_voice_search_downloading">Pobieranie… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">Pobieranie… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">Instalowanie…</string>
     <string name="settings_voice_search_engine_title">Po dotknięciu mikrofonu</string>
     <string name="settings_voice_search_engine_auto">Głos Vela</string>
@@ -620,7 +649,7 @@
     <string name="map_parking_clear">Usuń parking</string>
     <string name="map_parking_moved">Przeniesiono parking tutaj</string>
     <string name="map_import_needs_google">Udostępnionej listy Google Maps nie da się otworzyć, gdy Vela działa bez Google.</string>
-    <string name="map_link_needs_google">Opcja \"Otwieraj udostępnione linki Google Maps\" jest wyłączona w Ustawienia > Prywatność.</string>
+    <string name="map_link_needs_google">Opcja \"Otwieraj udostępnione linki Google Maps\" jest wyłączona w Ustawienia &gt; Prywatność.</string>
     <string name="map_link_unreadable">Nie udało się otworzyć tego linku.</string>
     <string name="settings_performance">Wydajność</string>
     <string name="settings_hub_performance_sub">Co wczytuje się z wyprzedzeniem, rysowanie mapy</string>
@@ -679,9 +708,11 @@
     <string name="root_diag_trips_desc">Zapisuje ślady GPS nawigacji, aby przejazdy można było odtworzyć do testów. Bardziej ujawniające - Twoje dokładne trasy.</string>
     <string name="root_diag_save">Zapisz wybory</string>
     <string name="root_voice_tts_title">Czytanie wskazówek na głos</string>
-    <string name="root_voice_tts_desc">Wskazówki głosowe przy każdym zakręcie. Polecane. Jednorazowe pobranie %1$d MB.</string> <!-- format -->
+    <string name="root_voice_tts_desc">Wskazówki głosowe przy każdym zakręcie. Polecane. Jednorazowe pobranie %1$d MB.</string>
+    <!-- format -->
     <string name="root_voice_mic_title">Wyszukiwanie głosem</string>
-    <string name="root_voice_mic_desc">Dyktuj zapytania bez pisania. Bez tego mikrofon korzysta z Google. Jednorazowe pobranie %1$d MB.</string> <!-- format -->
+    <string name="root_voice_mic_desc">Dyktuj zapytania bez pisania. Bez tego mikrofon korzysta z Google. Jednorazowe pobranie %1$d MB.</string>
+    <!-- format -->
     <string name="root_voice_none_picked">Zaznacz opcję lub wybierz Nie teraz.</string>
     <string name="root_offline_title">Mapy offline</string>
     <string name="root_offline_body">Vela pobiera miejsca, wyszukiwanie i trasy z Google, więc bez sygnału zadziałają tylko obszary, które pobrałeś. Skonfiguruj obszar teraz, aby mieć pokrycie, gdy stracisz zasięg.</string>
@@ -690,13 +721,14 @@
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">Mowa staje sie wyszukiwaniem w telefonie. Nic nie jest wysylane. Wybierz silnik mikrofonu.</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Wszystkie języki obsługiwane przez Vela</string>
     <string name="settings_asr_langs_sensevoice">angielski, chiński, japoński, koreański, kantoński</string>
     <string name="settings_asr_langs_moonshine">Tylko angielski</string>
     <string name="settings_asr_active">Aktywny</string>
     <string name="settings_asr_use">Użyj</string>
- <!-- format -->
+    <!-- format -->
     <string name="no_browser_installed">Twoje urządzenie nie ma przeglądarki</string>
     <string name="street_view_none">No Street View imagery here</string>
     <string name="street_view_move">Move here</string>
@@ -731,7 +763,6 @@
     <string name="list_move_up">Przenieś listę wyżej</string>
     <string name="list_move_down">Przenieś listę niżej</string>
     <string name="place_route_offline">trasa offline, bez ruchu na żywo</string>
-
     <string name="cat_ev">Ładowarki EV</string>
     <string name="cat_things_to_do">Atrakcje</string>
     <string name="cat_bars">Bary</string>
@@ -1037,9 +1068,11 @@
     <string name="settings_details_retry_hint">Google często pomija godziny szczytu w pierwszej odpowiedzi, więc Vela pyta ponownie do dwóch razy. Wyłączone = jedno zapytanie na miejsce, a godzin szczytu może zabraknąć.</string>
     <string name="place_show_photos">Pokaż zdjęcia</string>
     <string name="place_no_photos">Brak zdjęć</string>
-    <string name="place_all_n_reviews_open">Wszystkie opinie (%1$d)</string> <!-- format -->
+    <string name="place_all_n_reviews_open">Wszystkie opinie (%1$d)</string>
+    <!-- format -->
     <string name="place_updates">Aktualności</string>
-    <string name="place_updates_all">Pokaż wszystkie aktualności (%1$d)</string> <!-- format -->
+    <string name="place_updates_all">Pokaż wszystkie aktualności (%1$d)</string>
+    <!-- format -->
     <string name="settings_nav_north_up">Zaczynaj trasy z północą u góry</string>
     <string name="settings_nav_north_up_hint">Podczas jazdy mapa pozostaje płaska, z północą u góry. Dotknij kompasu w trakcie jazdy, aby przełączyć.</string>
     <string name="settings_puck_shape">Ikona nawigacji</string>
@@ -1131,7 +1164,7 @@
     <string name="settings_two_finger_tilt_hint">Przeciągnij dwoma palcami w górę lub w dół, aby pochylić mapę do widoku 3D. Wyłączone: uszczypnięcie zawsze tylko zmienia powiększenie.</string>
     <string name="settings_speed_display">Pokazuj prędkość i ograniczenie prędkości</string>
     <string name="settings_speed_display_hint">Twoja prędkość i obowiązujące ograniczenie podczas jazdy, na telefonie i na ekranie samochodu</string>
-    <string name="mapvm_area_pack_big">Wyszukiwanie offline korzysta tutaj z pakietu miejsc dla całego regionu %1$s. Pobierz go w Ustawieniach > Mapy offline.</string>
+    <string name="mapvm_area_pack_big">Wyszukiwanie offline korzysta tutaj z pakietu miejsc dla całego regionu %1$s. Pobierz go w Ustawieniach &gt; Mapy offline.</string>
     <string name="settings_places_shared_pack">Miejsca obejmują cały region %1$s (%2$s)</string>
     <string name="mapscreen_download_voice">Pobierz %1$s (%2$d MB)</string>
     <string name="place_choose_icon">Wybierz ikonę</string>
