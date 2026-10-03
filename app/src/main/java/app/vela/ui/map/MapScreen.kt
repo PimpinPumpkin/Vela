@@ -56,6 +56,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -2178,6 +2180,7 @@ fun MapScreen(
                 minimizeTick = resultsPanTick,
                 sheetMenuAsk = sheetMenuAsk,
                 onMenuAsk = { sheetMenuAsk = it },
+                offline = state.offline,
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
@@ -2984,6 +2987,9 @@ private fun SearchResults(
     onActionCall: (Place) -> Unit = {},
     onActionShare: (Place) -> Unit = {},
     onActionMenu: (Place) -> Unit = {},
+    // Offline results render Google's offline rows (cloud icon, rating, hours, square
+    // call/directions buttons - no photos, no online pills) instead of the photo cards.
+    offline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -3256,6 +3262,22 @@ private fun SearchResults(
                     ) { onClose() }
                     Spacer(Modifier.width(8.dp))
                 }
+                // Offline results say so, Google-style: a cloud-off line under the header.
+                if (offline) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.CloudOff, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.offline_results_limited),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SheetPalette.dim(dark),
+                            maxLines = 1,
+                        )
+                    }
+                }
                 // The chips (and the divider under them) FOLD with the sheet height over
                 // its last 140dp of travel (SheetFold, the place sheet's minimize primitive):
                 // by the time only the bar remains they are zero-height, so the collapsed
@@ -3397,6 +3419,7 @@ private fun SearchResults(
                         onActionCall = { onActionCall(place) },
                         onActionShare = { onActionShare(place) },
                         onActionMenu = { onActionMenu(place) },
+                        offline = offline,
                     )
                     // Plain breathing gap between cards, Google-style (no bars/dividers).
                     Spacer(
@@ -3452,6 +3475,89 @@ private fun SearchResults(
     } // Box overlay for the list FAB
 } // SearchResults end
 
+/** Google's offline result row: cloud icon, name, rating + hours when known, and
+ *  square call/directions buttons in Vela blue - no photos, no address, no online
+ *  pills. A row with no rating simply omits that line. */
+@Composable
+private fun OfflineResultRow(
+    place: Place,
+    dark: Boolean,
+    onPick: () -> Unit,
+    onActionCall: () -> Unit,
+    onActionDirections: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .dpadHighlight(RoundedCornerShape(6.dp))
+            .clickable { onPick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Default.CloudOff, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = SheetPalette.ink(dark), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            place.rating?.let { r ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 3.dp),
+                ) {
+                    Text(
+                        String.format(Locale.US, "%.1f", r),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SheetPalette.dim(dark),
+                    )
+                    RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
+                    place.reviewCount?.let {
+                        Text(
+                            "($it)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SheetPalette.dim(dark),
+                        )
+                    }
+                }
+            }
+            place.statusText?.takeIf { it.isNotBlank() }?.let { status ->
+                app.vela.ui.StatusText(
+                    status,
+                    openNow = place.openNow,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    dim = SheetPalette.dim(dark),
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+        }
+        if (!place.phone.isNullOrBlank()) {
+            OfflineSquareButton(icon = Sym.Call, onClick = onActionCall)
+            Spacer(Modifier.width(8.dp))
+        }
+        OfflineSquareButton(icon = Sym.Directions, onClick = onActionDirections)
+    }
+}
+
+/** Offline row action: a filled blue square (Google's offline rows use filled squares,
+ *  not pills), #A8C7FA bg with #062E6F glyph. */
+@Composable
+private fun OfflineSquareButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    val square = RoundedCornerShape(12.dp)
+    Box(
+        Modifier
+            .size(48.dp)
+            .clip(square)
+            .background(androidx.compose.ui.graphics.Color(0xFFA8C7FA))
+            .dpadHighlight(square)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF062E6F), modifier = Modifier.size(22.dp))
+    }
+}
+
 /** One Google-style result card: photo strip, text block, action pills. Split out of
  *  SearchResults: the list body overflowed the 64KB per-method bytecode limit. */
 @Composable
@@ -3463,7 +3569,13 @@ private fun ResultPlaceCard(
     onActionCall: () -> Unit,
     onActionShare: () -> Unit,
     onActionMenu: () -> Unit,
+    // Offline rows render Google's offline row instead of the photo card.
+    offline: Boolean = false,
 ) {
+    if (offline) {
+        OfflineResultRow(place, dark, onPick, onActionCall, onActionDirections)
+        return
+    }
     // Gallery is display-sized only: the w320-h220 search payloads decode at list
     // size (400px wide cells) instead of full-res, which was the scroll jank.
     val gallery = remember(place.id, place.photoUrls) { place.photoUrls.take(3) }
@@ -3698,6 +3810,7 @@ private fun ResultsSheet(
     minimizeTick: Int,
     sheetMenuAsk: String?,
     onMenuAsk: (String?) -> Unit,
+    offline: Boolean,
     modifier: Modifier = Modifier,
 ) {
               SearchResults(
@@ -3751,6 +3864,7 @@ private fun ResultsSheet(
                     onMenuAsk(p.id)
                     vm.selectPlace(p)
                 },
+                offline = offline,
                 modifier = modifier,
               )
 }

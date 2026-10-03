@@ -2532,7 +2532,29 @@ class MapViewModel @Inject constructor(
         val pois = runCatching { offlinePoiStore.search(q, near, extra = archivePlaces(q, near)) }.getOrDefault(emptyList())
         val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
             runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
-        (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
+        enrichOfflineResults((if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id })
+    }
+
+    /** Fill what the offline index doesn't keep (ratings, review counts, hours, phone)
+     *  from viewed-place records: the pack stores OSM geometry, while a cached copy
+     *  carries Google's rating + hours. Anything still unknown stays blank and the
+     *  row omits that line, Google-offline style. */
+    private fun enrichOfflineResults(rows: List<Place>): List<Place> {
+        if (!app.vela.ui.OfflinePlaces.on.value) return rows
+        val dir = placeCacheDir()
+        return rows.map { p ->
+            // Direct-hit only (no id-fallback scan): a bulk enrich that scanned the
+            // whole dir per uncached row would stall the list.
+            if (!java.io.File(dir, app.vela.core.data.PlaceCache.keyOf(p) + ".json").exists()) return@map p
+            val c = app.vela.core.data.PlaceCache.load(dir, p)?.place ?: return@map p
+            p.copy(
+                rating = p.rating ?: c.rating,
+                reviewCount = p.reviewCount ?: c.reviewCount,
+                hours = p.hours.ifEmpty { c.hours },
+                phone = p.phone ?: c.phone,
+                statusText = p.statusText ?: c.statusText,
+            )
+        }
     }
 
     /** "Search along route": search [query] biased to the route's midpoint, then

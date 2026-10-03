@@ -630,6 +630,7 @@
     <string name="settings_other_locations_auto">Find other locations automatically</string>
     <string name="settings_other_locations_auto_hint">When a name search lands on one place, also ask Google for its other locations. That is a few more requests to Google with each such search. Off, a \"Show other locations\" button does it when you tap it.</string>
     <string name="mapscreen_view_map">View map</string>
+    <string name="offline_results_limited">Offline · Showing limited results</string>
     <string name="intent_home_unset">Set Home first (search page, under the search bar)</string>
     <string name="intent_work_unset">Set Work first (search page, under the search bar)</string>
     <string name="intent_eta_reply">About %1$s to go</string>
