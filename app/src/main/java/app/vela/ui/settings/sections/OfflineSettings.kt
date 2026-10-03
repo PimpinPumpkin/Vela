@@ -169,6 +169,32 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             ) { Text(stringResource(R.string.settings_offline_cached_places_clear)) }
         }
+        // Viewed panoramas kept for offline Street View (one equirect per pano).
+        val svCacheBytes = remember(placeCacheTick) {
+            app.vela.core.data.StreetViewCache.dirSizeBytes(java.io.File(context.filesDir, "svcache"))
+        }
+        val svCacheText = remember(svCacheBytes) {
+            if (svCacheBytes < 1024 * 1024) "${svCacheBytes / 1024} KB"
+            else fmtMb((svCacheBytes / 1048576).toInt())
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.settings_offline_cached_sv_used, svCacheText),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            FilledTonalButton(
+                onClick = {
+                    app.vela.core.data.StreetViewCache.clear(java.io.File(context.filesDir, "svcache"))
+                    placeCacheTick++
+                },
+                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            ) { Text(stringResource(R.string.settings_offline_cached_sv_clear)) }
+        }
         }
         if (regions.isNotEmpty() && offlineAddrCount == 0) {
             Surface(

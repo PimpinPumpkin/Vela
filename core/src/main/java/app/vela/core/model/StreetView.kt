@@ -1,5 +1,7 @@
 package app.vela.core.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * A Street View panorama's metadata, resolved from a lat/lng by the keyless
  * `GeoPhotoService.SingleImageSearch` endpoint (the same one Google's own JS Maps API
@@ -9,8 +11,9 @@ package app.vela.core.model
  *
  * The equirectangular image is a fixed 2:1 pyramid: at zoom `z` it is `512·2^z` wide by
  * `256·2^z` tall, cut into [tileSize]²  tiles. So a chosen zoom fully determines the tile
- * grid - see `StreetViewTiles`.
+ *  grid - see `StreetViewTiles`.
  */
+@Serializable
 data class StreetViewPano(
     val panoId: String,
     val lat: Double,
@@ -49,6 +52,7 @@ data class StreetViewPano(
 
 /** A neighboring pano you can walk to: its id, position, and the bearing+distance from the
  *  current pano (so the viewer can place a directional arrow and label how far it is). */
+@Serializable
 data class StreetViewLink(
     val panoId: String,
     val lat: Double,
@@ -58,6 +62,7 @@ data class StreetViewLink(
 )
 
 /** A historical capture at (approximately) the current spot. */
+@Serializable
 data class StreetViewTime(
     val panoId: String,
     val year: Int,

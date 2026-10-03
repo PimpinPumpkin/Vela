@@ -192,6 +192,8 @@
     <string name="settings_offline_cached_places_hint">Every place you open while online is saved on the phone (details, reviews, photos), so it still opens with no signal. Text menus aren\'t parsed, so there is nothing of them to keep. A few kilobytes per place.</string>
     <string name="settings_offline_cached_places_clear">Clear cached places</string>
     <string name="settings_offline_cached_places_used">%1$s stored on this phone</string>
+    <string name="settings_offline_cached_sv_used">Street View: %1$s stored on this phone</string>
+    <string name="settings_offline_cached_sv_clear">Clear Street View</string>
     <string name="settings_offline_download_viewport_hint">Opens the map with a frame over it. Move and zoom until the frame covers the area you want, from a neighborhood to half a state; you\'ll see the size before anything downloads. Everything in the frame is saved at full street detail.</string>
     <string name="area_pick_hint">Move and zoom the map until the frame covers the area to download</string>
     <string name="area_pick_estimate">About %1$s at full street detail</string>

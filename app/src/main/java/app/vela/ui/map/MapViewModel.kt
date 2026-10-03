@@ -3125,10 +3125,10 @@ class MapViewModel @Inject constructor(
         // the fallback for places whose response ships no thumbnail.
         val pid = place.svPanoId
         if (pid != null) {
-            loadStreetView(faceHeading = place.svYawDeg) { dataSource.streetViewByPano(pid) }
+            loadStreetView(faceHeading = place.svYawDeg, panoIdHint = pid, nearLocation = place.location) { dataSource.streetViewByPano(pid) }
             return
         }
-        loadStreetView(faceToward = place.location) {
+        loadStreetView(faceToward = place.location, nearLocation = place.location) {
             // Prefer a pano on the place's OWN street (a mid-block geocode can otherwise snap to the
             // alley pano behind the building). For a business the street is in `address`; for a plain
             // address result it's the `name` ("2005 5th Ave") and `address` is just the locality - so
@@ -3144,12 +3144,12 @@ class MapViewModel @Inject constructor(
      *  "December 2022" label). The new pano carries its own neighbors + history, so you keep
      *  walking. Face the way you walked (the link's bearing) so it reads as moving forward. */
     fun moveStreetView(link: app.vela.core.model.StreetViewLink) =
-        loadStreetView(faceHeading = link.bearingDeg) { dataSource.streetViewByPano(link.panoId) }
+        loadStreetView(faceHeading = link.bearingDeg, panoIdHint = link.panoId, nearLocation = LatLng(link.lat, link.lng)) { dataSource.streetViewByPano(link.panoId) }
 
     /** Tap on the mini-map while Street View is open: jump the viewer to the nearest pano at the
      *  tapped point (pegman-drop), looking toward what was tapped. */
     fun moveStreetViewTo(location: LatLng) =
-        loadStreetView(faceToward = location) { dataSource.streetView(location) }
+        loadStreetView(faceToward = location, nearLocation = location) { dataSource.streetView(location) }
 
     /**
      * @param faceToward when set, the initial camera faces from the resolved pano TOWARD this point
@@ -3159,6 +3159,11 @@ class MapViewModel @Inject constructor(
     private fun loadStreetView(
         faceToward: app.vela.core.model.LatLng? = null,
         faceHeading: Double? = null,
+        // Offline cache routing: an id open (thumbnail/walk/time-travel) hits the
+        // stored pano directly; a location open (place/pegman) takes the nearest
+        // cached pano. Both are just hints - a miss falls through to the fetch.
+        panoIdHint: String? = null,
+        nearLocation: app.vela.core.model.LatLng? = null,
         fetch: suspend () -> app.vela.core.model.StreetViewPano?,
     ) {
         streetViewJob?.cancel()
@@ -3170,7 +3175,15 @@ class MapViewModel @Inject constructor(
                 )
         }
         streetViewJob = viewModelScope.launch {
-            val raw = runCatching { fetch() }.getOrNull()
+            // Offline: serve a previously viewed pano from disk instead of fetching.
+            // A miss is the same no-coverage toast as a truly uncovered spot.
+            val off = offlineNow()
+            val cachedMeta = if (off) {
+                val dir = svCacheDir()
+                panoIdHint?.let { app.vela.core.data.StreetViewCache.loadMeta(dir, it) }
+                    ?: nearLocation?.let { app.vela.core.data.StreetViewCache.nearest(dir, it) }
+            } else null
+            val raw = if (off) cachedMeta else runCatching { fetch() }.getOrNull()
             if (raw == null) {
                 _state.update { it.copy(streetViewLoading = false, streetView = null, streetViewBitmap = null) }
                 flashStatus(appContext.getString(R.string.street_view_none))
@@ -3200,13 +3213,37 @@ class MapViewModel @Inject constructor(
                     streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,
                     streetViewHistorical = false)
             }
-            val bmp = runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull()
+            val bmp = if (off) {
+                cachedMeta?.let { m ->
+                    app.vela.core.data.StreetViewCache.loadImage(svCacheDir(), m.panoId)?.let { bytes ->
+                        runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                    }
+                }
+            } else runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull()
             if (bmp == null) {
                 _state.update { it.copy(streetViewLoading = false, streetView = null) }
                 flashStatus(appContext.getString(R.string.street_view_none))
                 return@launch
             }
+            if (!off) saveStreetView(pano, bmp)
             _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+        }
+    }
+
+    private fun svCacheDir(): java.io.File = java.io.File(appContext.filesDir, "svcache")
+
+    /** Keep a viewed pano on the phone (metadata + stitched equirect) so reopening
+     *  it offline serves disk instead of an empty viewer. Same toggle as places. */
+    private fun saveStreetView(pano: app.vela.core.model.StreetViewPano, bmp: android.graphics.Bitmap) {
+        if (!app.vela.ui.OfflinePlaces.on.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val dir = svCacheDir()
+                app.vela.core.data.StreetViewCache.saveMeta(dir, pano)
+                val out = java.io.ByteArrayOutputStream()
+                if (bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out))
+                    app.vela.core.data.StreetViewCache.saveImage(dir, pano.panoId, out.toByteArray())
+            }
         }
     }
 
@@ -3214,6 +3251,12 @@ class MapViewModel @Inject constructor(
      *  pano's metadata (so the date picker + walk arrows return when you come back to the present). */
     fun timeTravelStreetView(time: app.vela.core.model.StreetViewTime) {
         val base = _state.value.streetView ?: return
+        // Offline on the current capture: nothing to load, just relabel (and keep
+        // the bitmap - the shared path below recycles it before fetching).
+        if (offlineNow() && time.panoId == base.panoId) {
+            _state.update { it.copy(streetViewLoading = false, streetViewHistorical = false, streetViewShownYear = time.year, streetViewShownMonth = time.month) }
+            return
+        }
         streetViewJob?.cancel()
         _state.value.streetViewBitmap?.recycle()
         val historical = time.panoId != base.panoId
@@ -3229,8 +3272,15 @@ class MapViewModel @Inject constructor(
             // and keeping the base heading rotated the historical view. Fetch its metadata by id;
             // if that fails, the base pyramid is the best remaining guess.
             val hist = if (time.panoId == base.panoId) base
+            else if (offlineNow()) app.vela.core.data.StreetViewCache.loadMeta(svCacheDir(), time.panoId)
             else runCatching { dataSource.streetViewByPano(time.panoId) }.getOrNull()
-            val bmp = runCatching {
+            val bmp = if (offlineNow()) {
+                hist?.let { h ->
+                    app.vela.core.data.StreetViewCache.loadImage(svCacheDir(), h.panoId)?.let { bytes ->
+                        runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                    }
+                }
+            } else runCatching {
                 if (hist != null) app.vela.streetview.StreetViewTiles.load(dataSource, hist)
                 else app.vela.streetview.StreetViewTiles.load(dataSource, time.panoId, base.tileSize, base.levelDims)
             }.getOrNull()
@@ -3250,6 +3300,12 @@ class MapViewModel @Inject constructor(
                 val sv = it.streetView?.takeIf { cur -> cur.panoId == base.panoId }
                     ?.copy(headingDeg = (hist ?: base).headingDeg) ?: it.streetView
                 it.copy(streetView = sv, streetViewBitmap = bmp, streetViewLoading = false)
+            }
+            // Online viewing caches the capture for offline time travel; offline it is
+            // already on disk. A metadata-less load still caches under the time id so a
+            // revisit finds it.
+            if (!offlineNow()) {
+                saveStreetView(hist ?: base.copy(panoId = time.panoId, captureYear = time.year, captureMonth = time.month), bmp)
             }
         }
     }
