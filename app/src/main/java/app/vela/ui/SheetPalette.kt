@@ -14,14 +14,15 @@ import androidx.compose.ui.graphics.Color
  */
 object SheetPalette {
     val Amoled = Color(0xFF000000)   // pure black for OLED power saving
-    val Dark = Color(0xFF1F1F1F)     // sheet / card background
+    // Google Maps dark chrome: #202124 sheet/body, #303134 search bar + inset rows.
+    val Dark = Color(0xFF202124)     // sheet / card background
     val Light = Color(0xFFFFFFFF)
     val InkDark = Color(0xFFE8EAED)  // primary text
     val InkLight = Color(0xFF202124)
     val DimDark = Color(0xFF9AA0A6)  // secondary text
     val DimLight = Color(0xFF5F6368)
     val RowAmoled = Color(0xFF0D0F11)// inset row / chip background in AMOLED
-    val RowDark = Color(0xFF202124)  // inset row / chip background
+    val RowDark = Color(0xFF303134)  // inset row / chip background
     val RowLight = Color(0xFFF1F3F4)
     val BorderAmoled = Color(0xFF22252A) // subtle separation line for pure black surfaces
 

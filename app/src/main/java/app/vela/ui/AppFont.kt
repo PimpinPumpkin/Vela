@@ -57,14 +57,14 @@ object AppFont {
         builtin.value = true
         customName.value = null
         fontFile(context).delete()
-        prefs(context).edit().remove(KEY_NAME).remove(KEY_SYSTEM).apply()
+        prefs(context).edit().remove(KEY_NAME).remove(KEY_SYSTEM).putBoolean(KEY_BUILTIN, true).apply()
     }
 
     /** A font file is a few hundred KB; anything far past that is not a font we want to load. */
     private const val MAX_BYTES = 12L * 1024 * 1024
 
-    /** Google Sans Flex unless the user chose otherwise (the default since 2026-09-30): a font
-     *  file of their own, or the system font (an explicit pick, [KEY_SYSTEM]). */
+    /** The platform font unless the user chose otherwise: a font
+     *  file of their own, or the bundled face (an explicit pick). */
     fun init(context: Context) {
         val p = prefs(context)
         val name = p.getString(KEY_NAME, null)
@@ -76,7 +76,11 @@ object AppFont {
             f.delete(); p.edit().remove(KEY_NAME).apply()
         }
         if (p.getBoolean(KEY_SYSTEM, false)) return
-        family.value = flexFamily(); builtin.value = true
+        // No choice stored: platform face (Google Sans Flex remains one tap away
+        // in Settings > Appearance). A stored builtin pick from an earlier
+        // version keeps working through the flag below.
+        if (p.getBoolean(KEY_BUILTIN, false)) { family.value = flexFamily(); builtin.value = true; return }
+        family.value = null
     }
 
     /**
@@ -114,17 +118,17 @@ object AppFont {
         family.value = fam
         customName.value = displayName
         builtin.value = false
-        prefs(context).edit().putString(KEY_NAME, displayName).remove(KEY_SYSTEM).apply()
+        prefs(context).edit().putString(KEY_NAME, displayName).remove(KEY_SYSTEM).remove(KEY_BUILTIN).apply()
         return true
     }
 
-    /** The platform font, as an explicit choice (the default is the bundled font). */
+    /** The platform font, as an explicit choice (also the default). */
     fun clear(context: Context) {
         family.value = null
         customName.value = null
         builtin.value = false
         fontFile(context).delete()
-        prefs(context).edit().remove(KEY_NAME).putBoolean(KEY_SYSTEM, true).apply()
+        prefs(context).edit().remove(KEY_NAME).remove(KEY_BUILTIN).putBoolean(KEY_SYSTEM, true).apply()
     }
 
     /**
@@ -145,4 +149,5 @@ object AppFont {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_NAME = "ui_font_name"
     private const val KEY_SYSTEM = "ui_font_system"
+    private const val KEY_BUILTIN = "ui_font_builtin"
 }
