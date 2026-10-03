@@ -4454,7 +4454,7 @@ private fun hourLabel(h: Int): String = when {
 
 /** The handful of attribute items worth showing as overview chips — the categories users
  *  scan for first, a few items each, deduped and capped. (Full set stays in the About tab.) */
-private fun attributeHighlights(about: List<AboutSection>): List<String> {
+internal fun attributeHighlights(about: List<AboutSection>): List<String> {
     if (about.isEmpty()) return emptyList()
     val priority = listOf(
         "Service options", "Dining options", "Offerings", "Highlights",
