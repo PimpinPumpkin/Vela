@@ -302,7 +302,7 @@ fun GoogleStyleDirectionsPanel(
                                 withStyle(SpanStyle(color = trafficEtaColor(route) ?: ink, fontWeight = FontWeight.Medium, fontSize = 22.sp)) {
                                     append(formatDuration(eta))
                                 }
-                                withStyle(SpanStyle(color = dim, fontSize = 18.sp)) { append(" (${formatDistance(route.distanceMeters)})") }
+                                withStyle(SpanStyle(color = ink, fontSize = 18.sp)) { append(" (${formatDistance(route.distanceMeters)})") }
                             },
                         )
                         Spacer(Modifier.height(2.dp))
