@@ -2906,12 +2906,20 @@ The stack mixes two sources deliberately.
 highlight from the basemap's `transportation` layer (class `rail` one color, class `transit`
 another, no network), and above it the track in each line's own color from Transitous
 `/api/experimental/map/routes` (`Transitous.linesInBox`). The service answers every route in the
-box and has no mode parameter; buses, coaches and boats are dropped on the phone, shapes whose
-points average over `CHORD_MAX_M` (700 m) apart are dropped as chords, the rest is thinned to
+box and has no mode parameter; buses, coaches and boats are dropped on the phone, a shape is cut
+at every gap over `CHORD_SPLIT_M` (2 km) and each run whose points average over `CHORD_MAX_M`
+(700 m) apart is dropped as a chord (a shape dense through a city and one ruler jump out to the
+suburbs drew straight commuter lines out of Manhattan, discussion #648), the rest is thinned to
 4 m. The request's `zoom` is 8 (long-distance and regional rail only) while the view is under
 `TRANSIT_LINES_METRO_ZOOM` (10.5) and 12 from there; nothing is asked under
-`TRANSIT_LINES_MIN_ZOOM` (8), on a constrained link, or during a drive. A fetched box (the view
-padded by half) is kept while the view lies inside it. A stretch shared by several lines is
+`TRANSIT_LINES_MIN_ZOOM` (8), on a constrained link, or during a drive. Lines are fetched per
+grid cell (`TRANSIT_LINE_CELL_METRO_DEG` 0.05 at subway level, `TRANSIT_LINE_CELL_RAIL_DEG` 0.5 for
+rail only), at most `TRANSIT_LINE_CELLS_PER_VIEW` (24) per view (the view padded by a quarter,
+nearest first), three at a time, each drawn as it lands, and kept (`TRANSIT_LINE_CELLS_KEPT`, 96,
+LRU); a line crossing a cell edge comes back from both and is drawn once. One request for the
+whole padded view was megabytes over a city, a zoom-out's bigger box failed, and the failure kept
+the old box: lines only inside a square (#648). Over Midtown on the 4a a four-step zoom-out took
+19 cells in 4.5 s. A stretch shared by several lines is
 drawn as side-by-side strands (at most 4). The plain highlight is hidden for a kind (metro,
 train) while colored lines of that kind are in view. Kinds are settings (`TransitLayer`): lines
 metro / trains, stop icons bus / metro / train, all on by default; a stop's kinds come from the

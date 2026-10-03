@@ -152,10 +152,23 @@ object Transitous {
             // stations that is close enough; between two cities it is a ruler line across the
             // map (a first look at Manhattan was a fan of them), so sparse long ones are left out
             // and the plain highlight shows that track instead.
-            var len = 0.0
-            for (i in 1 until pts.size) len += distM(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng)
-            if (len / (pts.size - 1) > CHORD_MAX_M) continue
-            out += MapLine(simplify(pts, LINE_SIMPLIFY_M), colors, kind)
+            // A shape can also be dense through the city and one ruler jump out to the suburbs,
+            // which the average hides (discussion #648: commuter rail drew straight lines out of
+            // Manhattan). Cut it at every gap over CHORD_SPLIT_M and judge each run on its own.
+            var run = ArrayList<LatLng>()
+            fun flush() {
+                if (run.size >= 2) {
+                    var len = 0.0
+                    for (i in 1 until run.size) len += distM(run[i - 1].lat, run[i - 1].lng, run[i].lat, run[i].lng)
+                    if (len / (run.size - 1) <= CHORD_MAX_M) out += MapLine(simplify(run, LINE_SIMPLIFY_M), colors, kind)
+                }
+                run = ArrayList()
+            }
+            for (i in pts.indices) {
+                if (i > 0 && distM(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng) > CHORD_SPLIT_M) flush()
+                run.add(pts[i])
+            }
+            flush()
         }
         return out
     }
@@ -164,6 +177,8 @@ object Transitous {
     private const val LINE_SIMPLIFY_M = 4.0
     /** Average spacing of a shape's points above which it is a chord, not a drawn track. */
     private const val CHORD_MAX_M = 700.0
+    /** A single gap this long between two points of a shape is a chord: the shape is cut there. */
+    private const val CHORD_SPLIT_M = 2000.0
 
     /** Douglas-Peucker: drops points that sit within [tolM] of the line through their neighbors. */
     internal fun simplify(pts: List<LatLng>, tolM: Double): List<LatLng> {

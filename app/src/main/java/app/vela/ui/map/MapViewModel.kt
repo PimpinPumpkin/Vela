@@ -69,6 +69,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 
 /** Which directions endpoint the "Choose on map" crosshair is currently setting. */
@@ -8067,46 +8069,73 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    private var transitLinesBox: DoubleArray? = null // s, w, n, e, and the service zoom it was fetched at
+    // Transit lines come in GRID CELLS (discussion #648): one request for the whole padded view
+    // was megabytes over a city at subway level, a zoom-out's bigger box timed out, and the failure
+    // kept the old box's lines, which read as lines only inside a square. A cell is fetched once
+    // per service zoom and kept (LRU); a view shows the union of its cells, so a zoom-out fetches
+    // only the cells it adds.
+    private val transitLineCells = object : LinkedHashMap<String, List<app.vela.core.data.transit.Transitous.MapLine>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<app.vela.core.data.transit.Transitous.MapLine>>?) = size > TRANSIT_LINE_CELLS_KEPT
+    }
+    private var transitLinesKey: String? = null
     private var transitLinesJob: Job? = null
 
-    /**
-     * Rail lines in their own colors (discussion #648). One request per area, like the stop
-     * icons: a box padded half a view each way, kept while the view's center stays in its inner
-     * half. The service's own zoom filter is used as a size cap: under [TRANSIT_LINES_METRO_ZOOM]
-     * it is asked at zoom 8, which answers long-distance and regional rail only (a metro area's
-     * buses and subway are most of a full answer), from there at 12, everything. Off below
-     * [TRANSIT_LINES_MIN_ZOOM], on a constrained link, and during a drive (the layer is hidden
-     * there). A failed fetch keeps what is drawn and is tried again on the next settle.
-     */
     private fun refreshTransitLines(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         val off = !app.vela.ui.TransitLayer.on.value || zoom < TRANSIT_LINES_MIN_ZOOM ||
             app.vela.core.data.LowDataMode.enabled || (_state.value.navigating && _state.value.travelMode == TravelMode.DRIVE)
         if (off) {
-            transitLinesBox = null
+            transitLinesKey = null
             transitLinesJob?.cancel()
             if (_state.value.transitLines.isNotEmpty()) _state.update { it.copy(transitLines = emptyList()) }
             return
         }
         val apiZoom = if (zoom >= TRANSIT_LINES_METRO_ZOOM) 12 else 8
-        val cLat = (south + north) / 2; val cLng = (west + east) / 2
-        transitLinesBox?.let { b ->
-            // Kept while the WHOLE view is inside the fetched box (zooming out from a small box
-            // left its center inside while most of the view had no lines).
-            if (b[4].toInt() == apiZoom && south >= b[0] && west >= b[1] && north <= b[2] && east <= b[3]) return
-        }
+        val cell = if (apiZoom == 12) TRANSIT_LINE_CELL_METRO_DEG else TRANSIT_LINE_CELL_RAIL_DEG
+        val padLat = (north - south) * 0.25; val padLng = (east - west) * 0.25
+        val i0 = kotlin.math.floor((south - padLat) / cell).toInt(); val i1 = kotlin.math.floor((north + padLat) / cell).toInt()
+        val j0 = kotlin.math.floor((west - padLng) / cell).toInt(); val j1 = kotlin.math.floor((east + padLng) / cell).toInt()
+        val ci = (i0 + i1) / 2.0; val cj = (j0 + j1) / 2.0
+        // Nearest cells first, and no more than a view's worth: a zoomed-out view over a whole
+        // region would otherwise ask for hundreds.
+        val cells = (i0..i1).flatMap { i -> (j0..j1).map { j -> i to j } }
+            .sortedBy { (i, j) -> (i - ci) * (i - ci) + (j - cj) * (j - cj) }
+            .take(TRANSIT_LINE_CELLS_PER_VIEW)
+        val key = "$apiZoom:" + cells.joinToString(",") { "${it.first}/${it.second}" }
+        if (key == transitLinesKey) return
+        transitLinesKey = key
         transitLinesJob?.cancel()
         transitLinesJob = viewModelScope.launch {
             delay(500)
-            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
-            val s0 = south - padLat; val n0 = north + padLat; val w0 = west - padLng; val e0 = east + padLng
+            fun cellKey(c: Pair<Int, Int>) = "$apiZoom:${c.first}:${c.second}"
+            fun publish() {
+                // A line crossing a cell edge comes back from both cells, whole: drop the copies.
+                val seen = HashSet<String>()
+                val lines = cells.flatMap { transitLineCells[cellKey(it)].orEmpty() }.filter { l ->
+                    seen.add("${l.points.first()}|${l.points.last()}|${l.points.size}|${l.colors}")
+                }
+                _state.update { it.copy(transitLines = lines) }
+            }
+            publish()
             val t0 = System.currentTimeMillis()
-            val lines = withContext(Dispatchers.IO) {
-                runCatching { app.vela.core.data.transit.Transitous.linesInBox(transitLinesHttp, s0, w0, n0, e0, apiZoom) }.getOrNull()
-            } ?: return@launch
-            android.util.Log.i("VelaTransit", "lines: ${lines.size} stretches of track (service zoom $apiZoom) in ${System.currentTimeMillis() - t0} ms")
-            transitLinesBox = doubleArrayOf(s0, w0, n0, e0, apiZoom.toDouble())
-            _state.update { it.copy(transitLines = lines) }
+            var fetched = 0; var failed = 0
+            // Three at a time, nearest first; each lands on the map as it arrives.
+            val gate = kotlinx.coroutines.sync.Semaphore(3)
+            cells.filter { transitLineCells[cellKey(it)] == null }.map { c ->
+                launch {
+                    val lines = gate.withPermit {
+                        val s0 = c.first * cell; val w0 = c.second * cell
+                        withContext(Dispatchers.IO) {
+                            runCatching { app.vela.core.data.transit.Transitous.linesInBox(transitLinesHttp, s0, w0, s0 + cell, w0 + cell, apiZoom) }.getOrNull()
+                        }
+                    }
+                    if (lines == null) { failed++; return@launch } // not cached: the next settle asks again
+                    transitLineCells[cellKey(c)] = lines
+                    fetched++
+                    publish()
+                }
+            }.joinAll()
+            if (failed > 0) transitLinesKey = null
+            android.util.Log.i("VelaTransit", "lines: ${cells.size} cells (fetched $fetched, failed $failed, service zoom $apiZoom) in ${System.currentTimeMillis() - t0} ms")
         }
     }
 
@@ -8831,6 +8860,11 @@ class MapViewModel @Inject constructor(
         const val KEY_AUTO_PATCH_AT = "region_autopatch_at"
         const val TRANSIT_LINES_MIN_ZOOM = 8.0   // colored rail lines: trains from here
         const val TRANSIT_LINES_METRO_ZOOM = 10.5 // and subway, tram and light rail from here
+        /** Transit line grid cells, degrees: ~5 km at subway level, ~50 km for rail only. */
+        const val TRANSIT_LINE_CELL_METRO_DEG = 0.05
+        const val TRANSIT_LINE_CELL_RAIL_DEG = 0.5
+        const val TRANSIT_LINE_CELLS_PER_VIEW = 24
+        const val TRANSIT_LINE_CELLS_KEPT = 96
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
