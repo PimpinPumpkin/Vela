@@ -1080,6 +1080,12 @@ fun PlaceSheet(
                 if (isParking) {
                     ActionPill(Sym.Delete, stringResource(R.string.place_clear_parking), onClick = onClearParking)
                 }
+                // Google's own action (Order online / Reserve a table / Book online) when parsed.
+                if (!place.actionLabel.isNullOrBlank() && place.actionUrl != null && !app.vela.ui.HideExternalLinks.on.value) {
+                    ActionPill(Icons.Default.Restaurant, place.actionLabel!!) {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(place.actionUrl))) }
+                    }
+                }
                 place.phone?.let { ph ->
                     ActionPill(Sym.Call, stringResource(R.string.place_call)) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
