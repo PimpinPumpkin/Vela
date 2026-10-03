@@ -799,7 +799,8 @@ Defaults that make the safe path the easy one:
   autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
   onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
   and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
-  turn card across the top of the small window plus a time strip along the bottom (the DEFAULT; the
+  turn card across the top of the small window plus a time strip along the bottom, both flush to the
+  window's edges with no margin or rounding since 2026-10-03 (the DEFAULT; the
   user tried Google's single bar as the default on 2026-10-02 and went back, "more descriptive").
   Settings > Navigation "Turn card in the mini map" (`PipTurnCard`, pref `pip_turn_card`, default
   on) off gives ONE bar along the bottom, copied from Google's mini map (checked on the 4a): the turn

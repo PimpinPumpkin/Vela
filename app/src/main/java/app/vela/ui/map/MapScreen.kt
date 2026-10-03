@@ -4038,8 +4038,9 @@ private fun BoxScope.PipTurnCardOverlay(state: MapUiState) {
         // (user 2026-09-13: hard to parse next to Google's).
         val next = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
         androidx.compose.material3.Surface(
-            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(4.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            // Flush with the window's edges, no margin or rounding (user 2026-10-03): a rounded card
+            // inset 4 dp wasted the mini window's width; the window clips its own corners.
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
@@ -4081,8 +4082,7 @@ private fun BoxScope.PipTurnCardOverlay(state: MapUiState) {
         // strip read as a different kind of thing under the green card). The arrival clock is
         // formatArrivalClock, which follows the phone's 12/24-hour setting (Clock24).
         androidx.compose.material3.Surface(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(4.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
