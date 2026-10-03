@@ -147,6 +147,11 @@ private const val ROUTE_AHEAD_LAYER_B = "vela-route-ahead-b"
 private const val ROUTE_TAIL_SRC_B = "vela-route-tail-b-src"
 private const val ROUTE_TAIL_LAYER_B = "vela-route-tail-b"
 private const val ROUTE_GEN_PROP = "g"
+// The route preview draws each traffic stretch as its own line over the route: the line-gradient
+// is baked into 256 texels over the WHOLE route, about 120 m each on a 30 km trip, so a short jam
+// at the start got one or two texels and was easy to miss on the overview (user 2026-10-02).
+private const val ROUTE_TRAFFIC_SRC = "vela-route-traffic-src"
+private const val ROUTE_TRAFFIC_LAYER = "vela-route-traffic"
 // A pending copy is drawn at this opacity: at 0 MapLibre skips the layer and never tiles its source.
 private const val ROUTE_PENDING_OPACITY = 0.004f
 private const val ROUTE_PENDING_MAX_PASSES = 40
@@ -5038,6 +5043,19 @@ private fun ensureLayers(style: Style) {
         val firstLabel = (if (lastBridge >= 0) style.layers.drop(lastBridge + 1) else style.layers)
             .firstOrNull { it is SymbolLayer }?.id
         if (firstLabel != null) style.addLayerBelow(routeLine, firstLabel) else style.addLayer(routeLine)
+        // The route preview's traffic stretches, each its own exact line over the route (see
+        // ROUTE_TRAFFIC_SRC). Hidden outside the preview.
+        style.addSource(GeoJsonSource(ROUTE_TRAFFIC_SRC))
+        style.addLayerAbove(
+            LineLayer(ROUTE_TRAFFIC_LAYER, ROUTE_TRAFFIC_SRC).withProperties(
+                PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+                PropertyFactory.lineWidth(ROUTE_WIDTH),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                PropertyFactory.visibility(Property.NONE),
+            ),
+            ROUTE_LAYER,
+        )
         // The dotted foot/bike variant (hidden until a walk/bike route is shown). Google-style
         // CONSTANT-ON-SCREEN dots: a symbol layer placed along the line with a fixed
         // symbol-spacing, which is in SCREEN pixels and therefore zoom-invariant. A line
@@ -8179,6 +8197,37 @@ private val TRAFFIC_MODERATE = android.graphics.Color.parseColor("#E8923D") // a
 private val TRAFFIC_HEAVY = android.graphics.Color.parseColor("#D93838")    // red
 private val TRAFFIC_SEVERE = android.graphics.Color.parseColor("#A11D1D")   // dark red
 
+/** The traffic stretches of [route] as one line feature each, colored by level, starting no
+ *  earlier than the driven fraction [p]. Fractions are of the route's length. */
+private fun trafficSpanLines(route: List<LatLng>, spans: List<Triple<Float, Float, Int>>, p: Float): FeatureCollection {
+    if (route.size < 2 || spans.isEmpty()) return FeatureCollection.fromFeatures(emptyList<Feature>())
+    val cum = DoubleArray(route.size)
+    for (i in 1 until route.size) cum[i] = cum[i - 1] + route[i - 1].distanceTo(route[i])
+    val total = cum.last()
+    if (total <= 0.0) return FeatureCollection.fromFeatures(emptyList<Feature>())
+    fun at(m: Double): Point {
+        var i = 1
+        while (i < cum.size - 1 && cum[i] < m) i++
+        val seg = cum[i] - cum[i - 1]
+        val f = if (seg <= 0.0) 0.0 else ((m - cum[i - 1]) / seg).coerceIn(0.0, 1.0)
+        val a = route[i - 1]; val b = route[i]
+        return Point.fromLngLat(a.lng + (b.lng - a.lng) * f, a.lat + (b.lat - a.lat) * f)
+    }
+    val features = spans.mapNotNull { (s, e, lvl) ->
+        val m0 = maxOf(s, p).toDouble() * total; val m1 = e.toDouble() * total
+        if (m1 - m0 < 1.0) return@mapNotNull null
+        val pts = ArrayList<Point>()
+        pts.add(at(m0))
+        for (i in route.indices) if (cum[i] > m0 && cum[i] < m1) pts.add(Point.fromLngLat(route[i].lng, route[i].lat))
+        pts.add(at(m1))
+        val c = trafficLevelColor(lvl)
+        Feature.fromGeometry(LineString.fromLngLats(pts)).apply {
+            addStringProperty("color", String.format("#%06X", c and 0xFFFFFF))
+        }
+    }
+    return FeatureCollection.fromFeatures(features)
+}
+
 private fun trafficLevelColor(level: Int): Int = when {
     level <= 1 -> TRAFFIC_MODERATE
     level == 2 -> TRAFFIC_HEAVY
@@ -8380,6 +8429,7 @@ private fun applyData(
             // route is still drawn" next to them (user 2026-07-08); alternates stay pickable
             // from the route list.
             style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.getLayer(ROUTE_TRAFFIC_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
             style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ALT_ROUTE_EDGE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -8416,19 +8466,22 @@ private fun applyData(
             }
             lastBrowseGradKey = null // fresh mode = re-apply the gradient below
         }
-        val gradKey = 31 * (31 * p.toRawBits() + routeInt) + trafficSpans.hashCode()
+        val gradKey = 31 * (31 * (31 * p.toRawBits() + routeInt) + trafficSpans.hashCode()) + System.identityHashCode(route)
         if (gradKey != lastBrowseGradKey) {
             lastBrowseGradKey = gradKey
             style.getLayer(ROUTE_LAYER)?.setProperties(
                 PropertyFactory.visibility(Property.VISIBLE),
                 PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
             )
+            style.getSourceAs<GeoJsonSource>(ROUTE_TRAFFIC_SRC)?.setGeoJson(trafficSpanLines(route, trafficSpans, p))
+            style.getLayer(ROUTE_TRAFFIC_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
         }
     } else {
         // NAV: the frame ticker owns the route rendering — the driven/ahead GEOMETRY split
         // (ahead suffix on ROUTE_AHEAD_LAYER, traversed gray on ROUTE_LAYER). Writing a
         // gradient from recomposition here would fight it once per fix.
         if (modeChanged) {
+            style.getLayer(ROUTE_TRAFFIC_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
         }

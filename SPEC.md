@@ -1524,6 +1524,11 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   geometry: a paint change applies at once and a GeoJSON upload a few frames later, so new
   fractions on old pieces paint a strip of the new color behind the arrow.
 
+- **The route preview draws each traffic stretch as its own line** (`ROUTE_TRAFFIC_LAYER`, one
+  feature per span sliced from the route by its length fractions, colored by level, from the driven
+  fraction on) over the gradient line. A line-gradient is baked into 256 texels over the WHOLE
+  route, about 120 m each on a 30 km trip, so a short jam got one or two texels and was easy to
+  miss on the overview; during a drive the windows are short enough (3 km, 12 m texels).
 - **Every moving route piece is double-buffered** (the cut piece, the ahead window and the far
   tail each have a second copy, `ROUTE_*_B`). A re-anchor uploads the new geometry into the hidden
   copy, tagged with a generation number (`ROUTE_GEN_PROP`), and draws that copy at
