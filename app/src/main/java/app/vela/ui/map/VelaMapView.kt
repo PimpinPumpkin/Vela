@@ -1002,7 +1002,7 @@ fun VelaMapView(
             zoomOverride.value(false)
         }
     }
-    remember { MapLibre.getInstance(context) }
+    remember { MapLibre.getInstance(context).also { app.vela.offline.LocalBasemapTiles.installIntoMapLibre() } }
     // D-pad-only operation (docs/dpad.md): MapLibre's MapView calls requestFocus() on
     // itself and overrides onKeyDown to handle hardware D-pad keys (DPAD_CENTER = zoom in,
     // arrows = scroll). On a keypad phone it therefore SWALLOWS every D-pad key before

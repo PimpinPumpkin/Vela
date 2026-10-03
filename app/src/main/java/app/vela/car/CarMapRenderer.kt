@@ -351,7 +351,7 @@ class CarMapRenderer(
         // and every future requestRender would no-op — the map freezes after a screen change.
         rendering = false; dirty = false
         if (width <= 0 || height <= 0) return
-        runCatching { MapLibre.getInstance(carContext) }
+        runCatching { MapLibre.getInstance(carContext); app.vela.offline.LocalBasemapTiles.installIntoMapLibre() }
         center = center ?: puck ?: runCatching { locationProvider.lastKnown() }.getOrNull()
         // No location yet (permission not granted, or no fix ever): draw the world rather than a
         // black surface; the first fix flies in to street level.

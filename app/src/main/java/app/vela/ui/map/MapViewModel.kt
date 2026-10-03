@@ -7657,6 +7657,11 @@ class MapViewModel @Inject constructor(
     private var glyphRefreshTried = false // one stale-glyph-pack refresh attempt per run
 
     private suspend fun pickBasemapArchive(center: LatLng?) {
+        // Keep the online tile hook's list of downloaded files current (cheap, and this runs after
+        // every download, delete and camera settle).
+        app.vela.offline.LocalBasemapTiles.refresh(
+            basemapStore.installed(), app.vela.offline.BasemapTileStore.WORLD_ID, app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM,
+        )
         val mountedNow = _state.value.basemapArchive?.removePrefix("pmtiles://file://")?.let { java.io.File(it) }
         val corners = viewport?.let { v -> listOf(LatLng(v[0], v[1]), LatLng(v[0], v[3]), LatLng(v[2], v[1]), LatLng(v[2], v[3])) }.orEmpty()
         // Offline the archive in use is kept while any of the view is still inside it: there is

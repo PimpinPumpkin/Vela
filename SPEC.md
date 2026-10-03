@@ -2571,11 +2571,19 @@ Selection rules on the phone:
   were about to arrive, and crossing the box edge then unmounted it, so a pan along a download's
   border alternated gray and network. Only a probe that CANNOT answer leaves the old pick in
   charge, because that is the case where asking told us nothing. The pick runs off the main thread.
-  **Online the downloaded basemap is not used at all (2026-10-02): the map streams.** Mounting it
-  online swapped the whole style in and out at every edge of the downloaded data, a full reload
-  and a visible flicker each time (zooming far out from inside a region did it twice: once leaving
-  the data, once coming back). `pickBasemapArchive` asks `installedFor` only while streaming cannot
-  work (offline, or a network that never validated); the rules below apply there.
+  **Online the downloaded basemap is never mounted (2026-10-02); its tiles are served under the
+  streamed source instead.** Mounting it online swapped the whole style in and out at every edge of
+  the downloaded data, a full reload and a visible flicker each time (zooming far out from inside a
+  region did it twice). `offline/LocalBasemapTiles` is an interceptor in MapLibre's own HTTP client
+  (`HttpRequestUtil.setOkHttpClient`, installed right after `MapLibre.getInstance`, which the HTTP
+  class requires first): a request for an OpenFreeMap tile is answered from an installed full-depth
+  region file (OpenMapTiles schema, like the stream) when the tile's corners, padded by
+  `EDGE_PAD_DEG` (0.05 degrees), all lie inside that region's boundary (`RegionPolys`; the files
+  are cut to the boundary, and the shipped boundaries are simplified to about 5 km). Border tiles,
+  shallow bakes and the world file stream. Same style, same source: no swap, and no data spent on a
+  downloaded area. Checked on the 4a over Northern California: every tile of a fresh view came
+  from the file. `pickBasemapArchive` mounts a file only while streaming cannot work (offline, or a
+  network that never validated); the rules below apply there.
   **The mount has hysteresis.** A swap reloads the whole style (`basemapArchive` is part of the
   style key), so the pick must not flip on every camera idle along a border. Unmounting is eager
   (no roads at the center tile means stream); mounting an archive that is not the one in use
