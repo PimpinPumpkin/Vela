@@ -151,7 +151,20 @@ class LocationProvider @Inject constructor(
         }
     }
 
+    private var cachedAtMs = 0L
+    private var cachedLat = Double.NaN
+    private var cachedLng = Double.NaN
+
+    /** The last-known seed for the next launch: written at most once a minute, or sooner after
+     *  moving [CACHE_MOVE_M], not on every fix (each write rewrote the prefs file, ~2 a second
+     *  with GPS and network both on). */
     private fun cache(loc: Location) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val moved = if (cachedLat.isNaN()) Float.MAX_VALUE else FloatArray(1).also {
+            Location.distanceBetween(cachedLat, cachedLng, loc.latitude, loc.longitude, it)
+        }[0]
+        if (now - cachedAtMs < CACHE_EVERY_MS && moved < CACHE_MOVE_M) return
+        cachedAtMs = now; cachedLat = loc.latitude; cachedLng = loc.longitude
         prefs.edit()
             .putFloat(KEY_LAT, loc.latitude.toFloat())
             .putFloat(KEY_LNG, loc.longitude.toFloat())
@@ -161,6 +174,8 @@ class LocationProvider @Inject constructor(
     private companion object {
         // GPS first (accurate), NETWORK second (fast coarse seed).
         val PROVIDERS = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        const val CACHE_EVERY_MS = 60_000L
+        const val CACHE_MOVE_M = 100f
         const val KEY_LAT = "last_lat"
         const val KEY_LNG = "last_lng"
     }

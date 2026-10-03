@@ -787,11 +787,19 @@ class MapViewModel @Inject constructor(
             // Device-facing compass for the browse-mode heading cone (GPS bearing is junk at a
             // standstill). Pushed to state ONLY in browse and ONLY on a real change (>=2°), so it
             // can't spam recomposition during nav — there the heading comes from the matched road.
+            // The sensor is REGISTERED only while it can be shown: not during a drive (it was on
+            // for the whole drive with every reading thrown away, and the nav service kept it
+            // delivering with the screen off) and not while the app is in the background.
             launch {
                 var last = Float.NaN
                 var lastPushMs = 0L
-                headingProvider.headings().collect { az ->
-                    if (_state.value.navigating) return@collect
+                kotlinx.coroutines.flow.combine(
+                    _state.map { it.navigating }.distinctUntilChanged(),
+                    app.vela.ui.AppVisibility.foreground,
+                ) { nav, fg -> !nav && fg }.distinctUntilChanged().collectLatest { wanted ->
+                    if (!wanted) return@collectLatest
+                    last = Float.NaN
+                    headingProvider.headings().collect { az ->
                     // AUDIT FIX 5 (2026-07-15): a wall-clock floor beside the 2-degree gate. A
                     // hand-held phone crosses 2 degrees many times a second, and each push
                     // recomposes the WHOLE MapScreen off this one field - 5-16 recompositions/s
@@ -803,6 +811,7 @@ class MapViewModel @Inject constructor(
                         last = az
                         lastPushMs = now
                         _state.update { it.copy(compassHeading = az) }
+                    }
                     }
                 }
             }

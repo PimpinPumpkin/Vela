@@ -265,6 +265,9 @@ class PiperSynth @Inject constructor(
                         Thread.sleep(30)
                     }
                     if (myGen == generation) Thread.sleep(INTER_PROMPT_GAP_MS)
+                    // Played out: pause the track, so the audio output can go to standby between
+                    // prompts instead of holding a PLAYING stream (the next prompt plays it again).
+                    if (myGen == generation) runCatching { at.pause() }
                 }
                 Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "${frags.size} frag."}) in ${genMs}ms")
             } catch (t: Throwable) {

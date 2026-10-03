@@ -1458,6 +1458,25 @@ pass, which reads region index files on the main thread, the building-overlay ga
 schedule) runs at most once per `IDLE_WORK_GAP_MS` (1 s) while the camera moves, plus once
 `IDLE_WORK_TRAIL_MS` (250 ms) after the last idle event; a pan's end still runs it at once.
 
+**Audit pass, 2026-10-02 (fps and battery).** Each rule below is in the code with the reason beside it:
+- The free-drive follow loop goes idle when parked after a drive with no route (its driving branch
+  counted as settling on every frame) and ignores target moves under `FOLLOW_STILL_DEADBAND_M`
+  (2 m) below 0.5 m/s, so a fix's noise no longer resets the idle count once a second.
+- MapScreen reads the place sheet's edge and the puck's screen position through `SheetEdge` /
+  `PuckScreen`: composition sees only yes/no answers that flip at thresholds, the position itself
+  is read in layout. Reading the raw values recomposed MapScreen on every frame of a sheet drag
+  and of a turn. (No new composable calls: MapScreen is at the verifier limit.)
+- The speed readout recomposes on a new digit only (`derivedStateOf` over the 600 ms tween).
+- A newly closed place updates the places filter instead of re-creating every places source.
+- The cut veil draws with `drawRect(alpha)`, not a layer alpha (an offscreen buffer).
+- The maxspeed query line is 2 px wide (was 12 px of invisible blended fill).
+- The nav notification re-posts only when something it shows changes (`notifKey`).
+- The screen-on flag drops while a drive is paused.
+- The compass sensor is registered only on the bare map in the foreground.
+- The last-known position is written at most once a minute or after 100 m (`LocationProvider`).
+- The voice's AudioTrack is paused after each prompt so the output can go to standby.
+- The day/night theme ticker waits while the app is in the background.
+
 Testing aids: `debug.vela.tune.camTurnTau <s>` sets how fast the nav camera swings through a turn
 (`CAM_BRG_TAU_TURN`, 0.35 s; at 0.8 s the worst turn dip went 35 -> 45 fps over three turns, too few
 to call). `debug.vela.tune.demoSpeedup <n>` runs a demo drive's fixes and clocks at n times

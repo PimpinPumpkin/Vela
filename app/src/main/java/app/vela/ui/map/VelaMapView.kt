@@ -62,6 +62,7 @@ import org.maplibre.geojson.Point
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.background
 import kotlinx.coroutines.launch
 import org.maplibre.android.geometry.LatLng as MLLatLng
@@ -305,6 +306,8 @@ private const val PREVIEW_LAYER = "vela-preview"
 /** Camera-bearing damping (issue #251). Heavy while the camera is essentially tracking a straight
  *  road, so digitization wiggle does not rotate the map; quick once the error is turn-sized. */
 private const val NAV_IDLE_TICK_MS = 120L
+// Standing still (under 0.5 m/s), the free-drive camera ignores target moves smaller than this.
+private const val FOLLOW_STILL_DEADBAND_M = 2.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
 // SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
@@ -1692,7 +1695,14 @@ fun VelaMapView(
     // poiIconScale is a KEY, not just a value read inside: these layers are rebuilt from scratch
     // here, so a size baked in at creation is the only one they ever get, and a settings change has
     // to rebuild them to take effect (user 2026-09-18, on a head unit).
-    LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds, poiIconScale, poiLabelScale) {
+    // A newly closed place only changes the filter: re-creating every places source for it (it was
+    // a key of the effect below) reloaded every places tile and flashed the layer.
+    LaunchedEffect(hiddenOpenPlaceIds, styleRef) {
+        if (openHiddenIds == hiddenOpenPlaceIds) return@LaunchedEffect
+        openHiddenIds = hiddenOpenPlaceIds
+        styleRef?.let { runCatching { applyOpenPlacesHidden(it) } }
+    }
+    LaunchedEffect(placesOverlays, styleRef, darkTheme, poiIconScale, poiLabelScale) {
         val style = styleRef ?: return@LaunchedEffect
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
         // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
@@ -1991,7 +2001,9 @@ fun VelaMapView(
                         // alpha step of black: invisible on any basemap, but the features stay queryable.
                         PropertyFactory.lineColor(android.graphics.Color.BLACK),
                         PropertyFactory.lineOpacity(0.004f),
-                        PropertyFactory.lineWidth(12f),          // wide hit target for the point query
+                        // Thin: the 28 px query box around the puck finds it, and every pixel of this
+                        // blended, invisible line was fill the GPU drew for nothing.
+                        PropertyFactory.lineWidth(2f),
                     )
                 }
                 style.addLayer(layer)
@@ -2398,8 +2410,13 @@ fun VelaMapView(
                 // dragged the map through every tile in between.
                 val farLat = (tgtLat - browseCam[0]) * 111_320.0
                 val farLng = (tgtLng - browseCam[1]) * 111_320.0 * kotlin.math.cos(Math.toRadians(tgtLat))
-                if (farLat * farLat + farLng * farLng > FOLLOW_JUMP_M * FOLLOW_JUMP_M) {
+                val far2 = farLat * farLat + farLng * farLng
+                if (far2 > FOLLOW_JUMP_M * FOLLOW_JUMP_M) {
                     browseCam[0] = tgtLat; browseCam[1] = tgtLng
+                } else if (browseFix[3] < 0.5 && far2 < FOLLOW_STILL_DEADBAND_M * FOLLOW_STILL_DEADBAND_M) {
+                    // Standing still: a fix's meter of noise is not motion. Easing after it reset
+                    // the idle count every second, so the loop never slowed down with real GPS
+                    // (it was measured idle with a simulated, noiseless location).
                 } else {
                     browseCam[0] += (tgtLat - browseCam[0]) * k
                     browseCam[1] += (tgtLng - browseCam[1]) * k
@@ -2442,7 +2459,12 @@ fun VelaMapView(
                     lookLat = camLat + browseDrive[3] * kotlin.math.cos(lr) / 111_320.0
                     lookLng = camLng + browseDrive[3] * kotlin.math.sin(lr) /
                         (111_320.0 * kotlin.math.cos(Math.toRadians(camLat)).coerceAtLeast(0.1))
-                    attSettling = true // camera state is live every frame while driving
+                    // Settling while any of the three still moves visibly. It was simply true here,
+                    // so a car parked after a drive with no route kept the loop (and the map) at
+                    // 60 fps for as long as the app stayed open.
+                    val lookGoal = (browseDrive[0] * 5.0).coerceAtMost(250.0)
+                    attSettling = kotlin.math.abs(db) > 0.15 || kotlin.math.abs(55.0 - cp.tilt) > 0.15 ||
+                        kotlin.math.abs(lookGoal - browseDrive[3]) > 0.3
                 } else {
                     // NORTH-UP, FLAT (walking/slow browse) - enforced against the LIVE camera every
                     // frame, not a one-shot shadow: the first cut copied bearing/tilt once when
@@ -2486,7 +2508,7 @@ fun VelaMapView(
                 val puckAt = if (cam != null && !scaling[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0] && !browseFlying[0]) {
-                    if (attSettling || !zoomEase.isNaN()) {
+                    if (attSettling || !zoomEase.isNaN() || browseDrive[1] > 0.5) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
                         // preserved, so a pinch level survives). While driving the aim point
@@ -4775,9 +4797,12 @@ fun VelaMapView(
         }
     }
     androidx.compose.foundation.layout.Box(
-        Modifier.matchParentSize()
-            .graphicsLayer { alpha = cutFade.value }
-            .background(androidx.compose.ui.graphics.Color(if (darkTheme) 0xFF162640 else 0xFFF8F7F7)),
+        // drawRect with an alpha, not graphicsLayer alpha: a layer alpha under 1 renders into an
+        // offscreen buffer, a full-screen one during the cut's own tile burst.
+        Modifier.matchParentSize().drawBehind {
+            val a = cutFade.value
+            if (a > 0f) drawRect(androidx.compose.ui.graphics.Color(if (darkTheme) 0xFF162640 else 0xFFF8F7F7), alpha = a)
+        },
     )
     val puckMesh = if (puckOverlayOn.value) remember(app.vela.ui.PuckStyle.key()) {
         PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)

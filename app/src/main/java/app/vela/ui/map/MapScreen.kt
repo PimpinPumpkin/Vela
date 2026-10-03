@@ -429,8 +429,10 @@ fun MapScreen(
     // navigating" toggle (Settings → Navigation, default on); the flag is cleared
     // the instant nav ends, the setting is turned off, or this screen leaves
     // composition, so the screen sleeps normally again everywhere else.
-    val keepAwakeOn = remember(state.navigating) {
-        state.navigating &&
+    // Not while the drive is paused: a car pulled over with the drive held kept the screen on
+    // for as long as it sat there.
+    val keepAwakeOn = remember(state.navigating, state.navPaused) {
+        state.navigating && !state.navPaused &&
             context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
                 .getBoolean("keep_screen_on_nav", true)
     }
@@ -516,9 +518,10 @@ fun MapScreen(
     // actually clears the sheet - a measured overlap test, not an orientation/height guess,
     // so a tablet or portrait car screen keeps the button and a phone-landscape peek (where
     // the sheet reaches the corner) drops it, continuously as the sheet is dragged.
-    var placeSheetTopPx by remember { mutableStateOf(0) }
+    val sheetEdge = remember { SheetEdge() }
+    sheetEdge.screenH = screenHeightPx
     LaunchedEffect(state.selected?.id) {
-        if (state.selected == null) { placeSheetExpanded = false; placeSheetTopPx = 0 }
+        if (state.selected == null) { placeSheetExpanded = false; sheetEdge.set(0) }
     }
     LaunchedEffect(state.results) { filteredResultIds = null }
     // Street View gates the panel too: opening the viewer clears `selected`, which used to flip
@@ -589,8 +592,8 @@ fun MapScreen(
     // The arrow's screen position, written by the ticker's rare real moves and READ IN THE
     // LAYOUT LAMBDA of the road pill only, so a report re-lays-out one Surface rather than
     // recomposing this screen (review 2026-09-06). Cleared when a drive ends.
-    val puckScreen = remember { mutableStateOf<Offset?>(null) }
-    LaunchedEffect(state.navigating) { if (!state.navigating) puckScreen.value = null }
+    val puckScreen = remember { PuckScreen() }
+    LaunchedEffect(state.navigating) { if (!state.navigating) puckScreen.set(null) }
     // The endpoints card's bottom edge, so the notification column can sit under it in
     // directions mode instead of printing over it (user 2026-07-13).
     var topCardBottomPx by remember { mutableStateOf(0) }
@@ -1317,7 +1320,7 @@ fun MapScreen(
         if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF && roadLabelMode != app.vela.ui.RoadLabel.IN_BAR) {
             val onRoad = navRoadLabel(state)
             // Composition reads only "do we have a position"; the value itself is read in layout.
-            val havePuck = puckScreen.value != null
+            val havePuck = puckScreen.have.value
             if (onRoad != null && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
                 val uiLang = app.vela.ui.AppLocale.effective().language
                 val shownRoad =
@@ -1367,7 +1370,7 @@ fun MapScreen(
                         .layout { measurable, constraints ->
                             val placeable = measurable.measure(constraints)
                             layout(placeable.width, placeable.height) {
-                                val at = puckScreen.value ?: Offset(constraints.maxWidth / 2f, 0f)
+                                val at = puckScreen.at.value ?: Offset(constraints.maxWidth / 2f, 0f)
                                 val margin = 8.dp.roundToPx()
                                 val maxX = (constraints.maxWidth - placeable.width - margin)
                                     .coerceAtLeast(margin)
@@ -1514,7 +1517,7 @@ fun MapScreen(
                             }
                         }
                     } else if (!(state.selected != null && placeSheetExpanded && !searchOpen && !landscapeChrome &&
-                        placeSheetTopPx < screenHeightPx * 0.40f) &&
+                        sheetEdge.above40.value) &&
                         !(state.directionsOpen && !searchOpen)
                     ) {
                         // The expanded-sheet hide is PORTRAIT-only AND measured (2026-07-23): a
@@ -1700,12 +1703,12 @@ fun MapScreen(
                 // road-name pill takes the space under the arrow, so this one goes over it.
                 // Bottom center stays the fallback for the frames before a puck position exists
                 // (a detached camera, the first fix of a drive).
-                modifier = if (puckScreen.value != null) Modifier
+                modifier = if (puckScreen.have.value) Modifier
                     .widthIn(max = 260.dp)
                     .layout { measurable, constraints ->
                         val placeable = measurable.measure(constraints)
                         layout(placeable.width, placeable.height) {
-                            val at = puckScreen.value ?: Offset(constraints.maxWidth / 2f, 0f)
+                            val at = puckScreen.at.value ?: Offset(constraints.maxWidth / 2f, 0f)
                             val margin = 8.dp.roundToPx()
                             val maxX = (constraints.maxWidth - placeable.width - margin)
                                 .coerceAtLeast(margin)
@@ -2189,7 +2192,7 @@ fun MapScreen(
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp)
                     // Live top edge for the layers button's overlap gate (see placeSheetTopPx).
-                    .onGloballyPositioned { placeSheetTopPx = it.positionInRoot().y.roundToInt() },
+                    .onGloballyPositioned { sheetEdge.set(it.positionInRoot().y.roundToInt()) },
             )
 
             // Search results as a BOTTOM sheet, Google-style — same detent family as the place
@@ -2642,7 +2645,7 @@ fun MapScreen(
             // (the same phantom-expanded class as the search-bar/layers hides).
             // Landscape needs none of this: the side panel leaves the normal FABs standing.
             if (fabChromeOk && !landscapeChrome && state.selected != null &&
-                state.pickOnMap == null && placeSheetTopPx > screenHeightPx * 0.55f
+                state.pickOnMap == null && sheetEdge.below55.value
             ) {
                 FloatingActionButton(
                     onClick = onRecenter,
@@ -2652,7 +2655,7 @@ fun MapScreen(
                         .offset {
                             androidx.compose.ui.unit.IntOffset(
                                 -16.dp.roundToPx(),
-                                placeSheetTopPx - 72.dp.roundToPx(),
+                                sheetEdge.top.value - 72.dp.roundToPx(),
                             )
                         },
                 ) {
@@ -2675,10 +2678,11 @@ fun MapScreen(
                 with(layersDensity) { ((if (landscapeChrome) 74.dp else 128.dp) + 42.dp + 8.dp).toPx() }
             // Landscape short-circuits the vertical test: the sheet is the width-capped LEFT
             // panel there, which never reaches the top-right corner whatever its detent.
+            sheetEdge.layersBottom = layersButtonBottomPx
             val clearOfPlaceSheet = state.selected == null ||
                 (
                     state.streetView == null && !state.streetViewLoading && state.pickOnMap == null &&
-                        (landscapeChrome || placeSheetTopPx > layersButtonBottomPx)
+                        (landscapeChrome || sheetEdge.clearLayers.value)
                     )
             // The expanded/results hides are portrait-only too: the landscape panel caps below
             // the search bar and never reaches this corner at ANY detent.
@@ -3588,7 +3592,7 @@ private fun MapSurface(
     screenHeightPx: Float,
     svPose: DoubleArray?,
     metersPerPixelState: MutableState<Double>,
-    puckScreen: MutableState<Offset?>,
+    puckScreen: PuckScreen,
     mapDpad: MapDpadController,
     onMapTap: () -> Unit,
     onUserPan: () -> Unit,
@@ -3828,7 +3832,7 @@ private fun MapSurface(
         navOverviewTick = navOverviewTick,
         navRecenterTick = navRecenterTick,
         onNavZoomOverride = onNavZoomOverride,
-        onPuckScreen = { x, y -> puckScreen.value = Offset(x, y) },
+        onPuckScreen = { x, y -> puckScreen.set(Offset(x, y)) },
         onPoiTap = vm::onPoiTap,
         onMarkerTap = { i -> if (!chooserUp) displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
         parkingSpot = state.parkingSpot,
@@ -6047,11 +6051,19 @@ private fun SpeedWidget(
     // Smooth the DISPLAYED speed (Google shows the fused estimate, not each raw doppler sample - the
     // raw 1 Hz readout flickered 59/60/61 at a steady cruise), with a small deadband so a stop reads
     // a clean 0 instead of 1 mph jitter.
-    val shownSpeed by animateFloatAsState(
+    val speedAnim = animateFloatAsState(
         targetValue = (speedMps ?: 0f).let { if (it < 0.4f) 0f else it },
         animationSpec = tween(durationMillis = 600),
         label = "speed",
     )
+    // Read through the DISPLAYED number: the tween changes every frame for 600 ms of each second,
+    // and reading it directly recomposed the widget ~36 times a second to show the same digits.
+    val shownSpeed by remember(imperial) {
+        androidx.compose.runtime.derivedStateOf {
+            val k = if (imperial) 2.236936f else 3.6f
+            kotlin.math.round(speedAnim.value * k) / k
+        }
+    }
     val (value, unit) = formatSpeed(shownSpeed)
     val speedDisp = if (imperial) shownSpeed * 2.236936f else shownSpeed * 3.6f
     val limitDisp = limitKmh?.let { formatSpeedLimit(it).first }
@@ -6390,5 +6402,41 @@ private fun SavedSheetRow(
                 tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/**
+ * The place sheet's top edge, read in LAYOUT by what follows it, plus the three yes/no answers
+ * composition needs, which change only when the edge crosses a line. Composition reading the
+ * edge itself recomposed all of MapScreen on every frame of a sheet drag or settle.
+ */
+private class SheetEdge {
+    val top = mutableStateOf(0)
+    val above40 = mutableStateOf(true)      // top < 40% of the screen (it covers the search bar)
+    val below55 = mutableStateOf(false)     // top > 55% (room for the recenter button above it)
+    val clearLayers = mutableStateOf(false) // top below the layers button
+    var screenH = 0f
+    var layersBottom = 0f
+
+    fun set(y: Int) {
+        top.value = y
+        val a = y < screenH * 0.40f
+        val b = y > screenH * 0.55f
+        val c = y > layersBottom
+        if (above40.value != a) above40.value = a
+        if (below55.value != b) below55.value = b
+        if (clearLayers.value != c) clearLayers.value = c
+    }
+}
+
+/** The nav puck's screen position, read in layout by the labels pinned to it, plus whether it
+ *  has one, which is all composition reads (the position moves every frame of a turn). */
+internal class PuckScreen {
+    val at = mutableStateOf<Offset?>(null)
+    val have = mutableStateOf(false)
+
+    fun set(o: Offset?) {
+        at.value = o
+        if (have.value != (o != null)) have.value = o != null
     }
 }

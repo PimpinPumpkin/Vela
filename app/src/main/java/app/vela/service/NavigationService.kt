@@ -132,12 +132,34 @@ class NavigationService : Service() {
                             }
                             stopSelf()
                         }
-                        else -> runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
+                        // Only when something it SHOWS changed: the session emits on every fix and
+                        // more, and each post rebuilt the glyph and puck bitmaps and made the system
+                        // redraw the row, the lock-screen live update and the status chip.
+                        else -> {
+                            val key = notifKey(s)
+                            if (key != lastNotifKey) {
+                                lastNotifKey = key
+                                runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
+                            }
+                        }
                     }
                 }
                 .launchIn(scope)
         }
         return START_STICKY
+    }
+
+    private var lastNotifKey: String? = null
+
+    /** What the ongoing notification shows, as text: equal keys draw the same notification. */
+    private fun notifKey(s: NavSession.State): String {
+        val total = s.route?.distanceMeters ?: 0.0
+        val pct = if (total > 0.0) (s.nav.traveledM * 100.0 / total).toInt() else 0
+        return listOf(
+            s.maneuverText, formatDistance(s.nav.distanceToNextManeuver), formatDuration(s.remainingDuration),
+            formatDistance(s.remainingDistance), s.fasterRoute != null, s.fasterSavingSeconds.toInt() / 60,
+            s.paused, s.nav.stepIndex, pct, System.currentTimeMillis() / 60_000,
+        ).joinToString("|")
     }
 
     private fun buildNotification(): Notification {

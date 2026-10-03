@@ -263,7 +263,7 @@ fun ManeuverBanner(
                         // card, and always, not only when a maneuver mentions the route). Skipped
                         // when the upcoming maneuver's own chips already show the same route, and
                         // while rerouting (the headline owns the row).
-                        val cur = if (rerouting) null else currentRef?.trim()?.replace(Regex("\\s+"), " ")
+                        val cur = if (rerouting) null else currentRef?.trim()?.replace(WS_RUN, " ")
                             ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { it.label == c } }
                         if (cur != null) {
                             Spacer(Modifier.weight(1f))
@@ -422,11 +422,11 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
         val label = "Exit ${it.groupValues[1]}"
         if (seen.add(label.lowercase())) out.add(Sign(isExit = true, label = label))
     }
-    explicitRef?.trim()?.replace(Regex("\\s+"), " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
+    explicitRef?.trim()?.replace(WS_RUN, " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
         if (seen.add(it.lowercase())) out.add(Sign(isExit = false, label = it))
     }
     ROUTE_RE.findAll(text).forEach { m ->
-        val label = m.value.trim().replace(Regex("\\s+"), " ").uppercase()
+        val label = m.value.trim().replace(WS_RUN, " ").uppercase()
         if (seen.add(label.lowercase())) out.add(Sign(isExit = false, label = label))
     }
     return out.take(3)
@@ -1326,3 +1326,6 @@ private fun HoldChoice(
 /** How long the pop-out waits before closing itself. Long enough to open it, look, and reach the
  *  second target from the wheel; short enough that it is never still there at the next junction. */
 private const val OPEN_MS = 6_000L
+
+/** A run of whitespace, compiled once (the banner used to compile it on every fix). */
+private val WS_RUN = Regex("\\s+")

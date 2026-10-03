@@ -3716,6 +3716,15 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Fps and battery audit (2026-10-02, SPEC 4.7b).** Three read-only audit agents (map render,
+  Compose/main thread, battery) found ~35 candidates; the high-confidence small ones are fixed and
+  listed in SPEC 4.7b. Two rules worth remembering: MapLibre fires camera-idle after EVERY
+  moveCamera (60/s while a ticker follows; `VelaFps` prints `idle=N`), so idle-listener work must be
+  throttled; and in MapScreen, read fast-moving positions in layout and give composition only
+  threshold booleans (`SheetEdge`, `PuckScreen`), without adding composable calls (verifier limit).
+  Left for later: splitting the location/compass fields out of the one big MapUiState collect,
+  remembering MapSurface's derived lists, the free-drive puck still being a GeoJSON symbol, the map
+  rendering under the Settings page, NETWORK location at 1 s during a drive, main-thread trip-file IO.
 - **Turn stutter and playback (2026-10-02, SPEC 4.7b).** A turn's bearing swing brings new tiles
   into a tilted view: brief dips (40-45 fps at 1x on the 4a, lower at a replay's 3x). The nav eases'
   `dtEase` cap scales with `replaySpeedup`. Debug dials: `debug.vela.tune.demoSpeedup 3` runs a demo

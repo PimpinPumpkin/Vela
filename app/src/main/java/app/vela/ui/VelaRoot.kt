@@ -1,5 +1,6 @@
 package app.vela.ui
 
+import kotlinx.coroutines.flow.first
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +43,9 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     // moves the boundary once a day) and costs a closed-form calculation per tick.
     androidx.compose.runtime.LaunchedEffect(Unit) {
         while (true) {
+            // Waits while the app is in the background: the effect outlives onStop, and nothing
+            // drawn needs the answer until the app is back.
+            app.vela.ui.AppVisibility.foreground.first { it }
             app.vela.ui.theme.AppTheme.refreshNight()
             kotlinx.coroutines.delay(60_000L)
         }
