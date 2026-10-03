@@ -1068,6 +1068,8 @@ class GoogleMapsDataSource @Inject constructor(
             val untrusted = java.util.Collections.synchronizedList(ArrayList<app.vela.core.data.naming.HybridRoute.Stretch>()) // where a kept match is off Google's line
             val stretchNames = IntArray(4) // on matched stretches: turn names kept, renamed, bare; stretches whose edges did not come back
             val stretchSource = IntArray(4) // matched, from tiles, bare, and of the matched: with the open router's lane detail
+            // The matched road shape per stretch (OpenStreetMap geometry), for the line to DRAW.
+            val matchedShapes = java.util.concurrent.ConcurrentHashMap<app.vela.core.data.naming.HybridRoute.Stretch, List<LatLng>>()
             suspend fun hybridOf(online: Boolean): Route? = coroutineScope {
                 val named = hybridStretches.map { st ->
                     async(Dispatchers.IO) {
@@ -1082,6 +1084,7 @@ class GoogleMapsDataSource @Inject constructor(
                         val matched = m?.route
                         if (matched != null) {
                             m.off.forEach { untrusted += app.vela.core.data.naming.HybridRoute.Stretch(st.fromM + it.first, st.fromM + it.second) }
+                            if (m.off.isEmpty()) matchedShapes[st] = matched.polyline
                             // LANES: the matcher gives names, exit numbers and signs but no lane
                             // arrows; only the open router has those. The matched path is on the
                             // road network exactly, so the open router can be led along it with a
@@ -1126,7 +1129,9 @@ class GoogleMapsDataSource @Inject constructor(
                 val openChecked = (if (online && ed != null) kotlinx.coroutines.withTimeoutOrNull(if (urgent) OPEN_NAMES_WAIT_URGENT_MS else OPEN_NAMES_WAIT_MS) { ed.await() } else null)
                     ?.let { app.vela.core.data.ValhallaRouter.recheck(open.first(), it, keepUnplaced = true, tally = tally) }
                 if (openChecked != null) runCatching { android.util.Log.i("VelaDirections", "open names (hybrid): kept ${tally[0]} renamed ${tally[1]} bare ${tally[2]} unplaced ${tally[3]}") }
-                app.vela.core.data.naming.HybridRoute.stitch(gTop!!, openChecked ?: open.first(), named.map { it.first to it.second!! }, untrusted.toList())
+                val openUsed = openChecked ?: open.first()
+                app.vela.core.data.naming.HybridRoute.stitch(gTop!!, openUsed, named.map { it.first to it.second!! }, untrusted.toList())
+                    ?.let { r -> r.copy(drawPolyline = app.vela.core.data.naming.HybridRoute.drawLine(gTop.polyline, openUsed.polyline, hybridStretches, matchedShapes)) }
             }
             val hybrid = if (hybridStretches.isEmpty()) null else
                 kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOf(online = true) }

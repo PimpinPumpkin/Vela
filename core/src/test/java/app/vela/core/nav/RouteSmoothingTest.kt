@@ -113,4 +113,16 @@ class RouteSmoothingTest {
         val ring = (0..12).map { c.destinationPoint(15.0, it * 30.0) }
         assertEquals(ring, RouteSmoothing.removeZigzags(ring))
     }
+
+    @Test fun `gentle bends are rounded a little, real corners and the ends stay`() {
+        // A gentle curve in 40 m pieces turning 15 degrees each, then a right-angle corner.
+        val poly = walk(90.0 to 40.0, 105.0 to 40.0, 120.0 to 40.0, 135.0 to 40.0, 225.0 to 120.0, step = 40.0)
+        val out = RouteSmoothing.roundBends(poly)
+        assertEquals(poly.first(), out.first()); assertEquals(poly.last(), out.last())
+        val corner = poly[4] // where 135 becomes 225: a 90 degree turn
+        assertTrue("corner kept", out.any { it.distanceTo(corner) < 0.01 })
+        val worst = poly.maxOf { v -> (0 until out.size - 1).minOf { k -> segDist(v, out[k], out[k + 1]) } }
+        assertTrue("moves the line at most ~1.5 m ($worst)", worst < 1.5)
+        assertTrue("rounded (more points)", out.size > poly.size)
+    }
 }

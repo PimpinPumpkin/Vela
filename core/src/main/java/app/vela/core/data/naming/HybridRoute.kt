@@ -347,6 +347,54 @@ object HybridRoute {
         )
     }
 
+    /**
+     * The line to draw for a hybrid route: OpenStreetMap geometry wherever there is some. Outside
+     * the [stretches] (where [google] runs along [open] within [OFF_M]) each run of Google's line is
+     * replaced by the open route's own stretch between the same two points; inside a stretch the
+     * matched road shape from [shapes] when it has one, else Google's line. A piece that does not
+     * line up (its ends more than [DRAW_JOIN_M] from Google's, or a length off by more than a
+     * third) keeps Google's line, so the result can never take a different way than Google's.
+     */
+    fun drawLine(google: List<LatLng>, open: List<LatLng>, stretches: List<Stretch>, shapes: Map<Stretch, List<LatLng>>): List<LatLng>? {
+        if (google.size < 2 || open.size < 2) return null
+        val gCum = cumulative(google)
+        val total = gCum.last()
+        val oCum = cumulative(open)
+        val oTotal = oCum.last()
+        val out = ArrayList<LatLng>()
+        fun add(pts: List<LatLng>) { for (p in pts) if (out.isEmpty() || out.last().distanceTo(p) > 0.05) out += p }
+        // Runs along Google's line: shared runs between the stretches, then the stretches.
+        val sorted = stretches.sortedBy { it.fromM }
+        var at = 0.0
+        var oAt = 0.0 // how far along the open route the drawing has come (monotonic)
+        fun shared(a: Double, b: Double) {
+            if (b - a < 1.0) return
+            val gPiece = slice(google, a, b)
+            val pa = pointAt(google, gCum, a); val pb = pointAt(google, gCum, b)
+            val oa = alongNear(open, oCum, pa, maxOf(0.0, oAt - 30.0), minOf(oTotal, oAt + (b - a) + 400.0), DRAW_JOIN_M)
+            val ob = oa?.let { alongNear(open, oCum, pb, it, minOf(oTotal, it + (b - a) * 1.5 + 100.0), DRAW_JOIN_M) }
+            if (oa == null || ob == null || ob <= oa || kotlin.math.abs((ob - oa) - (b - a)) > (b - a) / 3.0 + 10.0) { add(gPiece); return }
+            add(slice(open, oa, ob))
+            oAt = ob
+        }
+        for (s in sorted) {
+            shared(at, s.fromM)
+            val gPiece = slice(google, s.fromM, s.toM)
+            val shape = shapes[s]
+            val len = s.toM - s.fromM
+            if (shape != null && shape.size >= 2 &&
+                shape.first().distanceTo(gPiece.first()) <= DRAW_JOIN_M && shape.last().distanceTo(gPiece.last()) <= DRAW_JOIN_M &&
+                kotlin.math.abs(cumulative(shape).last() - len) <= len / 3.0 + 10.0
+            ) add(shape) else add(gPiece)
+            // The open route rejoins somewhere past the stretch: find it from there.
+            alongNear(open, oCum, gPiece.last(), oAt, oTotal, OFF_M * 2)?.let { oAt = it }
+            at = s.toM
+        }
+        shared(at, total)
+        return out.takeIf { it.size >= 2 }
+    }
+    private const val DRAW_JOIN_M = 25.0
+
     /** Along-distance of the point of [line] nearest [p] between [lo] and [hi] meters along it,
      *  or null when nothing there is within [tolM]. */
     private fun alongNear(line: List<LatLng>, cum: DoubleArray, p: LatLng, lo: Double, hi: Double, tolM: Double): Double? {

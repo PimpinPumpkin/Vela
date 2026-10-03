@@ -43,6 +43,43 @@ object RouteSmoothing {
 
     fun straightenJogs(poly: List<LatLng>): List<LatLng> = removeZigzags(straightenMedianJogs(poly))
 
+    /** Gentle bends only: a vertex turning less than this is rounded off, a sharper one (a real
+     *  corner at a junction) is kept exactly. */
+    const val ROUND_MAX_TURN_DEG = 45.0
+    /** How far along each side a rounded vertex is cut, at most (and never more than a quarter of
+     *  the shorter side). */
+    const val ROUND_MAX_CUT_M = 8.0
+
+    /**
+     * Rounds the drawn line's gentle bends (2026-10-03, "too jagged"): OpenStreetMap draws a curve as
+     * straight pieces 30 to 50 m long, which a road-width stripe shows as a row of corners. Two
+     * passes of corner cutting (Chaikin's, bounded): each vertex under [ROUND_MAX_TURN_DEG] becomes
+     * two points [ROUND_MAX_CUT_M] (or a quarter of the shorter side) along its two sides. A 15
+     * degree bend between 40 m sides moves the line about a meter. Ends and sharp corners stay.
+     */
+    fun roundBends(poly: List<LatLng>, passes: Int = 2): List<LatLng> {
+        var cur = poly
+        repeat(passes) {
+            if (cur.size < 3) return cur
+            val out = ArrayList<LatLng>(cur.size * 2)
+            out += cur[0]
+            for (k in 1 until cur.size - 1) {
+                val a = cur[k - 1]; val v = cur[k]; val b = cur[k + 1]
+                val la = a.distanceTo(v); val lb = v.distanceTo(b)
+                if (la < 0.5 || lb < 0.5 || abs(turn(a, v, b)) >= ROUND_MAX_TURN_DEG) { out += v; continue }
+                val cut = minOf(ROUND_MAX_CUT_M, 0.25 * minOf(la, lb))
+                out += lerp(v, a, cut / la)
+                out += lerp(v, b, cut / lb)
+            }
+            out += cur.last()
+            cur = out
+        }
+        return cur
+    }
+
+    private fun lerp(from: LatLng, to: LatLng, f: Double) =
+        LatLng(from.lat + (to.lat - from.lat) * f, from.lng + (to.lng - from.lng) * f)
+
     fun removeZigzags(poly: List<LatLng>): List<LatLng> {
         if (poly.size < 4) return poly
         var cur = poly

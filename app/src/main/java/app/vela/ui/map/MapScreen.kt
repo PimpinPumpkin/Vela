@@ -3662,7 +3662,7 @@ private fun MapSurface(
         cameraLeftInsetPx = cameraLeftInset,
         // The DRAWN line has its short median jogs straightened (RouteSmoothing, user 2026-10-03);
         // the arrow rides the same line, guidance keeps the router's.
-        routePolyline = state.activeRoute?.polyline.let { p -> remember(p) { if (p == null) emptyList() else app.vela.core.nav.RouteSmoothing.removeZigzags(p) } },
+        routePolyline = state.activeRoute?.let { it.drawPolyline ?: it.polyline }.let { p -> remember(p) { if (p == null) emptyList() else app.vela.core.nav.RouteSmoothing.roundBends(app.vela.core.nav.RouteSmoothing.removeZigzags(p)) } },
         // A PAUSED drive draws its line in slate (user 2026-09-21): the map should say the
         // guidance is on hold without reading the bar. Traffic spans keep their colors.
         routeColor = if (state.navPaused) ROUTE_PAUSED_COLOR else routeTrafficColor(state.activeRoute),

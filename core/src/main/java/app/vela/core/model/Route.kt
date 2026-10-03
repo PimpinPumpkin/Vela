@@ -236,6 +236,12 @@ data class Route(
      *  romanized-name dictionary when the route is adopted, so offline guidance in a non-Latin
      *  region says and shows real names instead of the ICU skeleton (issue #184). */
     val roadNamesLatin: Map<String, String> = emptyMap(),
+    /** The line to DRAW, when it is not [polyline] (2026-10-03): a route that follows Google's line
+     *  is drawn on OpenStreetMap's geometry instead (the open router's line where the two agree,
+     *  the matched road shape where Google goes its own way), because the roads under it are drawn
+     *  from OpenStreetMap and Google's smoother line sat off their center on every curve. Guidance
+     *  keeps [polyline]. */
+    val drawPolyline: List<LatLng>? = null,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 

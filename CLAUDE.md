@@ -3746,8 +3746,10 @@ architecture note.
   California bake (`painted-roads` release, `scripts/bake-painted-roads.sh`), `2` builds live (Overpass, or
   `debug.vela.paintUrl` for a saved reply over `adb reverse`; public Overpass rate-limits and asked Vela to go
   easy). After a rebake bump the `?v=` on `PaintedRoadsLayer.BAKED_URL` or the map cache keeps old tiles.
-- **The drawn line gets `removeZigzags` only; the ARROW rides `straightenJogs` (2026-10-03,
-  `core/nav/RouteSmoothing`, SPEC 4.x).** MapSurface passes `removeZigzags(route.polyline)`;
+- **The drawn line is `roundBends(removeZigzags(route.drawPolyline ?: route.polyline))`; the
+  ARROW rides `straightenJogs` (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).** A hybrid route's
+  `drawPolyline` is OpenStreetMap geometry (`HybridRoute.drawLine`), so the blue sits on the drawn
+  road instead of Google's own line beside it. MapSurface passes that;
   VelaMapView's `puckLine = straightenJogs(routePolyline)` is for the puck's position and heading.
   The median-jog rule on the drawn line put the blue up to 11 m off the road (median/verge) once
   divided roads drew as two carriageways; drawing the raw line brought junction zigzags back. Never

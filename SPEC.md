@@ -1530,6 +1530,17 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   route-blue outline, because a mid blue is the dark roads' own family.
 - **Plate cameras with a route up** (chooser or drive): only those on a shown route draw
   (`FlockCameras.along`, 45 m and facing the road); with no route the layer shows the viewport's.
+- **What is drawn is OpenStreetMap geometry, rounded** (2026-10-03): a hybrid route
+  (`GOOGLE_HYBRID`) carries `Route.drawPolyline` from `HybridRoute.drawLine`: the open router's own
+  line between the same two points wherever Google's runs along it, the matched road shape
+  (Valhalla, only when the match has no off-line part) inside a stretch, Google's line where a
+  piece does not line up (ends over 25 m apart or length off by a third). The roads are drawn from
+  OpenStreetMap; Google's smoother line sat a few meters off their center on every curve. On a
+  Davis curve the open router's vertices sit 0.1 to 0.5 m from the tile's road lines. MapSurface
+  then draws `roundBends(removeZigzags(line))`: bends under `ROUND_MAX_TURN_DEG` (45) are cut by at
+  most `ROUND_MAX_CUT_M` (8 m) or a quarter of the shorter side, twice (a 15 degree bend between
+  40 m sides moves about a meter; junction corners stay exact). The roads themselves come from the
+  tiles and cannot be reshaped on the phone.
 - **The drawn line has only its zigzags taken out; the ARROW rides the fully smoothed copy**
   (`core/nav/RouteSmoothing`: MapSurface draws `removeZigzags(route)`, VelaMapView's `puckLine` is
   `straightenJogs` of that; progress is measured on the drawn line and scaled onto the copy). With
