@@ -1023,6 +1023,11 @@ names (`Route.roadNamesLatin`).
   emits a turn type for the road's own bend when nothing is there to choose, and OsmAnd's voice
   skips it; mapping the bare type spoke "turn left onto X" where a road only curved and renamed.
   As CONTINUE it folds into the previous maneuver as a rename. Roundabouts keep their type.
+- **Roundabout wording follows the measured turn** (`RouteGeometry.roundaboutMod`, 2026-10-03):
+  OSRM's roundabout modifier is not the entry-to-exit turn (a 140 degree left came back
+  "straight"), so an OSRM roundabout step's modifier comes from `RoundaboutGeometry.exitAngleDeg`
+  ("straight" within 30 degrees); with no geometry a "straight" is dropped. The turn card's "then"
+  row skips the roundabout's own exit step and shows the maneuver after it at the summed distance.
   **A left or right carrying under `STRAIGHT_TURN_DEG` (20) of measured turn is a CONTINUE too:**
   where a one-way carriageway joins its two-way continuation under lane markings the router
   emits `Turn left` with a turn angle of well under a degree and `skipToSpeak` false (measured on

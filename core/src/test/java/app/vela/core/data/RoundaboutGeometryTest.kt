@@ -85,4 +85,22 @@ class RoundaboutGeometryTest {
         assertEquals(180.0, RouteGeometry.bearingDelta(0.0, 180.0), 0.001)
         assertEquals(0.0, RouteGeometry.bearingDelta(90.0, 90.0), 0.001)
     }
+
+    // A real drive (2026-10-03): OSRM labeled this roundabout pass "straight" (exit 3), but it enters
+    // heading 26 and leaves heading 246, a 140 deg LEFT. The words follow the measured angle.
+    @Test fun `a roundabout is worded from its measured exit, not OSRM's modifier`() {
+        val g = RouteGeometry.roundaboutGeoms(listOf(RbStep("roundabout", 26.0, 36.0), RbStep("exit roundabout", 253.0, 246.0)))
+        assertEquals("left", RouteGeometry.roundaboutMod("roundabout", "straight", g[0]))
+        assertEquals("left", RouteGeometry.roundaboutMod("exit roundabout", "straight", g[1]))
+        val text = RouteGeometry.osrmPhrase("roundabout", RouteGeometry.roundaboutMod("roundabout", "straight", g[0]), "Main Street", null, null, 3)
+        assertFalse(text, text.contains("straight"))
+        assertTrue(text, text.contains("3rd exit"))
+        // A pass that really is straight still says so.
+        val s = RouteGeometry.roundaboutGeoms(listOf(RbStep("roundabout", 0.0, 40.0), RbStep("exit roundabout", 330.0, 10.0)))
+        assertEquals("straight", RouteGeometry.roundaboutMod("roundabout", "straight", s[0]))
+        // No geometry: a "straight" is not trusted, anything else is kept; other steps untouched.
+        assertNull(RouteGeometry.roundaboutMod("roundabout", "straight", null))
+        assertEquals("left", RouteGeometry.roundaboutMod("roundabout", "left", null))
+        assertEquals("straight", RouteGeometry.roundaboutMod("turn", "straight", null))
+    }
 }

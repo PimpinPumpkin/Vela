@@ -222,6 +222,15 @@ The second one exists because the router was probed emitting "Turn left" with un
 of actual turn where a one-way carriageway rejoins its two-way continuation, with the skip flag
 off. Roundabouts keep their type either way: the exit is the instruction.
 
+**A roundabout is worded from its measured turn, not the open router's label** (2026-10-03).
+OSRM's roundabout modifier is not the overall turn: on a real drive it labeled a pass that enters
+heading 26 degrees and leaves heading 246 (a 140 degree left) "straight", and the card said "go
+straight through" over a line turning left; in the Davis fixture it calls a 12 degree left "slight
+right". `RouteGeometry.roundaboutMod` takes the direction from the paired enter and exit steps'
+bearings (`RoundaboutGeometry.exitAngleDeg`): "straight" only within `RB_STRAIGHT_DEG` (30), and
+with no measured geometry a "straight" is dropped, leaving "take the 2nd exit". The turn card's
+"then" row also skips a roundabout's own exit step, which repeats the same roundabout.
+
 ### Stops
 
 A stop counts as passed when progress along the route comes within `STOP_ARRIVE_TOL_M = 25` of

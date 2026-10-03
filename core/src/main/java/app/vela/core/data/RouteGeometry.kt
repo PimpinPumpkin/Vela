@@ -383,7 +383,7 @@ object RouteGeometry {
             // enter step and an exit step), so it is filled in a pass over the raw step objects
             // rather than inside osrmStep, which only ever sees one.
             val geoms = roundaboutGeometries(steps)
-            steps.mapIndexedNotNull { i, s -> osrmStep(s)?.let { m -> geoms[i]?.let { m.copy(roundabout = it) } ?: m } }
+            steps.mapIndexedNotNull { i, s -> osrmStep(s, geoms[i])?.let { m -> geoms[i]?.let { m.copy(roundabout = it) } ?: m } }
         }
         // A multi-waypoint (via) route splits into legs, inserting a spurious "arrive"+"depart" at
         // each via. Drop those so it reads as one continuous trip — keep only the first DEPART and
@@ -703,10 +703,26 @@ object RouteGeometry {
             },
         )
 
-    private fun osrmStep(s: JsonObject): Maneuver? {
+    /** The direction a roundabout pass actually takes, from the measured exit angle, not OSRM's
+     *  modifier: at a roundabout entered heading 26 deg and left heading 246 deg (a 140 deg LEFT),
+     *  OSRM said "straight", and the card read "go straight through" over a line turning left
+     *  (real drive, 2026-10-03). With no measured geometry a "straight" is not trusted: the plain
+     *  "take the Nth exit" is never wrong. Other step types keep OSRM's modifier. */
+    internal fun roundaboutMod(type: String, osrmMod: String?, geom: app.vela.core.model.RoundaboutGeometry?): String? {
+        if (type !in RB_ENTER && type !in RB_EXIT) return osrmMod
+        val a = geom?.exitAngleDeg ?: return osrmMod?.takeIf { it != "straight" }
+        return when {
+            kotlin.math.abs(a) <= RB_STRAIGHT_DEG -> "straight"
+            a > 0 -> if (a <= 60.0) "slight right" else if (a <= 150.0) "right" else "sharp right"
+            else -> if (a >= -60.0) "slight left" else if (a >= -150.0) "left" else "sharp left"
+        }
+    }
+    private const val RB_STRAIGHT_DEG = 30.0
+
+    private fun osrmStep(s: JsonObject, rb: app.vela.core.model.RoundaboutGeometry? = null): Maneuver? {
         val man = s["maneuver"]?.jsonObject ?: return null
         val type = man["type"]?.jsonPrimitive?.contentOrNull ?: return null
-        val mod = man["modifier"]?.jsonPrimitive?.contentOrNull
+        val mod = roundaboutMod(type, man["modifier"]?.jsonPrimitive?.contentOrNull, rb)
         val loc = man["location"]?.jsonArray ?: return null
         val lat = loc.getOrNull(1)?.jsonPrimitive?.doubleOrNull ?: return null
         val lng = loc.getOrNull(0)?.jsonPrimitive?.doubleOrNull ?: return null

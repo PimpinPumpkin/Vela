@@ -4163,7 +4163,12 @@ private fun BoxScope.NavTurnBanner(
     // Show the previewed step when swiping ahead, else the live maneuver.
     val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, mans?.lastIndex ?: 0)
     val shown = mans?.getOrNull(shownIdx)
-    val next = mans?.getOrNull(shownIdx + 1)
+    // A roundabout's own EXIT step is not a "then": it repeats the same roundabout ("At the
+    // roundabout, take the 2nd exit" twice read as two roundabouts, real drive 2026-10-03). The
+    // "then" is the maneuver after it, at the combined distance.
+    val skipRbExit = shown?.type == app.vela.core.model.ManeuverType.ROUNDABOUT &&
+        mans?.getOrNull(shownIdx + 1)?.type == app.vela.core.model.ManeuverType.EXIT_ROUNDABOUT
+    val next = mans?.getOrNull(shownIdx + if (skipRbExit) 2 else 1)
     // Show the real romanized road name where the basemap gave us one (issue #184): swap the
     // local-script name in the instruction for its Latin form. No ICU fallback here - a name we
     // have no real romanization for keeps its local script (a skeleton on a sign reads broken).
@@ -4201,7 +4206,7 @@ private fun BoxScope.NavTurnBanner(
         // convention). Passing next.distanceMeters was the next→next-next gap: it made "then
         // Arrive" (ARRIVE has 0 after it) show permanently while approaching the final turn, and
         // suppressed true exit-then-merge compounds whose merge had a long following leg.
-        nextDistanceMeters = shown?.distanceMeters,
+        nextDistanceMeters = shown?.distanceMeters?.let { d -> if (skipRbExit) d + (mans?.getOrNull(shownIdx + 1)?.distanceMeters ?: 0.0) else d },
         destName = state.arrivedLabel,
         destAddress = state.navDestAddress,
         // Speed-scaled approach gate for lanes + the "then" row: identity at city speeds
