@@ -1092,6 +1092,9 @@ fun PlaceSheet(
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 }
+                // Save sits in the action row Google-style (outlined pill), alongside the save/read
+                // affordances in the header menu.
+                ActionPill(if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, stringResource(if (isSaved) R.string.place_saved else R.string.place_save), onClick = onToggleSave)
                 if (!app.vela.ui.HideExternalLinks.on.value) {
                     place.website?.let { site ->
                         ActionPill(Sym.Language, stringResource(R.string.place_website)) {
