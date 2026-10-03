@@ -3754,6 +3754,9 @@ architecture note.
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials
   `roadWidthScale` (0 = Liberty) and `roadNameSpacing`. Online widths come from the live Liberty
   style, so a width change only reaches users through this runtime pass, never the bundled JSON.
+  A one-way major road is ONE carriageway (`ROAD_ONEWAY_WIDTH_M`, the tile's `oneway`): at full
+  width each half of a divided road merged into a band 3x the route with the route on one edge.
+  The route stripe is meter-based too (`routeWidth()`, 10 m); never go back to a pixel-only curve.
 - **Turns drop everything but street names (2026-10-02, `ui/map/TurnDeclutter`, SPEC 4.7b).** While
   the nav camera swings (bearing error 10+ degrees) or a gesture moves it in nav, every visible
   symbol layer except street names, shields, exit numbers, `vela-nav-` callouts and the arrow is

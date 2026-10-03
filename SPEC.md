@@ -2555,9 +2555,16 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   carried no name at street zoom, with every Vela layer hidden too, so it was the spacing, not
   collisions. Browse pans at z16.6 measured the same with old and new widths (51-59 fps); nav turns
   pooled over four runs a side had the same median (53), with two low single seconds (38, 43) on
-  the new widths against 46 on the old, inside this rig's noise. The route stripe widened with
-  the roads at street zoom (`ROUTE_WIDTH` 13 / 20 / 24 at z16 / 17.5 / 18.5, alternates a step
-  under), or it sat inside a real-width street like a pencil line.
+  the new widths against 46 on the old, inside this rig's noise.
+  **A one-way piece of a major class is one carriageway** (`ROAD_ONEWAY_WIDTH_M`, read from the
+  tile's `oneway`: links 6, secondary/tertiary 9, trunk/primary 11, motorway 13 m; minor and service
+  keep their width, a one-way street there is a whole street). OSM draws a divided road as two
+  ways; at the whole road's width each, the pair merged into one band about three times the route
+  stripe, with the stripe along one edge of it.
+  **The route stripe is in meters too** (`routeWidth()`: the wider of the old pixel curve, 13 / 20 /
+  24 dp at z16 / 17.5 / 18.5, and `ROUTE_REAL_M` 10 m, capped at 38 dp; alternates 9 m, capped 35,
+  their outline inside that width), so it covers a two-lane street or one carriageway at every nav
+  zoom instead of shrinking to half the road. Both follow `roadWidthScale`.
 
 ### 6.4 The building-overlay gate
 

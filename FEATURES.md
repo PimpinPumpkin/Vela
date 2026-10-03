@@ -440,7 +440,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   next to a light no longer covers it.
 - ✅ **Roads at their real width (2026-10-03).** Streets, arterials and highways are drawn about as wide as
   they really are when you zoom in, like Google's, instead of thinning out next to the buildings, and
-  street names repeat often enough that each block's street is named.
+  street names repeat often enough that each block's street is named. A divided road's two halves are each drawn as one
+  carriageway, and the blue route line covers the carriageway you drive on.
 - ✅ **Simplified map in turns (2026-10-02).** During drive guidance the map keeps only street names
   while the camera swings through a turn or follows your finger, then fades the rest back in; 4a
   turns went from 40-49 fps to 48-60. Settings > Navigation "Simplify the map in turns", on by default.

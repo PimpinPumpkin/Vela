@@ -83,26 +83,29 @@ private const val ROUTE_LAYER = "vela-route"
 // every zoom and read THIN at nav zooms next to Google's fat stripe (user 2026-07-15). Values are
 // Google-eyeballed: browse ~unchanged, street-level noticeably wider. Widened again at street zoom
 // with the roads (2026-10-03): at the old 11-17 px it sat inside a real-width street like a pencil line.
-private val ROUTE_WIDTH = Expression.interpolate(
-    Expression.exponential(1.5f), Expression.zoom(),
-    Expression.stop(10, 5f), Expression.stop(14, 8f), Expression.stop(16, 13f), Expression.stop(17.5f, 20f), Expression.stop(18.5f, 24f),
-)
+private fun routeWidth(): Expression = realWidthCurve(ROUTE_BASE_STOPS, ROUTE_REAL_M, ROUTE_CAP_DP)
+private val ROUTE_BASE_STOPS = floatArrayOf(10f, 5f, 14f, 8f, 16f, 13f, 17.5f, 20f, 18.5f, 24f)
+// The stripe in meters from street zoom in (2026-10-03, "the blue line is thinner than the road"):
+// at the old pixel curve it was half a real-width arterial at nav zoom. 10 m covers a two-lane street
+// and one carriageway of a divided road, the way Google's line sits on the road it follows.
+private const val ROUTE_REAL_M = 10.0
+private const val ROUTE_CAP_DP = 38.0
 // Alternates draw nearly as wide as the selected route (2026-10-01, discussion #639): at the old
 // 4 to 8 px they were no wider than the streets under them at city zooms and read as roads.
-private val ALT_ROUTE_WIDTH = Expression.interpolate(
-    Expression.exponential(1.5f), Expression.zoom(),
-    Expression.stop(10, 4.5f), Expression.stop(14, 7f), Expression.stop(16, 12f), Expression.stop(17.5f, 18f), Expression.stop(18.5f, 22f),
-)
+private fun altRouteWidth(): Expression = realWidthCurve(ALT_BASE_STOPS, ALT_REAL_M, ALT_CAP_DP)
+private val ALT_BASE_STOPS = floatArrayOf(10f, 4.5f, 14f, 7f, 16f, 12f, 17.5f, 18f, 18.5f, 22f)
+private const val ALT_REAL_M = 9.0
+private const val ALT_CAP_DP = 35.0
 // The alternate's outline sits INSIDE its width (the gap is the width less both edges), so an
 // alternate with its outline is never wider than the selected route (discussion #639).
 private val ALT_ROUTE_EDGE_WIDTH = Expression.interpolate(
     Expression.linear(), Expression.zoom(),
     Expression.stop(10, 1f), Expression.stop(14, 1.5f), Expression.stop(16, 2f),
 )
-private val ALT_ROUTE_EDGE_GAP = Expression.interpolate(
-    Expression.exponential(1.5f), Expression.zoom(),
-    Expression.stop(10, 2.5f), Expression.stop(14, 4f), Expression.stop(16, 8f), Expression.stop(17.5f, 14f), Expression.stop(18.5f, 18f),
-)
+private fun altRouteEdgeGap(): Expression = realWidthCurve(ALT_BASE_STOPS, ALT_REAL_M, ALT_CAP_DP) { z ->
+    // the edge's own width each side: 1 dp at z10, 1.5 at z14, 2 from z16 (ALT_ROUTE_EDGE_WIDTH)
+    2 * when { z <= 10 -> 1.0; z <= 14 -> 1.0 + (z - 10) / 8; z <= 16 -> 1.5 + (z - 14) / 4; else -> 2.0 }
+}
 // A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
@@ -5111,7 +5114,7 @@ private fun ensureLayers(style: Style) {
             // Zoom-scaled like Google's stripe (user 2026-07-15: "the blue stripe looks bigger
             // in Google") - a constant 6 px reads THIN at nav zooms (17-18.5) where Google
             // draws it fat over the road. Browse zooms barely change.
-            PropertyFactory.lineWidth(ROUTE_WIDTH),
+            PropertyFactory.lineWidth(routeWidth()),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
@@ -5130,7 +5133,7 @@ private fun ensureLayers(style: Style) {
         style.addLayerAbove(
             LineLayer(ROUTE_TRAFFIC_LAYER, ROUTE_TRAFFIC_SRC).withProperties(
                 PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
-                PropertyFactory.lineWidth(ROUTE_WIDTH),
+                PropertyFactory.lineWidth(routeWidth()),
                 PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
                 PropertyFactory.visibility(Property.NONE),
@@ -5164,7 +5167,7 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ROUTE_AHEAD_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeAhead = LineLayer(ROUTE_AHEAD_LAYER, ROUTE_AHEAD_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(ROUTE_WIDTH),
+            PropertyFactory.lineWidth(routeWidth()),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             PropertyFactory.visibility(Property.NONE),
@@ -5174,7 +5177,7 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ROUTE_TAIL_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeTail = LineLayer(ROUTE_TAIL_LAYER, ROUTE_TAIL_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(ROUTE_WIDTH),
+            PropertyFactory.lineWidth(routeWidth()),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             PropertyFactory.visibility(Property.NONE),
@@ -5185,7 +5188,7 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ROUTE_CUT_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeCut = LineLayer(ROUTE_CUT_LAYER, ROUTE_CUT_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(ROUTE_WIDTH),
+            PropertyFactory.lineWidth(routeWidth()),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             PropertyFactory.visibility(Property.NONE),
@@ -5197,7 +5200,7 @@ private fun ensureLayers(style: Style) {
             style.addSource(GeoJsonSource(src, GeoJsonOptions().withLineMetrics(true)))
             LineLayer(id, src).withProperties(
                 PropertyFactory.lineColor("#1F6FEB"),
-                PropertyFactory.lineWidth(ROUTE_WIDTH),
+                PropertyFactory.lineWidth(routeWidth()),
                 PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
                 PropertyFactory.visibility(Property.NONE),
@@ -5218,7 +5221,7 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ALT_ROUTE_SRC))
         val alt = LineLayer(ALT_ROUTE_LAYER, ALT_ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#9AA0A6"),
-            PropertyFactory.lineWidth(ALT_ROUTE_WIDTH),
+            PropertyFactory.lineWidth(altRouteWidth()),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
@@ -5230,7 +5233,7 @@ private fun ensureLayers(style: Style) {
         val edge = LineLayer(ALT_ROUTE_EDGE_LAYER, ALT_ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#4C7FD6"),
             PropertyFactory.lineWidth(ALT_ROUTE_EDGE_WIDTH),
-            PropertyFactory.lineGapWidth(ALT_ROUTE_EDGE_GAP),
+            PropertyFactory.lineGapWidth(altRouteEdgeGap()),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
@@ -7390,6 +7393,12 @@ private val ROAD_WIDTH_M = mapOf(
     "minor" to 10.0, "service_track" to 3.5, "link" to 8.0, "motorway_link" to 8.0,
     "secondary_tertiary" to 13.0, "trunk_primary" to 17.0, "motorway" to 22.0,
 )
+/** One carriageway of a divided road (OMT `oneway` set), meters. Minor and service roads keep their
+ *  width: a one-way street there is a whole street, not half a road. */
+private val ROAD_ONEWAY_WIDTH_M = mapOf(
+    "link" to 6.0, "motorway_link" to 6.0,
+    "secondary_tertiary" to 9.0, "trunk_primary" to 11.0, "motorway" to 13.0,
+)
 private val ROAD_WIDTH_CAP_DP = mapOf(
     "minor" to 34.0, "service_track" to 14.0, "link" to 28.0, "motorway_link" to 28.0,
     "secondary_tertiary" to 42.0, "trunk_primary" to 52.0, "motorway" to 62.0,
@@ -7415,32 +7424,55 @@ private fun expInterp(stops: FloatArray, z: Double, base: Double = 1.2): Double 
     return stops[stops.size - 1].toDouble()
 }
 
+/** Meters per dp at zoom 0 and 40 degrees latitude (MapLibre's 512 px tiles), see [widenStreets]. */
+private val M_PER_DP_Z0 = 78271.517 * Math.cos(Math.toRadians(40.0))
+
+private fun roadWidthScale(): Double = (app.vela.ui.AppTune.local("roadWidthScale")
+    ?: app.vela.core.config.CalibrationStore.latest.tune("roadWidthScale", 1.0)).coerceIn(0.0, 3.0)
+
+/** A line's width by zoom: the wider of [base] (dp stops, exponential 1.5) and [realM] meters at
+ *  [roadWidthScale], capped at [capDp], less [minus] (dp) at each zoom. Stops every half level. */
+private fun realWidthCurve(base: FloatArray, realM: Double, capDp: Double, minus: (Double) -> Double = { 0.0 }): Expression {
+    val m = realM * roadWidthScale()
+    val stops = (10..40).map { it / 2.0 }.map { z ->
+        val w = maxOf(expInterp(base, z, 1.5), if (m > 0) minOf(capDp, m / (M_PER_DP_Z0 / Math.pow(2.0, z))) else 0.0)
+        Expression.stop(z.toFloat(), (w - minus(z)).coerceAtLeast(0.0).toFloat())
+    }.toTypedArray()
+    return Expression.interpolate(Expression.linear(), Expression.zoom(), *stops)
+}
+
 private fun widenStreets(style: StyleLayers) {
-    val scale = (app.vela.ui.AppTune.local("roadWidthScale")
-        ?: app.vela.core.config.CalibrationStore.latest.tune("roadWidthScale", 1.0)).coerceIn(0.0, 3.0)
-    val mPerDpZ0 = 78271.517 * Math.cos(Math.toRadians(40.0))
+    val scale = roadWidthScale()
+    val oneway = Expression.neq(Expression.coalesce(Expression.get("oneway"), Expression.literal(0)), Expression.literal(0))
     runCatching {
         for ((cls, curves) in ROAD_BASE) {
             val (fillBase, casingBase) = curves
-            val realM = ROAD_WIDTH_M.getValue(cls) * scale
+            val twoWayM = ROAD_WIDTH_M.getValue(cls) * scale
+            val oneWayM = (ROAD_ONEWAY_WIDTH_M[cls] ?: ROAD_WIDTH_M.getValue(cls)) * scale
             val cap = ROAD_WIDTH_CAP_DP.getValue(cls)
             val zs = (10..40).map { it / 2.0 } // z5 .. z20 every half level
-            fun fillAt(z: Double): Double {
+            fun fillAt(z: Double, realM: Double): Double {
                 val lib = expInterp(fillBase, z)
                 if (lib <= 0.0 || realM <= 0.0) return lib
-                return maxOf(lib, minOf(cap, realM / (mPerDpZ0 / Math.pow(2.0, z))))
+                return maxOf(lib, minOf(cap, realM / (M_PER_DP_Z0 / Math.pow(2.0, z))))
             }
-            val fillStops = zs.map { z -> Expression.stop(z.toFloat(), fillAt(z).toFloat()) }.toTypedArray()
-            val casingStops = zs.map { z ->
+            fun casingAt(z: Double, realM: Double): Double {
                 val border = (expInterp(casingBase, z) - expInterp(fillBase, z)).coerceAtLeast(0.0)
-                val w = if (expInterp(fillBase, z) <= 0.0) expInterp(casingBase, z) else fillAt(z) + border
-                Expression.stop(z.toFloat(), w.toFloat())
-            }.toTypedArray()
+                return if (expInterp(fillBase, z) <= 0.0) expInterp(casingBase, z) else fillAt(z, realM) + border
+            }
+            // A one-way piece of a major class is usually one carriageway of a divided road, which
+            // OSM draws as two ways: each at the whole road's width made a blob twice the road with
+            // the route along one side of it (2026-10-03).
+            fun byOneway(two: Double, one: Double): Expression =
+                if (Math.abs(two - one) < 0.05) Expression.literal(two.toFloat())
+                else Expression.switchCase(oneway, Expression.literal(one.toFloat()), Expression.literal(two.toFloat()))
+            val fillStops = zs.map { z -> Expression.stop(z.toFloat(), byOneway(fillAt(z, twoWayM), fillAt(z, oneWayM))) }.toTypedArray()
+            val casingStops = zs.map { z -> Expression.stop(z.toFloat(), byOneway(casingAt(z, twoWayM), casingAt(z, oneWayM))) }.toTypedArray()
             val fillW = Expression.interpolate(Expression.linear(), Expression.zoom(), *fillStops)
             val casingW = Expression.interpolate(Expression.linear(), Expression.zoom(), *casingStops)
             val names = if (cls == "minor") listOf("road_minor", "bridge_street", "tunnel_minor", "tunnel_street")
                 else listOf("road_$cls", "bridge_$cls", "tunnel_$cls")
-            for (n in names) {
+        for (n in names) {
                 (style.getLayer(n) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(fillW))
                 (style.getLayer(n + "_casing") as? LineLayer)?.setProperties(PropertyFactory.lineWidth(casingW))
             }
