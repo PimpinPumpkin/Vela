@@ -1519,7 +1519,9 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   `SIGNAL_ON_ROUTE_M` (12 m) of the route (`RouteProjection.signalIsOnRoute`, raw nodes before
   clustering). The route's own approach and a junction's middle node are on the line; the cross
   street's approach (10 to 25 m up it), the other carriageway and the parallel street are not. The
-  road's direction is not tested: a middle node is on two roads.
+  road's direction is not tested: a middle node is on two roads. Speed humps and level crossings
+  take the same test (they are nodes on the road too); the corridor's humps on side streets drew
+  beside the route until 2026-10-02.
 - **The street the next turn enters** (turn, slight, sharp and roundabout-exit maneuvers that name a
   road or ref) gets a blue callout (`NAV_TURN_LAYER`, the route's blue `#1A66D9`) `TURN_CALLOUT_AHEAD_M`
   (30 m) into that street, never yielding to other labels like the green exit callout; that street

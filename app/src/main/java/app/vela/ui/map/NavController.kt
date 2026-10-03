@@ -1164,9 +1164,10 @@ internal class NavController(
                     when (c.kind) {
                         app.vela.core.data.TrafficControl.Kind.STOP ->
                             app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
-                        app.vela.core.data.TrafficControl.Kind.SIGNAL ->
-                            app.vela.core.nav.RouteProjection.signalIsOnRoute(poly, cum, c.loc)
-                        else -> true
+                        // Lights, speed humps and level crossings are nodes on the road itself, so all
+                        // three take the same test; humps on the side streets beside the route drew
+                        // until 2026-10-02 (user drive video).
+                        else -> app.vela.core.nav.RouteProjection.signalIsOnRoute(poly, cum, c.loc)
                     }
                 }
                 onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
