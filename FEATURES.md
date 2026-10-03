@@ -425,6 +425,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
+- ✅ **A cleaner route line (2026-10-03).** The blue line no longer swerves around medians and islands you
+  drive straight past or zigzags where the map data wobbles; real bends and corners stay. Browsing the
+  map, stop signs and lights now appear only when zoomed in close (about 50 ft), and a railroad crossing
+  next to a light no longer covers it.
 - ✅ **Roads at their real width (2026-10-03).** Streets, arterials and highways are drawn about as wide as
   they really are when you zoom in, like Google's, instead of thinning out next to the buildings, and
   street names repeat often enough that each block's street is named.

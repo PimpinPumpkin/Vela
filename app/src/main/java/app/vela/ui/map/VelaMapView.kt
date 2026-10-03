@@ -295,6 +295,9 @@ private const val FLOCK_COUNT_PROP = "cams" // heads on one corner; the badge sh
 // SCREEN pixels, which keeps the two apart at every zoom; the cones stay on the real point.
 private const val FLOCK_NUDGE_PROP = "nudge"
 private const val FLOCK_NUDGE_M = 25.0
+private const val CONTROL_NUDGE_PROP = "cnudge"
+/** Browse map: lights, stop signs, crossings and humps from here (scale bar ~50 ft on a 4a). */
+private const val CONTROLS_BROWSE_SHOW_ZOOM = 19.0f
 private const val TRANSIT_STOPS_SRC = "vela-transit-stops-src" // canonical GTFS stops (Transitous)
 private const val TRANSIT_STOPS_LAYER = "vela-transit-stops"
 private const val TRANSIT_STOP_IMG = "vela-transit-stop"
@@ -1408,11 +1411,13 @@ fun VelaMapView(
         // floor, so they can't blink out at highway speed (the old 16 sat above the floor and the
         // icons vanished exactly when the auto-zoom pulled back, half of issue #248). On the browse
         // map they used to hold back until 17.5, which is nearly on top of a junction: zooming in
-        // while browsing showed nothing until you were practically parked (user 2026-09-18). Now
-        // they arrive at the zoom the VIEWPORT FETCH itself uses, so the gate that decides whether
-        // to ask for them is the same one that decides whether to draw them.
+        // while browsing showed nothing until you were practically parked (user 2026-09-18), so
+        // they moved to the fetch zoom (16). That proved too early once every street was named
+        // (user 2026-10-03): browsing now shows them from CONTROLS_BROWSE_SHOW_ZOOM, where the
+        // scale bar reads about 50 ft, Google's level. The fetch stays at 16, so they are already
+        // loaded when the zoom reaches them.
         runCatching {
-            val minZ = if (navMode) 15.4f else MapViewModel.CONTROLS_MIN_ZOOM.toFloat()
+            val minZ = if (navMode) 15.4f else CONTROLS_BROWSE_SHOW_ZOOM
             (style.getLayer(CONTROLS_LAYER))?.minZoom = minZ
             (style.getLayer(CONTROLS_CLAIM_LAYER))?.minZoom = minZ
         }
@@ -5473,7 +5478,13 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconSize(controlsSize),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
-                PropertyFactory.iconPadding(2f),
+PropertyFactory.iconPadding(2f),
+                PropertyFactory.iconOffset(
+                    Expression.switchCase(
+                        Expression.has(CONTROL_NUDGE_PROP), Expression.literal(arrayOf(-12f, 12f)),
+                        Expression.literal(arrayOf(0f, 0f)),
+                    ),
+                ),
             )
         }
         // Above the CUT piece too (the 400 m of route around the arrow, drawn over the ahead line):
@@ -5500,6 +5511,12 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.iconAllowOverlap(true), // always claims (never yields itself)
                     PropertyFactory.iconIgnorePlacement(false), // ...and others must dodge the claim
                     PropertyFactory.iconPadding(2f),
+                    PropertyFactory.iconOffset(
+                        Expression.switchCase(
+                            Expression.has(CONTROL_NUDGE_PROP), Expression.literal(arrayOf(-12f, 12f)),
+                            Expression.literal(arrayOf(0f, 0f)),
+                        ),
+                    ),
                 )
             },
             AMBIENT_LAYER,
@@ -8814,9 +8831,16 @@ private fun applyData(
     // Traffic controls (lights + stop signs) → icon features. Identity-gated like markers/ambient so a
     // nav speedo tick doesn't re-tessellate them. Empty list clears the source (e.g. zoomed back out).
     if (trafficControls != lastAppliedControls) {
+        // A level crossing or a hump right at a light or a stop sign (a road meeting the tracks at a
+        // signal) drew its badge on the light: those get CONTROL_NUDGE_PROP, a screen offset down
+        // and to the left (the cameras' nudge goes up and right), user 2026-10-03.
+        val posts = trafficControls.filter { it.kind == app.vela.core.data.TrafficControl.Kind.SIGNAL || it.kind == app.vela.core.data.TrafficControl.Kind.STOP }
         val controlsFc = FeatureCollection.fromFeatures(
             trafficControls.map { ctl ->
                 Feature.fromGeometry(Point.fromLngLat(ctl.loc.lng, ctl.loc.lat)).apply {
+                    if ((ctl.kind == app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING || ctl.kind == app.vela.core.data.TrafficControl.Kind.SPEED_HUMP) &&
+                        posts.any { it.loc.distanceTo(ctl.loc) < FLOCK_NUDGE_M }
+                    ) addBooleanProperty(CONTROL_NUDGE_PROP, true)
                     addStringProperty(
                         "icon",
                         when (ctl.kind) {

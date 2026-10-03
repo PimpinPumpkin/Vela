@@ -1520,6 +1520,21 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   route-blue outline, because a mid blue is the dark roads' own family.
 - **Plate cameras with a route up** (chooser or drive): only those on a shown route draw
   (`FlockCameras.along`, 45 m and facing the road); with no route the layer shows the viewport's.
+- **The DRAWN route has its digitizing wobbles taken out** (`core/nav/RouteSmoothing`, applied
+  where MapSurface hands the line to the map; the arrow rides the same line, guidance and the
+  engine keep the router's). Two rules, both only ever DROP router vertices: a median jog (a
+  stretch up to 140 m that leaves a straight road by 1-12 m and rejoins it within 2 m, on the
+  same heading in and out within 3 degrees, along the chord within 7) becomes its chord; a zigzag
+  vertex (both segments under 35 m, a 15+ degree turn with an opposite 15+ degree turn next to it,
+  within 4 m of its neighbors' line) is dropped, up to four passes. A curve, roundabout or corner
+  keeps turning one way and is never touched. Over the 39 captured Google lines: no line longer,
+  no length change over 0.5%, no router point more than 12 m from the drawn line
+  (`RouteSmoothingTest`). Seen on a Davis demo drive: a notch at a junction where the open router's
+  line went 338, 17, 347, 315, 346, 357 degrees over 7-15 m segments.
+- **Traffic controls on the BROWSE map** appear from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`, the scale
+  bar reads about 50 ft on a 4a, Google's level); they are still fetched from z16. Nav keeps 15.4.
+  A level crossing or hump within 25 m of a light or stop sign is drawn offset down-left
+  (`CONTROL_NUDGE_PROP`) so its badge does not cover the light (the cameras' nudge is up-right).
 - **Traffic lights drawn during a drive** are the ones the route drives THROUGH: the node within
   `SIGNAL_ON_ROUTE_M` (12 m) of the route (`RouteProjection.signalIsOnRoute`, raw nodes before
   clustering). The route's own approach and a junction's middle node are on the line; the cross

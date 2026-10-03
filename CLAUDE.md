@@ -3729,6 +3729,10 @@ architecture note.
   Left for later: splitting the location/compass fields out of the one big MapUiState collect,
   remembering MapSurface's derived lists, the free-drive puck still being a GeoJSON symbol, the map
   rendering under the Settings page, NETWORK location at 1 s during a drive, main-thread trip-file IO.
+- **The drawn route is smoothed (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).** MapSurface passes
+  `straightenJogs(route.polyline)` (remembered on the polyline) to the map; the arrow, cut and traffic
+  colors all measure along that line, guidance keeps the router's. Only drops vertices; tested on the
+  39 captured Google lines. Browse-map traffic controls show from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`).
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
   meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials
