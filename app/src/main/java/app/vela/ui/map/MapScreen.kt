@@ -3666,8 +3666,24 @@ private fun ResultPlaceCard(
                 )
             }
         }
-        // Google-style per-row action buttons: Directions (filled) + Call/Share
-        // (outlined). They act on the ROW's place directly, without opening it.
+                    // Google-style service checks ("✓ Dine-in · ✓ Takeout · ✓ Delivery")
+                    // under the hours, from the About fetch. Same source as the sheet's chips.
+                    val checks = remember(place.id, place.about) { app.vela.ui.place.attributeHighlights(place.about).take(3) }
+                    if (checks.isNotEmpty()) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            checks.forEachIndexed { i, c ->
+                                if (i > 0) Text("·", style = MaterialTheme.typography.bodyMedium, color = SheetPalette.dim(dark))
+                                Icon(Sym.Check, contentDescription = null, tint = SheetPalette.statusGreen(dark), modifier = Modifier.size(14.dp))
+                                Text(c, style = MaterialTheme.typography.bodyMedium, color = SheetPalette.dim(dark), maxLines = 1)
+                            }
+                        }
+                    }
+                    // Google-style per-row action buttons: Directions (filled) + Call/Share
+                    // (outlined). They act on the ROW's place directly, without opening it.
         Row(
             Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
