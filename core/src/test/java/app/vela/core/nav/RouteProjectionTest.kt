@@ -47,6 +47,14 @@ class RouteProjectionTest {
         assertEquals(false, RouteProjection.stopIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.0008, poly[3].lng + 0.004), null))
     }
 
+    @Test fun `a light at a junction the route crosses is yours, the next street's is not`() {
+        // On the route, and 15 m up the cross street at the same junction.
+        assertEquals(true, RouteProjection.signalIsOnRoute(poly, cum, LatLng(poly[3].lat, poly[3].lng + 0.004)))
+        assertEquals(true, RouteProjection.signalIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.000135, poly[3].lng)))
+        // The parallel street a block over, 90 m north.
+        assertEquals(false, RouteProjection.signalIsOnRoute(poly, cum, LatLng(poly[3].lat + 0.0008, poly[3].lng + 0.004)))
+    }
+
     @Test fun `midway along a segment projects proportionally`() {
         val mid = LatLng(poly[2].lat, (poly[2].lng + poly[3].lng) / 2)
         val along = RouteProjection.alongMeters(poly, cum, mid)!!

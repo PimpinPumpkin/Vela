@@ -799,9 +799,10 @@ Defaults that make the safe path the easy one:
   autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
   onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
   and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
-  ONE bar along the bottom of the small window, copied from Google's mini map (checked on the 4a
-  2026-10-02; the default, and Settings > Navigation "Turn card in the mini map", `PipTurnCard`,
-  pref `pip_turn_card`, brings back the top turn card plus bottom time strip): the turn
+  turn card across the top of the small window plus a time strip along the bottom (the DEFAULT; the
+  user tried Google's single bar as the default on 2026-10-02 and went back, "more descriptive").
+  Settings > Navigation "Turn card in the mini map" (`PipTurnCard`, pref `pip_turn_card`, default
+  on) off gives ONE bar along the bottom, copied from Google's mini map (checked on the 4a): the turn
   card's `primaryContainer` green, the glyph in a darker column at the left, the road the turn
   enters as the headline, and a dim line with the distance to the turn and the arrival clock.
   Google's own bar shows the arrival clock with no traffic color and no time left. NB the 4a

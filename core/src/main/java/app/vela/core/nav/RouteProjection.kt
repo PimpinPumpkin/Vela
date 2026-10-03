@@ -50,6 +50,20 @@ object RouteProjection {
         return roadDeg == null || alignedWithRoad(bearingAt(poly, cum, at), roadDeg)
     }
 
+    /** How close a traffic light's node has to be to the route. OSM maps a light per approach at
+     *  the stop line, or one at the junction's middle: the route's own approach is on the line and
+     *  the cross approaches of a junction it drives through sit within a carriageway's width or
+     *  two, while the lights of the parallel street a block over are 70 m or more away. */
+    const val SIGNAL_ON_ROUTE_M = 25.0
+
+    /**
+     * True when the traffic light at [loc] belongs to a junction the route drives through. The
+     * road's direction is not asked: every approach's light at that junction is the junction the
+     * driver waits at. Call it on the RAW nodes, before clustering, like [stopIsOnRoute].
+     */
+    fun signalIsOnRoute(poly: List<LatLng>, cum: DoubleArray, loc: LatLng): Boolean =
+        alongMeters(poly, cum, loc, SIGNAL_ON_ROUTE_M) != null
+
     /** The point [m] meters along [poly] (clamped to its ends). */
     fun pointAt(poly: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (poly.isEmpty()) return LatLng(0.0, 0.0)

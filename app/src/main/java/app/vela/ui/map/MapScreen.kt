@@ -282,6 +282,21 @@ private const val CHOOSER_BODY_MIN_LAND_DP = 64f
 private val CHOOSER_CARD_MIN_LAND_DP = 170.dp
 // How far down the ramp the exit callout sits, past the maneuver point where the ramp leaves.
 private const val EXIT_CALLOUT_AHEAD_M = 70.0
+// The blue turn bubble sits this far into the street you turn onto: at the corner, clear of the
+// junction's own labels.
+private const val TURN_CALLOUT_AHEAD_M = 30.0
+private val TURN_CALLOUT_TYPES = setOf(
+    app.vela.core.model.ManeuverType.TURN_LEFT, app.vela.core.model.ManeuverType.TURN_RIGHT,
+    app.vela.core.model.ManeuverType.SLIGHT_LEFT, app.vela.core.model.ManeuverType.SLIGHT_RIGHT,
+    app.vela.core.model.ManeuverType.SHARP_LEFT, app.vela.core.model.ManeuverType.SHARP_RIGHT,
+    app.vela.core.model.ManeuverType.EXIT_ROUNDABOUT,
+)
+
+/** The street a turn maneuver enters, named the way the bubble shows it, or null when the
+ *  maneuver is not a turn or names no street. */
+private fun turnCalloutRoadOf(m: app.vela.core.model.Maneuver?): String? =
+    if (m == null || m.type !in TURN_CALLOUT_TYPES) null
+    else m.road?.takeIf { it.isNotBlank() } ?: m.ref?.takeIf { it.isNotBlank() }
 private const val CHOOSER_BODY_MIN_DP = 120f
 
 /** Density-aware default for the POI icon size: 1 at hdpi and above (every phone), scaling down
@@ -3604,20 +3619,26 @@ private fun MapSurface(
     // which hid exactly the label that matters most: the road you are about to turn onto ("the
     // name of it needs to be right there", user 2026-07-16). Ref variants cover the basemap's
     // bare-number `ref` prop ("5") and the OSRM spelling ("I 5").
+    // The turn you are about to make gets its own BLUE bubble at the corner (navTurnCallout), so
+    // its street is left out of the white ones here.
+    val turnCalloutRoad = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
+        if (!state.navigating) null else turnCalloutRoadOf(state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex))
+    }
     val navLabelExclude = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
-        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
+        if (!state.navigating) emptyList() else (state.activeRoute?.maneuvers
             ?.take(state.nav.stepIndex.coerceAtLeast(0))
             ?.flatMap { m ->
                 val refDigits = m.ref?.filter { it.isDigit() }
                 listOfNotNull(m.road, m.ref, refDigits)
-            }?.filter { it.isNotBlank() }?.distinct().orEmpty()
+            }.orEmpty() + listOfNotNull(turnCalloutRoad))
+            .filter { it.isNotBlank() }.distinct()
     }
     // The next two maneuvers' target roads are force-INCLUDED in the label pass: a turn target
     // often meets the route at a shared junction vertex, which a proper-crossing test can miss.
     val navUpcomingRoads = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
         if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
             ?.drop(state.nav.stepIndex)?.take(2)
-            ?.mapNotNull { m -> m.road?.takeIf { it.isNotBlank() } }.orEmpty()
+            ?.mapNotNull { m -> m.road?.takeIf { it.isNotBlank() && it != turnCalloutRoad } }.orEmpty()
     }
     // Saved-place pins for the browse map (issue #171): each list place carries its list's
     // icon+color, quick-saves ride the default bookmark blue; deduped by place id (a place in
@@ -3855,6 +3876,26 @@ private fun MapSurface(
                     val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
                     val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, m.location, 120.0)
                     val p = if (at == null) m.location else app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + EXIT_CALLOUT_AHEAD_M)
+                    p to label
+                }
+            }
+        },
+        // The street the next TURN enters, in a blue bubble on that street just past the corner
+        // (user 2026-10-02): the name right where you turn, the way Google labels it.
+        navTurnCallout = if (turnCalloutRoad == null) null else remember(state.activeRoute, state.nav.stepIndex, state.roadNameLatin) {
+            val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
+            val poly = state.activeRoute?.polyline.orEmpty()
+            val label = turnCalloutRoad.let { r ->
+                if (state.roadNameLatin.isEmpty()) r
+                else app.vela.core.voice.SpokenScript.forDisplay(r, app.vela.ui.AppLocale.effective().language, state.roadNameLatin)
+            }
+            when {
+                m == null -> null
+                poly.size < 2 -> m.location to label
+                else -> {
+                    val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                    val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, m.location, 120.0)
+                    val p = if (at == null) m.location else app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + TURN_CALLOUT_AHEAD_M)
                     p to label
                 }
             }

@@ -149,6 +149,10 @@ private const val ROUTE_GEN_PROP = "g"
 // A pending copy is drawn at this opacity: at 0 MapLibre skips the layer and never tiles its source.
 private const val ROUTE_PENDING_OPACITY = 0.004f
 private const val ROUTE_PENDING_MAX_PASSES = 40
+// Camera-idle work while the camera keeps moving: at most once a second, plus once this long
+// after the last idle event (see the idle listener).
+private const val IDLE_WORK_GAP_MS = 1000L
+private const val IDLE_WORK_TRAIL_MS = 250L
 private const val NAV_CUT_M = 400.0       // cut piece length: 256 gradient texels over 400 m = 1.6 m each
 private const val NAV_CUT_SLACK_M = 100.0 // slide the piece forward when the arrow gets this close to its end
 private const val NAV_CUT_BACK_M = 20.0   // the piece starts this far behind the arrow when it slides
@@ -767,6 +771,7 @@ fun VelaMapView(
     osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
     hideCivic: Boolean = false, // "Parks, schools and civic places" off: the open layer drops those groups
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
+    navTurnCallout: Pair<LatLng, String>? = null, // the street the next turn enters: blue bubble at the corner
     navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
@@ -1643,6 +1648,24 @@ fun VelaMapView(
                         addStringProperty("name", c.second)
                     },
                 ),
+            ),
+        )
+    }
+    LaunchedEffect(navTurnCallout, styleRef, navMode) {
+        val style = styleRef ?: return@LaunchedEffect
+        // The source is made with the nav labels, which can land a moment after nav starts.
+        var src = style.getSourceAs<GeoJsonSource>(NAV_TURN_SRC)
+        var waits = 0
+        while (src == null && navMode && waits++ < 20) {
+            kotlinx.coroutines.delay(250)
+            src = style.getSourceAs<GeoJsonSource>(NAV_TURN_SRC)
+        }
+        if (src == null) return@LaunchedEffect
+        val c = navTurnCallout.takeIf { navMode }
+        src.setGeoJson(
+            if (c == null) FeatureCollection.fromFeatures(emptyList())
+            else FeatureCollection.fromFeature(
+                Feature.fromGeometry(Point.fromLngLat(c.first.lng, c.first.lat)).apply { addStringProperty("name", c.second) },
             ),
         )
     }
@@ -2665,6 +2688,9 @@ fun VelaMapView(
         val winLo = doubleArrayOf(Double.NaN, Double.NaN); val winHi = doubleArrayOf(Double.NaN, Double.NaN)
         val slotState = intArrayOf(0, -1, 0, 0, 0, -1, 0, 0, 0, 0) // cut: active, pending, gen, seen; window: same; ages
         var routeGen = 0
+        // Test dial `debug.vela.tune.camTurnTau` (seconds): how quickly the camera swings through a
+        // turn; read once per drive.
+        val camTurnTau = app.vela.ui.AppTune.local("camTurnTau")?.takeIf { it in 0.1..3.0 } ?: CAM_BRG_TAU_TURN
         var buffersReset = true
         var lastNanos = 0L
         // STANDING STILL COSTS NOTHING (issue #605, 2026-09-25): the loop used to redraw the map at
@@ -2936,7 +2962,7 @@ fun VelaMapView(
                     // turn -> tau 0.35 s, which is actually QUICKER around a corner than the old flat
                     // 0.55. Tilt keeps its own constant - it is not part of this problem.
                     val brgTau = (CAM_BRG_TAU_STILL +
-                        (CAM_BRG_TAU_TURN - CAM_BRG_TAU_STILL) *
+                        (camTurnTau - CAM_BRG_TAU_STILL) *
                         (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
                     val kBrgAdaptive = (1f - kotlin.math.exp(-dtEase / brgTau)).toDouble()
                     camState[2] = (camState[2] + db * kBrgAdaptive + 360.0) % 360.0
@@ -3667,6 +3693,10 @@ fun VelaMapView(
                 // per OVL_GATE_MIN_GAP_MS no matter how chatty the events are.
                 // Self-reference holder so the floor-blocked path can schedule a deferred retry of
                 // the gate itself (a val lambda can't name itself).
+                val idleEvents = intArrayOf(0) // camera-idle callbacks, counted for the VelaFps line
+                val idleWork = arrayOfNulls<() -> Unit>(1)
+                val idleTrail = arrayOfNulls<Runnable>(1)
+                val idleWorkAt = longArrayOf(0L)
                 val ovlGateRef = arrayOfNulls<() -> Unit>(1)
                 val ovlRetryPending = booleanArrayOf(false)
                 val runOvlGate = {
@@ -3751,12 +3781,30 @@ fun VelaMapView(
                 ovlGateRef[0] = runOvlGate
                 ovlGateHook[0] = runOvlGate
                 map.addOnCameraIdleListener {
+                    idleEvents[0]++
                     if (gestureMove[0]) {
                         gestureMove[0] = false
                         map.cameraPosition.target?.let { t ->
                             cameraIdle.value(LatLng(t.latitude, t.longitude))
                         }
                     }
+                    // MapLibre reports idle after EVERY moveCamera, so while a ticker follows the
+                    // car this listener runs every frame (VelaFps idle=60, 4a 2026-10-02). The work
+                    // below (the view model's viewport pass reads region files on the main thread,
+                    // the overlay gate lists every layer) runs at most once per IDLE_WORK_GAP_MS
+                    // while the camera keeps moving, and once IDLE_WORK_TRAIL_MS after it stops.
+                    idleTrail[0]?.let { mv.removeCallbacks(it) }
+                    val sinceWork = android.os.SystemClock.elapsedRealtime() - idleWorkAt[0]
+                    if (sinceWork < IDLE_WORK_GAP_MS) {
+                        val trail = Runnable { idleTrail[0] = null; idleWork[0]?.invoke() }
+                        idleTrail[0] = trail
+                        mv.postDelayed(trail, IDLE_WORK_TRAIL_MS)
+                        return@addOnCameraIdleListener
+                    }
+                    idleWork[0]?.invoke()
+                }
+                idleWork[0] = {
+                    idleWorkAt[0] = android.os.SystemClock.elapsedRealtime()
                     // Keep the VM's "area you're viewing" current so the offline
                     // download can be triggered from Settings, not a map FAB.
                     val b = map.projection.visibleRegion.latLngBounds
@@ -3806,6 +3854,7 @@ fun VelaMapView(
                     }
                     warmPending[0] = warmRun
                     warmHandler.postDelayed(warmRun, 2500)
+                    Unit
                 }
                 // A finished render means tiles may have arrived after the camera stopped - the
                 // verdict could be stale. ONLY mark dirty here (never probe): this event can fire
@@ -3839,7 +3888,8 @@ fun VelaMapView(
                         if (now - since >= 1000) {
                             // Zoom range and bearing change in the second: a dip that lines up with a
                             // whole-level zoom crossing or a turn reads straight off the log.
-                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames) z=%.2f-%.2f brg %.0f>%.0f".format(zLo, zHi, b0, b1))
+                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames) z=%.2f-%.2f brg %.0f>%.0f idle=%d".format(zLo, zHi, b0, b1, idleEvents[0]))
+                            idleEvents[0] = 0
                             frames = 0
                             since = now
                             zLo = 99.0; zHi = 0.0; b0 = Double.NaN
@@ -5901,7 +5951,7 @@ private fun addRouteBubbleImage(st: Style, id: String, fill: Int, edge: Int, d: 
     )
 }
 
-private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false): android.graphics.Bitmap {
+private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false, blue: Boolean = false): android.graphics.Bitmap {
     val w = (46 * d).toInt()
     val body = 26 * d
     val h = (body + 7 * d).toInt() // + tail
@@ -5923,6 +5973,8 @@ private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false): an
         color = when {
             // The exit callout wears the green of the signs on the road.
             green -> 0xFF14713C.toInt()
+            // The turn callout wears the route's blue.
+            blue -> 0xFF1A66D9.toInt()
             dark -> 0xFF3D4B63.toInt()
             else -> 0xFFFFFFFF.toInt()
         }
@@ -5932,6 +5984,7 @@ private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false): an
         strokeWidth = 1.1f * d
         color = when {
             green -> 0xFFE8F5EC.toInt()
+            blue -> 0xFFE8F0FE.toInt()
             dark -> 0xFF6B7C96.toInt()
             else -> 0xFFAEB7C2.toInt()
         }
@@ -5945,6 +5998,9 @@ private const val NAV_BUBBLE_IMG = "vela-nav-bubble"
 private const val NAV_EXIT_BUBBLE_IMG = "vela-nav-exit-bubble"
 private const val NAV_EXIT_SRC = "vela-nav-exit-src"
 private const val NAV_EXIT_LAYER = "vela-nav-exit"
+private const val NAV_TURN_BUBBLE_IMG = "vela-nav-turn-bubble"
+private const val NAV_TURN_SRC = "vela-nav-turn-src"
+private const val NAV_TURN_LAYER = "vela-nav-turn"
 
 private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nulled on style reload
 
@@ -6304,6 +6360,41 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                 PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
                 PropertyFactory.textOffset(arrayOf(0f, -0.9f)),
                 // Yours is the one callout that never yields: it is the next thing you must do.
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.textAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(false),
+            ),
+        )
+    }
+    // The blue twin, for the street the next turn enters (user 2026-10-02).
+    style.addImage(
+        NAV_TURN_BUBBLE_IMG, navBubbleBitmap(dark, d, blue = true),
+        listOf(
+            org.maplibre.android.maps.ImageStretches(r + d, cx - 7 * d),
+            org.maplibre.android.maps.ImageStretches(cx + 7 * d, w - r - d),
+        ),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
+        org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
+    )
+    if (style.getSource(NAV_TURN_SRC) == null) style.addSource(GeoJsonSource(NAV_TURN_SRC))
+    if (style.getLayer(NAV_TURN_LAYER) == null) {
+        style.addLayer(
+            SymbolLayer(NAV_TURN_LAYER, NAV_TURN_SRC).withProperties(
+                PropertyFactory.textField(Expression.get("name")),
+                PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+                PropertyFactory.textSize(13.5f),
+                PropertyFactory.textColor("#FFFFFF"),
+                PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_POINT),
+                PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconImage(NAV_TURN_BUBBLE_IMG),
+                PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                PropertyFactory.textOffset(arrayOf(0f, -0.9f)),
+                PropertyFactory.textMaxWidth(12f),
+                // Like the exit callout, it never yields: it names the next thing you do.
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.textAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(false),

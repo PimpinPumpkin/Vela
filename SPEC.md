@@ -1443,7 +1443,15 @@ on a slow one (Perfetto: 0 to 12 map frames per 100 ms for ~0.5 s). One synthesi
 (`debug.vela.tune.synthThreads 1`) made prompts ~30% slower to synthesize and did not change the
 dips in an alternating A/B, so two threads stay.
 
-Testing aids: `debug.vela.tune.demoSpeedup <n>` runs a demo drive's fixes and clocks at n times
+MapLibre reports camera idle after every `moveCamera`, so while a ticker follows the car the idle
+listener fires every frame (`VelaFps` `idle=60` on a demo drive). Its work (the view model's viewport
+pass, which reads region index files on the main thread, the building-overlay gate, the warm-up
+schedule) runs at most once per `IDLE_WORK_GAP_MS` (1 s) while the camera moves, plus once
+`IDLE_WORK_TRAIL_MS` (250 ms) after the last idle event; a pan's end still runs it at once.
+
+Testing aids: `debug.vela.tune.camTurnTau <s>` sets how fast the nav camera swings through a turn
+(`CAM_BRG_TAU_TURN`, 0.35 s; at 0.8 s the worst turn dip went 35 -> 45 fps over three turns, too few
+to call). `debug.vela.tune.demoSpeedup <n>` runs a demo drive's fixes and clocks at n times
 real time, the way a trip replay runs, so playback behavior reproduces without a recorded trip.
 
 ### 4.8 Route line rendering
@@ -1457,6 +1465,15 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   route-blue outline, because a mid blue is the dark roads' own family.
 - **Plate cameras with a route up** (chooser or drive): only those on a shown route draw
   (`FlockCameras.along`, 45 m and facing the road); with no route the layer shows the viewport's.
+- **Traffic lights drawn during a drive** are the ones whose own node lies within
+  `SIGNAL_ON_ROUTE_M` (25 m) of the route (`RouteProjection.signalIsOnRoute`, raw nodes before
+  clustering): the route's own approach is on the line and a crossed junction's other approaches
+  within a carriageway or two, while the parallel street's lights are 70 m or more away. The road's
+  direction is not tested: every approach at a junction the route drives through is that junction.
+- **The street the next turn enters** (turn, slight, sharp and roundabout-exit maneuvers that name a
+  road or ref) gets a blue callout (`NAV_TURN_LAYER`, the route's blue `#1A66D9`) `TURN_CALLOUT_AHEAD_M`
+  (30 m) into that street, never yielding to other labels like the green exit callout; that street
+  leaves the white cross-street callouts while it shows.
 - **Stop signs drawn during a drive** are the ones whose own node lies within `STOP_ON_ROUTE_M`
   (20 m) of the route and whose road orientation agrees with the route's bearing there within
   40 degrees (`RouteProjection.stopIsOnRoute`, applied to raw nodes before clustering). The

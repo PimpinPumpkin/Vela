@@ -1157,9 +1157,17 @@ internal class NavController(
                 // the parallel street a block over (right direction, wrong place); the direction
                 // test alone kept the second kind (user drive 2026-10-01).
                 val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                // A TRAFFIC LIGHT counts when its node is within SIGNAL_ON_ROUTE_M of the route
+                // (signalIsOnRoute): every light in the corridor used to draw, so the lights of
+                // the parallel street a block over showed beside the route (user 2026-10-02).
                 val onRoute = res.filter { c ->
-                    c.kind != app.vela.core.data.TrafficControl.Kind.STOP ||
-                        app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
+                    when (c.kind) {
+                        app.vela.core.data.TrafficControl.Kind.STOP ->
+                            app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
+                        app.vela.core.data.TrafficControl.Kind.SIGNAL ->
+                            app.vela.core.nav.RouteProjection.signalIsOnRoute(poly, cum, c.loc)
+                        else -> true
+                    }
                 }
                 onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, MapViewModel.CONTROLS_CLUSTER_M) { it.loc }

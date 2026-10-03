@@ -98,14 +98,15 @@ object PuckStyle {
  *  step-list button on the nav bar beside the swipe-up handle). Off by default; keypad-first
  *  devices behave as if it were on. */
 /**
- * The picture-in-picture layout (user 2026-10-02). Off (the default): one bar along the bottom,
- * Google's mini map. On: the earlier turn card across the top with the time left along the bottom.
+ * The picture-in-picture layout (user 2026-10-02). On (the default): the turn card across the top
+ * with the time left along the bottom, which says more. Off: one bar along the bottom, Google's
+ * mini map. The user tried Google's as the default the same day and went back.
  */
 object PipTurnCard {
-    val on = mutableStateOf(false)
+    val on = mutableStateOf(true)
 
     fun init(context: Context) {
-        on.value = prefs(context).getBoolean(KEY, false)
+        on.value = prefs(context).getBoolean(KEY, true)
     }
 
     fun set(context: Context, value: Boolean) {
