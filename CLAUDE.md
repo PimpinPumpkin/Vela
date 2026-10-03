@@ -3769,8 +3769,8 @@ architecture note.
   the nav camera swings (bearing error 10+ degrees) or a gesture moves it in nav, every visible
   symbol layer except street names, shields, exit numbers, `vela-nav-` callouts and the arrow is
   hidden; back after 500 ms calm. No single layer group was the cost, so it is all or nothing.
-  A new symbol layer that must survive a turn goes in `TurnDeclutter.KEEP`. Setting: Navigation >
-  "Simplify the map in turns" (default on).
+  A new symbol layer that must survive a turn goes in `TurnDeclutter.KEEP`. Setting: Performance >
+  "Simplify the map in turns" (default on; moved from Navigation 2026-10-03).
 - **Turn stutter and playback (2026-10-02, SPEC 4.7b).** A turn's bearing swing brings new tiles
   into a tilted view: brief dips (40-45 fps at 1x on the 4a, lower at a replay's 3x). The nav eases'
   `dtEase` cap scales with `replaySpeedup`. Debug dials: `debug.vela.tune.demoSpeedup 3` runs a demo

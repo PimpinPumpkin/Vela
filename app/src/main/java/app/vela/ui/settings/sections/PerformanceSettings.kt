@@ -43,6 +43,15 @@ internal fun PerformanceSettingsScreen(onBack: () -> Unit) {
             hint = stringResource(R.string.settings_full_place_load_hint),
         )
         GroupDivider()
+        // From Navigation (2026-10-03): it exists for the frame rate in turns, so it lives with the
+        // other speed choices.
+        ToggleRow(
+            label = stringResource(R.string.settings_turn_declutter),
+            checked = app.vela.ui.TurnDeclutterPref.on.value,
+            onCheckedChange = { app.vela.ui.TurnDeclutterPref.set(context, it) },
+            hint = stringResource(R.string.settings_turn_declutter_hint),
+        )
+        GroupDivider()
         // Compatibility (TextureView) rendering - a hardware escape hatch (port of upstream
         // PimpinPumpkin/Vela 261156e2 + df2b8570). Writes the "texture_render" pref that
         // VelaMapView reads when it creates the map; needs an app restart to apply. Also flips

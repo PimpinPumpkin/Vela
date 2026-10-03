@@ -446,7 +446,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   route line has a dark outline, which keeps it legible at crossings and under bridges.
 - ✅ **Simplified map in turns (2026-10-02).** During drive guidance the map keeps only street names
   while the camera swings through a turn or follows your finger, then fades the rest back in; 4a
-  turns went from 40-49 fps to 48-60. Settings > Navigation "Simplify the map in turns", on by default.
+  turns went from 40-49 fps to 48-60. Settings > Performance "Simplify the map in turns", on by default.
 - ✅ **Each transit line in its own color (2026-10-02, discussion #648).** With Highlight transit lines on, rail
   track is drawn in the color of the lines that run on it (each subway line its own, side by side where
   they share a tunnel), from the open transit data; trains show from a regional zoom, subway and tram from

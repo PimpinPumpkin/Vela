@@ -1482,7 +1482,7 @@ is hidden except the street names (`highway-name-major` / `-minor`, the shields,
 the overview hides its own set and takes the layers back first. Only layers that were visible when
 the hide began are touched, and the open places layers are re-filtered by `applyOpenPlacesHidden`
 after a restore, since they have a second owner. Same drive with it on: turns 48-60. Settings >
-Navigation "Simplify the map in turns" (`TurnDeclutterPref`, pref `turn_declutter`, default on).
+Performance "Simplify the map in turns" (`TurnDeclutterPref`, pref `turn_declutter`, default on).
 Test dial `debug.vela.tune.turnDeclutter 0` turns it off for an A/B (read at each drive's start).
 Gestures, same drive, A/B alternating: pans held 59 fps either way (nothing to fix there); a
 one-finger quick-zoom ran 53-59 with it and 44-59 without, and the one deep dip (31-35, the first
