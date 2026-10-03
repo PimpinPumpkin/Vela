@@ -1493,11 +1493,11 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   route-blue outline, because a mid blue is the dark roads' own family.
 - **Plate cameras with a route up** (chooser or drive): only those on a shown route draw
   (`FlockCameras.along`, 45 m and facing the road); with no route the layer shows the viewport's.
-- **Traffic lights drawn during a drive** are the ones whose own node lies within
-  `SIGNAL_ON_ROUTE_M` (25 m) of the route (`RouteProjection.signalIsOnRoute`, raw nodes before
-  clustering): the route's own approach is on the line and a crossed junction's other approaches
-  within a carriageway or two, while the parallel street's lights are 70 m or more away. The road's
-  direction is not tested: every approach at a junction the route drives through is that junction.
+- **Traffic lights drawn during a drive** are the ones the route drives THROUGH: the node within
+  `SIGNAL_ON_ROUTE_M` (12 m) of the route (`RouteProjection.signalIsOnRoute`, raw nodes before
+  clustering). The route's own approach and a junction's middle node are on the line; the cross
+  street's approach (10 to 25 m up it), the other carriageway and the parallel street are not. The
+  road's direction is not tested: a middle node is on two roads.
 - **The street the next turn enters** (turn, slight, sharp and roundabout-exit maneuvers that name a
   road or ref) gets a blue callout (`NAV_TURN_LAYER`, the route's blue `#1A66D9`) `TURN_CALLOUT_AHEAD_M`
   (30 m) into that street, never yielding to other labels like the green exit callout; that street
@@ -2557,6 +2557,11 @@ Selection rules on the phone:
   were about to arrive, and crossing the box edge then unmounted it, so a pan along a download's
   border alternated gray and network. Only a probe that CANNOT answer leaves the old pick in
   charge, because that is the case where asking told us nothing. The pick runs off the main thread.
+  **Online the downloaded basemap is not used at all (2026-10-02): the map streams.** Mounting it
+  online swapped the whole style in and out at every edge of the downloaded data, a full reload
+  and a visible flicker each time (zooming far out from inside a region did it twice: once leaving
+  the data, once coming back). `pickBasemapArchive` asks `installedFor` only while streaming cannot
+  work (offline, or a network that never validated); the rules below apply there.
   **The mount has hysteresis.** A swap reloads the whole style (`basemapArchive` is part of the
   style key), so the pick must not flip on every camera idle along a border. Unmounting is eager
   (no roads at the center tile means stream); mounting an archive that is not the one in use
@@ -2940,7 +2945,12 @@ whole padded view was megabytes over a city, a zoom-out's bigger box failed, and
 the old box: lines only inside a square (#648). Over Midtown on the 4a a four-step zoom-out took
 19 cells in 4.5 s. A stretch shared by several lines is
 drawn as side-by-side strands (at most 4). The plain highlight is hidden for a kind (metro,
-train) while colored lines of that kind are in view. Kinds are settings (`TransitLayer`): lines
+train) while colored lines of that kind are in view. Metro stretches carry their lines' letters (`MapLine.labels`, the route `shortName` and color,
+an express variant like "6X" folded into its base, numbers before letters, at most six): one dark
+pill per stretch at its middle from z13 (`TRANSIT_LABELS_LAYER`, below the business icons), each
+letter in its line's color through a format expression, two spaces apart. Lines that share a color
+share one strand (the B, D, F and M are all orange), so only the letter tells them apart (#648).
+Kinds are settings (`TransitLayer`): lines
 metro / trains, stop icons bus / metro / train, all on by default; a stop's kinds come from the
 `modes` Transitous gives it. An unreadable reply is "no lines".
 

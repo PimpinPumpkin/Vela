@@ -107,11 +107,18 @@ object Transitous {
     }
 
     /** One stretch of track with the colors of the lines that run on it. */
-    data class MapLine(val points: List<LatLng>, val colors: List<String>, val kind: Kind)
+    data class MapLine(
+        val points: List<LatLng>,
+        val colors: List<String>,
+        val kind: Kind,
+        /** The metro lines on this stretch as (short name, "#rrggbb"), sorted the way a station
+         *  sign lists them (numbers, then letters). Empty for trains. */
+        val labels: List<Pair<String, String>> = emptyList(),
+    )
 
     @Serializable private data class RoutesReply(val routes: List<RouteDto> = emptyList(), val polylines: List<PolyDto> = emptyList())
     @Serializable private data class RouteDto(val mode: String = "", val transitRoutes: List<RouteNameDto> = emptyList())
-    @Serializable private data class RouteNameDto(val color: String? = null)
+    @Serializable private data class RouteNameDto(val color: String? = null, val shortName: String? = null)
     @Serializable private data class PolyDto(val polyline: EncodedDto = EncodedDto(), val routeIndexes: List<Int> = emptyList())
     @Serializable private data class EncodedDto(val points: String = "", val precision: Int = 6)
 
@@ -146,6 +153,18 @@ object Transitous {
             val kind = if (rail.any { kindOf(it.mode) == Kind.METRO }) Kind.METRO else Kind.TRAIN
             val colors = rail.mapNotNull { r -> r.transitRoutes.firstOrNull()?.color?.trim()?.lowercase()?.takeIf { c -> c.length == 6 && c.all { it in '0'..'9' || it in 'a'..'f' } } }
                 .distinct().take(MAX_LINE_COLORS).map { "#$it" }
+            // Line letters for the metro stretches (#648: same-color lines like the M and F could
+            // not be told apart; shared colors are one strand, so only a name tells them apart).
+            val labels = rail.filter { kindOf(it.mode) == Kind.METRO }.mapNotNull { r ->
+                val t = r.transitRoutes.firstOrNull() ?: return@mapNotNull null
+                val name = t.shortName?.trim()?.takeIf { it.isNotEmpty() && it.length <= MAX_LABEL_CHARS } ?: return@mapNotNull null
+                val c = t.color?.trim()?.lowercase()?.takeIf { c -> c.length == 6 && c.all { it in '0'..'9' || it in 'a'..'f' } }
+                name to (if (c != null) "#$c" else "#9AA0A6")
+            }.distinctBy { it.first }
+                // An express variant ("6X", "FX") is the same line as its base: list the base once.
+                .let { all -> val names = all.map { it.first }.toSet(); all.filterNot { it.first.length > 1 && it.first.endsWith("X") && it.first.dropLast(1) in names } }
+                .sortedWith(compareBy<Pair<String, String>>({ it.first.toIntOrNull() == null }, { it.first.toIntOrNull() ?: 0 }, { it.first }))
+                .take(MAX_LABELS)
             val pts = runCatching { app.vela.core.data.google.PolylineCodec.decode(p.polyline.points, p.polyline.precision) }.getOrNull() ?: continue
             if (pts.size < 2) continue
             // A feed with no shapes gives a straight chord from stop to stop. Between two subway
@@ -160,7 +179,7 @@ object Transitous {
                 if (run.size >= 2) {
                     var len = 0.0
                     for (i in 1 until run.size) len += distM(run[i - 1].lat, run[i - 1].lng, run[i].lat, run[i].lng)
-                    if (len / (run.size - 1) <= CHORD_MAX_M) out += MapLine(simplify(run, LINE_SIMPLIFY_M), colors, kind)
+                    if (len / (run.size - 1) <= CHORD_MAX_M) out += MapLine(simplify(run, LINE_SIMPLIFY_M), colors, kind, labels)
                 }
                 run = ArrayList()
             }
@@ -174,6 +193,9 @@ object Transitous {
     }
 
     const val MAX_LINE_COLORS = 4
+    /** Line letters shown per stretch, and the longest short name that counts as a letter. */
+    const val MAX_LABELS = 6
+    private const val MAX_LABEL_CHARS = 3
     private const val LINE_SIMPLIFY_M = 4.0
     /** Average spacing of a shape's points above which it is a chord, not a drawn track. */
     private const val CHORD_MAX_M = 700.0

@@ -673,7 +673,9 @@ SELECT (SELECT count(*) FROM coreleader WHERE id <> leader) AS same_business_var
 CREATE TABLE scored AS
 SELECT *,
   CASE
-    WHEN category IN ('hospital','university','college_university','airport','stadium_arena','museum','zoo','amusement_park','shopping_center','supermarket','department_store','grocery_store','convention_center','casino','aquarium') THEN 4.5
+    -- An airport is a landmark; a seaplane base, a heliport or an airstrip in the same category is not
+    -- (#648: a seaplane base drew beside the city's real airports from a regional view).
+    WHEN category IN ('hospital','university','college_university','stadium_arena','museum','zoo','amusement_park','shopping_center','supermarket','department_store','grocery_store','convention_center','casino','aquarium') OR (category = 'airport' AND NOT regexp_matches(lower(coalesce(name, '')), 'seaplane|heliport|helipad|airstrip|airfield')) THEN 4.5
     WHEN category IN ('hotel','accommodation','pharmacy','bank','movie_theater','gym','library','church_cathedral','bowling_alley','hardware_store','car_dealer','furniture_store','electronics','sporting_goods','home_improvement_store','wholesale_store','discount_store') THEN 3.2
     WHEN category IS NULL THEN 1.6
     -- OSM landmarks (the one-set bake): an attraction or a town hall is a place people navigate
@@ -897,7 +899,7 @@ SELECT * EXCLUDE (dup),
   -- 29th.
   row_number() OVER (PARTITION BY landmark, floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY coalesce(notab, 1.0) + coalesce(fame, 0) DESC, prominence DESC, id) AS lrank
 FROM (
-  SELECT *, CASE WHEN category IN ('airport','hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') THEN 1
+  SELECT *, CASE WHEN category IN ('hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') OR (category = 'airport' AND NOT regexp_matches(lower(coalesce(name, '')), 'seaplane|heliport|helipad|airstrip|airfield')) THEN 1
     -- Linked to Wikidata, or an outline of a hectare or more (a town's central park has no
     -- Wikidata link and still anchors the map).
     WHEN (id IN (SELECT id FROM markwiki) OR id IN (SELECT id FROM marksize WHERE b >= 2.0) OR id IN (SELECT id FROM markfame WHERE f >= 1.5))

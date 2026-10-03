@@ -5679,7 +5679,9 @@ Gotchas:
   WHOLE screen for twelve seconds, the Pennsylvania half included, because nothing streams in the
   archive's place. `installedFor(keepMounted = offline)` keeps the mounted archive while its roads
   still reach the center tile, the ring around it or any viewport corner; a view entirely outside
-  its data lets go. Online the rule is the mirror: the archive is mounted only while the ring
+  its data lets go. **SINCE 2026-10-02 ONLINE NEVER MOUNTS IT AT ALL (the map streams; every
+  mount/unmount was a full style reload, the "flickers twice when I zoom way out" report). What
+  follows about the online rule is history.** Online the rule was the mirror: the archive is mounted only while the ring
   AND the corners are all inside it, so a border on screen means streaming, and a pan along the
   border (the reporter's video, center wobbling across the line) no longer reloads the style at
   every crossing; one reload when the border enters the screen, one when it leaves.** The probe tests the `transportation` LAYER, not

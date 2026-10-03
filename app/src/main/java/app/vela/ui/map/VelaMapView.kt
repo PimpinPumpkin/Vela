@@ -6645,6 +6645,7 @@ private var lastTransitLines: List<app.vela.core.data.transit.Transitous.MapLine
  * plain highlight is, under the labels. The source is rebuilt only when the list changes.
  */
 private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean, trains: Boolean) {
+    runCatching { ensureTransitLabels(style, lines, metro) }
     val src = style.getSourceAs<GeoJsonSource>(TRANSIT_LINES_SRC)
     if (lines.isEmpty()) {
         if (src != null) {
@@ -6712,6 +6713,81 @@ private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.tran
         accent != null -> style.addLayerAbove(layer, accent.id)
         satTop != null -> style.addLayerAbove(layer, satTop.id)
         firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
+        else -> style.addLayer(layer)
+    }
+}
+
+private const val TRANSIT_LABELS_SRC = "vela-transit-labels-src"
+private const val TRANSIT_LABELS_LAYER = "vela-transit-labels"
+private const val TRANSIT_PILL_IMG = "vela-transit-pill"
+private var lastTransitLabels: List<app.vela.core.data.transit.Transitous.MapLine>? = null
+
+/**
+ * The metro lines' letters along their track (#648): lines that share a color share a strand
+ * (the B, D, F and M are all orange), so only the letter tells them apart. One label per stretch,
+ * at its middle, on a dark pill so every line color reads (yellow too), each letter in its own
+ * line's color through a format expression over the feature's `n0..n5` / `c0..c5`. From z13, and
+ * placed below the business icons so they keep their spots.
+ */
+private fun ensureTransitLabels(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean) {
+    val src = style.getSourceAs<GeoJsonSource>(TRANSIT_LABELS_SRC)
+    val labeled = if (metro) lines.filter { it.labels.isNotEmpty() } else emptyList()
+    if (labeled.isEmpty()) {
+        if (src != null) {
+            runCatching { style.removeLayer(TRANSIT_LABELS_LAYER) }
+            runCatching { style.removeSource(TRANSIT_LABELS_SRC) }
+        }
+        lastTransitLabels = null
+        return
+    }
+    if (src == null || lines !== lastTransitLabels) {
+        val features = labeled.map { l ->
+            Feature.fromGeometry(LineString.fromLngLats(l.points.map { Point.fromLngLat(it.lng, it.lat) })).apply {
+                l.labels.forEachIndexed { i, (name, color) ->
+                    addStringProperty("n$i", if (i == 0) name else "  $name") // two spaces: one read as a run of letters
+                    addStringProperty("c$i", color)
+                }
+            }
+        }
+        val fc = FeatureCollection.fromFeatures(features)
+        if (src == null) style.addSource(GeoJsonSource(TRANSIT_LABELS_SRC, fc, GeoJsonOptions().withMaxZoom(16))) else src.setGeoJson(fc)
+        lastTransitLabels = lines
+    }
+    if (style.getLayer(TRANSIT_LABELS_LAYER) != null) return
+    if (style.getImage(TRANSIT_PILL_IMG) == null) {
+        val d = android.content.res.Resources.getSystem().displayMetrics.density
+        val w = (30 * d).toInt(); val h = (22 * d).toInt(); val r = 7 * d
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val rect = android.graphics.RectF(d, d, w - d, h - d)
+        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xF0202124.toInt() })
+        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).also { it.style = Paint.Style.STROKE; it.strokeWidth = d; it.color = 0xFF5F6368.toInt() })
+        style.addImage(
+            TRANSIT_PILL_IMG, bmp,
+            listOf(org.maplibre.android.maps.ImageStretches(r + d, w - r - d)),
+            listOf(org.maplibre.android.maps.ImageStretches(r + d, h - r - d)),
+            org.maplibre.android.maps.ImageContent(5 * d, 3 * d, w - 5 * d, h - 3 * d),
+        )
+    }
+    val sections = (0 until app.vela.core.data.transit.Transitous.MAX_LABELS).map { i ->
+        Expression.formatEntry(
+            Expression.coalesce(Expression.get("n$i"), Expression.literal("")),
+            Expression.FormatOption.formatTextColor(Expression.toColor(Expression.coalesce(Expression.get("c$i"), Expression.literal("#ffffff")))),
+        )
+    }
+    val layer = SymbolLayer(TRANSIT_LABELS_LAYER, TRANSIT_LABELS_SRC).withProperties(
+        PropertyFactory.textField(Expression.format(*sections.toTypedArray())),
+        PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        PropertyFactory.textSize(12.5f),
+        PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
+        PropertyFactory.iconImage(TRANSIT_PILL_IMG),
+        PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
+        PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+        PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+        PropertyFactory.textPadding(6f),
+    ).apply { setMinZoom(13f) }
+    when {
+        style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(layer, AMBIENT_LAYER)
         else -> style.addLayer(layer)
     }
 }

@@ -7663,7 +7663,11 @@ class MapViewModel @Inject constructor(
         // gray, the whole state downloaded).
         val validated = isValidated()
         val cantStream = _state.value.offline || !validated
-        val file = basemapStore.installedFor(center, mountedNow, corners, keepMounted = cantStream)
+        // ONLINE THE MAP STREAMS (user 2026-10-02): mounting a downloaded archive online swapped the
+        // whole style in and out at every edge of the downloaded data, a full reload and a visible
+        // flicker each time (zooming far out from inside a region did it twice). A downloaded map
+        // is for when streaming cannot work.
+        val file = if (!cantStream) null else basemapStore.installedFor(center, mountedNow, corners, keepMounted = true)
         // A SHALLOW archive (baked a zoom level short because the full bake would pass GitHub's
         // 2 GiB asset limit) draws as a blurred version of the same map once you are past its
         // depth, so a download made the map worse than streaming (issue #552). Online, the streamed
