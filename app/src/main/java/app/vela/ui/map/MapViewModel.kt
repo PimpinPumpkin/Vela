@@ -1715,6 +1715,13 @@ class MapViewModel @Inject constructor(
             )
         }
         rememberRecentPlace(sp)
+        // Offline: the enrich search below can't run - serve the stored copy
+        // instead. Without this the sheet opens as a bare name/location shell
+        // with no details, reviews or photos (user 2026-09-28).
+        if (offlineNow()) {
+            loadOfflinePlace(base)
+            return
+        }
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
         // the star stays filled.
@@ -2741,12 +2748,76 @@ class MapViewModel @Inject constructor(
                 stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
             )
         }
+        // Offline with a stored copy: serve it instead of the network fetches below.
+        if (offlineNow() && loadOfflinePlace(p)) return
         requestReviews(p)
         fetchPhotos(p)
         fetchPlaceDetails(p)
         fetchStopDepartures(p)
         backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
+    }
+
+    /** Offline place cache (Settings > Offline > Keep viewed places): disk twin of the
+     *  details + reviews the sheet just loaded. Written on every successful online
+     *  load, served when a place opens with no network. Photos ride Coil's disk
+     *  cache (prefetched below); text menus aren't parsed anywhere, so there is
+     *  nothing of them to store. */
+    private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
+
+    private fun persistOfflinePlace(placeId: String) {
+        if (!app.vela.ui.OfflinePlaces.on.value) return
+        val st = _state.value
+        val sel = st.selected
+        if (sel == null || sel.id != placeId) return
+        viewModelScope.launch(Dispatchers.IO) {
+            // Monotonic merge: this persist may run BEFORE reviews/photos arrive
+            // (details land first, reviews are lazy, photos stream in). Never let
+            // an early write clobber what a previous write already stored.
+            val prev = app.vela.core.data.PlaceCache.load(placeCacheDir(), sel)
+            val reviews = st.reviews.ifEmpty { prev?.reviews.orEmpty() }
+            val place = sel.let { s ->
+                val have = s.photoUrls.toSet()
+                val extra = prev?.place?.photoUrls.orEmpty().withIndex().filter { (_, u) -> u !in have }
+                if (extra.isEmpty()) s else {
+                    val pDates = prev?.place?.photoDates.orEmpty()
+                    val pCats = prev?.place?.photoCategories.orEmpty()
+                    s.copy(
+                        photoUrls = s.photoUrls + extra.map { it.value },
+                        photoDates = s.photoDates + extra.map { pDates.getOrNull(it.index) },
+                        photoCategories = s.photoCategories + extra.map { pCats.getOrNull(it.index) },
+                    )
+                }
+            }
+            app.vela.core.data.PlaceCache.save(placeCacheDir(), place, reviews)
+            // Warm Coil's disk cache so the gallery survives offline too.
+            val loader = coil.Coil.imageLoader(appContext)
+            place.photoUrls.take(12).forEach { url ->
+                runCatching {
+                    loader.enqueue(
+                        coil.request.ImageRequest.Builder(appContext)
+                            .data(url)
+                            .memoryCachePolicy(coil.request.CachePolicy.DISABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .build()
+                    )
+                }
+            }
+        }
+    }
+
+    /** Serve a stored copy when opening a place offline. True when served (the
+     *  caller skips the network fetches); false = miss, carry on as usual. */
+    private fun loadOfflinePlace(p: Place): Boolean {
+        if (!app.vela.ui.OfflinePlaces.on.value) return false
+        val rec = app.vela.core.data.PlaceCache.load(placeCacheDir(), p) ?: return false
+        _state.update {
+            if (it.selected?.id != p.id) it else it.copy(
+                selected = rec.place, reviews = rec.reviews,
+                loadingDetails = false, reviewsLoading = false, photosLoading = false,
+            )
+        }
+        return true
     }
 
     /** Transit-station category words (English + a few common ones). The board fetch is gated on
@@ -3288,6 +3359,7 @@ class MapViewModel @Inject constructor(
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             if (d != null) mergeDetails(p, d)
             _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
+            persistOfflinePlace(p.id)
         }
     }
 
@@ -3449,6 +3521,7 @@ class MapViewModel @Inject constructor(
                             photosNextToken = page.nextToken,
                         ) else st
                     }
+                    persistOfflinePlace(p.id)
                     return@launch
                 }
             }
@@ -3535,6 +3608,7 @@ class MapViewModel @Inject constructor(
                     morePhotosFor = if (!full && gallery.size >= FIRST_PHOTOS) fid else null,
                 ) else st
             }
+            persistOfflinePlace(p.id)
         }
     }
 
@@ -3606,7 +3680,10 @@ class MapViewModel @Inject constructor(
      */
     private fun requestReviews(p: Place) {
         val onTap = app.vela.ui.ReviewsOnTap.on.value
-        if (app.vela.ui.FullPlaceLoad.on.value && !onTap) { reviewsPendingFor = null; fetchReviews(p); return }
+        // Offline-cache users opted into storing places: fetch eagerly so there
+        // is something to store. Most taps never open the tab, so a lazy-only
+        // fetch would leave every cached record review-less (user 2026-09-28).
+        if ((app.vela.ui.FullPlaceLoad.on.value || app.vela.ui.OfflinePlaces.on.value) && !onTap) { reviewsPendingFor = null; fetchReviews(p); return }
         if (!app.vela.ui.ShowReviews.on.value || googleOff()) return
         reviewsJob?.cancel()
         reviewsPendingFor = p
@@ -3735,6 +3812,7 @@ class MapViewModel @Inject constructor(
                     if (_state.value.selected?.featureId == fid) {
                         _state.update { it.copy(reviews = feed.reviews, reviewsLoading = false, reviewsFound = 0, reviewsLimited = limited, reviewsNextToken = feed.nextToken) }
                     }
+                    persistOfflinePlace(p.id)
                     return@launch
                 }
             }
@@ -3759,6 +3837,7 @@ class MapViewModel @Inject constructor(
             }
             if (_state.value.selected?.featureId == fid) {
                 _state.update { it.copy(reviews = revs, reviewsLoading = false, reviewsFound = 0) }
+                persistOfflinePlace(p.id)
             }
         }
     }
