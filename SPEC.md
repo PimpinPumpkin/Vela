@@ -1520,15 +1520,19 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   route-blue outline, because a mid blue is the dark roads' own family.
 - **Plate cameras with a route up** (chooser or drive): only those on a shown route draw
   (`FlockCameras.along`, 45 m and facing the road); with no route the layer shows the viewport's.
-- **The DRAWN route has its digitizing wobbles taken out** (`core/nav/RouteSmoothing`, applied
-  where MapSurface hands the line to the map; the arrow rides the same line, guidance and the
-  engine keep the router's). Two rules, both only ever DROP router vertices: a median jog (a
+- **The ARROW rides a smoothed copy of the route; the line is drawn on the router's own**
+  (`core/nav/RouteSmoothing`, `puckLine` in VelaMapView; progress is measured on the router's line
+  and scaled onto the copy). Drawn smoothed, the line left the road: over the 39 captured Google
+  lines the median-jog rule moved it up to 11.3 m (8 lines past 6 m) and the zigzag rule up to 5.3 m,
+  which put a road-width stripe on the median or the verge once divided roads were drawn as two
+  carriageways. The router's line is OpenStreetMap's (a Google line sits a median 0.9 m from it,
+  p90 3.2 m, where the two agree), the same geometry the roads are drawn from. Two rules, both only ever DROP router vertices: a median jog (a
   stretch up to 140 m that leaves a straight road by 1-12 m and rejoins it within 2 m, on the
   same heading in and out within 3 degrees, along the chord within 7) becomes its chord; a zigzag
   vertex (both segments under 35 m, a 15+ degree turn with an opposite 15+ degree turn next to it,
   within 4 m of its neighbors' line) is dropped, up to four passes. A curve, roundabout or corner
   keeps turning one way and is never touched. Over the 39 captured Google lines: no line longer,
-  no length change over 0.5%, no router point more than 12 m from the drawn line
+  no length change over 0.5%, no router point more than 12 m from the smoothed line
   (`RouteSmoothingTest`). Seen on a Davis demo drive: a notch at a junction where the open router's
   line went 338, 17, 347, 315, 346, 357 degrees over 7-15 m segments.
 - **Search without Google from a wide view** (issue #652, 2026-10-03). "Near" for answering a name
@@ -2565,6 +2569,10 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   24 dp at z16 / 17.5 / 18.5, and `ROUTE_REAL_M` 10 m, capped at 38 dp; alternates 9 m, capped 35,
   their outline inside that width), so it covers a two-lane street or one carriageway at every nav
   zoom instead of shrinking to half the road. Both follow `roadWidthScale`.
+  **Road edges** (`applyRoadEdges`, dial `roadEdge`, default 0 = off while the look is decided):
+  the modern light and dark palettes draw road casings in the land color, so roads have no edge;
+  with the dial on, casings take `#8b9bad` (light) / `#050a14` (dark) and are at least
+  `ROAD_EDGE_DP` (1.5 dp) a side from z16, which also splits the two halves of a divided road.
 
 ### 6.4 The building-overlay gate
 

@@ -3745,10 +3745,11 @@ architecture note.
   California bake (`painted-roads` release, `scripts/bake-painted-roads.sh`), `2` builds live (Overpass, or
   `debug.vela.paintUrl` for a saved reply over `adb reverse`; public Overpass rate-limits and asked Vela to go
   easy). After a rebake bump the `?v=` on `PaintedRoadsLayer.BAKED_URL` or the map cache keeps old tiles.
-- **The drawn route is smoothed (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).** MapSurface passes
-  `straightenJogs(route.polyline)` (remembered on the polyline) to the map; the arrow, cut and traffic
-  colors all measure along that line, guidance keeps the router's. Only drops vertices; tested on the
-  39 captured Google lines. Browse-map traffic controls show from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`).
+- **Only the ARROW rides the smoothed route (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).**
+  VelaMapView keeps `puckLine = straightenJogs(routePolyline)` for the puck's position and heading;
+  the line, cut, traffic colors and every progress number use the router's line. Drawing the smoothed
+  line put the blue up to 11 m off the road (median/verge) once divided roads drew as two
+  carriageways. Never hand the map a smoothed polyline again. Browse-map traffic controls show from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`).
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
   meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials

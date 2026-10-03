@@ -1162,6 +1162,14 @@ fun VelaMapView(
         if (navFollowing) { lastNavTarget = null; lastNavBearing = null }
     }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
+    // The ARROW rides a smoothed copy of the line (2026-10-03): short jogs around an island and
+    // digitizing zigzags are taken out so it does not swerve round something the car drives
+    // straight past. The LINE itself is drawn on the router's geometry, which is what the roads are
+    // drawn from: drawn smoothed, it left the road by up to 11 m (measured on the captured Google
+    // lines) and sat on the median or the verge once divided roads drew as two carriageways.
+    // Progress is measured on the router's line and scaled onto this one.
+    val puckLine = remember(routePolyline) { app.vela.core.nav.RouteSmoothing.straightenJogs(routePolyline) }
+    val puckCum = remember(puckLine) { cumLengths(puckLine) }
 
     // CROSS-STREET-ONLY nav labels (user 2026-07-16: "only show roads we are on or that we
     // directly cross"). Once per 400 m quantum of progress (the loop ticks every 2 s), take the loaded
@@ -2918,7 +2926,9 @@ fun VelaMapView(
                 val maxHoldBack = navPuck.speed * 0.25 + 0.5 // ...and of braking, so it never reverses
                 val corr = (err / PUCK_CORRECT_TIME_S).coerceIn(-maxHoldBack, maxCatchUp)
                 navPuck.progressM += ((navPuck.speed + corr) * dtT.coerceAtMost(0.5)).coerceAtLeast(0.0)
-                val (ptC, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
+                val toPuck = if (routeCum.isNotEmpty() && routeCum.last() > 0.0 && puckCum.isNotEmpty()) puckCum.last() / routeCum.last() else 1.0
+                val puckM = navPuck.progressM * toPuck
+                val (_, segBrg) = pointAtMeters(puckLine, puckCum, puckM)
                 // Lateral de-jitter: drawn straight off the polyline, the puck traced every
                 // lane-level micro-kink of the dense OSM geometry - side-to-side wiggle "like a
                 // record needle" (user 2026-07-16, STILL visible 2026-07-24: the old 3-point
@@ -2943,7 +2953,7 @@ fun VelaMapView(
                 var sLng = 0.0
                 for (k in 0 until PUCK_SMOOTH_SAMPLES) {
                     val off = -win + 2.0 * win * k / (PUCK_SMOOTH_SAMPLES - 1)
-                    val (sp, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + off)
+                    val (sp, _) = pointAtMeters(puckLine, puckCum, puckM + off)
                     sLat += sp.lat
                     sLng += sp.lng
                 }
@@ -2953,8 +2963,8 @@ fun VelaMapView(
                 // across the window barely moves on a straight road with kinked geometry. The
                 // clamped ends coincide only at a degenerate route edge; fall back to the
                 // segment there rather than aiming the arrow north.
-                val (wA, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM - win)
-                val (wB, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + win)
+                val (wA, _) = pointAtMeters(puckLine, puckCum, puckM - win)
+                val (wB, _) = pointAtMeters(puckLine, puckCum, puckM + win)
                 val chordBrg = if (kotlin.math.abs(wA.lat - wB.lat) + kotlin.math.abs(wA.lng - wB.lng) < 1e-7) segBrg
                     else bearingDeg(wA, wB)
                 // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
@@ -7443,6 +7453,8 @@ private fun realWidthCurve(base: FloatArray, realM: Double, capDp: Double, minus
 
 private fun widenStreets(style: StyleLayers) {
     val scale = roadWidthScale()
+    val edges = roadEdgesOn() && !app.vela.ui.MapColors.classic()
+    fun edgeFloor(z: Double): Double = if (!edges) 0.0 else ((z - 13.5) / 2.5).coerceIn(0.0, 1.0) * ROAD_EDGE_DP * 2
     val oneway = Expression.neq(Expression.coalesce(Expression.get("oneway"), Expression.literal(0)), Expression.literal(0))
     runCatching {
         for ((cls, curves) in ROAD_BASE) {
@@ -7457,7 +7469,8 @@ private fun widenStreets(style: StyleLayers) {
                 return maxOf(lib, minOf(cap, realM / (M_PER_DP_Z0 / Math.pow(2.0, z))))
             }
             fun casingAt(z: Double, realM: Double): Double {
-                val border = (expInterp(casingBase, z) - expInterp(fillBase, z)).coerceAtLeast(0.0)
+                // Both edges together, never under the edge floor once the road edges are drawn.
+                val border = maxOf((expInterp(casingBase, z) - expInterp(fillBase, z)).coerceAtLeast(0.0), edgeFloor(z))
                 return if (expInterp(fillBase, z) <= 0.0) expInterp(casingBase, z) else fillAt(z, realM) + border
             }
             // A one-way piece of a major class is usually one carriageway of a divided road, which
@@ -7486,6 +7499,24 @@ private fun widenStreets(style: StyleLayers) {
     }
 }
 
+/** A faint darker edge on every road (2026-10-03, off until decided: dial `roadEdge` 1 turns it
+ *  on, calibration tuning or `debug.vela.tune`). The modern palettes draw casings in the land
+ *  color, so roads have no edge and the two halves of a divided road run together. */
+private val ROAD_CASINGS = listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
+    "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
+    "bridge_motorway_casing", "bridge_motorway_link_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
+    "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing")
+
+private fun roadEdgesOn() = (app.vela.ui.AppTune.local("roadEdge") ?: app.vela.core.config.CalibrationStore.latest.tune("roadEdge", 0.0)) > 0.0
+/** Each edge's width from street zoom in, dp. */
+private const val ROAD_EDGE_DP = 1.5
+
+private fun applyRoadEdges(style: StyleLayers, dark: Boolean) {
+    if (!roadEdgesOn()) return
+    val edge = if (dark) "#050a14" else "#8b9bad"
+    ROAD_CASINGS.forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(edge)) }
+}
+
 internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = false) {
     val basemapSource = basemapSrc(style) ?: return
     // Two compiled color sets, picked in Settings -> Appearance (MapColors): "modern" is the
@@ -7499,6 +7530,7 @@ internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = 
         else -> applyLight(style)
     }
     widenStreets(style)
+    if (!classic && !amoled) applyRoadEdges(style, dark)
     // Country and city names in the reader's language (issue #598). Here rather than in the four
     // palette functions: the text does not change with the colors, and a language change recreates
     // the activity, which reloads the style and runs this again.
