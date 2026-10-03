@@ -209,6 +209,23 @@ What it would unlock, and why it is worth writing down now:
 Until then the honest position is that OpenFreeMap serves the online map, downloading a region is
 how you get ours, and the buildings question stays parked behind this one.
 
+### Richer roads  *(Google's street detail, without the 3D)*
+
+Next to Google at the same view, in nav and on the browse map, Vela's streets are thin lines;
+Google's are wide, divided roads show both carriageways with a median, and big roads show their
+lanes. Two steps, very different in size:
+
+- **Style only (small, no new data):** wider road fills and casings at street and nav zoom, closer
+  to Google's widths at the same visible area, and lighter arterial fills. Divided roads are
+  already two ways in OSM, so at wide enough widths the gap between them reads as the divider.
+  A palette and width pass in the four apply functions; measure fps after (wider lines are fill
+  cost, not placement cost).
+- **Lanes and medians (large, needs our own tiles):** the OpenMapTiles schema OpenFreeMap serves
+  has no lane count, so width by lanes, lane lines and painted medians need a basemap baked with an
+  extended schema (planetiler profile + `lanes`, `divider`). Downloaded regions could get it first,
+  since Vela already bakes those; online needs "Serving our own map tiles" above, which a hosted box
+  with a monthly egress allowance could also be.
+
 ### Contributing back to OpenStreetMap  *(wanted; the hard part is a firewall, not an API)*
 
 Vela takes a great deal from OSM - the basemap, the routing graph, the addresses, the road
@@ -510,7 +527,16 @@ described in SPEC section 2.
   unit test, a lint rule, or a type that makes the wrong state unrepresentable. Convert
   opportunistically when touching one; the spec keeps the why, the test keeps the what.
 - **Infrastructure with an owner.** Turn-by-turn depends on the FOSSGIS community servers with no
-  agreement and no fallback except the on-device engine. One small self-hosted OSRM instance for
-  the main regions, used first with FOSSGIS as the fallback, removes the single failure that
-  takes routing from every user at once. The nav diagnostics record which router answered, so the
-  decision can be made from real drives.
+  agreement and no fallback except the on-device engine. One self-hosted router, used first with
+  FOSSGIS as the fallback, removes the single failure that takes routing from every user at once.
+  The nav diagnostics record which router answered, so the decision can be made from real drives.
+  **Valhalla, not OSRM, is the engine to host (2026-10-03):** one Valhalla serves car, bike and
+  foot, the map-matching the drive hybrid already leans on (`trace_route`, capped at 200 km on the
+  public server), and costing options that make online "avoid tolls / highways / ferries" honest
+  (FOSSGIS OSRM rejects `exclude=`). Its routing tiles are memory-mapped from disk, so a whole
+  continent runs in modest RAM, where OSRM wants its graph in RAM (a planet car graph is far past
+  any free machine). A free ARM box (Oracle's always-free tier: 4 cores, 24 GB, 200 GB disk, a
+  monthly egress allowance) fits North America plus Europe and maybe the planet's tiles; build the
+  tiles elsewhere and copy them in. Costs: the first server Vela runs (it sees every route request
+  it answers, so `PRIVACY.md` changes the day it ships and request logging stays off), a free tier
+  that can be reclaimed, and someone to update the tiles. FOSSGIS stays as the fallback either way.

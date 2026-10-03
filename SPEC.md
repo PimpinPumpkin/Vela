@@ -1473,6 +1473,11 @@ the overview hides its own set and takes the layers back first. Only layers that
 the hide began are touched, and the open places layers are re-filtered by `applyOpenPlacesHidden`
 after a restore, since they have a second owner. Same drive with it on: turns 48-60. Settings >
 Navigation "Simplify the map in turns" (`TurnDeclutterPref`, pref `turn_declutter`, default on).
+Test dial `debug.vela.tune.turnDeclutter 0` turns it off for an A/B (read at each drive's start).
+Gestures, same drive, A/B alternating: pans held 59 fps either way (nothing to fix there); a
+one-finger quick-zoom ran 53-59 with it and 44-59 without, and the one deep dip (31-35, the first
+zoom past ~z17) happened both ways: that is the next zoom level's tiles arriving, which hiding
+symbols does not touch.
 
 **The puck during a gesture.** While the nav camera is detached and a pan, pinch or rotate is
 moving it, the puck is the map's own symbol (the flat image of the chosen shape), not the 3D
