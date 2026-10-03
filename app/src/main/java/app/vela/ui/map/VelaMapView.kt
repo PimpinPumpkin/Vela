@@ -2730,6 +2730,8 @@ fun VelaMapView(
         val camTurnTau = app.vela.ui.AppTune.local("camTurnTau")?.takeIf { it in 0.1..3.0 } ?: CAM_BRG_TAU_TURN
         // Test dial `debug.vela.tune.puckGestureSwap 0`: keep the 3D overlay during gestures.
         val puckGestureSwap = app.vela.ui.AppTune.local("puckGestureSwap")?.let { it != 0.0 } ?: true
+        // Test dial `debug.vela.tune.turnDeclutter 0`: never hide layers in turns or gestures (A/B).
+        val turnDeclutterTune = app.vela.ui.AppTune.local("turnDeclutter")?.let { it != 0.0 } ?: true
         var buffersReset = true
         var lastNanos = 0L
         // STANDING STILL COSTS NOTHING (issue #605, 2026-09-25): the loop used to redraw the map at
@@ -3011,7 +3013,7 @@ fun VelaMapView(
                     val swingDeg = kotlin.math.abs(db)
                     turnDeclutter.update(
                         style,
-                        app.vela.ui.TurnDeclutterPref.on.value &&
+                        app.vela.ui.TurnDeclutterPref.on.value && turnDeclutterTune &&
                             swingDeg >= (if (turnDeclutter.active) TurnDeclutter.CALM_DEG else TurnDeclutter.START_DEG),
                         android.os.SystemClock.uptimeMillis(),
                     ) { applyOpenPlacesHidden(it) }
@@ -3105,7 +3107,7 @@ fun VelaMapView(
                         // the overview, which hides its own set).
                         turnDeclutter.update(
                             style,
-                            app.vela.ui.TurnDeclutterPref.on.value && !overviewLive[0] &&
+                            app.vela.ui.TurnDeclutterPref.on.value && turnDeclutterTune && !overviewLive[0] &&
                                 nowMs - detachedMovedMs[0] < DETACHED_MOVING_MS,
                             nowMs,
                         ) { applyOpenPlacesHidden(it) }
@@ -6795,9 +6797,57 @@ private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.tran
 
 private const val TRANSIT_LABELS_SRC = "vela-transit-labels-src"
 private const val TRANSIT_LABELS_LAYER = "vela-transit-labels"
-private const val TRANSIT_PILL_IMG = "vela-transit-pill"
+private const val TRANSIT_PILL_PREFIX = "vela-transit-pill-"
 private var lastTransitLabels: List<app.vela.core.data.transit.Transitous.MapLine>? = null
 private var lastTransitPillDark: Boolean? = null
+
+/** Black text on a light line color (the N Q R W yellow), white on everything else. */
+private fun transitInk(hex: String): String {
+    val c = runCatching { android.graphics.Color.parseColor(hex) }.getOrDefault(0xFF9AA0A6.toInt())
+    fun lin(v: Int) = (v / 255.0).let { if (it <= 0.03928) it / 12.92 else Math.pow((it + 0.055) / 1.055, 2.4) }
+    val lum = 0.2126 * lin(android.graphics.Color.red(c)) + 0.7152 * lin(android.graphics.Color.green(c)) + 0.0722 * lin(android.graphics.Color.blue(c))
+    // The text color with the better contrast against the fill (WCAG ratio), so mid tones go white.
+    return if ((lum + 0.05) / 0.05 > 1.05 / (lum + 0.05) * 1.6) "#000000" else "#FFFFFF"
+}
+
+/** One pill image per line color: filled with the color, a thin rim in the map's land color so it
+ *  separates from the same-colored strand under it. Stretchable, so the text sizes it. */
+private fun ensureTransitPill(style: Style, hex: String, dark: Boolean): String {
+    val id = TRANSIT_PILL_PREFIX + hex.removePrefix("#").lowercase() + if (dark) "-d" else "-l"
+    if (style.getImage(id) != null) return id
+    val d = android.content.res.Resources.getSystem().displayMetrics.density
+    val w = (30 * d).toInt(); val h = (22 * d).toInt(); val r = 7 * d
+    val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val rim = android.graphics.RectF(0.5f * d, 0.5f * d, w - 0.5f * d, h - 0.5f * d)
+    c.drawRoundRect(rim, r + 0.5f * d, r + 0.5f * d, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0xFF202124.toInt() else 0xFFFFFFFF.toInt() })
+    val fill = android.graphics.RectF(2f * d, 2f * d, w - 2f * d, h - 2f * d)
+    val fc = runCatching { android.graphics.Color.parseColor(hex) }.getOrDefault(0xFF9AA0A6.toInt())
+    c.drawRoundRect(fill, r - d, r - d, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fc })
+    style.addImage(
+        id, bmp,
+        listOf(org.maplibre.android.maps.ImageStretches(r + 2 * d, w - r - 2 * d)),
+        listOf(org.maplibre.android.maps.ImageStretches(r + 2 * d, h - r - 2 * d)),
+        org.maplibre.android.maps.ImageContent(6 * d, 4 * d, w - 6 * d, h - 4 * d),
+    )
+    return id
+}
+
+/** The [from, to] fraction of a polyline, by length. */
+private fun lineSlice(pts: List<LatLng>, from: Double, to: Double): List<LatLng> {
+    if (pts.size < 2) return pts
+    val cum = DoubleArray(pts.size)
+    for (i in 1 until pts.size) cum[i] = cum[i - 1] + pts[i - 1].distanceTo(pts[i])
+    val total = cum.last().takeIf { it > 0 } ?: return pts
+    fun at(m: Double): LatLng {
+        val i = cum.indexOfFirst { it >= m }.let { if (it <= 0) 1 else it }
+        val seg = (cum[i] - cum[i - 1]).takeIf { it > 0 } ?: return pts[i]
+        val t = (m - cum[i - 1]) / seg
+        return LatLng(pts[i - 1].lat + (pts[i].lat - pts[i - 1].lat) * t, pts[i - 1].lng + (pts[i].lng - pts[i - 1].lng) * t)
+    }
+    val a = total * from; val b = total * to
+    return listOf(at(a)) + pts.indices.filter { cum[it] > a && cum[it] < b }.map { pts[it] } + listOf(at(b))
+}
 
 /**
  * The metro lines' letters along their track (#648): lines that share a color share a strand
@@ -6817,61 +6867,42 @@ private fun ensureTransitLabels(style: Style, lines: List<app.vela.core.data.tra
         lastTransitLabels = null
         return
     }
-    if (src == null || lines !== lastTransitLabels) {
-        val features = labeled.map { l ->
-            Feature.fromGeometry(LineString.fromLngLats(l.points.map { Point.fromLngLat(it.lng, it.lat) })).apply {
-                l.labels.forEachIndexed { i, (name, color) ->
-                    addStringProperty("n$i", if (i == 0) name else "  $name") // two spaces: one read as a run of letters
-                    addStringProperty("c$i", color)
+    // BADGES IN THE LINE'S OWN COLOR (user 2026-10-03). Letters in the line color on a white pill
+    // were unreadable for the light colors (the yellow N Q R W, the orange B D F M); the pill is
+    // now filled with the line color and the letters are black or white by contrast, the MTA
+    // bullet look, the same in both themes. A pill has one fill, so a stretch several colors
+    // share gets one pill per color, each at the middle of its own share of the stretch.
+    if (src == null || lines !== lastTransitLabels || lastTransitPillDark != dark) {
+        val features = ArrayList<Feature>()
+        for (l in labeled) {
+            val groups = l.labels.groupBy { it.second }.entries.toList()
+            groups.forEachIndexed { gi, (color, members) ->
+                val part = if (groups.size == 1) l.points else lineSlice(l.points, gi.toDouble() / groups.size, (gi + 1.0) / groups.size)
+                if (part.size < 2) return@forEachIndexed
+                features += Feature.fromGeometry(LineString.fromLngLats(part.map { Point.fromLngLat(it.lng, it.lat) })).apply {
+                    addStringProperty("n", members.joinToString("  ") { it.first }) // two spaces: one read as a run of letters
+                    addStringProperty("ink", transitInk(color))
+                    addStringProperty("pill", ensureTransitPill(style, color, dark))
                 }
             }
         }
         val fc = FeatureCollection.fromFeatures(features)
         if (src == null) style.addSource(GeoJsonSource(TRANSIT_LABELS_SRC, fc, GeoJsonOptions().withMaxZoom(16))) else src.setGeoJson(fc)
         lastTransitLabels = lines
+        lastTransitPillDark = dark
     }
-    // The pill follows the map's theme (#648: a black pill on the light map was jarring): white with
-    // a gray edge on the light map, near-black on the dark one. A theme change reloads the style,
-    // which rebuilds this layer with the other pill.
-    val existing = style.getLayer(TRANSIT_LABELS_LAYER)
-    if (existing != null && lastTransitPillDark == dark) return
-    if (existing != null) runCatching { style.removeLayer(TRANSIT_LABELS_LAYER) }
-    lastTransitPillDark = dark
-    runCatching { style.removeImage(TRANSIT_PILL_IMG) }
-    run {
-        val d = android.content.res.Resources.getSystem().displayMetrics.density
-        val w = (30 * d).toInt(); val h = (22 * d).toInt(); val r = 7 * d
-        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
-        val c = Canvas(bmp)
-        val rect = android.graphics.RectF(d, d, w - d, h - d)
-        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0xF0202124.toInt() else 0xFAFFFFFF.toInt() })
-        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).also { it.style = Paint.Style.STROKE; it.strokeWidth = d; it.color = if (dark) 0xFF5F6368.toInt() else 0xFFBDC1C6.toInt() })
-        style.addImage(
-            TRANSIT_PILL_IMG, bmp,
-            listOf(org.maplibre.android.maps.ImageStretches(r + d, w - r - d)),
-            listOf(org.maplibre.android.maps.ImageStretches(r + d, h - r - d)),
-            org.maplibre.android.maps.ImageContent(5 * d, 3 * d, w - 5 * d, h - 3 * d),
-        )
-    }
-    val sections = (0 until app.vela.core.data.transit.Transitous.MAX_LABELS).map { i ->
-        Expression.formatEntry(
-            Expression.coalesce(Expression.get("n$i"), Expression.literal("")),
-            Expression.FormatOption.formatTextColor(Expression.toColor(Expression.coalesce(Expression.get("c$i"), Expression.literal("#ffffff")))),
-        )
-    }
+    if (style.getLayer(TRANSIT_LABELS_LAYER) != null) return
     val layer = SymbolLayer(TRANSIT_LABELS_LAYER, TRANSIT_LABELS_SRC).withProperties(
-        PropertyFactory.textField(Expression.format(*sections.toTypedArray())),
+        PropertyFactory.textField(Expression.get("n")),
         PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
         PropertyFactory.textSize(12.5f),
+        PropertyFactory.textColor(Expression.toColor(Expression.get("ink"))),
         PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
-        PropertyFactory.iconImage(TRANSIT_PILL_IMG),
+        PropertyFactory.iconImage(Expression.get("pill")),
         PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
         PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
         PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
         PropertyFactory.textPadding(6f),
-        // A thin dark outline on the light pill keeps the yellow and orange letters readable on white.
-        PropertyFactory.textHaloColor(if (dark) "#202124" else "#5F6368"),
-        PropertyFactory.textHaloWidth(if (dark) 0f else 0.6f),
     ).apply { setMinZoom(13f) }
     when {
         style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(layer, AMBIENT_LAYER)

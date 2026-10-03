@@ -2998,11 +2998,14 @@ non-transit route is on screen, in the chooser or during a drive (`nonTransitRou
 MapSurface): in a big city they buried the route, and the colored lines' orange and red read as
 traffic. They return when the route closes.
 Metro stretches carry their lines' letters (`MapLine.labels`, the route `shortName` and color,
-an express variant like "6X" folded into its base, numbers before letters, at most six): one dark
-pill per stretch at its middle from z13 (white with a gray edge and a thin dark outline on the
-letters on the light map, near-black on the dark one) (`TRANSIT_LABELS_LAYER`, below the business icons), each
-letter in its line's color through a format expression, two spaces apart. Lines that share a color
-share one strand (the B, D, F and M are all orange), so only the letter tells them apart (#648).
+an express variant like "6X" folded into its base, numbers before letters, at most six), from z13
+(`TRANSIT_LABELS_LAYER`, below the business icons). One pill per line COLOR on a stretch, filled
+with that color (`ensureTransitPill`, a rim in the map's land color), letters two spaces apart in
+black or white, whichever contrasts better (`transitInk`, the WCAG ratio with white favored 1.6x),
+the same in both themes. Several colors on one stretch split it into equal parts, each pill at the
+middle of its part (`lineSlice`). Letters in the line color on a white pill were unreadable for the
+light colors (yellow, orange). Lines that share a color share one strand (the B, D, F and M are all
+orange), so only the letter tells them apart (#648).
 Kinds are settings (`TransitLayer`): lines
 metro / trains, stop icons bus / metro / train, all on by default; a stop's kinds come from the
 `modes` Transitous gives it. An unreadable reply is "no lines".
