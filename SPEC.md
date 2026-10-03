@@ -1473,6 +1473,20 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   geometry: a paint change applies at once and a GeoJSON upload a few frames later, so new
   fractions on old pieces paint a strip of the new color behind the arrow.
 
+- **Every moving route piece is double-buffered** (the cut piece, the ahead window and the far
+  tail each have a second copy, `ROUTE_*_B`). A re-anchor uploads the new geometry into the hidden
+  copy, tagged with a generation number (`ROUTE_GEN_PROP`), and draws that copy at
+  `ROUTE_PENDING_OPACITY` (0.004; at 0 MapLibre skips the layer and never tiles its source) with
+  the gradient for its own range. Once `querySourceFeatures` finds the tagged geometry, and one
+  frame later, the copy goes to full opacity and the other is hidden in the same frame. The far
+  tail is not waited on (it starts 3 km ahead, usually off screen, where its tiles never load), and
+  a copy still unseen after `ROUTE_PENDING_MAX_PASSES` (40) passes swaps anyway (the map panned
+  away). The ahead window's clear stretch follows the SHOWN cut piece's end. Re-anchoring a single
+  layer in place painted the new gradient over the old geometry for a frame: the driven route
+  flashed back in once per cut slide (every ~300 m) and the traffic colors jumped along the line.
+  4a, 60 s of a 3x demo drive, frames with route color behind the arrow: 11 single-frame flashes
+  before, none after.
+
 - The line is inserted **above all road and bridge geometry and below labels**: anchor to the
   first symbol layer after the last `bridge_*` layer, not simply the first symbol layer, which
   in Liberty is the one-way arrow beneath the bridges.
