@@ -69,4 +69,51 @@ class PaintedRoadsTest {
         val surface = m.single { it.kind == Kind.SURFACE }
         assertEquals(listOf(a, mid, b), surface.points)
     }
+
+    // A north-running street crossed at its far end by an east-west street (a junction).
+    private val south = LatLng(38.5450, -121.7400)
+    private val junction = LatLng(38.5460, -121.7400)
+    private fun crossStreet() = PaintedRoads.Way(mapOf("highway" to "residential", "name" to "Cross"),
+        listOf(LatLng(38.5460, -121.7410), junction, LatLng(38.5460, -121.7390)))
+
+    @Test fun `turn arrows sit in their lanes before the junction`() {
+        val main = PaintedRoads.Way(mapOf("highway" to "secondary", "name" to "Main", "oneway" to "yes",
+            "turn:lanes" to "left|through|through;right"), listOf(south, junction))
+        val arrows = PaintedRoads.build(listOf(main, crossStreet())).filter { it.kind == Kind.ARROW }
+        assertEquals(listOf("arrow-left", "arrow-through", "arrow-through-right"), arrows.map { it.icon })
+        // Heading north; lanes left to right = west to east; all short of the junction.
+        assertTrue(arrows.zipWithNext().all { (a, b) -> a.points[0].lng < b.points[0].lng })
+        assertTrue(arrows.all { it.points[0].lat < junction.lat && Math.abs(it.rotDeg) < 1.0 || Math.abs(it.rotDeg - 360) < 1.0 })
+    }
+
+    @Test fun `a signal at a junction gets a stop line on the approaching half`() {
+        val main = PaintedRoads.Way(mapOf("highway" to "secondary", "name" to "Main", "lanes" to "2"), listOf(south, junction))
+        val sig = PaintedRoads.Node(mapOf("highway" to "traffic_signals"), junction)
+        val stops = PaintedRoads.build(listOf(main, crossStreet()), listOf(sig)).filter { it.kind == Kind.STOP }
+        // Main's northbound approach: the line sits ~8.5 m south of the junction, across the east half.
+        val line = stops.single { it.points.all { p -> p.lat < junction.lat - 0.00005 } }
+        assertTrue(line.points.all { it.lng >= -121.74001 })
+        assertTrue(line.points.any { it.lng > -121.73999 })
+    }
+
+    @Test fun `a marked crossing node becomes a crosswalk across the road`() {
+        val mid = LatLng(38.5455, -121.7400)
+        val main = PaintedRoads.Way(mapOf("highway" to "secondary", "name" to "Main", "lanes" to "2"), listOf(south, mid, junction))
+        val x = PaintedRoads.Node(mapOf("highway" to "crossing", "crossing" to "marked"), mid)
+        val cw = PaintedRoads.build(listOf(main), listOf(x)).filter { it.kind == Kind.CROSSWALK }
+        assertEquals(1, cw.size)
+        assertTrue(cw[0].points[0].lng < -121.7400 && cw[0].points[1].lng > -121.7400)
+    }
+
+    @Test fun `a divided road gets a median between its halves`() {
+        val off = 0.00025 // ~22 m apart
+        val nb = PaintedRoads.Way(mapOf("highway" to "primary", "name" to "Blvd", "oneway" to "yes", "lanes" to "2"),
+            listOf(LatLng(38.5400, -121.7400), LatLng(38.5450, -121.7400)))
+        val sb = PaintedRoads.Way(mapOf("highway" to "primary", "name" to "Blvd", "oneway" to "yes", "lanes" to "2"),
+            listOf(LatLng(38.5450, -121.7400 + off), LatLng(38.5400, -121.7400 + off)))
+        val med = PaintedRoads.build(listOf(nb, sb)).filter { it.kind == Kind.MEDIAN }
+        assertEquals(1, med.size)
+        assertTrue(med[0].points.all { it.lng > -121.7400 && it.lng < -121.7400 + off })
+        assertTrue("gap minus both carriageways", med[0].widthM in 10.0..16.0)
+    }
 }

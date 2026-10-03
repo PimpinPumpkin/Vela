@@ -3729,10 +3729,10 @@ architecture note.
   Left for later: splitting the location/compass fields out of the one big MapUiState collect,
   remembering MapSurface's derived lists, the free-drive puck still being a GeoJSON symbol, the map
   rendering under the Settings page, NETWORK location at 1 s during a drive, main-thread trip-file IO.
-- **Painted roads are a DEVELOPER TEST only (2026-10-03, SPEC):** `debug.vela.tune.paintedRoads 1` turns on
-  lane/center/bike/crosswalk markings from OSM; `debug.vela.paintUrl` points it at a saved reply served over
-  `adb reverse` instead of public Overpass (which rate-limits and asked Vela to go easy). Never ship it
-  fetching per viewport from Overpass; the real version bakes into tiles.
+- **Painted roads are a DEVELOPER TEST only (2026-10-03, SPEC):** `debug.vela.tune.paintedRoads 1` streams the
+  California bake (`painted-roads` release, `scripts/bake-painted-roads.sh`), `2` builds live (Overpass, or
+  `debug.vela.paintUrl` for a saved reply over `adb reverse`; public Overpass rate-limits and asked Vela to go
+  easy). After a rebake bump the `?v=` on `PaintedRoadsLayer.BAKED_URL` or the map cache keeps old tiles.
 - **The drawn route is smoothed (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).** MapSurface passes
   `straightenJogs(route.polyline)` (remembered on the polyline) to the map; the arrow, cut and traffic
   colors all measure along that line, guidance keeps the router's. Only drops vertices; tested on the

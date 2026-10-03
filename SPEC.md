@@ -1532,17 +1532,26 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   (`RouteSmoothingTest`). Seen on a Davis demo drive: a notch at a junction where the open router's
   line went 338, 17, 347, 315, 346, 357 degrees over 7-15 m segments.
 - **Painted roads, a developer test** (`core/data/PaintedRoads`, `ui/map/PaintedRoadsLayer`, dial
-  `debug.vela.tune.paintedRoads 1`, off for everyone). From OpenStreetMap's tags, drawn at real
-  scale from z16.5 above the roads and below the route line: road surface as wide as its lanes need
-  (3.3 m a lane, bike lanes 1.2 m set 0.9 m outside them), a double yellow center line on two-way
-  streets with a lane count, or untagged at tertiary class and up or with bike lanes, dashed white
-  lines between lanes, green bike lanes (`cycleway=lane` both sides on two-way, right on one-way),
-  and zebra crosswalks for `footway=crossing` ways that are marked (not `unmarked`, not
-  `crossing:markings=no`). Lines stop `JUNCTION_TRIM_M` (8 m) short of intersections (points shared
-  by three streets, or two with different names; service roads do not count). Data comes from
-  Overpass for a ~650 m box, or from `debug.vela.paintUrl` (a saved reply over adb reverse, to keep
-  a test off the public servers). The crosswalk dash is 0.4 of the line width: at 0.22 MapLibre's
-  dash texture drew nothing. A shipping version would bake these into tiles (ROADMAP "Richer roads").
+  `debug.vela.tune.paintedRoads`: 1 = the California bake, 2 = built on the phone; off for everyone).
+  From OpenStreetMap's tags, drawn at real scale from z16.5 above the roads and below the route line:
+  median between the two one-way halves of a divided road (same name, opposite headings, 8-40 m
+  apart; width = the gap less both carriageways), road surface as wide as its lanes (3.3 m a lane,
+  bike lanes 1.2 m set 0.9 m outside), a double yellow center line (lane count tagged, or untagged
+  at tertiary and up or with bike lanes), dashed white lane lines (lane count, per-direction counts,
+  or counted from `turn:lanes`), green bike lanes, zebra crosswalks (`footway=crossing` ways, plus
+  marked crossing NODES where no crossing way passes through them, or each corner drew twice),
+  stop lines at stop signs and signals across the approaching lanes (`STOP_BACK_M` 8.5 m back at a
+  junction, at the node otherwise; a set-back node faces the nearer junction unless `direction`
+  says), and one turn arrow per lane from `turn:lanes` `ARROW_BACK_M` (18 m) before the junction
+  (left/through/right/U-turn combinations, drawn per theme; as SDF icons the strokes thinned to
+  nothing; `ARROW_M` 8 is set by eye because MapLibre drew a 5 m arrow about 3 m long). Lines stop
+  `JUNCTION_TRIM_M` (8 m) short of intersections (points shared by three streets or two with
+  different names; service roads do not count). Bake: `scripts/bake-painted-roads.sh <pbf> <name>
+  --upload` (osmium filter + export, `PaintedRoadsBakeTest` with `-DvelaPaintIn/-DvelaPaintOut`,
+  tippecanoe z15 layer `paint`) onto the `painted-roads` release (root-commit target); California:
+  1.5 M streets and 0.85 M points to 2.9 M marks in 22 s, 69 MB. The crosswalk dash is 0.4 of its
+  width: at 0.22 MapLibre's dash texture drew nothing. A version query on `BAKED_URL` moves the map
+  cache off old tiles after a rebake. Not shipped (ROADMAP "Richer roads").
 - **Traffic controls on the BROWSE map** appear from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`, the scale
   bar reads about 50 ft on a 4a, Google's level); they are still fetched from z16. Nav keeps 15.4.
   A level crossing or hump within 25 m of a light or stop sign is drawn offset down-left
