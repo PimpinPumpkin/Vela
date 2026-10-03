@@ -5,9 +5,16 @@ import app.vela.ui.icons.Sym
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -36,6 +43,35 @@ fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
         s.startsWith("Open") || s.startsWith("Closes") -> Color(0xFF1E8E3E)
         else -> Color(0xFFD93025)
     }
+}
+
+/** Google-style status line: the head ("Open"/"Closed"/"Closes soon") wears the
+ *  status color, everything after the separator ("· Closes 10 p.m.") reads dim
+ *  gray. Single-segment lines ("Open 24 hours") stay fully colored. */
+@Composable
+fun StatusText(
+    status: String,
+    openNow: Boolean? = null,
+    style: TextStyle = LocalTextStyle.current,
+    fontWeight: FontWeight? = null,
+    dim: Color = Color.Gray,
+    modifier: Modifier = Modifier,
+) {
+    val head = status.substringBefore("·").trim()
+    val tail = status.substringAfter("·", "").trim()
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(color = placeStatusColor(status, openNow), fontWeight = fontWeight)) {
+                append(head)
+            }
+            if (tail.isNotEmpty()) {
+                append(" · ")
+                withStyle(SpanStyle(color = dim)) { append(tail) }
+            }
+        },
+        style = style,
+        modifier = modifier,
+    )
 }
 
 /**

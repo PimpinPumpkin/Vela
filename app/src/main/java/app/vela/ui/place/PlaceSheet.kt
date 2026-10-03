@@ -286,6 +286,8 @@ fun PlaceSheet(
      *  at the tapped placeholder's id when the tap resolves to a listing with another id, so the
      *  resolve updates the open sheet instead of re-mounting it (the "flash", user 2026-09-22). */
     sheetKey: String = place.id,
+    /** Open the sheet on this tab (e.g. "Menu" from the results row button). Null = Overview. */
+    initialTab: String? = null,
     stopDepartures: app.vela.core.model.StopDepartures? = null,
     stopDeparturesLoading: Boolean = false,
     stopDeparturesCachedAt: Long? = null,
@@ -511,7 +513,7 @@ fun PlaceSheet(
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
     // The open tab, and where its in-flow tab row sits, for the pinned copy.
-    var placeTab by remember(place.id) { mutableStateOf<String?>(null) }
+    var placeTab by remember(place.id, initialTab) { mutableStateOf(initialTab) }
     var tabKeys by remember(place.id) { mutableStateOf(listOf("Overview")) }
     var tabRowY by remember(place.id) { mutableStateOf(Float.MAX_VALUE) }
     var bodyY by remember { mutableStateOf(0f) }
@@ -3398,6 +3400,20 @@ private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start:
 // hl=). Lowercase contains-match, so "Menu", "Menú", "Speisekarte & Getränke" all hit.
 private val MENU_TAB_WORDS = listOf("menu", "menú", "menù", "speisekarte", "cardápio", "menukaart", "меню", "meny")
 
+/** Whether the place has menu-tagged photos (drives the results' Menu button). */
+internal fun hasMenuPhotos(place: Place): Boolean =
+    place.photoCategories.any { cat -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
+
+/** Canonical share URL for a place: the cid deep link when it has a feature id, else a query. */
+internal fun sharePlaceUrl(place: Place): String {
+    val lat = place.location.lat
+    val lng = place.location.lng
+    val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
+        ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
+    return if (cid != null) "https://www.google.com/maps?cid=$cid"
+    else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
+}
+
 /** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
  *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
  *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
@@ -3474,7 +3490,7 @@ internal fun HeaderCircleButton(
 }
 
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
-private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
+internal fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
 /** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
  *  panel's hidden Google controls (the originals are carved out once the chips arrive). Search
