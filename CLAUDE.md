@@ -3746,7 +3746,8 @@ architecture note.
   California bake (`painted-roads` release, `scripts/bake-painted-roads.sh`), `2` builds live (Overpass, or
   `debug.vela.paintUrl` for a saved reply over `adb reverse`; public Overpass rate-limits and asked Vela to go
   easy). After a rebake bump the `?v=` on `PaintedRoadsLayer.BAKED_URL` or the map cache keeps old tiles.
-- **The drawn line is `roundBends(removeZigzags(route.drawPolyline ?: route.polyline))`; the
+- **The drawn line is `roundBends(removeZigzags(straightenCircles(route.drawPolyline ?: route.polyline)))`
+  (traffic-circle bulges under 45 m flattened, medians not); the
   ARROW rides `straightenJogs` (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).** A hybrid route's
   `drawPolyline` is OpenStreetMap geometry (`HybridRoute.drawLine`), so the blue sits on the drawn
   road instead of Google's own line beside it. MapSurface passes that;

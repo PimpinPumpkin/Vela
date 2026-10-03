@@ -121,7 +121,17 @@ object RouteSmoothing {
         return if (l < 0.01) sqrt(x * x + y * y) else abs(x * by - y * bx) / l
     }
 
-    fun straightenMedianJogs(poly: List<LatLng>): List<LatLng> {
+    /** A traffic circle on a straight street: the route follows half of a ring about 10 m across,
+     *  a bulge 3 to 6 m out over 25 to 35 m, which the road-width line showed as a kink where the
+     *  drawn street runs straight (2026-10-03). Short spans only: a median split is long, and
+     *  straightening one put the line on the median. */
+    const val CIRCLE_MAX_SPAN_M = 45.0
+    const val CIRCLE_MAX_JOG_M = 8.0
+
+    /** The drawn line's jog rule: [straightenMedianJogs] limited to traffic-circle-sized bulges. */
+    fun straightenCircles(poly: List<LatLng>): List<LatLng> = straightenMedianJogs(poly, CIRCLE_MAX_SPAN_M, CIRCLE_MAX_JOG_M)
+
+    fun straightenMedianJogs(poly: List<LatLng>, maxSpanM: Double = MAX_SPAN_M, maxJogM: Double = MAX_JOG_M): List<LatLng> {
         if (poly.size < 4) return poly
         val n = poly.size
         val cum = DoubleArray(n)
@@ -132,8 +142,8 @@ object RouteSmoothing {
         while (i < n - 1) {
             var best = -1
             var j = i + 2
-            while (j < n && cum[j] - cum[i] <= MAX_SPAN_M) {
-                if (isJog(poly, cum, i, j)) best = j
+            while (j < n && cum[j] - cum[i] <= maxSpanM) {
+                if (isJog(poly, cum, i, j, maxJogM)) best = j
                 j++
             }
             if (best > 0) { out += poly[best]; i = best } else { out += poly[i + 1]; i++ }
@@ -141,7 +151,7 @@ object RouteSmoothing {
         return out
     }
 
-    private fun isJog(p: List<LatLng>, cum: DoubleArray, i: Int, j: Int): Boolean {
+    private fun isJog(p: List<LatLng>, cum: DoubleArray, i: Int, j: Int, maxJogM: Double = MAX_JOG_M): Boolean {
         if (cum[i] < HEADING_PROBE_M || cum[cum.size - 1] - cum[j] < HEADING_PROBE_M) return false
         val a = p[i]; val b = p[j]
         // Local flat frame around a (meters): fine over a 140 m stretch.
@@ -155,7 +165,7 @@ object RouteSmoothing {
             val t = (x * bx + y * by) / len2
             if (t <= 0.0 || t >= 1.0) return false
             val dev = abs(x * by - y * bx) / sqrt(len2)
-            if (dev > MAX_JOG_M) return false
+            if (dev > maxJogM) return false
             if (dev > maxDev) maxDev = dev
         }
         if (maxDev < MIN_JOG_M) return false

@@ -1537,7 +1537,12 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   piece does not line up (ends over 25 m apart or length off by a third). The roads are drawn from
   OpenStreetMap; Google's smoother line sat a few meters off their center on every curve. On a
   Davis curve the open router's vertices sit 0.1 to 0.5 m from the tile's road lines. MapSurface
-  then draws `roundBends(removeZigzags(line))`: bends under `ROUND_MAX_TURN_DEG` (45) are cut by at
+  then draws `roundBends(removeZigzags(straightenCircles(line)))`. `straightenCircles` is the
+  median-jog rule cut down to traffic-circle size (`CIRCLE_MAX_SPAN_M` 45, `CIRCLE_MAX_JOG_M` 8): a
+  route straight through a residential traffic circle follows half the ring, a 3 to 6 m bulge over
+  about 30 m, which the road-width line showed as a kink on a street that draws straight (measured
+  on a real route: 3.4 m and 5.4 m before, 0.5 m after); a median split is longer and is left alone.
+  `roundBends`: bends under `ROUND_MAX_TURN_DEG` (45) are cut by at
   most `ROUND_MAX_CUT_M` (8 m) or a quarter of the shorter side, twice (a 15 degree bend between
   40 m sides moves about a meter; junction corners stay exact). The roads themselves come from the
   tiles and cannot be reshaped on the phone.

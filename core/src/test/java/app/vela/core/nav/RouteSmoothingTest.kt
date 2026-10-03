@@ -125,4 +125,19 @@ class RouteSmoothingTest {
         assertTrue("moves the line at most ~1.5 m ($worst)", worst < 1.5)
         assertTrue("rounded (more points)", out.size > poly.size)
     }
+
+    @Test fun `a traffic circle bulge on a straight street is drawn straight, a median split is not`() {
+        // East 200 m, then half of a 5 m ring (a residential traffic circle), then east 200 m.
+        val before = walk(90.0 to 200.0)
+        val c = before.last().destinationPoint(5.0, 90.0)
+        val ring = (1 until 12).map { k -> c.destinationPoint(5.0, 270.0 - k * 15.0) }
+        val after = walk(90.0 to 200.0).let { w -> val off = c.destinationPoint(5.0, 90.0); w.map { p -> off.destinationPoint(p.distanceTo(w.first()), 90.0) } }
+        val poly = before + ring + after
+        assertTrue("fixture bulges", maxOffsetFromLine(poly, poly.first(), poly.last()) > 4.0)
+        val out = RouteSmoothing.straightenCircles(poly)
+        assertTrue("straightened", maxOffsetFromLine(out, poly.first(), poly.last()) < 0.5)
+        // The 40 m median jog of the test above is longer than a circle: left alone.
+        val median = walk(90.0 to 200.0, 31.0 to 11.6, 90.0 to 40.0, 149.0 to 11.6, 90.0 to 200.0)
+        assertEquals(median, RouteSmoothing.straightenCircles(median))
+    }
 }
