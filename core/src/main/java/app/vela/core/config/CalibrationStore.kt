@@ -100,7 +100,7 @@ class CalibrationStore @Inject constructor(
     /** Security gate: every endpoint must point at an allow-listed host, so a
      *  compromised config can never exfiltrate requests to an attacker's server. */
     private fun isAllowed(c: Calibration): Boolean {
-        val hosts = listOf(c.searchEndpoint, c.directionsEndpoint, c.reviewsEndpoint, c.photosEndpoint, c.sessionWarmUrl)
+        val hosts = listOf(c.searchEndpoint, c.directionsEndpoint, c.reviewsEndpoint, c.photosEndpoint, c.sessionWarmUrl, c.suggestEndpoint)
             .map { runCatching { URI(it).host }.getOrNull() }
         return hosts.all { it != null && it in ALLOWED_HOSTS }
     }
@@ -128,6 +128,10 @@ class CalibrationStore @Inject constructor(
                 if (!list.isNullOrEmpty()) k to list else null
             }?.toMap().orEmpty()
             val remoteDirPaths = (o["directionsPaths"] as? JsonObject)?.mapNotNull { (k, v) ->
+                val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
+                if (!list.isNullOrEmpty()) k to list else null
+            }?.toMap().orEmpty()
+            val remoteSuggestPaths = (o["suggestPaths"] as? JsonObject)?.mapNotNull { (k, v) ->
                 val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
                 if (!list.isNullOrEmpty()) k to list else null
             }?.toMap().orEmpty()
@@ -208,6 +212,9 @@ class CalibrationStore @Inject constructor(
                 transitExcludeWords = wordList("transitExcludeWords"),
                 stopBoardIndices = stopBoardIndices,
                 directionsPaths = Calibration.DEFAULT_DIRECTIONS_PATHS + remoteDirPaths,
+                suggestEndpoint = str("suggestEndpoint", d.suggestEndpoint),
+                suggestPb = str("suggestPb", d.suggestPb),
+                suggestPaths = Calibration.DEFAULT_SUGGEST_PATHS + remoteSuggestPaths,
                 reviewWords = strMap("reviewWords"),
                 reviewSelectors = strMap("reviewSelectors"),
             )

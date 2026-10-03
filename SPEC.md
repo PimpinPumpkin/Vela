@@ -730,8 +730,9 @@ downgraded to a driving reply. The payload is the **longest** `)]}'`-guarded str
 
 1. Capture the live request in browser devtools or a proxy. Mask the query and any coordinates
    before saving the capture anywhere.
-2. For a moved **field**, edit the path in `calibration.json` `paths` (or `directionsPaths`,
-   which merges key by key over `Calibration.DEFAULT_DIRECTIONS_PATHS`).
+2. For a moved **field**, edit the path in `calibration.json` `paths` (or `directionsPaths` /
+   `suggestPaths`, which merge key by key over `Calibration.DEFAULT_DIRECTIONS_PATHS` /
+   `DEFAULT_SUGGEST_PATHS`).
 3. For a moved **endpoint or pb**, edit the template. The host must stay on the allowlist.
 4. For a reshaped **response**, ship a `transformsJs` bundle (section 11).
 5. Bump `version`, run `./scripts/sign-calibration.sh`, and commit `calibration.json` with
@@ -3665,7 +3666,8 @@ repository's raw URL at launch and adopts the remote bundle only if all three ho
 What the bundle can carry, in increasing power:
 
 - **Configuration**: pb templates, endpoint URLs, the photo proto, the search parser's
-  positional `paths`, `directionsPaths`, the language keyword tables (`statusClosedWords`,
+  positional `paths`, `directionsPaths`, the search-as-you-type request (`suggestEndpoint`,
+  `suggestPb` with `{SPAN} {LNG} {LAT} {W} {H}`, `suggestPaths`), the language keyword tables (`statusClosedWords`,
   `statusOpenWords`, `transitCategoryWords`, `transitExcludeWords`, `reviewWords`), the review
   scrape's CSS selectors, the browser identity fields, the RPC header value `rpcContext`, the
   stop-board indices (`stopBoardIndices`), the fleet defaults (`defaultVoiceId`,

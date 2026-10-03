@@ -4477,7 +4477,10 @@ architecture note.
   ({"review": alternation, "more": alternation}) replaces `ReviewWords`' compiled patterns and
   `reviewSelectors` ({card, id, moreToggle, author, text, date}) replaces the compiled CSS class
   hooks in `WebReviewsFetcher` (the `SEL` object in the scrape script; defaults are the
-  `DEFAULT_*_SEL` consts). Null / missing keys = compiled. Still compiled-only: the transit
+  `DEFAULT_*_SEL` consts). Null / missing keys = compiled. The search-as-you-type request is
+  remote since 2026-10-03 (`suggestEndpoint`, `suggestPb`, `suggestPaths`; it was compiled-only
+  from 2026-09-22). A new Google-facing request goes into calibration the same day it ships.
+  Still compiled-only: the transit
   itinerary parser, the photo walk, the Street View parser, and the full-screen review page's
   carve (`ReviewsPanel`, its own script).
 - **Daily Google health check (2026-09-23, `.github/workflows/google-health.yml`).** Two jobs:

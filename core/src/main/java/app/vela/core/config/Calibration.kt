@@ -117,6 +117,13 @@ data class Calibration(
     // the congestion spans. Remote keys merge over [DEFAULT_DIRECTIONS_PATHS] one at a time, like
     // [paths] does for search, so a moved traffic field is a config edit, not an app release.
     val directionsPaths: Map<String, List<Int>> = DEFAULT_DIRECTIONS_PATHS,
+    // Google's search-as-you-type answer (2026-10-03; compiled-only from 2026-09-22): the endpoint
+    // (everything before `&pb=`), the pb template ({SPAN} {LNG} {LAT} {W} {H}) and the positions
+    // SuggestParser reads, relative to the response root for "rows" and to a row's content block
+    // for the rest. Remote paths merge over [DEFAULT_SUGGEST_PATHS] one key at a time.
+    val suggestEndpoint: String = DEFAULT_SUGGEST_ENDPOINT,
+    val suggestPb: String = DEFAULT_SUGGEST_PB,
+    val suggestPaths: Map<String, List<Int>> = DEFAULT_SUGGEST_PATHS,
     // The review scrape's two levers that Google actually moves (2026-09-13): the WORD
     // alternations that find the reviews tab ("review") and the more-reviews button ("more"),
     // and the CSS SELECTORS of the review card and its parts ("card", "id", "moreToggle",
@@ -202,6 +209,23 @@ data class Calibration(
             "end" to listOf(7, 3, 3),
             "summaryText" to listOf(1),
             "spans" to listOf(3, 5, 0),
+        )
+
+        const val DEFAULT_SUGGEST_ENDPOINT = "https://www.google.com/s?tbm=map&gs_ri=maps&suggest=p&authuser=0&hl=en&gl=us"
+        const val DEFAULT_SUGGEST_PB = "!2i5!4m12!1m3!1d{SPAN}!2d{LNG}!3d{LAT}!2m3!1f0!2f0!3f0!3m2!1i{W}!2i{H}!4f13.1" +
+            "!7i20!10b1!12m6!1m2!18b1!30b1!2m2!1i203!2i100!19m4!1m3!1i1!2i1!3i1!20m1!1e1"
+        /** Suggest response anchors (see SuggestParser's header). "lat2"/"lng2" are the fallback
+         *  position inside the place node when the row has no top-level one. */
+        val DEFAULT_SUGGEST_PATHS: Map<String, List<Int>> = mapOf(
+            "rows" to listOf(0, 1),
+            "title" to listOf(0, 0),
+            "primary" to listOf(1, 0),
+            "secondary" to listOf(2, 0),
+            "lat" to listOf(11, 2),
+            "lng" to listOf(11, 3),
+            "lat2" to listOf(13, 0, 3, 2),
+            "lng2" to listOf(13, 0, 3, 3),
+            "featureId" to listOf(13, 0, 0),
         )
 
         val DEFAULT_PATHS: Map<String, List<Int>> = mapOf(

@@ -35,26 +35,27 @@ object SuggestParser {
     // A row without a location is a plain query ("Starbucks" + "See locations", "cvs pharmacy
     // hours"). The block is the first array element whose first child is an array starting
     // with a string.
-    fun parse(body: String): Result {
+    fun parse(body: String, paths: Map<String, List<Int>> = app.vela.core.config.Calibration.DEFAULT_SUGGEST_PATHS): Result {
+        fun p(k: String): IntArray = (paths[k] ?: app.vela.core.config.Calibration.DEFAULT_SUGGEST_PATHS.getValue(k)).toIntArray()
         val payload = unwrap(body) ?: return Result(emptyList(), emptyList())
         val root = runCatching { GoogleResponse.parse(payload) }.getOrNull() ?: return Result(emptyList(), emptyList())
-        val rows = root.at(0, 1) as? JsonArray ?: return Result(emptyList(), emptyList())
+        val rows = root.at(*p("rows")) as? JsonArray ?: return Result(emptyList(), emptyList())
         val places = ArrayList<Place>()
         val queries = ArrayList<String>()
         for (row in rows) {
             val block = (row as? JsonArray)?.firstOrNull { el ->
                 el is JsonArray && (el.firstOrNull() as? JsonArray)?.firstOrNull() is JsonPrimitive
             } as? JsonArray ?: continue
-            val title = block.at(0, 0).str() ?: continue
-            val primary = block.at(1, 0).str() ?: title
-            val secondary = block.at(2, 0).str()
-            val lat = block.at(11, 2).num() ?: block.at(13, 0, 3, 2).num()
-            val lng = block.at(11, 3).num() ?: block.at(13, 0, 3, 3).num()
+            val title = block.at(*p("title")).str() ?: continue
+            val primary = block.at(*p("primary")).str() ?: title
+            val secondary = block.at(*p("secondary")).str()
+            val lat = block.at(*p("lat")).num() ?: block.at(*p("lat2")).num()
+            val lng = block.at(*p("lng")).num() ?: block.at(*p("lng2")).num()
             if (lat == null || lng == null) {
                 queries.add(title)
                 continue
             }
-            val fid = block.at(13, 0, 0).str()?.takeIf { FEATURE_ID.matches(it) }
+            val fid = block.at(*p("featureId")).str()?.takeIf { FEATURE_ID.matches(it) }
             places.add(
                 Place(
                     id = fid ?: "suggest:${"%.5f".format(lat)},${"%.5f".format(lng)}",
