@@ -1381,7 +1381,11 @@ the camera job, capped at 3 s) before `onStartNav`: seconds 3 to 5 went to 21-33
 the route preview is up (`NavSession.prepareOpener` -> `VoiceGuide.prepare` -> `PiperSynth.prepare`,
 background priority, up to `MAX_PREPARED` lines kept by voice, speaker, speed and exact text) and
 plays without synthesis at Start; on a route whose first turn is seconds away the imminent-turn
-prompt cuts the opener, and that prompt is synthesized at Start as before.
+prompt cuts the opener, and that prompt is synthesized at Start as before. A real line drops any
+prepare still queued behind it (`speaksAsked`), and the opener is spoken as an interrupt, which
+also lifts a voice model still loading from launch to the default priority: on a cold start on the
+4a the opener came 9 s after Start (7.5 s model load at background priority, then four queued
+prepares) and comes after about 4 s now, the rest being the load itself (2026-10-03).
 
 Fifth round (2026-09-30): the preview also prepares the first two turns' prompts at starting
 speed (`NavEngine.startPrompts`: far and near approach lines at the 400 m / 150 m band floors and

@@ -123,11 +123,17 @@ class PiperSynth @Inject constructor(
 
     @Volatile private var warmingTid = 0
 
-    /** A prompt is waiting: finish any background warm-up at the speaking priority. */
-    private fun boostWarm() {
+    /** A prompt is waiting: finish any background warm-up at the speaking priority (the default one
+     *  for an urgent line: the drive's opener waited 7.5 s on a cold start on the 4a, 2026-10-03). */
+    private fun boostWarm(urgent: Boolean = false) {
         val tid = warmingTid
-        if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, SPEAK_PRIORITY) }
+        if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, if (urgent) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY) }
     }
+
+    /** Bumped by every [speak]: a [prepare] still queued when a real line is asked for is dropped,
+     *  so prepare-ahead work never sits between Start and the opener (four queued prepares held a
+     *  cold-start opener back by another 5 s on the 4a). */
+    @Volatile private var speaksAsked = 0
 
 
     private fun ensureLoaded(): OfflineTts? {
@@ -139,6 +145,7 @@ class PiperSynth @Inject constructor(
         // use-after-free). loadFailed resets so a previously-bad voice doesn't block a new one.
         runCatching { cur?.release() }
         tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
+        val loadStart = android.os.SystemClock.elapsedRealtime()
         // Two attempts: a voice loaded the instant its download/extract finishes can lose the race with
         // the filesystem flush on some devices — the first OfflineTts load throws, and (without a retry)
         // loadFailed sticks so the voice stays SILENT until an app restart. A brief retry heals it.
@@ -163,7 +170,7 @@ class PiperSynth @Inject constructor(
                 runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
                 tts = engine
                 loadedVoiceId = r.voiceId
-                Log.i(TAG, "loaded ${r.voiceId}: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
+                Log.i(TAG, "loaded ${r.voiceId} in ${android.os.SystemClock.elapsedRealtime() - loadStart} ms: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
                 return engine
             } catch (t: Throwable) {
                 Log.e(TAG, "model load failed (attempt ${attempt + 1}): ${t.message}", t)
@@ -200,8 +207,10 @@ class PiperSynth @Inject constructor(
     }
 
     override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {
-        boostWarm()
+        speaksAsked++
+        boostWarm(interrupt)
         val myGen = if (interrupt) ++generation else generation
+        val asked = android.os.SystemClock.elapsedRealtime()
         worker.execute {
             val engine = ensureLoaded()
             if (engine == null || myGen != generation) { onDone(); return@execute }
@@ -225,6 +234,9 @@ class PiperSynth @Inject constructor(
                     for (i in samples.indices) samples[i] = (samples[i] * vol).coerceIn(-1f, 1f)
                 }
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
+                // How long a line waited (queue + model load) and took to make: a late "Starting
+                // navigation" on a slow head unit is one of the two (2026-10-03). No text: lengths only.
+                Log.i(TAG, "speak: waited ${t0 - asked} ms, ${if (ready != null) "prepared" else "synthesized in $genMs ms"}, ${text.length} chars")
                 if (myGen != generation) return@execute
                 if (samples.isNotEmpty()) {
                     val at = ensureTrack(sampleRate)
@@ -310,7 +322,9 @@ class PiperSynth @Inject constructor(
     /** Synthesize [text] now, at background priority, and keep the audio for the next [speak] of
      *  exactly this line with the same voice and speed (a few lines at most). */
     override fun prepare(text: String, onDone: () -> Unit) {
+        val asked = speaksAsked
         worker.execute {
+            if (asked != speaksAsked) { onDone(); return@execute }
             runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
             try {
                 val engine = ensureLoaded() ?: return@execute

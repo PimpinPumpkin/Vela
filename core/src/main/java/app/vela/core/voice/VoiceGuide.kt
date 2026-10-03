@@ -410,7 +410,9 @@ class VoiceGuide @Inject constructor(
             if (token != openerToken) return // a newer start / a stop superseded this opener
             val covered = roadNameLatin.keys.any { it.isNotEmpty() && text.contains(it) }
             val ready = covered || !hasForeignRun(text) || SystemClock.elapsedRealtime() >= deadline
-            if (ready) speak(text) else focusHandler.postDelayed(::attempt, 200)
+            // Urgent: nothing is playing at a start, and it must not wait for the voice to load at
+            // background priority or behind prepare-ahead work (9 s on a cold start, 4a 2026-10-03).
+            if (ready) speak(text, interrupt = true) else focusHandler.postDelayed(::attempt, 200)
         }
         attempt()
     }

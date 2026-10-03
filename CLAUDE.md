@@ -3813,6 +3813,13 @@ architecture note.
   and two `piper-tts` threads on the fast cores during the fly-in. The auto-start now waits for the
   follow-up work (`awaitRouteWork`, cap 3 s): 21-33 fps. The opener is synthesized during the route
   preview (`NavSession.prepareStart`: opener + `NavEngine.startPrompts`, `PiperSynth.prepare`).
+  **A spoken line drops queued prepares, and the opener is URGENT (2026-10-03, head unit report:
+  "Starting navigation" ~5 s after moving).** A cold start loads the voice model at launch (5.5 to
+  8 s on the 4a, at background priority) and the opener waited behind it and behind four queued
+  prepares: 9 s from Start on the 4a. `PiperSynth.speak` bumps `speaksAsked` (a queued prepare from
+  before it is skipped) and an interrupt boosts the load to default priority; `speakOpener` speaks
+  with `interrupt = true`. Now ~4 s on a cold start (the rest is the load itself), immediate after
+  it. `PiperSynth` logs `speak: waited N ms, prepared|synthesized in N ms` and the load time.
   Tried and reverted (no gain, SPEC 4.7a fifth round): tile workers at background priority,
   skipping the overview fit on the one-tap path, waiting for voice prep or map idle there. Count
   fps FROM the nav service start (`navrun2`-style logcat alignment): before it the map may be idle,
