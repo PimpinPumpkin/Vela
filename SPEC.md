@@ -2972,7 +2972,11 @@ whole padded view was megabytes over a city, a zoom-out's bigger box failed, and
 the old box: lines only inside a square (#648). Over Midtown on the 4a a four-step zoom-out took
 19 cells in 4.5 s. A stretch shared by several lines is
 drawn as side-by-side strands (at most 4). The plain highlight is hidden for a kind (metro,
-train) while colored lines of that kind are in view. Metro stretches carry their lines' letters (`MapLine.labels`, the route `shortName` and color,
+train) while colored lines of that kind are in view. Both transit layers (the plain highlight and the colored lines with their letters) are off while a
+non-transit route is on screen, in the chooser or during a drive (`nonTransitRouteUp` in
+MapSurface): in a big city they buried the route, and the colored lines' orange and red read as
+traffic. They return when the route closes.
+Metro stretches carry their lines' letters (`MapLine.labels`, the route `shortName` and color,
 an express variant like "6X" folded into its base, numbers before letters, at most six): one dark
 pill per stretch at its middle from z13 (`TRANSIT_LABELS_LAYER`, below the business icons), each
 letter in its line's color through a format expression, two spaces apart. Lines that share a color

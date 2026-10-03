@@ -3670,6 +3670,11 @@ private fun MapSurface(
     }
     val chooserUp = state.directionsOpen && !state.navigating
     val chooserDest = if (state.directionsReversed) state.directionsOrigin else state.selected
+    // Transit lines (the plain highlight and the colored lines) are off while a non-transit route
+    // is on screen, chooser or drive: in a big city they buried the route, and the colored lines'
+    // orange and red read as traffic (user 2026-10-02).
+    val nonTransitRouteUp = (state.directionsOpen || state.navigating) &&
+        state.travelMode != app.vela.core.model.TravelMode.TRANSIT && state.activeRoute != null
     VelaMapView(
         styleUri = mapStyleUri,
         myLocation = state.myLocation,
@@ -3821,10 +3826,12 @@ private fun MapSurface(
         // DirectionsParser.parseTrafficSpans); the whole-map overlay stays off unless
         // the user explicitly enables it in Settings → Map.
         trafficOn = Traffic.on.value,
-        transitOn = app.vela.ui.TransitLayer.on.value,
+        transitOn = app.vela.ui.TransitLayer.on.value && !nonTransitRouteUp,
         transitMetro = app.vela.ui.TransitLayer.metro.value,
         transitTrains = app.vela.ui.TransitLayer.trains.value,
-        transitLines = state.transitLines,
+        // Off while a non-transit route is on screen (chooser or drive): in a big city the colored
+        // rail lines buried the route, and their orange and red read as traffic (user 2026-10-02).
+        transitLines = if (nonTransitRouteUp) emptyList() else state.transitLines,
         satelliteOn = app.vela.ui.SatelliteLayer.on.value,
         satDeep = state.satDeep,
         topographyOn = app.vela.ui.Topography.on.value,
