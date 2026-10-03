@@ -1162,12 +1162,12 @@ fun VelaMapView(
         if (navFollowing) { lastNavTarget = null; lastNavBearing = null }
     }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
-    // The ARROW rides a smoothed copy of the line (2026-10-03): short jogs around an island and
-    // digitizing zigzags are taken out so it does not swerve round something the car drives
-    // straight past. The LINE itself is drawn on the router's geometry, which is what the roads are
-    // drawn from: drawn smoothed, it left the road by up to 11 m (measured on the captured Google
-    // lines) and sat on the median or the verge once divided roads drew as two carriageways.
-    // Progress is measured on the router's line and scaled onto this one.
+    // The ARROW rides a smoothed copy of the line (2026-10-03): short jogs around an island are
+    // straightened so it does not swerve round something the car drives straight past. The LINE
+    // only has its digitizing zigzags taken out (MapScreen, `removeZigzags`, at most ~5 m, wobble
+    // the generalized tile roads do not have); the median-jog rule moved it up to 11 m (measured on
+    // the captured Google lines) and put it on the median or the verge once divided roads drew as
+    // two carriageways. Progress is measured on the drawn line and scaled onto this one.
     val puckLine = remember(routePolyline) { app.vela.core.nav.RouteSmoothing.straightenJogs(routePolyline) }
     val puckCum = remember(puckLine) { cumLengths(puckLine) }
 
@@ -3237,7 +3237,7 @@ fun VelaMapView(
                         slotState[0] = 0; slotState[1] = -1; slotState[4] = 0; slotState[5] = -1
                         cutLo.fill(Double.NaN); cutHi.fill(Double.NaN); winLo.fill(Double.NaN); winHi.fill(Double.NaN)
                         for (id in arrayOf(ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B, ROUTE_AHEAD_LAYER_B, ROUTE_TAIL_LAYER_B)) {
-                            style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                            style.routeSet(id, PropertyFactory.visibility(Property.NONE))
                         }
                     }
                     val gInt = runCatching { android.graphics.Color.parseColor(routeColorHolder.value) }
@@ -3287,8 +3287,8 @@ fun VelaMapView(
                         // A copy whose tiles are off screen (the map panned away) is never seen;
                         // it swaps after PENDING_MAX_PASSES so nothing stays stale.
                         if (slotState[3] >= 2 || ++slotState[8] >= ROUTE_PENDING_MAX_PASSES) {
-                            style.getLayer(cutLayerOf(ps))?.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(1f))
-                            style.getLayer(cutLayerOf(1 - ps))?.setProperties(PropertyFactory.visibility(Property.NONE))
+                            style.routeSet(cutLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(1f))
+                            style.routeSet(cutLayerOf(1 - ps), PropertyFactory.visibility(Property.NONE))
                             slotState[0] = ps; slotState[1] = -1
                             cutSwapped = true
                         }
@@ -3301,13 +3301,13 @@ fun VelaMapView(
                         // off screen, where its tiles never load.
                         if (aheadIn) slotState[7]++
                         if (slotState[7] >= 2 || ++slotState[9] >= ROUTE_PENDING_MAX_PASSES) {
-                            style.getLayer(aheadLayerOf(ps))?.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(1f))
-                            style.getLayer(tailLayerOf(ps))?.setProperties(
+                            style.routeSet(aheadLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(1f))
+                            style.routeSet(tailLayerOf(ps),
                                 PropertyFactory.visibility(if (winHi[ps] >= total - 1.0) Property.NONE else Property.VISIBLE),
                                 PropertyFactory.lineOpacity(1f),
                             )
-                            style.getLayer(aheadLayerOf(1 - ps))?.setProperties(PropertyFactory.visibility(Property.NONE))
-                            style.getLayer(tailLayerOf(1 - ps))?.setProperties(PropertyFactory.visibility(Property.NONE))
+                            style.routeSet(aheadLayerOf(1 - ps), PropertyFactory.visibility(Property.NONE))
+                            style.routeSet(tailLayerOf(1 - ps), PropertyFactory.visibility(Property.NONE))
                             slotState[4] = ps; slotState[5] = -1
                             winSwapped = true
                         }
@@ -3325,7 +3325,7 @@ fun VelaMapView(
                         routeGen++
                         cutLo[ps] = cutStart[0]; cutHi[ps] = cutEnd[0]
                         style.getSourceAs<GeoJsonSource>(cutSrcOf(ps))?.setGeoJson(lineFrom(cutStart[0], cutEnd[0], routeGen))
-                        style.getLayer(cutLayerOf(ps))?.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(ROUTE_PENDING_OPACITY))
+                        style.routeSet(cutLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(ROUTE_PENDING_OPACITY))
                         slotState[1] = ps; slotState[2] = routeGen; slotState[3] = 0; slotState[8] = 0
                     }
                     // The leading window re-anchors when the arrow nears its seam with the tail; the
@@ -3346,8 +3346,8 @@ fun VelaMapView(
                         style.getSourceAs<GeoJsonSource>(tailSrcOf(ps))?.setGeoJson(
                             if (tailDone) FeatureCollection.fromFeatures(emptyList<Feature>()) else lineFrom(tw, total, routeGen),
                         )
-                        style.getLayer(aheadLayerOf(ps))?.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(ROUTE_PENDING_OPACITY))
-                        style.getLayer(tailLayerOf(ps))?.setProperties(
+                        style.routeSet(aheadLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(ROUTE_PENDING_OPACITY))
+                        style.routeSet(tailLayerOf(ps),
                             PropertyFactory.visibility(if (tailDone) Property.NONE else Property.VISIBLE),
                             PropertyFactory.lineOpacity(ROUTE_PENDING_OPACITY),
                         )
@@ -3371,11 +3371,13 @@ fun VelaMapView(
                                 ((cutLo[ac] + NAV_CUT_HIDE_M - a0) / (a1 - a0)).toFloat().coerceIn(0f, 0.999f)
                             else
                                 ((cutHi[ac] - a0) / (a1 - a0) - 1.5 / 256.0).toFloat().coerceIn(0f, 0.999f)
-                            style.getLayer(aheadLayerOf(s))?.setProperties(
+                            style.routeSet(aheadLayerOf(s),
                                 PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), driven)),
+                                outline = routeOutlineGradient(pa, darkHolder.value),
                             )
-                            if (a1 < total - 1.0) style.getLayer(tailLayerOf(s))?.setProperties(
+                            if (a1 < total - 1.0) style.routeSet(tailLayerOf(s),
                                 PropertyFactory.lineGradient(routeGradient(0f, gInt, remap(a1, total))),
+                                outline = routeOutlineGradient(0f, darkHolder.value),
                             )
                         }
                     }
@@ -3389,9 +3391,11 @@ fun VelaMapView(
                                 else -> TRAVERSED_LIGHT
                             },
                         )
-                        style.getLayer(ROUTE_LAYER)?.setProperties(
+                        style.routeSet(ROUTE_LAYER,
                             PropertyFactory.visibility(if (trailHolder.value) Property.VISIBLE else Property.NONE),
                             PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
+                            // The driven trail carries no outline: only the road ahead is outlined.
+                            outline = routeOutlineGradient(1f, darkHolder.value),
                         )
                     }
                     // Per frame: only PAINT moves, and only on the 400 m cut piece, whose 256
@@ -3407,8 +3411,9 @@ fun VelaMapView(
                         val c0 = cutLo[s]
                         val c1 = cutHi[s]
                         val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
-                        style.getLayer(cutLayerOf(s))?.setProperties(
+                        style.routeSet(cutLayerOf(s),
                             PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
+                            outline = routeOutlineGradient(pc, darkHolder.value),
                         )
                     }
                 }
@@ -5225,6 +5230,23 @@ private fun ensureLayers(style: Style) {
         for (id in arrayOf(ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B, ROUTE_AHEAD_LAYER, ROUTE_AHEAD_LAYER_B, ROUTE_TAIL_LAYER, ROUTE_TAIL_LAYER_B)) {
             (style.getLayer(id) as? LineLayer)?.lineOpacityTransition = org.maplibre.android.style.layers.TransitionOptions(0, 0)
         }
+        // The outlines, one per piece on the piece's own source, all BELOW the lowest piece so an
+        // outline's round cap never draws across another piece's fill. Each starts like its piece.
+        // Dial `routeOutline` 0 leaves them out (read at style load).
+        val outlines = (app.vela.ui.AppTune.local("routeOutline") ?: app.vela.core.config.CalibrationStore.latest.tune("routeOutline", 1.0)) > 0.0
+        for (id in arrayOf(ROUTE_LAYER, ROUTE_TAIL_LAYER, ROUTE_TAIL_LAYER_B, ROUTE_AHEAD_LAYER, ROUTE_AHEAD_LAYER_B, ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B)) {
+            if (!outlines) break
+            val fill = style.getLayer(id) as? LineLayer ?: continue
+            val ol = LineLayer(id + ROUTE_OUTLINE_SUFFIX, fill.sourceId).withProperties(
+                PropertyFactory.lineWidth(routeOutlineWidth()),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                PropertyFactory.lineGradient(routeOutlineGradient(0f, false)),
+                PropertyFactory.visibility(fill.visibility.value ?: Property.VISIBLE),
+            )
+            ol.lineOpacityTransition = org.maplibre.android.style.layers.TransitionOptions(0, 0)
+            style.addLayerBelow(ol, ROUTE_LAYER)
+        }
     }
     // Grayed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
@@ -5235,7 +5257,9 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
-        if (style.getLayer(ROUTE_LAYER) != null) style.addLayerBelow(alt, ROUTE_LAYER)
+        // Below the selected route's outline too, or a shared stretch loses the outline.
+        val under = if (style.getLayer(ROUTE_LAYER + ROUTE_OUTLINE_SUFFIX) != null) ROUTE_LAYER + ROUTE_OUTLINE_SUFFIX else ROUTE_LAYER
+        if (style.getLayer(under) != null) style.addLayerBelow(alt, under)
         else style.addLayer(alt)
         // The outline: a thin line each side of the fill (line-gap-width = the fill's width). A
         // gray fill alone sank into a dense street grid, whose roads are a blue-gray of about the
@@ -7499,22 +7523,32 @@ private fun widenStreets(style: StyleLayers) {
     }
 }
 
-/** A faint darker edge on every road (2026-10-03, off until decided: dial `roadEdge` 1 turns it
- *  on, calibration tuning or `debug.vela.tune`). The modern palettes draw casings in the land
- *  color, so roads have no edge and the two halves of a divided road run together. */
-private val ROAD_CASINGS = listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
-    "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
-    "bridge_motorway_casing", "bridge_motorway_link_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
-    "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing")
+/** Road edges (2026-10-03), as Google's NAVIGATION map draws them (sampled on the 4a in a Davis
+ *  interchange by day and a Dubai one by night; Google's browse map has none). By day each road
+ *  gets a darker shade of its OWN fill, stronger on freeways and their ramps (local fill #abb5c5 /
+ *  edge #969fb0, freeway #7c8ba7 / #54638b in Google's); by night every road gets a near-black
+ *  edge. The modern palettes used to draw casings in the land color, so roads had no edge and the
+ *  two halves of a divided road ran together. Dial `roadEdge` 0 turns it off. */
+private val EDGE_MOTORWAY = listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing")
+private val EDGE_STREET = listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing",
+    "road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing",
+    "road_minor_casing", "road_link_casing", "bridge_street_casing", "bridge_link_casing")
+private val EDGE_SERVICE = listOf("road_service_track_casing", "bridge_service_track_casing")
 
-private fun roadEdgesOn() = (app.vela.ui.AppTune.local("roadEdge") ?: app.vela.core.config.CalibrationStore.latest.tune("roadEdge", 0.0)) > 0.0
-/** Each edge's width from street zoom in, dp. */
-private const val ROAD_EDGE_DP = 1.5
+private fun roadEdgesOn() = (app.vela.ui.AppTune.local("roadEdge") ?: app.vela.core.config.CalibrationStore.latest.tune("roadEdge", 1.0)) > 0.0
+/** Each edge's width from street zoom in, dp (Google's: 2 to 3 px on a 2.75x screen). */
+private const val ROAD_EDGE_DP = 1.0
 
 private fun applyRoadEdges(style: StyleLayers, dark: Boolean) {
     if (!roadEdgesOn()) return
-    val edge = if (dark) "#050a14" else "#8b9bad"
-    ROAD_CASINGS.forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(edge)) }
+    fun paint(ids: List<String>, color: String) = ids.forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(color)) }
+    if (dark) {
+        paint(EDGE_MOTORWAY + EDGE_STREET + EDGE_SERVICE, "#07090e")
+    } else {
+        paint(EDGE_MOTORWAY, "#5e75a0")   // fill #8aa4c0
+        paint(EDGE_STREET, "#94a1af")     // fill #aab9c9
+        paint(EDGE_SERVICE, "#8593a2")    // fill #9bacbc
+    }
 }
 
 internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = false) {
@@ -8670,18 +8704,19 @@ private fun applyData(
             // The OLD route's far tail is stale geometry now - clear it; the relaunched ticker
             // re-anchors the window on the new route and repopulates the tail (AUDIT FIX 9).
             style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-            style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.routeSet(ROUTE_TAIL_LAYER, PropertyFactory.visibility(Property.NONE))
             // The old route's pieces in either copy go too; the relaunched ticker starts from
             // copy A of the ahead line, seeded here.
             for (id in arrayOf(ROUTE_TAIL_LAYER_B, ROUTE_AHEAD_LAYER_B, ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B)) {
-                style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                style.routeSet(id, PropertyFactory.visibility(Property.NONE))
             }
             style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(routeFc)
             val seedInt = runCatching { android.graphics.Color.parseColor(routeColor) }.getOrDefault(ROUTE_FREEFLOW)
-            style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
+            style.routeSet(ROUTE_AHEAD_LAYER,
                 PropertyFactory.visibility(Property.VISIBLE),
                 PropertyFactory.lineOpacity(1f),
                 PropertyFactory.lineGradient(routeGradient(0f, seedInt, trafficSpans)),
+                outline = routeOutlineGradient(0f, dark),
             )
         }
         lastAppliedRouteLine = route
@@ -8709,17 +8744,17 @@ private fun applyData(
             // solid gray alternate lines (and any leftover nav ahead-suffix) read as "the car
             // route is still drawn" next to them (user 2026-07-08); alternates stay pickable
             // from the route list.
-            style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.routeSet(ROUTE_LAYER, PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_TRAFFIC_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
             style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ALT_ROUTE_EDGE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
             style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-            style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-            style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.routeSet(ROUTE_CUT_LAYER, PropertyFactory.visibility(Property.NONE))
+            style.routeSet(ROUTE_AHEAD_LAYER, PropertyFactory.visibility(Property.NONE))
             style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-            style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.routeSet(ROUTE_TAIL_LAYER, PropertyFactory.visibility(Property.NONE))
             hideRouteCopiesB(style)
         }
         // Re-dot when the route swapped or the zoom moved enough to change the on-screen
@@ -8739,10 +8774,10 @@ private fun applyData(
             if (lastRouteMode == 2) {
                 style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
                 style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-                style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-                style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                style.routeSet(ROUTE_CUT_LAYER, PropertyFactory.visibility(Property.NONE))
+                style.routeSet(ROUTE_AHEAD_LAYER, PropertyFactory.visibility(Property.NONE))
                 style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-                style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                style.routeSet(ROUTE_TAIL_LAYER, PropertyFactory.visibility(Property.NONE))
                 hideRouteCopiesB(style)
             }
             lastBrowseGradKey = null // fresh mode = re-apply the gradient below
@@ -8750,9 +8785,10 @@ private fun applyData(
         val gradKey = 31 * (31 * (31 * p.toRawBits() + routeInt) + trafficSpans.hashCode()) + System.identityHashCode(route)
         if (gradKey != lastBrowseGradKey) {
             lastBrowseGradKey = gradKey
-            style.getLayer(ROUTE_LAYER)?.setProperties(
+            style.routeSet(ROUTE_LAYER,
                 PropertyFactory.visibility(Property.VISIBLE),
                 PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
+                outline = routeOutlineGradient(p, dark),
             )
             style.getSourceAs<GeoJsonSource>(ROUTE_TRAFFIC_SRC)?.setGeoJson(trafficSpanLines(route, trafficSpans, p))
             style.getLayer(ROUTE_TRAFFIC_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
@@ -8764,7 +8800,7 @@ private fun applyData(
         if (modeChanged) {
             style.getLayer(ROUTE_TRAFFIC_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-            style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            style.routeSet(ROUTE_LAYER, PropertyFactory.visibility(Property.VISIBLE))
         }
     }
     lastRouteMode = routeMode
@@ -9692,12 +9728,41 @@ internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, w
     return FitPadding(side, top + side, bottom + side)
 }
 
+/** The route's dark outline (2026-10-03, Google's: a navy edge round its route line, day and night,
+ *  which is what keeps the line legible where it crosses other roads and passes under bridges).
+ *  One outline layer sits under the whole route group per piece ([ROUTE_OUTLINE_SUFFIX]), so an
+ *  outline never crosses a fill. */
+private const val ROUTE_OUTLINE_SUFFIX = "-ol"
+private const val ROUTE_OUTLINE_LIGHT = "#0e326a"
+private const val ROUTE_OUTLINE_DARK = "#061a45"
+/** Each side of the outline, dp. */
+private const val ROUTE_OUTLINE_DP = 1.25
+private fun routeOutlineWidth(): Expression = realWidthCurve(ROUTE_BASE_STOPS, ROUTE_REAL_M, ROUTE_CAP_DP) { z ->
+    -2.0 * ROUTE_OUTLINE_DP * ((z - 9.0) / 5.0).coerceIn(0.4, 1.0)
+}
+/** Transparent before [p] (the driven part), the outline color after it. */
+private fun routeOutlineGradient(p: Float, dark: Boolean): Expression =
+    if (p >= 1f) Expression.step(Expression.lineProgress(), Expression.color(android.graphics.Color.TRANSPARENT),
+        Expression.stop(0.9999f, Expression.color(android.graphics.Color.TRANSPARENT)))
+    else routeGradient(p, android.graphics.Color.parseColor(if (dark) ROUTE_OUTLINE_DARK else ROUTE_OUTLINE_LIGHT), emptyList(),
+        android.graphics.Color.TRANSPARENT)
+
+/** Sets [props] on a route piece and keeps its outline in step: visibility and opacity are copied,
+ *  the gradient is [outline] (the fill's own gradient is not an outline's). */
+private fun Style.routeSet(id: String, vararg props: org.maplibre.android.style.layers.PropertyValue<*>, outline: Expression? = null) {
+    getLayer(id)?.setProperties(*props)
+    val ol = getLayer(id + ROUTE_OUTLINE_SUFFIX) ?: return
+    val copy = props.filter { it.name == "visibility" || it.name == "line-opacity" }.toMutableList()
+    if (outline != null) copy += PropertyFactory.lineGradient(outline)
+    if (copy.isNotEmpty()) ol.setProperties(*copy.toTypedArray())
+}
+
 /** Empties and hides the second copies of the route pieces (see ROUTE_CUT_SRC_B). */
 private fun hideRouteCopiesB(style: Style) {
     for ((src, id) in arrayOf(
         ROUTE_CUT_SRC_B to ROUTE_CUT_LAYER_B, ROUTE_AHEAD_SRC_B to ROUTE_AHEAD_LAYER_B, ROUTE_TAIL_SRC_B to ROUTE_TAIL_LAYER_B,
     )) {
         style.getSourceAs<GeoJsonSource>(src)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-        style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        style.routeSet(id, PropertyFactory.visibility(Property.NONE))
     }
 }

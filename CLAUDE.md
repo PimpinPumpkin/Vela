@@ -3745,11 +3745,12 @@ architecture note.
   California bake (`painted-roads` release, `scripts/bake-painted-roads.sh`), `2` builds live (Overpass, or
   `debug.vela.paintUrl` for a saved reply over `adb reverse`; public Overpass rate-limits and asked Vela to go
   easy). After a rebake bump the `?v=` on `PaintedRoadsLayer.BAKED_URL` or the map cache keeps old tiles.
-- **Only the ARROW rides the smoothed route (2026-10-03, `core/nav/RouteSmoothing`, SPEC 4.x).**
-  VelaMapView keeps `puckLine = straightenJogs(routePolyline)` for the puck's position and heading;
-  the line, cut, traffic colors and every progress number use the router's line. Drawing the smoothed
-  line put the blue up to 11 m off the road (median/verge) once divided roads drew as two
-  carriageways. Never hand the map a smoothed polyline again. Browse-map traffic controls show from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`).
+- **The drawn line gets `removeZigzags` only; the ARROW rides `straightenJogs` (2026-10-03,
+  `core/nav/RouteSmoothing`, SPEC 4.x).** MapSurface passes `removeZigzags(route.polyline)`;
+  VelaMapView's `puckLine = straightenJogs(routePolyline)` is for the puck's position and heading.
+  The median-jog rule on the drawn line put the blue up to 11 m off the road (median/verge) once
+  divided roads drew as two carriageways; drawing the raw line brought junction zigzags back. Never
+  hand the map a median-straightened polyline. Browse-map traffic controls show from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`).
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
   meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials
@@ -3758,6 +3759,9 @@ architecture note.
   A one-way major road is ONE carriageway (`ROAD_ONEWAY_WIDTH_M`, the tile's `oneway`): at full
   width each half of a divided road merged into a band 3x the route with the route on one edge.
   The route stripe is meter-based too (`routeWidth()`, 10 m); never go back to a pixel-only curve.
+  Road edges (`applyRoadEdges`, dial `roadEdge`) and the route outline (`<piece>-ol` layers, dial
+  `routeOutline`) are Google's navigation look; every paint of a route piece goes through
+  `Style.routeSet` so its outline follows. A new route piece layer needs an outline and routeSet.
 - **Turns drop everything but street names (2026-10-02, `ui/map/TurnDeclutter`, SPEC 4.7b).** While
   the nav camera swings (bearing error 10+ degrees) or a gesture moves it in nav, every visible
   symbol layer except street names, shields, exit numbers, `vela-nav-` callouts and the arrow is
