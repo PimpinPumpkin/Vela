@@ -3729,6 +3729,11 @@ architecture note.
   Left for later: splitting the location/compass fields out of the one big MapUiState collect,
   remembering MapSurface's derived lists, the free-drive puck still being a GeoJSON symbol, the map
   rendering under the Settings page, NETWORK location at 1 s during a drive, main-thread trip-file IO.
+- **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
+  meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
+  the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials
+  `roadWidthScale` (0 = Liberty) and `roadNameSpacing`. Online widths come from the live Liberty
+  style, so a width change only reaches users through this runtime pass, never the bundled JSON.
 - **Turns drop everything but street names (2026-10-02, `ui/map/TurnDeclutter`, SPEC 4.7b).** While
   the nav camera swings (bearing error 10+ degrees) or a gesture moves it in nav, every visible
   symbol layer except street names, shields, exit numbers, `vela-nav-` callouts and the arrow is

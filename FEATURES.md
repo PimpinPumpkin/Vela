@@ -425,6 +425,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
+- ✅ **Roads at their real width (2026-10-03).** Streets, arterials and highways are drawn about as wide as
+  they really are when you zoom in, like Google's, instead of thinning out next to the buildings, and
+  street names repeat often enough that each block's street is named.
 - ✅ **Simplified map in turns (2026-10-02).** During drive guidance the map keeps only street names
   while the camera swings through a turn or follows your finger, then fades the rest back in; 4a
   turns went from 40-49 fps to 48-60. Settings > Navigation "Simplify the map in turns", on by default.

@@ -211,15 +211,10 @@ how you get ours, and the buildings question stays parked behind this one.
 
 ### Richer roads  *(Google's street detail, without the 3D)*
 
-Next to Google at the same view, in nav and on the browse map, Vela's streets are thin lines;
-Google's are wide, divided roads show both carriageways with a median, and big roads show their
-lanes. Two steps, very different in size:
+Next to Google at the same view, divided roads show both carriageways with a median and big roads
+show their lanes. The first step (roads at their real width, street names on every block) shipped
+2026-10-03, see `docs/ROADMAP-HISTORY.md`. What is left:
 
-- **Style only (small, no new data):** wider road fills and casings at street and nav zoom, closer
-  to Google's widths at the same visible area, and lighter arterial fills. Divided roads are
-  already two ways in OSM, so at wide enough widths the gap between them reads as the divider.
-  A palette and width pass in the four apply functions; measure fps after (wider lines are fill
-  cost, not placement cost).
 - **Lanes and medians (large, needs our own tiles):** the OpenMapTiles schema OpenFreeMap serves
   has no lane count, so width by lanes, lane lines and painted medians need a basemap baked with an
   extended schema (planetiler profile + `lanes`, `divider`). Downloaded regions could get it first,

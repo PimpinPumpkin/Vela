@@ -2482,6 +2482,24 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   45/40/43, with the change 41/42/39) and the claim did not survive. Repeated runs of one build vary
   by 5 to 7 fps of median on a 4a, which is wide enough to invent a regression, so a median gap
   under about 6 fps from this rig means nothing.
+- **Every road class is drawn near its real width at street zoom** (`widenStreets`, 2026-10-03).
+  Liberty grows a road's line 1.2x per zoom level while the map doubles, so its streets thin out
+  next to the buildings as you zoom; Google's are about a street's true width (4a, same visible
+  area, downtown grid: about 45 px across where a block is about 400 px). Each class has a width in
+  meters (`ROAD_WIDTH_M`: minor 10, service 3.5, links 8, secondary/tertiary 13, trunk/primary 17,
+  motorway 22) turned into dp at 40 degrees latitude (78271.517 x cos 40 / 2^z m per dp; an
+  expression cannot read the latitude) and capped (`ROAD_WIDTH_CAP_DP`); the line drawn is the
+  wider of that and the style's own, so overview zooms are unchanged. Casings keep the style's
+  border width around the wider fill. Roads, bridges and tunnels of one class share the curve.
+  Dial `roadWidthScale` (calibration tuning, or `debug.vela.tune`) scales the meters; 0 restores
+  the style's widths. Street names: `symbol-spacing` 140 on both name layers
+  (`ROAD_NAME_SPACING_PX`, dial `roadNameSpacing`); at MapLibre's default 250 most blocks of a grid
+  carried no name at street zoom, with every Vela layer hidden too, so it was the spacing, not
+  collisions. Browse pans at z16.6 measured the same with old and new widths (51-59 fps); nav turns
+  pooled over four runs a side had the same median (53), with two low single seconds (38, 43) on
+  the new widths against 46 on the old, inside this rig's noise. The route stripe widened with
+  the roads at street zoom (`ROUTE_WIDTH` 13 / 20 / 24 at z16 / 17.5 / 18.5, alternates a step
+  under), or it sat inside a real-width street like a pencil line.
 
 ### 6.4 The building-overlay gate
 

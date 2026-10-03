@@ -1014,3 +1014,11 @@ done so it *earns* trust rather than spends it:
 - **Grid cells: per-cell updates.** Done the same evening: installed cell revs against the
   manifest, an Update on the Downloaded row, and the automatic-updates setting re-pulls newer
   cells whole (a cell is a few MB, so no delta).
+
+## 2026-10-03: roads at their real width
+
+- **Richer roads, the style step.** Every road class is drawn near its real width at street and
+  nav zoom (Liberty's lines thinned out as you zoomed, Google's match the street), bridges and
+  tunnels with their roads, and street names are spaced 140 px instead of 250 so each block's
+  street is named. Pans measured the same on a 4a. Dials `roadWidthScale` and `roadNameSpacing`.
+  Lanes and medians stay open (they need tiles with a lane count).
