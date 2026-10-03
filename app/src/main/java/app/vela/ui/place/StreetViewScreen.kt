@@ -1,5 +1,7 @@
 package app.vela.ui.place
 
+import app.vela.ui.icons.Sym
+
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -22,12 +24,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -260,7 +256,7 @@ fun StreetViewScreen(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                Icons.Default.ArrowUpward,
+                                Sym.ArrowUpward,
                                 contentDescription = stringResource(R.string.street_view_move),
                                 tint = Color(0xFF1A1A1A),
                                 modifier = Modifier.rotate(delta), // lean toward the street's direction
@@ -363,7 +359,7 @@ fun StreetViewScreen(
                     ) {
                         Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
                             Icon(
-                                Icons.Default.History,
+                                Sym.History,
                                 contentDescription = stringResource(R.string.street_view_dates),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp),
@@ -384,7 +380,7 @@ fun StreetViewScreen(
                     .dpadHighlight(CircleShape).size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = Color.White)
+                    Icon(Sym.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = Color.White)
                 }
             }
 
@@ -400,7 +396,7 @@ fun StreetViewScreen(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        if (full) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        if (full) Sym.FullscreenExit else Sym.Fullscreen,
                         contentDescription = stringResource(R.string.street_view_fullscreen),
                         tint = Color.White,
                     )

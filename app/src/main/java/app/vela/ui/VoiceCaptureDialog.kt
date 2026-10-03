@@ -1,5 +1,7 @@
 package app.vela.ui
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -14,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -91,7 +91,7 @@ fun VoiceCaptureDialog(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Default.Mic,
+                            Sym.Mic,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimary,
                         )

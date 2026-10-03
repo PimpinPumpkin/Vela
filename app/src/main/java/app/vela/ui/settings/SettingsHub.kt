@@ -1,5 +1,7 @@
 package app.vela.ui.settings
 
+import app.vela.ui.icons.SymOutlined
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,20 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.VolumeUp
-import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.CloudDownload
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Navigation
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -87,7 +75,7 @@ internal fun SettingsHub(
             shape = androidx.compose.foundation.shape.CircleShape,
             colors = settingsFieldColors(),
             placeholder = { Text(stringResource(R.string.settings_search_hint)) },
-            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(SymOutlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             // The top focusable control: Back routes its DOWN here; UP/DOWN escape the field
             // (dpadFieldEscape) so the rows below stay reachable by key.
             modifier = topRow.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
@@ -150,35 +138,35 @@ internal fun SettingsHub(
             return m
         }
         HubRow(
-            icon = Icons.Outlined.Palette,
+            icon = SymOutlined.Palette,
             title = stringResource(R.string.settings_appearance),
             subtitle = stringResource(R.string.settings_hub_appearance_sub),
             modifier = rowModifier(SettingsSection.APPEARANCE, first = true),
             onClick = { onOpen(SettingsSection.APPEARANCE, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Map,
+            icon = SymOutlined.Map,
             title = stringResource(R.string.settings_map),
             subtitle = stringResource(R.string.settings_hub_map_sub),
             modifier = rowModifier(SettingsSection.MAP, first = false),
             onClick = { onOpen(SettingsSection.MAP, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Storefront,
+            icon = SymOutlined.Storefront,
             title = stringResource(R.string.settings_places),
             subtitle = stringResource(R.string.settings_hub_places_sub),
             modifier = rowModifier(SettingsSection.PLACES, first = false),
             onClick = { onOpen(SettingsSection.PLACES, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Navigation,
+            icon = SymOutlined.Navigation,
             title = stringResource(R.string.settings_navigation),
             subtitle = stringResource(R.string.settings_hub_navigation_sub),
             modifier = rowModifier(SettingsSection.NAVIGATION, first = false),
             onClick = { onOpen(SettingsSection.NAVIGATION, null) },
         )
         HubRow(
-            icon = Icons.AutoMirrored.Outlined.VolumeUp,
+            icon = SymOutlined.VolumeUp,
             title = stringResource(R.string.settings_voice),
             // A voice download keeps its progress visible from the hub (it used to sit at the top
             // of the Voice section precisely so a collapsed library couldn't hide it).
@@ -190,49 +178,49 @@ internal fun SettingsHub(
             onClick = { onOpen(SettingsSection.VOICE, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Mic,
+            icon = SymOutlined.Mic,
             title = stringResource(R.string.settings_search),
             subtitle = stringResource(R.string.settings_hub_search_sub),
             modifier = rowModifier(SettingsSection.SEARCH, first = false),
             onClick = { onOpen(SettingsSection.SEARCH, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Star,
+            icon = SymOutlined.Star,
             title = stringResource(R.string.settings_saved_places),
             subtitle = stringResource(R.string.settings_hub_saved_sub),
             modifier = rowModifier(SettingsSection.SAVED_PLACES, first = false),
             onClick = { onOpen(SettingsSection.SAVED_PLACES, null) },
         )
         HubRow(
-            icon = Icons.Outlined.CloudDownload,
+            icon = SymOutlined.CloudDownload,
             title = stringResource(R.string.settings_offline),
             subtitle = stringResource(R.string.settings_hub_offline_sub),
             modifier = rowModifier(SettingsSection.OFFLINE, first = false),
             onClick = { onOpen(SettingsSection.OFFLINE, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Shield,
+            icon = SymOutlined.Shield,
             title = stringResource(R.string.settings_privacy),
             subtitle = stringResource(R.string.settings_hub_privacy_sub),
             modifier = rowModifier(SettingsSection.PRIVACY, first = false),
             onClick = { onOpen(SettingsSection.PRIVACY, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Speed,
+            icon = SymOutlined.Speed,
             title = stringResource(R.string.settings_performance),
             subtitle = stringResource(R.string.settings_hub_performance_sub),
             modifier = rowModifier(SettingsSection.PERFORMANCE, first = false),
             onClick = { onOpen(SettingsSection.PERFORMANCE, null) },
         )
         HubRow(
-            icon = Icons.Outlined.BugReport,
+            icon = SymOutlined.BugReport,
             title = stringResource(R.string.settings_diagnostics),
             subtitle = stringResource(R.string.settings_hub_diagnostics_sub),
             modifier = rowModifier(SettingsSection.DIAGNOSTICS, first = false),
             onClick = { onOpen(SettingsSection.DIAGNOSTICS, null) },
         )
         HubRow(
-            icon = Icons.Outlined.Info,
+            icon = SymOutlined.Info,
             title = stringResource(R.string.settings_about),
             subtitle = stringResource(R.string.settings_hub_about_sub),
             modifier = rowModifier(SettingsSection.ABOUT, first = false),

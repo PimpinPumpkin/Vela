@@ -1,5 +1,8 @@
 package app.vela.ui.place
 
+import app.vela.ui.icons.Sym
+import app.vela.ui.icons.SymOutlined
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.calculateTargetValue
@@ -24,25 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.automirrored.filled.DirectionsBike
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.AddLocationAlt
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AltRoute
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.LocalGasStation
-import androidx.compose.material.icons.filled.LocalGroceryStore
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -255,7 +239,7 @@ fun GoogleStyleDirectionsPanel(
                             modifier = Modifier.weight(1f),
                         )
                         Button(onClick = onStartNav) {
-                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.place_start))
                         }
@@ -280,14 +264,14 @@ fun GoogleStyleDirectionsPanel(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                RoundAction(Icons.Default.Tune, stringResource(R.string.exp_chooser_options), dark) {
+                RoundAction(Sym.Tune, stringResource(R.string.exp_chooser_options), dark) {
                     collapsed.value = false
                     scope.launch { bodyScroll.animateScrollTo(0) }
                 }
                 Spacer(Modifier.width(8.dp))
-                RoundAction(Icons.Default.Share, stringResource(R.string.place_share), dark, onShare)
+                RoundAction(Sym.Share, stringResource(R.string.place_share), dark, onShare)
                 Spacer(Modifier.width(8.dp))
-                RoundAction(Icons.Default.Close, stringResource(R.string.place_close_directions), dark, onClose)
+                RoundAction(Sym.Close, stringResource(R.string.place_close_directions), dark, onClose)
             }
             if (!compact) {
                 Spacer(Modifier.height(10.dp))
@@ -353,7 +337,7 @@ fun GoogleStyleDirectionsPanel(
                                     .padding(vertical = 6.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.AltRoute, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                Icon(Sym.AltRoute, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     androidx.compose.ui.res.pluralStringResource(R.plurals.exp_chooser_alts, routes.size - 1, routes.size - 1),
@@ -380,7 +364,7 @@ fun GoogleStyleDirectionsPanel(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             IconButton(onClick = { onAltsOpenChange(false) }, modifier = Modifier.dpadHighlight(CircleShape)) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.exp_chooser_alts_back), tint = ink)
+                                Icon(Sym.ArrowBack, contentDescription = stringResource(R.string.exp_chooser_alts_back), tint = ink)
                             }
                             Text(
                                 stringResource(R.string.exp_chooser_alts_title),
@@ -442,7 +426,7 @@ fun GoogleStyleDirectionsPanel(
                                         color = if (cams > 0) SheetPalette.TrafficAmber else dim,
                                     )
                                 }
-                                if (chosen) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                if (chosen) Icon(Sym.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -493,7 +477,7 @@ fun GoogleStyleDirectionsPanel(
                                 }
                                 if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
                                     Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.Top) {
-                                        Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                        Icon(SymOutlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(stringResource(R.string.place_avoid_not_honored), style = MaterialTheme.typography.bodyMedium, color = ink)
                                     }
@@ -548,17 +532,17 @@ fun GoogleStyleDirectionsPanel(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(onClick = onStartNav) {
-                        Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.place_start))
                     }
                     FilledTonalButton(onClick = onEditStops) {
-                        Icon(Icons.Default.AddLocationAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Sym.AddLocationAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.exp_chooser_add_stops))
                     }
                     FilledTonalButton(onClick = onShare) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Sym.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.place_share))
                     }
@@ -608,10 +592,10 @@ internal fun ModeTabs(
 ) {
     Row(modifier.horizontalScroll(rememberScrollState()).padding(start = 8.dp)) {
         listOf(
-            Triple(TravelMode.DRIVE, R.string.place_mode_drive, Icons.Default.DirectionsCar),
-            Triple(TravelMode.TRANSIT, R.string.place_mode_transit, Icons.Default.DirectionsBus),
-            Triple(TravelMode.WALK, R.string.place_mode_walk, Icons.AutoMirrored.Filled.DirectionsWalk),
-            Triple(TravelMode.BICYCLE, R.string.place_mode_bike, Icons.AutoMirrored.Filled.DirectionsBike),
+            Triple(TravelMode.DRIVE, R.string.place_mode_drive, Sym.DirectionsCar),
+            Triple(TravelMode.TRANSIT, R.string.place_mode_transit, Sym.DirectionsBus),
+            Triple(TravelMode.WALK, R.string.place_mode_walk, Sym.DirectionsWalk),
+            Triple(TravelMode.BICYCLE, R.string.place_mode_bike, Sym.DirectionsBike),
         ).forEach { (mode, label, icon) ->
             val sel = mode == currentMode
             val tint = if (sel) MaterialTheme.colorScheme.primary else ink
@@ -656,7 +640,7 @@ internal fun SavedRouteChip(name: String, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Filled.Bookmark, contentDescription = null,
+            Sym.Bookmark, contentDescription = null,
             tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(14.dp),
         )
         Spacer(Modifier.width(4.dp))

@@ -1,16 +1,16 @@
 package app.vela.ui.nav
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.layout.layout
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.draw.clipToBounds
@@ -29,13 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,12 +39,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.LocalGasStation
-import androidx.compose.material.icons.filled.EvStation
-import androidx.compose.material.icons.filled.LocalGroceryStore
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.foundation.text.BasicTextField
@@ -105,9 +92,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Pause
 
 /**
  * Top banner during navigation, styled like Google's: a large directional turn
@@ -238,7 +222,7 @@ fun ManeuverBanner(
                         label = "reroute-angle",
                     )
                     Icon(
-                        Icons.Filled.Refresh,
+                        Sym.Refresh,
                         contentDescription = null,
                         modifier = Modifier
                             .size(if (compact) 36.dp else 54.dp)
@@ -651,7 +635,7 @@ fun NavSearchChips(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         ) {
-            Icon(Icons.Default.Search, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
+            Icon(Sym.Search, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             BasicTextField(
                 value = query,
@@ -871,7 +855,7 @@ fun NavBarTop(
         ) {
             if (roadName.isNullOrBlank()) {
                 Icon(
-                    if (handleUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    if (handleUp) Sym.KeyboardArrowUp else Sym.KeyboardArrowDown,
                     contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
                     tint = SheetPalette.dim(dark),
                     modifier = Modifier.size(22.dp),
@@ -881,7 +865,7 @@ fun NavBarTop(
                 // beside it so the row still reads as "this lifts".
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 56.dp)) {
                     Icon(
-                        if (handleUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        if (handleUp) Sym.KeyboardArrowUp else Sym.KeyboardArrowDown,
                         contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
                         tint = SheetPalette.dim(dark),
                         modifier = Modifier.size(16.dp),
@@ -914,7 +898,7 @@ fun NavBarTop(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 ),
             ) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(26.dp))
+                Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(26.dp))
             }
             Spacer(Modifier.width(8.dp))
             Column(
@@ -954,7 +938,7 @@ fun NavBarTop(
             // than a silent choice between them; the figures column shrinks to fit (FitText).
             if (showListButton) {
                 FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
+                    Icon(Sym.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
             }
             if (showListButton && onPause != null) Spacer(Modifier.width(6.dp))
@@ -972,7 +956,7 @@ fun NavBarTop(
                     ),
                 ) {
                     Icon(
-                        if (paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        if (paused) Sym.PlayArrow else Sym.Pause,
                         contentDescription = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
                         modifier = Modifier.size(26.dp),
                     )
@@ -1029,7 +1013,7 @@ fun ArrivalSummary(
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
+                Icon(Sym.CheckCircle, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
                 Column {
                     Text(stringResource(R.string.nav_arrived), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     if (destinationLabel.isNotBlank()) {
@@ -1174,7 +1158,7 @@ fun NavStopOffer(
                     )
                 }
                 Icon(
-                    androidx.compose.material.icons.Icons.Default.Close,
+                    Sym.Close,
                     contentDescription = stringResource(R.string.place_close_directions),
                 )
             }
@@ -1230,7 +1214,7 @@ fun NavHoldControls(
                 modifier = Modifier.padding(end = 8.dp),
             ) {
                 HoldChoice(
-                    icon = if (muted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    icon = if (muted) Sym.VolumeOff else Sym.VolumeUp,
                     label = stringResource(if (muted) R.string.nav_unmute_voice else R.string.nav_mute_voice),
                     filled = false,
                 ) { onMute(); open = false }
@@ -1273,7 +1257,7 @@ fun NavHoldControls(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    if (paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    if (paused) Sym.PlayArrow else Sym.Pause,
                     contentDescription = stringResource(R.string.nav_hold_controls),
                 )
                 if (muted) {
@@ -1289,7 +1273,7 @@ fun NavHoldControls(
                             .size(18.dp),
                     ) {
                         Icon(
-                            Icons.Default.VolumeOff,
+                            Sym.VolumeOff,
                             contentDescription = null,
                             modifier = Modifier.padding(3.dp),
                         )

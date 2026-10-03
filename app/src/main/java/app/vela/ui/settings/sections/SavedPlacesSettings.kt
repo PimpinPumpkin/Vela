@@ -1,5 +1,7 @@
 package app.vela.ui.settings.sections
 
+import app.vela.ui.icons.Sym
+
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,8 +31,6 @@ import app.vela.ui.dpadRowSibling // D-pad-only operation (docs/dpad.md)
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -201,7 +201,7 @@ private fun SavedRoutesGroup(vm: MapViewModel, onOpen: (app.vela.core.model.Save
                 var menu by remember { mutableStateOf(false) }
                 Box {
                     IconButton(onClick = { menu = true }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.exp_chooser_more))
+                        Icon(Sym.MoreVert, contentDescription = stringResource(R.string.exp_chooser_more))
                     }
                     app.vela.ui.VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         item(stringResource(R.string.settings_saved_route_edit)) { menu = false; vm.flashStatus(context.getString(R.string.settings_saved_route_edit_hint)); onOpen(r) }

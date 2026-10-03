@@ -1,5 +1,7 @@
 package app.vela.ui.nav
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,26 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.ForkLeft
-import androidx.compose.material.icons.filled.ForkRight
-import androidx.compose.material.icons.filled.Merge
-import androidx.compose.material.icons.filled.RampLeft
-import androidx.compose.material.icons.filled.RampRight
-import androidx.compose.material.icons.filled.Straight
-import androidx.compose.material.icons.filled.TripOrigin
-import androidx.compose.material.icons.filled.TurnLeft
-import androidx.compose.material.icons.filled.TurnRight
-import androidx.compose.material.icons.filled.TurnSharpLeft
-import androidx.compose.material.icons.filled.TurnSharpRight
-import androidx.compose.material.icons.filled.TurnSlightLeft
-import androidx.compose.material.icons.filled.TurnSlightRight
-import androidx.compose.material.icons.filled.UTurnLeft
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -321,7 +304,7 @@ fun StepsSheet(
                             color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
                         )
                     }
-                    IconButton(onClick = dismiss) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                    IconButton(onClick = dismiss) { Icon(Sym.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
                 }
             }
             // D-pad-first (docs/dpad.md): land focus on the landing step row when the sheet opens
@@ -499,7 +482,7 @@ fun NavStopsRow(
             }
             if (needed <= constraints.maxWidth) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Icon(Sym.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Spacer(Modifier.width(14.dp))
                     info(Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))
@@ -508,7 +491,7 @@ fun NavStopsRow(
             } else {
                 Column(Modifier.fillMaxWidth()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                        Icon(Sym.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                         Spacer(Modifier.width(14.dp))
                         info(Modifier.weight(1f))
                     }
@@ -552,7 +535,7 @@ fun StopDividerRow(name: String, modifier: Modifier = Modifier, passed: Boolean 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Default.Place,
+                Sym.Place,
                 contentDescription = null,
                 tint = accent,
                 modifier = Modifier.size(28.dp),
@@ -688,23 +671,23 @@ private const val PASSED_ALPHA = 0.5f
  * should use [maneuverIconFor] so the real exit angle is shown.
  */
 fun maneuverIcon(type: ManeuverType): ImageVector = when (type) {
-    ManeuverType.DEPART -> Icons.Filled.TripOrigin
-    ManeuverType.ARRIVE -> Icons.Filled.Flag
-    ManeuverType.TURN_LEFT -> Icons.Filled.TurnLeft
-    ManeuverType.TURN_RIGHT -> Icons.Filled.TurnRight
-    ManeuverType.SLIGHT_LEFT, ManeuverType.KEEP_LEFT -> Icons.Filled.TurnSlightLeft
-    ManeuverType.SLIGHT_RIGHT, ManeuverType.KEEP_RIGHT -> Icons.Filled.TurnSlightRight
-    ManeuverType.SHARP_LEFT -> Icons.Filled.TurnSharpLeft
-    ManeuverType.SHARP_RIGHT -> Icons.Filled.TurnSharpRight
-    ManeuverType.UTURN -> Icons.Filled.UTurnLeft
-    ManeuverType.MERGE -> Icons.Filled.Merge
-    ManeuverType.FORK_LEFT -> Icons.Filled.ForkLeft
-    ManeuverType.FORK_RIGHT -> Icons.Filled.ForkRight
-    ManeuverType.RAMP_LEFT -> Icons.Filled.RampLeft
-    ManeuverType.RAMP_RIGHT -> Icons.Filled.RampRight
+    ManeuverType.DEPART -> Sym.TripOrigin
+    ManeuverType.ARRIVE -> Sym.Flag
+    ManeuverType.TURN_LEFT -> Sym.TurnLeft
+    ManeuverType.TURN_RIGHT -> Sym.TurnRight
+    ManeuverType.SLIGHT_LEFT, ManeuverType.KEEP_LEFT -> Sym.TurnSlightLeft
+    ManeuverType.SLIGHT_RIGHT, ManeuverType.KEEP_RIGHT -> Sym.TurnSlightRight
+    ManeuverType.SHARP_LEFT -> Sym.TurnSharpLeft
+    ManeuverType.SHARP_RIGHT -> Sym.TurnSharpRight
+    ManeuverType.UTURN -> Sym.UTurnLeft
+    ManeuverType.MERGE -> Sym.Merge
+    ManeuverType.FORK_LEFT -> Sym.ForkLeft
+    ManeuverType.FORK_RIGHT -> Sym.ForkRight
+    ManeuverType.RAMP_LEFT -> Sym.RampLeft
+    ManeuverType.RAMP_RIGHT -> Sym.RampRight
     ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT -> NEUTRAL_ROUNDABOUT
-    ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> Icons.Filled.Straight
-    ManeuverType.UNKNOWN -> Icons.AutoMirrored.Filled.ArrowForward
+    ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> Sym.Straight
+    ManeuverType.UNKNOWN -> Sym.ArrowForward
 }
 
 /** The neutral roundabout glyph (ring + entry, no exit claimed), built once - it is the fallback

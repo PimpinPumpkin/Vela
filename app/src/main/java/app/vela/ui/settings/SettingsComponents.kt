@@ -1,14 +1,13 @@
 package app.vela.ui.settings
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -101,7 +100,7 @@ internal fun CollapsibleSectionTitle(text: String, expanded: Boolean, modifier: 
             modifier = Modifier.weight(1f),
         )
         Icon(
-            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            if (expanded) Sym.ExpandLess else Sym.ExpandMore,
             contentDescription = if (expanded) stringResource(R.string.settings_collapse) else stringResource(R.string.settings_expand),
             tint = MaterialTheme.colorScheme.primary,
         )

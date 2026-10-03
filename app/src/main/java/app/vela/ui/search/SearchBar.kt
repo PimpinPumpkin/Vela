@@ -1,5 +1,8 @@
 package app.vela.ui.search
 
+import app.vela.ui.icons.Sym
+import app.vela.ui.icons.SymOutlined
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,14 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.PublicOff
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
@@ -133,14 +128,14 @@ fun SearchBar(
             if (onBack != null) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
+                        Sym.ArrowBack,
                         contentDescription = stringResource(R.string.search_close_cd),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             } else {
                 Icon(
-                    Icons.Default.Search,
+                    Sym.Search,
                     contentDescription = null,
                     modifier = Modifier.padding(start = 6.dp, end = 4.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -248,7 +243,7 @@ fun SearchBar(
             if (query.isNotEmpty()) {
                 IconButton(onClick = onClear, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        Icons.Default.Close,
+                        Sym.Close,
                         contentDescription = stringResource(R.string.search_clear_cd),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -258,7 +253,7 @@ fun SearchBar(
             // connection (replaces the old banner). Hidden while typing so it doesn't crowd the clear "X".
             if (offline && query.isEmpty() && onBack == null) {
                 Icon(
-                    Icons.Default.PublicOff,
+                    Sym.PublicOff,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -278,7 +273,7 @@ fun SearchBar(
             if (onOpenLists != null && query.isEmpty()) {
                 IconButton(onClick = onOpenLists, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        Icons.Default.Bookmarks,
+                        SymOutlined.Bookmarks,
                         contentDescription = stringResource(R.string.mapscreen_section_lists),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -290,7 +285,7 @@ fun SearchBar(
             if (onMic != null && query.isEmpty()) {
                 IconButton(onClick = onMic, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        Icons.Default.Mic,
+                        SymOutlined.Mic,
                         contentDescription = stringResource(R.string.search_voice_cd),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -307,7 +302,7 @@ fun SearchBar(
                     // back to LocalContentColor's BLACK and the gear read darker than the mic
                     // beside it (user 2026-07-11). Glyphs wear onSurfaceVariant, text keeps ink.
                     Icon(
-                        Icons.Default.Settings,
+                        SymOutlined.Settings,
                         contentDescription = stringResource(R.string.search_settings_cd),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

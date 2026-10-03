@@ -1,5 +1,7 @@
 package app.vela.ui.settings.sections
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,10 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,14 +47,11 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadClickable
-import androidx.compose.material.icons.filled.ChevronRight
 import app.vela.ui.rememberDpadFocusKeeper // focus handoff for swap-in controls (docs/dpad.md)
 import app.vela.ui.DpadFocusHandoff
 import app.vela.ui.dpadFocusKept
@@ -272,7 +267,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         Text(stringResource(R.string.settings_downloaded_area), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { OfflineMaps.delete(r) { OfflineMaps.packDatabase(context) { OfflineMaps.list(context) { regions = it } } } }) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
+                        Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
                     }
                 }
             }
@@ -311,7 +306,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         ) { Text(stringResource(R.string.settings_update_region)) }
                     }
                     IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { vm.deleteCellRegion(first.regionId) }) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_cells))
+                        Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_offline_delete_cells))
                     }
                 }
             }
@@ -355,11 +350,11 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     singleLine = true,
                     shape = androidx.compose.foundation.shape.CircleShape,
                     colors = app.vela.ui.settings.settingsFieldColors(),
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    leadingIcon = { Icon(Sym.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = {
                         if (routeFilter.isNotEmpty()) {
                             IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { routeFilter = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.settings_clear_filter))
+                                Icon(Sym.Clear, contentDescription = stringResource(R.string.settings_clear_filter))
                             }
                         }
                     },
@@ -407,7 +402,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                             node.whole != null -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 // The country's own file carries the row; the chevron opens its pieces.
                                 IconButton(onClick = { expanded[node.title] = !row.open }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                                    Icon(if (row.open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Icon(if (row.open) Sym.ExpandLess else Sym.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
                                     RegionRow(node.whole, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it }, subtitleSuffix = stringResource(R.string.settings_region_whole_or_pieces, node.pieces.size))
@@ -495,7 +490,7 @@ private fun ParentRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         androidx.compose.material3.Icon(
-            if (open) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore,
+            if (open) Sym.ExpandLess else Sym.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 8.dp),
@@ -610,7 +605,7 @@ private fun RegionRow(
                     modifier = Modifier.dpadFocusKept(keeper),
                 ) { Text(stringResource(R.string.settings_update_region)) }
                 IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                    Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                 }
             }
             // Installed before place packs existed (or its pack was skipped): offer just
@@ -623,13 +618,13 @@ private fun RegionRow(
                     modifier = Modifier.dpadFocusKept(keeper),
                 ) { Text(stringResource(R.string.settings_get_places)) }
                 IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                    Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                 }
             }
             installed -> {
                 DpadFocusHandoff(keeper)
                 IconButton(onClick = { vm.deleteRoutingGraph(region.id) }, modifier = Modifier.dpadFocusKept(keeper)) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                    Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                 }
             }
             else -> {
@@ -663,7 +658,7 @@ private fun StorageRow(label: String, mb: Int, onClick: (() -> Unit)? = null) {
         Text(fmtMb(mb), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (onClick != null) {
             androidx.compose.material3.Icon(
-                androidx.compose.material.icons.Icons.Default.ChevronRight,
+                Sym.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )

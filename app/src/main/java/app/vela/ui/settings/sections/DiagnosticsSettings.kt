@@ -1,5 +1,7 @@
 package app.vela.ui.settings.sections
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,12 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,7 +22,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -277,7 +273,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                         modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(tripFocus, 0),
                         onClick = { vm.replayTrip(t); onCloseSettings() },
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.settings_trip_replay))
+                        Icon(Sym.PlayArrow, contentDescription = stringResource(R.string.settings_trip_replay))
                     }
                     // Share the trace off-device - works on release builds, so a drive can be
                     // handed over for replay/debug without a dev build. Opens the trim dialog
@@ -287,21 +283,21 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                         modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(tripFocus, 1),
                         onClick = { shareTrip = t },
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.settings_trip_share))
+                        Icon(Sym.Share, contentDescription = stringResource(R.string.settings_trip_share))
                     }
                     Box {
                         IconButton(
                             modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(tripFocus, 2),
                             onClick = { menuFor = t.id },
                         ) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.settings_trip_more))
+                            Icon(Sym.MoreVert, contentDescription = stringResource(R.string.settings_trip_more))
                         }
                         VelaMenu(expanded = menuFor == t.id, onDismissRequest = { menuFor = null }) {
-                            item(stringResource(R.string.settings_trip_rename), Icons.Default.Edit) {
+                            item(stringResource(R.string.settings_trip_rename), Sym.Edit) {
                                 menuFor = null
                                 renaming = t
                             }
-                            item(stringResource(R.string.settings_trip_delete), Icons.Default.Delete) {
+                            item(stringResource(R.string.settings_trip_delete), Sym.Delete) {
                                 menuFor = null
                                 vm.deleteTrip(t.id)
                                 reloadTrips()

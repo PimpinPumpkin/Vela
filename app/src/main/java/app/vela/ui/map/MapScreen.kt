@@ -1,5 +1,8 @@
 package app.vela.ui.map
 
+import app.vela.ui.icons.Sym
+import app.vela.ui.icons.SymOutlined
+
 import android.Manifest
 import android.app.Activity
 import android.content.ContextWrapper
@@ -51,60 +54,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.NorthWest
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.PublicOff
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Work
-import androidx.compose.material.icons.filled.Hotel
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LocalAtm
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.LocalGasStation
-import androidx.compose.material.icons.filled.EvStation
-import androidx.compose.material.icons.filled.LocalGroceryStore
-import androidx.compose.material.icons.filled.LocalPharmacy
-import androidx.compose.material.icons.filled.AddLocationAlt
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LocalParking
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Park
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.runtime.collectAsState
-import androidx.compose.material.icons.filled.ZoomInMap
-import androidx.compose.material.icons.filled.ZoomOutMap
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -219,8 +171,6 @@ import java.util.Locale
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -1567,7 +1517,7 @@ fun MapScreen(
                             modifier = Modifier.padding(top = 8.dp, start = 2.dp).size(34.dp),
                         ) {
                             Icon(
-                                Icons.Default.PublicOff,
+                                Sym.PublicOff,
                                 contentDescription = stringResource(R.string.search_offline),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(7.dp),
@@ -1630,7 +1580,7 @@ fun MapScreen(
                             navRecenterTick++
                         },
                         modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
-                    ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
+                    ) { Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
                 }
                 // Whole-route overview (Google's fly-over): camera only, the drive keeps
                 // navigating; Re-center (above, it appears the moment this detaches the
@@ -1644,8 +1594,8 @@ fun MapScreen(
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                 ) {
-                    if (state.inNavOverview) Icon(Icons.Default.ZoomInMap, contentDescription = stringResource(R.string.mapscreen_recenter))
-                    else Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview))
+                    if (state.inNavOverview) Icon(Sym.ZoomInMap, contentDescription = stringResource(R.string.mapscreen_recenter))
+                    else Icon(Sym.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview))
                 }
                 // With pause in the bar, this slot is plain mute: one button, one meaning, no
                 // pop-out to reach past. Otherwise the two hold controls share one button here
@@ -1656,7 +1606,7 @@ fun MapScreen(
                         modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                     ) {
                         Icon(
-                            if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                            if (state.voiceMuted) Sym.VolumeOff else Sym.VolumeUp,
                             contentDescription = stringResource(
                                 if (state.voiceMuted) R.string.nav_unmute_voice else R.string.nav_mute_voice
                             ),
@@ -1683,7 +1633,7 @@ fun MapScreen(
                         if (!navSearchOpen) focusManager.clearFocus()
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
-                ) { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.place_search_along_route)) }
+                ) { Icon(Sym.Search, contentDescription = stringResource(R.string.place_search_along_route)) }
             }
         }
 
@@ -1766,7 +1716,7 @@ fun MapScreen(
                     .navigationBarsPadding()
                     .padding(bottom = 24.dp + chromeLift),
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Icon(Sym.Refresh, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.mapscreen_search_this_area))
             }
         }
@@ -2268,7 +2218,7 @@ fun MapScreen(
                         Modifier.padding(start = 16.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.BookmarkBorder, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Sym.BookmarkBorder, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             stringResource(R.string.map_save_list, imp.places.size),
@@ -2367,7 +2317,7 @@ fun MapScreen(
                             .dpadHighlight(RoundedCornerShape(12.dp))
                             .clickable(onClick = { mapDpad.zoomBy(1.0) }),
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
+                    ) { Icon(Sym.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 8.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
@@ -2378,7 +2328,7 @@ fun MapScreen(
                             .dpadHighlight(RoundedCornerShape(12.dp))
                             .clickable(onClick = { mapDpad.zoomBy(-1.0) }),
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
+                    ) { Icon(Sym.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
                 }
             }
         }
@@ -2395,7 +2345,7 @@ fun MapScreen(
                     .navigationBarsPadding()
                     .padding(bottom = 24.dp),
             ) {
-                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Icon(Sym.Close, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.mapscreen_stop_replay))
             }
         }
@@ -2423,7 +2373,7 @@ fun MapScreen(
                     .padding(16.dp)
                     .padding(bottom = chromeLift),
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
             }
             // Parking button, its OWN control above the locate FAB. TAP with NO spot → save here
             // (the one-tap "I parked" path). TAP with a spot set (teal) → a small hub menu (Find my
@@ -2477,7 +2427,7 @@ fun MapScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Default.LocalParking,
+                            Sym.LocalParking,
                             contentDescription = stringResource(
                                 if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
                             ),
@@ -2486,24 +2436,24 @@ fun MapScreen(
                         // VelaMenu, not a bare DropdownMenu - the D-pad rule (docs/dpad.md): a popup
                         // can't be pre-focused, so key-first devices get the auto-focusing chooser.
                         app.vela.ui.VelaMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
-                            item(stringResource(R.string.map_parking_find), Icons.Default.DirectionsCar) {
+                            item(stringResource(R.string.map_parking_find), Sym.DirectionsCar) {
                                 showParkingMenu = false; vm.showParkedCar(parkedCarLabel)
                             }
                             // "Move parking here" overwrites the current spot with your live fix; the old
                             // one is not lost - saveParkingSpot archives it to history. Hidden with no fix.
                             if (state.myLocation != null) {
-                                item(stringResource(R.string.map_parking_move_here), Icons.Default.MyLocation) {
+                                item(stringResource(R.string.map_parking_move_here), Sym.MyLocation) {
                                     showParkingMenu = false
                                     val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
                                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                                 }
                             }
                             if (state.parkingHistory.size > 1) {
-                                item(stringResource(R.string.map_parking_earlier), Icons.Default.History) {
+                                item(stringResource(R.string.map_parking_earlier), Sym.History) {
                                     showParkingMenu = false; showParkingHistory = true
                                 }
                             }
-                            item(stringResource(R.string.map_parking_clear), Icons.Default.Delete) {
+                            item(stringResource(R.string.map_parking_clear), Sym.Delete) {
                                 showParkingMenu = false
                                 vm.clearParkingSpot()
                                 Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
@@ -2659,7 +2609,7 @@ fun MapScreen(
                             )
                         },
                 ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                    Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
                 }
             }
 
@@ -2712,7 +2662,7 @@ fun MapScreen(
                     ) {
                         IconButton(onClick = { layersOpen = true }) {
                             Icon(
-                                Icons.Default.Layers,
+                                SymOutlined.Layers,
                                 contentDescription = stringResource(R.string.map_layers),
                                 tint = if (anyLayerOn) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2753,7 +2703,7 @@ fun MapScreen(
                             val picked = app.vela.ui.MapPoiPrefs.placesSource.value == id
                             item(
                                 stringResource(R.string.map_layers_places, stringResource(label)),
-                                if (picked) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                                if (picked) Sym.RadioButtonChecked else Sym.RadioButtonUnchecked,
                             ) { app.vela.ui.MapPoiPrefs.setPlacesSource(ctx, id) }
                         }
                         toggleItem(stringResource(R.string.settings_google_free), app.vela.ui.GoogleFree.on.value) {
@@ -3280,14 +3230,14 @@ private fun SearchResults(
                     // handle's tap detector isn't focusable) — removing it would orphan keypad
                     // users (user 2026-07-11).
                     app.vela.ui.place.HeaderCircleButton(
-                        if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        if (!collapsed && expanded) Sym.KeyboardArrowDown else Sym.KeyboardArrowUp,
                         if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
                         tint = SheetPalette.ink(dark),
                         bg = SheetPalette.dim(dark),
                     ) { if (collapsed) onExpand() else onExpandedChange(!expanded) }
                     Spacer(Modifier.width(8.dp))
                     app.vela.ui.place.HeaderCircleButton(
-                        Icons.Default.Close,
+                        Sym.Close,
                         stringResource(R.string.mapscreen_close_results),
                         tint = SheetPalette.ink(dark),
                         bg = SheetPalette.dim(dark),
@@ -3332,7 +3282,7 @@ private fun SearchResults(
                         colors = chipColors,
                         border = null,
                         leadingIcon = if (openOnly) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            { Icon(Sym.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
                     // Sort: a menu (Relevance / Rating / Distance). LEFT of the filters like
@@ -3353,7 +3303,7 @@ private fun SearchResults(
                             shape = androidx.compose.foundation.shape.CircleShape,
                             colors = chipColors,
                             border = null,
-                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = { Icon(Sym.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         )
                         VelaMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                             item(stringResource(R.string.mapscreen_sort_relevance)) { sortMode = 0; sortMenu = false }
@@ -3371,7 +3321,7 @@ private fun SearchResults(
                             shape = androidx.compose.foundation.shape.CircleShape,
                             colors = chipColors,
                             border = null,
-                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = { Icon(Sym.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         )
                         VelaMenu(expanded = ratingMenu, onDismissRequest = { ratingMenu = false }) {
                             item(stringResource(R.string.mapscreen_filter_any_rating)) { minRating = 0.0; ratingMenu = false }
@@ -3389,7 +3339,7 @@ private fun SearchResults(
                             shape = androidx.compose.foundation.shape.CircleShape,
                             colors = chipColors,
                             border = null,
-                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = { Icon(Sym.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         )
                         VelaMenu(expanded = priceMenu, onDismissRequest = { priceMenu = false }) {
                             item(stringResource(R.string.mapscreen_filter_any_price)) { priceMax = 0; priceMenu = false }
@@ -3407,7 +3357,7 @@ private fun SearchResults(
                         colors = chipColors,
                         border = null,
                         leadingIcon = if (accessibleOnly) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            { Icon(Sym.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
                 }
@@ -3491,7 +3441,7 @@ private fun SearchResults(
                             modifier = Modifier.padding(top = 2.dp),
                         ) {
                             Icon(
-                                Icons.Default.LocalGasStation,
+                                Sym.LocalGasStation,
                                 contentDescription = null,
                                 tint = SheetPalette.ink(dark),
                                 modifier = Modifier.size(16.dp),
@@ -3528,7 +3478,7 @@ private fun SearchResults(
                     place.savedNote?.let { note ->
                         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Top) {
                             Icon(
-                                Icons.Default.FormatQuote,
+                                Sym.FormatQuote,
                                 contentDescription = null,
                                 tint = SheetPalette.dim(dark),
                                 modifier = Modifier.size(16.dp),
@@ -4421,13 +4371,13 @@ private fun ChooseOnMapOverlay(
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onCancel) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel))
+                    Icon(Sym.Close, contentDescription = stringResource(R.string.mapscreen_cancel))
                 }
             }
         }
         // Pin whose tip points at the exact map center (offset up by ~half its height).
         Icon(
-            Icons.Default.Place,
+            Sym.Place,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
@@ -4442,7 +4392,7 @@ private fun ChooseOnMapOverlay(
                 .navigationBarsPadding()
                 .padding(bottom = 24.dp),
         ) {
-            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+            Icon(Sym.Check, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
             Text(
                 stringResource(
                     when (target) {
@@ -4518,10 +4468,10 @@ private fun SearchEntryContent(
                 val isContact = s.kind == app.vela.ui.map.LocalSuggestion.Kind.CONTACT
                 SuggestionRow(
                     icon = when (s.kind) {
-                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_QUERY -> Icons.Default.History
-                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_PLACE -> Icons.Default.Place
-                        app.vela.ui.map.LocalSuggestion.Kind.SAVED_PLACE -> Icons.Default.Bookmark
-                        app.vela.ui.map.LocalSuggestion.Kind.CONTACT -> Icons.Default.Person
+                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_QUERY -> Sym.History
+                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_PLACE -> Sym.Place
+                        app.vela.ui.map.LocalSuggestion.Kind.SAVED_PLACE -> Sym.Bookmark
+                        app.vela.ui.map.LocalSuggestion.Kind.CONTACT -> Sym.Person
                     },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     label = s.label,
@@ -4553,7 +4503,7 @@ private fun SearchEntryContent(
             suggestions.forEach { p ->
                 var menuOpen by remember(p.id) { mutableStateOf(false) }
                 SuggestionRow(
-                    icon = Icons.Default.Search,
+                    icon = Sym.Search,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     label = p.name,
                     sublabel = p.address ?: p.category,
@@ -4583,7 +4533,7 @@ private fun SearchEntryContent(
             // search, not a place, so a plain search icon and no overflow menu.
             querySuggestions.forEach { q ->
                 SuggestionRow(
-                    icon = Icons.Default.Search,
+                    icon = Sym.Search,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     label = q,
                     onClick = { onPickQuery(q) },
@@ -4606,7 +4556,7 @@ private fun SearchEntryContent(
         // reset back to live GPS (Google-style From picker).
         if (pickingOrigin) {
             SuggestionRow(
-                icon = Icons.Default.MyLocation,
+                icon = Sym.MyLocation,
                 tint = MaterialTheme.colorScheme.primary,
                 label = stringResource(R.string.mapscreen_your_location),
                 onClick = onUseMyLocation,
@@ -4617,7 +4567,7 @@ private fun SearchEntryContent(
         // over the live map (or long-pressing), Google-style. Offered for both origin and stop.
         if (pickingOrigin || pickingDest || pickingStop) {
             SuggestionRow(
-                icon = Icons.Default.Place,
+                icon = Sym.Place,
                 tint = MaterialTheme.colorScheme.primary,
                 label = stringResource(R.string.mapscreen_choose_on_map),
                 onClick = onChooseOnMap,
@@ -4634,13 +4584,13 @@ private fun SearchEntryContent(
             SectionLabel(stringResource(R.string.mapscreen_section_routes))
             savedRoutes.forEach { r ->
                 SuggestionRow(
-                    icon = Icons.Default.Directions,
+                    icon = Sym.Directions,
                     tint = MaterialTheme.colorScheme.primary,
                     label = r.name,
                     onClick = { onPickSavedRoute(r) },
                     trailing = {
                         IconButton(onClick = { onUnpinSavedRoute(r) }, modifier = Modifier.dpadHighlight(CircleShape)) {
-                            Icon(Icons.Default.PushPin, contentDescription = stringResource(R.string.saved_unpin), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Sym.PushPin, contentDescription = stringResource(R.string.saved_unpin), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     sublabel = listOfNotNull(
@@ -4681,7 +4631,7 @@ private fun SearchEntryContent(
                         var menuOpen by remember(entry.place.id) { mutableStateOf(false) }
                         val p = entry.place.toPlace()
                         SuggestionRow(
-                            icon = Icons.Default.Place,
+                            icon = Sym.Place,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             label = entry.place.name,
                             sublabel = entry.place.address,
@@ -4706,7 +4656,7 @@ private fun SearchEntryContent(
                     is RecentQuery -> {
                         var menuOpen by remember(entry.query) { mutableStateOf(false) }
                         SuggestionRow(
-                            icon = Icons.Default.History,
+                            icon = Sym.History,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             label = entry.query,
                             onClick = { onPickRecent(entry.query) },
@@ -4787,7 +4737,7 @@ private fun ShortcutCell(
     onClear: (ShortcutKind) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val icon = if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work
+    val icon = if (kind == ShortcutKind.HOME) Sym.Home else Sym.Work
     val label = stringResource(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
     val dark = isAppInDarkTheme()
     var menu by remember { mutableStateOf(false) }
@@ -4835,7 +4785,7 @@ private fun ShortcutCell(
             Box {
                 IconButton(onClick = { menu = true }, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        Icons.Default.MoreVert,
+                        Sym.MoreVert,
                         contentDescription = stringResource(R.string.mapscreen_edit_shortcut, label),
                         tint = SheetPalette.ink(dark),
                         modifier = Modifier.size(18.dp),
@@ -4861,7 +4811,7 @@ private fun ShortcutRow(
     onAssign: (ShortcutKind) -> Unit,
     onClear: (ShortcutKind) -> Unit,
 ) {
-    val icon = if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work
+    val icon = if (kind == ShortcutKind.HOME) Sym.Home else Sym.Work
     // Localized display label (the ShortcutKind.label enum value stays the stable "Home"/"Work" key).
     val label = stringResource(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
     // Fixed sheet palette (not the theme's on-surface, which renders dark/black on our
@@ -4902,7 +4852,7 @@ private fun ShortcutRow(
                     // Same ink as the row's text - the default LocalContentColor went near-black
                     // on the fixed sheet gray under some themes (user report).
                     Icon(
-                        Icons.Default.MoreVert,
+                        Sym.MoreVert,
                         contentDescription = stringResource(R.string.mapscreen_edit_shortcut, label),
                         tint = SheetPalette.ink(dark),
                     )
@@ -4954,7 +4904,7 @@ private fun SavedRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(Sym.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         // Explicit colors: the search page is a background()-Box, not a Surface, so
         // LocalContentColor is unset and a colorless Text/Icon renders BLACK in dark
@@ -4969,7 +4919,7 @@ private fun SavedRow(
         Box {
             IconButton(onClick = { menu = true }) {
                 Icon(
-                    Icons.Default.MoreVert,
+                    Sym.MoreVert,
                     contentDescription = stringResource(R.string.mapscreen_saved_place_options),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -4995,7 +4945,7 @@ private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work,
+            if (kind == ShortcutKind.HOME) Sym.Home else Sym.Work,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
         )
@@ -5026,7 +4976,7 @@ private fun PickStopBanner(@Suppress("UNUSED_PARAMETER") onCancel: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Default.AddLocationAlt,
+            Sym.AddLocationAlt,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(18.dp),
@@ -5067,7 +5017,7 @@ private fun ContactAvatar(photoUri: String?) {
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(Sym.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         if (photoUri != null) {
             coil.compose.AsyncImage(
                 model = photoUri,
@@ -5163,7 +5113,7 @@ private fun SuggestionRow(
         }
         if (onFill != null) {
             app.vela.ui.place.HeaderCircleButton(
-                Icons.Filled.NorthWest,
+                Sym.NorthWest,
                 stringResource(R.string.search_fill_cd),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 bg = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -5177,7 +5127,7 @@ private fun SuggestionRow(
         } else if (onRemove != null) {
             // Same circle language as the sheet headers, sized down for a list row.
             app.vela.ui.place.HeaderCircleButton(
-                Icons.Default.Close,
+                Sym.Close,
                 stringResource(R.string.mapscreen_menu_remove),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 bg = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -5207,7 +5157,7 @@ private fun SuggestionOverflow(
     Box {
         IconButton(onClick = { onOpenChange(true) }) {
             Icon(
-                Icons.Default.MoreVert,
+                Sym.MoreVert,
                 contentDescription = stringResource(R.string.mapscreen_suggestion_options),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -5325,7 +5275,7 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> 
                 // No cancel during the unpack: the bytes are already down, aborting there only wastes them.
                 if (!installing && onCancel != null) {
                     IconButton(onClick = onCancel, modifier = Modifier.size(28.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
+                        Icon(Sym.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -5369,7 +5319,7 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
                 )
                 if (onCancel != null) {
                     IconButton(onClick = onCancel, modifier = Modifier.size(28.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
+                        Icon(Sym.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -5424,7 +5374,7 @@ private fun UpdateCard(
                     Text(stringResource(R.string.update_downloading, downloadPct), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     onCancel?.let {
                         IconButton(onClick = it, modifier = Modifier.size(28.dp).dpadHighlight(CircleShape)) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
+                            Icon(Sym.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -5617,7 +5567,7 @@ private fun ListsSheet(
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(onClick = { creating = true }, modifier = Modifier.focusRequester(listsAutoFocus).dpadHighlight(RoundedCornerShape(20.dp))) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Sym.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.mapscreen_new_list))
                     }
@@ -5654,14 +5604,14 @@ private fun ListsSheet(
                             // needed. The store's array order is the display order everywhere.
                             if (lists.size > 1) {
                                 IconButton(onClick = { onMoveList(list.id, -1) }, enabled = index > 0, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.list_move_up), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                    Icon(Sym.KeyboardArrowUp, contentDescription = stringResource(R.string.list_move_up), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 IconButton(onClick = { onMoveList(list.id, 1) }, enabled = index < lists.size - 1, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.list_move_down), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                    Icon(Sym.KeyboardArrowDown, contentDescription = stringResource(R.string.list_move_down), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                             }
                             IconButton(onClick = { editing = list }, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
-                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                                Icon(Sym.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             }
                         }
                         Divider()
@@ -5673,7 +5623,7 @@ private fun ListsSheet(
                         item { SheetSectionLabel(stringResource(R.string.saved_sheet_places)) }
                         items(st.saved, key = { "sp:" + it.id }) { sp ->
                             SavedSheetRow(
-                                icon = Icons.Default.Star, title = sp.name, sub = sp.address, pinned = sp.pinned,
+                                icon = Sym.Star, title = sp.name, sub = sp.address, pinned = sp.pinned,
                                 onOpen = { onDismiss(); vm.selectSaved(sp) },
                                 onPin = { vm.setSavedPlacePinned(sp.id, !sp.pinned) },
                             )
@@ -5683,7 +5633,7 @@ private fun ListsSheet(
                         item { SheetSectionLabel(stringResource(R.string.saved_sheet_routes)) }
                         items(st.savedRoutes, key = { "sr:" + it.id }) { r ->
                             SavedSheetRow(
-                                icon = Icons.Default.Directions, title = r.name,
+                                icon = Sym.Directions, title = r.name,
                                 sub = listOfNotNull(
                                     if (r.isRun) androidx.compose.ui.res.pluralStringResource(R.plurals.saved_route_stops, r.stops.size, r.stops.size) else null,
                                     r.destLabel.takeIf { it.isNotBlank() },
@@ -5755,7 +5705,7 @@ private fun ParkingHistorySheet(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                Icons.Default.LocalParking,
+                                Sym.LocalParking,
                                 contentDescription = null,
                                 tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -5786,7 +5736,7 @@ private fun ParkingHistorySheet(
                                 )
                             } else {
                                 IconButton(onClick = { onDelete(entry) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Icon(Sym.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -5799,23 +5749,23 @@ private fun ParkingHistorySheet(
 
 // The list icon set (keys stored in PlaceList.icon). Small, recognizable, Google-list-like.
 private val LIST_ICONS: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>> = listOf(
-    "bookmark" to Icons.Default.Bookmark,
-    "star" to Icons.Default.Star,
-    "favorite" to Icons.Default.Favorite,
-    "flag" to Icons.Default.Flag,
-    "place" to Icons.Default.Place,
-    "restaurant" to Icons.Default.Restaurant,
-    "car" to Icons.Default.DirectionsCar,
-    "home" to Icons.Default.Home,
-    "work" to Icons.Default.Work,
-    "shopping" to Icons.Default.ShoppingCart,
+    "bookmark" to Sym.Bookmark,
+    "star" to Sym.Star,
+    "favorite" to Sym.Favorite,
+    "flag" to Sym.Flag,
+    "place" to Sym.Place,
+    "restaurant" to Sym.Restaurant,
+    "car" to Sym.DirectionsCar,
+    "home" to Sym.Home,
+    "work" to Sym.Work,
+    "shopping" to Sym.ShoppingCart,
 )
 private val LIST_COLORS: List<Long> = listOf(
     0xFF1A73E8, 0xFF00897B, 0xFFE8710A, 0xFFD93025, 0xFF9334E6, 0xFF1E8E3E, 0xFFF9AB00, 0xFF5F6368,
 )
 
 private fun listIcon(key: String): androidx.compose.ui.graphics.vector.ImageVector =
-    LIST_ICONS.firstOrNull { it.first == key }?.second ?: Icons.Default.Bookmark
+    LIST_ICONS.firstOrNull { it.first == key }?.second ?: Sym.Bookmark
 
 // A curated emoji palette for list icons (issue #173) — picked from a D-pad-focusable grid, so
 // keypad phones (whose keyboards have no emoji) get the feature too; touch users can also type
@@ -6340,11 +6290,11 @@ private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomBu
                     androidx.compose.material3.FilledTonalIconButton(
                         onClick = { onZoom(-1.0) },
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                    ) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
+                    ) { Icon(Sym.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
                     androidx.compose.material3.FilledTonalIconButton(
                         onClick = { onZoom(1.0) },
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                    ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
+                    ) { Icon(Sym.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(
@@ -6406,7 +6356,7 @@ private fun SavedSheetRow(
         }
         IconButton(onClick = onPin, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
             Icon(
-                if (pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                if (pinned) Sym.PushPin else SymOutlined.PushPin,
                 contentDescription = stringResource(if (pinned) R.string.saved_unpin else R.string.saved_pin),
                 tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )

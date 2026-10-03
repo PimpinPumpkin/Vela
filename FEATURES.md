@@ -425,6 +425,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
+- ✅ **Material 3 Expressive icons (2026-10-03).** Every icon in the app moved to Google's newer rounded
+  Material Symbols: filled glyphs on the category chips, outlined ones on the search bar's buttons.
 - ✅ **A cleaner route line (2026-10-03).** The blue line no longer swerves around medians and islands you
   drive straight past or zigzags where the map data wobbles; real bends and corners stay. Browsing the
   map, stop signs and lights now appear only when zoomed in close (about 50 ft), and a railroad crossing

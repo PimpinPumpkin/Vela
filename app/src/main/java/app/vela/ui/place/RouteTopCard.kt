@@ -1,5 +1,7 @@
 package app.vela.ui.place
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -99,7 +101,7 @@ fun RouteTopCard(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, end = 2.dp, top = 6.dp, bottom = 6.dp)) {
             IconButton(onClick = onClose, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    Sym.ArrowBack,
                     contentDescription = stringResource(R.string.place_close_directions),
                     tint = dim,
                 )
@@ -132,7 +134,7 @@ fun RouteTopCard(
                         editable = true,
                         editLabel = stringResource(R.string.stops_edit),
                         onClick = onEditStops,
-                        trailing = { Icon(Icons.Default.DragHandle, contentDescription = null, tint = dim, modifier = Modifier.size(20.dp).padding(end = 2.dp)) },
+                        trailing = { Icon(Sym.DragHandle, contentDescription = null, tint = dim, modifier = Modifier.size(20.dp).padding(end = 2.dp)) },
                     ) {
                         Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                     }
@@ -157,7 +159,7 @@ fun RouteTopCard(
                                 color = dim,
                             )
                             Spacer(Modifier.weight(1f))
-                            Icon(Icons.Default.DragHandle, contentDescription = null, tint = dim, modifier = Modifier.size(20.dp).padding(end = 2.dp))
+                            Icon(Sym.DragHandle, contentDescription = null, tint = dim, modifier = Modifier.size(20.dp).padding(end = 2.dp))
                         }
                     }
                     ConnectorRow(dim)
@@ -170,7 +172,7 @@ fun RouteTopCard(
                     editLabel = stringResource(R.string.place_change_destination),
                     onClick = onEditDestination,
                 ) {
-                    Icon(Icons.Default.Place, contentDescription = null, tint = DestinationRed, modifier = Modifier.size(20.dp))
+                    Icon(Sym.Place, contentDescription = null, tint = DestinationRed, modifier = Modifier.size(20.dp))
                 }
                 // Add stop keeps its own quiet row (gmaps buries it in an overflow menu; a
                 // visible row is the discoverable version and the card has the room).
@@ -184,7 +186,7 @@ fun RouteTopCard(
                             .padding(vertical = 4.dp),
                     ) {
                         Box(Modifier.width(GLYPH_RAIL), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
+                            Icon(Sym.Add, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyMedium, color = dim)
@@ -230,7 +232,7 @@ fun RouteTopCard(
                     Box {
                         IconButton(onClick = { menu = true }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                             Icon(
-                                androidx.compose.material.icons.Icons.Default.MoreVert,
+                                Sym.MoreVert,
                                 contentDescription = stringResource(R.string.exp_chooser_more),
                                 tint = dim,
                             )
@@ -249,7 +251,7 @@ fun RouteTopCard(
                 }
                 IconButton(onClick = onSwap, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                     Icon(
-                        Icons.Default.SwapVert,
+                        Sym.SwapVert,
                         contentDescription = stringResource(R.string.place_swap_start_destination),
                         tint = dim,
                     )
@@ -259,7 +261,7 @@ fun RouteTopCard(
                 if (!googleStyle && showStopControls && onAddStop != null && stops.isNotEmpty()) {
                     IconButton(onClick = onAddStop, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                         Icon(
-                            Icons.Default.Add,
+                            Sym.Add,
                             contentDescription = stringResource(R.string.place_add_stop),
                             tint = dim,
                         )

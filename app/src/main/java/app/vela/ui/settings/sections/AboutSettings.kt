@@ -1,5 +1,7 @@
 package app.vela.ui.settings.sections
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -64,7 +64,7 @@ internal fun AboutSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 Onboarding.openDonate(context)
             },
         ) {
-            Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+            Icon(Sym.Favorite, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
             Text(stringResource(R.string.settings_support_button))
         }
         }

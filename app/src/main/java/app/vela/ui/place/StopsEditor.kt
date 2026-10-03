@@ -1,5 +1,7 @@
 package app.vela.ui.place
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -16,14 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.SportsScore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -108,7 +102,7 @@ fun StopsEditorSheet(
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), tint = dim)
+                    Icon(Sym.Close, contentDescription = stringResource(R.string.mapscreen_cancel), tint = dim)
                 }
             }
             // Origin — fixed (the trip starts where it starts; edit it from the panel's From row).
@@ -116,7 +110,7 @@ fun StopsEditorSheet(
                 // Same glyph grammar as the panel: PIN = where you start (LOCATION-BLUE when it's
                 // your current position — the non-verbal "this is you"), checkered FLAG = finish.
                 Icon(
-                    Icons.Default.Place,
+                    Sym.Place,
                     contentDescription = null,
                     tint = if (originIsMe) MaterialTheme.colorScheme.primary else dim,
                     modifier = Modifier.size(18.dp),
@@ -145,7 +139,7 @@ fun StopsEditorSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            Icons.Default.DragHandle,
+                            Sym.DragHandle,
                             contentDescription = stringResource(R.string.stops_drag_reorder),
                             tint = dim,
                             modifier = Modifier
@@ -195,24 +189,24 @@ fun StopsEditorSheet(
                         // get explicit up/down (hidden under touch to keep the rows clean).
                         if (dpadMode && order.size > 1) {
                             if (i > 0) IconButton(onClick = { swap(i, i - 1) }, modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp))) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
+                                Icon(Sym.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
                             }
                             if (i < order.lastIndex) IconButton(onClick = { swap(i, i + 1) }, modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp))) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
+                                Icon(Sym.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
                             }
                         }
                         IconButton(
                             onClick = { order = order.filterIndexed { j, _ -> j != i } },
                             modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp)),
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_remove_stop), tint = dim, modifier = Modifier.size(18.dp))
+                            Icon(Sym.Close, contentDescription = stringResource(R.string.place_remove_stop), tint = dim, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
             }
             // Destination — pinned last.
             Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.SportsScore, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
+                Icon(Sym.SportsScore, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(
                     destinationName,
@@ -232,7 +226,7 @@ fun StopsEditorSheet(
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Sym.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
             }
@@ -295,7 +289,7 @@ fun TripEditorSheet(
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), tint = dim)
+                    Icon(Sym.Close, contentDescription = stringResource(R.string.mapscreen_cancel), tint = dim)
                 }
             }
             order.forEachIndexed { i, row ->
@@ -325,7 +319,7 @@ fun TripEditorSheet(
                                     Modifier.size(12.dp).clip(CircleShape)
                                         .background(if (row.point.place == null) MaterialTheme.colorScheme.primary else dim),
                                 )
-                                last -> Icon(Icons.Default.Place, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFEA4335), modifier = Modifier.size(20.dp))
+                                last -> Icon(Sym.Place, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFEA4335), modifier = Modifier.size(20.dp))
                                 else -> Box(
                                     Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                                     contentAlignment = Alignment.Center,
@@ -346,14 +340,14 @@ fun TripEditorSheet(
                         )
                         if (dpadMode) {
                             if (i > 0) IconButton(onClick = { swap(i, i - 1) }, modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp))) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
+                                Icon(Sym.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
                             }
                             if (i < order.lastIndex) IconButton(onClick = { swap(i, i + 1) }, modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp))) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
+                                Icon(Sym.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
                             }
                         }
                         Icon(
-                            Icons.Default.DragHandle,
+                            Sym.DragHandle,
                             contentDescription = stringResource(R.string.stops_drag_reorder),
                             tint = dim,
                             modifier = Modifier
@@ -383,7 +377,7 @@ fun TripEditorSheet(
                             modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp)),
                         ) {
                             Icon(
-                                Icons.Default.Close,
+                                Sym.Close,
                                 contentDescription = stringResource(R.string.place_remove_stop),
                                 tint = if (order.size > 2) dim else dim.copy(alpha = 0.3f),
                                 modifier = Modifier.size(18.dp),
@@ -401,7 +395,7 @@ fun TripEditorSheet(
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Sym.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
             }

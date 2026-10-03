@@ -1,11 +1,9 @@
 package app.vela.ui
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.StarHalf
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -56,9 +54,9 @@ fun RatingStars(
     Row(modifier) {
         for (i in 1..5) {
             val icon = when {
-                halves >= i * 2 -> Icons.Filled.Star
-                halves >= i * 2 - 1 -> Icons.AutoMirrored.Filled.StarHalf
-                else -> Icons.Filled.StarBorder
+                halves >= i * 2 -> Sym.Star
+                halves >= i * 2 - 1 -> Sym.StarHalf
+                else -> Sym.StarBorder
             }
             Icon(
                 icon,

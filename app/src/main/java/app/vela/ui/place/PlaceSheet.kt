@@ -1,5 +1,8 @@
 package app.vela.ui.place
 
+import app.vela.ui.icons.Sym
+import app.vela.ui.icons.SymOutlined
+
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.gestures.scrollBy
@@ -738,7 +741,7 @@ fun PlaceSheet(
             val photosExpected = (detailsLoading && !place.category.isNullOrBlank()) || resolving
             if (onShowPhotos != null) {
                 FilledTonalButton(onClick = onShowPhotos, shape = CircleShape, modifier = Modifier.padding(bottom = 12.dp).dpadHighlight(CircleShape)) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Sym.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.place_show_photos))
                 }
@@ -779,7 +782,7 @@ fun PlaceSheet(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = dim)
+                                    Icon(Sym.PhotoLibrary, contentDescription = null, tint = dim)
                                     Spacer(Modifier.height(6.dp))
                                     Text(stringResource(R.string.place_more_photos), style = MaterialTheme.typography.labelLarge, color = ink)
                                 }
@@ -803,7 +806,7 @@ fun PlaceSheet(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isParking) {
                     Icon(
-                        Icons.Default.DirectionsCar,
+                        Sym.DirectionsCar,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(26.dp).padding(end = 2.dp),
@@ -855,7 +858,7 @@ fun PlaceSheet(
                 var saveMenu by remember { mutableStateOf(false) }
                 Box {
                     HeaderCircleButton(
-                        icon = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        icon = if (isSaved) Sym.Bookmark else Sym.BookmarkBorder,
                         contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
                         tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
                         bg = dim,
@@ -872,7 +875,7 @@ fun PlaceSheet(
                     }
                 }
                 ShareIconButton(place, dim)
-                HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
+                HeaderCircleButton(Sym.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
             }
 
             // WHERE THIS ROW CAME FROM, for a tapped map place that is not (yet) a Google listing
@@ -963,7 +966,7 @@ fun PlaceSheet(
                     Modifier.fillMaxWidth().padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
+                    Icon(Sym.MyLocation, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(coords, style = MaterialTheme.typography.bodyLarge, color = ink, modifier = Modifier.weight(1f))
                     IconButton(onClick = {
@@ -971,7 +974,7 @@ fun PlaceSheet(
                         cb.setPrimaryClip(ClipData.newPlainText("coordinates", coords))
                         Toast.makeText(context, context.getString(R.string.place_coordinates_copied), Toast.LENGTH_SHORT).show()
                     }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.place_copy_coordinates), tint = dim, modifier = Modifier.size(18.dp))
+                        Icon(Sym.ContentCopy, contentDescription = stringResource(R.string.place_copy_coordinates), tint = dim, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -1061,27 +1064,27 @@ fun PlaceSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                ActionPill(Sym.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
                 // START, right beside Directions (issue #272). Directions opens the picker, whose
                 // own Start sits BELOW the route list - with three routes on a large-font screen
                 // that is off the bottom of the sheet, so the common case (just take me there)
                 // needed a scroll. Not offered for the parked car, where you are already at the
                 // start of the walk and "Directions" is the useful verb.
                 if (onStartNavigation != null && !isParking) {
-                    ActionPill(Icons.Filled.Navigation, stringResource(R.string.place_start), onClick = onStartNavigation)
+                    ActionPill(Sym.Navigation, stringResource(R.string.place_start), onClick = onStartNavigation)
                 }
                 if (isParking) {
-                    ActionPill(Icons.Default.Delete, stringResource(R.string.place_clear_parking), onClick = onClearParking)
+                    ActionPill(Sym.Delete, stringResource(R.string.place_clear_parking), onClick = onClearParking)
                 }
                 place.phone?.let { ph ->
-                    ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
+                    ActionPill(Sym.Call, stringResource(R.string.place_call)) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 }
                 if (!app.vela.ui.HideExternalLinks.on.value) {
                     place.website?.let { site ->
-                        ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
+                        ActionPill(Sym.Language, stringResource(R.string.place_website)) {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                         }
                     }
@@ -1093,7 +1096,7 @@ fun PlaceSheet(
                 // Hidden without Google: the imagery is Google's, and a pill that always answers
                 // "no Street View here" is worse than no pill.
                 if (!app.vela.ui.GoogleFree.on.value) {
-                    ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
+                    ActionPill(Sym.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
                 }
             }
 
@@ -1135,7 +1138,7 @@ fun PlaceSheet(
                             ).joinToString("  ·  ")
                             if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.place_open), tint = dim, modifier = Modifier.size(18.dp))
+                        Icon(Sym.ArrowForward, contentDescription = stringResource(R.string.place_open), tint = dim, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -1174,7 +1177,7 @@ fun PlaceSheet(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(Sym.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(addr, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
                     IconButton(onClick = {
@@ -1182,7 +1185,7 @@ fun PlaceSheet(
                         cb.setPrimaryClip(ClipData.newPlainText("address", addr))
                         Toast.makeText(context, context.getString(R.string.place_address_copied), Toast.LENGTH_SHORT).show()
                     }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.place_copy_address), tint = dim, modifier = Modifier.size(18.dp))
+                        Icon(Sym.ContentCopy, contentDescription = stringResource(R.string.place_copy_address), tint = dim, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -1194,7 +1197,7 @@ fun PlaceSheet(
             // list Google itself throws away on export, kept front and center here.
             place.savedNote?.let { note ->
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(Sym.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(note, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink)
                 }
@@ -1234,7 +1237,7 @@ fun PlaceSheet(
                     }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Call, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(Sym.Call, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(ph, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
                 }
@@ -1247,7 +1250,7 @@ fun PlaceSheet(
                     }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Language, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(Sym.Language, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         runCatching { Uri.parse(site).host?.removePrefix("www.") }.getOrNull() ?: site,
@@ -1283,7 +1286,7 @@ fun PlaceSheet(
                     )
                     Spacer(Modifier.width(6.dp))
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
+                        Sym.ArrowForward,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp),
@@ -1337,7 +1340,7 @@ fun PlaceSheet(
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Info, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp).padding(top = 2.dp))
+                    Icon(Sym.Info, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp).padding(top = 2.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.place_limited_view), style = MaterialTheme.typography.bodySmall, color = dim)
                 }
@@ -1462,7 +1465,7 @@ internal fun SaveToListSheet(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                if (checked) Icons.Default.Check else Icons.Default.BookmarkBorder,
+                                if (checked) Sym.Check else Sym.BookmarkBorder,
                                 contentDescription = null,
                                 tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(22.dp),
@@ -1490,7 +1493,7 @@ internal fun SaveToListSheet(
                     }
                 } else {
                     TextButton(onClick = { creating = true }, modifier = Modifier.padding(horizontal = 12.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Sym.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.mapscreen_new_list))
                     }
@@ -1712,9 +1715,9 @@ fun DirectionsPanel(
                         color = ink,
                         modifier = Modifier.weight(1f),
                     )
-                    RoundAction(Icons.Default.Share, stringResource(R.string.place_share), dark, onShare)
+                    RoundAction(Sym.Share, stringResource(R.string.place_share), dark, onShare)
                     Spacer(Modifier.width(8.dp))
-                    RoundAction(Icons.Default.Close, stringResource(R.string.place_close_directions), dark, onClose)
+                    RoundAction(Sym.Close, stringResource(R.string.place_close_directions), dark, onClose)
                 }
                 Spacer(Modifier.height(10.dp))
                 // The tabs run edge to edge like the picker's: pull them back over the panel's
@@ -1763,10 +1766,10 @@ fun DirectionsPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 listOf(
-                    Triple(TravelMode.DRIVE, stringResource(R.string.place_mode_drive), Icons.Default.DirectionsCar),
-                    Triple(TravelMode.TRANSIT, stringResource(R.string.place_mode_transit), Icons.Default.DirectionsBus),
-                    Triple(TravelMode.WALK, stringResource(R.string.place_mode_walk), Icons.AutoMirrored.Filled.DirectionsWalk),
-                    Triple(TravelMode.BICYCLE, stringResource(R.string.place_mode_bike), Icons.AutoMirrored.Filled.DirectionsBike),
+                    Triple(TravelMode.DRIVE, stringResource(R.string.place_mode_drive), Sym.DirectionsCar),
+                    Triple(TravelMode.TRANSIT, stringResource(R.string.place_mode_transit), Sym.DirectionsBus),
+                    Triple(TravelMode.WALK, stringResource(R.string.place_mode_walk), Sym.DirectionsWalk),
+                    Triple(TravelMode.BICYCLE, stringResource(R.string.place_mode_bike), Sym.DirectionsBike),
                 ).forEach { (mode, label, icon) ->
                     // Google-style mode pills: stadium shape + a mode glyph, not bare squarish chips.
                     // Once a mode's time is known the chip shows THAT ("25 min") and the glyph says
@@ -1886,7 +1889,7 @@ fun DirectionsPanel(
                         verticalAlignment = Alignment.Top,
                     ) {
                         Icon(
-                            Icons.Outlined.Info,
+                            SymOutlined.Info,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp).padding(top = 2.dp),
@@ -1970,7 +1973,7 @@ fun DirectionsPanel(
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                             Text(stringResource(R.string.place_start))
                         }
                         onSteps?.let {
@@ -1978,7 +1981,7 @@ fun DirectionsPanel(
                                 // Soft glyph ink: the solid List glyph at the label's own color
                                 // read darker than the word beside it (user 2026-07-11).
                                 Icon(
-                                    Icons.AutoMirrored.Filled.List,
+                                    Sym.List,
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 8.dp),
                                     tint = dim,
@@ -2003,7 +2006,7 @@ fun DirectionsPanel(
                     onClick = onStartNav,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
                 ) {
-                    Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text(stringResource(R.string.place_start))
                 }
             }
@@ -2270,7 +2273,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             if (flockCount > 0) {
                 Spacer(Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.size(14.dp))
+                    Icon(Sym.Videocam, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.size(14.dp))
                     Text(
                         pluralStringResource(R.plurals.dir_cameras_on_route, flockCount, flockCount),
                         style = MaterialTheme.typography.labelSmall,
@@ -2279,7 +2282,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                 }
             }
         }
-        if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        if (selected) Icon(Sym.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -2366,7 +2369,7 @@ fun TransitNavSheet(
                     else "${nav.stepIndex + 1} / ${itin.steps.size}",
                     style = MaterialTheme.typography.titleMedium, color = dim, modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = onEnd) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
+                IconButton(onClick = onEnd) { Icon(Sym.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             Spacer(Modifier.height(8.dp))
             // Current leg, large.
@@ -2490,7 +2493,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
             }
             if (canExpand) {
                 Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    if (expanded) Sym.ExpandLess else Sym.ExpandMore,
                     contentDescription = if (expanded) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
                     tint = dim,
                     modifier = Modifier.padding(start = 4.dp).size(20.dp),
@@ -2504,7 +2507,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
             ) {
                 t.lines.take(4).forEachIndexed { i, line ->
                     if (i > 0) Icon(
-                        Icons.Default.ChevronRight,
+                        Sym.ChevronRight,
                         contentDescription = null,
                         tint = dim,
                         modifier = Modifier.size(14.dp),
@@ -2520,7 +2523,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
             // Step-by-step guidance (Moovit-style) for this itinerary.
             if (t.steps.isNotEmpty()) {
                 Button(onClick = { onStartTransit(t) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+                    Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
                     Text(stringResource(R.string.place_start))
                 }
             }
@@ -2532,7 +2535,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     t.alerts.take(4).forEach { alert ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.padding(top = 2.dp).size(15.dp))
+                            Icon(Sym.Info, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.padding(top = 2.dp).size(15.dp))
                             Text(alert, style = MaterialTheme.typography.labelSmall, color = dim)
                         }
                     }
@@ -2590,7 +2593,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
                     }
                     if (canExpand) Icon(
-                        if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        if (open) Sym.ExpandLess else Sym.ExpandMore,
                         contentDescription = if (open) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
                         tint = dim, modifier = Modifier.size(18.dp),
                     )
@@ -2634,7 +2637,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                 ) {
                     Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
                     Icon(
-                        if (stopsOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        if (stopsOpen) Sym.ExpandLess else Sym.ExpandMore,
                         contentDescription = if (stopsOpen) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
                         tint = dim, modifier = Modifier.size(18.dp),
                     )
@@ -2703,7 +2706,7 @@ private fun StopDepartureBoard(
     if (d == null && !loading) return
     Spacer(Modifier.height(14.dp))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(Icons.Default.DirectionsTransit, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+        Icon(Sym.DirectionsTransit, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
         Text(stringResource(R.string.place_departures), style = MaterialTheme.typography.titleSmall, color = ink)
     }
     // The offline copy says WHEN it was seen: the routes and colors are still right, the times
@@ -2786,7 +2789,7 @@ private fun DepartureLineRow(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Icon(
-                    Icons.Default.ChevronRight,
+                    Sym.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(16.dp),
@@ -2900,7 +2903,7 @@ fun RouteDetailSheet(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 IconButton(onClick = onClose, modifier = Modifier.focusRequester(backFocus).dpadHighlight()) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_close), tint = ink)
+                    Icon(Sym.ArrowBack, contentDescription = stringResource(R.string.place_close), tint = ink)
                 }
                 step?.line?.let { LinePill(it) }
                 Text(
@@ -3056,12 +3059,12 @@ private fun RouteStopRow(
 }
 
 private fun modeIcon(mode: TransitMode) = when (mode) {
-    TransitMode.BUS -> Icons.Default.DirectionsBus
-    TransitMode.SUBWAY -> Icons.Default.DirectionsSubway
-    TransitMode.TRAIN -> Icons.Default.Train
-    TransitMode.TRAM -> Icons.Default.Tram
-    TransitMode.FERRY -> Icons.Default.DirectionsBoat
-    else -> Icons.Default.DirectionsTransit
+    TransitMode.BUS -> Sym.DirectionsBus
+    TransitMode.SUBWAY -> Sym.DirectionsSubway
+    TransitMode.TRAIN -> Sym.Train
+    TransitMode.TRAM -> Sym.Tram
+    TransitMode.FERRY -> Sym.DirectionsBoat
+    else -> Sym.DirectionsTransit
 }
 
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
@@ -3085,13 +3088,13 @@ private fun LinePill(line: TransitLine) {
 }
 
 private fun transitModeIcon(mode: TransitMode) = when (mode) {
-    TransitMode.BUS -> Icons.Default.DirectionsBus
-    TransitMode.TRAM -> Icons.Default.Tram
-    TransitMode.SUBWAY -> Icons.Default.DirectionsSubway
-    TransitMode.TRAIN -> Icons.Default.Train
-    TransitMode.FERRY -> Icons.Default.DirectionsBoat
-    TransitMode.WALK -> Icons.Default.DirectionsWalk
-    TransitMode.GENERIC -> Icons.Default.DirectionsTransit
+    TransitMode.BUS -> Sym.DirectionsBus
+    TransitMode.TRAM -> Sym.Tram
+    TransitMode.SUBWAY -> Sym.DirectionsSubway
+    TransitMode.TRAIN -> Sym.Train
+    TransitMode.FERRY -> Sym.DirectionsBoat
+    TransitMode.WALK -> Sym.DirectionsWalk
+    TransitMode.GENERIC -> Sym.DirectionsTransit
 }
 
 /** Parse a CSS hex color ("#rrggbb" / "#rgb"); null if absent/malformed. */
@@ -3364,7 +3367,7 @@ private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start:
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp),
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
+                    Icon(Sym.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
                 }
                 // Per-photo caption ("Ele Campbell · a year ago" for reviews). On Android 15/16 a Dialog's
                 // window insets read ZERO and the bottom ~nav-bar strip is CLIPPED (undrawable) — proven on a
@@ -3495,7 +3498,7 @@ private fun PanelControls(
             value = query,
             onValueChange = onQuery,
             placeholder = { Text(stringResource(R.string.place_search_reviews), color = dim) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(Sym.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = ink),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -3509,7 +3512,7 @@ private fun PanelControls(
         var sortOpen by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { sortOpen = true }) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.place_sort_reviews), tint = dim)
+                Icon(Sym.Sort, contentDescription = stringResource(R.string.place_sort_reviews), tint = dim)
             }
             // Display label localizes; the SECOND element stays the English LOGIC KEY - onSort
             // drives the live Google panel (loaded hl=en) by clicking the option with that
@@ -3794,7 +3797,7 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 ) {
                     IconButton(onClick = onClose, modifier = Modifier.focusRequester(reviewsBackFocus)) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = ink)
+                        Icon(Sym.Close, contentDescription = stringResource(R.string.place_close), tint = ink)
                     }
                     Column(Modifier.weight(1f)) {
                         Text(place.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ink, maxLines = 1)
@@ -3933,7 +3936,7 @@ private fun ReviewsTab(
             ) {
                 Text(place.reviewCount?.let { stringResource(R.string.place_all_n_reviews_open, it) } ?: stringResource(R.string.place_all_reviews_short))
                 Spacer(Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Sym.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         }
         val sortable = (place.reviewCount ?: 0) > 1 || reviews.size >= 3
@@ -3961,7 +3964,7 @@ private fun ReviewsTab(
                             reviewSearchOpen = !reviewSearchOpen
                             if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
                         },
-                        label = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.place_search_reviews), modifier = Modifier.size(18.dp)) },
+                        label = { Icon(Sym.Search, contentDescription = stringResource(R.string.place_search_reviews), modifier = Modifier.size(18.dp)) },
                         shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape),
                     )
                 }
@@ -3973,7 +3976,7 @@ private fun ReviewsTab(
         if (reviews.isEmpty()) {
             place.featuredReview?.let { rev ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(Sym.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
                 }
@@ -4008,7 +4011,7 @@ private fun ReviewsTab(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable { onRetry() }.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                Icon(Sym.Refresh, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(stringResource(R.string.place_reviews_load_failed), style = MaterialTheme.typography.bodyMedium, color = dim)
             }
@@ -4025,11 +4028,11 @@ private fun ReviewsTab(
                         value = reviewQuery,
                         onValueChange = { reviewQuery = it },
                         placeholder = { Text(stringResource(R.string.place_search_reviews), color = dim) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(Sym.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
                         trailingIcon = if (reviewQuery.isNotEmpty()) {
                             {
                                 Icon(
-                                    Icons.Default.Close, contentDescription = stringResource(R.string.place_clear_review_search), tint = dim,
+                                    Sym.Close, contentDescription = stringResource(R.string.place_clear_review_search), tint = dim,
                                     modifier = Modifier.size(18.dp).clip(CircleShape).dpadHighlight(CircleShape).clickable { reviewQuery = "" },
                                 )
                             }
@@ -4216,7 +4219,7 @@ private fun AboutTab(
             )
             sec.items.forEach { item ->
                 Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
+                    Icon(Sym.Check, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(item, style = MaterialTheme.typography.bodyMedium, color = ink)
                 }
@@ -4329,7 +4332,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
     }
 
     Box {
-        HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
+        HeaderCircleButton(Sym.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_open_web)) { openWeb() }
             item(stringResource(R.string.place_open_other_app)) { openInOtherApp() }
@@ -4548,7 +4551,7 @@ private fun DepartmentsSection(departments: List<app.vela.core.model.Department>
                 Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterEnd) {
                     if (days.isNotEmpty()) {
                         Icon(
-                            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            if (expanded) Sym.ExpandLess else Sym.ExpandMore,
                             contentDescription = if (expanded) stringResource(R.string.place_collapse_hours) else stringResource(R.string.place_expand_hours),
                             tint = dim,
                         )
@@ -4605,7 +4608,7 @@ private fun HoursSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Default.Schedule,
+                Sym.Schedule,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = dim,
@@ -4635,7 +4638,7 @@ private fun HoursSection(
                 }
             }
             Icon(
-                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                if (expanded) Sym.ExpandLess else Sym.ExpandMore,
                 contentDescription = if (expanded) stringResource(R.string.place_collapse_hours) else stringResource(R.string.place_expand_hours),
                 tint = dim,
             )
@@ -4675,7 +4678,7 @@ private fun HoursSection(
 @Composable
 internal fun TrafficOnTapRow(onClick: () -> Unit, ink: Color, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+        Icon(SymOutlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.place_traffic_not_loaded), style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
         TextButton(onClick = onClick, modifier = Modifier.dpadHighlight(CircleShape)) {

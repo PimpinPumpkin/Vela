@@ -1,5 +1,7 @@
 package app.vela.ui.settings.sections
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,11 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,7 +85,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Sym.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             placeholder = { Text(stringResource(R.string.settings_voice_search)) },
             singleLine = true,
             shape = androidx.compose.foundation.shape.CircleShape,
@@ -145,7 +142,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                 )
                 Spacer(Modifier.width(6.dp))
                 Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    if (expanded) Sym.ExpandLess else Sym.ExpandMore,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -274,7 +271,7 @@ private fun VoiceRow(
             active -> {
                 DpadFocusHandoff(keeper)
                 IconButton(onClick = onDelete, modifier = Modifier.dpadFocusKept(keeper)) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             installed -> {
@@ -290,7 +287,7 @@ private fun VoiceRow(
                     modifier = Modifier.dpadFocusKept(keeper).dpadRowSibling(useDeleteFocus, 0),
                 ) { Text(stringResource(R.string.settings_voice_row_use)) }
                 IconButton(onClick = onDelete, modifier = Modifier.dpadRowSibling(useDeleteFocus, 1)) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Sym.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             else -> {

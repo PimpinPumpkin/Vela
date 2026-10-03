@@ -1,5 +1,7 @@
 package app.vela.ui
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -86,7 +82,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
         ) {
             Spacer(Modifier.height(24.dp))
             Icon(
-                Icons.Default.Explore,
+                Sym.Explore,
                 contentDescription = null,
                 modifier = Modifier.size(76.dp),
                 tint = MaterialTheme.colorScheme.primary,
@@ -101,17 +97,17 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
             )
             Spacer(Modifier.height(40.dp))
             WelcomeFeature(
-                Icons.Default.VisibilityOff,
+                Sym.VisibilityOff,
                 stringResource(R.string.welcome_feature_no_tracking_title),
                 stringResource(R.string.welcome_feature_no_tracking_body),
             )
             WelcomeFeature(
-                Icons.Default.Place,
+                Sym.Place,
                 stringResource(R.string.welcome_feature_places_title),
                 stringResource(R.string.welcome_feature_places_body),
             )
             WelcomeFeature(
-                Icons.Default.Favorite,
+                Sym.Favorite,
                 stringResource(R.string.welcome_feature_open_source_title),
                 stringResource(R.string.welcome_feature_open_source_body),
             )
@@ -191,7 +187,7 @@ fun WhatsNewPrompt(version: String, notes: String, onOpenRelease: () -> Unit, on
         dismissText = stringResource(R.string.whatsnew_full_notes),
         onDismiss = onOpenRelease,
         dismissLowEmphasis = true,
-        icon = { Icon(Icons.Default.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        icon = { Icon(Sym.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         text = {
             // The list can be long after a week of nightlies; cap it and scroll inside the dialog.
             Column(
@@ -215,7 +211,7 @@ fun DonatePrompt(onDonate: () -> Unit, onDismiss: () -> Unit) {
         onConfirm = onDonate,
         dismissText = stringResource(R.string.welcome_donate_dismiss),
         onDismiss = onDismiss,
-        icon = { Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        icon = { Icon(Sym.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         text = { Text(stringResource(R.string.welcome_donate_body)) },
     )
 }

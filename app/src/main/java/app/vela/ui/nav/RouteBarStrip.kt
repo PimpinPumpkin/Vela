@@ -1,5 +1,7 @@
 package app.vela.ui.nav
 
+import app.vela.ui.icons.Sym
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Train
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -95,9 +92,9 @@ fun RouteBarStrip(model: RouteBar.Model, modifier: Modifier = Modifier) {
                         ) {
                             Icon(
                                 when (p.kind) {
-                                    RouteBar.Mark.CAMERA -> Icons.Filled.Videocam
-                                    RouteBar.Mark.RAIL_CROSSING -> Icons.Filled.Train
-                                    else -> Icons.Filled.Warning
+                                    RouteBar.Mark.CAMERA -> Sym.Videocam
+                                    RouteBar.Mark.RAIL_CROSSING -> Sym.Train
+                                    else -> Sym.Warning
                                 },
                                 contentDescription = null,
                                 tint = Color.White,
@@ -116,7 +113,7 @@ fun RouteBarStrip(model: RouteBar.Model, modifier: Modifier = Modifier) {
                         .span(0.0, 0.0, kind = ROLE_PUCK),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Navigation, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
+                    Icon(Sym.Navigation, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
                 }
             }) { measurables, constraints ->
                 val h = constraints.maxHeight
