@@ -1424,6 +1424,28 @@ eases the opening tilt in on the start cut's clock, pausing while a pre-engage r
 overlay as the engaged puck. Before, a parked start stayed flat and showed the flat symbol puck
 until the car moved; checked on the 4a with a stationary mock fix beside the route and the duck icon.
 
+### 4.7b Turns and trip playback
+
+The nav camera's cosmetic eases advance by `dtEase`, the trace-time step capped at
+`0.065 * replaySpeedup` s: four wall frames at any playback speed. A flat 0.065 s cap made every
+frame over ~22 ms lose ease time at a replay's 3x, so the camera fell behind the replayed car and
+caught up in jumps, most visibly through turns. 4a, screen recordings of the same 3x demo drive:
+frames with no map motion 30% -> 27%, frames moving twice the median step 21% -> 15%.
+
+A turn costs frames on its own: the camera swings 70-90 degrees in a second or two, and a tilted
+view brings a new strip of tiles into view that the tile workers lay out and the GL thread
+uploads. With `debug.vela.fps` on, each `VelaFps` line carries the second's zoom range and bearing
+change, and on the 4a every dip of a demo drive lines up with a bearing swing at an unchanged zoom
+(Davis to Woodland at 3x: 39-50 fps for one second at each turn, 57-60 elsewhere). At 1x the same
+work is spread over three times as long: dips to 40-45 fps. When the turn's voice prompt is
+synthesized in the same second, the two VITS threads hold both fast cores and the map thread runs
+on a slow one (Perfetto: 0 to 12 map frames per 100 ms for ~0.5 s). One synthesis thread
+(`debug.vela.tune.synthThreads 1`) made prompts ~30% slower to synthesize and did not change the
+dips in an alternating A/B, so two threads stay.
+
+Testing aids: `debug.vela.tune.demoSpeedup <n>` runs a demo drive's fixes and clocks at n times
+real time, the way a trip replay runs, so playback behavior reproduces without a recorded trip.
+
 ### 4.8 Route line rendering
 
 - **Alternates** in the route chooser draw as a faded route blue with a darker outline:

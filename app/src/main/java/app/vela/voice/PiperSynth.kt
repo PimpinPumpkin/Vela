@@ -157,7 +157,7 @@ class PiperSynth @Inject constructor(
                     model = r.model, tokens = r.tokens, dataDir = r.dataDir,
                     noiseScale = 0.45f, noiseScaleW = 0.55f,
                 )
-                val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
+                val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = SYNTH_THREADS, debug = false))
                 val engine = OfflineTts(assetManager = null, config = cfg)
                 numSpeakers = engine.numSpeakers()
                 runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
@@ -395,6 +395,10 @@ class PiperSynth @Inject constructor(
          * the tile workers take the core first; a prompt only slows while the map is busy.
          */
         const val SPEAK_PRIORITY = android.os.Process.THREAD_PRIORITY_DEFAULT + 8
+        /** Synthesis threads, read at engine load. Test dial `debug.vela.tune.synthThreads`. One
+         *  thread was measured on the 4a at 3x playback (2026-10-02): prompts ~30% slower to
+         *  synthesize, and the frame dips at turns no different, so two stays the default. */
+        val SYNTH_THREADS: Int get() = app.vela.ui.AppTune.local("synthThreads")?.toInt()?.coerceIn(1, 4) ?: 2
         /** Prepared lines kept at once: a drive's opener and its first turns' prompts (up to 7). */
         const val MAX_PREPARED = 8
         const val TAG = "PiperSynth"

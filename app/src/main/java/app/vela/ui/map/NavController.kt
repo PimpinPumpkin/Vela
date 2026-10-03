@@ -376,7 +376,9 @@ internal class NavController(
                 // Demo mode presents as REAL nav, so the ongoing turn notification is part of
                 // what's being demoed (and how it gets verified without a drive).
                 NavigationService.start(appContext)
-                locationProvider.replay(fixes, speedup = 1f).collect { loc ->
+                // `adb shell setprop debug.vela.tune.demoSpeedup 3` runs the demo at a trip replay's
+                // speed, so playback-only behavior can be reproduced without a recorded trip.
+                locationProvider.replay(fixes, speedup = demoSpeedup()).collect { loc ->
                     if (replayJob !== coroutineContext[Job]) return@collect // superseded
                     val here = LatLng(loc.latitude, loc.longitude)
                     _state.update {
@@ -585,6 +587,9 @@ internal class NavController(
             )
         }
     }
+
+    /** A demo drive's clock multiplier: 1, or the debug dial `demoSpeedup` (playback testing). */
+    internal fun demoSpeedup(): Float = app.vela.ui.AppTune.local("demoSpeedup")?.toFloat()?.takeIf { it > 1f } ?: 1f
 
     fun replayTrip(meta: app.vela.replay.TripMeta) {
         val fixes = tripStore.load(meta.id)

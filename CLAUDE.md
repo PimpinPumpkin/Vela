@@ -3714,6 +3714,11 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Turn stutter and playback (2026-10-02, SPEC 4.7b).** A turn's bearing swing brings new tiles
+  into a tilted view: brief dips (40-45 fps at 1x on the 4a, lower at a replay's 3x). The nav eases'
+  `dtEase` cap scales with `replaySpeedup`. Debug dials: `debug.vela.tune.demoSpeedup 3` runs a demo
+  drive at replay speed; `debug.vela.tune.synthThreads` sets the voice's thread count (default 2);
+  `VelaFps` lines now carry zoom range and bearing change per second.
 - **A DRIVE STARTS WITH A CUT, NOT A FLIGHT (2026-09-30, SPEC 4.7a sixth round).** The first nav
   camera move jumps to the car at the nav zoom, flat, and the tilt eases in over
   `NAV_START_TILT_TAU_S` (3 s), which is Google's start (checked on the 4a against Google Maps with a

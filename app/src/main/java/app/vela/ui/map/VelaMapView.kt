@@ -2690,7 +2690,11 @@ fun VelaMapView(
             // not lose time - but the cosmetic eases below (progress, bearing, camera, zoom,
             // tilt, padding) use this capped step, so a hitch's catch-up spreads over the next
             // few frames instead of hitting the glass at once.
-            val dtEase = dtE.coerceAtMost(0.065f)
+            // The cap is FOUR WALL FRAMES of trace time: at a replay's 3x a plain 23 ms frame was
+            // already over a flat 65 ms, so the eases lost time on every slightly slow frame,
+            // fell behind the 3x world and caught up in jumps, worst through turns where the
+            // camera's bearing ease has the most to do (the replay stutter, 2026-10-02).
+            val dtEase = dtE.coerceAtMost(0.065f * ts.toFloat())
             if (navPuck.engaged && routePolyline.size >= 2) {
                 // Kalman-predict the speed each frame: fold the MEASURED forward acceleration
                 // into the modeled speed, so braking kills the prediction NOW — not at the next
@@ -3722,13 +3726,22 @@ fun VelaMapView(
                 if (fpsProbeOn) {
                     var frames = 0
                     var since = android.os.SystemClock.elapsedRealtime()
+                    var zLo = 99.0; var zHi = 0.0; var b0 = Double.NaN; var b1 = Double.NaN
                     mv.addOnDidFinishRenderingFrameListener { _, _, _ ->
                         frames++
+                        mapRef?.cameraPosition?.let { cp ->
+                            zLo = minOf(zLo, cp.zoom); zHi = maxOf(zHi, cp.zoom)
+                            if (b0.isNaN()) b0 = cp.bearing
+                            b1 = cp.bearing
+                        }
                         val now = android.os.SystemClock.elapsedRealtime()
                         if (now - since >= 1000) {
-                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames)")
+                            // Zoom range and bearing change in the second: a dip that lines up with a
+                            // whole-level zoom crossing or a turn reads straight off the log.
+                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames) z=%.2f-%.2f brg %.0f>%.0f".format(zLo, zHi, b0, b1))
                             frames = 0
                             since = now
+                            zLo = 99.0; zHi = 0.0; b0 = Double.NaN
                         }
                     }
                     // LAYER BISECT (2026-09-23), same opt-in as the probe: `adb shell setprop

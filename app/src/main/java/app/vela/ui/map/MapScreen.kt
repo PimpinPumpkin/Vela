@@ -3668,7 +3668,8 @@ private fun MapSurface(
         // of 0 m (stalled) punctuated by 2.4 m lurches, chord-bearing wiggle 1.7 deg, and a
         // camera yaw wiggle that the 55 deg tilt smears into the "record needle" swim across
         // the top of the screen (issue #251, 2026-08-10). Demo drives run at 1x like real ones.
-        replaySpeedup = if (state.replaying && !state.demoDriving) MapViewModel.REPLAY_SPEEDUP else 1f,
+        replaySpeedup = if (state.replaying && !state.demoDriving) MapViewModel.REPLAY_SPEEDUP
+            else if (state.demoDriving) (app.vela.ui.AppTune.local("demoSpeedup")?.toFloat()?.takeIf { it > 1f } ?: 1f) else 1f,
         replaying = state.replaying,
         compassHeading = state.compassHeading,
         locationStale = state.myLocationStale,
