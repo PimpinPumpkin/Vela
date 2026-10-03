@@ -215,6 +215,10 @@ Next to Google at the same view, divided roads show both carriageways with a med
 show their lanes. The first step (roads at their real width, street names on every block) shipped
 2026-10-03, see `docs/ROADMAP-HISTORY.md`. What is left:
 
+- **A developer test of the markings exists (2026-10-03, SPEC):** center lines, lane lines, bike
+  lanes and crosswalks from OSM tags, live from Overpass behind a dial. Downtown Davis reads close
+  to Google's. What it does not do yet: turn arrows, stop lines, medians beyond what the data splits,
+  and lane counts where OSM has none.
 - **Lanes and medians (large, needs our own tiles):** the OpenMapTiles schema OpenFreeMap serves
   has no lane count, so width by lanes, lane lines and painted medians need a basemap baked with an
   extended schema (planetiler profile + `lanes`, `divider`). Downloaded regions could get it first,

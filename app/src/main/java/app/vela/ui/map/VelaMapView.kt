@@ -2679,6 +2679,50 @@ fun VelaMapView(
     // Re-keyed on routePolyline too: a mid-nav reroute swaps the route geometry, so the
     // ticker relaunches with the fresh route + cum and re-acquires the puck onto it at the
     // next fix (engaged=false) instead of gliding along stale geometry.
+    // PAINTED ROADS TEST (developer dial `debug.vela.tune.paintedRoads 1`, user 2026-10-03): lane
+    // lines, center lines, bike lanes and crosswalks from OpenStreetMap's tags for the view, drawn
+    // at real scale from z16.5 (PaintedRoads, PaintedRoadsLayer). A ~650 m box is fetched from
+    // Overpass and reused until the view nears its edge; off, the layers are removed.
+    LaunchedEffect(styleRef, darkTheme) {
+        val style = styleRef ?: return@LaunchedEffect
+        val http = okhttp3.OkHttpClient()
+        var box: DoubleArray? = null
+        var marks: List<app.vela.core.data.PaintedRoads.Mark> = emptyList()
+        while (true) {
+            val on = app.vela.ui.AppTune.local("paintedRoads")?.let { it != 0.0 } ?: false
+            if (!on) {
+                if (box != null || marks.isNotEmpty()) { runCatching { PaintedRoadsLayer.clear(style) }; box = null; marks = emptyList() }
+                kotlinx.coroutines.delay(2000); continue
+            }
+            val cam = mapRef?.cameraPosition
+            val t = cam?.target
+            if (cam != null && t != null && cam.zoom >= PaintedRoadsLayer.MIN_ZOOM - 0.5) {
+                val b = box
+                val h = 0.006; val w = 0.0075
+                val inside = b != null && t.latitude in (b[0] + h / 2)..(b[2] - h / 2) && t.longitude in (b[1] + w / 2)..(b[3] - w / 2)
+                if (!inside) {
+                    val nb = doubleArrayOf(t.latitude - h, t.longitude - w, t.latitude + h, t.longitude + w)
+                    // `debug.vela.paintUrl` serves a saved reply instead (adb reverse + a local server).
+                    val url = runCatching {
+                        @Suppress("PrivateApi")
+                        val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
+                        (m.invoke(null, "debug.vela.paintUrl") as? String).orEmpty().trim()
+                    }.getOrDefault("")
+                    val ways = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        if (url.isNotEmpty()) app.vela.core.data.PaintedRoads.fetchFrom(http, url)
+                        else runCatching { app.vela.core.data.PaintedRoads.fetch(http, nb[0], nb[1], nb[2], nb[3]) }.getOrNull()
+                    }
+                    if (ways == null) android.util.Log.i("VelaPaint", "fetch failed")
+                    if (ways != null) {
+                        marks = app.vela.core.data.PaintedRoads.build(ways); box = nb
+                        android.util.Log.i("VelaPaint", "${ways.size} ways, ${marks.size} marks")
+                    }
+                }
+                runCatching { PaintedRoadsLayer.apply(style, marks, darkTheme) }
+            }
+            kotlinx.coroutines.delay(1000)
+        }
+    }
     LaunchedEffect(navMode, routePolyline) {
         if (!navMode) {
             // AUDIT FIX 7 (2026-07-15): only tear the camera down on an ACTUAL nav exit. This

@@ -1531,6 +1531,18 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   no length change over 0.5%, no router point more than 12 m from the drawn line
   (`RouteSmoothingTest`). Seen on a Davis demo drive: a notch at a junction where the open router's
   line went 338, 17, 347, 315, 346, 357 degrees over 7-15 m segments.
+- **Painted roads, a developer test** (`core/data/PaintedRoads`, `ui/map/PaintedRoadsLayer`, dial
+  `debug.vela.tune.paintedRoads 1`, off for everyone). From OpenStreetMap's tags, drawn at real
+  scale from z16.5 above the roads and below the route line: road surface as wide as its lanes need
+  (3.3 m a lane, bike lanes 1.2 m set 0.9 m outside them), a double yellow center line on two-way
+  streets with a lane count, or untagged at tertiary class and up or with bike lanes, dashed white
+  lines between lanes, green bike lanes (`cycleway=lane` both sides on two-way, right on one-way),
+  and zebra crosswalks for `footway=crossing` ways that are marked (not `unmarked`, not
+  `crossing:markings=no`). Lines stop `JUNCTION_TRIM_M` (8 m) short of intersections (points shared
+  by three streets, or two with different names; service roads do not count). Data comes from
+  Overpass for a ~650 m box, or from `debug.vela.paintUrl` (a saved reply over adb reverse, to keep
+  a test off the public servers). The crosswalk dash is 0.4 of the line width: at 0.22 MapLibre's
+  dash texture drew nothing. A shipping version would bake these into tiles (ROADMAP "Richer roads").
 - **Traffic controls on the BROWSE map** appear from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`, the scale
   bar reads about 50 ft on a 4a, Google's level); they are still fetched from z16. Nav keeps 15.4.
   A level crossing or hump within 25 m of a light or stop sign is drawn offset down-left
