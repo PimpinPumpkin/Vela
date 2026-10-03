@@ -425,6 +425,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
+- ✅ **More reliable offline detection (2026-10-03).** Vela no longer decides it is offline after being in the
+  background or while the phone dozes; if any request gets an answer it is online, full stop. Tapping the
+  offline globe checks the connection again on the spot.
 - ✅ **Material 3 Expressive icons (2026-10-03).** Every icon in the app moved to Google's newer rounded
   Material Symbols: filled glyphs on the category chips, outlined ones on the search bar's buttons.
 - ✅ **A cleaner route line (2026-10-03).** The blue line no longer swerves around medians and islands you

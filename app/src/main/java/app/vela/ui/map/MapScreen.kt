@@ -1439,6 +1439,7 @@ fun MapScreen(
                         },
                         onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickDestination(); vm.cancelPickStop() }) else null,
                         offline = state.offline,
+                        onOfflineTap = vm::recheckConnectivity,
                         dpadMode = dpadMode,
                         onMic = onMic,
                         // Your lists sits beside the gear now (issue #290). Bare map only: with a
@@ -1511,14 +1512,15 @@ fun MapScreen(
                         state.selected == null && state.results.isEmpty()
                     ) {
                         Surface(
+                            onClick = vm::recheckConnectivity,
                             color = SheetPalette.bg(darkTheme).copy(alpha = 0.82f),
                             shape = CircleShape,
                             shadowElevation = 2.dp,
-                            modifier = Modifier.padding(top = 8.dp, start = 2.dp).size(34.dp),
+                            modifier = Modifier.padding(top = 8.dp, start = 2.dp).size(34.dp).dpadHighlight(CircleShape),
                         ) {
                             Icon(
                                 Sym.PublicOff,
-                                contentDescription = stringResource(R.string.search_offline),
+                                contentDescription = stringResource(R.string.search_offline_recheck),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(7.dp),
                             )

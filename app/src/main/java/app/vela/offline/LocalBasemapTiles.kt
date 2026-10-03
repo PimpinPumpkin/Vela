@@ -39,6 +39,8 @@ object LocalBasemapTiles : Interceptor {
                 okhttp3.OkHttpClient.Builder()
                     .dispatcher(okhttp3.Dispatcher().apply { maxRequestsPerHost = 20 })
                     .addInterceptor(this)
+                    // After the local hook: a tile answered from a downloaded file is not proof of a network.
+                    .addInterceptor(app.vela.core.net.NetHealth.interceptor)
                     .build(),
             )
         }.onFailure { installed = false; android.util.Log.w("VelaLocalTiles", "could not install the tile hook: ${it.message}") }

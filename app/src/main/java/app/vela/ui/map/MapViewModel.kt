@@ -1958,6 +1958,11 @@ class MapViewModel @Inject constructor(
     private var offlineLatchJob: Job? = null
 
     private var lastValidated: Boolean? = null
+    /** The default network the system last handed the callback. getActiveNetwork() answers null
+     *  while the app's network access is BLOCKED (backgrounding, doze, app standby) even though the
+     *  phone is online, which latched "offline" and stuck there (user 2026-10-03). */
+    @Volatile private var lastDefaultNetwork: android.net.Network? = null
+    private var refreshConnectivity: (() -> Unit)? = null
 
     private fun observeConnectivity() {
         val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
@@ -1969,7 +1974,10 @@ class MapViewModel @Inject constructor(
                 app.vela.core.data.LowDataMode.enabled = constrained
                 _state.update { it.copy(lowData = constrained) }
             }
-            val off = !isOnline()
+            // The SYSTEM's view decides whether to start counting toward offline; Vela's own traffic
+            // (NetHealth) decides whether the count ends there. Asking isOnline() here, which says yes
+            // on recent traffic, meant a real dropout never started the count at all.
+            val off = !systemOnline()
             // A network that starts or stops reaching the internet re-decides the map picture
             // (refreshBasemapArchive treats an unvalidated network as offline).
             val validated = isValidated()
@@ -1992,8 +2000,12 @@ class MapViewModel @Inject constructor(
                 // fetches on a device that is actually online. Only call it offline if it is
                 // STILL offline ~3 s later.
                 offlineLatchJob = viewModelScope.launch {
-                    delay(3_000)
-                    val stillOff = !isOnline()
+                    // Held off while Vela's own traffic says online; re-checked when that runs out.
+                    delay(maxOf(3_000L, app.vela.core.net.NetHealth.freshForMs()))
+                    // Vela's own traffic outranks the system's word: a response in the last 20 s
+                    // means the internet is there, whatever getActiveNetwork() says.
+                    val stillOff = !systemOnline() && !app.vela.core.net.NetHealth.recentlyOnline()
+                    if (stillOff) diag.record("net", "offline: system has no network and nothing answered for ${app.vela.core.net.NetHealth.FRESH_MS / 1000} s")
                     val changed = _state.value.offline != stillOff
                     _state.update { if (it.offline != stillOff) it.copy(offline = stillOff) else it }
                     if (changed) refreshBasemapArchive()
@@ -2001,6 +2013,28 @@ class MapViewModel @Inject constructor(
             }
         }
         refresh()
+        refreshConnectivity = { refresh() }
+        // Any response Vela gets clears a latched offline flag at once.
+        app.vela.core.net.NetHealth.onResponse = {
+            // A response IS the internet: clear the flag even if the system still says no network.
+            if (_state.value.offline) viewModelScope.launch {
+                offlineLatchJob?.cancel()
+                _state.update { if (it.offline) it.copy(offline = false) else it }
+                refreshBasemapArchive()
+                refresh()
+            }
+        }
+        // Coming back to the app re-checks: the network may have been blocked while we were away,
+        // and unblocking does not always arrive as a callback this app hears.
+        (appContext as? android.app.Application)?.registerActivityLifecycleCallbacks(object : android.app.Application.ActivityLifecycleCallbacks {
+            override fun onActivityResumed(a: android.app.Activity) { refresh() }
+            override fun onActivityCreated(a: android.app.Activity, b: android.os.Bundle?) {}
+            override fun onActivityStarted(a: android.app.Activity) {}
+            override fun onActivityPaused(a: android.app.Activity) {}
+            override fun onActivityStopped(a: android.app.Activity) {}
+            override fun onActivitySaveInstanceState(a: android.app.Activity, b: android.os.Bundle) {}
+            override fun onActivityDestroyed(a: android.app.Activity) {}
+        })
         // Diagnostics breadcrumbs for the link itself (issue #397, 2026-09-15: an export showed
         // both routers empty for four minutes and nothing said whether the phone had a network).
         // No pinging: the system's own default-network callback already says which transport is
@@ -2021,9 +2055,12 @@ class MapViewModel @Inject constructor(
         }
         runCatching {
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: android.net.Network) { note("available", runCatching { cm.getNetworkCapabilities(network) }.getOrNull()); refresh() }
-                override fun onLost(network: android.net.Network) { note("lost", null); refresh() }
-                override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) { note("link", caps); refresh() }
+                override fun onAvailable(network: android.net.Network) { lastDefaultNetwork = network; note("available", runCatching { cm.getNetworkCapabilities(network) }.getOrNull()); refresh() }
+                override fun onLost(network: android.net.Network) { if (lastDefaultNetwork == network) lastDefaultNetwork = null; note("lost", null); refresh() }
+                override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) { lastDefaultNetwork = network; note("link", caps); refresh() }
+                // Blocked and unblocked (doze, standby, background limits): the network did not change,
+                // only whether this app may use it. Unhandled, an unblock never cleared "offline".
+                override fun onBlockedStatusChanged(network: android.net.Network, blocked: Boolean) { note(if (blocked) "blocked" else "unblocked", runCatching { cm.getNetworkCapabilities(network) }.getOrNull()); refresh() }
             })
         }
     }
@@ -2050,11 +2087,37 @@ class MapViewModel @Inject constructor(
         caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }.getOrDefault(true)
 
-    private fun isOnline(): Boolean = runCatching {
+    private fun isOnline(): Boolean = app.vela.core.net.NetHealth.recentlyOnline() || systemOnline()
+
+    /** What Android says about the network, nothing else. */
+    private fun systemOnline(): Boolean = runCatching {
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        // activeNetwork is null while this app's access is blocked; the callback's network is the
+        // phone's real default, and its capabilities still answer.
+        val net = cm.activeNetwork ?: lastDefaultNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(net) ?: return false
         caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }.getOrDefault(true)
+
+    /** The offline globe was tapped (user 2026-10-03): ask Android to re-check the network, try one
+     *  small request to Vela's own config host, and clear the flag if anything answers. */
+    fun recheckConnectivity() {
+        viewModelScope.launch {
+            runCatching {
+                val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                (cm.activeNetwork ?: lastDefaultNetwork)?.let { cm.reportNetworkConnectivity(it, false) }
+            }
+            showStatus(appContext.getString(R.string.mapvm_rechecking_connection))
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    http.newBuilder().callTimeout(6, java.util.concurrent.TimeUnit.SECONDS).build()
+                        .newCall(okhttp3.Request.Builder().url(CONNECTIVITY_PROBE_URL).head().build()).execute().use { true }
+                }.getOrDefault(false)
+            }
+            refreshConnectivity?.invoke()
+            flashStatus(appContext.getString(if (ok) R.string.mapvm_back_online else R.string.mapvm_still_offline))
+        }
+    }
 
     /** A dropped/absent connection (DNS, no route, timeout) as opposed to a real Google/parse failure —
      *  so search can show the friendly "download an area" offline guidance instead of a raw host error. */
@@ -8823,6 +8886,8 @@ class MapViewModel @Inject constructor(
         /** How long an informational heads-up card stays before dismissing itself. */
         const val CLOSED_OPEN_PLACES_CAP = 2000
         const val STATUS_AUTO_MS = 10_000L
+        /** A tapped offline globe probes Vela's own config host (no Google contact). */
+        const val CONNECTIVITY_PROBE_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json"
 
         /** Average size of one saved map tile, for the area-download estimate ([areaDownloadPlan]):
          *  OpenFreeMap tiles sampled at 26 to 170 KB, plus the terrain layer that rides along. */

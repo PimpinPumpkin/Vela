@@ -29,6 +29,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 // D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadRoundedCornerShape
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +71,8 @@ fun SearchBar(
     onFocusChange: (Boolean) -> Unit = {},
     onBack: (() -> Unit)? = null,
     offline: Boolean = false,
+    /** Tapping the offline marker re-checks the connection (user 2026-10-03). */
+    onOfflineTap: (() -> Unit)? = null,
     dpadMode: Boolean = false,
     // Voice search: shown only when there's a way to service it (a voice-input app, and later an
     // on-device model). Null = no mic. Sits at the right when the field is empty, Google-style.
@@ -252,19 +256,28 @@ fun SearchBar(
             // Quiet offline indicator: a grayed globe-with-a-slash + "Offline", shown when there's no
             // connection (replaces the old banner). Hidden while typing so it doesn't crowd the clear "X".
             if (offline && query.isEmpty() && onBack == null) {
-                Icon(
-                    Sym.PublicOff,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    stringResource(R.string.search_offline),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(end = 4.dp),
-                )
+                val recheckLabel = stringResource(R.string.search_offline_recheck)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .then(if (onOfflineTap != null) Modifier.dpadHighlight(CircleShape).clip(CircleShape)
+                            .clickable(onClickLabel = recheckLabel) { onOfflineTap() } else Modifier)
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                ) {
+                    Icon(
+                        Sym.PublicOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        stringResource(R.string.search_offline),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(end = 4.dp),
+                    )
+                }
             }
             // Your lists, moved here from the head of the category-chip row (issue #290): there it
             // sat on the far left competing with the quick-category chips, which is a different

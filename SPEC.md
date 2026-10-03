@@ -1531,6 +1531,17 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   no length change over 0.5%, no router point more than 12 m from the drawn line
   (`RouteSmoothingTest`). Seen on a Davis demo drive: a notch at a junction where the open router's
   line went 338, 17, 347, 315, 346, 357 degrees over 7-15 m segments.
+- **Offline detection** (`MapViewModel.observeConnectivity`, `core/net/NetHealth`, 2026-10-03). The
+  offline flag latches only when the SYSTEM has no usable network AND none of Vela's own requests got a
+  response for `NetHealth.FRESH_MS` (15 s) with no unreachable-host failure since; the count starts at
+  3 s and is held off until that window ends. Any HTTP response (an interceptor first on the shared
+  client and after the local-tile hook on MapLibre's) clears the flag at once. The system check uses
+  the callback's last default network when `getActiveNetwork()` answers null: Android returns no
+  active network to an app whose access is BLOCKED (backgrounding, doze, standby), which latched
+  offline, and the unblock arrived only as `onBlockedStatusChanged`, which nothing handled, so the
+  flag stuck. That callback and every activity resume now re-check. Tapping the offline marker
+  (search bar or globe chip) calls `recheckConnectivity`: `reportNetworkConnectivity` asks Android to
+  re-validate, one HEAD to the calibration host (no Google contact), then a status line.
 - **Painted roads, a developer test** (`core/data/PaintedRoads`, `ui/map/PaintedRoadsLayer`, dial
   `debug.vela.tune.paintedRoads`: 1 = the California bake, 2 = built on the phone; off for everyone).
   From OpenStreetMap's tags, drawn at real scale from z16.5 above the roads and below the route line:
