@@ -170,9 +170,19 @@ class GoogleHealthProbeTest {
         check("review-feed", results) {
             // A new session's first answer is often stripped (the app retries for the same reason), so
             // one empty reply is not drift: it failed the daily run once, 2026-09-25, and passed on rerun.
-            fun ask() = app.vela.core.data.google.parse.ReviewFeedParser.parse(rpc("qv9Egd", cal.reviewFeedProto.replace("{FID}", coop).replace("{TOKEN}", "")))
-            val feed = ask()?.takeIf { it.reviews.isNotEmpty() } ?: run { Thread.sleep(3_000); ask() }
+            var raw = ""
+            fun ask(): app.vela.core.data.google.parse.ReviewFeed? {
+                raw = rpc("qv9Egd", cal.reviewFeedProto.replace("{FID}", coop).replace("{TOKEN}", ""))
+                return app.vela.core.data.google.parse.ReviewFeedParser.parse(raw)
+            }
+            val feed = ask()?.takeIf { it.reviews.isNotEmpty() }
+                ?: run { Thread.sleep(3_000); ask() }?.takeIf { it.reviews.isNotEmpty() }
+                ?: run { Thread.sleep(8_000); ask() }
                 ?: error("unreadable reply")
+            // The WITHHELD answer (a payload ending `true,[true]`, the one a session without a fresh
+            // page token gets) is Google declining this client, not a shape we cannot read: it failed
+            // the daily run every other day from a datacenter IP while the parser was fine.
+            if (feed.reviews.isEmpty() && Regex("""true\s*,\s*\[\s*true\s*]""").containsMatchIn(raw)) throw Blocked("feed withheld for this session")
             check(feed.reviews.isNotEmpty()) { "empty feed (rpcContext no longer opens it?)" }
             "${feed.reviews.size} reviews${if (feed.end && feed.reviews.size < 10) " (end after a short list: Google's limited view)" else ""}"
         }

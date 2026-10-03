@@ -69,6 +69,8 @@ jobs:
                 )
               | select( ($skipBig | not) or (.big != true) )
               | select( .skip_obf != true )
+              # obf_manual: too big for a runner's heap, baked by hand (scripts/build-obf-region.sh with JAVA_HEAP=22g)
+              | select( .obf_manual != true )
               | {id, name, pbf_url} ]
           ' tools/routing-regions.json)
           n=$(printf '%s' "$sel" | jq 'length')

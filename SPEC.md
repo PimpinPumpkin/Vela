@@ -2658,8 +2658,12 @@ the shared-storage app folder for a card.
 
 `tools/routing-regions.json` is the catalog (every Geofabrik country-level extract, US states,
 Canadian provinces, and first-level sub-areas for the countries Geofabrik divides). Rows carry
-`group`, `big`, `skip_obf` and `qkprefix` where relevant. A dispatch takes a group list or
-`all-sub`.
+`group`, `big`, `skip_obf`, `obf_manual` and `qkprefix` where relevant. A dispatch takes a group
+list or `all-sub`. `obf_manual` (England, 1.6 GB: out of memory at the runner's 12g heap every
+time, so the scheduler retried it forever) drops a row from the obf workflow ONLY; its routing file
+is baked by hand with `JAVA_HEAP=22g scripts/build-obf-region.sh` and merged into both the live and
+staging manifests, and every other bake still covers the row. `skip_obf` would also drop it from the
+basemap and grid-cell bakes.
 
 Selection rules on the phone:
 
@@ -3671,6 +3675,9 @@ cannot read, or the avoid flag ignored) fails the run; BLOCKED (403, 429, the so
 consent wall: a datacenter IP's treatment) is a warning. `scripts/check-chrome-ua.py` fails the
 same workflow when the Chrome major Vela claims is behind a Windows stable major that has been out
 7 days, or ahead of stable. A failed scheduled run mails the maintainer; nothing is posted.
+The review-feed check retries twice (3 s, then 8 s) and reports the WITHHELD reply (a payload
+ending `true,[true]`, what a session without a page token gets) as BLOCKED, not DRIFT: from a
+datacenter IP it alternated pass/fail daily with the parser unchanged.
 Locally: `./gradlew :core:testDebugUnitTest --tests '*GoogleHealthProbeTest' -DvelaLive=true --rerun-tasks`.
 
 Two procedural rules:
