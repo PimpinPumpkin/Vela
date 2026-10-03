@@ -355,7 +355,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                 ),
             )
         }
-        val folded = RouteGeometry.foldRenames(maneuvers)
+        val folded = RouteGeometry.foldSameRoadMerges(RouteGeometry.foldRenames(maneuvers))
         // Every road the route drives, local name -> Latin alias, from the file's own name:en /
         // name:latin tags (the obf keeps them per way, so no sidecar download is needed).
         val latin = LinkedHashMap<String, String>()

@@ -934,6 +934,15 @@ first, only when at least `WALK_GOOGLE_SHORTER` (15%) shorter than the open walk
 crosses and doubles back at each one (+20 to +120% on Davis, Sacramento and Dhaka walks, per-point
 headings no help). No traffic row for walking. Logcat `VelaWalk` gives both lengths and the naming.
 
+**A merge onto the road you are already on is folded** (`RouteGeometry.foldSameRoadMerges`, run
+on every router's steps and on the hybrid's stitched list): when the road or ref the earlier steps
+entered (renames included) is the merge's, or the step before pointed toward it ("toward I 80 West")
+and has run more than `EXIT_COMPLEX_GAP_M` (500 m) since. Its length joins the step before, which
+takes its road and ref. A router reads a lane joining the freeway (an express-lane exit) as a
+merge onto the freeway; kept, the banner said "Merge onto" the freeway for the 12 km the driver
+was already on it. The merge at the end of a ramp, a few hundred meters past its fork, is kept.
+`SameRoadMergeTest`.
+
 **`LineNamer` (`core/data/naming`)** keeps a route's line and derives its steps: turns from the
 heading change across +-32 m (peaks >= 35 degrees, 30 m apart); names from the nearest street in
 the map's vector tiles within 25 m (30 m driving) running within 35 degrees of the line, runs under

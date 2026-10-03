@@ -404,7 +404,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
             }
         }
-        val consolidated = foldRenames(consolidateExits(maneuvers))
+        val consolidated = foldSameRoadMerges(foldRenames(consolidateExits(maneuvers)))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -496,6 +496,52 @@ object RouteGeometry {
             dirs.isEmpty() || dirs.intersect(branchDirs).isNotEmpty()
         }
         return if (kept.size in 1 until parts.size) kept.joinToString(", ") else ramp
+    }
+
+    /** A road name or ref folded for comparison: "I 5", "I-5" and "i5" are one road. */
+    private fun roadKey(s: String?): String? =
+        s?.lowercase()?.filter { it.isLetterOrDigit() }?.takeIf { it.isNotEmpty() }
+
+    /** "toward I 80 West: Davis" -> the destination text after the last "toward", lowercased. */
+    private val TOWARD = Regex("""\btoward\s+(.+)$""", RegexOption.IGNORE_CASE)
+
+    /**
+     * Fold a MERGE onto the road the driver is already on into the PRECEDING maneuver (silent, its
+     * length added so the steps still tile the line). "Already on" = the road or ref the earlier
+     * steps entered (renames included) is the merge's, or the step before pointed TOWARD it and has
+     * run more than [EXIT_COMPLEX_GAP_M] since: you have been on that road a while. A router reads
+     * a lane joining the freeway (an express-lane exit) as a merge onto the freeway; 12 km after
+     * the real merge, the banner said "Merge onto" the freeway it had been on the whole time (real
+     * drive 2026-10-02). The merge at the end of a ramp, just after its fork, is kept.
+     */
+    internal fun foldSameRoadMerges(list: List<Maneuver>): List<Maneuver> {
+        val out = mutableListOf<Maneuver>()
+        var onRoads = emptySet<String>()
+        for (m in list) {
+            val targets = setOfNotNull(roadKey(m.ref), roadKey(m.road))
+            val prev = out.lastOrNull()
+            val sameRoad = m.type == ManeuverType.MERGE && prev != null && targets.isNotEmpty() && (
+                targets.any { it in onRoads } ||
+                    (prev.distanceMeters > EXIT_COMPLEX_GAP_M && TOWARD.find(prev.instruction)?.groupValues?.get(1)
+                        ?.let { dest -> val d = roadKey(dest).orEmpty(); targets.any { d.startsWith(it) } } == true)
+                )
+            if (sameRoad && prev != null) {
+                out[out.lastIndex] = prev.copy(
+                    distanceMeters = prev.distanceMeters + m.distanceMeters,
+                    durationSeconds = prev.durationSeconds + m.durationSeconds,
+                    road = prev.road ?: m.road,
+                    ref = prev.ref ?: m.ref,
+                    renames = prev.renames + m.renames.map { it.copy(atMeters = it.atMeters + prev.distanceMeters) },
+                )
+                onRoads = onRoads + targets
+                continue
+            }
+            out += m
+            val entered = setOfNotNull(roadKey(m.ref), roadKey(m.road)) +
+                m.renames.flatMap { listOfNotNull(roadKey(it.ref), roadKey(it.road)) }
+            onRoads = entered
+        }
+        return out
     }
 
     /** Fold a pure-rename CONTINUE into the PRECEDING maneuver so it never becomes its own banner card / step.
