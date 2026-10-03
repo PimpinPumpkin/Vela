@@ -1537,7 +1537,9 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   frame later, the copy goes to full opacity and the other is hidden in the same frame. The far
   tail is not waited on (it starts 3 km ahead, usually off screen, where its tiles never load), and
   a copy still unseen after `ROUTE_PENDING_MAX_PASSES` (40) passes swaps anyway (the map panned
-  away). The ahead window's clear stretch follows the SHOWN cut piece's end. Re-anchoring a single
+  away). The ahead window's clear stretch follows the SHOWN cut piece's end. All six layers have
+  no opacity transition (`lineOpacityTransition` 0): MapLibre animates opacity over 300 ms by
+  default while the hidden copy disappears at once, so each swap dipped and faded the route back in. Re-anchoring a single
   layer in place painted the new gradient over the old geometry for a frame: the driven route
   flashed back in once per cut slide (every ~300 m) and the traffic colors jumped along the line.
   4a, 60 s of a 3x demo drive, frames with route color behind the arrow: 11 single-frame flashes
@@ -2958,7 +2960,8 @@ highlight from the basemap's `transportation` layer (class `rail` one color, cla
 another, no network), and above it the track in each line's own color from Transitous
 `/api/experimental/map/routes` (`Transitous.linesInBox`). The service answers every route in the
 box and has no mode parameter; buses, coaches and boats are dropped on the phone, a shape is cut
-at every gap over `CHORD_SPLIT_M` (2 km) and each run whose points average over `CHORD_MAX_M`
+at every gap over `CHORD_SPLIT_M` (4 km; at 2 km it cut the subway's single straight hop over the
+East River bridges) and each run whose points average over `CHORD_MAX_M`
 (700 m) apart is dropped as a chord (a shape dense through a city and one ruler jump out to the
 suburbs drew straight commuter lines out of Manhattan, discussion #648), the rest is thinned to
 4 m. The request's `zoom` is 8 (long-distance and regional rail only) while the view is under
@@ -2978,7 +2981,8 @@ MapSurface): in a big city they buried the route, and the colored lines' orange 
 traffic. They return when the route closes.
 Metro stretches carry their lines' letters (`MapLine.labels`, the route `shortName` and color,
 an express variant like "6X" folded into its base, numbers before letters, at most six): one dark
-pill per stretch at its middle from z13 (`TRANSIT_LABELS_LAYER`, below the business icons), each
+pill per stretch at its middle from z13 (white with a gray edge and a thin dark outline on the
+letters on the light map, near-black on the dark one) (`TRANSIT_LABELS_LAYER`, below the business icons), each
 letter in its line's color through a format expression, two spaces apart. Lines that share a color
 share one strand (the B, D, F and M are all orange), so only the letter tells them apart (#648).
 Kinds are settings (`TransitLayer`): lines

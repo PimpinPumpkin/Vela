@@ -2122,9 +2122,9 @@ fun VelaMapView(
     val accentMetro = transitMetro && transitLines.none { it.kind == app.vela.core.data.transit.Transitous.Kind.METRO }
     val accentTrains = transitTrains && transitLines.none { it.kind == app.vela.core.data.transit.Transitous.Kind.TRAIN }
     val driveNavNow = navMode && navDriveMode
-    LaunchedEffect(transitLines, transitOn, transitMetro, transitTrains, styleRef, driveNavNow) {
+    LaunchedEffect(transitLines, transitOn, transitMetro, transitTrains, styleRef, driveNavNow, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
-        runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains) }
+        runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains, darkTheme) }
         runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
     }
     LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
@@ -2721,6 +2721,8 @@ fun VelaMapView(
         // Test dial `debug.vela.tune.camTurnTau` (seconds): how quickly the camera swings through a
         // turn; read once per drive.
         val camTurnTau = app.vela.ui.AppTune.local("camTurnTau")?.takeIf { it in 0.1..3.0 } ?: CAM_BRG_TAU_TURN
+        // Test dial `debug.vela.tune.puckGestureSwap 0`: keep the 3D overlay during gestures.
+        val puckGestureSwap = app.vela.ui.AppTune.local("puckGestureSwap")?.let { it != 0.0 } ?: true
         var buffersReset = true
         var lastNanos = 0L
         // STANDING STILL COSTS NOTHING (issue #605, 2026-09-25): the loop used to redraw the map at
@@ -3089,7 +3091,7 @@ fun VelaMapView(
                         // frame apart from the map's surface, and the ship visibly swam against the map
                         // while the user panned (2026-10-02). The 3D overlay returns once the camera has
                         // been still for PUCK_GESTURE_SETTLE_MS.
-                        if (nowMs - detachedMovedMs[0] < PUCK_GESTURE_SETTLE_MS) {
+                        if (puckGestureSwap && nowMs - detachedMovedMs[0] < PUCK_GESTURE_SETTLE_MS) {
                             dropPuckOverlay()
                             idleFrames = 0
                         } else {
@@ -5125,6 +5127,12 @@ private fun ensureLayers(style: Style) {
         style.addLayerAbove(twin(ROUTE_TAIL_SRC_B, ROUTE_TAIL_LAYER_B), ROUTE_TAIL_LAYER)
         style.addLayerAbove(twin(ROUTE_AHEAD_SRC_B, ROUTE_AHEAD_LAYER_B), ROUTE_AHEAD_LAYER)
         style.addLayerAbove(twin(ROUTE_CUT_SRC_B, ROUTE_CUT_LAYER_B), ROUTE_CUT_LAYER)
+        // A copy is shown by its opacity going 0.004 -> 1. Opacity animates over 300 ms by default
+        // while the other copy hides at once, so every swap dipped and faded the route back in
+        // (user 2026-10-02): no transition on any of the six.
+        for (id in arrayOf(ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B, ROUTE_AHEAD_LAYER, ROUTE_AHEAD_LAYER_B, ROUTE_TAIL_LAYER, ROUTE_TAIL_LAYER_B)) {
+            (style.getLayer(id) as? LineLayer)?.lineOpacityTransition = org.maplibre.android.style.layers.TransitionOptions(0, 0)
+        }
     }
     // Grayed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
@@ -6679,8 +6687,8 @@ private var lastTransitLines: List<app.vela.core.data.transit.Transitous.MapLine
  * line with no color of its own takes the plain highlight's color for its kind. Drawn where the
  * plain highlight is, under the labels. The source is rebuilt only when the list changes.
  */
-private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean, trains: Boolean) {
-    runCatching { ensureTransitLabels(style, lines, metro) }
+private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean, trains: Boolean, dark: Boolean = true) {
+    runCatching { ensureTransitLabels(style, lines, metro, dark) }
     val src = style.getSourceAs<GeoJsonSource>(TRANSIT_LINES_SRC)
     if (lines.isEmpty()) {
         if (src != null) {
@@ -6756,6 +6764,7 @@ private const val TRANSIT_LABELS_SRC = "vela-transit-labels-src"
 private const val TRANSIT_LABELS_LAYER = "vela-transit-labels"
 private const val TRANSIT_PILL_IMG = "vela-transit-pill"
 private var lastTransitLabels: List<app.vela.core.data.transit.Transitous.MapLine>? = null
+private var lastTransitPillDark: Boolean? = null
 
 /**
  * The metro lines' letters along their track (#648): lines that share a color share a strand
@@ -6764,7 +6773,7 @@ private var lastTransitLabels: List<app.vela.core.data.transit.Transitous.MapLin
  * line's color through a format expression over the feature's `n0..n5` / `c0..c5`. From z13, and
  * placed below the business icons so they keep their spots.
  */
-private fun ensureTransitLabels(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean) {
+private fun ensureTransitLabels(style: Style, lines: List<app.vela.core.data.transit.Transitous.MapLine>, metro: Boolean, dark: Boolean) {
     val src = style.getSourceAs<GeoJsonSource>(TRANSIT_LABELS_SRC)
     val labeled = if (metro) lines.filter { it.labels.isNotEmpty() } else emptyList()
     if (labeled.isEmpty()) {
@@ -6788,15 +6797,22 @@ private fun ensureTransitLabels(style: Style, lines: List<app.vela.core.data.tra
         if (src == null) style.addSource(GeoJsonSource(TRANSIT_LABELS_SRC, fc, GeoJsonOptions().withMaxZoom(16))) else src.setGeoJson(fc)
         lastTransitLabels = lines
     }
-    if (style.getLayer(TRANSIT_LABELS_LAYER) != null) return
-    if (style.getImage(TRANSIT_PILL_IMG) == null) {
+    // The pill follows the map's theme (#648: a black pill on the light map was jarring): white with
+    // a gray edge on the light map, near-black on the dark one. A theme change reloads the style,
+    // which rebuilds this layer with the other pill.
+    val existing = style.getLayer(TRANSIT_LABELS_LAYER)
+    if (existing != null && lastTransitPillDark == dark) return
+    if (existing != null) runCatching { style.removeLayer(TRANSIT_LABELS_LAYER) }
+    lastTransitPillDark = dark
+    runCatching { style.removeImage(TRANSIT_PILL_IMG) }
+    run {
         val d = android.content.res.Resources.getSystem().displayMetrics.density
         val w = (30 * d).toInt(); val h = (22 * d).toInt(); val r = 7 * d
         val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val rect = android.graphics.RectF(d, d, w - d, h - d)
-        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xF0202124.toInt() })
-        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).also { it.style = Paint.Style.STROKE; it.strokeWidth = d; it.color = 0xFF5F6368.toInt() })
+        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0xF0202124.toInt() else 0xFAFFFFFF.toInt() })
+        c.drawRoundRect(rect, r, r, Paint(Paint.ANTI_ALIAS_FLAG).also { it.style = Paint.Style.STROKE; it.strokeWidth = d; it.color = if (dark) 0xFF5F6368.toInt() else 0xFFBDC1C6.toInt() })
         style.addImage(
             TRANSIT_PILL_IMG, bmp,
             listOf(org.maplibre.android.maps.ImageStretches(r + d, w - r - d)),
@@ -6820,6 +6836,9 @@ private fun ensureTransitLabels(style: Style, lines: List<app.vela.core.data.tra
         PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
         PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
         PropertyFactory.textPadding(6f),
+        // A thin dark outline on the light pill keeps the yellow and orange letters readable on white.
+        PropertyFactory.textHaloColor(if (dark) "#202124" else "#5F6368"),
+        PropertyFactory.textHaloWidth(if (dark) 0f else 0.6f),
     ).apply { setMinZoom(13f) }
     when {
         style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(layer, AMBIENT_LAYER)

@@ -199,8 +199,10 @@ object Transitous {
     private const val LINE_SIMPLIFY_M = 4.0
     /** Average spacing of a shape's points above which it is a chord, not a drawn track. */
     private const val CHORD_MAX_M = 700.0
-    /** A single gap this long between two points of a shape is a chord: the shape is cut there. */
-    private const val CHORD_SPLIT_M = 2000.0
+    /** A single gap this long between two points of a shape is a chord: the shape is cut there.
+     *  Above a long bridge's one straight hop (2 to 2.5 km over the East River: at 2 km the subway
+     *  lines stopped at the water, #648), far below a ruler line between towns (15 km and more). */
+    private const val CHORD_SPLIT_M = 4000.0
 
     /** Douglas-Peucker: drops points that sit within [tolM] of the line through their neighbors. */
     internal fun simplify(pts: List<LatLng>, tolM: Double): List<LatLng> {

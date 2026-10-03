@@ -6642,7 +6642,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   "no lines" and the plain highlight stays). Buses, coaches and boats are dropped; a polyline is
   METRO if any metro route runs on it (`Transitous.kindOf`: subway, tram, funicular, cable car),
   else TRAIN; its colors are its rail routes' own (at most `MAX_LINE_COLORS` 4). A shape is cut
-  at every gap over `CHORD_SPLIT_M` (2 km), and a run whose points average over `CHORD_MAX_M`
+  at every gap over `CHORD_SPLIT_M` (4 km; 2 km cut the bridges over the East River), and a run whose points average over `CHORD_MAX_M`
   (700 m) apart is a stop-to-stop chord from a feed with no shapes and is dropped (the first look
   at Manhattan was a fan of ruler lines to other cities; the average alone missed a shape dense in
   town with one jump to the suburbs).
