@@ -344,6 +344,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_route_picker to SettingsSection.NAVIGATION,
     R.string.settings_route_bar to SettingsSection.NAVIGATION,
     R.string.settings_route_trail to SettingsSection.NAVIGATION,
+    R.string.settings_turn_declutter to SettingsSection.NAVIGATION,
     R.string.settings_road_label to SettingsSection.NAVIGATION,
     R.string.settings_prefer_buttons to SettingsSection.NAVIGATION,
     R.string.settings_pip_turn_card to SettingsSection.NAVIGATION,

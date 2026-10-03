@@ -159,6 +159,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.GoogleFree.init(this) // "Use Vela without Google": mirrors into the :core NoGoogle flag
         app.vela.ui.Buildings3d.init(this)
         app.vela.ui.RouteTrail.init(this)
+        app.vela.ui.TurnDeclutterPref.init(this)
         app.vela.ui.RoadLabel.init(this)
         app.vela.ui.NavNorthUp.init(this)
         app.vela.ui.PuckStyle.init(this)

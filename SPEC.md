@@ -1458,6 +1458,22 @@ pass, which reads region index files on the main thread, the building-overlay ga
 schedule) runs at most once per `IDLE_WORK_GAP_MS` (1 s) while the camera moves, plus once
 `IDLE_WORK_TRAIL_MS` (250 ms) after the last idle event; a pan's end still runs it at once.
 
+**The map is cut back to street names while the camera swings (`TurnDeclutter`).** Symbol
+placement re-runs on every frame the camera rotates, and that, more than the tiles, is where a
+turn's frames went. Bisected on the 4a with `debug.vela.hide` over a 3x Davis to Woodland demo
+drive, fps in the seconds with a 25+ degree bearing change: all layers up 40-49; every symbol layer
+hidden 53-60; Vela's own symbol layers hidden 45-58; any one group of them alone (traffic controls,
+places, cameras and the rest, the nav callouts) 37-60 with no group carrying the cost. So while the
+follow camera's bearing error is at least `TurnDeclutter.START_DEG` (10), every visible symbol layer
+is hidden except the street names (`highway-name-major` / `-minor`, the shields, exit numbers, the
+`vela-nav-` callouts) and the arrow, and they come back once the error has stayed under `CALM_DEG`
+(4) for `SETTLE_MS` (500 ms), faded in by MapLibre's own placement fade. A detached nav camera
+(pan, pinch, rotate) does the same while it has moved in the last `DETACHED_MOVING_MS` (250 ms);
+the overview hides its own set and takes the layers back first. Only layers that were visible when
+the hide began are touched, and the open places layers are re-filtered by `applyOpenPlacesHidden`
+after a restore, since they have a second owner. Same drive with it on: turns 48-60. Settings >
+Navigation "Simplify the map in turns" (`TurnDeclutterPref`, pref `turn_declutter`, default on).
+
 **The puck during a gesture.** While the nav camera is detached and a pan, pinch or rotate is
 moving it, the puck is the map's own symbol (the flat image of the chosen shape), not the 3D
 overlay, which comes back `PUCK_GESTURE_SETTLE_MS` (180 ms) after the camera's last move. The

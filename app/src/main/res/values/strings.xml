@@ -1109,6 +1109,8 @@
     <string name="settings_pause_in_bar_hint_buttons">With \"Prefer buttons over swipes\" on, the bar carries pause and the step list button side by side, and the trip figures shrink to fit.</string>
     <string name="nav_steps_handle_cd">Show steps</string>
     <string name="settings_route_trail">Road behind you</string>
+    <string name="settings_turn_declutter">Simplify the map in turns</string>
+    <string name="settings_turn_declutter_hint">While the map swings through a turn, or moves under your finger, only street names stay on it. Places, signs and cameras come back as soon as it settles. Keeps turns smooth on slower phones.</string>
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in gray behind the arrow. Off hides it, so only the road ahead is drawn.</string>
     <string name="settings_bike_safe">Bike routes prefer bike lanes and quiet streets</string>
     <string name="settings_bike_safe_hint">Cycling routes favor signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>

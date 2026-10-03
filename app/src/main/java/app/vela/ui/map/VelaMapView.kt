@@ -335,6 +335,8 @@ private const val CUT_FADE_MS = 320
 // Re-attaching the follow camera from more than this many zoom levels out cuts instead of flying.
 private const val CUT_BACK_ZOOM_GAP = 1.5
 private const val CAM_BRG_TAU_STILL = 1.6
+// A detached nav camera counts as moving for this long after its last change (the turn declutter).
+private const val DETACHED_MOVING_MS = 250L
 private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
  *  of geometry noise, well below a junction turn. */
@@ -1083,6 +1085,7 @@ fun VelaMapView(
     }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     val navPuck = remember { NavPuck() }
+    val turnDeclutter = remember { TurnDeclutter() }
     // The follow-mode puck OVERLAY (see the ticker): screen position + transform, written per
     // frame by the ticker and read in the DRAW phase (graphicsLayer lambdas), so a frame costs
     // one layer redraw and no recomposition.
@@ -2610,6 +2613,9 @@ fun VelaMapView(
         // the overview is for. They go before the cut and come back in `finally`, which runs
         // however the overview ends (Re-center, a pan, a reroute re-keying this effect). Major
         // road names and the shields stay, so the roads you drive still read.
+        // The turn declutter hands its layers back first, or the overview would not see them as
+        // visible and would leave them up when the declutter restores them.
+        turnDeclutter.restore(styleRef) { applyOpenPlacesHidden(it) }
         val hiddenForOverview = ArrayList<org.maplibre.android.style.layers.Layer>()
         styleRef?.takeIf { it.isFullyLoaded }?.let { st ->
             for (layer in st.layers) {
@@ -2679,6 +2685,7 @@ fun VelaMapView(
             // the in-ticker drops never run once the effect is canceled (the arrow stayed on the
             // browse map after ending a demo, user 2026-09-03).
             dropPuckOverlay()
+            turnDeclutter.restore(styleRef) { applyOpenPlacesHidden(it) }
             if (!wasNavRef[0]) return@LaunchedEffect
             wasNavRef[0] = false
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
@@ -2999,6 +3006,15 @@ fun VelaMapView(
                         (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
                     val kBrgAdaptive = (1f - kotlin.math.exp(-dtEase / brgTau)).toDouble()
                     camState[2] = (camState[2] + db * kBrgAdaptive + 360.0) % 360.0
+                    // TURN DECLUTTER (user 2026-10-02): while the camera swings, only street names
+                    // stay; the rest returns once it is calm (TurnDeclutter, SPEC 4.7b).
+                    val swingDeg = kotlin.math.abs(db)
+                    turnDeclutter.update(
+                        style,
+                        app.vela.ui.TurnDeclutterPref.on.value &&
+                            swingDeg >= (if (turnDeclutter.active) TurnDeclutter.CALM_DEG else TurnDeclutter.START_DEG),
+                        android.os.SystemClock.uptimeMillis(),
+                    ) { applyOpenPlacesHidden(it) }
                     camState[3] += (tgtZoom - camState[3]) * kZoom
                     // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
                     val tiltTgt = when {
@@ -3085,6 +3101,14 @@ fun VelaMapView(
                             detachedCam[2] = live.zoom; detachedCam[3] = live.bearing; detachedCam[4] = live.tilt
                             detachedMovedMs[0] = nowMs
                         } else idleFrames++
+                        // A pan, pinch or rotate drops the same layers as a turn while it moves (not
+                        // the overview, which hides its own set).
+                        turnDeclutter.update(
+                            style,
+                            app.vela.ui.TurnDeclutterPref.on.value && !overviewLive[0] &&
+                                nowMs - detachedMovedMs[0] < DETACHED_MOVING_MS,
+                            nowMs,
+                        ) { applyOpenPlacesHidden(it) }
                         // WHILE THE CAMERA MOVES under a pan, pinch or rotate the puck is the map's own
                         // symbol (the flat image of the same shape): it renders in the map's frame, so it
                         // moves in lockstep. The overlay is drawn by the app window, which can land a
@@ -6665,9 +6689,11 @@ private fun ensureTransit(style: Style, on: Boolean, metro: Boolean = true, trai
         // Above the satellite raster when imagery is on (the raster otherwise buries this -
         // same anchor bug the building overlay had); below the labels either way.
         val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
+        val bridge = topBridgeLayer(style)
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
         when {
             satTop != null -> style.addLayerAbove(layer, satTop.id)
+            bridge != null -> style.addLayerAbove(layer, bridge)
             firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
             else -> style.addLayer(layer)
         }
@@ -6675,6 +6701,11 @@ private fun ensureTransit(style: Style, on: Boolean, metro: Boolean = true, trai
         runCatching { style.removeLayer(TRANSIT_LAYER) }
     }
 }
+
+/** The basemap's topmost bridge layer. Transit lines go above it: under the bridges' casing and
+ *  fill, a line crossing a river on a bridge vanished for the length of the bridge (#648). */
+private fun topBridgeLayer(style: Style): String? =
+    style.layers.lastOrNull { it.id.startsWith("bridge_") }?.id
 
 private const val TRANSIT_LINES_SRC = "vela-transit-lines-src"
 private const val TRANSIT_LINES_LAYER = "vela-transit-lines"
@@ -6751,10 +6782,12 @@ private fun ensureTransitLines(style: Style, lines: List<app.vela.core.data.tran
     }
     val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
     val accent = style.getLayer(TRANSIT_LAYER)
+    val bridge = topBridgeLayer(style)
     val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
     when {
         accent != null -> style.addLayerAbove(layer, accent.id)
         satTop != null -> style.addLayerAbove(layer, satTop.id)
+        bridge != null -> style.addLayerAbove(layer, bridge)
         firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
         else -> style.addLayer(layer)
     }

@@ -3729,6 +3729,12 @@ architecture note.
   Left for later: splitting the location/compass fields out of the one big MapUiState collect,
   remembering MapSurface's derived lists, the free-drive puck still being a GeoJSON symbol, the map
   rendering under the Settings page, NETWORK location at 1 s during a drive, main-thread trip-file IO.
+- **Turns drop everything but street names (2026-10-02, `ui/map/TurnDeclutter`, SPEC 4.7b).** While
+  the nav camera swings (bearing error 10+ degrees) or a gesture moves it in nav, every visible
+  symbol layer except street names, shields, exit numbers, `vela-nav-` callouts and the arrow is
+  hidden; back after 500 ms calm. No single layer group was the cost, so it is all or nothing.
+  A new symbol layer that must survive a turn goes in `TurnDeclutter.KEEP`. Setting: Navigation >
+  "Simplify the map in turns" (default on).
 - **Turn stutter and playback (2026-10-02, SPEC 4.7b).** A turn's bearing swing brings new tiles
   into a tilted view: brief dips (40-45 fps at 1x on the 4a, lower at a replay's 3x). The nav eases'
   `dtEase` cap scales with `replaySpeedup`. Debug dials: `debug.vela.tune.demoSpeedup 3` runs a demo
@@ -6636,6 +6642,8 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   never a raw badge per camera; the browse-13/route-11 minZoom gate lives on the cluster layer. Route camera COUNTS stay per-head on purpose. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
+- **Transit lines draw ABOVE the basemap's bridge layers (`topBridgeLayer`, #648):** below them a
+  line crossing a river on a bridge vanished for the bridge's length (the Manhattan Bridge).
 - **TRANSIT LINES IN THEIR OWN COLORS (2026-10-02, discussion #648).** `Transitous.linesInBox`
   reads the service's `/api/experimental/map/routes?min=&max=&zoom=` (routes with mode and color,
   polylines with the routes on them; marked experimental upstream, so any other shape parses to

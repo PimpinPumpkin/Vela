@@ -425,12 +425,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
+- ✅ **Simplified map in turns (2026-10-02).** During drive guidance the map keeps only street names
+  while the camera swings through a turn or follows your finger, then fades the rest back in; 4a
+  turns went from 40-49 fps to 48-60. Settings > Navigation "Simplify the map in turns", on by default.
 - ✅ **Each transit line in its own color (2026-10-02, discussion #648).** With Highlight transit lines on, rail
   track is drawn in the color of the lines that run on it (each subway line its own, side by side where
   they share a tunnel), from the open transit data; trains show from a regional zoom, subway and tram from
   a city zoom. Settings > Map picks which kinds of line (subway, tram and light rail; trains), Settings >
   Places which kinds of stop icon (bus, subway and tram, train). Where the transit data has no drawn track
-  the plain two-color highlight stays.
+  the plain two-color highlight stays. Lines are drawn over bridges, so a line crossing a river on one
+  no longer disappears for the bridge's length.
 - ✅ **Highlight transit lines (train + subway, 2026-07-07, user request).** Settings → Map → **Highlight transit lines** draws rail on the map in color, Google-transit-layer style: heavy rail in purple, subway/light-rail/tram in teal. The data is already in the keyless OpenFreeMap basemap tiles (OpenMapTiles `transportation` source-layer, `class` = rail / transit), so this is just a colored `LineLayer` over the existing tiles, **no new data source, no network** (`ensureTransit` in `VelaMapView`, width zoom-interpolated, inserted below the first symbol layer so station/road labels stay on top). **ON by default (2026-07-07, user call - rail is useful to see and the data's already in the tiles at no cost)**, persisted (`TransitLayer` holder). Device-verified: a metro's light-rail line draws in teal downtown. Removes cleanly when off; no-op on a non-OpenMapTiles basemap (a MapTiler variant / the demo style). Localized in all supported languages. *(Station markers are a possible follow-up; this ships the lines.)*
 - ✅ **Terrain shading is a toggle, OFF by default (2026-07-12, user request).** Google doesn't shade
   topography unless you ask, and the hillshade muddied Vela's clean flat basemap, so Settings → Map →
