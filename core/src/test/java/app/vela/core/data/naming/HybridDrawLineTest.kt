@@ -47,4 +47,18 @@ class HybridDrawLineTest {
         val line = HybridRoute.drawLine(google, open, emptyList(), emptyMap())!!
         assertEquals(google.size, line.size)
     }
+
+    @Test fun `a shape that starts late is used from where Google's line reaches it`() {
+        // Google's line leaves a lot heading north for 60 m, then runs east 3 m beside the road.
+        val lot = walk(start.destinationPoint(60.0, 180.0), 0.0, 60.0, step = 20.0)
+        val google = lot + walk(start.destinationPoint(3.0, 0.0), 90.0, 400.0, step = 40.0).drop(1)
+        // The matched road shape is the road itself, and only from 100 m along it.
+        val shape = walk(start.destinationPoint(100.0, 90.0), 90.0, 280.0, step = 10.0)
+        val line = HybridRoute.splice(google, shape)!!
+        assertEquals("the lot is still Google's", google.first(), line.first())
+        val east = line.filter { it.distanceTo(start) in 130.0..330.0 }
+        assertTrue("past the join the line is on the road", east.isNotEmpty() && east.all { it.lat < start.lat + 0.00001 })
+        // A shape somewhere else is not used.
+        assertEquals(null, HybridRoute.splice(google, walk(start.destinationPoint(500.0, 0.0), 90.0, 300.0)))
+    }
 }

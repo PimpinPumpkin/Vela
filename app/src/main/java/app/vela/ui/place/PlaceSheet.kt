@@ -218,6 +218,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.vela.core.model.AboutSection
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
+import app.vela.core.model.fullAddress
 import app.vela.core.model.ShortcutKind
 import app.vela.core.model.Review
 import app.vela.core.model.Route
@@ -1176,7 +1177,7 @@ fun PlaceSheet(
                 },
             ) {
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
-            place.address?.let { addr ->
+            place.fullAddress()?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -4346,8 +4347,8 @@ private fun ShareIconButton(place: Place, tint: Color) {
             // degoogled-friendly way to send a pin.
             item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
             item(stringResource(R.string.place_share_coordinates)) { share("$lat, $lng") }
-            place.address?.let { addr ->
-                item(stringResource(R.string.place_share_address)) { share("${place.name}\n$addr") }
+            place.fullAddress()?.let { addr ->
+                item(stringResource(R.string.place_share_address)) { share(if (addr.startsWith(place.name)) addr else "${place.name}\n$addr") }
             }
         }
     }

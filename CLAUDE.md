@@ -1703,6 +1703,18 @@ Defaults that make the safe path the easy one:
   `1KGvDHRWy1wAxpuVU8Du3qbW2O2Ke0uE` (3 day layers + a directions layer). Seen on the 4a: icons on
   map and list, Layers before saving, route row, trip in the chooser, saved map on the bare map.
   Not seen: an uploaded marker image (no public map with one was found).
+- **Zoomed-out nav lag, route line beside the road, address row, far name match (2026-10-04, SPEC 4.7b):**
+  (1) the nav road-name pass (`querySourceFeatures` over every loaded `transportation_name` tile, main
+  thread) is skipped below `NAV_LABEL_PASS_MIN_ZOOM` (14.6); it logs `VelaNavLabels` when it takes
+  40 ms or more, and `debug.vela.navLabelProbe true` runs it at any zoom for measuring. A Pixel 9
+  report of about 1 fps while looking around a zoomed-out map mid-drive was NOT reproduced on the 4a
+  (50 to 60 fps in Davis and Sacramento, ship icon on; the pass there cost 40 to 206 ms), so this is
+  the likely cause, not a confirmed one: next report, read `VelaNavLabels` and `VelaFps` first. The 3D
+  icons are a Compose canvas and cost nothing measurable. (2) `HybridRoute.splice`: a stretch whose
+  matched road shape does not meet its ends is drawn on the shape where Google's line runs along it
+  (Google's line sits in the driving lane, a few meters off the road's middle). (3)
+  `Place.fullAddress()` joins a street-line name to its town and ZIP for the sheet's address row,
+  copy and share. (4) `homeNameHits` takes only open places within 40 km of the user.
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps

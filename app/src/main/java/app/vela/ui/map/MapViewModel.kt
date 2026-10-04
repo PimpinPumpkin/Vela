@@ -1879,7 +1879,10 @@ class MapViewModel @Inject constructor(
         }
         if (far.any(::named)) return emptyList()
         val home = runCatching { withContext(Dispatchers.IO) { dataSource.searchOnce(query, me) } }.getOrDefault(emptyList())
-        return home.filter(::named).sortedBy { it.location.distanceTo(me) }.take(5)
+        // "Near you" has to mean it: a same-named place 66 miles off, permanently closed, replaced
+        // the results once (2026-10-04).
+        return home.filter { named(it) && !it.permanentlyClosed && it.location.distanceTo(me) <= HOME_NAME_MAX_M }
+            .sortedBy { it.location.distanceTo(me) }.take(5)
     }
 
     /** Re-run the current query biased to the area the user has panned to. */
@@ -9081,6 +9084,8 @@ class MapViewModel @Inject constructor(
 
     companion object {
         const val DRAWINGS_LIST_ID = "list:drawings"
+        /** A name match "near you" that replaces a far view's results is within this of you. */
+        private const val HOME_NAME_MAX_M = 40_000.0
         /** Id prefix of a results row that stands for a custom map's planned route. */
         const val ROUTE_ROW_ID = "shape-route:"
         /** Closer than this to a planned route's first stop, the trip starts from where you are. */

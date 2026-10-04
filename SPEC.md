@@ -2411,6 +2411,16 @@ Before a custom map is saved its layers can be switched off too (`pendingHiddenL
 into the saved list), and the hours, rating, price and accessibility filters are not shown for a
 custom map's list.
 
+**Four small rules (2026-10-04).** The nav road-name pass does not run while the camera is below
+zoom 14.6: its query returns every road name in every loaded tile on the main thread, a zoomed-out
+view holds far more of them, and no callout draws that far out; the quantum stays open, so the pass
+runs when the view is close again. A hybrid route's stretch whose matched road shape does not meet
+the stretch's ends is drawn on the shape wherever Google's line runs within 9 m of it, and on
+Google's line elsewhere (`HybridRoute.splice`). A place named by a street line ("1451 W Covell
+Blvd") whose address holds only the town shows, copies and shares the two joined
+(`Place.fullAddress`); a business keeps its address as is. A name match "near you" that replaces a
+far view's results must be open and within 40 km of the user.
+
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
   or no window size is known, one extra page runs over a 2.5 km

@@ -1275,9 +1275,20 @@ fun VelaMapView(
             if (quantumChanged) { dictStaleTicks = 0; emptyPassTicks = 0 } // new area: re-warm the dict as its tiles land
             if (quantumChanged || dictStaleTicks < 3) {
                 val src = basemapSrc(style)?.let { style.getSource(it) } as? VectorSource
+                // ZOOMED OUT, the pass is skipped (2026-10-04, a Pixel 9 at about 1 fps while
+                // looking around a zoomed-out map mid-drive): the query hands back every road
+                // name in every loaded tile, on the main thread, and a view that takes in a
+                // metro holds tens of thousands. No callout draws that far out anyway. The
+                // quantum is left open, so the pass runs as soon as the view is close again.
+                val camZoom = mapRef?.cameraPosition?.zoom ?: 0.0
+                if (camZoom < NAV_LABEL_PASS_MIN_ZOOM && !NAV_LABEL_PASS_PROBE) { kotlinx.coroutines.delay(2_000); continue }
+                val passT0 = android.os.SystemClock.elapsedRealtime()
                 val feats = if (src != null) runCatching {
                     src.querySourceFeatures(arrayOf("transportation_name"), classFilter)
                 }.getOrNull().orEmpty() else emptyList()
+                (android.os.SystemClock.elapsedRealtime() - passT0).let { ms ->
+                    if (ms >= 40) android.util.Log.d("VelaNavLabels", "road-name query: ${feats.size} features in $ms ms at z=${"%.1f".format(camZoom)}")
+                }
                 if (feats.isNotEmpty()) {
                     // DICT (cheap: two string props per feature): capture each named road's romanized
                     // alias once. Runs every qualifying tick so names resolve as tiles load.
@@ -6370,6 +6381,13 @@ private const val NAV_TURN_LAYER = "vela-nav-turn"
 
 private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nulled on style reload
 
+/** Below this camera zoom the nav road-name pass does not run (see the pass). The nav camera's own
+ *  floor is 15.5 and the callouts fade in from 15, so nothing is lost. */
+private const val NAV_LABEL_PASS_MIN_ZOOM = 14.6
+/** Measuring only: `adb shell setprop debug.vela.navLabelProbe true` runs the pass at any zoom. */
+private val NAV_LABEL_PASS_PROBE: Boolean by lazy {
+    runCatching { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java).invoke(null, "debug.vela.navLabelProbe") == "true" }.getOrDefault(false)
+}
 private val NAV_LABEL_MAJOR_CLASSES = arrayOf("motorway", "trunk", "primary", "secondary")
 private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
 

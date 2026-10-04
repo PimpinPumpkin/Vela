@@ -385,7 +385,7 @@ object HybridRoute {
             if (shape != null && shape.size >= 2 &&
                 shape.first().distanceTo(gPiece.first()) <= DRAW_JOIN_M && shape.last().distanceTo(gPiece.last()) <= DRAW_JOIN_M &&
                 kotlin.math.abs(cumulative(shape).last() - len) <= len / 3.0 + 10.0
-            ) add(shape) else add(gPiece)
+            ) add(shape) else add(shape?.let { splice(gPiece, it) } ?: gPiece)
             // The open route rejoins somewhere past the stretch: find it from there.
             alongNear(open, oCum, gPiece.last(), oAt, oTotal, OFF_M * 2)?.let { oAt = it }
             at = s.toM
@@ -394,6 +394,30 @@ object HybridRoute {
         return out.takeIf { it.size >= 2 }
     }
     private const val DRAW_JOIN_M = 25.0
+    /** How near Google's line must run to a matched road shape to be drawn on it ([splice]). */
+    private const val SPLICE_NEAR_M = 9.0
+
+    /**
+     * A matched road shape whose ends do not meet the stretch's ends (a trip that starts in a lot,
+     * a match that gives up before the stretch does): the part of Google's line that runs along
+     * the shape is drawn on the shape, the rest stays Google's. Google draws its line in the
+     * driving lane, a few meters to one side of the road's middle, which on a road-width stripe
+     * reads as the route hanging off the street (2026-10-04). Null when the two never run together
+     * or the lengths disagree.
+     */
+    internal fun splice(gPiece: List<LatLng>, shape: List<LatLng>): List<LatLng>? {
+        if (gPiece.size < 2 || shape.size < 2) return null
+        val sCum = cumulative(shape)
+        val gCum = cumulative(gPiece)
+        val on = gPiece.map { alongNear(shape, sCum, it, 0.0, sCum.last(), SPLICE_NEAR_M) }
+        val i = on.indexOfFirst { it != null }
+        val j = on.indexOfLast { it != null }
+        if (i < 0 || j <= i) return null
+        val a = on[i]!!; val b = on[j]!!
+        val gLen = gCum[j] - gCum[i]
+        if (b <= a || gLen < 20.0 || kotlin.math.abs((b - a) - gLen) > gLen / 3.0 + 10.0) return null
+        return gPiece.subList(0, i) + slice(shape, a, b) + gPiece.subList(j + 1, gPiece.size)
+    }
 
     /** Along-distance of the point of [line] nearest [p] between [lo] and [hi] meters along it,
      *  or null when nothing there is within [tolM]. */

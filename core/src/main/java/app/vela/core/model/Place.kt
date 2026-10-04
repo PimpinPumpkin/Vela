@@ -188,3 +188,20 @@ data class SearchResult(
     /** That focused place, before the related branches were added and the list ranked. */
     val focus: Place? = null,
 )
+
+private val STREET_LINE = Regex("""^\d+[A-Za-z]?\s+\S""")
+
+/**
+ * The address to show and copy. A place found by its typed address is NAMED by the street line
+ * ("1451 W Covell Blvd") and its address field holds only the rest ("Davis, CA 95616"), so the
+ * address row read, and copied, as a town and a ZIP code. When the name is a street line that the
+ * address does not already start with, and the place is not a business, the two are joined.
+ */
+fun Place.fullAddress(): String? {
+    val a = address?.trim()?.ifBlank { null } ?: return null
+    val n = name.trim()
+    if (category != null || rating != null || id.startsWith("shape:") || !STREET_LINE.containsMatchIn(n)) return a
+    val house = n.substringBefore(' ')
+    if (a.startsWith(house, ignoreCase = true) || a.contains(n, ignoreCase = true)) return a
+    return "$n, $a"
+}
