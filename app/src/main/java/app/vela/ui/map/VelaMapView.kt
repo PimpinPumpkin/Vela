@@ -802,6 +802,8 @@ fun VelaMapView(
     savedPins: List<SavedPin> = emptyList(), // saved/list places while browsing (issue #171)
     shapes: List<app.vela.core.model.MapShape> = emptyList(), // custom-map lines and areas (issue #669)
     onShapeTap: (index: Int, at: LatLng) -> Unit = { _, _ -> },
+    drawDots: List<LatLng>? = null, // non-null = drawing mode: taps add points, these are its vertices
+    onDrawTap: (LatLng) -> Unit = {},
     onSavedPinTap: (index: Int) -> Unit = {},
     onParkingTap: () -> Unit = {},
     // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
@@ -918,6 +920,8 @@ fun VelaMapView(
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
     val shapeTap = rememberUpdatedState(onShapeTap)
+    val drawActive = rememberUpdatedState(drawDots != null)
+    val drawTap = rememberUpdatedState(onDrawTap)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
     val zoomOverride = rememberUpdatedState(onNavZoomOverride)
@@ -2229,9 +2233,9 @@ fun VelaMapView(
         runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains, darkTheme) }
         runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
     }
-    LaunchedEffect(shapes, styleRef) {
+    LaunchedEffect(shapes, drawDots, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
-        runCatching { ensureShapes(style, shapes) }.onFailure { android.util.Log.w("VelaShapes", "shapes: ${it.message}") }
+        runCatching { ensureShapes(style, shapes, drawDots.orEmpty()) }.onFailure { android.util.Log.w("VelaShapes", "shapes: ${it.message}") }
     }
     LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
@@ -3643,6 +3647,11 @@ fun VelaMapView(
                     // to the viewer and skip every other tap resolution (POIs, pins, labels).
                     if (svActive.value) {
                         svMapTap.value(LatLng(tapped.latitude, tapped.longitude))
+                        return@handleTap true
+                    }
+                    // Drawing a shape: every tap is its next point, nothing else resolves.
+                    if (drawActive.value) {
+                        drawTap.value(LatLng(tapped.latitude, tapped.longitude))
                         return@handleTap true
                     }
                     val p = map.projection.toScreenLocation(tapped)
@@ -7558,11 +7567,11 @@ private const val SHAPES_AREA_LABEL = "vela-shapes-area-label"
  * colors, under every label: an area's fill, then outlines and lines, then the shapes' names
  * (along a line, in the middle of an area). One GeoJSON source, rebuilt when the set changes.
  */
-private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape>) {
+private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape>, dots: List<LatLng> = emptyList()) {
     fun hex(c: Long) = String.format("#%06X", c and 0xFFFFFF)
     fun alpha(c: Long) = ((c shr 24) and 0xFF) / 255f
     if (style.getSource(SHAPES_SRC) == null) {
-        if (shapes.isEmpty()) return
+        if (shapes.isEmpty() && dots.isEmpty()) return
         style.addSource(GeoJsonSource(SHAPES_SRC, GeoJsonOptions().withMaxZoom(16)))
         val below = firstSymbolLayerId(style)
         val isArea = Expression.eq(Expression.get("area"), Expression.literal(true))
@@ -7588,6 +7597,13 @@ private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape
                 PropertyFactory.symbolPlacement(if (area) Property.SYMBOL_PLACEMENT_POINT else Property.SYMBOL_PLACEMENT_LINE),
             ).apply { minZoom = 12f }
         style.addLayer(label(SHAPES_LABEL, area = false)); style.addLayer(label(SHAPES_AREA_LABEL, area = true))
+        // The points of a shape being drawn.
+        style.addLayer(
+            CircleLayer("vela-shapes-dots", SHAPES_SRC).withFilter(Expression.eq(Expression.get("dot"), Expression.literal(true))).withProperties(
+                PropertyFactory.circleRadius(5f), PropertyFactory.circleColor("#FFFFFF"),
+                PropertyFactory.circleStrokeWidth(2f), PropertyFactory.circleStrokeColor("#202124"),
+            ),
+        )
     }
     val features = shapes.mapNotNull { s ->
         val pts = s.pts.chunked(2).mapNotNull { if (it.size == 2) Point.fromLngLat(it[1], it[0]) else null }
@@ -7605,7 +7621,8 @@ private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape
         f.addStringProperty("fill", hex(fillC)); f.addNumberProperty("fillOpacity", if (s.fill != null) alpha(fillC).coerceIn(0.08f, 0.7f) else 0f)
         f
     }
-    (style.getSource(SHAPES_SRC) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(features))
+    val dotFeatures = dots.map { Feature.fromGeometry(Point.fromLngLat(it.lng, it.lat)).apply { addBooleanProperty("dot", true); addBooleanProperty("area", false); addStringProperty("name", "") } }
+    (style.getSource(SHAPES_SRC) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(features + dotFeatures))
 }
 
 private fun firstSymbolLayerId(style: Style): String? =

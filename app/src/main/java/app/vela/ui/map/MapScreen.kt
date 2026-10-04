@@ -621,11 +621,13 @@ fun MapScreen(
     BackHandler(
         enabled = mapEngaged || searchOpen || state.showSteps || state.navigating || state.transitNav != null || state.areaPicking ||
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
-            state.selected != null ||
+            state.selected != null || state.drawing != null ||
             state.results.isNotEmpty(),
     ) {
         when {
             state.areaPicking -> vm.cancelAreaPick()
+            // Drawing: BACK takes the last point off, then leaves drawing.
+            state.drawing != null && !searchOpen && state.selected == null -> if (state.drawing!!.pts.isEmpty()) vm.cancelDrawing() else vm.drawUndo()
             state.transitNav != null -> vm.endTransitNav()
             state.pickOnMap != null -> vm.cancelChooseOnMap()
             altsOpen && state.directionsOpen && !searchOpen && !state.navigating && !state.showSteps && !state.editingStops -> altsOpen = false
@@ -2159,7 +2161,9 @@ fun MapScreen(
             // 2026-07-18); the sheet returns when the viewer closes.
             // A custom map of only lines and areas (issue #669): no result list, so its Save offer
             // is this bar in the bottom slot.
-            state.pendingImport != null && state.results.isEmpty() && !searchOpen -> ShapesOnlySaveBar(state.pendingImport!!.title, vm)
+            // A shape being drawn takes the same slot (one call for both: MapScreen is at the
+            // method size limit).
+            shapeBarWanted(state, searchOpen) -> ShapeBottomBar(state, vm)
             state.results.isNotEmpty() && (!searchOpen || pickingResults) && state.pickOnMap == null &&
                 state.streetView == null && !state.streetViewLoading -> {
               SearchResults(
@@ -2307,7 +2311,7 @@ fun MapScreen(
         // swipes" (issue #393): one pill in the bottom-right stack, above the parking button,
         // in the parking button's own dress so the corner reads as one set of controls.
         val zoomButtonsVisible = (dpadMode || app.vela.ui.PreferButtons.on.value) && !searchOpen && !state.navigating &&
-            state.selected == null && !state.directionsOpen && !state.showSteps &&
+            state.selected == null && state.drawing == null && !state.directionsOpen && !state.showSteps &&
             state.activeRoute == null && state.routes.isEmpty() &&
             (state.results.isEmpty() || state.resultsCollapsed)
         if (zoomButtonsVisible) {
@@ -3630,8 +3634,13 @@ private fun MapSurface(
     // Street View owns the map.
     // Also off while the route chooser is up: only the trip's own pins draw there (2026-09-30).
     // Custom maps (issue #669): the previewed one and every saved list's shapes, less hidden layers.
-    val mapShapes = remember(state.pendingImport, state.lists) {
-        state.pendingImport?.shapes.orEmpty() + state.lists.flatMap { l -> l.shapes.filter { it.layer == null || it.layer !in l.hiddenLayers } }
+    val mapShapes = remember(state.pendingImport, state.lists, state.drawing) {
+        state.pendingImport?.shapes.orEmpty() + state.lists.flatMap { l -> l.shapes.filter { it.layer == null || it.layer !in l.hiddenLayers } } +
+            // The shape being drawn, last, so no saved shape's index moves.
+            listOfNotNull(state.drawing?.takeIf { it.pts.size >= 4 }?.let { d ->
+                app.vela.core.model.MapShape(pts = d.pts, closed = d.closed && d.pts.size >= 6, color = d.color, width = 4f,
+                    fill = if (d.closed) (d.color and 0x00FFFFFFL) or 0x40000000L else null)
+            })
     }
     val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose, state.directionsOpen) {
         if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty() || state.directionsOpen) emptyList()
@@ -3838,6 +3847,8 @@ private fun MapSurface(
         // Custom maps (issue #669): the previewed one and every saved list that carries shapes.
         shapes = mapShapes,
         onShapeTap = { i, at -> mapShapes.getOrNull(i)?.let { vm.openShape(it, at) } },
+        drawDots = state.drawing?.let { d -> d.pts.chunked(2).map { LatLng(it[0], it[1]) } },
+        onDrawTap = vm::drawAddPoint,
         onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
         svPose = svPose,
         svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
@@ -5638,6 +5649,11 @@ private fun ListsSheet(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
+                    if (vm != null) TextButton(onClick = { vm.startDrawing(); onDismiss() }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
+                        Icon(Sym.Draw, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.draw_action))
+                    }
                     TextButton(onClick = { creating = true }, modifier = Modifier.focusRequester(listsAutoFocus).dpadHighlight(RoundedCornerShape(20.dp))) {
                         Icon(Sym.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
@@ -6474,6 +6490,15 @@ internal class PuckScreen {
 
 /** The Save offer for a custom map that has only lines and areas (issue #669): the map's name and
  *  a Save pill along the bottom, with a close button that drops the preview. */
+@Composable
+private fun BoxScope.ShapeBottomBar(state: MapUiState, vm: MapViewModel) {
+    val d = state.drawing
+    if (d != null) DrawBar(d, vm) else state.pendingImport?.let { ShapesOnlySaveBar(it.title, vm) }
+}
+
+private fun shapeBarWanted(state: MapUiState, searchOpen: Boolean) =
+    state.drawing != null || (state.pendingImport != null && state.results.isEmpty() && !searchOpen)
+
 @Composable
 private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {
     val context = LocalContext.current

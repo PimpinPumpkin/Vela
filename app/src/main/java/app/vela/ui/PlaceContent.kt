@@ -183,3 +183,9 @@ object OtherLocationsAuto {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "other_locations_auto"
 }
+
+/** The place sheet's "Delete this drawing" action, set by the map's view model: the sheet is
+ *  reached from MapScreen, which has no room for another callback (the verifier limit). */
+object ShapeActions {
+    @Volatile var delete: (() -> Unit)? = null
+}

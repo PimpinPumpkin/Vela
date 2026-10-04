@@ -170,6 +170,8 @@ data class MapUiState(
     /** The row under the results is "Show other locations" (a name search that landed on one
      *  place), not "More results". */
     val resultsBranches: Boolean = false,
+    /** A shape being drawn on the map (DrawBar): map taps add its points. */
+    val drawing: DrawState? = null,
     /** "Show other locations" was tapped for this search: the map frames all of them. */
     val resultsBranchesLoaded: Boolean = false,
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
@@ -4548,6 +4550,8 @@ class MapViewModel @Inject constructor(
         // Dead during a live drive, same as onPoiTap: building/unnamed-POI taps route here too,
         // and an invisible dropped pin surfacing after the drive read as a ghost selection.
         if (_state.value.navigating) return
+        // Drawing a shape: a long press is one more point, like a tap.
+        if (_state.value.drawing != null) { drawAddPoint(location); return }
         // "Choose on map" is active → a long-press sets that endpoint directly (the quick half of the
         // crosshair flow) instead of dropping a destination pin.
         val pick = _state.value.pickOnMap
@@ -4910,10 +4914,52 @@ class MapViewModel @Inject constructor(
         return listId
     }
 
+    // ---- Drawing on the map (2026-10-04): lines and areas of your own, kept in "My drawings" ----
+    fun startDrawing() {
+        if (_state.value.navigating) return
+        clearSearch()
+        _state.update { it.copy(selected = null, drawing = DrawState()) }
+    }
+    fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.copy(pts = d.pts + listOf(p.lat, p.lng))) } ?: s }
+    fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(pts = d.pts.dropLast(2))) } ?: s }
+    fun drawSetClosed(closed: Boolean) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(closed = closed)) } ?: s }
+    fun drawSetColor(color: Long) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(color = color)) } ?: s }
+    fun cancelDrawing() = _state.update { it.copy(drawing = null) }
+
+    /** Keeps the drawn shape in the "My drawings" list (made on first use). */
+    fun saveDrawing(name: String) {
+        val d = _state.value.drawing ?: return
+        if (d.pts.size / 2 < (if (d.closed) 3 else 2)) return
+        val existing = listStore.lists().firstOrNull { it.id == DRAWINGS_LIST_ID }
+        val n = (existing?.shapes?.size ?: 0) + 1
+        val shape = app.vela.core.model.MapShape(
+            name = name.trim().ifBlank { appContext.getString(if (d.closed) R.string.shape_area else R.string.shape_line) + " " + n },
+            pts = d.pts, closed = d.closed, color = d.color, width = 4f,
+            fill = if (d.closed) (d.color and 0x00FFFFFFL) or 0x40000000L else null,
+        )
+        val lists = if (existing != null) listStore.update(existing.copy(shapes = existing.shapes + shape))
+            else listStore.create(app.vela.core.model.PlaceList(id = DRAWINGS_LIST_ID, name = appContext.getString(R.string.draw_list_name), icon = "bookmark", shapes = listOf(shape)))
+        _state.update { it.copy(lists = lists, drawing = null) }
+        flashStatus(appContext.getString(R.string.draw_saved, shape.name))
+    }
+
+    /** The shape whose sheet is open (see [openShape]), for the sheet's Delete action. */
+    private var openedShape: app.vela.core.model.MapShape? = null
+    fun deleteOpenedShape() {
+        val shape = openedShape ?: return
+        val list = listStore.lists().firstOrNull { shape in it.shapes } ?: return
+        val lists = listStore.update(list.copy(shapes = list.shapes - shape))
+        openedShape = null
+        _state.update { it.copy(lists = lists, selected = null) }
+    }
+
+    init { app.vela.ui.ShapeActions.delete = ::deleteOpenedShape }
+
     /** A tapped line or area of a custom map (issue #669): a sheet at the tapped point with its
      *  name, what it measures (a line's length; an area's size and perimeter) and its description. */
     fun openShape(shape: app.vela.core.model.MapShape, at: LatLng) {
         if (_state.value.navigating) return
+        openedShape = shape
         val len = app.vela.core.util.ShapeMeasure.lengthM(shape.pts, shape.closed)
         val measure = if (shape.closed) appContext.getString(R.string.shape_area_measure, app.vela.ui.formatArea(app.vela.core.util.ShapeMeasure.areaM2(shape.pts)), app.vela.ui.formatDistance(len))
             else appContext.getString(R.string.shape_line_measure, app.vela.ui.formatDistance(len))
@@ -8974,6 +9020,7 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        const val DRAWINGS_LIST_ID = "list:drawings"
         /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
         const val CELLS_DOWNLOAD_ID = "cells"
         /** How long an informational heads-up card stays before dismissing itself. */

@@ -1,6 +1,6 @@
 # Place names the Piper voices would say wrong, with the local pronunciation in eSpeak NG's
-# notation. Made by scripts/wikipedia-places.py; do not edit by hand, fix a name in
-# app/src/main/assets/pronunciation/en.tsv instead, which wins over this file.
+# notation. Generated from Wikipedia outside this repository; do not edit by hand.
+# scripts/build-espeak-dict.sh compiles it into app/src/main/assets/pronunciation/en_dict.
 #
 # The pronunciations are from the English Wikipedia articles named in the last column, by
 # their contributors, under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).

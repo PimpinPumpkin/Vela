@@ -2369,6 +2369,22 @@ units via `formatArea`), and its description as the note. The measure is NOT the
 category makes the sheet treat the place as a business listing. Not carried: custom marker
 icon images, the base map style, and editing.
 
+**Drawing on the map (2026-10-04).** The lists dialog's Draw button starts a drawing
+(`MapUiState.drawing: DrawState`, points as lat, lng pairs). While it is set every map tap and long
+press adds a point (`VelaMapView` `drawDots`/`onDrawTap`, ahead of all other tap resolution), Back
+removes the last point and then leaves drawing, and the map buttons hide. `DrawBar` (its own file;
+MapScreen reaches it through `ShapeBottomBar`, one call shared with the shapes-only Save bar, because
+MapScreen is at the method size limit) offers Line or Area, six colors (`DRAW_COLORS`), the live
+length or area and perimeter (`ShapeMeasure`), an optional name, Undo, Cancel and Save. A line needs
+2 points, an area 3; a drawing holds at most 2,000 points. Save appends a `MapShape` (width 4, an
+area filled with its color at 25% opacity) to the list with id `list:drawings` ("My drawings",
+created on first use), so a drawing is stored, drawn, tapped and measured like an imported map's
+shape. The unfinished shape is drawn as the last entry of the shapes list with a white dot per
+point (`vela-shapes-dots`). A shape's sheet menu has "Delete this drawing"
+(`ShapeActions.delete` -> `MapViewModel.deleteOpenedShape`), which removes the shape from whichever
+list holds it. Points cannot be moved after they are placed, and a saved drawing cannot be edited,
+only deleted.
+
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
   or no window size is known, one extra page runs over a 2.5 km

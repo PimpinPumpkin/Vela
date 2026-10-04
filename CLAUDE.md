@@ -1685,6 +1685,13 @@ Defaults that make the safe path the easy one:
   measurements (`openShape`, `ShapeMeasure`) followed the same day; the Layers chip, marker colors
   and photos are unit-tested in the parser but were NOT seen on a device (no public multi-layer
   test map was at hand), a tapped line was.
+- **Drawing on the map (2026-10-04, SPEC 5.x beside My Maps):** `DrawBar.kt` (`DrawState`, the bar),
+  `MapViewModel.startDrawing/drawAddPoint/drawUndo/saveDrawing/deleteOpenedShape`, list id
+  `list:drawings`. MapScreen was over the method size limit with one more call, so the bar shares
+  `ShapeBottomBar` with the shapes-only Save bar, and the sheet's delete goes through the
+  `ShapeActions.delete` holder instead of a new PlaceSheet callback. `fabChromeOk` and the zoom
+  buttons are off while drawing. Checked on the 4a: draw four points, line and area, save, tap,
+  delete. Not built: moving a placed point, editing a saved drawing.
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps
