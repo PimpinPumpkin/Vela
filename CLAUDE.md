@@ -4305,6 +4305,10 @@ architecture note.
   the fan-out once ~1.2 s later; healed places are prepended so distinctBy keeps the rich
   copy. Don't "fix" a flat-looking ambient layer by touching the expressions before checking
   whether the pool's counts are null.
+  **A focused NAME search has the same strip (2026-10-03, #656):** the first reply leaves out the
+  focused place's `[99]` related block, where a chain's other branches are; `search` asks page one
+  again once within the session's first 30 s (`SearchResult.strippedFocus`). Test it from a FRESH
+  install, a warm process hides it.
   **STICKY RANKING (`ui/map/AmbientStability`, user 2026-09-18).** All of the above means a
   SETTLED view is painted several times with different counts for the same place - streamed
   partials, the twin-dedupe re-pass, and the slim heal's second full fan-out - and every paint

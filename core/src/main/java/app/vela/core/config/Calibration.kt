@@ -300,6 +300,10 @@ data class Calibration(
             // Popular-times histogram: [84][0] = 7 days, each [d][0]=day-of-week,
             // [d][1]=hourly [hour, occupancy%, …]. Relative to the place node [1].
             "popularTimes" to listOf(1, 84),
+            // "People also search for" under a FOCUSED result (root-relative, 2026-10-03): entries are
+            // [_, placeNode] like the results list, so they parse with the same paths. A chain's other
+            // branches sit here when a name search focuses one branch (discussion #656).
+            "alsoSearched" to listOf(0, 1, 0, 14, 99, 0, 0, 1),
         )
 
         val DEFAULT = Calibration(

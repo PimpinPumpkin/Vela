@@ -320,6 +320,14 @@ Shape rules:
   `paths.name` rather than a hard-coded index, so recalibrating `name` reaches them.
 - "People also search for" is a sibling of a focused result at `root[2][11][0]`, each entry
   `[featureId, name, [[_,_,lat,lng], ..., rating@6]]`. Focused searches only.
+- A focused reply (empty `[64]`) also carries a "People also search for" list at
+  `[0][1][0][14][99][0][0][1]` (`paths.alsoSearched`), entries `[_, placeNode]` in the results
+  schema. A business name focuses one branch of a chain and the other branches sit in this list;
+  entries whose normalized name contains the normalized query (3+ characters), more than 30 m
+  from the focused place, join the results (`SearchParser.otherBranches`, discussion #656).
+- A new session's first seconds answer a focused search with no `[99]` block at all
+  (`SearchResult.strippedFocus`). `search` asks page one again once, after ~1.5 s, within the
+  data source's first 30 s; the chain's other branches are lost otherwise.
 - `[84]`, `[32]` and `[154]` are trimmed from the keyless list response and are fetched lazily
   through the WebView detail path.
 - A summary node drops review count, full hours, address, phone, price and attributes. The

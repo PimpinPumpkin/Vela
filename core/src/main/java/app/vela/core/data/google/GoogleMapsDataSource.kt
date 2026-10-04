@@ -168,6 +168,10 @@ class GoogleMapsDataSource @Inject constructor(
     /** The nearby pass's window height: a walkable radius, the Google app's own bias. */
     private val NEARBY_SPAN_M = 2500.0
 
+    /** When this data source (and the app's Google session) started; see [STRIPPED_HEAL_WINDOW_MS]. */
+    private val bornAtMs = System.currentTimeMillis()
+    private val STRIPPED_HEAL_WINDOW_MS = 30_000L
+
     private val ambientFanout = kotlinx.coroutines.sync.Semaphore(
         calibration.current().tune("ambientFanoutPermits", 4.0).toInt().coerceIn(1, 13),
     )
@@ -175,7 +179,7 @@ class GoogleMapsDataSource @Inject constructor(
     /** One result page: [offset] rows in, over a [viewport]-centered window [spanMeters] tall. A
      *  parse drift on page 0 is thrown (and recorded) so the caller can surface it; on any later
      *  page it yields an empty list, because a later page drifting must never kill page 0. */
-    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration, lang: String? = null): List<Place> {
+    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration, lang: String? = null, onStripped: (() -> Unit)? = null): List<Place> {
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized(lang)
         val raw = get(url)
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
@@ -183,7 +187,8 @@ class GoogleMapsDataSource @Inject constructor(
         // hook gets the last word. No hook / any error → pure compiled path.
         return try {
             jsTransforms.searchOverride(raw)
-                ?: SearchParser.parse(query, GoogleResponse.parse(raw), rankFrom ?: viewport, cal.paths).places
+                ?: SearchParser.parse(query, GoogleResponse.parse(raw), rankFrom ?: viewport, cal.paths)
+                    .also { if (it.strippedFocus) onStripped?.invoke() }.places
         } catch (e: CalibrationNeededException) {
             if (offset == 0) {
                 // Capture the exact request that drifted so an opted-in user can hand it
@@ -238,6 +243,7 @@ class GoogleMapsDataSource @Inject constructor(
         // the list. Only when the user is INSIDE the search window and that window is wider
         // than the nearby one, so a search over another neighborhood or another city keeps
         // Google's order for where the user is looking.
+        var stripped = false
         val nearbyWanted = rankFrom != null &&
             (spanMeters == null || (rankFrom.distanceTo(viewport) <= spanMeters / 2 && spanMeters > NEARBY_SPAN_M * 1.5))
         val (nearby, first) = kotlinx.coroutines.coroutineScope {
@@ -245,8 +251,18 @@ class GoogleMapsDataSource @Inject constructor(
                 if (nearbyWanted) runCatching { searchPage(query, rankFrom!!, NEARBY_SPAN_M, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
                 else emptyList()
             }
-            val f = async { page(0) }
+            val f = async { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { stripped = true } }
             n.await() to f.await()
+        }.let { (n, f) ->
+            // STRIPPED FOCUS HEAL (discussion #656): a new session's first seconds answer a name
+            // search with the focused place and none of its related block, which is where a chain's
+            // other branches are. Ask once more, only early in the session, like the ambient heal.
+            if (stripped && f.size == 1 && System.currentTimeMillis() - bornAtMs < STRIPPED_HEAL_WINDOW_MS) {
+                delay(app.vela.core.util.Jitter.around(1500))
+                val again = runCatching { page(0) }.getOrDefault(emptyList())
+                diag.record("search", "stripped focus asked again: ${f.size} -> ${again.size}")
+                n to (if (again.size > f.size) again else f)
+            } else n to f
         }
         // PAGINATE like the Google app: a page is !7iN results (20 today) and a FULL first page
         // means the viewport holds more. Google's keyless web ranking is prominence-heavy over

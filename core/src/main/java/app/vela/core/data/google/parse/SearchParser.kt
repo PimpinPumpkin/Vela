@@ -50,13 +50,23 @@ object SearchParser {
                 ?: findResultsArray(root, paths)
                 ?: return SearchResult(query, emptyList())
 
+        val focused = root.atPath(pathOf(paths, "results")).arr().isNullOrEmpty()
         val places = entries.mapNotNull { entry -> toPlace(entry, near, paths) }
         // "People also search for" is a sibling of a FOCUSED result (root [2][11][0]) — absent
         // from multi-result lists. When present, attach it to the primary (first) place so its
         // sheet can show the related-places row.
         val similar = runCatching { parseSimilarPlaces(root, paths) }.getOrDefault(emptyList())
-        val withSimilar = if (similar.isNotEmpty() && places.isNotEmpty())
+        val withSimilar0 = if (similar.isNotEmpty() && places.isNotEmpty())
             places.mapIndexed { i, p -> if (i == 0) p.copy(similarPlaces = similar) else p } else places
+        // A chain's other branches (discussion #656): for a business name Google answers with ONE
+        // focused place even from a city-wide view (the signed-out web does the same), and the other
+        // branches sit in its "People also search for" row under their own names ("Khao Peeyo",
+        // "Khao peeyo Restaurant & Banquet Hall"). Those whose name carries the whole query join the
+        // results; the rest stay in the row.
+        val also = if (focused && places.size == 1)
+            root.atPath(pathOf(paths, "alsoSearched")).arr()?.mapNotNull { e -> if (e is JsonArray) toPlace(e, near, paths) else null }.orEmpty()
+        else emptyList()
+        val withSimilar = if (also.isNotEmpty()) withSimilar0 + otherBranches(query, also, places[0]) else withSimilar0
         // Order nearest-first, BUT within the same ~120 m (a shopping center / one address) rank by
         // prominence (review count) so the MAIN store beats its florist/pharmacy departments sitting at the
         // same spot. Distance still wins across genuinely different locations. (Was pure distance, which let
@@ -72,7 +82,19 @@ object SearchParser {
                 { it.distanceMeters ?: Double.MAX_VALUE },                                   // then exact distance
             ),
         )
-        return SearchResult(query, ranked)
+        // A focused place with NO related block at all is the stripped reply a fresh session gets in
+        // its first seconds (seen on the 4a: same request, the block is there seconds later).
+        val stripped = focused && places.size == 1 && root.at(0, 1, 0, 14, 99).arr() == null
+        return SearchResult(query, ranked, strippedFocus = stripped)
+    }
+
+    internal fun otherBranches(query: String, also: List<Place>, focus: Place): List<Place> {
+        fun key(t: String) = t.lowercase().filter { it.isLetterOrDigit() }
+        val q = key(query).takeIf { it.length >= 3 } ?: return emptyList()
+        return also.filter { p ->
+            key(p.name).contains(q) && (p.featureId == null || p.featureId != focus.featureId) &&
+                p.location.distanceTo(focus.location) > 30.0
+        }
     }
 
     /** A specific/far address resolves to a *single* geocoded result rather than

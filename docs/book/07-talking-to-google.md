@@ -509,6 +509,13 @@ keeps the rich copy of each place. The heal doubles the request burst, but only 
 start. The map's stickiness rule never freezes a pool whose prominences are all zero, for the
 same reason.
 
+A name search has the same problem. Searching a chain's name focuses one branch, and the other
+branches come back in that place's "People also search for" list, which Vela turns into extra
+results. A new session's first answer leaves the whole list out, so `search` asks page one
+again once, about 1.5 s later, when the reply is a single focused place with no list and the
+session is under 30 s old. Checked on the 4a from a fresh install: one result before, three
+after.
+
 The fan-out it refetches is 15 category searches (8 on a low-memory phone or a constrained
 link), at most `ambientFanoutPermits = 4` parsing at once. Each response is parsed into a
 full JSON tree of up to tens of megabytes, and firing them all at once filled a Pixel 9's
