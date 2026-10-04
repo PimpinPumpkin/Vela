@@ -189,6 +189,7 @@ fun WhatsNewPrompt(version: String, notes: String, onOpenRelease: () -> Unit, on
         dismissLowEmphasis = true,
         icon = { Icon(Sym.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         text = {
+          Column {
             // The list can be long after a week of nightlies; cap it and scroll inside the dialog.
             Column(
                 Modifier
@@ -197,6 +198,23 @@ fun WhatsNewPrompt(version: String, notes: String, onOpenRelease: () -> Unit, on
             ) {
                 Text(notes, style = MaterialTheme.typography.bodyMedium)
             }
+            // The same switch as Settings > About, where the prompt is.
+            val context = androidx.compose.ui.platform.LocalContext.current
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .dpadHighlight()
+                    .dpadClickable { WhatsNew.setEnabled(context, !WhatsNew.enabled.value) },
+            ) {
+                androidx.compose.material3.Checkbox(checked = WhatsNew.enabled.value, onCheckedChange = null)
+                Text(
+                    stringResource(R.string.whatsnew_show_after_updates),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+          }
         },
     )
 }

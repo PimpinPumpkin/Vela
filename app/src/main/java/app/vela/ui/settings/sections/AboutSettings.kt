@@ -155,6 +155,11 @@ Onboarding.openDonate(context)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         )
         Hint(stringResource(R.string.settings_whatsnew_hint))
+        ToggleRow(
+            label = stringResource(R.string.whatsnew_show_after_updates),
+            checked = app.vela.ui.WhatsNew.enabled.value,
+            onCheckedChange = { app.vela.ui.WhatsNew.setEnabled(context, it) },
+        )
         GroupDivider()
         // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
         // The system installer does the install either way.

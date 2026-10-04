@@ -22,12 +22,23 @@ import java.util.concurrent.TimeUnit
  * Rules: never on a fresh install (the welcome screen is enough for one session, and there is
  * no "before" to compare with), never while another one-time prompt is up (VelaRoot orders
  * them), and never without the notes in hand: a fetch that fails leaves the version unseen so
- * the next launch tries again. Settings > About has a row to reopen it on demand.
+ * the next launch tries again. Settings > About has a row to reopen it on demand, and a switch
+ * ([enabled], also a checkbox on the prompt) that turns the prompt off.
  */
 object WhatsNew {
     /** The notes to show right now, or null. [version] is the build they belong to. */
     val notes = mutableStateOf<String?>(null)
     val version = mutableStateOf(BuildConfig.VERSION_NAME)
+
+    /** Settings > About "Show what's new after updates" (also a checkbox on the prompt itself).
+     *  Off: no prompt and no notes request after an update; the About row still opens it. */
+    val enabled = mutableStateOf(true)
+    private const val KEY_ENABLED = "whats_new_after_update"
+
+    fun setEnabled(context: Context, value: Boolean) {
+        enabled.value = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, value).apply()
+    }
 
     private const val PREFS = "vela_onboarding"
     private const val KEY = "last_seen_version"
@@ -38,6 +49,7 @@ object WhatsNew {
 
     fun init(context: Context) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        enabled.value = p.getBoolean(KEY_ENABLED, true)
         val seen = p.getString(KEY, null)
         val current = BuildConfig.VERSION_NAME
         if (seen == null) {
@@ -47,7 +59,7 @@ object WhatsNew {
             return
         }
         if (seen == current) return
-        if (!Onboarding.welcomeDone.value) { p.edit().putString(KEY, current).apply(); return }
+        if (!Onboarding.welcomeDone.value || !enabled.value) { p.edit().putString(KEY, current).apply(); return }
         show(context, force = false)
     }
 
