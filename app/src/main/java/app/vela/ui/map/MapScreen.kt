@@ -2157,6 +2157,9 @@ fun MapScreen(
             // gates it too: opening the viewer clears `selected`, which used to fall through to
             // THIS branch and draw the results list over the bottom-half mini map (user
             // 2026-07-18); the sheet returns when the viewer closes.
+            // A custom map of only lines and areas (issue #669): no result list, so its Save offer
+            // is this bar in the bottom slot.
+            state.pendingImport != null && state.results.isEmpty() && !searchOpen -> ShapesOnlySaveBar(state.pendingImport!!.title, vm)
             state.results.isNotEmpty() && (!searchOpen || pickingResults) && state.pickOnMap == null &&
                 state.streetView == null && !state.streetViewLoading -> {
               SearchResults(
@@ -2228,7 +2231,7 @@ fun MapScreen(
                         Icon(Sym.BookmarkBorder, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            stringResource(R.string.map_save_list, imp.places.size),
+                            if (imp.shapes.isNotEmpty()) stringResource(R.string.map_save_mymap) else stringResource(R.string.map_save_list, imp.places.size),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Medium,
                         )
@@ -3808,6 +3811,8 @@ private fun MapSurface(
         // draws its list's icon/emoji in the list's color. Hidden while a result set owns the
         // map (a list's own results would double-draw) and during nav/replay (declutter).
         savedPins = savedPinData.map { it.first },
+        // Custom maps (issue #669): the previewed one and every saved list that carries shapes.
+        shapes = remember(state.pendingImport, state.lists) { state.pendingImport?.shapes.orEmpty() + state.lists.flatMap { it.shapes } },
         onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
         svPose = svPose,
         svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
@@ -6439,5 +6444,31 @@ internal class PuckScreen {
     fun set(o: Offset?) {
         at.value = o
         if (have.value != (o != null)) have.value = o != null
+    }
+}
+
+/** The Save offer for a custom map that has only lines and areas (issue #669): the map's name and
+ *  a Save pill along the bottom, with a close button that drops the preview. */
+@Composable
+private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {
+    val context = LocalContext.current
+    val savedMsg = stringResource(R.string.map_list_saved, title)
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 6.dp,
+        // Clear of the scale bar below it and the button column on the right edge.
+        modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 16.dp, end = 88.dp, bottom = 72.dp).fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Button(
+                onClick = { vm.saveImportedList(); Toast.makeText(context, savedMsg, Toast.LENGTH_SHORT).show() },
+                shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape),
+            ) { Text(stringResource(R.string.map_save_mymap)) }
+            IconButton(onClick = vm::clearSearch, modifier = Modifier.dpadHighlight(CircleShape)) {
+                Icon(Sym.Close, contentDescription = stringResource(R.string.place_close))
+            }
+        }
     }
 }

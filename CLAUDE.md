@@ -1674,6 +1674,13 @@ Defaults that make the safe path the easy one:
   `start` (location AND directions links set `autoStartOnRoute`, so the drive starts through
   MapScreen's `onStartNav` and its permission gates). Built for delivery apps that hand over one
   stop after another. Device-checked on the 4a: a plain `geo:` link started a demo drive.
+- **My Maps custom maps (issue #669, 2026-10-04):** `MapLinkParser.myMapId` + `MapDataSource.importMyMap`
+  (Google's keyless KML export, `/maps/d/kml?mid=..&forcekml=1`) + `core/data/MyMapKml` (regex KML:
+  layers, pins, lines, areas, colors) -> an `ImportedList` with `shapes`, the shared-list flow for
+  the pins, `PlaceList.shapes` once saved, `VelaMapView.ensureShapes` to draw. TRAP: the list Save
+  banner lives INSIDE MapScreen's results-list `when` branch, so anything previewed without results
+  needs its own branch (`ShapesOnlySaveBar`). Test maps: a public two-pin map and a two-line bike
+  path map were opened on the 4a through an ACTION_VIEW intent; ids are in `MyMapKmlTest`.
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps

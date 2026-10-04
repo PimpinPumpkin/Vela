@@ -2210,6 +2210,23 @@ class MapViewModel @Inject constructor(
                 // Google Maps links" is on (the default; off = a toast, user 2026-09-22).
                 val googleOff = app.vela.ui.GoogleFree.on.value
                 fun toast(res: Int) = android.widget.Toast.makeText(appContext, res, android.widget.Toast.LENGTH_LONG).show()
+                // A Google My Maps custom map (issue #669): its pins become a list to look at and
+                // save, its lines and areas are drawn on the map. Google serves the map as KML.
+                MapLinkParser.myMapId(q)?.let { mid ->
+                    if (googleOff) { _state.update { it.copy(searching = false) }; toast(R.string.map_import_needs_google); return@launch }
+                    val map = withContext(Dispatchers.IO) { runCatching { dataSource.importMyMap(mid) }.getOrNull() }
+                    android.util.Log.i("VelaLink", "custom map: ${map?.places?.size ?: -1} pins, ${map?.shapes?.size ?: -1} shapes")
+                    if (map == null) { _state.update { it.copy(searching = false, status = appContext.getString(R.string.map_mymap_failed)) }; return@launch }
+                    _state.update {
+                        it.copy(
+                            results = map.places, query = map.title, pendingImport = map,
+                            searching = false, selected = null, status = null, resultsCollapsed = false, openListId = null,
+                            // A map of only lines and areas has no pins to frame: go to its first shape.
+                            center = if (map.places.isEmpty()) map.shapes.firstOrNull()?.pts?.takeIf { p -> p.size >= 2 }?.let { p -> LatLng(p[0], p[1]) } ?: it.center else it.center,
+                        )
+                    }
+                    return@launch
+                }
                 if (googleOff && app.vela.core.data.ShortLinks.isShortener(q) && !app.vela.ui.GoogleFree.resolveLinks.value) {
                     _state.update { it.copy(searching = false) }
                     toast(R.string.map_link_needs_google)
@@ -4886,6 +4903,7 @@ class MapViewModel @Inject constructor(
         val list = app.vela.core.model.PlaceList(
             id = listId, name = imp.title, icon = "bookmark",
             description = imp.description, places = imp.places.map { app.vela.core.model.ListPlace.of(it) },
+            shapes = imp.shapes,
         )
         val lists = if (existing != null) listStore.update(list) else listStore.create(list)
         _state.update { it.copy(lists = lists, pendingImport = null, openListId = listId) }

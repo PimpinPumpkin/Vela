@@ -923,6 +923,7 @@
     <string name="settings_maps_links_off">Android opens Google Maps links in the browser. To open them in Vela, turn on Open supported links and add the links under Open by default.</string>
     <string name="settings_maps_links_open">Open by default settings</string>
     <string name="settings_google_free_links_hint">A short Google Maps link (maps.app.goo.gl) doesn\'t say where it points. With this on, Vela asks Google\'s link shortener once, with no cookies, and opens the place with the open sources. Full google.com/maps links open without asking. Shared lists still need Google.</string>
+    <string name="map_mymap_failed">Couldn\'t open that custom map. It may not be shared by link.</string>
     <string name="map_import_failed">Couldn\'t import that list. Check the link and try again.</string>
     <string name="place_clear_parking">Clear parking</string>
     <string name="parking_history_title">Parking history</string>
@@ -954,6 +955,7 @@
     <string name="place_icon_title">Map icon for %1$s</string> <!-- format: %1$s is the place name -->
     <string name="place_icon_default">Use the list\'s icon</string>
     <string name="map_save_list">Save list · %1$d places</string>
+    <string name="map_save_mymap">Save map</string>
     <string name="map_list_saved">Saved “%1$s” to your lists</string>
     <string name="settings_update_nightly">Include nightly builds</string>
     <string name="settings_update_nightly_hint">Update to the newest nightly (prerelease) instead of only stable releases. Nightlies are fresher but less tested.</string>

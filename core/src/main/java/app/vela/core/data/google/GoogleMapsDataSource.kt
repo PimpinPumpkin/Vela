@@ -1783,6 +1783,15 @@ class GoogleMapsDataSource @Inject constructor(
         }.getOrNull()
     }
 
+    /** A My Maps custom map (issue #669): Google serves any map shared by link as KML at a fixed
+     *  URL, with no key and no session (checked from a plain client, 2026-10-04). */
+    override suspend fun importMyMap(mid: String): app.vela.core.model.ImportedList? = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io null
+        runCatching {
+            app.vela.core.data.MyMapKml.parse(get("https://www.google.com/maps/d/kml?mid=${mid.enc()}&forcekml=1", kind = "my map"), mid)
+        }.getOrNull()
+    }
+
     // --- plumbing -----------------------------------------------------------
 
     /** [aged]: a per-place request (details, photos, the review feed) that rides the WebView's aged

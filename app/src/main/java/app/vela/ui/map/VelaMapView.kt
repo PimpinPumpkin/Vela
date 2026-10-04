@@ -800,6 +800,7 @@ fun VelaMapView(
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
     savedPins: List<SavedPin> = emptyList(), // saved/list places while browsing (issue #171)
+    shapes: List<app.vela.core.model.MapShape> = emptyList(), // custom-map lines and areas (issue #669)
     onSavedPinTap: (index: Int) -> Unit = {},
     onParkingTap: () -> Unit = {},
     // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
@@ -2225,6 +2226,10 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains, darkTheme) }
         runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
+    }
+    LaunchedEffect(shapes, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { ensureShapes(style, shapes) }.onFailure { android.util.Log.w("VelaShapes", "shapes: ${it.message}") }
     }
     LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
@@ -7529,6 +7534,66 @@ private fun withLocalBasemap(context: android.content.Context, json: String, arc
 
 /** The bottom-most symbol layer on the style (the basemap's first label layer): anything added
  *  below it draws under every label and icon. */
+private const val SHAPES_SRC = "vela-shapes-src"
+private const val SHAPES_FILL = "vela-shapes-fill"
+private const val SHAPES_LINE = "vela-shapes-line"
+private const val SHAPES_LABEL = "vela-shapes-label"
+private const val SHAPES_AREA_LABEL = "vela-shapes-area-label"
+
+/**
+ * The lines and areas of imported custom maps (Google My Maps, issue #669), in the map's own
+ * colors, under every label: an area's fill, then outlines and lines, then the shapes' names
+ * (along a line, in the middle of an area). One GeoJSON source, rebuilt when the set changes.
+ */
+private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape>) {
+    fun hex(c: Long) = String.format("#%06X", c and 0xFFFFFF)
+    fun alpha(c: Long) = ((c shr 24) and 0xFF) / 255f
+    if (style.getSource(SHAPES_SRC) == null) {
+        if (shapes.isEmpty()) return
+        style.addSource(GeoJsonSource(SHAPES_SRC, GeoJsonOptions().withMaxZoom(16)))
+        val below = firstSymbolLayerId(style)
+        val isArea = Expression.eq(Expression.get("area"), Expression.literal(true))
+        val fill = FillLayer(SHAPES_FILL, SHAPES_SRC).withFilter(isArea).withProperties(
+            PropertyFactory.fillColor(Expression.toColor(Expression.get("fill"))),
+            PropertyFactory.fillOpacity(Expression.get("fillOpacity")),
+        )
+        val line = LineLayer(SHAPES_LINE, SHAPES_SRC).withProperties(
+            PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+            PropertyFactory.lineOpacity(Expression.get("opacity")),
+            PropertyFactory.lineWidth(Expression.get("width")),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        )
+        if (below != null) { style.addLayerBelow(fill, below); style.addLayerBelow(line, below) } else { style.addLayer(fill); style.addLayer(line) }
+        fun label(id: String, area: Boolean) = SymbolLayer(id, SHAPES_SRC)
+            .withFilter(if (area) isArea else Expression.not(isArea))
+            .withProperties(
+                PropertyFactory.textField(Expression.get("name")),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(12f),
+                PropertyFactory.textColor(Expression.toColor(Expression.get("color"))),
+                PropertyFactory.textHaloColor("#FFFFFF"), PropertyFactory.textHaloWidth(1.4f),
+                PropertyFactory.symbolPlacement(if (area) Property.SYMBOL_PLACEMENT_POINT else Property.SYMBOL_PLACEMENT_LINE),
+            ).apply { minZoom = 12f }
+        style.addLayer(label(SHAPES_LABEL, area = false)); style.addLayer(label(SHAPES_AREA_LABEL, area = true))
+    }
+    val features = shapes.mapNotNull { s ->
+        val pts = s.pts.chunked(2).mapNotNull { if (it.size == 2) Point.fromLngLat(it[1], it[0]) else null }
+        if (pts.size < 2) return@mapNotNull null
+        val f = if (s.closed && pts.size >= 3) {
+            val ring = if (pts.first() == pts.last()) pts else pts + pts.first()
+            Feature.fromGeometry(org.maplibre.geojson.Polygon.fromLngLats(listOf(ring)))
+        } else Feature.fromGeometry(LineString.fromLngLats(pts))
+        f.addBooleanProperty("area", s.closed && pts.size >= 3)
+        f.addStringProperty("name", s.name)
+        f.addStringProperty("color", hex(s.color)); f.addNumberProperty("opacity", alpha(s.color).coerceAtLeast(0.35f))
+        f.addNumberProperty("width", s.width)
+        val fillC = s.fill ?: s.color
+        f.addStringProperty("fill", hex(fillC)); f.addNumberProperty("fillOpacity", if (s.fill != null) alpha(fillC).coerceIn(0.08f, 0.7f) else 0f)
+        f
+    }
+    (style.getSource(SHAPES_SRC) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(features))
+}
+
 private fun firstSymbolLayerId(style: Style): String? =
     style.layers.firstOrNull { it is SymbolLayer }?.id
 

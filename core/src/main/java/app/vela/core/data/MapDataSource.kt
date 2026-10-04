@@ -99,6 +99,9 @@ interface MapDataSource {
      *  Best-effort — null when the link isn't a list or the fetch/parse fails. */
     suspend fun importList(shareUrl: String): app.vela.core.model.ImportedList? = null
 
+    /** A Google My Maps custom map shared by link, by its `mid` (issue #669). */
+    suspend fun importMyMap(mid: String): app.vela.core.model.ImportedList? = null
+
     /** The full place photo gallery (~40+), by Google feature id, each with its
      *  posted date when the response carried one. The search response only holds a
      *  ~10-photo preview; this pulls the rest via the keyless `hspqX` RPC. The app's

@@ -55,8 +55,14 @@ object MapLinkParser {
     fun isShareLink(raw: String): Boolean {
         val t = raw.trim()
         if (t.any { it.isWhitespace() }) return false
-        return "maps.app.goo.gl/" in t || "goo.gl/maps/" in t || "google.com/maps/placelists" in t
+        return "maps.app.goo.gl/" in t || "goo.gl/maps/" in t || "google.com/maps/placelists" in t || myMapId(t) != null
     }
+
+    private val MY_MAP = Regex("""google\.[a-z.]+/maps/d/[^\s]*?[?&]mid=([A-Za-z0-9_.-]{10,})""")
+
+    /** The id of a Google My Maps custom map link (`google.com/maps/d/viewer?mid=...`, also the
+     *  `edit`, `embed` and `u/0/` forms), or null (issue #669). */
+    fun myMapId(raw: String): String? = MY_MAP.find(raw.trim())?.groupValues?.get(1)
 
     fun parse(raw: String): MapLink? {
         val link = when {

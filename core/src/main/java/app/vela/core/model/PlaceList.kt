@@ -48,6 +48,20 @@ data class ListPlace(
 
 /** A user-created (or imported) list of places — Google-Maps "saved lists" (issue #1).
  *  [icon] is a stable key into the app's icon set; [color] an ARGB int the UI tints with. */
+/** A line or an area drawn on the map: part of a Google My Maps custom map (issue #669). [pts]
+ *  is lat, lng, lat, lng...; [closed] = an area, filled with [fill]. Colors are ARGB. */
+@Serializable
+data class MapShape(
+    val name: String = "",
+    val description: String? = null,
+    val pts: List<Double> = emptyList(),
+    val closed: Boolean = false,
+    val color: Long = 0xFF1A73E8,
+    val width: Float = 3f,
+    val fill: Long? = null,
+    val layer: String? = null,
+)
+
 @Serializable
 data class PlaceList(
     val id: String,
@@ -56,4 +70,6 @@ data class PlaceList(
     val color: Long = 0xFF1A73E8, // Google blue by default
     val description: String? = null,
     val places: List<ListPlace> = emptyList(),
+    /** The lines and areas of an imported custom map; drawn while the list is on the map. */
+    val shapes: List<MapShape> = emptyList(),
 )

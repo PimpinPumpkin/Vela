@@ -140,6 +140,8 @@ data class ImportedList(
     val description: String? = null,
     val author: String? = null,
     val places: List<Place> = emptyList(),
+    /** A My Maps custom map's lines and areas (issue #669); empty for a shared list. */
+    val shapes: List<MapShape> = emptyList(),
 )
 
 data class Department(

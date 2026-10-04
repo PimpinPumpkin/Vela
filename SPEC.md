@@ -2335,6 +2335,23 @@ host that cannot answer.
 
 ### 5.6 Search and results
 
+**Google My Maps custom maps (issue #669, 2026-10-04).** A link of the form
+`google.com/maps/d/<viewer|edit|embed>?mid=<id>` (also under `u/<n>/`; `MapLinkParser.myMapId`)
+is opened, pasted or shared like a shared list. Google serves any map shared by link as KML at
+`https://www.google.com/maps/d/kml?mid=<id>&forcekml=1` with no key and no session
+(`MapDataSource.importMyMap`; refused under "Use Vela without Google"). `core/data/MyMapKml`
+reads it with regexes: `<Folder>` = a layer, `<Point>` placemarks become places (the
+description, HTML stripped, as the note; the layer name as the category when the map has more
+than one layer), `<LineString>` and `<Polygon>` (outer ring) become `MapShape`s with the map's
+own `<LineStyle>` / `<PolyStyle>` colors (KML writes aabbggrr) resolved through `<StyleMap>`.
+Caps: 2,000 places, 500 shapes, 150,000 shape points. The result is an `ImportedList` with
+`shapes`, so the pins take the shared-list path (results list, Save banner); a map with no pins
+gets `ShapesOnlySaveBar` in the bottom slot. Saving stores the shapes on the list
+(`PlaceList.shapes`). The map draws the previewed map's shapes and every saved list's
+(`VelaMapView.ensureShapes`: one GeoJSON source, a fill layer, a line layer and two label
+layers, all below the first symbol layer except the labels). Not carried: marker icons and
+colors, photos, the base map style. Shapes are not tappable.
+
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
   or no window size is known, one extra page runs over a 2.5 km
