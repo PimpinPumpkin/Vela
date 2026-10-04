@@ -3782,7 +3782,8 @@ architecture note.
   a `debug.vela.tune` override silently did nothing and a "lower caps changed nothing" result was
   invalid; they go through `AppTune.value` now. **Packed-area rule (user 2026-10-04):** a low-ranked
   generic place (default/health group, prominence under 4) past rank `openGenericHideRank` (120) in
-  its ~400 m cell is not drawn, dot included; a home office or a business-park tenant ranks far
+  its ~400 m cell is not drawn, dot included, below z19.5 (dots return there, pins and names at
+  z20.3: `GENERIC_REVEAL_ZOOM` / `GENERIC_ICON_ZOOM`); a home office or a business-park tenant ranks far
   above that and stays. Checked: downtown Montreal loses the gray dots, midtown Sacramento is
   pixel-identical on and off.
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in

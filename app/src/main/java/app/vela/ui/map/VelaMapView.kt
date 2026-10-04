@@ -1883,7 +1883,8 @@ fun VelaMapView(
                 // carpet of gray office dots). "Packed" is the place's rank in its ~400 m cell: past
                 // `openGenericHideRank` there are that many better-ranked places around it. A home
                 // office on a residential street or a tenant in a business park ranks far above
-                // that in its cell and stays; search still finds the hidden ones.
+                // that in its cell and stays. Zoomed right in they come back: dots from
+                // GENERIC_REVEAL_ZOOM, pins and names from GENERIC_ICON_ZOOM. Search finds them at any zoom.
                 val genericHideRank = app.vela.ui.AppTune.value("openGenericHideRank", GENERIC_HIDE_RANK)
                 val packedGeneric = Expression.all(
                     Expression.match(
@@ -1924,6 +1925,7 @@ fun VelaMapView(
                                 dotsAbove(6),
                                 Expression.stop(16f, dotsAbove(15)),
                                 Expression.stop(17f, dotsUnlessPacked),
+                                Expression.stop(GENERIC_REVEAL_ZOOM, Expression.literal(0.92f)),
                             ),
                         ),
                         PropertyFactory.circleStrokeOpacity(
@@ -1932,6 +1934,7 @@ fun VelaMapView(
                                 dotsAbove(6),
                                 Expression.stop(16f, dotsAbove(15)),
                                 Expression.stop(17f, dotsUnlessPacked),
+                                Expression.stop(GENERIC_REVEAL_ZOOM, Expression.literal(0.92f)),
                             ),
                         ),
                     )
@@ -1966,6 +1969,8 @@ fun VelaMapView(
                                 Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
                                 Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
                                 Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
+                                // Right on top of a building its offices get their pins too.
+                                Expression.stop(GENERIC_ICON_ZOOM, blockBudget(iconCapMax, 4.5, icon)),
                             ),
                         ),
                         // Scaled like every other icon layer. Without this the open places layer
@@ -2015,6 +2020,7 @@ fun VelaMapView(
                                 Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name))))),
                                 Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
                                 Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(GENERIC_ICON_ZOOM, blockBudget(iconCapMax, 4.5, name)),
                             ),
                         ),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -7636,6 +7642,10 @@ private fun roadNameSpacingExpr(base: Float): Expression {
 private const val ROAD_NAME_SPACING_MAX_PX = 1500.0
 /** A low-ranked office or small practice past this rank in its ~400 m cell is not drawn. */
 private const val GENERIC_HIDE_RANK = 120.0
+/** From here the hidden ones draw as dots again (about the 30 ft scale), and from the second
+ *  zoom every generic place in the block budget gets its pin and name. */
+private const val GENERIC_REVEAL_ZOOM = 19.5f
+private const val GENERIC_ICON_ZOOM = 20.3f
 private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
 
 private fun widenStreets(style: StyleLayers) {

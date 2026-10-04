@@ -2650,7 +2650,8 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   through `AppTune.value`, so `debug.vela.tune.<key>` overrides them on a device; before
   2026-10-04 they read the calibration bundle only and an adb override did nothing. A low-ranked
   generic place (group default or health, prominence under `openGenericMinProminence`) whose
-  rank in its ~400 m cell is past `openGenericHideRank` (120) is not drawn at all, dot included:
+  rank in its ~400 m cell is past `openGenericHideRank` (120) is not drawn, dot included, until the map is zoomed right in (dots again from z19.5, pins
+  and names for every generic place in the block budget from z20.3):
   downtown Montreal loses its carpet of office dots, midtown Sacramento is pixel-identical with
   the rule on and off. No frame-rate effect; it is for clutter) (`ROAD_NAME_SPACING_PX`, dial `roadNameSpacing`); at MapLibre's default 250 most blocks of a grid
   carried no name at street zoom, with every Vela layer hidden too, so it was the spacing, not
