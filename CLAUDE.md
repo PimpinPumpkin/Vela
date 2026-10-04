@@ -6413,7 +6413,10 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   category hits used to crowd out an exact name match; without the distance term the cap took rows in
   table order and offline "Restaurants" came back from across the state). Offline search also reads the
   downloaded places ARCHIVES (`PlacesArchiveSearch`, z17 tile rings around the search point) and ranks
-  both sources in `OfflineRank`; category queries stay within 100 km. v1-format packs
+  both sources in `OfflineRank`; category queries stay within 100 km. A query that IS a known
+  category is never split into its words (`OfflineRank.queryWords`: "station" matched every
+  charging station for "Gas station"), and names match with punctuation folded (`OfflineRank.fold`
+  and the SQL twin `NAME_FOLDED`, keep the two in step; issue #657). v1-format packs
   (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
   full-download once, then deltas kick in.
 - **A region's pack can be its PARENT's (`RegionPacks.packFor`, 2026-09-29).** Pack ids match

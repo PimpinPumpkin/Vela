@@ -104,15 +104,19 @@ class OfflinePoiStore @Inject constructor(
     fun search(query: String, near: LatLng?, limit: Int = 30, extra: List<Place> = emptyList()): List<Place> {
         val term = query.trim()
         // name/category LIKE targets: the whole query, plus each word ≥3 chars (multi-word only).
+        // A query that IS a known category ("gas station") is not split: its words matched other
+        // categories ("station" brought every charging station to the top, issue #657).
         val nameCat = LinkedHashSet<String>().apply { add(term) }
-        val words = term.split(Regex("\\s+")).filter { it.length >= 3 }
-        if (words.size > 1) nameCat.addAll(words)
+        val words = OfflineRank.queryWords(term)
+        nameCat.addAll(words)
         // category-tag targets: keywords for the whole query and for each word.
         val cats = LinkedHashSet<String>().apply { addAll(categoryKeywords(term)); words.forEach { addAll(categoryKeywords(it)) } }
 
         val clauses = ArrayList<String>()
         val args = ArrayList<String>()
-        for (t in nameCat) { clauses.add("name LIKE ?"); args.add("%$t%"); clauses.add("category LIKE ?"); args.add("%$t%") }
+        // Names are compared with apostrophes and periods dropped and hyphens as spaces, on both
+        // sides, so "mcdonalds" finds "McDonald's" and "7 eleven" finds "7-Eleven" (issue #657).
+        for (t in nameCat) { clauses.add("$NAME_FOLDED LIKE ?"); args.add("%${OfflineRank.fold(t)}%"); clauses.add("category LIKE ?"); args.add("%$t%") }
         for (c in cats) { clauses.add("category LIKE ?"); args.add("%$c%") }
         // Whole-query address match, so typing a downloaded POI's street address finds it offline (the
         // general typed-address geocoder is OfflineAddressStore).
@@ -121,7 +125,7 @@ class OfflinePoiStore @Inject constructor(
         // thousands of category hits ("cafe"), and taking the first 400 in table order dropped an exact
         // name match that lived past them (found while verifying delta updates). The ORDER BY puts
         // phrase-in-name rows first, THEN the cap applies. Its LIKE arg is the last one bound.
-        args.add("%$term%")
+        args.add("%${OfflineRank.fold(term)}%")
         // Then NEAREST first, so the 400 kept are the 400 closest: without it the cut took rows in
         // table order (OSM id order, effectively random across a state) and "restaurants" listed
         // places a hundred miles off while closer ones never made the cut. A flat-earth distance
@@ -131,7 +135,7 @@ class OfflinePoiStore @Inject constructor(
             String.format(java.util.Locale.US, ", ((lat - %.6f) * (lat - %.6f) + (lng - %.6f) * (lng - %.6f) * %.6f)", n.lat, n.lat, n.lng, n.lng, k * k)
         }.orEmpty()
         val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi " +
-            "WHERE ${clauses.joinToString(" OR ")} ORDER BY (name LIKE ?) DESC$nearest LIMIT 400"
+            "WHERE ${clauses.joinToString(" OR ")} ORDER BY ($NAME_FOLDED LIKE ?) DESC$nearest LIMIT 400"
         val rows = ArrayList<Place>()
         fun query(db: android.database.sqlite.SQLiteDatabase) {
             runCatching {
@@ -230,6 +234,9 @@ class OfflinePoiStore @Inject constructor(
         /** Pack categories that are transit stops (public_transport=* and amenity=bus_station). */
         internal val TRANSIT_STOP_CATS = setOf("platform", "stop position", "stop area", "station", "bus station", "bus stop")
         internal val TRANSIT_QUERY_WORDS = listOf("bus", "stop", "station", "transit", "train", "tram", "platform", "metro", "light rail", "subway", "ferry")
+
+        /** The pack's name column as [OfflineRank.fold] folds a query (LIKE already ignores case). */
+        private const val NAME_FOLDED = "replace(replace(replace(replace(name,'''',''),'\u2019',''),'.',''),'-',' ')"
 
         internal fun categoryKeywords(query: String): List<String> {
             val key = query.trim().lowercase()

@@ -40,4 +40,27 @@ class OfflineRankTest {
         assertTrue(OfflineRank.matches("Groceries", "Davis Food Co-op", "Grocery store", null))
         assertTrue(!OfflineRank.matches("Restaurants", "Davis Ace Hardware", "Hardware store", null))
     }
+
+    @Test
+    fun aCategoryQueryIsNotSplitIntoItsWords() {
+        // "Gas station" matched "Charging station" on the word "station" (issue #657).
+        assertTrue(OfflineRank.matches("Gas station", "Petro-Canada", "Fuel", null))
+        assertTrue(!OfflineRank.matches("Gas station", "SWTCH", "Charging station", null))
+        val fuel = place("f", "Esso", "Fuel", 38.60, -121.70)
+        val charger = place("c", "FLO", "Charging station", 38.545, -121.741)
+        assertEquals(listOf("f"), OfflineRank.rank("Gas station", here, listOf(charger, fuel).filter { OfflineRank.matches("Gas station", it.name, it.category, null) }, 30).map { it.id })
+        // A name that is not a category still matches by word.
+        assertTrue(OfflineRank.matches("mexican restaurant", "Ixtapa Mexican Restaurant", "Restaurant", null))
+    }
+
+    @Test
+    fun namesMatchWithoutTheirPunctuation() {
+        assertTrue(OfflineRank.matches("mcdonalds", "McDonald's", "Fast food", null))
+        assertTrue(OfflineRank.matches("7 eleven", "7-Eleven", "Convenience", null))
+        assertTrue(OfflineRank.matches("st hubert", "St. Hubert", "Restaurant", null))
+        // The restaurant nearby leads a parking lot that spells the name without the apostrophe.
+        val real = place("r", "McDonald's", "Fast food", 38.56, -121.75)
+        val lot = place("l", "McDonalds Parking Lot", "Parking", 39.4, -121.0)
+        assertEquals(listOf("r", "l"), OfflineRank.rank("mcdonalds", here, listOf(lot, real), 30).map { it.id })
+    }
 }

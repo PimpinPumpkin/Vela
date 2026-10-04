@@ -354,7 +354,11 @@ OFFLINE_AT_ADDR_M  = 40.0   // a place this close to a typed address is "at" it
     `Cafe`). Whole-phrase name matches come first and then the NEAREST rows, both **before** the
     400-row cap, so a state pack's thousands of cafes cannot push out the one exact name or the
     ones around you. Without the distance term the cap took rows in table order, effectively
-    random across a state, and "Restaurants" listed places far away.
+    random across a state, and "Restaurants" listed places far away. Two rules from issue #657:
+    a query that is itself a known category ("Gas station") is NOT split into words, because
+    "station" matched every charging station; and names are compared with apostrophes and
+    periods dropped and hyphens as spaces on both sides (`OfflineRank.fold`), so "mcdonalds"
+    finds "McDonald's" and "7 eleven" finds "7-Eleven".
   - `PlacesArchiveSearch`: the downloaded places archives the map draws (Overture, AllThePlaces
     and OSM, so far more businesses than the pack). It reads the archive's deepest zoom, where
     every place is present, in rings of tiles out from the search point until it has 60 matches

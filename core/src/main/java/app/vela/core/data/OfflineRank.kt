@@ -20,16 +20,28 @@ object OfflineRank {
 
     fun isCategoryQuery(query: String): Boolean = OfflinePoiStore.categoryKeywords(query.trim()).isNotEmpty()
 
+    /** A name or query with the punctuation people do not type folded away: apostrophes and
+     *  periods dropped, hyphens as spaces, lowercase. */
+    fun fold(s: String): String = s.lowercase().replace("'", "").replace("\u2019", "").replace(".", "").replace('-', ' ')
+
+    /** The single words a multi-word query is also matched by (3+ letters). None for a query that
+     *  is a known category: "gas station" must not match on "station". */
+    fun queryWords(term: String): List<String> {
+        if (isCategoryQuery(term)) return emptyList()
+        return term.trim().split(Regex("\\s+")).filter { it.length >= 3 }.takeIf { it.size > 1 }.orEmpty()
+    }
+
     /** The same test the pack SQL runs: the query (or, multi-word, any word of 3+ letters) in the
      *  name or category, a category keyword in the category, or the whole query in the address. */
     fun matches(query: String, name: String, category: String?, address: String?, brand: String? = null): Boolean {
         val term = query.trim().lowercase()
         if (term.isEmpty()) return false
-        val n = name.lowercase()
+        val n = fold(name)
         val c = category?.lowercase().orEmpty()
-        val words = term.split(Regex("\\s+")).filter { it.length >= 3 }
-        val targets = if (words.size > 1) listOf(term) + words else listOf(term)
-        if (targets.any { n.contains(it) || c.contains(it) || brand?.lowercase()?.contains(it) == true }) return true
+        val words = queryWords(term)
+        val targets = listOf(term) + words
+        val b = brand?.let(::fold)
+        if (targets.any { n.contains(fold(it)) || c.contains(it) || b?.contains(fold(it)) == true }) return true
         val cats = OfflinePoiStore.categoryKeywords(term) + words.flatMap { OfflinePoiStore.categoryKeywords(it) }
         if (cats.any { c.contains(it) }) return true
         return address?.lowercase()?.contains(term) == true
@@ -41,8 +53,7 @@ object OfflineRank {
      *  name matches ("... Restaurants") could lead. */
     fun rank(query: String, near: LatLng?, rows: List<Place>, limit: Int): List<Place> {
         val term = query.trim()
-        val words = term.split(Regex("\\s+")).filter { it.length >= 3 }
-        val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
+        val qWords = queryWords(term).ifEmpty { listOf(term) }.map { it.lowercase() }
         val transitQuery = OfflinePoiStore.TRANSIT_QUERY_WORDS.any { term.lowercase().contains(it) }
         val categoryQuery = isCategoryQuery(term)
         val withDist = rows.map { p -> if (near != null) p.copy(distanceMeters = near.distanceTo(p.location)) else p }
@@ -59,8 +70,9 @@ object OfflineRank {
             compareBy<Place> { p -> if (!transitQuery && (p.category ?: "").lowercase() in OfflinePoiStore.TRANSIT_STOP_CATS) 1 else 0 }
                 .thenByDescending { p ->
                     val hay = (p.name + " " + (p.category ?: "") + " " + (p.address ?: "")).lowercase()
+                    val name = fold(p.name)
                     val cat = (p.category ?: "").lowercase()
-                    qWords.count { w -> hay.contains(w) || OfflinePoiStore.categoryKeywords(w).any { cat.contains(it) } }
+                    qWords.count { w -> hay.contains(w) || name.contains(fold(w)) || OfflinePoiStore.categoryKeywords(w).any { cat.contains(it) } }
                 }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
         ).take(limit)
     }
