@@ -256,7 +256,7 @@ class PiperSynth @Inject constructor(
                         if (aborted()) break
                         val (audio, rate) = render(engine, frag, sid, spd)
                         feed(audio, rate)
-                        if (gapAfter > 0f) feed(FloatArray((rate * gapAfter).toInt()), rate)
+                        if (gapAfter > 0f) feed(FloatArray(gapFrames(rate, gapAfter, spd)), rate)
                     }
                 }
                 queue.put(END)
@@ -324,10 +324,15 @@ class PiperSynth @Inject constructor(
             val (audio, rate) = render(engine, frag, sid, spd)
             sampleRate = rate
             if (audio.isNotEmpty()) chunks.add(audio)
-            if (gapAfter > 0f) chunks.add(FloatArray((sampleRate * gapAfter).toInt())) // spliced silence
+            if (gapAfter > 0f) chunks.add(FloatArray(gapFrames(sampleRate, gapAfter, spd))) // spliced silence
         }
         return concat(chunks) to sampleRate
     }
+
+    /** A spliced pause in frames. The pause lengths were tuned by ear at [PAUSE_TUNED_SPEED], so
+     *  they stretch and shrink with the speed setting: twice as fast, half the pause. */
+    private fun gapFrames(sampleRate: Int, gapSec: Float, spd: Float): Int =
+        (sampleRate * gapSec * PAUSE_TUNED_SPEED / spd.coerceAtLeast(0.1f)).toInt()
 
     /** One phrase's audio and its sample rate. */
     private fun render(engine: OfflineTts, frag: String, sid: Int, spd: Float): Pair<FloatArray, Int> {
@@ -475,6 +480,8 @@ class PiperSynth @Inject constructor(
         const val CLAUSE_PAUSE_SEC = 0.16f
         // Breath between BACK-TO-BACK prompts (after the drain): consecutive directions don't butt
         // against each other. Skipped when an interrupting prompt is waiting (generation moved).
+        /** The speech speed [PAUSE_SEC] and [CLAUSE_PAUSE_SEC] were tuned at (the shipped default). */
+        const val PAUSE_TUNED_SPEED = 0.8f
         const val INTER_PROMPT_GAP_MS = 350L
         /** Silence fed to the stream while the next phrase is still rendering. */
         const val STARVE_MS = 60

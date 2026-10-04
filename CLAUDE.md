@@ -5471,7 +5471,8 @@ Gotchas:
   lands within ~200 ms) and writes `STARVE_MS` of SILENCE whenever the next phrase is not ready, which
   is what keeps the no-underrun rule. First audio on the 4a: 0.29 s for a line that takes 0.70 s to
   render; the gain is larger on a slow head unit. Never write to the track from a path that can wait
-  on the synth without feeding silence. **Audio-focus is refcounted via the
+  on the synth without feeding silence. The spliced pauses scale with the speed setting
+  (`gapFrames`: tuned at 0.8x, multiplied by 0.8 / speed). **Audio-focus is refcounted via the
   utterance callbacks; two audit-2026-07-06 leaks closed:** a system-TTS `speak()` returning `ERROR`
   enqueues no utterance so no callback ever fires - `VoiceGuide.speakViaSystem` now rolls back the focus
   acquire on `ERROR`; and a failed system-TTS `onInit` used to queue every prompt into `pending` forever

@@ -3311,7 +3311,9 @@ Rules:
   makes AudioFlinger drop the track, which aborts the process, so when the next phrase is not
   ready the player writes `STARVE_MS` (60) of silence. Audio is written in about 200 ms pieces
   with a generation check between them so an interrupt lands within that window. Prepared lines
-  (`prepare`) are still rendered whole.
+  (`prepare`) are still rendered whole. The pauses spliced between phrases (0.16 s at a comma,
+  0.32 s at a period, tuned at the default 0.8x) scale with the speed setting: `gapFrames`
+  multiplies them by 0.8 / speed.
 - **A Piper voice speaks one language.** `VoiceGuide` compares `NeuralSynth.voiceLanguage`
   against the language the text was generated in and, on a mismatch, first asks
   `NeuralSynth.voiceFor(lang)`: the synth loads an INSTALLED voice of that language
