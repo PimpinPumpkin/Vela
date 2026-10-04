@@ -1338,7 +1338,9 @@ navigating (the follow camera moves every frame, and the gate re-queried rendere
 main thread every 1.2 s for the whole drive). It is asked on a timer instead (`NAV_OVL_FIRST_MS`
 2.5 s after the start, then every `NAV_OVL_TICK_MS` 4 s) and probes once per ~550 m cell the car
 enters, without waiting for a settled render; with no verdict at all during a drive, one that
-began from the route overview (below z16) kept the footprints hidden to its end. Tried and measured NOT to help, so not kept: a slower zoom ease for
+began from the route overview (below z16) kept the footprints hidden to its end. Since 2026-10-03
+the probes run one per frame, under the 1.2 s floor, and only while the camera follows the car
+(section 6.4, rule 4). Tried and measured NOT to help, so not kept: a slower zoom ease for
 the first 3 s after engage (tau 1.2 s), and deferring the drive-nav declutter (1.5 s) and the
 first road-label pass (2 s) past the fly-in. Two alternating runs per build, fps per second from
 Start: with them 2/33/7/14/44/21/14/34 and 1/28/5/15/50/10/10/39, without 2/28/9/35/31/16/8/45
@@ -2636,6 +2638,15 @@ per viewport. Three rules:
    "sparse" verdict before tiles land is indistinguishable from a real gap. Hiding is always
    safe immediately. A floor-blocked call schedules one deferred retry, or an uncommitted
    verdict sticks forever on an idle map.
+4. **One probe per animation frame** (`ovlProbeRun`, 2026-10-03). The 12 probes used to run back
+   to back, and each run was the single largest main-thread stall of a drive (a 4a: 45 to 193 ms,
+   every run followed by a 50 to 150 ms frame). Spread over 12 frames each probe is one short
+   wait and the verdict lands 200 ms later, which nothing waits for; a gate call while a sequence
+   is in flight returns. The floor applies while navigating too (the nav branch used to skip it:
+   a user panning around in a drive crossed a new cell on nearly every drag, so every pan end ran
+   the probes, 57 runs in a minute of panning), and during a drive the gate probes only while
+   the camera follows the car; a detached camera is the user's pan, hiding is always safe at
+   once, and the drive's timer probes again once the camera is back on the car.
 
 Gate state is composable-scoped, because `getMapAsync` can register listeners twice.
 

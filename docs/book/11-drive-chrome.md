@@ -367,7 +367,11 @@ per view whether they are needed (chapter 1 covers the check). That check used t
 the map came to rest, which never happens while the camera follows a car, so a drive that began
 from the route overview drew no footprints to its end. During a drive it now runs on a timer:
 2.5 s after the start, then every 4 s, and it only does real work when the car has entered a new
-cell of about 550 m.
+cell of about 550 m, and only while the camera is following the car. Each check asks the map
+what is drawn at 12 points of the screen, and each question waits for the render thread; asked
+back to back they were the longest pause of a drive (45 to 193 ms on a Pixel 4a, and a pan around
+the map during a drive asked them at the end of every drag). Since 2026-10-03 the 12 questions are
+spread over 12 frames, one per frame, and a pan never asks them.
 
 ### Stops during the drive
 

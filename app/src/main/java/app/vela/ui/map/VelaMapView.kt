@@ -905,6 +905,7 @@ fun VelaMapView(
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
     val ovlGateHook = remember { arrayOfNulls<() -> Unit>(1) } // the gate, callable from effects
+    val ovlProbeRun = remember { arrayOfNulls<Runnable>(1) } // a probe sequence in flight (one point per frame)
     val tilted3d = remember { mutableStateOf(false) } // camera tilted enough for 3D buildings (hysteresis)
     val b3dShown = remember { booleanArrayOf(false) }
     val navFollowingHolder = rememberUpdatedState(navFollowing)
@@ -3893,8 +3894,13 @@ fun VelaMapView(
                         // Re-probe only when the view moved meaningfully (~500 m / a zoom level) OR
                         // a render finished since the last verdict (tiles that arrived after the
                         // camera stopped can change it) - and NEVER more often than the time floor.
+                        // The floor holds while navigating too (2026-10-03): the nav branch used to
+                        // skip it, and a user panning around in a drive crossed a new cell on nearly
+                        // every drag, so every pan end ran the probes (4a: one 70-160 ms run per
+                        // drag, 57 in a minute of panning).
                         val now = android.os.SystemClock.elapsedRealtime()
-                        if (!navNow && now - ovlLastEval[0] < OVL_GATE_MIN_GAP_MS) {
+                        if (ovlProbeRun[0] != null) return@runCatching // a sequence is in flight
+                        if (now - ovlLastEval[0] < OVL_GATE_MIN_GAP_MS) {
                             // Don't just drop a floor-blocked call: on a fully idle map (no puck
                             // animation nudging renders) there may be NO later event to retry it,
                             // and an uncommitted verdict then sticks forever - Elwood's reveal
@@ -3909,6 +3915,10 @@ fun VelaMapView(
                             }
                             return@runCatching
                         }
+                        // In a drive, only while the camera follows the car: a detached camera is
+                        // the user's pan, and hiding is always safe at once; the drive's timer
+                        // probes again once the camera is back on the car.
+                        if (navNow && !navFollowingHolder.value) return@runCatching
                         val c = map.cameraPosition.target
                         val key = if (c == null) "?" else "${(c.latitude * 200).toInt()}/${(c.longitude * 200).toInt()}/${if (navNow) "nav" else zoomNow.toInt().toString()}"
                         // While navigating the verdict is taken once per ~550 m cell (the key),
@@ -3924,30 +3934,49 @@ fun VelaMapView(
                         // a blocking IPC, so fewer is a feature. The flat `building` fill renders
                         // z16-24 and is toggle-independent (building-3d can be switched off by the
                         // 3D setting / nav / satellite), so it carries the signal.
+                        // ONE POINT PER FRAME (2026-10-03): the 12 probes used to run back to back,
+                        // and every run was the single largest main-thread stall of a drive (4a:
+                        // 45-193 ms, each followed by a 50-150 ms frame). Spread over 12 animation
+                        // frames each probe is one short wait (a few ms) and the verdict lands
+                        // 200 ms later, which nothing waits for.
                         val dm = context.resources.displayMetrics
                         val w = dm.widthPixels.toFloat(); val h = dm.heightPixels.toFloat()
                         val cols = 3; val rows = 4; val r = 6f
-                        var hits = 0
-                        for (ix in 1..cols) for (iy in 1..rows) {
-                            val px = w * ix / (cols + 1); val py = h * iy / (rows + 1)
-                            if (map.queryRenderedFeatures(RectF(px - r, py - r, px + r, py + r), "building", "building-3d").isNotEmpty()) hits++
+                        val points = ArrayList<FloatArray>(cols * rows)
+                        for (ix in 1..cols) for (iy in 1..rows) points += floatArrayOf(w * ix / (cols + 1), h * iy / (rows + 1))
+                        val hits = intArrayOf(0); val idx = intArrayOf(0)
+                        val step = object : Runnable {
+                            override fun run() {
+                                val ok = runCatching {
+                                    if (map.style?.isFullyLoaded != true) return@runCatching false
+                                    val px = points[idx[0]][0]; val py = points[idx[0]][1]
+                                    if (map.queryRenderedFeatures(RectF(px - r, py - r, px + r, py + r), "building", "building-3d").isNotEmpty()) hits[0]++
+                                    idx[0]++
+                                    true
+                                }.getOrDefault(false)
+                                if (!ok) { ovlProbeRun[0] = null; ovlGateKey[0] = ""; return } // style gone: re-evaluate later
+                                if (idx[0] < points.size) { mv.postOnAnimation(this); return }
+                                ovlProbeRun[0] = null
+                                val cover = hits[0].toFloat() / points.size
+                                val osmDense = cover >= app.vela.core.config.CalibrationStore.latest.tune("overlayCoverFrac", OSM_COVER_FRAC.toDouble()).toFloat()
+                                val want = if (osmDense) Property.NONE else Property.VISIBLE
+                                if (want == Property.VISIBLE && !ovlRenderSettled[0] && !navNow) {
+                                    // Never REVEAL off a possibly-empty render: a "sparse" verdict before the
+                                    // OSM tiles finish is indistinguishable from a real gap, and acting on it
+                                    // is the NYC arrival flash (MS paints for ~3s, then gets yanked). Hiding
+                                    // is always safe immediately; revealing waits for a finished render.
+                                    // Un-commit the verdict so the next eligible tick re-evaluates.
+                                    ovlGateKey[0] = ""
+                                    ovlDirty[0] = true
+                                } else {
+                                    runCatching { ovl.forEach { if (it.visibility.value != want) it.setProperties(PropertyFactory.visibility(want)) } }
+                                    overlayState.value(if (osmDense) "hidden" else "drawing")
+                                }
+                                android.util.Log.d("VelaOverlay", "osmCover=${"%.2f".format(cover)} (${hits[0]}/${points.size}) dense=$osmDense settled=${ovlRenderSettled[0]} z=${"%.1f".format(zoomNow)}")
+                            }
                         }
-                        val cover = hits.toFloat() / (cols * rows)
-                        val osmDense = cover >= app.vela.core.config.CalibrationStore.latest.tune("overlayCoverFrac", OSM_COVER_FRAC.toDouble()).toFloat()
-                        val want = if (osmDense) Property.NONE else Property.VISIBLE
-                        if (want == Property.VISIBLE && !ovlRenderSettled[0] && !navNow) {
-                            // Never REVEAL off a possibly-empty render: a "sparse" verdict before the
-                            // OSM tiles finish is indistinguishable from a real gap, and acting on it
-                            // is the NYC arrival flash (MS paints for ~3s, then gets yanked). Hiding
-                            // is always safe immediately; revealing waits for a finished render.
-                            // Un-commit the verdict so the next eligible tick re-evaluates.
-                            ovlGateKey[0] = ""
-                            ovlDirty[0] = true
-                        } else {
-                            ovl.forEach { if (it.visibility.value != want) it.setProperties(PropertyFactory.visibility(want)) }
-                            overlayState.value(if (osmDense) "hidden" else "drawing")
-                        }
-                        android.util.Log.d("VelaOverlay", "osmCover=${"%.2f".format(cover)} ($hits/${cols * rows}) dense=$osmDense settled=${ovlRenderSettled[0]} z=${"%.1f".format(zoomNow)}")
+                        ovlProbeRun[0] = step
+                        mv.postOnAnimation(step)
                     }
                     Unit
                 }

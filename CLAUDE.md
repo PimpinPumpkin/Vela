@@ -583,8 +583,14 @@ Defaults that make the safe path the easy one:
   before tiles land is indistinguishable from a real gap, and acting on it flashes MS over a city
   for ~3 s. Hiding is always safe immediately. A floor-blocked call schedules ONE deferred retry
   (`postDelayed`) - on a truly idle map there is no later event, and without the retry an
-  uncommitted verdict sticks forever (the overlay never appeared in a plains town). Gate state
-  (`ovlGateKey`/`ovlDirty`/`ovlLastEval`/`ovlRenderSettled`) is COMPOSABLE-scoped because
+  uncommitted verdict sticks forever (the overlay never appeared in a plains town). (4) Since
+  2026-10-03 the 12 probes run ONE PER ANIMATION FRAME (`ovlProbeRun`, `View.postOnAnimation`):
+  back to back they were the largest main-thread stall of a drive on the 4a (45-193 ms per run,
+  each followed by a 50-150 ms frame); one per frame is a few ms each. The floor holds in nav
+  too, and in nav the gate probes only while the camera FOLLOWS the car (a pan around the map
+  crossed a cell on nearly every drag and ran the probes at every pan end: 57 runs in a minute
+  of panning, one 70-160 ms hitch each). Gate state
+  (`ovlGateKey`/`ovlDirty`/`ovlLastEval`/`ovlRenderSettled`/`ovlProbeRun`) is COMPOSABLE-scoped because
   `getMapAsync` can register listeners twice; per-registration state made both copies probe.
   User off-switch: Settings → Advanced "Fill missing buildings" (`BuildingOverlay`); debug badge +
   fps readout: Settings → Developer (`BuildingDebug`), badge in `MapScreen`.
@@ -3402,7 +3408,8 @@ architecture note.
   MapSurface); the flag (`destinationPin`) is only for a trip ending at "your location".
 - **The building-overlay gate runs during a drive on a timer (2026-09-30):** `ovlGateHook`, first at
   2.5 s then every 4 s, probing once per ~550 m cell. Camera-idle events never fire under the
-  follow camera, so a drive started from the overview drew no Microsoft footprints at all.
+  follow camera, so a drive started from the overview drew no Microsoft footprints at all. Since
+  2026-10-03 it probes only while FOLLOWING, one point per frame, under the 1.2 s floor (SPEC 6.4).
 - **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one

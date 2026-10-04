@@ -1893,6 +1893,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   last half kilometer of every drive re-uploaded the route line on every frame (33-52 fps on a 4a,
   59 before it), and a pan that took the car off screen made the map wait on the render thread 40
   frames in a row every 300 m of travel, which read as the pan jerking under the finger. Both gone.
+- ✅ **Smoother drives and pans with "Fill missing buildings" on (2026-10-03).** The check that
+  decides whether the map needs the extra building footprints was the longest single pause of a
+  drive on a 4a (up to 0.2 s, every few hundred meters, and at the end of every drag while panning
+  around in a drive). It now asks the map one point per frame instead of twelve at once, keeps
+  its time floor while navigating, and never runs while you are panning away from the car.
 - ✅ **Pause and mute are one button (2026-09-18).** The two controls that hold something about a
   drive shared a tall pill down the right edge; now they share one 56 dp button. The tap pauses, so
   the thing you reach for at speed still costs one touch; mute slides out beside it for a few
