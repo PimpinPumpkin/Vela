@@ -2355,8 +2355,19 @@ Caps: 2,000 places, 500 shapes, 150,000 shape points. The result is an `Imported
 gets `ShapesOnlySaveBar` in the bottom slot. Saving stores the shapes on the list
 (`PlaceList.shapes`). The map draws the previewed map's shapes and every saved list's
 (`VelaMapView.ensureShapes`: one GeoJSON source, a fill layer, a line layer and two label
-layers, all below the first symbol layer except the labels). Not carried: marker icons and
-colors, photos, the base map style. Shapes are not tappable.
+layers, all below the first symbol layer except the labels). Also carried (same day):
+each marker's own color (`<IconStyle>` -> `Place.pinColor` -> `ListPlace.color`, used for its
+pin in place of the list's color), its layer (`mapLayer` / `ListPlace.layer`) and its photos
+(`gx_media_links` and `<img>` in the description, up to 12, kept on `ListPlace.photos`). A
+saved map with two or more layers gets a Layers chip in its results sheet
+(`MapLayers`, `MapViewModel.toggleListLayer`, `PlaceList.hiddenLayers`): a hidden layer's pins
+and shapes are neither listed nor drawn. A tap on a line or area (after every place and pin,
+before the building under it; a line wins over the area it crosses) opens a sheet at the
+tapped point through `MapViewModel.openShape`: the shape's name, its measure on the address
+line (`core/util/ShapeMeasure`: a line's length; an area's size and perimeter, in the user's
+units via `formatArea`), and its description as the note. The measure is NOT the category: a
+category makes the sheet treat the place as a business listing. Not carried: custom marker
+icon images, the base map style, and editing.
 
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),

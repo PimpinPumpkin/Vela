@@ -4910,10 +4910,42 @@ class MapViewModel @Inject constructor(
         return listId
     }
 
+    /** A tapped line or area of a custom map (issue #669): a sheet at the tapped point with its
+     *  name, what it measures (a line's length; an area's size and perimeter) and its description. */
+    fun openShape(shape: app.vela.core.model.MapShape, at: LatLng) {
+        if (_state.value.navigating) return
+        val len = app.vela.core.util.ShapeMeasure.lengthM(shape.pts, shape.closed)
+        val measure = if (shape.closed) appContext.getString(R.string.shape_area_measure, app.vela.ui.formatArea(app.vela.core.util.ShapeMeasure.areaM2(shape.pts)), app.vela.ui.formatDistance(len))
+            else appContext.getString(R.string.shape_line_measure, app.vela.ui.formatDistance(len))
+        val place = Place(
+            id = "shape:" + (shape.name + shape.pts.take(4)).hashCode().toString(16),
+            name = shape.name.ifBlank { shape.layer ?: appContext.getString(if (shape.closed) R.string.shape_area else R.string.shape_line) },
+            // The measure rides the address line: a category would make the sheet treat the shape as
+            // a business listing ("Hours not listed", a reviews tab).
+            location = at, address = measure, savedNote = shape.description, mapLayer = shape.layer,
+        )
+        reviewsJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = place, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0,
+                photosLoading = false, loadingDetails = false, stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
+            )
+        }
+    }
+
+    /** Show or hide one layer of a saved custom map (issue #669); the open list follows. */
+    fun toggleListLayer(listId: String, layer: String) {
+        val list = listStore.lists().firstOrNull { it.id == listId } ?: return
+        val hidden = if (layer in list.hiddenLayers) list.hiddenLayers - layer else list.hiddenLayers + layer
+        val lists = listStore.update(list.copy(hiddenLayers = hidden))
+        _state.update { it.copy(lists = lists) }
+        if (_state.value.openListId == listId) openList(listId)
+    }
+
     /** Opens a list as search results (its places), the list name in the search bar. */
     fun openList(listId: String) {
         val list = _state.value.lists.firstOrNull { it.id == listId } ?: return
-        val places = list.places.map { it.toPlace() }
+        val places = list.places.filter { it.layer == null || it.layer !in list.hiddenLayers }.map { it.toPlace() }
         _state.update {
             it.copy(
                 results = places, query = list.name, openListId = listId,

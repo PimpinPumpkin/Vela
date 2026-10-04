@@ -1681,6 +1681,10 @@ Defaults that make the safe path the easy one:
   banner lives INSIDE MapScreen's results-list `when` branch, so anything previewed without results
   needs its own branch (`ShapesOnlySaveBar`). Test maps: a public two-pin map and a two-line bike
   path map were opened on the 4a through an ACTION_VIEW intent; ids are in `MyMapKmlTest`.
+  Marker colors, photos, the Layers chip (`PlaceList.hiddenLayers`) and tappable shapes with
+  measurements (`openShape`, `ShapeMeasure`) followed the same day; the Layers chip, marker colors
+  and photos are unit-tested in the parser but were NOT seen on a device (no public multi-layer
+  test map was at hand), a tapped line was.
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps

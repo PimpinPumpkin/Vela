@@ -44,6 +44,21 @@ fun formatDistance(meters: Double): String =
         else String.format(Locale.US, "%.1f km", meters / 1000.0)
     }
 
+/** An area in the user's units: sq ft, acres, sq mi, or m², hectares, km². */
+fun formatArea(m2: Double): String =
+    if (Units.imperial.value) {
+        val sqft = m2 * 10.7639
+        when {
+            sqft < 43_560 / 4 -> String.format(Locale.US, "%,d sq ft", sqft.roundToInt())
+            m2 < 2_589_988 -> String.format(Locale.US, "%.1f acres", sqft / 43_560)
+            else -> String.format(Locale.US, "%.1f sq mi", m2 / 2_589_988)
+        }
+    } else when {
+        m2 < 10_000 -> String.format(Locale.US, "%,d m\u00B2", m2.roundToInt())
+        m2 < 1_000_000 -> String.format(Locale.US, "%.1f ha", m2 / 10_000)
+        else -> String.format(Locale.US, "%.1f km\u00B2", m2 / 1_000_000)
+    }
+
 fun formatDuration(seconds: Double): String {
     val totalMin = (seconds / 60.0).roundToInt()
     if (totalMin < 1) return "<1 min"

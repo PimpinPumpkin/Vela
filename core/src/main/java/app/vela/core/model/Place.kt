@@ -40,6 +40,9 @@ data class Place(
     // The owner's personal note on a place imported from a Google Maps shared list
     // ("this restaurant's fish is better than its chicken") — shown on the sheet.
     val savedNote: String? = null,
+    /** A custom map's marker color (ARGB) and the layer it sits on (issue #669). */
+    val pinColor: Long? = null,
+    val mapLayer: String? = null,
     val photoUrls: List<String> = emptyList(),
     // "Posted" label per gallery photo ("May 2026"), index-aligned with [photoUrls].
     // Empty for the search-response preview; the WebView gallery fills it in (the dates

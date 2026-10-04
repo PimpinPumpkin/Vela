@@ -26,7 +26,7 @@ object MyMapKml {
     const val MAX_SHAPES = 500
     const val MAX_SHAPE_POINTS = 150_000
 
-    private data class Style(val line: Long? = null, val width: Float? = null, val fill: Long? = null)
+    private data class Style(val line: Long? = null, val width: Float? = null, val fill: Long? = null, val icon: Long? = null)
 
     fun parse(kml: String, mid: String = ""): ImportedList? {
         if (!kml.contains("<kml", ignoreCase = true)) return null
@@ -39,7 +39,9 @@ object MyMapKml {
             val body = m.groupValues[2]
             val line = Regex("<LineStyle>(.*?)</LineStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
             val poly = Regex("<PolyStyle>(.*?)</PolyStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
+            val icon = Regex("<IconStyle>(.*?)</IconStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
             styles[m.groupValues[1]] = Style(
+                icon = icon?.let { tag(it, "color") }?.let(::kmlColor),
                 line = line?.let { tag(it, "color") }?.let(::kmlColor),
                 width = line?.let { tag(it, "width") }?.toFloatOrNull(),
                 fill = poly?.let { tag(it, "color") }?.let(::kmlColor),
@@ -64,7 +66,11 @@ object MyMapKml {
                 else -> {
                     val body = m.groupValues[2]
                     val name = tag(body, "name").orEmpty()
-                    val note = tag(body, "description")?.let(::plainText)?.ifBlank { null }
+                    val rawNote = tag(body, "description")
+                    val note = rawNote?.let(::plainText)?.ifBlank { null }
+                    // Photos: Google lists them in gx_media_links, and as <img> tags in the description.
+                    val photos = (MEDIA.find(body)?.groupValues?.get(1)?.let(::cdata)?.trim()?.split(Regex("\\s+")).orEmpty() +
+                        IMG.findAll(rawNote.orEmpty()).map { it.groupValues[1] }).filter { it.startsWith("http") }.distinct().take(12)
                     val style = tag(body, "styleUrl")?.removePrefix("#")?.let { styles[it] }
                     POINT.findAll(body).forEach { p ->
                         val c = coords(p.groupValues[1]).firstOrNull()
@@ -72,6 +78,7 @@ object MyMapKml {
                             places += Place(
                                 id = "mymap:" + (mid + "|" + name + "|" + c.lat + "," + c.lng).hashCode().toString(16),
                                 name = name.ifBlank { layer ?: title }, location = c, category = layer.takeIf { layered }, savedNote = note,
+                                pinColor = style?.icon, mapLayer = layer, photoUrls = photos,
                             )
                         }
                     }
@@ -103,9 +110,14 @@ object MyMapKml {
     private val LINE = Regex("<LineString>.*?<coordinates>(.*?)</coordinates>.*?</LineString>", RegexOption.DOT_MATCHES_ALL)
     private val POLYGON = Regex("<Polygon>.*?<outerBoundaryIs>.*?<coordinates>(.*?)</coordinates>.*?</outerBoundaryIs>.*?</Polygon>", RegexOption.DOT_MATCHES_ALL)
 
+    private val MEDIA = Regex("<Data name=\"gx_media_links\">\\s*<value>(.*?)</value>", RegexOption.DOT_MATCHES_ALL)
+    private val IMG = Regex("<img[^>]*\\ssrc=\"([^\"]+)\"", RegexOption.IGNORE_CASE)
+
+    private fun cdata(s: String) = s.trim().removePrefix("<![CDATA[").removeSuffix("]]>")
+
     private fun tag(text: String, name: String): String? =
         Regex("<$name>(.*?)</$name>", RegexOption.DOT_MATCHES_ALL).find(text)?.groupValues?.get(1)
-            ?.trim()?.removePrefix("<![CDATA[")?.removeSuffix("]]>")?.trim()?.let(::unescape)
+            ?.let(::cdata)?.trim()?.let(::unescape)
 
     private fun unescape(s: String) = s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&apos;", "'")
 

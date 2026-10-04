@@ -801,6 +801,7 @@ fun VelaMapView(
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
     savedPins: List<SavedPin> = emptyList(), // saved/list places while browsing (issue #171)
     shapes: List<app.vela.core.model.MapShape> = emptyList(), // custom-map lines and areas (issue #669)
+    onShapeTap: (index: Int, at: LatLng) -> Unit = { _, _ -> },
     onSavedPinTap: (index: Int) -> Unit = {},
     onParkingTap: () -> Unit = {},
     // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
@@ -916,6 +917,7 @@ fun VelaMapView(
     val parkingTap = rememberUpdatedState(onParkingTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
+    val shapeTap = rememberUpdatedState(onShapeTap)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
     val zoomOverride = rememberUpdatedState(onNavZoomOverride)
@@ -3833,6 +3835,17 @@ fun VelaMapView(
                     // geocoding the tapped point returns that building's address. Empty land has no
                     // footprint here, so it falls through to `false` and only a long-press drops a raw
                     // coordinate pin there (as before).
+                    // A custom map's line or area (issue #669): its own sheet. After every place and
+                    // pin above, before the building under it. A line wins over the area it crosses.
+                    if (map.style?.getLayer(SHAPES_LINE) != null) {
+                        val hit = map.queryRenderedFeatures(box, SHAPES_LINE).firstOrNull { it.geometry() is LineString }
+                            ?: map.queryRenderedFeatures(p, SHAPES_FILL).firstOrNull()
+                        val idx = hit?.getNumberProperty("idx")?.toInt()
+                        if (idx != null) {
+                            shapeTap.value(idx, LatLng(tapped.latitude, tapped.longitude))
+                            return@handleTap true
+                        }
+                    }
                     val bldgLayers = (sequenceOf("building", "building-3d") +
                         (map.style?.layers?.asSequence()?.map { it.id }?.filter { it.startsWith("vela-ovl-") }
                             ?: emptySequence())).toList().toTypedArray()
@@ -7584,6 +7597,7 @@ private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape
             Feature.fromGeometry(org.maplibre.geojson.Polygon.fromLngLats(listOf(ring)))
         } else Feature.fromGeometry(LineString.fromLngLats(pts))
         f.addBooleanProperty("area", s.closed && pts.size >= 3)
+        f.addNumberProperty("idx", shapes.indexOf(s))
         f.addStringProperty("name", s.name)
         f.addStringProperty("color", hex(s.color)); f.addNumberProperty("opacity", alpha(s.color).coerceAtLeast(0.35f))
         f.addNumberProperty("width", s.width)

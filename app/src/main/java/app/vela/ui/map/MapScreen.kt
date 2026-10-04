@@ -2181,6 +2181,7 @@ fun MapScreen(
                 moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
                 loadingMore = state.resultsLoadingMore,
                 moreBranches = state.resultsBranches,
+                mapLayers = mapLayersOf(state, vm),
                 onMore = vm::loadMoreResults,
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
@@ -2983,6 +2984,7 @@ private fun SearchResults(
     moreAvailable: Boolean = false, // a "More results" row at the end of the list (next pages of the same search)
     loadingMore: Boolean = false,
     moreBranches: Boolean = false, // the row reads "Show other locations" (a name search that landed on one place)
+    mapLayers: MapLayers? = null, // an open custom map's layers, to show and hide (issue #669)
     onMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -3285,6 +3287,23 @@ private fun SearchResults(
                         .padding(start = 16.dp, end = 8.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    if (mapLayers != null) Box {
+                        var layerMenu by remember { mutableStateOf(false) }
+                        ElevatedFilterChip(
+                            selected = mapLayers.hidden.isNotEmpty(),
+                            onClick = { layerMenu = true },
+                            label = { Text(stringResource(R.string.mapscreen_layers_chip)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = chipColors,
+                            border = null,
+                            trailingIcon = { Icon(Sym.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                        VelaMenu(expanded = layerMenu, onDismissRequest = { layerMenu = false }) {
+                            mapLayers.names.forEach { name ->
+                                item((if (name in mapLayers.hidden) "\u2610  " else "\u2611  ") + name) { mapLayers.onToggle(name); layerMenu = false }
+                            }
+                        }
+                    }
                     ElevatedFilterChip(
                         selected = openOnly,
                         onClick = { openOnly = !openOnly },
@@ -3610,13 +3629,18 @@ private fun MapSurface(
     // several lists draws once, newest list wins). Empty while a result set / nav / replay /
     // Street View owns the map.
     // Also off while the route chooser is up: only the trip's own pins draw there (2026-09-30).
+    // Custom maps (issue #669): the previewed one and every saved list's shapes, less hidden layers.
+    val mapShapes = remember(state.pendingImport, state.lists) {
+        state.pendingImport?.shapes.orEmpty() + state.lists.flatMap { l -> l.shapes.filter { it.layer == null || it.layer !in l.hiddenLayers } }
+    }
     val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose, state.directionsOpen) {
         if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty() || state.directionsOpen) emptyList()
         else buildList {
             val seen = HashSet<String>()
             state.lists.forEach { l ->
                 l.places.forEach { lp ->
-                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, lp.icon ?: l.icon, l.color) to lp.toPlace()) // its own icon first (#629)
+                    if (lp.layer != null && lp.layer in l.hiddenLayers) return@forEach // a custom map's hidden layer (#669)
+                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, lp.icon ?: l.icon, lp.color ?: l.color) to lp.toPlace()) // its own icon first (#629), its own color (#669)
                 }
             }
             state.saved.forEach { sp ->
@@ -3812,7 +3836,8 @@ private fun MapSurface(
         // map (a list's own results would double-draw) and during nav/replay (declutter).
         savedPins = savedPinData.map { it.first },
         // Custom maps (issue #669): the previewed one and every saved list that carries shapes.
-        shapes = remember(state.pendingImport, state.lists) { state.pendingImport?.shapes.orEmpty() + state.lists.flatMap { it.shapes } },
+        shapes = mapShapes,
+        onShapeTap = { i, at -> mapShapes.getOrNull(i)?.let { vm.openShape(it, at) } },
         onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
         svPose = svPose,
         svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
@@ -6471,4 +6496,15 @@ private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {
             }
         }
     }
+}
+
+/** An open custom map's layers for the results sheet's Layers chip (issue #669). */
+class MapLayers(val names: List<String>, val hidden: Set<String>, val onToggle: (String) -> Unit)
+
+/** Non-null when the open list is a saved custom map with two or more layers. */
+private fun mapLayersOf(state: MapUiState, vm: MapViewModel): MapLayers? {
+    val list = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id } } ?: return null
+    val names = list.layers
+    if (names.size < 2) return null
+    return MapLayers(names, list.hiddenLayers.toSet()) { vm.toggleListLayer(list.id, it) }
 }

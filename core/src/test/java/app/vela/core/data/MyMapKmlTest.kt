@@ -11,6 +11,7 @@ class MyMapKmlTest {
   <Document>
     <name>Davis picnic plan</name>
     <description><![CDATA[Where to meet &amp; park]]></description>
+    <Style id="icon-1899-0288D1"><IconStyle><color>ffd18802</color><scale>1</scale></IconStyle></Style>
     <Style id="line-FF0000-5000-normal"><LineStyle><color>ff0000ff</color><width>5</width></LineStyle></Style>
     <Style id="line-FF0000-5000-highlight"><LineStyle><color>ff0000ff</color><width>7.5</width></LineStyle></Style>
     <StyleMap id="line-FF0000-5000">
@@ -60,6 +61,9 @@ class MyMapKmlTest {
         assertEquals("Farmers Market", pin.name)
         assertEquals("Meeting spots", pin.category)
         assertEquals("Saturday mornings\nBring cash", pin.savedNote)
+        assertEquals(0xFF0288D1, pin.pinColor) // IconStyle ffd18802 is aabbggrr
+        assertEquals("Meeting spots", pin.mapLayer)
+        assertEquals(listOf("https://example.com/x.jpg"), pin.photoUrls)
         // KML is lng,lat: the pin must land in Davis, not off Antarctica.
         assertEquals(38.5435, pin.location.lat, 1e-6); assertEquals(-121.7445, pin.location.lng, 1e-6)
 
@@ -91,5 +95,13 @@ class MyMapKmlTest {
             assertTrue(MapLinkParser.isShareLink(u))
         }
         assertNull(MapLinkParser.myMapId("https://www.google.com/maps/place/Davis/@38.5,-121.7,12z"))
+    }
+
+    @Test fun `a shape measures its length and its area`() {
+        // A 0.001 degree square at Davis: about 111 m tall and 87 m wide.
+        val sq = listOf(38.5430, -121.7450, 38.5430, -121.7440, 38.5440, -121.7440, 38.5440, -121.7450)
+        assertEquals(111.3 * 2 + 87.1 * 2, app.vela.core.util.ShapeMeasure.lengthM(sq, closed = true), 2.0)
+        assertEquals(111.3 * 87.1, app.vela.core.util.ShapeMeasure.areaM2(sq), 60.0)
+        assertEquals(87.1, app.vela.core.util.ShapeMeasure.lengthM(sq.take(4)), 1.0)
     }
 }

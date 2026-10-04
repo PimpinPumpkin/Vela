@@ -14,6 +14,10 @@ data class ListPlace(
     val featureId: String? = null,
     // The place's own map icon (issue #629), overriding its list's; same keys as [PlaceList.icon].
     val icon: String? = null,
+    // From a custom map (issue #669): the marker's own color, its layer, and its photos.
+    val color: Long? = null,
+    val layer: String? = null,
+    val photos: List<String> = emptyList(),
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
@@ -31,6 +35,7 @@ data class ListPlace(
         address = address,
         featureId = featureId,
         savedNote = note,
+        pinColor = color, mapLayer = layer, photoUrls = photos,
     )
 
     companion object {
@@ -42,6 +47,9 @@ data class ListPlace(
             address = p.address,
             note = p.savedNote,
             featureId = p.featureId,
+            color = p.pinColor, layer = p.mapLayer,
+            // Only a custom map's own photos are kept; a Google place's are fetched when opened.
+            photos = if (p.mapLayer != null || p.id.startsWith("mymap:")) p.photoUrls.take(12) else emptyList(),
         )
     }
 }
@@ -72,4 +80,9 @@ data class PlaceList(
     val places: List<ListPlace> = emptyList(),
     /** The lines and areas of an imported custom map; drawn while the list is on the map. */
     val shapes: List<MapShape> = emptyList(),
-)
+    /** Layers of a custom map switched off: their pins and shapes are not drawn or listed. */
+    val hiddenLayers: List<String> = emptyList(),
+) {
+    /** The custom map's layers, in the order they first appear. */
+    val layers: List<String> get() = (places.mapNotNull { it.layer } + shapes.mapNotNull { it.layer }).distinct()
+}
