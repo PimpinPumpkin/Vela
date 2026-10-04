@@ -2023,13 +2023,21 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   snap key, ONE of them stands for it (`markbest`: the row of the landmark's own category, else a
   landmark category, then confidence, then distance) and takes the Wikidata, size and fame
   credit; before, every same-named office ("... Company Llc.") was credited. That row leads any
-  fold it is part of. **Famous buildings:** a second osmium pass (`wr/wikidata`, then
-  `wr/building wr/man_made=tower` on its output, since osmium cannot AND two tags) adds named
-  buildings with a Wikidata link AND names in three or more languages as
-  `landmark_and_historical_building` marks; a tower mapped as a plain building (the Chrysler
-  Building: `building=tower`, `tourism=yes`) had no landmark credit and ranked 768th in its
-  cell. Same test box after: Empire State Building prominence 9.84, rank 2, z12; Chrysler
-  Building 8.03, rank 4, z14.
+  fold it is part of. **Named buildings:** a second osmium pass (`wr/wikidata`, then
+  `wr/building wr/man_made=tower` on its output, since osmium cannot AND two tags; 4 s and
+  2,895 buildings for New York State) adds every named building with a Wikidata link as a
+  `landmark_and_historical_building` mark. The Wikidata CREDIT (the ranking boost) needs a name
+  in three or more languages when the object is only a building (`markcat0` null), which
+  separates the Chrysler Building from a listed house. A tower mapped as a plain building (the
+  Chrysler Building: `building=tower`, `tourism=yes`) had no landmark credit and ranked 768th
+  in its cell, and of the 272 such buildings in the test box 123 had no row at all (the Bank of
+  America Tower, the New York Times Building). After: Empire State Building prominence 9.84,
+  z12; Chrysler Building 8.03, rank 4, z14; 258 of the 272 present (the rest sit on the box's
+  edge). **Tile property `mark`** (0/1, always written): the row is an OSM mark or the row
+  standing for one. The app's packed-area rule (6.x, `openGenericHideRank`) applies only where
+  `mark` exists and is 0 and `landmark` is 0, so it is inactive on an archive baked before
+  2026-10-04 and can never hide a named building: 29 of the 272 had a low-ranked generic office
+  as their only listing and would have been hidden.
   The OVERLAP family stays app-side: it needs the kinds and the pool's shared words.
 - **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,

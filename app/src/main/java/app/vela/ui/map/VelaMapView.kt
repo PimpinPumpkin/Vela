@@ -1887,6 +1887,12 @@ fun VelaMapView(
                 // GENERIC_REVEAL_ZOOM, pins and names from GENERIC_ICON_ZOOM. Search finds them at any zoom.
                 val genericHideRank = app.vela.ui.AppTune.value("openGenericHideRank", GENERIC_HIDE_RANK)
                 val packedGeneric = Expression.all(
+                    // Only where the archive says which rows are landmarks or named buildings
+                    // (`mark`, baked from 2026-10-04): a famous tower's own listing is often a
+                    // low-ranked "corporate office", and it must never be one of the hidden.
+                    Expression.has("mark"),
+                    Expression.neq(Expression.get("mark"), Expression.literal(1)),
+                    Expression.neq(Expression.coalesce(Expression.get("landmark"), Expression.literal(0)), Expression.literal(1)),
                     Expression.match(
                         Expression.get("group"), Expression.literal(false),
                         Expression.stop("default", true), Expression.stop("health", true),

@@ -2695,9 +2695,11 @@ architecture note.
   **2026-10-04, New York had no Empire State Building:** the variant fold stripped the generic
   words "state" and "building", leaving "empire", and folded it into a beauty school nearby. The
   fold now needs one name's words to all be in the other's (`list_has_all`), one existing row
-  stands for a matched OSM landmark and takes its credit (`markbest`), and Wikidata-linked
-  buildings named in 3+ languages come in as landmarks (the Chrysler Building was a plain
-  `building=tower`). To debug a bake, run a copy of the script with `duckdb -bail <file>` so the
+  stands for a matched OSM landmark and takes its credit (`markbest`), and every named
+  Wikidata-linked building comes in as a mark (the Chrysler Building was a plain `building=tower`;
+  half of Midtown's named towers had no row), with the ranking boost only for names in 3+
+  languages. Tiles carry `mark` (0/1); the app's packed-area office rule needs `has("mark")` and
+  `mark = 0`, so it does nothing on an archive baked before this and never hides a named building. To debug a bake, run a copy of the script with `duckdb -bail <file>` so the
   tables survive (`raw`, `marks`, `markdupes`, `dupleader`, `coreleader`, `ranked`, `zooms`), over
   a small box with `OSM_PBF` pointing at an `osmium extract` of the region.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in

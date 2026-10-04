@@ -139,9 +139,11 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
     fi
     # FAMOUS BUILDINGS (2026-10-04). A tower is usually mapped as a plain building with a Wikidata
     # link and none of the tags above (the Chrysler Building: building=tower, tourism=yes), so the
-    # landmark rules never saw it and it ranked as one more tenant. A named building or tower with a
-    # Wikidata link AND a name in three or more languages joins the landmarks; the language test is
-    # what keeps out every listed house that merely has a Wikidata item. Two passes because osmium
+    # landmark rules never saw it and it ranked as one more tenant, and half of Midtown's named
+    # towers (the Bank of America Tower, the Javits Center) had no row at all. Every named building
+    # or tower with a Wikidata link joins the marks; the Wikidata CREDIT (the ranking boost) still
+    # needs a name in three or more languages, which is what separates the Chrysler Building from a
+    # listed house that merely has a Wikidata item (see `wiki` in the SQL). Two passes because osmium
     # cannot AND two tags: everything with a Wikidata link first (small), then the buildings in it.
     osmium tags-filter --overwrite -o "$WORK/wd.osm.pbf" "$OSM_SRC" wr/wikidata >/dev/null 2>&1 || true
     if [ -s "$WORK/wd.osm.pbf" ]; then
@@ -153,7 +155,7 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
           tr -d '\036' < "$WORK/famous.geojsonseq" \
             | jq -c 'def pts: if .type == "Polygon" then .coordinates[0] elif .type == "MultiPolygon" then [.coordinates[][0][]] else [] end;
                      select((.properties.name // "") != "" and (.properties.wikidata // "") != "")
-                     | ([.properties | keys[] | select(test("^name:[a-z]{2,3}(-[A-Za-z]{2,8})?$"))] | length) as $langs | select($langs >= 3)
+                     | ([.properties | keys[] | select(test("^name:[a-z]{2,3}(-[A-Za-z]{2,8})?$"))] | length) as $langs
                      | (.geometry | pts) as $p | select(($p | length) > 0)
                      | ($p | map(.[0])) as $xs | ($p | map(.[1])) as $ys
                      | {id: (.id // ""), name: .properties.name, props: .properties, langs: $langs,
@@ -355,7 +357,7 @@ fi
 MARKS_SQL=""
 if [ -n "$MARKS_NDJSON" ]; then
 read -r -d '' MARKS_SQL <<MARKSSQL || true
-CREATE MACRO markcat(props) AS (CASE
+CREATE MACRO markcat0(props) AS (CASE
     -- A park that is also tagged an attraction is a park (Bryant Park carries both).
     WHEN json_extract_string(props, 'leisure') IN ('park', 'garden', 'nature_reserve', 'water_park') THEN json_extract_string(props, 'leisure')
     WHEN json_extract_string(props, 'tourism') = 'museum' THEN 'museum'
@@ -375,10 +377,10 @@ CREATE MACRO markcat(props) AS (CASE
     WHEN json_extract_string(props, 'leisure') = 'stadium' THEN 'stadium_arena'
     WHEN json_extract_string(props, 'leisure') = 'sports_centre' THEN 'sports_club'
     WHEN json_extract_string(props, 'historic') IS NOT NULL THEN 'landmark_and_historical_building'
-    -- A famous building (the second osmium pass above): a Wikidata-linked building or tower.
-    WHEN json_extract_string(props, 'wikidata') IS NOT NULL
-      AND (json_extract_string(props, 'building') IS NOT NULL OR json_extract_string(props, 'man_made') = 'tower') THEN 'landmark_and_historical_building'
     ELSE NULL END);
+-- ...or a named building (the second osmium pass above): a Wikidata-linked building or tower.
+CREATE MACRO markcat(props) AS coalesce(markcat0(props), CASE WHEN json_extract_string(props, 'wikidata') IS NOT NULL
+      AND (json_extract_string(props, 'building') IS NOT NULL OR json_extract_string(props, 'man_made') = 'tower') THEN 'landmark_and_historical_building' END);
 CREATE TABLE marks_src AS SELECT id, name, props, lng, lat, area, langs FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
   columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE', area: 'DOUBLE', langs: 'INTEGER'})
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
@@ -397,7 +399,8 @@ SELECT 'osm:' || CASE WHEN id LIKE 'a%' THEN
   coalesce(json_extract_string(props, 'phone'), json_extract_string(props, 'contact:phone')) AS phone,
   'open' AS operating_status, json_extract_string(props, 'opening_hours') AS hours, lng, lat,
   coalesce(json_extract_string(props, 'name:en'), json_extract_string(props, 'name:ja-Latn'), json_extract_string(props, 'name:latin')) AS en,
-  (json_extract_string(props, 'wikidata') IS NOT NULL) AS wiki,
+  -- A building that is ONLY a building needs three name languages for the Wikidata credit.
+  (json_extract_string(props, 'wikidata') IS NOT NULL AND (markcat0(props) IS NOT NULL OR coalesce(langs, 0) >= 3)) AS wiki,
   -- SIZE is the notability signal among landmarks: Midtown has ~80 Wikidata-linked landmarks per
   -- 1.6 km, mostly statues and chapels, and a four-hectare park or a station concourse should
   -- outrank them. Bounding-box area of the outline, 0 for a mapped point.
@@ -1035,6 +1038,9 @@ COPY (
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
       'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark, 'tenant', tenant,
+      -- 1 = this row is an OSM landmark or building, or the existing row standing for one. Always
+      -- written, so the app can tell an archive that knows from one baked before the property.
+      'mark', (CASE WHEN id IN (SELECT id FROM marks) OR id IN (SELECT rid FROM markbest) THEN 1 ELSE 0 END),
       'brand', brand, 'addr', addr, 'loc', loc, 'website', website, 'phone', phone, 'hours', hours,
       'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' WHEN id LIKE 'osm:%' THEN 'osm' ELSE 'overture' END
     )
