@@ -42,6 +42,8 @@ data class Place(
     val savedNote: String? = null,
     /** A custom map's marker color (ARGB) and the layer it sits on (issue #669). */
     val pinColor: Long? = null,
+    /** A custom map marker's own icon image (issue #669), drawn in place of Vela's pin. */
+    val pinIconUrl: String? = null,
     val mapLayer: String? = null,
     val photoUrls: List<String> = emptyList(),
     // "Posted" label per gallery photo ("May 2026"), index-aligned with [photoUrls].

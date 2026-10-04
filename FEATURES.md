@@ -1224,6 +1224,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Draw on the map** (2026-10-04) - Your lists > Draw: tap the map to lay out a line or an area, pick a color,
   see its length or its area as you go, name it and save it. Drawings are kept in a "My drawings" list, show on the
   map, and open with their measurements when tapped; the sheet's menu deletes one.
+- ✅ **Custom map icons and planned routes** (2026-10-04, issue #669) - a My Maps marker shows the icon its author
+  picked (fork and knife, museum, camera...) in its color, on the map and in the list. A directions layer shows as
+  a route row: open it to see its stops, and Directions takes you through them in the route chooser.
 - ✅ **Famous buildings are on the map** (2026-10-04, needs a places rebake to reach a region) - the places bake no longer merges unrelated businesses that share one word (which had deleted the Empire State Building), and every named building with a Wikipedia link is on the map, the famous ones ranked as landmarks. The downtown office-dot rule starts in a region with this rebake and never hides a named building.
 - ✅ **Fewer office dots in packed downtowns** (2026-10-04) - low-ranked offices and small practices are not drawn where their surroundings hold over a hundred better-ranked places (a downtown core); in a neighborhood or a business park they stay. Zoomed right in on the building they come back, and search finds them at any zoom.
 - ✅ **Offline search fixes** (2026-10-04, issue #657) - "Gas station" no longer lists EV chargers, and a name typed without its punctuation finds the place ("mcdonalds" finds McDonald's, "7 eleven" finds 7-Eleven).

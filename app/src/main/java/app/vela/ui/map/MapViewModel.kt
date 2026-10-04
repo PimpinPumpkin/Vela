@@ -155,6 +155,7 @@ data class MapUiState(
     val parkingHistory: List<app.vela.core.model.ParkedSpot> = emptyList(), // recent saves, newest first — accidental-overwrite insurance
     val lists: List<app.vela.core.model.PlaceList> = emptyList(), // user place-lists (issue #1), newest first
     val openListId: String? = null, // the list currently shown as results (its name is in the bar)
+    val pendingHiddenLayers: Set<String> = emptySet(), // layers of the unsaved custom map switched off
     val pendingImport: app.vela.core.model.ImportedList? = null, // an imported Google list shown but NOT yet saved
     val offline: Boolean = false, // no usable internet — drives the subtle offline indicator
     // Active network is satellite / bandwidth-constrained (issue #235): Vela declares itself
@@ -2221,7 +2222,7 @@ class MapViewModel @Inject constructor(
                     if (map == null) { _state.update { it.copy(searching = false, status = appContext.getString(R.string.map_mymap_failed)) }; return@launch }
                     _state.update {
                         it.copy(
-                            results = map.places, query = map.title, pendingImport = map,
+                            results = map.places + routeRows(map.shapes), query = map.title, pendingImport = map, pendingHiddenLayers = emptySet(),
                             searching = false, selected = null, status = null, resultsCollapsed = false, openListId = null,
                             // A map of only lines and areas has no pins to frame: go to its first shape.
                             center = if (map.places.isEmpty()) map.shapes.firstOrNull()?.pts?.takeIf { p -> p.size >= 2 }?.let { p -> LatLng(p[0], p[1]) } ?: it.center else it.center,
@@ -2716,6 +2717,11 @@ class MapViewModel @Inject constructor(
     }
 
     fun selectPlace(p: Place) {
+        // A custom map's planned route, picked from the list: its line's own sheet.
+        if (p.id.startsWith(ROUTE_ROW_ID)) {
+            shapeForRow(p)?.let { openShape(it, p.location); _state.update { s -> s.copy(center = p.location) } }
+            return
+        }
         if (consumeAssign(SavedPlace.of(p))) return
         // NAVIGATING: a pick from the in-nav search-along-route list becomes a stop on the
         // LIVE drive - the normal selection path below would null activeRoute/open sheets
@@ -4749,6 +4755,8 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(routeTrafficRequested = false, openSavedRouteId = null) }
         syncRouteTraffic()
         val sel = _state.value.selected ?: return
+        // A custom map's planned route: Directions opens the trip through its stops.
+        if (sel.id.startsWith("shape:")) openedShape?.takeIf { it.stops.size >= 2 }?.let { openShapeTrip(it); return }
         // The chooser opens seconds before Start: load the neural voice now (it no longer loads at
         // launch), so the "Starting navigation" opener is not waiting on it.
         voice.neural?.warmUp()
@@ -4907,7 +4915,7 @@ class MapViewModel @Inject constructor(
         val list = app.vela.core.model.PlaceList(
             id = listId, name = imp.title, icon = "bookmark",
             description = imp.description, places = imp.places.map { app.vela.core.model.ListPlace.of(it) },
-            shapes = imp.shapes,
+            shapes = imp.shapes, hiddenLayers = _state.value.pendingHiddenLayers.toList(),
         )
         val lists = if (existing != null) listStore.update(list) else listStore.create(list)
         _state.update { it.copy(lists = lists, pendingImport = null, openListId = listId) }
@@ -4955,6 +4963,42 @@ class MapViewModel @Inject constructor(
 
     init { app.vela.ui.ShapeActions.delete = ::deleteOpenedShape }
 
+    /** One results row per planned route among [shapes] (a custom map's directions layers). */
+    private fun routeRows(shapes: List<app.vela.core.model.MapShape>): List<Place> =
+        shapes.filter { it.stops.size >= 2 }.map { s ->
+            Place(
+                id = ROUTE_ROW_ID + (s.name + s.pts.take(4)).hashCode().toString(16),
+                name = s.name.ifBlank { s.layer ?: appContext.getString(R.string.shape_line) },
+                location = LatLng(s.stops.first().lat, s.stops.first().lng),
+                category = appContext.getString(R.string.shape_route_measure, app.vela.ui.formatDistance(app.vela.core.util.ShapeMeasure.lengthM(s.pts)), s.stops.size),
+            )
+        }
+
+    private fun shapeForRow(p: Place): app.vela.core.model.MapShape? {
+        val s = _state.value
+        val all = s.pendingImport?.shapes.orEmpty() + s.lists.flatMap { it.shapes }
+        return all.firstOrNull { ROUTE_ROW_ID + (it.name + it.pts.take(4)).hashCode().toString(16) == p.id }
+    }
+
+    /** Opens a planned route in the route chooser: its last stop as the destination, the others as
+     *  stops. Near its first stop the trip starts from you; far from it, it is shown as planned. */
+    private fun openShapeTrip(shape: app.vela.core.model.MapShape) {
+        val stops = shape.stops.mapIndexed { i, st -> Place(id = "shape-stop:$i:" + st.name.hashCode().toString(16), name = st.name, location = LatLng(st.lat, st.lng)) }
+        val dest = stops.last()
+        val me = _state.value.myLocation
+        val toFirst = me?.distanceTo(stops.first().location)
+        val pts = when {
+            toFirst == null || toFirst > TRIP_NEAR_M -> stops.map { app.vela.ui.place.TripPoint(it) }
+            toFirst <= TRIP_AT_START_M -> listOf(app.vela.ui.place.TripPoint(null)) + stops.drop(1).map { app.vela.ui.place.TripPoint(it) }
+            else -> listOf(app.vela.ui.place.TripPoint(null)) + stops.map { app.vela.ui.place.TripPoint(it) }
+        }
+        _state.update { it.copy(selected = dest, routeTrafficRequested = false, openSavedRouteId = null) }
+        // routeToSelected does the chooser's setup (voice, sticky mode, traffic choice); the trip
+        // through the stops then replaces its plain route.
+        routeToSelected()
+        applyTrip(pts)
+    }
+
     /** A tapped line or area of a custom map (issue #669): a sheet at the tapped point with its
      *  name, what it measures (a line's length; an area's size and perimeter) and its description. */
     fun openShape(shape: app.vela.core.model.MapShape, at: LatLng) {
@@ -4962,13 +5006,16 @@ class MapViewModel @Inject constructor(
         openedShape = shape
         val len = app.vela.core.util.ShapeMeasure.lengthM(shape.pts, shape.closed)
         val measure = if (shape.closed) appContext.getString(R.string.shape_area_measure, app.vela.ui.formatArea(app.vela.core.util.ShapeMeasure.areaM2(shape.pts)), app.vela.ui.formatDistance(len))
+            else if (shape.stops.size >= 2) appContext.getString(R.string.shape_route_measure, app.vela.ui.formatDistance(len), shape.stops.size)
             else appContext.getString(R.string.shape_line_measure, app.vela.ui.formatDistance(len))
+        // A planned route lists what it runs through, in order, under its own description.
+        val stopsNote = shape.stops.takeIf { it.size >= 2 }?.mapIndexed { i, st -> "${i + 1}. ${st.name}" }?.joinToString("\n")
         val place = Place(
             id = "shape:" + (shape.name + shape.pts.take(4)).hashCode().toString(16),
             name = shape.name.ifBlank { shape.layer ?: appContext.getString(if (shape.closed) R.string.shape_area else R.string.shape_line) },
             // The measure rides the address line: a category would make the sheet treat the shape as
             // a business listing ("Hours not listed", a reviews tab).
-            location = at, address = measure, savedNote = shape.description, mapLayer = shape.layer,
+            location = at, address = measure, savedNote = listOfNotNull(shape.description, stopsNote).joinToString("\n\n").ifBlank { null }, mapLayer = shape.layer,
         )
         reviewsJob?.cancel()
         _state.update {
@@ -4980,6 +5027,18 @@ class MapViewModel @Inject constructor(
     }
 
     /** Show or hide one layer of a saved custom map (issue #669); the open list follows. */
+    /** Shows or hides one layer of the custom map being looked at before it is saved. */
+    fun togglePendingLayer(layer: String) {
+        val imp = _state.value.pendingImport ?: return
+        val hidden = _state.value.pendingHiddenLayers.let { if (layer in it) it - layer else it + layer }
+        _state.update {
+            it.copy(
+                pendingHiddenLayers = hidden, selected = null,
+                results = imp.places.filter { p -> p.mapLayer == null || p.mapLayer !in hidden } + routeRows(imp.shapes.filter { sh -> sh.layer == null || sh.layer !in hidden }),
+            )
+        }
+    }
+
     fun toggleListLayer(listId: String, layer: String) {
         val list = listStore.lists().firstOrNull { it.id == listId } ?: return
         val hidden = if (layer in list.hiddenLayers) list.hiddenLayers - layer else list.hiddenLayers + layer
@@ -4991,7 +5050,8 @@ class MapViewModel @Inject constructor(
     /** Opens a list as search results (its places), the list name in the search bar. */
     fun openList(listId: String) {
         val list = _state.value.lists.firstOrNull { it.id == listId } ?: return
-        val places = list.places.filter { it.layer == null || it.layer !in list.hiddenLayers }.map { it.toPlace() }
+        val places = list.places.filter { it.layer == null || it.layer !in list.hiddenLayers }.map { it.toPlace() } +
+            routeRows(list.shapes.filter { it.layer == null || it.layer !in list.hiddenLayers })
         _state.update {
             it.copy(
                 results = places, query = list.name, openListId = listId,
@@ -9021,6 +9081,12 @@ class MapViewModel @Inject constructor(
 
     companion object {
         const val DRAWINGS_LIST_ID = "list:drawings"
+        /** Id prefix of a results row that stands for a custom map's planned route. */
+        const val ROUTE_ROW_ID = "shape-route:"
+        /** Closer than this to a planned route's first stop, the trip starts from where you are. */
+        private const val TRIP_AT_START_M = 150.0
+        /** Within this of the first stop, the trip runs from you to it and on; farther, it is shown as planned. */
+        private const val TRIP_NEAR_M = 50_000.0
         /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
         const val CELLS_DOWNLOAD_ID = "cells"
         /** How long an informational heads-up card stays before dismissing itself. */

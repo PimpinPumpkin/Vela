@@ -18,6 +18,8 @@ data class ListPlace(
     val color: Long? = null,
     val layer: String? = null,
     val photos: List<String> = emptyList(),
+    /** A custom map marker's own icon image (issue #669). */
+    val iconUrl: String? = null,
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
@@ -35,7 +37,7 @@ data class ListPlace(
         address = address,
         featureId = featureId,
         savedNote = note,
-        pinColor = color, mapLayer = layer, photoUrls = photos,
+        pinColor = color, mapLayer = layer, photoUrls = photos, pinIconUrl = iconUrl,
     )
 
     companion object {
@@ -47,7 +49,7 @@ data class ListPlace(
             address = p.address,
             note = p.savedNote,
             featureId = p.featureId,
-            color = p.pinColor, layer = p.mapLayer,
+            color = p.pinColor, layer = p.mapLayer, iconUrl = p.pinIconUrl,
             // Only a custom map's own photos are kept; a Google place's are fetched when opened.
             photos = if (p.mapLayer != null || p.id.startsWith("mymap:")) p.photoUrls.take(12) else emptyList(),
         )
@@ -57,7 +59,8 @@ data class ListPlace(
 /** A user-created (or imported) list of places — Google-Maps "saved lists" (issue #1).
  *  [icon] is a stable key into the app's icon set; [color] an ARGB int the UI tints with. */
 /** A line or an area drawn on the map: part of a Google My Maps custom map (issue #669). [pts]
- *  is lat, lng, lat, lng...; [closed] = an area, filled with [fill]. Colors are ARGB. */
+ *  is lat, lng, lat, lng...; [closed] = an area, filled with [fill]. Colors are ARGB. [stops] is
+ *  set for a directions layer. */
 @Serializable
 data class MapShape(
     val name: String = "",
@@ -68,7 +71,12 @@ data class MapShape(
     val width: Float = 3f,
     val fill: Long? = null,
     val layer: String? = null,
+    /** A directions layer's waypoints in order (start, stops, end): the line is a planned trip. */
+    val stops: List<ShapeStop> = emptyList(),
 )
+
+@Serializable
+data class ShapeStop(val name: String, val lat: Double, val lng: Double)
 
 @Serializable
 data class PlaceList(

@@ -3,6 +3,7 @@ package app.vela.core.data
 import app.vela.core.model.ImportedList
 import app.vela.core.model.LatLng
 import app.vela.core.model.MapShape
+import app.vela.core.model.distanceTo
 import app.vela.core.model.Place
 
 /**
@@ -15,8 +16,13 @@ import app.vela.core.model.Place
  *  - lines and routes (`<LineString>`) and areas (`<Polygon>`, outer ring): [MapShape]s in the
  *    map's own colors (`<LineStyle>` / `<PolyStyle>`, through `<StyleMap>` when the map uses one);
  *  - the map's title and description.
- * Marker icons and colors, photos and the base map style are not carried: pins take their list's
- * icon like every other list in Vela.
+ *  - marker icons: the KML names an icon only by number (`icon-1577-FFD600`); the map's public
+ *    viewer page names it in full (`1577-food-fork-knife`), and Google's icon server draws any
+ *    named icon in any color with no key ([iconUrl]). A number the page does not name, and the
+ *    plain pin (1899), keep Vela's own pin in the marker's color;
+ *  - directions layers: a layer holding one line and the points it runs through, first to last,
+ *    is a planned trip. Its points become the line's [MapShape.stops] and leave the pin list.
+ * The base map style and videos are not carried.
  *
  * Regex over the text, like [PlaceImport]: the format is flat and regular, and `:core` stays free
  * of an XML dependency. KML coordinates are `lng,lat[,alt]`.
@@ -26,9 +32,20 @@ object MyMapKml {
     const val MAX_SHAPES = 500
     const val MAX_SHAPE_POINTS = 150_000
 
-    private data class Style(val line: Long? = null, val width: Float? = null, val fill: Long? = null, val icon: Long? = null)
+    private data class Style(val line: Long? = null, val width: Float? = null, val fill: Long? = null, val icon: Long? = null, val href: String? = null)
 
-    fun parse(kml: String, mid: String = ""): ImportedList? {
+    /** Icon number -> full icon name, read off the map's viewer page. */
+    fun iconNames(viewerHtml: String?): Map<String, String> =
+        ICON_NAME.findAll(viewerHtml.orEmpty()).associate { it.groupValues[1] to it.groupValues[1] + "-" + it.groupValues[2] }
+
+    /** Google's icon server URL for a named My Maps icon in [rgb] (six hex digits). */
+    fun iconUrl(name: String, rgb: String): String =
+        "https://mt.googleapis.com/vt/icon/name=icons/onion/SHARED-mymaps-container-bg_4x.png,icons/onion/SHARED-mymaps-container_4x.png," +
+            "icons/onion/${name}_4x.png&highlight=ff000000,${rgb.uppercase()}&scale=4.0"
+
+    /** [viewerHtml]: the map's public viewer page, for the icon names; null = colored pins only. */
+    fun parse(kml: String, mid: String = "", viewerHtml: String? = null): ImportedList? {
+        val names = iconNames(viewerHtml)
         if (!kml.contains("<kml", ignoreCase = true)) return null
         val head = kml.substringBefore("<Folder>").substringBefore("<Placemark>")
         val title = tag(head.substringAfter("<Document>", head), "name")?.ifBlank { null } ?: "My Maps"
@@ -42,6 +59,8 @@ object MyMapKml {
             val icon = Regex("<IconStyle>(.*?)</IconStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
             styles[m.groupValues[1]] = Style(
                 icon = icon?.let { tag(it, "color") }?.let(::kmlColor),
+                // A marker with an uploaded image: the export links it. Google's stock blank is not one.
+                href = icon?.let { tag(it, "href") }?.takeIf { it.startsWith("https://") && !it.contains("/mapspro/images/stock/") },
                 line = line?.let { tag(it, "color") }?.let(::kmlColor),
                 width = line?.let { tag(it, "width") }?.toFloatOrNull(),
                 fill = poly?.let { tag(it, "color") }?.let(::kmlColor),
@@ -59,10 +78,24 @@ object MyMapKml {
         val shapes = ArrayList<MapShape>()
         var layer: String? = null
         var shapePoints = 0
+        var folderPlaces = 0
+        var folderShapes = 0
         TOKEN.findAll(kml).forEach { m ->
             when {
-                m.value.startsWith("<Folder") -> layer = tag(m.value, "name")?.ifBlank { null }
-                m.value == "</Folder>" -> layer = null
+                m.value.startsWith("<Folder") -> { layer = tag(m.value, "name")?.ifBlank { null }; folderPlaces = places.size; folderShapes = shapes.size }
+                m.value == "</Folder>" -> {
+                    // A directions layer: one line, and points it starts at, passes and ends at.
+                    val pts = places.subList(folderPlaces, places.size)
+                    val line = shapes.getOrNull(folderShapes)?.takeIf { shapes.size == folderShapes + 1 && !it.closed }
+                    if (line != null && pts.size in 2..MAX_ROUTE_STOPS) {
+                        val a = LatLng(line.pts[0], line.pts[1]); val b = LatLng(line.pts[line.pts.size - 2], line.pts[line.pts.size - 1])
+                        if (a.distanceTo(pts.first().location) <= ROUTE_END_M && b.distanceTo(pts.last().location) <= ROUTE_END_M) {
+                            shapes[folderShapes] = line.copy(stops = pts.map { app.vela.core.model.ShapeStop(it.name, it.location.lat, it.location.lng) })
+                            pts.clear()
+                        }
+                    }
+                    layer = null
+                }
                 else -> {
                     val body = m.groupValues[2]
                     val name = tag(body, "name").orEmpty()
@@ -71,14 +104,18 @@ object MyMapKml {
                     // Photos: Google lists them in gx_media_links, and as <img> tags in the description.
                     val photos = (MEDIA.find(body)?.groupValues?.get(1)?.let(::cdata)?.trim()?.split(Regex("\\s+")).orEmpty() +
                         IMG.findAll(rawNote.orEmpty()).map { it.groupValues[1] }).filter { it.startsWith("http") }.distinct().take(12)
-                    val style = tag(body, "styleUrl")?.removePrefix("#")?.let { styles[it] }
+                    val styleId = tag(body, "styleUrl")?.removePrefix("#")
+                    val style = styleId?.let { styles[it] }
+                    val iconId = styleId?.let { ICON_STYLE.find(it) }
+                    val iconName = iconId?.groupValues?.get(1)?.takeIf { it != PLAIN_PIN }?.let { names[it] }
+                    val iconUrl = style?.href ?: iconName?.let { iconUrl(it, iconId.groupValues[2]) }
                     POINT.findAll(body).forEach { p ->
                         val c = coords(p.groupValues[1]).firstOrNull()
                         if (c != null && places.size < MAX_PLACES) {
                             places += Place(
                                 id = "mymap:" + (mid + "|" + name + "|" + c.lat + "," + c.lng).hashCode().toString(16),
                                 name = name.ifBlank { layer ?: title }, location = c, category = layer.takeIf { layered }, savedNote = note,
-                                pinColor = style?.icon, mapLayer = layer, photoUrls = photos,
+                                pinColor = style?.icon, mapLayer = layer, photoUrls = photos, pinIconUrl = iconUrl,
                             )
                         }
                     }
@@ -102,6 +139,11 @@ object MyMapKml {
     }
 
     private const val DEFAULT_COLOR = 0xFF1A73E8
+    private const val PLAIN_PIN = "1899"
+    const val MAX_ROUTE_STOPS = 12
+    const val ROUTE_END_M = 250.0
+    private val ICON_STYLE = Regex("^icon-(\\d{3,5})-([0-9A-Fa-f]{6})")
+    private val ICON_NAME = Regex("icons/onion/(\\d{3,5})-([a-z0-9][a-z0-9_-]*?)_4x\\.png")
 
     private val STYLE = Regex("<Style id=\"([^\"]+)\">(.*?)</Style>", RegexOption.DOT_MATCHES_ALL)
     private val STYLE_MAP = Regex("<StyleMap id=\"([^\"]+)\">(.*?)</StyleMap>", RegexOption.DOT_MATCHES_ALL)

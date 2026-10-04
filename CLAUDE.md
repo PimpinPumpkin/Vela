@@ -1692,6 +1692,17 @@ Defaults that make the safe path the easy one:
   `ShapeActions.delete` holder instead of a new PlaceSheet callback. `fabChromeOk` and the zoom
   buttons are off while drawing. Checked on the 4a: draw four points, line and area, save, tap,
   delete. Not built: moving a placed point, editing a saved drawing.
+- **Custom map icons + directions layers (2026-10-04, SPEC beside My Maps):** icon NAMES come from the
+  public viewer page (the KML has only numbers), images from `mt.googleapis.com/vt/icon` (needs the
+  full name; a bare number 404s), loaded by `MyMapIcons` and drawn on the SAVED layer with the bitmap's
+  density set so MapLibre sizes it (`addImage` reads `bitmap.density`). A custom map's markers are
+  `MapMarker(drawn = false)` in results mode. Directions layers are found by shape (one line + its end
+  points), never by the "Directions from" name, which is in the author's language. The travel mode is
+  only in a base64 layer icon on the viewer page, so it is not read. Test maps (public, on a travel
+  blog and a routing blog): mids `1A2GPVM-gHp0WrqAtZlCo9-S4O2y9jS0` (6 layers, 82 icons) and
+  `1KGvDHRWy1wAxpuVU8Du3qbW2O2Ke0uE` (3 day layers + a directions layer). Seen on the 4a: icons on
+  map and list, Layers before saving, route row, trip in the chooser, saved map on the bare map.
+  Not seen: an uploaded marker image (no public map with one was found).
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps

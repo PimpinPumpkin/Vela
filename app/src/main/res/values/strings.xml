@@ -958,6 +958,7 @@
     <string name="map_save_mymap">Save map</string>
     <string name="shape_line">Line</string>
     <string name="shape_area">Area</string>
+    <string name="shape_route_measure">Route · %1$s · %2$d stops</string>
     <string name="shape_line_measure">Line · %1$s long</string>
     <string name="shape_area_measure">Area · %1$s · %2$s around</string>
     <string name="mapscreen_layers_chip">Layers</string>

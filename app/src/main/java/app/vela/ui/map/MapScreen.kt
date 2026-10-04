@@ -2212,7 +2212,8 @@ fun MapScreen(
                 Text(n.body)
             }
         }
-        state.pendingImport?.let { imp ->
+        // Not over the expanded list: the banner sat on its filter row.
+        state.pendingImport?.takeIf { !resultsExpanded }?.let { imp ->
                 val savedMsg = stringResource(R.string.map_list_saved, imp.title)
                 Surface(
                     shape = RoundedCornerShape(28.dp),
@@ -2969,7 +2970,11 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
         // The results sheet's filters (Open now / rating / price) report the surviving ids up;
         // pins the LIST dropped must drop off the MAP too (user 2026-07-11). null = no filter on.
         .let { list -> if (filteredIds == null) list else list.filter { it.id in filteredIds } }
-        .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice) }
+        // A custom map's markers draw as pins in their own icon and color (savedPinData); here they
+        // only frame the view and keep the tap index, except the one that is selected.
+        .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id) }
+
+private fun Place.ownPin() = pinColor != null || pinIconUrl != null || id.startsWith(MapViewModel.ROUTE_ROW_ID)
 
 @Composable
 private fun SearchResults(
@@ -3308,6 +3313,8 @@ private fun SearchResults(
                             }
                         }
                     }
+                    // A custom map's markers are not business listings: no hours, rating or price to filter by.
+                    if (!results.any { it.pinColor != null || it.pinIconUrl != null || it.mapLayer != null }) {
                     ElevatedFilterChip(
                         selected = openOnly,
                         onClick = { openOnly = !openOnly },
@@ -3394,6 +3401,7 @@ private fun SearchResults(
                             { Icon(Sym.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
+                    } // not a custom map
                 }
                 Divider()
                 } // SheetFold - chips
@@ -3421,7 +3429,17 @@ private fun SearchResults(
                     // Bigger, more legible rows (the address/category line read too
                     // small before): name at titleMedium, the secondary lines bumped
                     // from bodySmall→bodyMedium with a touch more breathing room.
-                    Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = SheetPalette.ink(dark))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // A custom map's marker leads with its own icon, or a dot in its color.
+                        if (place.pinIconUrl != null) {
+                            coil.compose.AsyncImage(model = place.pinIconUrl, contentDescription = null, modifier = Modifier.padding(end = 10.dp).size(26.dp))
+                        } else if (place.pinColor != null) {
+                            Box(Modifier.padding(end = 10.dp).size(14.dp).background(Color(place.pinColor!!), androidx.compose.foundation.shape.CircleShape))
+                        } else if (place.id.startsWith(MapViewModel.ROUTE_ROW_ID)) {
+                            Icon(Sym.Directions, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.padding(end = 10.dp).size(22.dp))
+                        }
+                        Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = SheetPalette.ink(dark))
+                    }
                     place.rating?.let { r ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -3634,8 +3652,8 @@ private fun MapSurface(
     // Street View owns the map.
     // Also off while the route chooser is up: only the trip's own pins draw there (2026-09-30).
     // Custom maps (issue #669): the previewed one and every saved list's shapes, less hidden layers.
-    val mapShapes = remember(state.pendingImport, state.lists, state.drawing) {
-        state.pendingImport?.shapes.orEmpty() + state.lists.flatMap { l -> l.shapes.filter { it.layer == null || it.layer !in l.hiddenLayers } } +
+    val mapShapes = remember(state.pendingImport, state.pendingHiddenLayers, state.lists, state.drawing) {
+        state.pendingImport?.shapes.orEmpty().filter { it.layer == null || it.layer !in state.pendingHiddenLayers } + state.lists.flatMap { l -> l.shapes.filter { it.layer == null || it.layer !in l.hiddenLayers } } +
             // The shape being drawn, last, so no saved shape's index moves.
             listOfNotNull(state.drawing?.takeIf { it.pts.size >= 4 }?.let { d ->
                 app.vela.core.model.MapShape(pts = d.pts, closed = d.closed && d.pts.size >= 6, color = d.color, width = 4f,
@@ -3643,13 +3661,16 @@ private fun MapSurface(
             })
     }
     val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose, state.directionsOpen) {
-        if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty() || state.directionsOpen) emptyList()
+        if (state.navigating || state.replaying || svPose != null || state.directionsOpen) emptyList()
+        // A custom map on screen (opened from a link or from its saved list): its markers, as it drew them.
+        else if (state.results.isNotEmpty()) state.results.filter { it.pinColor != null || it.pinIconUrl != null }
+            .map { SavedPin(it.location.lat, it.location.lng, "place", it.pinColor ?: 0xFF1A73E8, it.pinIconUrl) to it }
         else buildList {
             val seen = HashSet<String>()
             state.lists.forEach { l ->
                 l.places.forEach { lp ->
                     if (lp.layer != null && lp.layer in l.hiddenLayers) return@forEach // a custom map's hidden layer (#669)
-                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, lp.icon ?: l.icon, lp.color ?: l.color) to lp.toPlace()) // its own icon first (#629), its own color (#669)
+                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, lp.icon ?: l.icon, lp.color ?: l.color, lp.iconUrl.takeIf { lp.icon == null }) to lp.toPlace()) // its own icon first (#629), its own color (#669)
                 }
             }
             state.saved.forEach { sp ->
@@ -6528,6 +6549,11 @@ class MapLayers(val names: List<String>, val hidden: Set<String>, val onToggle: 
 
 /** Non-null when the open list is a saved custom map with two or more layers. */
 private fun mapLayersOf(state: MapUiState, vm: MapViewModel): MapLayers? {
+    // A custom map still being looked at (not saved yet): the same chip over the import itself.
+    state.pendingImport?.let { imp ->
+        val names = (imp.places.mapNotNull { it.mapLayer } + imp.shapes.mapNotNull { it.layer }).distinct()
+        return if (names.size < 2) null else MapLayers(names, state.pendingHiddenLayers) { vm.togglePendingLayer(it) }
+    }
     val list = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id } } ?: return null
     val names = list.layers
     if (names.size < 2) return null

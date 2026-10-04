@@ -2385,6 +2385,32 @@ point (`vela-shapes-dots`). A shape's sheet menu has "Delete this drawing"
 list holds it. Points cannot be moved after they are placed, and a saved drawing cannot be edited,
 only deleted.
 
+**Custom map marker icons and directions layers (2026-10-04).** The KML export names a marker's
+icon only by number in its style id (`icon-1577-FFD600`) and links one stock blank image for every
+marker. `importMyMap` therefore also fetches the map's public viewer page
+(`/maps/d/viewer?mid=`, no key, no session), `MyMapKml.iconNames` reads the full icon names out of
+it (`1577-food-fork-knife`), and `MyMapKml.iconUrl` builds the image address on Google's icon
+server (`mt.googleapis.com/vt/icon/name=...&highlight=ff000000,<RRGGBB>&scale=4.0`, 112 px, no
+key). The address is kept as `Place.pinIconUrl` / `ListPlace.iconUrl`. The plain pin (1899), an
+icon the page does not name, and a failed viewer fetch keep Vela's pin in the marker's color. An
+uploaded marker image is used when the export links it by an https address. `MyMapIcons` loads the
+images through the app's image loader (disk cache, counted as Google requests) and the map draws
+them on the saved-pin layer, which also draws a custom map's markers while its list is open or
+still unsaved (`MapMarker.drawn = false` keeps them in the result fit and tap index without a red
+result pin). List rows lead with the icon, or a dot in the marker's color.
+A layer that holds exactly one line and 2 to `MAX_ROUTE_STOPS` (12) points, with the line starting
+within `ROUTE_END_M` (250 m) of the first point and ending within it of the last, is a directions
+layer in any language: its points become `MapShape.stops` and leave the pin list. Each such line
+adds a row to the list (id prefix `shape-route:`, "Route · length · N stops"); the row or a tap on
+the line opens the shape sheet with the numbered stops, and Directions or Start there opens the
+route chooser through the stops (`openShapeTrip`): from the user's position through every stop when
+the first stop is within 50 km, from the user's position skipping the first stop within 150 m of
+it, and from the first stop as planned when farther away. Vela routes the trip itself, in the
+user's current travel mode; the export does not say which mode the map's author planned it in.
+Before a custom map is saved its layers can be switched off too (`pendingHiddenLayers`, carried
+into the saved list), and the hours, rating, price and accessibility filters are not shown for a
+custom map's list.
+
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
   or no window size is known, one extra page runs over a 2.5 km

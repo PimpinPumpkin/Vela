@@ -78,6 +78,47 @@ class MyMapKmlTest {
         assertTrue(area.closed); assertEquals(0xFF0F9D58, area.color); assertEquals(0x4D0F9D58L, area.fill)
     }
 
+    @Test fun `marker icons are named by the viewer page and drawn by the icon server`() {
+        val kml = """<kml><Document><name>Lunch</name>
+            <Style id="icon-1577-FFD600-normal"><IconStyle><color>ff00d6ff</color><Icon><href>https://www.gstatic.com/mapspro/images/stock/503-wht-blank_maps.png</href></Icon></IconStyle></Style>
+            <StyleMap id="icon-1577-FFD600"><Pair><key>normal</key><styleUrl>#icon-1577-FFD600-normal</styleUrl></Pair></StyleMap>
+            <Folder><name>Food</name>
+            <Placemark><name>Burgers</name><styleUrl>#icon-1577-FFD600</styleUrl><Point><coordinates>-121.7400,38.5440,0</coordinates></Point></Placemark>
+            <Placemark><name>Plain</name><styleUrl>#icon-1899-DB4436-nodesc</styleUrl><Point><coordinates>-121.7410,38.5450,0</coordinates></Point></Placemark>
+            <Placemark><name>Unnamed icon</name><styleUrl>#icon-1602-FF5252</styleUrl><Point><coordinates>-121.7420,38.5460,0</coordinates></Point></Placemark>
+            </Folder></Document></kml>"""
+        // The page escapes its URLs; only the icon's file name is read.
+        val viewer = """[\"https://mt.googleapis.com/vt/icon/name\\u003dicons/onion/SHARED-mymaps-container-bg_4x.png,icons/onion/SHARED-mymaps-container_4x.png,icons/onion/1577-food-fork-knife_4x.png\\u0026highlight\\u003dff000000,FFD600\\u0026scale\\u003d2.0\"] icons/onion/1899-blank-shape_pin_4x.png"""
+        val m = MyMapKml.parse(kml, "x", viewer)!!
+        assertEquals(
+            "https://mt.googleapis.com/vt/icon/name=icons/onion/SHARED-mymaps-container-bg_4x.png,icons/onion/SHARED-mymaps-container_4x.png,icons/onion/1577-food-fork-knife_4x.png&highlight=ff000000,FFD600&scale=4.0",
+            m.places[0].pinIconUrl,
+        )
+        assertEquals(0xFFFFD600, m.places[0].pinColor)
+        assertNull("the plain pin keeps Vela's pin", m.places[1].pinIconUrl)
+        assertNull("an icon the page does not name keeps its color only", m.places[2].pinIconUrl)
+        assertNull(MyMapKml.parse(kml, "x")!!.places[0].pinIconUrl) // no viewer page: colors only
+    }
+
+    @Test fun `a directions layer becomes a line with its stops`() {
+        fun pt(n: String, lng: Double, lat: Double) = "<Placemark><name>$n</name><Point><coordinates>$lng,$lat,0</coordinates></Point></Placemark>"
+        val kml = """<kml><Document><name>Day out</name>
+            <Folder><name>Sights</name>${pt("Arboretum", -121.7500, 38.5320)}</Folder>
+            <Folder><name>Directions from Station to Market</name>
+            <Placemark><name>Directions from Station to Market</name><LineString><coordinates>-121.7377,38.5436,0 -121.7400,38.5440,0 -121.7445,38.5435,0</coordinates></LineString></Placemark>
+            ${pt("Station", -121.7377, 38.5436)}${pt("Cafe", -121.7400, 38.5441)}${pt("Market", -121.7445, 38.5435)}
+            </Folder>
+            <Folder><name>A line beside a pin</name>
+            <Placemark><name>Path</name><LineString><coordinates>-121.7600,38.5500,0 -121.7700,38.5500,0</coordinates></LineString></Placemark>
+            ${pt("Far pin", -121.7000, 38.5000)}${pt("Other", -121.7001, 38.5001)}
+            </Folder></Document></kml>"""
+        val m = MyMapKml.parse(kml, "x")!!
+        assertEquals(listOf("Arboretum", "Far pin", "Other"), m.places.map { it.name }) // the trip's points left the pin list
+        assertEquals(listOf("Station", "Cafe", "Market"), m.shapes[0].stops.map { it.name })
+        assertEquals(38.5441, m.shapes[0].stops[1].lat, 1e-6)
+        assertTrue("a line whose ends are not its layer's points is only a line", m.shapes[1].stops.isEmpty())
+    }
+
     @Test fun `text that is not a custom map reads as nothing`() {
         assertNull(MyMapKml.parse("<html><body>Sign in</body></html>"))
         assertNull(MyMapKml.parse("<kml><Document><name>Empty</name></Document></kml>"))

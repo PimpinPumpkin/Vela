@@ -430,7 +430,7 @@ private const val TRAFFIC_TILES =
 
 /** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
  *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
-data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null, val fuelPrice: String? = null, val houseNumber: String? = null)
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null, val fuelPrice: String? = null, val houseNumber: String? = null, val drawn: Boolean = true)
 
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
 // setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
@@ -438,6 +438,7 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
 private var lastAppliedParking: LatLng? = null
+private var lastSavedIconTick = -1
 private var lastAppliedSavedPins: List<SavedPin>? = null // saved-place pins (issue #171), same gate pattern
 private var lastAccuracyLoc: LatLng? = null
 private var lastAccuracyM: Float? = null
@@ -450,7 +451,7 @@ private var lastAppliedSpeedCams: List<app.vela.core.data.SpeedCamera>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
 
 /** One saved place drawn on the browse map (issue #171): its list's icon key + color. */
-data class SavedPin(val lat: Double, val lng: Double, val icon: String, val color: Long)
+data class SavedPin(val lat: Double, val lng: Double, val icon: String, val color: Long, val iconUrl: String? = null)
 private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
@@ -920,6 +921,9 @@ fun VelaMapView(
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
     val shapeTap = rememberUpdatedState(onShapeTap)
+    // Custom map marker icons: fetch what the pins name, redraw when one lands.
+    val mmIconTick = MyMapIcons.tick.intValue
+    LaunchedEffect(savedPins) { MyMapIcons.load(context, savedPins.mapNotNull { it.iconUrl }) }
     val drawActive = rememberUpdatedState(drawDots != null)
     val drawTap = rememberUpdatedState(onDrawTap)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
@@ -8952,10 +8956,14 @@ private fun applyData(
     // Saved-place pins (issue #171), identity-gated like the rest. Icon bitmaps are per
     // (icon, color) and added on demand; getImage probes are cheap and a style reload
     // resets lastAppliedSavedPins so they re-add on the fresh style.
-    if (savedPins != lastAppliedSavedPins) {
+    // A custom map marker's own icon (issue #669) replaces the pin once its image has arrived.
+    val iconTick = MyMapIcons.tick.intValue
+    if (savedPins != lastAppliedSavedPins || iconTick != lastSavedIconTick) {
+        lastSavedIconTick = iconTick
         val feats = savedPins.mapIndexed { i, pin ->
-            val imgKey = "vela-saved-${pin.icon}-${java.lang.Long.toHexString(pin.color)}"
-            if (style.getImage(imgKey) == null) style.addImage(imgKey, PoiIcons.savedPin(context, pin.icon, pin.color))
+            val own = pin.iconUrl?.let { u -> MyMapIcons.get(u)?.let { MyMapIcons.key(u) to it } }
+            val imgKey = own?.first ?: "vela-saved-${pin.icon}-${java.lang.Long.toHexString(pin.color)}"
+            if (style.getImage(imgKey) == null) style.addImage(imgKey, own?.second ?: PoiIcons.savedPin(context, pin.icon, pin.color))
             Feature.fromGeometry(Point.fromLngLat(pin.lng, pin.lat)).apply {
                 addNumberProperty(SAVED_INDEX_PROP, i)
                 addStringProperty(SAVED_ICON_PROP, imgKey)
@@ -9123,7 +9131,8 @@ private fun applyData(
     // source is empty) so the layers always repopulate. (Big drag-smoothness win on the Pixel 5a.)
     if (markers != lastAppliedMarkers) {
         val markersFc = FeatureCollection.fromFeatures(
-            markers.mapIndexed { i, m ->
+            markers.mapIndexedNotNull { i, m ->
+                if (!m.drawn) return@mapIndexedNotNull null // framed and tappable by index, drawn elsewhere
                 // Results arrive in relevance order, so the index IS the collision rank (lower
                 // sort key places first = wins the slot). Rated food places get the rating
                 // bubble, everything else the red category pin; bitmaps are generated on demand
