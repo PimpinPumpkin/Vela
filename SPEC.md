@@ -3318,7 +3318,12 @@ A road name can be in a different script than the guidance language.
   the same quantized pass that places the crossing labels, plus `Route.roadNamesLatin` from the
   obf route. The dictionary query is **warm-up paced**, re-running every 2 s while it is still
   growing, because a drive starts with only low-zoom tiles loaded and those carry only major
-  roads.
+  roads. The query is a synchronous render-thread round trip that materializes every loaded road
+  name on the main thread (a 4a at the nav zoom: 100 to 430 features, 14 to 58 ms, a 50 ms frame
+  each time), so the warm-up settles at once when a full pass over the loaded roads adds nothing
+  and the dictionary is still **empty**: the region's names are all Latin and there is nothing to
+  warm. The three-tick warm-up ran the query three times per 400 m quantum on every Latin-script
+  drive (2026-10-03). Where the dictionary holds anything it keeps its three ticks.
 - The navigation opener is held up to `OPENER_MAX_WAIT_MS` (2.5 s), retrying every 200 ms until
   the road it names is covered by the dictionary. An English opener never waits.
 - On-map labels use `roadLabelTextField()` = `coalesce(name:en, name:latin, name)` for a

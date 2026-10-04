@@ -69,7 +69,11 @@ current step is excluded, by name, by route number and by the bare digits of the
 the whole route hid the road you are about to turn onto.
 
 **When the pass runs.** Once per 400 m quantum of progress, or when the next two turns' roads
-change, and never on a short timer. The first version ran every 4 seconds, and each run pulls
+change, and never on a short timer. The pass also keeps the romanized-name dictionary for names
+in another script, and re-reads the loaded roads up to three times per quantum while that
+dictionary is still filling in; since 2026-10-03 it stops after one read when the dictionary is
+empty, which it is wherever the names are Latin already (each read waits for the render thread,
+14 to 58 ms on a Pixel 4a). The first version ran every 4 seconds, and each run pulls
 every loaded road-name feature onto the main thread and re-places a symbol layer, so it was
 itself a periodic frame hitch. A pass that finds no road tiles at all does not count and tries
 again 2 seconds later. One that finds roads but places nothing retries too, and gives the quantum

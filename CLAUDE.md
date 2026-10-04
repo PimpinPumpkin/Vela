@@ -2308,7 +2308,10 @@ Defaults that make the safe path the easy one:
   a couple seconds of its nav-zoom tile loading (device-proven: dict jumped 19 -> 404 as local streets
   resolved to real romanized names with vowels, not the consonant skeleton, on both the banner and the
   voice). The expensive crossing geometry stays per-quantum, so this never puts a heavy pass on the
-  every-frame path. The nav-start OPENER ("Starting navigation. Head ... on <road>") is spoken via
+  every-frame path. **In a Latin-script region the warm-up settles at once (2026-10-03):** a full pass
+  that adds nothing while the dict is still EMPTY has nothing to warm, so `dictStaleTicks` jumps to 3;
+  the query itself is a blocking render-thread round trip (4a: 14-58 ms, a 50 ms frame each), and
+  the three ticks per quantum were three hitches per 400 m on every US drive for a dict of zero. The nav-start OPENER ("Starting navigation. Head ... on <road>") is spoken via
   `VoiceGuide.speakOpener` (not `speak`): it HOLDS the opener up to `OPENER_MAX_WAIT_MS` (2.5 s), retrying
   every 200 ms until the road it names is covered by `roadNameLatin` (or the text has no foreign run), then
   speaks - the drive begins before nav-zoom tiles load, so speaking at T=0 read the ICU skeleton; the wait

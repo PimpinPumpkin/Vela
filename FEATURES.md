@@ -1898,6 +1898,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   drive on a 4a (up to 0.2 s, every few hundred meters, and at the end of every drag while panning
   around in a drive). It now asks the map one point per frame instead of twelve at once, keeps
   its time floor while navigating, and never runs while you are panning away from the car.
+- ✅ **One less stutter every 400 m of a drive (2026-10-03).** The street-callout pass re-read every
+  loaded road name three times per 400 m to warm the dictionary that romanizes names in another
+  script; on a drive where every name is already Latin the dictionary is empty and there is
+  nothing to warm, so it reads once.
 - ✅ **Pause and mute are one button (2026-09-18).** The two controls that hold something about a
   drive shared a tall pill down the right edge; now they share one 56 dp button. The tap pauses, so
   the thing you reach for at speed still costs one touch; mute slides out beside it for a few

@@ -1212,6 +1212,12 @@ fun VelaMapView(
         // loaded when a drive STARTS carries only major road names, so the first turn onto a minor
         // road would otherwise speak the ICU skeleton (issue #184). The expensive crossing geometry
         // stays per-quantum, so this never puts a heavy pass on the every-frame path.
+        // The dict only exists for names in another script: where a full pass over the loaded
+        // roads adds nothing and the dict is still EMPTY, the region's names are all Latin and the
+        // warm-up has nothing to warm, so the tick settles at once (2026-10-03). The query itself
+        // is a blocking render-thread round trip that materializes every loaded road name on the
+        // main thread (4a at the nav zoom: 100-430 features, 14-58 ms, and a 50 ms frame each time),
+        // and the three-tick warm-up ran it three times per 400 m on every Latin-script drive.
         var dictStaleTicks = 0
         var emptyPassTicks = 0 // consecutive quantum passes that placed no label (tiles still loading)
         while (true) {
@@ -1236,6 +1242,8 @@ fun VelaMapView(
                     if (latinAcc.size != latinBefore) {
                         navRoadLatinHolder.value(HashMap(latinAcc))
                         dictStaleTicks = 0
+                    } else if (latinAcc.isEmpty()) {
+                        dictStaleTicks = 3 // a Latin-script region: nothing to warm (see above)
                     } else {
                         dictStaleTicks++
                     }
