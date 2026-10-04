@@ -2645,8 +2645,14 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   layer hidden); and `vela-housenumber` carries a `within` box filter one screen wider than the
   view on every side (`restrictHouseNumbers`, moved from the throttled idle work when the view
   comes within a quarter screen of its edge or is under a fifth of it: z19 on a dense residential
-  block 33 -> 50-59 fps, z20.5 downtown 40 -> 52). Lowering the per-block icon caps changed
-  nothing) (`ROAD_NAME_SPACING_PX`, dial `roadNameSpacing`); at MapLibre's default 250 most blocks of a grid
+  block 33 -> 50-59 fps, z20.5 downtown 40 -> 52). With those in, the same spots pan at 54-59 fps and the
+  per-block icon caps are worth a few fps at most. The open-places dials (`open*`) are read
+  through `AppTune.value`, so `debug.vela.tune.<key>` overrides them on a device; before
+  2026-10-04 they read the calibration bundle only and an adb override did nothing. A low-ranked
+  generic place (group default or health, prominence under `openGenericMinProminence`) whose
+  rank in its ~400 m cell is past `openGenericHideRank` (120) is not drawn at all, dot included:
+  downtown Montreal loses its carpet of office dots, midtown Sacramento is pixel-identical with
+  the rule on and off. No frame-rate effect; it is for clutter) (`ROAD_NAME_SPACING_PX`, dial `roadNameSpacing`); at MapLibre's default 250 most blocks of a grid
   carried no name at street zoom, with every Vela layer hidden too, so it was the spacing, not
   collisions. Browse pans at z16.6 measured the same with old and new widths (51-59 fps); nav turns
   pooled over four runs a side had the same median (53), with two low single seconds (38, 43) on

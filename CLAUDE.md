@@ -3776,9 +3776,15 @@ architecture note.
   `restrictHouseNumbers` keeps a `within` box filter on `vela-housenumber`, one screen wider than
   the view, moved from the throttled idle work (dense residential z19: 33 -> 50-59 fps; skipping
   collision changed nothing, it is the drawing); (3) street-name spacing keeps widening past z18
-  (`ROAD_NAME_SPACING_MAX_PX` 1500 at z21, dial `roadNameSpacingMax`), worth about 3 fps. Lowering
-  the per-block icon caps changed nothing there. Left: the places layers (33 -> 40 when hidden at
-  z19) and the `vela-addr-*` overlay layers, which could take the same box filter.
+  (`ROAD_NAME_SPACING_MAX_PX` 1500 at z21, dial `roadNameSpacingMax`), worth about 3 fps. With the three in,
+  the same spots pan at 54-59 fps. Left: the `vela-addr-*` overlay layers, which could take the same
+  box filter. TRAP found the same day: the `open*` places dials read the calibration bundle only, so
+  a `debug.vela.tune` override silently did nothing and a "lower caps changed nothing" result was
+  invalid; they go through `AppTune.value` now. **Packed-area rule (user 2026-10-04):** a low-ranked
+  generic place (default/health group, prominence under 4) past rank `openGenericHideRank` (120) in
+  its ~400 m cell is not drawn, dot included; a home office or a business-park tenant ranks far
+  above that and stays. Checked: downtown Montreal loses the gray dots, midtown Sacramento is
+  pixel-identical on and off.
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
   meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials

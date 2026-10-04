@@ -1821,15 +1821,15 @@ fun VelaMapView(
                 // place, so a pre-frank city drew every tenant from z17.5, measured in Midtown).
                 // From z19.5 the budget is `openIconCapMax` per block, not unlimited: a diamond-
                 // district block holds hundreds of jewellers.
-                val iconCapMax = app.vela.core.config.CalibrationStore.latest.tune("openIconCapMax", 40.0).toInt()
+                val iconCapMax = app.vela.ui.AppTune.value("openIconCapMax", 40.0).toInt()
                 // Street-zoom budget per 400 m cell (2026-09-17, against Google Maps on the same
                 // Midtown blocks: Google drew ~15 icons where Vela drew ~25, and this layer was the
                 // largest remaining frame cost there, 45 -> 58 fps when hidden). Google holds a dense
                 // block back until you are close; these are the dials.
-                val rankZ16 = app.vela.core.config.CalibrationStore.latest.tune("openRankZ16", 3.0).toInt()
-                val promZ16 = app.vela.core.config.CalibrationStore.latest.tune("openPromZ16", 5.5)
-                val rankZ17 = app.vela.core.config.CalibrationStore.latest.tune("openRankZ17", 8.0).toInt()
-                val promZ17 = app.vela.core.config.CalibrationStore.latest.tune("openPromZ17", 5.0)
+                val rankZ16 = app.vela.ui.AppTune.value("openRankZ16", 3.0).toInt()
+                val promZ16 = app.vela.ui.AppTune.value("openPromZ16", 5.5)
+                val rankZ17 = app.vela.ui.AppTune.value("openRankZ17", 8.0).toInt()
+                val promZ17 = app.vela.ui.AppTune.value("openPromZ17", 5.0)
                 fun blockBudget(n: Int, prom: Double, value: Expression) = Expression.switchCase(
                     Expression.any(
                         Expression.switchCase(
@@ -1848,8 +1848,8 @@ fun VelaMapView(
                 // ~100 m block (`frank`, or the 400 m `rank` with a 4x cut on older archives) or
                 // prominent on its own; the rest draw as dots. A suburban office or clinic is usually
                 // the top of its block, so it keeps its icon.
-                val genericCap = app.vela.core.config.CalibrationStore.latest.tune("openGenericBlockTop", 3.0)
-                val genericMinProm = app.vela.core.config.CalibrationStore.latest.tune("openGenericMinProminence", 4.0)
+                val genericCap = app.vela.ui.AppTune.value("openGenericBlockTop", 3.0)
+                val genericMinProm = app.vela.ui.AppTune.value("openGenericMinProminence", 4.0)
                 // A shop's own counters (its pharmacy, its coffee bar, a Redbox, a Coinstar, the
                 // brand's fuel kiosk out in the lot) are baked with `tenant` = 1 and only reach the
                 // z17 tiles. They stay DOTS until 18.5, so the store keeps the block's icon and its
@@ -1878,9 +1878,24 @@ fun VelaMapView(
                     ),
                     Expression.literal(""), value,
                 )
-                val labelCap = app.vela.core.config.CalibrationStore.latest.tune("openLabelCap", 20.0).toInt()
-                val iconCapNear = app.vela.core.config.CalibrationStore.latest.tune("openIconCapNear", 8.0).toInt()
-                val iconCapClose = app.vela.core.config.CalibrationStore.latest.tune("openIconCapClose", 16.0).toInt()
+                // In a PACKED area the same low-ranked generic places are not drawn at all, dot
+                // included (user 2026-10-04, after issue #655: downtown Montreal and Manhattan are a
+                // carpet of gray office dots). "Packed" is the place's rank in its ~400 m cell: past
+                // `openGenericHideRank` there are that many better-ranked places around it. A home
+                // office on a residential street or a tenant in a business park ranks far above
+                // that in its cell and stays; search still finds the hidden ones.
+                val genericHideRank = app.vela.ui.AppTune.value("openGenericHideRank", GENERIC_HIDE_RANK)
+                val packedGeneric = Expression.all(
+                    Expression.match(
+                        Expression.get("group"), Expression.literal(false),
+                        Expression.stop("default", true), Expression.stop("health", true),
+                    ),
+                    Expression.lt(Expression.get("prominence"), Expression.literal(genericMinProm)),
+                    Expression.gt(Expression.coalesce(Expression.get("rank"), Expression.literal(0)), Expression.literal(genericHideRank)),
+                )
+                val labelCap = app.vela.ui.AppTune.value("openLabelCap", 20.0).toInt()
+                val iconCapNear = app.vela.ui.AppTune.value("openIconCapNear", 8.0).toInt()
+                val iconCapClose = app.vela.ui.AppTune.value("openIconCapClose", 16.0).toInt()
                 // Dots come in by rank too, Google-style: none at z14 (icons only), the top six
                 // per 400 m cell at z15, the top fifteen at z16, everything from z17. Opacity, not
                 // a filter: a hidden dot still costs nothing, and MapLibre filters cannot read
@@ -1889,6 +1904,7 @@ fun VelaMapView(
                     Expression.lte(Expression.get("rank"), Expression.literal(n)),
                     Expression.literal(0.92f), Expression.literal(0f),
                 )
+                val dotsUnlessPacked = Expression.switchCase(packedGeneric, Expression.literal(0f), Expression.literal(0.92f))
                 val dots = CircleLayer("vela-places-dots-$i", srcId).apply {
                     setSourceLayer("places")
                     setMinZoom(15f)
@@ -1907,7 +1923,7 @@ fun VelaMapView(
                                 Expression.zoom(),
                                 dotsAbove(6),
                                 Expression.stop(16f, dotsAbove(15)),
-                                Expression.stop(17f, Expression.literal(0.92f)),
+                                Expression.stop(17f, dotsUnlessPacked),
                             ),
                         ),
                         PropertyFactory.circleStrokeOpacity(
@@ -1915,7 +1931,7 @@ fun VelaMapView(
                                 Expression.zoom(),
                                 dotsAbove(6),
                                 Expression.stop(16f, dotsAbove(15)),
-                                Expression.stop(17f, Expression.literal(0.92f)),
+                                Expression.stop(17f, dotsUnlessPacked),
                             ),
                         ),
                     )
@@ -7618,6 +7634,8 @@ private fun roadNameSpacingExpr(base: Float): Expression {
     )
 }
 private const val ROAD_NAME_SPACING_MAX_PX = 1500.0
+/** A low-ranked office or small practice past this rank in its ~400 m cell is not drawn. */
+private const val GENERIC_HIDE_RANK = 120.0
 private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
 
 private fun widenStreets(style: StyleLayers) {
