@@ -366,6 +366,37 @@ private const val CAM_BRG_TURN_DEG = 25.0
  *  time, and the level rides `styleKey` so a change reloads the style like a theme flip. */
 private fun houseNumberMinZoom(): Float = app.vela.ui.HouseNumbers.minZoom()
 
+/**
+ * House numbers only AROUND THE SCREEN (issue #655, 2026-10-04). The basemap's tiles stop at z14,
+ * so past that one tile holds a whole neighborhood's numbers and every one of them is drawn each
+ * frame, on screen or not: in a dense residential part of Montreal at z19 the 4a panned at 33 fps,
+ * 60 with the layer hidden (skipping collision made no difference; it is the drawing). The layer's
+ * filter is a box one screen wider than the view on every side, moved when the settled view comes
+ * within a quarter screen of its edge or has shrunk to under a fifth of it. A filter change re-lays
+ * the layer on a worker, so this runs from the throttled idle work, never per frame.
+ */
+private fun restrictHouseNumbers(map: MapLibreMap, view: MLLatLngBounds, applied: Array<Any?>) {
+    val style = map.style ?: return
+    val layer = style.getLayer("vela-housenumber") as? SymbolLayer ?: return
+    if (map.cameraPosition.zoom < houseNumberMinZoom() - 0.7) return
+    val h = view.latitudeNorth - view.latitudeSouth
+    val w = view.longitudeEast - view.longitudeWest
+    if (h <= 0 || w <= 0) return
+    val have = (applied[1] as? DoubleArray).takeIf { applied[0] === style } // [s, w, n, e]
+    if (have != null) {
+        val inside = view.latitudeSouth - h * 0.25 >= have[0] && view.longitudeWest - w * 0.25 >= have[1] &&
+            view.latitudeNorth + h * 0.25 <= have[2] && view.longitudeEast + w * 0.25 <= have[3]
+        if (inside && (have[2] - have[0]) <= h * 15) return
+    }
+    val box = doubleArrayOf(view.latitudeSouth - h, view.longitudeWest - w, view.latitudeNorth + h, view.longitudeEast + w)
+    val ring = listOf(
+        Point.fromLngLat(box[1], box[0]), Point.fromLngLat(box[3], box[0]), Point.fromLngLat(box[3], box[2]),
+        Point.fromLngLat(box[1], box[2]), Point.fromLngLat(box[1], box[0]),
+    )
+    runCatching { layer.setFilter(Expression.within(org.maplibre.geojson.Polygon.fromLngLats(listOf(ring)))) }
+        .onSuccess { applied[0] = style; applied[1] = box }
+}
+
 /** Numbers fade in across [houseNumberMinZoom()]..+0.6, so they arrive as you zoom rather than
  *  appearing all at once - the density change at street zoom is abrupt enough without a pop. */
 private fun houseNumberFade(): Expression = Expression.interpolate(
@@ -3887,6 +3918,7 @@ fun VelaMapView(
                 // the gate itself (a val lambda can't name itself).
                 val idleEvents = intArrayOf(0) // camera-idle callbacks, counted for the VelaFps line
                 val idleWork = arrayOfNulls<() -> Unit>(1)
+                val houseNumberBox = arrayOfNulls<Any>(2) // [style it was applied to, the box]
                 val idleTrail = arrayOfNulls<Runnable>(1)
                 val idleWorkAt = longArrayOf(0L)
                 val ovlGateRef = arrayOfNulls<() -> Unit>(1)
@@ -4028,6 +4060,7 @@ fun VelaMapView(
                     // Keep the VM's "area you're viewing" current so the offline
                     // download can be triggered from Settings, not a map FAB.
                     val b = map.projection.visibleRegion.latLngBounds
+                    restrictHouseNumbers(map, b, houseNumberBox)
                     viewport.value(
                         b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast,
                         map.cameraPosition.zoom,
@@ -7573,8 +7606,18 @@ private fun realWidthCurve(base: FloatArray, realM: Double, capDp: Double, minus
  *  took a 50 m-scale pan under 60 fps. */
 private fun roadNameSpacingExpr(base: Float): Expression {
     val close = (app.vela.ui.AppTune.local("roadNameSpacingClose") ?: ROAD_NAME_SPACING_CLOSE_PX).toFloat().coerceAtLeast(base)
-    return Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(16f, base), Expression.stop(18f, close))
+    // Past z18 the spacing keeps growing (2026-10-04, same issue): the tiles stop at z14, so at z20
+    // one tile is 64 screens wide and every road in it repeated its name every 300 px along its
+    // whole length, on screen or not. Measured on the 4a over downtown Montreal at z20.5: 23 fps,
+    // 46 with street names hidden, while hiding the business icons gained 3.
+    val far = (app.vela.ui.AppTune.local("roadNameSpacingMax") ?: ROAD_NAME_SPACING_MAX_PX).toFloat().coerceAtLeast(close)
+    return Expression.interpolate(
+        Expression.linear(), Expression.zoom(),
+        Expression.stop(16f, base), Expression.stop(18f, close),
+        Expression.stop(19f, close + (far - close) * 0.2f), Expression.stop(20f, close + (far - close) * 0.55f), Expression.stop(21f, far),
+    )
 }
+private const val ROAD_NAME_SPACING_MAX_PX = 1500.0
 private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
 
 private fun widenStreets(style: StyleLayers) {
@@ -7715,6 +7758,22 @@ internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = 
         "bridge_major_rail_hatching", "bridge_transit_rail_hatching",
         "tunnel_major_rail_hatching", "tunnel_transit_rail_hatching",
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
+    // Path NAMES only for the paths that are drawn (issue #655, 2026-10-04). Liberty names every
+    // class=path way, footways and indoor corridors included, while the lines above are hidden and
+    // only trails, bridleways and bike paths are drawn back. Downtown Montreal's underground city
+    // is thousands of named corridors: at z20.5 on the 4a the map panned at 26 fps, 43 with this
+    // one layer hidden. Pedestrian streets keep their names (they are streets).
+    (style.getLayer("highway-name-path") as? SymbolLayer)?.setFilter(
+        Expression.all(
+            Expression.eq(Expression.get("class"), Expression.literal("path")),
+            Expression.match(
+                Expression.get("subclass"), Expression.literal(false),
+                Expression.stop("path", true), Expression.stop("bridleway", true),
+                Expression.stop("cycleway", true), Expression.stop("pedestrian", true),
+            ),
+            Expression.neq(Expression.coalesce(Expression.get("indoor"), Expression.literal(0)), Expression.literal(1)),
+        ),
+    )
     // Country and state/province borders (discussion #353, 2026-09-09). They were hidden with
     // the clutter above since July, but Google draws both: countries as a thin solid gray
     // line, states and provinces dashed and lighter, from about zoom 4. What Google does NOT

@@ -3768,6 +3768,17 @@ architecture note.
   The median-jog rule on the drawn line put the blue up to 11 m off the road (median/verge) once
   divided roads drew as two carriageways; drawing the raw line brought junction zigzags back. Never
   hand the map a median-straightened polyline. Browse-map traffic controls show from z19 (`CONTROLS_BROWSE_SHOW_ZOOM`).
+- **Close-zoom cost is what the tile holds, not what the screen shows (issue #655, 2026-10-04).** The
+  basemap's tiles stop at z14, so past that every symbol layer draws its whole tile each frame. Found
+  with `debug.vela.hide` over Montreal on the 4a, three fixes: (1) `highway-name-path` is filtered to
+  the path kinds Vela draws (path, bridleway, cycleway, pedestrian; never `indoor`): Liberty named
+  every footway and corridor, and the underground city alone took z20.5 from 43 to 26 fps; (2)
+  `restrictHouseNumbers` keeps a `within` box filter on `vela-housenumber`, one screen wider than
+  the view, moved from the throttled idle work (dense residential z19: 33 -> 50-59 fps; skipping
+  collision changed nothing, it is the drawing); (3) street-name spacing keeps widening past z18
+  (`ROAD_NAME_SPACING_MAX_PX` 1500 at z21, dial `roadNameSpacingMax`), worth about 3 fps. Lowering
+  the per-block icon caps changed nothing there. Left: the places layers (33 -> 40 when hidden at
+  z19) and the `vela-addr-*` overlay layers, which could take the same box filter.
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
   meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials

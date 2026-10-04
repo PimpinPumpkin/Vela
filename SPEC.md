@@ -2637,7 +2637,16 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   issue #655: up close a block fills the screen, so 140 px repeated each name along it; in downtown
   Montreal at the 50 m scale a 4a panned at 47-49 fps with 140 and 51-53 with 300, two runs each;
   any one of the street names, house numbers or open places icons hidden gives 56-60, so the rest is
-  plain label load in a very dense core) (`ROAD_NAME_SPACING_PX`, dial `roadNameSpacing`); at MapLibre's default 250 most blocks of a grid
+  label load: the tiles stop at z14, so past that a symbol layer draws its whole tile every frame.
+  Three rules follow (2026-10-04, same issue, 4a over Montreal): the spacing keeps widening to
+  `ROAD_NAME_SPACING_MAX_PX` (1500 at z21, dial `roadNameSpacingMax`); `highway-name-path` is
+  filtered to subclass path / bridleway / cycleway / pedestrian and never `indoor` (Liberty names
+  every footway and corridor while their lines are hidden: 26 fps at z20.5 downtown, 43 with the
+  layer hidden); and `vela-housenumber` carries a `within` box filter one screen wider than the
+  view on every side (`restrictHouseNumbers`, moved from the throttled idle work when the view
+  comes within a quarter screen of its edge or is under a fifth of it: z19 on a dense residential
+  block 33 -> 50-59 fps, z20.5 downtown 40 -> 52). Lowering the per-block icon caps changed
+  nothing) (`ROAD_NAME_SPACING_PX`, dial `roadNameSpacing`); at MapLibre's default 250 most blocks of a grid
   carried no name at street zoom, with every Vela layer hidden too, so it was the spacing, not
   collisions. Browse pans at z16.6 measured the same with old and new widths (51-59 fps); nav turns
   pooled over four runs a side had the same median (53), with two low single seconds (38, 43) on
