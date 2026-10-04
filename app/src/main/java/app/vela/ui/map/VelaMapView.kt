@@ -2788,6 +2788,9 @@ fun VelaMapView(
         // how many frames its tiles have been seen.
         val cutLo = doubleArrayOf(Double.NaN, Double.NaN); val cutHi = doubleArrayOf(Double.NaN, Double.NaN)
         val winLo = doubleArrayOf(Double.NaN, Double.NaN); val winHi = doubleArrayOf(Double.NaN, Double.NaN)
+        // Each copy's bounding box (south, west, north, east), for the off-screen test below.
+        val cutBox = Array(2) { DoubleArray(4) { Double.NaN } }
+        val winBox = Array(2) { DoubleArray(4) { Double.NaN } }
         val slotState = intArrayOf(0, -1, 0, 0, 0, -1, 0, 0, 0, 0) // cut: active, pending, gen, seen; window: same; ages
         var routeGen = 0
         // Test dial `debug.vela.tune.camTurnTau` (seconds): how quickly the camera swings through a
@@ -3256,7 +3259,8 @@ fun VelaMapView(
                             if (e2 <= s2) null else Triple(s2, e2, lvl)
                         }
                     }
-                    fun lineFrom(lo: Double, hi: Double, gen: Int): FeatureCollection {
+                    fun lineFrom(lo: Double, hi: Double, gen: Int, box: DoubleArray? = null): FeatureCollection {
+                        box?.fill(Double.NaN)
                         if (hi - lo < 1.0) return FeatureCollection.fromFeatures(emptyList<Feature>())
                         val i0 = indexAtMeters(routeCum, lo)
                         val (p0, _) = pointAtMeters(routePolyline, routeCum, lo)
@@ -3269,6 +3273,10 @@ fun VelaMapView(
                             val (p1, _) = pointAtMeters(routePolyline, routeCum, hi)
                             pts.add(Point.fromLngLat(p1.lng, p1.lat))
                         }
+                        if (box != null) {
+                            box[0] = pts.minOf { it.latitude() }; box[1] = pts.minOf { it.longitude() }
+                            box[2] = pts.maxOf { it.latitude() }; box[3] = pts.maxOf { it.longitude() }
+                        }
                         val f = Feature.fromGeometry(LineString.fromLngLats(pts))
                         f.addNumberProperty(ROUTE_GEN_PROP, gen)
                         return FeatureCollection.fromFeature(f)
@@ -3279,15 +3287,29 @@ fun VelaMapView(
                         style.getSourceAs<GeoJsonSource>(src)?.querySourceFeatures(Expression.eq(Expression.get(ROUTE_GEN_PROP), Expression.literal(gen)))
                             ?.isNotEmpty() == true
                     }.getOrDefault(false)
+                    // Whether a copy's box touches the view. A piece off screen (the map panned
+                    // away from the car) is never seen by the tiles query, and that query is a
+                    // blocking round trip to the render thread: an unseen piece cost 40 of them,
+                    // one per frame, on every slide, under the thread that moves the user's pan
+                    // (4a 2026-10-03: 3 to 45 ms each). Nothing off screen can flash, so such a copy
+                    // swaps at once. One visible-region read per frame at most, and only while a
+                    // copy is pending or the camera is detached.
+                    var visibleNow: org.maplibre.android.geometry.LatLngBounds? = null
+                    fun onScreen(box: DoubleArray): Boolean {
+                        if (box[0].isNaN()) return true
+                        val b = visibleNow ?: (mapRef?.projection?.visibleRegion?.latLngBounds ?: return true).also { visibleNow = it }
+                        return box[2] >= b.latitudeSouth && box[0] <= b.latitudeNorth && box[3] >= b.longitudeWest && box[1] <= b.longitudeEast
+                    }
                     // 1. Show a pending copy whose geometry is in (one frame after its tiles are
                     // seen), hiding the old copy in the same frame. Paint changes land together.
                     var cutSwapped = false
                     if (slotState[1] >= 0) {
                         val ps = slotState[1]
-                        if (cutHi[ps] - cutLo[ps] < 1.0 || tilesHold(cutSrcOf(ps), slotState[2])) slotState[3]++
-                        // A copy whose tiles are off screen (the map panned away) is never seen;
-                        // it swaps after PENDING_MAX_PASSES so nothing stays stale.
-                        if (slotState[3] >= 2 || ++slotState[8] >= ROUTE_PENDING_MAX_PASSES) {
+                        val blind = cutHi[ps] - cutLo[ps] < 1.0 || !onScreen(cutBox[ps])
+                        if (!blind && tilesHold(cutSrcOf(ps), slotState[2])) slotState[3]++
+                        // ROUTE_PENDING_MAX_PASSES is the backstop for a copy on screen whose tiles
+                        // never report, so nothing stays stale.
+                        if (blind || slotState[3] >= 2 || ++slotState[8] >= ROUTE_PENDING_MAX_PASSES) {
                             style.routeSet(cutLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(1f))
                             style.routeSet(cutLayerOf(1 - ps), PropertyFactory.visibility(Property.NONE))
                             slotState[0] = ps; slotState[1] = -1
@@ -3297,11 +3319,11 @@ fun VelaMapView(
                     var winSwapped = false
                     if (slotState[5] >= 0) {
                         val ps = slotState[5]
-                        val aheadIn = winHi[ps] - winLo[ps] < 1.0 || tilesHold(aheadSrcOf(ps), slotState[6])
+                        val blind = winHi[ps] - winLo[ps] < 1.0 || !onScreen(winBox[ps])
                         // Only the window is waited on: the far tail starts 3 km ahead, usually
                         // off screen, where its tiles never load.
-                        if (aheadIn) slotState[7]++
-                        if (slotState[7] >= 2 || ++slotState[9] >= ROUTE_PENDING_MAX_PASSES) {
+                        if (!blind && tilesHold(aheadSrcOf(ps), slotState[6])) slotState[7]++
+                        if (blind || slotState[7] >= 2 || ++slotState[9] >= ROUTE_PENDING_MAX_PASSES) {
                             style.routeSet(aheadLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(1f))
                             style.routeSet(tailLayerOf(ps),
                                 PropertyFactory.visibility(if (winHi[ps] >= total - 1.0) Property.NONE else Property.VISIBLE),
@@ -3316,8 +3338,12 @@ fun VelaMapView(
                     // 2. Uploads go to the hidden copy, drawn near-transparent until step 1 shows it.
                     // The cut piece slides when the arrow nears its end (or a reroute/reset left it
                     // off the route). It starts a little BEHIND the arrow so the arrow's fraction is
-                    // never at the piece's very edge.
-                    val slide = cutStart[0].isNaN() || prog > cutEnd[0] - NAV_CUT_SLACK_M ||
+                    // never at the piece's very edge. A piece that already reaches the route's end
+                    // has nowhere to slide to: without that test the last NAV_CUT_SLACK_M of every
+                    // drive re-uploaded it on EVERY frame (the same for the window over its last
+                    // NAV_WINDOW_SLACK_M), the per-frame line upload SPEC 4.7 forbids, and the final
+                    // half kilometer ran at 33-52 fps on a 4a (2026-10-03).
+                    val slide = cutStart[0].isNaN() || (prog > cutEnd[0] - NAV_CUT_SLACK_M && cutEnd[0] < total - 0.5) ||
                         prog < cutStart[0] || cutEnd[0] > total + 1.0
                     if (slide) {
                         cutStart[0] = (prog - NAV_CUT_BACK_M).coerceAtLeast(0.0)
@@ -3325,7 +3351,7 @@ fun VelaMapView(
                         val ps = 1 - slotState[0]
                         routeGen++
                         cutLo[ps] = cutStart[0]; cutHi[ps] = cutEnd[0]
-                        style.getSourceAs<GeoJsonSource>(cutSrcOf(ps))?.setGeoJson(lineFrom(cutStart[0], cutEnd[0], routeGen))
+                        style.getSourceAs<GeoJsonSource>(cutSrcOf(ps))?.setGeoJson(lineFrom(cutStart[0], cutEnd[0], routeGen, cutBox[ps]))
                         style.routeSet(cutLayerOf(ps), PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.lineOpacity(ROUTE_PENDING_OPACITY))
                         slotState[1] = ps; slotState[2] = routeGen; slotState[3] = 0; slotState[8] = 0
                     }
@@ -3335,7 +3361,7 @@ fun VelaMapView(
                     val repaint = paintReset[0]
                     paintReset[0] = false
                     var winUploaded = false
-                    if (navWin[0].isNaN() || prog > navWin[0] - NAV_WINDOW_SLACK_M || navWin[0] > total) {
+                    if (navWin[0].isNaN() || (prog > navWin[0] - NAV_WINDOW_SLACK_M && navWin[0] < total - 0.5) || navWin[0] > total) {
                         navWin[0] = (prog + NAV_WINDOW_M).coerceAtMost(total)
                         val tw = navWin[0]
                         val tailDone = tw >= total - 1.0
@@ -3343,7 +3369,7 @@ fun VelaMapView(
                         val ps = 1 - slotState[4]
                         routeGen++
                         winLo[ps] = aheadAnchor[0]; winHi[ps] = tw
-                        style.getSourceAs<GeoJsonSource>(aheadSrcOf(ps))?.setGeoJson(lineFrom(aheadAnchor[0], tw, routeGen))
+                        style.getSourceAs<GeoJsonSource>(aheadSrcOf(ps))?.setGeoJson(lineFrom(aheadAnchor[0], tw, routeGen, winBox[ps]))
                         style.getSourceAs<GeoJsonSource>(tailSrcOf(ps))?.setGeoJson(
                             if (tailDone) FeatureCollection.fromFeatures(emptyList<Feature>()) else lineFrom(tw, total, routeGen),
                         )
@@ -3409,6 +3435,9 @@ fun VelaMapView(
                     // gets its own paint too, so it is right the frame it is shown.
                     for (s in intArrayOf(slotState[0], slotState[1])) {
                         if (s < 0 || cutLo[s].isNaN()) continue
+                        // A piece the user has panned off screen is not repainted per frame; the
+                        // next frame it is back in view paints it (progress keeps moving).
+                        if (!navFollowingHolder.value && !onScreen(cutBox[s])) continue
                         val c0 = cutLo[s]
                         val c1 = cutHi[s]
                         val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)

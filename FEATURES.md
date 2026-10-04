@@ -1889,6 +1889,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **No stutter from the route line at the end of a drive or while panning away (2026-10-03).** The
+  last half kilometer of every drive re-uploaded the route line on every frame (33-52 fps on a 4a,
+  59 before it), and a pan that took the car off screen made the map wait on the render thread 40
+  frames in a row every 300 m of travel, which read as the pan jerking under the finger. Both gone.
 - ✅ **Pause and mute are one button (2026-09-18).** The two controls that hold something about a
   drive shared a tall pill down the right edge; now they share one 56 dp button. The tap pauses, so
   the thing you reach for at speed still costs one touch; mute slides out beside it for a few

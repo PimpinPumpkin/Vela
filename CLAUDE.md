@@ -3865,6 +3865,15 @@ architecture note.
   676 now carry "AD400 La Massana"-style locality. Reaches a region at its next places rebake.
   Same commit removed three backticks from comments inside the unquoted `duckdb <<SQL` heredoc,
   which the shell was running as commands ("addr: command not found" in every bake log).
+- **The route pieces stop at the route's end and swap blind off screen (2026-10-03, SPEC 4.8).**
+  The cut piece's slide test (`prog > cutEnd - NAV_CUT_SLACK_M`) and the window's re-anchor test
+  fired on EVERY frame once the piece was clamped at the route's end, so the last 100 m / 500 m of
+  every drive re-uploaded the line per frame (4a: 33-52 fps, `win UPLOAD` 890 times in 19 s). Both
+  tests now require the piece to end before the route does. And `tilesHold` (the pending copy's
+  `querySourceFeatures`) is a blocking render-thread round trip, 3-45 ms each, paid 40 frames in a
+  row per slide while the user had panned the piece off screen; a pending copy outside
+  `projection.visibleRegion` swaps without asking. Never add a per-frame query or upload to that
+  block without a change gate AND an end-of-route guard.
 - **Drive papercuts (2026-09-23, user reports).** (1) The ROUTE LINE FLICKERED because
   `applyData` gated the route upload on IDENTITY while the nav ticker keys on the polyline's
   CONTENT: a recheck that adopts a same-geometry route (traffic or steps upgrade) re-seeded the

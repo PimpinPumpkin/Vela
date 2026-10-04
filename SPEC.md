@@ -1648,9 +1648,17 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   `ROUTE_PENDING_OPACITY` (0.004; at 0 MapLibre skips the layer and never tiles its source) with
   the gradient for its own range. Once `querySourceFeatures` finds the tagged geometry, and one
   frame later, the copy goes to full opacity and the other is hidden in the same frame. The far
-  tail is not waited on (it starts 3 km ahead, usually off screen, where its tiles never load), and
-  a copy still unseen after `ROUTE_PENDING_MAX_PASSES` (40) passes swaps anyway (the map panned
-  away). The ahead window's clear stretch follows the SHOWN cut piece's end. All six layers have
+  tail is not waited on (it starts 3 km ahead, usually off screen, where its tiles never load). A
+  copy whose piece lies outside the visible region (`projection.visibleRegion`, read at most once
+  per frame) swaps at once with no tiles query: nothing off screen can flash, and the query is a
+  synchronous round trip to the render thread (3 to 45 ms on a 4a) that a piece the user had panned
+  away from paid 40 times per slide, one per frame, on the thread that moves the pan.
+  `ROUTE_PENDING_MAX_PASSES` (40) is the backstop for a piece on screen whose tiles never report.
+  The ahead window's clear stretch follows the SHOWN cut piece's end. A cut piece or window that
+  already reaches the route's end does not slide or re-anchor: without that test the last
+  `NAV_CUT_SLACK_M` and `NAV_WINDOW_SLACK_M` of every drive re-uploaded them on every frame (the
+  per-frame line upload section 4.7 forbids; 33 to 52 fps over the final half kilometer on a 4a).
+  While the camera is detached, a cut piece off screen is not repainted per frame either. All six layers have
   no opacity transition (`lineOpacityTransition` 0): MapLibre animates opacity over 300 ms by
   default while the hidden copy disappears at once, so each swap dipped and faded the route back in. Re-anchoring a single
   layer in place painted the new gradient over the old geometry for a frame: the driven route

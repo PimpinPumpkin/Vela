@@ -284,6 +284,16 @@ new fractions were painted on the old, longer pieces, and a strip of blue or lav
 behind the arrow on every pause and resume. Only a style reload re-anchors now. The lavender was
 chosen over a slate gray, which vanished into the dark map's road fill.
 
+**The last half kilometer, and a pan away from the car.** Each piece has a second copy: a slide
+uploads the new geometry into the hidden copy and shows it once the map's tiles report it, so a
+new gradient is never painted on old geometry. Asking the tiles is a blocking round trip to the
+render thread (3 to 45 ms on a Pixel 4a), and a piece the user had panned off screen was never
+reported, so every slide asked 40 frames in a row under the finger that was panning. Since
+2026-10-03 a copy whose piece lies outside the visible region is shown at once without asking
+(nothing off screen can flash), and a piece that already reaches the route's end no longer slides:
+the slide test used to fire on every frame of the final 100 m (500 m for the window), re-uploading
+the line each frame, and the end of every drive ran at 33 to 52 fps.
+
 Walking and cycling lines are dashed, and a dashed MapLibre line takes no gradient, so they keep
 their plain style with no moving cut.
 
