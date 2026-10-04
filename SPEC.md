@@ -2626,8 +2626,8 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   keep their width, a one-way street there is a whole street). OSM draws a divided road as two
   ways; at the whole road's width each, the pair merged into one band about three times the route
   stripe, with the stripe along one edge of it.
-  **The route stripe is in meters too** (`routeWidth()`: the wider of the pixel curve, 11 / 17 /
-  20.4 dp at z16 / 17.5 / 18.5, and `ROUTE_REAL_M` 8.5 m, capped at 32 dp; alternates 7.65 m, capped 30;
+  **The route stripe is in meters too** (`routeWidth()`: the wider of the pixel curve, 5 / 8 / 11 / 17 /
+  20.4 dp at z10 / 14 / 16 / 17.5 / 18.5 (the overview widths untouched by the narrowing), and `ROUTE_REAL_M` 8.5 m, capped at 32 dp; alternates 7.65 m, capped 30;
   15% under the first cut's 10 m, at the owner's ask, so a little road shows each side,
   their outline inside that width), so it covers a two-lane street or one carriageway at every nav
   zoom instead of shrinking to half the road. Both follow `roadWidthScale`.
