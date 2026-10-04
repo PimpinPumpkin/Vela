@@ -5464,12 +5464,14 @@ Gotchas:
   `AudioTrack`) behind the `:core` `voice/NeuralSynth` seam (the AAR can't live in the `:core` library
   module). The default is **HFC Female** (`en_US-hfc_female-medium`, ~67 MB); it becomes the default
   voice once present. **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class
-  com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and you must generate the WHOLE
-  utterance before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT).
-  The whole utterance is generated, but it's **written to the track in ~200 ms chunks with a `generation`
-  check between them** (`PiperSynth`, audit 2026-07-06) so an interrupt (turn-now/rerouting/stop) takes
-  effect within ~200 ms instead of blocking for the full utterance - safe against the SIGABRT rule because
-  back-to-back chunk writes keep the buffer full (no underrun). **Audio-focus is refcounted via the
+  com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and the audio stream must NEVER
+  UNDERRUN (streaming underruns → AudioFlinger drops the track → SIGABRT). **Since 2026-10-04 a line
+  plays while it renders:** `speak` renders phrase by phrase and feeds each phrase to the `piper-play`
+  thread (`play`), which writes ~200 ms pieces with a `generation` check between them (an interrupt
+  lands within ~200 ms) and writes `STARVE_MS` of SILENCE whenever the next phrase is not ready, which
+  is what keeps the no-underrun rule. First audio on the 4a: 0.29 s for a line that takes 0.70 s to
+  render; the gain is larger on a slow head unit. Never write to the track from a path that can wait
+  on the synth without feeding silence. **Audio-focus is refcounted via the
   utterance callbacks; two audit-2026-07-06 leaks closed:** a system-TTS `speak()` returning `ERROR`
   enqueues no utterance so no callback ever fires - `VoiceGuide.speakViaSystem` now rolls back the focus
   acquire on `ERROR`; and a failed system-TTS `onInit` used to queue every prompt into `pending` forever

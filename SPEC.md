@@ -3304,10 +3304,14 @@ speaker per voice in `voice_speaker_<id>`.
 Rules:
 
 - **R8 must keep `com.k2fsa.sherpa.onnx.**`**: JNI resolves classes by original name.
-- **Generate the whole utterance before `AudioTrack.play()`.** Streaming underruns make
-  AudioFlinger drop the track, which aborts the process. The utterance is written in about
-  200 ms chunks with a generation check between them so an interrupt lands within that window
-  without underrunning.
+- **A line plays while it renders, and the stream never runs dry.** A line is rendered phrase
+  by phrase (`SpeechText.speechFragments`); `PiperSynth.speak` hands each phrase to a player
+  thread (`piper-play`) as it is made, so the wait before the first word is one phrase's render
+  (4a, a 52-character line: first audio at 0.29 s, all rendered at 0.70 s). A streaming underrun
+  makes AudioFlinger drop the track, which aborts the process, so when the next phrase is not
+  ready the player writes `STARVE_MS` (60) of silence. Audio is written in about 200 ms pieces
+  with a generation check between them so an interrupt lands within that window. Prepared lines
+  (`prepare`) are still rendered whole.
 - **A Piper voice speaks one language.** `VoiceGuide` compares `NeuralSynth.voiceLanguage`
   against the language the text was generated in and, on a mismatch, first asks
   `NeuralSynth.voiceFor(lang)`: the synth loads an INSTALLED voice of that language

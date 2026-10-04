@@ -225,39 +225,51 @@ class PiperSynth @Inject constructor(
                 // opener is prepared while the route preview is up, so Start does not synthesize while
                 // the camera flies in (two synth threads took the 4a's fast cores from the map).
                 val ready = synchronized(prepared) { prepared.remove(preparedKey(text, sid, spd)) }
-                val made = ready ?: synthesize(engine, text, sid, spd) { myGen != generation } ?: return@execute
-                var sampleRate = made.second
-                val samples = made.first
-                val frags = if (ready != null) emptyList() else SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
                 val vol = volume()
-                if (vol != 1.0f) {
-                    for (i in samples.indices) samples[i] = (samples[i] * vol).coerceIn(-1f, 1f)
+                val aborted = { myGen != generation }
+                // PLAY WHILE RENDERING (2026-10-04): a line is rendered phrase by phrase (see
+                // [synthesize]), and the first phrase used to wait for the last. Each phrase now goes
+                // to the player as it is made, so the wait before the first word is one phrase's
+                // render, not the line's. The player keeps the stream fed with silence when the next
+                // phrase is not ready (a longer beat at a comma, never an underrun: see STARVE_MS).
+                val queue = java.util.concurrent.LinkedBlockingQueue<FloatArray>()
+                var sampleRate = 22050
+                var player: java.util.concurrent.Future<Long>? = null
+                var firstAudioMs = -1L
+                var made = 0
+                fun feed(chunk: FloatArray, rate: Int) {
+                    if (chunk.isEmpty()) return
+                    if (vol != 1.0f) for (i in chunk.indices) chunk[i] = (chunk[i] * vol).coerceIn(-1f, 1f)
+                    made += chunk.size
+                    queue.put(chunk)
+                    if (player == null) {
+                        sampleRate = rate
+                        firstAudioMs = android.os.SystemClock.elapsedRealtime() - t0
+                        val at = ensureTrack(rate)
+                        player = playerThread.submit<Long> { play(at, rate, queue, aborted) }
+                    }
                 }
+                if (ready != null) feed(ready.first, ready.second)
+                else {
+                    val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
+                    for ((frag, gapAfter) in frags) {
+                        if (aborted()) break
+                        val (audio, rate) = render(engine, frag, sid, spd)
+                        feed(audio, rate)
+                        if (gapAfter > 0f) feed(FloatArray((rate * gapAfter).toInt()), rate)
+                    }
+                }
+                queue.put(END)
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 // How long a line waited (queue + model load) and took to make: a late "Starting
                 // navigation" on a slow head unit is one of the two (2026-10-03). No text: lengths only.
-                Log.i(TAG, "speak: waited ${t0 - asked} ms, ${if (ready != null) "prepared" else "synthesized in $genMs ms"}, ${text.length} chars")
-                if (myGen != generation) return@execute
-                if (samples.isNotEmpty()) {
-                    val at = ensureTrack(sampleRate)
-                    at.pause(); at.flush(); at.play()
-                    // Write in ~200 ms chunks with a generation check between them, so an INTERRUPT
-                    // (turn-now / rerouting / stop-nav / call-silencing bumps `generation`) takes effect
-                    // within ~200 ms instead of blocking for the whole utterance (audit 2026-07-06: a
-                    // single WRITE_BLOCKING of the full buffer defeated interrupt for up to utterance
-                    // length). Safe against the streaming-SIGABRT rule — the whole utterance is already
-                    // generated (`samples`), so back-to-back chunk writes keep the buffer full and can't
-                    // underrun; the inter-chunk gap is one int comparison. On abort, pause+flush kills the
-                    // buffered tail immediately so the urgent prompt isn't preceded by stale audio.
-                    val writeChunk = sampleRate / 5 // ~200 ms of float mono frames
-                    var off = 0
-                    while (off < samples.size) {
-                        if (myGen != generation) { runCatching { at.pause(); at.flush() }; return@execute }
-                        val n = minOf(writeChunk, samples.size - off)
-                        at.write(samples, off, n, AudioTrack.WRITE_BLOCKING)
-                        off += n
-                    }
-                    // DRAIN before finishing: WRITE_BLOCKING returns while the track buffer's tail
+                Log.i(TAG, "speak: waited ${t0 - asked} ms, ${if (ready != null) "prepared" else "first audio after $firstAudioMs ms, all rendered in $genMs ms"}, ${text.length} chars")
+                val p = player
+                if (p != null) {
+                    val at = track ?: return@execute
+                    // Frames the player wrote, the fed silence included: what the track must play out.
+                    val written = runCatching { p.get() }.getOrDefault(0L)
+                    // DRAIN before finishing: the last write returns while the track buffer's tail
                     // (~1 s — bufferSize is sampleRate*4 bytes = 1 s of float mono) is still PLAYING,
                     // and the NEXT queued prompt's pause+flush would chop it — the "spoken directions
                     // partially stacking" bug (the end of one direction swallowed as the next began,
@@ -268,10 +280,9 @@ class PiperSynth @Inject constructor(
                     // ~30 ms — the urgent prompt then flushes the tail exactly as before. onDone
                     // (audio-focus release) also now fires at the REAL end of audio, so music no
                     // longer un-ducks over the last words.
-                    val deadline = android.os.SystemClock.elapsedRealtime() +
-                        (samples.size.toLong() * 1000L / sampleRate) + 1000L
+                    val deadline = android.os.SystemClock.elapsedRealtime() + 2000L
                     while (myGen == generation &&
-                        runCatching { at.playbackHeadPosition }.getOrDefault(samples.size) < samples.size &&
+                        runCatching { at.playbackHeadPosition.toLong() }.getOrDefault(written) < written &&
                         android.os.SystemClock.elapsedRealtime() < deadline
                     ) {
                         Thread.sleep(30)
@@ -281,7 +292,7 @@ class PiperSynth @Inject constructor(
                     // prompts instead of holding a PLAYING stream (the next prompt plays it again).
                     if (myGen == generation) runCatching { at.pause() }
                 }
-                Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "${frags.size} frag."}) in ${genMs}ms")
+                Log.i(TAG, "spoke ${"%.1f".format(made / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "streamed"}) in ${genMs}ms")
             } catch (t: Throwable) {
                 Log.e(TAG, "speak failed: ${t.message}", t)
             } finally {
@@ -310,14 +321,52 @@ class PiperSynth @Inject constructor(
             // ("turn left") gives the model no final prosody contour, so it trails off and swallows
             // the last consonant, the real-drive "lef" instead of "left" (user 2026-07-06). The
             // semicolon contour was A/B'd best on this voice (see EnNavStrings.arrived).
-            val fragText = if (frag.lastOrNull()?.isLetterOrDigit() == true) "$frag;" else frag
-            val a = engine.generate(text = fragText, sid = sid, speed = spd)
-            sampleRate = a.sampleRate
-            if (a.samples.isNotEmpty()) chunks.add(a.samples)
+            val (audio, rate) = render(engine, frag, sid, spd)
+            sampleRate = rate
+            if (audio.isNotEmpty()) chunks.add(audio)
             if (gapAfter > 0f) chunks.add(FloatArray((sampleRate * gapAfter).toInt())) // spliced silence
         }
         return concat(chunks) to sampleRate
     }
+
+    /** One phrase's audio and its sample rate. */
+    private fun render(engine: OfflineTts, frag: String, sid: Int, spd: Float): Pair<FloatArray, Int> {
+        val fragText = if (frag.lastOrNull()?.isLetterOrDigit() == true) "$frag;" else frag
+        val a = engine.generate(text = fragText, sid = sid, speed = spd)
+        return a.samples to a.sampleRate
+    }
+
+    /** Plays queued audio until [END], on [playerThread]; returns the frames written. Writes in
+     *  ~200 ms pieces with an abort check between them, so an INTERRUPT (turn-now / rerouting /
+     *  stop-nav bumps `generation`) takes effect within ~200 ms; on abort, pause+flush kills the
+     *  buffered tail so the urgent prompt is not preceded by stale audio. When the next phrase is
+     *  not rendered yet it writes [STARVE_MS] of silence, so the stream never underruns (a
+     *  starved stream was the SIGABRT of the first streaming attempt). */
+    private fun play(at: AudioTrack, sampleRate: Int, queue: java.util.concurrent.BlockingQueue<FloatArray>, aborted: () -> Boolean): Long {
+        runCatching { at.pause(); at.flush(); at.play() }
+        val writeChunk = sampleRate / 5
+        val silence = FloatArray(sampleRate * STARVE_MS / 1000)
+        var written = 0L
+        while (true) {
+            if (aborted()) { runCatching { at.pause(); at.flush() }; return written }
+            val chunk = queue.poll(STARVE_MS.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (chunk === END) return written
+            if (chunk == null) {
+                at.write(silence, 0, silence.size, AudioTrack.WRITE_BLOCKING); written += silence.size
+                continue
+            }
+            var off = 0
+            while (off < chunk.size) {
+                if (aborted()) { runCatching { at.pause(); at.flush() }; return written }
+                val n = minOf(writeChunk, chunk.size - off)
+                at.write(chunk, off, n, AudioTrack.WRITE_BLOCKING)
+                off += n; written += n
+            }
+        }
+    }
+
+    private val playerThread = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "piper-play") }
+    private val END = FloatArray(0)
 
     /** Synthesize [text] now, at background priority, and keep the audio for the next [speak] of
      *  exactly this line with the same voice and speed (a few lines at most). */
@@ -427,5 +476,7 @@ class PiperSynth @Inject constructor(
         // Breath between BACK-TO-BACK prompts (after the drain): consecutive directions don't butt
         // against each other. Skipped when an interrupting prompt is waiting (generation moved).
         const val INTER_PROMPT_GAP_MS = 350L
+        /** Silence fed to the stream while the next phrase is still rendering. */
+        const val STARVE_MS = 60
     }
 }
