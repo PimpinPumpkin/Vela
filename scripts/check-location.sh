@@ -21,7 +21,7 @@ FAIL=0
 # The region catalogs list every state and country by design, so a term that is a region name
 # would otherwise block every catalog edit; they are data, not prose, and are the only exclusions.
 DIFF="$(git diff "$RANGE" -U0 -- . \
-  ':(exclude)tools/*regions*.json' ':(exclude)app/src/main/assets/region_polys.json' \
+  ':(exclude)tools/*regions*.json' ':(exclude)app/src/main/assets/region_polys.json' ':(exclude)tools/pronunciation/places.tsv' \
   ':(exclude)docs/stats/*' ':(exclude)*.pmtiles' 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
 MSGS="$(git log "$RANGE" --format='%B' 2>/dev/null || true)"
 while IFS= read -r term; do

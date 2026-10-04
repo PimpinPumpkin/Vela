@@ -1062,7 +1062,7 @@
     <string name="map_satellite_attribution_google" translatable="false">Google</string>
     <string name="map_osm_attribution" translatable="false">© OpenStreetMap</string>
     <string name="settings_map_data">Map data</string>
-    <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. The businesses on the map in covered regions are places data from the Overture Maps Foundation (sourced from Meta and Microsoft), available under the Community Data License Agreement, Permissive 2.0. Place details, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google.</string>
+    <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. The businesses on the map in covered regions are places data from the Overture Maps Foundation (sourced from Meta and Microsoft), available under the Community Data License Agreement, Permissive 2.0. Place details, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google. How the voice says some 3,500 place names comes from English Wikipedia and its contributors, under CC BY-SA 4.0.</string>
     <string name="settings_map_data_button">OpenStreetMap copyright</string>
     <string name="settings_map_data_overture_button">Overture Maps license</string>
     <string name="map_layers">Layers</string>

@@ -82,7 +82,7 @@ jobs:
           # state and country on purpose, so they are skipped, the same list as
           # scripts/check-location.sh (keep the two in step).
           git diff --unified=0 "$BASE" "$HEAD" -- . \
-            ':(exclude)tools/*regions*.json' ':(exclude)app/src/main/assets/region_polys.json' \
+            ':(exclude)tools/*regions*.json' ':(exclude)app/src/main/assets/region_polys.json' ':(exclude)tools/pronunciation/places.tsv' \
             ':(exclude)docs/stats/*' ':(exclude)*.pmtiles' > /tmp/range.diff
           git log --format='%B' "$BASE..$HEAD" > /tmp/range.msgs
 

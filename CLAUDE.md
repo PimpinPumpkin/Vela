@@ -5513,7 +5513,14 @@ Gotchas:
   module). The default is **HFC Female** (`en_US-hfc_female-medium`, ~67 MB); it becomes the default
   voice once present. **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class
   com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and the audio stream must NEVER
-  UNDERRUN (streaming underruns → AudioFlinger drops the track → SIGABRT). **Since 2026-10-04 a line
+  UNDERRUN. **Place-name dictionary (2026-10-04):** `PlaceDictionary.install` swaps an English
+  voice's `en_dict` for `assets/pronunciation/en_dict` (eSpeak's own plus 3,484 Wikipedia place
+  names from `tools/pronunciation/places.tsv`, built by `scripts/build-espeak-dict.sh` against a
+  Piper voice's own `espeak-ng-data`; dial `placeDictionary` 0 restores the stock file). ONLY the
+  Wikipedia list goes in: the owner's hand-written table in the Alyo repo stays out of Vela, it
+  holds places near him. Checked on the 4a by the install log line and a normal voice test, and
+  on a desktop with `espeak-ng --ipa` before and after; not by ear.
+  The stream rule again (streaming underruns → AudioFlinger drops the track → SIGABRT). **Since 2026-10-04 a line
   plays while it renders:** `speak` renders phrase by phrase and feeds each phrase to the `piper-play`
   thread (`play`), which writes ~200 ms pieces with a `generation` check between them (an interrupt
   lands within ~200 ms) and writes `STARVE_MS` of SILENCE whenever the next phrase is not ready, which

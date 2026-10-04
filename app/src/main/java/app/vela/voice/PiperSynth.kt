@@ -146,6 +146,8 @@ class PiperSynth @Inject constructor(
         runCatching { cur?.release() }
         tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
         val loadStart = android.os.SystemClock.elapsedRealtime()
+        // Place names said the local way: swap the voice's English dictionary before it is read.
+        PlaceDictionary.install(context, r.voiceId, r.dataDir)
         // Two attempts: a voice loaded the instant its download/extract finishes can lose the race with
         // the filesystem flush on some devices — the first OfflineTts load throws, and (without a retry)
         // loadFailed sticks so the voice stays SILENT until an app restart. A brief retry heals it.

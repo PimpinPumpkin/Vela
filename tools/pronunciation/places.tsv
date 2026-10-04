@@ -1,0 +1,3495 @@
+# Place names the Piper voices would say wrong, with the local pronunciation in eSpeak NG's
+# notation. Made by scripts/wikipedia-places.py; do not edit by hand, fix a name in
+# app/src/main/assets/pronunciation/en.tsv instead, which wins over this file.
+#
+# The pronunciations are from the English Wikipedia articles named in the last column, by
+# their contributors, under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+#
+# The third column says which voices an entry is for: a name said one way in North America and
+# another elsewhere has a line for American voices and a line for the rest.
+#
+# name	sounds	voices	country	article
+Abbeyfeale	'abifeIl	all	IE	Abbeyfeale
+Abbeyleix	'abil,i:ks	all	IE	Abbeyleix
+Abbots Deuglie	,ab@tsdju:gl'i	all	GB	Abbots Deuglie
+Abbots Langley	'ab@tsl'aNli	all	GB	Abbots Langley
+Aberdeen	'ab3di:n	american	US	Aberdeen, Washington
+Aberdour	,ab3d'aU@	all	GB	Aberdour
+Aberdyfi	ab@rd'Vvi:	all	GB	Aberdyfi
+Aberfoyle	'ab3fOIl	all	AU	Aberfoyle Park, South Australia
+Abergavenny	,ab3g@v'Eni	all	GB	Abergavenny
+Abertillery	,ab3tIl'e@i	all	GB	Abertillery
+Aberuthven	,ab@r'Iv@n	all	GB	Aberuthven
+Abilene	'abIli:n	all	US	Abilene, Texas
+Abriachan	@br'i:@x@n	all	GB	Abriachan
+Abronhill	eIbr'0nhIl	all	GB	Abronhill
+Absecon	abs'i:kIn	all	US	Absecon, New Jersey
+Abydel	'abidEl	all	US	Abydel, Indiana
+Acadiana	@k,eIdi'an@	all	US	Acadiana
+Acaster Malbis	'eIkast3m'albIs	all	GB	Acaster Malbis
+Accokeek	'ak@ki:k	all	US	Accokeek, Maryland
+Accrington	'akrINt@n	all	GB	Accrington
+Acharacle	@h'ar@k@L	all	GB	Acharacle
+Achiltibuie	,axIltIb'u:i	all	GB	Achiltibuie
+Achnafauld	,axn@f'O:ld	all	GB	Achnafauld
+Achonry	ak'O:nri:	all	IE	Achonry
+Acomb	'eIk@m	all	GB	Acomb, North Yorkshire
+Acrise	'eIkrIs	all	GB	Acrise
+Acton Beauchamp	'akt@nb'i:tS@m	all	GB	Acton Beauchamp
+Acushnet	@k'USn@t	all	US	Acushnet, Massachusetts
+Adak	'eIdak	all	US	Adak, Alaska
+Adaminaby	ad@m'In@bi	all	AU	Adaminaby
+Addiscombe	'adIsk@m	all	GB	Addiscombe
+Addlestone	'ad@Lst@n	all	GB	Addlestone
+Adel	'eIdEl	american	US	Adel, Georgia
+Aeneas	'i:ni:@s	all	US	Aeneas Valley
+Agassiz	'ag@si	all	CA	Agassiz, British Columbia
+Agincourt	'eIdZInkO:rt	all	CA	Agincourt, Toronto
+Agoura	@g'O:r@	all	US	Agoura, California
+Agoura Hills	@g'O@@h'Ilz	all	US	Agoura Hills, California
+Aguada	@gw'A:d@	all	US	Aguada, Puerto Rico
+Ahnapee	'an@pi	all	US	Ahnapee, Wisconsin
+Ahoghill	@h'0hIl	all	GB	Ahoghill
+Ahoskie	A:h'0ski	all	US	Ahoskie, North Carolina
+Ahtanum	@t'En@m	all	US	Ahtanum, Washington
+Ahuntsic	@h'VntsIk	all	CA	Ahuntsic
+Aigburth	'Egb3T	all	GB	Aigburth
+Aike	jak	all	GB	Aike
+Aillik	'aIlIk	all	CA	Aillik, Newfoundland and Labrador
+Airntully	e@nt'Vli	all	GB	Airntully
+Aislaby	'eIz@Lbi	all	GB	Aislaby, County Durham
+Aitkin	'eIkIn	all	US	Aitkin County, Minnesota
+Akaska	@k'ask@	all	US	Akaska, South Dakota
+Aklavik	@kl'avIk	all	CA	Aklavik
+Akutan	'aku:tan	all	US	Akutan, Alaska
+Alaiedon	'al@d@n	all	US	Alaiedon Township, Michigan
+Alamance	'al@mans	all	US	Alamance County, North Carolina
+Alamogordo	,al@m@g'O@doU	all	US	Alamogordo, New Mexico
+Albany	'alb@ni	british	AU	Albany, Western Australia
+Albemarle	'alb@m,A:rl	all	US	Albemarle, North Carolina
+Alberni	alb'3:ni	all	CA	Port Alberni
+Albert Lea	,alb3tl'i:	all	US	Albert Lea, Minnesota
+Alborn	'alb3n	all	US	Alborn Township, St. Louis County, Minnesota
+Alcester	'0lst3	all	GB	Alcester
+Aldbourne	'O:ldbO@n	all	GB	Aldbourne
+Aldbury	'O:ldb3i	all	GB	Aldbury
+Aldeburgh	'O:lb3@	all	GB	Aldeburgh
+Aldermaston	'O:ld3mA:st@n	all	GB	Aldermaston
+Alderwasley	,al3zl'i:	all	GB	Alderwasley
+Aldgate	'O:lgeIt	all	GB	Aldgate
+Aldinga	O:ld'INg@	all	AU	Aldinga, South Australia
+Aldouane	'aldweIn	all	CA	Aldouane, New Brunswick
+Aledo	@l'i:doU	all	US	Aledo, Illinois
+Aleknagik	@l'Ekn@gIk	all	US	Aleknagik, Alaska
+Aleutians	@lj'u:S@nz	all	US	Aleutians East Borough, Alaska
+Alford	'A:f3d	all	GB	Alford, Aberdeenshire
+Alfreton	'0lfrIt@n	all	GB	Alfreton
+Algarkirk	'aldZ3k3:k	all	GB	Algarkirk
+Algonac	'O:lg@n,ak	all	US	Algonac, Michigan
+Alida	@l'i:d@	all	CA	Alida, Saskatchewan
+Alief	'eIli:f	all	US	Alief, Houston
+Alisal	'alIsal	all	US	Alisal, Salinas, California
+Alki	'alkaI	all	US	Alki Point, Seattle
+Allakaket	al@k'akIt	all	US	Allakaket, Alaska
+Allamakee	'al@m@k,i	all	US	Allamakee County, Iowa
+Allanfearn	,al@nf'3:n	all	GB	Allanfearn
+Allegan	'al@g@n	all	US	Allegan County, Michigan
+Alleghany	,alIg'eIni	all	US	Alleghany County, North Carolina
+Allegheny	,alIg'eIni	all	US	Allegheny County, Pennsylvania
+Allesley	'O:lzli	all	GB	Allesley
+Allestree	'al@ztri	all	AU	Allestree, Victoria
+Allihies	al'ahi:z	all	IE	Allihies
+Alloa	'aloU@	all	GB	Alloa
+Almeley	'amli:	all	GB	Almeley
+Almondbury	'A:m@ndb3I	all	GB	Almondbury
+Almondsbury	'A:m@ndzb3I	all	GB	Almondsbury
+Almonte	'alm0nt	all	CA	Almonte, Ontario
+Almota	alm'oUt@	all	US	Almota, Washington
+Alness	'O:ln@s	all	GB	Alness
+Alnham	'aln@m	all	GB	Alnham
+Alnmouth	'al@nmaUT	all	GB	Alnmouth
+Alnwick	'anIk	all	GB	Alnwick
+Alnwickhill	'anIkhIl	all	GB	Alnwickhill
+Alperton	'alp@t@n	all	GB	Alperton
+Alrewas	'O:lrIw@s	all	GB	Alrewas
+Alsager	'O:lseIdZ3	all	GB	Alsager
+Altamont	'alt@m0nt	all	US	Altamont, Missouri
+Altarnun	,O:lt3n'Vn	all	GB	Altarnun
+Altheimer	'A:ltaIm3	all	US	Altheimer, Arkansas
+Altnabreac	,altn@br'Ek	all	GB	Altnabreac
+Alton	'O:lt@n	all	US	Alton, Illinois
+Alvada	alv'eId@	all	US	Alvada, Ohio
+Alvechurch	'alvtS3:tS	all	GB	Alvechurch
+Alverdiscott	'0lsk0t	all	GB	Alverdiscott
+Alvwood	'O:lvwUd	all	US	Alvwood Township, Itasca County, Minnesota
+Alyth	'eIlIT	all	GB	Alyth
+Amador	'am@dO@	all	US	Amador County, California
+Amagansett	,am@g'ans@t	all	US	Amagansett, New York
+Amaroo	'am@ru:	all	AU	Amaroo, Australian Capital Territory
+Amersham	'am3S@m	all	GB	Amersham
+Amesbury	'eImzb3i	all	GB	Amesbury
+Amissville	'eImIsvIl	all	US	Amissville, Virginia
+Amory	'eIm3i	all	US	Amory, Mississippi
+Ampthill	'amthIl	all	GB	Ampthill
+Anacortes	,an@k'O@t@s	all	US	Anacortes, Washington
+Anacostia	,an@k'A:sti@	all	US	Anacostia
+Anahuac	'an@wak	all	US	Anahuac, Texas
+Anakie	'an@ki:	all	AU	Anakie, Victoria
+Angelina	,andZ@l'i:n@	all	US	Angelina County, Texas
+Angier	'andZ3:	all	US	Angier, North Carolina
+Angora	aNg'O@@	all	US	Angora Township, St. Louis County, Minnesota
+Anick	'eInIk	all	GB	Anick
+Ankeny	'eINk@ni	all	US	Ankeny, Iowa
+Annaghmore	an@m'O@	all	GB	Annaghmore, County Armagh
+Anoka	@n'oUk@	all	US	Anoka County, Minnesota
+Anstruther	'anstr@D3	all	GB	Anstruther
+Anthorn	'anTO:rn	all	GB	Anthorn
+Antigo	'antIgoU	all	US	Antigo, Wisconsin
+Antigonish	,antIg@n'IS	all	CA	Antigonish, Nova Scotia
+Antrim	'antr@m	all	GB	County Antrim
+Apalachicola	,ap@latSIk'oUl@	all	US	Apalachicola, Florida
+Apalachin	,ap@l'eIkIn	all	US	Apalachin, New York
+Appalachia	,ap@l'atS@	all	US	Appalachia
+Appomattox	,ap@m'at@ks	all	US	Appomattox, Virginia
+Apuldram	'ap@Ldram	all	GB	Apuldram
+Aquebogue	'akw@b,A:g	all	US	Aquebogue, New York
+Aquilla	@kw'Il@	all	US	Aquilla, Texas
+Aquinnah	@kw'In@	all	US	Aquinnah, Massachusetts
+Arabi	'ar@bi	all	US	Arabi, Louisiana
+Aranda	'@rand@	all	AU	Aranda, Australian Capital Territory
+Aransas	@r'anz@s	all	US	Aransas County, Texas
+Arbela	A@b'i:l@	all	US	Arbela, Missouri
+Arbroath	A@br'oUT	all	GB	Arbroath
+Ardara	A@dr'A:	all	IE	Ardara, County Donegal
+Ardcharnich	A@dtS'A@nIx	all	GB	Ardcharnich
+Ardclough	A@dkl'0x	all	IE	Ardclough
+Arden	,A@d'En	british	GB	Arden, Glasgow
+Ardersier	'A:rd@sir	all	GB	Ardersier
+Ardgay	A@dg'aI	all	GB	Ardgay
+Ardingly	'A@dINlaI	all	GB	Ardingly
+Ardlethan	A@dl'i:T@n	all	AU	Ardlethan
+Ardoch	'A@d0x	all	GB	Ardoch, Perth and Kinross
+Ardrishaig	A@dr'ISIg	all	GB	Ardrishaig
+Ardrossan	A@dr'0s@n	all	GB	Ardrossan
+Ardtalnaig	,A@dt'alnIg	all	GB	Ardtalnaig
+Arecibo	,ar@s'i:boU	all	US	Arecibo, Puerto Rico
+Arenac	'e@@nak	all	US	Arenac County, Michigan
+Argentia	A@dZ'EntS@	all	CA	Argentia
+Argos	'A@g@s	all	US	Argos, Indiana
+Arispe	@r'Ispi:	all	US	Arispe, Iowa
+Arlesey	'A@lzi	all	GB	Arlesey
+Armuchee	A@m'3:tSi:	all	US	Armuchee, Georgia
+Arnos Grove	'A:n0sgr'oUv	all	GB	Arnos Grove
+Arrochar	'ar@x3	all	GB	Arrochar, Argyll
+Arrowsic	@r'oUsIk	all	US	Arrowsic, Maine
+Arvada	A@v'ad@	all	US	Arvada, Colorado
+Ashaway	'aS@weI	all	US	Ashaway, Rhode Island
+Ashburnham	'aSb3:nh,am	all	US	Ashburnham, Massachusetts
+Ashtabula	,aSt@bj'u:l@	all	US	Ashtabula County, Ohio
+Ashtead	'aStEd	all	GB	Ashtead
+Ashwaubenon	aSw'O:bIn0n	all	US	Ashwaubenon, Wisconsin
+Askeaton	ask'it@n	all	US	Askeaton, Wisconsin
+Askerswell	'ask3zw@L	all	GB	Askerswell
+Askov	'askoU	all	US	Askov, Minnesota
+Asotin	@s'oUt@n	all	US	Asotin County, Washington
+Aspotogan	,asp@t'oUg@n	all	CA	Aspotogan, Nova Scotia
+Assiginack	@s'IgInak	all	CA	Assiginack
+Assonet	@s'oUnIt	all	US	Assonet, Massachusetts
+Aswarby	'az3bi	all	GB	Aswarby
+Athabasca	,aT@b'ask@	all	CA	Athabasca, Alberta
+Athelstaneford	'aT@LsteInf3d	all	GB	Athelstaneford
+Athelstone	'aT@Lst@n	all	AU	Athelstone, South Australia
+Athenry	aT@nr'aI	all	IE	Athenry
+Atherstone	'aD3st@n	all	GB	Atherstone
+Atherton	'aT@rt@n	american	US	Atherton, California
+Atherton	'aD@rt@n	british	GB	Atherton, Greater Manchester
+Athlone	aTl'oUn	all	IE	Athlone
+Atikokan	,atIk'oUk@n	all	CA	Atikokan
+Atlanta	atl'ant@	all	US	Atlanta
+Atoka	@t'oUk@	all	US	Atoka, Tennessee
+Attala	'at@L@	all	US	Attala County, Mississippi
+Attalia	at'alj@	all	US	Attalia, Washington
+Au Sable	O:s'A:b@L	all	US	Au Sable, Michigan
+AuSable	0s'eIb@L	all	US	AuSable, New York
+Auchenblae	,O:x@nbl'eI	all	GB	Auchenblae
+Auchenflower	'O:k@nflaU3	all	AU	Auchenflower
+Auchenshuggle	,0x@nS'Ug@L	all	GB	Auchenshuggle
+Auchinleck	'aflEk	all	GB	Auchinleck
+Auchterarder	0xt@r'A:rd3	all	GB	Auchterarder
+Auchtermuchty	,O:xt3m'Vxti	all	GB	Auchtermuchty
+Auchtertool	0xt3t'Ul	all	GB	Auchtertool
+Augathella	'O:g@TEl@	all	AU	Augathella
+Aughertree	'af3tri:	all	GB	Aughertree
+Aurukun	ar@k'u:n	all	AU	Aurukun, Queensland
+Austwell	'O:swEl	all	US	Austwell, Texas
+Aux Sable	,O:kss'eIb@l	all	US	Aux Sable Township, Grundy County, Illinois
+Avebury	'eIvb3i	all	GB	Avebury (village)
+Avening	'eIvnIN	all	GB	Avening
+Averham	'e@@m	all	GB	Averham
+Aveton Gifford	'O:t@ndZ'If3d	all	GB	Aveton Gifford
+Avoca	'avoUk@	american	US	Avoca, Minnesota
+Avoca	@v'oUk@	british	AU	Avoca Beach
+Avoch	'0x	all	GB	Avoch
+Avondale	'av@ndeIl	all	US	Avondale, Chicago
+Avonmouth	'eIv@nmaUT	all	GB	Avonmouth
+Awendaw	'O:wIndO:	all	US	Awendaw, South Carolina
+Aylesbury	'eIlzb3i	all	GB	Aylesbury
+Aylesham	'eIlS@m	all	GB	Aylesham
+Aymestrey	'eImstri:	all	GB	Aymestrey
+Aynho	'eInhoU	all	GB	Aynho
+Ayrshire	'aS3	all	US	Ayrshire, Indiana
+Azle	'eIz@L	all	US	Azle, Texas
+Baccaro	b'ak@roU	all	CA	Baccaro, Nova Scotia
+Baddeck	b@d'Ek	all	CA	Baddeck
+Baden	b'eIdEn	all	CA	Baden, Ontario
+Bagenalstown	b'agn@LztaUn	all	IE	Bagenalstown
+Bagnell	b'agnEl	all	US	Bagnell, Missouri
+Baguley	b'ag@Li	all	GB	Baguley
+Bailieborough	b'eIlib3@	all	IE	Bailieborough
+Bala Cynwyd	b,al@k'InwUd	all	US	Bala Cynwyd, Pennsylvania
+Balbeggie	balb'Egi	all	GB	Balbeggie
+Balch	bA:ltS	all	US	Balch Springs, Texas
+Baldernock	bald'3:n@k	all	GB	Baldernock
+Baldhu	baldj'u:	all	GB	Baldhu
+Baldock	b'O:ld@k	all	GB	Baldock
+Balerno	b@l'3:noU	all	GB	Balerno
+Balgreen	bO:lgr'i:n	all	GB	Balgreen
+Balham	b'al@m	all	GB	Balham
+Ballachulish	b,al@x'u:lIS	all	GB	Ballachulish
+Ballarat	b,al@r'at	all	AU	Ballarat
+Ballard	b'al3d	all	US	Ballard, Utah
+Ballater	b'al@t3	all	GB	Ballater
+Ballaugh	b@l'af	all	GB	Ballaugh
+Ballifeary	b,alIf'e@i	all	GB	Ballifeary
+Ballina	b,al@n'A:	all	IE	Ballina, County Mayo
+Ballinasloe	b,aln@sl'oU	all	IE	Ballinasloe
+Ballinger	b'alIndZ3	all	US	Ballinger, Texas
+Ballingry	b@l'INg@ri	all	GB	Ballingry
+Ballinlough	b,alInl'0x	all	IE	Ballinlough, County Roscommon
+Ballybofey	b,alib@f'eI	all	IE	Ballybofey
+Ballyhaise	b'ali:h,eIz	all	IE	Ballyhaise
+Ballyharry	b,alih'ari	all	GB	Ballyharry
+Ballyheigue	b,alih'aIg	all	IE	Ballyheigue
+Ballyknockan	bal@n'0k@n	all	IE	Ballyknockan
+Ballymena	b,alim'i:n@	all	GB	Ballymena
+Balmaghie	balm@g'i:	all	GB	Balmaghie
+Balmorhea	b,alm@r'eI	all	US	Balmorhea, Texas
+Balornock	b@l'O@n@k	all	GB	Balornock
+Balranald	balr'an@Ld	all	AU	Balranald
+Baltimore	b'O:ltIm,O@	american	US	Baltimore
+Baltimore	b'altImO@	british	IE	Baltimore, County Cork
+Balwyn	b'O:lw@n	all	AU	Balwyn
+Bamaga	b'am@g@	all	AU	Bamaga
+Bamburgh	b'amb3@	all	GB	Bamburgh
+Banagher	b'an@h3	all	GB	Banagher, County Londonderry
+Banavie	b'an@vi	all	GB	Banavie
+Banbridge	banbr'IdZ	all	GB	Banbridge
+Bandera	band'Er@	all	US	Bandera County, Texas
+Bangerang	b'andZ@raN	all	AU	Bangerang, Victoria
+Bangor	b'aNgO@	american	US	Bangor, Maine
+Banquete	baNk'Eti	all	US	Banquete, Texas
+Bantham	b'anT@m	all	GB	Bantham
+Baraboo	b'e@@bu:	all	US	Baraboo, Wisconsin
+Baraga	b'e@@g@	all	US	Baraga County, Michigan
+Barataria	b,e@@t'e@i@	all	US	Barataria, Louisiana
+Barcaldine	bA@k'O:ldIn	all	AU	Barcaldine, Queensland
+Barellan	bA:r'El@n	all	AU	Barellan
+Bargara	b@g'A@@	all	AU	Bargara, Queensland
+Bargersville	b'A@g3zvIl	all	US	Bargersville, Indiana
+Barham	b'ar@m	all	GB	Barham, Kent
+Barholm	b'ar@m	all	GB	Barholm
+Barkhamsted	bA:rkh'amstEd	all	US	Barkhamsted, Connecticut
+Barkisland	b'A:kIsl@nd	all	GB	Barkisland
+Barlanark	b,A:rl'A:n3k	all	GB	Barlanark
+Barmulloch	bA@m'Vl@x	all	GB	Barmulloch
+Barnardiston	bA@n3d'Ist@n	all	GB	Barnardiston
+Barnoldswick	bA@n'0ldzwIk	all	GB	Barnoldswick
+Barnsley	b'A@nzli	all	GB	Barnsley
+Barnstaple	b'A@nst@b@L	all	GB	Barnstaple
+Barraba	b'ar@b@	all	AU	Barraba, New South Wales
+Barrhead	b'A@hEd	all	CA	Barrhead, Alberta
+Barriere	b@r'i@	all	CA	Barriere, British Columbia
+Barrowford	b,aroUf'O@d	all	GB	Barrowford
+Barugh	b'A@f	all	GB	Barugh (Great and Little)
+Bascom	b'ask@m	all	US	Bascom, Ohio
+Basehor	b'eIs3	all	US	Basehor, Kansas
+Basingstoke	b'eIzINstoUk	all	GB	Basingstoke
+Bassano	b@s'anoU	all	CA	Bassano, Alberta
+Bastrop	b'astr@p	all	US	Bastrop, Texas
+Batavia	b@t'eIvi@	all	US	Batavia, Illinois
+Bathampton	bA:T'ampt@n	all	GB	Bathampton
+Bathurst	b'at3st	american	CA	Bathurst, New Brunswick
+Battiest	b@t'i:st	all	US	Battiest, Oklahoma
+Baughurst	b'O:gh3st	all	GB	Baughurst
+Bauline	b@l'i:n	all	CA	Bauline
+Baumber	b'O:mb@r	all	GB	Baumber
+Bawburgh	b'eIb3	all	GB	Bawburgh
+Bayonne	beIj'oUn	all	US	Bayonne, New Jersey
+Bayou La Batre	b,aIoUl@b'atri	all	US	Bayou La Batre, Alabama
+Beallsville	b'ElzvIl	all	US	Beallsville, Ohio
+Beaminster	b'EmInst3	all	GB	Beaminster
+Bearii	b'i@aI	all	AU	Bearii
+Bearley	b'i@lI	all	GB	Bearley
+Bearsden	be@zd'En	all	GB	Bearsden
+Bearsted	b'e@stEd	all	GB	Bearsted
+Beatrice	bi'atrIs	all	US	Beatrice, Nebraska
+Beaudesert	b'Elz3	all	GB	Beaudesert, Warwickshire
+Beauharnois	boUh'A@nwA:	all	CA	Beauharnois, Quebec
+Beauly	bju:l'i	all	GB	Beauly
+Beaumaris	boUm'0r@s	british	AU	Beaumaris, Victoria
+Beausejour	b,oUz@Z'U@	all	CA	Beausejour, Manitoba
+Beauworth	bj'u:w@rT	all	GB	Beauworth
+Beaux Arts	b'oUz'A@ts	all	US	Beaux Arts Village, Washington
+Bebington	b'EbINt@n	all	GB	Bebington
+Beckenham	b'Ek@n@m	all	GB	Beckenham
+Beckermet	bEk'3:mIt	all	GB	Beckermet
+Becontree	b'Ek@ntri:	all	GB	Becontree
+Bedale	b'i:deIl	all	GB	Bedale
+Bedias	b'i:daIs	all	US	Bedias, Texas
+Beersheba	b'3:S@b@	all	US	Beersheba Springs, Tennessee
+Beerwah	b'i@wA:	all	AU	Beerwah, Queensland
+Begbroke	b'EgbrUk	all	GB	Begbroke
+Beiseker	b'aIsIk3	all	CA	Beiseker
+Beith	bi:D	all	GB	Beith
+Bejou	b'i:Zu:	all	US	Bejou, Minnesota
+Belanglo	b@l'aNgloU	all	AU	Belanglo, New South Wales
+Belbroughton	bElbr'O:t@n	all	GB	Belbroughton
+Belconnen	bElk'0nIn	all	AU	Belconnen
+Belcoo	bElk'u:	all	GB	Belcoo
+Belen	b@l'In	all	US	Belen, New Mexico
+Belknap	b'Elnap	all	US	Belknap County, New Hampshire
+Bellahouston	b,El@h'u:st@n	all	GB	Bellahouston
+Bellaire	b'Ele@	all	US	Bellaire, Michigan
+Bellangry	b@l'aNgri	all	AU	Bellangry, New South Wales
+Belle Chasse	bEltS'eIs	all	US	Belle Chasse, Louisiana
+Belle Fontaine	b,Elf0nt'En	all	US	Belle Fontaine, Mobile County, Alabama
+Belle Plaine	b,Elpl'aIn	all	US	Belle Plaine, Minnesota
+Bellefontaine	bElf'aUnt@n	all	US	Bellefontaine, Ohio
+Belleoram	b@l'O@@m	all	CA	Belleoram
+Bellingham	b'ElINham	american	US	Bellingham, Washington
+Bellmawr	b'ElmA@	all	US	Bellmawr, New Jersey
+Bellochantuy	b'EloUxanti	all	GB	Bellochantuy
+Beloeil	bEl'aIl	all	CA	Beloeil, Quebec
+Beloit	b@l'OIt	all	US	Beloit, Wisconsin
+Belpre	b'Elpri	all	US	Belpre, Ohio
+Beltingham	b'EltIndZ@m	all	GB	Beltingham
+Beltrami	bEltr'ami	all	US	Beltrami County, Minnesota
+Belturbet	bElt'3:b@t	all	IE	Belturbet
+Belzoni	bElz'oUn@	all	US	Belzoni, Mississippi
+Bemidji	b@m'IdZi:	all	US	Bemidji, Minnesota
+Benalla	b@n'al@	all	AU	Benalla
+Benavides	b,En@v'i:d@s	all	US	Benavides, Texas
+Benewah	b'En@w,A:	all	US	Benewah County, Idaho
+Bengeo	b'EndZoU	all	GB	Bengeo
+Bengough	b'EngO:f	all	CA	Bengough, Saskatchewan
+Benicia	b@n'i:S@	all	US	Benicia, California
+Benld	b@n'Eld	all	US	Benld, Illinois
+Beowawe	b,eIoUw'A:w,i:	all	US	Beowawe, Nevada
+Berczy	b'3:zi	all	CA	Berczy Village
+Bere Regis	b'i@r'i:dZIs	all	GB	Bere Regis
+Berea	b@r'i:@	all	US	Berea, Ohio
+Beresfield	b'Er@sfi:ld	all	AU	Beresfield
+Bergholz	b'3:ghoUlz	all	US	Bergholz, Ohio
+Berkhamsted	b'3:k@mstEd	all	GB	Berkhamsted
+Berkswell	b'3:ksw@L	all	GB	Berkswell
+Berkswich	b'A:kswItS	all	GB	Berkswich
+Bermondsey	b'3:m@ndzi	all	GB	Bermondsey
+Bernalillo	b,3:n@l'i:joU	all	US	Bernalillo County, New Mexico
+Bernardsville	b'3:n3dzvIl	all	US	Bernardsville, New Jersey
+Berowra	b@r'aUr@	all	AU	Berowra
+Berrick Salome	b'ErIks'al@m	all	GB	Berrick Salome
+Berriedale	b'ErideIl	all	AU	Berriedale, Tasmania
+Berryville	b'Vr@v,Ul	all	US	Berryville, Arkansas
+Berthierville	b'e@tjeIvIl	all	CA	Berthierville
+Bertie	b'3:t'i:	all	US	Bertie County, North Carolina
+Bessacarr	b'Es@k3	all	GB	Bessacarr
+Bettws	b'Etu:s	all	GB	Bettws, Bridgend
+Beurys	b'Eriz	all	US	Beurys Lake, Pennsylvania
+Bevier	b@v'i@	all	US	Bevier, Missouri
+Bevois	b'i:vIs	all	GB	Bevois Valley
+Bewdley	bju:dl'i	all	GB	Bewdley
+Bewick	bju:'Ik	all	GB	Bewick, Northumberland
+Bicester	b'Ist3	all	GB	Bicester
+Bicheno	b'ISEnoU	all	AU	Bicheno, Tasmania
+Biddeford	b'IdIf3d	all	US	Biddeford, Maine
+Bienfait	b'i:nfeIt	all	CA	Bienfait
+Biggleswade	b'Ig@LzweId	all	GB	Biggleswade
+Billericay	bIl@r'Iki:	all	GB	Billericay
+Billesdon	b'Ilzd@n	all	GB	Billesdon
+Biloela	bIloU'i:l@	all	AU	Biloela
+Biloxi	bIl'Vksi	all	US	Biloxi, Mississippi
+Bilsborrow	b'Ilzb3@	all	GB	Bilsborrow
+Bindloss	b'aIndloUs	all	CA	Bindloss
+Binger	b'INg3	all	US	Binger, Oklahoma
+Bingham	b'IN@m	all	US	Bingham Township, Leelanau County, Michigan
+Birchanger	b'3tSaN3	all	GB	Birchanger
+Birkenhead	b,3:k@nh'Ed	all	GB	Birkenhead
+Birmingham	b'3:mINham	american	US	Birmingham, Alabama
+Biscay	b'Iski	all	US	Biscay, Minnesota
+Bisham	b'Is@m	all	GB	Bisham
+Bishopsteignton	b,IS@pst'eInt@n	all	GB	Bishopsteignton
+Bishopwearmouth	b,IS@pw'i@maUT	all	GB	Bishopwearmouth
+Bisley	b'Izli:	all	GB	Bisley, Surrey
+Bismarck	b'IzmA@k	all	US	Bismarck, North Dakota
+Biwabik	b'aIw@bIk	all	US	Biwabik, Minnesota
+Bjorkdale	b'3:kdeIl	all	CA	Bjorkdale
+Blaenau Ffestiniog	bl'eInaIfEst'Inj0g	all	GB	Blaenau Ffestiniog
+Blaenau Gwent	bl,aInaIgw'Ent	all	GB	Blaenau Gwent
+Blaengwrach	blaIngr'A:x	all	GB	Blaengwrach
+Blaina	bl'aIn@	all	GB	Blaina
+Blochairn	bl0x'e@n	all	GB	Blochairn
+Blomkest	bl'VmkEst	all	US	Blomkest, Minnesota
+Blythburgh	bl'aIDb3@	all	GB	Blythburgh
+Blytheville	bl'aIv@l	all	US	Blytheville, Arkansas
+Boarhunt	b'0r@nt	all	GB	Boarhunt
+Boca Raton	b,oUk@r@t'oUn	all	US	Boca Raton, Florida
+Bodyke	b'O:daIk	all	IE	Bodyke
+Boerne	b'3:ni	all	US	Boerne, Texas
+Bogan Gate	b'oUg@ng'eIt	all	AU	Bogan Gate
+Bogarttown	b'oUg3taUn	all	CA	Bogarttown, Ontario
+Bogata	b@g'oUt@	all	US	Bogata, Texas
+Boggabilla	b'0g@bIl@	all	AU	Boggabilla
+Boggabri	b'0g@braI	all	AU	Boggabri
+Bogniebrae	b,0gnibr'eI	all	GB	Bogniebrae
+Bognor Regis	b,0gn3r'i:dZIs	all	GB	Bognor Regis
+Bogue Chitto	boUgtS'It@	all	US	Bogue Chitto, Alabama
+Bois Blanc	bOIzbl'aNk	all	US	Bois Blanc Township, Michigan
+Boisdale	b'OIzdeIl	all	CA	Boisdale, Nova Scotia
+Boissevain	b'OIz@veIn	all	CA	Boissevain, Manitoba
+Bokoshe	b@k'oUS@	all	US	Bokoshe, Oklahoma
+Boligee	b'oUl@dZ,i	all	US	Boligee, Alabama
+Bolitho	b@l'aIToU	all	GB	Bolitho, Cornwall
+Bomarton	b'oUm3t@n	all	US	Bomarton, Texas
+Bon Homme	b'A:n@m	all	US	Bon Homme County, South Dakota
+Bon Secour	bA:ns@kj'u:r	all	US	Bon Secour, Alabama
+Bonaly	b@n'ali	all	GB	Bonaly
+Bonython	b@n'aIT@n	all	AU	Bonython, Australian Capital Territory
+Boondall	b'u:nd@l	all	AU	Boondall
+Boonton	b'u:t@n	all	US	Boonton, New Jersey
+Borehamwood	b,O@@mw'Ud	all	GB	Borehamwood
+Borger	b'O@g3	all	US	Borger, Texas
+Boroughbridge	b'Vr@brIdZ	all	GB	Boroughbridge
+Borrowash	b'0roUw0S	all	GB	Borrowash
+Boscobel	b'0skoUbEl	all	US	Boscobel, Wisconsin
+Boscombe	b'0sk@m	all	GB	Boscombe
+Bosham	b'0z@m	all	GB	Bosham
+Bosque	b'0ski	all	US	Bosque County, Texas
+Botetourt	b'0t@t0t	all	US	Botetourt County, Virginia
+Boughton Malherbe	b'O:t@nm'al3bi	all	GB	Boughton Malherbe
+Boulder Creek	b'@Uld@rkr'i:k	all	US	Boulder Creek, California
+Boulia	b'Uli@	all	AU	Boulia, Queensland
+Boulmer	b'u:m3	all	GB	Boulmer
+Bournemouth	b'O@nm@T	all	GB	Bournemouth
+Bournmoor	b'3:nmU@	all	GB	Bournmoor
+Bournville	b'O@nvIl	all	GB	Bournville
+Boutiliers	b'u:tIli@s	all	CA	Boutiliers Point, Nova Scotia
+Bovey Tracey	b,Vvitr'eIsi	all	GB	Bovey Tracey
+Bovinger	b'0vIndZ3	all	GB	Bovinger
+Bowdle	b'aUd@L	all	US	Bowdle, South Dakota
+Bowness	boUn'i:ZInz	all	CA	Bowness, Calgary
+Bowral	b'aUr@L	all	AU	Bowral
+Bozeat	b'oUZ@t	all	GB	Bozeat
+Bracknell	br'akn@L	all	GB	Bracknell
+Braco	br'eIkoU	all	GB	Braco, Perth and Kinross
+Branksome	br'aNks@m	all	GB	Branksome, Dorset
+Brantham	br'anT@m	all	GB	Brantham
+Braselton	br'az@Lt@n	all	US	Braselton, Georgia
+Brashear	br@S'i@	all	US	Brashear, Texas
+Brasted	br'eIstEd	all	GB	Brasted
+Bratenahl	br'at@nA:l	all	US	Bratenahl, Ohio
+Brattleboro	br'at@LbVroU	all	US	Brattleboro, Vermont
+Braughing	br'afIN	all	GB	Braughing
+Brazeau	br'azO:	all	US	Brazeau, Missouri
+Brazoria	br@z'O@i@	all	US	Brazoria County, Texas
+Breadalbane	br@d'O:lban	american	CA	Breadalbane, Prince Edward Island
+Breaffy	br'eIfi:	all	IE	Breaffy
+Breage	br'i:g	all	GB	Breage, Cornwall
+Breamore	br'Em3	all	GB	Breamore
+Breaston	br'i:st@n	all	GB	Breaston
+Brechin	br'i:xIn	all	GB	Brechin
+Breich	bri:x	all	GB	Breich
+Breidablick	br'aId@blIk	all	US	Breidablick, Washington
+Breightmet	br'eItm@t	all	GB	Breightmet
+Bremer	br'i:m3	all	US	Bremer County, Iowa
+Bremond	br'i:m0nd	all	US	Bremond, Texas
+Brenham	br'En@m	all	US	Brenham, Texas
+Brereton	br'i@t@n	all	GB	Brereton, Cheshire
+Brevard	br@v'A@d	all	US	Brevard County, Florida
+Brevort	brEv'O@t	all	US	Brevort Township, Michigan
+Brewood	br'u:d	all	GB	Brewood
+Brickell	br'Ik@L	all	US	Brickell
+Bridestowe	br'IdIstoU	all	GB	Bridestowe
+Bridgend	brIdZ'End	all	GB	Bridgend
+Brierfield	br,aI3f'i:ld	all	GB	Brierfield, Lancashire
+Brillion	br'Ilj@n	all	US	Brillion, Wisconsin
+Brimstage	br'ImstIdZ	all	GB	Brimstage
+Brixham	br'Iks@m	all	GB	Brixham
+Broadstone	br'O:dst@n	all	GB	Broadstone, Dorset
+Broadwey	br'O:dweI	all	GB	Broadwey
+Broadwindsor	br,O:dw'Inz3	all	GB	Broadwindsor
+Brochet	broUS'eI	all	CA	Brochet, Manitoba
+Brocklesby	br'0k@Lzbi	all	AU	Brocklesby, New South Wales
+Bromborough	br'0mb3@	all	GB	Bromborough
+Brondesbury	br'0ndzb3i	all	GB	Brondesbury
+Brookeborough	brUkb'Vr@	all	GB	Brookeborough
+Brora	br'oUr@	all	GB	Brora
+Brossard	br0s'A@	all	CA	Brossard
+Brosseau	br'u:soU	all	CA	Brosseau, Alberta
+Broughshane	br@S'eIn	all	GB	Broughshane
+Brunstane	br'Vnst@n	all	GB	Brunstane
+Bryanston	br'aI@nst@n	all	GB	Bryanston
+Bryn Mawr	brInm'A:r	all	US	Bryn Mawr, Pennsylvania
+Brynmawr	brInm'aU@	all	GB	Brynmawr
+Buangor	bju:'aNg@	all	AU	Buangor
+Buchans	b'Vk@nz	all	CA	Buchans
+Bucyrus	bju:s'aIr@s	all	US	Bucyrus, Ohio
+Buddina	b@d'i:n@	all	AU	Buddina, Queensland
+Buderim	b'Vdr@m	all	AU	Buderim
+Buena Vista	bju:n,@v'Ist@	all	US	Buena Vista, Virginia
+Buies	b'u:i:z	all	US	Buies Creek, North Carolina
+Bula	bju:l'@	all	US	Bula, Texas
+Bulahdelah	bUl@d'i:l@	all	AU	Bulahdelah, New South Wales
+Bullengarook	b@l'VNg3Uk	all	AU	Bullengarook
+Bulli	b'UlaI	all	AU	Bulli, New South Wales
+Bullio	b'UlioU	all	AU	Bullio, New South Wales
+Bulverde	bUlv'3:di	all	US	Bulverde, Texas
+Bulyea	b'UljeI	all	CA	Bulyea
+Buncrana	b'Vnkran@	all	IE	Buncrana
+Buncton	b'Vnt@n	all	GB	Buncton
+Bundanoon	b'Vnd@n,u:n	all	AU	Bundanoon, New South Wales
+Bungay	b'VNgi	all	GB	Bungay
+Buninyong	b'VnInj0N	all	AU	Buninyong
+Buraja	b'Vr@dZ@	all	AU	Buraja
+Buras	bj'Ur@s	all	US	Buras, Louisiana
+Bures	bju:'@z	all	GB	Bures, England
+Burgeo	b'3:dZoU	all	CA	Burgeo
+Burgess Hill	b,3:dZ@sh'Il	all	GB	Burgess Hill
+Burgh Heath	b,3:h'i:T	all	GB	Burgh Heath
+Burghfield	b'3:fild	all	GB	Burghfield
+Burgoon	b'3:gu:n	all	US	Burgoon, Ohio
+Burien	bjU@'i@n	all	US	Burien, Washington
+Burkburnett	b,3:kb3:n'Et	all	US	Burkburnett, Texas
+Burkettsville	b'3:kEtsvIl	all	US	Burkettsville, Ohio
+Burlescombe	b@rl'Esk@m	all	GB	Burlescombe
+Burleson	b'3:lIs@n	all	US	Burleson County, Texas
+Burneside	b'3:nisaId	all	GB	Burneside
+Burnettsville	b'3:n@tsv,Il	all	US	Burnettsville, Indiana
+Burntisland	b3:nt'aIl@nd	all	GB	Burntisland
+Burpham	b'3:f@m	all	GB	Burpham, Surrey
+Burradoo	b'Vr@du:	all	AU	Burradoo, New South Wales
+Burrillville	b'VrEvIl	all	US	Burrillville, Rhode Island
+Burrumbuttock	b'Vr@mbVt@k	all	AU	Burrumbuttock
+Burscough	b'3:skoU	all	GB	Burscough
+Burslem	b'3:zl@m	all	GB	Burslem
+Burton Joyce	b3:t@ndZ'OIs	all	GB	Burton Joyce
+Burwell	b'3:wEl	all	GB	Burwell, Cambridgeshire
+Bury St Edmunds	b'Eris@nt'Edm@ndz	all	GB	Bury St Edmunds
+Byhalia	baIh'eIlj@	all	US	Byhalia, Mississippi
+Bylaugh	b'i:l@	all	GB	Bylaugh
+Bynea	b'Inj@	all	GB	Bynea
+Byram	b'aIr@m	all	US	Byram, Mississippi
+Cabarrus	k@b'e@@s	all	US	Cabarrus County, North Carolina
+Caberfae	k'ab3f,eI	all	US	Caberfae, Michigan
+Caboolture	k@b'UltS3	all	AU	Caboolture
+Cacapon	k@k'eIp@n	all	US	Little Cacapon, West Virginia
+Cadillac	k'ad@lak	all	US	Cadillac, Michigan
+Cadoxton	k'ad@kst@n	all	GB	Cadoxton, Vale of Glamorgan
+Caerleon	k3l'i:@n	all	GB	Caerleon
+Caernarfon	k3n'A@v@n	all	GB	Caernarfon
+Caerphilly	k@f'Ili	all	GB	Caerphilly
+Cahir	k'e@	all	IE	Cahir
+Cahuilla	k@w'i:@	all	US	Cahuilla, California
+Caithness	keITn'Es	all	GB	Caithness
+Calabasas	k,al@b'as@s	all	US	Calabasas, California
+Calaveras	k,al@v'Er@s	all	US	Calaveras County, California
+Calcasieu	k'alk@S,u:	all	US	Calcasieu Parish, Louisiana
+Caldercruix	k,O:ld3kr'u:ks	all	GB	Caldercruix
+Caldmore	k'A:m@	all	GB	Caldmore
+Caledon	k'al@d@n	american	CA	Caledon, Ontario
+Caledon	k'alIdIn	british	GB	Caledon, County Tyrone
+Caledonia	k,al@d'oUni@	all	US	Caledonia, Trempealeau County, Wisconsin
+Calexico	k@l'EksIkoU	all	US	Calexico, California
+Caliente	kali'Enti	all	US	Caliente, Nevada
+Callestick	k@l'EstIk	all	GB	Callestick
+Calmar	k'alm3	all	US	Calmar, Iowa
+Calne	kA:n	all	GB	Calne
+Calneva	kaln'i:v@	all	US	Calneva, California
+Caloundra	k@l'aUndrV	all	AU	Caloundra
+Calwell	k'O:lwEl	all	AU	Calwell, Australian Capital Territory
+Camanche	k@m'antS	all	US	Camanche, Iowa
+Camano	k@m'eInoU	all	US	Camano Island
+Camarillo	k,am@r'i:oU	all	US	Camarillo, California
+Camas	k'am@s	all	US	Camas, Washington
+Cambois	k'am@s	all	GB	Cambois
+Cambuslang	k'amb@sl'aN	all	GB	Cambuslang
+Camelon	k'eIm@l@n	all	GB	Camelon
+Camlachie	k,aml'axi	all	GB	Camlachie
+Camlough	k'aml0x	all	GB	Camlough
+Campbeltown	k'amb@Lt@n	all	GB	Campbeltown
+Campobello	k,amp@b'EloU	all	CA	Campobello Island
+Canaan	k'eIn@n	all	US	New Canaan, Connecticut
+Canajoharie	k,an@dZ@h'e@i	all	US	Canajoharie, New York
+Canandaigua	k,an@nd'eIgw@	all	US	Canandaigua, New York
+Canarsie	k@n'A@si	all	US	Canarsie, Brooklyn
+Cando	k'andu:	all	US	Cando, North Dakota
+Caniapiscau	k,ani@p'IskoU	all	CA	Caniapiscau
+Canisteo	k,anIst'i:oU	all	US	Canisteo, New York
+Canowindra	k@n'aUndr@	all	AU	Canowindra
+Canterbury	k'ant3b3i	all	GB	Canterbury
+Canungra	k@n'VNgr@	all	AU	Canungra, Queensland
+Canyonleigh	k'anj@nli:	all	AU	Canyonleigh, New South Wales
+Capalaba	k@p'al@bA:	all	AU	Capalaba, Queensland
+Caragabal	k@r'ag@bUl	all	AU	Caragabal
+Caramut	k'ar@m@t	all	AU	Caramut
+Caraquet	k'A@@kEt	all	CA	Caraquet
+Cardenden	k,A@d@nd'En	all	GB	Cardenden
+Cardonald	kA@d'0n@Ld	all	GB	Cardonald
+Carencro	k'ar@nkroU	all	US	Carencro, Louisiana
+Cargelligo	kA@dZ'ElIgoU	all	AU	Lake Cargelligo, New South Wales
+Carlisle	k'A@laIl	american	US	Carlisle, Ohio
+Carlisle	kA@l'aIl	british	GB	Carlisle
+Carlsruhe	k'A@lzru:	all	AU	Carlsruhe, Victoria
+Carluke	kA@l'u:k	all	GB	Carluke
+Carmarthen	k3m'A@D@n	all	GB	Carmarthen
+Carmarthenshire	k3m'A@D@nS3	all	GB	Carmarthenshire
+Carmi	k'A@maI	all	CA	Carmi, British Columbia
+Carmunnock	kA@m'Vn@k	all	GB	Carmunnock
+Carmyle	kA@m'aIl	all	GB	Carmyle
+Carnalea	kA:rn@l'i	all	GB	Carnalea
+Carnarvon	k3n'A@v@n	all	AU	Carnarvon, Western Australia
+Carngham	k'A@n@m	all	AU	Carngham
+Carnlough	kA@nl'0x	all	GB	Carnlough
+Carnoustie	kA@n'u:sti	all	GB	Carnoustie
+Carntyne	k,A@nt'aIn	all	GB	Carntyne
+Carondelet	k@r'0nd@LEt	all	US	Carondelet, St. Louis
+Carpinteria	kA@pInt@r'i:@	all	US	Carpinteria, California
+Carpow	kA@p'aU	all	GB	Carpow
+Carrigaline	karIg@l'aIn	all	IE	Carrigaline
+Carrigtwohill	k,arIgt'u:hIl	all	IE	Carrigtwohill
+Carrollton	k'A@@Lt@n	all	US	Carrollton Township, Michigan
+Carshalton	kA@S'O:lt@nS'0l	all	GB	Carshalton
+Carstairs	kA@st'e@z	all	GB	Carstairs
+Carteret	k,A@t@r'Et	all	US	Carteret County, North Carolina
+Caruthers	k@r'VD3z	all	US	Caruthers, California
+Caruthersville	k@r'VD3zvIl	all	US	Caruthersville, Missouri
+Casa Conejo	k,A:s@k@n'eIoU	all	US	Casa Conejo, California
+Casey	k'eIzi	all	US	Casey, Illinois
+Cashiers	k'aS3z	all	US	Cashiers, North Carolina
+Cassopolis	k@s'0p@lIs	all	US	Cassopolis, Michigan
+Castaic	k@st'eIIk	all	US	Castaic, California
+Castell	kast'El	all	US	Castell, Texas
+Castelnau	k'A:s@LnaU	all	GB	Castelnau, London
+Casterton	k'A:st3t@n	all	AU	Casterton, Victoria
+Castle Cary	k,A:s@Lk'e@i	all	GB	Castle Cary
+Castleblayney	k,as@Lbl'eIni	all	IE	Castleblayney
+Castlecary	k,A:s@lk'e@i	all	GB	Castlecary
+Castlerea	k,as@Lr'i:	all	IE	Castlerea
+Castlereagh	k'A:s@LreI	all	GB	Castlereagh (borough)
+Cataula	k@t'O:l@	all	US	Cataula, Georgia
+Catawba	k@t'O:b@	all	US	Catawba County, North Carolina
+Caterham	k'eIt3@m	all	GB	Caterham
+Cathays	k@t'eIz	all	GB	Cathays
+Cathcart	k,aTk'A@t	all	GB	Cathcart
+Cathlamet	kaTl'amIt	all	US	Cathlamet, Washington
+Catonsville	k'eIt@nzv,Il	all	US	Catonsville, Maryland
+Caughley	k'A:fli	all	GB	Caughley
+Causapscal	koUz'A:pskal	all	CA	Causapscal
+Cavan	k'av@n	all	IE	County Cavan
+Cayce	k'eIsi	all	US	Cayce, South Carolina
+Cayuga	keIju:g'@	all	CA	Cayuga, Ontario
+Cedarburg	s'i:d3bErg	all	US	Cedarburg, Wisconsin
+Ceduna	s@dj'u:n@	all	AU	Ceduna, South Australia
+Celoron	s'El@r0n	all	US	Celoron, New York
+Ceratodus	sEr@t'oUd@s	all	AU	Ceratodus, Queensland
+Cerne Abbas	s,3:n'ab@s	all	GB	Cerne Abbas
+Cerro Gordo	s'EroUg'O@doU	all	US	Cerro Gordo County, Iowa
+Chadron	S'adr@n	all	US	Chadron, Nebraska
+Chadsmoor	tS'adsm3	all	GB	Chadsmoor
+Chalkyitsik	tS,alki'ItsIk	all	US	Chalkyitsik, Alaska
+Challock	tS'0l@k	all	GB	Challock
+Chalmette	Salm'Et	all	US	Chalmette, Louisiana
+Chalvey	tS'A@vi	all	GB	Chalvey
+Chamblee	S'ambli:	all	US	Chamblee, Georgia
+Champoeg	Samp'u:i:	all	US	Champoeg, Oregon
+Chanhassen	tSanh'as@n	all	US	Chanhassen, Minnesota
+Channahon	S'an@h0n	all	US	Channahon, Illinois
+Chanute	S@n'u:t	all	US	Chanute, Kansas
+Chapel Plaister	tS'ap@Lpl'A:st3	all	GB	Chapel Plaister
+Chappaqua	tS'ap@kwA:	all	US	Chappaqua, New York
+Chappell	tS'ap@L	all	US	Chappell, Nebraska
+Charlbury	tS'A@lb3i	all	GB	Charlbury
+Charleroi	S'A@l@rOI	all	US	Charleroi, Pennsylvania
+Charlo	S'A@loU	all	CA	Charlo, New Brunswick
+Charlotte Amalie	S'A@l@t@m'A:li@	all	US	Charlotte Amalie, U.S. Virgin Islands
+Chassell	tS'as@l	all	US	Chassell, Michigan
+Chatanika	tS,at@n'i:k@	all	US	Chatanika, Alaska
+Chateaugay	S'at@geI	all	US	Chateaugay, New York
+Chattanooga	tS,at@n'u:g@	all	US	Chattanooga, Tennessee
+Chaumont	S@m'oU	all	US	Chaumont, New York
+Chauncey	tS'ansi	all	US	Chauncey, Ohio
+Chazy	SeIz'i	all	US	Chazy, New York
+Cheatham	tS'i:t@m	all	US	Cheatham County, Tennessee
+Chebeague	S@b'i:g	all	US	Chebeague Island
+Cheboygan	S@b'OIg@n	all	US	Cheboygan County, Michigan
+Cheektowaga	tS,i:kt@w'A:g@	all	US	Cheektowaga, New York
+Chehalis	S@h'eIlIs	all	US	Chehalis, Washington
+Chelmsford	tS'Elmzf3d	british	GB	Chelmsford
+Cheltenham	tS'Elt@n@m	all	GB	Cheltenham
+Chelyan	S'i:lj@n	all	US	Chelyan, West Virginia
+Chemainus	S@m'eIn@s	all	CA	Chemainus
+Chemult	SEm'oUlt	all	US	Chemult, Oregon
+Chenega	tSIn'i:g@	all	US	Chenega, Alaska
+Cheraw	tS@r'O:	all	US	Cheraw, South Carolina
+Cherbourg	S'3:b3:g	all	AU	Cherbourg, Queensland
+Cherokee	tS'Er@k,i:	all	US	Cherokee, North Carolina
+Cherwell	tS'A@wEl	all	GB	Cherwell (district)
+Chesaning	tS'Es@nIN	all	US	Chesaning, Michigan
+Chesham	tS'ES@m	all	GB	Chesham
+Chesham Bois	tS,Es@mb'OIz	all	GB	Chesham Bois
+Cheshunt	tS'Ez@nt	all	GB	Cheshunt
+Cheswick	tS'EzIk	all	GB	Cheswick, Gloucestershire
+Chetwode	tS'EtwUd	all	GB	Chetwode
+Chevening	tS'i:vnIN	all	GB	Chevening, Kent
+Cheviot	S'Evi@t	american	US	Cheviot, Ohio
+Cheviot	tS'Evi@t	british	NZ	Cheviot, New Zealand
+Chevy Chase	tS'Evi:tSeIs	all	US	Chevy Chase, Maryland
+Chewacla	tSu:w'A:kl@	all	US	Chewacla, Alabama
+Chewelah	tS@w'i:l@	all	US	Chewelah, Washington
+Cheylesmore	tS'aIlzmO:	all	GB	Cheylesmore
+Chezacut	tS'Ez@k@t	all	CA	Chezacut
+Chichester	tS'aItSEst3	american	US	Chichester, Pennsylvania
+Chichester	tS'ItSIst3	british	GB	Chichester
+Chickasha	tS'Ik@SeI	all	US	Chickasha, Oklahoma
+Chicopee	tS'Ik@pi	all	US	Chicopee, Massachusetts
+Chicoutimi	SIk'u:tImi	all	CA	Chicoutimi
+Chiddingly	tS'IdINlaI	all	GB	Chiddingly
+Chideock	tS'Id@k	all	GB	Chideock
+Chieveley	tS'i:vli	all	GB	Chieveley
+Childress	tS'IldrIs	all	US	Childress County, Texas
+Childwall	tS'IldwO:l	all	GB	Childwall
+Chilfrome	tS'Ilfr,u:m	all	GB	Chilfrome
+Chilhowie	tSIlh'aUi	all	US	Chilhowie, Virginia
+Chilliwack	tS'Il@wak	all	CA	Chilliwack
+Chilo	S'aIloU	all	US	Chilo, Ohio
+Chincoteague	S,INk@t'i:g	all	US	Chincoteague, Virginia
+Chineham	tS'In@m	all	GB	Chineham
+Chipewyan	tS'Ip@waI@n	all	CA	Fort Chipewyan
+Chippewa	tS'Ip@wA:	all	US	Chippewa County, Michigan
+Chippewa Falls	tS,Ip@w@f'O:lz	all	US	Chippewa Falls, Wisconsin
+Chipping Ongar	tS'IpIN'0N3	all	GB	Chipping Ongar
+Chirbury	tS'3:bVri	all	GB	Chirbury
+Chireno	SIr'i:noU	all	US	Chireno, Texas
+Chisago	SIs'A:goU	all	US	Chisago County, Minnesota
+Chisholm	tS'Iz@m	all	AU	Chisholm, Australian Capital Territory
+Chislehurst	tS'Iz@Lh,3:st	all	GB	Chislehurst
+Chiswell	tS'Iz@l	all	GB	Chiswell
+Chittamo	tSIt@m'oU	all	US	Chittamo, Wisconsin
+Chittenden	tS'It@nd@n	all	US	Chittenden County, Vermont
+Chocowinity	tS,0k@w'In@ti	all	US	Chocowinity, North Carolina
+Chokio	S@k'aIoU	all	US	Chokio, Minnesota
+Cholame	S@l'am	all	US	Cholame, California
+Cholmondeley	tS'Vmli	all	GB	Cholmondeley, Cheshire
+Cholmondeston	tS'Vmst@n	all	GB	Cholmondeston
+Chop Gate	tS,0pj'at	all	GB	Chop Gate
+Chouteau	SoUt'oU	all	US	Chouteau, Oklahoma
+Chowan	tSoUw'0n	all	US	Chowan County, North Carolina
+Chriesman	kr'Ism@n	all	US	Chriesman, Texas
+Christiansted	kr'IstS@nstEd	all	US	Christiansted, U.S. Virgin Islands
+Chula Vista	tS,u:l@v'Ist@	all	US	Chula Vista, California
+Chulmleigh	tS'Vmli	all	GB	Chulmleigh
+Chuluota	tSu:li'oUt@	all	US	Chuluota, Florida
+Churdan	S3d'an	all	US	Churdan, Iowa
+Churubusco	tS,Er@b'VskoU	all	US	Churubusco, Indiana
+Cilybebyll	k,Il@b'EbIl	all	GB	Cilybebyll
+Cirencester	s'aI@r@ns,Est@	all	GB	Cirencester
+Clachnaharry	kl,axn@h'ari	all	GB	Clachnaharry
+Clackamas	kl'ak@m@s	all	US	Clackamas County, Oregon
+Clackmannan	klakm'an@n	all	GB	Clackmannan
+Clackmannanshire	klakm'an@nS,i@	all	GB	Clackmannanshire
+Claremorris	kl,eIrm'0rIs	all	IE	Claremorris
+Clatskanie	kl'atskInaI	all	US	Clatskanie, Oregon
+Clavet	kl@v'Et	all	CA	Clavet, Saskatchewan
+Claxheugh	kl'atS@f	all	GB	Claxheugh
+Cle Elum	kli'El@m	all	US	Cle Elum, Washington
+Cleethorpes	kl'i:TO@ps	all	GB	Cleethorpes
+Clemson	kl'Emps@n	all	US	Clemson, South Carolina
+Clerkenwell	kl'A@k@nwEl	all	GB	Clerkenwell
+Clermont	kl'e@m0nt	all	US	Clermont County, Ohio
+Clevedon	kl'i:vd@n	all	GB	Clevedon
+Clinton	kl'In@n	all	US	Clinton, North Carolina
+Clitherall	kl'IT3@l	all	US	Clitherall, Minnesota
+Clodine	kl'oUdi:n	all	US	Clodine, Texas
+Cloghy	kl'O:xi:	all	GB	Cloghy
+Clonakilty	kl'O:nak,Ilti:	all	IE	Clonakilty
+Clonegal	kl'oUn@gO:l	all	IE	Clonegal
+Clonskeagh	kl0nsk'i:	all	IE	Clonskeagh
+Cloquet	kloUk'eI	all	US	Cloquet, Minnesota
+Cloughduv	kl0xd'Vv	all	IE	Cloughduv
+Cloughjordan	kl0xdZ'O@d@n	all	IE	Cloughjordan
+Cloughmills	kl0xm'Ilz	all	GB	Cloughmills
+Cloughton	kl'aUt@n	all	GB	Cloughton
+Clovelly	kl@v'Eli	all	GB	Clovelly
+Coachella	k,oU@tS'El@	all	US	Coachella, California
+Coahoma	k@h'oUm@	all	US	Coahoma, Texas
+Coalinga	k,oU@l'INg@	all	US	Coalinga, California
+Coatbridge	k,oUtbr'IdZ	all	GB	Coatbridge
+Coaticook	koU'atIkUk	all	CA	Coaticook
+Cobh	k'oUv	all	IE	Cobh
+Cobham	k'0b@m	all	GB	Cobham, Surrey
+Cocagne	koUk'an	all	CA	Cocagne
+Cochecton	k@S'Ekt@n	all	US	Cochecton, New York
+Cochise	koUtS'i:s	all	US	Cochise County, Arizona
+Cochiti	k'oUtS@ti	all	US	Cochiti, New Mexico
+Cochrane	k'0kr@n	all	CA	Cochrane, Alberta
+Cockburnspath	k'oUb3nzp,A:T	all	GB	Cockburnspath
+Cockermouth	k'0k3maUT	all	GB	Cockermouth
+Coesse	k,oU'Esi	all	US	Coesse, Indiana
+Cogenhoe	k'UknoU	all	GB	Cogenhoe
+Cogmagun	k'0gm@g@n	all	CA	Cogmagun, Nova Scotia
+Cohasset	koUh'as@t	all	US	Cohasset, Minnesota
+Cohoes	k@h'oUz	all	US	Cohoes, New York
+Cohutta	k@h'Vt@	all	US	Cohutta, Georgia
+Coimadai	k'0maId@	all	AU	Coimadai
+Cokato	koUk'eItoU	all	US	Cokato, Minnesota
+Colac	k'oUlak	all	AU	Colac, Victoria
+Colbinabbin	k'0lbInab@n	all	AU	Colbinabbin
+Coleambally	k,0li'amb@Li	all	AU	Coleambally
+Coleorton	k@l'O@t@n	all	GB	Coleorton
+Coleraine	koUlr'eIn	all	GB	Coleraine
+Coleshill	k'oUzIl	all	GB	Coleshill, Warwickshire
+Collirene	k,A:l@r'in	all	US	Collirene, Alabama
+Colmesneil	k'oUlmIsni:l	all	US	Colmesneil, Texas
+Colney	k'oUni	all	GB	Colney
+Colo Vale	k'0loUveIl	all	AU	Colo Vale, New South Wales
+Colonie	k,0l@n'i:	all	US	Colonie, New York
+Colwick	k'0lIk	all	GB	Colwick
+Combe Martin	ku:mm'A@tIn	all	GB	Combe Martin
+Comberbach	k'0mb@b,atS	all	GB	Comberbach
+Commack	k'oUmak	all	US	Commack, New York
+Comox	k'oUm0ks	all	CA	Comox, British Columbia
+Comrie	k'Vmri	all	GB	Comrie, Perth and Kinross
+Conargo	k0n'A@goU	all	AU	Conargo
+Concepcion	k@ns,Epsi'oUn	all	US	Concepcion, Texas
+Condah	k'0ndA:	all	AU	Condah
+Condobolin	k@nd'oUbA:l@n	all	AU	Condobolin
+Conecuh	k@n'Ek@	all	US	Conecuh County, Alabama
+Conetoe	k@n'i:t@	all	US	Conetoe, North Carolina
+Congerstone	k'VndZ@st@n	all	GB	Congerstone
+Conimicut	k@n'ImIk@t	all	US	Conimicut, Rhode Island
+Coningsby	k'VnINzbI	all	GB	Coningsby
+Conisbrough	k'0nIsbr@	all	GB	Conisbrough
+Connacht	k'0nO:t	all	IE	Connacht
+Conneaut	k'0ni,O:t	all	US	Conneaut Lake, Pennsylvania
+Connewarre	k'0n@wVri	all	AU	Connewarre
+Cononley	k'Unl@	all	GB	Cononley
+Conshohocken	k,0nS@h'0k@n	all	US	Conshohocken, Pennsylvania
+Contoocook	k@nt'Uk@k	all	US	Contoocook, New Hampshire
+Contra Costa	k,0ntr@k'0st@	all	US	Contra Costa County, California
+Coober Pedy	k'u:b3p'i:di	all	AU	Coober Pedy
+Coogee	k'UdZi	all	AU	Coogee, New South Wales
+Coolamon	k'UlA:m,@n	all	AU	Coolamon, New South Wales
+Cooleemee	k'u:l@mi	all	US	Cooleemee, North Carolina
+Coolongolook	k@l'UNgUlUk	all	AU	Coolongolook, New South Wales
+Coolsaragh	k,u:ls'A@@	all	GB	Coolsaragh
+Coonalpyn	k'UnalpIn	all	AU	Coonalpyn, South Australia
+Coorparoo	k,u:p@r'u:	all	AU	Coorparoo
+Coos	ku:s	all	US	Coos County, Oregon
+Cootehill	k'u:thIl	all	IE	Cootehill
+Cootham	k'oUt@m	all	GB	Cootham
+Copiague	k'oUpeIg	all	US	Copiague, New York
+Copmanthorpe	k'0pm@nT,O@p	all	GB	Copmanthorpe
+Coppell	k@p'El	all	US	Coppell, Texas
+Coquitlam	koUkw'Itl@m	all	CA	Coquitlam
+Coraopolis	k,oUri'0p@LIs	all	US	Coraopolis, Pennsylvania
+Cordele	kO@d'El	all	US	Cordele, Texas
+Corfe Mullen	k,O@fm'Vl@n	all	GB	Corfe Mullen
+Corfu	k'O@fju:	all	US	Corfu, New York
+Corowa	k'0r@w@	all	AU	Corowa
+Corpus Christi	k,O@p@skr'Isti	all	US	Corpus Christi, Texas
+Corstorphine	k3st'O@fIn	all	GB	Corstorphine
+Corte Madera	k'O@t@m@d'Er@	all	US	Corte Madera, California
+Corunna	k@r'Vn@	all	US	Corunna, Michigan
+Corvallis	kO@v'alIs	all	US	Corvallis, Oregon
+Coryell	k'O@jEl	all	US	Coryell County, Texas
+Coseley	k'oUzli	all	GB	Coseley
+Cosham	k'0S@m	all	GB	Cosham
+Coshocton	k@S'0kt@n	all	US	Coshocton, Ohio
+Costa Mesa	k,oUst@m'eIs@	all	US	Costa Mesa, California
+Costessey	k'0si	all	GB	Costessey
+Cotesbach	k'oUtsbatS	all	GB	Cotesbach
+Cotham	k'0t@m	all	GB	Cotham, Bristol
+Cotulla	k@tj'u:l@	all	US	Cotulla, Texas
+Coughton	k'oUt@n	all	GB	Coughton, Warwickshire
+Coulsdon	k'u:lzd@n	all	GB	Coulsdon
+Cound	ku:nd	all	GB	Cound
+Courtice	k'3:tIs	all	CA	Courtice
+Covelo	koUv'eIloU	all	US	Covelo, California
+Coventry	k'A:v@ntri	all	US	Coventry, Connecticut
+Covina	koUv'i:n@	all	US	Covina, California
+Cowangie	kaU'andZi	all	AU	Cowangie
+Cowcaddens	k,aUk'ad@nz	all	GB	Cowcaddens
+Cowden	kaUd'En	all	GB	Cowden
+Cowdenbeath	k,aUd@nb'i:T	all	GB	Cowdenbeath
+Coweta	kaU'i:t@	all	US	Coweta County, Georgia
+Cowlairs	kaUl'e@z	all	GB	Cowlairs
+Craigavon	kreIg'av@n	all	GB	Craigavon
+Craigellachie	kr@g'El@xi	american	CA	Craigellachie, British Columbia
+Craigellachie	kreIg'El@xi	british	GB	Craigellachie, Moray
+Craignure	kreIgnj'U@	all	GB	Craignure
+Cranbourne	kr'anb3:n	all	AU	Cranbourne, Victoria
+Crecora	kr'EkoUr@	all	IE	Crecora
+Creeslough	kr'i:sl0x	all	IE	Creeslough
+Creetown	kr'i:t@n	all	GB	Creetown
+Cremona	kr@m'oUn@	all	CA	Cremona, Alberta
+Cremyll	kr'Em@L	all	GB	Cremyll
+Creswick	kr'EzwIk	all	AU	Creswick
+Creve Coeur	kr'i:vkO@	all	US	Creve Coeur, Missouri
+Crianlarich	kr,i:@nl'arIx	all	GB	Crianlarich
+Crich	kr'aItS	all	GB	Crich
+Crickhowell	krIkh'aU@L	all	GB	Crickhowell
+Croftnacreich	kr,0ftn@kr'i:x	all	GB	Croftnacreich
+Cromarty	kr'0m3ti	all	GB	Cromarty
+Crosby	kr'A:izbi:	all	GB	Crosby, Isle of Man
+Crossmyloof	kr,0sm@l'u:f	all	GB	Crossmyloof
+Crovie	kr'Ivi	all	GB	Crovie
+Crowell	kr'oU@L	all	US	Crowell, Texas
+Crozet	kr,oUz'eI	all	US	Crozet, Virginia
+Cruwys Morchard	kr,u:zm'O@tSA@d	all	GB	Cruwys Morchard
+Cuckfield	k'Ukfi:ld	all	GB	Cuckfield
+Cudahy	k'Vd@heI	all	US	Cudahy, Wisconsin
+Cudal	kj'u:dal	all	AU	Cudal, New South Wales
+Cudell	k@d'El	all	US	Cudell, Cleveland
+Cudworth	k'Udw3:T	american	CA	Cudworth, Saskatchewan
+Cuero	kw'e@oU	all	US	Cuero, Texas
+Cullerin	kVl@r'@n	all	AU	Cullerin
+Culloden	k@l'0d@n	all	GB	Culloden, Highland
+Cullompton	k@l'Vmpt@n	all	GB	Cullompton
+Cullowhee	k'Vl@wi:	all	US	Cullowhee, North Carolina
+Culross	k'u:r@s	all	GB	Culross
+Cultra	kVltr'O:	all	GB	Cultra
+Cumbernauld	k,Vmb3n'O:ld	all	GB	Cumbernauld
+Cunnamulla	kVn@m'Vl@	all	AU	Cunnamulla
+Cupar	k'u:p3	british	GB	Cupar
+Cupertino	k,u:p3t'i:noU	all	US	Cupertino, California
+Currituck	k'UrItVk	all	US	Currituck County, North Carolina
+Currumbin	k@r'Vmb@n	all	AU	Currumbin, Queensland
+Cutteslowe	k'VtsloU	all	GB	Cutteslowe
+Cuyama	kwi:j'A:m@	all	US	Cuyama, California
+Cuyamungue	k,u:j@m'u:NgeI	all	US	Cuyamungue, New Mexico
+Cuyuna	kaIj'u:n@	all	US	Cuyuna, Minnesota
+Cwmbran	kUmbr'A:n	all	GB	Cwmbran
+Cwmtillery	k,UmtIl'e@i	all	GB	Cwmtillery
+Cyncoed	kInk'OId	all	GB	Cyncoed
+Daajing Giids	d'O:dZINgi:ds	all	CA	Daajing Giids
+Dacre	d'eIk3	all	GB	Dacre, Cumbria
+Dacula	d@kj'u:l@	all	US	Dacula, Georgia
+Daggett	d'ag@t	all	US	Daggett County, Utah
+Dahlonega	d@l'0nIg@	all	US	Dahlonega, Georgia
+Daingean	d'aNg@n	all	IE	Daingean
+Dalbeattie	dalb'i:ti	all	GB	Dalbeattie
+Dalby	d'0lbi	all	AU	Dalby, Queensland
+Dalgety Bay	dalg'Etib'eI	all	GB	Dalgety Bay
+Dalhousie	dalh'aUzi	all	CA	Dalhousie, New Brunswick
+Dalkeith	dalk'i:T	all	GB	Dalkeith
+Dalkey	d'O:ki	all	IE	Dalkey
+Dalmarnock	dalm'A@n@k	all	GB	Dalmarnock
+Dalmeny	dalm'Eni	all	GB	Dalmeny
+Dalmuir	dalmj'U@	all	GB	Dalmuir
+Dalneigh	daln'eI	all	GB	Dalneigh
+Dalqueich	dalkw'i:x	all	GB	Dalqueich
+Dalry	dalr'aI	all	GB	Dalry, North Ayrshire
+Dalston	d'O:lst@n	all	GB	Dalston
+Dalwallinu	d'aUlw0lInju:	all	AU	Dalwallinu, Western Australia
+Daly	d'eIli	all	US	Daly City, California
+Dalyston	d'alist0n	all	AU	Dalyston
+Dandenong	d'andIn0N	all	AU	Dandenong
+Daresbury	d'A@zb@ri	all	GB	Daresbury
+Darraweit Guim	d'ar@wi:tgw'Im	all	AU	Darraweit Guim
+Darrouzett	d,ar@z'Et	all	US	Darrouzett, Texas
+Dartmoor	d'A:tmO:	all	AU	Dartmoor, Victoria
+Daveluyville	d,av@l'aIvIl	all	CA	Daveluyville
+Davenham	d'eIv@n@m	all	GB	Davenham
+Daventry	d'av@ntri	all	GB	Daventry
+Davilla	d@v'i:l@	all	US	Davilla, Texas
+Davyhulme	d'eIvihju:m	all	GB	Davyhulme
+De Beauvoir	d@b'i:v3	all	GB	De Beauvoir Town
+De Kalb	dIk'ab	all	US	De Kalb, Texas
+De Leon	dIl'i:0n	all	US	De Leon, Texas
+De Queen	d'i:kwi:n	all	US	De Queen, Arkansas
+DeFuniak	d@fju:n'i:ak	all	US	DeFuniak Springs, Florida
+DeLeon	d@l'i:@n	all	US	DeLeon Springs, Florida
+DeLisle	d@l'Il	all	US	DeLisle, Mississippi
+Deanshanger	d'i:nzh,aN3	all	GB	Deanshanger
+Dechmont	dExm'@nt	all	GB	Dechmont
+Dechomet	deIk'0mEt	all	GB	Dechomet
+Dedham	d'Ed@m	all	US	Dedham, Massachusetts
+Dee Why	di:w'aI	all	AU	Dee Why
+Deerness	d'i@nIs	all	GB	Deerness
+Deiniolen	deInI'0lEn	all	GB	Deiniolen
+Del Norte	dEln'O@t	all	US	Del Norte County, California
+Del Valle	d,Elv'ali	all	US	Del Valle, Texas
+Delacour	d'El@kU@	all	CA	Delacour, Alberta
+Delavan	d'El@v@n	all	US	Delavan, Minnesota
+Delisle	d@l'aIl	all	CA	Delisle, Saskatchewan
+Delphos	d'Elf@s	all	US	Delphos, Iowa
+Deming	d'EmIN	all	US	Deming, New Mexico
+Demorest	d'Em@rIst	all	US	Demorest, Georgia
+Denbighshire	d'EnbiS3	all	GB	Denbighshire
+Deniliquin	d@n'IlIkwIn	all	AU	Deniliquin
+Dennistoun	d'EnIst@n	all	GB	Dennistoun
+Depew	d@pj'u:	all	US	Depew, New York
+Deptford	d'Etf3d	all	GB	Deptford
+Dereham	d'i@@m	all	GB	Dereham
+Derriaghy	d,ErI'axi	all	GB	Derriaghy
+Derrimut	d'ErIm@t	all	AU	Derrimut
+Derwenthorpe	d'3:wEntTO:p	all	GB	Derwenthorpe
+Des Plaines	dIspl'eInz	all	US	Des Plaines, Illinois
+Deschutes	d@S'u:ts	all	US	Deschutes County, Oregon
+Desertmartin	d,Ez3tm'A@tIn	all	GB	Desertmartin
+Deuxhill	dju:ksh'Il	all	GB	Deuxhill
+Diaz	d'aIaz	all	US	Diaz, Arkansas
+Dibden Purlieu	d,IbdEnp'3:liu:	all	GB	Dibden Purlieu
+Dieppe	di'Ep	all	CA	Dieppe, New Brunswick
+Dillingham	d'IlINham	all	US	Dillingham, Alaska
+Dingestow	d'IndZstoU	all	GB	Dingestow
+Dinorwig	dIn'O@wIg	all	GB	Dinorwig
+Dishforth	d'ISf@T	all	GB	Dishforth
+Distington	d'IzINt@n	all	GB	Distington
+Dittisham	d'Its@m	all	GB	Dittisham
+Doagh	d'oUx	all	GB	Doagh
+Dodworth	d'0d@T	all	GB	Dodworth
+Dolwyddelan	d,0lwID'Elan	all	GB	Dolwyddelan
+Domremy	d'O@@mi	all	CA	Domremy, Saskatchewan
+Donagh	d'oUn@	all	GB	Donagh
+Donaghadee	d,0n@x@d'i:	all	GB	Donaghadee
+Dongola	d0ng'oUl@	all	US	Dongola, Illinois
+Donnellson	d'0n@Ls@n	all	US	Donnellson, Iowa
+Doohamlet	du:h'amlIt	all	IE	Doohamlet
+Dorchester	d'O@tSEst3	american	US	Dorchester, Boston
+Dorchester	d'O@tSIst3	british	GB	Dorchester, Dorset
+Dorking	d'O@kIN	all	GB	Dorking
+Dornoch	d'O@n0x	all	GB	Dornoch
+Dorval	dO@v'al	all	CA	Dorval
+Doublebois	d'Vb@LbOIz	all	GB	Doublebois
+Dounby	d'u:nbi:	all	GB	Dounby
+Doune	du:n	all	GB	Doune
+Dowagiac	d@w'A:dZak	all	US	Dowagiac, Michigan
+Downham	d'aUn@m	all	GB	Downham, Lancashire
+Dracut	dr'eIk@t	all	US	Dracut, Massachusetts
+Draperstown	dr,Ep3zt'aUn	all	GB	Draperstown
+Dravosburg	dr@v'oUzb3:g	all	US	Dravosburg, Pennsylvania
+Dreibelbis	dr'aIb@LbIs	all	US	Dreibelbis, Pennsylvania
+Dresbach	dZr'EsbA:k	all	US	Dresbach, Minnesota
+Drogheda	dr'0h@d@	all	IE	Drogheda
+Dromana	dr@m'A:n@	all	AU	Dromana
+Drumburgh	dr'Vmbr,Vf	all	GB	Drumburgh
+Drumheller	drVmh'El3	all	CA	Drumheller
+Drumnadrochit	drVmn@dr'0xIt	all	GB	Drumnadrochit
+Drumoak	dr@m'oUk	all	GB	Drumoak
+Drumoyne	drVm'OIn	all	GB	Drumoyne
+Drymen	dr'ImIn	all	GB	Drymen
+DuPage	du:p'eIdZ	all	US	DuPage County, Illinois
+Duarte	dw'A@ti	all	US	Duarte, California
+Duchouquet	du:S'IkwIt	all	US	Duchouquet Township, Ohio
+Duenweg	dVn@w'eIg	all	US	Duenweg, Missouri
+Dukinfield	d'VkInf,i:ld	all	GB	Dukinfield
+Dulce	d'Vlsi:	all	US	Dulce, New Mexico
+Duleek	du:l'i:k	all	IE	Duleek
+Dullatur	d'Vl@t3	all	GB	Dullatur
+Duluth	d@l'u:T	all	US	Duluth, Minnesota
+Dulwich	d'VlItS	all	AU	Dulwich, South Australia
+Dumbarton	dVmb'A@t@n	all	GB	Dumbarton
+Dumbreck	dVmbr'Ek	all	GB	Dumbreck
+Dunbar	dVnb'A@	all	GB	Dunbar
+Dunblane	dVnbl'eIn	all	GB	Dunblane
+Dunchideock	d'VntSId@k	all	GB	Dunchideock
+Duncrievie	dVnkr'i:vi	all	GB	Duncrievie
+Dundalk	d'VndO:k	american	US	Dundalk, Maryland
+Dundalk	dVnd'O:lk	british	IE	Dundalk
+Dundee	dVnd'i:	british	GB	Dundee
+Dunedoo	d'Vnidu:	all	AU	Dunedoo
+Dunfermline	dVnf'3:mlIn	all	GB	Dunfermline
+Dungeness	d,VndZ@n'Es	all	GB	Dungeness
+Dungloe	dVnl'oU	all	IE	Dungloe
+Dunkeld	dVNk'El	all	GB	Dunkeld
+Dunlop	dVnl'0p	all	GB	Dunlop, East Ayrshire
+Dunnellon	d@n'El@n	all	US	Dunnellon, Florida
+Dunscore	d'Vnsk3	all	GB	Dunscore
+Dunseith	dVns'i:T	all	US	Dunseith, North Dakota
+Dunvegan	dVnv'eIg@n	all	CA	Dunvegan, Alberta
+Dunwich	d'VnItS	all	GB	Dunwich
+Dupuyer	d@p'u:j3	all	US	Dupuyer, Montana
+Durand	d@r'and	all	US	Durand, Wisconsin
+Durweston	d3w'Est@n	all	GB	Durweston
+Duvall	du:v'A:l	all	US	Duvall, Wisconsin
+Duxbury	d'VksbVri	all	US	Duxbury, Vermont
+Dyea	daI'i:	all	US	Dyea, Alaska
+Dynnyrne	d'In3:n	all	AU	Dynnyrne
+Eadestown	'i:dstaUn	all	IE	Eadestown
+Eagan	'i:gIn	all	US	Eagan, Minnesota
+Eaglesham	'i:g@Lz@m	american	CA	Eaglesham, Alberta
+Eaglesham	'i:g@ls@m	british	GB	Eaglesham
+Eardisland	'3:dzl@nd	all	GB	Eardisland
+Eardisley	'3:dzli	all	GB	Eardisley
+Earl Shilton	'3:lS,Ilt@n	all	GB	Earl Shilton
+Easebourne	'EzbO@n	all	GB	Easebourne
+Easington	'EzINt@n	all	GB	Easington, Lancashire
+East Palo Alto	'i:stp,aloU'altoU	all	US	East Palo Alto, California
+Eastbourne	'i:stbO@n	all	GB	Eastbourne
+Eastham	'i:stham	all	US	Eastham, Massachusetts
+Ebbw Vale	'Ebu:veIl	all	AU	Ebbw Vale, Queensland
+Echols	'Ek@lz	all	US	Echols County, Georgia
+Echunga	ItS'VNg@	all	AU	Echunga
+Ecorse	'i:kO@s	all	US	Ecorse, Michigan
+Edale	'i:deIl	all	GB	Edale
+Edenderry	,i:d@nd'Eri	all	IE	Edenderry
+Edenham	'Ed@n@m	all	GB	Edenham
+Edensor	'Enz3	all	GB	Edensor
+Edgbaston	'EdZb@st@n	all	GB	Edgbaston
+Edgecombe	'EdZk@m	all	US	Edgecombe County, North Carolina
+Edgware	'EdZwe@	all	GB	Edgware
+Ediacara	i:di'ak3@	all	AU	Ediacara, South Australia
+Edithburgh	'i:dITb3:g	all	AU	Edithburgh
+Edmonton	'Edm@nt@n	all	CA	Edmonton
+Edmundston	'Edm@ndst@n	all	CA	Edmundston
+Edwardstone	'Edw3dst@n	all	GB	Edwardstone
+Edzell	'Edz@L	all	GB	Edzell
+Eggesford	'EgIsf3d	all	GB	Eggesford
+Egham	'Eg@m	all	GB	Egham
+Egremont	'Egr@m,0nt	american	US	Egremont, Massachusetts
+Egremont	'Egr@m@nt	british	GB	Egremont, Cumbria
+Eidsvold	'aIdzvoUld	all	AU	Eidsvold, Queensland
+El Cajon	Elk@h'oUn	all	US	El Cajon, California
+El Segundo	,Els@g'VndoU	all	US	El Segundo, California
+Eldorado	,Eld@r'eIdoU	all	US	Eldorado, Illinois
+Eleva	@l'i:v@	all	US	Eleva, Wisconsin
+Elham	'i:l@m	all	GB	Elham, Kent
+Elida	il'aId@	all	US	Elida, Ohio
+Elie	'i:laI	all	CA	Elie, Manitoba
+Elkader	Elk'eId3	all	US	Elkader, Iowa
+Ellenborough	'El@nb3@	all	AU	Ellenborough, New South Wales
+Ellesmere	'Elzmi@	all	GB	Ellesmere Port
+Ellicott	'ElIk@t	all	US	Ellicott City, Maryland
+Elliminyt	El'Im@naIt	all	AU	Elliminyt
+Elmira	Elm'aIr@	all	US	Elmira, New York
+Elmsall	'Ems@L	all	GB	South Elmsall
+Elnora	Eln'O:r@	all	CA	Elnora, Alberta
+Elon	'i:lO:n	all	US	Elon, North Carolina
+Elrosa	Elr'oUz@	all	US	Elrosa, Minnesota
+Elsecar	'ElsIkA@	all	GB	Elsecar
+Elstree	'Elztri	all	GB	Elstree
+Elswick	'ElzIk	all	GB	Elswick, Newcastle upon Tyne
+Elysian	El'i:zj@n	all	US	Elysian, Minnesota
+Encinitas	,Ens@n'i:t@s	all	US	Encinitas, California
+Endiang	'Endi:aN	all	CA	Endiang
+Engadine	'Eng@daIn	all	US	Engadine, Michigan
+Enniskillen	,EnIsk'Il@n	all	GB	Enniskillen
+Enoggera	@n'0gr@	all	AU	Enoggera, Queensland
+Enosburgh	'i:n@sb3:g	all	US	Enosburgh, Vermont
+Entiat	'Enti,at	all	US	Entiat, Washington
+Entwistle	'EntwIs@L	all	CA	Entwistle, Alberta
+Enumclaw	'i:n@mklO:	all	US	Enumclaw, Washington
+Eoline	i'oUlIn	all	US	Eoline, Alabama
+Ephraim	'i:frA:m	all	US	Ephraim, Wisconsin
+Epoufette	i:poUf'Et	all	US	Epoufette, Michigan
+Erath	'i:raT	all	US	Erath County, Texas
+Erith	'i@IT	all	GB	Erith
+Erskine	'3:sk@n	american	CA	Erskine, Alberta
+Erskine	'3:skIn	british	GB	Erskine, Renfrewshire
+Erwinna	3:w'In@	all	US	Erwinna, Pennsylvania
+Escalante	,Esk@l'anti	all	US	Escalante, Utah
+Esher	'i:S3	all	GB	Esher
+Esopus	,Es'oUp@s	all	US	Esopus, New York
+Esquimalt	Iskw'aImO:lt	all	CA	Esquimalt
+Essich	'EsIx	all	GB	Essich
+Estacada	,Est@k'eId@	all	US	Estacada, Oregon
+Estes	'EstIs	all	US	Estes Park, Colorado
+Etal	'i:t@L	all	GB	Etal, Northumberland
+Etobicoke	Et'oUbIkoU	all	CA	Etobicoke
+Eufaula	ju:f'O:l@	all	US	Eufaula, Alabama
+Eugene	ju:dZ'i:n	all	US	Eugene, Oregon
+Euless	j'u:lIs	all	US	Euless, Texas
+Eumemmerring	j,u:m@m'ErIN	all	AU	Eumemmerring
+Eutawville	ju:t'oUv@L	all	US	Eutawville, South Carolina
+Euxton	'Ekst@n	all	GB	Euxton
+Evanston	'Ev@nst@n	all	US	Evanston, Illinois
+Evant	'i:vant	all	US	Evant, Texas
+Evart	'Ev@rt	all	US	Evart, Michigan
+Evesham	'i:vIS@m	all	GB	Evesham
+Ewell	j'u:@L	all	GB	Ewell
+Ewelme	j'u:Elm	all	GB	Ewelme
+Ewen	ju:'@n	all	US	Ewen, Michigan
+Ewloe	ju:l'oU	all	GB	Ewloe
+Ewyas Harold	j'u:@sh'ar@ld	all	GB	Ewyas Harold
+Eyam	'i:m	all	GB	Eyam
+Eylau	'aIloU	all	US	Eylau, Texas
+Eynsford	'eInsf3d	all	GB	Eynsford
+Eynsham	'EnS@m	all	GB	Eynsham
+Eyota	ij'oUt@	all	US	Eyota, Minnesota
+Eype	i:p	all	GB	Eype
+Eyton	'eIt@n	all	GB	Eyton, Herefordshire
+Fahan	fO:n	all	IE	Fahan
+Failsworth	f'eIlzw3:T	all	GB	Failsworth
+Fakenham	f'eIk@n@m	all	GB	Fakenham
+Falfurrias	falfjU@'i@s	all	US	Falfurrias, Texas
+Falher	f@l'e@	all	CA	Falher
+Fallin	f@l'In	all	GB	Fallin, Stirling
+Fareham	f'e@@m	all	GB	Fareham
+Faribault	f'e@boU	all	US	Faribault, Minnesota
+Faringdon	f'arINd@n	all	GB	Faringdon
+Farrar	f'A@	all	US	Farrar, Missouri
+Fatama	f@t'A:m@	all	US	Fatama, Alabama
+Faubourg Marigny	f'oUb3:gm'arIni	all	US	Faubourg Marigny
+Faversham	f'av3S@m	all	GB	Faversham
+Fazakerley	f@z'ak3li	all	GB	Fazakerley
+Felixstowe	f'i:lIkstoU	all	GB	Felixstowe
+Feltham	f'Elt@m	all	GB	Feltham
+Feock	f'i:0k	all	GB	Feock, Cornwall
+Ferbane	f3:b'an	all	IE	Ferbane
+Fermont	f'e@m0nt	all	CA	Fermont
+Fethard	f'ET3d	all	IE	Fethard, County Tipperary
+Fettercairn	f,Et3k'e@n	all	GB	Fettercairn
+Ffestiniog	fEst'Inj0g	all	GB	Ffestiniog
+Figheldean	faIld'i:n	all	GB	Figheldean
+Finaghy	f'in@xi	all	GB	Finaghy
+Findlay	f'Inli	all	US	Findlay, Ohio
+Findochty	fIn'Exti	all	GB	Findochty
+Finglas	f'INgl@s	all	IE	Finglas
+Finstown	f'InstUn	all	GB	Finstown
+Fintona	f'Int@n@	all	GB	Fintona
+Finzean	f'IN@n	all	GB	Finzean
+Fionnphort	f'In@fO@t	all	GB	Fionnphort
+Flandreau	fl'andru:	all	US	Flandreau, South Dakota
+Flitwick	fl'ItIk	all	GB	Flitwick
+Flomaton	fl'oUm@t@n	all	US	Flomaton, Alabama
+Florey	fl'O@i	all	AU	Florey, Australian Capital Territory
+Flossmoor	fl'0smO@	all	US	Flossmoor, Illinois
+Floydada	flOId'eId@	all	US	Floydada, Texas
+Fochabers	f'0x@b3z	all	GB	Fochabers
+Foleshill	f'oUz@L	all	GB	Foleshill
+Folkingham	f'0kIN@m	all	GB	Folkingham
+Footdee	fUtd'i:	all	GB	Footdee
+Fordoun	fO@d'u:n	all	GB	Fordoun
+Forkhill	fO@kh'Il	all	GB	Forkhill
+Forres	f'0rIs	all	GB	Forres
+Forsinard	f,O@sIn'A@d	all	GB	Forsinard
+Fostoria	f0st'U@i:@	all	US	Fostoria, Ohio
+Foulden	f'aUld@n	all	GB	Foulden, Norfolk
+Foulridge	f'oUlrIdZ	all	GB	Foulridge
+Fowey	f'OI	all	GB	Fowey
+Foxhome	f'0ksoUm	all	US	Foxhome, Minnesota
+Framingham	fr'eImINham	all	US	Framingham, Massachusetts
+Francisco	fr'ansIskoU	all	US	Francisco, North Carolina
+Frankenmuth	fr'aNk@nmu:T	all	US	Frankenmuth, Michigan
+Frankfort	fr'aNkf3t	all	US	Frankfort, Pepin County, Wisconsin
+Fraser	fr'eIz3	all	AU	Fraser, Australian Capital Territory
+Fraserburgh	fr'eIz3b3@	all	GB	Fraserburgh
+Frazee	freIz'i:	all	US	Frazee, Minnesota
+Frecheville	fr'ESvIl	all	GB	Frecheville
+Fredericton	fr'EdrIkt@n	all	CA	Fredericton
+Fredon	fr'i:d@n	all	US	Fredon Township, New Jersey
+Frelinghuysen	fr'i:lINhaIz@n	all	US	Frelinghuysen Township, New Jersey
+Fremantle	fr'i:mant@L	all	AU	Fremantle
+Fremont	fr'i:m0nt	all	US	Fremont, California
+Freswick	fr'EzIk	all	GB	Freswick
+Friern Barnet	fr,aI@nb'A@nIt	all	GB	Friern Barnet
+Friockheim	fr'ik@m	all	GB	Friockheim
+Frithsden	fr'Izd@n	all	GB	Frithsden
+Frocester	fr'0st3	all	GB	Frocester
+Froncysyllte	vr,0Nk@s'VlteI	all	GB	Froncysyllte
+Frontenac	fr'0tEnak	all	US	Frontenac, Minnesota
+Frydek	fr'idEk	all	US	Frydek, Texas
+Fulshear	f'UlS3	all	US	Fulshear, Texas
+Furneux Pelham	f,3:n@ksp'El@m	all	GB	Furneux Pelham
+Gabalfa	g@b'alv@	all	GB	Gabalfa
+Gaddesden	g'adzd@n	all	GB	Great Gaddesden
+Gainesboro	g'eInzbVr@	all	US	Gainesboro, Tennessee
+Gainsborough	g'eInzb3@	all	GB	Gainsborough, Lincolnshire
+Gairloch	g'e@l0x	all	GB	Gairloch
+Gaithersburg	g'eIT3zb3:g	all	US	Gaithersburg, Maryland
+Gakona	g@k'oUn@	all	US	Gakona, Alaska
+Galashiels	g,al@S'i:lz	all	GB	Galashiels
+Galgate	g'0lg@t	all	GB	Galgate
+Galion	g'alj@n	all	US	Galion, Ohio
+Gallipolis	g,al@p@l'i:s	all	US	Gallipolis, Ohio
+Galveztown	g'alvEztaUn	all	US	Galveztown, Louisiana
+Galway	g'O:lweI	british	IE	Galway
+Gambell	g'amb@L	all	US	Gambell, Alaska
+Ganado	g@n'eIdoU	all	US	Ganado, Texas
+Gananoque	g,an@n'0kweI	all	CA	Gananoque
+Garboldisham	g'A@b@LS@m	all	GB	Garboldisham
+Garforth	g'A@f3T	all	GB	Garforth
+Garscadden	gA@sk'ad@n	all	GB	Garscadden
+Gartloch	gA@tl'0x	all	GB	Gartloch
+Garvoc	g'A@v@k	all	AU	Garvoc
+Gasquet	g'aski:	all	US	Gasquet, California
+Gateacre	g'at@k3	all	GB	Gateacre
+Gaultois	g'O:ltas	all	CA	Gaultois
+Gautier	g'oUSeI	all	US	Gautier, Mississippi
+Gaven	g'eIv@n	all	AU	Gaven, Queensland
+Gawsworth	g'O:zw@T	all	GB	Gawsworth
+Geashill	g'i:S@L	all	IE	Geashill
+Geauga	dZi'O:g@	all	US	Geauga County, Ohio
+Geelong	dZIl'0N	all	AU	Geelong
+Gemalla	dZ@m'al@	all	AU	Gemalla, New South Wales
+Genesee	dZ'En@si	all	US	Genesee County, Michigan
+Geneseo	dZ,EnIs'i:oU	all	US	Geneseo, New York
+Gepp	dZi:p	all	US	Gepp, Arkansas
+Gestingthorpe	g'EstINTO@p	all	GB	Gestingthorpe
+Gettysburg	g'Etizb3:g	all	US	Gettysburg, Pennsylvania
+Geyserville	g'aIz@rvIl	all	US	Geyserville, California
+Gidea	g'Idi@	all	GB	Gidea Park
+Giffnock	g'Ifn@k	all	GB	Giffnock
+Gila Bend	h,i:l@b'End	all	US	Gila Bend, Arizona
+Gilchrist	g'IlkrIst	all	US	Gilchrist, Oregon
+Gillingham	g'IlINham	american	US	Gillingham, Wisconsin
+Gilmanton	g'Ilm@nt@n	all	US	Gilmanton, Wisconsin
+Gilshochill	g'IlSih,Il	all	GB	Gilshochill
+Gippsland	g'Ipsland	all	AU	Gippsland
+Girgarre	g3:g'ari	all	AU	Girgarre
+Girouxville	dZIr'u:vIl	all	CA	Girouxville
+Gisborne	g'Izb3n	all	AU	Gisborne, Victoria
+Gisela	gaIs'i:l@	all	US	Gisela, Arizona
+Gissing	g'IsIN	all	GB	Gissing, Norfolk
+Gitwinksihlkw	g'ItwInsIlk	all	CA	Gitwinksihlkw
+Gjoa Haven	dZ,oUh'eIv@n	all	CA	Gjoa Haven
+Glamis	gl'A:mz	all	GB	Glamis
+Glaslough	glasl'0x	all	IE	Glaslough
+Glasthule	gl'asTu:l	all	IE	Glasthule
+Glastonbury	gl'ast@nb3i	british	GB	Glastonbury
+Gleadless	gl'i:dlIs	all	GB	Gleadless
+Gleichen	gl'i:S@n	all	CA	Gleichen, Alberta
+Glen Alpine	gl'En'alp@n	all	US	Glen Alpine, North Carolina
+Glencarse	glEnk'A@s	all	GB	Glencarse
+Glendalough	gl'End@loU	all	AU	Glendalough, Western Australia
+Gleneden	glEn'IdIn	all	US	Gleneden Beach, Oregon
+Glengowrie	glEng'aUri	all	AU	Glengowrie, South Australia
+Glennallen	glEn'al@n	all	US	Glennallen, Alaska
+Glenroy	glEnr'OI	all	AU	Glenroy, Victoria
+Glenuig	glEn'u:Ig	all	GB	Glenuig
+Gluek	glIk	all	US	Gluek, Minnesota
+Gnadenhutten	dZ@n'eId@nhVt@n	all	US	Gnadenhutten, Ohio
+Gneeveguilla	gni:vg'UIl@	all	IE	Gneeveguilla
+Gobowen	g@b'oU@n	all	GB	Gobowen
+Godalming	g'0d@LmIN	all	GB	Godalming
+Goderich	g'0drItS	all	CA	Goderich, Ontario
+Godmanchester	g'0dm@ntSEst3	all	GB	Godmanchester
+Gogebic	goUg'i:bIk	all	US	Gogebic County, Michigan
+Golborne	g'oUlbO@n	all	GB	Golborne
+Golcar	g'oUk3	all	GB	Golcar
+Goleta	g@l'i:t@	all	US	Goleta, California
+Goliad	g'oUliad	all	US	Goliad, Texas
+Golspie	g'0lspi	all	GB	Golspie
+Goodwick	g'UdIk	all	GB	Goodwick
+Goolgowi	g'UlgaUi	all	AU	Goolgowi
+Goomeri	gu:m'Eri	all	AU	Goomeri
+Goondiwindi	gUnd@w'Indi	all	AU	Goondiwindi
+Goorambat	g'U@@mbat	all	AU	Goorambat
+Goosnargh	g'u:zn3	all	GB	Goosnargh
+Gorgie	g'O@gi:	all	GB	Gorgie
+Goroke	g@r'oUk	all	AU	Goroke, Victoria
+Goscote	g'0sk@t	all	GB	East Goscote
+Goshen	g'oUS@n	all	US	Goshen, Indiana
+Gotebo	g'oUtIboU	all	US	Gotebo, Oklahoma
+Gough	g0f	all	GB	Gough Island
+Goulceby	g'0lsbi	all	GB	Goulceby
+Gourock	g'U@@k	all	GB	Gourock
+Govan	g'0v@n	american	CA	Govan, Saskatchewan
+Govan	g'Vv@n	british	GB	Govan
+Gowanus	g@w'A:n@s	all	US	Gowanus, Brooklyn
+Gowran	g'O:r@n	all	IE	Gowran
+Goytre	g'OItr@	all	GB	Goytre, Monmouthshire
+Granisle	gr,an'aIl	all	CA	Granisle
+Grantchester	gr'A:ntSIst3	all	GB	Grantchester
+Grantham	gr'anT@m	all	GB	Grantham
+Gravelbourg	gr'av@Lb3g	all	CA	Gravelbourg
+Gravesend	gr,eIvz'End	all	GB	Gravesend
+Gravesham	gr'eIvS@m	all	GB	Gravesham
+Gravette	gr'avIt	all	US	Gravette, Arkansas
+Greasby	gr'i:zbi	all	GB	Greasby
+Greatham	gr'Et@m	all	GB	Greatham, Hampshire
+Green Bay	grinb'eI	all	US	Green Bay (town), Wisconsin
+Greenock	gr'i:n@k	all	GB	Greenock
+Greenough	gr'En@f	all	AU	Greenough, Western Australia
+Greensboro	gr'i:nzb@roU	all	US	Greensboro, North Carolina
+Greetham	gr'i:t@m	all	GB	Greetham, Lincolnshire
+Greilickville	gr'aIlIkvIl	all	US	Greilickville, Michigan
+Gresham	gr'ES@m	all	US	Gresham, Oregon
+Greymouth	gr'eImaUT	all	NZ	Greymouth
+Greysouthen	gr'eIsu:n	all	GB	Greysouthen
+Grimsby	gr'Imzbi	all	GB	Grimsby
+Grinnell	grIn'El	all	US	Grinnell, Iowa
+Grise Fiord	gri:zfi'O@d	all	CA	Grise Fiord
+Groby	gr'u:bi	all	GB	Groby
+Groton	gr'0t@n	all	US	Groton, Connecticut
+Grundisburgh	gr'Vnzbr,@	all	GB	Grundisburgh
+Grytviken	gr'Itvi:k@n	all	GB	Grytviken
+Gualala	w@l'A:l@	all	US	Gualala, California
+Guelph	gw'Elf	all	CA	Guelph
+Gugh	gju:	all	GB	Gugh
+Guildford	g'Ilf3d	all	AU	Guildford, New South Wales
+Guisborough	g'Izb3@	all	GB	Guisborough
+Guiseley	g'aIzlI	all	GB	Guiseley
+Guist	g'aIst	all	GB	Guist
+Gulfport	g'Vlfp,O:rt	all	US	Gulfport, Mississippi
+Gulkana	gVlk'an@	all	US	Gulkana, Alaska
+Gullane	g'Vl@n	all	GB	Gullane
+Gumeracha	g,Vm@r'ak@	all	AU	Gumeracha, South Australia
+Gungahlin	gVNg'A:lIn	all	AU	Gungahlin
+Gunnedah	g'Vn@dA:	all	AU	Gunnedah
+Gunwalloe	gVnw'0l@U	all	GB	Gunwalloe
+Gurnee	g3n'i:	all	US	Gurnee, Illinois
+Gwabegar	w'0bIg3	all	AU	Gwabegar
+Gweedore	gwi:d'O@	all	IE	Gweedore
+Gwinnett	gwIn'Et	all	US	Gwinnett County, Georgia
+Habrough	h'eIb@r@	all	GB	Habrough
+Hager	h'eIg3	all	US	Hager City, Wisconsin
+Hagerstown	h'eIg3ztaUn	all	US	Hagerstown, Maryland
+Hahira	heIh'aIr@	all	US	Hahira, Georgia
+Hainault	h'eInO:t	all	GB	Hainault, London
+Hallam	h'El@m	all	US	Hallam, Pennsylvania
+Hallock	h'al0k	all	US	Hallock, Minnesota
+Halloughton	h'al@t@n	all	GB	Halloughton
+Hallowell	h'O:l@wEl	all	US	Hallowell, Maine
+Halnaker	h'an@k3	all	GB	Halnaker
+Hampden	h'amd@n	all	US	Hampden, Massachusetts
+Hampstead	h'ampstId	all	GB	Hampstead
+Hamtramck	hamtr'amIk	all	US	Hamtramck, Michigan
+Happisburgh	h'eIzbVr@	all	GB	Happisburgh
+Harlesden	h'A@lzd@n	all	GB	Harlesden
+Harlingen	h'A@lIndZIn	all	US	Harlingen, Texas
+Harpenden	h'A@p@nd@n	all	GB	Harpenden
+Harpurhey	h'A@p3h,eI	all	GB	Harpurhey
+Harrogate	h'ar@g@t	all	GB	Harrogate
+Haslemere	h'eIz@Lmi@	all	GB	Haslemere
+Haslingden	h'azlINd@n	all	GB	Haslingden
+Hathersage	h'aD@sIdZ	all	GB	Hathersage
+Hauppauge	h'O:p0g	all	US	Hauppauge, New York
+Havasu	h'A:v@su:	all	US	Lake Havasu City, Arizona
+Haverfordwest	h,av3f3dw'Est	all	GB	Haverfordwest
+Haverhill	h'eIv3hIl	british	GB	Haverhill, Suffolk
+Havre Boucher	h'av3b'u:Si	all	CA	Havre Boucher
+Hawarden	h'A@d@n	all	GB	Hawarden
+Hawkesdale	h'O:ksdeIl	all	AU	Hawkesdale, Victoria
+Hawthorne	h'O:ToUrn	all	US	Hawthorne, Florida
+Haysi	h'eIsaI	all	US	Haysi, Virginia
+Hayti	h'eItaI	all	US	Hayti, Missouri
+Haywards Heath	h'eIw@rdzh'i:T	all	GB	Haywards Heath
+Hearne	h3:n	all	US	Hearne, Texas
+Heathcote	h'i:Tk@t	all	AU	Heathcote, Victoria
+Hednesford	h'Ensf3d	all	GB	Hednesford
+Hegewisch	h'Egw,IS	all	US	Hegewisch, Chicago
+Heidelberg	h'aId@lb3:g	all	AU	Heidelberg, Victoria
+Helensburgh	h'El@nzb3@	all	GB	Helensburgh
+Hellingly	h'ElINlaI	all	GB	Hellingly
+Helmshore	hElmS'O@	all	GB	Helmshore
+Helotes	h@l'oUtIs	all	US	Helotes, Texas
+Hemel Hempstead	h,Em@Lh'EmpstId	all	GB	Hemel Hempstead
+Hemyock	h'Emi0k	all	GB	Hemyock
+Henefer	h'En@f3	all	US	Henefer, Utah
+Hengoed	h'EngOId	all	GB	Hengoed
+Hennepin	h'En@pIn	all	US	Hennepin County, Minnesota
+Henrico	hEnr'aIkoU	all	US	Henrico County, Virginia
+Hephzibah	h'EpzIb@	all	US	Hephzibah, Georgia
+Hermiston	h'3:m@st@n	all	US	Hermiston, Oregon
+Herold	h'ar@Ld	all	US	Herold, Wisconsin
+Herstmonceux	h,3:sm@nz'u:	all	GB	Herstmonceux
+Hertford	h'A@tf3d	all	GB	Hertford
+Hessle	h'Ez@L	all	GB	Hessle
+Heswall	h'Ezw@l	all	GB	Heswall
+Hexham	h'Eks@m	all	AU	Hexham, New South Wales
+Hexworthy	h'aks3i	all	GB	Hexworthy
+Heyrod	h'Er@d	all	GB	Heyrod
+Heysham	h'i:S@m	all	GB	Heysham
+Hialeah	h,aI@l'i:@	all	US	Hialeah, Florida
+Hibbard	h'IbA@d	all	AU	Hibbard, New South Wales
+Hico	h'aIkoU	all	US	Hico, Texas
+Highclere	h'aIkli@	all	GB	Highclere
+Hillsboro	h'Ilzb3oU	all	US	Hillsboro, Oregon
+Hilo	h'i:loU	all	US	Hilo, Hawaii
+Hindley	h'Indli	all	GB	Hindley, Greater Manchester
+Hindley Green	h'Indligr,i:n	all	GB	Hindley Green
+Hingham	h'IN@m	all	US	Hingham, Massachusetts
+Hinwick	h'InIk	all	GB	Hinwick
+Hirwaun	h'i@waIn	all	GB	Hirwaun
+Hitterdal	h'It3dA:l	all	US	Hitterdal, Minnesota
+Hochheim	h'oUhaIm	all	US	Hochheim, Texas
+Hockessin	h'oUkEsIn	all	US	Hockessin, Delaware
+Hoddesdon	h'0dzd@n	all	GB	Hoddesdon
+Hogganfield	h'Vg@nf,ild	all	GB	Hogganfield
+Hokah	h'oUk@	all	US	Hokah, Minnesota
+Hokendauqua	h'0ki	all	US	Hokendauqua, Pennsylvania
+Holborn	h'oUb3n	all	GB	Holborn
+Holcomb	h'O:k@m	all	US	Holcomb, Missouri
+Holmen	h'oUlm@n	all	US	Holmen, Wisconsin
+Holyhead	h,@Ulih'Ed	all	GB	Holyhead
+Holyoke	h'oUljoUk	all	US	Holyoke, Massachusetts
+Holyrood	h'0liru:d	all	GB	Holyrood, Edinburgh
+Holywell	h'0liwEl	all	GB	Holywell, Flintshire
+Holywood	h'0liwUd	all	GB	Holywood, County Down
+Homerton	h'0m3t@n	all	GB	Homerton
+Homosassa	h,oUm@s'as@	all	US	Homosassa, Florida
+Honeoye	h'VniOI	all	US	Honeoye Falls, New York
+Honiton	h'Vnit@n	all	GB	Honiton
+Honoraville	h@n'oUr@v,Il	all	US	Honoraville, Alabama
+Hoopeston	h'Upst@n	all	US	Hoopeston, Illinois
+Hopatcong	hoUp'atk0N	all	US	Hopatcong, New Jersey
+Hopeulikit	h,oUpju:l'aIkIt	all	US	Hopeulikit, Georgia
+Hoquiam	h'oUkwi@m	all	US	Hoquiam, Washington
+Hornsey	h'O@nzi	all	GB	Hornsey
+Horry	'0ri:	all	US	Horry County, South Carolina
+Horsham	h'O@S@m	all	AU	Horsham, Victoria
+Horsmonden	h'O@zm@nd,En	all	GB	Horsmonden
+Horwich	h'0rItS	all	GB	Horwich
+Hoschton	h'USt@n	all	US	Hoschton, Georgia
+Hougham	h'0f@m	all	GB	Hougham, Lincolnshire
+Houghton Regis	h'aUt@nr'i:dZIz	all	GB	Houghton Regis
+Houlka	h'Vlk@	all	US	New Houlka, Mississippi
+Houma	h'oUm@	all	US	Houma, Louisiana
+Hounslow	h'aUnzloU	all	GB	Hounslow
+Hoveton	h'0ft@n	all	GB	Hoveton
+Howick	h'oUIk	all	GB	Howick, Northumberland
+Howth	h'oUT	all	IE	Howth
+Hoxne	h'0ks@n	all	GB	Hoxne
+Hoylake	hOIl'eIk	all	GB	Hoylake
+Hughenden	hju:'End@n	all	CA	Hughenden, Alberta
+Hugo	hju:g'oU	all	US	Hugo, Minnesota
+Hugoton	hj'u:g@t@n	all	US	Hugoton, Kansas
+Hulcott	h'Vlk@t	all	GB	Hulcott
+Humboldt	h'VmboUlt	all	US	Humboldt County, California
+Humshaugh	h'VmzhVf	all	GB	Humshaugh
+Hunslet	h'Vnzl@t	all	GB	Hunslet
+Hunstanton	h'Vnst@n	all	GB	Hunstanton
+Huonville	hju:'0nvIl	all	AU	Huonville
+Huslia	h'u:sli@	all	US	Huslia, Alaska
+Hyndburn	h'aIndb3n	all	GB	Hyndburn
+Ibapah	'aIb@pA:	all	US	Ibapah, Utah
+Ibrox	'aIbr0ks	all	GB	Ibrox, Glasgow
+Icard	'aIk3d	all	US	Icard, North Carolina
+Idanha	Id'an@	all	US	Idanha, Oregon
+Iddesleigh	'Idzli:	all	GB	Iddesleigh
+Ightham	'aIt@m	all	GB	Ightham
+Ignace	'IgneIs	all	CA	Ignace, Ontario
+Ihlen	'i:l@n	all	US	Ihlen, Minnesota
+Ijamsville	'aI@mzvIl	all	US	Ijamsville, Maryland
+Ilam	'aIl@m	all	GB	Ilam, Staffordshire
+Ilkeston	'Ilk@st@n	all	GB	Ilkeston
+Inchinnan	IntS'In@n	all	GB	Inchinnan
+Indio	El'aIndi:oU	all	US	El Indio, Texas
+Indooroopilly	,Indr@p'Ili	all	AU	Indooroopilly
+Ingham	'IN@m	all	US	Ingham County, Michigan
+Ingoldmells	'INg@m,Elz	all	GB	Ingoldmells
+Inistioge	InISt'i:g	all	IE	Inistioge
+Injune	'IndZu:n	all	AU	Injune
+Innisfail	'InIsfeIl	all	CA	Innisfail, Alberta
+Interlochen	'Int@rl0k@n	all	US	Interlochen, Michigan
+Inuit Nunangat	'Inju:Itn'u:naNat	all	CA	Inuit Nunangat
+Inuvik	In'u:vIk	all	CA	Inuvik
+Inveraray	,Inv@r'e@i	all	GB	Inveraray
+Invercargill	,Inv3k'A@gIl	all	NZ	Invercargill
+Inverey	,Inv@r'aI	all	GB	Inverey
+Invergordon	,Inv3g'O@d@n	all	GB	Invergordon
+Invergowrie	,Inv3g'aUri	all	GB	Invergowrie
+Inverie	,Inv@r'i:	all	GB	Inverie
+Inverkeithing	Inv3k'i:DIN	all	GB	Inverkeithing
+Inverkip	,Inv3k'Ip	all	GB	Inverkip
+Inverloch	'Inv3l0k	all	AU	Inverloch, Victoria
+Invermay	,Inv3m'eI	all	GB	Invermay
+Inverurie	Inv@r'U@i	all	GB	Inverurie
+Inyo	'InjoU	all	US	Inyo County, California
+Ione	aI'oUn	all	US	Ione, California
+Ionia	aI'oUnj@	all	US	Ionia County, Michigan
+Iosepa	joUs'Ep@	all	US	Iosepa, Utah
+Iqaluit	Ik'alu:It	all	CA	Iqaluit
+Ira	'aIr@	all	US	Ira, Iowa
+Iraan	,aIr@'an	all	US	Iraan, Texas
+Ireshopeburn	'aIsUpb3:n	all	GB	Ireshopeburn
+Irion	'aIri@n	all	US	Irion County, Texas
+Irondequoit	Ir'0nd@kOIt	all	US	Irondequoit, New York
+Irrewillipe	,Iriw'Il@pi	all	AU	Irrewillipe
+Irricana	,IrIk'an@	all	CA	Irricana
+Irthlingborough	'3:TlINb3@	all	GB	Irthlingborough
+Isanti	aIs'anti:	all	US	Isanti County, Minnesota
+Ischua	'ISweI	all	US	Ischua, New York
+Iselin	'IzlIn	all	US	Iselin, New Jersey
+Ishpeming	'ISp@mIN	all	US	Ishpeming, Michigan
+Isle aux Morts	,aIl@m'O@t	all	CA	Isle aux Morts
+Isleworth	'aIz@Lw@T	all	GB	Isleworth
+Islington	'IzlINt@n	all	AU	Islington, New South Wales
+Islip	'aIslIp	american	US	Islip, New York
+Islip	'aIzlIp	british	GB	Islip, Northamptonshire
+Itasca	aIt'ask@	all	US	Itasca County, Minnesota
+Ituna	aItj'u:n@	all	CA	Ituna
+Iuka	aIj'u:k@	all	US	Iuka, Mississippi
+Iver	'aIv@r	all	GB	Iver
+Ivins	'aIvInz	all	US	Ivins, Utah
+Ivybridge	'aIvibrIdZ	all	GB	Ivybridge
+Iwade	'aIw,eId	all	GB	Iwade
+Jandowae	dZ'and@weI	all	AU	Jandowae
+Jean Lafitte	dZi:nl@f'i:t	all	US	Jean Lafitte, Louisiana
+Jeanerette	dZ'Inr,Et	all	US	Jeanerette, Louisiana
+Jedburgh	dZ'Edb3@	all	GB	Jedburgh
+Jemez	h'EmEz	all	US	Jemez Springs, New Mexico
+Jenera	dZ@n'e@@	all	US	Jenera, Ohio
+Jeparit	dZ@p'arIt	all	AU	Jeparit
+Jerdacuttup	dZ,3:d@k'VtVp	all	AU	Jerdacuttup, Western Australia
+Jerilderie	dZ@r'Ild3i	all	AU	Jerilderie
+Jesmond	dZ'Ezm@nd	all	AU	Jesmond, New South Wales
+Jessup	dZ'Es@p	all	US	Jessup, Maryland
+Jiba	h'i:b@	all	US	Jiba, Texas
+Jobstown	dZ'oUbztaUn	all	IE	Jobstown
+Joliet	dZ'oUliEt	all	US	Joliet, Illinois
+Jonesborough	dZ'oUnzbVr@	american	US	Jonesborough, Tennessee
+Jonesborough	dZ'oUnzb3@	british	GB	Jonesborough, County Armagh
+Jourdanton	dZ'3:d@nt@n	all	US	Jourdanton, Texas
+Juab	dZ'u:ab	all	US	Juab County, Utah
+Judea	dZ'u:di:	all	US	Mount Judea, Arkansas
+Junee	dZu:n'i:	all	AU	Junee
+Jurby	dZ'@rbi:	all	GB	Jurby
+Jurupa	h@r'u:p@	all	US	Jurupa Valley, California
+Kabetogama	k,ab@t'oUg@m@	all	US	Kabetogama, Minnesota
+Kadina	k@d'i:n@	all	AU	Kadina, South Australia
+Kahlotus	k@l'oUt@s	all	US	Kahlotus, Washington
+Kahoka	k@h'oUk@	all	US	Kahoka, Missouri
+Kailua	kaIl'u:@	all	US	Kailua, Hawaii
+Kairi	k'e@aI	all	AU	Kairi, Queensland
+Kaktovik	kakt'oUvIk	all	US	Kaktovik, Alaska
+Kalaloch	kl'eIl0k	all	US	Kalaloch, Washington
+Kalamazoo	k,al@m@z'u:	all	US	Kalamazoo, Michigan
+Kaleden	k@l'i:d@n	all	CA	Kaleden
+Kaleen	keIl'i:n	all	AU	Kaleen, Australian Capital Territory
+Kaleva	k'al@v@	all	US	Kaleva, Michigan
+Kalida	k@l'aId@	all	US	Kalida, Ohio
+Kalkaska	kalk'ask@	all	US	Kalkaska County, Michigan
+Kallangur	k@l'aNg3	all	AU	Kallangur, Queensland
+Kamay	k'eImeI	all	US	Kamay, Texas
+Kambah	k'ambA:	all	AU	Kambah
+Kamiah	k'amiaI	all	US	Kamiah, Idaho
+Kanab	k@n'ab	all	US	Kanab, Utah
+Kanabec	k@n'eIbIk	all	US	Kanabec County, Minnesota
+Kanaranzi	k,an@r'0nzi	all	US	Kanaranzi Township, Rock County, Minnesota
+Kanarraville	k@n'ar@vIl	all	US	Kanarraville, Utah
+Kanata	k@n'at@	all	CA	Kanata, Ontario
+Kanawha	k@n'O:@	all	US	Kanawha County, West Virginia
+Kandiyohi	k,andij'oUhaI	all	US	Kandiyohi County, Minnesota
+Kangiqsualujjuaq	kandZ,Iksu:'alu:dZu:ak	all	CA	Kangiqsualujjuaq
+Kankakee	k,aNk@k'i:	all	US	Kankakee, Illinois
+Kannapolis	k@n'ap@lIs	all	US	Kannapolis, North Carolina
+Kanosh	k@n'0S	all	US	Kanosh, Utah
+Kapasiwin	k@p'asIwIn	all	CA	Kapasiwin
+Kapowsin	k@p'aU@sIn	all	US	Kapowsin, Washington
+Kapuskasing	k,ap@sk'eIsIN	all	CA	Kapuskasing
+Karlsruhe	k'A@lsru:	all	US	Karlsruhe, North Dakota
+Karuah	k@r'u:@	all	AU	Karuah, New South Wales
+Kasaan	k@s'an	all	US	Kasaan, Alaska
+Kasigluk	k@s'IglUk	all	US	Kasigluk, Alaska
+Kasilof	k@s'i:l0f	all	US	Kasilof, Alaska
+Katonah	k@t'oUn@	all	US	Katonah, New York
+Kaukauna	k@k'O:n@	all	US	Kaukauna, Wisconsin
+Kearney	k'A@ni	all	US	Kearney, Nebraska
+Kearns	k3:nz	all	US	Kearns, Utah
+Kearny	k'A@ni	all	US	Kearny, New Jersey
+Kearsley	k'3:zli	all	GB	Kearsley
+Kechi	k'i:tSaI	all	US	Kechi, Kansas
+Keewatin	kiw'A:tIn	all	US	Keewatin, Minnesota
+Keewaydin	kiw'eIdIn	all	US	Keewaydin, Minneapolis
+Keig	ki:g	all	GB	Keig
+Keira	k'i@@	all	AU	Mount Keira
+Kelowna	k@l'oUn@	all	CA	Kelowna
+Kemah	k'i:m@	all	US	Kemah, Texas
+Kenabeek	k'En@b,Ek	all	CA	Kenabeek
+Kenai	k'i:naI	all	US	Kenai, Alaska
+Kenhorst	k'Enh3st	all	US	Kenhorst, Pennsylvania
+Kennard	k@n'A@d	all	US	Kennard, Texas
+Kennebecasis	kEn@b@k'eIsIs	all	CA	Kennebecasis Valley
+Kennebunk	k'Enib,VNk	all	US	Kennebunk, Maine
+Kennebunkport	k,Enib'VNkp,O@t	all	US	Kennebunkport, Maine
+Kennewick	k'En@wIk	all	US	Kennewick, Washington
+Kenora	k@n'O@@	all	CA	Kenora
+Kenosha	k@n'oUS@	all	US	Kenosha, Wisconsin
+Kenyon	k'Enj@n	all	US	Kenyon, Minnesota
+Keokuk	k'i:@kVk	all	US	Keokuk, Iowa
+Keosauqua	k,i:@s'O:kw@	all	US	Keosauqua, Iowa
+Keremeos	kEr@m'i:@s	all	CA	Keremeos
+Kerhonkson	k3h'0Nks@n	all	US	Kerhonkson, New York
+Keswick	k'EzwIk	american	CA	Keswick, Ontario
+Ketchikan	k'EtSIkan	all	US	Ketchikan, Alaska
+Kewadin	k@w'eId'@n	all	US	Kewadin, Michigan
+Kewanee	ki:w'A:ni:	all	US	Kewanee, Illinois
+Keynsham	k'eInS@m	all	GB	Keynsham
+Keyser	k'aIz3	all	US	Keyser, West Virginia
+Keytesville	k'i:tsvIl	all	US	Keytesville, Missouri
+Khancoban	kank'oUb@n	all	AU	Khancoban
+Kilbarchan	kIlb'A@x@n	all	GB	Kilbarchan
+Kilcunda	k'IlkVndA:	all	AU	Kilcunda
+Kilfinane	k,IlfIn'A:n	all	IE	Kilfinane
+Kilgore	k'IlgO:r	all	US	Kilgore, Texas
+Kilkivan	kIlk'i:van	all	AU	Kilkivan, Queensland
+Killarney	kIl'A@ni	all	IE	Killarney
+Killiecrankie	k,Ili:kr'aNki:	all	GB	Killiecrankie
+Killin	k,Il'In	all	GB	Killin
+Killough	kIl'0x	all	GB	Killough
+Killylea	kIli:l'eI	all	GB	Killylea
+Killyleagh	kIlil'eI	all	GB	Killyleagh
+Kilmacolm	k,Ilm@k'oUlm	all	GB	Kilmacolm
+Kilmore	k'IlmO@	all	AU	Kilmore, Victoria
+Kilncadzow	kIlk'eIgi	all	GB	Kilncadzow
+Kilrea	kIlr'eI	all	GB	Kilrea
+Kimball	k'Imb@l	all	US	Kimball, Minnesota
+Kinard	k'aIn3d	all	US	Kinard, Florida
+Kinbrae	k'InbreI	all	US	Kinbrae, Minnesota
+Kincardine	k,Ink'A:rd@n	american	CA	Kincardine, Ontario
+Kincardine	kInk'A@dIn	british	GB	Kincardine, Fife
+Kingaroy	kIN@r'OI	all	AU	Kingaroy
+Kingsknowe	k,INzn'aU	all	GB	Kingsknowe
+Kingsteignton	kINst'eInt@n	all	GB	Kingsteignton
+Kingussie	kINj'u:si	all	GB	Kingussie
+Kinistino	kIn'IstInoU	all	CA	Kinistino
+Kinloch Rannoch	k,Inl0xr'an@x	all	GB	Kinloch Rannoch
+Kinlochleven	k,Inl0xl'i:v@n	all	GB	Kinlochleven
+Kinlough	kInl'0x	all	IE	Kinlough
+Kinnelon	k'In@l0n	all	US	Kinnelon, New Jersey
+Kinnickinnic	kIn'IkInIk	all	US	Kinnickinnic, Wisconsin
+Kinross	kInr'0s	all	GB	Kinross
+Kinsale	kIns'eIl	all	IE	Kinsale
+Kintore	kInt'O@	all	GB	Kintore, Aberdeenshire
+Kirkby	k'3:bi	all	GB	Kirkby
+Kirkby Lonsdale	k'3:bil'0nzdeIl	all	GB	Kirkby Lonsdale
+Kirkby Malzeard	k'3:bim'alz3d	all	GB	Kirkby Malzeard
+Kirkbymoorside	k,3:bim'U@saId	all	GB	Kirkbymoorside
+Kirkcudbright	k3k'u:bri	all	GB	Kirkcudbright
+Kirkcudbrightshire	k3k'u:briS3	all	GB	Kirkcudbrightshire
+Kirkintilloch	k,3:kInt'Il@x	all	GB	Kirkintilloch
+Kitsilano	kIts@l'anoU	all	CA	Kitsilano
+Kittanning	kIt'anIN	all	US	Kittanning, Pennsylvania
+Kittitas	k'ItItas	all	US	Kittitas County, Washington
+Kitwanga	k'Itw@Ng@	all	CA	Kitwanga
+Kiveton	k'IvIt@n	all	GB	Kiveton Park
+Kleena Kleene	kl,i:n@kl'i:n	all	CA	Kleena Kleene
+Klej Grange	kl,EdZgr'eIndZ	all	US	Klej Grange, Maryland
+Knaresborough	n'e@zb3@	all	GB	Knaresborough
+Knik	kn'Ik	all	US	Knik River, Alaska
+Knockmoyle	n0km'OIl	all	GB	Knockmoyle
+Knocknacarry	n,0kn@kj'A@i	all	GB	Knocknacarry
+Knowle	n'oUl	all	GB	Knowle, West Midlands
+Knowsley	n'oUzli	all	GB	Knowsley, Merseyside
+Knoydart	n'OId3t	all	GB	Knoydart
+Kokomo	k'oUk@moU	all	US	Kokomo, Indiana
+Kolan	k'oUlan	all	AU	South Kolan
+Kolb	k'oUlb	all	US	Kolb, Wisconsin
+Kolberg	k'oUlb3g	all	US	Kolberg, Wisconsin
+Koo Wee Rup	k,u:w,i:r'Vp	all	AU	Koo Wee Rup
+Koondrook	k'UndrUk	all	AU	Koondrook
+Koongamia	kUNg@m'aI@	all	AU	Koongamia, Western Australia
+Kooragang	k'u:r@gaN	all	AU	Kooragang
+Kooskia	k'u:ski:	all	US	Kooskia, Idaho
+Kootenays	k'u:tni	all	CA	Kootenays
+Koroit	k@r'OIt	all	AU	Koroit
+Kotzebue	k'0ts@bju:	all	US	Kotzebue, Alaska
+Kountze	ku:nts	all	US	Kountze, Texas
+Koyukuk	k'aIj@k@k	all	US	Koyukuk, Alaska
+Kuitpo	k'aIpoU	all	AU	Kuitpo, South Australia
+Kuna	kj'u:n@	all	US	Kuna, Idaho
+Kunesh	k'u:nIS	all	US	Kunesh, Wisconsin
+Kure	kjU@'i	all	US	Kure Beach, North Carolina
+Kuttawa	k@t'A:w@	all	US	Kuttawa, Kentucky
+Kwethluk	kw'i:TlUk	all	US	Kwethluk, Alaska
+Kyabram	kaI'abr@m	all	AU	Kyabram
+Kyeemagh	kaI'i:m@	all	AU	Kyeemagh
+Kyleakin	kaIl'A:kIn	all	GB	Kyleakin
+Kyneton	k'aInt@n	all	AU	Kyneton
+La Conchita	l,A:k@ntS'i:t@	all	US	La Conchita, California
+La Crescent	l@kr'Es@nt	all	US	La Crescent, Minnesota
+La Cygne	leIs'i:n	all	US	La Cygne, Kansas
+La Grange	l@gr'eIndZ	all	US	La Grange, Texas
+La Marque	l@m'A@k	all	US	La Marque, Texas
+La Plata	lA:pl'eIt@	all	US	La Plata, Missouri
+La Porte	l@p'O@t	all	US	La Porte, Texas
+La Pryor	l@pr'aI3	all	US	La Pryor, Texas
+La Tuque	lA:tj'u:k	all	CA	La Tuque, Quebec
+LaGrange	l@gr'eIndZ	all	US	LaGrange, New York
+LaPlace	l@pl'A:s	all	US	LaPlace, Louisiana
+Labadie	l'ab@di	all	US	Labadie, Missouri
+Labrador	l'abr@dO@	all	CA	Labrador
+Lac La Biche	l,akl@b'IS	all	CA	Lac La Biche, Alberta
+Lac qui Parle	l,akkip'A@l	all	US	Lac qui Parle County, Minnesota
+Lackawanna	l,ak@w'0n@	all	US	Lackawanna County, Pennsylvania
+Laclede	l@kl'i:d	all	US	Laclede, Missouri
+Lacombe	l@k'oUm	all	CA	Lacombe, Alberta
+Lacon	l'eIk@n	all	US	Lacon, Alabama
+Laconia	l@k'oUni@	all	US	Laconia, New Hampshire
+Ladue	lA:d'u:	all	US	Ladue, Missouri
+Laguna	l@g'u:n@	all	US	Laguna Beach, California
+Laguna Niguel	l@g'u:n@nIg'El	all	US	Laguna Niguel, California
+Lahaina	l@h'aIn@	all	US	Lahaina, Hawaii
+Lake Quivira	l'eIkkwIv'i@@	all	US	Lake Quivira, Kansas
+Lalor	l'O:l3	all	AU	Lalor, Victoria
+Lambourn	l'ambO@n	all	GB	Lambourn
+Lamesa	l@m'i:s@	all	US	Lamesa, Texas
+Lamoille	l@m'OIl	all	US	Lamoille County, Vermont
+Lampasas	lamp'as@s	all	US	Lampasas, Texas
+Lampeter	l'amp@t3	all	GB	Lampeter
+Lamplugh	l'ampl@	all	GB	Lamplugh
+Lanark	l'an3k	all	GB	Lanark
+Langholm	l'aN@m	all	GB	Langholm
+Langlois	l'aNlIs	all	US	Langlois, Oregon
+Langwarrin	laNw'0rIn	all	AU	Langwarrin
+Laois	li:S	all	IE	County Laois
+Lapeer	l@p'i@	all	US	Lapeer County, Michigan
+Lapine	l@p'aIn	all	US	Lapine, Alabama
+Laporte	l@p'O@t	all	US	Laporte, Minnesota
+Lapwai	l'apweI	all	US	Lapwai, Idaho
+Laramie	l'ar@mi	all	US	Laramie, Wyoming
+Lastrup	l'eIstr@p	all	US	Lastrup, Minnesota
+Latexo	l@t'EksoU	all	US	Latexo, Texas
+Lathom	l'eID@m	all	GB	Lathom
+Lathrup	l'eITr@p	all	US	Lathrup Village, Michigan
+Laugharne	l'A@n	all	GB	Laugharne
+Laughlin	l'O:flIn	all	US	Laughlin, Nevada
+Laurencekirk	l,0r@nsk'3:k	all	GB	Laurencekirk
+Laurieton	l'0rIt@n	all	AU	Laurieton
+Lavaca	l@v'A:k@	all	US	Port Lavaca, Texas
+Laval	l@v'al	all	CA	Laval, Quebec
+Laveen	l@v'i:n	all	US	Laveen, Phoenix
+Lavenham	l'av@n@m	all	GB	Lavenham
+Lavon	l@v'0n	all	US	Lavon, Texas
+Lawers	l'O@z	all	GB	Lawers
+Leachkin	l'A:rkIn	all	GB	Leachkin
+Leadville	l'EdvIl	all	US	Leadville, Colorado
+Leamington	l'i:mINt@n	all	CA	Leamington, Ontario
+Leavittsburg	l'EvItsb3:g	all	US	Leavittsburg, Ohio
+Lecompton	lIk'0mpt@n	all	US	Lecompton, Kansas
+Leduc	l@d'u:k	all	CA	Leduc, Alberta
+Ledyard	l'EdZ3:d	all	US	Ledyard, Connecticut
+Leelanau	l'i:l@nO:	all	US	Leelanau County, Michigan
+Lefors	l@f'O@z	all	US	Lefors, Texas
+Legerwood	l'EdZ@wUd	all	AU	Legerwood, Tasmania
+Lehi	l'i:haI	all	US	Lehi, Utah
+Lehigh	l'i:haI	all	US	Lehigh County, Pennsylvania
+Lehighton	lih'aIt@n	all	US	Lehighton, Pennsylvania
+Leighlinbridge	l'O:xlInbrIdZ	all	IE	Leighlinbridge
+Leighton Buzzard	l'eIt@nb'Vz3d	all	GB	Leighton Buzzard
+Leinster	l'Enst3	all	IE	Leinster
+Leintwardine	l'Entw3daIn	all	GB	Leintwardine
+Leipsic	l'IpsIk	all	US	Leipsic, Ohio
+Leiston	l'eIst@n	all	GB	Leiston
+Leitrim	l'i:tr@m	all	IE	County Leitrim
+Leixlip	l'i:kslIp	all	IE	Leixlip
+Leland	l'i:l@nd	all	US	Leland, Michigan
+Lemoore	l@m'O@	all	US	Lemoore, California
+Lenawee	l'En@weI	all	US	Lenawee County, Michigan
+Lenexa	lIn'Eks@	all	US	Lenexa, Kansas
+Lenoir	lEn'O@	all	US	Lenoir, North Carolina
+Lenox Hill	l,En@ksh'Il	all	US	Lenox Hill
+Leominster	l'Em@nst@r	american	US	Leominster, Massachusetts
+Leonay	l'i:oUneI	all	AU	Leonay
+Leongatha	li:ng'aT@	all	AU	Leongatha
+Leoti	li:'oUt@	all	US	Leoti, Kansas
+Leross	l'i:r0s	all	CA	Leross
+Lesmahagow	lEzm@h'eIgoU	all	GB	Lesmahagow
+Leuchars	l'u:x3s	all	GB	Leuchars
+Levan	l@v'an	all	US	Levan, Utah
+Levenshulme	l'Ev@nSu:m	all	GB	Levenshulme
+Lewannick	lu:'0nIk	all	GB	Lewannick
+Lewes	l'u:@s	american	US	Lewes, Delaware
+Lewes	l'u:Is	british	GB	Lewes
+Lewisham	l'u:IS@m	all	GB	Lewisham
+Lewisville	l'u:IsvIl	all	US	Lewisville, Texas
+Lezayre	l@z'e@	all	GB	Lezayre
+Liawenee	laI@w'i:ni	all	AU	Liawenee
+Ligonier	lIg@n'ir	all	US	Ligonier, Indiana
+Lillooet	l'IloUEt	all	CA	Lillooet
+Limavady	lIm@v'adi	all	GB	Limavady
+Limaville	l'aIm@vIl	all	US	Limaville, Ohio
+Limon	l'aIm@n	all	US	Limon, Colorado
+Lingen	l'IN@n	all	GB	Lingen, Herefordshire
+Linlithgow	lInl'ITgoU	all	GB	Linlithgow
+Lino Lakes	l'aInoUl'eIks	all	US	Lino Lakes, Minnesota
+Lipan	l'aIpan	all	US	Lipan, Texas
+Lipscomb	l'Ipsk@m	all	US	Lipscomb County, Texas
+Lisburn	l'Izb3:n	all	GB	Lisburn
+Liskeard	lIsk'A@d	all	GB	Liskeard
+Listowel	l'Ist@w@L	american	CA	Listowel, Ontario
+Listowel	l'IstoUl	british	IE	Listowel
+Lithopolis	laIT'0p@lIs	all	US	Lithopolis, Ohio
+Littleborough	l'It@Lb3@	all	GB	Littleborough, Greater Manchester
+Littlebredy	l'It@LbrIdi	all	GB	Littlebredy
+Livengood	l'aIv@ngUd	all	US	Livengood, Alaska
+Livermore	l'Iv3mO@	all	US	Livermore, Kentucky
+Livonia	l@v'oUnj@	all	US	Livonia, Michigan
+Llandaff	land'af	all	GB	Llandaff
+Llandrindod Wells	landr,Ind0dw'Elz	all	GB	Llandrindod Wells
+Llandudno	land'IdnoU	all	GB	Llandudno
+Llangwm	l'aN@m	all	GB	Llangwm, Pembrokeshire
+Llanthony	lant'oUni	all	GB	Llanthony
+Llynclys	l'VNklIs	all	GB	Llynclys
+Lobethal	l'oUb@T@L	all	AU	Lobethal
+Lochailort	l0x'aIl3t	all	GB	Lochailort
+Lochbuie	l0kb'u:i	all	US	Lochbuie, Colorado
+Lochee	l0x'i:	all	GB	Lochee
+Lochgelly	l0xg'Eli	all	GB	Lochgelly
+Lochgilphead	l0xg'IlphEd	all	GB	Lochgilphead
+Lochwinnoch	l0xw'In@x	all	GB	Lochwinnoch
+Lodi	l'oUdaI	all	US	Lodi, California
+Loganholme	l'oUg@nhoUm	all	AU	Loganholme, Queensland
+Logierait	l'oUgir,eIt	all	GB	Logierait
+Lometa	loUm'i:t@	all	US	Lometa, Texas
+Lonan	l'0n@n	all	GB	Lonan
+Longsleddale	l'0NslEd@l	all	GB	Longsleddale
+Lonoke	l'oUnoUk	all	US	Lonoke, Arkansas
+Loogootee	l@g'oUti:	all	US	Loogootee, Indiana
+Lopatcong	loUp'atk0N	all	US	Lopatcong Township, New Jersey
+Lorain	lO:r'eIn	all	US	Lorain, Ohio
+Lorida	l0r'i:d@	all	US	Lorida, Florida
+Los Altos	lO:s'altoUs	all	US	Los Altos, California
+Los Angeles	lO:s'andZ@L@s	all	US	Los Angeles
+Los Banos	loUsb'anoUs	all	US	Los Banos, California
+Los Feliz	loUsf'i:lIs	all	US	Los Feliz, Los Angeles
+Los Gatos	loUsg'A:toUs	all	US	Los Gatos, California
+Los Olivos	loUsoUl'i:voUs	all	US	Los Olivos, California
+Lostock Hall	l,0st0kh'O:l	all	GB	Lostock Hall
+Lostwithiel	l0sw'IDi@L	all	GB	Lostwithiel
+Loudoun	l'aUd@n	all	US	Loudoun County, Virginia
+Loughborough	l'Vfb3@	all	GB	Loughborough
+Loughbrickland	l0xbr'Iklan	all	GB	Loughbrickland
+Loughgall	l0xg'O:l	all	GB	Loughgall
+Loughglinn	l0xgl'In	all	IE	Loughglinn
+Loughguile	l0xg'i:l	all	GB	Loughguile
+Loughinisland	l,0xIn'aIl@nd	all	GB	Loughinisland
+Loughmacrory	l0xm@kr'O@i	all	GB	Loughmacrory
+Loughmore	l0xm'oU	all	IE	Loughmore
+Loughor	l'Vx3	all	GB	Loughor
+Loughrea	l0xr'eI	all	IE	Loughrea
+Loughshinny	l0xS'Ini	all	IE	Loughshinny
+Loughton	l'aUt@n	all	GB	Loughton
+Louisa	lu:'aIz@	all	US	Louisa County, Iowa
+Loveclough	l'VfklVf	all	GB	Loveclough
+Lowdham	l'aUd@m	all	GB	Lowdham
+Lowell	l'oU@L	all	US	Lowell, Massachusetts
+Lowick	l'aUIk	all	GB	Lowick, Northumberland
+Lowville	l'aUvIl	all	US	Lowville, New York
+Lubec	lu:b'Ek	all	US	Lubec, Maine
+Lucan	lj'u:k@n	all	IE	Lucan, Dublin
+Lucedale	l'u:sdeIl	all	US	Lucedale, Mississippi
+Luckenbach	l'u:kInbA:k	all	US	Luckenbach, Texas
+Luddesdown	l'Vdzd@n	all	GB	Luddesdown
+Ludgershall	l'Vg3SO:l	all	GB	Ludgershall, Wiltshire
+Ludgvan	l'VdZ@n	all	GB	Ludgvan
+Ludington	l'VdINt@n	all	US	Ludington, Michigan
+Ludowici	l,u:d@w'IsI	all	US	Ludowici, Georgia
+Lugoff	lju:g'0f	all	US	Lugoff, South Carolina
+Lumphanan	lVmf'an@n	all	GB	Lumphanan
+Lunenburg	l'u:n@nb3:g	all	CA	Lunenburg, Nova Scotia
+Lutsen	l'u:ts@n	all	US	Lutsen, Minnesota
+Lutz	l'u:ts	all	US	Lutz, Florida
+Luxulyan	l@ks'Ilj@n	all	GB	Luxulyan
+Lyme Regis	l,aImr'i:dZIs	all	GB	Lyme Regis
+Lymington	l'ImINt@n	all	GB	Lymington
+Lympne	lIm	all	GB	Lympne
+Lyndeborough	l'aIndb,VroU	all	US	Lyndeborough, New Hampshire
+Lyons	l'aI@nz	all	US	Lyons, Ohio
+Lyonshall	l'aI@nzhO:l	all	GB	Lyonshall
+Lytchett Matravers	l'ItSItm@tr'av3z	all	GB	Lytchett Matravers
+Lytham St Annes	l'ID@ms@nt'anz	all	GB	Lytham St Annes
+Mabank	m'eIbaNk	all	US	Mabank, Texas
+Macarthur	m@k'A@T3	all	AU	Macarthur, Victoria
+Macclesfield	m'ak@Lzfi@Ld	all	GB	Macclesfield
+Macedon	m'as@d@n	all	AU	Mount Macedon, Victoria
+Macgregor	m@kgr'Eg@	all	AU	Macgregor, Australian Capital Territory
+Mackay	m@k'aI	british	AU	Mackay, Queensland
+Mackinaw	m'ak@nO:	all	US	Mackinaw City, Michigan
+Macomb	m@k'oUm	all	US	Macomb County, Michigan
+Macon	m'eIk@n	all	US	Macon, Georgia
+Macroom	m@kr'u:m	all	IE	Macroom
+Macungie	m@k'VndZi:	all	US	Macungie, Pennsylvania
+Madeira	m@d'e@@	all	US	Madeira Beach, Florida
+Madelia	m@d'i:li@	all	US	Madelia, Minnesota
+Madera	m@d'e@@	all	US	Madera County, California
+Maerdy	m'A@di	all	GB	Maerdy
+Maesbrook	m'eIsbrUk	all	GB	Maesbrook
+Maeser	m'eIz3	all	US	Maeser, Utah
+Maesteg	m,aIst'eIg	all	GB	Maesteg
+Maghaberry	m@g'A:bri	all	GB	Maghaberry
+Maghera	m,ah@r'A:	all	GB	Maghera
+Magherafelt	m,ah@r@f'Elt	all	GB	Magherafelt
+Magherascouse	m'akr@sk,u:s	all	GB	Magherascouse
+Maghull	m@g'Vl	all	GB	Maghull
+Magog	m'eIgO:g	all	CA	Magog, Quebec
+Magor	m'eIg3	all	GB	Magor, Monmouthshire
+Mahanoy	m'A:h,A:nOI	all	US	Mahanoy City, Pennsylvania
+Mahnomen	m@n'oUm@n	all	US	Mahnomen County, Minnesota
+Mahomet	m@h'0mEt	all	US	Mahomet, Illinois
+Mahtomedi	m,A:toUm'i:daI	all	US	Mahtomedi, Minnesota
+Mahtowa	m'A:toUw@	all	US	Mahtowa Township, Carlton County, Minnesota
+Maidstone	m'eIdst@n	all	AU	Maidstone, Victoria
+Makanda	m@k'and@	all	US	Makanda, Illinois
+Makkovik	m'VkoUvIk	all	CA	Makkovik
+Malanda	m@l'and@	all	AU	Malanda, Queensland
+Maldon	m'O:ld@n	all	GB	Maldon
+Malew	m@l'u:	all	GB	Malew
+Malheur	malh'i@	all	US	Malheur County, Oregon
+Mallala	m,al@l'A:	all	AU	Mallala, South Australia
+Malmesbury	m'A:lmzb3i	all	GB	Malmesbury
+Mamaroneck	m@m'ar@nEk	all	US	Mamaroneck, New York
+Mamers	m'eIm3:s	all	US	Mamers, North Carolina
+Manaccan	m@n'ak@n	all	GB	Manaccan
+Manalapan	m@n'al@pIn	all	US	Manalapan Township, New Jersey
+Manangatang	m@n'aNg@taN	all	AU	Manangatang
+Manasquan	m,an@skw'A:n	all	US	Manasquan, New Jersey
+Manassas	m@n'as@s	all	US	Manassas, Virginia
+Manayunk	m'an@jVNk	all	US	Manayunk, Philadelphia
+Mancelona	mans,@l'oUn@	all	US	Mancelona, Michigan
+Manchaca	m'anSak	all	US	Manchaca, Texas
+Manchester	m'antSIst3	all	GB	Manchester
+Manea	m'eIni:	all	GB	Manea, Cambridgeshire
+Mangoplah	m'aNgoUplA:	all	AU	Mangoplah
+Manitowoc	m'anIt@w0k	all	US	Manitowoc, Wisconsin
+Manorbier	m,an3b'i@	all	GB	Manorbier
+Mansfield	m'anzfi:ld	british	GB	Mansfield
+Manteo	m'anioU	all	US	Manteo, North Carolina
+Manti	m'antaI	all	US	Manti, Utah
+Mantoloking	m,ant@l'oUkIN	all	US	Mantoloking, New Jersey
+Mantorville	m'ant3vIl	all	US	Mantorville, Minnesota
+Maquoketa	m@k'oUkIt@	all	US	Maquoketa, Iowa
+Marana	m@r'an@	all	US	Marana, Arizona
+Marazion	mar@z'aI@n	all	GB	Marazion
+Mareeba	m@r'i:b@	all	AU	Mareeba
+Mariemont	m'e@im0nt	all	US	Mariemont, Ohio
+Maries	m'e@Iz	all	US	Maries County, Missouri
+Mariposa	m,arIp'oUz@	all	US	Mariposa County, California
+Market Weighton	m,A@kItw'i:t@n	all	GB	Market Weighton
+Markham	m'A@k@m	all	CA	Markham, Ontario
+Markinch	mA@k'IntS	all	GB	Markinch
+Markyate	m'A:kjeIt	all	GB	Markyate
+Marlborough	m'O:lb3@	all	GB	Marlborough, Wiltshire
+Marmarth	m'A@m@T	all	US	Marmarth, North Dakota
+Marnhull	m'A@n@L	all	GB	Marnhull
+Maroochydore	m@r'u:tSidO@	all	AU	Maroochydore
+Maroubra	m@r'u:br@	all	AU	Maroubra, New South Wales
+Marown	m@r'aUn	all	GB	Marown
+Martell	mA@t'El	all	US	Martell, Wisconsin
+Maryland	m'Er@l@nd	all	US	Maryland
+Marylebone	m'A@lIb@n	all	GB	Marylebone
+Mascouche	mask'u:S	all	CA	Mascouche
+Masham	m'as@m	all	GB	Masham
+Maskwacis	m'Vskw@tSi:s	all	CA	Maskwacis
+Masset	m'asIt	all	CA	Masset
+Masury	m'eIz3i	all	US	Masury, Ohio
+Matagorda	m'at@g'O@d@	all	US	Matagorda, Texas
+Matewan	m'eItw0n	all	US	Matewan, West Virginia
+Matlacha	m'atl@SeI	all	US	Matlacha, Florida
+Matong	m@t'0N	all	AU	Matong
+Matteson	m'atIs@n	all	US	Matteson, Illinois
+Mauchline	m'0xlIn	all	GB	Mauchline
+Maugerville	m'eIdZ3vIl	all	CA	Maugerville Parish
+Maughold	m'ak@Ld	all	GB	Maughold (parish)
+Maulds Meaburn	m'O@ldzm'i:b3:n	all	GB	Maulds Meaburn
+Maumee	mO:m'i:	all	US	Maumee, Ohio
+Maury	m'Vri	all	US	Maury County, Tennessee
+Maybee	meIb'i:	all	US	Maybee, Michigan
+Mayerthorpe	m'e@TO@p	all	CA	Mayerthorpe
+Maynooth	m@n'u:T	all	IE	Maynooth
+Mazama	m@z'am@	all	US	Mazama, Washington
+Mazeppa	mA:z'Ep@	all	US	Mazeppa, Minnesota
+Mazomanie	m,eIzoUm'eIni	all	US	Mazomanie, Wisconsin
+McBee	m'akbi	all	US	McBee, South Carolina
+McDowall	m@kd'aUl	all	AU	McDowall, Queensland
+McGaheysville	m@g'akizvIl	all	US	McGaheysville, Virginia
+McGehee	m@g'i:	all	US	McGehee, Arkansas
+McIntosh	m'akInt0S	all	US	McIntosh, Minnesota
+McKay	m@k'aI	all	CA	Fort McKay
+McKellar	m'@kEl3	all	AU	McKellar, Australian Capital Territory
+McLeansboro	m@kl'eInzb3oU	all	US	McLeansboro, Illinois
+Meath	mi:D	all	IE	County Meath
+Mebane	m'Eb@n	all	US	Mebane, North Carolina
+Mecosta	m@k'0st@	all	US	Mecosta County, Michigan
+Medary	m@d'e@i	all	US	Medary, Wisconsin
+Medmenham	m'Ed@n@m	all	GB	Medmenham
+Medora	mId'O@@	all	US	Medora, North Dakota
+Medowie	mEd'aUi	all	AU	Medowie, New South Wales
+Megargel	m'i:gA@g@L	all	US	Megargel, Texas
+Meigs	m'Egz	all	US	Meigs County, Ohio
+Meikleour	mIkl'U@	all	GB	Meikleour
+Melbourn	m'ElbO@n	all	GB	Melbourn
+Melita	m@l'It@	all	CA	Melita, Manitoba
+Melksham	m'ElkS@m	all	GB	Melksham
+Melle	m'Eli	all	US	New Melle, Missouri
+Melton Mowbray	m'Elt@nm'oUbri	all	GB	Melton Mowbray
+Menahga	m@n'A:g@	all	US	Menahga, Minnesota
+Menands	mIn'andz	all	US	Menands, New York
+Menasha	m@n'aS@	all	US	Menasha, Wisconsin
+Meningie	m@n'INgi	all	AU	Meningie, South Australia
+Menominee	m@n'0m@ni	all	US	Menominee County, Michigan
+Menomonie	m@n'0m@ni	all	US	Menomonie, Wisconsin
+Mentone	m,Ent'oUn	all	US	Mentone, Texas
+Meols Cop	m'i:lzk'0p	all	GB	Meols Cop
+Meopham	m'Ep@m	all	GB	Meopham
+Mepal	m'i:p@L	all	GB	Mepal
+Merewether	m'ErIw,ED3	all	AU	Merewether, New South Wales
+Mereworth	m'Eriw3:T	all	GB	Mereworth
+Merimbula	m@r'Imbj@l@	all	AU	Merimbula
+Merino	m@r'i:noU	all	AU	Merino, Victoria
+Merredin	m'Er@dIn	all	AU	Merredin, Western Australia
+Merrillville	m'Er@LvIl	all	US	Merrillville, Indiana
+Mersea	m'3:zi	all	GB	Mersea Island
+Merstham	m'3:st@m	all	GB	Merstham
+Merthyr Tydfil	m'3:T3t'IdvIl	all	GB	Merthyr Tydfil
+Mesick	m'i:sIk	all	US	Mesick, Michigan
+Metairie	m'Et3i	all	US	Metairie, Louisiana
+Metchosin	m@tS'O:zIn	all	CA	Metchosin
+Methow	m'EthaU	all	US	Methow, Washington
+Methuen	m@T'u:@n	all	US	Methuen, Massachusetts
+Methven	m'EvIn	all	GB	Methven, Perth and Kinross
+Metiskow	m@t'IskoU	all	CA	Metiskow
+Metlakatla	m,Etl@k'atl@	all	US	Metlakatla, Alaska
+Metuchen	m@t'VtS@n	all	US	Metuchen, New Jersey
+Mevagissey	m,Ev@g'Izi	all	GB	Mevagissey
+Mexia	m'EkS@	all	US	Mexia, Alabama
+Meziadin	mIz'i:@dIn	all	CA	Meziadin Junction
+Miamisburg	maI'amizb3:g	all	US	Miamisburg, Ohio
+Michelago	mIk@l'eIgoU	all	AU	Michelago
+Micheldever	mItS@Ld'Ev3	all	GB	Micheldever
+Michiana	m,ISi'an@	all	US	Michiana
+Michigamme	m'IS@g0mi	all	US	Michigamme, Michigan
+Michoud	m'iSu:	all	US	Michoud, New Orleans
+Midale	m'aIdeIl	all	CA	Midale
+Middleham	m'Id@L@m	all	GB	Middleham
+Middlesboro	m'Id@LzbVr@	all	US	Middlesboro, Kentucky
+Middlesbrough	m'Id@Lzbr@	all	GB	Middlesbrough
+Midlothian	mIdl'oUTi@n	american	US	Midlothian, Virginia
+Midsomer Norton	m'IdsVm3n'O@t@n	all	GB	Midsomer Norton
+Miesville	m'i:zvIl	all	US	Miesville, Minnesota
+Milaca	mIl'ak@	all	US	Milaca, Minnesota
+Milang	m@l'aN	all	AU	Milang, South Australia
+Mildenhall	m'aIn@L	all	GB	Mildenhall, Wiltshire
+Mildura	mIldj'U@@	all	AU	Mildura
+Millard	m'Il3d	all	US	Millard County, Utah
+Millmerran	mIlm'Er@n	all	AU	Millmerran, Queensland
+Milngavie	mVlg'aI	all	GB	Milngavie
+Milwaukie	mIlw'O:ki	all	US	Milwaukie, Oregon
+Minaki	m@n'ak,i:	all	CA	Minaki
+Mindoro	mInd'O@oU	all	US	Mindoro, Wisconsin
+Mine La Motte	m,aInl@m'0t	all	US	Mine La Motte, Missouri
+Minmi	m'Inm,aI	all	AU	Minmi, New South Wales
+Minnetonka	m,In@t'0Nk@	all	US	Minnetonka, Minnesota
+Minong	m'aIn0N	all	US	Minong, Wisconsin
+Mio	m'aIoU	all	US	Mio, Michigan
+Mira Monte	m,i@@m'0nti	all	US	Mira Monte, California
+Miramar	m'Ir@mA@	all	US	Miramar, Florida
+Miramichi	m,Er@m@S'i:	all	CA	Miramichi, New Brunswick
+Miramonte	m,i@@m'0nti	all	US	Miramonte, California
+Miranda	mIr'and@	all	AU	Miranda, New South Wales
+Mirani	mIr'A:ni	all	AU	Mirani, Queensland
+Mirehouse	m'@hUs	all	GB	Mirehouse, Whitehaven
+Missaukee	mIs'O:ki	all	US	Missaukee County, Michigan
+Mississauga	m,IsIs'O:g@	all	CA	Mississauga
+Missoula	mIz'u:l@	all	US	Missoula, Montana
+Mitcham	m'ItS@m	all	AU	Mitcham, Victoria
+Mochrum	m'O:xrVm	all	GB	Mochrum
+Modesto	m@d'EstoU	all	US	Modesto, California
+Modoc	m'oUd0k	all	US	Modoc County, California
+Moe	m'oUi	all	AU	Moe, Victoria
+Mohave	moUh'A:vi	all	US	Mohave County, Arizona
+Mokane	moUk'eIn	all	US	Mokane, Missouri
+Mokena	moUk'in@	all	US	Mokena, Illinois
+Molalla	m@l'A:l@	all	US	Molalla, Oregon
+Monaca	mIn'ak@	all	US	Monaca, Pennsylvania
+Monaro	m@n'e@oU	all	AU	Monaro (New South Wales)
+Monasterevin	m,A:n@st3'Ev@n	all	IE	Monasterevin
+Moncton	m'VNkt@n	all	CA	Moncton
+Monegeetta	m'0n@gi:t@	all	AU	Monegeetta
+Monett	m'oUnEt	all	US	Monett, Missouri
+Monhegan	m0nh'i:g@n	all	US	Monhegan, Maine
+Moniaive	m0ni'aIv	all	GB	Moniaive
+Monifieth	m'0nifi:T	all	GB	Monifieth
+Moniteau	m,0nIt'O:	all	US	Moniteau County, Missouri
+Monona	mIn'oUn@	all	US	Monona, Wisconsin
+Monongalia	m,0n0ng'eIli@	all	US	Monongalia County, West Virginia
+Monowi	m'0noUwaI	all	US	Monowi, Nebraska
+Monreith	m0nr'i:T	all	GB	Monreith
+Monson	m'Vns@n	all	US	Monson, Massachusetts
+Montara	m0nt'ar@	all	US	Montara, California
+Montcalm	m'0ntkO:lm	all	US	Montcalm County, Michigan
+Monticello	m,0ntIs'EloU	all	US	Monticello, New York
+Montmartre	m'oUmA:rt	all	CA	Montmartre, Saskatchewan
+Montmorency	m,0ntm@r'Ensi	american	US	Montmorency County, Michigan
+Montmorency	m,0nm@r'Ensi	british	AU	Montmorency, Victoria
+Montrose	mVntr'oUz	all	GB	Montrose, Angus
+Monzievaird	m'0nive@d	all	GB	Monzievaird
+Moorabool	m'U@r@b,Ul	all	AU	Moorabool
+Moorooka	m@r'u:kV	all	AU	Moorooka
+Mooroopna	m@r'u:pn@	all	AU	Mooroopna
+Moosonee	m,u:s@n'i:	all	CA	Moosonee
+Moranding	m@r'andIN	all	AU	Moranding
+Morar	m'O@3	all	GB	Morar
+Mordialloc	m,O:di'al@k	all	AU	Mordialloc, Victoria
+Moriches	moUr'ItSIz	all	US	East Moriches, New York
+Morisset	mO@Is'Et	all	AU	Morisset, New South Wales
+Moroni	m@r'oUnaI	all	US	Moroni, Utah
+Morrisville	m'0rIsvIl	all	US	Morrisville, Bucks County, Pennsylvania
+Mortehoe	m'O:rthoU	all	GB	Mortehoe
+Mortlach	m'O@tlak	all	CA	Mortlach, Saskatchewan
+Morundah	m@r'Vnd@	all	AU	Morundah
+Moseley	m'oUzli:	all	GB	Moseley
+Mosgiel	m'0zgi:l	all	NZ	Mosgiel
+Motcombe	m'0tk@m	all	GB	Motcombe
+Moulsecoomb	m'oUlzku:m	all	GB	Moulsecoomb
+Mount Orab	m'aUnt'O@@b	all	US	Mount Orab, Ohio
+Mowsley	m'aUzli:	all	GB	Mowsley
+Moygashel	mOIg'aS@L	all	GB	Moygashel
+Moylough	mOIl'0x	all	IE	Moylough
+Moyock	m'oUj0k	all	US	Moyock, North Carolina
+Muchelney	m'VtS@Lni	all	GB	Muchelney
+Mudeford	m'VdIf3d	all	GB	Mudeford
+Mudgeeraba	m'VdZ@r@bA:	all	AU	Mudgeeraba, Queensland
+Muhlenberg	mju:l'@nb3:g	all	US	Muhlenberg County, Kentucky
+Muirdrum	mjU@dr'Vm	all	GB	Muirdrum
+Mukilteo	m,Vk@Lt'i:oU	all	US	Mukilteo, Washington
+Mukwonago	m@kw'0n@goU	all	US	Mukwonago, Wisconsin
+Mullagh	m'Ula	all	IE	Mullagh, County Cavan
+Mullaghbawn	mVl@b'O:n	all	GB	Mullaghbawn
+Mullinalaghta	m,O:lIn@l'axt@	all	IE	Mullinalaghta
+Mullingar	m,VlIng'A@	all	IE	Mullingar
+Multnomah	mVltn'oUm@	all	US	Multnomah County, Oregon
+Mulvane	m@lv'eIn	all	US	Mulvane, Kansas
+Mulwala	mVlw'eIl@	all	AU	Mulwala
+Mundubbera	mVnd'Vb3@	all	AU	Mundubbera
+Mungindi	m'VNIndaI	all	AU	Mungindi
+Munising	mj'u:n@sIN	all	US	Munising, Michigan
+Munlochy	m@nl'0xi	all	GB	Munlochy
+Murrabit	m'Vr@bIt	all	AU	Murrabit
+Murray	m'Vri	all	US	Murray, Utah
+Murrieta	mjU@i'Et@	all	US	Murrieta, California
+Murroe	m@r'u:	all	IE	Murroe
+Murrumbeena	m,Vr@mb'i:n@	all	AU	Murrumbeena, Victoria
+Murwillumbah	m3w'Il@mbA:	all	AU	Murwillumbah
+Muscatine	m,Vsk@t'in	all	US	Muscatine, Iowa
+Muskegon	m@sk'i:g@n	all	US	Muskegon, Michigan
+Muskingum	m@sk'INg@m	all	US	Muskingum County, Ohio
+Muskogee	m@sk'oUgi:	all	US	Muskogee, Oklahoma
+Musquodoboit	m,Vsk@d'0bIt	all	CA	Musquodoboit Valley
+Musselburgh	m'Vs@Lb3@	all	GB	Musselburgh
+Muswellbrook	m'Vs@lbrUk	all	AU	Muswellbrook
+Muthill	mj'u:TIl	all	GB	Muthill
+Muttaburra	m'Vt@bVr@	all	AU	Muttaburra
+Myerscough	m'aI@sk@	all	GB	Myerscough, Lancashire
+Myrniong	m'3:n0N	all	AU	Myrniong
+Mytholmroyd	m'aID@mrOId	all	GB	Mytholmroyd
+Nabiac	nab'i:ak	all	AU	Nabiac, New South Wales
+Nagambie	n@g'ambi	all	AU	Nagambie
+Nahant	n@h'A:nt	all	US	Nahant, Massachusetts
+Nakusp	n@k'Vsp	all	CA	Nakusp
+Namao	n@m'eIoU	all	CA	Namao, Alberta
+Namur	nam'U@	all	US	Namur, Wisconsin
+Nanango	n@n'aNgoU	all	AU	Nanango
+Nanisivik	n@n'i:sIvIk	all	CA	Nanisivik
+Napeague	n'api:g	all	US	Napeague, New York
+Naphill	n'aphIl	all	GB	Naphill
+Narara	n@r'ar@	all	AU	Narara, New South Wales
+Narrabri	n'ar@braI	all	AU	Narrabri
+Narrandera	n@r'and3@	all	AU	Narrandera
+Narrawong	n'ar@w0N	all	AU	Narrawong
+Narre Warren	n,ariw'0r@n	all	AU	Narre Warren
+Nasewaupee	n,as@w'O:pi	all	US	Nasewaupee, Wisconsin
+Nassau	n'asO:	all	US	Nassau County, New York
+Natchez	n'atSIz	all	US	Natchez, Mississippi
+Nathalia	n@T'eIli@	all	AU	Nathalia
+Natick	n'eItIk	all	US	Natick, Massachusetts
+Nauvoo	n'O:vu:	all	US	Nauvoo, Illinois
+Navan	n'av@n	all	IE	Navan
+Navarro	n@v'aroU	all	US	Navarro County, Texas
+Navassa	n@v'as@	all	US	Navassa Island
+Navenby	n'eIv@nbi	all	GB	Navenby
+Naytahwaush	n'eIt@wO:S	all	US	Naytahwaush, Minnesota
+Neasden	n'i:zd@n	all	GB	Neasden
+Neatishead	n'i:tst@d	all	GB	Neatishead
+Necedah	n@s'i:d@	all	US	Necedah, Wisconsin
+Neche	n'ItSi:	all	US	Neche, North Dakota
+Nechells	n'i:tS@lz	all	GB	Nechells
+Nedrow	n'EdroU	all	US	Nedrow, New York
+Neepawa	n'i:p@wA:	all	CA	Neepawa
+Negaunee	n@g'O:ni	all	US	Negaunee, Michigan
+Nehalem	nIh'eIl@m	all	US	Nehalem, Oregon
+Neligh	n'i:li:	all	US	Neligh, Nebraska
+Nenagh	n'i:n@	all	IE	Nenagh
+Nenana	nEn'an@	all	US	Nenana, Alaska
+Neodesha	ni:'oUd@SeI	all	US	Neodesha, Kansas
+Nepean	n@p'i:@n	all	CA	Nepean, Ontario
+Nephi	n'i:faI	all	US	Nephi, Utah
+Nerstrand	n'i@stSrand	all	US	Nerstrand, Minnesota
+Neskowin	n'EskoUIn	all	US	Neskowin, Oregon
+Netarts	n'i:tA@ts	all	US	Netarts, Oregon
+Nevis	n'i:vIs	all	US	Nevis, Minnesota
+New Carlisle	n'u:kA@l'aI@L	all	US	New Carlisle, Ohio
+New Paltz	n'u:pO:lz	all	US	New Paltz (town), New York
+New Trier	nju:tr'i@	all	US	New Trier, Minnesota
+New Ulm	nju:'Vlm	all	US	New Ulm, Minnesota
+Newent	nju:'@nt	all	GB	Newent
+Newham	nj'u:@m	all	AU	Newham, Victoria
+Newquay	nj'u:ki	all	GB	Newquay
+Newry	nj'U@i	all	US	Newry, Maine
+Newtownards	nju:t,@n'A@dz	all	GB	Newtownards
+Nez Perce	nEzp'3:s	all	US	Nez Perce County, Idaho
+Ngukurr	n'Uk3	all	AU	Ngukurr
+Niantic	naI'antIk	all	US	Niantic, Connecticut
+Nicasio	nIk'A:sioU	all	US	Nicasio, California
+Nimmitabel	n'Imit@b,El	all	AU	Nimmitabel
+Niobrara	n,aI@br'ar@	all	US	Niobrara, Nebraska
+Nipomo	n@p'oUmoU	all	US	Nipomo, California
+Nissequogue	n'Is@kw0g	all	US	Nissequogue, New York
+Noank	n'oUaNk	all	US	Noank, Connecticut
+Noe	n'oUi	all	US	Noe Valley, San Francisco
+Nokomis	n@k'oUmIs	all	CA	Nokomis, Saskatchewan
+Nonnell	n'0nIl	all	US	Nonnell, Kentucky
+Norcia	n'O@si@	all	AU	New Norcia, Western Australia
+Norham	n'0r@m	all	GB	Norham
+Norlina	nO@l'aIn@	all	US	Norlina, North Carolina
+Norman	n'O@m@n	all	US	Norman, Oklahoma
+Northallerton	nO@T'al3t@n	all	GB	Northallerton
+Northam	n'O:rD@m	all	GB	Northam, Devon
+Northcote	n'O:Tk@t	british	AU	Northcote, Victoria
+Nueces	nju:'eIsIs	all	US	Nueces County, Texas
+Nulato	nu:l'atoU	all	US	Nulato, Alaska
+Numurkah	nju:m'3:k@	all	AU	Numurkah
+Nunapitchuk	nu:n'A:pItS@k	all	US	Nunapitchuk, Alaska
+Nunavik	n'u:n@vIk	all	CA	Nunavik
+Nunawading	n,Vn@w'0dIN	all	AU	Nunawading, Victoria
+Nunda	nVnd'eI	all	US	Nunda (village), New York
+Nuneaton	n@n'i:t@n	all	GB	Nuneaton
+Nuriootpa	nj,U@i'Utp@	all	AU	Nuriootpa, South Australia
+Nyora	naIj'O:r@	all	AU	Nyora
+Oakenclough	'oUk@nklu:	all	GB	Oakenclough
+Oamaru	,0m@r'u:	all	NZ	Oamaru
+Oborne	'oUbO@n	all	GB	Oborne
+Ocala	oUk'al@	all	US	Ocala, Florida
+Occoquan	'0k@kw0n	all	US	Occoquan, Virginia
+Oceana	,oUSi'an@	all	US	Oceana County, Michigan
+Ochelata	oUS@l'eIt@	all	US	Ochelata, Oklahoma
+Ochtertyre	,0xt3t'aI@	all	GB	Ochtertyre
+Ockham	'0k@m	all	GB	Ockham, Surrey
+Ocqueoc	'A:ki:A:k	all	US	Ocqueoc Township, Michigan
+Ocracoke	'oUkr@koUk	all	US	Ocracoke, North Carolina
+Odenton	'oUd@nt@n	all	US	Odenton, Maryland
+Odessa	,oUd'Es@	all	US	Odessa, Texas
+Odiham	'oUdi@m	all	GB	Odiham
+Odon	'oUd@n	all	US	Odon, Indiana
+Ogemaw	'oUg@mO:	all	US	Ogemaw County, Michigan
+Ogunquit	oUg'VNkwIt	all	US	Ogunquit, Maine
+Ojala	oUh'A:l@	all	US	Ojala, California
+Okabena	oUk@b'i:n@	all	US	Okabena, Minnesota
+Okanagan	,oUk@n'A:g@n	all	CA	Okanagan
+Okanogan	,oUk@n'A:g@n	all	US	Okanogan County, Washington
+Okarche	oUk'A:rtSi	all	US	Okarche, Oklahoma
+Okeechobee	oUkitS'oUbi	all	US	Okeechobee County, Florida
+Okemah	,oUk'i:m@	all	US	Okemah, Oklahoma
+Oklahoma City	,oUkl@h'oUm@	all	US	Oklahoma City
+Oklee	'oUkli	all	US	Oklee, Minnesota
+Okmulgee	oUkm'Vlgi:	all	US	Okmulgee, Oklahoma
+Okotoks	'oUk@toUks	all	CA	Okotoks
+Olathe	oUl'eIT@	all	US	Olathe, Kansas
+Olean	'oUli,an	all	US	Olean, New York
+Olinda	oUl'Ind@	all	AU	Olinda, Victoria
+Olney	'oUni	british	GB	Olney, Buckinghamshire
+Omak	oUm'ak	all	US	Omak, Washington
+Omeath	oUm'i:D	all	IE	Omeath
+Omena	oUm'i:n@	all	US	Omena, Michigan
+Omeo	'oUmi:oU	all	AU	Omeo
+Onalaska	,0n@l'ask@	all	US	Onalaska, Wisconsin
+Onamia	oUn'eImi:@	all	US	Onamia, Minnesota
+Onancock	oUn'ank0k	all	US	Onancock, Virginia
+Onchan	'O:Nk@n	all	GB	Onchan
+Oneco	'oUn'i:koU	all	US	Oneco, Florida
+Oneida	oUn'aId@	all	US	Oneida County, New York
+Onich	'oUnIx	all	GB	Onich
+Ontonagon	,0nt@n'A:g@n	all	US	Ontonagon County, Michigan
+Oologah	,u:l@g'A:	all	US	Oologah, Oklahoma
+Ooltewah	'u:t@wA:	all	US	Ooltewah, Tennessee
+Opelika	,oUp@l'aIk@	all	US	Opelika, Alabama
+Oppelo	'A:p@l,oU	all	US	Oppelo, Arkansas
+Oran	oUr'an	all	US	Oran, Missouri
+Orenco	0rr'EnkoU	all	US	Orenco, Oregon
+Orillia	@r'Ili@	all	CA	Orillia
+Oriskany	O@'Isk@ni	all	US	Oriskany, New York
+Orono	'0r@noU	all	US	Orono, Maine
+Orr	'0r	all	US	Orr, Minnesota
+Osakis	oUs'eIkIs	all	US	Osakis, Minnesota
+Osawatomie	oUs@w'A:t@mi	all	US	Osawatomie, Kansas
+Osbaldwick	'0zb@ldwIk	all	GB	Osbaldwick
+Oshawa	'0S@w@	all	CA	Oshawa
+Osney	'oUzni	all	GB	Osney
+Osoyoos	0s'u:ju:s	all	CA	Osoyoos
+Ossining	'0sInIN	all	US	Ossining, New York
+Oswaldtwistle	'0zw@LtwIz@L	all	GB	Oswaldtwistle
+Oswestry	'0zw@stri	all	GB	Oswestry
+Otago	@t'A:goU	all	NZ	Otago
+Otay Mesa	'oUtaIm'eIs@	all	US	Otay Mesa, San Diego
+Otisco	oUt'IskoU	all	US	Otisco, Minnesota
+Ottumwa	@t'Vmw@	all	US	Ottumwa, Iowa
+Oughtibridge	'u:tIbrIdZ	all	GB	Oughtibridge
+Oulton	'u:lt@n	all	GB	Oulton, West Yorkshire
+Outagamie	,aUt@g'eImi	all	US	Outagamie County, Wisconsin
+Ouyen	'oUj@n	all	AU	Ouyen
+Ouzinkie	ju:z'INki	all	US	Ouzinkie, Alaska
+Overlea	'oUv3l,i:	all	US	Overlea, Maryland
+Oviedo	,oUv'i:doU	all	US	Oviedo, Florida
+Oving	'u:vIN	all	GB	Oving, Buckinghamshire
+Ovingham	'0vINdZ@m	all	GB	Ovingham
+Owatonna	,oUw@t'0n@	all	US	Owatonna, Minnesota
+Owermoigne	,oU3m'OIn	all	GB	Owermoigne
+Owlerton	'oUl3t@n	all	GB	Owlerton
+Owyhee	oUw'aIhi:	all	US	Owyhee County, Idaho
+Oxoboxo	'A:ksoUb,A:ksoU	all	US	Oxoboxo River, Connecticut
+Padiham	p'adi@m	all	GB	Padiham
+Paducah	p@d'u:k@	all	US	Paducah, Kentucky
+Pago Pago	p'A:NgoUp'A:NgoU	all	US	Pago Pago, American Samoa
+Pahrump	p@r'Vmp	all	US	Pahrump, Nevada
+Paintsville	p'eIntsv@L	all	US	Paintsville, Kentucky
+Paisley	p'eIzli	all	GB	Paisley, Renfrewshire
+Pakenham	p'ak@n@m	all	AU	Pakenham, Victoria
+Palacios	p@l'aS@s	all	US	Palacios, Texas
+Palatka	p@l'atk@	all	US	Palatka, Florida
+Palo Alto	p,aloU'altoU	all	US	Palo Alto, California
+Pambula	p'ambju:l@	all	AU	Pambula, New South Wales
+Pana	p'eIn@	all	US	Pana, Illinois
+Panmure	p@nmju:'@	all	AU	Panmure, Victoria
+Paola	peI'oUl@	all	US	Paola, Kansas
+Paraburdoo	p,ar@b@d'u:	all	AU	Paraburdoo, Western Australia
+Parachilna	p,ar@tS'Iln@	all	AU	Parachilna, South Australia
+Paragonah	p,ar@g'u:n@	all	US	Paragonah, Utah
+Paraparaumu	p,ar@p@r'aUmu:	all	NZ	Paraparaumu
+Paria	p@r'i:@	all	US	Paria, Utah
+Parkeston	p'A:rkst@n	all	GB	Parkeston, Essex
+Parkgate	pA:kg'eIt	all	GB	Parkgate, Cheshire
+Parkstone	p'A@kst@n	all	GB	Parkstone
+Parowan	p'ar@wA:n	all	US	Parowan, Utah
+Parramatta	p,ar@m'at@	all	AU	Parramatta
+Partoun	p'A@tu:n	all	US	Partoun, Utah
+Pasquotank	p'askwoUteINk	all	US	Pasquotank County, North Carolina
+Pass Christian	p,askrIstSi'an	all	US	Pass Christian, Mississippi
+Passaic	p@s'eIIk	all	US	Passaic County, New Jersey
+Pataskala	p@t'ask@l@	all	US	Pataskala, Ohio
+Patcham	p'atS@m	all	GB	Patcham
+Pateros	p@t'ar@s	all	US	Pateros, Washington
+Pawhuska	p0h'Vsk@	all	US	Pawhuska, Oklahoma
+Pawtucket	p@t'VkIt	all	US	Pawtucket, Rhode Island
+Peabody	p'i:b@di	all	US	Peabody, Massachusetts
+Pearblossom	p'e@bl0s@m	all	US	Pearblossom, California
+Pearland	p'e@land	all	US	Pearland, Texas
+Peckforton	p'Ekf3t@n	all	GB	Peckforton
+Peckham	p'Ek@m	all	GB	Peckham
+Pecos	p'eIk@s	all	US	Pecos County, Texas
+Pelaw	p'i:lO:	all	GB	Pelaw
+Pelee	p'i:li	all	CA	Pelee, Ontario
+Pelham	p'El@m	all	US	Pelham, New Hampshire
+Pembrokeshire	p'EmbrUkSi@	all	GB	Pembrokeshire
+Penarth	pEn'A@T	all	GB	Penarth
+Penetanguishene	pEnIt'aNgwISi:n	all	CA	Penetanguishene
+Penicuik	p'EnIk,Uk	all	GB	Penicuik
+Penmaenmawr	p'EnmaInm,aU3	all	GB	Penmaenmawr
+Penmynydd	pEnm'VnID	all	GB	Penmynydd
+Penn	p'Enn	all	US	Penn, Alabama
+Pennellville	p'EnIvIl	all	US	Pennellville, New York
+Penola	p@n'oUl@	all	AU	Penola, South Australia
+Penong	p@n'0N	all	AU	Penong, South Australia
+Penrith	p'EnrIT	all	GB	Penrith, Cumbria
+Pensby	p'Enzbi	all	GB	Pensby
+Penshaw	p'EnS@	all	GB	Penshaw
+Penticton	pEnt'Ikt@n	all	CA	Penticton
+Penwortham	p'Enw3:D@m	all	GB	Penwortham
+Penysarn	pEns'A@n	all	GB	Penysarn
+Peoa	pi:'oU@	all	US	Peoa, Utah
+Peoria	pi'O@i@	all	US	Peoria, Illinois
+Peotone	p'i:@toUn	all	US	Peotone, Illinois
+Pequaming	p@kw'0mIN	all	US	Pequaming, Michigan
+Pequot Lakes	p'i:kwA:tl'eIks	all	US	Pequot Lakes, Minnesota
+Perdue	p3dj'u:	all	CA	Perdue, Saskatchewan
+Perham	p'3:m	all	US	Perham, Minnesota
+Perivale	p'ErIv,eIl	all	GB	Perivale
+Perquimans	p3:kw'Im@nz	all	US	Perquimans County, North Carolina
+Perranuthnoe	p,Er@nj'u:TnoU	all	GB	Perranuthnoe
+Perranzabuloe	p,Er@nz'abj@loU	all	GB	Perranzabuloe
+Perrinton	pErr'Int'Vn	all	US	Perrinton, Michigan
+Perryville	p'ErIv@L	all	US	Perryville, Kentucky
+Pershore	p'3:SO@	all	GB	Pershore
+Peshawbestown	pS'O:b@taUn	all	US	Peshawbestown, Michigan
+Petawawa	p'Et@w0w0	all	CA	Petawawa
+Peterborough	p'i:t3b3@	british	AU	Peterborough, Victoria
+Peterculter	p,i:t3k'u:t3	all	GB	Peterculter
+Petoskey	p@t'0ski	all	US	Petoskey, Michigan
+Pevensey	p'Ev@nzi	all	GB	Pevensey
+Pfafftown	p'A:ftaUn	all	US	Pfafftown, North Carolina
+Pflugerville	fl'u:g3vIl	all	US	Pflugerville, Texas
+Phibsborough	f'Ibzb3@	all	IE	Phibsborough
+Pictou	p'IktoU	all	CA	Pictou
+Piddletrenthide	p,Id@LtrEnth'aId	all	GB	Piddletrenthide
+Pikeville	p'aIkv@L	all	US	Pikeville, Kentucky
+Pilbara	p'Ilb3@	all	AU	Pilbara
+Pilot Butte	paIlItbj'u:t	all	CA	Pilot Butte, Saskatchewan
+Pimpinio	pImpIn'aIoU	all	AU	Pimpinio
+Pinal	pIn'al	all	US	Pinal County, Arizona
+Pinconning	p,Ink'A:nIN	all	US	Pinconning, Michigan
+Pinellas	pIn'El@s	all	US	Pinellas County, Florida
+Pinkenba	p,INk@nb'A:	all	AU	Pinkenba
+Piru	p'aIru:	all	US	Piru, California
+Piscataquis	pIsk'at@kwIs	all	US	Piscataquis County, Maine
+Piseco	p@s'ikoU	all	US	Piseco, New York
+Pisek	p'i:sIk	all	US	Pisek, North Dakota
+Pishill	p'IS@L	all	GB	Pishill
+Pitlochry	pItl'0xri	all	GB	Pitlochry
+Piute	p'aIju:t	all	US	Piute County, Utah
+Placerville	pl'as3vIl	all	US	Placerville, California
+Plaistow	pl'astaU	american	US	Plaistow, New Hampshire
+Plaitford	pl'atf@d	all	GB	Plaitford
+Plano	pl'eInoU	all	US	Plano, Texas
+Plaquemines	pl'akImInz	all	US	Plaquemines Parish, Louisiana
+Plattekill	pl'at@kIl	all	US	Plattekill, New York
+Pleasington	pl'EzINt@n	all	GB	Pleasington
+Plumas	pl'u:m@s	all	US	Plumas County, California
+Pocatello	p'oUk@t'EloU	all	US	Pocatello, Idaho
+Pocomoke	p'oUkoUmoUk	all	US	Pocomoke City, Maryland
+Poinciana	pOInsi'an@	all	US	Poinciana, Florida
+Pointe Coupee	p'OIntk@p'i:	all	US	Pointe Coupee Parish, Louisiana
+Pokegama	p@k'Eg0m,A:	all	US	Pokegama, Minnesota
+Pokolbin	p@k'oUlbIn	all	AU	Pokolbin, New South Wales
+Polbeth	p,O:lb'ET	all	GB	Polbeth
+Polmadie	p,0lm@d'i:	all	GB	Polmadie
+Polson	p'oUls@n	all	US	Polson, Montana
+Polzeath	p@Lz'ET	all	GB	Polzeath
+Ponce de Leon	p,0nsd@l'i:@n	all	US	Ponce de Leon, Florida
+Pondera	p,0nd@r'eI	all	US	Pondera County, Montana
+Ponderay	p,0nd@r'eI	all	US	Ponderay, Idaho
+Ponsford	p'0nsf3d	all	US	Ponsford, Minnesota
+Ponshewaing	p'A:nS@waN	all	US	Ponshewaing, Michigan
+Ponteix	p'0ntEks	all	CA	Ponteix
+Ponteland	p0nt'i:l@nd	all	GB	Ponteland
+Pontiac	p'0ntiak	all	US	Pontiac, Michigan
+Pontypridd	p,0ntIpr'i:D	all	GB	Pontypridd
+Poolewe	p'u:lju:	all	GB	Poolewe
+Pooraka	p@r'ak@	all	AU	Pooraka, South Australia
+Poquoson	p@k'oUs@n	all	US	Poquoson, Virginia
+Poquott	poUkw'0t	all	US	Poquott, New York
+Port Talbot	p,O:tt'O:lb@t	all	GB	Port Talbot
+Portage Des Sioux	p'O@tIdZd@s'u:	all	US	Portage Des Sioux, Missouri
+Portage la Prairie	p'O@dIdZl@pr'e@i	all	CA	Portage la Prairie
+Portales	pO@t'alIs	all	US	Portales, New Mexico
+Porthleven	p,O:Tl'Ev@n	all	GB	Porthleven
+Portishead	p'O@tIshEd	all	GB	Portishead, Somerset
+Portland	p'O@tl@nd	all	US	Portland, Oregon
+Portlaoise	pO@tl'i:S	all	IE	Portlaoise
+Portlethen	pO@tl'ET@n	all	GB	Portlethen
+Portmeirion	pO@tm'Eri@n	all	GB	Portmeirion
+Portola	pO@t'oUl@	all	US	Portola, California
+Portree	pO@tr'i:	all	GB	Portree
+Portsmouth	p'O@tsm@T	all	GB	Portsmouth
+Poteau	p'oUtoU	all	US	Poteau, Oklahoma
+Pottawattamie	p,A:t@w'A:t@mi:	all	US	Pottawattamie County, Iowa
+Pouce Coupe	p,u:sk'u:pi	all	CA	Pouce Coupe
+Poulsbo	p'O:lzboU	all	US	Poulsbo, Washington
+Powassan	p@w'A:s@n	all	CA	Powassan
+Poway	p'aUeI	all	US	Poway, California
+Powell	pal	all	US	Powell, Wyoming
+Powys	p'oUIs	all	GB	Powys
+Poxwell	p'oUksw@L	all	GB	Poxwell
+Poyntelle	pOIn'El	all	US	Poyntelle, Pennsylvania
+Prahran	pr@r'an	all	AU	Prahran
+Preble	pr'Eb@L	all	US	Preble County, Ohio
+Prescott	pr'Esk@t	all	US	Prescott, Arizona
+Preshute	pr'ESu:t	all	GB	Preshute
+Prestatyn	prEst'atIn	all	GB	Prestatyn
+Presteigne	prEst'i:n	all	GB	Presteigne
+Prestonpans	prEst@np'anz	all	GB	Prestonpans
+Proserpine	pr'0s3paIn	all	AU	Proserpine, Queensland
+Prosser	pr'A:s@r	all	US	Prosser, Washington
+Provolt	pr'oUvoUlt	all	US	Provolt, Oregon
+Puncknowle	p'Vn@L	all	GB	Puncknowle
+Punnichy	p'VnItSaI	all	CA	Punnichy
+Punta Gorda	p,Vnt@g'O@d@	all	US	Punta Gorda, Florida
+Punxsutawney	p,VNks@t'O:ni	all	US	Punxsutawney, Pennsylvania
+Puslinch	p'UslIntS	all	CA	Puslinch, Ontario
+Puxico	p'Vksi:koU	all	US	Puxico, Missouri
+Pyalong	p'aI@L0N	all	AU	Pyalong
+Pyrford	p'3:f3d	all	GB	Pyrford
+Pyrton	p'3:t@n	all	GB	Pyrton
+Quamba	kw'A:mb@	all	US	Quamba, Minnesota
+Quambatook	kw'0mb@tUk	all	AU	Quambatook
+Queanbeyan	kw'i:nbi@n	all	AU	Queanbeyan
+Quernmore	kw'O@m@r	all	GB	Quernmore
+Quihi	kw'i:hi:	all	US	Quihi, Texas
+Quilpie	kw'Ilpi	all	AU	Quilpie, Queensland
+Quinault	kwIn'0lt	all	US	Quinault, Washington
+Quinebaug	kw'In@bO:g	all	US	Quinebaug, Connecticut
+Quinhagak	kw'In@hA:k	all	US	Quinhagak, Alaska
+Quiogue	kw'i:0g	all	US	Quiogue, New York
+Quirindi	kw@r'IndaI	all	AU	Quirindi
+Quitaque	k'ItIkweI	all	US	Quitaque, Texas
+Qulin	kju:l'In	all	US	Qulin, Missouri
+Quonochontaug	kw'A:n@k0nt0g	all	US	Quonochontaug, Rhode Island
+Radford Semele	r'adf3ds'EmIli	all	GB	Radford Semele
+Radipole	r'adIpoUl	all	GB	Radipole
+Rainham	r'eIn@m	all	GB	Rainham, Kent
+Rainier	reIn'i@	all	US	Rainier Valley, Seattle
+Rakeeranbeg	r@k,i@@nb'Eg	all	GB	Rakeeranbeg
+Ramah	r'eIm@	all	US	Ramah, Colorado
+Rampisham	r'ampIS@m	all	GB	Rampisham
+Rancho Cucamonga	r,antSoUku:k@m'VNg@	all	US	Rancho Cucamonga, California
+Ranelagh	r'an@l@	all	IE	Ranelagh
+Ranier	r@n'i@	all	US	Ranier, Minnesota
+Rapides	r'api:dz	all	US	Rapides Parish, Louisiana
+Rathangan	raT'aNg@n	all	IE	Rathangan, County Kildare
+Rathcline	ratkl'i:n	all	IE	Rathcline
+Rathmolyon	raTm0l'aIn	all	IE	Rathmolyon
+Raveningham	r'anIN@m	all	GB	Raveningham
+Ravenshoe	r'eIv@nzhoU	all	AU	Ravenshoe, Queensland
+Ravenstruther	r'Enstri	all	GB	Ravenstruther
+Rawmarsh	r'oUmIS	all	GB	Rawmarsh
+Realitos	r,i:@l'i:t@s	all	US	Realitos, Texas
+Redcar	r'Edk3	all	GB	Redcar
+Redesdale	r'i:dsdeIl	all	AU	Redesdale, Victoria
+Redruth	r@dr'u:T	all	GB	Redruth
+Reepham	r'i:f@m	all	GB	Reepham, Norfolk
+Reggio	r'EdZioU	all	US	Reggio, Louisiana
+Rehoboth	r@h'oUb@T	all	US	Rehoboth Beach, Delaware
+Rempstone	r'Empst@n	all	GB	Rempstone
+Renfrewshire	r'Enfru:Si@	all	GB	Renfrewshire
+Rensselaerville	r'Ensl3vIl	all	US	Rensselaerville, New York
+Restalrig	r'EslrIg	all	GB	Restalrig
+Retford	r'EtfUd	all	GB	Retford
+Revelstoke	r'Ev@LstoUk	all	CA	Revelstoke, British Columbia
+Reynoldsburg	r'En,@ldzb3:rg	all	US	Reynoldsburg, Ohio
+Rhayader	r'eI@d3	all	GB	Rhayader
+Rhiwbina	ru:b'aIn@	all	GB	Rhiwbina
+Rhondda	r'0nD@	all	GB	Rhondda
+Rhosllanerchrugog	r,oUsl,an3kr'i:g0g	all	GB	Rhosllanerchrugog
+Rhymney	r'Vmni	all	GB	Rhymney
+Richborough	r'ItSb3@	all	GB	Richborough
+Rickmansworth	r'Ikm@nzw@T	all	GB	Rickmansworth
+Rickreall	r'IkriO:l	all	US	Rickreall, Oregon
+Riddells Creek	r'Id@Lzkr'i:k	all	AU	Riddells Creek
+Rievaulx	r'i:voU	all	GB	Rievaulx
+Rimersburg	r'aImErzb3g	all	US	Rimersburg, Pennsylvania
+Rimini	r'Im@naI	all	US	Rimini, Montana
+Rimouski	r,Im'u:ski	all	CA	Rimouski
+Rinard Mills	r'aIn3dm'Ilz	all	US	Rinard Mills, Ohio
+Rio Grande	r,aIoUgr'and	all	US	Rio Grande, Ohio
+Rio de Janeiro	r'i:oUd@dZ@n'i@oU	all	GB	Rio de Janeiro
+Ripon	r'Ip@n	all	US	Ripon, Wisconsin
+Risley	r'Izli	all	GB	Risley, Derbyshire
+River Rouge	rIv'3:ru:Z	all	US	River Rouge, Michigan
+Robards	r'0b3dz	all	US	Robards, Kentucky
+Rocester	r'oUst3	all	GB	Rocester
+Roche Percee	r0Sp3s'eI	all	CA	Roche Percee
+Rochedale	r'oUtSdeIl	all	AU	Rochedale
+Rocheport	r'oUSpO@t	all	US	Rocheport, Missouri
+Rochester	r'0tSIst3	british	GB	Rochester, Kent
+Rockledge	r'0klIdZ	all	US	Rockledge, Florida
+Rodanthe	roUd'anTi	all	US	Rodanthe, North Carolina
+Roebourne	r'oUb3n	all	AU	Roebourne, Western Australia
+Rogart	r'oUgA@t	all	GB	Rogart
+Rogiet	r'0gIt	all	GB	Rogiet
+Rolla	r'0l@	all	US	Rolla, Missouri
+Rolleston	r'0l@st@n	all	NZ	Rolleston, New Zealand
+Romsey	r'0mzi	all	AU	Romsey, Victoria
+Roncesvalles	r'0ns@sveIlz	all	CA	Roncesvalles, Toronto
+Ronkonkoma	r0nk'0Nk@m@	all	US	Ronkonkoma, New York
+Roscommon	r0sk'0m@n	all	IE	Roscommon
+Roseau	roUz'oU	all	US	Roseau County, Minnesota
+Rosharon	roUS'e@@n	all	US	Rosharon, Texas
+Rosiere	roUz'e@	all	US	Rosiere, Wisconsin
+Rosine	roUz'i:n	all	US	Rosine, Kentucky
+Roslyn	r'0zlIn	all	US	Roslyn, New York
+Rosslyn	r'0zlIn	all	US	Rosslyn, Virginia
+Roswell	r'0zwEl	all	US	Roswell, New Mexico
+Rotherham	r'0D3@m	all	GB	Rotherham
+Rothes	r'0TIs	all	GB	Rothes
+Rothesay	r'0TseI	american	CA	Rothesay, New Brunswick
+Rothesay	r'0Tsi	british	GB	Rothesay
+Rothley	r'oUTli	all	GB	Rothley
+Roubaix	roUb'eI	all	US	Roubaix, South Dakota
+Roughlee	roUl'i:	all	GB	Roughlee
+Roughton	r'u:t@n	all	GB	Roughton, Lincolnshire
+Rowlett	raUl'Et	all	US	Rowlett, Texas
+Rowley Regis	r'aUlir'i:dZIs	all	GB	Rowley Regis
+Rowsley	r'oUzli	all	GB	Rowsley
+Roxburgh	r'0ksb3@	all	GB	Roxburgh
+Roxbury	r'0ksb3i	all	US	Roxbury, Boston
+Royal Wootton Bassett	r'OI@Lw'Ut@nb'asIt	all	GB	Royal Wootton Bassett
+Rubidoux	r'u:bIdoU	all	US	Rubidoux, California
+Ruchazie	rVxh'eIzi	all	GB	Ruchazie
+Ruchill	r'Vxh,Il	all	GB	Ruchill
+Rudyard	r'Vdj@rd	all	US	Rudyard Township, Michigan
+Rugeley	r'u:dZli	all	GB	Rugeley
+Ruislip	r'aIslIp	all	GB	Ruislip
+Rupanyup	r@p'anj@p	all	AU	Rupanyup
+Russiaville	r'u:S@vIl	all	US	Russiaville, Indiana
+Ruswarp	r'Vs@p	all	GB	Ruswarp
+Rutherglen	r'VD3glIn	all	GB	Rutherglen
+Ruthin	r'ITIn	all	GB	Ruthin
+Ryhope	r'aI@p	all	GB	Ryhope
+Ryme Intrinseca	r,aImIntr'InzIk@	all	GB	Ryme Intrinseca
+Saanich	s'anItS	all	CA	Saanich, British Columbia
+Sagadahoc	s'ag@d@h0k	all	US	Sagadahoc County, Maine
+Sagaponack	s,ag@p'0n@k	all	US	Sagaponack, New York
+Saginaw	s'agInO:	all	US	Saginaw, Michigan
+Saguenay	s'ag@neI	all	CA	Saguenay, Quebec
+Sahuarita	sA:w@r'i:t@	all	US	Sahuarita, Arizona
+Salado	s@l'eIdoU	all	US	Salado, Texas
+Salfords	s'alfUdz	all	GB	Salfords
+Salida	s@l'aId@	all	US	Salida, Colorado
+Salinas	s@l'i:n@s	all	US	Salinas, California
+Salineville	s@l'i:nvIl	all	US	Salineville, Ohio
+Salome	s@l'oUm	all	US	Salome, Arizona
+Salyersville	s'alj3zv@L	all	US	Salyersville, Kentucky
+Samlesbury	s'A:mzb3i	all	GB	Samlesbury
+San Angelo	san'andZ@loU	all	US	San Angelo, Texas
+San Antonio	s,anant'oUnioU	all	US	San Antonio
+San Benito	s,anb@n'i:toU	all	US	San Benito County, California
+San Bernardino	s,anb,3:n@d'i:noU	all	US	San Bernardino, California
+San Clemente	s,ankl@m'Ent@	all	US	San Clemente, California
+San Diego	s,andi'eIgoU	all	US	San Diego County, California
+San Felipe	s,anfIl'i:p	all	US	San Felipe, Texas
+San Joaquin	s,anwA:k'i:n	all	US	San Joaquin County, California
+San Jon	s,anh'oUn	all	US	San Jon, New Mexico
+San Juan	s,anw'A:n	all	US	San Juan, Puerto Rico
+San Pedro	sanp'i:droU	all	US	San Pedro, Los Angeles
+San Rafael	s,anr@f'El	all	US	San Rafael, California
+Sandbach	s'andbatS	all	GB	Sandbach
+Sanderstead	s'A:nd3stEd	all	GB	Sanderstead
+Sandiacre	s'andieIk3	all	GB	Sandiacre
+Sandoval	sand'oUv@L	all	US	Sandoval, Illinois
+Sandringham	s'andrINham	all	AU	Sandringham, Victoria
+Sangamon	s'aN@m@n	all	US	Sangamon County, Illinois
+Sanpete	sanp'i:t	all	US	Sanpete County, Utah
+Sanquhar	s'aNk3	all	GB	Sanquhar
+Santa Clara	s,ant@kl'ar@	all	US	Santa Clara, California
+Santa Clarita	s,ant@kl@r'i:t@	all	US	Santa Clarita, California
+Santa Cruz	s,ant@kr'u:z	all	US	Santa Cruz County, California
+Santa Fe	s,ant@f'eI	all	US	Santa Fe, New Mexico
+Sarcoxie	sA@k'0ksi	all	US	Sarcoxie, Missouri
+Sarina	s@r'i:n@	all	AU	Sarina, Queensland
+Saugatuck	s'O:g@t'Vk	all	US	Saugatuck, Michigan
+Saugerties	s'O:g3ti:z	all	US	Saugerties, New York
+Saughall Massie	s'0gO:lm'asi	all	GB	Saughall Massie
+Saughton	s'O:xt@n	all	GB	Saughton
+Savernake	s'av3nak	all	AU	Savernake, New South Wales
+Savona	s@v'oUn@	all	CA	Savona, British Columbia
+Saxapahaw	s'aks@p@hO:	all	US	Saxapahaw, North Carolina
+Saxmundham	saksm'Vnd@m	all	GB	Saxmundham
+Scappoose	skap'u:s	all	US	Scappoose, Oregon
+Scarborough	sk'A@bVroU	american	CA	Scarborough, Ontario
+Scarborough	sk'A:br@	british	GB	Scarborough, North Yorkshire
+Scarisbrick	sk'eIzbrIk	all	GB	Scarisbrick
+Scartho	sk'aT@	all	GB	Scartho
+Schaghticoke	sk'atIkoUk	all	US	Schaghticoke, New York
+Scheyville	sk,aIv'Il	all	AU	Scheyville
+Schoharie	skoUh'e@i:	all	US	Schoharie County, New York
+Scholar Green	sk'0l@gri:n	all	GB	Scholar Green
+Schroon	skr'u:n	all	US	Schroon, New York
+Schuyler	sk'aIl3	all	US	Schuyler County, Missouri
+Schuylerville	sk'aIl3v,Il	all	US	Schuylerville, New York
+Sciennes	S'i:nz	all	GB	Sciennes
+Sciota	saI'oUd@	all	US	Sciota, Illinois
+Scioto	saI'oUt@	all	US	Scioto County, Ohio
+Scofield	skoUf'i:ld	all	US	Scofield, Michigan
+Scorguie	skO@g'u:i	all	GB	Scorguie
+Scotstounhill	sk'0tst@nh,Il	all	GB	Scotstounhill
+Scourie	sk'aUri	all	GB	Scourie
+Screven	skrIvm	all	US	Screven, Georgia
+Scunthorpe	sk'VnTO@p	all	GB	Scunthorpe
+SeaTac	s'i:tak	all	US	SeaTac, Washington
+Seacombe	s'i:k@m	all	GB	Seacombe
+Seaford	s'i:fO@d	all	GB	Seaford, East Sussex
+Seaham	s'i:@m	all	GB	Seaham
+Searcy	s'3:si	all	US	Searcy, Arkansas
+Sebeka	s@b'i:k@	all	US	Sebeka, Minnesota
+Sebree	s'i:bri	all	US	Sebree, Kentucky
+Sebring	s'i:brIN	all	US	Sebring, Florida
+Secaucus	s'i:kO:k@s	all	US	Secaucus, New Jersey
+Sechelt	s'i:SElt	all	CA	Sechelt
+Sedamsville	s@d'amzvIl	all	US	Sedamsville, Cincinnati
+Sedbergh	s'Edb3	all	GB	Sedbergh
+Sedona	sId'oUn@	all	US	Sedona, Arizona
+Seebe	s'i:bi:	all	CA	Seebe, Alberta
+Seguin	sIg'i:n	all	US	Seguin, Texas
+Seisia	s'eIS@	all	AU	Seisia, Queensland
+Selinsgrove	s'i:lInzgr,oUv	all	US	Selinsgrove, Pennsylvania
+Semmes	sImz	all	US	Semmes, Alabama
+Senath	s'i:n@T	all	US	Senath, Missouri
+Senoia	s@n'OI@	all	US	Senoia, Georgia
+Setauket	s@t'O:kIt	all	US	Setauket, New York
+Seton Portage	s'i:t@np'O@t@dZ	all	CA	Seton Portage
+Sevierville	s@v'i@vIl	all	US	Sevierville, Tennessee
+Sewanee	s@w'A:ni	all	US	Sewanee, Tennessee
+Sewell	s'u:l	all	US	Sewell, New Jersey
+Shabbona	S'ab,Vn@	all	US	Shabbona, Illinois
+Shadoxhurst	S'ad0ksh3:st	all	GB	Shadoxhurst
+Shaftesbury	S'A:ftsb3i	all	GB	Shaftesbury
+Shakopee	S'A:k@pi	all	US	Shakopee, Minnesota
+Shallotte	S@l'oUt	all	US	Shallotte, North Carolina
+Shamokin	S@m'oUkIn	all	US	Shamokin, Pennsylvania
+Shaniko	S'anIkoU	all	US	Shaniko, Oregon
+Shaunavon	S'O:n@vIn	all	CA	Shaunavon, Saskatchewan
+Shavington cum Gresty	S'avINt@nkVmgr'Esti	all	GB	Shavington cum Gresty
+Shawangunk	S'A:w@NgVNk	all	US	Shawangunk, New York
+Shawano	S'O:noU	all	US	Shawano County, Wisconsin
+Shawforth	S'O:f3T	all	GB	Shawforth
+Shawinigan	S@w'InIg@n	all	CA	Shawinigan
+Shawnee	SA:n'i:	all	US	Shawnee, Kansas
+Shebbear	S'Ebi@	all	GB	Shebbear
+Sheboygan	SIb'OIg@n	all	US	Sheboygan, Wisconsin
+Shelbina	SElb'aIn@	all	US	Shelbina, Missouri
+Shenandoah	S,En@nd'oU@	all	US	Shenandoah, Virginia
+Shepparton	S'Ep3t@n	all	AU	Shepparton
+Sheringham	S'ErIN@m	all	GB	Sheringham
+Sherrodsville	S'Er0dzvIl	all	US	Sherrodsville, Ohio
+Shiawassee	S,aI@w'0si	all	US	Shiawassee County, Michigan
+Shields	Si:lz	all	GB	South Shields
+Shillingstone	S'IlINst@n	all	GB	Shillingstone
+Shipbourne	S'Ib3n	all	GB	Shipbourne
+Shishmaref	S'ISm@rEf	all	US	Shishmaref, Alaska
+Shoeburyness	S,u:brin'Es	all	GB	Shoeburyness
+Shoreham	S'O:r@m	all	US	Shoreham, Vermont
+Shotesham	S'0ts@m	all	GB	Shotesham
+Shrewsbury	Sr'u:zbEri	american	US	Shrewsbury, Massachusetts
+Shrewsbury	Sr'oUzbri	british	GB	Shrewsbury
+Shubenacadie	S,u:b@n'ak@di	all	CA	Shubenacadie, Nova Scotia
+Shuniah	S'u:ni@	all	CA	Shuniah
+Shuqualak	S'Ug@lA:k	all	US	Shuqualak, Mississippi
+Sicamous	s'Ik@mu:s	all	CA	Sicamous
+Sierra Vista	si,Er@v'Ist@	all	US	Sierra Vista, Arizona
+Siletz	sIl'Ets	all	US	Siletz, Oregon
+Simi	s'i:mi:	all	US	Simi Valley, California
+Simonsbath	s'Im@nzbA:T	all	GB	Simonsbath
+Sinsinawa	s,Ins'In@wA:	all	US	Sinsinawa, Wisconsin
+Sintaluta	s,Int@lj'u:t@	all	CA	Sintaluta
+Sioux Falls	su:f'O:lz	all	US	Sioux Falls, South Dakota
+Siskiyou	s'Iskju:	all	US	Siskiyou County, California
+Sixpenny Handley	s'Iksp@nih'andli	all	GB	Sixpenny Handley
+Skamania	sk@m'eIni@	all	US	Skamania County, Washington
+Skamokawa	skVm'A:k@w,eI	all	US	Skamokawa, Washington
+Skegness	skEgn'Es	all	GB	Skegness
+Skelmersdale	sk'Elm3zdeIl	all	GB	Skelmersdale
+Skibbereen	sk,Ib@r'i:n	all	IE	Skibbereen
+Skidegate	sk'IdIgIt	all	CA	Skidegate
+Skowhegan	skaUh'i:g@n	all	US	Skowhegan, Maine
+Slaidburn	sl'Edb3n	all	GB	Slaidburn
+Slaithwaite	sl'aUIt	all	GB	Slaithwaite
+Slana	sl'an@	all	US	Slana, Alaska
+Slaugham	sl'af@m	all	GB	Slaugham
+Sleightholme	sl'i:t@m	all	GB	Sleightholme
+Slidell	slaId'El	all	US	Slidell, Louisiana
+Sligo	sl'aIgoU	all	IE	Sligo
+Slovan	sl'oUvan	all	US	Slovan, Pennsylvania
+Smethwick	sm'EDIk	all	GB	Smethwick
+Snoqualmie	snoUkw'O:lmi	all	US	Snoqualmie, Washington
+Snowshill	sn'oUz@L	all	GB	Snowshill
+Socorro	s@k'O@oU	all	US	Socorro, New Mexico
+Soham	s'oU@m	all	GB	Soham
+Solgohachia	s,A:g@h'atSi	all	US	Solgohachia, Arkansas
+Solihull	s'0lihVl	all	GB	Solihull
+Soloheadbeg	s,0l@h@db'Eg	all	IE	Soloheadbeg
+Somerford Keynes	s,Vm3fUdk'aInz	all	GB	Somerford Keynes
+Somerleyton	s'Vm3leIt@n	all	GB	Somerleyton
+Somerton	s'Vm3t@n	all	GB	Somerton, Somerset
+Somis	s'oUmIs	all	US	Somis, California
+Sonoita	s@n'OIt@	all	US	Sonoita, Arizona
+Sooke	s'u:k	all	CA	Sooke
+Soquel	soUk'El	all	US	Soquel, California
+Soulard	s'u:lA@d	all	US	Soulard, St. Louis
+Souris	s'u:ri	all	CA	Souris, Prince Edward Island
+Southam	s'aUD@m	all	GB	Southam
+Southampton	saUTh'ampt@n	all	GB	Southampton
+Southcote	s'aUTk@t	all	GB	Southcote, Berkshire
+Southington	s'VDINt@n	all	US	Southington, Connecticut
+Southwark	s'VD@k	all	GB	Southwark
+Southwell	s'aUTw@l	all	GB	Southwell, Nottinghamshire
+Spetisbury	sp'Etsb3i	all	GB	Spetisbury
+Spofforth	sp'0f3T	all	GB	Spofforth, North Yorkshire
+Spotland	sp'0tland	all	GB	Spotland
+Sprowston	spr'oUst@n	all	GB	Sprowston
+Sproxton	spr'oUs@n	all	GB	Sproxton, Leicestershire
+Spurger	sp'3:g3	all	US	Spurger, Texas
+Spuyten Duyvil	sp'aIt@nd'aIv@L	all	US	Spuyten Duyvil, Bronx
+St Neots	s@ntn'i:@ts	all	GB	St Neots
+Stainforth	st'eInf3T	all	GB	Stainforth, South Yorkshire
+Stalbridge	st'O:lbrIdZ	all	GB	Stalbridge
+Stalybridge	st,eIlibr'IdZ	all	GB	Stalybridge
+Stanislaus	st'anIslO:s	all	US	Stanislaus County, California
+Stanwick	st'anIk	all	GB	Stanwick, Northamptonshire
+Staplehurst	st'eIp@Lh3:st	all	GB	Staplehurst
+Staplow	st'aploU	all	GB	Staplow
+Starcross	stA@kr'0s	all	GB	Starcross
+Starrucca	str'Vk@	all	US	Starrucca, Pennsylvania
+Staten	st'at@n	all	US	Staten Island
+Staunton	st'ant@n	all	US	Staunton, Virginia
+Stechford	st'EtSf3d	all	GB	Stechford
+Stehekin	st@h'i:k@n	all	US	Stehekin, Washington
+Steilacoom	st'Il@k@m	all	US	Steilacoom, Washington
+Steinbach	st'aInbak	all	CA	Steinbach, Manitoba
+Steinhatchee	st'i:nhatSi	all	US	Steinhatchee, Florida
+Stenness	st'EnIs	all	GB	Stenness
+Stevenage	st'i:v@nIdZ	all	GB	Stevenage
+Stewiacke	stj'u:iak	all	CA	Stewiacke
+Steyning	st'EnIN	all	GB	Steyning
+Stiffkey	stj'u:ki	all	GB	Stiffkey
+Stinnett	stIn'Et	all	US	Stinnett, Texas
+Stivichall	st'aItS@L	all	GB	Stivichall
+Stoborough	st'oUb3@	all	GB	Stoborough
+Stogumber	st@g'Vmb@r	all	GB	Stogumber
+Stokeinteignhead	st'oUk,Int'i:nh,Ed	all	GB	Stokeinteignhead
+Stokenham	stoUk@nh'am	all	GB	Stokenham
+Stoneham	st'oUn@m	all	US	Stoneham, Massachusetts
+Stonehaven	stoUnh'eIv@n	all	GB	Stonehaven
+Stonor	st'oUn3	all	GB	Stonor
+Stornoway	st'O@n@weI	all	GB	Stornoway
+Stouffville	st'oUvIl	all	CA	Stouffville
+Stow Bedon	st,oUb'Ed@n	all	GB	Stow Bedon
+Stow cum Quy	st,oUk@mkw'aI	all	GB	Stow cum Quy
+Strabane	str@b'an	all	GB	Strabane
+Strachan	strO:n	all	GB	Strachan, Aberdeenshire
+Stradbroke	str'adbrUk	all	GB	Stradbroke
+Stradone	str@d'oUn	all	IE	Stradone, County Cavan
+Strasbourg	str'A:sb3:g	all	CA	Strasbourg, Saskatchewan
+Strathaven	str'eIv@n	all	GB	Strathaven
+Strathyre	str,aT'aI@	all	GB	Strathyre
+Strensham	str'EnS@m	all	GB	Strensham
+Stretham	str'Et@m	all	GB	Stretham
+Stretton Sugwas	str'Et@ns'Vg@s	all	GB	Stretton Sugwas
+Stromness	str'VmnIs	all	GB	Stromness
+Stroxton	str'oUs@n	all	GB	Stroxton
+Study Butte	stj'u:dibju:t	all	US	Study Butte, Texas
+Stuyvesant	st'aIv@s@nt	all	US	Stuyvesant, New York
+Suamico	sw'A:mIkoU	all	US	Suamico, Wisconsin
+Subiaco	s,u:bi'akoU	all	AU	Subiaco, Western Australia
+Sudbury	s'Vdb3i	all	GB	Sudbury, Suffolk
+Sueur	l@s'U@	all	US	Le Sueur, Minnesota
+Sulby	sDlb'i:	all	GB	Sulby, Isle of Man
+Sumerduck	s'Vm3dVk	all	US	Sumerduck, Virginia
+Sunbury	s'Vnb3i	british	AU	Sunbury, Victoria
+Sundre	s'Vndri	all	CA	Sundre
+Sunnyvale	s'VniveIl	all	US	Sunnyvale, California
+Susitna	w'aI	all	US	Susitna North, Alaska
+Sutton Bonington	s'Vt@nb'0nINt@n	all	GB	Sutton Bonington
+Sutton Cheney	s'Vt@ntS'i:ni	all	GB	Sutton Cheney
+Sutton Coldfield	s,Vt@nk'oUldfi:ld	all	GB	Sutton Coldfield
+Swaffham	sw'0f@m	all	GB	Swaffham
+Swampscott	sw'0mpsk@t	all	US	Swampscott, Massachusetts
+Swansea	sw'0nzi	all	GB	Swansea
+Swanwick	sw'0nIk	all	GB	Swanwick, Hampshire
+Swarthmore	sw'O@TmO@	all	US	Swarthmore, Pennsylvania
+Sydenham	s'Id@n@m	all	GB	Sydenham, London
+Symondsbury	s'Im@ndzb3i	all	GB	Symondsbury
+Syosset	saI'0sIt	all	US	Syosset, New York
+Syracuse	s'Ir@kju:z	all	US	Syracuse, New York
+Syston	s'aIst@n	all	GB	Syston
+Tabiona	tabi'oUn@	all	US	Tabiona, Utah
+Tacolneston	t'ak@Lst@n	all	GB	Tacolneston
+Tacoma	t@k'oUm@	all	US	Tacoma, Washington
+Taghkanic	t@k'A:nIk	all	US	Taghkanic, New York
+Taghmon	tam'Un	all	IE	Taghmon
+Tahlequah	t'al@kwA:	all	US	Tahlequah, Oklahoma
+Talacre	t@l'akr@	all	GB	Talacre
+Taliaferro	t'0lIv3	all	US	Taliaferro County, Georgia
+Talladega	t,al@d'Ig@	all	US	Talladega, Alabama
+Tallaght	t'al@	all	IE	Tallaght
+Tallahassee	t,al@h'asi	all	US	Tallahassee, Florida
+Tallangatta	t@l'aNg@t@	all	AU	Tallangatta
+Tallapoosa	tal@p'u:s@	all	US	Tallapoosa, Georgia
+Tallarook	tal@r'Uk	all	AU	Tallarook
+Tallebudgera	t,al@b'VdZ3@	all	AU	Tallebudgera
+Tallmadge	t'almIdZ	all	US	Tallmadge, Ohio
+Tallulah	t@l'u:l@	all	US	Tallulah, Louisiana
+Tallygaroopna	t,ali:g@r'u:pn@	all	AU	Tallygaroopna
+Tamaqua	t@m'A:kw@	all	US	Tamaqua, Pennsylvania
+Tamora	t@m'O:r@	all	US	Tamora, Nebraska
+Tanana	t'an@nA:	all	US	Tanana, Alaska
+Taneytown	t'O:nitaUn	all	US	Taneytown, Maryland
+Tangambalanga	t,aN@mb@l'aN@	all	AU	Tangambalanga
+Tangipahoa	t,andZIp@h'oU@	all	US	Tangipahoa Parish, Louisiana
+Taopi	teI'oUpi	all	US	Taopi, Minnesota
+Taperoo	t'ap3u:	all	AU	Taperoo, South Australia
+Tardebigge	t'A@dibIg	all	GB	Tardebigge
+Tarneit	t'A:nit	all	AU	Tarneit
+Taroom	t@r'u:m	all	AU	Taroom
+Tarring	t'arIN	all	GB	West Tarring
+Tarves	t'A@vIs	all	GB	Tarves
+Tarzana	tA@z'an@	all	US	Tarzana, Los Angeles
+Tatamagouche	t,at@m@g'US	all	CA	Tatamagouche
+Tatitlek	t@t'ItlIk	all	US	Tatitlek, Alaska
+Tavares	tVv'E@riz	all	US	Tavares, Florida
+Tawas	t'aUwA:s	all	US	Tawas City, Michigan
+Tazewell	t'azwEl	all	US	Tazewell County, Illinois
+Teays	t'eIz	all	US	Teays Valley, West Virginia
+Tecoma	t@k'oUm@	all	AU	Tecoma, Victoria
+Tehama	t@h'eIm@	all	US	Tehama County, California
+Tehuacana	t@w'A:k@n@	all	US	Tehuacana, Texas
+Teignbridge	t'i:nbrIdZ	all	GB	Teignbridge
+Teignmouth	t'Inm@T	all	GB	Teignmouth
+Tekoa	t'ikoU	all	US	Tekoa, Washington
+Temecula	t@m'EkjUl@	all	US	Temecula, California
+Temora	t@m'O:r@	all	AU	Temora, New South Wales
+Tempe	tEmp'i:	all	US	Tempe, Arizona
+Templepatrick	t,Emp@Lp'atrIk	all	GB	Templepatrick
+Tenino	t@n'aInoU	all	US	Tenino, Washington
+Terang	t@r'aN	all	AU	Terang
+Terlingua	t3l'INgw@	all	US	Terlingua, Texas
+Terrebonne	t,Er@b'oUn	all	US	Terrebonne Parish, Louisiana
+Terregles	t'Er@g@Lz	all	GB	Terregles
+Tesuque	t@s'u:ki	all	US	Tesuque, New Mexico
+Tewantin	t@w'0nt@n	all	AU	Tewantin
+Tewkesbury	tj'u:ksb3i	all	GB	Tewkesbury
+Tewksbury	t'Uksb3:i	all	US	Tewksbury, Massachusetts
+Teynham	t'En@m	all	GB	Teynham
+Tharbogang	t'A:boUg@N	all	AU	Tharbogang
+Thargomindah	T'A@goUmInd@	all	AU	Thargomindah
+Theale	T'i:@L	all	GB	Theale
+Thetford	T'EtfO@d	all	GB	Little Thetford
+Theydon Bois	T,eId@nb'OIz	all	GB	Theydon Bois
+Thibodaux	t'Ib@doU	all	US	Thibodaux, Louisiana
+Thiry Daems	T'i:rid'eImz	all	US	Thiry Daems, Wisconsin
+Thorncombe	T'O@nk@m	all	GB	Thorncombe
+Thriplow	tr'IploU	all	GB	Thriplow
+Throop	tr'u:p	all	US	Throop, Pennsylvania
+Throwleigh	Tr'aUli	all	GB	Throwleigh
+Thurgarton	T'3:g3t@n	all	GB	Thurgarton
+Thurgoland	T'3:g@l@nd	all	GB	Thurgoland
+Thurles	t'3:l@s	all	IE	Thurles
+Thurso	T'3:zoU	all	GB	Thurso
+Thwing	Dw'IN	all	GB	Thwing, East Riding of Yorkshire
+Tiaquin	t'i:akwIn	all	IE	Tiaquin
+Tiaro	t'aIroU	all	AU	Tiaro, Queensland
+Ticonderoga	taIk0nd@r'oUg@	all	US	Ticonderoga, New York
+Tideford	t'IdIf3d	all	GB	Tideford
+Tidenham	t'Id@n@m	all	GB	Tidenham
+Tieri	ti'e@i	all	AU	Tieri
+Tieton	t'aI@t@n	all	US	Tieton, Washington
+Tigard	t'aIg3d	all	US	Tigard, Oregon
+Tighnabruaich	t,aIn@br'u:@x	all	GB	Tighnabruaich
+Tillicoultry	t,Ilik'u:tri	all	GB	Tillicoultry
+Timaru	t'Im@ru:	all	NZ	Timaru
+Tintagel	tInt'adZ@L	all	GB	Tintagel
+Tintaldra	t'Int@Ldr@	all	AU	Tintaldra
+Tintwistle	t'Ins@L	all	GB	Tintwistle
+Tioga	taI'oUg@	all	US	Tioga County, New York
+Tippecanoe	t,Ip@k@n'u:	all	US	Tippecanoe County, Indiana
+Tirhugh	tIrhj'u:	all	IE	Tirhugh
+Tisted	t'aIstEd	all	GB	East Tisted
+Tittabawassee	t'It@b@w'A:si	all	US	Tittabawassee Township, Michigan
+Titusville	t'It@sv@L	all	US	Titusville (Birmingham)
+Tiverton	t'Iv3t@n	all	GB	Tiverton, Devon
+Tobermory	t,oUb3m'O@i	all	GB	Tobermory, Mull
+Tocumwal	t'oUk@mwO:l	all	AU	Tocumwal
+Todmorden	t'0dm3d@n	all	GB	Todmorden
+Tofte	t'O:fti	all	US	Tofte, Minnesota
+Tok	t'oUk	all	US	Tok, Alaska
+Toledo	t@l'i:doU	all	US	Toledo, Ohio
+Tolland	t'0l@nd	all	US	Tolland County, Connecticut
+Tolleson	t'0lIs@n	all	US	Tolleson, Arizona
+Tomatin	toUm'atIn	all	GB	Tomatin
+Tomintoul	t,0mInt'aUl	all	GB	Tomintoul
+Tonasket	t@n'ask@t	all	US	Tonasket, Washington
+Tonbridge	t'VnbrIdZ	all	GB	Tonbridge
+Tonet	toUn'Et	all	US	Tonet, Wisconsin
+Tonganoxie	t0Ng@n'0ksi	all	US	Tonganoxie, Kansas
+Tonsina	t0ns'i:n@	all	US	Tonsina, Alaska
+Tonypandy	t0n@p'andi	all	GB	Tonypandy
+Tooborac	t'u:b3ak	all	AU	Tooborac
+Toodyay	t'u:dZeI	all	AU	Toodyay, Western Australia
+Toogoolawah	tu:g'u:l@w@	all	AU	Toogoolawah
+Toorak	t'u:rak	all	AU	Toorak
+Tootgarook	t'Utg@rUk	all	AU	Tootgarook
+Toowong	t@w'0N	all	AU	Toowong
+Toowoomba	t@w'Umb@	all	AU	Toowoomba
+Topinabee	t0p'InVbi:	all	US	Topinabee, Michigan
+Toppenish	t'0pp@nIS	all	US	Toppenish, Washington
+Toquerville	t'oUk3vIl	all	US	Toquerville, Utah
+Torbay	tO@b'eI	all	GB	Torbay
+Torfaen	tO@v'aIn	all	GB	Torfaen
+Torphichen	tO@f'Ix@n	all	GB	Torphichen
+Torphins	tO@f'Inz	all	GB	Torphins
+Torrumbarry	t@r'Vmb3i	all	AU	Torrumbarry
+Torworth	t'O@3:T	all	GB	Torworth
+Totnes	t'0tn@s	all	GB	Totnes
+Toton	t'oUt@n	all	GB	Toton
+Totowa	t'oUt@w@	all	US	Totowa, New Jersey
+Totton and Eling	t'0t@nand'i:lIN	all	GB	Totton and Eling
+Touchet	t'u:Si	all	US	Touchet, Washington
+Toulvaddie	tu:lv'adi	all	GB	Toulvaddie
+Towaco	t@w'A:koU	all	US	Towaco, New Jersey
+Towcester	t'oUst3	all	GB	Towcester
+Townsend	t'aUnz@nd	all	US	Port Townsend, Washington
+Towson	t'aUs@n	all	US	Towson, Maryland
+Towthorpe	t'aUTO:p	all	GB	Towthorpe, North Yorkshire
+Towton	t'aUt@n	all	GB	Towton
+Tralee	tr@l'i:	all	IE	Tralee
+Tramore	tr@m'O:r	all	IE	Tramore
+Tranent	tr@n'Ent	all	GB	Tranent
+Treales	r'0z@k3	all	GB	Treales, Roseacre and Wharles
+Tredegar	tr@d'i:g3	all	GB	Tredegar
+Tredyffrin	trId'IfrIn	all	US	Tredyffrin Township, Pennsylvania
+Trefonen	trIv'0nIn	all	GB	Trefonen
+Treknow	tr@n'oU	all	GB	Treknow
+Trempealeau	tr'Emp@loU	all	US	Trempealeau County, Wisconsin
+Trenoweth	tr@n'aU@T	all	GB	Trenoweth, Isles of Scilly
+Treutlen	tr'u:tlIn	all	US	Treutlen County, Georgia
+Trewoon	tr'u:@n	all	GB	Trewoon
+Triana	traI'an@	all	US	Triana, Alabama
+Trinafour	tr,In@f'U@	all	GB	Trinafour
+Trochu	tr'oUSu:	all	CA	Trochu, Alberta
+Trottiscliffe	tr'0tiskliff	all	GB	Trottiscliffe
+Troway	tr'oUI	all	GB	Troway
+Trowell	tr'aUl	all	GB	Trowell
+Trowse	tr'aUs	all	GB	Trowse
+Truganina	trVg@n'aIn@	all	AU	Truganina
+Truro	tr'3:oU	american	US	Truro, Massachusetts
+Tryon	tr'aI@n	all	US	Tryon, Nebraska
+Trysull	tri:s'Ul	all	GB	Trysull
+Tsawwassen	t@w'A:s@n	all	CA	Tsawwassen
+Tsiigehtchic	ts'i:gEtSIk	all	CA	Tsiigehtchic
+Tualatin	tu:'O:l@tIn	all	US	Tualatin, Oregon
+Tuam	tj'u:@m	all	IE	Tuam
+Tuebrook	tS'u:bru:k	all	GB	Tuebrook
+Tuggeranong	t'Vg@r@n0N	all	AU	Tuggeranong
+Tugun	tj'u:g@n	all	AU	Tugun, Queensland
+Tuktoyaktuk	t,Vkt@j'aktVk	all	CA	Tuktoyaktuk
+Tulelake	t'u:lileIk	all	US	Tulelake, California
+Tullamarine	t,Vl@m@r'i:n	all	AU	Tullamarine
+Tullow	t'UloU	all	IE	Tullow
+Tumacacori	t,u:m@k'A:k3i	all	US	Tumacacori, Arizona
+Tumalo	t'Vm@loU	all	US	Tumalo, Oregon
+Tumbarumba	tVmb@r'Vmb@	all	AU	Tumbarumba
+Tumut	tj'u:m@t	all	AU	Tumut
+Tungamah	t'VNg@mA:	all	AU	Tungamah
+Tunkhannock	t@Nk'an@k	all	US	Tunkhannock, Pennsylvania
+Turloughmore	t3:l0xm'O@	all	IE	Turloughmore
+Tuscaloosa	t,Vsk@l'u:s@	all	US	Tuscaloosa, Alabama
+Tuscarawas	t,Vsk@r'A:w@s	all	US	Tuscarawas County, Ohio
+Tuscola	t'VskoUl@	all	US	Tuscola County, Michigan
+Tuskegee	tVsk'i:gi:	all	US	Tuskegee, Alabama
+Twickenham	tw'Ik@n@m	all	GB	Twickenham
+Twizel	tw'aIz@L	all	NZ	Twizel
+Twynholm	tw'aIn@m	all	GB	Twynholm
+Tyewhoppety	toUw'0pIti	all	US	Tyewhoppety, Kentucky
+Tyldesley	t'Ilzli:	all	GB	Tyldesley
+Tyndrum	taIndr'Vm	all	GB	Tyndrum
+Tynemouth	t'aInmaUT	all	GB	Tynemouth
+Tyrendarra	t'i@@nd@r@	all	AU	Tyrendarra
+Tyrrell	t'e@Il	all	US	Tyrrell County, North Carolina
+Tywardreath	t'aIw3dr,ET	all	GB	Tywardreath
+Tywyn	t'aUIn	all	GB	Tywyn
+Ucluelet	ju:kl'u:lIt	all	CA	Ucluelet
+Udimore	j'u:dImO:	all	GB	Udimore
+Udny	w'IdnI	all	GB	Udny Station
+Uffculme	'Vfk@m	all	GB	Uffculme
+Ugborough	'Vgbr@	all	GB	Ugborough
+Uhland	j'u:l@nd	all	US	Uhland, Texas
+Uhrichsville	'3:Iksv,Il	all	US	Uhrichsville, Ohio
+Uinta	ju:'Int@	all	US	Uinta County, Wyoming
+Uki	j'u:kaI	all	AU	Uki, New South Wales
+Ukiah	ju:k'aI@	all	US	Ukiah, California
+Ulao	ju:l'eI,oU	all	US	Ulao, Wisconsin
+Ulen	j'u:l@n	all	US	Ulen, Minnesota
+Uley	ju:l'i	all	GB	Uley
+Ulleskelf	'Vl@sk,Elf	all	GB	Ulleskelf
+Unalakleet	j'u:n@l@kli:t	all	US	Unalakleet, Alaska
+Unanderra	j'u:n@ndEr@	all	AU	Unanderra
+Ungarie	VNg'e@i	all	AU	Ungarie
+Uplowman	Vpl'oUm@n	all	GB	Uplowman
+Urana	j@r'an@	all	AU	Urana
+Urbana	3:b'an@	all	US	Urbana, Illinois
+Urne	'3:ni	all	US	Urne, Wisconsin
+Urunga	ju:r'Vng@	all	AU	Urunga, New South Wales
+Utica	ju:t'Ik@	all	US	Utica, New York
+Utqiagvik	,Utki'A:gvIk	all	US	Utqiagvik, Alaska
+Uttoxeter	ju:t'0ksIt3	all	CA	Uttoxeter, Ontario
+Uvalde	ju:v'aldi	all	US	Uvalde, Texas
+Uwchlan	ju:kl'@n	all	US	Uwchlan Township, Pennsylvania
+Vadnais	v'adnIz	all	US	Vadnais Heights, Minnesota
+Valatie	v@l'eIS@	all	US	Valatie, New York
+Valdasta	vald'ast@	all	US	Valdasta, Texas
+Valdese	v'aldis	all	US	Valdese, North Carolina
+Valdez	vald'i:z	all	US	Valdez, Alaska
+Valparaiso	v,alp@r'eIzoU	all	US	Valparaiso, Indiana
+Van Nuys	vann'aIz	all	US	Van Nuys
+Vegreville	v'Egr@vIl	all	CA	Vegreville
+Venetie	v'i:nItaI	all	US	Venetie, Alaska
+Ventnor	v'Entn@r	all	GB	Ventnor
+Vergennes	v3dZ'Enz	all	US	Vergennes, Vermont
+Vergne	l@v'3:n	all	US	La Vergne, Tennessee
+Verret	v'3:Et	all	US	Verret, Louisiana
+Versailles	v3s'eIlz	all	US	Versailles, Kentucky
+Viborg	vaIb'3:g	all	US	Viborg, South Dakota
+Viburnum	vaIb'3:n@m	all	US	Viburnum, Missouri
+Vici	v'aIsaI	all	US	Vici, Oklahoma
+Vida	v'aId@	all	US	Vida, Montana
+Vidor	v'aId3	all	US	Vidor, Texas
+Viejo	vi'eIhoU	all	US	Mission Viejo, California
+Vieques	vi'eIk@s	all	US	Vieques, Puerto Rico
+Vignes	v'IgnIs	all	US	Vignes, Wisconsin
+Villa Rica	v,Il@r'Ik@	all	US	Villa Rica, Georgia
+Visalia	vaIs'eIlj@	all	US	Visalia, California
+Volusia	v@l'u:S@	all	US	Volusia County, Florida
+Von Ormy	v0n'O@mi	all	US	Von Ormy, Texas
+Voorheesville	v'O@i:zv,Il	all	US	Voorheesville, New York
+Vredenburgh	vr'i:d@nb3:g	all	US	Vredenburgh, Alabama
+Waaia	w'eIaI	all	AU	Waaia
+Wabamun	w'A:b@m@n	all	CA	Wabamun, Alberta
+Wabasca	w'A:b@sk,A:	all	CA	Wabasca, Alberta
+Wabasso	w@b'asoU	all	US	Wabasso, Minnesota
+Waconia	w@k'oUnj@	all	US	Waconia, Minnesota
+Waddesdon	w'0dzd@n	all	GB	Waddesdon
+Wadebridge	weIbr'IdZ	all	GB	Wadebridge
+Wadena	w@d'i:n@	all	US	Wadena County, Minnesota
+Wadeye	w'0deI@	all	AU	Wadeye
+Waelder	w'Eld3	all	US	Waelder, Texas
+Wagga Wagga	w,0g@w'0g@	all	AU	Wagga Wagga
+Wagin	w'eIdZIn	all	AU	Wagin, Western Australia
+Wagram	w'eIgr@m	all	US	Wagram, North Carolina
+Wahgunyah	w@g'Vnj@	all	AU	Wahgunyah
+Wahkiakum	w@k'aI@kVm	all	US	Wahkiakum County, Washington
+Wahpeton	w'A:pIt@n	all	US	Wahpeton, North Dakota
+Waikanae	w,aIk@n'aI	all	NZ	Waikanae
+Waikato	w'aIkatoU	all	NZ	Waikato
+Wainuiomata	w,aInu:i'O:mA:t@	all	NZ	Wainuiomata
+Waiparous	w'aIpr@s	all	CA	Waiparous
+Wairarapa	w,aIr@r'ap@	all	NZ	Wairarapa
+Waitangi	w'aItA:Ni	all	NZ	Waitangi, Northland
+Waitpinga	waIp'INg@	all	AU	Waitpinga, South Australia
+Wakenda	w'O:k@ndO:	all	US	Wakenda, Missouri
+Wakool	wO:k'u:l	all	AU	Wakool
+Walbundrie	w0lb'Vndri	all	AU	Walbundrie
+Walcha	w'0lk@	all	AU	Walcha, New South Wales
+Waleska	wO:l'Esk@	all	US	Waleska, Georgia
+Walhain	w'A:leIn	all	US	Walhain, Wisconsin
+Walla Walla	w,A:l@w'A:l@	american	US	Walla Walla, Washington
+Wallowa	w@l'aUw@	all	US	Wallowa County, Oregon
+Wallsend	w,O:lz'End	all	GB	Wallsend
+Wallula	w@l'u:lV	all	US	Wallula, Washington
+Walpeup	wO:lpi:'Vp	all	AU	Walpeup
+Walsden	w'0lzd@n	all	GB	Walsden
+Walthourville	w'O:ltaU@vIl	all	US	Walthourville, Georgia
+Walworth	w'O:lw@T	all	GB	Walworth
+Wamberal	w'0mb@r@L	all	AU	Wamberal
+Wamego	wO:m'i:goU	all	US	Wamego, Kansas
+Wanaque	w'0n@kju:	all	US	Wanaque, New Jersey
+Wanborough	w'0nb3@	all	GB	Wanborough, Surrey
+Wandoan	w'0ndoU@n	all	AU	Wandoan
+Wandsworth	w'0nzw3T	all	GB	Wandsworth
+Wanganella	w'aNg@nEl@	all	AU	Wanganella, New South Wales
+Wangaratta	w,aNg@r'at@	all	AU	Wangaratta
+Wangi Wangi	w'0ndZiw0ndZi	all	AU	Wangi Wangi, New South Wales
+Wangoom	w'0Ngu:m	all	AU	Wangoom
+Wanham	w'A:n@m	all	CA	Wanham, Alberta
+Wanniassa	w'0nIas@	all	AU	Wanniassa
+Wanship	w'A:nSIp	all	US	Wanship, Utah
+Wantagh	w'0ntO:	all	US	Wantagh, New York
+Wapakoneta	w,A:p@k@n'Et@	all	US	Wapakoneta, Ohio
+Wapato	w'A:pVtoU	all	US	Wapato, Washington
+Wapella	w@p'El@	all	CA	Wapella, Saskatchewan
+Wapello	w'A:p@loU	all	US	Wapello County, Iowa
+Wappapello	w'0p@p@LoU	all	US	Wappapello, Missouri
+Wardle	w'O:rd@L	all	GB	Wardle, Greater Manchester
+Wareham	w'e@@m	british	GB	Wareham, Dorset
+Warner Robins	w'A:rn3:r'A:b@nz	all	US	Warner Robins, Georgia
+Warracknabeal	w'0rIkn@bi:l	all	AU	Warracknabeal
+Warragul	w'0r@gUl	all	AU	Warragul
+Warrenheip	w0r@nh'i:p	all	AU	Warrenheip
+Warrnambool	w'O@n@mbu:l	all	AU	Warrnambool
+Wasdale	w'0zdeIl	all	GB	Wasdale
+Waseca	w@s'i:k@	all	US	Waseca County, Minnesota
+Washoe	w'0SoU	all	US	Washoe County, Nevada
+Washougal	wA:S'u:g@L	all	US	Washougal, Washington
+Washtucna	wA:St'Vkn@	all	US	Washtucna, Washington
+Waskatenau	w@s'Etn@	all	CA	Waskatenau
+Waskish	w'A:skIS	all	US	Waskish Township, Beltrami County, Minnesota
+Wassaic	wA:s'eIik	all	US	Wassaic, New York
+Watchung	wA:tS'VN	all	US	Watchung, New Jersey
+Waterloo	w,O:t3l'u:	all	GB	Waterloo, London
+Watervliet	wO:t3vl'i:t	all	US	Watervliet, New York
+Wauchope	w'O:hoUp	all	AU	Wauchope, New South Wales
+Wauconda	w,O:k'0nd@	all	US	Wauconda, Illinois
+Waukegan	w@k'i:g@n	all	US	Waukegan, Illinois
+Waunakee	w,O:n@k'i:	all	US	Waunakee, Wisconsin
+Waupaca	w@p'ak@	all	US	Waupaca County, Wisconsin
+Wausau	w'O:sO:	all	US	Wausau, Wisconsin
+Wauseon	w'O:si0n	all	US	Wauseon, Ohio
+Wawarsing	w@w'O@sIN	all	US	Wawarsing, New York
+Waynesboro	w'eInzbVroU	all	US	Waynesboro, Virginia
+Wayzata	waIz'Et@	all	US	Wayzata, Minnesota
+Wearside	w'i@saId	all	GB	Wearside
+Weaubleau	w'0bloU	all	US	Weaubleau, Missouri
+Weches	w'i:tSIz	all	US	Weches, Texas
+Wednesbury	w'Enzb3i	all	GB	Wednesbury
+Wednesfield	w'Enzfi:ld	all	GB	Wednesfield
+Weetangera	w'i:taNg@r@	all	AU	Weetangera
+Weethalle	w'i:Tali	all	AU	Weethalle
+Weippe	w'i:aIp	all	US	Weippe, Idaho
+Weitchpec	w'EtSpEk	all	US	Weitchpec, California
+Wellesley	w'Elzli	all	US	Wellesley, Massachusetts
+Wellingborough	w'ElINbr@	all	GB	Wellingborough
+Wemme	w'Emi:	all	US	Wemme, Oregon
+Wemyss	wi:mz	all	GB	East Wemyss
+Wemyss Bay	w,i:mzb'eI	all	GB	Wemyss Bay
+Wenatchee	wEn'atSi:	all	US	Wenatchee, Washington
+Wendell	wEnd'El	all	US	Wendell, North Carolina
+Wendouree	w,End@r'i:	all	AU	Wendouree
+Wenham	w'En@m	all	US	Wenham, Massachusetts
+Weobley	w'Ebli	all	GB	Weobley
+Werneth	w'3:nET	all	GB	Werneth, Greater Manchester
+Weslaco	w'Esl@koU	all	US	Weslaco, Texas
+West Kirby	wEstk'3:bi	all	GB	West Kirby
+Westhoughton	wEsth'O:t@n	all	GB	Westhoughton
+Westhumble	wEsth'Vmb@L	all	GB	Westhumble
+Westmeath	wEstm'i:D	all	IE	County Westmeath
+Westminster	wEstm'Inst3	all	US	Westminster, Texas
+Wetaskiwin	w@t'ask@wIn	all	CA	Wetaskiwin
+Wetumpka	wIt'Vmk@	all	US	Wetumpka, Alabama
+Weyauwega	waI@w'i:g@	all	US	Weyauwega, Wisconsin
+Whakamarama	f,A:k@m'A:r@m@	all	NZ	Whakamarama
+Whakamaru	f'A:k@m,A:ru:	all	NZ	Whakamaru
+Whalley	w'O:li	all	GB	Whalley, Lancashire
+Whanganui	w'0N@nu:i	all	NZ	Whanganui
+Whatcom	w'0tk@m	all	US	Whatcom County, Washington
+Whately	w'eItli	all	US	Whately, Massachusetts
+Whatstandwell	w'0tstandwEl	all	GB	Whatstandwell
+Whitakers	w'It@k3z	all	US	Whitakers, North Carolina
+Whitchurch Canonicorum	w'ItS3:tSk@n,0nIk'O@@m	all	GB	Whitchurch Canonicorum
+Whitechapel	w'aIttS,ap@l	all	GB	Whitechapel
+Whitemarsh	w'ItmA@S	all	US	Whitemarsh Island, Georgia
+Whitwick	w'ItIk	all	GB	Whitwick
+Whyalla	waI'al@	all	AU	Whyalla
+Wiarton	w'aI@t@n	all	CA	Wiarton
+Wibaux	w'i:boU	all	US	Wibaux County, Montana
+Wickham	w'Ik@m	all	GB	Wickham, Hampshire
+Wickhambreaux	w'Ik@mbru:	all	GB	Wickhambreaux
+Wicomico	waIk'0mIkoU	all	US	Wicomico County, Maryland
+Widnes	w'Idn@s	all	GB	Widnes
+Widtsoe	w'ItsoU	all	US	Widtsoe, Utah
+Wilbarger	w'IlbA@g3	all	US	Wilbarger County, Texas
+Wildboarclough	w'Ilb3klVf	all	GB	Wildboarclough
+Wildorado	w,Ild@r'eIdoU	all	US	Wildorado, Texas
+Willesden	w'Ilzd@n	all	GB	Willesden
+Willoughton	w'Il@t@n	all	GB	Willoughton
+Winchcombe	w'IntSk@m	all	GB	Winchcombe
+Winchelsea	w'IntS@lsi:	all	AU	Winchelsea, Victoria
+Winchendon	w'IntS@nd@n	all	US	Winchendon, Massachusetts
+Winchester	w'IntSIst3	all	GB	Winchester
+Windermere	w'Ind3mi@	all	GB	Windermere, Cumbria (town)
+Windham	w'Ind@m	all	US	Windham County, Connecticut
+Windsor	w'Indz3	all	CA	Windsor, Ontario
+Winfrith Newburgh	w,InfrITnj'u:b3@	all	GB	Winfrith Newburgh
+Wingham	w'IN@m	all	GB	Wingham, Kent
+Winnemucca	w,In@m'Vk@	all	US	Winnemucca, Nevada
+Winnetka	wIn'Etk@	all	US	Winnetka, Illinois
+Winslow	w'InzloU	all	GB	Winslow, Buckinghamshire
+Wisbech	w'Izbi:tS	all	GB	Wisbech
+Wishek	w'ISIk	all	US	Wishek, North Dakota
+Wiston	w'Is@n	all	GB	Wiston, Pembrokeshire
+Witchford	w'ItSfO@d	all	GB	Witchford
+Witham	w'It@m	all	GB	Witham
+Wiveliscombe	w'Iv@lIsk@m	all	GB	Wiveliscombe
+Wivelsfield	w'Iv@Lzf,i:@Ld	all	GB	Wivelsfield
+Wivenhoe	w'Iv@nhoU	all	GB	Wivenhoe
+Woburn	w'u:b3n	american	US	Woburn, Massachusetts
+Woburn	w'oUb3n	british	GB	Woburn, Bedfordshire
+Woden	w'oUdIn	all	AU	Woden Valley
+Wodonga	w@d'0Ng@	all	AU	Wodonga
+Wokingham	w'oUkIN@m	all	GB	Wokingham
+Wolcott	w'Ulk@t	all	US	Wolcott, Connecticut
+Wolfforth	w'UlfO@T	all	US	Wolfforth, Texas
+Wollert	w'0l3t	all	AU	Wollert, Victoria
+Wollombi	w0lVmb'aI	all	AU	Wollombi
+Wollongong	w'Ul@ng0N	all	AU	Wollongong
+Wollstonecraft	w'Ulst@nkrA:ft	all	AU	Wollstonecraft, New South Wales
+Wombwell	w'UmwEl	all	GB	Wombwell
+Wonthaggi	w0nT'agi	all	AU	Wonthaggi
+Woodbastwick	w'UdbastwIk	all	GB	Woodbastwick
+Woodend	wUd'End	all	AU	Woodend, Victoria
+Woodhay	w'Udi	all	GB	West Woodhay
+Woodlesford	w'Ud@Lzf3d	all	GB	Woodlesford
+Woodnesborough	w'Inzbr@	all	GB	Woodnesborough
+Woolacombe	w'Ul@k@m	all	GB	Woolacombe
+Woolfardisworthy	w'Ulz3i	all	GB	Woolfardisworthy, Torridge
+Woollahra	wUl'A:r@	all	AU	Woollahra
+Woolloomooloo	w,Ul@m@l'u:	all	AU	Woolloomooloo
+Woolloongabba	wUl@ng'ab@	all	AU	Woolloongabba
+Wooloowin	w'Ul@w@n	all	AU	Wooloowin
+Woolsthorpe	wUlsT'O@p	all	AU	Woolsthorpe, Victoria
+Woolton	w'u:lt@n	all	GB	Woolton
+Woolwich	w'UlItS	all	GB	Woolwich
+Woomargama	wu:m'A@gam@	all	AU	Woomargama
+Woonona	wUn'u:n@	all	AU	Woonona
+Woonsocket	wUns'0kIt	all	US	Woonsocket, Rhode Island
+Woorabinda	w'Ur@bInd@	all	AU	Woorabinda, Queensland
+Woorndoo	w'O@ndu:	all	AU	Woorndoo
+Wooster	w'Ust3	all	US	Wooster, Ohio
+Wootton Wawen	w'Ut@nw'oU@n	all	GB	Wootton Wawen
+Worgret	w'O@grIt	all	GB	Worgret
+Worksop	w'3:ks0p	all	GB	Worksop
+Wormshill	w3:mzh'Il	all	GB	Wormshill
+Worsley	w'3:zli	all	GB	Worsley
+Worsley Mesnes	w'3:slim'eInz	all	GB	Worsley Mesnes
+Worstead	w'UstId	all	GB	Worstead
+Worthing	w'3:DIN	all	GB	Worthing
+Wotton	w'Ut@n	all	GB	Wotton, Surrey
+Woughton	w'Uft@n	all	GB	Old Woughton
+Wreay	r'i:@	all	GB	Wreay
+Wretham	r'Et@m	all	GB	Wretham
+Wrexham	r'Eks@m	all	GB	Wrexham
+Wrotham	r'u:t@m	all	GB	Wrotham
+Wroxeter	r'0ksIt3	all	GB	Wroxeter
+Wudinna	w'Ud@n@	all	AU	Wudinna, South Australia
+Wunghnu	w'Vnju:	all	AU	Wunghnu
+Wyangala	w'aIaNgA:l@	all	AU	Wyangala
+Wybunbury	w'Inb@ri:	all	GB	Wybunbury
+Wychavon	w'ItSeIv@n	all	GB	Wychavon
+Wyckoff	w'aIkO:f	all	US	Wyckoff, New Jersey
+Wyke Regis	w,aIkr'i:dZIs	all	GB	Wyke Regis
+Wylam	w'aIl@m	all	GB	Wylam
+Wylye	w'aIli	all	GB	Wylye
+Wyndmere	w'aInmi@	all	US	Wyndmere, North Dakota
+Wynnewood	w'IniwUd	all	US	Wynnewood, Oklahoma
+Wynyard	w'Inj3d	all	AU	Wynyard, New South Wales
+Wyomissing	waI@m'IsIN	all	US	Wyomissing, Pennsylvania
+Wyrley	w'3:li	all	GB	Great Wyrley
+Wytham	w'aIt@m	all	GB	Wytham
+Wythenshawe	w'ID@nSO:	all	GB	Wythenshawe
+Wytheville	w'ITvIl	all	US	Wytheville, Virginia
+Yachats	j'A:hA:ts	all	US	Yachats, Oregon
+Yahk	j'ak	all	CA	Yahk
+Yakima	j'akImA:	all	US	Yakima, Washington
+Yakutat	j'ak@tat	all	US	Yakutat, Alaska
+Yallambie	j@l'ambi	all	AU	Yallambie
+Yalobusha	j'alab,US@	all	US	Yalobusha County, Mississippi
+Yandina	jand'i:n@	all	AU	Yandina, Queensland
+Yaouk	j'aIak	all	AU	Yaouk
+Yaphank	j'apaNk	all	US	Yaphank, New York
+Yaquina	j@kw'In@	all	US	Yaquina, Oregon
+Yarrawonga	jar@w'0Ng@	all	AU	Yarrawonga
+Yarroweyah	j'ar@wi:@	all	AU	Yarroweyah
+Ybor	'i:bO@	all	US	Ybor City
+Yeading	j'EdIN	all	GB	Yeading
+Yealmpton	j'almt@n	all	GB	Yealmpton
+Yeavering	j'Ev@rIN	all	GB	Yeavering
+Yeovil	j'oUvIl	all	GB	Yeovil
+Yeppoon	j@p'u:n	all	AU	Yeppoon
+Yiewsley	j'u:zli	all	GB	Yiewsley
+Ymir	w'aIm3	all	CA	Ymir, British Columbia
+Ynez	In'Ez	all	US	Santa Ynez, California
+Yorba Linda	j'O:rb@l'Ind@	all	US	Yorba Linda, California
+Youbou	j'u:boU	all	CA	Youbou, British Columbia
+Yountville	j'O:ntvIl	all	US	Yountville, California
+Ypsilanti	,Ips@l'anti	all	US	Ypsilanti, Michigan
+Ystradgynlais	,Vstr@dg'VnlaIs	all	GB	Ystradgynlais
+Ythanwells	,aIT@nw'Elz	all	GB	Ythanwells
+Yuleba	j'u:lbA:	all	AU	Yuleba
+Zabcikville	z'A:btSIkvIl	all	US	Zabcikville, Texas
+Zarephath	z'ar@f,aT	all	US	Zarephath, New Jersey
+Zeal Monachorum	zi:lm,0n@k'O@@m	all	GB	Zeal Monachorum
+Zeba	z'i:b@	all	US	Zeba, Michigan
+Zeballos	zEb'A:loUs	all	CA	Zeballos, British Columbia
+Zeehan	z'i:@n	all	AU	Zeehan
+Zelienople	z,i:li:@n'oUp@L	all	US	Zelienople, Pennsylvania
+Zouch	z'0tS	all	GB	Zouch
+Zuehl	zi:l	all	US	Zuehl, Texas
+Zwolle	z@w'0li	all	US	Zwolle, Louisiana
+Zzyzx	z'aIzIks	all	US	Zzyzx, California

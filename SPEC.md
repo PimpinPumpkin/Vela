@@ -3380,6 +3380,20 @@ speaker per voice in `voice_speaker_<id>`.
 Rules:
 
 - **R8 must keep `com.k2fsa.sherpa.onnx.**`**: JNI resolves classes by original name.
+- **English voices read a place-name dictionary (2026-10-04).** `app/voice/PlaceDictionary`
+  replaces the `en_dict` inside an English Piper voice's `espeak-ng-data` with the app's
+  (`assets/pronunciation/en_dict`, 228 KB, version = the first 16 hex of its SHA-256), before the
+  engine loads it, once per voice and again when the asset changes; the voice's own file stays
+  beside it as `en_dict.stock` and the dial `placeDictionary` = 0 restores it. The dictionary is
+  eSpeak NG's own source (rhasspy/espeak-ng at the commit the voices were built from; the build
+  stops unless that source reproduces the voice's stock file byte for byte) plus
+  `tools/pronunciation/places.tsv`: 3,484 place names from the US, UK, Australia, Canada,
+  Ireland and New Zealand with their local pronunciation, collected from English Wikipedia for
+  the Alyo reader (CC BY-SA 4.0, credited in Settings > About), American-only and British-only
+  readings kept apart with eSpeak's `?3` / `?!3` flags. `scripts/build-espeak-dict.sh
+  <espeak-ng-data>` rebuilds it. Vela's voice engine bundles eSpeak NG 1.52-dev (sherpa-onnx
+  1.13.3). The list names places everywhere on purpose, so the location guard skips it
+  (`scripts/check-location.sh` and `location-guard.yml`, kept in step).
 - **A line plays while it renders, and the stream never runs dry.** A line is rendered phrase
   by phrase (`SpeechText.speechFragments`); `PiperSynth.speak` hands each phrase to a player
   thread (`piper-play`) as it is made, so the wait before the first word is one phrase's render
