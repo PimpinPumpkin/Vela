@@ -7565,6 +7565,16 @@ private fun realWidthCurve(base: FloatArray, realM: Double, capDp: Double, minus
     return Expression.interpolate(Expression.linear(), Expression.zoom(), *stops)
 }
 
+/** Street-name spacing by zoom (2026-10-03, issue #655): [base] px up to z16, widening to
+ *  [ROAD_NAME_SPACING_CLOSE_PX] by z18. Up close a block fills most of the screen, so 140 px repeated
+ *  each name several times along it, and in a dense downtown the extra labels were part of what
+ *  took a 50 m-scale pan under 60 fps. */
+private fun roadNameSpacingExpr(base: Float): Expression {
+    val close = (app.vela.ui.AppTune.local("roadNameSpacingClose") ?: ROAD_NAME_SPACING_CLOSE_PX).toFloat().coerceAtLeast(base)
+    return Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(16f, base), Expression.stop(18f, close))
+}
+private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
+
 private fun widenStreets(style: StyleLayers) {
     val scale = roadWidthScale()
     val edges = roadEdgesOn() && !app.vela.ui.MapColors.classic()
@@ -7608,7 +7618,7 @@ private fun widenStreets(style: StyleLayers) {
         style.getLayer("highway-name-minor")?.minZoom = 13.5f
         val spacing = (app.vela.ui.AppTune.local("roadNameSpacing") ?: ROAD_NAME_SPACING_PX).toFloat()
         listOf("highway-name-minor", "highway-name-major").forEach { id ->
-            (style.getLayer(id) as? SymbolLayer)?.setProperties(PropertyFactory.symbolSpacing(spacing))
+            (style.getLayer(id) as? SymbolLayer)?.setProperties(PropertyFactory.symbolSpacing(roadNameSpacingExpr(spacing)))
         }
     }
 }

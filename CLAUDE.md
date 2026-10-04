@@ -3771,7 +3771,8 @@ architecture note.
 - **Roads are drawn at their real width (2026-10-03, `widenStreets`, SPEC 6).** Width per class in
   meters, at 40 degrees latitude, max with Liberty's own line and capped; bridges and tunnels share
   the road's curve (miss one and the bridge pinches). Street names at symbol-spacing 140. Dials
-  `roadWidthScale` (0 = Liberty) and `roadNameSpacing`. Online widths come from the live Liberty
+  `roadWidthScale` (0 = Liberty), `roadNameSpacing` and `roadNameSpacingClose` (names widen to 300 px
+  by z18: issue #655, dense downtowns at the 50 m scale). Online widths come from the live Liberty
   style, so a width change only reaches users through this runtime pass, never the bundled JSON.
   A one-way major road is ONE carriageway (`ROAD_ONEWAY_WIDTH_M`, the tile's `oneway`): at full
   width each half of a divided road merged into a band 3x the route with the route on one edge.
