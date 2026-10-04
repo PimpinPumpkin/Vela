@@ -161,7 +161,7 @@ import app.vela.ui.nav.ArrivalSummary
 import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
 import app.vela.ui.nav.StepsSheet
-import app.vela.ui.placeStatusColor
+import app.vela.ui.StatusText
 import app.vela.ui.Traffic
 import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
@@ -3636,11 +3636,12 @@ private fun ResultPlaceCard(
                 modifier = Modifier.padding(top = 3.dp),
             )
         } else (app.vela.ui.DemoClock.status(place)?.first ?: place.statusText)?.let { status ->
-            Text(
+            app.vela.ui.StatusText(
                 status,
+                openNow = app.vela.ui.DemoClock.status(place)?.second ?: place.openNow,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = placeStatusColor(status, app.vela.ui.DemoClock.status(place)?.second ?: place.openNow),
+                dim = SheetPalette.dim(dark),
                 modifier = Modifier.padding(top = 3.dp),
             )
         }

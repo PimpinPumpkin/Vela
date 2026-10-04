@@ -30,18 +30,19 @@ val StarGold = Color(0xFFF5B400)
  *  when it's absent. Green requires an affirmative signal AND no contradiction: a
  *  wrongly-true [openNow] must never paint text that literally reads closed
  *  ("Closed ⋅ Opens 5 AM") green - and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix
- *  hole that greened a closed place). */
+ *  hole that greened a closed place). Dark-theme pastels sampled off Google Maps:
+ *  #F2B8B6 closed-red, #6ED58B open-green. */
 fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
     val s = status.trim()
     val textSaysClosed = s.startsWith("Closed") || s.startsWith("Opens") || s.startsWith("Opening") ||
         s.startsWith("Temporarily") || s.startsWith("Permanently")
     return when {
         s.contains("soon", ignoreCase = true) -> Color(0xFFE8A100)
-        openNow == false -> Color(0xFFD93025)
-        openNow == true && !textSaysClosed -> Color(0xFF1E8E3E)
-        textSaysClosed -> Color(0xFFD93025)
-        s.startsWith("Open") || s.startsWith("Closes") -> Color(0xFF1E8E3E)
-        else -> Color(0xFFD93025)
+        openNow == false -> Color(0xFFF2B8B6)
+        openNow == true && !textSaysClosed -> Color(0xFF6ED58B)
+        textSaysClosed -> Color(0xFFF2B8B6)
+        s.startsWith("Open") || s.startsWith("Closes") -> Color(0xFF6ED58B)
+        else -> Color(0xFFF2B8B6)
     }
 }
 

@@ -2304,12 +2304,13 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
 }
 
 /** ETA color by congestion when live traffic is known: green free-flowing →
- *  amber → red. Null when there's no live-traffic signal (use the ink color). */
+ *  amber → red. Null when there's no live-traffic signal (use the ink color).
+ *  Free-flow green is Google's dark pastel (#6ED58B), not the deep traffic value. */
 internal fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
     when {
         it > 1.4 -> SheetPalette.TrafficRed
         it > 1.15 -> SheetPalette.TrafficAmber
-        else -> SheetPalette.TrafficGreen
+        else -> androidx.compose.ui.graphics.Color(0xFF6ED58B)
     }
 }
 
