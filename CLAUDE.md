@@ -1715,6 +1715,23 @@ Defaults that make the safe path the easy one:
   (Google's line sits in the driving lane, a few meters off the road's middle). (3)
   `Place.fullAddress()` joins a street-line name to its town and ZIP for the sheet's address row,
   copy and share. (4) `homeNameHits` takes only open places within 40 km of the user.
+- **Trip files say what the map was doing (2026-10-04, `ui/map/MapPerf`):** besides the 30 s `J` line
+  (UI frame pacing), a recorded trip now gets a `K` note for every bad second of a drive: map frames
+  drawn, how many were still loading tiles, the longest UI stall, whether a finger was on the map,
+  zoom, tilt, following or free camera, symbols hidden, and any main-thread pass over 100 ms by name
+  (`MapPerf.slowPass`; the road-name pass reports there). A `camera:` note marks the camera leaving
+  or rejoining the car and a free camera changing zoom by a level. Bad = a stall of 250 ms, under
+  20 map frames with a finger on the map, or a slow pass; at most one note per 2 s. Logcat `VelaPerf`
+  prints the same lines (demo drives too, which record no trip). A new heavy pass on the main
+  thread should call `MapPerf.slowPass`. No coordinates in a note, ever.
+- **Prompts are rendered ahead during the drive (2026-10-04):** `NavEngine.upcomingPrompts` (the
+  turn in hand and the next, at the current speed's bands, turn-now line first) and
+  `NavSession.prewarmPrompts` hand them to `VoiceGuide.prepare` whenever the turn, what was said, or
+  a band changes, and after each spoken line. A prepare in flight is abandoned the moment a line is
+  asked to be spoken (`PiperSynth.prepare`'s abort), so an urgent line never waits behind one.
+  `StartPromptsTest` checks every spoken line was predicted the fix before. 4a demo drive: most
+  lines log `speak: waited 0 ms, prepared`. The two-voice idea (a better voice for prepared lines,
+  the fast one for urgent ones) is not built.
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps

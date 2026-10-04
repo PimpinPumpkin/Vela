@@ -272,6 +272,26 @@ class NavSession @Inject constructor(
         lines.forEach { voice.prepare(it) { if (left.decrementAndGet() == 0) onDone() } }
     }
 
+    /**
+     * Get the next lines ready while the road is quiet (2026-10-04): the turn in hand and the one
+     * after, at the current speed's distances ([NavEngine.upcomingPrompts]). Asked again when the
+     * turn, what has been said for it, or a distance band changes, and after every spoken line,
+     * because speaking drops the voice's queued preparation. The voice keeps a line it already
+     * has, so asking twice costs nothing.
+     */
+    private var prewarmKey: String? = null
+    private fun prewarmPrompts(route: Route, nav: NavState, speedMps: Double, imperial: Boolean, spoke: Boolean) {
+        if (nav.arrived || nav.offRoute) return
+        val far = kotlin.math.round(speedMps * 35.0 / 50.0).toInt()
+        val near = kotlin.math.round(speedMps * 10.0 / 50.0).toInt()
+        val key = "${System.identityHashCode(route)}|${nav.stepIndex}|${nav.spoken}|$far|$near"
+        if (key == prewarmKey && !spoke) return
+        prewarmKey = key
+        // After the events below are spoken: speak() runs first on the same worker.
+        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial)
+        scope.launch { lines.forEach { voice.prepare(it) } }
+    }
+
     fun stop() {
         // A reroute canceled here ends without its own FAILED/adopted line, which made an export
         // read as one attempt hanging for minutes (issue #557). Say so.
@@ -435,6 +455,7 @@ class NavSession @Inject constructor(
             }
         }
         if (!applied) return
+        val spokeNow = events.any { it is NavEvent.Speak }
         events.forEach { ev ->
             when (ev) {
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
@@ -455,6 +476,7 @@ class NavSession @Inject constructor(
                 }
             }
         }
+        if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
         // A jump past the next stop is a skip, not an arrival: hold the stops and reroute through
         // them (again each fix until a new route lands; the reroute gate paces the requests).
         val skipped = synchronized(stopLock) {

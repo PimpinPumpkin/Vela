@@ -2421,6 +2421,17 @@ Blvd") whose address holds only the town shows, copies and shares the two joined
 (`Place.fullAddress`); a business keeps its address as is. A name match "near you" that replaces a
 far view's results must be open and within 40 km of the user.
 
+**Trip performance notes and prepared prompts (2026-10-04).** During a recorded drive `MapPerf`
+is sampled once a second and writes a `K` note when the second was bad: a UI stall of
+`STALL_MS` (250) or more, fewer than `LOW_FPS` (20) map frames while a gesture moved the map, or a
+named main-thread pass of 100 ms or more. The note gives map frames, frames still loading, the
+longest stall, gesture, zoom, tilt, following or free camera and whether symbols were hidden; at
+most one per `MIN_GAP_MS` (2 s). A `camera:` note is written when the camera leaves or rejoins the
+car or a free camera's zoom moves a level. Notes hold no coordinates. The voice prepares the lines
+`NavEngine.upcomingPrompts` predicts for the current and next spoken turn (far and near approach
+at max(400 m, 35 s) and max(150 m, 10 s) of the current speed, and the turn-now line), up to
+`MAX_PREPARED` (8) kept; a preparation is abandoned when a line is asked to be spoken.
+
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
   or no window size is known, one extra page runs over a 2.5 km

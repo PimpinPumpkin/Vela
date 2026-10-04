@@ -572,6 +572,19 @@ class MapViewModel @Inject constructor(
             val gone = app.vela.offline.LegacyGraphs.purge(appContext.filesDir)
             if (gone.isNotEmpty()) withContext(Dispatchers.Main) { showStatus(appContext.getString(R.string.mapvm_graphs_retired)) }
         }
+        // What the map was doing, into the recorded trip: a line for each bad second and each time
+        // the camera leaves or rejoins the car (MapPerf). Asleep until a drive starts.
+        viewModelScope.launch {
+            while (true) {
+                if (!_state.value.navigating) { app.vela.ui.map.MapPerf.reset(); _state.first { it.navigating } }
+                kotlinx.coroutines.delay(1_000)
+                if (!_state.value.navigating || (_state.value.replaying && !_state.value.demoDriving)) continue
+                app.vela.ui.map.MapPerf.sample(android.os.SystemClock.elapsedRealtime())?.let {
+                    android.util.Log.i("VelaPerf", it)
+                    tripStore.note("K", it); app.vela.diag.NavTrace.event(it)
+                }
+            }
+        }
         viewModelScope.launch {
             var beat = 0
             while (true) {

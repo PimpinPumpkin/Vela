@@ -50,4 +50,24 @@ class StartPromptsTest {
             for (line in spoken) assertTrue("not prepared: \"$line\" (prepared: $prepared)", line in prepared)
         }
     }
+
+    /** Mid-drive: every line spoken was among the lines predicted on the fix before it. */
+    @Test
+    fun theLinesSpokenAlongTheDriveWerePredictedTheFixBefore() {
+        for (speed in listOf(5.0, 14.0)) {
+            var st = NavState()
+            var predicted = NavEngine.upcomingPrompts(route, 1, emptySet(), speed, imperial = true)
+            var spokenN = 0
+            for (p in poly.dropLast(35)) {
+                val (s2, ev) = NavEngine.update(route, st, p, imperial = true, speedMps = speed)
+                for (line in ev.filterIsInstance<NavEvent.Speak>().map { it.text }) {
+                    spokenN++
+                    assertTrue("at $speed m/s not predicted: \"$line\" (had: $predicted)", line in predicted)
+                }
+                st = s2
+                predicted = NavEngine.upcomingPrompts(route, st.stepIndex, st.spoken, speed, imperial = true)
+            }
+            assertTrue("spoke nothing", spokenN >= 4)
+        }
+    }
 }

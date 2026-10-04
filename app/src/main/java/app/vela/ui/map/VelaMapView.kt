@@ -1288,6 +1288,7 @@ fun VelaMapView(
                 }.getOrNull().orEmpty() else emptyList()
                 (android.os.SystemClock.elapsedRealtime() - passT0).let { ms ->
                     if (ms >= 40) android.util.Log.d("VelaNavLabels", "road-name query: ${feats.size} features in $ms ms at z=${"%.1f".format(camZoom)}")
+                    if (ms >= 100) MapPerf.slowPass("road names (${feats.size})", ms)
                 }
                 if (feats.isNotEmpty()) {
                     // DICT (cheap: two string props per feature): capture each named road's romanized
@@ -2978,6 +2979,10 @@ fun VelaMapView(
                 // Clamp the predict step (an app-pause gap shouldn't integrate minutes of stale
                 // accel); the GPS fix after the gap re-measures anyway.
                 FrameJank.tick((dtT * 1000).toInt()) // trip flight-recorder: UI frame pacing during nav
+                MapPerf.uiFrame((dtT * 1000).toInt(), parked = idleFrames > 60)
+                mapRef?.cameraPosition?.let { cp -> MapPerf.zoom = cp.zoom; MapPerf.tilt = cp.tilt }
+                MapPerf.following = navFollowingHolder.value
+                MapPerf.symbolsHidden = turnDeclutter.active
                 navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
                 // Dead-reckon by INTEGRATING the live modeled speed — over THIS frame's part of
@@ -3885,6 +3890,7 @@ fun VelaMapView(
                 map.addOnCameraMoveStartedListener { reason ->
                     gestureMove[0] = reason ==
                         MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
+                    if (gestureMove[0]) MapPerf.gesture()
                     // The user grabbing the map is a signal in its own right — MapScreen uses it
                     // to drop the results sheet down out of the way (Google's behavior).
                     // A PINCH (or two-finger tilt) is NOT that signal: zooming while the free-drive
@@ -4196,6 +4202,8 @@ fun VelaMapView(
                     val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
                     (m.invoke(null, "debug.vela.fps") as? String).orEmpty()
                 }.getOrDefault("") == "true"
+                // Always on, a counter per frame: the trip recorder's map frame rate (MapPerf).
+                mv.addOnDidFinishRenderingFrameListener { fully, _, _ -> MapPerf.mapFrame(fully) }
                 if (fpsProbeOn) {
                     var frames = 0
                     var since = android.os.SystemClock.elapsedRealtime()

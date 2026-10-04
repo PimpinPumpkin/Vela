@@ -489,11 +489,25 @@ object NavEngine {
      *  prepares them while the route preview is up, so the first prompts of a drive need no
      *  synthesis while the camera flies in. A line this misses (a real distance on a short step, a
      *  higher speed) is simply synthesized when spoken, as before. */
-    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2): List<String> {
+    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2): List<String> =
+        upcomingPrompts(route, fromStep = 1, spoken = emptySet(), speedMps = 0.0, imperial = imperial, count = count, nearestFirst = false)
+
+    /**
+     * The lines [update] is about to speak, from the turn at [fromStep] on, for the voice to get
+     * ready ahead of time during the drive: the first [count] spoken turns' far and near approach
+     * prompts at [speedMps]'s band distances and their turn-now lines, in [update]'s own wording.
+     * The CURRENT turn's lines lead, its turn-now line first: that is the one with no time to
+     * spare, and it names no distance, so it always matches. Bands in [spoken] (already said for
+     * the current turn) are left out. A line this misses (a real distance on a short step, a
+     * speed that has moved a band) is synthesized when spoken, as before.
+     */
+    fun upcomingPrompts(route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2, nearestFirst: Boolean = true): List<String> {
         val ms = route.maneuvers
         val out = LinkedHashSet<String>()
         var taken = 0
-        for (i in 1 until ms.size) {
+        val far = maxOf(400.0, round50(speedMps * 35.0))
+        val near = maxOf(150.0, round50(speedMps * 10.0))
+        for (i in fromStep.coerceAtLeast(1) until ms.size) {
             if (taken >= count) break
             val m = ms[i]
             if (m.type == ManeuverType.ARRIVE) break
@@ -501,17 +515,21 @@ object NavEngine {
                 !app.vela.core.model.continueHasGenuineFork(m.lanes)
             ) continue
             taken++
+            val said = if (i == fromStep) spoken else emptySet()
             val leg = ms[i - 1].distanceMeters
             val lane = app.vela.core.model.laneGuidance(m.lanes)
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
             val short = nav().repeatShort(m.spokenInstruction())
-            val far = 400.0
-            val near = 150.0
             val farSpoken = leg >= far * 0.85 && m.type != ManeuverType.MERGE
-            if (farSpoken) out += nav().inThen(spokenDistance(far, imperial), full)
-            if (leg >= near * 0.85) out += nav().inThen(spokenDistance(near, imperial), if (farSpoken) short else full)
-            out += if (leg >= near * 0.85) short else nav().spokenSign(m.spokenInstruction())
+            val anyApproach = leg >= near * 0.85 || said.isNotEmpty()
+            val now = if (anyApproach) short else nav().spokenSign(m.spokenInstruction())
+            val lines = ArrayList<String>()
+            if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), full)
+            if (leg >= near * 0.85 && 1 !in said) lines += nav().inThen(spokenDistance(near, imperial), if (farSpoken || said.isNotEmpty()) short else full)
+            lines += now
+            // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
+            out += if (i == fromStep && nearestFirst) lines.reversed() else lines
         }
         return out.toList()
     }

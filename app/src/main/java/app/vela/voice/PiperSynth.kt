@@ -388,7 +388,10 @@ class PiperSynth @Inject constructor(
                 val spd = speed()
                 val key = preparedKey(text, sid, spd)
                 if (synchronized(prepared) { prepared.containsKey(key) }) return@execute
-                val made = synthesize(engine, text, sid, spd) { false } ?: return@execute
+                // A line asked to be SPOKEN while this one renders ends it: a turn about to be
+                // missed must not wait behind audio for one that is a minute away.
+                val made = synthesize(engine, text, sid, spd) { asked != speaksAsked } ?: return@execute
+                if (asked != speaksAsked) return@execute
                 synchronized(prepared) {
                     prepared[key] = made
                     while (prepared.size > MAX_PREPARED) prepared.remove(prepared.keys.first())
