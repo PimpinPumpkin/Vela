@@ -167,6 +167,11 @@ data class MapUiState(
     // null when the list came from somewhere else or is exhausted. Compared against [query].
     val resultsMoreQuery: String? = null,
     val resultsLoadingMore: Boolean = false,
+    /** The row under the results is "Show other locations" (a name search that landed on one
+     *  place), not "More results". */
+    val resultsBranches: Boolean = false,
+    /** "Show other locations" was tapped for this search: the map frames all of them. */
+    val resultsBranchesLoaded: Boolean = false,
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
     // True while the CURRENT viewport sits inside the area the ambient Google fetch covered —
     // the basemap OSM POIs hide only then, so panning/zooming past the fetched area blends the
@@ -1883,9 +1888,25 @@ class MapViewModel @Inject constructor(
     private var moreSearch: Triple<String, LatLng?, Double?>? = null
     private var moreFromPage = 3
     private var moreJob: Job? = null
+    private var branchFocus: Place? = null
     fun loadMoreResults() {
         val (q, near, spanM) = moreSearch ?: return
         val s = _state.value
+        val focus = branchFocus
+        if (s.resultsBranches && focus != null) {
+            if (s.resultsLoadingMore || s.query != q) return
+            _state.update { it.copy(resultsLoadingMore = true) }
+            moreJob?.cancel()
+            moreJob = viewModelScope.launch {
+                val merged = runCatching { dataSource.searchBranches(q, focus, _state.value.results, near, spanM, rankBias(near)) }.getOrNull()
+                branchFocus = null
+                _state.update {
+                    if (it.query != q) it.copy(resultsLoadingMore = false)
+                    else it.copy(results = merged ?: it.results, resultsLoadingMore = false, resultsMoreQuery = null, resultsBranches = false, resultsBranchesLoaded = merged != null)
+                }
+            }
+            return
+        }
         if (s.resultsLoadingMore || s.resultsMoreQuery != q || s.query != q) return
         _state.update { it.copy(resultsLoadingMore = true) }
         moreJob?.cancel()
@@ -2357,7 +2378,7 @@ class MapViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             results = homeHits, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null,
-                            status = null, searching = false, offline = false, resultsMoreQuery = null, resultsLoadingMore = false,
+                            status = null, searching = false, offline = false, resultsMoreQuery = null, resultsLoadingMore = false, resultsBranches = false, resultsBranchesLoaded = false,
                         )
                     }
                     moreSearch = null
@@ -2415,10 +2436,11 @@ class MapViewModel @Inject constructor(
                             // Rows that ARE the typed address come nearest-first, ahead of everything else.
                             results = localAddrs + addressFirst(geocoded, res.places, near, ::carries) + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
                             // Three full pages back = the window holds more; offer the next three.
-                            resultsMoreQuery = if (res.places.size >= 40) q else null, resultsLoadingMore = false,
+                            resultsMoreQuery = if (res.places.size >= 40 || res.focus != null) q else null, resultsLoadingMore = false,
+                            resultsBranches = res.focus != null, resultsBranchesLoaded = false,
                         )
                     }
-                    moreSearch = Triple(q, near, spanM); moreFromPage = 3
+                    moreSearch = Triple(q, near, spanM); moreFromPage = 3; branchFocus = res.focus
                     // "Navigate to X": the top hit is the destination, straight into the chooser.
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false

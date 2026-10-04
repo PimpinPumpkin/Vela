@@ -4113,7 +4113,8 @@ architecture note.
   first time), never without the notes in hand (a failed fetch leaves the version unseen, so the
   next launch retries), and Settings > About > "What's new in this version" reopens it on demand.
   The notes are the commit subjects CI writes into every release, run through `plainReleaseNotes`;
-  nothing is bundled.
+  nothing is bundled. `WhatsNew.enabled` (pref `whats_new_after_update`, Settings > About and a
+  checkbox on the prompt) turns the automatic prompt and its notes request off.
 - **A PROBE LINE MUST NOT CARRY GOOGLE'S `@lat,lng` (2026-09-18).** Google's place-page path is
   `/maps/place//@<lat>,<lng>,<zoom>...`, and the coordinate it puts there is derived from the
   SESSION, not from the place - on a device it reads as wherever the phone is. The reviews probes
@@ -4306,10 +4307,12 @@ architecture note.
   copy. Don't "fix" a flat-looking ambient layer by touching the expressions before checking
   whether the pool's counts are null.
   **A focused NAME search has the same strip (2026-10-03, #656):** the first reply leaves out the
-  focused place's `[99]` related block, where a chain's other branches are; `search` asks page one
-  again once within the session's first 30 s (`SearchResult.strippedFocus`). Test it from a FRESH
-  install, a warm process hides it. A focused name search also asks "<query> near me", which Google
-  answers as a LIST of the branches with full cards (`SearchParser.isBranch` / `mergeBranches`).
+  focused place's `[99]` related block, where some of a chain's other branches are. The full set
+  is `MapDataSource.searchBranches` ("<query> near me" comes back as a LIST with full cards, plus
+  the plain query again when only the focus came back, plus up to 3 address lookups), run from
+  the results list's "Show other locations" row, or with the search when Settings > Search "Find
+  other locations automatically" (`OtherLocationsAuto`) is on. Default is the tap: it is 1 to 5
+  extra Google requests. Test from a FRESH install; a warm process hides the strip.
   **STICKY RANKING (`ui/map/AmbientStability`, user 2026-09-18).** All of the above means a
   SETTLED view is painted several times with different counts for the same place - streamed
   partials, the twin-dedupe re-pass, and the slim heal's second full fan-out - and every paint

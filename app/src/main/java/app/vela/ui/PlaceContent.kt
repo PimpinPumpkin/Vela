@@ -162,3 +162,24 @@ object DetailsRetry {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "details_retry"
 }
+
+/** Settings > Search "Find other locations automatically" (discussion #656), default off: a name
+ *  search that lands on one place offers its other locations on a tap instead of asking Google
+ *  for them with every such search. Mirrored into `:core` [app.vela.core.data.OtherLocations]. */
+object OtherLocationsAuto {
+    val on = mutableStateOf(false)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, false)
+        app.vela.core.data.OtherLocations.auto = on.value
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        app.vela.core.data.OtherLocations.auto = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "other_locations_auto"
+}

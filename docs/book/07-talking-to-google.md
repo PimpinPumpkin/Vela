@@ -514,6 +514,194 @@ keeps the rich copy of each place. The heal doubles the request burst, but only 
 start. The map's stickiness rule never freezes a pool whose prominences are all zero, for the
 same reason.
 
+A name search has a related gap. Searching a chain's name focuses one branch wherever the map
+is; a few other branches come back in that place's "People also search for" list, without
+addresses, and Vela adds those to the results for free. A new session's first answer leaves
+that list out.
+
+The rest are a lookup of their own: the same name plus " near me", which Google answers as a
+list of branches with full cards (address, rating, hours), the plain search once more when only
+the one place came back, and up to three address lookups. That is 1 to 5 extra requests, so it
+runs when the "Show other locations" row under the result is tapped. Settings > Search > "Find
+other locations automatically" runs it with every such search instead.
+- **They are reaped.** Idle for `reapIdleMs = 120_000` and the view is destroyed; under severe
+  memory pressure it is destroyed at once. The next fetch builds a new one.
+- **Only the engine is warmed.** A few seconds after the map first settles, at a quiet moment
+  (no drive, no sheet, no results), one throwaway WebView is built and destroyed so Chromium's
+  own start (half a second of main thread and a sandbox process) does not land under the first
+  place tap. Not on a low-RAM phone, and not with Google off. No Google page loads until a place
+  needs one: until 2026-09-22 the launch warm loaded google.com and Maps in two hidden views, and
+  until 2026-09-23 every search did the same, two whole web apps on the chance of a tap.
+- **They cannot wander.** Only http and https load, and a scrape that must stay on one page
+  refuses other navigations.
+- **They are sized.** A headless WebView is 0 by 0, and Google's virtualized lists render
+  nothing into it. Photos use an offscreen `1200 x 3200` pixel viewport; reviews use
+  `1200 x 1000` CSS pixels multiplied by the screen density, because 1200 physical pixels on a
+  2.75x phone is about 450 CSS pixels, and Google served that its narrow layout.
+
+**The same identity, as far as an app can.** Every WebView calls `WebViewIdentity.apply`, which
+sets the calibrated UA and, through androidx.webkit, user-agent metadata built from the same
+`secChUa`: Chrome brands, mobile `?0`, platform Windows, x86, 64-bit, a matching full version.
+This was measured on a Pixel 4a with a header echo on 2026-09-22. Before it, a WebView whose UA
+string said Windows Chrome still sent its own hints, `"Android WebView";v="153"`,
+`sec-ch-ua-mobile: ?1` and `sec-ch-ua-platform: "Android"`, contradicting the UA three ways.
+After it, the hints matched on Vanadium 153.
+
+**The header that cannot be removed.** Every request from an Android WebView carries
+`X-Requested-With` set to the app's package name. Chromium started removing it in M112 under a
+deprecation trial, then abandoned the removal; the androidx allow-list API meant to control it
+is marked disabled in Chromium's own feature list, and WebView's tests assert the header is the
+package name on every main-frame and sub-resource request, on Google's WebView and on Vanadium
+alike. So the WebView-backed features (photos, reviews, popular times, transit directions, the
+stop board and the reviews page) tell google.com `app.vela` by name. Search, directions,
+autocomplete, the map's place fan-out and the one-request place data go through the app's own
+client (Cronet, or OkHttp as the fallback) and do not. `WebViewIdentity` still
+makes the allow-list call, gated, in case a WebView build ever honors it, and logs one
+`VelaWeb identity:` line per view saying which switches took. Overriding the header on the
+document load alone was considered and not done: the page's own script requests would still
+carry it. The one way around it is not to let the WebView send the request at all, which is what
+the proxy below does, off by default.
+
+**Bridge names are random.** A scrape reports back through a JavaScript interface, and
+`addJavascriptInterface` puts that object on the page's `window`, where Google's own scripts can
+enumerate it. A fixed `VelaBridge` or `VelaPanel` sitting there named the app to anyone who
+looked. Since 2026-09-23 `web/JsNames` draws both names once per process (an underscore and ten
+random letters). The scripts are still written with the readable names, and `JsNames.of` swaps the
+real ones in right before every `evaluateJavascript`, so a new script call has to go through
+`JsNames.of` or its bridge calls go nowhere. The proxy's own bridge and the parameter it tags
+requests with are drawn the same way.
+
+### The WebView proxy
+
+Behind the calibration dial `webProxy` (default 0, off), `web/WebProxy.kt` takes a Google
+WebView's requests away from the WebView and sends them from the app over Cronet, with the
+WebView's own cookies (`WebViewCookieJar`) so the page keeps its session. A request the app sends
+carries no `X-Requested-With`. Any failure returns null and the WebView loads that request itself,
+exactly as before.
+
+- **GETs** are intercepted directly and streamed.
+- **POSTs** cannot be: `shouldInterceptRequest` never sees a request body. So a document-start
+  script (`WebProxy.SHIM`, dial `webProxyPosts`, default 1 when the proxy is on) wraps XHR, `fetch`
+  and `sendBeacon` on google.com pages. A POST to a Google host gets a one-time id appended to its
+  URL and its body handed to the bridge first; when the tagged request reaches the interceptor, the
+  body is waiting for it, the tag is stripped and the app sends it. A string or URL parameters go
+  over as text; a Blob, ArrayBuffer, typed array or a `Request` object goes over as base64
+  (`putB64`), read asynchronously where the type needs it. Only FormData is left, and a Google POST
+  the shim cannot read logs `untagged POST body: <type>`. Measured on a Pixel 9 before the shim, the
+  POSTs left were the review page's `batchexecute`, `play.google.com/log` and the account bar's
+  `ogads-pa` calls; with the text-only shim, one binary `play.google.com/log` POST and the two
+  preflights were left (2026-09-25); with binary bodies and preflights carried, a place tap sends
+  nothing from the WebView itself.
+- **Missing headers are filled in.** The WebView hands `shouldInterceptRequest` only some of its
+  headers; captured on 2026-09-25, proxied tiles, icons, scripts and log calls went out with no
+  `Sec-Fetch-*` at all and many without `Sec-CH-UA`. The proxy now adds what is missing the way
+  Chrome derives it (`BrowserHeaders.fetchMetadata`): the main frame is a navigation, an `image/`
+  or `text/css` Accept is an image or a stylesheet, a `.js` or `/js/` path is a script, a POST or
+  anything else is a fetch; the site is judged against the page's host. Stylesheets go at the
+  highest priority and images at the lowest, as Chrome loads them.
+- **CORS preflights** (`OPTIONS`) to a Google host go out over Cronet like the GETs, so the WebView
+  never asks Google anything itself. A 204 answer is handed to the page as a 200, the same 4a
+  finding as the telemetry answer below.
+- **Telemetry can be answered locally**, and since 2026-09-25 that is the user's choice: Settings >
+  Privacy "Block Google's page telemetry" (`web/GoogleTelemetry`, default OFF; the dial
+  `webProxyBlockLogs` still overrides when set). Blocked, `play.google.com/log`, any `gen_204` ping
+  and the account bar's `ogads-pa` get an empty 200 from the app and never leave the phone, with the
+  proxy on or off. Nothing Vela reads depends on them; they are the page reporting on itself, and ad
+  blockers drop them too. They flow by default because a browser that never sends them looks less
+  like a person to Google's traffic scoring, which is what hands a session the limited view. The
+  answer carries CORS headers that echo the page's origin, and it is a 200 on purpose: an
+  intercepted 204 reached the page without those headers on a Pixel 4a, so every blocked call
+  turned into a console error.
+
+Logcat `VelaWebProxy` prints each path once, as `carries:`, `answers locally:` or
+`passes through:` (still sent by the WebView, with the header). The dial is read on every request,
+but the POST shim is installed only when a view is built, so turning the proxy on reaches POSTs
+from the next view.
+
+### Which Google session, and how long it lives
+
+**Google limits new anonymous sessions** (the measurement is under
+[Place data](#place-data-the-methods-and-how-to-roll-each-one-back)): a session that has only just
+started gets about five reviews, no paging, and on a busy place no popular times. The app's own
+cookie jar lives in memory, so its session is new every launch; the WebView's cookies are on disk
+and age. So the per-place requests (details, the photo pages, the review feed) are tagged
+`AgedSession` in `GoogleMapsDataSource`, and the Cronet transport sends a tagged request with the
+WebView's cookies instead of the app's (dial `agedSession`, default 1). It needs no page load and
+sends no `X-Requested-With`. Without Cronet the tag does nothing and the request keeps the app's
+session. On a fresh install the WebView store is empty too, so the first requests are a new
+session either way.
+
+**A saved cookie is a history.** It carries no name or account, but everything an install asks
+Google for while one cookie lasts can be linked together. So the session is thrown away on a
+schedule (`web/SessionRotation`, Settings > Privacy > "Google session", pref
+`google_session_rotate`):
+
+| Setting | A new session | What it costs |
+| --- | --- | --- |
+| Every week (default) | when the last one is 7 days old | at most a week of linkable history; a stretch of the limited view after each reset |
+| Every day | when the last one is 24 hours old | at most a day |
+| Every time Vela opens | at every process start | the limited view is the normal state, first answers come back trimmed and are asked again, and Android restarting the app in the background can mean several new sessions a day |
+
+The check runs once per process start, in `VelaApp` before the Cronet engine opens. The first run
+only records when the session began. **A rotation clears** the WebView's cookies (on a background
+thread, because the cookie manager loads the WebView library), its site storage (on the next idle
+moment of the main thread), Cronet's disk cache (only at process start, since it is not safe to
+delete once the engine has it open) and, the first time a Google WebView is built afterwards, that
+WebView's HTTP cache (`consumeCacheClear`, which every WebView-built fetcher calls). "Start a new
+session now" does the same by hand and also empties the app's in-memory jar. The WebView store
+holds only Google: no other site is loaded in a WebView. Logcat `VelaSession` says when a rotation
+happened.
+
+This is the trade-off, not a fix for it. Keeping one session for good gives the full view and one
+long pseudonymous history; a new one every launch gives the least history and mostly the limited
+view. Session standing, not age alone, decides which view Google gives: on 2026-09-23 a Pixel 4a
+whose WebView session was weeks old was already in the limited view while a Pixel 9's was not.
+
+**It is the session, not the connection.** On 2026-09-25 three phones shared one public IPv4
+address (no IPv6): one Pixel 9 got 50 photos per page and a full reviews page, while another
+Pixel 9 and the 4a got 10, and that second Pixel 9's reviews page was Google's paged Overview
+layout, ending in its "Sign in" footer. So
+the limited view follows the cookies, and a freshly installed build on the 4a was limited from
+its first request: wiping or rotating the session does not lift it, which is why the Settings
+text says starting a new one rarely helps. Google still sees the IP address, which links sessions
+from one connection over a short time anyway.
+
+**Telling the user.** In the limited view the place sheet gets quietly thinner, which reads as a
+broken app. So Vela watches for it (`web/GoogleStanding`). The first photo request asks for 50
+photos: a full session gets 50, a limited one gets 10 with more pages waiting. On 2026-09-25 two
+phones on one connection, running the same query in the same minute, split exactly that way, and
+only the one that got 10 was missing popular times. So a first page of 20 or fewer with a next page
+marks the session limited, and so does "More reviews" loading nothing on the full reviews page; a
+first page of 40 or more clears it. A missing popular-times chart on its own proves nothing (many
+places have none), so it never marks anything. While marked, a Google place with no chart shows one
+dim line where the chart would be ("Google is showing a limited view right now..."), and Settings >
+Privacy > Google session says the same. The mark belongs to the session: any rotation clears it.
+
+### The slim early-session answer
+
+For roughly the first three seconds of a fresh session, Google's search answers with a stripped
+place block: the rating is there, the review count is not. The same query a few seconds later
+comes back complete. This was bisected live on 2026-07-14.
+
+It matters because the map ranks and sizes Google's places by review count (see
+[chapter 1](01-places.md#googles-own-ranking-when-google-is-drawing)). The fan-out that fills
+the map on a cold start lands entirely inside that window, so the whole pool arrived with no
+counts, every place scored zero, and dot sizes and label tiers went flat, then got cached that
+way.
+
+`nearbyPlaces` detects the slim flavor and asks again once:
+
+```
+rated >= 3                                     // enough rated places to judge
+count(rated and no reviewCount) > rated / 2    // a majority, not all: the session can warm mid-burst
+delay(1200)                                    // then refetch the whole fan-out once
+```
+
+If the refetch carries counts, its places go first in the merged pool, so the de-duplication
+keeps the rich copy of each place. The heal doubles the request burst, but only on a cold
+start. The map's stickiness rule never freezes a pool whose prominences are all zero, for the
+same reason.
+
 A name search has the same problem. Searching a chain's name focuses one branch, and the other
 branches come back in that place's "People also search for" list, which Vela turns into extra
 results. A new session's first answer leaves the whole list out, so `search` asks page one

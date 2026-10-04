@@ -152,6 +152,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.ReviewsOnTap.init(this)
         app.vela.ui.PhotosOnTap.init(this)
         app.vela.ui.DetailsRetry.init(this)
+        app.vela.ui.OtherLocationsAuto.init(this)
         app.vela.ui.RouteTrafficOnTap.init(this)
         app.vela.core.data.RoutingPrefs.googleTraffic = !app.vela.ui.RouteTrafficOnTap.on.value
         app.vela.ui.HideAdult.init(this)

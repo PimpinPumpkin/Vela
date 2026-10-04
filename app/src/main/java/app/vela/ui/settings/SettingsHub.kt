@@ -356,6 +356,8 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Search
     R.string.settings_voice_search_toggle to SettingsSection.SEARCH,
     R.string.settings_contacts_search to SettingsSection.SEARCH,
+    R.string.settings_other_locations_auto to SettingsSection.SEARCH,
+    R.string.whatsnew_show_after_updates to SettingsSection.ABOUT,
     R.string.settings_asr_engines_title to SettingsSection.SEARCH,
     R.string.settings_voice_search_engine_title to SettingsSection.SEARCH,
     // Offline

@@ -2177,6 +2177,7 @@ fun MapScreen(
                 minimizeTick = resultsPanTick,
                 moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
                 loadingMore = state.resultsLoadingMore,
+                moreBranches = state.resultsBranches,
                 onMore = vm::loadMoreResults,
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
@@ -2978,6 +2979,7 @@ private fun SearchResults(
     onShownChange: (Set<String>?) -> Unit = {}, // filtered-surviving ids (null = no filter active)
     moreAvailable: Boolean = false, // a "More results" row at the end of the list (next pages of the same search)
     loadingMore: Boolean = false,
+    moreBranches: Boolean = false, // the row reads "Show other locations" (a name search that landed on one place)
     onMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -3510,7 +3512,7 @@ private fun SearchResults(
                         else TextButton(
                             onClick = onMore,
                             modifier = Modifier.dpadHighlight(CircleShape),
-                        ) { Text(stringResource(R.string.mapscreen_more_results)) }
+                        ) { Text(stringResource(if (moreBranches) R.string.mapscreen_other_locations else R.string.mapscreen_more_results)) }
                     }
                 }
         }
@@ -3723,7 +3725,7 @@ private fun MapSurface(
         // (user 2026-09-17). The destination keeps its own place pin (2026-09-30: a flag over
         // it read as a second thing); no rating bubble, the pin says what it is.
         markers = if (chooserUp) listOfNotNull(chooserDest?.let { MapMarker(it.name, it.location, it.category) }) else markersOf(state, filteredResultIds),
-        holdViewMinHits = if (app.vela.core.search.SearchKind.isName(state.query, state.results.map { it.name })) HOLD_VIEW_HITS_NAME else HOLD_VIEW_HITS_KIND,
+        holdViewMinHits = if (state.resultsBranchesLoaded) Int.MAX_VALUE else if (app.vela.core.search.SearchKind.isName(state.query, state.results.map { it.name })) HOLD_VIEW_HITS_NAME else HOLD_VIEW_HITS_KIND,
         frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
         holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
         // The endpoints card's measured bottom edge: the route fit frames start/end in the

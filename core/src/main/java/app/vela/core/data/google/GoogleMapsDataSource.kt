@@ -168,9 +168,6 @@ class GoogleMapsDataSource @Inject constructor(
     /** The nearby pass's window height: a walkable radius, the Google app's own bias. */
     private val NEARBY_SPAN_M = 2500.0
 
-    /** When this data source (and the app's Google session) started; see [STRIPPED_HEAL_WINDOW_MS]. */
-    private val bornAtMs = System.currentTimeMillis()
-    private val STRIPPED_HEAL_WINDOW_MS = 30_000L
     /** Branches still without an address after the "near me" list, looked up one by one. */
     private val BRANCH_FILL_MAX = 3
 
@@ -245,7 +242,6 @@ class GoogleMapsDataSource @Inject constructor(
         // the list. Only when the user is INSIDE the search window and that window is wider
         // than the nearby one, so a search over another neighborhood or another city keeps
         // Google's order for where the user is looking.
-        var stripped = false
         var focused = false
         var focusPlace: Place? = null
         val nearbyWanted = rankFrom != null &&
@@ -255,45 +251,16 @@ class GoogleMapsDataSource @Inject constructor(
                 if (nearbyWanted) runCatching { searchPage(query, rankFrom!!, NEARBY_SPAN_M, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
                 else emptyList()
             }
-            val f = async { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { stripped = it.strippedFocus; focused = it.focusedSingle; focusPlace = it.focus } }
+            val f = async { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { focused = it.focusedSingle; focusPlace = it.focus } }
             n.await() to f.await()
         }.let { (n, f) ->
-            // STRIPPED FOCUS HEAL (discussion #656): a new session's first seconds answer a name
-            // search with the focused place and none of its related block, which is where a chain's
-            // other branches are. Ask once more, only early in the session, like the ambient heal.
-            if (stripped && f.size == 1 && System.currentTimeMillis() - bornAtMs < STRIPPED_HEAL_WINDOW_MS) {
-                delay(app.vela.core.util.Jitter.around(1500))
-                val again = runCatching { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { focused = it.focusedSingle; focusPlace = it.focus } }.getOrDefault(emptyList())
-                diag.record("search", "stripped focus asked again: ${f.size} -> ${again.size}")
-                n to (if (again.size > f.size) again else f)
-            } else n to f
-        }.let { (n, f) ->
-            // OTHER BRANCHES (discussion #656): Google answers a business NAME with one focused
-            // branch wherever the map is, and lists only some of the others, without addresses, in
-            // its related block. The same name plus "near me" comes back as a LIST with full cards
-            // (checked in a real browser from Montreal, New York and a wide view; a one-location
-            // business answers with itself). One extra request, focused name searches only.
+            // OTHER BRANCHES (discussion #656). Automatic only with the setting on; otherwise the
+            // result carries [SearchResult.focus] and the app offers them on a tap.
             val focus = focusPlace
-            if (!focused || focus == null || f.isEmpty()) return@let n to f
-            val listed = runCatching { searchPage("$query near me", viewport, spanMeters, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
-                .filter { SearchParser.isBranch(query, focus, it) }
-            var merged = SearchParser.mergeBranches(f + listed)
-            // A branch only the related block named has no address: ask for it by name at its spot.
-            val bare = merged.filter { it.address.isNullOrBlank() }.take(BRANCH_FILL_MAX)
-            if (bare.isNotEmpty()) {
-                val filled = coroutineScope {
-                    bare.map { b ->
-                        async {
-                            b to runCatching { searchOnce(b.name, b.location, lang) }.getOrDefault(emptyList())
-                                .filter { it.location.distanceTo(b.location) < 60.0 && SearchParser.isBranch(query, focus, it) }
-                                .minByOrNull { it.location.distanceTo(b.location) }
-                        }
-                    }.awaitAll()
-                }.toMap()
-                merged = merged.map { p -> filled[p] ?: p }
-            }
-            diag.record("search", "branches of \"$query\": related ${f.size - 1}, near me ${listed.size}, shown ${merged.size - 1}, filled ${merged.count { !it.address.isNullOrBlank() }} of ${merged.size}")
-            n to merged
+            if (!focused || focus == null || f.isEmpty()) { focusPlace = null; return@let n to f }
+            if (!app.vela.core.data.OtherLocations.auto) return@let n to f
+            focusPlace = null
+            n to branchesOf(query, focus, f, viewport, spanMeters, rankFrom, cal, lang)
         }
         // PAGINATE like the Google app: a page is !7iN results (20 today) and a FULL first page
         // means the viewport holds more. Google's keyless web ranking is prominence-heavy over
@@ -325,7 +292,48 @@ class GoogleMapsDataSource @Inject constructor(
                 "",
             )
         }
-        SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
+        SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)), focus = focusPlace)
+    }
+
+    /** Google answers a business NAME with one focused branch wherever the map is, and lists only
+     *  some of the others, without addresses, in its related block. The same name plus "near me"
+     *  comes back as a LIST with full cards (checked in a real browser from Montreal, New York and
+     *  a wide view; a one-location business answers with itself). A branch still without an
+     *  address is asked for by name at its own spot. */
+    private suspend fun branchesOf(query: String, focus: Place, have: List<Place>, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, cal: app.vela.core.config.Calibration, lang: String?): List<Place> {
+        // A new session's first seconds answer with the focused place and none of its related
+        // block (seen on the 4a: the same request carries it seconds later), so when nothing but
+        // the focus came back the plain search is asked again beside the "near me" one.
+        val (listed, again) = coroutineScope {
+            val l = async { runCatching { searchPage("$query near me", viewport, spanMeters, rankFrom, 0, cal, lang) }.getOrDefault(emptyList()) }
+            val a = async {
+                if (have.count { SearchParser.isBranch(query, focus, it) } > 1) emptyList()
+                else runCatching { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
+            }
+            l.await().filter { SearchParser.isBranch(query, focus, it) } to a.await().filter { SearchParser.isBranch(query, focus, it) }
+        }
+        var merged = SearchParser.mergeBranches(have + listed + again)
+        val bare = merged.filter { it.address.isNullOrBlank() && SearchParser.isBranch(query, focus, it) }.take(BRANCH_FILL_MAX)
+        if (bare.isNotEmpty()) {
+            val filled = coroutineScope {
+                bare.map { b ->
+                    async {
+                        b to runCatching { searchOnce(b.name, b.location, lang) }.getOrDefault(emptyList())
+                            .filter { it.location.distanceTo(b.location) < 60.0 && SearchParser.isBranch(query, focus, it) }
+                            .minByOrNull { it.location.distanceTo(b.location) }
+                    }
+                }.awaitAll()
+            }.toMap()
+            merged = merged.map { p -> filled[p] ?: p }
+        }
+        diag.record("search", "branches of \"$query\": had ${have.size}, near me ${listed.size}, now ${merged.size}, with address ${merged.count { !it.address.isNullOrBlank() }}")
+        return merged
+    }
+
+    override suspend fun searchBranches(query: String, focus: Place, current: List<Place>, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?, lang: String?): List<Place> = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io current
+        session.ensure()
+        CategoryFilter.applyIfEnabled(branchesOf(query, focus, current, near ?: DEFAULT_VIEWPORT, spanMeters, rankFrom, calibration.current(), lang))
     }
 
     /** The tap resolve's search: page one only. A chain's name fills the page, and [search] then

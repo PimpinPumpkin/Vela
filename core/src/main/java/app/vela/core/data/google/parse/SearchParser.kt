@@ -82,10 +82,7 @@ object SearchParser {
                 { it.distanceMeters ?: Double.MAX_VALUE },                                   // then exact distance
             ),
         )
-        // A focused place with NO related block at all is the stripped reply a fresh session gets in
-        // its first seconds (seen on the 4a: same request, the block is there seconds later).
-        val stripped = focused && places.size == 1 && root.at(0, 1, 0, 14, 99).arr() == null
-        return SearchResult(query, ranked, strippedFocus = stripped, focusedSingle = focused && places.size == 1,
+        return SearchResult(query, ranked, focusedSingle = focused && places.size == 1,
             focus = places.firstOrNull().takeIf { focused && places.size == 1 })
     }
 
