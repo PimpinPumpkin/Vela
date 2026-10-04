@@ -803,6 +803,7 @@ fun VelaMapView(
     savedPins: List<SavedPin> = emptyList(), // saved/list places while browsing (issue #171)
     shapes: List<app.vela.core.model.MapShape> = emptyList(), // custom-map lines and areas (issue #669)
     onShapeTap: (index: Int, at: LatLng) -> Unit = { _, _ -> },
+    fitLeadCount: Int = Int.MAX_VALUE, // frame only this many leading results (a search); a list frames all
     drawDots: List<LatLng>? = null, // non-null = drawing mode: taps add points, these are its vertices
     onDrawTap: (LatLng) -> Unit = {},
     onSavedPinTap: (index: Int) -> Unit = {},
@@ -5029,7 +5030,10 @@ fun VelaMapView(
                 // miles away (Google pads sparse local searches with far matches) used to zoom
                 // the camera out to a continental view. Median-center the pins and drop outliers
                 // beyond 4x the median spread (min 40 km) before fitting (user 2026-07-09).
-                val pts = markers.map { it.location }
+                // A SEARCH frames its leading results, not all sixty (2026-10-04): the list leads
+                // with what is near you, and framing every hit in the metro flew the map out until
+                // the near ones were dots ("it gave me options quite far away").
+                val pts = markers.take(fitLeadCount.coerceAtLeast(1)).map { it.location }
                 val medLat = pts.map { it.lat }.sorted()[pts.size / 2]
                 val medLng = pts.map { it.lng }.sorted()[pts.size / 2]
                 val med = app.vela.core.model.LatLng(medLat, medLng)

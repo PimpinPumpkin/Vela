@@ -1724,6 +1724,14 @@ Defaults that make the safe path the easy one:
   20 map frames with a finger on the map, or a slow pass; at most one note per 2 s. Logcat `VelaPerf`
   prints the same lines (demo drives too, which record no trip). A new heavy pass on the main
   thread should call `MapPerf.slowPass`. No coordinates in a note, ever.
+- **Search framing and "Search this area" (issue #670, 2026-10-04):** a SEARCH frames its first
+  `SEARCH_FIT_LEAD` (12) results (`VelaMapView(fitLeadCount)`; an open list or a custom map frames
+  everything): the list leads with what is near you, and framing all sixty flew the map out over the
+  metro until the near ones were dots. `searchThisArea` hands the view box to
+  `core/search/AreaNarrow.inView` for the one search it starts (results inside the view plus 10%,
+  or everything when none are; logcat `VelaSearch: this area: N of M`), and sets the state's
+  `center` to the view first, or the camera flew back to the first search's view before the new
+  results landed. Checked on the 4a with a screen recording: no jump back, 60 results to 9.
 - **Prompts are rendered ahead during the drive (2026-10-04):** `NavEngine.upcomingPrompts` (the
   turn in hand and the next, at the current speed's bands, turn-now line first) and
   `NavSession.prewarmPrompts` hand them to `VoiceGuide.prepare` whenever the turn, what was said, or

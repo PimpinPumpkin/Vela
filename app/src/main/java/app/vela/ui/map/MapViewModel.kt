@@ -1899,7 +1899,19 @@ class MapViewModel @Inject constructor(
     }
 
     /** Re-run the current query biased to the area the user has panned to. */
-    fun searchThisArea() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter))
+    fun searchThisArea() {
+        val here = plausibleBias(mapCenter)
+        // The results are narrowed to this view (AreaNarrow), and the camera's remembered center
+        // becomes this view's: with the old one the map flew back to where the first search was
+        // made before moving to the new results (issue #670).
+        narrowToView = viewport?.copyOf(4)
+        narrowAskedMs = android.os.SystemClock.elapsedRealtime()
+        if (here != null) _state.update { it.copy(center = here) }
+        runSearch(_state.value.query.trim(), here)
+    }
+    /** Set by [searchThisArea] for the one search it starts: the view to keep the results to. */
+    private var narrowToView: DoubleArray? = null
+    private var narrowAskedMs = 0L
 
     // "More results" (2026-09-13): the search fetches three pages; this pulls the next three of
     // the SAME request (query, window, ranking point) and appends what is new. The row disappears
@@ -2462,6 +2474,11 @@ class MapViewModel @Inject constructor(
                             .sortedBy { it.location.distanceTo(near) }
                             .take(20)
                     } else emptyList()
+                    // Only for the search that asked: a failed one must not narrow a later search.
+                    val viewBox = narrowToView.takeIf { android.os.SystemClock.elapsedRealtime() - narrowAskedMs < 30_000 }.also { narrowToView = null }
+                    val shownPlaces = app.vela.core.search.AreaNarrow.inView(res.places, viewBox)
+                    val shownExtra = if (viewBox == null) ambientExtra else app.vela.core.search.AreaNarrow.inView(ambientExtra, viewBox).takeIf { shownPlaces.size < res.places.size || it.size < ambientExtra.size } ?: ambientExtra
+                    if (viewBox != null) android.util.Log.i("VelaSearch", "this area: ${shownPlaces.size} of ${res.places.size} result(s) are in the view")
                     _state.update {
                         // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
                         // else typing the origin query wiped the "To" and the panel showed an empty
@@ -2471,7 +2488,7 @@ class MapViewModel @Inject constructor(
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
                         it.copy(
                             // Rows that ARE the typed address come nearest-first, ahead of everything else.
-                            results = localAddrs + addressFirst(geocoded, res.places, near, ::carries) + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
+                            results = localAddrs + addressFirst(geocoded, shownPlaces, near, ::carries) + shownExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
                             // Three full pages back = the window holds more; offer the next three.
                             resultsMoreQuery = if (res.places.size >= 40 || res.focus != null) q else null, resultsLoadingMore = false,
                             resultsBranches = res.focus != null, resultsBranchesLoaded = false,

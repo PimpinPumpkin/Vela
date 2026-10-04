@@ -2421,6 +2421,12 @@ Blvd") whose address holds only the town shows, copies and shares the two joined
 (`Place.fullAddress`); a business keeps its address as is. A name match "near you" that replaces a
 far view's results must be open and within 40 km of the user.
 
+**Result framing and "Search this area" (issue #670, 2026-10-04).** The camera frames the first 12
+results of a search (the cluster rule runs over those); an open list or custom map is framed
+whole. A "Search this area" search keeps the results inside the view at the moment it was pressed,
+padded by 10% on each side, and keeps the whole answer when none fall inside; Google treats the
+search window as a hint and returns the same wide set at any zoom.
+
 **Trip performance notes and prepared prompts (2026-10-04).** During a recorded drive `MapPerf`
 is sampled once a second and writes a `K` note when the second was bad: a UI stall of
 `STALL_MS` (250) or more, fewer than `LOW_FPS` (20) map frames while a gesture moved the map, or a

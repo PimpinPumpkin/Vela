@@ -2974,6 +2974,9 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
         // only frame the view and keep the tap index, except the one that is selected.
         .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id) }
 
+/** How many leading search results the map frames (the list holds the rest). */
+private const val SEARCH_FIT_LEAD = 12
+
 private fun Place.ownPin() = pinColor != null || pinIconUrl != null || id.startsWith(MapViewModel.ROUTE_ROW_ID)
 
 @Composable
@@ -3868,6 +3871,7 @@ private fun MapSurface(
         // Custom maps (issue #669): the previewed one and every saved list that carries shapes.
         shapes = mapShapes,
         onShapeTap = { i, at -> mapShapes.getOrNull(i)?.let { vm.openShape(it, at) } },
+        fitLeadCount = if (state.openListId == null && state.pendingImport == null) SEARCH_FIT_LEAD else Int.MAX_VALUE,
         drawDots = state.drawing?.let { d -> d.pts.chunked(2).map { LatLng(it[0], it[1]) } },
         onDrawTap = vm::drawAddPoint,
         onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
