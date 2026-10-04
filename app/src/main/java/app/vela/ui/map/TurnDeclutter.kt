@@ -20,6 +20,7 @@ internal class TurnDeclutter {
     private val hidden = ArrayList<String>()
     private var hiddenOn: Style? = null
     private var calmSinceMs = 0L
+    private var movingFrames = 0
 
     val active: Boolean get() = hiddenOn != null
 
@@ -28,9 +29,13 @@ internal class TurnDeclutter {
         if (hiddenOn != null && hiddenOn !== style) { hidden.clear(); hiddenOn = null } // style reloaded
         if (moving) {
             calmSinceMs = 0L
-            if (hiddenOn == null) hide(style)
+            // Every flip re-lays out every tile of every source the hidden layers draw from (a
+            // visibility change is a layout change), which on a 4a is 300-680 ms of worker CPU
+            // and a 60-200 ms map frame per flip; a swing that lasts one frame is not worth it.
+            if (hiddenOn == null && ++movingFrames >= ARM_FRAMES) hide(style)
             return
         }
+        movingFrames = 0
         if (hiddenOn == null) return
         if (calmSinceMs == 0L) calmSinceMs = nowMs
         else if (nowMs - calmSinceMs >= SETTLE_MS) restore(style, onRestore)
@@ -44,7 +49,7 @@ internal class TurnDeclutter {
                 onRestore(s)
             }
         }
-        hidden.clear(); hiddenOn = null; calmSinceMs = 0L
+        hidden.clear(); hiddenOn = null; calmSinceMs = 0L; movingFrames = 0
     }
 
     private fun hide(style: Style) {
@@ -60,10 +65,17 @@ internal class TurnDeclutter {
     }
 
     companion object {
-        /** Camera bearing error (degrees) that counts as a swing, and the calm level after one. */
-        const val START_DEG = 10.0
+        /** Camera bearing error (degrees) that counts as a swing, and the calm level after one.
+         *  START_DEG was 10 until 2026-10-03: with the camera's 1.6 s bearing constant a gentle
+         *  curve holds a steady 8-11 degree error, so the layers flipped on and off through every
+         *  bend (a 4a demo drive: six flips in 24 s, one restore followed 220 ms later by a hide),
+         *  and each flip costs a relayout. A real turn's error passes 15 within a frame or two. */
+        const val START_DEG = 15.0
         const val CALM_DEG = 4.0
-        const val SETTLE_MS = 500L
+        /** Calm this long before the layers return; 500 ms let an S-bend flip twice. */
+        const val SETTLE_MS = 1_000L
+        /** Swing frames in a row before the hide: one spiking frame never flips the map. */
+        const val ARM_FRAMES = 3
         /** Street names stay: the basemap's road names and shields, exit numbers, the nav callouts
          *  (cross streets, the turn's street, the exit), and the arrow itself. */
         private val KEEP = listOf(

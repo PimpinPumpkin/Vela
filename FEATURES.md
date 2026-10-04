@@ -1902,6 +1902,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   loaded road name three times per 400 m to warm the dictionary that romanizes names in another
   script; on a drive where every name is already Latin the dictionary is empty and there is
   nothing to warm, so it reads once.
+- ✅ **The simplified map in turns no longer flickers through gentle bends (2026-10-03).** The map
+  is cut back to street names only for a real turn now (a bigger swing, held for a few frames) and
+  the rest comes back after a full second of calm; a long curve used to hide and restore
+  everything every few seconds, and each of those flips cost the frames it was meant to save.
 - ✅ **Pause and mute are one button (2026-09-18).** The two controls that hold something about a
   drive shared a tall pill down the right edge; now they share one 56 dp button. The tap pauses, so
   the thing you reach for at speed still costs one touch; mute slides out beside it for a few

@@ -3777,9 +3777,13 @@ architecture note.
   `routeOutline`) are Google's navigation look; every paint of a route piece goes through
   `Style.routeSet` so its outline follows. A new route piece layer needs an outline and routeSet.
 - **Turns drop everything but street names (2026-10-02, `ui/map/TurnDeclutter`, SPEC 4.7b).** While
-  the nav camera swings (bearing error 10+ degrees) or a gesture moves it in nav, every visible
-  symbol layer except street names, shields, exit numbers, `vela-nav-` callouts and the arrow is
-  hidden; back after 500 ms calm. No single layer group was the cost, so it is all or nothing.
+  the nav camera swings (bearing error 15+ degrees for 3 frames; was 10 until 2026-10-03) or a
+  gesture moves it in nav, every visible symbol layer except street names, shields, exit numbers,
+  `vela-nav-` callouts and the arrow is hidden; back after 1 s calm (was 500 ms). No single layer
+  group was the cost, so it is all or nothing. EVERY FLIP IS A RELAYOUT of every tile of every
+  source the hidden layers use (4a, Perfetto: 300-680 ms of worker CPU in the 250 ms around each
+  hide or restore, then a 60-200 ms map frame), so a gentle curve that hovered at the old 10
+  degree line flipped the map on and off every few seconds; do not lower the threshold again.
   A new symbol layer that must survive a turn goes in `TurnDeclutter.KEEP`. Setting: Performance >
   "Simplify the map in turns" (default on; moved from Navigation 2026-10-03).
 - **Turn stutter and playback (2026-10-02, SPEC 4.7b).** A turn's bearing swing brings new tiles
