@@ -35,7 +35,7 @@ interface MapDataSource {
      *  [search] itself covers pages 0..2). Empty when the source cannot page. */
     /** The other branches of the business a name search focused ([SearchResult.focus]), merged
      *  into [current]: one "near me" list request plus up to three address lookups. */
-    suspend fun searchBranches(query: String, focus: Place, current: List<Place>, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, lang: String? = null): List<Place> = current
+    suspend fun searchBranches(query: String, focus: Place, current: List<Place>, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, lang: String? = null, stripped: Boolean = false): List<Place> = current
 
     suspend fun searchMore(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, fromPage: Int, pages: Int = 3): List<Place> = emptyList()
 

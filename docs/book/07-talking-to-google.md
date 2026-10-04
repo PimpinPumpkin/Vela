@@ -520,10 +520,11 @@ addresses, and Vela adds those to the results for free. A new session's first an
 that list out.
 
 The rest are a lookup of their own: the same name plus " near me", which Google answers as a
-list of branches with full cards (address, rating, hours), the plain search once more when only
-the one place came back, and up to three address lookups. That is 1 to 5 extra requests, so it
-runs when the "Show other locations" row under the result is tapped. Settings > Search > "Find
-other locations automatically" runs it with every such search instead.
+list of branches with full cards (address, rating, hours), the plain search once more when the first
+answer was the stripped one, and up to three address lookups. That is 1 to 5 extra requests with each
+such search. Settings > Search > "Find other locations automatically" (on by default) can be
+turned off; the lookup then runs only when the "Show other locations" row under the result is
+tapped.
 - **They are reaped.** Idle for `reapIdleMs = 120_000` and the view is destroyed; under severe
   memory pressure it is destroyed at once. The next fetch builds a new one.
 - **Only the engine is warmed.** A few seconds after the map first settles, at a quiet moment

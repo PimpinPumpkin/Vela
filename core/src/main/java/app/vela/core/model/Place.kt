@@ -175,6 +175,9 @@ data class SearchResult(
     val places: List<Place>,
     /** Google answered with ONE focused place (empty results list) rather than a list. */
     val focusedSingle: Boolean = false,
+    /** The focused reply carried no related block at all: the stripped answer of a new Google
+     *  session's first seconds, worth asking again when its other locations are looked up. */
+    val strippedFocus: Boolean = false,
     /** That focused place, before the related branches were added and the list ranked. */
     val focus: Place? = null,
 )

@@ -42,12 +42,14 @@ class OtherBranchesTest {
         val related = "[[[\"People also search for\",[[\"0x2:0x2\",${node("Acme Curry", 38.56, -121.76)}],[\"0x3:0x3\",${node("Other Place", 38.55, -121.75)}]]]]]"
         val r = SearchParser.parse("acme curry", root(node("Acme Curry", 38.5449, -121.7405, related)))
         assertEquals(2, r.places.size)
+        assertFalse(r.strippedFocus)
     }
 
     @Test fun `a focused reply says so and names its focus`() {
         val r = SearchParser.parse("acme curry", root(node("Acme Curry", 38.5449, -121.7405)))
         assertTrue(r.focusedSingle)
         assertEquals("Acme Curry", r.focus?.name)
+        assertTrue(r.strippedFocus)
     }
 
     @Test fun `branch names are matched both ways and unrelated places are not`() {

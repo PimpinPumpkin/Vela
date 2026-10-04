@@ -1889,6 +1889,7 @@ class MapViewModel @Inject constructor(
     private var moreFromPage = 3
     private var moreJob: Job? = null
     private var branchFocus: Place? = null
+    private var branchStripped = false
     fun loadMoreResults() {
         val (q, near, spanM) = moreSearch ?: return
         val s = _state.value
@@ -1898,7 +1899,7 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(resultsLoadingMore = true) }
             moreJob?.cancel()
             moreJob = viewModelScope.launch {
-                val merged = runCatching { dataSource.searchBranches(q, focus, _state.value.results, near, spanM, rankBias(near)) }.getOrNull()
+                val merged = runCatching { dataSource.searchBranches(q, focus, _state.value.results, near, spanM, rankBias(near), stripped = branchStripped) }.getOrNull()
                 branchFocus = null
                 _state.update {
                     if (it.query != q) it.copy(resultsLoadingMore = false)
@@ -2440,7 +2441,7 @@ class MapViewModel @Inject constructor(
                             resultsBranches = res.focus != null, resultsBranchesLoaded = false,
                         )
                     }
-                    moreSearch = Triple(q, near, spanM); moreFromPage = 3; branchFocus = res.focus
+                    moreSearch = Triple(q, near, spanM); moreFromPage = 3; branchFocus = res.focus; branchStripped = res.strippedFocus
                     // "Navigate to X": the top hit is the destination, straight into the chooser.
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false

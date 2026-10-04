@@ -4309,10 +4309,10 @@ architecture note.
   **A focused NAME search has the same strip (2026-10-03, #656):** the first reply leaves out the
   focused place's `[99]` related block, where some of a chain's other branches are. The full set
   is `MapDataSource.searchBranches` ("<query> near me" comes back as a LIST with full cards, plus
-  the plain query again when only the focus came back, plus up to 3 address lookups), run from
-  the results list's "Show other locations" row, or with the search when Settings > Search "Find
-  other locations automatically" (`OtherLocationsAuto`) is on. Default is the tap: it is 1 to 5
-  extra Google requests. Test from a FRESH install; a warm process hides the strip.
+  the plain query again when the reply was stripped (`strippedFocus`), plus up to 3 address lookups), run with
+  the search while Settings > Search "Find other locations automatically" (`OtherLocationsAuto`,
+  default ON, the owner's call) is on, else from the results list's "Show other locations" row.
+  It is 1 to 5 extra Google requests. Test from a FRESH install; a warm process hides the strip.
   **STICKY RANKING (`ui/map/AmbientStability`, user 2026-09-18).** All of the above means a
   SETTLED view is painted several times with different counts for the same place - streamed
   partials, the twin-dedupe re-pass, and the slim heal's second full fan-out - and every paint

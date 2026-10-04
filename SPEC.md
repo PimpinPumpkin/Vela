@@ -327,20 +327,20 @@ Shape rules:
   from the focused place, join the results (`SearchParser.otherBranches`, discussion #656).
   Those entries carry no address, and the list names only some branches. The full set is a
   separate lookup, `MapDataSource.searchBranches`: one page-one request for the query plus
-  " near me", which Google answers as a LIST of the branches with full cards (verified from the
+  " near me" over a 30 km window around the focused place (the list is capped and its contents
+  change with the window, so the view is not used), which Google answers as a LIST of the branches with full cards (verified from the
   business's own city, 500 km away, and a 400 km wide view; a one-location business answers with
-  itself); the plain query again beside it when only the focus came back (a new session's first
-  seconds leave the `[99]` block out); rows that pass `SearchParser.isBranch` (name carries the
+  itself); the plain query again after it when the reply had no `[99]` block (`SearchResult.strippedFocus`,
+  a new session's first seconds); rows that pass `SearchParser.isBranch` (name carries the
   query, the query carries the name, or the focus's own name) merged with `mergeBranches` (same
   name within 50 m is one row, the copy with an address kept); and up to 3 rows still without an
   address looked up by their own name at their own point (`searchOnce`, nearest within 60 m).
-- The lookup runs ON A TAP by default: a focused reply returns `SearchResult.focus`, the results
-  list ends in a "Show other locations" row (`MapUiState.resultsBranches`, the "More results"
-  row's slot), and the tap calls `searchBranches` and frames every branch
-  (`resultsBranchesLoaded` lifts the hold-view rule). Settings > Search "Find other locations
-  automatically" (`OtherLocationsAuto`, pref `other_locations_auto`, default off, mirrored into
-  `core/data/OtherLocations.auto`) runs it with the search instead. It costs 1 to 5 Google
-  requests per focused name search, which is why it is not the default.
+- The lookup runs WITH THE SEARCH by default: Settings > Search "Find other locations
+  automatically" (`OtherLocationsAuto`, pref `other_locations_auto`, default on, mirrored into
+  `core/data/OtherLocations.auto`). It costs 1 to 5 Google requests per focused name search.
+  Off, a focused reply returns `SearchResult.focus`, the results list ends in a "Show other
+  locations" row (`MapUiState.resultsBranches`, the "More results" row's slot), and the tap calls
+  `searchBranches` and frames every branch (`resultsBranchesLoaded` lifts the hold-view rule).
 - `[84]`, `[32]` and `[154]` are trimmed from the keyless list response and are fetched lazily
   through the WebView detail path.
 - A summary node drops review count, full hours, address, phone, price and attributes. The
