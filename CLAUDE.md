@@ -2709,6 +2709,15 @@ architecture note.
   `mark = 0`, so it does nothing on an archive baked before this and never hides a named building. To debug a bake, run a copy of the script with `duckdb -bail <file>` so the
   tables survive (`raw`, `marks`, `markdupes`, `dupleader`, `coreleader`, `ranked`, `zooms`), over
   a small box with `OSM_PBF` pointing at an `osmium extract` of the region.
+  **Bakes had been failing silently since about 2026-09-29 (found 2026-10-04):** CI installed
+  DuckDB "latest", 1.5.6 dies with `INTERNAL Error: Failed to cast expression to type` on a
+  `row_number() ... WHERE rn = 1` window over a join with a distance filter (1.5.4 ran it), the
+  bake step piped through `tee` with no pipefail, and the upload step read the missing archive
+  as "no places": green runs, 3 or 4 archives published a day where the nightly seventh is ~65.
+  Now DuckDB is pinned (1.5.4) in places-overlays.yml and places-churn.yml, the bake step sets
+  pipefail, and the three statements of that shape use `arg_min` / `first(... ORDER BY)` /
+  `DISTINCT ON`. Move the pin only after a local bake; check a wave by counting asset dates on
+  the `places-overlays` release, not by the run's color.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
   the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
   prominence buys a bounded extra (crank 6 / rank 8 / rank 24 at z14 / z15 / z16), z17 keeps

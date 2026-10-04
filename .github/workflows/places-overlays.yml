@@ -101,11 +101,13 @@ jobs:
       # The binaries are CACHED, and tippecanoe is PINNED so the cache key means something. Every
       # job used to build tippecanoe from source: 69 s of what is now a ~2 minute job, 414 times a
       # wave, for a binary that does not change between them.
+      # DuckDB is PINNED (2026-10-04). "latest" brought 1.5.6, which dies with an internal error on
+      # a window over a join the bake had run for weeks. Move the pin on purpose, after a local bake.
       - name: Cache the bake toolchain
         uses: actions/cache@v5
         with:
           path: ~/vela-bin
-          key: bake-tools-${{ runner.os }}-tippecanoe-2.79.0-pmtiles-1.31.2-duckdb-latest
+          key: bake-tools-${{ runner.os }}-tippecanoe-2.79.0-pmtiles-1.31.2-duckdb-1.5.4
       - name: Install duckdb + tippecanoe + pmtiles
         run: |
           # osmium (the OSM position pass) and jq are apt's, and cheap; the rest is the cache.
@@ -113,7 +115,7 @@ jobs:
           if [ ! -x "$HOME/vela-bin/tippecanoe" ]; then
             echo "toolchain cache miss, building"
             mkdir -p "$HOME/vela-bin"
-            curl -sL https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip -o duckdb.zip
+            curl -sL https://github.com/duckdb/duckdb/releases/download/v1.5.4/duckdb_cli-linux-amd64.zip -o duckdb.zip
             unzip -q duckdb.zip && mv duckdb "$HOME/vela-bin/duckdb"
             # go-pmtiles: `pmtiles extract` pulls a region's AllThePlaces tiles by range request.
             curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar -xz pmtiles
@@ -153,6 +155,10 @@ jobs:
           fi
       - name: Bake ${{ matrix.id }}
         run: |
+          # pipefail: the bake's output goes through tee, and without this a crashed bake exits 0,
+          # the upload step reads the missing archive as "no places" and the run is green. DuckDB
+          # 1.5.6 crashed every region with chain data that way from late September to 2026-10-04.
+          set -o pipefail
           B='${{ toJson(matrix.bbox) }}'
           S=$(echo "$B" | jq '.[0]'); W=$(echo "$B" | jq '.[1]'); N=$(echo "$B" | jq '.[2]'); E=$(echo "$B" | jq '.[3]')
           TMPDIR=/mnt/vela-work OSM_PBF="${{ matrix.pbf_url }}" bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}" 2>&1 | tee bake.log

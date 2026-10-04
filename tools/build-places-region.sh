@@ -230,17 +230,19 @@ SELECT a.id, a.name, a.category, a.confidence, a.brand, a.addr, a.website, a.pho
 FROM atp a WHERE a.id NOT IN (SELECT id FROM atpdupes);
 INSERT INTO locs SELECT id, loc FROM atp WHERE id NOT IN (SELECT id FROM atpdupes) AND loc IS NOT NULL;
 SELECT (SELECT count(*) FROM atpfill WHERE hours IS NOT NULL) AS atp_hours_carried;
+-- arg_min, not row_number() ... WHERE rn = 1: DuckDB 1.5.6 dies on that window over this join
+-- and filter with "INTERNAL Error: Failed to cast expression to type" (1.5.4 ran it), and CI
+-- installs the newest DuckDB, so every region with chain data stopped baking (2026-10-04).
 CREATE TABLE atp_snap AS
-SELECT id, alat, alng FROM (
-  SELECT o.id, a.lat AS alat, a.lng AS alng,
-    row_number() OVER (PARTITION BY o.id ORDER BY abs(a.lat - o.lat) + abs(a.lng - o.lng)) AS rn
+SELECT o.id, arg_min(a.lat, abs(a.lat - o.lat) + abs(a.lng - o.lng)) AS alat,
+  arg_min(a.lng, abs(a.lat - o.lat) + abs(a.lng - o.lng)) AS alng
   -- NAME key only, never brand alone: a brand match moved "Safeway Pharmacy" onto the Safeway
   -- and the store onto the pharmacy's locator point (Sacramento test box, 2026-09-17). And a
   -- storefront correction is tens of meters; anything past ~120 m is a different branch.
-  FROM rawkeys o JOIN atpkeys a ON o.sk = a.sk
-  WHERE abs(a.lat - o.lat) < 0.0015 AND abs(a.lng - o.lng) < 0.002
-    AND 111320 * sqrt(pow(a.lat - o.lat, 2) + pow((a.lng - o.lng) * cos(radians(o.lat)), 2)) BETWEEN 30 AND 120
-) WHERE rn = 1;
+FROM rawkeys o JOIN atpkeys a ON o.sk = a.sk
+WHERE abs(a.lat - o.lat) < 0.0015 AND abs(a.lng - o.lng) < 0.002
+  AND 111320 * sqrt(pow(a.lat - o.lat, 2) + pow((a.lng - o.lng) * cos(radians(o.lat)), 2)) BETWEEN 30 AND 120
+GROUP BY o.id;
 SELECT (SELECT count(*) FROM atp) AS atp_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'atp:%') AS atp_added, (SELECT count(*) FROM atp_snap) AS storefront_snaps;
 ATPSQL
 fi
@@ -381,11 +383,12 @@ CREATE MACRO markcat0(props) AS (CASE
 -- ...or a named building (the second osmium pass above): a Wikidata-linked building or tower.
 CREATE MACRO markcat(props) AS coalesce(markcat0(props), CASE WHEN json_extract_string(props, 'wikidata') IS NOT NULL
       AND (json_extract_string(props, 'building') IS NOT NULL OR json_extract_string(props, 'man_made') = 'tower') THEN 'landmark_and_historical_building' END);
-CREATE TABLE marks_src AS SELECT id, name, props, lng, lat, area, langs FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
+CREATE TABLE marks_src AS SELECT DISTINCT ON (id) id, name, props, lng, lat, area, langs FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
   columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE', area: 'DOUBLE', langs: 'INTEGER'})
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
-  -- An attraction that is also a Wikidata building arrives from both passes.
-  QUALIFY row_number() OVER (PARTITION BY id ORDER BY langs DESC) = 1;
+  -- An attraction that is also a Wikidata building arrives from both passes (DISTINCT ON above;
+  -- not QUALIFY row_number(), which DuckDB 1.5.6 dies on).
+  ORDER BY id, langs DESC;
 -- osmium names an area "a<2 x way id>" or "a<2 x relation id + 1>"; turn it back into the OSM
 -- object a person can open and edit.
 CREATE TABLE marks_all AS
@@ -428,15 +431,15 @@ WHERE snapkey(m.name) IS NOT NULL AND abs(r.lat - m.lat) < 0.003 AND abs(r.lng -
 -- above also catches the offices named after the building ("Empire State Building Company Llc.",
 -- an architect's listing), and every one of them was being credited as the landmark. The row of
 -- the landmark's own kind first, then the most confident, then the nearest.
-CREATE TABLE markbest AS SELECT id, rid, wiki FROM (
-  SELECT d.id, d.rid, d.wiki, row_number() OVER (PARTITION BY d.id ORDER BY
+CREATE TABLE markbest AS
+SELECT d.id, first(d.rid ORDER BY
     (CASE WHEN r.category = m.category THEN 0
           WHEN r.category IN ('attraction','landmark_and_historical_building','museum','park','garden','nature_reserve','city_hall','place_of_worship','church_cathedral',
             'temple','mosque','synagogue','shrine','theater','viewpoint','library','hospital','university','college_university','stadium_arena','zoo','aquarium',
             'amusement_park','art_gallery','cultural_center','courthouse','government_office') THEN 1 ELSE 2 END),
-    r.confidence DESC, abs(r.lat - m.lat) + abs(r.lng - m.lng), d.rid) AS k
-  FROM markdupes d JOIN raw r ON r.id = d.rid JOIN marks m ON m.id = d.id
-) WHERE k = 1;
+    r.confidence DESC, abs(r.lat - m.lat) + abs(r.lng - m.lng), d.rid) AS rid, bool_or(d.wiki) AS wiki
+FROM markdupes d JOIN raw r ON r.id = d.rid JOIN marks m ON m.id = d.id
+GROUP BY d.id;
 INSERT INTO raw
 SELECT id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat, hours
 FROM marks WHERE id NOT IN (SELECT id FROM markdupes) AND id NOT IN (SELECT id FROM raw);

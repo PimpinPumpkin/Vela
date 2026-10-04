@@ -2039,6 +2039,12 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   2026-10-04 and can never hide a named building: 29 of the 272 had a low-ranked generic office
   as their only listing and would have been hidden.
   The OVERLAP family stays app-side: it needs the kinds and the pool's shared words.
+- **The places bake's DuckDB is pinned (1.5.4), and a crashed bake fails its job.** The bake step
+  sets pipefail (its output goes through `tee`); before 2026-10-04 a crash left no archive, the
+  upload step read that as an empty region, and the run was green. DuckDB 1.5.6 crashes
+  (`INTERNAL Error: Failed to cast expression to type`) on `row_number() OVER (...)` filtered to
+  the first row over a join with a distance filter; those statements use `arg_min`,
+  `first(x ORDER BY ...)` or `DISTINCT ON` instead.
 - **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,
   changed, added and dropped plus a real `zstd --patch-from` delta; `places-churn.yml` bakes a region
