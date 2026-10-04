@@ -1086,6 +1086,11 @@ names (`Route.roadNamesLatin`).
 
 ### 4.6 The navigation loop
 
+- **Turn card shields** (`roadSigns`, `ui/nav/NavOverlays.kt`): the maneuver's own ref plus every
+  route number found in the instruction text, deduplicated by route (`routeKey`: letters and number,
+  spaces, dashes and a trailing direction dropped), at most three. Until 2026-10-03 the dedupe compared
+  the exact text, so an on-ramp's ref "I 5" and its sign text "I-5 North" drew two I-5 shields.
+
 Every location update, in order: project the fix onto the route, advance the step, recompute
 remaining distance and time, emit the events that produced (speak, vibrate, arrived, reroute),
 announce a stop just passed, then consider a live-traffic recheck. Anything that stops

@@ -407,13 +407,21 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
         if (seen.add(label.lowercase())) out.add(Sign(isExit = true, label = label))
     }
     explicitRef?.trim()?.replace(WS_RUN, " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
-        if (seen.add(it.lowercase())) out.add(Sign(isExit = false, label = it))
+        if (seen.add(routeKey(it))) out.add(Sign(isExit = false, label = it))
     }
     ROUTE_RE.findAll(text).forEach { m ->
         val label = m.value.trim().replace(WS_RUN, " ").uppercase()
-        if (seen.add(label.lowercase())) out.add(Sign(isExit = false, label = label))
+        if (seen.add(routeKey(label))) out.add(Sign(isExit = false, label = label))
     }
     return out.take(3)
+}
+
+/** One route however it is written: the maneuver's ref "I 5" and the sign text's "I-5 N" are the
+ *  same shield (two I-5 badges on an on-ramp card, real drive 2026-10-03). Letters and number
+ *  only, spaces, dashes and a trailing direction dropped. */
+internal fun routeKey(label: String): String {
+    val compact = label.uppercase().replace(Regex("[\\s-]"), "")
+    return Regex("^([A-Z]*?)(\\d+)").find(compact)?.let { it.groupValues[1] + it.groupValues[2] } ?: compact
 }
 
 @Composable
