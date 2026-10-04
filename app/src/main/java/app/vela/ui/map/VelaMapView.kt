@@ -1182,6 +1182,10 @@ fun VelaMapView(
     // loaded tiles only); the geometry math runs off it. An empty QUERY (tiles not loaded yet)
     // leaves the previous filter alone; an empty CROSSER set legitimately hides the tier.
     val labelExcludeHolder = rememberUpdatedState(navLabelExclude)
+    val navFurniture = remember(trafficControls, flockCameras, speedCameras) {
+        trafficControls.map { it.loc } + flockCameras.map { it.loc } + speedCameras.map { it.loc }
+    }
+    val navFurnitureHolder = rememberUpdatedState(navFurniture)
     val upcomingRoadsHolder = rememberUpdatedState(navUpcomingRoads)
     val navRoadLatinHolder = rememberUpdatedState(onNavRoadLatin)
     LaunchedEffect(navMode, routePolyline, styleRef) {
@@ -1258,6 +1262,10 @@ fun VelaMapView(
                             if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
                         }
                         if (window.size >= 2) {
+                            // The furniture near this window (drawn lights, stop signs, cameras).
+                            val wLatLo = window.minOf { it.lat } - 0.002; val wLatHi = window.maxOf { it.lat } + 0.002
+                            val wLngLo = window.minOf { it.lng } - 0.003; val wLngHi = window.maxOf { it.lng } + 0.003
+                            val avoidHere = navFurnitureHolder.value.filter { it.lat in wLatLo..wLatHi && it.lng in wLngLo..wLngHi }
                             val exclude = labelExcludeHolder.value
                             val upcoming = upcomingRoadsHolder.value
                             val points = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
@@ -1284,7 +1292,7 @@ fun VelaMapView(
                                     // it meets the route at a shared vertex the crossing test can miss.
                                     val touch = if (name in upcoming) 60.0 else 25.0
                                     val at = lines.firstNotNullOfOrNull { pts ->
-                                        crossLabelPoint(pts.map { it.longitude() to it.latitude() }, window, touch)
+                                        crossLabelPoint(pts.map { it.longitude() to it.latitude() }, window, touch, avoidHere)
                                     } ?: continue
                                     // Null = the point did not project onto the route; leave the
                                     // property OFF so the layer's coalesce keeps the callout rather
@@ -6023,6 +6031,7 @@ private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.4, 1.8, 2.4, 3.0)
 // moved close to the route on purpose in 2026-09-16, because line-center placement had been putting
 // them a block away, and the fix for overlap is a few more meters, not the old behavior.
 private const val NAV_XLABEL_CLEAR_M = 44.0
+private const val NAV_XLABEL_AVOID_M = 30.0 // a callout anchor no nearer a drawn light, stop sign or camera
 private const val NAV_XLABEL_MIN_CLEAR_M = 26.0 // below this the bubble would sit on the driven road
 
 /** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
@@ -6274,7 +6283,7 @@ private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
  *  T-junction endpoint within [touchM]), moved along the street by a rung of [NAV_XLABEL_OFFSETS] x
  *  [NAV_XLABEL_OFFSET_M], on whichever side gives the most clearance from the route, as (lng, lat). Null when the street does not meet the window.
  *  Planar maths at the window's latitude: at a few hundred meters the error is centimeters. */
-private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLng>, touchM: Double = 25.0): Pair<Double, Double>? {
+private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLng>, touchM: Double = 25.0, avoid: List<LatLng> = emptyList()): Pair<Double, Double>? {
     if (line.size < 2 || window.size < 2) return null
     val k = Math.cos(Math.toRadians(window[0].lat)) * 111_320.0 // meters per degree of longitude
     val m = 111_320.0 // per degree of latitude
@@ -6327,11 +6336,21 @@ private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLn
     // Either side of the route, whichever clears it best, and farther out when the near offset
     // still leaves the bubble over the road (user 2026-09-17: callouts clipped the driven road).
     // The first candidate with real clearance wins; otherwise the farthest one does.
+    // Drawn street furniture (lights, stop signs, cameras), in the same meters: a candidate this
+    // close to one is skipped, since the chip would sit on it (2026-10-03; lights are often on a
+    // corner, not the junction's middle, so the far side of the street is usually clear).
+    val ax = DoubleArray(avoid.size) { x(avoid[it].lng) }
+    val ay = DoubleArray(avoid.size) { y(avoid[it].lat) }
+    fun nearFurniture(qx: Double, qy: Double): Boolean {
+        for (i in ax.indices) if (Math.hypot(ax[i] - qx, ay[i] - qy) < NAV_XLABEL_AVOID_M) return true
+        return false
+    }
     var best: Pair<Double, Double>? = null
     var bestClear = -1.0
     for (mult in NAV_XLABEL_OFFSETS) {
         for (side in intArrayOf(-1, 1)) {
             val p = at(hitAt + side * NAV_XLABEL_OFFSET_M * mult)
+            if (nearFurniture(p.first, p.second)) continue
             val clear = distToWindow(p.first, p.second)
             if (clear > bestClear) { bestClear = clear; best = p }
         }
@@ -6674,7 +6693,11 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
             // Under any camera badge already on the map (Flock, fixed speed cameras), so the badge
             // is placed first and the bubble dodges it; the camera layers do the same in reverse
             // when they arrive second (topNavBubbleLayer).
-            val underCamera = style.layers.firstOrNull { it.id in CAMERA_BADGE_LAYERS }?.id
+            // ...and under the traffic-control claim and the POIs (2026-10-03, owner: "labels
+            // occluding anything"): MapLibre places the top layer first, so a callout above the
+            // claim won every collision and sat on the light. Below the LOWEST of them, the
+            // callout yields to lights, stop signs, cameras and places alike.
+            val underCamera = style.layers.firstOrNull { it.id in CAMERA_BADGE_LAYERS || it.id == CONTROLS_CLAIM_LAYER || it.id == AMBIENT_LAYER }?.id
             val bubble = SymbolLayer(id, NAV_XLABEL_SRC)
                     .withFilter(navLabelPassedFilter(filter))
                     .withProperties(

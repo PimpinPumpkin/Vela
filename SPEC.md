@@ -1758,7 +1758,14 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   above that point and is wider than it, so the on-screen gap is always smaller than
   `NAV_XLABEL_CLEAR_M` (44 m) and shrinks further with camera tilt. Below `NAV_XLABEL_MIN_CLEAR_M`
   (26 m) no callout is drawn at all, because a chip clipping the road you are driving is worse than
-  a missing street name. The pass
+  a missing street name. **Nothing a callout covers** (2026-10-03, owner: labels must not occlude
+  anything): a cross-street candidate within `NAV_XLABEL_AVOID_M` (30 m) of a drawn light, stop sign
+  or camera is skipped (`crossLabelPoint(avoid=)`, lights often stand on a corner, so the far side
+  usually wins); the cross-street layers sit below the lowest of the camera badges, the controls'
+  collision claim and the POI layer, so they are placed after them and yield. The next-turn callout
+  (which never yields) steps along the new street (`TURN_CALLOUT_STEPS_M`, up to 60 m more) until
+  no light, stop sign or camera is within 30 m of its anchor. On the Davis fixture drive the
+  next-turn chip sat on the junction's light in 13 of 13 frames before and beside it after. The pass
   runs once per 400 m quantum of progress or when the upcoming turn targets change, never on a
   short timer, and a quantum is only marked done once something was placed.
   A passed callout stays on the main layers while it rides down the screen, and is let go when its

@@ -235,6 +235,10 @@ private const val EXIT_CALLOUT_AHEAD_M = 70.0
 // The blue turn bubble sits this far into the street you turn onto: at the corner, clear of the
 // junction's own labels.
 private const val TURN_CALLOUT_AHEAD_M = 30.0
+/** Extra steps along the new street, tried in order, until no drawn light, stop sign or camera is
+ *  within [TURN_CALLOUT_CLEAR_M] of the callout's anchor. */
+private val TURN_CALLOUT_STEPS_M = doubleArrayOf(0.0, 15.0, 30.0, 45.0, 60.0)
+private const val TURN_CALLOUT_CLEAR_M = 30.0
 private val TURN_CALLOUT_TYPES = setOf(
     app.vela.core.model.ManeuverType.TURN_LEFT, app.vela.core.model.ManeuverType.TURN_RIGHT,
     app.vela.core.model.ManeuverType.SLIGHT_LEFT, app.vela.core.model.ManeuverType.SLIGHT_RIGHT,
@@ -3847,7 +3851,7 @@ private fun MapSurface(
         },
         // The street the next TURN enters, in a blue bubble on that street just past the corner
         // (user 2026-10-02): the name right where you turn, the way Google labels it.
-        navTurnCallout = if (turnCalloutRoad == null) null else remember(state.activeRoute, state.nav.stepIndex, state.roadNameLatin) {
+        navTurnCallout = if (turnCalloutRoad == null) null else remember(state.activeRoute, state.nav.stepIndex, state.roadNameLatin, state.trafficControls, state.flockCameras) {
             val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
             val poly = state.activeRoute?.polyline.orEmpty()
             val label = turnCalloutRoad.let { r ->
@@ -3860,7 +3864,13 @@ private fun MapSurface(
                 else -> {
                     val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
                     val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, m.location, 120.0)
-                    val p = if (at == null) m.location else app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + TURN_CALLOUT_AHEAD_M)
+                    // Farther along the new street while a drawn light, stop sign or camera is under
+                    // the spot (2026-10-03): lights stand on the corner, and the callout never yields.
+                    val furniture = state.trafficControls.map { it.loc } + state.flockCameras.map { it.loc }
+                    val p = if (at == null) m.location else TURN_CALLOUT_STEPS_M.asSequence()
+                        .map { app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + TURN_CALLOUT_AHEAD_M + it) }
+                        .firstOrNull { q -> furniture.none { it.distanceTo(q) < TURN_CALLOUT_CLEAR_M } }
+                        ?: app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + TURN_CALLOUT_AHEAD_M)
                     p to label
                 }
             }

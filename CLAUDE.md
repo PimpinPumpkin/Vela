@@ -1197,6 +1197,9 @@ Defaults that make the safe path the easy one:
   layers keep `iconIgnorePlacement(false)` and now go above the highest bubble layer
   (`topNavBubbleLayer`), and a bubble layer created later goes below the lowest camera layer
   (`CAMERA_BADGE_LAYERS`), so a camera claims its space first and a bubble dodges it.
+  **Since 2026-10-03 the cross-street bubbles also go below `CONTROLS_CLAIM_LAYER` and the POI
+  layer, and both callout pickers skip spots within 30 m of a drawn light, stop sign or camera**
+  (`NAV_XLABEL_AVOID_M`, `TURN_CALLOUT_STEPS_M`). The rule: furniture is never covered by a label.
   **2026-09-16: the bubbles are POINTS placed at the crossing.** The labels used to be the basemap
   `transportation_name` lines with `line-center` placement and an include-list filter, which put a
   bubble at the middle of the street's piece in the tile, often a block or more from the route
