@@ -171,6 +171,8 @@ class GoogleMapsDataSource @Inject constructor(
     /** When this data source (and the app's Google session) started; see [STRIPPED_HEAL_WINDOW_MS]. */
     private val bornAtMs = System.currentTimeMillis()
     private val STRIPPED_HEAL_WINDOW_MS = 30_000L
+    /** Branches still without an address after the "near me" list, looked up one by one. */
+    private val BRANCH_FILL_MAX = 3
 
     private val ambientFanout = kotlinx.coroutines.sync.Semaphore(
         calibration.current().tune("ambientFanoutPermits", 4.0).toInt().coerceIn(1, 13),
@@ -179,7 +181,7 @@ class GoogleMapsDataSource @Inject constructor(
     /** One result page: [offset] rows in, over a [viewport]-centered window [spanMeters] tall. A
      *  parse drift on page 0 is thrown (and recorded) so the caller can surface it; on any later
      *  page it yields an empty list, because a later page drifting must never kill page 0. */
-    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration, lang: String? = null, onStripped: (() -> Unit)? = null): List<Place> {
+    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration, lang: String? = null, onMeta: ((SearchResult) -> Unit)? = null): List<Place> {
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized(lang)
         val raw = get(url)
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
@@ -188,7 +190,7 @@ class GoogleMapsDataSource @Inject constructor(
         return try {
             jsTransforms.searchOverride(raw)
                 ?: SearchParser.parse(query, GoogleResponse.parse(raw), rankFrom ?: viewport, cal.paths)
-                    .also { if (it.strippedFocus) onStripped?.invoke() }.places
+                    .also { onMeta?.invoke(it) }.places
         } catch (e: CalibrationNeededException) {
             if (offset == 0) {
                 // Capture the exact request that drifted so an opted-in user can hand it
@@ -244,6 +246,8 @@ class GoogleMapsDataSource @Inject constructor(
         // than the nearby one, so a search over another neighborhood or another city keeps
         // Google's order for where the user is looking.
         var stripped = false
+        var focused = false
+        var focusPlace: Place? = null
         val nearbyWanted = rankFrom != null &&
             (spanMeters == null || (rankFrom.distanceTo(viewport) <= spanMeters / 2 && spanMeters > NEARBY_SPAN_M * 1.5))
         val (nearby, first) = kotlinx.coroutines.coroutineScope {
@@ -251,7 +255,7 @@ class GoogleMapsDataSource @Inject constructor(
                 if (nearbyWanted) runCatching { searchPage(query, rankFrom!!, NEARBY_SPAN_M, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
                 else emptyList()
             }
-            val f = async { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { stripped = true } }
+            val f = async { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { stripped = it.strippedFocus; focused = it.focusedSingle; focusPlace = it.focus } }
             n.await() to f.await()
         }.let { (n, f) ->
             // STRIPPED FOCUS HEAL (discussion #656): a new session's first seconds answer a name
@@ -259,10 +263,37 @@ class GoogleMapsDataSource @Inject constructor(
             // other branches are. Ask once more, only early in the session, like the ambient heal.
             if (stripped && f.size == 1 && System.currentTimeMillis() - bornAtMs < STRIPPED_HEAL_WINDOW_MS) {
                 delay(app.vela.core.util.Jitter.around(1500))
-                val again = runCatching { page(0) }.getOrDefault(emptyList())
+                val again = runCatching { searchPage(query, viewport, spanMeters, rankFrom, 0, cal, lang) { focused = it.focusedSingle; focusPlace = it.focus } }.getOrDefault(emptyList())
                 diag.record("search", "stripped focus asked again: ${f.size} -> ${again.size}")
                 n to (if (again.size > f.size) again else f)
             } else n to f
+        }.let { (n, f) ->
+            // OTHER BRANCHES (discussion #656): Google answers a business NAME with one focused
+            // branch wherever the map is, and lists only some of the others, without addresses, in
+            // its related block. The same name plus "near me" comes back as a LIST with full cards
+            // (checked in a real browser from Montreal, New York and a wide view; a one-location
+            // business answers with itself). One extra request, focused name searches only.
+            val focus = focusPlace
+            if (!focused || focus == null || f.isEmpty()) return@let n to f
+            val listed = runCatching { searchPage("$query near me", viewport, spanMeters, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
+                .filter { SearchParser.isBranch(query, focus, it) }
+            var merged = SearchParser.mergeBranches(f + listed)
+            // A branch only the related block named has no address: ask for it by name at its spot.
+            val bare = merged.filter { it.address.isNullOrBlank() }.take(BRANCH_FILL_MAX)
+            if (bare.isNotEmpty()) {
+                val filled = coroutineScope {
+                    bare.map { b ->
+                        async {
+                            b to runCatching { searchOnce(b.name, b.location, lang) }.getOrDefault(emptyList())
+                                .filter { it.location.distanceTo(b.location) < 60.0 && SearchParser.isBranch(query, focus, it) }
+                                .minByOrNull { it.location.distanceTo(b.location) }
+                        }
+                    }.awaitAll()
+                }.toMap()
+                merged = merged.map { p -> filled[p] ?: p }
+            }
+            diag.record("search", "branches of \"$query\": related ${f.size - 1}, near me ${listed.size}, shown ${merged.size - 1}, filled ${merged.count { !it.address.isNullOrBlank() }} of ${merged.size}")
+            n to merged
         }
         // PAGINATE like the Google app: a page is !7iN results (20 today) and a FULL first page
         // means the viewport holds more. Google's keyless web ranking is prominence-heavy over

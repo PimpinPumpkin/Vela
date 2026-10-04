@@ -4308,7 +4308,8 @@ architecture note.
   **A focused NAME search has the same strip (2026-10-03, #656):** the first reply leaves out the
   focused place's `[99]` related block, where a chain's other branches are; `search` asks page one
   again once within the session's first 30 s (`SearchResult.strippedFocus`). Test it from a FRESH
-  install, a warm process hides it.
+  install, a warm process hides it. A focused name search also asks "<query> near me", which Google
+  answers as a LIST of the branches with full cards (`SearchParser.isBranch` / `mergeBranches`).
   **STICKY RANKING (`ui/map/AmbientStability`, user 2026-09-18).** All of the above means a
   SETTLED view is painted several times with different counts for the same place - streamed
   partials, the twin-dedupe re-pass, and the slim heal's second full fan-out - and every paint

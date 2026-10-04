@@ -85,16 +85,39 @@ object SearchParser {
         // A focused place with NO related block at all is the stripped reply a fresh session gets in
         // its first seconds (seen on the 4a: same request, the block is there seconds later).
         val stripped = focused && places.size == 1 && root.at(0, 1, 0, 14, 99).arr() == null
-        return SearchResult(query, ranked, strippedFocus = stripped)
+        return SearchResult(query, ranked, strippedFocus = stripped, focusedSingle = focused && places.size == 1,
+            focus = places.firstOrNull().takeIf { focused && places.size == 1 })
     }
 
-    internal fun otherBranches(query: String, also: List<Place>, focus: Place): List<Place> {
-        fun key(t: String) = t.lowercase().filter { it.isLetterOrDigit() }
-        val q = key(query).takeIf { it.length >= 3 } ?: return emptyList()
-        return also.filter { p ->
-            key(p.name).contains(q) && (p.featureId == null || p.featureId != focus.featureId) &&
+    private fun nameKey(t: String) = t.lowercase().filter { it.isLetterOrDigit() }
+
+    internal fun otherBranches(query: String, also: List<Place>, focus: Place): List<Place> =
+        also.filter { p ->
+            isBranch(query, focus, p) && (p.featureId == null || p.featureId != focus.featureId) &&
                 p.location.distanceTo(focus.location) > 30.0
         }
+
+    /** Another branch of the business [focus] a name search for [query] focused: its name
+     *  carries the query ("Khao peeyo Restaurant & Banquet Hall" for "khao peeyo"), the query
+     *  carries its name ("Mikuni" for "mikuni japanese restaurant"), or it is the focus's name. */
+    fun isBranch(query: String, focus: Place, p: Place): Boolean {
+        val q = nameKey(query).takeIf { it.length >= 3 } ?: return false
+        val n = nameKey(p.name)
+        if (n.isEmpty()) return false
+        return n.contains(q) || (n.length >= 4 && q.contains(n)) || n == nameKey(focus.name)
+    }
+
+    /** One entry per branch: two with the same name within 50 m are one place (the related block
+     *  and the "near me" list name a branch under different feature ids); the copy with an address
+     *  is kept. */
+    fun mergeBranches(places: List<Place>): List<Place> {
+        val out = mutableListOf<Place>()
+        for (p in places) {
+            val i = out.indexOfFirst { nameKey(it.name) == nameKey(p.name) && it.location.distanceTo(p.location) < 50.0 }
+            if (i < 0) out += p
+            else if (out[i].address.isNullOrBlank() && !p.address.isNullOrBlank()) out[i] = p
+        }
+        return out
     }
 
     /** A specific/far address resolves to a *single* geocoded result rather than

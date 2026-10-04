@@ -331,6 +331,11 @@ All five hidden ones share `HiddenWebView`, and the rules that matter here are:
 - **They sleep between fetches.** A loaded Google page keeps its compositor and timers running
   forever, which measured as roughly 27 percent of the app's CPU during a plain map pan. Each
   fetch runs inside `session { }`, which resumes the view before and pauses it after.
+
+The related list has no addresses and names only some branches, so a focused name search also
+asks for the same name plus " near me", which Google answers as a list of branches with full
+cards (address, rating, hours). That is one extra request per focused name search; a business
+with one location answers with itself and adds nothing.
 - **They are reaped.** Idle for `reapIdleMs = 120_000` and the view is destroyed; under severe
   memory pressure it is destroyed at once. The next fetch builds a new one.
 - **Only the engine is warmed.** A few seconds after the map first settles, at a quiet moment

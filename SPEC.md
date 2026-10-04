@@ -325,6 +325,14 @@ Shape rules:
   schema. A business name focuses one branch of a chain and the other branches sit in this list;
   entries whose normalized name contains the normalized query (3+ characters), more than 30 m
   from the focused place, join the results (`SearchParser.otherBranches`, discussion #656).
+  Those entries carry no address, and the list names only some branches. So a focused reply
+  (`SearchResult.focusedSingle`) triggers one more page-one request for the query plus
+  " near me", which Google answers as a LIST of the branches with full cards (verified from the
+  business's own city, 500 km away, and a 400 km wide view; a one-location business answers with
+  itself). Its rows that pass `SearchParser.isBranch` (name carries the query, the query carries
+  the name, or the focus's own name) are merged with `mergeBranches` (same name within 50 m is
+  one row, the copy with an address kept), and up to 3 rows still without an address are looked
+  up by their own name at their own point (`searchOnce`, nearest hit within 60 m).
 - A new session's first seconds answer a focused search with no `[99]` block at all
   (`SearchResult.strippedFocus`). `search` asks page one again once, after ~1.5 s, within the
   data source's first 30 s; the chain's other branches are lost otherwise.
