@@ -2692,6 +2692,14 @@ architecture note.
   UNQUOTED heredoc, so a backtick in a SQL comment runs as a shell command.
   Read the reports with `gh api repos/PimpinPumpkin/Vela/actions/jobs/<id>/logs`
   and grep `LANDMARKS|` / `LATE|`; the step summary is not in the API.
+  **2026-10-04, New York had no Empire State Building:** the variant fold stripped the generic
+  words "state" and "building", leaving "empire", and folded it into a beauty school nearby. The
+  fold now needs one name's words to all be in the other's (`list_has_all`), one existing row
+  stands for a matched OSM landmark and takes its credit (`markbest`), and Wikidata-linked
+  buildings named in 3+ languages come in as landmarks (the Chrysler Building was a plain
+  `building=tower`). To debug a bake, run a copy of the script with `duckdb -bail <file>` so the
+  tables survive (`raw`, `marks`, `markdupes`, `dupleader`, `coreleader`, `ranked`, `zooms`), over
+  a small box with `OSM_PBF` pointing at an `osmium extract` of the region.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
   the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
   prominence buys a bounded extra (crank 6 / rank 8 / rank 24 at z14 / z15 / z16), z17 keeps

@@ -2012,6 +2012,24 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   Yolk Cafe" onto "Toasted Yolk". A core key that is only a street number or a single word under
   five letters is not a name and stays out (the app's strong-core rule), so "38th Street Deli" and
   "38th St Grocery" stay two rows, as do "Fine Art Gallery" and "Modern Art Gallery" (empty cores).
+  **One name must contain the other (2026-10-04):** two rows fold only when every word of one
+  snap key is in the other, i.e. they differ by ADDED words. Sharing a core was not enough:
+  "state" and "building" are generic, so the Empire State Building's core was "empire", it folded
+  into "Empire Beauty School" a few doors away, and New York's archive had no Empire State
+  Building. On a Midtown test box the old rule folded 719 rows and the new one 315; a sample of
+  the difference was unrelated businesses sharing one word ("Manhattan Dermatology Specialists"
+  with "Manhattan Primary Care", a preschool with the park beside it).
+  **Landmark stand-ins (same day):** when an OSM landmark matches rows already in the table by
+  snap key, ONE of them stands for it (`markbest`: the row of the landmark's own category, else a
+  landmark category, then confidence, then distance) and takes the Wikidata, size and fame
+  credit; before, every same-named office ("... Company Llc.") was credited. That row leads any
+  fold it is part of. **Famous buildings:** a second osmium pass (`wr/wikidata`, then
+  `wr/building wr/man_made=tower` on its output, since osmium cannot AND two tags) adds named
+  buildings with a Wikidata link AND names in three or more languages as
+  `landmark_and_historical_building` marks; a tower mapped as a plain building (the Chrysler
+  Building: `building=tower`, `tourism=yes`) had no landmark credit and ranked 768th in its
+  cell. Same test box after: Empire State Building prominence 9.84, rank 2, z12; Chrysler
+  Building 8.03, rank 4, z14.
   The OVERLAP family stays app-side: it needs the kinds and the pool's shared words.
 - **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,

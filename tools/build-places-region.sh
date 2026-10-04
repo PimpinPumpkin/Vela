@@ -137,6 +137,34 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
         [ -s "$WORK/marks.ndjson" ] && MARKS_NDJSON="$WORK/marks.ndjson"
       fi
     fi
+    # FAMOUS BUILDINGS (2026-10-04). A tower is usually mapped as a plain building with a Wikidata
+    # link and none of the tags above (the Chrysler Building: building=tower, tourism=yes), so the
+    # landmark rules never saw it and it ranked as one more tenant. A named building or tower with a
+    # Wikidata link AND a name in three or more languages joins the landmarks; the language test is
+    # what keeps out every listed house that merely has a Wikidata item. Two passes because osmium
+    # cannot AND two tags: everything with a Wikidata link first (small), then the buildings in it.
+    osmium tags-filter --overwrite -o "$WORK/wd.osm.pbf" "$OSM_SRC" wr/wikidata >/dev/null 2>&1 || true
+    if [ -s "$WORK/wd.osm.pbf" ]; then
+      osmium tags-filter --overwrite -o "$WORK/famous.osm.pbf" "$WORK/wd.osm.pbf" wr/building wr/man_made=tower >/dev/null 2>&1 || true
+      rm -f "$WORK/wd.osm.pbf"
+      if [ -s "$WORK/famous.osm.pbf" ]; then
+        osmium export -f geojsonseq --add-unique-id=type_id --geometry-types=polygon --overwrite -o "$WORK/famous.geojsonseq" "$WORK/famous.osm.pbf" >/dev/null 2>&1 || true
+        if [ -s "$WORK/famous.geojsonseq" ]; then
+          tr -d '\036' < "$WORK/famous.geojsonseq" \
+            | jq -c 'def pts: if .type == "Polygon" then .coordinates[0] elif .type == "MultiPolygon" then [.coordinates[][0][]] else [] end;
+                     select((.properties.name // "") != "" and (.properties.wikidata // "") != "")
+                     | ([.properties | keys[] | select(test("^name:[a-z]{2,3}(-[A-Za-z]{2,8})?$"))] | length) as $langs | select($langs >= 3)
+                     | (.geometry | pts) as $p | select(($p | length) > 0)
+                     | ($p | map(.[0])) as $xs | ($p | map(.[1])) as $ys
+                     | {id: (.id // ""), name: .properties.name, props: .properties, langs: $langs,
+                        lng: ($xs | add / length), lat: ($ys | add / length),
+                        area: ((($xs | max) - ($xs | min)) * 111320 * ((($ys | add / length) * 3.14159265 / 180) | cos)
+                               * (($ys | max) - ($ys | min)) * 111320)}' \
+            >> "$WORK/marks.ndjson" 2>/dev/null || true
+          [ -s "$WORK/marks.ndjson" ] && MARKS_NDJSON="$WORK/marks.ndjson"
+        fi
+      fi
+    fi
     [ -n "$MARKS_NDJSON" ] && echo "osm: $(wc -l < "$MARKS_NDJSON") named landmarks (parks, schools, temples, museums...)"
   fi
 fi
@@ -347,10 +375,15 @@ CREATE MACRO markcat(props) AS (CASE
     WHEN json_extract_string(props, 'leisure') = 'stadium' THEN 'stadium_arena'
     WHEN json_extract_string(props, 'leisure') = 'sports_centre' THEN 'sports_club'
     WHEN json_extract_string(props, 'historic') IS NOT NULL THEN 'landmark_and_historical_building'
+    -- A famous building (the second osmium pass above): a Wikidata-linked building or tower.
+    WHEN json_extract_string(props, 'wikidata') IS NOT NULL
+      AND (json_extract_string(props, 'building') IS NOT NULL OR json_extract_string(props, 'man_made') = 'tower') THEN 'landmark_and_historical_building'
     ELSE NULL END);
 CREATE TABLE marks_src AS SELECT id, name, props, lng, lat, area, langs FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
   columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE', area: 'DOUBLE', langs: 'INTEGER'})
-  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
+  -- An attraction that is also a Wikidata building arrives from both passes.
+  QUALIFY row_number() OVER (PARTITION BY id ORDER BY langs DESC) = 1;
 -- osmium names an area "a<2 x way id>" or "a<2 x relation id + 1>"; turn it back into the OSM
 -- object a person can open and edit.
 CREATE TABLE marks_all AS
@@ -388,6 +421,19 @@ WHERE snapkey(m.name) IS NOT NULL AND abs(r.lat - m.lat) < 0.003 AND abs(r.lng -
   -- that dropped Bryant Park itself, whose OSM outline matched an Overture "park" row that the
   -- category filter then removed, leaving neither.
   AND (r.category IS NULL OR r.category NOT IN ('park','campus_building','apartments','housing_development','real_estate','transportation','bus_station','train_station','public_transportation','school','elementary_school','middle_school','high_school'));
+-- ONE existing row STANDS FOR the landmark and takes its credit (2026-10-04): the name match
+-- above also catches the offices named after the building ("Empire State Building Company Llc.",
+-- an architect's listing), and every one of them was being credited as the landmark. The row of
+-- the landmark's own kind first, then the most confident, then the nearest.
+CREATE TABLE markbest AS SELECT id, rid, wiki FROM (
+  SELECT d.id, d.rid, d.wiki, row_number() OVER (PARTITION BY d.id ORDER BY
+    (CASE WHEN r.category = m.category THEN 0
+          WHEN r.category IN ('attraction','landmark_and_historical_building','museum','park','garden','nature_reserve','city_hall','place_of_worship','church_cathedral',
+            'temple','mosque','synagogue','shrine','theater','viewpoint','library','hospital','university','college_university','stadium_arena','zoo','aquarium',
+            'amusement_park','art_gallery','cultural_center','courthouse','government_office') THEN 1 ELSE 2 END),
+    r.confidence DESC, abs(r.lat - m.lat) + abs(r.lng - m.lng), d.rid) AS k
+  FROM markdupes d JOIN raw r ON r.id = d.rid JOIN marks m ON m.id = d.id
+) WHERE k = 1;
 INSERT INTO raw
 SELECT id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat, hours
 FROM marks WHERE id NOT IN (SELECT id FROM markdupes) AND id NOT IN (SELECT id FROM raw);
@@ -399,17 +445,17 @@ INSERT INTO names_en SELECT DISTINCT d.rid, m.en FROM markdupes d JOIN marks m O
   WHERE m.en IS NOT NULL AND nonlatin(r.name) AND NOT nonlatin(m.en);
 -- Size bonus: log10 of the outline's area in square meters, less 2, capped at 3 (1 ha = +2).
 CREATE TABLE marksize AS SELECT id, least(3.0, greatest(0.0, log10(greatest(area, 1)) - 2)) AS b FROM marks WHERE id NOT IN (SELECT id FROM markdupes)
-  UNION ALL SELECT d.rid, least(3.0, greatest(0.0, log10(greatest(m.area, 1)) - 2)) FROM markdupes d JOIN marks m ON m.id = d.id;
+  UNION ALL SELECT d.rid, least(3.0, greatest(0.0, log10(greatest(m.area, 1)) - 2)) FROM markbest d JOIN marks m ON m.id = d.id;
 -- The Wikidata credit goes to whichever row stands for the landmark: its own, or the Overture row
 -- it merged into (the Empire State Building's OSM outline carries the link, Overture's row not).
 CREATE TABLE markwiki AS SELECT id FROM marks WHERE wiki AND id NOT IN (SELECT id FROM markdupes)
-  UNION SELECT rid FROM markdupes WHERE wiki;
+  UNION SELECT rid FROM markbest WHERE wiki;
 -- FAME: how many languages OSM names it in (name:<lang> tags). A world-famous place carries dozens
 -- and a pocket park none, which outline size cannot see: the Berliner Fernsehturm (a small
 -- footprint) scored 2.5 on size + Wikidata and lost its cell's z15 slots to large parks. 0.6 x
 -- log2(1 + languages), capped at 3: 1 language = +0.6, 5 = +1.6, 30+ = +3.
 CREATE TABLE markfame AS SELECT id, least(3.0, 0.6 * log2(1 + langs)) AS f FROM marks WHERE langs > 0 AND id NOT IN (SELECT id FROM markdupes)
-  UNION ALL SELECT d.rid, least(3.0, 0.6 * log2(1 + m.langs)) FROM markdupes d JOIN marks m ON m.id = d.id WHERE m.langs > 0;
+  UNION ALL SELECT d.rid, least(3.0, 0.6 * log2(1 + m.langs)) FROM markbest d JOIN marks m ON m.id = d.id WHERE m.langs > 0;
 SELECT (SELECT count(*) FROM marks) AS landmarks_in_box, (SELECT count(*) FROM raw WHERE id IN (SELECT id FROM marks)) AS landmarks_added;
 MARKSSQL
 fi
@@ -613,6 +659,7 @@ CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
 CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
 CREATE TABLE IF NOT EXISTS markfame (id VARCHAR, f DOUBLE);
 CREATE TABLE IF NOT EXISTS markdupes (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
+CREATE TABLE IF NOT EXISTS markbest (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
 -- ONE ROW PER BUSINESS (user 2026-09-21, "two POIs that really should be one"). Overture itself
 -- carries the same business twice (a gas station under "Chevron" and "Chevron Station Davis", a
 -- shop under "SpeeDee" and "SpeeDee-Midas", a store and the counter inside it named after the
@@ -620,7 +667,8 @@ CREATE TABLE IF NOT EXISTS markdupes (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
 -- Rows with the same snap key within ~60 m collapse onto one leader: not a kiosk category, then
 -- the higher confidence, then the row that knows more (address, phone, website, hours). A hash
 -- join on the key with the box as the residual, never a correlated lookup (state-scale rule).
-CREATE TABLE dupk AS SELECT id, lat, lng, sk, confidence, kiosk, fields FROM (
+-- The row standing for an OSM landmark (markbest) leads whatever it folds with, in both steps.
+CREATE TABLE dupk AS SELECT id, lat, lng, sk, confidence, kiosk, fields, (id IN (SELECT rid FROM markbest))::INT AS mark FROM (
   SELECT id, lat, lng, snapkey(name) AS sk, confidence,
     (CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
     ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
@@ -636,7 +684,7 @@ CREATE TABLE dupk AS SELECT id, lat, lng, sk, confidence, kiosk, fields FROM (
   FROM raw WHERE category = 'gas_station' AND addr IS NOT NULL AND regexp_matches(addr, '^[0-9]')
 ) WHERE sk IS NOT NULL AND sk <> '';
 CREATE TABLE dupleader AS
-SELECT a.id, first(b.id ORDER BY b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
+SELECT a.id, first(b.id ORDER BY b.mark DESC, b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
 FROM dupk a JOIN dupk b ON b.sk = a.sk AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007
 GROUP BY a.id;
 DELETE FROM raw WHERE id IN (SELECT id FROM dupleader WHERE id <> leader);
@@ -648,25 +696,31 @@ SELECT (SELECT count(*) FROM dupleader WHERE id <> leader) AS same_business_rows
 -- with the same non-empty core key within ~60 m fold onto the leader the same way. A key that is
 -- only a street number ("38th") or a single short word is not a name and is left out, which is
 -- the app's strong-core rule in SQL.
+-- ONE NAME MUST CONTAIN THE OTHER (2026-10-04): the two rows fold only when every word of one
+-- name is in the other, i.e. they differ by ADDED words. Sharing a core was not enough: "state"
+-- and "building" are generic, so the Empire State Building's core was "empire", it folded into
+-- "Empire Beauty School" a few doors down, and New York had no Empire State Building at all.
 CREATE TABLE generic AS SELECT w FROM read_csv('$ROOT/tools/place-generic-words.txt', header = false, columns = {'w': 'VARCHAR'});
 -- (No lambda here: DuckDB refuses a subquery inside one, so the tokens are unnested and the
 -- generic ones anti-joined away, then re-joined in order.)
 CREATE TABLE corek AS
 WITH toks AS (
-  SELECT r.id, r.lat, r.lng, r.confidence, r.category, r.addr, r.phone, r.website, r.hours, t.tok, t.i
-  FROM (SELECT *, string_split(snapkey(name), ' ') AS tl FROM raw WHERE snapkey(name) IS NOT NULL AND id NOT IN (SELECT id FROM marks)) r,
+  SELECT r.id, r.lat, r.lng, r.confidence, r.category, r.addr, r.phone, r.website, r.hours, r.tl, r.mark, t.tok, t.i
+  FROM (SELECT *, string_split(snapkey(name), ' ') AS tl, (id IN (SELECT rid FROM markbest))::INT AS mark FROM raw WHERE snapkey(name) IS NOT NULL AND id NOT IN (SELECT id FROM marks)) r,
        unnest(r.tl) WITH ORDINALITY AS t(tok, i)
   WHERE t.tok <> '' AND t.tok NOT IN (SELECT w FROM generic)
 )
 SELECT id, any_value(lat) AS lat, any_value(lng) AS lng, string_agg(tok, ' ' ORDER BY i) AS ck, any_value(confidence) AS confidence,
   any_value(CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
-  any_value((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
+  any_value((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields,
+  any_value(list_filter(tl, x -> x <> '')) AS tl, any_value(mark) AS mark
 FROM toks GROUP BY id
 HAVING NOT regexp_matches(string_agg(tok, ' ' ORDER BY i), '^[0-9]+(st|nd|rd|th)?$')
    AND (length(string_agg(tok, ' ' ORDER BY i)) >= 5 OR string_agg(tok, ' ' ORDER BY i) LIKE '% %');
 CREATE TABLE coreleader AS
-SELECT a.id, first(b.id ORDER BY b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
+SELECT a.id, first(b.id ORDER BY b.mark DESC, b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
 FROM corek a JOIN corek b ON b.ck = a.ck AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007
+  AND (list_has_all(a.tl, b.tl) OR list_has_all(b.tl, a.tl))
 GROUP BY a.id;
 DELETE FROM raw WHERE id IN (SELECT id FROM coreleader WHERE id <> leader);
 SELECT (SELECT count(*) FROM coreleader WHERE id <> leader) AS same_business_variant_rows_dropped;
