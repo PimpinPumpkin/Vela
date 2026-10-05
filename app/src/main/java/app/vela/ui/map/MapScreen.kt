@@ -1386,7 +1386,13 @@ fun MapScreen(
                         },
                     ),
             ) {
-                Column(Modifier.statusBarsPadding().padding(12.dp)) {
+                // Landscape: the open search page keeps clear of the camera cutout's strip, in line
+                // with the keyboard and the status bar, which the system already insets.
+                Column(
+                    Modifier.statusBarsPadding()
+                        .then(if (searchOpen && landscapeChrome) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start)) else Modifier)
+                        .padding(12.dp),
+                ) {
                     // Landscape bare-map chrome collapses to one line (bar | chips) below. NB the
                     // condition must NOT include !searchOpen: focusing the bar flips searchOpen,
                     // and if that moved the SearchBar to a different subtree the remount blurred
@@ -3000,10 +3006,12 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
 /** The nav bar and the step sheet it opens into: flush with the screen's bottom edge in portrait
  *  (the card pads its own content off the system bar), a floating card in the landscape column. */
 private fun Modifier.navBarHost(landscape: Boolean): Modifier =
-    if (landscape) this.padding(start = 16.dp, end = 16.dp) else this
+    if (landscape) this.padding(start = NAV_LAND_EDGE_DP, end = 16.dp) else this
 
 /** Landscape nav: the speed box (or Re-center) sits this far right of the left column, and the
  *  current-road pill starts past it. */
+/** Landscape nav cards sit this far from the safe left edge, as Google's do. */
+private val NAV_LAND_EDGE_DP = 8.dp
 private val NAV_LAND_GAP_DP = 28.dp
 private val NAV_LAND_ROAD_START_DP = 190.dp
 
@@ -3707,7 +3715,7 @@ private fun ResultPlaceCard(
                     // Google-style per-row action buttons: Directions (filled) + Call/Share
                     // (outlined). They act on the ROW's place directly, without opening it.
         Row(
-            Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 14.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 14.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -3723,6 +3731,15 @@ private fun ResultPlaceCard(
                     label = stringResource(R.string.place_call),
                     primary = false,
                     onClick = { onActionCall() },
+                )
+            }
+            place.website?.takeIf { !app.vela.ui.HideExternalLinks.on.value }?.let { site ->
+                val ctx = LocalContext.current
+                ResultActionButton(
+                    icon = Sym.Language,
+                    label = stringResource(R.string.place_website),
+                    primary = false,
+                    onClick = { runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(site))) } },
                 )
             }
             ResultActionButton(
@@ -4586,7 +4603,7 @@ private fun BoxScope.NavTurnBanner(
             .align(if (landscapeChrome) Alignment.TopStart else Alignment.TopCenter)
             .landscapeColumn(landscapeChrome, sidePanelWidthDp)
             .statusBarsPadding()
-            .padding(12.dp)
+            .padding(start = if (landscapeChrome) NAV_LAND_EDGE_DP else 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
             // Report the banner's bottom edge so the compass can drop just below it (any height).
             .onGloballyPositioned { onBottomPx((it.positionInRoot().y + it.size.height).roundToInt()) },
     )

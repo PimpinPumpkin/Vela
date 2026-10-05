@@ -835,9 +835,9 @@ fun PlaceSheet(
                     // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
                     // Company") fits two lines beside the Save/Share/⋮/✕ icons instead of ellipsizing.
                     style = MaterialTheme.typography.titleLarge,
-                    // Regular weight, as Google's place sheet sets the name (user 2026-10-03): bold
-                    // read heavy next to the rating and category lines.
-                    fontWeight = FontWeight.Normal,
+                    // Medium weight, a step under bold, as Google's place sheet sets the name: bold
+                    // read heavy next to the rating and category lines, regular read thin.
+                    fontWeight = FontWeight.Medium,
                     color = ink,
                     maxLines = if (nameExpanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,
