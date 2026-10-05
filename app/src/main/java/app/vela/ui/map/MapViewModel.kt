@@ -520,6 +520,7 @@ class MapViewModel @Inject constructor(
             get() = this@MapViewModel.controlsBox
             set(v) { this@MapViewModel.controlsBox = v }
         override fun cancelViewportControls() { this@MapViewModel.controlsJob?.cancel() }
+        override fun cancelChooserPrefetch() { this@MapViewModel.modeEtaJob?.cancel() }
         override var autoStartOnRoute: Boolean
             get() = this@MapViewModel.autoStartOnRoute
             set(v) { this@MapViewModel.autoStartOnRoute = v }
@@ -8328,6 +8329,8 @@ class MapViewModel @Inject constructor(
     private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
     private var flockBox: DoubleArray? = null
     private var flockRoutesKey = 0 // which routes the camera layer was last filtered to (0 = none)
+    private var flockOnRoute: List<app.vela.core.data.AlprCamera>? = null // the cameras on those routes, once worked out
+    private var flockOnRouteJobKey = 0 // the route set that work was started for
     private var transitStopsBox: DoubleArray? = null
     private var transitStopsJob: Job? = null
     private val transitStopCache by lazy { app.vela.data.TransitStopCache(appContext) }
@@ -8783,6 +8786,7 @@ class MapViewModel @Inject constructor(
         if (!app.vela.ui.Flock.on.value || zoom < FLOCK_MIN_ZOOM) {
             flockBox = null
             flockJob?.cancel()
+            if (flockOnRoute == null) flockOnRouteJobKey = 0 // a cancelled route pass has to be asked for again
             if (_state.value.flockCameras.isNotEmpty()) _state.update { it.copy(flockCameras = emptyList()) }
             return
         }
@@ -8794,7 +8798,44 @@ class MapViewModel @Inject constructor(
         val st = _state.value
         val shown = if (st.navigating) listOfNotNull(st.activeRoute) else st.routes
         val routesKey = if (shown.isEmpty()) 0 else shown.fold(17) { h, r -> 31 * h + System.identityHashCode(r) }
-        if (routesKey != flockRoutesKey) { flockRoutesKey = routesKey; flockBox = null }
+        if (routesKey != flockRoutesKey) { flockRoutesKey = routesKey; flockBox = null; flockOnRoute = null; flockOnRouteJobKey = 0 }
+        if (shown.isNotEmpty() && app.vela.data.FlockCameras.isLoaded) {
+            // The on-route set is worked out ONCE per set of routes. It used to be recomputed over
+            // the whole route every time the view left the cached box, which a camera following a
+            // car does every few hundred meters: a compute thread busy for the whole drive, a new
+            // list each time, and the camera source uploaded again for nothing.
+            val all = flockOnRoute
+            if (all == null) {
+                if (flockOnRouteJobKey == routesKey) return // already being worked out
+                flockOnRouteJobKey = routesKey
+                flockJob?.cancel()
+                flockJob = viewModelScope.launch {
+                    val res = withContext(Dispatchers.Default) { shown.flatMap { app.vela.data.FlockCameras.along(it.polyline) }.distinct() }
+                    if (flockRoutesKey != routesKey) return@launch // the routes changed meanwhile
+                    flockOnRoute = res
+                    diag.record("flock", "route set: ${res.size} camera(s) on ${shown.size} route(s)", "bundled dataset")
+                    lastFlockViewport?.let { refreshFlock(it[0], it[1], it[2], it[3], it[4]) }
+                }
+                return
+            }
+            // Few enough to draw them all: set once, nothing to do as the view moves.
+            if (all.size <= CONTROLS_ONSCREEN_CAP) {
+                if (_state.value.flockCameras !== all) _state.update { it.copy(flockCameras = all) }
+                return
+            }
+            // A very long route with more cameras than the cap: the nearest to the view, from the
+            // list already in hand.
+            flockBox?.let { b ->
+                val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+                if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+            }
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            flockBox = doubleArrayOf(s, w, n, e)
+            val kept = capFlock(all.filter { it.loc.lat in s..n && it.loc.lng in w..e }, s, n, w, e)
+            _state.update { it.copy(flockCameras = kept) }
+            return
+        }
         flockBox?.let { b ->
             val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
             if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
@@ -8806,11 +8847,7 @@ class MapViewModel @Inject constructor(
         if (app.vela.data.FlockCameras.isLoaded) {
             flockJob?.cancel()
             flockJob = viewModelScope.launch {
-                val res = withContext(Dispatchers.Default) {
-                    if (shown.isEmpty()) app.vela.data.FlockCameras.inBox(s, w, n, e)
-                    else shown.flatMap { app.vela.data.FlockCameras.along(it.polyline) }.distinct()
-                        .filter { it.loc.lat in s..n && it.loc.lng in w..e }
-                }
+                val res = withContext(Dispatchers.Default) { app.vela.data.FlockCameras.inBox(s, w, n, e) }
                 flockBox = doubleArrayOf(s, w, n, e)
                 val kept = capFlock(res, s, n, w, e)
                 diag.record("flock", "showing ${kept.size} camera(s) at z${"%.1f".format(zoom)}", "bundled dataset")

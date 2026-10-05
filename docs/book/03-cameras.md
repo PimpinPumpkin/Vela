@@ -3,9 +3,9 @@
 ## What you see
 
 Mapped license-plate readers (ALPR, of which Flock is the best known brand) draw on the map out
-of the box, as a purple badge. A corner that mounts several heads draws one badge, and from street
-zoom a small "x3" beside it, while each head that has a known facing fans a cone out of that
-badge, so you can see which ways the corner watches.
+of the box, as a purple badge. A corner that mounts several heads draws one badge, and each head
+that has a known facing fans a cone out of that badge, so you can see which ways the corner
+watches.
 
 Its switch (**Surveillance cameras**, on) sits in **Settings > Navigation > Cameras** with
 everything else, all of which is off by default:
@@ -207,6 +207,11 @@ it says more.
 While the route chooser is open or a drive is running, the camera layer shows only the cameras on
 the routes being shown (the same 45 m and facing test the route counts use). The overview of a
 long route covers a whole metro area, and drawing every camera in it made panning slow.
+
+That set is worked out once per set of routes and kept: moving the map, or the car moving the
+map for you, changes nothing in it. Only a route with more than 400 cameras (`CONTROLS_ONSCREEN_CAP`)
+is cut to the ones nearest the view. Working it out again as the view moved kept a processor core
+busy for the whole drive and was most of the lag reported when dragging the map mid-drive.
 
 ## Limits
 

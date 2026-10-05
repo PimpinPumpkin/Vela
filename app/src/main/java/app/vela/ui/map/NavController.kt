@@ -54,6 +54,8 @@ internal class NavController(
         var controlsBox: DoubleArray?
         /** Cancel a viewport controls fetch that is still inside its settle (see refreshNavRouteControls). */
         fun cancelViewportControls()
+        /** Stop the route chooser's background fetches (the other modes' times): a drive is starting. */
+        fun cancelChooserPrefetch()
         var autoStartOnRoute: Boolean
         fun startLocation()
         fun pauseLiveLocation()
@@ -247,6 +249,7 @@ internal class NavController(
         // RE-ENTRANCY GUARD (user 2026-07-16: multiple "Starting navigation" from double-tapping
         // while start was slow): ignore Start while a start is already in flight or nav is running.
         if (navStartJob?.isActive == true || _state.value.navigating) return
+        host.cancelChooserPrefetch()
         // The pre-nav search's results are stale junk once driving - and the nav bottom slot
         // yields to a NON-EMPTY results list (the in-nav along-route flow), so leftovers from
         // planning made the chooser's Start bar render over a live drive (device 2026-07-14).

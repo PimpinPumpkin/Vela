@@ -1104,6 +1104,15 @@ names (`Route.roadNamesLatin`).
   Android is read-only.
 - The departure heading reaches the engine as `RoutingConfiguration.initialDirection` in
   compass radians.
+- A caller that waits a bounded time passes it as `route(maxMs =)`: the avoid attempt, the
+  bike-safe attempt, the phone-first reroute and the reroute fallback all do. Past it the engine
+  sets `RouteCalculationProgress.isCancelled`, which both of OsmAnd's planners poll, and returns
+  empty; time spent waiting for the engine's lock counts. Without the limit an abandoned search ran
+  to its end on a core the map needed and held the lock against the next request (the speed-limit
+  lookup and a reroute both take it). Planning with no network passes no limit.
+  `ObfStopProbeTest` (`-DvelaObf=<dir with delaware.obf>`): a 2.6 s walk search stops at 308 ms.
+- The region index (`index.json`) is parsed once and kept until the file changes; `covers` and
+  `currentRoadLimit` are asked several times a second during a drive.
 
 ### 4.6 The navigation loop
 
@@ -1553,6 +1562,28 @@ Testing aids: `debug.vela.tune.camTurnTau <s>` sets how fast the nav camera swin
 (`CAM_BRG_TAU_TURN`, 0.35 s; at 0.8 s the worst turn dip went 35 -> 45 fps over three turns, too few
 to call). `debug.vela.tune.demoSpeedup <n>` runs a demo drive's fixes and clocks at n times
 real time, the way a trip replay runs, so playback behavior reproduces without a recorded trip.
+
+**Work beside the map during a drive.** The map's render thread shares the phone's fast cores
+with everything else the app runs, so background work that never ends shows as dropped map
+frames. Three rules, each from a measured case (4a, demo drive across San Francisco at 3x):
+
+- The plate-camera layer works out the cameras on the shown routes ONCE per set of routes
+  (`flockOnRoute`) and draws that set; only a route with more cameras than
+  `CONTROLS_ONSCREEN_CAP` is cut to the view, from the list in hand. Recomputing it whenever the
+  view left the cached box ran `FlockCameras.along` over the whole route every few hundred
+  meters of a followed drive and on every pan: one compute thread busy for the whole drive, the
+  garbage collector at half a core, and the camera source uploaded again each time.
+- An on-device route search ends when its caller stops waiting (4.5).
+- Starting a drive cancels the route chooser's background fetches (`cancelChooserPrefetch`), and
+  a hidden page whose request was cancelled or timed out is told to stop loading
+  (`HiddenWebView.request`). The transit time for the mode chips is a Google page load that
+  otherwise ran into the first seconds of the drive.
+
+Same drive before and after: following 33 -> 57 fps (longest frame gap 264 -> 51 ms), camera
+detached and still 40 -> 56, detached and turning at 40 degrees a second 25 -> 54. Davis showed
+none of it; measure a dense city at replay speed. Find such work with thread CPU first
+(`adb shell top -H -b -n 2 -d 5 -p <pid> -o TID,%CPU,CMD -s 2`): coroutine workers on both the
+Default and IO dispatchers are named `DefaultDispatcher-worker`.
 
 ### 4.8 Route line rendering
 

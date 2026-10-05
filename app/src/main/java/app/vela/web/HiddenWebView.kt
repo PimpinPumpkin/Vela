@@ -115,6 +115,10 @@ abstract class HiddenWebView(
             }
         } finally {
             pending.remove(id)
+            // Given up on (cancelled, or timed out): stop the page. Left alone it kept loading and
+            // running its scripts to the end, which for a page asked for from the route chooser was
+            // the first seconds of the drive.
+            if (!deferred.isCompleted) withContext(NonCancellable + Dispatchers.Main) { runCatching { webView?.stopLoading() } }
         }
     }
 

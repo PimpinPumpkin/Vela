@@ -3839,6 +3839,20 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Lag during a drive was background work, not the map (2026-10-05, SPEC 4.7b).** A 4a at 3x
+  across San Francisco: 33 fps following, 25 turning the map. Thread CPU showed a coroutine worker
+  at a full core, the garbage collector at half and an on-device route search running, none of it
+  visible in Davis. (1) `refreshFlock` with a route up recomputed `FlockCameras.along` over the
+  whole route each time the view left its cached box (every few hundred meters when following,
+  every pan); it is once per set of routes now (`flockOnRoute`). (2) `RouteEngine.route(maxMs =)`:
+  a caller that gives up after N seconds used to leave the search running and holding the engine
+  lock; bounded callers pass their wait and the engine cancels (`ObfStopProbeTest`). (3) Start
+  cancels the chooser's mode-time prefetch and an abandoned hidden page stops loading. After:
+  57 fps following, 54 turning. Before blaming map layers for lag, run
+  `adb shell top -H -b -n 2 -d 5 -p <pid> -o TID,%CPU,CMD -s 2` in a dense city at replay speed.
+  To see what a busy worker is doing on a release build, a temporary in-app sampler
+  (`Thread.getAllStackTraces()` every 150 ms to logcat) plus the build's `mapping.txt` works where
+  simpleperf is refused; merged lambda classes list several originals, read the line ranges.
 - **Fps and battery audit (2026-10-02, SPEC 4.7b).** Three read-only audit agents (map render,
   Compose/main thread, battery) found ~35 candidates; the high-confidence small ones are fixed and
   listed in SPEC 4.7b. Two rules worth remembering: MapLibre fires camera-idle after EVERY
