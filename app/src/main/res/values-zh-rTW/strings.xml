@@ -1270,4 +1270,6 @@
     <string name="car_location_title">允許存取位置</string>
     <string name="car_location_body">Vela 需要位置資訊才能顯示你的位置並提供導航</string>
     <string name="car_location_denied">定位已關閉。請在手機設定中為 Vela 開啟。</string>
+    <string name="settings_page_transitions">頁面轉場</string>
+    <string name="settings_page_transitions_hint">開啟和關閉頁面及底部面板時播放動畫，並在滑動返回時預覽上一頁。</string>
 </resources>

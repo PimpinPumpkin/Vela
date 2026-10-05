@@ -1215,4 +1215,6 @@
     <string name="car_location_title">Consenti posizione</string>
     <string name="car_location_body">Vela ne ha bisogno per mostrare dove sei e darti indicazioni</string>
     <string name="car_location_denied">La posizione è disattivata. Attivala per Vela nelle impostazioni del telefono.</string>
+    <string name="settings_page_transitions">Transizioni tra le pagine</string>
+    <string name="settings_page_transitions_hint">Anima pagine e pannelli inferiori all\'apertura e alla chiusura e mostra un\'anteprima della pagina precedente quando scorri per tornare indietro.</string>
 </resources>

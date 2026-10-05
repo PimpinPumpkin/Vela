@@ -1201,4 +1201,6 @@
     <string name="car_location_title">אישור מיקום</string>
     <string name="car_location_body">Vela צריכה אותו כדי להציג איפה אתה ולתת הוראות נסיעה</string>
     <string name="car_location_denied">המיקום כבוי. הפעל אותו עבור Vela בהגדרות הטלפון.</string>
+    <string name="settings_page_transitions">מעברים בין דפים</string>
+    <string name="settings_page_transitions_hint">מנפיש דפים וחלוניות תחתונות בעת פתיחה וסגירה, ומציג תצוגה מקדימה של הדף הקודם בעת החלקה לחזרה.</string>
 </resources>

@@ -1246,4 +1246,6 @@
     <string name="car_location_title">Доступ к геоданным</string>
     <string name="car_location_body">Он нужен Vela, чтобы показывать, где вы, и вести по маршруту</string>
     <string name="car_location_denied">Геолокация отключена. Включите её для Vela в настройках телефона.</string>
+    <string name="settings_page_transitions">Переходы между страницами</string>
+    <string name="settings_page_transitions_hint">Анимирует открытие и закрытие страниц и нижних панелей и показывает предыдущую страницу во время жеста возврата.</string>
 </resources>

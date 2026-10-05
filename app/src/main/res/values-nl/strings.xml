@@ -1215,4 +1215,6 @@
     <string name="car_location_title">Locatie toestaan</string>
     <string name="car_location_body">Vela heeft die nodig om te tonen waar je bent en je de weg te wijzen</string>
     <string name="car_location_denied">Locatie staat uit. Zet die aan voor Vela in de instellingen van je telefoon.</string>
+    <string name="settings_page_transitions">Paginaovergangen</string>
+    <string name="settings_page_transitions_hint">Animeert pagina\'s en panelen onderaan bij het openen en sluiten, en toont een voorbeeld van de vorige pagina wanneer je terugveegt.</string>
 </resources>

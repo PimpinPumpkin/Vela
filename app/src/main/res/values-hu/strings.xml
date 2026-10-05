@@ -1186,4 +1186,6 @@
     <string name="car_location_title">Helyhozzáférés</string>
     <string name="car_location_body">A Velának szüksége van rá, hogy mutassa, hol vagy, és útbaigazítson</string>
     <string name="car_location_denied">A helymeghatározás ki van kapcsolva. Kapcsold be a Velának a telefonod beállításaiban.</string>
+    <string name="settings_page_transitions">Oldalátmenetek</string>
+    <string name="settings_page_transitions_hint">Animálja az oldalak és az alsó panelek megnyitását és bezárását, és a visszalépési kézmozdulat közben megjeleníti az előző oldal előnézetét.</string>
 </resources>
