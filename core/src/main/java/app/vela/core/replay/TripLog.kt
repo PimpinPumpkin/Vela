@@ -82,12 +82,21 @@ object TripLog {
             add("steps=${route.maneuvers.size}")
         }.joinToString(";")
         append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason,$flags\n")
+        // The congestion the drive was shown, as level:startMeters:lengthMeters along the line:
+        // a replay paints the same colors, and a file says what traffic the route was chosen on.
+        // A shared copy leaves the line out (TripScrub drops kinds it does not list): the route
+        // is trimmed there, and offsets along the untrimmed line would paint the wrong stretches.
+        if (route.trafficSpans.isNotEmpty()) {
+            append("T,").append(route.trafficSpans.joinToString(";") { "${it.level}:${it.startMeters.toInt()}:${it.lengthMeters.toInt()}" }).append('\n')
+        }
         for (m in route.maneuvers) {
             val instr = m.instruction.replace('\n', ' ').replace("\r", "").replace('\t', ' ')
             // The road entered and its ref ride after the text, tab-separated: a replay needs them
             // for the turn's own road bubble and the shield. They are words the text already
             // holds, and they leave with the line when a share trims it.
-            val names = if (m.road.isNullOrBlank() && m.ref.isNullOrBlank()) "" else "\t${m.road.orEmpty().replace('\t', ' ')}\t${m.ref.orEmpty().replace('\t', ' ')}"
+            // Then the step's own time: the remaining-time figure is the sum of the steps ahead,
+            // so without it a replay's ETA was made of zeros.
+            val names = "\t${m.road.orEmpty().replace('\t', ' ')}\t${m.ref.orEmpty().replace('\t', ' ')}\t${m.durationSeconds}"
             append("M,${m.type.name},${m.location.lat},${m.location.lng},${m.distanceMeters},$instr$names\n")
         }
     }
@@ -158,7 +167,7 @@ object TripLog {
         val lng = p[3].toDoubleOrNull() ?: return null
         val text = p[5].split('\t')
         return Maneuver(
-            type, text[0], LatLng(lat, lng), p[4].toDoubleOrNull() ?: 0.0, 0.0,
+            type, text[0], LatLng(lat, lng), p[4].toDoubleOrNull() ?: 0.0, text.getOrNull(3)?.toDoubleOrNull() ?: 0.0,
             // A file from before the names were kept: the English text still says the road
             // ("... onto 1st Street"), which is enough for the replay's road label and callout.
             road = text.getOrNull(1)?.ifBlank { null } ?: if (text.size == 1) ROAD_IN_TEXT.find(text[0])?.groupValues?.get(1)?.trim()?.ifBlank { null } else null,
@@ -183,6 +192,7 @@ object TripLog {
         val events = ArrayList<Event>()
         var rp: String? = null
         var rd: List<String> = emptyList()
+        var spans: List<app.vela.core.model.TrafficSpan> = emptyList()
         var ms = ArrayList<Maneuver>()
         var from = 0
         fun closeBlock() {
@@ -200,9 +210,16 @@ object TripLog {
             val source = flagSet.firstOrNull { it.startsWith("source=") }
                 ?.let { runCatching { app.vela.core.model.RouteSource.valueOf(it.substringAfter('=')) }.getOrNull() }
                 ?: app.vela.core.model.RouteSource.UNKNOWN
+            // A file from before the steps kept their times: share the route's time out by length,
+            // so the replay's remaining time counts down instead of reading nothing.
+            val steps = if (ms.none { it.durationSeconds > 0.0 } && durS > 0.0) {
+                val total = ms.sumOf { it.distanceMeters }.takeIf { it > 0.0 }
+                if (total == null) ms.toList() else ms.map { it.copy(durationSeconds = durS * it.distanceMeters / total) }
+            } else ms.toList()
             segments += RouteSegment(
                 Route(
-                    poly, listOf(RouteLeg(distM, durS, trafficS, ms.toList())), distM, durS, trafficS,
+                    poly, listOf(RouteLeg(distM, durS, trafficS, steps)), distM, durS, trafficS,
+                    trafficSpans = spans,
                     provisional = "provisional" in flagSet, abbreviatedSteps = "abbreviated" in flagSet,
                     offline = "offline" in flagSet, source = source,
                 ),
@@ -218,10 +235,16 @@ object TripLog {
                     closeBlock()
                     rp = line.substring(3)
                     rd = emptyList()
+                    spans = emptyList()
                     ms = ArrayList()
                     from = points.size
                 }
                 line.startsWith("RD,") -> rd = line.substring(3).split(',')
+                line.startsWith("T,") -> spans = line.substring(2).split(';').mapNotNull { s ->
+                    val f = s.split(':')
+                    val level = f.getOrNull(0)?.toIntOrNull(); val start = f.getOrNull(1)?.toDoubleOrNull(); val len = f.getOrNull(2)?.toDoubleOrNull()
+                    if (level != null && start != null && len != null) app.vela.core.model.TrafficSpan(level, start, len) else null
+                }
                 line.startsWith("M,") -> parseManeuver(line)?.let { ms.add(it) }
                 line.startsWith("S,") || line.startsWith("J,") || line.startsWith("B,") || line.startsWith("K,") -> {
                     val e = line.split(',', limit = 3)

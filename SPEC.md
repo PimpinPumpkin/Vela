@@ -1833,6 +1833,14 @@ alone. Before this it read as a bare "Turn left".
 - An `M` line's text may be followed by a tab, the road the turn enters, a tab and its ref. A
   replay needs them for the turn's road callout and the shield; a line without them reads as
   before. `TripScrub` drops or keeps them with the line.
+- An `M` line's fourth tab field is the step's own duration: remaining time is the sum of the
+  steps ahead, and without it a replay's ETA was made of zeros. A file without step times has the
+  route's time shared out by step length at parse.
+- A `T` line after `RD` carries the congestion spans (`level:startMeters:lengthMeters;...`), so a
+  replay paints the traffic the drive was shown. `TripScrub` does not list `T`, so a shared copy
+  drops it: its route is trimmed, and the offsets would no longer fit.
+- An `eta:` note every 30 s records minutes and kilometers left, the step, the traffic ratio, the
+  number of congestion stretches and the route's source.
 - `RD` carries the route's provenance flags and source name. Every fix carries its provider and
   the engine's off-route hit count. Every nav decision is a `K` line written through
   `NavSession.onNote`; a `K` line never holds a coordinate by contract.

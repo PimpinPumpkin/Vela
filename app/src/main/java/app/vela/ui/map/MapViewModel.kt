@@ -612,6 +612,16 @@ class MapViewModel @Inject constructor(
                 driveDataNote().let { if (it != lastDataNote) { lastDataNote = it; app.vela.diag.TripNote.add(it) } }
                 // And what the map fetched in the last ten seconds, when it fetched anything.
                 if (++netTick >= 10) { netTick = 0; app.vela.diag.NetCount.drain()?.let { app.vela.diag.TripNote.add("net 10 s: $it") } }
+                // What the driver was being told about the trip, every half minute.
+                if (++etaTick >= 30) {
+                    etaTick = 0
+                    val s = _state.value
+                    app.vela.diag.TripNote.add(
+                        "eta: ${(s.nav.remainingDuration / 60).toInt()} min and ${(s.nav.remainingDistance / 1000).toInt()} km left, step ${s.nav.stepIndex}" +
+                            (s.activeRoute?.trafficRatio?.let { ", traffic x%.2f".format(java.util.Locale.US, it) } ?: ", no traffic figure") +
+                            ", ${s.activeRoute?.trafficSpans?.size ?: 0} congestion stretches, source ${s.activeRoute?.source?.name}",
+                    )
+                }
             }
         }
         viewModelScope.launch { app.vela.ui.AppVisibility.foreground.collect { app.vela.diag.TripNote.add(if (it) "app: on screen" else "app: off screen") } }
@@ -2168,6 +2178,7 @@ class MapViewModel @Inject constructor(
     private fun offlineNow(): Boolean = _state.value.offline || !isOnline()
 
     private var netTick = 0
+    private var etaTick = 0
     private var lastDataNote: String? = null
 
     /** Which of the drive's data is read from the phone and which is streamed. Counts and

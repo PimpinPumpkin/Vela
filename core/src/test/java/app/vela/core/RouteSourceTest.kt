@@ -81,4 +81,21 @@ class RouteSourceTest {
         assertEquals(null, got[1].road)
         assertEquals(null, got[2].road)
     }
+
+    @Test fun tripLogKeepsTrafficAndStepTimes() {
+        fun m(len: Double, dur: Double) =
+            app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.TURN_LEFT, "Turn left", LatLng(38.54, -121.74), len, dur)
+        val r = route(RouteSource.OSRM).copy(
+            legs = listOf(RouteLeg(1000.0, 120.0, null, listOf(m(400.0, 50.0), m(600.0, 70.0)))),
+            trafficSpans = listOf(app.vela.core.model.TrafficSpan(2, 100.0, 250.0), app.vela.core.model.TrafficSpan(3, 600.0, 80.0)),
+        )
+        val got = TripLog.parseRoute(TripLog.encodeRoute(r, "start").lines())!!
+        assertEquals(listOf(50.0, 70.0), got.maneuvers.map { it.durationSeconds })
+        assertEquals(2, got.trafficSpans.size)
+        assertEquals(3, got.trafficSpans[1].level)
+        assertEquals(600.0, got.trafficSpans[1].startMeters, 0.5)
+        // A file from before step times: the route's 120 s is shared out by length.
+        val old = TripLog.encodeRoute(r, "start").lines().filterNot { it.startsWith("T,") }.map { it.substringBefore('\t') }
+        assertEquals(listOf(48.0, 72.0), TripLog.parseRoute(old)!!.maneuvers.map { it.durationSeconds })
+    }
 }
