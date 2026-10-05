@@ -54,4 +54,17 @@ class RouteSourceTest {
         val text = TripLog.encodeRoute(r, "start").replace(";source=OSRM", "").replace("source=OSRM", "")
         assertEquals(RouteSource.UNKNOWN, TripLog.parseRoute(text.lines())?.source)
     }
+
+    @Test fun tripLogKeepsTheRoadATurnEnters() {
+        fun m(text: String, road: String?, ref: String?) =
+            app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.TURN_LEFT, text, LatLng(38.54, -121.74), 500.0, 60.0, road = road, ref = ref)
+        val r = route(RouteSource.OSRM).copy(legs = listOf(RouteLeg(1000.0, 120.0, null, listOf(m("Turn left onto 1st Street", "1st Street", "CA 113"), m("Turn left", null, null)))))
+        val parsed = TripLog.parseRoute(TripLog.encodeRoute(r, "start").lines())!!
+        assertEquals("Turn left onto 1st Street", parsed.maneuvers[0].instruction)
+        assertEquals("1st Street", parsed.maneuvers[0].road)
+        assertEquals("CA 113", parsed.maneuvers[0].ref)
+        // A turn with no road (and any line written before the names were kept) reads as before.
+        assertEquals("Turn left", parsed.maneuvers[1].instruction)
+        assertEquals(null, parsed.maneuvers[1].road)
+    }
 }

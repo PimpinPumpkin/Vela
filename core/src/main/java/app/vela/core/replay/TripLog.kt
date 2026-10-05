@@ -83,8 +83,12 @@ object TripLog {
         }.joinToString(";")
         append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason,$flags\n")
         for (m in route.maneuvers) {
-            val instr = m.instruction.replace('\n', ' ').replace("\r", "")
-            append("M,${m.type.name},${m.location.lat},${m.location.lng},${m.distanceMeters},$instr\n")
+            val instr = m.instruction.replace('\n', ' ').replace("\r", "").replace('\t', ' ')
+            // The road entered and its ref ride after the text, tab-separated: a replay needs them
+            // for the turn's own road bubble and the shield. They are words the text already
+            // holds, and they leave with the line when a share trims it.
+            val names = if (m.road.isNullOrBlank() && m.ref.isNullOrBlank()) "" else "\t${m.road.orEmpty().replace('\t', ' ')}\t${m.ref.orEmpty().replace('\t', ' ')}"
+            append("M,${m.type.name},${m.location.lat},${m.location.lng},${m.distanceMeters},$instr$names\n")
         }
     }
 
@@ -150,7 +154,11 @@ object TripLog {
         val type = runCatching { ManeuverType.valueOf(p[1]) }.getOrDefault(ManeuverType.UNKNOWN)
         val lat = p[2].toDoubleOrNull() ?: return null
         val lng = p[3].toDoubleOrNull() ?: return null
-        return Maneuver(type, p[5], LatLng(lat, lng), p[4].toDoubleOrNull() ?: 0.0, 0.0)
+        val text = p[5].split('\t')
+        return Maneuver(
+            type, text[0], LatLng(lat, lng), p[4].toDoubleOrNull() ?: 0.0, 0.0,
+            road = text.getOrNull(1)?.ifBlank { null }, ref = text.getOrNull(2)?.ifBlank { null },
+        )
     }
 
     fun parse(csv: String): Parsed = parseParsed(csv.split('\n').filter { it.isNotBlank() })
