@@ -366,9 +366,12 @@ fun ManeuverBanner(
                     Spacer(Modifier.width(8.dp))
                     Icon(
                         if (isRoundabout(nextType)) rememberRoundaboutGlyph(nextRoundabout) else maneuverIcon(nextType),
-                        contentDescription = nextText,
-                        modifier = Modifier.size(26.dp),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
                     )
+                    Spacer(Modifier.width(8.dp))
+                    // Vela says what the next step is; Google's tab shows the arrow alone.
+                    Text(nextText, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -839,17 +842,17 @@ fun NavControls(
     }
 }
 
-/** A button on the nav bar, Google's dress: a thin ring on the bar's black, a white glyph.
- *  [filled] = the state it controls is on (the drive is paused). */
+/** A button on the nav bar: tonal, like the rest of Vela's controls. [end] wears the warning
+ *  color (it is the one that throws the drive away); [filled] = the state it controls is on. */
 @Composable
-fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, content: @Composable () -> Unit) {
-    androidx.compose.material3.OutlinedIconButton(
+fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = false, content: @Composable () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    FilledTonalIconButton(
         onClick = onClick,
         modifier = Modifier.size(54.dp),
-        border = BorderStroke(1.5.dp, Color.White.copy(alpha = if (filled) 0f else 0.45f)),
-        colors = androidx.compose.material3.IconButtonDefaults.outlinedIconButtonColors(
-            containerColor = if (filled) MaterialTheme.colorScheme.primary else Color.Transparent,
-            contentColor = if (filled) MaterialTheme.colorScheme.onPrimary else Color.White,
+        colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = when { end -> scheme.errorContainer; filled -> scheme.primary; else -> scheme.secondaryContainer },
+            contentColor = when { end -> scheme.onErrorContainer; filled -> scheme.onPrimary; else -> scheme.onSecondaryContainer },
         ),
     ) { content() }
 }
@@ -961,7 +964,7 @@ fun NavBarTop(
             // End keeps a DESTRUCTIVE color rather than the tonal fill Steps uses: it is the one
             // control here that throws the drive away, and an unlabeled X must not look like just
             // another button. The label survives as its accessibility name.
-            NavBarButton(onClick = onStop) {
+            NavBarButton(onClick = onStop, end = true) {
                 Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(26.dp))
             }
             Spacer(Modifier.width(8.dp))

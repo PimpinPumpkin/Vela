@@ -320,7 +320,8 @@ fun MapScreen(
     // The map fills the whole window (behind the status and nav bars), so the panel's top must be
     // read in WINDOW coordinates and measured against the window height, not the configuration's
     // screen height, which leaves the bars out and understated the panel by about 130 px.
-    val windowHeightPx = LocalView.current.height.takeIf { it > 0 } ?: screenHeightPx.toInt()
+    val rootView = LocalView.current
+    val windowHeightPx = rootView.height.takeIf { it > 0 } ?: screenHeightPx.toInt()
     LaunchedEffect(Unit) {
         snapshotFlow { dirPanelTopRaw }.debounce(140).collect { dirPanelTopPx = it }
     }
@@ -1960,7 +1961,14 @@ fun MapScreen(
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
                     modifier = Modifier.onGloballyPositioned {
-                        navBarHeightPx = it.size.height
+                        // Everything above the bar assumes a card floating 16dp over the system bar.
+                        // Flush on the bottom edge (portrait) the bar holds that space itself, so
+                        // it is taken back out here and the gaps above stay what they were.
+                        val inside = if (landscapeChrome) 0 else
+                            (androidx.core.view.ViewCompat.getRootWindowInsets(rootView)
+                                ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0) +
+                                (16 * rootView.resources.displayMetrics.density).toInt()
+                        navBarHeightPx = (it.size.height - inside).coerceAtLeast(1)
                         navBarTopPx = it.boundsInWindow().top
                     },
                 )
