@@ -851,7 +851,7 @@ fun NavControls(
 fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = false, content: @Composable () -> Unit) {
     androidx.compose.material3.OutlinedIconButton(
         onClick = onClick,
-        modifier = Modifier.size(60.dp),
+        modifier = Modifier.size(60.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
         border = BorderStroke(1.5.dp, Color.White.copy(alpha = if (filled) 0f else 0.5f)),
         colors = androidx.compose.material3.IconButtonDefaults.outlinedIconButtonColors(
             containerColor = if (filled) MaterialTheme.colorScheme.primary else Color.Transparent,
