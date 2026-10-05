@@ -262,7 +262,7 @@ internal fun lowDensityIconScale(density: Float): Float =
     if (density >= 1.75f) 1f else (density / 2.625f).coerceIn(0.4f, 1f)
 
 @Composable
-private fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
+internal fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
     val w = LocalConfiguration.current.screenWidthDp
     // 0.56 of the width: with the cutout's margin taken off, that is the 47% Google's panel covers.
     return (w * 0.56f).dp.coerceIn(SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX)
@@ -2392,7 +2392,7 @@ fun MapScreen(
         // user an explicit way out (its tap stops the replay and resumes live GPS). A DEMO drive
         // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
         // it (stopNav cancels the demo), so don't show the replay pill over the nav chrome.
-        if (state.replaying && !state.demoDriving) ReplayControls(state, vm)
+        MapFloaters(state, vm, sheetEdge.top)
 
         // The locate + parking buttons yield to the bottom surfaces that actually REACH them:
         // the route chooser and step list always (full width), and in PORTRAIT the place/results

@@ -36,7 +36,8 @@ object GoogleTransport {
     val imageHeaders = Interceptor { chain ->
         val r = chain.request()
         val h = r.url.host.lowercase()
-        val image = h.endsWith("googleusercontent.com") || h.endsWith("ggpht.com") || h.endsWith("gstatic.com")
+        val image = h.endsWith("googleusercontent.com") || h.endsWith("ggpht.com") || h.endsWith("gstatic.com") ||
+            h == "streetviewpixels-pa.googleapis.com" // the Street View preview on the map
         if (!image || r.header("Sec-Fetch-Dest") != null) return@Interceptor chain.proceed(r)
         val cal = app.vela.core.config.CalibrationStore.latest
         chain.proceed(
