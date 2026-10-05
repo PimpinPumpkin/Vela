@@ -688,6 +688,7 @@ fun NavSearchChips(
     onPick: (String) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    recents: List<app.vela.core.data.RecentQuery> = emptyList(),
 ) {
     val dark = isAppInDarkTheme()
     val amoled = isAppInAmoled()
@@ -765,6 +766,24 @@ fun NavSearchChips(
                                 }
                             }
                             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                    // Recent searches under the tiles, as on Google's page: a tap runs it along the route.
+                    if (recents.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.mapscreen_section_recent), style = MaterialTheme.typography.titleSmall,
+                            color = SheetPalette.dim(dark), modifier = Modifier.padding(top = 12.dp, start = 4.dp),
+                        )
+                        recents.take(6).forEach { r ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).dpadHighlight(RoundedCornerShape(10.dp))
+                                    .clickable { onPick(r.query) }.padding(horizontal = 4.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Sym.History, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(r.query, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }

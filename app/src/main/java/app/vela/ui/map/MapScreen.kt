@@ -2363,6 +2363,7 @@ fun MapScreen(
                     vm.searchAlongRoute(q)
                 },
                 onClose = { navSearchOpen = false; focusManager.clearFocus() },
+                recents = state.recents,
             )
         }
 
@@ -3586,25 +3587,26 @@ private fun ResultPlaceCard(
                     fontWeight = FontWeight.Bold,
                     color = SheetPalette.ink(dark),
                 )
-                RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
-                place.reviewCount?.let {
+                // One line, as on Google's cards: the number, one star, the count, then distance,
+                // price and kind, cut with an ellipsis when the card is narrow.
+                Icon(Sym.Star, contentDescription = null, tint = app.vela.ui.StarGold, modifier = Modifier.padding(horizontal = 2.dp).size(15.dp))
+                val rest = listOfNotNull(
+                    place.reviewCount?.let { "($it)" },
+                    place.distanceMeters?.let { formatDistance(it) },
+                    place.priceText,
+                    place.category,
+                ).joinToString(" · ")
+                if (rest.isNotEmpty()) {
                     Text(
-                        "($it)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SheetPalette.dim(dark),
-                    )
-                }
-                // Google puts the distance in the rating row ("4.2 ★★★★ (1,387) · 11 km").
-                place.distanceMeters?.let {
-                    Text(
-                        " · " + formatDistance(it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SheetPalette.dim(dark),
+                        rest, style = MaterialTheme.typography.bodyMedium, color = SheetPalette.dim(dark),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         }
-        val sub = listOfNotNull(
+        // An unrated row (an address, a place from the downloaded data) keeps its own line.
+        val sub = if (place.rating != null) "" else listOfNotNull(
+            place.distanceMeters?.let { formatDistance(it) },
             place.priceText,
             place.category,
         ).joinToString(" · ")
@@ -3729,8 +3731,7 @@ private fun ResultPlaceCard(
                 }
             }
         }
-                    // Google-style per-row action buttons: Directions (filled) + Call/Share
-                    // (outlined). They act on the ROW's place directly, without opening it.
+        // Per-row action buttons, all filled: they act on the ROW's place directly, without opening it.
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 14.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
