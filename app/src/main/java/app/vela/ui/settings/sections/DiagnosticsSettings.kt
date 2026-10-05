@@ -167,6 +167,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         // Multi-select for export. Off until asked for: the common case is one trip, and a
         // checkbox on every row all the time would be clutter for it.
         var selecting by remember { mutableStateOf(false) }
+        var batchDelete by remember { mutableStateOf<Set<String>?>(null) }
         var selected by remember { mutableStateOf(setOf<String>()) }
         var renaming by remember { mutableStateOf<app.vela.replay.TripMeta?>(null) }
         var batchShare by remember { mutableStateOf<List<app.vela.replay.TripMeta>?>(null) }
@@ -222,6 +223,12 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                         // comes off before the zip is built.
                         onClick = { batchShare = trips.filter { it.id in selected } },
                     ) { Text(stringResource(R.string.settings_trip_share_selected, selected.size)) }
+                    TextButton(
+                        modifier = Modifier.dpadHighlight(),
+                        enabled = selected.isNotEmpty(),
+                        // A drive cannot be recorded twice: ask first.
+                        onClick = { batchDelete = selected },
+                    ) { Text(stringResource(R.string.settings_trip_delete_selected, selected.size), color = if (selected.isNotEmpty()) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified) }
                     TextButton(
                         modifier = Modifier.dpadHighlight(),
                         onClick = { selecting = false; selected = emptySet() },
@@ -349,6 +356,20 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
 
         shareTrip?.let { meta -> TripShareDialog(meta, vm, context) { shareTrip = null } }
         batchShare?.let { metas -> TripBatchShareDialog(metas, vm, context, scope) { batchShare = null } }
+        batchDelete?.let { ids ->
+            app.vela.ui.VelaDialog(
+                onDismissRequest = { batchDelete = null },
+                title = stringResource(R.string.settings_trip_delete_selected, ids.size),
+                confirmText = stringResource(R.string.parking_history_delete),
+                dismissText = stringResource(android.R.string.cancel),
+                onConfirm = {
+                    ids.forEach { vm.deleteTrip(it) }
+                    batchDelete = null; selected = emptySet(); selecting = false
+                    reloadTrips()
+                },
+                onDismiss = { batchDelete = null },
+            ) { Text(stringResource(R.string.settings_trip_delete_selected_body)) }
+        }
         if (showTripConsent) {
             app.vela.ui.VelaDialog(
                 onDismissRequest = { showTripConsent = false },

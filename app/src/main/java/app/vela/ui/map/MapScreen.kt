@@ -2385,7 +2385,7 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = onRecenter,
                 shape = CircleShape,
-                containerColor = mapButtonColor(darkTheme), contentColor = mapButtonInk(Color(0xFF4285F4)),
+                containerColor = mapButtonColor(darkTheme), contentColor = mapButtonInk(darkTheme),
                 elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 10.dp),
                 modifier = Modifier
                     .dpadHighlight(CircleShape)
@@ -2394,7 +2394,7 @@ fun MapScreen(
                     .padding(16.dp)
                     .padding(bottom = chromeLift),
             ) {
-                Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                LocateGlyph(darkTheme)
             }
             // Parking button, its OWN control above the locate FAB. TAP with NO spot → save here
             // (the one-tap "I parked" path). TAP with a spot set (teal) → a small hub menu (Find my
@@ -2420,7 +2420,8 @@ fun MapScreen(
                     // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
                     // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
                     // carries state, like the Home/Work rows.
-                    contentColor = mapButtonInk(if (parkingSet) Color(0xFF4285F4) else MaterialTheme.colorScheme.onSurfaceVariant),
+                    contentColor = mapButtonInk(darkTheme, accent = if (parkingSet) Color(0xFF8AB4F8) else null),
+                    border = mapButtonRing(darkTheme),
                     shadowElevation = 6.dp,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -2622,7 +2623,7 @@ fun MapScreen(
                 FloatingActionButton(
                     onClick = onRecenter,
                     shape = CircleShape,
-                    containerColor = mapButtonColor(darkTheme), contentColor = mapButtonInk(Color(0xFF4285F4)),
+                    containerColor = mapButtonColor(darkTheme), contentColor = mapButtonInk(darkTheme),
                 elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 10.dp),
                     modifier = Modifier
                         .dpadHighlight(CircleShape)
@@ -2634,7 +2635,7 @@ fun MapScreen(
                             )
                         },
                 ) {
-                    Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                    LocateGlyph(darkTheme)
                 }
             }
 
@@ -3042,10 +3043,31 @@ private fun mapButtonColor(dark: Boolean) =
     if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.primaryContainer
     else if (dark) Color(0xFF1B1C1E) else Color.White
 
-/** The glyph on one of those buttons: [plain] normally, the container's own ink with wallpaper colors. */
+/** The glyph on one of those buttons: white on the dark button (a dark gray on the white one in
+ *  light theme), the container's own ink with wallpaper colors. [accent] is for a button that
+ *  carries state, like a saved parking spot. */
 @Composable
-private fun mapButtonInk(plain: Color) =
-    if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.onPrimaryContainer else plain
+private fun mapButtonInk(dark: Boolean, accent: Color? = null) =
+    if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.onPrimaryContainer
+    else accent ?: if (dark) Color.White else Color(0xFF3C4043)
+
+/** The locate button's face: the glyph inside the ring (drawn here, since the button's own
+ *  modifier chain ends in its position). */
+@Composable
+private fun LocateGlyph(dark: Boolean) {
+    val ring = mapButtonRing(dark)
+    Box(
+        Modifier.size(56.dp).then(if (ring != null) Modifier.border(ring, CircleShape) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) { Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location)) }
+}
+
+/** A ring round those buttons so they stand off the map: white on the dark button, gray on the
+ *  white one. None with wallpaper colors, where the fill does that job. */
+@Composable
+private fun mapButtonRing(dark: Boolean): BorderStroke? =
+    if (app.vela.ui.theme.wallpaperColorsInUse()) null
+    else BorderStroke(1.5.dp, if (dark) Color.White.copy(alpha = 0.85f) else Color(0xFFBDC1C6))
 
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12

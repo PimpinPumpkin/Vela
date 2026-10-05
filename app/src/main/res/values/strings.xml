@@ -400,6 +400,8 @@
     <string name="settings_trip_share_full">Share full trace</string>
     <string name="settings_trip_scrub_short">This drive is shorter than the trim distance, so there is no middle left to share. Try a smaller one.</string>
     <string name="settings_trip_delete">Delete trip</string>
+    <string name="settings_trip_delete_selected">Delete (%1$d)</string>
+    <string name="settings_trip_delete_selected_body">The selected recorded drives are removed from this phone. This cannot be undone.</string>
     <string name="settings_trip_rename">Rename</string>
     <string name="settings_trip_rename_title">Name this trip</string>
     <string name="settings_trip_rename_hint">Trip name</string>
