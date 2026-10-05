@@ -2183,11 +2183,6 @@ fun MapScreen(
                 onExpandedChange = { resultsExpanded = it },
                 onShownChange = { filteredResultIds = it },
                 minimizeTick = resultsPanTick,
-                moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
-                loadingMore = state.resultsLoadingMore,
-                moreBranches = state.resultsBranches,
-                mapLayers = mapLayersOf(state, vm),
-                onMore = vm::loadMoreResults,
                 sheetMenuAsk = sheetMenuAsk,
                 onMenuAsk = { sheetMenuAsk = it },
                 // Landscape: left side panel like the place sheet (see its modifier note).
@@ -3761,6 +3756,7 @@ private fun ResultsSheet(
                 moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
                 loadingMore = state.resultsLoadingMore,
                 moreBranches = state.resultsBranches,
+                mapLayers = mapLayersOf(state, vm),
                 onMore = vm::loadMoreResults,
                 onActionDirections = { p ->
                     focusManager.clearFocus()
