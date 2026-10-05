@@ -109,7 +109,8 @@ fun RouteTopCard(
             Column(Modifier.weight(1f)) {
                 EndpointRow(
                     text = originName,
-                    textColor = if (onEditOrigin != null) MaterialTheme.colorScheme.primary else ink,
+                    // Blue only for "Your location", as on Google's card; a named place reads in plain ink.
+                    textColor = if (originIsMe) MaterialTheme.colorScheme.primary else ink,
                     editable = onEditOrigin != null,
                     editLabel = stringResource(R.string.place_change_start),
                     onClick = onEditOrigin,
@@ -166,7 +167,7 @@ fun RouteTopCard(
                 }
                 EndpointRow(
                     text = destinationName,
-                    textColor = if (onEditDestination != null) MaterialTheme.colorScheme.primary else ink,
+                    textColor = ink,
                     bold = true,
                     editable = onEditDestination != null,
                     editLabel = stringResource(R.string.place_change_destination),
