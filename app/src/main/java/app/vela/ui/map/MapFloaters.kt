@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +68,10 @@ private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetT
         "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=$pano&cb_client=maps_sv.tactile.gps" +
             "&w=408&h=240&yaw=${place.svYawDeg ?: 0.0}&pitch=0&thumbfov=100"
     }
+    // No picture (no signal, or Google refused it): no box either. The Street View button on the
+    // card is still the way in.
+    var failed by remember(url) { mutableStateOf(false) }
+    if (failed) return
     val shape = RoundedCornerShape(12.dp)
     val panel = sidePanelWidth()
     Surface(
@@ -88,6 +94,7 @@ private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetT
                 model = url,
                 contentDescription = stringResource(R.string.place_street_view),
                 contentScale = ContentScale.Crop,
+                onError = { failed = true },
                 modifier = Modifier.clip(shape).background(Color(0xFF3C4043)),
             )
             Icon(

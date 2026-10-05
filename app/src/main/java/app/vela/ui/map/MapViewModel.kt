@@ -3197,7 +3197,8 @@ class MapViewModel @Inject constructor(
             // Offline: serve a previously viewed pano from disk instead of fetching.
             // A miss is the same no-coverage toast as a truly uncovered spot.
             val off = offlineNow()
-            val cachedMeta = if (off) {
+            // Disk work off the main thread: the nearest lookup reads every stored pano's metadata.
+            val cachedMeta = if (off) withContext(Dispatchers.IO) {
                 val dir = svCacheDir()
                 panoIdHint?.let { app.vela.core.data.StreetViewCache.loadMeta(dir, it) }
                     ?: nearLocation?.let { app.vela.core.data.StreetViewCache.nearest(dir, it) }
@@ -3232,7 +3233,7 @@ class MapViewModel @Inject constructor(
                     streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,
                     streetViewHistorical = false)
             }
-            val bmp = if (off) {
+            val bmp = if (off) withContext(Dispatchers.IO) {
                 cachedMeta?.let { m ->
                     app.vela.core.data.StreetViewCache.loadImage(svCacheDir(), m.panoId)?.let { bytes ->
                         runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
@@ -3260,7 +3261,7 @@ class MapViewModel @Inject constructor(
                 val dir = svCacheDir()
                 app.vela.core.data.StreetViewCache.saveMeta(dir, pano)
                 val out = java.io.ByteArrayOutputStream()
-                if (bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out))
+                if (!bmp.isRecycled && bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out))
                     app.vela.core.data.StreetViewCache.saveImage(dir, pano.panoId, out.toByteArray())
             }
         }
@@ -3291,9 +3292,9 @@ class MapViewModel @Inject constructor(
             // and keeping the base heading rotated the historical view. Fetch its metadata by id;
             // if that fails, the base pyramid is the best remaining guess.
             val hist = if (time.panoId == base.panoId) base
-            else if (offlineNow()) app.vela.core.data.StreetViewCache.loadMeta(svCacheDir(), time.panoId)
+            else if (offlineNow()) withContext(Dispatchers.IO) { app.vela.core.data.StreetViewCache.loadMeta(svCacheDir(), time.panoId) }
             else runCatching { dataSource.streetViewByPano(time.panoId) }.getOrNull()
-            val bmp = if (offlineNow()) {
+            val bmp = if (offlineNow()) withContext(Dispatchers.IO) {
                 hist?.let { h ->
                     app.vela.core.data.StreetViewCache.loadImage(svCacheDir(), h.panoId)?.let { bytes ->
                         runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
@@ -5118,7 +5119,13 @@ class MapViewModel @Inject constructor(
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
 
-    fun clearViewedPlaces() { viewModelScope.launch(Dispatchers.IO) { app.vela.core.data.PlaceCache.clear(placeCacheDir()) } }
+    /** Viewed places and viewed Street View both go: each says where the owner has been looking. */
+    fun clearViewedPlaces() {
+        viewModelScope.launch(Dispatchers.IO) {
+            app.vela.core.data.PlaceCache.clear(placeCacheDir())
+            app.vela.core.data.StreetViewCache.clear(svCacheDir())
+        }
+    }
 
     /** Saves the open place a few seconds after it stops changing: what was actually loaded for
      *  it and nothing more (no extra request is made so that there is something to store). */
@@ -7663,6 +7670,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             kotlinx.coroutines.withContext(Dispatchers.IO) {
                 runCatching { app.vela.core.data.PlaceCache.clear(placeCacheDir()) }
+                runCatching { app.vela.core.data.StreetViewCache.clear(svCacheDir()) }
                 runCatching { obfStore.installedIds().forEach { obfStore.delete(it) } }
                 runCatching { poiPackStore.installedIds().forEach { poiPackStore.delete(it) } }
                 runCatching { placesStore.installedIds().forEach { placesStore.delete(it) } }
