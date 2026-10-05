@@ -4267,8 +4267,15 @@ fun VelaMapView(
                     var frames = 0
                     var since = android.os.SystemClock.elapsedRealtime()
                     var zLo = 99.0; var zHi = 0.0; var b0 = Double.NaN; var b1 = Double.NaN
+                    // A count per second hides what the eye sees: 55 frames with three 100 ms holes
+                    // reads "55 fps" and looks like stutter. So the gaps are logged too.
+                    var lastFrame = 0L; var worst = 0L; var over33 = 0; var over50 = 0
                     mv.addOnDidFinishRenderingFrameListener { _, _, _ ->
                         frames++
+                        android.os.SystemClock.elapsedRealtime().let { t ->
+                            if (lastFrame != 0L) { val g = t - lastFrame; if (g > worst) worst = g; if (g > 33) over33++; if (g > 50) over50++ }
+                            lastFrame = t
+                        }
                         mapRef?.cameraPosition?.let { cp ->
                             zLo = minOf(zLo, cp.zoom); zHi = maxOf(zHi, cp.zoom)
                             if (b0.isNaN()) b0 = cp.bearing
@@ -4278,7 +4285,8 @@ fun VelaMapView(
                         if (now - since >= 1000) {
                             // Zoom range and bearing change in the second: a dip that lines up with a
                             // whole-level zoom crossing or a turn reads straight off the log.
-                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames) z=%.2f-%.2f brg %.0f>%.0f idle=%d".format(zLo, zHi, b0, b1, idleEvents[0]))
+                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames) z=%.2f-%.2f brg %.0f>%.0f idle=%d worst=%dms slow33=%d slow50=%d".format(zLo, zHi, b0, b1, idleEvents[0], worst, over33, over50))
+                            worst = 0; over33 = 0; over50 = 0
                             idleEvents[0] = 0
                             frames = 0
                             since = now
@@ -4293,6 +4301,7 @@ fun VelaMapView(
                     val hidden = mutableListOf<String>()
                     var lastSpec = ""
                     var lastCam = ""
+                    val spinRate = doubleArrayOf(0.0)
                     val poll = object : Runnable {
                         override fun run() {
                             val spec = runCatching {
@@ -4307,6 +4316,26 @@ fun VelaMapView(
                                 val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
                                 (m.invoke(null, "debug.vela.cam") as? String).orEmpty().trim()
                             }.getOrDefault("")
+                            // `debug.vela.spin <degrees per second>` turns the map steadily, the way a
+                            // finger does: rotation is what re-places every label, and adb cannot do it.
+                            val spin = runCatching {
+                                @Suppress("PrivateApi")
+                                val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
+                                (m.invoke(null, "debug.vela.spin") as? String).orEmpty().trim().toDoubleOrNull()
+                            }.getOrNull() ?: 0.0
+                            if (spin != spinRate[0]) {
+                                spinRate[0] = spin
+                                if (spin != 0.0) bisectHandler.post(object : Runnable {
+                                    var last = android.os.SystemClock.elapsedRealtime()
+                                    override fun run() {
+                                        if (spinRate[0] == 0.0) return
+                                        val now = android.os.SystemClock.elapsedRealtime()
+                                        runCatching { map.moveCamera(CameraUpdateFactory.bearingTo((map.cameraPosition.bearing + spinRate[0] * (now - last) / 1000.0).mod(360.0))) }
+                                        last = now
+                                        bisectHandler.postDelayed(this, 16)
+                                    }
+                                })
+                            }
                             if (cam != lastCam) {
                                 lastCam = cam
                                 val p = cam.split(',').mapNotNull { it.trim().toDoubleOrNull() }
