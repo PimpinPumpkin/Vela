@@ -37,6 +37,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +83,9 @@ import androidx.compose.foundation.BorderStroke
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.focusRequester
+
+/** True where step rows are drawn on the nav bar's near-black whatever the app theme. */
+val LocalStepsOnDark = staticCompositionLocalOf { false }
 
 /**
  * The full turn-by-turn step list — shown both while previewing a route and
@@ -137,7 +142,7 @@ fun StepsSheet(
     fun romanize(s: String): String =
         if (s.isEmpty() || roadLatin.isEmpty()) s
         else app.vela.core.voice.SpokenScript.forDisplay(s, uiLang, roadLatin)
-    val dark = isAppInDarkTheme()
+    val dark = isAppInDarkTheme() || header != null
     val amoled = isAppInAmoled()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
@@ -277,108 +282,111 @@ fun StepsSheet(
         elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(),
         colors = CardDefaults.cardColors(containerColor = if (header != null) NavBarColor else SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
-        // Fill the card to the screen bottom; pad content off the nav bar (the floating nav form
-        // gets its margins from the host, so only the list padding applies there).
-        Column(
-            if (header != null) (if (navBarFlush()) Modifier.navigationBarsPadding() else Modifier)
-            else Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
-        ) {
-            if (header != null) {
-                header(dismiss)
-            } else {
-                // Grab handle - signals the sheet drags like the others.
-                Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .size(width = 36.dp, height = 4.dp)
-                            .background(dim.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.steps_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
-                        Text(
-                            formatDuration(etaSeconds) + "  ·  " + formatDistance(distanceMeters) +
-                                if (hasLiveTraffic) "  ·  " + stringResource(R.string.steps_live_traffic) else "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
+        // The nav form sits on the bar's near-black in every theme, so its rows take the dark inks.
+        CompositionLocalProvider(LocalStepsOnDark provides (header != null)) {
+            // Fill the card to the screen bottom; pad content off the nav bar (the floating nav form
+            // gets its margins from the host, so only the list padding applies there).
+            Column(
+                if (header != null) (if (navBarFlush()) Modifier.navigationBarsPadding() else Modifier)
+                else Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
+            ) {
+                if (header != null) {
+                    header(dismiss)
+                } else {
+                    // Grab handle - signals the sheet drags like the others.
+                    Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            Modifier
+                                .size(width = 36.dp, height = 4.dp)
+                                .background(dim.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
                         )
                     }
-                    IconButton(onClick = dismiss) { Icon(Sym.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.steps_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
+                            Text(
+                                formatDuration(etaSeconds) + "  ·  " + formatDistance(distanceMeters) +
+                                    if (hasLiveTraffic) "  ·  " + stringResource(R.string.steps_live_traffic) else "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
+                            )
+                        }
+                        IconButton(onClick = dismiss) { Icon(Sym.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                    }
                 }
-            }
-            // D-pad-first (docs/dpad.md): land focus on the landing step row when the sheet opens
-            // (the current step while navigating, the first step in the preview), so it's the
-            // active surface (OK previews that step). No-op under touch.
-            val stepsAutoFocus = rememberDpadAutoFocus()
-            // The nav form's list WELL: the list at its natural height minus whatever is still
-            // closed (entering) or being pulled shut (drag / exit), clipped; read in the layout
-            // phase so the animation never recomposes the rows.
-            LazyColumn(
-                Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (navForm) Modifier
-                            .clipToBounds()
-                            .layout { measurable, constraints ->
-                                val p = measurable.measure(constraints)
-                                // How much of the list is the hidden tail spacer: the viewport past
-                                // the last real row, measured with the landing row at the top.
-                                val info = listState.layoutInfo
-                                val vis = info.visibleItemsInfo
-                                val lastReal = info.totalItemsCount - 2
-                                val landItem = vis.firstOrNull { it.index == landIndex }
-                                val lastItem = vis.firstOrNull { it.index == lastReal }
-                                val viewport = info.viewportEndOffset - info.viewportStartOffset
-                                val rowsAhead: Int? = when {
-                                    landItem != null && lastItem != null -> lastItem.offset + lastItem.size - landItem.offset
-                                    landItem != null && landItem.offset <= 0 -> Int.MAX_VALUE
-                                    else -> null
+                // D-pad-first (docs/dpad.md): land focus on the landing step row when the sheet opens
+                // (the current step while navigating, the first step in the preview), so it's the
+                // active surface (OK previews that step). No-op under touch.
+                val stepsAutoFocus = rememberDpadAutoFocus()
+                // The nav form's list WELL: the list at its natural height minus whatever is still
+                // closed (entering) or being pulled shut (drag / exit), clipped; read in the layout
+                // phase so the animation never recomposes the rows.
+                LazyColumn(
+                    Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (navForm) Modifier
+                                .clipToBounds()
+                                .layout { measurable, constraints ->
+                                    val p = measurable.measure(constraints)
+                                    // How much of the list is the hidden tail spacer: the viewport past
+                                    // the last real row, measured with the landing row at the top.
+                                    val info = listState.layoutInfo
+                                    val vis = info.visibleItemsInfo
+                                    val lastReal = info.totalItemsCount - 2
+                                    val landItem = vis.firstOrNull { it.index == landIndex }
+                                    val lastItem = vis.firstOrNull { it.index == lastReal }
+                                    val viewport = info.viewportEndOffset - info.viewportStartOffset
+                                    val rowsAhead: Int? = when {
+                                        landItem != null && lastItem != null -> lastItem.offset + lastItem.size - landItem.offset
+                                        landItem != null && landItem.offset <= 0 -> Int.MAX_VALUE
+                                        else -> null
+                                    }
+                                    if (rowsAhead != null) {
+                                        val t = (viewport - rowsAhead).coerceAtLeast(0)
+                                        if (t != tailPx) tailPx = t
+                                        hiddenPx[0] = t
+                                    }
+                                    val natural = p.height - hiddenPx[0].coerceIn(0, viewport)
+                                    if (natural != listNaturalPx) listNaturalPx = natural
+                                    val h = (natural - drag.value - enterPx.value).roundToInt().coerceIn(0, natural)
+                                    layout(p.width, h) { p.place(0, 0) }
                                 }
-                                if (rowsAhead != null) {
-                                    val t = (viewport - rowsAhead).coerceAtLeast(0)
-                                    if (t != tailPx) tailPx = t
-                                    hiddenPx[0] = t
-                                }
-                                val natural = p.height - hiddenPx[0].coerceIn(0, viewport)
-                                if (natural != listNaturalPx) listNaturalPx = natural
-                                val h = (natural - drag.value - enterPx.value).roundToInt().coerceIn(0, natural)
-                                layout(p.width, h) { p.place(0, 0) }
-                            }
-                            .padding(start = 20.dp, end = 8.dp, bottom = 8.dp)
-                        else Modifier,
-                    )
-                    .heightIn(max = maxListHeight ?: (LocalConfiguration.current.screenHeightDp * 0.5f).dp)
-                    .nestedScroll(dismissConn),
-                state = listState,
-            ) {
-                // Preview: stops row (if any), then every step from the top. Nav: the passed steps,
-                // then the stops row (it lists the stops still AHEAD, so it belongs at the boundary),
-                // then the current step and the rest; the landing index is the first item after the
-                // passed steps, so the list opens on the stops row / current step.
-                val firstAhead = cur ?: 0
-                fun LazyListScope.steps(range: IntRange) = items((range.last - range.first + 1).coerceAtLeast(0), key = { "s" + (range.first + it) }) { k ->
-                    val i = range.first + k
-                    val m = maneuvers[i]
-                    val passed = cur != null && i < cur
-                    legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name, passed = passed) }
-                    StepRow(
-                        m = m,
-                        active = i == currentStep,
-                        highlighted = i == previewIndex,
-                        passed = passed,
-                        romanize = ::romanize,
-                        destName = destName,
-                        destAddress = destAddress,
-                        onClick = { onStep(i) },
-                        modifier = if (i == firstAhead) Modifier.focusRequester(stepsAutoFocus) else Modifier,
-                    )
-                }
-                if (cur != null) steps(0 until cur)
-                if (stopsRow != null) item(key = "stops") { stopsRow() }
-                steps((cur ?: 0) until maneuvers.size)
-                if (navForm) item(key = "tail") {
-                    Spacer(Modifier.height(with(LocalDensity.current) { (if (tailPx < 0) capPx else tailPx).toDp() }))
+                                .padding(start = 20.dp, end = 8.dp, bottom = 8.dp)
+                            else Modifier,
+                        )
+                        .heightIn(max = maxListHeight ?: (LocalConfiguration.current.screenHeightDp * 0.5f).dp)
+                        .nestedScroll(dismissConn),
+                    state = listState,
+                ) {
+                    // Preview: stops row (if any), then every step from the top. Nav: the passed steps,
+                    // then the stops row (it lists the stops still AHEAD, so it belongs at the boundary),
+                    // then the current step and the rest; the landing index is the first item after the
+                    // passed steps, so the list opens on the stops row / current step.
+                    val firstAhead = cur ?: 0
+                    fun LazyListScope.steps(range: IntRange) = items((range.last - range.first + 1).coerceAtLeast(0), key = { "s" + (range.first + it) }) { k ->
+                        val i = range.first + k
+                        val m = maneuvers[i]
+                        val passed = cur != null && i < cur
+                        legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name, passed = passed) }
+                        StepRow(
+                            m = m,
+                            active = i == currentStep,
+                            highlighted = i == previewIndex,
+                            passed = passed,
+                            romanize = ::romanize,
+                            destName = destName,
+                            destAddress = destAddress,
+                            onClick = { onStep(i) },
+                            modifier = if (i == firstAhead) Modifier.focusRequester(stepsAutoFocus) else Modifier,
+                        )
+                    }
+                    if (cur != null) steps(0 until cur)
+                    if (stopsRow != null) item(key = "stops") { stopsRow() }
+                    steps((cur ?: 0) until maneuvers.size)
+                    if (navForm) item(key = "tail") {
+                        Spacer(Modifier.height(with(LocalDensity.current) { (if (tailPx < 0) capPx else tailPx).toDp() }))
+                    }
                 }
             }
         }
@@ -400,19 +408,21 @@ fun NavStepsPreview(
     stopsRow: (@Composable () -> Unit)? = null,
     maxRows: Int = 14,
 ) {
-    stopsRow?.invoke()
-    val from = currentStep.coerceIn(0, (maneuvers.size - 1).coerceAtLeast(0))
-    for (i in from until minOf(maneuvers.size, from + maxRows)) {
-        legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
-        StepRow(
-            m = maneuvers[i],
-            active = i == currentStep,
-            highlighted = false,
-            romanize = romanize,
-            destName = destName,
-            destAddress = destAddress,
-            onClick = null,
-        )
+    CompositionLocalProvider(LocalStepsOnDark provides true) {
+        stopsRow?.invoke()
+        val from = currentStep.coerceIn(0, (maneuvers.size - 1).coerceAtLeast(0))
+        for (i in from until minOf(maneuvers.size, from + maxRows)) {
+            legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
+            StepRow(
+                m = maneuvers[i],
+                active = i == currentStep,
+                highlighted = false,
+                romanize = romanize,
+                destName = destName,
+                destAddress = destAddress,
+                onClick = null,
+            )
+        }
     }
 }
 
@@ -428,7 +438,7 @@ fun NavStopsRow(
     // Issue #604: "Remove next" beside Edit, behind a confirm. Null hides it (no stops ahead).
     onRemoveNext: (() -> Unit)? = null,
 ) {
-    val dark = isAppInDarkTheme()
+    val dark = isAppInDarkTheme() || LocalStepsOnDark.current
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
     var confirmRemove by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -522,7 +532,7 @@ fun NavStopsRow(
  *  reads leg by leg. Same left gutter as [StepRow]. [passed] grays it with the passed step below it. */
 @Composable
 fun StopDividerRow(name: String, modifier: Modifier = Modifier, passed: Boolean = false) {
-    val dark = isAppInDarkTheme()
+    val dark = isAppInDarkTheme() || LocalStepsOnDark.current
     val dim = SheetPalette.dim(dark)
     val ink = if (passed) dim else SheetPalette.ink(dark)
     val accent = if (passed) dim else MaterialTheme.colorScheme.primary
@@ -570,7 +580,7 @@ fun StepRow(
     modifier: Modifier = Modifier,
     passed: Boolean = false,
 ) {
-    val dark = isAppInDarkTheme()
+    val dark = isAppInDarkTheme() || LocalStepsOnDark.current
     val dim = SheetPalette.dim(dark)
     // A passed step reads in the secondary ink everywhere the row would use the primary one.
     val ink = if (passed) dim else SheetPalette.ink(dark)

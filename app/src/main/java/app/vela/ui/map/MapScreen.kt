@@ -611,7 +611,9 @@ fun MapScreen(
     // minus the banner's measured bottom, the bar's margins and the header row (~110dp).
     val stepsListMax = with(LocalDensity.current) {
         val bannerBottom = if (navBannerBottomPx > 0) navBannerBottomPx.toDp() else 140.dp
-        (LocalConfiguration.current.screenHeightDp.dp - bannerBottom - 150.dp).coerceAtLeast(200.dp)
+        // A landscape phone has no 200 dp to give: there the floor let the list run up over the banner.
+        val cfg = LocalConfiguration.current
+        (cfg.screenHeightDp.dp - bannerBottom - 150.dp).coerceAtLeast(if (cfg.screenWidthDp > cfg.screenHeightDp) 64.dp else 200.dp)
     }
     val navBarClearance = with(LocalDensity.current) {
         // bar height + its 16dp bottom padding + a 16dp gap — reproduces the old 132dp at default font scale
@@ -1287,9 +1289,10 @@ fun MapScreen(
             val onRoad = navRoadLabel(state)
             // Composition reads only "do we have a position"; the value itself is read in layout.
             val havePuck = puckScreen.have.value
-            // Above the bar it gives way to the Re-center pill while the camera is away from the
-            // car (the pill takes that strip); under the arrow it travels with the car and stays.
-            val yields = roadLabelMode == app.vela.ui.RoadLabel.BAR && (state.navCameraDetached || navZoomOverride)
+            // It gives way while the camera is away from the car: above the bar the Re-center
+            // pill takes that strip, and under the arrow the reported car position stops moving
+            // with the map, so the label sat where the car had been.
+            val yields = state.navCameraDetached || navZoomOverride
             if (onRoad != null && !yields && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
                 val uiLang = app.vela.ui.AppLocale.effective().language
                 val shownRoad =
