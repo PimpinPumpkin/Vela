@@ -5087,7 +5087,7 @@ Gotchas:
   centers every child on the track by its window fraction (`RouteBarSpan`). Labels are `requiredWidth`
   wider than the strip so "768.8 mi" does not clip. The road-name pill in BAR mode caps its width at
   screenWidth - 176 dp so it can never reach the speed-limit sign or the FAB column.
-  **Road label placement (`RoadLabel`, pref `road_label`: bar|puck|off, default bar) and
+  **Road label placement (`RoadLabel`, pref `road_label`: bar|puck|off; the default is puck, under the arrow, since 2026-10-05) and
   `PreferButtons` (pref `prefer_buttons`, default off; `showListButton = PreferButtons.on || dpadFirst`)
   live in `app/ui/NavChrome.kt` (2026-09-04). The bar's chevron handle is a focusable clickable Box
   with `dpadHighlight`, so it is a key target on its own; the list button is the belt-and-braces one.
