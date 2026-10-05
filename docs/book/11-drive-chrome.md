@@ -445,3 +445,7 @@ The road name sits above the bar, inside it, under the arrow or nowhere ("Curren
   hidden entirely when the two are too close to mean anything.
 - **Walking and cycling lines have no moving cut**, because a dashed line cannot carry a
   gradient.
+
+### Tilt while browsing with location-follow
+
+Two-finger tilt pauses browsing camera writes without dropping location-follow. The chosen angle remains after release, including when the camera switches between walking and driving behavior. Re-center or ending follow clears the override, restoring automatic tilt: 0 degrees while walking and 55 degrees in free-drive mode. Pending locate zoom easing and camera transitions yield to the gesture.

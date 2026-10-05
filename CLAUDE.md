@@ -7292,3 +7292,5 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
 
 Vela Maps (`app.vela`). "Vela" was clearance-checked and is free of maps-app and
 trademark collisions.
+
+- **Browsing tilt ownership:** gate every free-drive camera write on `!shoving[0]`, just like scaling. Preserve the gesture tilt in `browseUserTilt` until Re-center or the follow session ends, and use that target in both attitude easing and idle-settling checks. Pausing only during the gesture still flattens the map on release.

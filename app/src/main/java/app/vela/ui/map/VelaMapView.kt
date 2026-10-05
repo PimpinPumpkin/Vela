@@ -982,6 +982,7 @@ fun VelaMapView(
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
     val shoving = remember { booleanArrayOf(false) } // two-finger tilt gesture in flight - ticker steps aside
     val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
+    val browseUserTilt = remember { doubleArrayOf(Double.NaN) } // retained until Re-center or follow ends
     val browseZoomGoal = remember { doubleArrayOf(Double.NaN) } // locate-tap standard zoom, eased by the browse ticker
     val browseFlying = remember { booleanArrayOf(false) } // cold-engage flight in progress - ticker parks until it lands
     // Has this follow SESSION already engaged? The cold-engage fly-to-street-zoom below must run
@@ -2498,6 +2499,7 @@ fun VelaMapView(
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
             browseZoomGoal[0] = Double.NaN
+            browseUserTilt[0] = Double.NaN
             browseEst.reset()
             browseEngaged[0] = false
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
@@ -2547,12 +2549,12 @@ fun VelaMapView(
             browseEst.step(dt.toDouble(), android.os.SystemClock.elapsedRealtime())
             val tgtLat = if (browseEst.lat.isNaN()) loc.lat else browseEst.lat
             val tgtLng = if (browseEst.lng.isNaN()) loc.lng else browseEst.lng
-            // Ease the camera toward the (reckoned) target (skipped while pinching - the fingers win).
+            // Ease the camera toward the (reckoned) target (paused during pinch and tilt gestures).
             val cam = mapRef
             var camLat = tgtLat; var camLng = tgtLng
             var lookLat = tgtLat; var lookLng = tgtLng // camera aim point (ahead of the puck while driving)
             var attSettling = false // true while bearing/tilt are still easing (to course-up or north-up)
-            if (cam != null && !scaling[0] && !browseFlying[0]) {
+            if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
                     // First follow-engagement. If the camera is zoomed OUT past street level - a cold
@@ -2614,6 +2616,8 @@ fun VelaMapView(
                 // out to be about the puck moving SIDEWAYS, and course-up is what Google does).
                 browseDrive[0] += (browseFix[3] - browseDrive[0]) * (1.0 - kotlin.math.exp(-dt / 1.0))
                 if (browseDrive[1] < 0.5 && browseDrive[0] > 2.5 && !browseFix[4].isNaN()) browseDrive[1] = 1.0
+                val tiltGoal = if (!browseUserTilt[0].isNaN()) browseUserTilt[0]
+                    else if (browseDrive[1] > 0.5) 55.0 else 0.0
                 if (browseDrive[1] > 0.5) {
                     // Heading-up, nav-style: ease the live camera toward the course (updated only
                     // while the course is trustworthy - above walking speed), tilt toward nav's 55,
@@ -2635,7 +2639,7 @@ fun VelaMapView(
                         (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
                     val kBrg = (1f - kotlin.math.exp(-dt / brgTau)).toDouble()
                     browseAtt[0] = (cp.bearing + db * kBrg + 360.0) % 360.0
-                    browseAtt[1] = cp.tilt + (55.0 - cp.tilt) * k
+                    browseAtt[1] = cp.tilt + (tiltGoal - cp.tilt) * k
                     val kLook = (1f - kotlin.math.exp(-dt / FREE_LOOKAHEAD_TAU_S)).toDouble()
                     browseDrive[3] += ((browseDrive[0] * 5.0).coerceAtMost(250.0) - browseDrive[3]) * kLook
                     val lr = Math.toRadians(crs)
@@ -2646,10 +2650,10 @@ fun VelaMapView(
                     // so a car parked after a drive with no route kept the loop (and the map) at
                     // 60 fps for as long as the app stayed open.
                     val lookGoal = (browseDrive[0] * 5.0).coerceAtMost(250.0)
-                    attSettling = kotlin.math.abs(db) > 0.15 || kotlin.math.abs(55.0 - cp.tilt) > 0.15 ||
+                    attSettling = kotlin.math.abs(db) > 0.15 || kotlin.math.abs(tiltGoal - cp.tilt) > 0.15 ||
                         kotlin.math.abs(lookGoal - browseDrive[3]) > 0.3
                 } else {
-                    // NORTH-UP, FLAT (walking/slow browse) - enforced against the LIVE camera every
+                    // North-up with automatic flat tilt or the user-selected tilt, against the live camera every
                     // frame, not a one-shot shadow: the first cut copied bearing/tilt once when
                     // follow engaged and eased that copy, so any rotation arriving from OUTSIDE the
                     // ticker afterwards (a camera animation, a restored rotated camera - anything
@@ -2659,9 +2663,9 @@ fun VelaMapView(
                     // shows while it settles and fades at north. A manual rotate is a gesture,
                     // which drops follow, so fingers still win.
                     val realBrg = ((cp.bearing + 540.0) % 360.0) - 180.0 // signed, eases to 0
-                    attSettling = kotlin.math.abs(realBrg) > 0.15 || cp.tilt > 0.15
+                    attSettling = kotlin.math.abs(realBrg) > 0.15 || kotlin.math.abs(tiltGoal - cp.tilt) > 0.15
                     browseAtt[0] = realBrg * (1.0 - k)
-                    browseAtt[1] = cp.tilt * (1.0 - k)
+                    browseAtt[1] = cp.tilt + (tiltGoal - cp.tilt) * k
                 }
             } else {
                 browseCam[0] = Double.NaN // released (pinch) → re-seed from the live camera on re-attach
@@ -2676,7 +2680,7 @@ fun VelaMapView(
             // The locate tap's standard zoom rides the ticker (an animateCamera would be canceled
             // by the ticker's own writes a frame later): ease toward the goal, retire it on arrival.
             var zoomEase = Double.NaN
-            if (cam != null && !scaling[0] && !browseFlying[0] && !browseZoomGoal[0].isNaN()) {
+            if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0] && !browseZoomGoal[0].isNaN()) {
                 val z = cam.cameraPosition.zoom
                 if (kotlin.math.abs(browseZoomGoal[0] - z) < 0.02) browseZoomGoal[0] = Double.NaN
                 else zoomEase = z + (browseZoomGoal[0] - z) * (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
@@ -2688,9 +2692,9 @@ fun VelaMapView(
                 // catch up (the visible hop). At the eased position the dot stays centered and glides with
                 // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
                 // while pinching, when the camera isn't easing.)
-                val puckAt = if (cam != null && !scaling[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
+                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
-                if (cam != null && !scaling[0] && !browseFlying[0]) {
+                if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0]) {
                     if (attSettling || !zoomEase.isNaN() || browseDrive[1] > 0.5) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
@@ -4002,17 +4006,29 @@ fun VelaMapView(
                 // makes the ticker step aside like a pinch, and the resulting tilt sticks as an
                 // override the same way a pinch zoom does. Cleared when nav ends.
                 map.addOnShoveListener(object : MapLibreMap.OnShoveListener {
-                    override fun onShoveBegin(detector: ShoveGestureDetector) { shoving[0] = true }
+                    override fun onShoveBegin(detector: ShoveGestureDetector) {
+                        shoving[0] = true
+                        if (!navModeHolder.value) {
+                            browseZoomGoal[0] = Double.NaN
+                            // Cancel an owned locate flight before handing the camera to the fingers.
+                            map.cancelTransitions()
+                            browseUserTilt[0] = map.cameraPosition.tilt
+                        }
+                    }
                     override fun onShove(detector: ShoveGestureDetector) {
                         if (navModeHolder.value) {
                             navUserTilt[0] = map.cameraPosition.tilt
                             zoomOverride.value(true)
+                        } else {
+                            browseUserTilt[0] = map.cameraPosition.tilt
                         }
                     }
                     override fun onShoveEnd(detector: ShoveGestureDetector) {
                         if (navModeHolder.value) {
                             navUserTilt[0] = map.cameraPosition.tilt
                             zoomOverride.value(true)
+                        } else {
+                            browseUserTilt[0] = map.cameraPosition.tilt
                         }
                         shoving[0] = false
                     }
@@ -4852,6 +4868,7 @@ fun VelaMapView(
             // route/markers would otherwise hold the camera. Force a move to the user, once per tap.
             recenterTick != lastRecenterTick -> {
                 lastRecenterTick = recenterTick
+                browseUserTilt[0] = Double.NaN
                 val t = myLocation ?: cameraTarget
                 if (t != null) {
                     lastCameraTarget = t

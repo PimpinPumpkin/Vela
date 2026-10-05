@@ -4312,3 +4312,7 @@ features this document describes only by rule. `ROADMAP.md` holds open work and 
 "not going to happen" list. `docs/book/` explains subsystems for a reader who wants to
 understand a behavior rather than rebuild it. `CLAUDE.md` carries the working rules for
 contributors and assistants.
+
+### Browsing follow tilt ownership
+
+A two-finger shove pauses every browsing-follow camera write, including locate zoom easing, without disabling location-follow. The gesture clears the pending locate zoom and cancels camera transitions. Its live and final tilt become a per-follow override for both walking and driving. Re-center, leaving follow, or entering navigation clears that override; automatic tilt is 0 degrees while walking and 55 degrees in free-drive mode. Settling checks compare against the active tilt target so a retained tilt does not keep the camera loop busy. Navigation retains its existing independent tilt override.

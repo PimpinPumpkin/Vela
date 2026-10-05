@@ -2907,3 +2907,5 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   in-memory copy of the address-bearing contacts, so it is instant and works offline (the address
   itself geocodes from a downloaded region when there is no signal); only the address string is
   ever sent to a geocoder, never the name or the list.
+
+- ✅ **Two-finger tilt while following:** browsing follow pauses camera writes during a tilt gesture and retains the selected angle afterward. Re-center restores automatic tilt.

@@ -354,3 +354,5 @@ World Imagery, with Google imagery where Esri has none at close zoom.
 Vela is Free Software: you can use, study, share, and improve it at your will. You may use, modify, and redistribute this project only if your modifications remain open-source under the same license.
 
 The app bundles the Google Sans Flex font, copyright The Google Sans Flex Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt). Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.
+
+Browsing follow respects two-finger tilt: camera updates pause during the gesture, the chosen tilt stays while following, and Re-center restores automatic tilt.
