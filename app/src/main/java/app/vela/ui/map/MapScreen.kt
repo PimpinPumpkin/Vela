@@ -1707,30 +1707,10 @@ fun MapScreen(
         // Re-center pill takes the speed box's corner until the camera is back.
         val navAway = state.navigating && !state.showSteps && !state.editingStops && state.results.isEmpty() &&
             (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride)
-        if (navAway) app.vela.ui.nav.NavRecenterPill(
-            onClick = { vm.recenterNav(); navRecenterTick++ },
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
-                .padding(start = if (landscapeChrome) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp, bottom = if (landscapeChrome) 16.dp else navBarClearance),
+        NavCorner(
+            state, navAway, movingFree, postedLimitKmh, landscapeChrome, sidePanelWidthDp, navBarClearance, chromeLift,
+            navBannerBottomPx, windowHeightPx, onRecenter = { vm.recenterNav(); navRecenterTick++ },
         )
-        if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
-            SpeedWidget(
-                speedMps = state.mySpeed,
-                limitKmh = postedLimitKmh,
-                imperial = Units.imperial.value,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    // Landscape nav: lined up with the column's left edge, past the camera cutout.
-                    .then(if (state.navigating && landscapeChrome) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start)) else Modifier)
-                    .navigationBarsPadding()
-                    // During nav the box clears the ETA bar; free-driving there is no bar, so it
-                    // sits low in the corner, level with the locate FAB (user 2026-07-14). The
-                    // scale bar yields the spot while the box is there (below).
-                    .padding(
-                        start = 16.dp,
-                        bottom = if (state.navigating) navBarClearance else 16.dp + chromeLift,
-                    ),
-            )
-        }
 
         if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen && !resultsShown) {
             ElevatedButton(
@@ -3014,6 +2994,54 @@ private val NAV_LAND_EDGE_DP = 8.dp
 private val NAV_LAND_GAP_DP = 28.dp
 private val NAV_LAND_ROAD_START_DP = 190.dp
 
+/** The drive's lower-left corner: the speed box, or the Re-center pill while the camera is away
+ *  from the car. One call from MapScreen, which has no room for the two. */
+@Composable
+private fun BoxScope.NavCorner(
+    state: MapUiState,
+    navAway: Boolean,
+    movingFree: Boolean,
+    postedLimitKmh: Double?,
+    landscapeChrome: Boolean,
+    sidePanelWidthDp: androidx.compose.ui.unit.Dp,
+    navBarClearance: androidx.compose.ui.unit.Dp,
+    chromeLift: androidx.compose.ui.unit.Dp,
+    navBannerBottomPx: Int,
+    windowHeightPx: Int,
+    onRecenter: () -> Unit,
+) {
+    if (navAway) app.vela.ui.nav.NavRecenterPill(
+        onClick = onRecenter,
+        modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
+            .padding(start = if (landscapeChrome) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp, bottom = if (landscapeChrome) 16.dp else navBarClearance),
+    )
+    // Landscape: a tall turn card (lanes plus a Then tab) reaches down to where the speed box
+    // sits above the bar; the box then moves out beside the column.
+    val speedBesideColumn = state.navigating && landscapeChrome && with(LocalDensity.current) {
+        navBannerBottomPx > windowHeightPx - (navBarClearance + 84.dp).toPx()
+    }
+    if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
+        SpeedWidget(
+            speedMps = state.mySpeed,
+            limitKmh = postedLimitKmh,
+            imperial = Units.imperial.value,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                // Landscape nav: lined up with the column's left edge, past the camera cutout.
+                .then(if (state.navigating && landscapeChrome) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start)) else Modifier)
+                .navigationBarsPadding()
+                // During nav the box clears the ETA bar; free-driving there is no bar, so it
+                // sits low in the corner, level with the locate FAB (user 2026-07-14). The
+                // scale bar yields the spot while the box is there.
+                .padding(
+                    start = if (speedBesideColumn) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp,
+                    // Beside the column it sits above the line the road name under the car is on.
+                    bottom = if (speedBesideColumn) 92.dp else if (state.navigating) navBarClearance else 16.dp + chromeLift,
+                ),
+        )
+    }
+}
+
 /** The buttons that float over the browse map (locate, parking, layers): one surface for all. */
 private fun mapButtonColor(dark: Boolean) = if (dark) Color(0xFF1B1C1E) else Color.White
 
@@ -3601,8 +3629,9 @@ private fun ResultPlaceCard(
         }
         // Full address (city/state/zip) to disambiguate similar names
         // and identical-looking residential addresses. A rated business whose name is the
-        // only one of its kind in the list goes without, as on Google's cards.
-        place.address?.takeIf { showAddress }?.let { addr ->
+        // only one of its kind in the list goes without, as on Google's cards, but only when
+        // the card has its photos to tell it by (they can be turned off).
+        place.address?.takeIf { showAddress || gallery.isEmpty() }?.let { addr ->
             Text(
                 addr,
                 style = MaterialTheme.typography.bodyMedium,

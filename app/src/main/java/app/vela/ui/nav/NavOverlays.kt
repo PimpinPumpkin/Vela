@@ -1,5 +1,6 @@
 package app.vela.ui.nav
 
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -176,6 +177,10 @@ fun ManeuverBanner(
     // The "Then" tab hangs off the card's lower left: the card's corner is square where they meet.
     val thenShown = nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
         (previewing || distanceMeters <= laneShowM)
+    // A long next step can make the tab as wide as the card: then the right corner squares off too.
+    var cardW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var tabW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val tabSpans = thenShown && tabW > 0 && tabW >= cardW - 2
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     // `pointerInput(Unit)` builds the gesture detector ONCE, capturing these lambdas
@@ -194,6 +199,7 @@ fun ManeuverBanner(
     Card(
         Modifier
             .fillMaxWidth()
+            .onSizeChanged { cardW = it.width }
             .graphicsLayer { translationX = offsetX.value }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -235,7 +241,7 @@ fun ManeuverBanner(
             .then(
                 if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier.focusable(),
             ),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 24.dp, bottomStart = if (thenShown) 0.dp else 24.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = if (tabSpans) 0.dp else 24.dp, bottomStart = if (thenShown) 0.dp else 24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
@@ -372,8 +378,8 @@ fun ManeuverBanner(
             // Google's "Then" tab: hangs off the card's lower left in the card's own color,
             // the word and the arrow only.
             Card(
-                // A tab, not a second card: never the full width, whatever the next step's length.
-                Modifier.fillMaxWidth(0.86f).wrapContentWidth(Alignment.Start),
+                // As wide as its text needs, up to the whole card.
+                Modifier.fillMaxWidth().wrapContentWidth(Alignment.Start).onSizeChanged { tabW = it.width },
                 shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
             ) {
