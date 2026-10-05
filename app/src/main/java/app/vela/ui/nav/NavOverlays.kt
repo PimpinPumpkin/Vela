@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -355,7 +356,8 @@ fun ManeuverBanner(
             // Google's "Then" tab: hangs off the card's lower left in the card's own color,
             // the word and the arrow only.
             Card(
-                Modifier.padding(start = 0.dp).offset(y = (-10).dp),
+                // A tab, not a second card: never the full width, whatever the next step's length.
+                Modifier.fillMaxWidth(0.86f).wrapContentWidth(Alignment.Start).offset(y = (-10).dp),
                 shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
             ) {
@@ -852,8 +854,9 @@ fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = fa
         onClick = onClick,
         modifier = Modifier.size(54.dp),
         colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-            containerColor = when { end -> scheme.errorContainer; filled -> scheme.primary; else -> scheme.secondaryContainer },
-            contentColor = when { end -> scheme.onErrorContainer; filled -> scheme.onPrimary; else -> scheme.onSecondaryContainer },
+            // The bar is black in every theme, so its buttons wear the dark theme's colors always.
+            containerColor = when { end -> Color(0xFF93000A); filled -> scheme.primary; else -> Color(0xFF303134) },
+            contentColor = when { end -> Color(0xFFFFDAD6); filled -> scheme.onPrimary; else -> Color(0xFFE8EAED) },
         ),
     ) { content() }
 }

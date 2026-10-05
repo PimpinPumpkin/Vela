@@ -1303,16 +1303,18 @@ fun MapScreen(
                     shadowElevation = 3.dp,
                     modifier = if (abovePill) Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                        .then(if (landscapeChrome) Modifier.padding(start = (sidePanelWidthDp - 260.dp) / 2 + 16.dp) else Modifier)
+                        // Landscape: beside the left column, past the speed box, on the bottom edge.
+                        // The column is too short to hold the banner, both pills and the bar.
+                        .then(if (landscapeChrome) Modifier.padding(start = sidePanelWidthDp + NAV_LAND_ROAD_START_DP) else Modifier)
                         .navigationBarsPadding()
-                        .padding(bottom = with(LocalDensity.current) { navBarHeightPx.toDp() } + 16.dp + 10.dp)
+                        .padding(bottom = if (landscapeChrome) 20.dp else with(LocalDensity.current) { navBarHeightPx.toDp() } + 16.dp + 10.dp)
                         // Never reaches the speed readout (left) or the FAB column (right). The
                         // room is MEASURED: the readout is wider with a limit sign in it than
                         // the fixed 88 dp a side this used to allow, and a long name ran under
                         // it (user 2026-10-02). Centered on the screen while that fits, else
                         // centered in the gap.
                         .then(
-                            if (landscapeChrome) Modifier.widthIn(max = (LocalConfiguration.current.screenWidthDp - 176).coerceAtLeast(120).dp)
+                            if (landscapeChrome) Modifier.widthIn(max = 260.dp)
                             else Modifier.layout { measurable, constraints ->
                                 val gap = 8.dp.roundToPx()
                                 val left = (if (speedBoxRightPx.intValue > 0) speedBoxRightPx.intValue else 0) + gap
@@ -1708,7 +1710,8 @@ fun MapScreen(
             (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride)
         if (navAway) app.vela.ui.nav.NavRecenterPill(
             onClick = { vm.recenterNav(); navRecenterTick++ },
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 16.dp, bottom = navBarClearance),
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
+                .padding(start = if (landscapeChrome) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp, bottom = if (landscapeChrome) 16.dp else navBarClearance),
         )
         if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
             SpeedWidget(
@@ -1721,7 +1724,10 @@ fun MapScreen(
                     // During nav the box clears the ETA bar; free-driving there is no bar, so it
                     // sits low in the corner, level with the locate FAB (user 2026-07-14). The
                     // scale bar yields the spot while the box is there (below).
-                    .padding(start = 16.dp, bottom = if (state.navigating) navBarClearance else 16.dp + chromeLift),
+                    .padding(
+                        start = if (state.navigating && landscapeChrome) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp,
+                        bottom = if (state.navigating) (if (landscapeChrome) 16.dp else navBarClearance) else 16.dp + chromeLift,
+                    ),
             )
         }
 
@@ -2973,6 +2979,11 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
 private fun Modifier.navBarHost(landscape: Boolean): Modifier =
     if (landscape) this.navigationBarsPadding().padding(16.dp) else this
 
+/** Landscape nav: the speed box (or Re-center) sits this far right of the left column, and the
+ *  current-road pill starts past it. */
+private val NAV_LAND_GAP_DP = 28.dp
+private val NAV_LAND_ROAD_START_DP = 190.dp
+
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12
 
@@ -3809,7 +3820,8 @@ private fun ResultActionButton(
                 .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val ink = androidx.compose.ui.graphics.Color(0xFFA8C7FA)
+            // Pale blue on the dark sheet, the full accent on white.
+            val ink = if (isAppInDarkTheme()) androidx.compose.ui.graphics.Color(0xFFA8C7FA) else MaterialTheme.colorScheme.primary
             Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text(label, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)

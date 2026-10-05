@@ -1033,8 +1033,9 @@ fun PlaceSheet(
                 // Google colors the status word (Open/Closed) and keeps the time
                 // in the normal ink color: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
+                val statusInk = app.vela.ui.themedStatusColor(status, demoStatus?.second ?: place.openNow)
                 val annotated = buildAnnotatedString {
-                    withStyle(SpanStyle(color = placeStatusColor(status, demoStatus?.second ?: place.openNow), fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(color = statusInk, fontWeight = FontWeight.Bold)) {
                         append(parts[0])
                     }
                     if (parts.size > 1) {
@@ -4563,9 +4564,10 @@ private fun DepartmentsSection(departments: List<app.vela.core.model.Department>
                         // Same treatment as the headline status: the Open/Closed word colored,
                         // the time detail in the muted ink.
                         val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
+                        val depInk = app.vela.ui.themedStatusColor(status, dep.openNow)
                         Text(
                             buildAnnotatedString {
-                                withStyle(SpanStyle(color = placeStatusColor(status, dep.openNow), fontWeight = FontWeight.Medium)) {
+                                withStyle(SpanStyle(color = depInk, fontWeight = FontWeight.Medium)) {
                                     append(parts[0])
                                 }
                                 if (parts.size > 1) withStyle(SpanStyle(color = dim)) { append(" · ${parts[1]}") }
