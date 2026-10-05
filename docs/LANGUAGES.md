@@ -19,6 +19,7 @@ the canonical list. Update it when a language lands or gains a layer.
 | Swedish | `sv` | ✅ | ✅ | ✅ | ✅ |
 | Ukrainian | `uk` | ✅ | ✅ | ✅ | ✅ |
 | Hungarian | `hu` | ✅ (contributed by Zsolt Laszlo Kaiser, 2026-09-13) | ✅ | ✅ (Anna) | ✅ |
+| Estonian | `et` | 🚧 in progress on Weblate (started by Priit Jõerüüt, 2026-10-05; untranslated strings show in English) | ❌ English | ❌ system TTS* | ✅ |
 | Chinese (Simplified) | `zh` | ✅ | ✅ | ✅ (Mandarin voice) | ✅ |
 | Chinese (Traditional) | `zh-TW` | ✅ | ✅ | ✅ (shares the Mandarin voice) | ✅ |
 | Japanese | `ja` | ✅ | ✅ | ❌ system TTS* | ✅ |
