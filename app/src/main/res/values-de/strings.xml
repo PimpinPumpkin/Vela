@@ -389,7 +389,7 @@
     <string name="settings_spoken_directions">Sprachansagen</string>
     <string name="mapvm_voice_lang_missing">Sprachansagen brauchen eine Stimme für %1$s, im Menü Einstellungen → Stimme hinzufügen</string>
     <string name="mapvm_no_track_to_replay">Diese Fahrt hat keine Spur zur Wiedergabe</string>
-    <string name="mapvm_replaying">%1$s wird wiedergegeben (3×) …</string>
+    <string name="mapvm_replaying">%1$s wird wiedergegeben …</string>
     <string name="mapvm_export_saved_subject">Vela gespeicherte Orte (%1$d)</string>
     <string name="mapvm_export_saved_chooser">Gespeicherte Orte exportieren</string>
     <string name="mapvm_export_trip_subject">Vela-Fahrt: %1$s (%2$d Punkte)</string>

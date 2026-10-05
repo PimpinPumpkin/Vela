@@ -449,7 +449,7 @@
     <string name="mapvm_resume_waiting_gps">GPS の受信を待ってナビを再開します…</string>
     <string name="mapvm_resume_failed">ナビを再開できませんでした</string>
     <string name="mapvm_no_track_to_replay">この移動記録にはリプレイできる軌跡がありません</string>
-    <string name="mapvm_replaying">%1$s をリプレイ中（3×）…</string>
+    <string name="mapvm_replaying">%1$s をリプレイ中…</string>
     <!-- format -->
     <string name="mapvm_export_saved_subject">Vela の保存済みの場所（%1$d 件）</string>
     <!-- format -->

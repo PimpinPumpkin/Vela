@@ -132,10 +132,16 @@ class LocationProvider @Inject constructor(
     /** Replay a recorded trip as a synthetic fix stream — same shape as [updates], so
      *  the nav loop, camera and dot run exactly as if driving. Gaps between fixes are
      *  honored (divided by [speedup], capped at 2 s so a long stop doesn't stall). */
-    fun replay(fixes: List<ReplayFix>, speedup: Float = 1f): Flow<Location> = flow {
+    fun replay(fixes: List<ReplayFix>, speedup: Float = 1f): Flow<Location> = replay(fixes, { speedup }, 0)
+
+    /** A replay whose speed can change while it runs ([speed] is read before every fix; 0 = paused)
+     *  and that can start partway in: fixes before [startAt] are emitted with no wait, so the
+     *  consumer runs through them to arrive at that moment in the right state. */
+    fun replay(fixes: List<ReplayFix>, speed: () -> Float, startAt: Int): Flow<Location> = flow {
         var prevT: Long? = null
-        for (fix in fixes) {
-            val gap = prevT?.let { ((fix.t - it) / speedup).toLong().coerceIn(0L, 2_000L) } ?: 0L
+        for ((i, fix) in fixes.withIndex()) {
+            while (i >= startAt && speed() <= 0f) delay(100)
+            val gap = if (i < startAt) 0L else prevT?.let { ((fix.t - it) / speed().coerceAtLeast(0.1f)).toLong().coerceIn(0L, 2_000L) } ?: 0L
             if (gap > 0) delay(gap)
             prevT = fix.t
             emit(
@@ -143,7 +149,7 @@ class LocationProvider @Inject constructor(
                     latitude = fix.lat
                     longitude = fix.lng
                     bearing = fix.bearing
-                    speed = fix.speed
+                    this.speed = fix.speed
                     accuracy = 5f
                     time = fix.t // recorded fix time, so consumers can compute the real inter-fix dt
                 },

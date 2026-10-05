@@ -759,7 +759,9 @@
     <string name="mapvm_resume_waiting_gps">Waiting for GPS to resume navigation…</string>
     <string name="mapvm_resume_failed">Couldn\'t resume navigation</string>
     <string name="mapvm_no_track_to_replay">That trip has no track to replay</string>
-    <string name="mapvm_replaying">Replaying %1$s (3×)…</string> <!-- format -->
+    <string name="mapvm_replaying">Replaying %1$s…</string> <!-- format -->
+    <string name="replay_play">Play</string>
+    <string name="replay_pause">Pause</string>
     <string name="mapvm_export_saved_subject">Vela saved places (%1$d)</string> <!-- format -->
     <string name="mapvm_export_saved_chooser">Export saved places</string>
     <string name="mapvm_export_trip_subject">Vela trip: %1$s (%2$d points)</string> <!-- format -->

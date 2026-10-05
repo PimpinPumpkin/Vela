@@ -504,7 +504,7 @@
     <string name="mapvm_resume_waiting_gps">GPS várakozás a navigáció folytatásához…</string>
     <string name="mapvm_resume_failed">Nem sikerült folytatni a navigációt</string>
     <string name="mapvm_no_track_to_replay">Ahhoz az úthoz nincs visszajátszható nyomvonal</string>
-    <string name="mapvm_replaying">%1$s visszajátszása (3×)…</string>
+    <string name="mapvm_replaying">%1$s visszajátszása…</string>
     <string name="mapvm_export_saved_subject">Vela mentett helyek (%1$d)</string>
     <string name="mapvm_export_saved_chooser">Mentett helyek exportálása</string>
     <string name="mapvm_export_trip_subject">Vela út: %1$s (%2$d pont)</string>

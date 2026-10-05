@@ -389,7 +389,7 @@
     <string name="settings_spoken_directions">Instructions vocales</string>
     <string name="mapvm_voice_lang_missing">Les instructions vocales nécessitent une voix %1$s, ajoutez-en une dans Réglages → Voix</string>
     <string name="mapvm_no_track_to_replay">Ce trajet n\'a aucune trace à rejouer</string>
-    <string name="mapvm_replaying">Relecture de %1$s (3×)…</string>
+    <string name="mapvm_replaying">Relecture de %1$s…</string>
     <string name="mapvm_export_saved_subject">Lieux enregistrés Vela (%1$d)</string>
     <string name="mapvm_export_saved_chooser">Exporter les lieux enregistrés</string>
     <string name="mapvm_export_trip_subject">Trajet Vela : %1$s (%2$d points)</string>

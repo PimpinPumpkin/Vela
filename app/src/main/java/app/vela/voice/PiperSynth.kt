@@ -266,6 +266,7 @@ class PiperSynth @Inject constructor(
                 // How long a line waited (queue + model load) and took to make: a late "Starting
                 // navigation" on a slow head unit is one of the two (2026-10-03). No text: lengths only.
                 Log.i(TAG, "speak: waited ${t0 - asked} ms, ${if (ready != null) "prepared" else "first audio after $firstAudioMs ms, all rendered in $genMs ms"}, ${text.length} chars")
+                app.vela.diag.TripNote.add("voice: waited ${t0 - asked} ms, ${if (ready != null) "ready ahead" else "first sound after $firstAudioMs ms, rendered in $genMs ms"}, ${text.length} letters")
                 val p = player
                 if (p != null) {
                     val at = track ?: return@execute

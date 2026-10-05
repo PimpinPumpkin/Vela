@@ -52,6 +52,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         app.vela.ui.MemoryPressure.dispatch(level)
+        app.vela.diag.TripNote.add("memory: the system asked for memory back (level $level)")
         if (app.vela.ui.MemoryPressure.isSevere(level)) {
             runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
         }

@@ -36,36 +36,58 @@ object MapPerf {
     /** A pass that held the main thread for [ms]: named in the next bad second's note. */
     fun slowPass(what: String, ms: Long) = synchronized(slow) { if (slow.size < 6) slow += "$what ${ms} ms" }
 
+    private var tenN = 0
+    private var lastSampleMs = 0L
+    private var tenFrames = 0
+    private var tenLow = Int.MAX_VALUE
+    private var tenStall = 0
+
     /**
-     * The last second, as a trip note, or null when nothing is worth writing. Written when the UI
-     * thread stalled ([STALL_MS]), when the map drew under [LOW_FPS] frames while a finger was
-     * moving it, and when the camera left or rejoined the car.
+     * The last second, as trip notes (usually none). A full note when the UI thread stalled
+     * ([STALL_MS]), when the map drew under [LOW_FPS] frames while a finger was moving it, or when
+     * a slow pass ran; a `camera:` note when the camera left or rejoined the car; and every ten
+     * seconds a one-line summary, so a drive's file shows its frame rate from end to end.
      */
-    fun sample(nowMs: Long): String? {
-        val frames = mapFrames; mapFrames = 0
+    fun sample(nowMs: Long): List<String> {
+        // Per second of real time: the ticker that calls this drifts, and 68 "fps" on a 60 Hz
+        // screen was the drift.
+        val span = (nowMs - lastSampleMs).takeIf { lastSampleMs > 0L && it in 500..5_000 } ?: 1_000L
+        lastSampleMs = nowMs
+        val frames = (mapFrames * 1_000L / span).toInt(); mapFrames = 0
         val loading = loadingFrames; loadingFrames = 0
         val worst = uiWorstMs; uiWorstMs = 0
         val g = gestures; gestures = 0
         val passes = synchronized(slow) { slow.toList().also { slow.clear() } }
+        val out = ArrayList<String>(2)
         val state = "zoom %.1f tilt %.0f, %s%s".format(zoom, tilt, if (following) "following" else "free camera", if (symbolsHidden) ", symbols hidden" else "")
         val bad = worst >= STALL_MS || (g > 0 && frames < LOW_FPS) || passes.isNotEmpty()
         if (bad && nowMs - lastNoteMs >= MIN_GAP_MS) {
             lastNoteMs = nowMs; lastFollowing = following; lastZoomNoted = zoom
-            return "perf: map $frames fps" + (if (loading > 0) " ($loading still loading)" else "") + ", longest stall $worst ms, " +
+            out += "perf: map $frames fps" + (if (loading > 0) " ($loading still loading)" else "") + ", longest stall $worst ms, " +
                 (if (g > 0) "finger on the map, " else "") + state + if (passes.isEmpty()) "" else "; slow: " + passes.joinToString(", ")
-        }
-        // The camera leaving the car, coming back, or a free camera changing zoom by a level: the
-        // context a later bad second is read against.
-        if (following != lastFollowing || (!following && kotlin.math.abs(zoom - lastZoomNoted) >= 1.0)) {
+        } else if (following != lastFollowing || (!following && kotlin.math.abs(zoom - lastZoomNoted) >= 1.0)) {
+            // The camera leaving the car, coming back, or a free camera changing zoom by a level:
+            // the context a later bad second is read against.
             lastFollowing = following; lastZoomNoted = zoom
-            return "camera: $state"
+            out += "camera: $state"
         }
-        return null
+        // A second with no frames is a still map (parked, nothing to draw), not a slow one.
+        if (frames > 0) { tenFrames += frames; tenLow = minOf(tenLow, frames) }
+        tenStall = maxOf(tenStall, worst)
+        if (++tenN >= SUMMARY_S) {
+            if (tenFrames > 0) out += "perf 10 s: map ${tenFrames / SUMMARY_S} fps average, $tenLow lowest second, longest stall $tenStall ms, $state"
+            tenN = 0; tenFrames = 0; tenLow = Int.MAX_VALUE; tenStall = 0
+        }
+        return out
     }
 
-    fun reset() { sample(0L); lastFollowing = true; lastZoomNoted = -1.0; lastNoteMs = 0L }
+    /** Something that happened to the map, named in the next note (a style reload, symbols hidden). */
+    fun event(what: String) = synchronized(slow) { if (slow.size < 6) slow += what }
+
+    fun reset() { sample(0L); lastSampleMs = 0L; lastFollowing = true; lastZoomNoted = -1.0; lastNoteMs = 0L; tenN = 0; tenFrames = 0; tenLow = Int.MAX_VALUE; tenStall = 0 }
 
     const val STALL_MS = 250
     const val LOW_FPS = 20
     const val MIN_GAP_MS = 2_000L
+    const val SUMMARY_S = 10
 }

@@ -2441,6 +2441,15 @@ car or a free camera's zoom moves a level. Notes hold no coordinates. The voice 
 at max(400 m, 35 s) and max(150 m, 10 s) of the current speed, and the turn-now line), up to
 `MAX_PREPARED` (8) kept; a preparation is abandoned when a line is asked to be spoken.
 
+**What a recorded drive holds besides its fixes and routes (2026-10-04).** `K` notes, each timed:
+the build and settings the drive ran on; every spoken line's wait and render time (lengths, never
+text); network, thermal, memory, on-screen and usable-GPS changes; a map performance line for each
+bad second and a summary every 10 s (average frames, lowest second, longest UI stall, zoom, tilt,
+camera following or free). Notes hold no coordinates or names, and the share-time trim passes them
+unchanged. A trip replay runs at 1x, 3x (default) or 10x, pauses, and seeks: a seek restarts the
+replay and runs silently through the fixes before the chosen moment. Lines and areas (drawings and
+custom maps) are not drawn while navigating.
+
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
   that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
   or no window size is known, one extra page runs over a 2.5 km

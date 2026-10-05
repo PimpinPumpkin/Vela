@@ -591,7 +591,17 @@ internal class NavController(
     /** A demo drive's clock multiplier: 1, or the debug dial `demoSpeedup` (playback testing). */
     internal fun demoSpeedup(): Float = app.vela.ui.AppTune.local("demoSpeedup")?.toFloat()?.takeIf { it > 1f } ?: 1f
 
-    fun replayTrip(meta: app.vela.replay.TripMeta) {
+    private var replayMeta: app.vela.replay.TripMeta? = null
+
+    /** Jump to [fraction] of the replayed drive: the replay starts over and runs silently to there. */
+    fun seekReplay(fraction: Float) {
+        val meta = replayMeta ?: return
+        if (!_state.value.replaying || _state.value.demoDriving) return
+        replayTrip(meta, fraction.coerceIn(0f, 0.999f))
+    }
+
+    fun replayTrip(meta: app.vela.replay.TripMeta, from: Float = 0f) {
+        replayMeta = meta
         val fixes = tripStore.load(meta.id)
         if (fixes.size < 2) { host.flashStatus(appContext.getString(R.string.mapvm_no_track_to_replay)); return }
         replayJob?.cancel()
@@ -606,8 +616,14 @@ internal class NavController(
         // snaps the dot back off the trace's end point to (approximately) where they are; the resumed live
         // GPS refines it on the next fix.
         val resumeLoc = _state.value.myLocation
-        _state.update { it.copy(replaying = true, navCameraDetached = false) }
-        host.flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
+        val startAt = (from * fixes.size).toInt().coerceIn(0, fixes.size - 2)
+        val totalS = ((fixes.last().t - fixes.first().t) / 1000L).toInt().coerceAtLeast(1)
+        _state.update { it.copy(replaying = true, navCameraDetached = false, replayPaused = false, replayTotalS = totalS, replayProgress = from) }
+        if (startAt == 0) host.flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
+        // Running up to a later moment: no voice and no buzzes until it gets there.
+        val wasMuted = voice.muted
+        if (startAt > 0) { voice.muted = true; navSession.silent = true }
+        val fixIdxSeen = intArrayOf(0)
         val job = scope.launch {
             try {
                 // Drive turn-by-turn during the replay without manually starting nav first.
@@ -651,10 +667,16 @@ internal class NavController(
                 var lastReplayT = 0L
                 var fixIdx = 0
                 val posOutlierStreak = intArrayOf(0)
-                locationProvider.replay(pts, speedup = MapViewModel.REPLAY_SPEEDUP).collect { loc ->
+                val t0 = fixes.first().t
+                locationProvider.replay(pts, { if (_state.value.replayPaused) 0f else _state.value.replaySpeed }, startAt).collect { loc ->
                     // Play back the drive's own route swaps at the fix where they happened.
-                    swapAt[fixIdx]?.let { (r, why) -> if (replayOwnsNav) navSession.replaySetRoute(r, chime = why == "reroute") }
+                    swapAt[fixIdx]?.let { (r, why) -> if (replayOwnsNav) navSession.replaySetRoute(r, chime = why == "reroute" && fixIdx >= startAt) }
                     fixIdx += 1
+                    fixIdxSeen[0] = fixIdx
+                    if (fixIdx == startAt + 1 && startAt > 0) { voice.stop(); voice.muted = wasMuted; navSession.silent = false }
+                    if (fixIdx >= startAt) ((loc.time - t0) / 1000f / totalS).coerceIn(0f, 1f).let { p ->
+                        if (kotlin.math.abs(p - _state.value.replayProgress) >= 0.004f) _state.update { it.copy(replayProgress = p) }
+                    }
                     val rawHere = LatLng(loc.latitude, loc.longitude)
                     val prev = _state.value.myLocation
                     val dt = if (lastReplayT > 0L) (loc.time - lastReplayT) / 1000.0 else -1.0
@@ -683,6 +705,7 @@ internal class NavController(
                     host.updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)
                 }
             } finally {
+                if (startAt > 0 && fixIdxSeen[0] <= startAt) { voice.muted = wasMuted; navSession.silent = false } // stopped mid run-up
                 // Only the current replay tears down: a superseded one was already stopped
                 // above, so this stale finally (job guard false) no-ops.
                 if (replayJob === coroutineContext[Job]) {

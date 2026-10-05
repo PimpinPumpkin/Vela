@@ -2353,18 +2353,7 @@ fun MapScreen(
         // user an explicit way out (its tap stops the replay and resumes live GPS). A DEMO drive
         // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
         // it (stopNav cancels the demo), so don't show the replay pill over the nav chrome.
-        if (state.replaying && !state.demoDriving) {
-            ElevatedButton(
-                onClick = vm::stopReplay,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 24.dp),
-            ) {
-                Icon(Sym.Close, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text(stringResource(R.string.mapscreen_stop_replay))
-            }
-        }
+        if (state.replaying && !state.demoDriving) ReplayControls(state, vm)
 
         // The locate + parking buttons yield to the bottom surfaces that actually REACH them:
         // the route chooser and step list always (full width), and in PORTRAIT the place/results
@@ -3655,7 +3644,9 @@ private fun MapSurface(
     // Street View owns the map.
     // Also off while the route chooser is up: only the trip's own pins draw there (2026-09-30).
     // Custom maps (issue #669): the previewed one and every saved list's shapes, less hidden layers.
-    val mapShapes = remember(state.pendingImport, state.pendingHiddenLayers, state.lists, state.drawing) {
+    val mapShapes = remember(state.pendingImport, state.pendingHiddenLayers, state.lists, state.drawing, state.navigating) {
+        // Not during a drive: the road and the route are what the map is for then.
+        if (state.navigating) emptyList() else
         // A saved shape being changed is drawn once, as the drawing.
         state.pendingImport?.shapes.orEmpty().filter { it.layer == null || it.layer !in state.pendingHiddenLayers } +
             state.lists.flatMap { l -> l.shapes.filter { (it.layer == null || it.layer !in l.hiddenLayers) && it != state.drawing?.editOf } } +
@@ -3718,7 +3709,7 @@ private fun MapSurface(
         // of 0 m (stalled) punctuated by 2.4 m lurches, chord-bearing wiggle 1.7 deg, and a
         // camera yaw wiggle that the 55 deg tilt smears into the "record needle" swim across
         // the top of the screen (issue #251, 2026-08-10). Demo drives run at 1x like real ones.
-        replaySpeedup = if (state.replaying && !state.demoDriving) MapViewModel.REPLAY_SPEEDUP
+        replaySpeedup = if (state.replaying && !state.demoDriving) (if (state.replayPaused) 1f else state.replaySpeed)
             else if (state.demoDriving) (app.vela.ui.AppTune.local("demoSpeedup")?.toFloat()?.takeIf { it > 1f } ?: 1f) else 1f,
         replaying = state.replaying,
         compassHeading = state.compassHeading,

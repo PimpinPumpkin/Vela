@@ -1726,6 +1726,24 @@ Defaults that make the safe path the easy one:
   20 map frames with a finger on the map, or a slow pass; at most one note per 2 s. Logcat `VelaPerf`
   prints the same lines (demo drives too, which record no trip). A new heavy pass on the main
   thread should call `MapPerf.slowPass`. No coordinates in a note, ever.
+- **A trip file holds the rest of the phone too, and a replay can be scrubbed (2026-10-04):**
+  `diag/TripNote.add(...)` is the one door for anything outside the nav code; the view model points
+  it at the trip's `K` notes while a real drive is on (logcat `VelaTrip`). Written now: `build:`
+  (version, Android, model, voice engine, places source, nav icon) at the start; `voice:` per spoken
+  line (wait, first sound, render time, or "ready ahead"; letters, never the words); `net:` on each
+  change of the link; `heat:` on each thermal status change; `memory:` when the system asks for
+  memory back; `app:` on and off screen; `gps:` when usable fixes stop and return; MapPerf's bad
+  seconds, plus `perf 10 s:` every ten seconds (average, lowest second, longest stall), so a file
+  shows the frame rate of the whole drive. A new subsystem that can hurt a drive adds a TripNote;
+  no coordinates, place names or spoken text in one. REPLAY: `ReplayControls` replaces the Stop pill
+  (slider, pause, 1x/3x/10x, stop); `LocationProvider.replay(fixes, speed, startAt)` reads the speed
+  before every fix (0 = paused) and emits the fixes before `startAt` with no wait, which is how a
+  seek works: the replay starts over and runs silently (voice muted, `NavSession.silent` for
+  buzzes) to the chosen moment, so the route swaps and the turn card are right when it arrives.
+  Checked on the 4a with a mock-GPS drive recorded in Davis: play, jump to 1:18 of 1:28, pause
+  holds. Not checked: 1x and 10x by eye, a long trip's seek time.
+- **Drawings and custom map shapes are not drawn during a drive** (`mapShapes` is empty while
+  navigating): a saved area lay across the route on a test drive.
 - **Search framing and "Search this area" (issue #670, 2026-10-04):** a SEARCH frames its first
   `SEARCH_FIT_LEAD` (12) results (`VelaMapView(fitLeadCount)`; an open list or a custom map frames
   everything): the list leads with what is near you, and framing all sixty flew the map out over the

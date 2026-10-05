@@ -429,7 +429,7 @@
     <string name="settings_spoken_road_names_hint">Desligado, as mudanças de direção são anunciadas sem o nome da rua: \"Vire à esquerda\" em vez de \"Vire à esquerda para a Rua das Flores\". O mapa e a lista de etapas continuam a mostrá-lo.</string>
     <string name="mapvm_voice_lang_missing">As indicações por voz precisam de uma voz em %1$s, adicione uma em Definições → Voz</string>
     <string name="mapvm_no_track_to_replay">Essa viagem não tem traço para reproduzir</string>
-    <string name="mapvm_replaying">A reproduzir %1$s (3×)…</string>
+    <string name="mapvm_replaying">A reproduzir %1$s…</string>
     <string name="mapvm_export_saved_subject">Locais guardados do Vela (%1$d)</string>
     <string name="mapvm_export_saved_chooser">Exportar locais guardados</string>
     <string name="mapvm_export_trip_subject">Viagem do Vela: %1$s (%2$d pontos)</string>

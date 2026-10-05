@@ -429,7 +429,7 @@
     <string name="settings_spoken_road_names_hint">Se disattivato, le svolte vengono annunciate senza il nome della strada: \"Svolta a sinistra\" invece di \"Svolta a sinistra in Via Roma\". La mappa e l\'elenco dei passaggi lo mostrano comunque.</string>
     <string name="mapvm_voice_lang_missing">Le indicazioni vocali richiedono una voce %1$s, aggiungila in Impostazioni → Voce</string>
     <string name="mapvm_no_track_to_replay">Quel viaggio non ha una traccia da riprodurre</string>
-    <string name="mapvm_replaying">Riproduzione di %1$s (3×)…</string>
+    <string name="mapvm_replaying">Riproduzione di %1$s…</string>
     <string name="mapvm_export_saved_subject">Luoghi salvati di Vela (%1$d)</string>
     <string name="mapvm_export_saved_chooser">Esporta luoghi salvati</string>
     <string name="mapvm_export_trip_subject">Viaggio Vela: %1$s (%2$d punti)</string>

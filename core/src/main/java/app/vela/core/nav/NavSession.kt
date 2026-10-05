@@ -139,6 +139,8 @@ class NavSession @Inject constructor(
     // faster-route sheet popping up over a replay). Route swaps that happened in the REAL drive
     // are recorded in the trip and played back via [replaySetRoute].
     @Volatile var replayMode = false
+    /** A replay running through fixes to reach a moment: no buzzes (the voice is muted by the caller). */
+    @Volatile var silent = false
     // Settings -> Data & privacy -> "Live traffic re-checks". Each recheck sends the CURRENT
     // position to Google (that's what makes a from-here candidate possible), which is a periodic
     // in-drive location beacon on top of the origin already sent at start + on reroutes. Off =
@@ -459,7 +461,7 @@ class NavSession @Inject constructor(
         events.forEach { ev ->
             when (ev) {
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching, mode)
+                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
                 NavEvent.Arrived -> {
                     note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
                     _state.update {

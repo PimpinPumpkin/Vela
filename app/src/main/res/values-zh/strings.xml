@@ -449,7 +449,7 @@
     <string name="mapvm_resume_waiting_gps">正在等待 GPS 以恢复导航…</string>
     <string name="mapvm_resume_failed">无法恢复导航</string>
     <string name="mapvm_no_track_to_replay">该行程没有可回放的轨迹</string>
-    <string name="mapvm_replaying">正在回放 %1$s（3×）…</string>
+    <string name="mapvm_replaying">正在回放 %1$s…</string>
     <!-- format -->
     <string name="mapvm_export_saved_subject">Vela 已保存的地点（%1$d）</string>
     <!-- format -->

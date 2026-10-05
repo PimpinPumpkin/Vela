@@ -429,7 +429,7 @@
     <string name="settings_spoken_road_names_hint">Uit, dan worden afslagen zonder straatnaam aangekondigd: \"Sla linksaf\" in plaats van \"Sla linksaf de Dorpsstraat in\". De kaart en de stappenlijst tonen hem nog steeds.</string>
     <string name="mapvm_voice_lang_missing">Gesproken instructies vereisen een %1$s-stem, voeg er een toe via Instellingen → Stem</string>
     <string name="mapvm_no_track_to_replay">Die rit heeft geen spoor om te herhalen</string>
-    <string name="mapvm_replaying">%1$s herhalen (3×)…</string>
+    <string name="mapvm_replaying">%1$s herhalen…</string>
     <string name="mapvm_export_saved_subject">Vela opgeslagen plaatsen (%1$d)</string>
     <string name="mapvm_export_saved_chooser">Opgeslagen plaatsen exporteren</string>
     <string name="mapvm_export_trip_subject">Vela-rit: %1$s (%2$d punten)</string>

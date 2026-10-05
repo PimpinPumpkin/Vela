@@ -328,6 +328,10 @@ data class MapUiState(
     // A drive just finished and the user asked to be prompted for its name; the prompt shows on
     // the map so it is answered while the drive is fresh, not found later in Settings.
     val tripToName: app.vela.replay.TripMeta? = null,
+    val replaySpeed: Float = 3f,               // a trip replay's speed, times real time
+    val replayPaused: Boolean = false,
+    val replayProgress: Float = 0f,            // 0..1 through the replayed drive
+    val replayTotalS: Int = 0,                 // the drive's length in seconds
     val replaying: Boolean = false,            // a recorded trip OR a demo drive is playing (drives the puck)
     val demoDriving: Boolean = false,          // replaying is a Settings→demo synthetic drive (not a recorded trip) — nav chrome only, no "Stop replay" pill
     val arrived: Boolean = false,
@@ -572,17 +576,41 @@ class MapViewModel @Inject constructor(
             val gone = app.vela.offline.LegacyGraphs.purge(appContext.filesDir)
             if (gone.isNotEmpty()) withContext(Dispatchers.Main) { showStatus(appContext.getString(R.string.mapvm_graphs_retired)) }
         }
-        // What the map was doing, into the recorded trip: a line for each bad second and each time
+        // EVERYTHING ELSE A DRIVE'S RECORDING NEEDS (2026-10-04): notes from outside the nav
+        // code reach the trip through TripNote (the voice's timing, the network, heat, memory, the
+        // app leaving the screen, GPS going quiet), only while a real drive is on.
+        app.vela.diag.TripNote.sink = { n ->
+            val s = _state.value
+            if (s.navigating && (!s.replaying || s.demoDriving)) {
+                android.util.Log.i("VelaTrip", n)
+                tripStore.note("K", n); app.vela.diag.NavTrace.event(n)
+            }
+        }
+        // What the map was doing: a line for each bad second, a summary every ten, and each time
         // the camera leaves or rejoins the car (MapPerf). Asleep until a drive starts.
         viewModelScope.launch {
             while (true) {
-                if (!_state.value.navigating) { app.vela.ui.map.MapPerf.reset(); _state.first { it.navigating } }
-                kotlinx.coroutines.delay(1_000)
-                if (!_state.value.navigating || (_state.value.replaying && !_state.value.demoDriving)) continue
-                app.vela.ui.map.MapPerf.sample(android.os.SystemClock.elapsedRealtime())?.let {
-                    android.util.Log.i("VelaPerf", it)
-                    tripStore.note("K", it); app.vela.diag.NavTrace.event(it)
+                if (!_state.value.navigating) {
+                    app.vela.ui.map.MapPerf.reset(); _state.first { it.navigating }
+                    // The drive's first note: what it ran on. No account, no place.
+                    app.vela.diag.TripNote.add(
+                        "build: Vela ${app.vela.BuildConfig.VERSION_NAME} (${app.vela.BuildConfig.VERSION_CODE}), Android ${android.os.Build.VERSION.RELEASE}, " +
+                            "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, voice ${_state.value.selectedEngine?.packageName ?: "system"}, " +
+                            "places ${app.vela.ui.MapPoiPrefs.placesSource.value}, icon ${app.vela.ui.PuckStyle.key()}",
+                    )
                 }
+                kotlinx.coroutines.delay(1_000)
+                if (!_state.value.navigating) continue
+                app.vela.ui.map.MapPerf.sample(android.os.SystemClock.elapsedRealtime()).forEach { app.vela.diag.TripNote.add(it) }
+            }
+        }
+        viewModelScope.launch { app.vela.ui.AppVisibility.foreground.collect { app.vela.diag.TripNote.add(if (it) "app: on screen" else "app: off screen") } }
+        viewModelScope.launch {
+            _state.map { it.navStarved }.distinctUntilChanged().collect { app.vela.diag.TripNote.add(if (it) "gps: no usable fix" else "gps: fixes back") }
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 29) runCatching {
+            (appContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).addThermalStatusListener { st ->
+                app.vela.diag.TripNote.add("heat: " + listOf("normal", "light", "moderate", "severe", "critical", "emergency", "shutdown").getOrElse(st) { "$st" })
             }
         }
         viewModelScope.launch {
@@ -2104,7 +2132,7 @@ class MapViewModel @Inject constructor(
                 if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) append(" metered")
             }
             val line = "$event: $summary"
-            if (line != lastNet) { lastNet = line; diag.record("net", line) }
+            if (line != lastNet) { lastNet = line; diag.record("net", line); app.vela.diag.TripNote.add("net: $line") }
         }
         runCatching {
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
@@ -6375,6 +6403,9 @@ class MapViewModel @Inject constructor(
      *  plays if routing fails), tearing that nav back down when the replay ends. */
     fun replayTrip(meta: app.vela.replay.TripMeta) = nav.replayTrip(meta)
     fun stopReplay() = nav.stopReplay()
+    fun setReplaySpeed(x: Float) = _state.update { it.copy(replaySpeed = x, replayPaused = false) }
+    fun setReplayPaused(p: Boolean) = _state.update { it.copy(replayPaused = p) }
+    fun seekReplay(fraction: Float) = nav.seekReplay(fraction)
 
     /** A share intent for the recorded debug session, or null if nothing's logged
      *  yet (Settings then shows a "nothing recorded" hint). */
