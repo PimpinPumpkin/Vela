@@ -3511,7 +3511,10 @@ private fun ResultPlaceCard(
 ) {
     // Gallery is display-sized only: the w320-h220 search payloads decode at list
     // size (400px wide cells) instead of full-res, which was the scroll jank.
-    val gallery = remember(place.id, place.photoUrls) { place.photoUrls.take(3) }
+    // The strip loads from Google's image host, so it follows the photo settings like the sheet's
+    // gallery does: nothing with photos off, on-tap only, or Google off.
+    val photosOk = app.vela.ui.LoadPhotos.on.value && !app.vela.ui.PhotosOnTap.on.value && !app.vela.ui.GoogleFree.on.value
+    val gallery = remember(place.id, place.photoUrls, photosOk) { if (photosOk) place.photoUrls.take(3) else emptyList() }
     // Google-style result card: photo strip FIRST (full-bleed), then the text
     // block, then the action pills. Cards breathe with a plain gap, no bars.
     Column(
@@ -3697,7 +3700,7 @@ private fun ResultPlaceCard(
                     // Google-style per-row action buttons: Directions (filled) + Call/Share
                     // (outlined). They act on the ROW's place directly, without opening it.
         Row(
-            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 14.dp),
+            Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
