@@ -41,6 +41,10 @@ data class Calibration(
     // query point; the response carries the nearest pano's id, tile pyramid, and true heading.
     // The equirect TILES come from a fixed template (streetviewpixels-pa) that needs no calibration.
     val streetViewMetaUrl: String = DEFAULT_STREETVIEW_META,
+    // Since 2026-10-05 Google answers that URL "decommissioned and turned off". The lookup its own
+    // web library makes now is a POST of this JSON body ({LAT}/{LNG} the point, {RADIUS} meters)
+    // to [STREETVIEW_SEARCH_URL]; the reply is the same pano node with no callback wrapper.
+    val streetViewSearchBody: String = DEFAULT_STREETVIEW_SEARCH_BODY,
     // Street View metadata BY PANO ID (walking to a neighbor / a historical capture): the
     // consumer photometa/v1 RPC, keyless. `{PANOID}` is the target pano; returns the SAME node
     // shape as the lat/lng search (nested one level deeper, )]}' guarded - the parser handles both).
@@ -169,6 +173,11 @@ data class Calibration(
 
         // Street View nearest-pano search. The `pb` is the JS Maps API's own form (verified keyless
         // 2026-07-15): !2m4!1m2!3d{LAT}!4d{LNG} is the query point, !2d50 the search radius (m).
+        const val STREETVIEW_SEARCH_URL =
+            "https://maps.googleapis.com/\$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/SingleImageSearch"
+        const val DEFAULT_STREETVIEW_SEARCH_BODY =
+            "[[\"apiv3\",null,null,null,\"US\",null,null,null,null,null,[[0]]],[[null,null,{LAT},{LNG}],{RADIUS}]," +
+                "[null,[\"en\",\"US\"],null,null,null,null,null,null,[2],null,[[[2,1,2],[3,1,2],[10,1,2]]]],[[1,2,3,4,8,6]]]"
         const val DEFAULT_STREETVIEW_META =
             "https://maps.googleapis.com/maps/api/js/GeoPhotoService.SingleImageSearch?pb=" +
                 "!1m5!1sapiv3!5sUS!11m2!1m1!1b0!2m4!1m2!3d{LAT}!4d{LNG}!2d50!3m10!2m2!1sen!2sUS" +

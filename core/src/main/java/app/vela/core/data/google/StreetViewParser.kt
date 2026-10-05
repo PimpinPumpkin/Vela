@@ -121,7 +121,9 @@ object StreetViewParser {
         val t = raw.trim()
         // photometa/v1 uses the XSSI guard )]}' then the JSON array.
         if (t.startsWith(")]}'")) return t.substring(4).trimStart('\n', '\r', ' ')
-        // SingleImageSearch uses a /**/cb && cb( … ) callback wrapper.
+        // The POST lookup answers bare JSON: nothing to unwrap (and an address in it may hold a parenthesis).
+        if (t.startsWith("[")) return t
+        // The old SingleImageSearch GET used a /**/cb && cb( … ) callback wrapper.
         val open = t.indexOf('(')
         val close = t.lastIndexOf(')')
         return if (open in 0 until close) t.substring(open + 1, close).trim() else t
