@@ -31,14 +31,14 @@ val StarGold = Color(0xFFF5B400)
  *  wrongly-true [openNow] must never paint text that literally reads closed
  *  ("Closed ⋅ Opens 5 AM") green - and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix
  *  hole that greened a closed place). Dark-theme pastels sampled off Google Maps:
- *  #F2B8B6 closed-red, #6ED58B open-green. */
+ *  #FF5449 closed-red (a plain red: the pastel pink did not read as closed at a glance), #6ED58B open-green. */
 /** The status color for the theme in use: the pastels below are for dark surfaces and wash out
  *  on white, where the full-strength red and green are used instead. */
 @Composable
 fun themedStatusColor(status: String, openNow: Boolean? = null): Color {
     val c = placeStatusColor(status, openNow)
     if (app.vela.ui.theme.isAppInDarkTheme()) return c
-    return when (c) { Color(0xFFF2B8B6) -> Color(0xFFD93025); Color(0xFF6ED58B) -> Color(0xFF1E8E3E); Color(0xFFE8A100) -> Color(0xFFB06000); else -> c }
+    return when (c) { Color(0xFFFF5449) -> Color(0xFFD93025); Color(0xFF6ED58B) -> Color(0xFF1E8E3E); Color(0xFFE8A100) -> Color(0xFFB06000); else -> c }
 }
 
 fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
@@ -47,11 +47,11 @@ fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
         s.startsWith("Temporarily") || s.startsWith("Permanently")
     return when {
         s.contains("soon", ignoreCase = true) -> Color(0xFFE8A100)
-        openNow == false -> Color(0xFFF2B8B6)
+        openNow == false -> Color(0xFFFF5449)
         openNow == true && !textSaysClosed -> Color(0xFF6ED58B)
-        textSaysClosed -> Color(0xFFF2B8B6)
+        textSaysClosed -> Color(0xFFFF5449)
         s.startsWith("Open") || s.startsWith("Closes") -> Color(0xFF6ED58B)
-        else -> Color(0xFFF2B8B6)
+        else -> Color(0xFFFF5449)
     }
 }
 
