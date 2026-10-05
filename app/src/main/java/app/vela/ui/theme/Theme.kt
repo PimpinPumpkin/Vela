@@ -114,3 +114,10 @@ fun VelaTheme(
     val typography = androidx.compose.runtime.remember(family) { velaTypography(family) }
     MaterialTheme(colorScheme = colorScheme, typography = typography, content = content)
 }
+
+/** True only while the wallpaper's colors are really in use: the setting is on AND the phone's
+ *  scheme passed the check above. Where it fell back to Vela's own scheme, a "wallpaper colored"
+ *  button would come out teal. */
+@Composable
+fun wallpaperColorsInUse(): Boolean =
+    DynamicColor.on.value && MaterialTheme.colorScheme.primary.let { it != VelaTeal && it != VelaTealLight }

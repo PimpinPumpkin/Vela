@@ -935,7 +935,7 @@ fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = fa
  *  map; with wallpaper colors turned on (Settings > Appearance) it takes the theme's instead. */
 @Composable
 fun NavFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val themed = app.vela.ui.theme.DynamicColor.on.value
+    val themed = app.vela.ui.theme.wallpaperColorsInUse()
     androidx.compose.material3.FloatingActionButton(
         onClick = onClick, modifier = modifier, shape = androidx.compose.foundation.shape.CircleShape,
         containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else NavBarColor,
@@ -946,7 +946,7 @@ fun NavFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composa
 /** Google's Re-center: a labeled pill at the bottom left while the camera is away from the car. */
 @Composable
 fun NavRecenterPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val themed = app.vela.ui.theme.DynamicColor.on.value
+    val themed = app.vela.ui.theme.wallpaperColorsInUse()
     androidx.compose.material3.ExtendedFloatingActionButton(
         onClick = onClick,
         modifier = modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),

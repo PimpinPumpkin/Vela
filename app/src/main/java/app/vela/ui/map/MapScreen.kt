@@ -2415,11 +2415,12 @@ fun MapScreen(
             if (app.vela.ui.ParkingButton.on.value || parkingSet) {
                 Surface(
                     shape = CircleShape,
-                    color = if (parkingSet) MaterialTheme.colorScheme.primary else mapButtonColor(darkTheme),
+                    // Same surface as the locate button, saved spot or not; the glyph carries the state.
+                    color = mapButtonColor(darkTheme),
                     // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
                     // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
                     // carries state, like the Home/Work rows.
-                    contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else mapButtonInk(MaterialTheme.colorScheme.onSurfaceVariant),
+                    contentColor = mapButtonInk(if (parkingSet) Color(0xFF4285F4) else MaterialTheme.colorScheme.onSurfaceVariant),
                     shadowElevation = 6.dp,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -3038,13 +3039,13 @@ private fun BoxScope.NavCorner(
  *  and the wallpaper's colors when that setting is on (Settings > Appearance), like the drive's. */
 @Composable
 private fun mapButtonColor(dark: Boolean) =
-    if (app.vela.ui.theme.DynamicColor.on.value) MaterialTheme.colorScheme.primaryContainer
+    if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.primaryContainer
     else if (dark) Color(0xFF1B1C1E) else Color.White
 
 /** The glyph on one of those buttons: [plain] normally, the container's own ink with wallpaper colors. */
 @Composable
 private fun mapButtonInk(plain: Color) =
-    if (app.vela.ui.theme.DynamicColor.on.value) MaterialTheme.colorScheme.onPrimaryContainer else plain
+    if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.onPrimaryContainer else plain
 
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12
