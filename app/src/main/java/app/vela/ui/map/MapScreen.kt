@@ -1760,7 +1760,12 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 24.dp + chromeLift),
+                    // Landscape with the results panel on the left: centered in the map beside it
+                    // (the start padding shifts the center), low, since nothing is under it there.
+                    .padding(
+                        start = if (landscapeChrome && state.results.isNotEmpty()) sidePanelWidthDp else 0.dp,
+                        bottom = if (landscapeChrome && state.results.isNotEmpty()) 24.dp else 24.dp + chromeLift,
+                    ),
             ) {
                 Icon(Sym.Refresh, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.mapscreen_search_this_area))
