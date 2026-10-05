@@ -145,6 +145,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         }
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)
+        app.vela.ui.PageTransitions.init(this)
         app.vela.ui.AppFont.init(this) // user-supplied UI font (issue #252)
         app.vela.ui.MapColors.init(this)
         app.vela.ui.LiveReviews.init(this)

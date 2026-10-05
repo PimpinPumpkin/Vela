@@ -3786,13 +3786,51 @@ Per-surface audits and the contributor procedure are in `docs/dpad.md`; the regr
 
 ### 10.4 Settings
 
-Settings is hub and spoke: `SettingsScreen` dispatches over a `SettingsSection` enum with no
-navigation library, `SettingsHub` holds the category rows and the settings search, and
+Settings is hub and spoke: `SettingsScreen` hosts Navigation Compose destinations for the map
+and each `SettingsSection`, `SettingsHub` holds the category rows and the settings search, and
 `SettingsScaffold` owns the focus plumbing every page builds on. The search is a static
 `SEARCH_INDEX` of label resource to section; a match opens the spoke **and** scrolls to the row
 (`Modifier.settingsAnchor(label)` plus `LocalSettingsHighlight`). A new row label must be added
 to the index, and a group whose rows can be empty must still render with an empty-state hint, or
 its index entry leads to nothing.
+
+The main map route is `main/map`; Settings routes are `settings/<section>` in locale-independent
+lowercase. Routes remain distinct under case-insensitive matching so startup cannot select Map
+settings instead of the main map. The map remains composed below a transparent map destination, preserving its camera and shared
+`MapViewModel`. Forward pages slide in over 250 ms with quarter-width outgoing motion; back
+reverses the motion, mirrored for RTL. Navigation Compose owns predictive back progress,
+completion and cancellation. Back from a spoke returns to the hub, then the map; opening Voice
+from Offline replaces the spoke. The voice-library shortcut inserts the hub before Voice.
+Settings > Appearance > Page transitions stores `page_transitions` in `vela_settings`, defaults
+to true, and switches all four host transitions to `None` when disabled. Back still works.
+The manifest enables system predictive back; Android 13/14 require the system developer option
+for testing. Settings previews request keypad focus only after their entry reaches RESUMED.
+The host is composed after the map so its back callback takes precedence while Settings is open.
+
+Map bottom overlays use stable `BottomOverlay` keys and retain the outgoing `MapUiState` snapshot
+until exit completes. Place, directions (both pickers), trip editors, results, arrival, and stop
+offers slide up over 250 ms and down over 200 ms, by their measured content height. Detail fetches
+and place changes within the same overlay do not restart entrance motion. Transit guidance and full-screen transit
+route details use the same retained snapshot host. Outgoing content ignores pointer actions and
+is hidden from accessibility; its route-detail back handler is disabled. The existing StepsSheet
+bar/list animation remains its own controller; its back handler completes the close animation
+before clearing the state. The Page transitions preference disables these entry/exit animations
+as well as Settings transitions; direct dragging and detent settling keep their existing behavior.
+
+Predictive sheet back translates the current sheet by its measured height times gesture progress.
+Completion settles to the bottom over 160 ms before invoking its close action; cancellation returns
+to the original position over 180 ms without changing selection, route, or guidance state. A
+completed gesture suppresses the ordinary exit animation. Each content key owns its gesture
+state so a reopened sheet starts at zero progress. Drawing, map picking, search, and route
+alternatives keep their existing back priority; ending a drive still uses its confirmation.
+Sheet cards use 4 dp shadow elevation (the driving steps card retains 6 dp). Directions share/close
+and step-list close actions reuse Place's `HeaderCircleButton`: 36 dp circle with an 18 dp icon.
+
+Browsing/navigation mode changes retain the outgoing top chrome snapshot: the search bar and
+turn banner fade/slide over 220 ms on entry and 160 ms on exit. The bottom navigation bar uses
+sheet motion, except the existing ETA-bar/steps-list height handoff. The map instance, camera
+controller, and guidance session remain live. Page transitions controls these animations too.
+
 
 **No blocking IPC or IO from a composable body.** A `PackageManager` query in composition
 re-runs on every recomposition; load such data with `produceState` plus `withContext(IO)`.

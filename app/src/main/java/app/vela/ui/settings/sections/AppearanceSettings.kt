@@ -120,6 +120,17 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 )
             }
         }
+
+        Spacer(Modifier.height(8.dp))
+        SettingsGroup {
+            ToggleRow(
+                label = stringResource(R.string.settings_page_transitions),
+                checked = app.vela.ui.PageTransitions.enabled.value,
+                onCheckedChange = { app.vela.ui.PageTransitions.set(context, it) },
+                hint = stringResource(R.string.settings_page_transitions_hint),
+            )
+        }
+
         // FONT (issue #252). Only two states, and deliberately so: the platform font, or a file the
         // user supplies. We ship no faces of our own - the one people ask for is proprietary and
         // cannot be redistributed - so the honest offer is "use what you already have a license to".

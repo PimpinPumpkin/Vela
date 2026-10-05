@@ -20,11 +20,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.vela.ui.map.MapScreen
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.SettingsScreen
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 /**
  * Root composable. One [MapViewModel] instance is shared between the map and
- * settings (settings tweaks the same map/voice state), so we drive a single
- * boolean rather than a NavHost with cross-graph VM scoping. The first-run
+ * settings (settings tweaks the same map/voice state), with a single
+ * navigation host above the persistent map, passing the shared VM to every page. The first-run
  * [WelcomeScreen] gates everything else; the one-time [DonatePrompt] overlays the
  * map once the app has earned it (see [Onboarding]).
  */
@@ -51,9 +52,12 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         }
     }
 
-    var showSettings by rememberSaveable { mutableStateOf(false) }
-    var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
-    var settingsOpenVoice by rememberSaveable { mutableStateOf(false) }
+    val navController = androidx.navigation.compose.rememberNavController()
+    val page by navController.currentBackStackEntryAsState()
+    val showSettings = page?.destination?.route?.let { it != app.vela.ui.settings.MAP_ROUTE } == true
+    val openSettings: () -> Unit = {
+        navController.navigate(app.vela.ui.settings.SettingsSection.HUB.route) { launchSingleTop = true }
+    }
     // Location permission launcher for onboarding. The map no longer fires the raw system dialog on
     // its own (see MapScreen); this owns the first ask. A grant starts location immediately (coarse-
     // only works too, via the NETWORK provider); a denial just moves on and leaves search/browse
@@ -159,18 +163,16 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         // center at the default zoom, losing the user's pan/zoom (a reported bug).
         MapScreen(
             vm = vm,
-            onOpenSettings = { showSettings = true },
+            onOpenSettings = openSettings,
             // The no-voice heads-up's pill: straight into the voice library.
-            onOpenVoiceSettings = { settingsOpenVoice = true; showSettings = true },
+            onOpenVoiceSettings = {
+                openSettings()
+                navController.navigate(app.vela.ui.settings.SettingsSection.VOICE.route)
+                navController.currentBackStackEntry?.savedStateHandle?.set("openLibrary", true)
+            },
         )
-        if (showSettings) {
-            SettingsScreen(
-                vm = vm,
-                onBack = { showSettings = false; settingsOpenOffline = false; settingsOpenVoice = false },
-                openOffline = settingsOpenOffline,
-                openVoiceLibrary = settingsOpenVoice,
-            )
-        } else {
+        SettingsScreen(vm = vm, navController = navController)
+        if (!showSettings) {
             // Location is asked via the system dialog fired above (no rationale screen). The voice
             // offer is the next step once that's answered.
             if (Onboarding.showVoicePrompt.value) {

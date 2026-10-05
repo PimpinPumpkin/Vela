@@ -36,6 +36,7 @@ next:
 | 10 | [Android Auto and the car screen](10-android-auto.md) | What runs on the head unit, the snapshot map, the screens, and the install gate |
 | 11 | [The drive's chrome](11-drive-chrome.md) | Street and exit callouts, the road-ahead bar, whose stop sign it is, the route line, the parked-drive idle, stops mid-drive |
 | 12 | [Releases](12-releases.md) | Canary, nightly and stable, version codes and per-chip APKs, the in-app updater, What's new, Obtainium and the F-Droid repo |
+| 13 | [Settings and page motion](13-settings.md) | Settings navigation, predictive back, motion preferences, and keypad focus |
 
 ## What the remaining chapters owe
 

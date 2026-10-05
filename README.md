@@ -138,6 +138,8 @@ repository (the FAQ, the book, the full specification) is published there as a s
 
 ## What you get
 
+Settings pages animate forward and back, with predictive back previews on supported Android devices. Place details, directions, and other map sheets slide in and out and follow predictive back swipes. Browsing/navigation controls also transition smoothly. Turn off page motion in **Settings > Appearance > Page transitions**.
+
 - **Live traffic, straight from Google.** Vela reads the same real-time traffic
   Google Maps shows, so ETAs are traffic-aware, the fastest route leads the list,
   and every option says light, moderate or heavy traffic in plain words next to

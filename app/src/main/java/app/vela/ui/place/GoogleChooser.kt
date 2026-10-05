@@ -203,6 +203,7 @@ fun GoogleStyleDirectionsPanel(
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
     ) {
         Column(
@@ -565,16 +566,8 @@ internal fun modeTitle(mode: TravelMode): String = stringResource(
 /** Google's round header action: a tonal circle with a glyph. */
 @Composable
 internal fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, dark: Boolean, onClick: () -> Unit) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(SheetPalette.row(dark))
-            .dpadHighlight(CircleShape),
-    ) {
-        Icon(icon, contentDescription = label, tint = SheetPalette.ink(dark), modifier = Modifier.size(20.dp))
-    }
+    val tint = SheetPalette.dim(dark)
+    HeaderCircleButton(icon, label, tint, tint, onClick = onClick)
 }
 
 

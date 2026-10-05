@@ -1342,6 +1342,7 @@ fun MapScreen(
                 }
             }
         }
+        NavigationChromeTransition(state) { state ->
         if (state.navigating) {
             NavTurnBanner(state, vm, landscapeChrome, sidePanelWidthDp) { navBannerBottomPx = it }
         } else if (state.pickOnMap == null && state.transitNav == null && !state.areaPicking) {
@@ -1534,6 +1535,8 @@ fun MapScreen(
                     }
                 }
             }
+        }
+
         }
 
         // (The faster-route offer renders in the stacked notification column below, so it can
@@ -1762,8 +1765,27 @@ fun MapScreen(
         }
 
         // --- bottom overlay: arrival summary / nav controls / place sheet ---
-        when {
-            state.arrived && !state.replaying -> ArrivalSummary(
+        val bottomFrame = BottomOverlayFrame(state, BottomOverlay.of(state, searchOpen, pickingResults, app.vela.ui.RoutePicker.googleStyle.value))
+        app.vela.ui.SheetTransition(
+            targetState = bottomFrame,
+            contentKey = { it.overlay },
+            animateContent = { it.overlay.slide },
+            animateChange = { from, to -> BottomOverlay.animateChange(from.overlay, to.overlay) },
+            onBack = if (state.areaPicking || state.pickOnMap != null || state.transitNav != null ||
+                searchOpen || (altsOpen && state.directionsOpen && !state.showSteps && !state.editingStops) ||
+                (mapEngaged && bottomFrame.overlay == BottomOverlay.RESULTS && state.resultsCollapsed)) null else when (bottomFrame.overlay) {
+                BottomOverlay.PLACE -> if (state.navigating) null else vm::clearSelection
+                BottomOverlay.DIRECTIONS, BottomOverlay.CLASSIC_DIRECTIONS -> vm::clearRoute
+                BottomOverlay.STEPS -> vm::closeSteps
+                BottomOverlay.TRIP_EDITOR, BottomOverlay.NAV_STOPS -> vm::closeStopsEditor
+                BottomOverlay.NAV_STOP_OFFER -> vm::dismissNavTapStop
+                BottomOverlay.RESULTS -> ({ resultsExpanded = false; vm.clearSearch() })
+                else -> null
+            },
+        ) { frame ->
+        val state = frame.state
+        when (frame.overlay) {
+            BottomOverlay.ARRIVAL -> ArrivalSummary(
                 destinationLabel = state.arrivedLabel,
                 destinationAddress = state.navDestAddress,
                 tripSeconds = state.arrivedSeconds,
@@ -1781,7 +1803,7 @@ fun MapScreen(
             // origin = where you are, rows = the stops still ahead; Done replans once. Its Add stop
             // applies the edits and opens the along-route search (issue #623): the search page is
             // not drawn during a drive, so the planning pick left the editor hidden and stuck.
-            state.navigating && state.editingStops && !searchOpen -> app.vela.ui.place.StopsEditorSheet(
+            BottomOverlay.NAV_STOPS -> app.vela.ui.place.StopsEditorSheet(
                 originName = stringResource(R.string.mapscreen_your_location),
                 originIsMe = true,
                 destinationName = state.arrivedLabel.ifBlank { stringResource(R.string.mapscreen_destination) },
@@ -1794,7 +1816,7 @@ fun MapScreen(
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp),
             )
 
-            state.showSteps -> StepsSheet(
+            BottomOverlay.STEPS -> StepsSheet(
                 enterFromPx = if (state.navigating) stepsEnterFromPx else 0f,
                 closeTick = stepsCloseTick,
                 maxListHeight = if (state.navigating) stepsListMax else null,
@@ -1863,7 +1885,7 @@ fun MapScreen(
 
             // Tap-to-stop (Settings > Navigation): the tapped place is OFFERED here, above the
             // nav bar, and only the button adds it. Nothing else about the drive changes until then.
-            state.navigating && state.navTapCandidate != null -> {
+            BottomOverlay.NAV_STOP_OFFER -> {
                 val cand = state.navTapCandidate!!
                 val ahead = remember(cand, state.activeRoute, state.nav.traveledM) {
                     val poly = state.activeRoute?.polyline.orEmpty()
@@ -1903,7 +1925,7 @@ fun MapScreen(
             // slot (Google's in-nav list does the same); clearing it brings the bar back.
             // Landscape: the ETA/End bar joins the turn card in the LEFT column instead of
             // spanning the width (issue #297), so the map keeps the whole right side.
-            state.navigating && state.results.isEmpty() -> Column(
+            BottomOverlay.NAV_CONTROLS -> Column(
                 Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp)
@@ -1968,7 +1990,7 @@ fun MapScreen(
             // The FULL-TRIP editor for everyone (issue #516): every row, start and destination
             // included, can be dragged or dropped. It used to sit behind the chooser experiment
             // while the plain editor pinned both ends, which is the complaint in that issue.
-            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null ->
+            BottomOverlay.TRIP_EDITOR ->
                 app.vela.ui.place.TripEditorSheet(
                 points = remember(state.selected, state.directionsOrigin, state.directionsReversed, state.directionsWaypoints) { vm.tripPointsForEditor() },
                 meLabel = stringResource(R.string.mapscreen_your_location),
@@ -1983,8 +2005,7 @@ fun MapScreen(
             // instead of burying it at the bottom of the place sheet.
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
-            state.directionsOpen && !searchOpen && state.pickOnMap == null &&
-                app.vela.ui.RoutePicker.googleStyle.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
+            BottomOverlay.DIRECTIONS -> {
                 val shareCtx = LocalContext.current
                 val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
@@ -2066,7 +2087,7 @@ fun MapScreen(
 
             // The classic panel (and the transit tab under the Google-style picker) lives in its own
             // composable: MapScreen is at ART's verifier limit, and this call was ~30 arguments.
-            state.directionsOpen && !searchOpen && state.pickOnMap == null -> ClassicDirectionsHost(
+            BottomOverlay.CLASSIC_DIRECTIONS -> ClassicDirectionsHost(
                 state = state,
                 vm = vm,
                 onStartNav = onStartNav,
@@ -2087,8 +2108,7 @@ fun MapScreen(
 
             // The place sheet yields while Street View is up - the pano takes the top half and the
             // bottom half must stay pure map (the pose cone), not a sheet.
-            state.selected != null && !searchOpen && state.pickOnMap == null &&
-                state.streetView == null && !state.streetViewLoading -> PlaceSheet(
+            BottomOverlay.PLACE -> PlaceSheet(
                 place = state.selected!!,
                 resolving = state.tapResolvingFor != null && state.tapResolvingFor == state.selected?.id,
                 unlinked = state.tapUnlinkedFor != null && state.tapUnlinkedFor == state.selected?.id,
@@ -2163,9 +2183,8 @@ fun MapScreen(
             // is this bar in the bottom slot.
             // A shape being drawn takes the same slot (one call for both: MapScreen is at the
             // method size limit).
-            shapeBarWanted(state, searchOpen) -> ShapeBottomBar(state, vm)
-            state.results.isNotEmpty() && (!searchOpen || pickingResults) && state.pickOnMap == null &&
-                state.streetView == null && !state.streetViewLoading -> {
+            BottomOverlay.SHAPES -> ShapeBottomBar(state, vm)
+            BottomOverlay.RESULTS -> Box(Modifier.fillMaxSize()) {
               SearchResults(
                 results = state.results,
                 onShownChange = { filteredResultIds = it },
@@ -2245,12 +2264,20 @@ fun MapScreen(
                 }
             }
             }
+            BottomOverlay.NONE -> Unit
+        }
+
         }
 
         // Transit step-by-step guidance (Moovit-style) — a BOTTOM PANE since 2026-08-08 (issue
         // #232): the map above it shows the drawn itinerary with the camera framing the guided leg.
-        state.transitNav?.let { tn ->
-            app.vela.ui.place.TransitNavSheet(
+        app.vela.ui.SheetTransition(
+            targetState = state.transitNav,
+            contentKey = { it != null },
+            animateContent = { it != null },
+            onBack = if (state.transitNav != null && !state.areaPicking) vm::endTransitNav else null,
+        ) { tn ->
+            if (tn != null) app.vela.ui.place.TransitNavSheet(
                 nav = tn,
                 onNext = vm::advanceTransitNav,
                 onBack = vm::backTransitNav,
@@ -2263,11 +2290,16 @@ fun MapScreen(
         // Tap-through: the stop timeline for a route tapped on the departure board. Drawn over the
         // place sheet; tapping a stop opens that stop's own board, so the user keeps drilling down
         // the line the way Google's tap-through does. Also shown (with a spinner) while it loads.
-        if (state.routeDetail != null || state.routeDetailLoading) {
-            app.vela.ui.place.RouteDetailSheet(
-                step = state.routeDetail,
-                title = state.routeDetailTitle,
-                loading = state.routeDetailLoading,
+        app.vela.ui.SheetTransition(
+            targetState = state.takeIf { it.routeDetail != null || it.routeDetailLoading },
+            contentKey = { it != null },
+            animateContent = { it != null },
+            onBack = if (state.routeDetail != null || state.routeDetailLoading) vm::closeRouteDetail else null,
+        ) { snapshot ->
+            if (snapshot != null) app.vela.ui.place.RouteDetailSheet(
+                step = snapshot.routeDetail,
+                title = snapshot.routeDetailTitle,
+                loading = snapshot.routeDetailLoading,
                 onClose = vm::closeRouteDetail,
                 onStopTap = vm::openRouteStop,
             )
@@ -3159,6 +3191,7 @@ private fun SearchResults(
         modifier.statusBarsPadding().padding(top = 8.dp).fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = SheetPalette.ink(dark)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
         Column(Modifier.navigationBarsPadding()) {
             // Handle, the place sheet's exact grammar for a bottom sheet: TAP steps one
@@ -6515,9 +6548,6 @@ private fun BoxScope.ShapeBottomBar(state: MapUiState, vm: MapViewModel) {
     val d = state.drawing
     if (d != null) DrawBar(d, vm) else state.pendingImport?.let { ShapesOnlySaveBar(it.title, vm) }
 }
-
-private fun shapeBarWanted(state: MapUiState, searchOpen: Boolean) =
-    state.drawing != null || (state.pendingImport != null && state.results.isEmpty() && !searchOpen)
 
 @Composable
 private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {

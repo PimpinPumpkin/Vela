@@ -850,8 +850,8 @@ Defaults that make the safe path the easy one:
   A new download UI site must show a Cancel wherever it shows progress (skip it during the
   unpack/install phase - the bytes are already down).
 - **Settings is HUB-AND-SPOKE (2026-07-23, ported from alltechdev/vela-dpad; supersedes the
-  2026-07-10 single-page order):** `ui/settings/` = `SettingsScreen` (a plain hoisted-state
-  dispatcher over the `SettingsSection` enum, no nav library; BACK peels spoke -> hub -> map),
+  2026-07-10 single-page order):** `ui/settings/` = `SettingsScreen` (a Navigation Compose host
+  over `SettingsSection` destinations; predictive BACK peels spoke -> hub -> map),
   `SettingsHub` (category rows + the SETTINGS SEARCH, a static `SEARCH_INDEX` of label-resource ->
   section where a match OPENS THE SPOKE - the old measured scroll-to-Y died with the long page;
   add new row labels to the index. **Since 2026-09-14 (issue #426) the match also SCROLLS TO
@@ -7292,3 +7292,21 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
 
 Vela Maps (`app.vela`). "Vela" was clearance-checked and is free of maps-app and
 trademark collisions.
+
+## Settings navigation
+
+`SettingsScreen` owns the Navigation Compose host above the persistent map. Pass the root
+`MapViewModel` through explicitly. Keep the transparent map destination and do not move
+`MapScreen` into the host: disposing it loses the camera. Let the host own Settings back
+gestures. Routes must differ by more than case: `main/map` and `settings/map` are distinct;
+`map` and `MAP` collide in Navigation matching. Gate Settings autofocus on `LocalSettingsPageActive` so previews cannot steal focus.
+
+Map sheet entry/exit lives in `SheetTransition` around immutable `BottomOverlayFrame` snapshots.
+Keep keys stable across data refreshes and use the snapshot inside outgoing content: reading live
+cleared state would make the sheet disappear before its exit finishes. Keep StepsSheet's existing
+bar/list animation separate. Route-detail back handling is gated by `LocalSheetActive` during exit.
+
+`SheetTransition` registers predictive back after its content. Keep all navigation mutations in
+its commit callback; canceled progress only restores the sheet. Gesture state travels with each
+retained frame so rapid reopen cannot inherit an offscreen offset. `NavigationChromeTransition`
+retains only chrome snapshots; never wrap the map or guidance service in its animation.
