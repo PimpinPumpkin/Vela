@@ -3179,6 +3179,8 @@ private fun SearchResults(
     // filter read as broken ("open places disappear"); the place sheet already computes the same
     // fallback. A place with no status AND no parseable hours still drops (can't confirm open).
     val nowForHours = remember(openOnly) { java.time.LocalDateTime.now() }
+    // Names that occur more than once (a chain's branches): those cards keep their address.
+    val repeatedNames = remember(results) { results.groupingBy { it.name.trim().lowercase() }.eachCount().filterValues { it > 1 }.keys }
     val shown = results
         .let { list ->
             if (!openOnly) list else list.filter { p ->
@@ -3463,21 +3465,23 @@ private fun SearchResults(
                 state = listState,
             ) {
                 items(shown) { place ->
+                    if (place === shown.firstOrNull()) Spacer(Modifier.fillMaxWidth().height(8.dp).background(if (dark) Color.Black else Color(0xFFE8EAED)))
                     ResultPlaceCard(
                         place = place,
                         dark = dark,
+                        showAddress = place.rating == null || place.name.trim().lowercase() in repeatedNames,
                         onPick = { onPick(place) },
                         onActionDirections = { onActionDirections(place) },
                         onActionCall = { onActionCall(place) },
                         onActionShare = { onActionShare(place) },
                         onActionMenu = { onActionMenu(place) },
                     )
-                    // Plain breathing gap between cards, Google-style (no bars/dividers).
+                    // A band in the color behind the sheet between cards, as on Google's list.
                     Spacer(
                         Modifier
                             .fillMaxWidth()
-                            .padding(top = 14.dp)
-                            .height(8.dp),
+                            .height(8.dp)
+                            .background(if (dark) Color.Black else Color(0xFFE8EAED)),
                     )
                 }
                 // Next pages of the same search, on demand (the first fetch is three pages).
@@ -3503,6 +3507,7 @@ private fun SearchResults(
 private fun ResultPlaceCard(
     place: Place,
     dark: Boolean,
+    showAddress: Boolean,
     onPick: () -> Unit,
     onActionDirections: () -> Unit,
     onActionCall: () -> Unit,
@@ -3554,7 +3559,8 @@ private fun ResultPlaceCard(
                 Text(
                     String.format(Locale.US, "%.1f", r),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = SheetPalette.dim(dark),
+                    fontWeight = FontWeight.Bold,
+                    color = SheetPalette.ink(dark),
                 )
                 RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
                 place.reviewCount?.let {
@@ -3587,8 +3593,9 @@ private fun ResultPlaceCard(
             )
         }
         // Full address (city/state/zip) to disambiguate similar names
-        // and identical-looking residential addresses.
-        place.address?.let { addr ->
+        // and identical-looking residential addresses. A rated business whose name is the
+        // only one of its kind in the list goes without, as on Google's cards.
+        place.address?.takeIf { showAddress }?.let { addr ->
             Text(
                 addr,
                 style = MaterialTheme.typography.bodyMedium,
@@ -3821,40 +3828,21 @@ private fun ResultActionButton(
     onClick: () -> Unit,
 ) {
     val pill = androidx.compose.foundation.shape.CircleShape
-    if (primary) {
-        Row(
-            Modifier
-                .clip(pill)
-                .background(androidx.compose.ui.graphics.Color(0xFFA8C7FA))
-                .dpadHighlight(pill)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val ink = androidx.compose.ui.graphics.Color(0xFF062E6F)
-            Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)
-        }
-    } else {
-        Row(
-            Modifier
-                .clip(pill)
-                .border(
-                    androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF5F6368)),
-                    pill,
-                )
-                .dpadHighlight(pill)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Pale blue on the dark sheet, the full accent on white.
-            val ink = if (isAppInDarkTheme()) androidx.compose.ui.graphics.Color(0xFFA8C7FA) else MaterialTheme.colorScheme.primary
-            Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)
-        }
+    // Every button is filled, as on Google's cards: the first in the accent, the rest in its tint.
+    val scheme = MaterialTheme.colorScheme
+    val ink = if (primary) scheme.onPrimary else scheme.onSecondaryContainer
+    Row(
+        Modifier
+            .clip(pill)
+            .background(if (primary) scheme.primary else scheme.secondaryContainer)
+            .dpadHighlight(pill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1)
     }
 }
 
