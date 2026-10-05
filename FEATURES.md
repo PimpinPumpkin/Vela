@@ -2924,7 +2924,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Search along the route is a page** with large category tiles (fuel and charging first)
   and your recent searches.
 - ✅ **Neutral dark surfaces** under the teal accent; the browse map's locate, parking and layers
-  buttons are ringed dark circles, and take wallpaper colors with Material You on.
+  buttons are gray circles with a blue locate glyph, and take wallpaper colors with Material You on.
 - ✅ **A Street View preview on the map** for a place that has one; a tap opens the viewer.
 - ✅ **Street View by location works again.** Google switched off the lookup on 2026-10-05; Vela
   uses the current one, asks for Google's own imagery only, and looks out to 200 m.

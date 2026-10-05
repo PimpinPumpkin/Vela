@@ -3736,9 +3736,11 @@ ports it rather than inventing a fourth:
   whole screen in portrait, the left column over a dimmed map in landscape (a tap on the dimmed
   part closes it). A search field, then `QuickCategories.forDrive()` as tiles three to a row (fuel
   and charging first), then the six most recent searches. It is drawn last in `MapScreen`.
-- **The browse map's buttons** (locate, parking, layers) share `mapButtonColor`: a dark circle
-  with a white ring and a white glyph (`mapButtonRing`, `mapButtonInk`), white with a gray ring in
-  light theme, no ring with wallpaper colors. A saved parking spot tints the glyph, not the button.
+- **The browse map's buttons** (locate, parking, layers) share `mapButtonColor`: a mid-gray circle,
+  lighter than the dark map so the fill sets it off, with a faint edge (`mapButtonRing`) and a
+  white glyph (`mapButtonInk`); white with a gray edge in light theme; no edge with wallpaper
+  colors. The locate glyph is blue, like the dot it returns to. A saved parking spot tints the
+  glyph, not the button.
 - **MapScreen takes no new calls.** It is at the method-size limit (the debug compile fails with
   "Method too large", and a release build past ART's verifier limit fails on the phone). New
   floating pieces go through `MapFloaters` (one call: replay controls, the Street View preview) or

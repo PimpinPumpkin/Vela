@@ -3041,7 +3041,7 @@ private fun BoxScope.NavCorner(
 @Composable
 private fun mapButtonColor(dark: Boolean) =
     if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.primaryContainer
-    else if (dark) Color(0xFF1B1C1E) else Color.White
+    else if (dark) Color(0xFF3C4043) else Color.White // a gray lighter than the dark map: the fill is what sets the button off
 
 /** The glyph on one of those buttons: white on the dark button (a dark gray on the white one in
  *  light theme), the container's own ink with wallpaper colors. [accent] is for a button that
@@ -3059,15 +3059,18 @@ private fun LocateGlyph(dark: Boolean) {
     Box(
         Modifier.size(56.dp).then(if (ring != null) Modifier.border(ring, CircleShape) else Modifier),
         contentAlignment = Alignment.Center,
-    ) { Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location)) }
+    ) {
+        // Blue, as the dot it sends you back to is: the one place on these buttons blue means "you".
+        Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location), tint = if (app.vela.ui.theme.wallpaperColorsInUse()) androidx.compose.material3.LocalContentColor.current else if (dark) Color(0xFF8AB4F8) else Color(0xFF1A73E8))
+    }
 }
 
-/** A ring round those buttons so they stand off the map: white on the dark button, gray on the
- *  white one. None with wallpaper colors, where the fill does that job. */
+/** A faint edge on those buttons: the fill sets them off the map, this only keeps the circle
+ *  crisp over a pale road or a white label. None with wallpaper colors. */
 @Composable
 private fun mapButtonRing(dark: Boolean): BorderStroke? =
     if (app.vela.ui.theme.wallpaperColorsInUse()) null
-    else BorderStroke(1.5.dp, if (dark) Color.White.copy(alpha = 0.85f) else Color(0xFFBDC1C6))
+    else BorderStroke(1.dp, if (dark) Color.White.copy(alpha = 0.14f) else Color(0xFFDADCE0))
 
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12
