@@ -1,5 +1,6 @@
 package app.vela.ui.nav
 
+import androidx.compose.foundation.layout.navigationBarsPadding
 import app.vela.ui.icons.Sym
 
 import androidx.compose.animation.core.Animatable
@@ -801,11 +802,11 @@ fun NavControls(
         // Match the banner's treatment: generous radius + shadow, a floating pill not a bar.
         // Google's bar is OLED BLACK in both themes (the bottom bar in the screenshots);
         // white figures sit on it, so it saves power and matches the map chrome.
-        shape = RoundedCornerShape(28.dp),
+        shape = navBarShape(),
         border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color.Black,
+            containerColor = NavBarColor,
             contentColor = androidx.compose.ui.graphics.Color.White,
         ),
     ) {
@@ -844,8 +845,20 @@ fun NavControls(
                     .padding(start = 20.dp, end = 8.dp, bottom = 8.dp),
             ) { Column { preview() } }
         }
+        if (navBarFlush()) Spacer(Modifier.navigationBarsPadding())
     }
 }
+
+/** The nav bar's surface, shared with the step sheet it opens into: near black in every theme. */
+val NavBarColor = androidx.compose.ui.graphics.Color(0xFF101214)
+
+/** Portrait: the bar sits flush on the screen's bottom edge, like Google's. Landscape: a card. */
+@Composable
+fun navBarFlush(): Boolean = androidx.compose.ui.platform.LocalConfiguration.current.let { it.screenWidthDp < it.screenHeightDp }
+
+@Composable
+fun navBarShape(): androidx.compose.ui.graphics.Shape =
+    if (navBarFlush()) RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp) else RoundedCornerShape(28.dp)
 
 /** The bar's top: the chevron handle and the End | figures | list row. Drawn by [NavControls] and,
  *  with [handleUp] false, as the header of the expanded [StepsSheet] during nav, so the two are

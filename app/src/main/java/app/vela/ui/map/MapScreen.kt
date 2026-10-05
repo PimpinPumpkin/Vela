@@ -1862,8 +1862,7 @@ fun MapScreen(
                 modifier = if (state.navigating) Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp)
-                    .navigationBarsPadding()
-                    .padding(16.dp)
+                    .navBarHost(landscapeChrome)
                 else Modifier.align(Alignment.BottomCenter),
             )
 
@@ -1900,8 +1899,7 @@ fun MapScreen(
                     modifier = Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                         .landscapeColumn(landscapeChrome, sidePanelWidthDp)
-                        .navigationBarsPadding()
-                        .padding(16.dp),
+                        .navBarHost(landscapeChrome),
                 )
             }
 
@@ -1913,8 +1911,7 @@ fun MapScreen(
                 Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp)
-                    .navigationBarsPadding()
-                    .padding(16.dp),
+                    .navBarHost(landscapeChrome),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NavControls(
@@ -2961,6 +2958,11 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
         // only frame the view and keep the tap index, except the one that is selected.
         .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id) }
 
+/** The nav bar and the step sheet it opens into: flush with the screen's bottom edge in portrait
+ *  (the card pads its own content off the system bar), a floating card in the landscape column. */
+private fun Modifier.navBarHost(landscape: Boolean): Modifier =
+    if (landscape) this.navigationBarsPadding().padding(16.dp) else this
+
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12
 
@@ -3445,35 +3447,6 @@ private fun SearchResults(
             } // if (!collapsed) — list
         }
     }
-            // "View map" extended FAB, Google-style: fixed bottom-end over the list, #303134
-            // pill with map glyph + #A8C7FA ink and a real shadow. Collapses the sheet to the
-            // count bar so the map shows again. Lives in the overlay Box scope (NOT inside the
-            // Column above) so BoxScope.align anchors it to the sheet's bottom-end above the list.
-            if (!collapsed) {
-                androidx.compose.material3.ExtendedFloatingActionButton(
-                    onClick = onMinimize,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .padding(end = 16.dp, bottom = 16.dp)
-                        .dpadHighlight(RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = androidx.compose.ui.graphics.Color(0xFF303134),
-                    contentColor = androidx.compose.ui.graphics.Color(0xFFA8C7FA),
-                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 6.dp,
-                        pressedElevation = 8.dp,
-                    ),
-                ) {
-                    Icon(
-                        Sym.Map,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.mapscreen_view_map))
-                }
-            }
     } // Box overlay for the list FAB
 } // SearchResults end
 
@@ -3503,31 +3476,6 @@ private fun ResultPlaceCard(
         // Photo strip with GROUPED outer corners (16dp outside, square
         // where images touch), full-bleed above the text, Google-style.
         // Any photo at all shows: a single photo fills the strip.
-        if (gallery.isNotEmpty()) {
-            Row(
-                Modifier.fillMaxWidth().padding(top = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                gallery.forEachIndexed { i, url ->
-                    val corners = when {
-                        gallery.size == 1 -> RoundedCornerShape(16.dp)
-                        i == 0 -> RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
-                        i == gallery.lastIndex -> RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
-                        else -> RoundedCornerShape(0.dp)
-                    }
-                    coil.compose.AsyncImage(
-                        model = url.atWidth(400),
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(110.dp)
-                            .clip(corners)
-                            .background(SheetPalette.dim(dark).copy(alpha = 0.2f)),
-                    )
-                }
-            }
-        }
         Column(
             Modifier
                 .fillMaxWidth()
@@ -3666,18 +3614,39 @@ private fun ResultPlaceCard(
                     // under the hours, from the About fetch. Same source as the sheet's chips.
                     val checks = remember(place.id, place.about) { app.vela.ui.place.attributeHighlights(place.about).take(3) }
                     if (checks.isNotEmpty()) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            checks.forEachIndexed { i, c ->
-                                if (i > 0) Text("·", style = MaterialTheme.typography.bodyMedium, color = SheetPalette.dim(dark))
-                                Icon(Sym.Check, contentDescription = null, tint = SheetPalette.statusGreen(dark), modifier = Modifier.size(14.dp))
-                                Text(c, style = MaterialTheme.typography.bodyMedium, color = SheetPalette.dim(dark), maxLines = 1)
-                            }
-                        }
+                        // One line, cut with an ellipsis: three long ones ran off the card.
+                        Text(
+                            checks.distinct().joinToString("  ·  ") { "\u2713 $it" },
+                            style = MaterialTheme.typography.bodyMedium, color = SheetPalette.dim(dark),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp),
+                        )
                     }
+        // The photos come after the facts, as on Google's cards: name, rating and hours lead.
+        if (gallery.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                gallery.forEachIndexed { i, url ->
+                    val corners = when {
+                        gallery.size == 1 -> RoundedCornerShape(16.dp)
+                        i == 0 -> RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                        i == gallery.lastIndex -> RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
+                        else -> RoundedCornerShape(0.dp)
+                    }
+                    coil.compose.AsyncImage(
+                        model = url.atWidth(400),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(96.dp)
+                            .clip(corners)
+                            .background(SheetPalette.dim(dark).copy(alpha = 0.2f)),
+                    )
+                }
+            }
+        }
                     // Google-style per-row action buttons: Directions (filled) + Call/Share
                     // (outlined). They act on the ROW's place directly, without opening it.
         Row(

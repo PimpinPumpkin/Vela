@@ -272,15 +272,15 @@ fun StepsSheet(
                     settle = settleDrag,
                 )
             },
-        shape = if (header != null) RoundedCornerShape(28.dp) else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        shape = if (header != null) navBarShape() else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(),
-        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark, amoled), contentColor = ink),
+        colors = CardDefaults.cardColors(containerColor = if (header != null) NavBarColor else SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
         // Fill the card to the screen bottom; pad content off the nav bar (the floating nav form
         // gets its margins from the host, so only the list padding applies there).
         Column(
-            if (header != null) Modifier
+            if (header != null) (if (navBarFlush()) Modifier.navigationBarsPadding() else Modifier)
             else Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
         ) {
             if (header != null) {
