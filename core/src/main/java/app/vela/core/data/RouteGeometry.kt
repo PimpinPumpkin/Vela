@@ -404,7 +404,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
             }
         }
-        val consolidated = foldSameRoadMerges(foldRenames(consolidateExits(maneuvers)))
+        val consolidated = rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -417,6 +417,25 @@ object RouteGeometry {
             summary = maneuvers.filter { it.road != null }.maxByOrNull { it.distanceMeters }?.road,
         )
     }
+
+    /** A turn onto a NAMELESS road that a merge onto a named one follows within [RAMP_TURN_MAX_M]
+     *  is the turn onto that road's on-ramp: the ramp carries no name or sign in the data, so the
+     *  step read as a bare "Turn left" with the freeway only named a step later. It takes the
+     *  language's own ramp phrase toward the merge's road ("Take the ramp on the left toward
+     *  I 80"); the arrow, the lanes and the nameless spoken form are left alone. */
+    internal fun rampTurns(list: List<Maneuver>): List<Maneuver> = list.mapIndexed { i, m ->
+        val next = list.getOrNull(i + 1)
+        val side = when (m.type) {
+            ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT -> "left"
+            ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT -> "right"
+            else -> null
+        }
+        val toward = next?.takeIf { it.type == ManeuverType.MERGE }?.let { it.ref?.takeIf(String::isNotBlank) ?: it.road?.takeIf(String::isNotBlank) }
+        if (side == null || toward == null || !m.road.isNullOrBlank() || !m.ref.isNullOrBlank() || m.distanceMeters > RAMP_TURN_MAX_M) m
+        else m.copy(instruction = osrmPhrase("on ramp", side, null, toward, null, null))
+    }
+
+    private const val RAMP_TURN_MAX_M = 600.0
 
     /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
      *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires

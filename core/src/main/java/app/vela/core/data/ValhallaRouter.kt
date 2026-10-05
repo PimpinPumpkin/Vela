@@ -603,7 +603,7 @@ object ValhallaRouter {
                 folded += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val maneuvers = RouteGeometry.foldSameRoadMerges(RouteGeometry.foldRenames(RouteGeometry.consolidateExits(folded)))
+        val maneuvers = RouteGeometry.rampTurns(RouteGeometry.foldSameRoadMerges(RouteGeometry.foldRenames(RouteGeometry.consolidateExits(folded))))
         if (maneuvers.size < 2) return null
         // The steps' own sums, not the trip summary: Valhalla rounds each step to whole meters
         // and the summary separately, and NavEngine locates maneuvers by a prefix sum of steps,
