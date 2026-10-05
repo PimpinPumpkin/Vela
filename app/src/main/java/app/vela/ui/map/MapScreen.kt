@@ -1284,7 +1284,10 @@ fun MapScreen(
             val onRoad = navRoadLabel(state)
             // Composition reads only "do we have a position"; the value itself is read in layout.
             val havePuck = puckScreen.have.value
-            if (onRoad != null && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
+            // Above the bar it gives way to the Re-center pill while the camera is away from the
+            // car (the pill takes that strip); under the arrow it travels with the car and stays.
+            val yields = roadLabelMode == app.vela.ui.RoadLabel.BAR && (state.navCameraDetached || navZoomOverride)
+            if (onRoad != null && !yields && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
                 val uiLang = app.vela.ui.AppLocale.effective().language
                 val shownRoad =
                     if (state.roadNameLatin.isEmpty()) onRoad
