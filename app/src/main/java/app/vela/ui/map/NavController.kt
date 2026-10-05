@@ -1160,7 +1160,11 @@ internal class NavController(
             val res = when (host.roadFeaturesCoverRoute(poly)) {
                 MapViewModel.RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.controlsAlong(poly, 120.0) }
                     .also { android.util.Log.i("VelaControls", "baked route controls=${it.size} pts=${poly.size} in ${android.os.SystemClock.elapsedRealtime() - t0} ms") }
-                MapViewModel.RoadCover.FAILED -> { android.util.Log.i("VelaControls", "route road-features download FAILED"); return@launch }
+                MapViewModel.RoadCover.FAILED -> {
+                    android.util.Log.i("VelaControls", "route road-features download FAILED")
+                    app.vela.diag.TripNote.add("signs: the route's file did not load, falling back to what is in view")
+                    return@launch
+                }
                 MapViewModel.RoadCover.NONE -> runCatching {
                     withContext(Dispatchers.IO) {
                         app.vela.core.data.OverpassTrafficSignals.fetchControlsAlongCorridor(http, poly)
@@ -1194,6 +1198,7 @@ internal class NavController(
             }
             android.util.Log.i("VelaControls", "route corridor fetched=${res.size} merged=${merged.size} kept=${kept.size}")
             navControlsKey = key
+            app.vela.diag.TripNote.add("signs: route set, ${kept.size} on the route of ${res.size} near it")
             host.controlsBox = null // the box cache is superseded; the post-nav viewport refresh repaints fresh
             host.cancelViewportControls() // and kill a box fetch still inside its settle, or it lands on top of this
             _state.update { it.copy(trafficControls = kept) }

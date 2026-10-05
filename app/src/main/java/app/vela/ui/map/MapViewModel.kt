@@ -599,10 +599,16 @@ class MapViewModel @Inject constructor(
                             "places ${app.vela.ui.MapPoiPrefs.placesSource.value}, icon ${app.vela.ui.PuckStyle.key()}",
                     )
                     app.vela.diag.TripNote.add("settings: " + app.vela.diag.SettingsDump.line(appContext))
+                    app.vela.diag.NetCount.drain(); netTick = 0; lastDataNote = null
                 }
                 kotlinx.coroutines.delay(1_000)
                 if (!_state.value.navigating) continue
                 app.vela.ui.map.MapPerf.sample(android.os.SystemClock.elapsedRealtime()).forEach { app.vela.diag.TripNote.add(it) }
+                // What the drive is running on, said again whenever it changes: two phones on the
+                // same road differ by what is downloaded, and nobody thinks to ask.
+                driveDataNote().let { if (it != lastDataNote) { lastDataNote = it; app.vela.diag.TripNote.add(it) } }
+                // And what the map fetched in the last ten seconds, when it fetched anything.
+                if (++netTick >= 10) { netTick = 0; app.vela.diag.NetCount.drain()?.let { app.vela.diag.TripNote.add("net 10 s: $it") } }
             }
         }
         viewModelScope.launch { app.vela.ui.AppVisibility.foreground.collect { app.vela.diag.TripNote.add(if (it) "app: on screen" else "app: off screen") } }
@@ -2157,6 +2163,26 @@ class MapViewModel @Inject constructor(
      *  so an offline tap shows what is on the phone and never a spinner waiting on a host that
      *  cannot answer (user 2026-09-14). */
     private fun offlineNow(): Boolean = _state.value.offline || !isOnline()
+
+    private var netTick = 0
+    private var lastDataNote: String? = null
+
+    /** Which of the drive's data is read from the phone and which is streamed. Counts and
+     *  sources only: no region is named. */
+    private fun driveDataNote(): String {
+        val s = _state.value
+        fun split(uris: List<String>) = uris.count { "file://" in it }.let { local -> "$local on phone, ${uris.size - local} streamed" }
+        val here = s.myLocation
+        val routing = here != null && runCatching { routeEngine.covers(here, here, TravelMode.DRIVE) }.getOrDefault(false)
+        return "data: routing " + (if (routing) "on phone" else "online only") +
+            ", map " + (if (s.basemapArchive != null) "on phone" else "streamed") +
+            ", places " + split(s.placesOverlays) +
+            ", buildings " + split(s.buildingOverlays) +
+            ", addresses " + split(s.addressOverlays) +
+            ", speed limits " + (if (routing) "on phone" else if (s.maxspeedOverlays.isNotEmpty()) "streamed" else "none") +
+            ", signs " + (if (nav.corridorControlsActive) "route set" else "view fallback") +
+            ", " + (if (s.offline) "offline" else "online")
+    }
 
     /** Offline, or the user turned Google off (Settings > Privacy): the Google-only fetches take
      *  the same "nothing to ask" path either way. NOT [offlineNow] itself: that one also decides
@@ -8381,6 +8407,7 @@ class MapViewModel @Inject constructor(
             // Fetch/merge visibility: like flock's diag line, "controls don't show" reports are
             // only diagnosable when the pipeline says what it actually produced.
             android.util.Log.i("VelaControls", "fetched=${res.size} merged=${merged.size} kept=${kept.size}")
+            if (navPoly != null) app.vela.diag.TripNote.add("signs: view fallback, ${kept.size} on the route of ${res.size} in view")
             _state.update { it.copy(trafficControls = kept) }
         }
     }

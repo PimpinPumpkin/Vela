@@ -4236,6 +4236,19 @@ position, an address, a contact, a name, a provider or a font is skipped, and so
 
 Recorded trips can be deleted several at a time from the selection toolbar, behind a confirm.
 
+**A drive's notes say what it ran on and what it fetched** (2026-10-05). A `data:` note, written
+at the start and again whenever it changes, lists which of routing, the map, places, buildings,
+addresses, speed limits and signs come from the phone and which are streamed, as counts and
+sources with no region named. A `net 10 s:` note counts the map's network requests by host, or
+by release for Vela's own files (`diag/NetCount`, an interceptor in MapLibre's client after the
+local-tile hook; never a path). A `signs:` note says whether the route's own set or the
+whole-view fallback filled the layer. They exist because a drive that crawled on one phone and
+not another differed only in what was downloaded: with a state on the phone, a streamed
+speed-limit overlay and a neighboring country's building overlay made about 9,000 requests in two
+and a half minutes of dragging. Neither is streamed now where the phone already has the data
+(`refreshMaxspeedOverlay`, `refreshBuildingOverlays`), and during a drive the whole-view sign
+path draws only what is on the route (`controlsOnRoute`).
+
 `NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
 speed, bearing window, chord bearing, display bearing, camera bearing and frame dt. It carries
 **no** position data, which is what makes it safe to attach to a public issue, unlike a recorded
