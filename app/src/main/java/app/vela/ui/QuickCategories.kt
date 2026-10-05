@@ -36,4 +36,11 @@ object QuickCategories {
         Chip(R.string.cat_post_offices, "Post office", Sym.LocalPostOffice),
         Chip(R.string.cat_campgrounds, "Campgrounds", Sym.Cabin),
     )
+
+    /** The same list for a drive in progress: fuel and charging lead, since those are what a
+     *  driver stops for; the rest keep their order. */
+    fun forDrive(): List<Chip> = all().let { list ->
+        val first = setOf(R.string.cat_gas, R.string.cat_ev)
+        list.filter { it.label in first } + list.filter { it.label !in first }
+    }
 }

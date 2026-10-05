@@ -738,13 +738,13 @@ fun NavSearchChips(
                         modifier = Modifier.weight(1f).padding(vertical = 14.dp).dpadFieldEscape(),
                     )
                 }
-                // The same categories as everywhere else, as large tiles: three to a row.
+                // The same categories as everywhere else (fuel and charging first), as large tiles: three to a row.
                 Column(
                     Modifier.padding(top = 12.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     val tile = RoundedCornerShape(12.dp)
-                    app.vela.ui.QuickCategories.all().chunked(3).forEach { row ->
+                    app.vela.ui.QuickCategories.forDrive().chunked(3).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { chip ->
                                 Column(
