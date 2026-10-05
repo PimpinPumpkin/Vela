@@ -35,6 +35,8 @@ backend) for the things only Google does well: search, hours, reviews and
 photos, and **traffic-aware ETAs**. Built to run on GrapheneOS and other no-GMS
 ROMs.
 
+<p align="center"><img src="docs/not-google-maps.png" width="320" alt="A tub of I Can't Believe It's Not Butter relabeled I can't believe it's not Google Maps"></p>
+
 ## What reaches Google, by default
 
 **It is not a Google Maps wrapper.** The map is a native Android app drawing open vector tiles
