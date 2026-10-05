@@ -1588,15 +1588,6 @@ fun MapScreen(
                     .navigationBarsPadding()
                     .padding(end = NAV_FAB_EDGE_DP, bottom = navBarClearance),
             ) {
-                if (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride) {
-                    app.vela.ui.nav.NavFab(
-                        onClick = {
-                            vm.recenterNav()
-                            navRecenterTick++
-                        },
-                        modifier = Modifier.dpadHighlight(CircleShape),
-                    ) { Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
-                }
                 // Whole-route overview (Google's fly-over): camera only, the drive keeps
                 // navigating; Re-center (above, it appears the moment this detaches the
                 // camera) glides straight back into the follow.
@@ -1708,7 +1699,15 @@ fun MapScreen(
         val movingFree = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
             !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
         val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
-        if (app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
+        // Away from the car during a drive (panned, pinched, previewing a step): Google's labeled
+        // Re-center pill takes the speed box's corner until the camera is back.
+        val navAway = state.navigating && !state.showSteps && !state.editingStops && state.results.isEmpty() &&
+            (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride)
+        if (navAway) app.vela.ui.nav.NavRecenterPill(
+            onClick = { vm.recenterNav(); navRecenterTick++ },
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 16.dp, bottom = navBarClearance),
+        )
+        if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
             SpeedWidget(
                 speedMps = state.mySpeed,
                 limitKmh = postedLimitKmh,

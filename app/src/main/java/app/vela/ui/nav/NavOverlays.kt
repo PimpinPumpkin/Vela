@@ -2,6 +2,7 @@ package app.vela.ui.nav
 
 import androidx.compose.foundation.layout.navigationBarsPadding
 import app.vela.ui.icons.Sym
+import app.vela.ui.icons.SymOutlined
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
@@ -857,13 +858,33 @@ fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = fa
     ) { content() }
 }
 
-/** A button floating over the nav map, Google's dress: a black circle, a white glyph. */
+/** A button floating over the nav map: a black circle with a white glyph, which reads on any
+ *  map; with wallpaper colors turned on (Settings > Appearance) it takes the theme's instead. */
 @Composable
 fun NavFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val themed = app.vela.ui.theme.DynamicColor.on.value
     androidx.compose.material3.FloatingActionButton(
         onClick = onClick, modifier = modifier, shape = androidx.compose.foundation.shape.CircleShape,
-        containerColor = NavBarColor, contentColor = Color.White,
+        containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else NavBarColor,
+        contentColor = if (themed) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
     ) { content() }
+}
+
+/** Google's Re-center: a labeled pill at the bottom left while the camera is away from the car. */
+@Composable
+fun NavRecenterPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val themed = app.vela.ui.theme.DynamicColor.on.value
+    androidx.compose.material3.ExtendedFloatingActionButton(
+        onClick = onClick,
+        modifier = modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+        shape = androidx.compose.foundation.shape.CircleShape,
+        containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else NavBarColor,
+        contentColor = if (themed) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+    ) {
+        Icon(SymOutlined.Navigation, contentDescription = null, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.mapscreen_recenter), style = MaterialTheme.typography.titleMedium)
+    }
 }
 
 /** The nav bar's surface, shared with the step sheet it opens into: near black in every theme. */
