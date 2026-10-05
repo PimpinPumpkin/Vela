@@ -7,12 +7,14 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlinx.serialization.Serializable
 
 /**
  * A WGS84 coordinate. Vela's own type, deliberately free of any MapLibre
  * dependency so `:core` stays UI-agnostic — convert to/from
  * `org.maplibre.android.geometry.LatLng` only at the view boundary.
  */
+@Serializable
 data class LatLng(val lat: Double, val lng: Double)
 
 /** south/west/north/east, in degrees. */

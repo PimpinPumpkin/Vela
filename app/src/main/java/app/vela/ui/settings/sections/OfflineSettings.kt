@@ -134,6 +134,42 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         }
         app.vela.ui.RegionUpdates.lastResult.value?.let { Hint(it) }
         }
+        // Viewed places kept on the phone for offline opens (details, reviews, photos).
+        SettingsGroup(title = stringResource(R.string.settings_offline_cached_places)) {
+        ToggleRow(
+            label = stringResource(R.string.settings_offline_cached_places),
+            checked = app.vela.ui.OfflinePlaces.on.value,
+            onCheckedChange = { app.vela.ui.OfflinePlaces.set(context, it) },
+            hint = stringResource(R.string.settings_offline_cached_places_hint),
+        )
+        GroupDivider()
+        var placeCacheTick by remember { mutableStateOf(0) }
+        val placeCacheBytes = remember(placeCacheTick) {
+            app.vela.core.data.PlaceCache.dirSizeBytes(java.io.File(context.filesDir, "placecache"))
+        }
+        val placeCacheText = remember(placeCacheBytes) {
+            if (placeCacheBytes < 1024 * 1024) "${placeCacheBytes / 1024} KB"
+            else fmtMb((placeCacheBytes / 1048576).toInt())
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.settings_offline_cached_places_used, placeCacheText),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            FilledTonalButton(
+                onClick = {
+                    app.vela.core.data.PlaceCache.clear(java.io.File(context.filesDir, "placecache"))
+                    placeCacheTick++
+                },
+                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            ) { Text(stringResource(R.string.settings_offline_cached_places_clear)) }
+        }
+        }
         if (regions.isNotEmpty() && offlineAddrCount == 0) {
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),

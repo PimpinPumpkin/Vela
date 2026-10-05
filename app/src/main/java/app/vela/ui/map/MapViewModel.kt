@@ -1474,6 +1474,7 @@ class MapViewModel @Inject constructor(
     /** Settings > Data and privacy > Clear history (issue #425): recent searches, recent places,
      *  parking history and every recorded trip in one go. Saved places and lists are untouched. */
     fun clearAllHistory() {
+        clearViewedPlaces()
         clearRecents()
         clearParkingHistory()
         tripStore.list().forEach { runCatching { tripStore.delete(it.id) } }
@@ -1759,6 +1760,7 @@ class MapViewModel @Inject constructor(
             )
         }
         rememberRecentPlace(sp)
+        _state.value.selected?.let { showViewedCopy(it) } // offline: the copy kept from its last online visit
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
         // the star stays filled.
@@ -2833,6 +2835,7 @@ class MapViewModel @Inject constructor(
         fetchStopDepartures(p)
         backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
+        showViewedCopy(p)
     }
 
     /** Transit-station category words (English + a few common ones). The board fetch is gated on
@@ -5054,6 +5057,49 @@ class MapViewModel @Inject constructor(
     }
 
     init { app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape }
+
+    // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
+    private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
+
+    fun clearViewedPlaces() { viewModelScope.launch(Dispatchers.IO) { app.vela.core.data.PlaceCache.clear(placeCacheDir()) } }
+
+    /** Saves the open place a few seconds after it stops changing: what was actually loaded for
+     *  it and nothing more (no extra request is made so that there is something to store). */
+    init {
+        viewModelScope.launch {
+            _state.map { Triple(it.selected, it.reviews, it.offline) }.distinctUntilChanged().collectLatest { (sel, reviews, off) ->
+                if (sel == null || sel.featureId == null || off || !app.vela.ui.OfflinePlaces.on.value || app.vela.ui.GoogleFree.on.value) return@collectLatest
+                delay(4_000)
+                withContext(Dispatchers.IO) {
+                    val dir = placeCacheDir()
+                    // A reopened place may not have its reviews or gallery loaded this time: keep the fuller copy.
+                    val prev = app.vela.core.data.PlaceCache.load(dir, sel)
+                    val place = if ((prev?.place?.photoUrls?.size ?: 0) > sel.photoUrls.size) sel.copy(photoUrls = prev!!.place.photoUrls) else sel
+                    app.vela.core.data.PlaceCache.save(dir, place, reviews.ifEmpty { prev?.reviews.orEmpty() }.take(40))
+                    app.vela.core.data.PlaceCache.trim(dir)
+                }
+            }
+        }
+    }
+
+    /** No network: fill the open sheet from the copy saved when the place was last seen online.
+     *  The open-or-closed line is left out, so the sheet works it out from the hours for now. */
+    private fun showViewedCopy(p: Place) {
+        if (!offlineNow() || !app.vela.ui.OfflinePlaces.on.value) return
+        viewModelScope.launch {
+            val rec = withContext(Dispatchers.IO) { app.vela.core.data.PlaceCache.load(placeCacheDir(), p) } ?: return@launch
+            _state.update { st ->
+                val cur = st.selected
+                if (cur?.id != p.id) st else st.copy(
+                    selected = rec.place.copy(
+                        id = cur.id, location = cur.location, savedNote = cur.savedNote ?: rec.place.savedNote,
+                        statusText = null, openNow = null,
+                    ),
+                    reviews = st.reviews.ifEmpty { rec.reviews },
+                )
+            }
+        }
+    }
 
     /** One results row per planned route among [shapes] (a custom map's directions layers). */
     private fun routeRows(shapes: List<app.vela.core.model.MapShape>): List<Place> =
@@ -7559,6 +7605,7 @@ class MapViewModel @Inject constructor(
     fun deleteAllOfflineData() {
         viewModelScope.launch {
             kotlinx.coroutines.withContext(Dispatchers.IO) {
+                runCatching { app.vela.core.data.PlaceCache.clear(placeCacheDir()) }
                 runCatching { obfStore.installedIds().forEach { obfStore.delete(it) } }
                 runCatching { poiPackStore.installedIds().forEach { poiPackStore.delete(it) } }
                 runCatching { placesStore.installedIds().forEach { placesStore.delete(it) } }

@@ -1,10 +1,13 @@
 package app.vela.core.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * A point of interest. Fields are nullable because no single source fills all
  * of them — Overture/OSM give the geometry + category, the scraped detail page
  * adds rating/hours/phone. Vela merges whatever it can get.
  */
+@Serializable
 data class Place(
     val id: String,
     val name: String,
@@ -77,6 +80,7 @@ data class Place(
 )
 
 /** A "People also search for" entry — a related place, enough to show a card and open it. */
+@Serializable
 data class SimilarPlace(
     val name: String,
     val location: LatLng,
@@ -88,14 +92,17 @@ data class SimilarPlace(
  *  and the gallery-tab [category] it was scraped under ("Menu" / "Food & drink" / "Vibe" /
  *  "By owner"; null = uncategorized/All). The contributor's *name* isn't in the keyless
  *  gallery (only a date + source), so there's no author field here. */
+@Serializable
 data class Photo(val url: String, val postedText: String? = null, val category: String? = null)
 
 /** Google's "popular times": a typical-busyness histogram per day of the week. */
+@Serializable
 data class PopularTimes(val days: List<DayBusyness>)
 
 /** The rich fields the keyless/list search trims out, fetched lazily through the
  *  hidden WebView (see app `WebPopularTimesFetcher`): popular times plus the
  *  editorial one-liner and the owner's "From the owner" blurb. */
+@Serializable
 data class PlaceDetails(
     val popularTimes: PopularTimes? = null,
     val editorialSummary: String? = null,
@@ -126,6 +133,7 @@ data class PlaceDetails(
 }
 
 /** One business post: its text, when it was posted, an optional link and photo. */
+@Serializable
 data class PlaceUpdate(
     val text: String,
     val postedEpochSec: Long? = null,
@@ -149,6 +157,7 @@ data class ImportedList(
     val shapes: List<MapShape> = emptyList(),
 )
 
+@Serializable
 data class Department(
     val name: String,
     val hours: List<String> = emptyList(),
@@ -157,17 +166,21 @@ data class Department(
 )
 
 /** One day: [dayOfWeek] is 1=Mon … 7=Sun; [hours] are the open-hour buckets. */
+@Serializable
 data class DayBusyness(val dayOfWeek: Int, val hours: List<HourBusyness>)
 
 /** [hour] is 0..23; [occupancy] is the typical busyness 0..100. */
+@Serializable
 data class HourBusyness(val hour: Int, val occupancy: Int)
 
 /** One section of Google's "About" panel, e.g. title="Service options",
  *  items=["Outdoor seating","Takeout","Dine-in"]. */
+@Serializable
 data class AboutSection(val title: String, val items: List<String>)
 
 /** A single user review. [rating] is 1..5; [text] is null for rating-only reviews;
  *  [photos] are user-attached photo URLs (thumbnail-sized), empty when none. */
+@Serializable
 data class Review(
     val author: String,
     val authorPhoto: String?,

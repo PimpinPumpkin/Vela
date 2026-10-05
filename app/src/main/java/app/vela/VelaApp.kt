@@ -150,6 +150,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.LiveReviews.init(this)
         app.vela.ui.ShowReviews.init(this)
         app.vela.ui.LoadPhotos.init(this)
+        app.vela.ui.OfflinePlaces.init(this)
         app.vela.ui.ReviewsOnTap.init(this)
         app.vela.ui.PhotosOnTap.init(this)
         app.vela.ui.DetailsRetry.init(this)
