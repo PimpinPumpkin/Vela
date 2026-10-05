@@ -6593,31 +6593,10 @@ private fun routeBubblesFor(
     detailed: Boolean = false,
 ): List<app.vela.ui.map.RouteBubble> {
     if (routes.isEmpty()) return emptyList()
-    fun sample(p: List<app.vela.core.model.LatLng>, n: Int): List<app.vela.core.model.LatLng> =
-        if (p.size <= n) p else List(n) { p[(it.toLong() * (p.size - 1) / (n - 1)).toInt()] }
-    fun distM(a: app.vela.core.model.LatLng, b: app.vela.core.model.LatLng): Double {
-        val dy = (a.lat - b.lat) * 111_320.0
-        val dx = (a.lng - b.lng) * 111_320.0 * kotlin.math.cos(Math.toRadians(a.lat))
-        return kotlin.math.sqrt(dx * dx + dy * dy)
-    }
-    val coarse = routes.map { sample(it.polyline, 240) }
-    // Bubbles keep a minimum gap: two alternates that split off together otherwise both picked the
-    // same stretch and their bubbles sat on top of each other (Davis to the airport, 2026-09-17).
-    val all = coarse.flatten()
-    val diag = if (all.isEmpty()) 0.0 else distM(
-        app.vela.core.model.LatLng(all.minOf { it.lat }, all.minOf { it.lng }),
-        app.vela.core.model.LatLng(all.maxOf { it.lat }, all.maxOf { it.lng }),
-    )
-    val minGap = maxOf(300.0, diag * 0.25) // a bubble is about an eighth of the fitted route wide
-    val placed = ArrayList<app.vela.core.model.LatLng>()
+    // Where each bubble goes is RouteBubblePoints' job (a route's own stretch, never a shared one).
+    val points = RouteBubblePoints.of(routes.map { it.polyline })
     return routes.mapIndexedNotNull { i, r ->
-        if (r.polyline.size < 2) return@mapIndexedNotNull null
-        val cand = sample(r.polyline, 60).let { c -> if (c.size > 10) c.subList(c.size / 10, c.size - c.size / 10) else c }
-        val others = coarse.filterIndexed { j, _ -> j != i }.flatten()
-        val ranked = if (others.isEmpty()) listOf(r.polyline[r.polyline.size / 2])
-        else cand.sortedByDescending { p -> others.minOf { distM(p, it) } }
-        val at = ranked.firstOrNull { p -> placed.none { distM(p, it) < minGap } } ?: ranked.first()
-        placed += at
+        val at = points[i] ?: return@mapIndexedNotNull null
         // With the list open the bubble says what the row says: the distance, and for a slower
         // route how much longer it is than the fastest (user 2026-09-17).
         val fastest = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
