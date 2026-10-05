@@ -1590,6 +1590,7 @@ fun MapScreen(
                     .navigationBarsPadding()
                     // Landscape: the bar is in the left column, so the buttons go to the bottom edge.
                     .padding(end = NAV_FAB_EDGE_DP, bottom = if (landscapeChrome) 16.dp else navBarClearance)
+                    .popIn()
                     .onGloballyPositioned { navFabTopPx.intValue = it.boundsInWindow().top.toInt() },
             ) {
                 // Whole-route overview (Google's fly-over): camera only, the drive keeps
@@ -3027,7 +3028,8 @@ private fun BoxScope.NavCorner(
                 .padding(
                     start = if (beside) besideStart else 16.dp,
                     bottom = if (beside) 16.dp else if (state.navigating) navBarClearance else 16.dp + chromeLift,
-                ),
+                )
+                .popIn(),
         )
     }
 }

@@ -25,7 +25,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -94,4 +96,14 @@ private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetT
             )
         }
     }
+}
+
+/** Drive chrome that comes back after the step list closes pops in (a short scale and fade)
+ *  where it used to appear all at once. */
+internal fun Modifier.popIn(): Modifier = composed {
+    val t = remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        t.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 380f))
+    }
+    graphicsLayer { alpha = t.value.coerceIn(0f, 1f); scaleX = 0.8f + 0.2f * t.value; scaleY = 0.8f + 0.2f * t.value }
 }

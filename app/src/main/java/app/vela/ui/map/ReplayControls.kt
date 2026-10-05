@@ -1,5 +1,16 @@
 package app.vela.ui.map
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -42,13 +53,30 @@ val REPLAY_SPEEDS = listOf(1f, 3f, 10f)
 @Composable
 fun BoxScope.ReplayControls(state: MapUiState, vm: MapViewModel) {
     var dragging by remember { mutableStateOf<Float?>(null) }
+    // The card can be dragged up and down by its grab bar, so it never has to sit on the thing
+    // being looked at. It starts above the drive bar.
+    var movedPx by remember { mutableStateOf(0f) }
+    val upRoomPx = with(LocalDensity.current) { (LocalConfiguration.current.screenHeightDp.dp - 320.dp).toPx().coerceAtLeast(0f) }
+    val downRoomPx = with(LocalDensity.current) { 130.dp.toPx() }
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 6.dp,
-        modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(bottom = 150.dp, start = 12.dp, end = 88.dp).fillMaxWidth(),
+        modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(bottom = 150.dp, start = 12.dp, end = 88.dp).fillMaxWidth()
+            .offset { IntOffset(0, movedPx.roundToInt()) },
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+            Box(
+                Modifier.fillMaxWidth().height(18.dp).pointerInput(Unit) {
+                    detectDragGestures { change, drag ->
+                        change.consume()
+                        movedPx = (movedPx + drag.y).coerceIn(-upRoomPx, downRoomPx)
+                    }
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.size(width = 36.dp, height = 4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(2.dp)))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(replayClock(((dragging ?: state.replayProgress) * state.replayTotalS).toInt()), style = MaterialTheme.typography.labelMedium)
                 Slider(
