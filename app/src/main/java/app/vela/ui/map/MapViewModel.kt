@@ -581,9 +581,12 @@ class MapViewModel @Inject constructor(
         // app leaving the screen, GPS going quiet), only while a real drive is on.
         app.vela.diag.TripNote.sink = { n ->
             val s = _state.value
-            if (s.navigating && (!s.replaying || s.demoDriving)) {
+            // Logged for every drive, a replay included (a replay is how a drive gets looked at
+            // again, and its own frame rate and fetches matter); written to the trip file only
+            // for a real one, or replaying a trip would append to it.
+            if (s.navigating) {
                 android.util.Log.i("VelaTrip", n)
-                tripStore.note("K", n); app.vela.diag.NavTrace.event(n)
+                if (!s.replaying || s.demoDriving) { tripStore.note("K", n); app.vela.diag.NavTrace.event(n) }
             }
         }
         // What the map was doing: a line for each bad second, a summary every ten, and each time

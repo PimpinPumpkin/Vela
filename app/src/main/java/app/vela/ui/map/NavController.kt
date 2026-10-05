@@ -129,6 +129,10 @@ internal class NavController(
                     // as real nav and does live fetches (device-caught 2026-08-08: the bare !replaying
                     // guard silently skipped the fetch on every simulated drive).
                     val vs = _state.value
+                    // A replay draws the route's signs too, from the file on the phone: without
+                    // them it fell back to every sign in view, which is not what the drive showed.
+                    // It still makes no live request for them (no Overpass, no camera lookups).
+                    if (vs.replaying && !vs.demoDriving) refreshNavRouteControls(nsRoute, liveFetch = false)
                     if (!vs.replaying || vs.demoDriving) {
                         refreshNavRouteControls(nsRoute)
                         refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
@@ -1142,7 +1146,7 @@ internal class NavController(
         app.vela.car.CarBridge.toast(appContext.getString(R.string.nav_speed_camera_ahead))
     }
 
-    private fun refreshNavRouteControls(route: app.vela.core.model.Route) {
+    private fun refreshNavRouteControls(route: app.vela.core.model.Route, liveFetch: Boolean = true) {
         val poly = route.polyline
         if (poly.size < 2) return
         // Key on endpoints + coarse length: a same-course heal (stepsUpgrade/trafficUpgrade swaps the
@@ -1165,7 +1169,7 @@ internal class NavController(
                     app.vela.diag.TripNote.add("signs: the route's file did not load, falling back to what is in view")
                     return@launch
                 }
-                MapViewModel.RoadCover.NONE -> runCatching {
+                MapViewModel.RoadCover.NONE -> if (!liveFetch) return@launch else runCatching {
                     withContext(Dispatchers.IO) {
                         app.vela.core.data.OverpassTrafficSignals.fetchControlsAlongCorridor(http, poly)
                     }
