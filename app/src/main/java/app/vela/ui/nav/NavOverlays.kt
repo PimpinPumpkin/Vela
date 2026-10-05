@@ -351,33 +351,23 @@ fun ManeuverBanner(
         if (nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
             (previewing || distanceMeters <= laneShowM)
         ) {
+            // Google's "Then" tab: hangs off the card's lower left in the card's own color,
+            // the word and the arrow only.
             Card(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = thenContainer, contentColor = thenContent),
+                Modifier.padding(start = 0.dp).offset(y = (-10).dp),
+                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
             ) {
                 Row(
-                    Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        stringResource(R.string.nav_compound_then),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = thenContent.copy(alpha = 0.7f),
-                    )
+                    Text(stringResource(R.string.nav_compound_then).replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.width(8.dp))
                     Icon(
                         if (isRoundabout(nextType)) rememberRoundaboutGlyph(nextRoundabout) else maneuverIcon(nextType),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        nextText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        contentDescription = nextText,
+                        modifier = Modifier.size(26.dp),
                     )
                 }
             }
@@ -849,6 +839,30 @@ fun NavControls(
     }
 }
 
+/** A button on the nav bar, Google's dress: a thin ring on the bar's black, a white glyph.
+ *  [filled] = the state it controls is on (the drive is paused). */
+@Composable
+fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, content: @Composable () -> Unit) {
+    androidx.compose.material3.OutlinedIconButton(
+        onClick = onClick,
+        modifier = Modifier.size(54.dp),
+        border = BorderStroke(1.5.dp, Color.White.copy(alpha = if (filled) 0f else 0.45f)),
+        colors = androidx.compose.material3.IconButtonDefaults.outlinedIconButtonColors(
+            containerColor = if (filled) MaterialTheme.colorScheme.primary else Color.Transparent,
+            contentColor = if (filled) MaterialTheme.colorScheme.onPrimary else Color.White,
+        ),
+    ) { content() }
+}
+
+/** A button floating over the nav map, Google's dress: a black circle, a white glyph. */
+@Composable
+fun NavFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.material3.FloatingActionButton(
+        onClick = onClick, modifier = modifier, shape = androidx.compose.foundation.shape.CircleShape,
+        containerColor = NavBarColor, contentColor = Color.White,
+    ) { content() }
+}
+
 /** The nav bar's surface, shared with the step sheet it opens into: near black in every theme. */
 val NavBarColor = androidx.compose.ui.graphics.Color(0xFF101214)
 
@@ -947,14 +961,7 @@ fun NavBarTop(
             // End keeps a DESTRUCTIVE color rather than the tonal fill Steps uses: it is the one
             // control here that throws the drive away, and an unlabeled X must not look like just
             // another button. The label survives as its accessibility name.
-            FilledTonalIconButton(
-                onClick = onStop,
-                modifier = Modifier.size(54.dp),
-                colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                ),
-            ) {
+            NavBarButton(onClick = onStop) {
                 Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(26.dp))
             }
             Spacer(Modifier.width(8.dp))
@@ -994,7 +1001,7 @@ fun NavBarTop(
             // swipes", and pause is the default. Someone who asked for buttons gets both rather
             // than a silent choice between them; the figures column shrinks to fit (FitText).
             if (showListButton) {
-                FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
+                NavBarButton(onClick = onSteps) {
                     Icon(Sym.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
             }
@@ -1002,16 +1009,7 @@ fun NavBarTop(
             if (onPause != null) {
                 // Paused, it fills like End does: the bar already says "Paused" beside the figures,
                 // and the control that put the drive on hold should look held.
-                FilledTonalIconButton(
-                    onClick = onPause,
-                    modifier = Modifier.size(54.dp),
-                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = if (paused) MaterialTheme.colorScheme.primary
-                        else androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors().containerColor,
-                        contentColor = if (paused) MaterialTheme.colorScheme.onPrimary
-                        else androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors().contentColor,
-                    ),
-                ) {
+                NavBarButton(onClick = onPause, filled = paused) {
                     Icon(
                         if (paused) Sym.PlayArrow else Sym.Pause,
                         contentDescription = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),

@@ -1588,12 +1588,12 @@ fun MapScreen(
                     .padding(end = NAV_FAB_EDGE_DP, bottom = navBarClearance),
             ) {
                 if (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride) {
-                    FloatingActionButton(
+                    app.vela.ui.nav.NavFab(
                         onClick = {
                             vm.recenterNav()
                             navRecenterTick++
                         },
-                        modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                        modifier = Modifier.dpadHighlight(CircleShape),
                     ) { Icon(Sym.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
                 }
                 // Whole-route overview (Google's fly-over): camera only, the drive keeps
@@ -1601,12 +1601,12 @@ fun MapScreen(
                 // camera) glides straight back into the follow.
                 // A second press while the overview shows goes back to the follow (issue #631: it
                 // re-ran the fit, which read as the map jerking and then settling again).
-                FloatingActionButton(
+                app.vela.ui.nav.NavFab(
                     onClick = {
                         if (state.inNavOverview) { vm.recenterNav(); navRecenterTick++ }
                         else { vm.navOverview(); navOverviewTick++ }
                     },
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                    modifier = Modifier.dpadHighlight(CircleShape),
                 ) {
                     if (state.inNavOverview) Icon(Sym.ZoomInMap, contentDescription = stringResource(R.string.mapscreen_recenter))
                     else Icon(Sym.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview))
@@ -1615,9 +1615,9 @@ fun MapScreen(
                 // pop-out to reach past. Otherwise the two hold controls share one button here
                 // (tap opens, second tap pauses, long press mutes).
                 if (navPauseInBar) {
-                    FloatingActionButton(
+                    app.vela.ui.nav.NavFab(
                         onClick = vm::toggleVoice,
-                        modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                        modifier = Modifier.dpadHighlight(CircleShape),
                     ) {
                         Icon(
                             if (state.voiceMuted) Sym.VolumeOff else Sym.VolumeUp,
@@ -1634,7 +1634,7 @@ fun MapScreen(
                         onMute = vm::toggleVoice,
                     )
                 }
-                FloatingActionButton(
+                app.vela.ui.nav.NavFab(
                     onClick = {
                         // Three things have to line up for this panel to appear, and when it does
                         // not the driver just sees a button that does nothing (user 2026-09-18).
@@ -1646,7 +1646,7 @@ fun MapScreen(
                         navSearchOpen = !navSearchOpen
                         if (!navSearchOpen) focusManager.clearFocus()
                     },
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                    modifier = Modifier.dpadHighlight(CircleShape),
                 ) { Icon(Sym.Search, contentDescription = stringResource(R.string.place_search_along_route)) }
             }
         }
