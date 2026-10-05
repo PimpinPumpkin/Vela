@@ -378,7 +378,9 @@ fun PlaceSheet(
     // no room for a distinct middle stop, so peek = expanded and the panel steps minimized <->
     // tall, Google's landscape feel. Portrait numbers are untouched.
     val landscapeSheet = LocalConfiguration.current.screenWidthDp > screenH
-    val landscapeExpH = maxOf(screenH - 104f, screenH * 0.55f)
+    // The search bar steps aside for an open panel in landscape, so the panel takes the height
+    // up to just under the status bar, as Google's does.
+    val landscapeExpH = maxOf(screenH - 36f, screenH * 0.55f)
     val minH = if (singleDetent) screenH * 0.30f
     else if (landscapeSheet) maxOf(screenH * 0.26f, 200f).coerceAtMost(screenH * 0.55f)
     else screenH * 0.26f

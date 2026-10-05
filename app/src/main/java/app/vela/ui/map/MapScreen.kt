@@ -324,6 +324,7 @@ fun MapScreen(
     // screen height, which leaves the bars out and understated the panel by about 130 px.
     val rootView = LocalView.current
     val windowHeightPx = rootView.height.takeIf { it > 0 } ?: screenHeightPx.toInt()
+    val windowWidthPx = rootView.width.takeIf { it > 0 } ?: 1080
     LaunchedEffect(Unit) {
         snapshotFlow { dirPanelTopRaw }.debounce(140).collect { dirPanelTopPx = it }
     }
@@ -1342,12 +1343,14 @@ fun MapScreen(
                             layout(placeable.width, placeable.height) {
                                 val at = puckScreen.at.value ?: Offset(constraints.maxWidth / 2f, 0f)
                                 val margin = 8.dp.roundToPx()
-                                val maxX = (constraints.maxWidth - placeable.width - margin)
-                                    .coerceAtLeast(margin)
+                                // Clamped to the SCREEN, not to this slot: in landscape the slot is
+                                // the left column, and the label was pushed back into it, behind
+                                // the bar, while the car was out on the map.
+                                val origin = coordinates?.positionInWindow() ?: Offset.Zero
+                                val maxX = (windowWidthPx - placeable.width - margin).coerceAtLeast(margin)
                                 placeable.place(
-                                    (at.x - placeable.width / 2f).roundToInt()
-                                        .coerceIn(margin, maxX),
-                                    (at.y + PUCK_LABEL_GAP_PX).roundToInt(),
+                                    (at.x - placeable.width / 2f).roundToInt().coerceIn(margin, maxX) - origin.x.roundToInt(),
+                                    (at.y + PUCK_LABEL_GAP_PX).roundToInt() - origin.y.roundToInt(),
                                 )
                             }
                         },
@@ -1727,12 +1730,14 @@ fun MapScreen(
                 imperial = Units.imperial.value,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
+                    // Landscape nav: lined up with the column's left edge, past the camera cutout.
+                    .then(if (state.navigating && landscapeChrome) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start)) else Modifier)
                     .navigationBarsPadding()
                     // During nav the box clears the ETA bar; free-driving there is no bar, so it
                     // sits low in the corner, level with the locate FAB (user 2026-07-14). The
                     // scale bar yields the spot while the box is there (below).
                     .padding(
-                        start = if (state.navigating && landscapeChrome) 32.dp else 16.dp,
+                        start = 16.dp,
                         bottom = if (state.navigating) navBarClearance else 16.dp + chromeLift,
                     ),
             )
@@ -2390,6 +2395,7 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = onRecenter,
                 shape = CircleShape,
+                containerColor = mapButtonColor(darkTheme), contentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .dpadHighlight(CircleShape)
                     .align(Alignment.BottomEnd)
@@ -2417,8 +2423,8 @@ fun MapScreen(
             // Settings > Map can hide it (issue #626); a saved spot keeps it, the way back to the car.
             if (app.vela.ui.ParkingButton.on.value || parkingSet) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (parkingSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                    shape = CircleShape,
+                    color = if (parkingSet) MaterialTheme.colorScheme.primary else mapButtonColor(darkTheme),
                     // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
                     // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
                     // carries state, like the Home/Work rows.
@@ -2427,12 +2433,12 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .navigationBarsPadding()
-                        .padding(end = 24.dp, bottom = chromeLift + 92.dp)
-                        .dpadHighlight(RoundedCornerShape(12.dp)),
+                        .padding(end = 20.dp, bottom = chromeLift + 92.dp)
+                        .dpadHighlight(CircleShape),
                 ) {
                     Box(
                         Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .pointerInput(parkingSet, state.parkingHistory.size) {
                                 detectTapGestures(
                                     onTap = {
@@ -2624,6 +2630,7 @@ fun MapScreen(
                 FloatingActionButton(
                     onClick = onRecenter,
                     shape = CircleShape,
+                    containerColor = mapButtonColor(darkTheme), contentColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .dpadHighlight(CircleShape)
                         .align(Alignment.TopEnd)
@@ -2680,7 +2687,7 @@ fun MapScreen(
                         .padding(top = if (landscapeChrome) 74.dp else 128.dp, end = 14.dp),
                 ) {
                     Surface(
-                        color = SheetPalette.bg(darkTheme).copy(alpha = 0.9f),
+                        color = mapButtonColor(darkTheme),
                         shape = CircleShape,
                         shadowElevation = 3.dp,
                         modifier = Modifier.size(42.dp),
@@ -2992,6 +2999,9 @@ private fun Modifier.navBarHost(landscape: Boolean): Modifier =
  *  current-road pill starts past it. */
 private val NAV_LAND_GAP_DP = 28.dp
 private val NAV_LAND_ROAD_START_DP = 190.dp
+
+/** The buttons that float over the browse map (locate, parking, layers): one surface for all. */
+private fun mapButtonColor(dark: Boolean) = if (dark) Color(0xFF1B1C1E) else Color.White
 
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12
