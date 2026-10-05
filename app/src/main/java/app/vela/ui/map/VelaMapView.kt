@@ -880,6 +880,9 @@ fun VelaMapView(
         // top-right at all and there is nothing to drop below - sitting the compass under the
         // banner's measured bottom just floated it down the middle of the right edge, into the
         // FAB stack. Straight under the status bar instead; the stack is cleared sideways below.
+        // NAV: the compass is the first button of the column on the right (Google's place for it),
+        // the column's own size, once the column has been measured.
+        navMode && navFabTopPx.intValue > 0 -> (navFabTopPx.intValue - with(density) { (56.dp + 10.dp).roundToPx() }).coerceAtLeast(statusBarTopPx + gap8Px)
         navMode && landscapeNow -> statusBarTopPx + gap8Px
         navMode && navBannerBottomPx > 0 -> navBannerBottomPx + gap8Px
         navMode -> statusBarTopPx + with(density) { 176.dp.roundToPx() }
@@ -909,7 +912,10 @@ fun VelaMapView(
     // ~390 dp tall, so four 56 dp buttons reach the status bar and sat right on it (user
     // 2026-09-19). Step the compass in by the column's width so the two cannot meet, whatever the
     // stack currently holds.
-    val compassRightPx = with(density) { (if (navMode && landscapeNow) 8.dp + NAV_FAB_COLUMN_DP else 8.dp).roundToPx() }
+    val compassRightPx = with(density) { (if (navMode && navFabTopPx.intValue > 0) NAV_FAB_EDGE_DP else if (navMode && landscapeNow) 8.dp + NAV_FAB_COLUMN_DP else 8.dp).roundToPx() }
+    val leftInsetHolder = rememberUpdatedState(cameraLeftInsetPx)
+    val compassStock = remember { arrayOfNulls<android.graphics.drawable.Drawable>(1) }
+    val compassIsNav = remember { booleanArrayOf(false) }
     val poiTap = rememberUpdatedState(onPoiTap)
     val openPlaceTap = rememberUpdatedState(onOpenPlaceTap)
     val mapTap = rememberUpdatedState(onMapTap)
@@ -3259,7 +3265,7 @@ fun VelaMapView(
                     if (navStartTilting[0] && kotlin.math.abs(tiltTgt - navTiltEase[0]) < 0.5) navStartTilting[0] = false
                     navPadEase[0] += (0.45 - navPadEase[0]) * kPos
                     if (kotlin.math.abs(0.45 - navPadEase[0]) < 0.002) navPadEase[0] = 0.45 // terminate exactly
-                    val camNow = doubleArrayOf(camState[0], camState[1], camState[2], camState[3], navTiltEase[0], navPadEase[0], cameraLeftInsetPx.toDouble())
+                    val camNow = doubleArrayOf(camState[0], camState[1], camState[2], camState[3], navTiltEase[0], navPadEase[0], leftInsetHolder.value.toDouble())
                     val camTol = doubleArrayOf(1e-7, 1e-7, 0.01, 0.0005, 0.01, 0.0005, 0.5)
                     val camSettled = camNow.indices.all { k -> kotlin.math.abs(camNow[k] - lastCamWrite[k]).let { d -> !d.isNaN() && d < camTol[k] } }
                     if (camSettled) idleFrames++ else { idleFrames = 0; camNow.copyInto(lastCamWrite) }
@@ -3280,7 +3286,7 @@ fun VelaMapView(
                                 // padding, so without it here the setPadding call in the inset
                                 // effect was undone on the first frame and the puck sat on the
                                 // column's seam (review 2026-09-12).
-                                .padding(cameraLeftInsetPx.toDouble(), cam.height * navPadEase[0], 0.0, 0.0)
+                                .padding(leftInsetHolder.value.toDouble(), cam.height * navPadEase[0], 0.0, 0.0)
                                 .build(),
                         ),
                     )
@@ -4445,6 +4451,16 @@ fun VelaMapView(
         val map = mapRef ?: return@AndroidView
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
+        // In a drive the compass wears the nav buttons' dress and size; browsing keeps the map's own.
+        if (compassStock[0] == null) compassStock[0] = map.uiSettings.compassImage
+        val wantNavCompass = navMode
+        if (compassIsNav[0] != wantNavCompass) {
+            compassIsNav[0] = wantNavCompass
+            runCatching {
+                if (wantNavCompass) map.uiSettings.setCompassImage(android.graphics.drawable.BitmapDrawable(context.resources, navCompassBitmap(context.resources.displayMetrics.density)))
+                else compassStock[0]?.let { map.uiSettings.setCompassImage(it) }
+            }
+        }
         // Picture-in-picture (2026-09-13): no compass in a mini map (it sat on the road in the
         // window's corner), and NO GESTURES: the system's own tap/double-tap on the PiP window
         // reached the map as a gesture, which dropped the follow camera, so the restored app
@@ -10143,4 +10159,21 @@ private fun hideRouteCopiesB(style: Style) {
         style.getSourceAs<GeoJsonSource>(src)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
         style.routeSet(id, PropertyFactory.visibility(Property.NONE))
     }
+}
+
+/** The compass as a nav button: the column's black circle, a red needle to north, white to south. */
+private fun navCompassBitmap(density: Float): Bitmap {
+    val px = (56 * density).toInt()
+    val b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+    val c = Canvas(b)
+    val r = px / 2f
+    c.drawCircle(r, r, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF101214.toInt() })
+    val half = px * 0.11f; val len = px * 0.27f
+    fun tri(tipY: Float, col: Int) = c.drawPath(
+        android.graphics.Path().apply { moveTo(r, tipY); lineTo(r - half, r); lineTo(r + half, r); close() },
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = col },
+    )
+    tri(r - len, 0xFFEA4335.toInt()); tri(r + len, 0xFFFFFFFF.toInt())
+    c.drawCircle(r, r, px * 0.035f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF101214.toInt() })
+    return b
 }

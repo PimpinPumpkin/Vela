@@ -1489,6 +1489,9 @@ fun MapScreen(
                         }
                     } else if (!(state.selected != null && placeSheetExpanded && !searchOpen && !landscapeChrome &&
                         sheetEdge.above40.value) &&
+                        // Landscape: an open place panel takes the bar's place, as on Google's;
+                        // minimized, the bar is back.
+                        !(landscapeChrome && state.selected != null && !searchOpen && !sheetEdge.below55.value) &&
                         !(state.directionsOpen && !searchOpen)
                     ) {
                         // The expanded-sheet hide is PORTRAIT-only AND measured (2026-07-23): a
@@ -1593,7 +1596,9 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = NAV_FAB_EDGE_DP, bottom = navBarClearance),
+                    // Landscape: the bar is in the left column, so the buttons go to the bottom edge.
+                    .padding(end = NAV_FAB_EDGE_DP, bottom = if (landscapeChrome) 16.dp else navBarClearance)
+                    .onGloballyPositioned { navFabTopPx.intValue = it.boundsInWindow().top.toInt() },
             ) {
                 // Whole-route overview (Google's fly-over): camera only, the drive keeps
                 // navigating; Re-center (above, it appears the moment this detaches the
@@ -2384,8 +2389,9 @@ fun MapScreen(
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
                 onClick = onRecenter,
+                shape = CircleShape,
                 modifier = Modifier
-                    .dpadHighlight(RoundedCornerShape(16.dp))
+                    .dpadHighlight(CircleShape)
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp)
@@ -2617,8 +2623,9 @@ fun MapScreen(
             ) {
                 FloatingActionButton(
                     onClick = onRecenter,
+                    shape = CircleShape,
                     modifier = Modifier
-                        .dpadHighlight(RoundedCornerShape(16.dp))
+                        .dpadHighlight(CircleShape)
                         .align(Alignment.TopEnd)
                         .offset {
                             androidx.compose.ui.unit.IntOffset(
@@ -6355,6 +6362,8 @@ private fun ListEditorDialog(
  *  pill's layout pass, so the pill takes exactly the room beside it. File-level on purpose: a
  *  `remember` in MapScreen is a composable call, and that function is at the verifier's limit. */
 private val speedBoxRightPx = androidx.compose.runtime.mutableIntStateOf(0)
+/** The top of the nav button column, in window px: the compass sits on it, as the column's first button. */
+internal val navFabTopPx = androidx.compose.runtime.mutableIntStateOf(0)
 
 /** The road name in the floating pill: street words shortened once the name is long, the text
  *  shrunk to 80 percent before it is cut with an ellipsis. */
