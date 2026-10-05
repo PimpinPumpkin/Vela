@@ -1495,6 +1495,8 @@ fun MapScreen(
                         // Landscape: an open place panel takes the bar's place, as on Google's;
                         // minimized, the bar is back.
                         !(landscapeChrome && state.selected != null && !searchOpen && !sheetEdge.below55.value) &&
+                        // The results list does the same: pulled up, it ran over the bar.
+                        !(landscapeChrome && resultsShown && !searchOpen) &&
                         !(state.directionsOpen && !searchOpen)
                     ) {
                         // The expanded-sheet hide is PORTRAIT-only AND measured (2026-07-23): a
