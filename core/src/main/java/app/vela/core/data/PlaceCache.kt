@@ -2,6 +2,7 @@ package app.vela.core.data
 
 import app.vela.core.model.Place
 import app.vela.core.model.Review
+import app.vela.core.model.distanceTo
 import java.io.File
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -55,12 +56,16 @@ object PlaceCache {
         // scanning for the same place id (user 2026-09-28: offline open missed).
         dir.listFiles { f -> f.extension == "json" }?.forEach { f ->
             val rec = runCatching { json.decodeFromString(CachedPlace.serializer(), f.readText()) }.getOrNull()
-            if (rec != null && rec.place.id == place.id &&
-                System.currentTimeMillis() - rec.savedAtMs <= maxAgeMs
-            ) return rec
+            if (rec != null && System.currentTimeMillis() - rec.savedAtMs <= maxAgeMs && (rec.place.id == place.id || sameSpot(rec.place, place))) return rec
         }
         null
     }.getOrNull()
+
+    /** An offline search answers from the downloaded data, whose ids are not Google's: the same
+     *  name within [SAME_SPOT_M] is the same place. */
+    private fun sameSpot(a: Place, b: Place): Boolean =
+        a.location.distanceTo(b.location) <= SAME_SPOT_M &&
+            app.vela.core.util.PlaceNames.normalized(a.name).let { it.isNotEmpty() && it == app.vela.core.util.PlaceNames.normalized(b.name) }
 
     fun dirSizeBytes(dir: File): Long = runCatching {
         dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
@@ -75,6 +80,7 @@ object PlaceCache {
         }
     }
     const val MAX_FILES = 400
+    const val SAME_SPOT_M = 60.0
 
     fun clear(dir: File) {
         runCatching { dir.listFiles()?.forEach { if (it.extension == "json") it.delete() } }
