@@ -453,6 +453,16 @@ routes), each row with a pin toggle. Places starred before pins existed start un
 A saved place can also carry its own map icon (the place sheet's save menu, "Choose icon"); with
 none it draws its list's icon. The pin is always in the list's color.
 
+### What a result card shows
+
+Each result is a card: the name, one line of facts (rating, count, distance, price, kind), the
+open-or-closed line, one line of amenity ticks, a strip of up to three photos, and a row of
+buttons (Directions, Call, Website, Share) that act without opening the place. All of it comes
+from the one search reply. Nothing more is fetched per result, so most cards have a single photo
+and none has a review line; Google's own app makes a request per place for those. The address is
+left off when the photos and the name are enough to tell the card by, and comes back when the
+name repeats in the list, the place is unrated, or photos are turned off.
+
 ### Search along a route
 
 With a route on screen (the chooser's chips, the place sheet's along-route chips, or the in-nav

@@ -2907,3 +2907,34 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   in-memory copy of the address-bearing contacts, so it is instant and works offline (the address
   itself geocodes from a downloaded region when there is no signal); only the address string is
   ever sent to a geocoder, never the name or the list.
+
+## Added 2026-10-05 (interface round; photo cards, amenity ticks, action buttons, the nav restyle, status colors and the offline caches started as pull requests by tikkamasalla)
+
+- ✅ **Result cards.** Facts on one line, a photo strip, one line of amenity ticks, and filled
+  Directions / Call / Website / Share buttons that act without opening the place. A band
+  separates cards. No request is added per result.
+- ✅ **Order or Reserve and a Save pill on the place card**, from Google's own action link.
+- ✅ **Closed reads in plain red**, open in green, on dark and light surfaces.
+- ✅ **A restyled drive.** A flush near-black bottom bar with ringed End and Pause, black round
+  map buttons with the compass in their column, a labeled Re-center pill, a "Then" tab on the
+  turn card that names the next step, and the road name under the arrow by default.
+- ✅ **A landscape layout for the drive and for browsing**: turn card and bar in a left column,
+  the speed box beside the bar, a wider place panel that can fill the height, and the search bar
+  out of the way while a panel is open.
+- ✅ **Search along the route is a page** with large category tiles (fuel and charging first)
+  and your recent searches.
+- ✅ **Neutral dark surfaces** under the teal accent; the browse map's locate, parking and layers
+  buttons are ringed dark circles, and take wallpaper colors with Material You on.
+- ✅ **A Street View preview on the map** for a place that has one; a tap opens the viewer.
+- ✅ **Street View by location works again.** Google switched off the lookup on 2026-10-05; Vela
+  uses the current one, asks for Google's own imagery only, and looks out to 200 m.
+- ✅ **Places and Street View you viewed open offline** (400 places, 150 MB of panoramas),
+  cleared with history.
+- ✅ **"Take the ramp on the left toward I 80"** where a nameless turn onto an on-ramp used to
+  read "Turn left".
+- ✅ **Replays show each turn's road callout** (new recordings keep the road a turn enters), the
+  replay controls can be dragged out of the way, and selected trips can be deleted together.
+- ✅ **Your settings ride along in a crash report and a recorded drive**, as switches and numbers
+  only.
+- ✅ **Camera badges carry no count**; zoom in for each camera's cone.
+- 🚧 **Estonian** in the language picker, partly translated.

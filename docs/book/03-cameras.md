@@ -190,7 +190,7 @@ it.
 ```
 FLOCK_MIN_ZOOM        = 11     // below this nothing is fetched or drawn (plate and speed cameras)
 FLOCK_CLUSTER_M       = 40     // heads merged into one badge
-FLOCK_DETAIL_ZOOM     = 16     // from here: the "xN" count and the facing cones
+FLOCK_DETAIL_ZOOM     = 16     // from here: the facing cones, one per head (no count on the badge)
 CONTROLS_ONSCREEN_CAP = 400    // plate camera heads handed to the map, nearest the center first (speed cameras: 600)
 ```
 

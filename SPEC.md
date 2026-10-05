@@ -1746,7 +1746,8 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   into flat arrays with a 0.1-degree grid index off the main thread. The loader compares
   versions and prefers the higher, deleting a download the bundled floor has passed. Route
   counts use a 45 m corridor. Badges cluster at 40 m at every zoom: below street zoom one badge per cluster, from z16 one
-  badge with an "xN" count and a facing cone per head.
+  badge and a facing cone per head. The badge carries no count: several heads on one corner show
+  as several cones.
 - **Direction rule** (`CameraFacing`): for a camera inside the distance gate, take the nearest
   non-degenerate route segment's bearing and compare as undirected lines, `min(d, 180 - d) <=
   50` degrees. A camera with no facing counts. Applied to route counts, the avoid re-rank, the
@@ -1817,12 +1818,21 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
   A box is not coverage: an extract's box includes every outlying island and claim, so Vietnam's
   reached Hong Kong and Kansas's crosses the Missouri River.
 
+**A nameless turn just before a merge** (`RouteGeometry.rampTurns`, all three routers). A turn
+whose road has no name or ref, followed within `RAMP_TURN_MAX_M` (600 m) by a MERGE onto a named
+road, is the turn onto that road's on-ramp. It takes the language's own ramp phrase toward the
+merge's ref or name ("Take the ramp on the left toward I 80"); the type, arrow and lanes are left
+alone. Before this it read as a bare "Turn left".
+
 ### 4.10 Trips, replay and demo mode
 
 - The trip format is canonical in `:core` (`replay/TripLog`): a `META` header, then one or more
   route blocks and `lat,lng,t,bearing,speed` fixes. **Trips are segmented**: the start route and
   every mid-drive swap is its own `RP`/`RD`/`M` block activated at the fix where it appears.
   Auditing or replaying a multi-block trip against one mashed route corrupts it.
+- An `M` line's text may be followed by a tab, the road the turn enters, a tab and its ref. A
+  replay needs them for the turn's road callout and the shield; a line without them reads as
+  before. `TripScrub` drops or keeps them with the line.
 - `RD` carries the route's provenance flags and source name. Every fix carries its provider and
   the engine's off-route hit count. Every nav decision is a `K` line written through
   `NavSession.onNote`; a `K` line never holds a coordinate by contract.
@@ -2549,6 +2559,19 @@ names: Flex where it has the glyph, Roboto for Cyrillic and Greek, Noto for ever
 Served from Pages (`/Vela/fonts`, the `map-fonts` release zip) online and from `files/glyphs` under
 an offline basemap; `GlyphPackStore.PACK_VERSION` (2) makes a phone replace an older pack on disk,
 once per run, on an unmetered validated link.
+
+**Result cards** (2026-10-05). Name; then one facts line for a rated place (rating in bold, one
+star, count, distance, price, kind; an unrated row keeps a line of its own); the open-or-closed
+line; one line of amenity ticks; a photo strip of up to three photos from the search reply; then a
+row of filled buttons that act on the row's place without opening it (Directions, Call, Website,
+Share as an icon, Menu), scrolling sideways when they do not fit. A band in the color behind the
+sheet separates cards. The address is shown only when the name repeats in the list, the place is
+unrated, or the card has no photo strip. The strip loads from Google's image host, so it follows
+the photo settings (nothing with photos off, on-tap, or Google off), and Website follows "Hide
+website & external links". **No extra request is made per result**: the search reply carries about
+one photo per place and no review text, which is why there is no review line and often one photo.
+A closed place reads in plain red on dark surfaces (`themedStatusColor`): the pale red Google uses
+did not read as closed at a glance.
 
 ### 5.7 Saved places, lists, parking and imports
 
@@ -3585,7 +3608,8 @@ healthy download.
 
 ### 9.4 Interface language
 
-`AppLocale` holds the language (empty means follow the system) and is applied in **both**
+Estonian (`et`) is in the picker since 2026-10-05 with a partial translation from Weblate; its
+spoken guidance is English. `AppLocale` holds the language (empty means follow the system) and is applied in **both**
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
 also restores `Locale.setDefault` to the captured device locale, because the override is
 process-global and otherwise leaves date formatting and the scrape's `hl` in the previous
@@ -3682,6 +3706,45 @@ ports it rather than inventing a fourth:
   map as gestures and detach the follow camera.
 - The route bar is portrait-only and never in PiP, and shows a 5 km window rather than the whole
   route: scaled to a long trip every nearby mark collapses into one pixel.
+- **The drive's chrome** (2026-10-05). The bottom bar is flush with the screen's bottom edge,
+  top corners rounded, `NavBarColor` (near black) in both themes, so everything drawn on it takes
+  the dark inks whatever the app theme (`LocalStepsOnDark` carries that to the step rows). Its
+  handle is a flat grab bar; End and Pause are 60 dp ringed buttons (`NavBarButton`); the trip time
+  sets its digits semibold and its units regular (`FitDuration`), with distance and arrival a size
+  up and nearly white beneath. The floating buttons (`NavFab`: overview, mute, search) are black
+  circles with white glyphs, and the nav compass is drawn at the top of that column. They take the
+  wallpaper's colors only when `wallpaperColorsInUse()` is true: the Material You setting is on
+  AND the phone's scheme passed the sanity check. Where the scheme fell back to Vela's own, a
+  "wallpaper colored" button comes out teal, which is the bug that test exists for.
+- **Away from the car** (panned, pinched, previewing a step) a labeled `NavRecenterPill` takes the
+  speed box's place and the road name hides, in every placement: under the arrow the reported car
+  position stops following the map, so a label there sat where the car had been.
+- **The "Then" tab** hangs off the turn card's lower left in the card's color and names the next
+  step. The card's lower-left corner is square while the tab shows, and the lower-right too when
+  the tab is as wide as the card (both widths are measured).
+- **Landscape drive.** The turn card and the bar sit in the left column, `NAV_LAND_EDGE_DP` (8)
+  from the safe edge. The speed box and the Re-center pill sit in line with the bar, just right of
+  it (`navBarRightPx`, the bar's measured right edge). The road name defaults to under the arrow
+  (`RoadLabel.PUCK`), clamped to the window, not to its own slot. The step list may grow only to
+  the banner (its 200 dp floor is 64 dp in landscape, or it ran over the banner).
+- **Landscape browse.** The side panel is 0.56 of the width (cap 600 dp); the place card may fill
+  the height; the search bar hides while the panel or the results list is up; "Search this area"
+  centers in the map beside the panel.
+- **Chrome that returns pops in.** The drive buttons and the speed box use `Modifier.popIn()` (a
+  short scale and fade) when the step list closes.
+- **Search along a route during a drive** is a page, not a floating card (`NavSearchChips`): the
+  whole screen in portrait, the left column over a dimmed map in landscape (a tap on the dimmed
+  part closes it). A search field, then `QuickCategories.forDrive()` as tiles three to a row (fuel
+  and charging first), then the six most recent searches. It is drawn last in `MapScreen`.
+- **The browse map's buttons** (locate, parking, layers) share `mapButtonColor`: a dark circle
+  with a white ring and a white glyph (`mapButtonRing`, `mapButtonInk`), white with a gray ring in
+  light theme, no ring with wallpaper colors. A saved parking spot tints the glyph, not the button.
+- **MapScreen takes no new calls.** It is at the method-size limit (the debug compile fails with
+  "Method too large", and a release build past ART's verifier limit fails on the phone). New
+  floating pieces go through `MapFloaters` (one call: replay controls, the Street View preview) or
+  `NavCorner` (the speed box and Re-center), each a separate function that decides for itself
+  when to draw.
+- **The replay controls** carry a grab bar and can be dragged up and down the screen.
 - **Pause sits in the nav bar's right slot** (`PauseInBar`, default on). That slot is an empty
   spacer on a touch phone, there only to keep the trip figures centered against End, and the drive's
   two hold controls then sit where each is reached for: pause beside the figures, mute as a plain
@@ -3885,12 +3948,23 @@ previews a route. `VelaCarSession` owns its own AOSP location feed into the shar
 The panorama is rendered in-app, not embedded. Google's WebGL page serves a stripped shell that
 renders black on ANGLE; do not retry the embed.
 
-- Metadata comes from the keyless JS-API `GeoPhotoService.SingleImageSearch` (by location) and
-  `photometa/v1` (by pano id), authorized by a `Referer: https://www.google.com/maps/` header.
+- Metadata by location comes from a POST to `Calibration.STREETVIEW_SEARCH_URL` (Google's
+  `MapsJsInternalService/SingleImageSearch`, content type `application/json+protobuf`) with the
+  JSON body `streetViewSearchBody` (`{LAT}`, `{LNG}`, `{RADIUS}`; remotely replaceable). The old
+  GET, `GeoPhotoService.SingleImageSearch`, answers "decommissioned and turned off" since
+  2026-10-05 and is tried only after the POST fails. The body asks for Google's own imagery only
+  (`[2,1,2]`): with user photo spheres allowed, the nearest answer beside a store was often one
+  of those, which the tile loader cannot show. It is asked at 50 m, then 200 m
+  (`STREETVIEW_RADII_M`): a store behind its lot has imagery within that. The reply is bare JSON
+  with the same pano node. Builds from before that date cannot be repaired remotely; they lack
+  the POST.
+- Metadata by pano id comes from `photometa/v1`. Both are authorized by a
+  `Referer: https://www.google.com/maps/` header.
   The address, copyright and position live **inside** the pano node, not at the root. The
   `photometa` response nests one level deeper and carries a `)]}'` guard.
-- Tiles come from `streetviewpixels-pa.googleapis.com/v1/tile`. The `/v1/thumbnail` path returns
-  403.
+- Tiles come from `streetviewpixels-pa.googleapis.com/v1/tile`. The `/v1/thumbnail` path answers
+  only with the full parameter set Google's own pages send (`cb_client`, size, yaw, pitch, field of
+  view); bare, it returns 403.
 - `StreetViewTiles` stitches one zoom level (about 2048x1024 or 4096x2048) and `PanoramaView`
   textures it onto a GLES2 sphere. **Never stitch the full 16384x8192 level**: that is about
   400 MB of texture.
@@ -3921,6 +3995,19 @@ renders black on ANGLE; do not retry the embed.
   recreates the view (`remember(full)` inside `key(view) { AndroidView(...) }`) and re-feeds the
   texture and the current yaw. Zoom is canonically the **horizontal** field of view; holding a
   fixed vertical field of view narrows the view when the pane grows.
+
+- **Viewed panoramas are kept** (`core/data/StreetViewCache`, `files/svcache`: one metadata JSON
+  and one stitched JPEG per pano, 150 MB, oldest dropped) under the "keep viewed places" setting.
+  **The network is always asked first** and the saved copy is used only when it gives nothing:
+  deciding "offline" up front and skipping the request showed "no imagery" on streets that have it
+  whenever the offline guess was wrong. With neither, an offline phone is told the spot was not
+  viewed before. The store is cleared by its own button, by "Clear history" and by "Delete all
+  offline data", and is read off the main thread.
+- **A preview floats on the map** for an open place whose search reply names a pano
+  (`StreetViewThumb` in `MapFloaters`): above the card's left corner in portrait, beside the panel
+  in landscape. It is one image request (`/v1/thumbnail` with the reply's pano id and yaw, which
+  answers 200 with those parameters), follows the photo settings, and is not drawn at all when the
+  picture fails to load.
 
 ### 10.8 Content gating
 
@@ -4117,6 +4204,13 @@ see the old file or the new one, never half, which also covers `ObfRouteEngine` 
 `CLOSED_OPEN_PLACES_CAP` (2000, oldest dropped): it grew with every automatic closure match and
 every id rides a filter the places layers evaluate per feature.
 
+Viewed places (`files/placecache`, `core/data/PlaceCache`: one JSON per place with what was
+loaded for it, 400 files, 30 days) and viewed panoramas (`files/svcache`) are plain files under
+one setting. An offline search answers from the downloaded data, whose ids are not Google's, so a
+saved copy is also found by the same normalized name within `SAME_SPOT_M` (60 m). Nothing is
+saved while Google is off. Both stores are emptied by "Clear history" and "Delete all offline
+data".
+
 ### 14.2 Diagnostics
 
 `DiagLog` is an opt-in breadcrumb ring, off by default, persisted to a bounded
@@ -4133,6 +4227,12 @@ and intents, drops a navigation start's destination label, keeps only the host o
 **A page probe never logs Google's `@lat,lng`.** Google's place-page path carries a coordinate
 derived from the session rather than from the place, so logging `location.pathname` verbatim put the
 user's own area in logcat and in any shared export. Probes log the path up to `/@`.
+
+`SettingsDump.line` puts the user's settings on one line in a crash report and at the start of a
+recorded drive: switches, numbers and short option names only. Every key that could hold a
+position, an address, a contact, a name, a provider or a font is skipped, and so is free text.
+
+Recorded trips can be deleted several at a time from the selection toolbar, behind a confirm.
 
 `NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
 speed, bearing window, chord bearing, display bearing, camera bearing and frame dt. It carries

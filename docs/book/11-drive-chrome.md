@@ -410,14 +410,26 @@ removed by it.
 
 ### The buttons
 
-The bottom bar is End on the left, the trip figures in the middle and, by default, pause on the
+The bottom bar sits flush with the bottom of the screen and is near black in both themes. It has
+a grab bar on top, End on the left, the trip figures in the middle and, by default, pause on the
 right ("Pause button on the navigation bar"); with "Prefer buttons over swipes" or on a keypad
-phone the step-list button shares that slot and the figures shrink to fit. The right edge carries
-a column of 56 dp buttons, 16 dp from the edge: Re-center (only while the camera is detached,
-a step is being previewed, or you pinched the zoom), the route overview, mute (or the combined
-pause-and-mute button when pause is not in the bar), and search along the route. The column is
-aligned to its right edge so the combined button's pop-out grows left without sliding the others.
-The road name sits above the bar, inside it, under the arrow or nowhere ("Current road name").
+phone the step-list button shares that slot and the figures shrink to fit. End and pause are
+60 dp ringed circles. The right edge carries a column of 56 dp black circles, 16 dp from the edge:
+the compass, the route overview, mute (or the combined pause-and-mute button when pause is not in
+the bar), and search along the route. With "Material You colors" on, and only when the phone's
+wallpaper palette is really in use, they take those colors.
+
+Away from the car (after a pan, a pinch, or while previewing a step) a labeled Re-center pill
+takes the speed box's place at the lower left and the road name hides until you are back.
+
+The road name sits under the arrow by default, or above the bar, inside it, or nowhere ("Current
+road name"). In landscape the turn card and the bar form a column on the left, and the speed box
+sits in line with the bar, just to its right.
+
+Search along the route opens a page: the whole screen in portrait, the left column in landscape.
+It has a search field, large category tiles with fuel and charging first, and your recent
+searches.
+
 [Chapter 4](04-navigation.md) has the reasons for each placement.
 
 ## Limits

@@ -2863,7 +2863,7 @@ architecture note.
   ramp/fork/keep maneuvers only; VelaMapView draws it from `NAV_EXIT_SRC` with the green twin of the
   callout sprite (`navBubbleBitmap(green = true)`), overlap allowed - it is the next thing you must
   do. Flock badges are now ONE per `FLOCK_CLUSTER_M` cluster at EVERY zoom: `FLOCK_SRC` carries a
-  badge feature per cluster (`FLOCK_COUNT_PROP`, drawn with an "xN" label past one) plus one cone
+  badge feature per cluster (`FLOCK_COUNT_PROP`; the "xN" label was removed 2026-10-05, the cones say it) plus one cone
   feature per head at the same point, so the beams fan from a single badge. `crossLabelPoint`
   returns null below `NAV_XLABEL_MIN_CLEAR_M`: no room on either side, no bubble.
 - **CHOOSER INSET IS MEASURED (2026-09-17):** `cameraBottomInset` for the route chooser comes from
@@ -4548,6 +4548,40 @@ architecture note.
   Old translated locales had the zip-size strings DELETED (orphans fail lint); the new
   installed-size keys are base-English until a translator fills them (on Weblate since 2026-10-02,
   see docs/LANGUAGES.md).
+
+- **Interface round, 2026-10-05 (SPEC 10.2, 5.6, 10.7; book chapters 6, 8, 11).** What to know
+  before touching it:
+  - **MapScreen takes no new calls.** One more `if` in the speed box block failed the build with
+    "Method too large". Floating pieces go in `ui/map/MapFloaters.kt` (`MapFloaters`: replay
+    controls, `StreetViewThumb`; also `Modifier.popIn`) or `NavCorner` (speed box and Re-center).
+    Build `:app:compileDebugKotlin` as well as release after any MapScreen edit, then read logcat
+    for `VerifyError` on a phone.
+  - **Wallpaper colors:** ask `wallpaperColorsInUse()` (Theme.kt), never `DynamicColor.on`. On
+    GrapheneOS the dynamic scheme can be rejected and Vela's own used; a button that read the
+    switch alone came out teal.
+  - **The drive bar is dark in both themes.** Anything drawn on it takes the dark inks; the step
+    rows learn it from `LocalStepsOnDark`. Dark text on the bar in light theme was a real bug.
+  - **An `IconButton` is 48 dp at least**, whatever `Modifier.size` says. The landscape route
+    picker's header circles are plain clickable boxes for that reason (`RoundAction(small)`).
+  - **The under-arrow road name hides while the camera is away**: the reported puck position
+    does not follow a panned map. Landscape nav measures the bar's right edge (`navBarRightPx`)
+    to place the speed box.
+  - **Result cards add no request.** The search reply has about one photo per place and no review
+    text (`featuredReview` is filled by the details fetch, not by search; a review line was
+    wired and never showed). The strip follows the photo settings.
+  - **Street View's by-location lookup is a POST now** (Google switched the GET off on
+    2026-10-05: "decommissioned and turned off"). `streetViewSearchBody` is remote; the URL is
+    compiled. Official imagery only, 50 m then 200 m. Test a place by its real coordinate: a
+    guessed point beside a store returned a user photo sphere and looked like "no coverage".
+  - **Street View cache:** network first, saved copy only on failure. The first cut chose by
+    `offlineNow()` and showed "no imagery" wherever that guess was wrong.
+  - **Trip files:** an `M` line may end `<tab>road<tab>ref`. Older files have neither and replay
+    without the turn's road callout.
+  - **Demo checks:** the 4a will not turn "Material You colors" on, so that path is untested
+    there. uiautomator taps on the place card's button row miss buttons scrolled off the edge.
+  - Credits: the photo cards, amenity ticks, action buttons, theme, nav restyle, status colors
+    and both offline caches began as tikkamasalla's pull requests (#658 to #668); his commits
+    are kept under his name.
 
 ## Working on the scraper
 
@@ -6859,7 +6893,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   single-direction heads, so `vela-flock-cluster` (own source, 40 m `MapDeclutter` merge computed
   at upload time in VelaMapView, `FLOCK_CLUSTER_M`) draws ONE badge per install from z11/13 up to z16.
   From z16 the detail layer takes over, and since 2026-09-17 it is clustered too: still one badge
-  per cluster (an "xN" count past one head) with every head's facing cone fanned from that point,
+  per cluster (no count on it since 2026-10-05) with every head's facing cone fanned from that point,
   never a raw badge per camera; the browse-13/route-11 minZoom gate lives on the cluster layer. Route camera COUNTS stay per-head on purpose. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).

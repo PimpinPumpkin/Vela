@@ -272,6 +272,21 @@ Google's business dots, where that source is in use, come back from a disk cache
 you browsed (32 areas of 200 places, kept 14 days). The fetch that fills it does not run at all
 offline.
 
+### Places and Street View you have already looked at
+
+With "keep viewed places" on (the default), a place you open while online is saved with what was
+loaded for it: details, hours, the reviews and photos that had arrived. Offline, the sheet fills
+from that copy, also when you reach the place through an offline search, which knows it under a
+different id (the same name within 60 m is taken as the same place). Up to 400 places are kept
+for 30 days.
+
+Street View panoramas you view are kept the same way, up to 150 MB. Street View always tries the
+network first and falls back to the saved panorama only when that fails; with no connection and
+no saved copy it says the spot was not viewed before.
+
+Both are removed by their own buttons in Offline maps, by "Clear history" and by "Delete all
+offline data". Nothing is saved while "Use Vela without Google" is on.
+
 ### The map at a region's edge
 
 The basemap pick runs on every camera idle and chooses at most one archive to draw from. A box

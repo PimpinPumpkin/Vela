@@ -128,6 +128,16 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 
 ## On the radar
 
+- **Ideas kept from the 2026-10-05 interface round, none built.** A thumbnail in place of the
+  photo strip on result cards (the reply carries about one photo per place, and it is not always
+  a good one). A review line on result cards (needs a request per result, so not as things are).
+  Changing the car icon, and perhaps a few settings, from the pulled-up drive bar. A dotted
+  walking line from a building's door to where the route starts on the road (needs the entrance
+  or the outline). A place photo from the business's own website when Google is off. Moving to
+  Material 3 Expressive: a library upgrade plus a restyle of the hand-drawn drive chrome.
+- **Transition animations and predictive back** (pull request #672, parked 2026-10-05). It
+  rewraps the bottom-sheet block in `MapScreen` and takes over Back for every sheet; to be
+  reviewed against the interface round once that has landed.
 - **Pins for the car's nearby results.** The car's nearby list (gas, food, parking and the rest)
   shows its places only as rows; `CarMapRenderer` draws the route, the puck and the corridor dots
   but no search results. Drawing the listed places as pins, the way the phone does, would let a
