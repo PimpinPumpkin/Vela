@@ -806,6 +806,8 @@ fun VelaMapView(
     fitLeadCount: Int = Int.MAX_VALUE, // frame only this many leading results (a search); a list frames all
     drawDots: List<LatLng>? = null, // non-null = drawing mode: taps add points, these are its vertices
     onDrawTap: (LatLng) -> Unit = {},
+    onDrawMove: (index: Int, to: LatLng) -> Unit = { _, _ -> }, // a drawn point dragged
+    onDrawRemove: (index: Int) -> Unit = {}, // a drawn point tapped
     onSavedPinTap: (index: Int) -> Unit = {},
     onParkingTap: () -> Unit = {},
     // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
@@ -927,6 +929,9 @@ fun VelaMapView(
     LaunchedEffect(savedPins) { MyMapIcons.load(context, savedPins.mapNotNull { it.iconUrl }) }
     val drawActive = rememberUpdatedState(drawDots != null)
     val drawTap = rememberUpdatedState(onDrawTap)
+    val drawDotsHolder = rememberUpdatedState(drawDots)
+    val drawMove = rememberUpdatedState(onDrawMove)
+    val drawRemove = rememberUpdatedState(onDrawRemove)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
     val zoomOverride = rememberUpdatedState(onNavZoomOverride)
@@ -1121,6 +1126,49 @@ fun VelaMapView(
     // Settings > Map "Tilt with two fingers" applies at once, not at the next map start.
     val tiltGestures = app.vela.ui.MapTilt.on.value
     LaunchedEffect(tiltGestures, mapRef) { mapRef?.uiSettings?.isTiltGesturesEnabled = tiltGestures }
+    // DRAWING: a finger that comes down on a drawn point owns the gesture. Dragging moves the
+    // point, a plain tap removes it; anything else falls through to the map (pan, zoom, and the
+    // tap that adds a point). The listener sees the touch before the map's own gestures.
+    DisposableEffect(mapView, mapRef) {
+        val map = mapRef
+        if (map == null) onDispose { } else {
+            val grabPx = 26f * context.resources.displayMetrics.density
+            val slopPx = 8f * context.resources.displayMetrics.density
+            var held = -1
+            var downX = 0f; var downY = 0f
+            var moved = false
+            mapView.setOnTouchListener { _, ev ->
+                val dots = drawDotsHolder.value
+                when (ev.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        held = -1
+                        if (dots != null && dots.isNotEmpty()) {
+                            var best = grabPx * grabPx
+                            dots.forEachIndexed { i, d ->
+                                val p = map.projection.toScreenLocation(MLLatLng(d.lat, d.lng))
+                                val dd = (p.x - ev.x) * (p.x - ev.x) + (p.y - ev.y) * (p.y - ev.y)
+                                if (dd <= best) { best = dd; held = i }
+                            }
+                        }
+                        downX = ev.x; downY = ev.y; moved = false
+                        held >= 0
+                    }
+                    android.view.MotionEvent.ACTION_MOVE -> if (held < 0) false else {
+                        if (!moved && kotlin.math.hypot(ev.x - downX, ev.y - downY) > slopPx) moved = true
+                        if (moved) map.projection.fromScreenLocation(android.graphics.PointF(ev.x, ev.y)).let { drawMove.value(held, LatLng(it.latitude, it.longitude)) }
+                        true
+                    }
+                    android.view.MotionEvent.ACTION_UP -> if (held < 0) false else {
+                        if (!moved) drawRemove.value(held)
+                        held = -1; true
+                    }
+                    android.view.MotionEvent.ACTION_CANCEL -> if (held < 0) false else { held = -1; true }
+                    else -> held >= 0 // a second finger while a point is held: ignored
+                }
+            }
+            onDispose { mapView.setOnTouchListener(null) }
+        }
+    }
     // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
     // last bearing/tilt used to linger, which also left the compass pinned on the map (it only
     // hides facing north; user 2026-07-10). Below mapRef so the handle is in scope.

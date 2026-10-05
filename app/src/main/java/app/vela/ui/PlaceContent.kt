@@ -188,4 +188,5 @@ object OtherLocationsAuto {
  *  reached from MapScreen, which has no room for another callback (the verifier limit). */
 object ShapeActions {
     @Volatile var delete: (() -> Unit)? = null
+    @Volatile var edit: (() -> Unit)? = null
 }

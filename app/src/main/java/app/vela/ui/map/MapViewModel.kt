@@ -4962,6 +4962,24 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(selected = null, drawing = DrawState()) }
     }
     fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.copy(pts = d.pts + listOf(p.lat, p.lng))) } ?: s }
+    fun drawMovePoint(index: Int, to: LatLng) = _state.update { s ->
+        s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->
+            s.copy(drawing = d.copy(pts = d.pts.toMutableList().also { it[index * 2] = to.lat; it[index * 2 + 1] = to.lng }))
+        } ?: s
+    }
+    fun drawRemovePoint(index: Int) = _state.update { s ->
+        s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->
+            s.copy(drawing = d.copy(pts = d.pts.filterIndexed { i, _ -> i / 2 != index }))
+        } ?: s
+    }
+    /** Opens the shape whose sheet is up in the drawing bar: move, add or remove its points,
+     *  change its kind, color or name; Save puts it back where it was kept. */
+    fun editOpenedShape() {
+        val shape = openedShape ?: return
+        if (_state.value.navigating || listStore.lists().none { shape in it.shapes }) return
+        clearSearch()
+        _state.update { it.copy(selected = null, drawing = DrawState(pts = shape.pts, closed = shape.closed, color = shape.color, editOf = shape)) }
+    }
     fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(pts = d.pts.dropLast(2))) } ?: s }
     fun drawSetClosed(closed: Boolean) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(closed = closed)) } ?: s }
     fun drawSetColor(color: Long) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(color = color)) } ?: s }
@@ -4971,6 +4989,19 @@ class MapViewModel @Inject constructor(
     fun saveDrawing(name: String) {
         val d = _state.value.drawing ?: return
         if (d.pts.size / 2 < (if (d.closed) 3 else 2)) return
+        // A changed shape goes back into the list it came from, in its old place; what the
+        // drawing bar does not show (description, layer, a route's stops) is kept.
+        d.editOf?.let { old ->
+            val home = listStore.lists().firstOrNull { old in it.shapes } ?: return@let
+            val changed = old.copy(
+                name = name.trim().ifBlank { old.name }, pts = d.pts, closed = d.closed, color = d.color,
+                fill = if (d.closed) (old.fill?.takeIf { old.closed && old.color == d.color } ?: ((d.color and 0x00FFFFFFL) or 0x40000000L)) else null,
+            )
+            val lists = listStore.update(home.copy(shapes = home.shapes.map { if (it == old) changed else it }))
+            _state.update { it.copy(lists = lists, drawing = null) }
+            flashStatus(appContext.getString(R.string.draw_changed, changed.name))
+            return
+        }
         val existing = listStore.lists().firstOrNull { it.id == DRAWINGS_LIST_ID }
         val n = (existing?.shapes?.size ?: 0) + 1
         val shape = app.vela.core.model.MapShape(
@@ -4994,7 +5025,7 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, selected = null) }
     }
 
-    init { app.vela.ui.ShapeActions.delete = ::deleteOpenedShape }
+    init { app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape }
 
     /** One results row per planned route among [shapes] (a custom map's directions layers). */
     private fun routeRows(shapes: List<app.vela.core.model.MapShape>): List<Place> =

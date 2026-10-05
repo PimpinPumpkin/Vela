@@ -2382,8 +2382,11 @@ created on first use), so a drawing is stored, drawn, tapped and measured like a
 shape. The unfinished shape is drawn as the last entry of the shapes list with a white dot per
 point (`vela-shapes-dots`). A shape's sheet menu has "Delete this drawing"
 (`ShapeActions.delete` -> `MapViewModel.deleteOpenedShape`), which removes the shape from whichever
-list holds it. Points cannot be moved after they are placed, and a saved drawing cannot be edited,
-only deleted.
+list holds it. A finger that comes down within 26 dp of a drawn point owns the gesture (a touch
+listener ahead of the map's own): dragging moves the point, a tap removes it. "Edit this drawing"
+in the same menu reopens a saved shape in the bar (`DrawState.editOf`); Save writes it back into
+its list in place, keeping its description, layer and any route stops. Points cannot be inserted
+between two existing ones.
 
 **Custom map marker icons and directions layers (2026-10-04).** The KML export names a marker's
 icon only by number in its style id (`icon-1577-FFD600`) and links one stock blank image for every

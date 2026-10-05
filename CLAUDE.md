@@ -1691,7 +1691,9 @@ Defaults that make the safe path the easy one:
   `ShapeBottomBar` with the shapes-only Save bar, and the sheet's delete goes through the
   `ShapeActions.delete` holder instead of a new PlaceSheet callback. `fabChromeOk` and the zoom
   buttons are off while drawing. Checked on the 4a: draw four points, line and area, save, tap,
-  delete. Not built: moving a placed point, editing a saved drawing.
+  delete. Since the same day: drag a point to move it, tap one to remove it (a touch listener on the
+  MapView that claims the gesture only when it starts on a point), and "Edit this drawing" reopens
+  a saved shape (`DrawState.editOf`, written back in place). Not built: inserting a point mid-edge.
 - **Custom map icons + directions layers (2026-10-04, SPEC beside My Maps):** icon NAMES come from the
   public viewer page (the KML has only numbers), images from `mt.googleapis.com/vt/icon` (needs the
   full name; a bare number 404s), loaded by `MyMapIcons` and drawn on the SAVED layer with the bitmap's

@@ -1223,7 +1223,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Google My Maps links** (2026-10-04, issue #669) - a custom map shared by link opens in Vela: its pins as a list you can save, its lines and areas drawn on the map in their own colors with their names, layers shown as each pin's category. Saved maps keep their lines and areas. Markers keep their own colors and photos; a map with several layers gets a Layers chip to show and hide them; tapping a line or an area shows its name, description and its length or its area and perimeter. Custom marker icon images, the base map style and editing are not carried.
 - ✅ **Draw on the map** (2026-10-04) - Your lists > Draw: tap the map to lay out a line or an area, pick a color,
   see its length or its area as you go, name it and save it. Drawings are kept in a "My drawings" list, show on the
-  map, and open with their measurements when tapped; the sheet's menu deletes one.
+  map, and open with their measurements when tapped. Drag a point to move it, tap one to remove it; the sheet's
+  menu edits or deletes a saved drawing.
 - ✅ **Custom map icons and planned routes** (2026-10-04, issue #669) - a My Maps marker shows the icon its author
   picked (fork and knife, museum, camera...) in its color, on the map and in the list. A directions layer shows as
   a route row: open it to see its stops, and Directions takes you through them in the route chooser.

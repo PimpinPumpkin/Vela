@@ -965,6 +965,9 @@
     <string name="draw_action">Draw</string>
     <string name="draw_hint">Tap the map to add points</string>
     <string name="draw_hint_more">Tap again to add the next point</string>
+    <string name="draw_hint_points">Drag a point to move it. Tap a point to remove it.</string>
+    <string name="draw_edit">Edit this drawing</string>
+    <string name="draw_changed">Saved the changes to “%1$s”</string>
     <string name="draw_name_hint">Name (optional)</string>
     <string name="draw_undo">Remove the last point</string>
     <string name="draw_cancel">Cancel</string>

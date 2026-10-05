@@ -43,20 +43,24 @@ import app.vela.ui.formatDistance
 import app.vela.ui.icons.Sym
 
 /** A shape being drawn on the map: taps add its points. [pts] is lat, lng, lat, lng... */
-data class DrawState(val pts: List<Double> = emptyList(), val closed: Boolean = false, val color: Long = DRAW_COLORS[0])
+data class DrawState(
+    val pts: List<Double> = emptyList(), val closed: Boolean = false, val color: Long = DRAW_COLORS[0],
+    /** A saved shape being changed: Save replaces it where it is kept. Null = a new drawing. */
+    val editOf: app.vela.core.model.MapShape? = null,
+)
 
 /** The colors offered while drawing (ARGB): red, orange, yellow, green, blue, purple. */
 val DRAW_COLORS = listOf(0xFFE53935, 0xFFFB8C00, 0xFFFDD835, 0xFF43A047, 0xFF1E88E5, 0xFF8E24AA)
 
 /**
  * The drawing bar (issue #669, the owner's "draw over the map and save it"): while it is up every
- * map tap adds a point. Line or area, a color, what the shape measures so far, an optional name,
+ * map tap adds a point, a drag on a point moves it and a tap on one removes it. Line or area, a color, what the shape measures so far, an optional name,
  * then Undo / Cancel / Save. Saved shapes go to the "My drawings" list and are drawn like an
  * imported custom map's.
  */
 @Composable
 fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(draw.editOf?.name.orEmpty()) }
     val points = draw.pts.size / 2
     val enough = points >= if (draw.closed) 3 else 2
     Surface(
@@ -88,6 +92,7 @@ fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
                 },
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (points >= 1) Text(stringResource(R.string.draw_hint_points), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = name, onValueChange = { name = it.take(60) }, singleLine = true,

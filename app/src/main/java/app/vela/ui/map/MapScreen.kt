@@ -3656,7 +3656,9 @@ private fun MapSurface(
     // Also off while the route chooser is up: only the trip's own pins draw there (2026-09-30).
     // Custom maps (issue #669): the previewed one and every saved list's shapes, less hidden layers.
     val mapShapes = remember(state.pendingImport, state.pendingHiddenLayers, state.lists, state.drawing) {
-        state.pendingImport?.shapes.orEmpty().filter { it.layer == null || it.layer !in state.pendingHiddenLayers } + state.lists.flatMap { l -> l.shapes.filter { it.layer == null || it.layer !in l.hiddenLayers } } +
+        // A saved shape being changed is drawn once, as the drawing.
+        state.pendingImport?.shapes.orEmpty().filter { it.layer == null || it.layer !in state.pendingHiddenLayers } +
+            state.lists.flatMap { l -> l.shapes.filter { (it.layer == null || it.layer !in l.hiddenLayers) && it != state.drawing?.editOf } } +
             // The shape being drawn, last, so no saved shape's index moves.
             listOfNotNull(state.drawing?.takeIf { it.pts.size >= 4 }?.let { d ->
                 app.vela.core.model.MapShape(pts = d.pts, closed = d.closed && d.pts.size >= 6, color = d.color, width = 4f,
@@ -3874,6 +3876,8 @@ private fun MapSurface(
         fitLeadCount = if (state.openListId == null && state.pendingImport == null) SEARCH_FIT_LEAD else Int.MAX_VALUE,
         drawDots = state.drawing?.let { d -> d.pts.chunked(2).map { LatLng(it[0], it[1]) } },
         onDrawTap = vm::drawAddPoint,
+        onDrawMove = vm::drawMovePoint,
+        onDrawRemove = vm::drawRemovePoint,
         onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
         svPose = svPose,
         svTopInsetPx = (screenHeightPx * 0.55f).toInt(),

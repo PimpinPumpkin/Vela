@@ -868,6 +868,7 @@ fun PlaceSheet(
                     ) { saveMenu = true }
                     VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
                         // A drawn or imported line/area: it can be deleted from its list here.
+                        if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_edit)) { saveMenu = false; app.vela.ui.ShapeActions.edit?.invoke() }
                         if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_delete)) { saveMenu = false; app.vela.ui.ShapeActions.delete?.invoke() }
                         item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
                         if (!isParking) {
