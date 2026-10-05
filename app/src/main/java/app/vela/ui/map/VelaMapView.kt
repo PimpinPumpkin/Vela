@@ -2997,8 +2997,12 @@ fun VelaMapView(
             // wall clock, so every physics/easing step must integrate speedup× as much time or
             // the puck falls behind each fix and surges to catch up (the replay stutter). Live
             // (speedup = 1) these are identical to dtRaw/dt.
+            // A PAUSED replay sends 0: the car's own clock stops (it coasted on at its last speed
+            // for seconds after Pause, at real-time), while the eases keep running so the map can
+            // still be dragged and re-centered.
+            val paused = speedupHolder.value <= 0f
             val ts = speedupHolder.value.toDouble().coerceAtLeast(1.0)
-            val dtT = dtRaw * ts
+            val dtT = if (paused) 0.0 else dtRaw * ts
             val dtE = (dt * ts.toFloat()).coerceAtMost(0.3f)
             // EASE-ONLY time step, capped at ~4 smooth frames (issue #251, video-diagnosed): a
             // main-thread hitch (the 400 m road-label pass lands near junctions) delivered one
