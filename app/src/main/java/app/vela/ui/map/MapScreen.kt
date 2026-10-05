@@ -2384,7 +2384,7 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = onRecenter,
                 shape = CircleShape,
-                containerColor = mapButtonColor(darkTheme), contentColor = Color(0xFF4285F4),
+                containerColor = mapButtonColor(darkTheme), contentColor = mapButtonInk(Color(0xFF4285F4)),
                 elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 10.dp),
                 modifier = Modifier
                     .dpadHighlight(CircleShape)
@@ -2418,7 +2418,7 @@ fun MapScreen(
                     // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
                     // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
                     // carries state, like the Home/Work rows.
-                    contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else mapButtonInk(MaterialTheme.colorScheme.onSurfaceVariant),
                     shadowElevation = 6.dp,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -2620,7 +2620,7 @@ fun MapScreen(
                 FloatingActionButton(
                     onClick = onRecenter,
                     shape = CircleShape,
-                    containerColor = mapButtonColor(darkTheme), contentColor = Color(0xFF4285F4),
+                    containerColor = mapButtonColor(darkTheme), contentColor = mapButtonInk(Color(0xFF4285F4)),
                 elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 10.dp),
                     modifier = Modifier
                         .dpadHighlight(CircleShape)
@@ -3032,8 +3032,17 @@ private fun BoxScope.NavCorner(
     }
 }
 
-/** The buttons that float over the browse map (locate, parking, layers): one surface for all. */
-private fun mapButtonColor(dark: Boolean) = if (dark) Color(0xFF1B1C1E) else Color.White
+/** The buttons that float over the browse map (locate, parking, layers): one surface for all,
+ *  and the wallpaper's colors when that setting is on (Settings > Appearance), like the drive's. */
+@Composable
+private fun mapButtonColor(dark: Boolean) =
+    if (app.vela.ui.theme.DynamicColor.on.value) MaterialTheme.colorScheme.primaryContainer
+    else if (dark) Color(0xFF1B1C1E) else Color.White
+
+/** The glyph on one of those buttons: [plain] normally, the container's own ink with wallpaper colors. */
+@Composable
+private fun mapButtonInk(plain: Color) =
+    if (app.vela.ui.theme.DynamicColor.on.value) MaterialTheme.colorScheme.onPrimaryContainer else plain
 
 /** How many leading search results the map frames (the list holds the rest). */
 private const val SEARCH_FIT_LEAD = 12
