@@ -43,7 +43,9 @@ data class Calibration(
     val streetViewMetaUrl: String = DEFAULT_STREETVIEW_META,
     // Since 2026-10-05 Google answers that URL "decommissioned and turned off". The lookup its own
     // web library makes now is a POST of this JSON body ({LAT}/{LNG} the point, {RADIUS} meters)
-    // to [STREETVIEW_SEARCH_URL]; the reply is the same pano node with no callback wrapper.
+    // to [STREETVIEW_SEARCH_URL]; the reply is the same pano node with no callback wrapper. It asks
+    // for Google's own imagery only ([2,1,2]): with user photo spheres allowed ([10,1,2]) the nearest
+    // answer beside a store was often one of those, which the tile loader cannot show.
     val streetViewSearchBody: String = DEFAULT_STREETVIEW_SEARCH_BODY,
     // Street View metadata BY PANO ID (walking to a neighbor / a historical capture): the
     // consumer photometa/v1 RPC, keyless. `{PANOID}` is the target pano; returns the SAME node
@@ -177,7 +179,7 @@ data class Calibration(
             "https://maps.googleapis.com/\$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/SingleImageSearch"
         const val DEFAULT_STREETVIEW_SEARCH_BODY =
             "[[\"apiv3\",null,null,null,\"US\",null,null,null,null,null,[[0]]],[[null,null,{LAT},{LNG}],{RADIUS}]," +
-                "[null,[\"en\",\"US\"],null,null,null,null,null,null,[2],null,[[[2,1,2],[3,1,2],[10,1,2]]]],[[1,2,3,4,8,6]]]"
+                "[null,[\"en\",\"US\"],null,null,null,null,null,null,[2],null,[[[2,1,2]]]],[[1,2,3,4,8,6]]]"
         const val DEFAULT_STREETVIEW_META =
             "https://maps.googleapis.com/maps/api/js/GeoPhotoService.SingleImageSearch?pb=" +
                 "!1m5!1sapiv3!5sUS!11m2!1m1!1b0!2m4!1m2!3d{LAT}!4d{LNG}!2d50!3m10!2m2!1sen!2sUS" +

@@ -707,21 +707,28 @@ class GoogleMapsDataSource @Inject constructor(
     /** The nearest pano to a point. [metaUrl] is the old GET lookup, which Google switched off on
      *  2026-10-05 (it answers "decommissioned"); the POST its own web library makes now is tried
      *  first and the old one only if that fails, in case a region still serves it. */
+    private val STREETVIEW_RADII_M = listOf(50, 200)
+
     private suspend fun streetViewNearest(metaUrl: String, lat: Double, lng: Double): app.vela.core.model.StreetViewPano? {
         val cal = calibration.current()
-        val body = cal.streetViewSearchBody
-            .replace("{LAT}", "%.7f".format(java.util.Locale.US, lat))
-            .replace("{LNG}", "%.7f".format(java.util.Locale.US, lng))
-            .replace("{RADIUS}", "50")
-        runCatching {
-            val req = Request.Builder()
-                .url(app.vela.core.config.Calibration.STREETVIEW_SEARCH_URL)
-                .post(body.toRequestBody("application/json+protobuf".toMediaType()))
-                .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
-                .header("x-user-agent", "grpc-web-javascript/0.1")
-                .build()
-            http.newCall(req).execute().use { resp -> if (resp.isSuccessful) StreetViewParser.parse(resp.body?.string().orEmpty(), lat, lng) else null }
-        }.getOrNull()?.let { return it }
+        // 50 m first (the pano on the place's own frontage), then wider: a store set back behind its
+        // lot, or a point whose only close image is a user's photo sphere, has Google's imagery
+        // within a couple of hundred meters.
+        for (radius in STREETVIEW_RADII_M) {
+            val body = cal.streetViewSearchBody
+                .replace("{LAT}", "%.7f".format(java.util.Locale.US, lat))
+                .replace("{LNG}", "%.7f".format(java.util.Locale.US, lng))
+                .replace("{RADIUS}", radius.toString())
+            runCatching {
+                val req = Request.Builder()
+                    .url(app.vela.core.config.Calibration.STREETVIEW_SEARCH_URL)
+                    .post(body.toRequestBody("application/json+protobuf".toMediaType()))
+                    .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
+                    .header("x-user-agent", "grpc-web-javascript/0.1")
+                    .build()
+                http.newCall(req).execute().use { resp -> if (resp.isSuccessful) StreetViewParser.parse(resp.body?.string().orEmpty(), lat, lng) else null }
+            }.getOrNull()?.let { return it }
+        }
         val url = metaUrl
             .replace("callback=cb", "callback=${RequestShape.callbackName()}")
             .replace("{LAT}", "%.7f".format(java.util.Locale.US, lat))
