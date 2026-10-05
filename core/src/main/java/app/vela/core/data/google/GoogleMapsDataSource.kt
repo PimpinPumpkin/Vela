@@ -827,7 +827,7 @@ class GoogleMapsDataSource @Inject constructor(
                 // PHONE FIRST for a trip with stops: the legs chained on the downloaded region.
                 val phoneD = if (urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)) {
                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                        runCatching { chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg) }.getOrNull()
+                        runCatching { chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = PHONE_FIRST_ONLINE_WAIT_MS + PHONE_FIRST_ONDEVICE_WAIT_MS) }.getOrNull()
                     }
                 } else null
                 val via = if (phoneD == null) viaD.await().firstOrNull() else {
@@ -854,7 +854,7 @@ class GoogleMapsDataSource @Inject constructor(
                     val fb = RerouteFallback.pick(
                         gD,
                         onDevice = if (routeEngine.isReady(mode)) {
-                            { listOfNotNull(chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)) }
+                            { listOfNotNull(chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = budget.remainingMs())) }
                         } else null,
                         budgetMs = budget.remainingMs() ?: 0L,
                     )
@@ -987,7 +987,7 @@ class GoogleMapsDataSource @Inject constructor(
             val phoneD = if (urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)) {
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                     runCatching {
-                        routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)
+                        routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = PHONE_FIRST_ONLINE_WAIT_MS + PHONE_FIRST_ONDEVICE_WAIT_MS)
                             .map { it.copy(offline = true) }
                     }.getOrDefault(emptyList())
                 }
@@ -1030,7 +1030,7 @@ class GoogleMapsDataSource @Inject constructor(
                     googleD,
                     onDevice = if (routeEngine.isReady(mode)) {
                         {
-                            routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)
+                            routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = budget.remainingMs())
                                 .map { it.copy(offline = true) }
                         }
                     } else null,
@@ -1093,10 +1093,10 @@ class GoogleMapsDataSource @Inject constructor(
                 // from returning until the non-cancellable native compute finished, which would
                 // defeat the timeout entirely. Past the deadline the online chain answers (tagged
                 // not-honored below) and the orphaned compute finishes and is discarded.
-                val avoidD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg).map { it.copy(offline = true) } }.getOrDefault(emptyList())
-                }
                 val avoidWait = budget.remainingMs()?.let { minOf(it, AVOID_ONDEVICE_TIMEOUT_MS) } ?: AVOID_ONDEVICE_TIMEOUT_MS
+                val avoidD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = avoidWait).map { it.copy(offline = true) } }.getOrDefault(emptyList())
+                }
                 val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(avoidWait) { avoidD.await() } ?: emptyList()
                 if (avoidRoutes.isNotEmpty()) {
                     avoidHonored = true
@@ -1471,13 +1471,13 @@ class GoogleMapsDataSource @Inject constructor(
         val mode = TravelMode.BICYCLE
         val points = listOf(origin) + waypoints + destination
         if (routeEngine.isReady(mode)) {
+            val budget = if (urgent) BIKE_ONDEVICE_URGENT_MS else BIKE_ONDEVICE_TIMEOUT_MS
             val onDeviceD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                 runCatching {
-                    if (waypoints.isEmpty()) routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries).map { it.copy(offline = true) }
-                    else listOfNotNull(chainOnDevice(points, mode, avoidTolls, avoidHighways, avoidFerries))
+                    if (waypoints.isEmpty()) routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, maxMs = budget).map { it.copy(offline = true) }
+                    else listOfNotNull(chainOnDevice(points, mode, avoidTolls, avoidHighways, avoidFerries, maxMs = budget))
                 }.getOrDefault(emptyList())
             }
-            val budget = if (urgent) BIKE_ONDEVICE_URGENT_MS else BIKE_ONDEVICE_TIMEOUT_MS
             val onDevice = kotlinx.coroutines.withTimeoutOrNull(budget) { onDeviceD.await() } ?: emptyList()
             if (onDevice.isNotEmpty()) {
                 diag.record("directions", "BICYCLE safe → on-device ${onDevice.size} routes / ${onDevice.first().maneuvers.size} steps", "")
@@ -1647,11 +1647,15 @@ class GoogleMapsDataSource @Inject constructor(
         avoidHighways: Boolean = false,
         avoidFerries: Boolean = false,
         departBearingDeg: Double? = null,
+        maxMs: Long? = null,
     ): Route? {
+        val startMs = System.currentTimeMillis()
         val legs = points.zipWithNext().mapIndexed { i, (a, b) ->
             // Only the first leg starts where the car is pointing; a stop is just a place.
             val bearing = if (i == 0) departBearingDeg else null
-            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways, avoidFerries, bearing).firstOrNull()?.copy(offline = true) }.getOrNull() ?: return null
+            // One limit for the whole chain: each leg gets what is left of it.
+            val left = maxMs?.let { it - (System.currentTimeMillis() - startMs) }
+            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways, avoidFerries, bearing, maxMs = left).firstOrNull()?.copy(offline = true) }.getOrNull() ?: return null
         }
         val polyline = legs.flatMapIndexed { i, leg -> if (i == 0) leg.polyline else leg.polyline.drop(1) }
         // Boundary DEPART/ARRIVE steps are dropped, but their step distance is FOLDED into the

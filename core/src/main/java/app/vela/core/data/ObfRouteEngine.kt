@@ -82,7 +82,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         profileFor(mode) != null && regions().any { it.id !in failed && hasObf(it.id) }
 
     override fun covers(origin: LatLng, destination: LatLng, mode: TravelMode): Boolean =
-        profileFor(mode) != null && candidatesFor(origin, destination, regions()) != null
+        profileFor(mode) != null && candidatesFor(origin, destination, regions(), log = false) != null
 
     /** The installed regions a trip can route over, or null when their union does not cover both
      *  ends. MULTI-FILE routing (2026-08-03): OsmAnd's router reads across obf files natively (the
@@ -94,10 +94,11 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
      *  outside the endpoints' box. Both early outs log: a silent empty here read as "No drive route
      *  found" with nothing to go on (2026-09-14, a simulated origin outside the region looked like
      *  a broken file). */
-    private fun candidatesFor(origin: LatLng, destination: LatLng, all: List<Region>): List<Region>? {
+    private fun candidatesFor(origin: LatLng, destination: LatLng, all: List<Region>, log: Boolean = true): List<Region>? {
         val boxes = all.filter { it.id !in failed }.map { it.box }
         val keep = tripCandidates(boxes, origin, destination)
         val cands = all.filter { it.id !in failed }.filterIndexed { i, _ -> i in keep }
+        if (!log) return cands.takeIf { c -> c.isNotEmpty() && c.any { it.covers(origin) } && c.any { it.covers(destination) } }
         android.util.Log.d(TAG, "route: ${all.size} installed, ${cands.size} intersecting trip box")
         val originIn = cands.any { it.covers(origin) }
         val destIn = cands.any { it.covers(destination) }
@@ -108,7 +109,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         return cands
     }
 
-    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?): List<Route> {
+    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?, maxMs: Long?): List<Route> {
         val profile = profileFor(mode) ?: return emptyList()
         val cands = candidatesFor(origin, destination, regions()) ?: return emptyList()
         val readers = cands.mapNotNull { reader(it) }
@@ -117,9 +118,13 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
             return emptyList()
         }
         run {
+            val startMs = System.currentTimeMillis()
+            val progress = net.osmand.router.RouteCalculationProgress()
             try {
-                val startMs = System.currentTimeMillis()
                 val segments = synchronized(routeLock) {
+                    // The wait for the lock counts: a caller that has already given up gets nothing started.
+                    val leftMs = maxMs?.let { it - (System.currentTimeMillis() - startMs) }
+                    if (leftMs != null && leftMs <= 0) return emptyList()
                     val params = buildMap {
                         // routing.xml parameter ids - the router excludes matching roads at
                         // calc time, no baked profiles needed (unlike the GraphHopper CH pair).
@@ -153,12 +158,23 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                         config, null, readers.toTypedArray(),
                         RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
                     )
-                    fe.searchRoute(ctx, LatLon(origin.lat, origin.lng), LatLon(destination.lat, destination.lng), null)
-                        ?.list.orEmpty()
+                    // Both planners poll this flag; setting it ends the search with an exception.
+                    ctx.calculationProgress = progress
+                    val stop = leftMs?.let { ms -> stopper.schedule({ progress.isCancelled = true }, ms, java.util.concurrent.TimeUnit.MILLISECONDS) }
+                    try {
+                        fe.searchRoute(ctx, LatLon(origin.lat, origin.lng), LatLon(destination.lat, destination.lng), null)
+                            ?.list.orEmpty()
+                    } finally {
+                        stop?.cancel(false)
+                    }
                 }
                 android.util.Log.d(TAG, "route over ${readers.size} file(s): ${segments.size} segments in ${System.currentTimeMillis() - startMs} ms")
                 if (segments.isNotEmpty()) return listOf(toRoute(segments))
             } catch (e: Throwable) {
+                if (progress.isCancelled) {
+                    android.util.Log.d(TAG, "route $mode: stopped after ${System.currentTimeMillis() - startMs} ms, the caller's ${maxMs} ms were up")
+                    return emptyList()
+                }
                 // Log loudly; a corrupt file latches failed via reader(). Silent swallowing made
                 // a routing failure un-diagnosable on a release build (canary 2026-07-23).
                 android.util.Log.w(TAG, "route over ${readers.size} file(s) failed", e)
@@ -171,6 +187,9 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
     // Built once per set of covering regions and kept (it holds the road tiles around the puck, so
     // the next lookup 18 m on is a cache hit); a small memory limit so a long drive unloads behind
     // itself. Dropped with the readers in shutdown().
+    // Ends a search whose caller has stopped waiting (one idle daemon thread).
+    private val stopper = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "obf-route-stop").apply { isDaemon = true } }
+
     private var limitCtx: RoutingContext? = null
     private var limitCtxKey = ""
 
@@ -245,15 +264,24 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
 
     private fun hasObf(id: String) = File(obfRoot, "$id.obf").let { it.exists() && it.length() > 0 }
 
+    // The parsed index, kept until the file changes: the speed-limit lookup and the "is this point
+    // covered" test ask several times a second during a drive, some of them on the main thread,
+    // and each used to read and parse the file again.
+    @Volatile private var regionsCache: Pair<String, List<Region>>? = null
+
     private fun regions(): List<Region> = runCatching {
         val f = File(obfRoot, "index.json")
         if (!f.exists()) return emptyList()
+        val stamp = "${f.path}|${f.lastModified()}|${f.length()}"
+        regionsCache?.let { if (it.first == stamp) return it.second }
         val arr = JSONArray(f.readText())
-        (0 until arr.length()).mapNotNull { i ->
+        val list = (0 until arr.length()).mapNotNull { i ->
             val o = arr.getJSONObject(i)
             val b = o.getJSONArray("bbox")
             Region(o.getString("id"), b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3))
         }
+        regionsCache = stamp to list
+        list
     }.getOrDefault(emptyList())
 
     private fun reader(region: Region): BinaryMapIndexReader? {

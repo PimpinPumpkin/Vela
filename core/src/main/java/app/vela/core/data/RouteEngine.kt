@@ -33,6 +33,10 @@ interface RouteEngine {
         // open router's `bearings=`): the route should start the way the car is pointing instead
         // of answering "turn around". Null for planning.
         departBearingDeg: Double? = null,
+        // How long the caller will wait. Past it the search is stopped and the answer is empty:
+        // a caller that gives up at 6 s used to leave the search running for as long as it took,
+        // on a core the map needed, holding the engine's lock against the next request.
+        maxMs: Long? = null,
     ): List<Route>
 
     /** True when the engine's installed data covers BOTH ends of a trip, so a route from it is a

@@ -77,7 +77,9 @@ For a driving trip with no stops:
 2. **OSRM** answers, Google did not: the OSRM route alone, trafficless. The drive's recheck heals
    it later ([chapter 4](04-navigation.md)).
 3. **OSRM is down**, a downloaded region covers both ends: the on-phone route. Complete named
-   turns, no traffic.
+   turns, no traffic. Wherever the app waits a fixed time for the phone's own router
+   (4 s for an avoid, 6 s for a bike route, a reroute's deadline), the search is stopped when
+   that time is up instead of running on in the background.
 4. **OSRM is down**, no region: Google's own route, tagged `GOOGLE_ABBREVIATED` so the recheck can
    swap in full steps the moment OSRM is back.
 5. Nothing: no route.
