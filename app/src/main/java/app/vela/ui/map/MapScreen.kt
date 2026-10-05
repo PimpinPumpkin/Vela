@@ -1707,10 +1707,7 @@ fun MapScreen(
         // Re-center pill takes the speed box's corner until the camera is back.
         val navAway = state.navigating && !state.showSteps && !state.editingStops && state.results.isEmpty() &&
             (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride)
-        NavCorner(
-            state, navAway, movingFree, postedLimitKmh, landscapeChrome, sidePanelWidthDp, navBarClearance, chromeLift,
-            navBannerBottomPx, windowHeightPx, onRecenter = { vm.recenterNav(); navRecenterTick++ },
-        )
+        NavCorner(state, navAway, movingFree, postedLimitKmh, landscapeChrome, navBarClearance, chromeLift, onRecenter = { vm.recenterNav(); navRecenterTick++ })
 
         if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen && !resultsShown) {
             ElevatedButton(
@@ -1964,6 +1961,7 @@ fun MapScreen(
                                 (16 * rootView.resources.displayMetrics.density).toInt()
                         navBarHeightPx = (it.size.height - inside).coerceAtLeast(1)
                         navBarTopPx = it.boundsInWindow().top
+                        navBarRightPx.intValue = it.boundsInWindow().right.roundToInt()
                     },
                 )
             }
@@ -2987,11 +2985,10 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
 private fun Modifier.navBarHost(landscape: Boolean): Modifier =
     if (landscape) this.padding(start = NAV_LAND_EDGE_DP, end = 16.dp) else this
 
-/** Landscape nav: the speed box (or Re-center) sits this far right of the left column, and the
- *  current-road pill starts past it. */
 /** Landscape nav cards sit this far from the safe left edge, as Google's do. */
 private val NAV_LAND_EDGE_DP = 8.dp
-private val NAV_LAND_GAP_DP = 28.dp
+/** Landscape nav: the current-road pill above the bar starts this far right of the left column,
+ *  past the speed box. */
 private val NAV_LAND_ROAD_START_DP = 190.dp
 
 /** The drive's lower-left corner: the speed box, or the Re-center pill while the camera is away
@@ -3003,23 +3000,18 @@ private fun BoxScope.NavCorner(
     movingFree: Boolean,
     postedLimitKmh: Double?,
     landscapeChrome: Boolean,
-    sidePanelWidthDp: androidx.compose.ui.unit.Dp,
     navBarClearance: androidx.compose.ui.unit.Dp,
     chromeLift: androidx.compose.ui.unit.Dp,
-    navBannerBottomPx: Int,
-    windowHeightPx: Int,
     onRecenter: () -> Unit,
 ) {
+    // Landscape drive: both sit in line with the bottom bar, just to its right.
+    val beside = state.navigating && landscapeChrome
+    val besideStart = with(LocalDensity.current) { navBarRightPx.intValue.toDp() } + 10.dp
     if (navAway) app.vela.ui.nav.NavRecenterPill(
         onClick = onRecenter,
         modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
-            .padding(start = if (landscapeChrome) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp, bottom = if (landscapeChrome) 16.dp else navBarClearance),
+            .padding(start = if (landscapeChrome) besideStart else 16.dp, bottom = if (landscapeChrome) 16.dp else navBarClearance),
     )
-    // Landscape: a tall turn card (lanes plus a Then tab) reaches down to where the speed box
-    // sits above the bar; the box then moves out beside the column.
-    val speedBesideColumn = state.navigating && landscapeChrome && with(LocalDensity.current) {
-        navBannerBottomPx > windowHeightPx - (navBarClearance + 84.dp).toPx()
-    }
     if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
         SpeedWidget(
             speedMps = state.mySpeed,
@@ -3027,16 +3019,13 @@ private fun BoxScope.NavCorner(
             imperial = Units.imperial.value,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                // Landscape nav: lined up with the column's left edge, past the camera cutout.
-                .then(if (state.navigating && landscapeChrome) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start)) else Modifier)
                 .navigationBarsPadding()
                 // During nav the box clears the ETA bar; free-driving there is no bar, so it
                 // sits low in the corner, level with the locate FAB (user 2026-07-14). The
                 // scale bar yields the spot while the box is there.
                 .padding(
-                    start = if (speedBesideColumn) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp,
-                    // Beside the column it sits above the line the road name under the car is on.
-                    bottom = if (speedBesideColumn) 92.dp else if (state.navigating) navBarClearance else 16.dp + chromeLift,
+                    start = if (beside) besideStart else 16.dp,
+                    bottom = if (beside) 16.dp else if (state.navigating) navBarClearance else 16.dp + chromeLift,
                 ),
         )
     }
@@ -6419,6 +6408,8 @@ private fun ListEditorDialog(
  *  pill's layout pass, so the pill takes exactly the room beside it. File-level on purpose: a
  *  `remember` in MapScreen is a composable call, and that function is at the verifier's limit. */
 private val speedBoxRightPx = androidx.compose.runtime.mutableIntStateOf(0)
+/** The drive bar's right edge in window px: in landscape the speed box and Re-center sit just past it. */
+private val navBarRightPx = androidx.compose.runtime.mutableIntStateOf(0)
 /** The top of the nav button column, in window px: the compass sits on it, as the column's first button. */
 internal val navFabTopPx = androidx.compose.runtime.mutableIntStateOf(0)
 
