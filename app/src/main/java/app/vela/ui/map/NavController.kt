@@ -1179,20 +1179,7 @@ internal class NavController(
                 // street that ENTERS your road (right place, wrong direction) and every sign on
                 // the parallel street a block over (right direction, wrong place); the direction
                 // test alone kept the second kind (user drive 2026-10-01).
-                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
-                // A TRAFFIC LIGHT counts when its node is within SIGNAL_ON_ROUTE_M of the route
-                // (signalIsOnRoute): every light in the corridor used to draw, so the lights of
-                // the parallel street a block over showed beside the route (user 2026-10-02).
-                val onRoute = res.filter { c ->
-                    when (c.kind) {
-                        app.vela.core.data.TrafficControl.Kind.STOP ->
-                            app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
-                        // Lights, speed humps and level crossings are nodes on the road itself, so all
-                        // three take the same test; humps on the side streets beside the route drew
-                        // until 2026-10-02 (user drive video).
-                        else -> app.vela.core.nav.RouteProjection.signalIsOnRoute(poly, cum, c.loc)
-                    }
-                }
+                val onRoute = controlsOnRoute(poly, res)
                 onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, MapViewModel.CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
@@ -1229,3 +1216,19 @@ private const val RESUME_FRESH_FIX_WAIT_MS = 8_000L
 
 /** One point of the driven trace per this much travel ("save the way you drove"). */
 private const val DRIVE_TRACE_STEP_M = 15.0
+
+/** The road furniture that is the driver's own: a stop sign whose node is ON the route with its
+ *  road running the route's way, and a light, hump or crossing within reach of the line. Used for
+ *  the drive's corridor set AND for the whole-view fallback during a drive, so that whichever
+ *  path fills the layer, nothing off the route is ever drawn while navigating. */
+internal fun controlsOnRoute(poly: List<app.vela.core.model.LatLng>, all: List<app.vela.core.data.TrafficControl>): List<app.vela.core.data.TrafficControl> {
+    if (poly.size < 2) return emptyList()
+    val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+    return all.filter { c ->
+        when (c.kind) {
+            app.vela.core.data.TrafficControl.Kind.STOP ->
+                app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
+            else -> app.vela.core.nav.RouteProjection.signalIsOnRoute(poly, cum, c.loc)
+        }
+    }
+}

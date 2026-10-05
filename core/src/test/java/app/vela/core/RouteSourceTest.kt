@@ -67,4 +67,18 @@ class RouteSourceTest {
         assertEquals("Turn left", parsed.maneuvers[1].instruction)
         assertEquals(null, parsed.maneuvers[1].road)
     }
+
+    @Test fun anOlderTripFileStillNamesTheRoadFromItsText() {
+        fun m(text: String, road: String?) =
+            app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.TURN_LEFT, text, LatLng(38.54, -121.74), 500.0, 60.0, road = road)
+        val r = route(RouteSource.OSRM).copy(legs = listOf(RouteLeg(1000.0, 120.0, null, listOf(
+            m("Turn left onto Richards Boulevard", "Richards Boulevard"), m("Take exit 4A toward I 5 North", null), m("Turn left", null)))))
+        // What a file written before the names were kept looks like: the text and nothing after it.
+        val old = TripLog.encodeRoute(r, "start").lines().map { it.substringBefore('\t') }
+        val got = TripLog.parseRoute(old)!!.maneuvers
+        assertEquals(3, got.size)
+        assertEquals("Richards Boulevard", got[0].road)
+        assertEquals(null, got[1].road)
+        assertEquals(null, got[2].road)
+    }
 }

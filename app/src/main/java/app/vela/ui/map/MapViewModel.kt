@@ -8089,11 +8089,15 @@ class MapViewModel @Inject constructor(
                     // (probed: the doll-museum tile has 413 features in missouri.pmtiles, 36 river-bank scraps
                     // in kansas's). With both streamed, whichever archive has the data paints; the empty one's
                     // range requests cost ~nothing. Cap 3 bounds pathological corner overlaps.
-                    man.filter { it.covers(c.lat, c.lng) }
-                        .sortedBy { it.boxArea() }
-                        .take(3)
-                        .filter { it.id !in installed.keys }        // downloaded? the local file already covers it
-                        .forEach { uris.add("pmtiles://${it.url}") } // else stream over HTTP range requests
+                    // With a DOWNLOADED overlay among them, the others are not streamed: a country's
+                    // box reaches far over its neighbor's border, and its archive, empty there, was
+                    // still asked for every tile (thousands of requests a minute while panning a
+                    // downloaded state, Pixel 9 log 2026-10-05). The spill case above then needs the
+                    // right region downloaded, which is what the download offers.
+                    val covering = man.filter { it.covers(c.lat, c.lng) }.sortedBy { it.boxArea() }.take(3)
+                    if (covering.none { it.id in installed.keys }) {
+                        covering.forEach { uris.add("pmtiles://${it.url}") } // stream over HTTP range requests
+                    }
                 }
             }
             val distinct = uris.distinct()
@@ -8228,7 +8232,12 @@ class MapViewModel @Inject constructor(
     private fun refreshMaxspeedOverlay(center: LatLng? = mapCenter ?: _state.value.myLocation) {
         val c = center ?: return
         viewModelScope.launch {
-            val uris = runCatching { maxspeedStore.sourcesFor(c, app.vela.BuildConfig.MAXSPEED_MANIFEST_URL) }.getOrDefault(emptyList())
+            // A downloaded region answers the limit from the phone (the badge reads it first), so
+            // the streamed copy is not mounted over it: a drive across a downloaded state made
+            // thousands of range requests a minute for limits it already had, most of them while
+            // the map was being dragged (Pixel 9 log, 2026-10-05).
+            val onDevice = runCatching { routeEngine.covers(c, c, TravelMode.DRIVE) }.getOrDefault(false)
+            val uris = if (onDevice) emptyList() else runCatching { maxspeedStore.sourcesFor(c, app.vela.BuildConfig.MAXSPEED_MANIFEST_URL) }.getOrDefault(emptyList())
             if (uris != _state.value.maxspeedOverlays) _state.update { it.copy(maxspeedOverlays = uris) }
         }
     }
@@ -8352,8 +8361,13 @@ class MapViewModel @Inject constructor(
             // spoken "pass the light" counting already uses (adjacent intersections on a dense
             // grid stay separate), each cluster drawn at its centroid. Fewer allowOverlap symbols
             // is also a straight render win.
+            // During a drive this path only runs when the route's own set has not loaded (its file
+            // failed, or is still coming). It must still draw the route's furniture and nothing
+            // else: unfiltered, every sign and light in view drew, blocks from the line, and the
+            // set was re-uploaded on every pan (user drive, Pixel 9, 2026-10-05).
+            val navPoly = _state.value.takeIf { it.navigating }?.activeRoute?.polyline
             val merged = withContext(Dispatchers.Default) {
-                res.groupBy { it.kind }.flatMap { (kind, group) ->
+                (if (navPoly != null) controlsOnRoute(navPoly, res) else res).groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }

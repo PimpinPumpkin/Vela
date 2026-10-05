@@ -148,6 +148,8 @@ object TripLog {
         )
     }
 
+    private val ROAD_IN_TEXT = Regex("(?: onto |^Head out on |^Continue on )([^,:]+?)(?:, | toward |$)")
+
     private fun parseManeuver(line: String): Maneuver? {
         val p = line.split(',', limit = 6)
         if (p.size < 6) return null
@@ -157,7 +159,10 @@ object TripLog {
         val text = p[5].split('\t')
         return Maneuver(
             type, text[0], LatLng(lat, lng), p[4].toDoubleOrNull() ?: 0.0, 0.0,
-            road = text.getOrNull(1)?.ifBlank { null }, ref = text.getOrNull(2)?.ifBlank { null },
+            // A file from before the names were kept: the English text still says the road
+            // ("... onto 1st Street"), which is enough for the replay's road label and callout.
+            road = text.getOrNull(1)?.ifBlank { null } ?: if (text.size == 1) ROAD_IN_TEXT.find(text[0])?.groupValues?.get(1)?.trim()?.ifBlank { null } else null,
+            ref = text.getOrNull(2)?.ifBlank { null },
         )
     }
 
