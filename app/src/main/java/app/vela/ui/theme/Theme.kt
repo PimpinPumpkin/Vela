@@ -25,22 +25,21 @@ private val LightColors = lightColorScheme(
     surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFFDADCE0),
     primary = VelaTeal,
     onPrimary = androidx.compose.ui.graphics.Color.White,
-    primaryContainer = androidx.compose.ui.graphics.Color(0xFFD2E3FC),
-    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF174EA6),
+    primaryContainer = androidx.compose.ui.graphics.Color(0xFFB6E7DF),
+    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF00201D),
     secondary = VelaTealDark,
-    secondaryContainer = androidx.compose.ui.graphics.Color(0xFFE8F0FE),
-    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF174EA6),
+    secondaryContainer = androidx.compose.ui.graphics.Color(0xFFCDE9E3),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF06201C),
     tertiary = VelaAmber,
     // Attention surfaces (the faster-route offer, warn-level notices) ride tertiaryContainer.
     // Without these, Material's baseline kicked in and drew them PINK (user 2026-07-14) -
-    // Google Blue tints keep them on-brand with the primary accent.
-    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFFD2E3FC),
-    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFF174EA6),
+    // amber tints keep them on-brand with the VelaAmber accent.
+    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFFFFDCBE),
+    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFF2C1600),
 )
 
 private val DarkColors = darkColorScheme(
-    // Google Maps dark chrome: near-black blue-gray surfaces, Google Blue accent,
-    // pale-blue containers, light-blue on-container ink.
+    // Neutral near-black surfaces under the teal accent.
     background = androidx.compose.ui.graphics.Color(0xFF131314),
     surface = androidx.compose.ui.graphics.Color(0xFF131314),
     surfaceContainerLowest = androidx.compose.ui.graphics.Color(0xFF131314),
@@ -53,16 +52,16 @@ private val DarkColors = darkColorScheme(
     outline = androidx.compose.ui.graphics.Color(0xFF5F6368),
     outlineVariant = androidx.compose.ui.graphics.Color(0xFF5F6368),
     primary = VelaTealLight,
-    onPrimary = androidx.compose.ui.graphics.Color(0xFF202124),
-    primaryContainer = androidx.compose.ui.graphics.Color(0xFF3B4F6B),
-    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFD2E3FC),
+    onPrimary = androidx.compose.ui.graphics.Color(0xFF003730),
+    primaryContainer = androidx.compose.ui.graphics.Color(0xFF13534B),
+    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFB6E7DF),
     secondary = VelaTeal,
-    secondaryContainer = androidx.compose.ui.graphics.Color(0xFF303134),
-    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFE8EAED),
+    secondaryContainer = androidx.compose.ui.graphics.Color(0xFF1F4A44),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFCDE9E3),
     tertiary = VelaAmber,
-    // See LightColors: baseline tertiaryContainer is pink; keep the attention cards blue.
-    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFF3349A3),
-    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFFD2E3FC),
+    // See LightColors: baseline tertiaryContainer is pink; keep the attention cards amber.
+    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFF6B4520),
+    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFFFFDCBE),
 )
 
 // AMOLED: the dark scheme on TRUE BLACK surfaces (every lit pixel costs battery on OLED, and
