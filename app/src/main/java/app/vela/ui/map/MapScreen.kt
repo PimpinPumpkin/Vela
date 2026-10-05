@@ -204,7 +204,7 @@ private const val USE_MAPTILER = false
 // 400 read too narrow on wide screens (user 2026-07-23); Google's landscape panel takes roughly
 // half a phone's width too. Computed per-configuration in sidePanelWidth().
 private val SIDE_PANEL_WIDTH_MIN = 400.dp
-private val SIDE_PANEL_WIDTH_MAX = 520.dp
+private val SIDE_PANEL_WIDTH_MAX = 600.dp
 
 /** Gap in px between the puck glyph's center and the current-road pill below it (issue #288).
  *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
@@ -264,7 +264,9 @@ internal fun lowDensityIconScale(density: Float): Float =
 @Composable
 private fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
     val w = LocalConfiguration.current.screenWidthDp
-    return (w * 0.5f).dp.coerceIn(SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX)
+    // 0.56 of the width: with the cutout's margin taken off, that is the 47% Google's panel covers.
+    return (w * 0.56f).dp.coerceIn(SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX)
+
 }
 
 @Composable
@@ -1725,8 +1727,8 @@ fun MapScreen(
                     // sits low in the corner, level with the locate FAB (user 2026-07-14). The
                     // scale bar yields the spot while the box is there (below).
                     .padding(
-                        start = if (state.navigating && landscapeChrome) sidePanelWidthDp + NAV_LAND_GAP_DP else 16.dp,
-                        bottom = if (state.navigating) (if (landscapeChrome) 16.dp else navBarClearance) else 16.dp + chromeLift,
+                        start = if (state.navigating && landscapeChrome) 32.dp else 16.dp,
+                        bottom = if (state.navigating) navBarClearance else 16.dp + chromeLift,
                     ),
             )
         }
@@ -1972,7 +1974,7 @@ fun MapScreen(
                         // Everything above the bar assumes a card floating 16dp over the system bar.
                         // Flush on the bottom edge (portrait) the bar holds that space itself, so
                         // it is taken back out here and the gaps above stay what they were.
-                        val inside = if (landscapeChrome) 0 else
+                        val inside =
                             (androidx.core.view.ViewCompat.getRootWindowInsets(rootView)
                                 ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0) +
                                 (16 * rootView.resources.displayMetrics.density).toInt()
@@ -2977,7 +2979,7 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
 /** The nav bar and the step sheet it opens into: flush with the screen's bottom edge in portrait
  *  (the card pads its own content off the system bar), a floating card in the landscape column. */
 private fun Modifier.navBarHost(landscape: Boolean): Modifier =
-    if (landscape) this.navigationBarsPadding().padding(16.dp) else this
+    if (landscape) this.padding(start = 16.dp, end = 16.dp) else this
 
 /** Landscape nav: the speed box (or Re-center) sits this far right of the left column, and the
  *  current-road pill starts past it. */
@@ -5444,7 +5446,7 @@ private fun SuggestionRow(
     Row(
         Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = if (hasTrailing) 4.dp else 16.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {

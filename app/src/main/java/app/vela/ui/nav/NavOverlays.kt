@@ -895,11 +895,11 @@ val NavBarColor = androidx.compose.ui.graphics.Color(0xFF101214)
 
 /** Portrait: the bar sits flush on the screen's bottom edge, like Google's. Landscape: a card. */
 @Composable
-fun navBarFlush(): Boolean = androidx.compose.ui.platform.LocalConfiguration.current.let { it.screenWidthDp < it.screenHeightDp }
+fun navBarFlush(): Boolean = true
 
 @Composable
 fun navBarShape(): androidx.compose.ui.graphics.Shape =
-    if (navBarFlush()) RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp) else RoundedCornerShape(28.dp)
+    RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
 
 /** The bar's top: the chevron handle and the End | figures | list row. Drawn by [NavControls] and,
  *  with [handleUp] false, as the header of the expanded [StepsSheet] during nav, so the two are
