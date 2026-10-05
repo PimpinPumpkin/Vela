@@ -264,14 +264,15 @@ fun GoogleStyleDirectionsPanel(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                RoundAction(Sym.Tune, stringResource(R.string.exp_chooser_options), dark) {
+                // Landscape: smaller circles, or they stand taller than the tab row and cross the divider.
+                RoundAction(Sym.Tune, stringResource(R.string.exp_chooser_options), dark, small = compact) {
                     collapsed.value = false
                     scope.launch { bodyScroll.animateScrollTo(0) }
                 }
                 Spacer(Modifier.width(8.dp))
-                RoundAction(Sym.Share, stringResource(R.string.place_share), dark, onShare)
+                RoundAction(Sym.Share, stringResource(R.string.place_share), dark, small = compact, onClick = onShare)
                 Spacer(Modifier.width(8.dp))
-                RoundAction(Sym.Close, stringResource(R.string.place_close_directions), dark, onClose)
+                RoundAction(Sym.Close, stringResource(R.string.place_close_directions), dark, small = compact, onClick = onClose)
             }
             if (!compact) {
                 Spacer(Modifier.height(10.dp))
@@ -564,7 +565,15 @@ internal fun modeTitle(mode: TravelMode): String = stringResource(
 
 /** Google's round header action: a tonal circle with a glyph. */
 @Composable
-internal fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, dark: Boolean, onClick: () -> Unit) {
+internal fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, dark: Boolean, small: Boolean = false, onClick: () -> Unit) {
+    if (small) {
+        // A plain box: IconButton keeps a 48 dp minimum, which is what stood over the divider.
+        Box(
+            Modifier.size(32.dp).clip(CircleShape).background(SheetPalette.row(dark)).dpadHighlight(CircleShape).clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, contentDescription = label, tint = SheetPalette.ink(dark), modifier = Modifier.size(18.dp)) }
+        return
+    }
     IconButton(
         onClick = onClick,
         modifier = Modifier

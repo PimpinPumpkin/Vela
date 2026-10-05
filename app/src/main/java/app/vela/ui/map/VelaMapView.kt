@@ -295,7 +295,7 @@ private const val FLOCK_IMG = "vela-flock-cam"
 private const val FLOCK_DIR_LAYER = "vela-flock-dir" // facing cone under the badge (dir-tagged nodes)
 private const val FLOCK_DIR_IMG = "vela-flock-cone"
 private const val FLOCK_DIR_PROP = "dir"
-private const val FLOCK_COUNT_PROP = "cams" // heads on one corner; the badge shows "xN" past 1
+private const val FLOCK_COUNT_PROP = "cams" // heads on one corner (the badge shows no count: zoom in for each head's cone)
 // A plate camera is usually mounted on a signal mast, so its badge sat squarely on the stoplight
 // icon (user 2026-09-23). Badges with a drawn control this close are nudged up and to the right in
 // SCREEN pixels, which keeps the two apart at every zoom; the cones stay on the real point.
@@ -5900,24 +5900,6 @@ PropertyFactory.iconPadding(2f),
                     PropertyFactory.iconAllowOverlap(true), // never yields itself...
                     PropertyFactory.iconIgnorePlacement(false), // ...and later symbols (street names) dodge it
                     PropertyFactory.iconPadding(2f),
-                    // "x4" beside the badge when a corner carries several heads. Quiet by design:
-                    // the badge says there is enforcement here, the number only says how much.
-                    PropertyFactory.textField(
-                        Expression.switchCase(
-                            Expression.gt(Expression.get(FLOCK_COUNT_PROP), Expression.literal(1)),
-                            Expression.concat(Expression.literal("x"), Expression.toString(Expression.get(FLOCK_COUNT_PROP))),
-                            Expression.literal(""),
-                        ),
-                    ),
-                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
-                    PropertyFactory.textSize(10.5f),
-                    PropertyFactory.textOffset(arrayOf(0.95f, -0.75f)),
-                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_LEFT),
-                    PropertyFactory.textColor("#FFFFFF"),
-                    PropertyFactory.textHaloColor("#000000"),
-                    PropertyFactory.textHaloWidth(1.2f),
-                    PropertyFactory.textAllowOverlap(true),
-                    PropertyFactory.textIgnorePlacement(true),
                 )
             }
         val topBubble = topNavBubbleLayer(style)

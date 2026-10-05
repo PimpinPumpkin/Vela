@@ -1570,28 +1570,6 @@ fun MapScreen(
         // (The faster-route offer renders in the stacked notification column below, so it can
         // never sit under the turn card or on top of another card.)
 
-        // The along-route search panel lives at the TOP, under the turn banner where the
-        // heads-up cards go (user 2026-07-14): one stable position - the keyboard can never
-        // cover it (no focus-driven move), and it can't collide with the FAB stack or the
-        // bottom bar. Transient heads-up cards may draw over it; they're rare and short-lived.
-        if (state.navigating && navSearchOpen && state.results.isEmpty()) {
-            val panelBannerBottom = with(LocalDensity.current) { navBannerBottomPx.toDp() }
-            app.vela.ui.nav.NavSearchChips(
-                query = navSearchQuery,
-                onQueryChange = { navSearchQuery = it },
-                onPick = { q ->
-                    navSearchOpen = false
-                    navSearchQuery = ""
-                    focusManager.clearFocus()
-                    android.util.Log.d("VelaNavSearch", "picked '$q' along the route")
-                    vm.searchAlongRoute(q)
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = panelBannerBottom + 10.dp, start = 12.dp, end = 12.dp),
-            )
-        }
-
         // Right-edge nav FAB stack: volume + search live ON THE MAP (the bottom bar was
         // cramming four controls - user 2026-07-14; Google floats these there too), with the
         // re-center button joining the stack when panned away / previewing a step. Hidden
@@ -2393,6 +2371,22 @@ fun MapScreen(
         // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
         // it (stopNav cancels the demo), so don't show the replay pill over the nav chrome.
         MapFloaters(state, vm, sheetEdge.top)
+        // Search along the route: Google's page (the whole screen in portrait, the left column
+        // over a dimmed map in landscape). Drawn last, so it covers the banner, bar and buttons.
+        if (state.navigating && navSearchOpen && state.results.isEmpty()) {
+            app.vela.ui.nav.NavSearchChips(
+                query = navSearchQuery,
+                onQueryChange = { navSearchQuery = it },
+                onPick = { q ->
+                    navSearchOpen = false
+                    navSearchQuery = ""
+                    focusManager.clearFocus()
+                    android.util.Log.d("VelaNavSearch", "picked '$q' along the route")
+                    vm.searchAlongRoute(q)
+                },
+                onClose = { navSearchOpen = false; focusManager.clearFocus() },
+            )
+        }
 
         // The locate + parking buttons yield to the bottom surfaces that actually REACH them:
         // the route chooser and step list always (full width), and in PORTRAIT the place/results
@@ -3751,6 +3745,7 @@ private fun ResultPlaceCard(
                 icon = Sym.Share,
                 label = stringResource(R.string.place_share),
                 primary = false,
+                iconOnly = true, // four labeled pills ran off the card
                 onClick = { onActionShare() },
             )
             // Menu opens the sheet straight onto its Menu tab (Google's
@@ -3847,6 +3842,7 @@ private fun ResultActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     primary: Boolean,
+    iconOnly: Boolean = false,
     onClick: () -> Unit,
 ) {
     val pill = androidx.compose.foundation.shape.CircleShape
@@ -3859,12 +3855,14 @@ private fun ResultActionButton(
             .background(if (primary) scheme.primary else scheme.secondaryContainer)
             .dpadHighlight(pill)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = if (iconOnly) 10.dp else 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1)
+        Icon(icon, contentDescription = if (iconOnly) label else null, tint = ink, modifier = Modifier.size(18.dp))
+        if (!iconOnly) {
+            Spacer(Modifier.width(6.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1)
+        }
     }
 }
 

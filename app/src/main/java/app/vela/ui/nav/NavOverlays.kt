@@ -1,5 +1,20 @@
 package app.vela.ui.nav
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
 import app.vela.ui.icons.Sym
 import app.vela.ui.icons.SymOutlined
@@ -158,6 +173,9 @@ fun ManeuverBanner(
     // past a threshold it slides the rest of the way out, swaps to the next/prev
     // step, then the new card slides in from the opposite edge — like flicking a
     // pager. Below threshold it springs back.
+    // The "Then" tab hangs off the card's lower left: the card's corner is square where they meet.
+    val thenShown = nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
+        (previewing || distanceMeters <= laneShowM)
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     // `pointerInput(Unit)` builds the gesture detector ONCE, capturing these lambdas
@@ -217,7 +235,7 @@ fun ManeuverBanner(
             .then(
                 if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier.focusable(),
             ),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 24.dp, bottomStart = if (thenShown) 0.dp else 24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
@@ -350,19 +368,17 @@ fun ManeuverBanner(
         // Detached Google-style "then" strip: its own smaller, darker tab under the main
         // card - just "then <arrow> <full instruction>", no shield chip, no distance.
         // Same compound + approach gates as the old inline row.
-        if (nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
-            (previewing || distanceMeters <= laneShowM)
-        ) {
+        if (thenShown) {
             // Google's "Then" tab: hangs off the card's lower left in the card's own color,
             // the word and the arrow only.
             Card(
                 // A tab, not a second card: never the full width, whatever the next step's length.
-                Modifier.fillMaxWidth(0.86f).wrapContentWidth(Alignment.Start).offset(y = (-10).dp),
+                Modifier.fillMaxWidth(0.86f).wrapContentWidth(Alignment.Start),
                 shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
             ) {
                 Row(
-                    Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 8.dp),
+                    Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(stringResource(R.string.nav_compound_then).replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleMedium)
@@ -490,6 +506,25 @@ private fun FitText(text: String, style: androidx.compose.ui.text.TextStyle, col
         fontSize = style.fontSize * scale,
         onTextLayout = { if (it.hasVisualOverflow && scaleState.value > 0.55f) scaleState.value *= 0.92f },
         modifier = modifier,
+    )
+}
+
+/** [FitText] for the trip time: the numbers in semibold, the units in the regular weight. */
+@Composable
+private fun FitDuration(text: String, style: androidx.compose.ui.text.TextStyle, color: Color) {
+    val scaleState = remember(text) { androidx.compose.runtime.mutableStateOf(1f) }
+    val styled = remember(text) {
+        androidx.compose.ui.text.buildAnnotatedString {
+            text.forEach { ch ->
+                pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = if (ch.isDigit() || ch == '<') FontWeight.SemiBold else FontWeight.Normal))
+                append(ch); pop()
+            }
+        }
+    }
+    Text(
+        styled, style = style, color = color, maxLines = 1, softWrap = false,
+        fontSize = style.fontSize * scaleState.value,
+        onTextLayout = { if (it.hasVisualOverflow && scaleState.value > 0.55f) scaleState.value *= 0.92f },
     )
 }
 
@@ -645,79 +680,90 @@ fun NavSearchChips(
     query: String,
     onQueryChange: (String) -> Unit,
     onPick: (String) -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
     val amoled = isAppInAmoled()
-    Card(
-        modifier,
-        shape = RoundedCornerShape(28.dp),
-        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = SheetPalette.bg(dark, amoled),
+    val cfg = LocalConfiguration.current
+    val landscape = cfg.screenWidthDp > cfg.screenHeightDp
+    val autoFocus = app.vela.ui.rememberDpadAutoFocus()
+    Box(modifier.fillMaxSize()) {
+        // Landscape: the rest of the route stays in view under a tint; a tap on it closes the page.
+        if (landscape) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onClose))
+        Surface(
+            color = SheetPalette.bg(dark, amoled),
             contentColor = SheetPalette.ink(dark),
-        ),
-    ) {
-      Column(Modifier.padding(vertical = 6.dp)) {
-        // Free-text along-route search above the canned chips - the chips cover the common
-        // stops, the field covers everything else (user 2026-07-14). Same search either way.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = if (landscape) Modifier.fillMaxHeight().width(app.vela.ui.map.sidePanelWidth()) else Modifier.fillMaxSize(),
         ) {
-            Icon(Sym.Search, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = SheetPalette.ink(dark)),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { if (query.isNotBlank()) onPick(query.trim()) }),
-                decorationBox = { inner ->
-                    if (query.isEmpty()) {
-                        Text(
-                            stringResource(R.string.place_search_along_route),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = SheetPalette.dim(dark),
-                        )
+            Column(
+                Modifier.statusBarsPadding()
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().background(SheetPalette.row(dark, amoled), androidx.compose.foundation.shape.CircleShape).padding(horizontal = 4.dp),
+                ) {
+                    IconButton(onClick = onClose, modifier = Modifier.focusRequester(autoFocus).dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                        Icon(Sym.ArrowBack, contentDescription = stringResource(R.string.place_back), tint = SheetPalette.ink(dark))
                     }
-                    inner()
-                },
-                // dpadFieldEscape: UP/DOWN leave the field instead of being eaten as cursor
-                // moves, so the chips below stay key-reachable (docs/dpad.md).
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 8.dp)
-                    .dpadFieldEscape(),
-            )
-        }
-        Row(
-            Modifier.padding(horizontal = 12.dp).horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
-            app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }.forEach { (labelRes, query, icon) ->
-                FilterChip(
-                    selected = false,
-                    onClick = { onPick(query) },
-                    border = null,
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = SheetPalette.row(dark, amoled),
-                        labelColor = SheetPalette.ink(dark),
-                    ),
-                    label = { Text(stringResource(labelRes)) },
-                    leadingIcon = {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = SheetPalette.dim(dark))
-                    },
-                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                )
+                    BasicTextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = SheetPalette.ink(dark)),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { if (query.isNotBlank()) onPick(query.trim()) }),
+                        decorationBox = { inner ->
+                            if (query.isEmpty()) {
+                                Text(
+                                    stringResource(R.string.place_search_along_route),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = SheetPalette.dim(dark),
+                                )
+                            }
+                            inner()
+                        },
+                        // dpadFieldEscape: UP/DOWN leave the field instead of being eaten as cursor
+                        // moves, so the tiles below stay key-reachable (docs/dpad.md).
+                        modifier = Modifier.weight(1f).padding(vertical = 14.dp).dpadFieldEscape(),
+                    )
+                }
+                // The same categories as everywhere else, as large tiles: three to a row.
+                Column(
+                    Modifier.padding(top = 12.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val tile = RoundedCornerShape(12.dp)
+                    app.vela.ui.QuickCategories.all().chunked(3).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { chip ->
+                                Column(
+                                    Modifier.weight(1f)
+                                        .border(BorderStroke(1.dp, SheetPalette.dim(dark).copy(alpha = 0.45f)), tile)
+                                        .clip(tile)
+                                        .dpadHighlight(tile)
+                                        .clickable { onPick(chip.query) }
+                                        .padding(vertical = 14.dp, horizontal = 4.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    Icon(chip.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        stringResource(chip.label), style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
             }
         }
-      }
     }
 }
 
@@ -936,7 +982,7 @@ fun NavBarTop(
         else -> androidx.compose.ui.graphics.Color(0xFF4CAF50)
     }
     Column {
-        // The handle: a chevron that says "this lifts" (or "this closes", pointing down on the
+        // The handle: a grab bar that says "this lifts" (or "this closes", pointing down on the
         // expanded sheet), and a real button (tap, focus ring, OK) so the gesture is never the
         // only way in. Sits in the card's top padding.
         Box(
@@ -951,11 +997,12 @@ fun NavBarTop(
             contentAlignment = Alignment.Center,
         ) {
             if (roadName.isNullOrBlank()) {
-                Icon(
-                    if (handleUp) Sym.KeyboardArrowUp else Sym.KeyboardArrowDown,
-                    contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
-                    tint = barDim,
-                    modifier = Modifier.size(22.dp),
+                // A flat grab bar, as on Google's: plainer to see on the black than the thin chevron.
+                val handleCd = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd)
+                Box(
+                    Modifier.size(width = 40.dp, height = 5.dp)
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
+                        .semantics { contentDescription = handleCd },
                 )
             } else {
                 // The road you are on takes the handle row (issue #553); a small chevron stays
@@ -980,7 +1027,7 @@ fun NavBarTop(
             }
         }
         Row(
-            Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 2.dp, bottom = 14.dp),
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 0.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -998,11 +1045,7 @@ fun NavBarTop(
                 // Both lines SHRINK to fit rather than wrap or ellipsize: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
-                FitText(
-                    formatDuration(remainingSeconds),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = etaColor,
-                )
+                FitDuration(formatDuration(remainingSeconds), style = MaterialTheme.typography.headlineSmall, color = etaColor)
                 // While PAUSED nothing updates the nav state, so nothing would recompose this and
                 // the arrival clock would sit frozen at whatever minute the stop began - the one
                 // figure that should keep moving while you stand still, because it is what the stop
@@ -1017,8 +1060,9 @@ fun NavBarTop(
                             offRoute -> " · " + stringResource(R.string.nav_rerouting)
                             else -> ""
                         },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (paused) MaterialTheme.colorScheme.primary else barDim,
+                    // A size up and nearly white: this line is read at a glance too.
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (paused) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color(0xFFDADCE0),
                 )
             }
             Spacer(Modifier.width(8.dp))

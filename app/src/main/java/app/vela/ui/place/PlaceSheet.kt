@@ -891,8 +891,9 @@ fun PlaceSheet(
             // WHERE THIS ROW CAME FROM, for a tapped map place that is not (yet) a Google listing
             // (user 2026-09-22): Overture, AllThePlaces (with the chain's spider) or
             // OpenStreetMap, so a place that never links says which dataset to fix. An OSM row
-            // links to its node. Gone once the Google listing replaces the placeholder.
-            PlaceOrigin.of(place.id)?.let { origin ->
+            // links to its node. Gone once the Google listing replaces the placeholder, and not
+            // shown over a Google copy kept from an earlier visit (offline).
+            PlaceOrigin.of(place.id)?.takeIf { resolving || place.featureId == null }?.let { origin ->
                 val src = when (origin.kind) {
                     PlaceOrigin.Kind.OVERTURE -> stringResource(R.string.place_source_overture)
                     PlaceOrigin.Kind.ATP -> stringResource(R.string.place_source_atp, origin.detail ?: "?")
@@ -1735,9 +1736,9 @@ fun DirectionsPanel(
                         color = ink,
                         modifier = Modifier.weight(1f),
                     )
-                    RoundAction(Sym.Share, stringResource(R.string.place_share), dark, onShare)
+                    RoundAction(Sym.Share, stringResource(R.string.place_share), dark, onClick = onShare)
                     Spacer(Modifier.width(8.dp))
-                    RoundAction(Sym.Close, stringResource(R.string.place_close_directions), dark, onClose)
+                    RoundAction(Sym.Close, stringResource(R.string.place_close_directions), dark, onClick = onClose)
                 }
                 Spacer(Modifier.height(10.dp))
                 // The tabs run edge to edge like the picker's: pull them back over the panel's
