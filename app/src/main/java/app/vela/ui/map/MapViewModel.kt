@@ -598,6 +598,7 @@ class MapViewModel @Inject constructor(
                             "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, voice ${_state.value.selectedEngine?.packageName ?: "system"}, " +
                             "places ${app.vela.ui.MapPoiPrefs.placesSource.value}, icon ${app.vela.ui.PuckStyle.key()}",
                     )
+                    app.vela.diag.TripNote.add("settings: " + app.vela.diag.SettingsDump.line(appContext))
                 }
                 kotlinx.coroutines.delay(1_000)
                 if (!_state.value.navigating) continue

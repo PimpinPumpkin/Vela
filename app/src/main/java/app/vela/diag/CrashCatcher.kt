@@ -46,6 +46,7 @@ object CrashCatcher {
             append("version: ").append(BuildConfig.VERSION_NAME).append(" (").append(BuildConfig.VERSION_CODE).append(")\n")
             append("android: API ").append(Build.VERSION.SDK_INT)
                 .append(" — ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append("\n\n")
+            append("=== settings ===\n").append(SettingsDump.line(context)).append("\n\n")
             append("=== stack trace ===\n").append(sw.toString()).append('\n')
             append("=== breadcrumbs (").append(crumbs.size).append(") ===\n")
             crumbs.forEach { e ->

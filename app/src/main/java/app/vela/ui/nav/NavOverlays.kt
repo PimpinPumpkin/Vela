@@ -845,18 +845,17 @@ fun NavControls(
     }
 }
 
-/** A button on the nav bar: tonal, like the rest of Vela's controls. [end] wears the warning
- *  color (it is the one that throws the drive away); [filled] = the state it controls is on. */
+/** A button on the nav bar, Google's dress and size: a thin ring on the bar's black, a white
+ *  glyph. [filled] = the state it controls is on (the drive is paused). */
 @Composable
 fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = false, content: @Composable () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    FilledTonalIconButton(
+    androidx.compose.material3.OutlinedIconButton(
         onClick = onClick,
-        modifier = Modifier.size(54.dp),
-        colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-            // The bar is black in every theme, so its buttons wear the dark theme's colors always.
-            containerColor = when { end -> Color(0xFF93000A); filled -> scheme.primary; else -> Color(0xFF303134) },
-            contentColor = when { end -> Color(0xFFFFDAD6); filled -> scheme.onPrimary; else -> Color(0xFFE8EAED) },
+        modifier = Modifier.size(60.dp),
+        border = BorderStroke(1.5.dp, Color.White.copy(alpha = if (filled) 0f else 0.5f)),
+        colors = androidx.compose.material3.IconButtonDefaults.outlinedIconButtonColors(
+            containerColor = if (filled) MaterialTheme.colorScheme.primary else Color.Transparent,
+            contentColor = if (filled) MaterialTheme.colorScheme.onPrimary else Color.White,
         ),
     ) { content() }
 }
@@ -989,7 +988,7 @@ fun NavBarTop(
             // control here that throws the drive away, and an unlabeled X must not look like just
             // another button. The label survives as its accessibility name.
             NavBarButton(onClick = onStop, end = true) {
-                Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(26.dp))
+                Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(8.dp))
             Column(

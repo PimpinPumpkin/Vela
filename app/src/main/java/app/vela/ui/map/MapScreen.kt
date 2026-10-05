@@ -2395,7 +2395,8 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = onRecenter,
                 shape = CircleShape,
-                containerColor = mapButtonColor(darkTheme), contentColor = MaterialTheme.colorScheme.primary,
+                containerColor = mapButtonColor(darkTheme), contentColor = Color(0xFF4285F4),
+                elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 10.dp),
                 modifier = Modifier
                     .dpadHighlight(CircleShape)
                     .align(Alignment.BottomEnd)
@@ -2630,7 +2631,8 @@ fun MapScreen(
                 FloatingActionButton(
                     onClick = onRecenter,
                     shape = CircleShape,
-                    containerColor = mapButtonColor(darkTheme), contentColor = MaterialTheme.colorScheme.primary,
+                    containerColor = mapButtonColor(darkTheme), contentColor = Color(0xFF4285F4),
+                elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 10.dp),
                     modifier = Modifier
                         .dpadHighlight(CircleShape)
                         .align(Alignment.TopEnd)
