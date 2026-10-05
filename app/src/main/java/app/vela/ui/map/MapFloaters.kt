@@ -53,7 +53,7 @@ private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetT
     val place = state.selected ?: return
     val pano = place.svPanoId ?: return
     if (state.navigating || state.directionsOpen || state.transitNav != null || state.streetView != null || state.streetViewLoading) return
-    if (!app.vela.ui.LoadPhotos.on.value || app.vela.ui.PhotosOnTap.on.value || app.vela.ui.GoogleFree.on.value) return
+    if (!app.vela.ui.LoadPhotos.on.value || app.vela.ui.PhotosOnTap.on.value || app.vela.ui.GoogleFree.on.value || state.offline) return
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     val windowH = LocalView.current.height
