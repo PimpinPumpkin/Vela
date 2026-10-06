@@ -942,6 +942,21 @@ SELECT * EXCLUDE (in_stack) REPLACE (
 );
 UPDATE spread SET prominence = spread.prominence + sb.b FROM srcbonus sb WHERE spread.id = sb.id;
 UPDATE spread SET prominence = spread.prominence + ms.b FROM (SELECT id, max(b) AS b FROM marksize GROUP BY id) ms WHERE spread.id = ms.id;
+-- UNCONFIRMED (2026-10-06, a forum report from the District of Columbia). Overture publishes its own doubt as
+-- confidence, and a row under 0.75 that NO second source lists (no OpenStreetMap pair, no chain
+-- locator, no Wikidata link, no mapped outline) is where the stale and the invented live: an
+-- aquarium that closed in 2013 inside a federal building, a scavenger hunt filed as an amusement
+-- park, a testing center as a university. The category prior alone gave those landmark rank
+-- (7 and up) and a label from a city view. Such a row keeps its place on the map but is ranked
+-- as an ordinary one and is never a landmark. OSM and chain rows carry 0.8 and 0.85, so only
+-- Overture's own rows can qualify.
+CREATE TABLE unconfirmed AS
+SELECT id FROM spread
+WHERE COALESCE(confidence, 0.5) < 0.75
+  AND id NOT IN (SELECT id FROM srcbonus WHERE b > 0)
+  AND id NOT IN (SELECT id FROM marksize);
+UPDATE spread SET prominence = least(prominence, 3.0) WHERE id IN (SELECT id FROM unconfirmed);
+SELECT (SELECT count(*) FROM unconfirmed) AS unconfirmed_rows_capped, (SELECT count(*) FROM spread) AS of_rows;
 CREATE TABLE ranked AS
 SELECT * EXCLUDE (dup),
   -- ~100 m cell: the high-zoom icon budget. rank's 400 m cell is the whole screen at z17.5, so a
@@ -959,7 +974,8 @@ SELECT * EXCLUDE (dup),
   -- 29th.
   row_number() OVER (PARTITION BY landmark, floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY coalesce(notab, 1.0) + coalesce(fame, 0) DESC, prominence DESC, id) AS lrank
 FROM (
-  SELECT *, CASE WHEN category IN ('hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') OR (category = 'airport' AND NOT regexp_matches(lower(coalesce(name, '')), 'seaplane|heliport|helipad|airstrip|airfield')) THEN 1
+  SELECT *, CASE WHEN id IN (SELECT id FROM unconfirmed) THEN 0
+    WHEN category IN ('hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') OR (category = 'airport' AND NOT regexp_matches(lower(coalesce(name, '')), 'seaplane|heliport|helipad|airstrip|airfield')) THEN 1
     -- Linked to Wikidata, or an outline of a hectare or more (a town's central park has no
     -- Wikidata link and still anchors the map).
     WHEN (id IN (SELECT id FROM markwiki) OR id IN (SELECT id FROM marksize WHERE b >= 2.0) OR id IN (SELECT id FROM markfame WHERE f >= 1.5))

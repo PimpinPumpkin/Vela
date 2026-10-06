@@ -3920,6 +3920,16 @@ architecture note.
   lines), session tokens scrubbed; `theSameTripParsesAlikeInJapaneseAndEnglish` compares them.
   STILL ENGLISH-ONLY: the Google stop BOARD fallback (`WebStopDeparturesFetcher`, pinned `hl=en`;
   its parser's anchor is an AM/PM regex) and the "min late" text.
+- **Unconfirmed Overture rows rank as ordinary places (2026-10-06, a forum report from DC).**
+  `tools/build-places-region.sh`, table `unconfirmed`: confidence under 0.75 AND no second source
+  (no row in `srcbonus` with a bonus, none in `marksize`) caps prominence at 3.0 and is never a
+  landmark. Before, the category prior alone made an aquarium that closed in 2013, a scavenger
+  hunt "amusement park" and a testing center "university" landmarks labeled from z12 to z15.
+  Test bake of the District of Columbia (run locally with `OSM_PBF=<geofabrik extract>` and the
+  newest Overture release): 13,396 of 82,286 rows capped; those four went to z17; every real
+  hospital and museum checked kept its zoom because OpenStreetMap or a chain locator lists it.
+  The bake prints `unconfirmed_rows_capped`. Reaches phones as regions rebake. Reminder that bit
+  again: a backtick in a SQL comment inside the unquoted heredoc runs as a shell command.
 - **`CATEGORY_APP_MAPS` (issue #683, 2026-10-06).** Both launcher aliases declare it beside MAIN
   and LAUNCHER: Android Automotive (Android running in the car itself, not Android Auto) fills
   its map panel with an app that has it, and `pm query-activities -a android.intent.action.MAIN

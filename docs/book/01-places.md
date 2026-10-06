@@ -242,6 +242,12 @@ with the place, +0.6 when a chain's own locator matched it, +0.8 when OSM links 
 to Wikidata (`srcbonus`, added to prominence before the cells are ranked). The rest of the Tokyo cost is the
 basemap's own OSM point layers (`poi_r*`): hiding them on top of the cap measured 46 to 60 fps.
 
+The reverse also holds. Overture publishes a confidence for every place, and one under 0.75
+that no second source lists is ranked as an ordinary place whatever its category says: capped
+at 3.0 and never a landmark. In a test bake of the District of Columbia that was 13,396 of 82,286 places,
+among them an aquarium that closed in 2013 and had been labeled as a landmark from a city view.
+It still appears when you zoom right in.
+
 **One set of map points** (2026-09-22, behind the `placesOneSetRev` dial). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
 OpenFreeMap from OSM) drew parks, temples, schools and museums as a second set that the phone had
 to reconcile with Vela's places and that cost half the frame rate in Tokyo. The bake now takes

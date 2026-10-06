@@ -2201,7 +2201,10 @@ every row because the tap gate keys on it; use `origin` to tell the datasets apa
 and museums; 3.2 for hotels, pharmacies, banks and attraction-type landmarks; 2.6 for food;
 2.2 for everyday services, parks, schools and places of worship; 1.6 with no category; 1.0
 otherwise; 0.5 for offices) plus 1.6 for a brand, 0.5 for a website, 0.4 for a phone, 0.2 for an
-address, plus `(confidence - 0.5) * 1.6`, plus `srcbonus`.
+address, plus `(confidence - 0.5) * 1.6`, plus `srcbonus`. An Overture row with confidence under
+0.75 that no second source lists (no `srcbonus`, no mapped outline) is capped at 3.0 and is never
+a landmark: Overture's low-confidence rows are where closed and miscategorized places sit, and the
+category prior alone ranked them with real museums and hospitals.
 
 **Baked minzoom** comes from the ranks, first match wins: a tenant (other than fuel) z17; a
 landmark with `xrank` 1 z11, `xrank` at most 3 z12, `lrank` at most 4 z14, `lrank` at most 10
