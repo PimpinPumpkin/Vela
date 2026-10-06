@@ -3949,7 +3949,7 @@ architecture note.
 - **Security checks and hardening (2026-10-06, asked for on the GrapheneOS forum).**
   `.github/workflows/security.yml` (mobsfscan to code scanning, Gradle dependency submission on
   main, dependency review on pull requests, an SBOM artifact), `scorecard.yml`, and
-  `.github/dependabot.yml` (monthly, grouped). EVERY action in every workflow is pinned to a
+  `.github/dependabot.yml` (monthly, GitHub Actions ONLY since the same day: library versions are bumped on purpose, never on a schedule, and Dependabot's security updates open a pull request only for a shipped library with a published fix). EVERY action in every workflow is pinned to a
   commit SHA with the version in a trailing comment; a new `uses:` line gets the same (resolve
   with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`; an annotated tag needs a second lookup
   through `git/tags/<sha>`). A new workflow declares `permissions:`. App side:

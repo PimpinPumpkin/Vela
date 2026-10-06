@@ -1,17 +1,10 @@
-# Monthly, grouped, a few at a time: one pull request for the build's libraries and one for the
-# GitHub Actions the workflows run (which are pinned to exact commits; this is what moves the pins).
-# Security fixes come separately and at once, from Dependabot's alerts.
+# Only the GitHub Actions the workflows run: one small grouped pull request a month, which is what
+# moves their pinned commits. Library versions are NOT bumped on a schedule: an unread pile of
+# pull requests helps nobody, and the large ones (the Compose toolkit) need a planned pass.
+# Security fixes come separately, at once, from Dependabot's alerts and its security updates
+# (repository settings, not this file).
 version: 2
 updates:
-  - package-ecosystem: gradle
-    directory: /
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 3
-    groups:
-      libraries:
-        patterns: [ "*" ]
-        update-types: [ minor, patch ]
   - package-ecosystem: github-actions
     directory: /
     schedule:
