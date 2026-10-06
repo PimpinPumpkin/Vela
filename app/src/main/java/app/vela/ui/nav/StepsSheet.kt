@@ -142,7 +142,7 @@ fun StepsSheet(
     fun romanize(s: String): String =
         if (s.isEmpty() || roadLatin.isEmpty()) s
         else app.vela.core.voice.SpokenScript.forDisplay(s, uiLang, roadLatin)
-    val dark = isAppInDarkTheme() || header != null
+    val dark = isAppInDarkTheme() || (header != null && navBarLook().onDark)
     val amoled = isAppInAmoled()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
@@ -280,10 +280,11 @@ fun StepsSheet(
         shape = if (header != null) navBarShape() else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(),
-        colors = CardDefaults.cardColors(containerColor = if (header != null) NavBarColor else SheetPalette.bg(dark, amoled), contentColor = ink),
+        colors = CardDefaults.cardColors(containerColor = if (header != null) navBarLook().bg else SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
         // The nav form sits on the bar's near-black in every theme, so its rows take the dark inks.
-        CompositionLocalProvider(LocalStepsOnDark provides (header != null)) {
+        val headerOnDark = header != null && navBarLook().onDark
+        CompositionLocalProvider(LocalStepsOnDark provides headerOnDark) {
             // Fill the card to the screen bottom; pad content off the nav bar (the floating nav form
             // gets its margins from the host, so only the list padding applies there).
             Column(
@@ -408,7 +409,7 @@ fun NavStepsPreview(
     stopsRow: (@Composable () -> Unit)? = null,
     maxRows: Int = 14,
 ) {
-    CompositionLocalProvider(LocalStepsOnDark provides true) {
+    CompositionLocalProvider(LocalStepsOnDark provides navBarLook().onDark) {
         stopsRow?.invoke()
         val from = currentStep.coerceIn(0, (maneuvers.size - 1).coerceAtLeast(0))
         for (i in from until minOf(maneuvers.size, from + maxRows)) {

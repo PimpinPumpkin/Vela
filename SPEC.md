@@ -3794,7 +3794,7 @@ ports it rather than inventing a fourth:
 - The route bar is portrait-only and never in PiP, and shows a 5 km window rather than the whole
   route: scaled to a long trip every nearby mark collapses into one pixel.
 - **The drive's chrome** (2026-10-05). The bottom bar is flush with the screen's bottom edge,
-  top corners rounded, `NavBarColor` (near black) in both themes, so everything drawn on it takes
+  top corners rounded, `NavBarColor` (near black) in both themes, or the theme's `surfaceContainerHigh` with its own inks while wallpaper colors are in use (`navBarLook()`), so everything drawn on it takes
   the dark inks whatever the app theme (`LocalStepsOnDark` carries that to the step rows). Its
   handle is a flat grab bar; End and Pause are 60 dp ringed buttons (`NavBarButton`); the trip time
   sets its digits semibold and its units regular (`FitDuration`), with distance and arrival a size

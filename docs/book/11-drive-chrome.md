@@ -410,7 +410,7 @@ removed by it.
 
 ### The buttons
 
-The bottom bar sits flush with the bottom of the screen and is near black in both themes. It has
+The bottom bar sits flush with the bottom of the screen and is near black in both themes. With Material You colors on it takes the wallpaper theme's surface instead, light or dark. It has
 a grab bar on top, End on the left, the trip figures in the middle and, by default, pause on the
 right ("Pause button on the navigation bar"); with "Prefer buttons over swipes" or on a keypad
 phone the step-list button shares that slot and the figures shrink to fit. End and pause are

@@ -4646,8 +4646,12 @@ architecture note.
   - **Wallpaper colors:** ask `wallpaperColorsInUse()` (Theme.kt), never `DynamicColor.on`. On
     GrapheneOS the dynamic scheme can be rejected and Vela's own used; a button that read the
     switch alone came out teal.
-  - **The drive bar is dark in both themes.** Anything drawn on it takes the dark inks; the step
-    rows learn it from `LocalStepsOnDark`. Dark text on the bar in light theme was a real bug.
+  - **The drive bar is dark in both themes, except under wallpaper colors** (issue #679,
+    2026-10-06): `navBarLook()` in NavOverlays is the one source for its surface and inks
+    (`surfaceContainerHigh` and the theme's inks when `wallpaperColorsInUse()`, else near-black
+    and the dark inks). Anything drawn on it reads `navBarLook()`; the step
+    rows learn it from `LocalStepsOnDark`. The themed look is NOT device-checked: the 4a cannot
+    turn Material You on. Dark text on the bar in light theme was a real bug.
   - **An `IconButton` is 48 dp at least**, whatever `Modifier.size` says. The landscape route
     picker's header circles are plain clickable boxes for that reason (`RoundAction(small)`).
   - **The under-arrow road name hides while the camera is away**: the reported puck position

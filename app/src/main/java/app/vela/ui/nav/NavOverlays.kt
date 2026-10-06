@@ -873,8 +873,8 @@ fun NavControls(
         border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
-            containerColor = NavBarColor,
-            contentColor = androidx.compose.ui.graphics.Color.White,
+            containerColor = navBarLook().bg,
+            contentColor = navBarLook().ink,
         ),
     ) {
         // LAYOUT (issue #273): End on the LEFT as an icon, the trip figures CENTERD, Steps on the
@@ -923,10 +923,10 @@ fun NavBarButton(onClick: () -> Unit, filled: Boolean = false, end: Boolean = fa
     androidx.compose.material3.OutlinedIconButton(
         onClick = onClick,
         modifier = Modifier.size(60.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-        border = BorderStroke(1.5.dp, Color.White.copy(alpha = if (filled) 0f else 0.5f)),
+        border = BorderStroke(1.5.dp, navBarLook().ink.copy(alpha = if (filled) 0f else 0.5f)),
         colors = androidx.compose.material3.IconButtonDefaults.outlinedIconButtonColors(
             containerColor = if (filled) MaterialTheme.colorScheme.primary else Color.Transparent,
-            contentColor = if (filled) MaterialTheme.colorScheme.onPrimary else Color.White,
+            contentColor = if (filled) MaterialTheme.colorScheme.onPrimary else navBarLook().ink,
         ),
     ) { content() }
 }
@@ -963,6 +963,19 @@ fun NavRecenterPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 /** The nav bar's surface, shared with the step sheet it opens into: near black in every theme. */
 val NavBarColor = androidx.compose.ui.graphics.Color(0xFF101214)
 
+/** What the drive's bottom bar wears. Near-black with light inks in both themes (Google's bar),
+ *  unless the wallpaper colors are in use: then the theme's own surface and inks, light or dark,
+ *  so a Material You phone's bar matches the rest of its chrome (issue #679; the black bar had
+ *  taken that away). [onDark] says which set of fixed inks sits on it. */
+class NavBarLook(val bg: Color, val ink: Color, val dim: Color, val onDark: Boolean)
+
+@Composable
+fun navBarLook(): NavBarLook =
+    if (app.vela.ui.theme.wallpaperColorsInUse()) NavBarLook(
+        MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurface,
+        MaterialTheme.colorScheme.onSurfaceVariant, isAppInDarkTheme(),
+    ) else NavBarLook(NavBarColor, SheetPalette.InkDark, SheetPalette.DimDark, true)
+
 /** Portrait: the bar sits flush on the screen's bottom edge, like Google's. Landscape: a card. */
 @Composable
 fun navBarFlush(): Boolean = true
@@ -994,17 +1007,18 @@ fun NavBarTop(
     val dark = isAppInDarkTheme()
     // The bar surface is OLED black (see NavControls), so the handle chevron and
     // the in-bar road name always use the dark inks - never the light sheet ink.
-    val barInk = SheetPalette.InkDark
-    val barDim = SheetPalette.DimDark
+    val look = navBarLook()
+    val barInk = look.ink
+    val barDim = look.dim
     // No-traffic-signal ETA: Google's bar reads white-on-black here, not the
     // sheet ink - the bar is a black pill in both themes (see NavControls).
     val etaColor = when {
-        trafficRatio == null -> androidx.compose.ui.graphics.Color.White
+        trafficRatio == null -> look.ink
         trafficRatio > 1.4 -> SheetPalette.TrafficRed
         trafficRatio > 1.15 -> SheetPalette.TrafficAmber
         // Good-traffic green on the black pill: Google's vivid green, not the deep
-        // light-theme value (the bar is black in both themes).
-        else -> androidx.compose.ui.graphics.Color(0xFF4CAF50)
+        // light-theme value. A themed light bar takes the deep one.
+        else -> if (look.onDark) androidx.compose.ui.graphics.Color(0xFF4CAF50) else androidx.compose.ui.graphics.Color(0xFF188038)
     }
     Column {
         // The handle: a grab bar that says "this lifts" (or "this closes", pointing down on the
@@ -1026,7 +1040,7 @@ fun NavBarTop(
                 val handleCd = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd)
                 Box(
                     Modifier.size(width = 40.dp, height = 5.dp)
-                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
+                        .background(barInk.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
                         .semantics { contentDescription = handleCd },
                 )
             } else {
@@ -1087,7 +1101,7 @@ fun NavBarTop(
                         },
                     // A size up and nearly white: this line is read at a glance too.
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (paused) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color(0xFFDADCE0),
+                    color = if (paused) MaterialTheme.colorScheme.primary else if (look.onDark) androidx.compose.ui.graphics.Color(0xFFDADCE0) else barDim,
                 )
             }
             Spacer(Modifier.width(8.dp))
