@@ -1233,4 +1233,6 @@
     <string name="car_location_title">Zezwól na lokalizację</string>
     <string name="car_location_body">Vela potrzebuje jej, aby pokazać, gdzie jesteś, i prowadzić do celu</string>
     <string name="car_location_denied">Lokalizacja jest wyłączona. Włącz ją dla Veli w ustawieniach telefonu.</string>
+    <string name="settings_page_transitions">Przejścia między stronami</string>
+    <string name="settings_page_transitions_hint">Animuje otwieranie i zamykanie stron oraz paneli u dołu ekranu i wyświetla podgląd poprzedniej strony podczas przesuwania wstecz.</string>
 </resources>

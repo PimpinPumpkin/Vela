@@ -1215,4 +1215,6 @@
     <string name="car_location_title">Autoriser la position</string>
     <string name="car_location_body">Vela en a besoin pour afficher votre position et vous guider</string>
     <string name="car_location_denied">La position est désactivée. Activez-la pour Vela dans les paramètres de votre téléphone.</string>
+    <string name="settings_page_transitions">Transitions entre les pages</string>
+    <string name="settings_page_transitions_hint">Anime les pages et les panneaux inférieurs à l\'ouverture et à la fermeture, et affiche un aperçu de la page précédente lors du geste de retour.</string>
 </resources>

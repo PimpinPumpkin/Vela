@@ -1216,4 +1216,6 @@
     <string name="car_location_title">Permitir localização</string>
     <string name="car_location_body">O Vela precisa dela para mostrar onde você está e dar instruções</string>
     <string name="car_location_denied">A localização está desativada. Ative-a para o Vela nas configurações do celular.</string>
+    <string name="settings_page_transitions">Transições de página</string>
+    <string name="settings_page_transitions_hint">Anima a abertura e o fechamento de páginas e painéis inferiores e mostra uma prévia da página anterior ao deslizar para voltar.</string>
 </resources>

@@ -1289,4 +1289,6 @@
     <string name="car_location_title">允许获取位置</string>
     <string name="car_location_body">Vela 需要位置信息来显示您的位置并提供导航</string>
     <string name="car_location_denied">位置信息已关闭。请在手机设置中为 Vela 开启。</string>
+    <string name="settings_page_transitions">页面过渡</string>
+    <string name="settings_page_transitions_hint">为页面和底部面板的打开与关闭添加动画，并在滑动返回时预览上一页。</string>
 </resources>

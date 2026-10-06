@@ -104,6 +104,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   moment at a mid zoom, Vela now quietly fetches the buildings for the area you're looking at in the
   background (disk cache, no extra memory), so the zoom-in paints instantly. Canceled the moment you
   move the map; never runs during navigation.
+- ✅ **Settings page transitions and predictive back.** Settings pages slide forward and back; back gestures preview the previous page and can be canceled. The map keeps its position and zoom. Startup opens the main map, with a distinct route for Map settings. Place, directions, results, and route-detail sheets retain their content while sliding closed, follow predictive back swipes, and restore on cancellation. Sheets have subtle shadows and matching header buttons. Browsing/navigation controls animate between modes. Settings > Appearance > Page transitions disables page and sheet opening/closing motion.
 - ✅ **Settings redesigned hub-and-spoke (2026-07-23, ported from the vela-dpad fork by
   alltechdev).** The single very long Settings page is now a short hub of category rows, each
   opening its own small sub-screen (Appearance / Map / Place pages / Navigation / Voice / Search /

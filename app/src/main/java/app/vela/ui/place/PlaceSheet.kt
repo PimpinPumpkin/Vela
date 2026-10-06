@@ -659,6 +659,7 @@ fun PlaceSheet(
                 layout(p.width, p.height) { p.place(0, 0) }
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
         // Card background fills to the screen bottom; pad the content up off the nav bar.
@@ -1719,6 +1720,7 @@ fun DirectionsPanel(
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
         Column(
@@ -2404,6 +2406,7 @@ fun TransitNavSheet(
     Surface(
         modifier.fillMaxWidth().fillMaxHeight(0.48f),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        shadowElevation = 4.dp,
         color = if (dark) SheetDark else SheetLight,
     ) {
         Column(Modifier.fillMaxSize().navigationBarsPadding().padding(16.dp)) {
@@ -2917,7 +2920,7 @@ fun RouteDetailSheet(
     onClose: () -> Unit,
     onStopTap: (TransitStopTime) -> Unit,
 ) {
-    BackHandler(onBack = onClose)
+    BackHandler(enabled = app.vela.ui.LocalSheetActive.current, onBack = onClose)
     // D-pad: place focus on the back arrow when the sheet opens (same convention as the reviews page),
     // so a D-pad-only user can immediately scroll the timeline / step onto a stop with no wake-up press.
     val backFocus = rememberDpadAutoFocus()

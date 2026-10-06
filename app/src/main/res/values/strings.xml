@@ -1309,4 +1309,6 @@
     <string name="saved_sheet_routes">Your routes</string>
     <string name="driven_route_title">You went your own way</string>
     <string name="driven_route_save">Save the way you drove</string>
+    <string name="settings_page_transitions">Page transitions</string>
+    <string name="settings_page_transitions_hint">Animate pages and bottom sheets as they open and close, and preview the previous page as you swipe back.</string>
 </resources>

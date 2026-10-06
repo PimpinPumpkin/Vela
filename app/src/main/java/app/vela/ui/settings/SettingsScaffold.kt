@@ -91,7 +91,7 @@ internal fun SettingsScaffold(
     // in the session, this loop lands Back on open and re-lands it when the soft-key bar teardown's
     // window churn steals it.
     val dpadFirst = app.vela.ui.rememberDpadFirstDevice()
-    if (autoFocusBack && dpadFirst) {
+    if (autoFocusBack && dpadFirst && LocalSettingsPageActive.current) {
         androidx.compose.runtime.LaunchedEffect(Unit) {
             // No fixed horizon: a 2s window LOST the race when the soft-key bar teardown's focus
             // steal landed late under load (audit_dynamic: "opened unfocused" on some runs, ring

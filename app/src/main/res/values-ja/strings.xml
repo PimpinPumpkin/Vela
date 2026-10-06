@@ -1270,4 +1270,6 @@
     <string name="car_location_title">位置情報を許可</string>
     <string name="car_location_body">現在地の表示とルート案内に必要です</string>
     <string name="car_location_denied">位置情報がオフです。スマートフォンの設定で Vela の位置情報をオンにしてください。</string>
+    <string name="settings_page_transitions">ページの切り替え</string>
+    <string name="settings_page_transitions_hint">ページや画面下部のパネルの開閉をアニメーションで表示し、戻るスワイプ操作中に前のページをプレビューします。</string>
 </resources>

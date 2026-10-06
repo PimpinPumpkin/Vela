@@ -1228,4 +1228,6 @@
     <string name="car_location_title">Tillåt plats</string>
     <string name="car_location_body">Vela behöver den för att visa var du är och ge vägbeskrivningar</string>
     <string name="car_location_denied">Plats är avstängd. Slå på den för Vela i telefonens inställningar.</string>
+    <string name="settings_page_transitions">Sidövergångar</string>
+    <string name="settings_page_transitions_hint">Animerar sidor och bottenpaneler när de öppnas och stängs, och förhandsvisar föregående sida när du sveper bakåt.</string>
 </resources>

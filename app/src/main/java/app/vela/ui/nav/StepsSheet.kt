@@ -160,7 +160,8 @@ fun StepsSheet(
     // the enter offset starts at the sheet's own height and eases to 0. In the nav form the
     // card never slides; `enterPx` is instead how much of the list well is still CLOSED, from
     // (list height - the bar's lift) to 0, once the list's natural height is known.
-    val enter = remember { Animatable(1f) }
+    val motion = app.vela.ui.PageTransitions.enabled.value
+    val enter = remember { Animatable(if (motion) 1f else 0f) }
     // Starts "everything closed" (a huge value clamps the well to 0) so the first frame, before
     // the list has been measured, IS the bar; the one-shot effect below then waits for the
     // measurement and opens the well from the handed-over lift. One effect keyed on nothing:
@@ -170,11 +171,11 @@ fun StepsSheet(
     val navForm = header != null
     LaunchedEffect(Unit) {
         if (!navForm) {
-            enter.animateTo(0f, animationSpec = tween(260))
+            enter.animateTo(0f, animationSpec = tween(if (motion) 260 else 0))
         } else {
             val natural = snapshotFlow { listNaturalPx }.first { it > 0 }
             enterPx.snapTo((natural - enterFromPx).coerceAtLeast(0f))
-            enterPx.animateTo(0f, animationSpec = tween(240))
+            enterPx.animateTo(0f, animationSpec = tween(if (motion) 240 else 0))
         }
     }
     val density = LocalDensity.current
@@ -187,11 +188,12 @@ fun StepsSheet(
             closing = true
             scope.launch {
                 val target = if (navForm) listNaturalPx.toFloat() else sheetHeightPx.toFloat()
-                drag.animateTo(target, animationSpec = tween(220))
+                drag.animateTo(target, animationSpec = tween(if (motion) 220 else 0))
                 latestClose()
             }
         }
     }
+    androidx.activity.compose.BackHandler(enabled = app.vela.ui.LocalSheetActive.current, onBack = dismiss)
     LaunchedEffect(closeTick) { if (closeTick > 0) dismiss() }
     val settleDrag: (Float) -> Unit = { velocityPxS ->
         val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
@@ -279,7 +281,7 @@ fun StepsSheet(
             },
         shape = if (header != null) navBarShape() else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
-        elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(),
+        elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = if (header != null) navBarLook().bg else SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
         // The nav form sits on the bar's near-black in every theme, so its rows take the dark inks.
@@ -312,7 +314,7 @@ fun StepsSheet(
                                 color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
                             )
                         }
-                        IconButton(onClick = dismiss) { Icon(Sym.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                        app.vela.ui.place.HeaderCircleButton(Sym.Close, stringResource(R.string.steps_close_cd), dim, dim, onClick = dismiss)
                     }
                 }
                 // D-pad-first (docs/dpad.md): land focus on the landing step row when the sheet opens

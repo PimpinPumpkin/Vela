@@ -1215,4 +1215,6 @@
     <string name="car_location_title">Standort erlauben</string>
     <string name="car_location_body">Vela braucht ihn, um deine Position zu zeigen und dich zu navigieren</string>
     <string name="car_location_denied">Standort ist aus. Aktiviere ihn für Vela in den Einstellungen deines Handys.</string>
+    <string name="settings_page_transitions">Seitenübergänge</string>
+    <string name="settings_page_transitions_hint">Animiert Seiten und untere Bedienfelder beim Öffnen und Schließen und zeigt beim Zurückwischen eine Vorschau der vorherigen Seite.</string>
 </resources>
