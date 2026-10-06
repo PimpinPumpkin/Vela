@@ -46,9 +46,9 @@ jobs:
           # PAGINATED (2026-09-28): the repo can hold hundreds of data releases (one per region for
           # the grid cells), so a `--limit N` window can hold no app release at all.
           NIGHTLY="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
-            --jq '.[] | select(.prerelease) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)"
+            --jq '.[] | select(.prerelease) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)"
           STABLE="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
-            --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)"
+            --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)"
           if [ -z "$NIGHTLY" ]; then
             echo "No nightly to promote."
             exit 0

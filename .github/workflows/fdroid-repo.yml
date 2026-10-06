@@ -91,7 +91,7 @@ jobs:
           # and a tag the version math below cannot parse - that was the failed Monday builds.
           # Paginated: a `--limit N` window can be all data releases (2026-09-28, grid cells).
           stable_tag=$(gh_retry gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)
+            --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)
           [ -n "$stable_tag" ] || { echo "no stable v0.* release found"; exit 1; }
           echo "stable: $stable_tag"
           # Remember the stable's version for the metadata pin below: the repo SUGGESTS the
@@ -125,7 +125,7 @@ jobs:
           echo "STABLE_NAME=${stable_tag#v}" >> "$GITHUB_ENV"
           echo "STABLE_CODE=$STABLE_CODE" >> "$GITHUB_ENV"
           newest_tag=$(gh_retry gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            --jq '.[] | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)
+            --jq '.[] | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)
           echo "newest: $newest_tag"
           if [ "$newest_tag" != "$stable_tag" ]; then
             fetch "$newest_tag"
