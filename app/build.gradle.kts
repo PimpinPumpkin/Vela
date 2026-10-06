@@ -231,6 +231,13 @@ android {
 }
 
 dependencies {
+    // Two libraries that arrive through others (commons-compress, the car app library) at
+    // versions with published advisories; nothing here calls the affected code, the newer
+    // versions just clear them. Dependabot's alerts are where these come from.
+    constraints {
+        implementation("org.apache.commons:commons-lang3:3.18.0")
+        implementation("com.google.guava:guava:33.4.8-android")
+    }
     // Bakes the committed baseline profile into the APK and AOT-compiles it at install time -
     // the fix for sideloaded nightlies running interpreter-cold until overnight dexopt.
     implementation(libs.androidx.profileinstaller)
