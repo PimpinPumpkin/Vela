@@ -65,6 +65,24 @@ class TripScrubTest {
 
     private fun scrub(csv: String = trip(), radius: Double = 400.0) = TripScrub.scrub(csv, radiusM = radius)
 
+    @Test fun `a drive ended early keeps the part of the route it drove`() {
+        // A 400-vertex route of which only the first 100 fixes were driven: the zone round the last
+        // fix cuts the route in two, and the longer piece is the part never driven.
+        val n = 400
+        val poly = (0 until n).map { LatLng(originLat, originLng + step * it) }
+        val csv = buildString {
+            append("META,somewhere,1756700000000,${poly.last().lat},${poly.last().lng},2770\n")
+            append(TripLog.encodeRoute(Route(poly, listOf(RouteLeg(11000.0, 600.0, null, emptyList())), 11000.0, 600.0, null), "start"))
+            for (k in 0 until 100) append("$originLat,${originLng + step * k},${1756700000000L + k * 1000},90,15,0,4.0\n")
+        }
+        val r = scrub(csv)!!
+        val line = r.csv.lines().first { it.startsWith("RP,") }
+        val kept = app.vela.core.data.google.PolylineCodec.decode(line.substring(3))
+        val lastFixLng = originLng + step * 99
+        assertTrue("the kept route is the driven stretch", kept.all { it.lng < lastFixLng })
+        assertTrue("and most of it", kept.size > 50)
+    }
+
     @Test fun `the ends of the drive are gone entirely`() {
         val r = scrub()!!
         assertTrue("something must survive", r.fixesAfter > 0)

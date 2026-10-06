@@ -150,11 +150,14 @@ object TripScrub {
                     out.append("META,$safeLabel,0,,,$version\n")
                 }
                 "RP" -> {
-                    // The route line starts at the driveway. Keep its longest run of vertices that
-                    // is entirely outside every zone, so what is left is contiguous rather than a
-                    // line that teleports across a removed section.
+                    // The route line starts at the driveway. Keep ONE run of vertices that is
+                    // entirely outside every zone, so what is left is contiguous rather than a
+                    // line that teleports across a removed section: the run the surviving fixes
+                    // are on. The longest run is the wrong one for a drive ended early, where the
+                    // zone around its last fix cuts the route in two and the longer piece is the
+                    // part never driven; the shared file then held a route its car was never on.
                     val poly = runCatching { PolylineCodec.decode(line.substring(3)) }.getOrDefault(emptyList())
-                    val run = longestPublicRun(poly, ::private)
+                    val run = drivenPublicRun(poly, ::private, kept.map { it.second.latLng })
                     if (run.size != poly.size) routeTrimmed = true
                     blockDropped = run.size < 2
                     if (!blockDropped) out.append("RP,").append(PolylineCodec.encode(run)).append('\n')
@@ -200,6 +203,39 @@ object TripScrub {
             otherLinesDropped = otherDropped,
         )
     }
+
+    /** The contiguous public run of [poly] that the kept fixes lie on (most of a sample of them
+     *  within [ON_RUN_M]); the longest when none is driven. */
+    private fun drivenPublicRun(poly: List<LatLng>, private: (LatLng) -> Boolean, kept: List<LatLng>): List<LatLng> {
+        val runs = ArrayList<IntRange>()
+        var start = -1
+        for (i in poly.indices) {
+            if (private(poly[i])) { if (start >= 0) runs += start until i; start = -1 } else if (start < 0) start = i
+        }
+        if (start >= 0) runs += start until poly.size
+        if (runs.isEmpty()) return emptyList()
+        if (runs.size == 1 || kept.isEmpty()) return longestPublicRun(poly, private)
+        val every = maxOf(1, kept.size / 60)
+        val sample = kept.filterIndexed { i, _ -> i % every == 0 }
+        fun near(p: LatLng, r: IntRange): Boolean {
+            val k = 111_320.0 * kotlin.math.cos(Math.toRadians(p.lat))
+            for (i in r.first until r.last) {
+                val ax = (poly[i].lng - p.lng) * k; val ay = (poly[i].lat - p.lat) * 111_320.0
+                // A cheap reject before the exact test: routes run to thousands of vertices.
+                if (kotlin.math.abs(ax) > 5_000 && kotlin.math.abs(ay) > 5_000) continue
+                val bx = (poly[i + 1].lng - p.lng) * k; val by = (poly[i + 1].lat - p.lat) * 111_320.0
+                val dx = bx - ax; val dy = by - ay
+                val len = dx * dx + dy * dy
+                val t = if (len == 0.0) 0.0 else (-(ax * dx + ay * dy) / len).coerceIn(0.0, 1.0)
+                if (kotlin.math.hypot(ax + t * dx, ay + t * dy) <= ON_RUN_M) return true
+            }
+            return false
+        }
+        val best = runs.maxWithOrNull(compareBy<IntRange>({ r -> sample.count { near(it, r) } }, { it.last - it.first }))!!
+        return poly.subList(best.first, best.last + 1)
+    }
+
+    private const val ON_RUN_M = 80.0
 
     /** The longest contiguous run of vertices with no private one in it. */
     private fun longestPublicRun(poly: List<LatLng>, private: (LatLng) -> Boolean): List<LatLng> {

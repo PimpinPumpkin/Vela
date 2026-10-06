@@ -1104,6 +1104,10 @@ names (`Route.roadNamesLatin`).
   Android is read-only.
 - The departure heading reaches the engine as `RoutingConfiguration.initialDirection` in
   compass radians.
+- Google's request carries no heading. On a fetch that has one (a reroute), a Google route whose
+  first 80 m run more than 120 degrees off it (`RouteGeometry.startsAgainst`) is not used when the
+  open router answered: the hybrid would otherwise follow it and tell a moving car to turn
+  around. The open router's route goes out alone and the recheck restores traffic.
 - A caller that waits a bounded time passes it as `route(maxMs =)`: the avoid attempt, the
   bike-safe attempt, the phone-first reroute and the reroute fallback all do. Past it the engine
   sets `RouteCalculationProgress.isCancelled`, which both of OsmAnd's planners poll, and returns

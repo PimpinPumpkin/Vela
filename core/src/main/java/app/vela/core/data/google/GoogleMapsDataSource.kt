@@ -1055,7 +1055,7 @@ class GoogleMapsDataSource @Inject constructor(
                     RerouteFallback.Source.NONE -> emptyList()
                 }
             }
-            val google = when {
+            val googleAll = when {
                 urgent && openRaw.isNotEmpty() ->
                     kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { googleD.await() } ?: run {
                         diag.record("directions", "urgent: google not back ${URGENT_GOOGLE_GRACE_MS} ms after OSRM, rerouting trafficless")
@@ -1072,6 +1072,17 @@ class GoogleMapsDataSource @Inject constructor(
                 }
                 else -> googleD.await()
             }
+            // A REROUTE GOES THE WAY THE CAR IS GOING. Google's request has no heading, so from a
+            // car that has just passed a turn its route often starts back the way the car came,
+            // and since the driven line is Google's wherever it differs, the reroute said "turn
+            // around", the driver carried on, and the next reroute said it again (a real drive,
+            // three reroutes in thirty seconds). The open router was asked with the car's heading;
+            // a Google route that starts against it is set aside when the open router answered.
+            val google = if (departBearingDeg != null && openRaw.isNotEmpty()) {
+                val forward = googleAll.filterNot { RouteGeometry.startsAgainst(it.polyline, departBearingDeg) }
+                if (forward.size != googleAll.size) diag.record("directions", "reroute: ${googleAll.size - forward.size} of ${googleAll.size} google route(s) start against the car's heading, set aside")
+                forward
+            } else googleAll
             val gTop = google.firstOrNull()
             val open = openRaw
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed

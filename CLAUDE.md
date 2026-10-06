@@ -3839,6 +3839,21 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **A reroute goes the way the car is going (2026-10-05).** Google's directions request has no
+  heading, and since 2026-10-02 the driven line is Google's wherever it differs, so the
+  `bearings=` fix for the open router (2026-08-17) stopped mattering: from a car just past a turn
+  Google's route set off back the way it came, the driver carried on, and the next reroute said
+  the same (a shared trip: reroutes adopted about every 12 s, the car off each new route within
+  two fixes, until one happened to go forward). On a fetch with `departBearingDeg`, a Google route
+  that `RouteGeometry.startsAgainst` the heading (first 80 m more than 120 degrees off) is set
+  aside when the open router answered; the route goes out without traffic and the recheck heals
+  it. Single-destination branch only; a trip with stops is not covered. `StartsAgainstTest`.
+  Reading a trip for this: the `off-route -> rerouting` note is written on every request, before
+  the cooldown gate, so a run of them 2 s apart is one reroute waiting out the 10 s cooldown.
+- **A shared trip of a drive ended early kept the wrong half of its route (2026-10-05).**
+  `TripScrub` kept the LONGEST public run of the route line; the zone round the last fix cuts
+  the line in two and the longer piece is the part never driven. It keeps the run the surviving
+  fixes are on (`drivenPublicRun`). Trips shared before this cannot be audited against their line.
 - **A contact's address reopened from history (2026-10-05).** `SavedPlace.bare` marks a label on a
   point (set by `selectContactPlace`); `selectSaved` reopens a bare one as saved, name and address,
   with no search. For every other saved or recent place the enrichment search adopts a listing

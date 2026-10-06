@@ -976,6 +976,28 @@ object RouteGeometry {
 
     // --- traffic-aware routing (option 3) -------------------------------------
 
+    /** True when [poly] sets off against [headingDeg]: its direction over the first
+     *  [START_LOOK_M] is more than [AGAINST_DEG] off the way the car is traveling. A line too
+     *  short to judge is not against anything. */
+    internal fun startsAgainst(poly: List<LatLng>, headingDeg: Double): Boolean {
+        if (poly.size < 2) return false
+        val a = poly.first()
+        var run = 0.0
+        var b = a
+        for (i in 1 until poly.size) {
+            run += poly[i - 1].distanceTo(poly[i])
+            b = poly[i]
+            if (run >= START_LOOK_M) break
+        }
+        if (a.distanceTo(b) < 15.0) return false
+        val k = kotlin.math.cos(Math.toRadians(a.lat))
+        val brg = (Math.toDegrees(kotlin.math.atan2((b.lng - a.lng) * k, b.lat - a.lat)) + 360.0) % 360.0
+        val d = kotlin.math.abs((brg - headingDeg + 540.0) % 360.0 - 180.0)
+        return d > AGAINST_DEG
+    }
+    private const val START_LOOK_M = 80.0
+    private const val AGAINST_DEG = 120.0
+
     /** True if Google's traffic-aware route [google] takes a meaningfully DIFFERENT path than
      *  OSRM's free-flow [osrm] — i.e. Google rerouted around a jam. Samples points along Google's
      *  line and checks whether any strays > [thresholdM] from OSRM's line. */
