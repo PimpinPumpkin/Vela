@@ -4092,7 +4092,8 @@ private fun MapSurface(
         routeColor = if (state.navPaused) ROUTE_PAUSED_COLOR else routeTrafficColor(state.activeRoute),
         routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
             state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
-        routeTrafficSpans = routeTrafficSpans(state.activeRoute),
+        // Paused: one color end to end, no traffic colors over the lavender.
+        routeTrafficSpans = if (state.navPaused) emptyList() else routeTrafficSpans(state.activeRoute),
         // The expanded transit row's legs (issue #233) while the chooser owns the map, and the
         // WHOLE guided itinerary during step-by-step transit nav (issue #232) — there the camera
         // frames the CURRENT leg and re-frames as Next/auto-advance moves through the trip.

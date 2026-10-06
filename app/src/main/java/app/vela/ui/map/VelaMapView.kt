@@ -3525,11 +3525,11 @@ fun VelaMapView(
                             else
                                 ((cutHi[ac] - a0) / (a1 - a0) - 1.5 / 256.0).toFloat().coerceIn(0f, 0.999f)
                             style.routeSet(aheadLayerOf(s),
-                                PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), driven)),
+                                PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), driven, spans.isNotEmpty())),
                                 outline = routeOutlineGradient(pa, darkHolder.value),
                             )
                             if (a1 < total - 1.0) style.routeSet(tailLayerOf(s),
-                                PropertyFactory.lineGradient(routeGradient(0f, gInt, remap(a1, total))),
+                                PropertyFactory.lineGradient(routeGradient(0f, gInt, remap(a1, total), routeHasSpans = spans.isNotEmpty())),
                                 outline = routeOutlineGradient(0f, darkHolder.value),
                             )
                         }
@@ -3568,7 +3568,7 @@ fun VelaMapView(
                         val c1 = cutHi[s]
                         val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
                         style.routeSet(cutLayerOf(s),
-                            PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
+                            PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven, spans.isNotEmpty())),
                             outline = routeOutlineGradient(pc, darkHolder.value),
                         )
                     }
@@ -8921,8 +8921,13 @@ private fun routeGradient(
     routeInt: Int,
     spans: List<Triple<Float, Float, Int>>,
     driven: Int = ROUTE_DRIVEN, // TRANSPARENT when the "road behind you" trail is off
+    // Whether the ROUTE carries traffic spans, which a piece of it may not: a piece with no span
+    // of its own is free-flowing road, not a route without traffic data. Judged by the piece
+    // alone, the 400 m under the car drew in the trip's overall traffic color (amber on a trip
+    // running a little slow) wherever no span touched it, beside a blue line ahead.
+    routeHasSpans: Boolean = spans.isNotEmpty(),
 ): Expression {
-    val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
+    val freeflow = if (!routeHasSpans) routeInt else ROUTE_FREEFLOW
     // Color AT fraction f (half-open: a stop at b colors [b, next)). Driven part is gray
     // STRICTLY BEFORE p (p == 0 preview paints no gray nub), so the cut lands exactly at p.
     fun colorAt(f: Float): Int {

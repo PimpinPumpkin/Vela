@@ -1610,6 +1610,13 @@ Default and IO dispatchers are named `DefaultDispatcher-worker`.
 
 ### 4.8 Route line rendering
 
+A piece of the line (the 400 m cut piece, the ahead window, the tail) takes its base color from
+whether the ROUTE has traffic spans, not whether the piece does: free-flow blue when the route has
+any, the route's overall traffic color only when it has none (`routeGradient(routeHasSpans =)`).
+Judged per piece, the 400 m under the car drew amber on any trip running a little slow, beside a
+blue line ahead, and drew amber again each time the piece slid forward. A paused drive passes no
+spans, so it is one color end to end.
+
 - **Alternates** in the route chooser draw as a faded route blue with a darker outline:
   `#7FA9F0` over `#3566C4` on the light map, `#7C9FE0` over `#0E2247` on the dark one, nearly as
   wide as the selected route (4.5 / 7 / 10 / 15 px at z10 / 14 / 16 / 18.5 against 5 / 8 / 11 / 17) (fill on

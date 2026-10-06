@@ -3839,6 +3839,11 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Amber quarter mile under the car (2026-10-05, SPEC 4.8).** `routeGradient` chose its base color
+  from the PIECE's spans: a 400 m cut piece with no span of its own fell to `routeColor`, the
+  trip's overall traffic color, while the ahead window (which nearly always holds a span) was blue.
+  It takes `routeHasSpans` now. Not reproducible on a demo route whose ETA is green: the overall
+  color is blue there. Reported from a real drive.
 - **Streaming without a downloaded region (2026-10-05, SPEC 4.7b).** The streamed speed limit is
   read from its archive's one tile under the car (`data/StreamedSpeedLimit` + `core/util/MvtLines`),
   not mounted as a map layer: the "Speed B" layer notes further down this file describe the old
