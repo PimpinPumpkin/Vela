@@ -3840,6 +3840,11 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Landscape overview (issue #682, 2026-10-06).** The nav overview's fit used the portrait margins
+  in landscape, where the turn card and the bar are a column down the left: the start of the
+  route sat under it. The fit now keeps `leftInsetHolder` plus 28 dp clear on the left and 12% top
+  and bottom when that column exists. Checked on the 4a (rotate with `settings put system
+  user_rotation 1` after `accelerometer_rotation 0`; put both back).
 - **MapLibre 13.6.1 and tile level of detail (2026-10-06, SPEC 4.7b).** The map engine is
   `org.maplibre.gl:android-sdk-opengl:13.6.1` (from 13.0 the plain `android-sdk` artifact is
   Vulkan; Vela stays on OpenGL). The only source change was `hillshadeShadowColor` /

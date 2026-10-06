@@ -2710,6 +2710,18 @@ fun VelaMapView(
             b.include(MLLatLng(p0.lat, p0.lng))
             for (i in indexAtMeters(cum, fromM) until routePolyline.size) b.include(MLLatLng(routePolyline[i].lat, routePolyline[i].lng))
             b.include(MLLatLng(routePolyline.last().lat, routePolyline.last().lng))
+            // What the fit keeps clear. Portrait: the turn card above, the bar below, the route bar
+            // strip at the left, the button column at the right. Landscape: the turn card and the
+            // bar are a column down the LEFT side, so the whole column is kept clear and the top
+            // and bottom need little; at the portrait margins the start of the route sat under
+            // that column (issue #682).
+            val padDens = context.resources.displayMetrics.density
+            val leftCol = leftInsetHolder.value
+            val pad = if (leftCol > 0) intArrayOf(
+                leftCol + (28 * padDens).toInt(), (map.height * 0.12).toInt(), (104 * padDens).toInt(), (map.height * 0.12).toInt(),
+            ) else intArrayOf(
+                (40 * padDens).toInt(), (map.height * 0.30).toInt(), (104 * padDens).toInt(), (map.height * 0.22).toInt(),
+            )
             if (animMs <= 0) {
                 // A fresh overview CUTS to the fit (no flight across zoom levels) under the veil.
                 val dens = context.resources.displayMetrics.density
@@ -2717,7 +2729,7 @@ fun VelaMapView(
                     map.moveCamera(
                         CameraUpdateFactory.newLatLngBounds(
                             b.build(), 0.0, 0.0,
-                            (40 * dens).toInt(), (map.height * 0.30).toInt(), (104 * dens).toInt(), (map.height * 0.22).toInt(),
+                            pad[0], pad[1], pad[2], pad[3],
                         ),
                     )
                     cutReveal()
@@ -2738,7 +2750,7 @@ fun VelaMapView(
                 map.animateCamera(
                     CameraUpdateFactory.newLatLngBounds(
                         b.build(), 0.0, 0.0,
-                        (40 * dens).toInt(), (map.height * 0.30).toInt(), (104 * dens).toInt(), (map.height * 0.22).toInt(),
+                        pad[0], pad[1], pad[2], pad[3],
                     ),
                     animMs,
                     flightCb(),
