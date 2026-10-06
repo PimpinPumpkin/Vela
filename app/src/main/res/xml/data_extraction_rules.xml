@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same list as backup_rules.xml (Android 12 and later read this file; keep the two in step). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="vela_settings.xml" />
+        <include domain="sharedpref" path="vela_onboarding.xml" />
+        <include domain="sharedpref" path="vela_units.xml" />
+        <include domain="sharedpref" path="vela_shortcuts.xml" />
+        <include domain="sharedpref" path="vela_saved.xml" />
+        <include domain="sharedpref" path="vela_saved_routes.xml" />
+        <include domain="sharedpref" path="vela_lists.xml" />
+        <include domain="sharedpref" path="vela_recents.xml" />
+        <include domain="sharedpref" path="vela_recent_places.xml" />
+        <include domain="file" path="trips/" />
+        <include domain="file" path="fonts/ui.ttf" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="vela_settings.xml" />
+        <include domain="sharedpref" path="vela_onboarding.xml" />
+        <include domain="sharedpref" path="vela_units.xml" />
+        <include domain="sharedpref" path="vela_shortcuts.xml" />
+        <include domain="sharedpref" path="vela_saved.xml" />
+        <include domain="sharedpref" path="vela_saved_routes.xml" />
+        <include domain="sharedpref" path="vela_lists.xml" />
+        <include domain="sharedpref" path="vela_recents.xml" />
+        <include domain="sharedpref" path="vela_recent_places.xml" />
+        <include domain="file" path="trips/" />
+        <include domain="file" path="fonts/ui.ttf" />
+    </device-transfer>
+</data-extraction-rules>

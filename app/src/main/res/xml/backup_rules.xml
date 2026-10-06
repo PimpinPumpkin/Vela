@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What a device backup or a phone-to-phone transfer carries: your settings, saved places, lists,
+  saved routes, Home and Work, search history, recorded trips and your own font. Nothing else.
+  Left out on purpose: the Google web session (cookies and WebView storage; a restored copy would
+  be the same session on two phones), the last known position, the drive-resume record,
+  diagnostics and crash reports, caches, and downloaded maps and voices (gigabytes that download
+  again). An include list, so a new file is not backed up until it is added here.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="vela_settings.xml" />
+    <include domain="sharedpref" path="vela_onboarding.xml" />
+    <include domain="sharedpref" path="vela_units.xml" />
+    <include domain="sharedpref" path="vela_shortcuts.xml" />
+    <include domain="sharedpref" path="vela_saved.xml" />
+    <include domain="sharedpref" path="vela_saved_routes.xml" />
+    <include domain="sharedpref" path="vela_lists.xml" />
+    <include domain="sharedpref" path="vela_recents.xml" />
+    <include domain="sharedpref" path="vela_recent_places.xml" />
+    <include domain="file" path="trips/" />
+    <include domain="file" path="fonts/ui.ttf" />
+</full-backup-content>

@@ -30,6 +30,11 @@ object WebViewIdentity {
     fun apply(settings: WebSettings) {
         val cal = CalibrationStore.latest
         settings.userAgentString = cal.userAgent
+        // The pages are Google's and nothing else: no reading the app's files or other apps'
+        // content from page script (file access is on by default before Android 11), no location.
+        settings.allowFileAccess = false
+        settings.allowContentAccess = false
+        settings.setGeolocationEnabled(false)
         val rwSupported = WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)
         val rwResult = if (rwSupported) {
             runCatching {
