@@ -3899,6 +3899,22 @@ architecture note.
   `TripScrub` kept the LONGEST public run of the route line; the zone round the last fix cuts
   the line in two and the longer piece is the part never driven. It keeps the run the surviving
   fixes are on (`drivenPublicRun`). Trips shared before this cannot be audited against their line.
+- **Transit feed names in the app's language (issue #674, first half, 2026-10-06).**
+  `Transitous.withLanguage` adds `language=<bare code>` to every request that goes through
+  `get()` (stops, boards, trips, plans): without it the Tokyo rail feed answers "新宿 Shinjuku" to
+  everyone. The service wants the bare code (`ja`, not `ja-JP`) and falls back for one it lacks.
+  Cached stops keep their old names until refetched. The REPORTED names (Google's transit
+  directions) are still English: that page is pinned to `hl=en` for its "h:mm AM" times, and
+  every time, distance and duration in its payload has a numeric twin (epoch + tz at the time
+  tuples, seconds, meters), so the fix is formatting from those and then unpinning. The stop
+  BOARD parser is the one that truly needs English (its anchor is an AM/PM regex). Plan and
+  estimates are in the session's investigation; about 5 hours for directions.
+- **Library updates (2026-10-06).** Dependabot's first grouped pull request failed its build:
+  core-ktx 1.19, material3 1.5 alpha, navigation 2.10 and hilt-navigation 1.4 need compileSdk 37.
+  The rest went in by hand (coroutines 1.11, serialization 1.11, rhino 1.7.15.1, commons-logging
+  1.4, commons-compress 1.28, guava 33.7.2, commons-lang3 3.21, splashscreen 1.2, test libraries).
+  commons-logging is the one to watch: the obf engine pins its `Log` implementation at init;
+  checked on the 4a with an offline route. The compileSdk 37 move is its own job.
 - **A region's box is not its data (2026-10-06).** `ObfRouteEngine` picks files by bounding box,
   and Northern California's box reaches east across Nevada. With only that file installed, an
   offline 6 km trip in Reno snapped both ends to the nearest California roads 22 km away and came

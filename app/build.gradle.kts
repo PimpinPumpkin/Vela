@@ -235,8 +235,8 @@ dependencies {
     // versions with published advisories; nothing here calls the affected code, the newer
     // versions just clear them. Dependabot's alerts are where these come from.
     constraints {
-        implementation("org.apache.commons:commons-lang3:3.18.0")
-        implementation("com.google.guava:guava:33.4.8-android")
+        implementation("org.apache.commons:commons-lang3:3.21.0")
+        implementation("com.google.guava:guava:33.7.2-android")
     }
     // Bakes the committed baseline profile into the APK and AOT-compiles it at install time -
     // the fix for sideloaded nightlies running interpreter-cold until overnight dexopt.
@@ -251,7 +251,7 @@ dependencies {
     // VoiceGuide via an interface. Native .so are arm64-only in the package (see packaging{}).
     implementation(files("libs/sherpa-onnx-1.13.3.aar"))
     // Extracts the Kokoro model's .tar.bz2 at download time (Android has no built-in bzip2/tar).
-    implementation("org.apache.commons:commons-compress:1.27.1")
+    implementation("org.apache.commons:commons-compress:1.28.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.webkit)

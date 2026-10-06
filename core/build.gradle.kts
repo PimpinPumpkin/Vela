@@ -45,7 +45,7 @@ dependencies {
     // osmand-java.jar comes through :osmand-shaded (its protobuf relocated, so Cronet's can coexist).
     implementation(project(mapOf("path" to ":osmand-shaded", "configuration" to "shadow")))
     implementation(files("libs/osmand-shared-jvm.jar", "libs/gnu-trove-osmand.jar", "libs/kxml2-vela.jar"))
-    implementation("commons-logging:commons-logging:1.2")
+    implementation("commons-logging:commons-logging:1.4.0")
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
