@@ -1,6 +1,7 @@
 package app.vela.core.data
 
 import app.vela.core.model.LatLng
+import app.vela.core.model.distanceTo
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
@@ -160,6 +161,18 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                     )
                     // Both planners poll this flag; setting it ends the search with an exception.
                     ctx.calculationProgress = progress
+                    // A region's BOX can hold the trip while its DATA does not (Northern
+                    // California's box reaches across Nevada): the router then snaps each end to
+                    // the nearest road it has, tens of kilometers off, and answers a 6 km trip
+                    // with a 235 km route between those, or runs out of memory trying. No road
+                    // near an end means this file does not cover the trip.
+                    for (p in listOf(origin, destination)) {
+                        val seg = runCatching { fe.findRouteSegment(p.lat, p.lng, ctx, null) }.getOrNull()
+                        if (seg != null && seg.distToProj > ENDPOINT_SNAP_M * ENDPOINT_SNAP_M) {
+                            android.util.Log.d(TAG, "route $mode: no road within ${ENDPOINT_SNAP_M.toInt()} m of an end in the installed data (nearest ${"%.0f".format(Math.sqrt(seg.distToProj))} m)")
+                            return emptyList()
+                        }
+                    }
                     val stop = leftMs?.let { ms -> stopper.schedule({ progress.isCancelled = true }, ms, java.util.concurrent.TimeUnit.MILLISECONDS) }
                     try {
                         fe.searchRoute(ctx, LatLon(origin.lat, origin.lng), LatLon(destination.lat, destination.lng), null)
@@ -169,7 +182,16 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                     }
                 }
                 android.util.Log.d(TAG, "route over ${readers.size} file(s): ${segments.size} segments in ${System.currentTimeMillis() - startMs} ms")
-                if (segments.isNotEmpty()) return listOf(toRoute(segments))
+                if (segments.isNotEmpty()) {
+                    val route = toRoute(segments)
+                    // The same rule on the answer, for an end the snap lookup could not place.
+                    val a = route.polyline.firstOrNull(); val b = route.polyline.lastOrNull()
+                    if (a == null || b == null || a.distanceTo(origin) > ENDPOINT_SNAP_M || b.distanceTo(destination) > ENDPOINT_SNAP_M) {
+                        android.util.Log.d(TAG, "route $mode: the route found does not start and end at the trip's ends; the installed data does not cover it")
+                        return emptyList()
+                    }
+                    return listOf(route)
+                }
             } catch (e: Throwable) {
                 if (progress.isCancelled) {
                     android.util.Log.d(TAG, "route $mode: stopped after ${System.currentTimeMillis() - startMs} ms, the caller's ${maxMs} ms were up")
@@ -442,6 +464,8 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         // already runs near the ceiling (CLAUDE.md memory rules) and the router allocates within
         // this bound, spilling to more tile loads instead of OOMing.
         private const val MEMORY_MB = 256
+        /** An end of the trip farther than this from any road in the installed files is outside their data. */
+        private const val ENDPOINT_SNAP_M = 2_000.0
         private const val NATIVE_MEMORY_MB = 64
 
         // routing.xml profile names.

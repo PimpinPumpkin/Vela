@@ -1044,6 +1044,10 @@ names (`Route.roadNamesLatin`).
   emits a turn type for the road's own bend when nothing is there to choose, and OsmAnd's voice
   skips it; mapping the bare type spoke "turn left onto X" where a road only curved and renamed.
   As CONTINUE it folds into the previous maneuver as a rename. Roundabouts keep their type.
+- A file is chosen by its bounding box, which can hold a trip its data does not (Northern
+  California's box reaches across Nevada). A trip is refused when either end has no road within
+  `ENDPOINT_SNAP_M` (2 km) in the chosen files, tested before the search and on the route found;
+  without the test the router joins the nearest roads it has, tens of kilometers from each end.
 - **Roundabout wording follows the measured turn** (`RouteGeometry.roundaboutMod`, 2026-10-03):
   OSRM's roundabout modifier is not the entry-to-exit turn (a 140 degree left came back
   "straight"), so an OSRM roundabout step's modifier comes from `RoundaboutGeometry.exitAngleDeg`
