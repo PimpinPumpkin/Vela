@@ -802,7 +802,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   which preserves the pitch you set, so the tilt sticks until you change it. *Pinch fix
   (2026-09-29, #627):* a pinch no longer starts a tilt (the tilt used to begin after 8 pixels of
   drift, now after a deliberate 20 dp drag), and Settings > Map "Tilt with two fingers" turns the
-  gesture off entirely.
+  gesture off entirely. *While the map follows you (2026-10-06, PR #673, Kainoa Kanter):* the tilt
+  you set stays instead of easing back flat, until Re-center or the follow ends; a tilt that ends
+  under 8 degrees is dropped.
 - ✅ **Ambient Google POIs on the map** (2026-06-27) - the basemap dots/labels are OSM
   (OpenFreeMap), so Google-only places used to appear only when searched. Now, on a bare,
   zoomed-in browse map, the visible area's prominent **Google** places are fetched automatically

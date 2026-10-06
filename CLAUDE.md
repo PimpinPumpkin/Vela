@@ -3899,6 +3899,12 @@ architecture note.
   `TripScrub` kept the LONGEST public run of the route line; the zone round the last fix cuts
   the line in two and the longer piece is the part never driven. It keeps the run the surviving
   fixes are on (`drivenPublicRun`). Trips shared before this cannot be audited against their line.
+- **Browse-follow tilt (PR #673, 2026-10-06).** The free-drive follow ticker gates every camera
+  write on `!shoving[0]` as it does on `scaling`, and `browseUserTilt` holds the gesture's tilt as
+  the ticker's tilt target (attitude ease and the idle-settling test both) until Re-center or the
+  follow session ends. A tilt ending under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped. Pausing only
+  during the gesture flattened the map on release. NOT gesture-checked here: adb cannot inject two
+  fingers; the 4a check was launch, locate, and the follow loop still going idle.
 - **Saved pins stay pins, and Rename is on the sheet (discussion #681, 2026-10-06).** A saved pin
   or address (`SavedPlace.isPoint`) reopens through `selectContactPlace` with no search: the
   enrichment search for "505 2nd Street" on its own point adopted a real-estate office in the same

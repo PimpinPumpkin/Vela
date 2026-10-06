@@ -167,6 +167,8 @@ private const val ROUTE_PENDING_MAX_PASSES = 40
 // The 3D puck overlay waits this long after a gesture's last camera move before it replaces the
 // map's own symbol (see the detached branch of the nav ticker).
 private const val PUCK_GESTURE_SETTLE_MS = 180L
+/** A two-finger tilt on the browse map that ends below this is dropped, not kept. */
+private const val BROWSE_TILT_KEEP_MIN_DEG = 8.0
 private const val TILE_LOD_PITCH_DEG = 30.0
 private const val TILE_LOD_RADIUS = 1.0
 private const val TILE_LOD_SCALE = 6.0
@@ -4059,7 +4061,9 @@ fun VelaMapView(
                             navUserTilt[0] = map.cameraPosition.tilt
                             zoomOverride.value(true)
                         } else {
-                            browseUserTilt[0] = map.cameraPosition.tilt
+                            // A few degrees is a pinch's wobble, not a chosen angle: back to automatic.
+                            val t = map.cameraPosition.tilt
+                            browseUserTilt[0] = if (t < BROWSE_TILT_KEEP_MIN_DEG) Double.NaN else t
                         }
                         shoving[0] = false
                     }
