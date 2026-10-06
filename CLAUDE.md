@@ -521,7 +521,7 @@ Defaults that make the safe path the easy one:
   once, 2026-07-16, on the wired test phone). `.github/workflows/baseline-profile.yml` (monthly cron
   + dispatch) regenerates on a KVM emulator and opens a PR when the profile drifts.
 - Map engine: MapLibre Native Android 13.6.1, the `android-sdk-opengl` artifact (2026-10-06).
-- Toolchain: AGP 9.4.1, Kotlin 2.4.20, Gradle 9.8.0, KSP 2.3.12, Hilt 2.60.1, compileSdk 36 (every
+- Toolchain: AGP 9.4.1, Kotlin 2.4.20, Gradle 9.8.0, KSP 2.3.12, Hilt 2.60.1, OkHttp 5.5.0, compileSdk 37 (every
   module), targetSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog. **AGP 9 builds Kotlin
   in (2026-09-25 upgrade):** there is no `org.jetbrains.kotlin.android` plugin and no `kotlinOptions`
   block; Kotlin's JVM target follows `compileOptions` (17), and the Kotlin version is the one the
@@ -3920,6 +3920,16 @@ architecture note.
   lines), session tokens scrubbed; `theSameTripParsesAlikeInJapaneseAndEnglish` compares them.
   STILL ENGLISH-ONLY: the Google stop BOARD fallback (`WebStopDeparturesFetcher`, pinned `hl=en`;
   its parser's anchor is an AM/PM regex) and the "min late" text.
+- **compileSdk 37 and OkHttp 5.5 (2026-10-06).** OkHttp 5 and the newer androidx libraries refuse
+  to build against 36 (the AAR metadata check). 37 changes no runtime behavior; targetSdk stays
+  35. OkHttp 5 needed no code change. Checked on the 4a: fresh map tiles (MapLibre's own client
+  rides the app's OkHttp), search, photos, a station board, a hybrid route, a region download;
+  and the Google health probe passed against the branch on GitHub's machines (dispatch
+  `google-health.yml` with `--ref <branch>` to do the same for any network change). NOT checked:
+  a Google request's wire shape when Cronet fails over to OkHttp. DO NOT take core-ktx 1.19,
+  navigation-compose 2.10 or hilt-navigation-compose 1.4 in passing: they pull Compose from
+  1.7.6 to 1.10/1.11 across the whole app, which is its own job with a full sheet, gesture and
+  D-pad pass.
 - **Library updates (2026-10-06).** Dependabot's first grouped pull request failed its build:
   core-ktx 1.19, material3 1.5 alpha, navigation 2.10 and hilt-navigation 1.4 need compileSdk 37.
   The rest went in by hand (coroutines 1.11, serialization 1.11, rhino 1.7.15.1, commons-logging

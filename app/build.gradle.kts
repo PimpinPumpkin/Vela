@@ -22,7 +22,7 @@ dependencies {
 
 android {
     namespace = "app.vela"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // `-PappId=<id>` builds the app under another package name: the Android Auto ownership

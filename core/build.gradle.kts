@@ -12,7 +12,7 @@ android {
         // engine on the JVM, and its android.util.Log lines would otherwise throw "not mocked".
         unitTests.isReturnDefaultValues = true
     }
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")

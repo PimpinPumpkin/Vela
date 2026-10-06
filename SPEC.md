@@ -4476,7 +4476,7 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
 ## 15. Build, release and distribution
 
 - **Toolchain**: AGP 9.4.1 (Kotlin built in, no `kotlin-android` plugin), Kotlin 2.4.20, Gradle 9.8.0,
-  KSP 2.3.12, Hilt 2.60.1, compileSdk 36 in every module, targetSdk 35, minSdk 26, Java 17,
+  KSP 2.3.12, Hilt 2.60.1, OkHttp 5.5, compileSdk 37 in every module, targetSdk 35, minSdk 26, Java 17,
   Compose, Hilt, a version catalog, R8 in the `release` build type.
 - **Channels.** A push to `main` or `canary` builds and tests only; a push can never mint a
   release. The nightly prerelease `v0.4.<run>` (versionName `0.4.<run>`, versionCode
