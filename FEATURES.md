@@ -807,6 +807,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   while the map is tilted and a tap on it goes back to north and flat. A tilt that ends under
   8 degrees is dropped. A tilt no longer stops the map following you, on the plain map or in a
   drive (it had since the 2026-09-29 pinch fix).
+- ✅ **The picker says why a slower route leads (discussion #676, 2026-10-06)** - with "Avoid surveillance cameras" on, a route chosen for passing fewer cameras reads "Passes N fewer cameras than the fastest route" under its time.
 - ✅ **Ambient Google POIs on the map** (2026-06-27) - the basemap dots/labels are OSM
   (OpenFreeMap), so Google-only places used to appear only when searched. Now, on a bare,
   zoomed-in browse map, the visible area's prominent **Google** places are fetched automatically
