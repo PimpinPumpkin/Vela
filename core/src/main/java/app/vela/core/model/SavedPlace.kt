@@ -24,6 +24,11 @@ data class SavedPlace(
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
+    /** A pin or an address rather than a listing: marked [bare], a dropped pin's id, or a name
+     *  that is the first line of its own address (how one saved before the mark existed reads). */
+    val isPoint: Boolean get() = bare || id.startsWith("pin:") ||
+        (address != null && name.isNotBlank() && address.trim().startsWith(name.trim(), ignoreCase = true))
+
     fun toPlace(): Place = Place(id = id, name = name, location = location, address = address)
 
     companion object {

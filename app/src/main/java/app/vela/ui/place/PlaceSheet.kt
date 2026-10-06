@@ -341,6 +341,9 @@ fun PlaceSheet(
     val bodyReveal = rememberReveal(sheetKey, bodySkeleton)
     var showListChooser by remember(sheetKey) { mutableStateOf(false) }
     var showNoteEditor by remember(sheetKey) { mutableStateOf(false) }
+    // Rename a saved place from its own sheet (discussion #681): a dropped pin saved as a street
+    // name or coordinates gets a name of yours without a trip to the search page's pinned row.
+    var showSavedRename by remember(sheetKey) { mutableStateOf(false) }
     // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
     var galleryStart by remember(sheetKey) { mutableStateOf<Int?>(null) }
     // Gallery category filter (null = All); resets per place. Chips appear only when Google tagged photos.
@@ -879,6 +882,7 @@ fun PlaceSheet(
                             item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
                             if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
                             if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
+                            if (isSaved) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
                         }
                         item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
                         item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
@@ -1405,6 +1409,24 @@ fun PlaceSheet(
             onCreateWith = { name -> onCreateListWith(name) },
             onDismiss = { showListChooser = false },
         )
+    }
+    if (showSavedRename) {
+        var draft by remember { mutableStateOf(place.name) }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showSavedRename = false },
+            title = stringResource(R.string.saved_rename_title),
+            confirmText = stringResource(R.string.saved_rename_action),
+            onConfirm = { if (draft.isNotBlank()) app.vela.ui.SavedActions.rename?.invoke(place, draft); showSavedRename = false },
+            dismissText = stringResource(android.R.string.cancel),
+            onDismiss = { showSavedRename = false },
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
+            )
+        }
     }
     if (showNoteEditor) {
         NoteEditorDialog(

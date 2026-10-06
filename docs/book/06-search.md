@@ -149,6 +149,11 @@ exist on this path.
 3. **Recently viewed places**, then **list places**, then **saved places**, matched on name or
    address and de-duplicated by feature id, or by name plus location when there is none.
 
+A saved pin or address opens exactly as it was saved, with no lookup: searching an address on its
+own point returns whatever business shares the building. A saved business looks up its listing for
+photos and reviews (within 30 m, or within 250 m with an agreeing name) and keeps a name you gave
+it. Rename is in the pinned row's menu and in the save menu on the place's own sheet.
+
 Network rows that repeat a local row are dropped, matched on **both** feature id and a name plus
 location key rounded to about 5 m. The second key matters because saved and recent places carry
 no feature id, so an id-only compare showed them twice.

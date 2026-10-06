@@ -2614,6 +2614,14 @@ custom maps) are not drawn while navigating.
   place takes a Google listing's details only from a listing within 30 m, or within 250 m whose
   name agrees (`PlaceNames.agree`); the nearest hit for the name alone is never adopted.
   History and saved rows in the typed results open the same way as in the Recents list.
+- A saved pin or address is a point too (`SavedPlace.isPoint`: `bare`, a `pin:` id, or a name that
+  is the first line of its own address) and reopens as saved, with no search: a search for the
+  address on its own point returns a business in the same building, which would open under the
+  saved row. Saving a place that is not a listing (`Place.isListing()` false) sets `bare`.
+- Rename is offered on the search page's pinned rows and in the place sheet's save menu
+  (`SavedActions.rename`, discussion #681). A listing's details load under a name of your own:
+  the listing's name is taken only when it agrees with the saved one, and the details page, which
+  searches by name, is skipped when it does not.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 

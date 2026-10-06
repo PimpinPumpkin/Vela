@@ -1736,7 +1736,7 @@ class MapViewModel @Inject constructor(
     /** Pin the currently-open place straight to Home/Work from its sheet. */
     fun setSelectedAsShortcut(kind: ShortcutKind) {
         val p = _state.value.selected ?: return
-        pinSavedAs(SavedPlace.of(p), kind)
+        pinSavedAs(SavedPlace.of(p).copy(bare = !p.isListing()), kind)
     }
 
     /** Pin an already-saved place straight to Home/Work (no assign hop needed). */
@@ -1770,14 +1770,17 @@ class MapViewModel @Inject constructor(
 
     fun toggleSave() {
         val p = _state.value.selected ?: return
-        savedStore.toggle(SavedPlace.of(p))
+        // A pin or an address is kept as a label on its point; reopening it never looks up a listing.
+        savedStore.toggle(SavedPlace.of(p).copy(bare = !p.isListing()))
         _state.update { it.copy(saved = savedStore.saved()) }
     }
 
     fun selectSaved(sp: SavedPlace) {
         if (consumeAssign(sp)) return
         // A contact's address from history opens as it was saved: the person's name and the address.
-        if (sp.bare) { selectContactPlace(sp.toPlace()); return }
+        // So does a saved pin or address (discussion #681): searching "505 2nd Street" on its own
+        // point found a business in the same building and opened that under the saved row.
+        if (sp.isPoint) { selectContactPlace(sp.toPlace()); return }
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingDest) { setDirectionsDestination(base); return }
@@ -1816,14 +1819,16 @@ class MapViewModel @Inject constructor(
                 _state.update { st -> if (st.selected?.id == sp.id && st.selected.address.isNullOrBlank()) st.copy(selected = st.selected.copy(address = sp.address)) else st }
             }
             if (full != null && _state.value.selected?.id == sp.id) {
-                val enriched = full.copy(id = sp.id)
+                // A name of your own stays on the sheet; the listing's fills in when they agree.
+                val enriched = full.copy(id = sp.id, name = if (app.vela.core.util.PlaceNames.agree(full.name, sp.name)) full.name else sp.name)
                 _state.update { it.copy(selected = enriched) }
                 requestReviews(enriched)
                 fetchPhotos(enriched)
                 // The enriched place now has an address, so the WebView detail fetch can
                 // do its specific name+address query — without this, popular times +
                 // editorial/owner never loaded for saved/recent places (only via search).
-                fetchPlaceDetails(enriched)
+                // (It searches by name, so not under a name of your own.)
+                if (enriched.name == full.name) fetchPlaceDetails(enriched)
                 fetchStopDepartures(enriched) // a saved/recent transit stop shows its board too
             }
         }
@@ -5180,7 +5185,7 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, selected = null) }
     }
 
-    init { app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape }
+    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")

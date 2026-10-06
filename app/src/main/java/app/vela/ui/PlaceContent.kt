@@ -209,6 +209,12 @@ object OtherLocationsAuto {
 
 /** The place sheet's "Delete this drawing" action, set by the map's view model: the sheet is
  *  reached from MapScreen, which has no room for another callback (the verifier limit). */
+/** The sheet's "Rename" for a saved place, set by the view model: a holder instead of one more
+ *  PlaceSheet callback, since MapScreen cannot take another argument (the method size limit). */
+object SavedActions {
+    @Volatile var rename: ((place: app.vela.core.model.Place, name: String) -> Unit)? = null
+}
+
 object ShapeActions {
     @Volatile var delete: (() -> Unit)? = null
     @Volatile var edit: (() -> Unit)? = null

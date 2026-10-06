@@ -47,6 +47,14 @@ class SavedPlaceStore @Inject constructor(
         return true
     }
 
+    /** Marks a saved place as a label on a point (see [SavedPlace.bare]). False when it is not saved. */
+    fun setBare(id: String, bare: Boolean): Boolean {
+        val current = saved()
+        if (current.none { it.id == id }) return false
+        prefs.edit().putString(KEY, json.encodeToString(current.map { if (it.id == id) it.copy(bare = bare) else it })).apply()
+        return true
+    }
+
     /** Sets/clears a quick-saved place's own map icon (issue #629). False when it is not saved. */
     fun setIcon(id: String, icon: String?): Boolean {
         val current = saved()

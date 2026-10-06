@@ -3899,6 +3899,14 @@ architecture note.
   `TripScrub` kept the LONGEST public run of the route line; the zone round the last fix cuts
   the line in two and the longer piece is the part never driven. It keeps the run the surviving
   fixes are on (`drivenPublicRun`). Trips shared before this cannot be audited against their line.
+- **Saved pins stay pins, and Rename is on the sheet (discussion #681, 2026-10-06).** A saved pin
+  or address (`SavedPlace.isPoint`) reopens through `selectContactPlace` with no search: the
+  enrichment search for "505 2nd Street" on its own point adopted a real-estate office in the same
+  building under the 30 m rule (seen on the 4a). `toggleSave` and Set as Home/Work mark a
+  non-listing `bare`. The place sheet's save menu has Rename through the `SavedActions.rename`
+  holder (MapScreen takes no new callback), which also marks a non-listing bare. A renamed
+  listing keeps your name when its details load. Checked on the 4a: save a pin, rename it, reopen
+  from the lists sheet. `SavedPlacePointTest`.
 - **A contact's address reopened from history (2026-10-05).** `SavedPlace.bare` marks a label on a
   point (set by `selectContactPlace`); `selectSaved` reopens a bare one as saved, name and address,
   with no search. For every other saved or recent place the enrichment search adopts a listing
