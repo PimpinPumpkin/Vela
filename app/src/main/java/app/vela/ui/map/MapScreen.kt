@@ -1772,7 +1772,7 @@ fun MapScreen(
             animateContent = { it.overlay.slide },
             animateChange = { from, to -> BottomOverlay.animateChange(from.overlay, to.overlay) },
             onBack = if (state.areaPicking || state.pickOnMap != null || state.transitNav != null ||
-                searchOpen || (altsOpen && state.directionsOpen && !state.showSteps && !state.editingStops) ||
+                searchOpen || app.vela.ui.place.RoutePanelState.minimized.value || (altsOpen && state.directionsOpen && !state.showSteps && !state.editingStops) ||
                 (mapEngaged && bottomFrame.overlay == BottomOverlay.RESULTS && state.resultsCollapsed)) null else when (bottomFrame.overlay) {
                 BottomOverlay.PLACE -> if (state.navigating) null else vm::clearSelection
                 BottomOverlay.DIRECTIONS, BottomOverlay.CLASSIC_DIRECTIONS -> vm::clearRoute

@@ -1640,6 +1640,7 @@ fun DirectionsPanel(
     // (SheetFold), so the collapsed flip changes nothing visible.
     val bodyMax = (LocalConfiguration.current.screenHeightDp * 0.58f).let { cap -> bodyMaxDp?.let { minOf(cap, it) } ?: cap }
     val dirH = remember(destinationName) { Animatable(if (collapsed.value) 0f else bodyMax) }
+    RoutePanelBack(collapsed.value) { collapsed.value = false }
     val dirSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
     val dirDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
     val dirScope = rememberCoroutineScope()

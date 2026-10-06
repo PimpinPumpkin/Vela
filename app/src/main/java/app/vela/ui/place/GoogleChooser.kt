@@ -139,6 +139,8 @@ fun GoogleStyleDirectionsPanel(
     // small screen can see the route. Handle tap: summary <-> minimized (list -> summary); swipe
     // down from the summary minimizes, swipe up restores; a map pan minimizes.
     val minimized = remember { mutableStateOf(false) }
+    // Back on the minimized picker brings the picker back; only the next Back leaves the route.
+    RoutePanelBack(minimized.value) { minimized.value = false }
     var downPull by remember { mutableStateOf(0f) }
     val bodyMax = (LocalConfiguration.current.screenHeightDp * 0.58f).let { cap -> bodyMaxDp?.let { minOf(cap, it) } ?: cap }
     val bodyH = remember { Animatable(0f) }
@@ -570,6 +572,23 @@ internal fun modeTitle(mode: TravelMode): String = stringResource(
         TravelMode.BICYCLE -> R.string.place_mode_bike
     },
 )
+
+/** Whether the route picker on screen is minimized. MapScreen reads it to leave Back to the
+ *  picker (it cannot take another argument: the method size limit). */
+internal object RoutePanelState {
+    val minimized = mutableStateOf(false)
+}
+
+/** A minimized route picker takes Back to restore itself (user 2026-10-06: a back swipe while
+ *  looking at the route on the map closed the route and brought the place card back). */
+@Composable
+internal fun RoutePanelBack(minimized: Boolean, restore: () -> Unit) {
+    androidx.compose.runtime.DisposableEffect(minimized) {
+        RoutePanelState.minimized.value = minimized
+        onDispose { RoutePanelState.minimized.value = false }
+    }
+    androidx.activity.compose.BackHandler(enabled = minimized && app.vela.ui.LocalSheetActive.current, onBack = restore)
+}
 
 /** Google's round header action: a tonal circle with a glyph. */
 @Composable

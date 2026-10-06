@@ -4005,6 +4005,7 @@ to the original position over 180 ms without changing selection, route, or guida
 completed gesture suppresses the ordinary exit animation. Each content key owns its gesture
 state so a reopened sheet starts at zero progress. Drawing, map picking, search, and route
 alternatives keep their existing back priority; ending a drive still uses its confirmation.
+A minimized route picker takes Back to restore itself; the route closes on the next Back.
 Sheet cards use 4 dp shadow elevation (the driving steps card retains 6 dp). Directions share/close
 and step-list close actions reuse Place's `HeaderCircleButton`: 36 dp circle with an 18 dp icon.
 
