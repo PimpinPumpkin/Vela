@@ -113,6 +113,7 @@ nav:
       - Android Auto: book/android-auto.md
       - The drive's chrome: book/drive-chrome.md
       - Releases: book/releases.md
+      - Settings and page motion: book/settings.md
   - Specification: spec.md
   - Project:
       - Roadmap: roadmap.md

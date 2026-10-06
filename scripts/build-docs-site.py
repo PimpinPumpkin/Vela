@@ -48,6 +48,7 @@ PAGES = {
     "docs/book/10-android-auto.md": "book/android-auto.md",
     "docs/book/11-drive-chrome.md": "book/drive-chrome.md",
     "docs/book/12-releases.md": "book/releases.md",
+    "docs/book/13-settings.md": "book/settings.md",
     "SPEC.md": "spec.md",
     "ROADMAP.md": "roadmap.md",
     "docs/ROADMAP-HISTORY.md": "roadmap-history.md",
