@@ -167,6 +167,9 @@ private const val ROUTE_PENDING_MAX_PASSES = 40
 // The 3D puck overlay waits this long after a gesture's last camera move before it replaces the
 // map's own symbol (see the detached branch of the nav ticker).
 private const val PUCK_GESTURE_SETTLE_MS = 180L
+private const val TILE_LOD_PITCH_DEG = 30.0
+private const val TILE_LOD_RADIUS = 1.0
+private const val TILE_LOD_SCALE = 6.0
 private const val IDLE_WORK_GAP_MS = 1000L
 private const val IDLE_WORK_TRAIL_MS = 250L
 private const val NAV_CUT_M = 400.0       // cut piece length: 256 gradient texels over 400 m = 1.6 m each
@@ -1194,6 +1197,8 @@ fun VelaMapView(
     var styleRef by remember { mutableStateOf<Style?>(null) }
     val navPuck = remember { NavPuck() }
     val turnDeclutter = remember { TurnDeclutter() }
+    // The cross-street bubbles this map hid because the camera left the car (ids, to put back).
+    val detachedBubblesHidden = remember { ArrayList<String>() }
     // The follow-mode puck OVERLAY (see the ticker): screen position + transform, written per
     // frame by the ticker and read in the DRAW phase (graphicsLayer lambdas), so a frame costs
     // one layer redraw and no recomposition.
@@ -3181,6 +3186,11 @@ fun VelaMapView(
                     val kZoom = (1f - kotlin.math.exp(-dtEase / 0.5f)).toDouble()
                     camState[0] += (pt.lat - camState[0]) * kPos
                     camState[1] += (pt.lng - camState[1]) * kPos
+                    // Back on the car: the cross-street bubbles hidden for the free camera return.
+                    if (detachedBubblesHidden.isNotEmpty()) {
+                        runCatching { detachedBubblesHidden.forEach { id -> style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.VISIBLE)) } }
+                        detachedBubblesHidden.clear()
+                    }
                     // Compass toggle (user 2026-07-15): north-up keeps the follow (position, zoom,
                     // puck-low framing) but eases bearing to 0 and the tilt flat; the puck arrow
                     // then rotates on the north-up map instead of the map rotating under it.
@@ -3280,6 +3290,25 @@ fun VelaMapView(
                     }
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
+                    // CROSS-STREET BUBBLES ARE FOR THE FOLLOWING CAMERA (user 2026-10-06). They tell
+                    // the driver what is coming up along the route; under a hand they are one more
+                    // set of symbols to place on every frame the tilted view turns or zooms (4a,
+                    // spin and zoom together over a drive: 40 fps with them, 46 without). Hidden
+                    // once when the camera leaves the car, shown again when it returns; the turn
+                    // and exit callouts stay. Dial `navBubblesDetached` 1 keeps them.
+                    if (detachedBubblesHidden.isEmpty() && !overviewLive[0]) {
+                        if (!app.vela.ui.AppTune.on("navBubblesDetached", false))
+                        runCatching {
+                            for (id in arrayOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER, NAV_ROADLABEL_FADE_LAYER)) {
+                                val l = style.getLayer(id) ?: continue
+                                if (l.visibility.value == Property.NONE) continue
+                                l.setProperties(PropertyFactory.visibility(Property.NONE))
+                                detachedBubblesHidden += id
+                            }
+                        }
+                        // Asked once per detach, whatever it found (the dial and three lookups are not per-frame work).
+                        if (detachedBubblesHidden.isEmpty()) detachedBubblesHidden += ""
+                    }
                     // DETACHED (a pan, a rotate, a pinch, the overview): the overlay stays, projected
                     // through the camera the gesture just set. Handing the puck back to the map
                     // symbol here made it flat (the 3D icons too) and brought back the async-upload
@@ -3682,15 +3711,20 @@ fun VelaMapView(
                     map.gesturesManager.shoveGestureDetector.pixelDeltaThreshold = 20f * context.resources.displayMetrics.density
                 }
                 map.setMaxPitchPreference(70.0)
-                // TILE LOD CALL SITE (not wired, needs a device pass). The engine only thins far
-                // tiles above its pitch threshold, default 60 degrees, and nav runs at 55, so the
-                // defaults do nothing for a drive.
-                // Test dials (degrees, tiles, factor, zoom levels); unset leaves the engine's own value.
+                // TILE LEVEL OF DETAIL on a tilted view (MapLibre 11.10+). Past the pitch threshold
+                // the engine loads the far part of the view at lower zoom instead of every tile to
+                // the horizon at full zoom. Its own threshold is 60 degrees and a drive runs at 55,
+                // so the defaults never engage; 45 degrees with a one-tile full-detail radius and a
+                // scale of 3 does. 4a, zoom strokes over a drive in San Francisco: 52 fps and 189
+                // map requests with it off, 55 fps and 95 requests with it on, the near field the
+                // same in screenshots. A zoom shift of -1 goes further (55 fps, 66 requests) but
+                // drops the whole view a level: no buildings near the car. Dials: lodPitch
+                // (degrees; 90 turns it off), lodRadius, lodScale, lodShift.
                 runCatching {
-                    app.vela.ui.AppTune.local("lodPitch")?.let { map.setTileLodPitchThreshold(Math.toRadians(it)) }
-                    app.vela.ui.AppTune.local("lodRadius")?.let { map.setTileLodMinRadius(it) }
-                    app.vela.ui.AppTune.local("lodScale")?.let { map.setTileLodScale(it) }
-                    app.vela.ui.AppTune.local("lodShift")?.let { map.setTileLodZoomShift(it) }
+                    map.setTileLodPitchThreshold(Math.toRadians(app.vela.ui.AppTune.value("lodPitch", TILE_LOD_PITCH_DEG)))
+                    map.setTileLodMinRadius(app.vela.ui.AppTune.value("lodRadius", TILE_LOD_RADIUS))
+                    map.setTileLodScale(app.vela.ui.AppTune.value("lodScale", TILE_LOD_SCALE))
+                    map.setTileLodZoomShift(app.vela.ui.AppTune.value("lodShift", 0.0))
                 }
                 // Tap a labeled POI on the map to open it. (Named so the D-pad
                 // controller's OK-at-crosshair runs the EXACT same resolution path;

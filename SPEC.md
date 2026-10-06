@@ -1606,6 +1606,16 @@ at 3x):
   carries, at most 30 minutes; anything but a success drops it. Each range read of a streamed
   archive was two round trips, the release address and then the read.
 
+**Tilted views load less of the far field.** The engine is MapLibre 13.6.1 (OpenGL artifact).
+`setTileLodPitchThreshold(30 degrees)`, `setTileLodMinRadius(1)`, `setTileLodScale(6)`, zoom
+shift 0, set once when the map is created: above the threshold, tiles away from the view point
+load at lower zoom. The engine's defaults (60 degrees) never engage at the drive's 55. While the
+drive camera is off the car the cross-street bubble layers are hidden (the turn and exit callouts
+stay) and return when it re-attaches. Spin strokes and zoom strokes together over a tilted drive
+view on a 4a in San Francisco: 25 fps, worst second 9, on 11.8.0 behavior (level of detail off);
+49 fps, worst second 24, with both. Zoom strokes alone: 51 fps and about 190 map requests off,
+55 fps and about 95 on. The same combined strokes on a flat drive view: 56.
+
 A hand gesture (pan, pinch, rotate) during a drive does not hide labels; only a turn of the
 follow camera does (`TurnDeclutter`). A hand moves the map in strokes with rests between, and one
 hide and one restore per stroke is two relayouts per stroke. Timed strokes on a 4a in San

@@ -520,6 +520,7 @@ Defaults that make the safe path the easy one:
   when it finishes, which on a real phone wipes saved places, trips and permission grants (it did
   once, 2026-07-16, on the wired test phone). `.github/workflows/baseline-profile.yml` (monthly cron
   + dispatch) regenerates on a KVM emulator and opens a PR when the profile drifts.
+- Map engine: MapLibre Native Android 13.6.1, the `android-sdk-opengl` artifact (2026-10-06).
 - Toolchain: AGP 9.4.1, Kotlin 2.4.20, Gradle 9.8.0, KSP 2.3.12, Hilt 2.60.1, compileSdk 36 (every
   module), targetSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog. **AGP 9 builds Kotlin
   in (2026-09-25 upgrade):** there is no `org.jetbrains.kotlin.android` plugin and no `kotlinOptions`
@@ -3839,6 +3840,26 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **MapLibre 13.6.1 and tile level of detail (2026-10-06, SPEC 4.7b).** The map engine is
+  `org.maplibre.gl:android-sdk-opengl:13.6.1` (from 13.0 the plain `android-sdk` artifact is
+  Vulkan; Vela stays on OpenGL). The only source change was `hillshadeShadowColor` /
+  `hillshadeHighlightColor` taking an array. The reason for the move is `setTileLod*`
+  (11.10+): past a pitch threshold the engine loads the far part of a tilted view at lower zoom.
+  Its own threshold is 60 degrees and a drive runs at 55, so the defaults never engage; Vela sets
+  30 degrees, radius 1, scale 6 (`TILE_LOD_*`, dials `lodPitch` / `lodRadius` / `lodScale` /
+  `lodShift`; `lodPitch 90` turns it off). THE CASE IT FIXES is a hand spinning and zooming a
+  TILTED drive view at once (the reported "single digit fps"): 4a, San Francisco, 25 fps with a
+  worst second of 9 before, 49 with a worst second of 24 after, together with hiding the
+  cross-street bubbles while the camera is off the car (`detachedBubblesHidden`, dial
+  `navBubblesDetached`; the turn and exit callouts stay). The same strokes on a FLAT drive view
+  run 56: tilt is the cost, which is why the browse map (flat) never showed it on the reporter's
+  phone. A zoom shift of -1 reaches 49 by itself but drops buildings near the car. Checked on
+  the 4a: start, Davis, Tokyo labels, a drive, an offline plan and drive in airplane mode. NOT
+  checked: the Android Auto map (`MapSnapshotter` has no level of detail), saved-area download
+  and delete, the P9, old Android (dispatch old-android-smoke). MapLibre 13 logs every tile
+  request at verbose, which pushes `VelaFps` lines out of the log buffer inside a minute: read
+  them as a stream (`adb logcat -s VelaFps > file`), not with `-d` afterwards. Test spin and zoom
+  TOGETHER (`debug.vela.spin w140` with `debug.vela.cam` strokes); apart they hid this.
 - **Hand gestures during a drive: what was measured (2026-10-06, SPEC 4.7b).** 4a, a drive in San
   Francisco, camera detached. (1) A pan, pinch or rotate no longer hides labels the way a
   follow-camera turn does: a hand moves in strokes with rests, so the set was hidden and restored
