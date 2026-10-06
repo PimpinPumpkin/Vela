@@ -938,8 +938,9 @@ fun NavFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composa
     val themed = app.vela.ui.theme.wallpaperColorsInUse()
     androidx.compose.material3.FloatingActionButton(
         onClick = onClick, modifier = modifier, shape = androidx.compose.foundation.shape.CircleShape,
-        containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else NavBarColor,
-        contentColor = if (themed) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+        // Off wallpaper colors the buttons wear what the bar wears: white in the light theme, near black in the dark ones.
+        containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else navBarLook().bg,
+        contentColor = if (themed) MaterialTheme.colorScheme.onPrimaryContainer else navBarLook().ink,
     ) { content() }
 }
 
@@ -951,8 +952,9 @@ fun NavRecenterPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
         onClick = onClick,
         modifier = modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
         shape = androidx.compose.foundation.shape.CircleShape,
-        containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else NavBarColor,
-        contentColor = if (themed) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+        // Off wallpaper colors the buttons wear what the bar wears: white in the light theme, near black in the dark ones.
+        containerColor = if (themed) MaterialTheme.colorScheme.primaryContainer else navBarLook().bg,
+        contentColor = if (themed) MaterialTheme.colorScheme.onPrimaryContainer else navBarLook().ink,
     ) {
         Icon(SymOutlined.Navigation, contentDescription = null, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
@@ -963,10 +965,10 @@ fun NavRecenterPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 /** The nav bar's surface, shared with the step sheet it opens into: near black in every theme. */
 val NavBarColor = androidx.compose.ui.graphics.Color(0xFF101214)
 
-/** What the drive's bottom bar wears. Near-black with light inks in both themes (Google's bar),
- *  unless the wallpaper colors are in use: then the theme's own surface and inks, light or dark,
- *  so a Material You phone's bar matches the rest of its chrome (issue #679; the black bar had
- *  taken that away). [onDark] says which set of fixed inks sits on it. */
+/** What the drive's bottom bar wears: the theme's own surface and inks under wallpaper colors,
+ *  white with dark inks in the light theme, near-black with light inks in the dark ones. It was
+ *  near-black in every theme for a while (Google's bar), which sat badly under a light app
+ *  (issue #679). [onDark] says which set of fixed inks sits on it. */
 class NavBarLook(val bg: Color, val ink: Color, val dim: Color, val onDark: Boolean)
 
 @Composable
@@ -974,7 +976,8 @@ fun navBarLook(): NavBarLook =
     if (app.vela.ui.theme.wallpaperColorsInUse()) NavBarLook(
         MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurface,
         MaterialTheme.colorScheme.onSurfaceVariant, isAppInDarkTheme(),
-    ) else NavBarLook(NavBarColor, SheetPalette.InkDark, SheetPalette.DimDark, true)
+    ) else if (!isAppInDarkTheme()) NavBarLook(SheetPalette.bg(false, false), SheetPalette.InkLight, SheetPalette.DimLight, false)
+    else NavBarLook(NavBarColor, SheetPalette.InkDark, SheetPalette.DimDark, true)
 
 /** Portrait: the bar sits flush on the screen's bottom edge, like Google's. Landscape: a card. */
 @Composable

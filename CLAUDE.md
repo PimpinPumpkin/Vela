@@ -4667,10 +4667,12 @@ architecture note.
   - **Wallpaper colors:** ask `wallpaperColorsInUse()` (Theme.kt), never `DynamicColor.on`. On
     GrapheneOS the dynamic scheme can be rejected and Vela's own used; a button that read the
     switch alone came out teal.
-  - **The drive bar is dark in both themes, except under wallpaper colors** (issue #679,
-    2026-10-06): `navBarLook()` in NavOverlays is the one source for its surface and inks
-    (`surfaceContainerHigh` and the theme's inks when `wallpaperColorsInUse()`, else near-black
-    and the dark inks). Anything drawn on it reads `navBarLook()`; the step
+  - **The drive bar follows the theme** (issue #679, 2026-10-06, the owner's call after a spell
+    of near-black in every theme): `navBarLook()` in NavOverlays is the one source for its
+    surface and inks: `surfaceContainerHigh` and the theme's inks when `wallpaperColorsInUse()`,
+    white with dark inks in the light theme, near-black with light inks in the dark ones. The
+    drive's side buttons and Re-center pill wear the same. Light look checked on the 4a (bar,
+    step list, paused). Anything drawn on it reads `navBarLook()`; the step
     rows learn it from `LocalStepsOnDark`. The themed look is NOT device-checked: the 4a cannot
     turn Material You on. Dark text on the bar in light theme was a real bug.
   - **An `IconButton` is 48 dp at least**, whatever `Modifier.size` says. The landscape route
