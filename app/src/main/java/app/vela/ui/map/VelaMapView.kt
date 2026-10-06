@@ -3685,10 +3685,13 @@ fun VelaMapView(
                 // TILE LOD CALL SITE (not wired, needs a device pass). The engine only thins far
                 // tiles above its pitch threshold, default 60 degrees, and nav runs at 55, so the
                 // defaults do nothing for a drive.
-                // map.setTileLodPitchThreshold(Math.toRadians(45.0))
-                // map.setTileLodMinRadius(2.0)
-                // map.setTileLodScale(1.5)
-                // map.setTileLodZoomShift(0.0)
+                // Test dials (degrees, tiles, factor, zoom levels); unset leaves the engine's own value.
+                runCatching {
+                    app.vela.ui.AppTune.local("lodPitch")?.let { map.setTileLodPitchThreshold(Math.toRadians(it)) }
+                    app.vela.ui.AppTune.local("lodRadius")?.let { map.setTileLodMinRadius(it) }
+                    app.vela.ui.AppTune.local("lodScale")?.let { map.setTileLodScale(it) }
+                    app.vela.ui.AppTune.local("lodShift")?.let { map.setTileLodZoomShift(it) }
+                }
                 // Tap a labeled POI on the map to open it. (Named so the D-pad
                 // controller's OK-at-crosshair runs the EXACT same resolution path;
                 // docs/dpad.md.)
