@@ -157,6 +157,9 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!-- "The maps app" to the system (issue #683): Android Automotive picks what fills its
+                     map panel by this category, and "open maps" requests resolve by it on a phone. -->
+                <category android:name="android.intent.category.APP_MAPS" />
             </intent-filter>
         </activity-alias>
 
@@ -169,6 +172,9 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!-- "The maps app" to the system (issue #683): Android Automotive picks what fills its
+                     map panel by this category, and "open maps" requests resolve by it on a phone. -->
+                <category android:name="android.intent.category.APP_MAPS" />
             </intent-filter>
         </activity-alias>
 

@@ -104,6 +104,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   moment at a mid zoom, Vela now quietly fetches the buildings for the area you're looking at in the
   background (disk cache, no extra memory), so the zoom-in paints instantly. Canceled the moment you
   move the map; never runs during navigation.
+- 🟡 **Declared as a maps app (issue #683, 2026-10-06)** - Vela answers the system's "maps app" category, which is what Android Automotive head units use to choose what fills their map panel. Untested on an Automotive unit.
 - ✅ **Transit names in your language (issue #674, 2026-10-06)** - stop, line and agency names in transit directions, on departure boards and in stop lists come in the app's language (Japanese in Japan), and times keep your 12 or 24-hour setting. Fares written like "260円" show. Still English: Google's stop-board fallback, used only where the open feed has no board.
 - ✅ **Offline routes stay inside the downloaded data (2026-10-06)** - a trip just outside a downloaded region (inside its rectangle on the map, past its real border) is refused at once; it used to come back as a long route between the nearest roads the region does have.
 - ✅ **Back restores a minimized route picker (2026-10-06)** - after you pan the map to look at the route, a back swipe brings the picker back up; the next one leaves the route. It used to close the route and bring the place card back.

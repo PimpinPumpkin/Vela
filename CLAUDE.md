@@ -3920,6 +3920,12 @@ architecture note.
   lines), session tokens scrubbed; `theSameTripParsesAlikeInJapaneseAndEnglish` compares them.
   STILL ENGLISH-ONLY: the Google stop BOARD fallback (`WebStopDeparturesFetcher`, pinned `hl=en`;
   its parser's anchor is an AM/PM regex) and the "min late" text.
+- **`CATEGORY_APP_MAPS` (issue #683, 2026-10-06).** Both launcher aliases declare it beside MAIN
+  and LAUNCHER: Android Automotive (Android running in the car itself, not Android Auto) fills
+  its map panel with an app that has it, and `pm query-activities -a android.intent.action.MAIN
+  -c android.intent.category.APP_MAPS` lists Vela beside Google Maps on a phone. That is ALL
+  that was done: Vela is not tested on Automotive, declares no automotive feature and is not
+  marked distraction-optimized, so a car may still refuse to show it while moving.
 - **compileSdk 37 and OkHttp 5.5 (2026-10-06).** OkHttp 5 and the newer androidx libraries refuse
   to build against 36 (the AAR metadata check). 37 changes no runtime behavior; targetSdk stays
   35. OkHttp 5 needed no code change. Checked on the 4a: fresh map tiles (MapLibre's own client
