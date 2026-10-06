@@ -325,6 +325,13 @@ fun GoogleStyleDirectionsPanel(
                         if (cams > 0) {
                             Text(androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
                         }
+                        // Why a slower route leads (discussion #676): with "Avoid surveillance cameras"
+                        // on, the picker puts a route with fewer cameras first, and said nothing about it.
+                        val fastestCams = flockOnRoute.getOrElse(routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest }) { 0 }
+                        if (!isFastest && flockOnRoute.size == routes.size && fastestCams > cams) {
+                            val n = fastestCams - cams
+                            Text(androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_avoided, n, n), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficGreen)
+                        }
                         // The alternates affordance sits with the ETA, not down in the button row: it is
                         // about THIS number ("29 min ... and what else?"). Always there, so its absence
                         // never has to be interpreted; with one route it says so and does nothing.

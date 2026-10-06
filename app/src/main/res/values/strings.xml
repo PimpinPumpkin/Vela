@@ -147,6 +147,10 @@
     <string name="settings_flock_detour" translatable="false">Try side streets around cameras</string>
     <string name="settings_flock_detour_hint" translatable="false">When the top route still passes cameras, tries a point just off the road at each camera and routes through it, the way you would by long-pressing the map. A route that passes fewer cameras within the same small detour goes to the top of the list. Costs a few extra route requests per trip. Off by default.</string>
     <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route (a camera aimed across the road is left out, since it reads cross traffic) and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
+    <plurals name="dir_cameras_avoided" translatable="false">
+        <item quantity="one">Passes %1$d fewer camera than the fastest route</item>
+        <item quantity="other">Passes %1$d fewer cameras than the fastest route</item>
+    </plurals>
     <plurals name="dir_cameras_on_route" translatable="false">
         <item quantity="one">%1$d camera on this route</item>
         <item quantity="other">%1$d cameras on this route</item>
