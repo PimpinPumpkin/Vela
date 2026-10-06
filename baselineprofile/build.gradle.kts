@@ -16,7 +16,7 @@ plugins {
 
 android {
     namespace = "app.vela.baselineprofile"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 28
         targetSdk = 35
