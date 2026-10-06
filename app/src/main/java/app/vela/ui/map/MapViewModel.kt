@@ -793,6 +793,8 @@ class MapViewModel @Inject constructor(
             }
         }
 
+        // The streamed speed limit is read through the shared client, counted with the map's own requests.
+        app.vela.data.StreamedSpeedLimit.http = http.newBuilder().addInterceptor(app.vela.diag.NetCount).addInterceptor(app.vela.offline.ReleaseRedirects).build()
         nav.bind()
         // Turning the transit lines on (or off) acts at once, not at the next pan.
         viewModelScope.launch {
@@ -2188,7 +2190,7 @@ class MapViewModel @Inject constructor(
         val s = _state.value
         fun split(uris: List<String>) = uris.count { "file://" in it }.let { local -> "$local on phone, ${uris.size - local} streamed" }
         val here = s.myLocation
-        val routing = here != null && runCatching { routeEngine.covers(here, here, TravelMode.DRIVE) }.getOrDefault(false)
+        val routing = here != null && limitsOnPhone(here)
         return "data: routing " + (if (routing) "on phone" else "online only") +
             ", map " + (if (s.basemapArchive != null) "on phone" else "streamed") +
             ", places " + split(s.placesOverlays) +
@@ -3466,8 +3468,12 @@ class MapViewModel @Inject constructor(
             android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${when { cachedDetails != null -> "cache"; native != null -> "plain search${if (native.popularTimes == null) " (no popular times at this place)" else ""}"; else -> "details page" }}")
             // The details PAGE is a hidden WebView: its boot alone held the main thread 757 ms on a
             // 4a right after Start (a drive started from the sheet, Perfetto 2026-09-28). Not while
-            // navigating; the sheet is behind the drive by then.
-            val d = cachedDetails ?: (native ?: (if (_state.value.navigating) null else runCatching { webPopularTimes.fetch(p) }.getOrNull()))
+            // navigating; the sheet is behind the drive by then. Not with the route chooser up
+            // either: the sheet is behind that too, a drive is the likely next tap, and the page
+            // goes on working for some 20 s after its answer (two bursts of two to three cores'
+            // worth on a 4a, which landed in the first seconds of a drive started promptly).
+            val pageWanted = _state.value.let { !it.navigating && !it.directionsOpen }
+            val d = cachedDetails ?: (native ?: (if (!pageWanted) null else runCatching { webPopularTimes.fetch(p) }.getOrNull()))
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             if (d != null) mergeDetails(p, d)
             _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
@@ -8270,6 +8276,19 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Whether a downloaded region really holds the roads at [p]. By the region's own boundary,
+     *  never its box: a box reaches over the neighbor (a city across the state line sat inside the
+     *  box of a downloaded region that has no roads there), and skipping the streamed limits on
+     *  the box alone left such places with no speed limit at all. A grid cell is its box. */
+    private fun limitsOnPhone(p: LatLng): Boolean {
+        // Test dial `debug.vela.tune.streamLimits 1`: read the streamed limits even over a downloaded region.
+        if (app.vela.ui.AppTune.local("streamLimits") == 1.0) return false
+        val st = _state.value
+        if (st.cellsInstalled.any { p.lat in it.s..it.n && p.lng in it.w..it.e }) return true
+        if (st.routingRegions.isEmpty()) return runCatching { routeEngine.covers(p, p, TravelMode.DRIVE) }.getOrDefault(false)
+        return st.routingRegions.any { it.id in st.routingInstalledIds && it.covers(p.lat, p.lng) }
+    }
+
     private fun refreshMaxspeedOverlay(center: LatLng? = mapCenter ?: _state.value.myLocation) {
         val c = center ?: return
         viewModelScope.launch {
@@ -8277,7 +8296,7 @@ class MapViewModel @Inject constructor(
             // the streamed copy is not mounted over it: a drive across a downloaded state made
             // thousands of range requests a minute for limits it already had, most of them while
             // the map was being dragged (Pixel 9 log, 2026-10-05).
-            val onDevice = runCatching { routeEngine.covers(c, c, TravelMode.DRIVE) }.getOrDefault(false)
+            val onDevice = limitsOnPhone(c)
             val uris = if (onDevice) emptyList() else runCatching { maxspeedStore.sourcesFor(c, app.vela.BuildConfig.MAXSPEED_MANIFEST_URL) }.getOrDefault(emptyList())
             if (uris != _state.value.maxspeedOverlays) _state.update { it.copy(maxspeedOverlays = uris) }
         }

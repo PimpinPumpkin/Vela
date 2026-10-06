@@ -55,7 +55,7 @@ abstract class HiddenWebView(
         // Under real memory pressure the idle timer is far too slow: the OS wants memory now and a
         // Chromium renderer is one of the largest things we hold. Reap on the main thread (WebView).
         app.vela.ui.MemoryPressure.register { level ->
-            if (app.vela.ui.MemoryPressure.isSevere(level)) main.post { cancelReap(); reapNow() }
+            if (app.vela.ui.MemoryPressure.isSevere(level)) main.post { if (webView != null) Log.d("VelaWeb", "$tag: memory trim level $level"); cancelReap(); reapNow() }
         }
     }
 
@@ -108,6 +108,8 @@ abstract class HiddenWebView(
         val id = seq.incrementAndGet().toString()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred
+        val asked = android.os.SystemClock.elapsedRealtime()
+        Log.d("VelaWeb", "$tag: page asked")
         return try {
             withTimeoutOrNull(timeoutMs) {
                 start(id)
@@ -115,6 +117,7 @@ abstract class HiddenWebView(
             }
         } finally {
             pending.remove(id)
+            Log.d("VelaWeb", "$tag: ${if (deferred.isCompleted) "answered" else "given up"} after ${android.os.SystemClock.elapsedRealtime() - asked} ms")
             // Given up on (cancelled, or timed out): stop the page. Left alone it kept loading and
             // running its scripts to the end, which for a page asked for from the route chooser was
             // the first seconds of the drive.
@@ -164,7 +167,8 @@ abstract class HiddenWebView(
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 // Bake THIS page's request id in, so a late poller can only complete its own request.
-                if (view != null) this@HiddenWebView.onPageFinished(view, url, currentId)
+                // The parking page is nobody's page: finishing late, it must not be taken for the next request's.
+                if (view != null && url != "about:blank") this@HiddenWebView.onPageFinished(view, url, currentId)
             }
         }
         configure(wv)
@@ -191,6 +195,7 @@ abstract class HiddenWebView(
 
     /** Destroy the view now. Main thread only. The next fetch re-creates it. */
     protected fun reapNow() {
+        if (webView != null) Log.d("VelaWeb", "$tag: view destroyed")
         webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
         webView = null
         onReaped()

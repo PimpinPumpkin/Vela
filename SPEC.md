@@ -1565,7 +1565,8 @@ real time, the way a trip replay runs, so playback behavior reproduces without a
 
 **Work beside the map during a drive.** The map's render thread shares the phone's fast cores
 with everything else the app runs, so background work that never ends shows as dropped map
-frames. Three rules, each from a measured case (4a, demo drive across San Francisco at 3x):
+frames. Rules, each from a measured case (4a, a 117 km demo drive from Davis toward San Francisco
+at 3x):
 
 - The plate-camera layer works out the cameras on the shown routes ONCE per set of routes
   (`flockOnRoute`) and draws that set; only a route with more cameras than
@@ -1578,10 +1579,32 @@ frames. Three rules, each from a measured case (4a, demo drive across San Franci
   a hidden page whose request was cancelled or timed out is told to stop loading
   (`HiddenWebView.request`). The transit time for the mode chips is a Google page load that
   otherwise ran into the first seconds of the drive.
+- The place-details page is not loaded while the route chooser is up (`pageWanted`): the sheet is
+  behind the chooser, and a Google page goes on working after its answer is read, a burst about
+  3 s later and another about 20 s later, each two to three cores' worth for a few seconds on a
+  4a. Stopping its loads, pausing it and putting the view on a blank page were each measured and
+  changed nothing, so the only cure is not loading a page nobody is looking at.
+  `HiddenWebView` logs every page asked for, answered, given up on and every view destroyed
+  under `VelaWeb`.
+- The streamed speed limit is READ, not mounted (`data/StreamedSpeedLimit`): the tile under the
+  car at the archive's deepest zoom, decoded by `core/util/MvtLines`, nearest tagged line within
+  20 m, twelve tiles kept, an empty tile asked again after 60 s. Mounted on the map as an
+  invisible layer for `queryRenderedFeatures`, the archive was asked for every tile the tilted
+  view covered: 710 range requests in ten seconds of a replayed drive, against 1 to 4 read this
+  way (Reno, `debug.vela.tune.streamLimits 1`, which reads the streamed limits over a downloaded
+  region too).
+- Whether a downloaded region answers the limit is decided by the region's boundary
+  (`limitsOnPhone`), never the engine's box test: the box reaches over the neighbor, and the
+  streamed limits were being skipped there for a region that has no roads at that spot.
+- `offline/ReleaseRedirects` (in the map's HTTP client and the speed-limit reader's) keeps the
+  signed storage address a release file redirects to until a minute before the `se` time it
+  carries, at most 30 minutes; anything but a success drops it. Each range read of a streamed
+  archive was two round trips, the release address and then the read.
 
 Same drive before and after: following 33 -> 57 fps (longest frame gap 264 -> 51 ms), camera
-detached and still 40 -> 56, detached and turning at 40 degrees a second 25 -> 54. Davis showed
-none of it; measure a dense city at replay speed. Find such work with thread CPU first
+detached and still 40 -> 56, detached and turning at 40 degrees a second 25 -> 54. A 4 km route
+showed none of it: the camera pass costs in proportion to the route's length, so measure a long
+route at replay speed. Find such work with thread CPU first
 (`adb shell top -H -b -n 2 -d 5 -p <pid> -o TID,%CPU,CMD -s 2`): coroutine workers on both the
 Default and IO dispatchers are named `DefaultDispatcher-worker`.
 
@@ -2780,6 +2803,8 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   halo covers its dot.
 - **An invisible-but-queryable layer needs `lineOpacity(0.004)`**, not opacity 0: MapLibre skips
   fully transparent features at render time and `queryRenderedFeatures` only sees rendered ones.
+  (No layer is built this way any more; the speed limits it was written for are read from their
+  archive directly, 4.7b.)
   An 8-digit hex color string is rejected by the color parser and falls back to opaque black.
 - Point GeoJSON sources take an explicit maxzoom: 18 for the dense ones (ambient, markers,
   traffic controls, transit stops), 16 for the camera sources (plate cameras, their clusters,

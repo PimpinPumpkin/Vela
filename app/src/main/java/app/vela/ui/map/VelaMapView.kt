@@ -2166,68 +2166,26 @@ fun VelaMapView(
         if (placesNavFuelOnly || placesNavDriveSet || placesPreviewHidden) applyOpenPlacesHidden(style)
     }
 
-    LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
+    // The posted limit under the car from the streamed speed-limit archive (~2.5 s) while driving
+    // or navigating, so a sign shows online with no downloaded region. Read from the archive's own
+    // tile under the car (StreamedSpeedLimit), never a map layer: mounted on the map it loaded
+    // every tile the tilted view covered. A style from before this may still hold the old layer.
+    LaunchedEffect(styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-ms-src-") }.forEach { style.removeSource(it) } }
-        if (!speedOverlayOn) return@LaunchedEffect // no query layer on the browse map
-        maxspeedOverlays.forEachIndexed { i, uri ->
-            runCatching {
-                val srcId = "vela-ms-src-$i"
-                style.addSource(VectorSource(srcId, uri))
-                val layer = LineLayer("vela-ms-$i", srcId).apply {
-                    setSourceLayer("maxspeed") // tippecanoe layer name (build-maxspeed-region.sh: -l maxspeed)
-                    setMinZoom(11f)
-                    setProperties(
-                        // NOT opacity 0: MapLibre skips fully transparent features at render time, and
-                        // queryRenderedFeatures only sees what rendered - the transparent version returned
-                        // nothing, ever, so the badge died with the black-roads fix (found by ars18 in the
-                        // vela-dpad fork; A/B-proven here, 35 mph vs null over the same road). 0.004 is one
-                        // alpha step of black: invisible on any basemap, but the features stay queryable.
-                        PropertyFactory.lineColor(android.graphics.Color.BLACK),
-                        PropertyFactory.lineOpacity(0.004f),
-                        // Thin: the 28 px query box around the puck finds it, and every pixel of this
-                        // blended, invisible line was fill the GPU drew for nothing.
-                        PropertyFactory.lineWidth(2f),
-                    )
-                }
-                style.addLayer(layer)
-            }
-        }
     }
-
-    // Poll the streamed maxspeed overlay under the puck (~2.5 s) while driving/navigating and report the
-    // posted limit up, so a sign shows online with no routing graph. Uses the RAW fix (maxspeed needs no
-    // sub-meter precision), projected to screen, queried off the invisible line layer. Main-thread (Compose)
-    // so queryRenderedFeatures is legal; runCatching guards a mid-teardown style.
     val latestFix = rememberUpdatedState(myLocation)
     val latestMs = rememberUpdatedState(maxspeedOverlays)
     LaunchedEffect(speedOverlayOn) {
         if (!speedOverlayOn) { onRoadLimitKmh(null); return@LaunchedEffect }
         while (true) {
-            val m = mapRef
             val fix = latestFix.value
-            // AUDIT FIX 11 (2026-07-15): queryRenderedFeatures is a synchronous main-thread call
-            // into the render thread - skip the poll while a discrete flight or a two-finger
-            // gesture is in progress (keyed on those, never "camera moving": the follow tickers
-            // move the camera every frame and a moving-camera gate would starve the badge for
-            // whole drives). The 2.5 s cadence just catches up on the next tick.
-            val busy = flightDepth[0] > 0 || scaling[0] || shoving[0]
-            if (!busy && m != null && fix != null && latestMs.value.isNotEmpty()) {
-                val kmh = runCatching {
-                    val p = m.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(fix.lat, fix.lng))
-                    val r = 14f
-                    val layers = latestMs.value.indices.map { "vela-ms-$it" }.toTypedArray()
-                    m.queryRenderedFeatures(android.graphics.RectF(p.x - r, p.y - r, p.x + r, p.y + r), *layers)
-                        .asSequence()
-                        .mapNotNull { f ->
-                            app.vela.core.data.OsmMaxspeed.fromTags(
-                                f.getStringProperty("maxspeed"),
-                                f.getStringProperty("maxspeed:forward"),
-                                f.getStringProperty("maxspeed:backward"),
-                            )
-                        }.firstOrNull()
-                }.getOrNull()
+            val uris = latestMs.value
+            if (fix != null && uris.isNotEmpty()) {
+                val kmh = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching { app.vela.data.StreamedSpeedLimit.limitAt(uris, fix.lat, fix.lng) }.getOrNull()
+                }
                 onRoadLimitKmh(kmh)
             }
             kotlinx.coroutines.delay(2500)

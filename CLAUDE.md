@@ -3839,8 +3839,28 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Streaming without a downloaded region (2026-10-05, SPEC 4.7b).** The streamed speed limit is
+  read from its archive's one tile under the car (`data/StreamedSpeedLimit` + `core/util/MvtLines`),
+  not mounted as a map layer: the "Speed B" layer notes further down this file describe the old
+  way, which pulled every tile the tilted view covered (710 requests in 10 s). `limitsOnPhone`
+  decides by the region's boundary, not `routeEngine.covers` (a box). `ReleaseRedirects` keeps a
+  release file's signed address between range reads. Building overlays are what is left: 240
+  requests in the first 10 s of a drive, then 20 to 100; fewer needs MapLibre's tile level of
+  detail for tilted views, which arrived after the pinned 11.8.0. Test dial
+  `debug.vela.tune.streamLimits 1`. To test streaming on the 4a, check its downloaded regions
+  first: Reno is inside one. Moving the simulated location: open a `geo:` link there, then tap
+  the SWITCH itself off and on (a tap on the row's text does nothing), and put it back on Davis.
+- **Hidden Google pages keep working after their answer (2026-10-05).** Two bursts, about 3 s and
+  20 s after a page answers, two to three cores' worth each on a 4a; stopLoading, onPause and a
+  blank page change nothing. The details page is therefore not loaded behind the route chooser.
+  `VelaWeb` logs each page asked, answered, given up, destroyed.
+- **`gh api --paginate ... | head -1` under `set -o pipefail` dies with exit 141** when gh is still
+  writing as head closes the pipe. It failed the weekly promotion on 2026-10-05 after passing the
+  week before. Use `sed -n 1p`, which reads to the end (promote-stable.yml, fdroid-repo.yml).
 - **Lag during a drive was background work, not the map (2026-10-05, SPEC 4.7b).** A 4a at 3x
-  across San Francisco: 33 fps following, 25 turning the map. Thread CPU showed a coroutine worker
+  on a 117 km demo drive from Davis toward San Francisco (a `maps/dir` link's origin is replaced by
+  the simulated fix at Start, so it was never a drive across San Francisco): 33 fps following, 25
+  turning the map. Thread CPU showed a coroutine worker
   at a full core, the garbage collector at half and an on-device route search running, none of it
   visible in Davis. (1) `refreshFlock` with a route up recomputed `FlockCameras.along` over the
   whole route each time the view left its cached box (every few hundred meters when following,

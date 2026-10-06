@@ -395,6 +395,10 @@ what there is.
 
 ### The speed-limit badge and the speeding alert
 
+With no downloaded region the limit comes from the streamed speed-limit file instead: Vela reads
+the one tile the car is in (about 600 m across) and takes the nearest tagged road within 20 m, one
+small request per tile entered.
+
 The badge reads the road under the arrow from the downloaded region's route file: the fix is
 snapped to the nearest road within `LIMIT_SNAP_M = 25` and its forward `maxspeed` is read, with no
 limit and anything 150 km/h or over shown as blank. The lookup reruns only after about 18 m of
