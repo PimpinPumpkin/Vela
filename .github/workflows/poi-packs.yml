@@ -52,7 +52,7 @@ jobs:
       matrix: ${{ steps.sel.outputs.matrix }}
       count: ${{ steps.sel.outputs.count }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: sel
         env:
           GROUP: ${{ inputs.group }}
@@ -110,7 +110,7 @@ jobs:
       max-parallel: 12
       matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y osmium-tool jq zip unzip python3
       - name: Build ${{ matrix.id }} + upload zip + emit entry
@@ -120,7 +120,7 @@ jobs:
           MANIFEST_MODE: emit
           ENTRY_OUT: ${{ matrix.id }}.json
         run: bash scripts/build-poi-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: entry-${{ matrix.id }}
           path: ${{ matrix.id }}.json
@@ -131,10 +131,10 @@ jobs:
     if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: entries
           pattern: entry-*
