@@ -3905,7 +3905,16 @@ architecture note.
   the compass tap (north and flat) or a drive starting, NOT by the locate button or the follow
   ending: Google Maps was checked on the 4a (pinch and tilt keep following, the tilt survives a pan
   and a recenter). The compass's fade-at-north is switched off while a tilt is held, or there is
-  no way back to flat. A tilt ending under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped. TWO-FINGER
+  no way back to flat. TILT WAS DROPPING THE FOLLOW since the shove threshold went to 20 dp
+  (#627, 2026-09-29): MapLibre's move detector starts before the shove does, so the first move
+  event (shoving still false) fired `userPan` on the browse map and `navPanned` in a drive. A
+  move that begins with two fingers now waits `TWO_FINGER_PAN_DP` (44) of travel
+  (`twoFingerMove`), and a rotation releases the browse follow through `addOnRotateListener`.
+  Only a MOVING test shows this: parked, a dropped follow looks the same as a kept one. Checked
+  with a mock-GPS drive in Davis (recipe in the PARKED start note; `cmd location providers
+  set-test-provider-location` once a second from a script on the phone), browse and nav, beside
+  Google Maps: in a drive Google keeps tracking through a tilt; on its plain map, moving, a tilt
+  releases Google's follow and a pinch does not. Vela keeps following through both. A tilt ending under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped. TWO-FINGER
   GESTURES FROM ADB: `sendevent` is denied on the 4a, so a small dex run with `app_process`
   injects MotionEvents through `InputManagerGlobal.injectInputEvent` (two pointers, each from a to
   b); a session's scratch copy is `Mt.java`. Google's follow state reads from its location

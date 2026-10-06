@@ -805,7 +805,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   gesture off entirely. *While the map follows you (2026-10-06, PR #673, Kainoa Kanter):* the tilt
   you set stays instead of easing back flat, through pans and the locate button; the compass shows
   while the map is tilted and a tap on it goes back to north and flat. A tilt that ends under
-  8 degrees is dropped.
+  8 degrees is dropped. A tilt no longer stops the map following you, on the plain map or in a
+  drive (it had since the 2026-09-29 pinch fix).
 - ✅ **Ambient Google POIs on the map** (2026-06-27) - the basemap dots/labels are OSM
   (OpenFreeMap), so Google-only places used to appear only when searched. Now, on a bare,
   zoomed-in browse map, the visible area's prominent **Google** places are fetched automatically

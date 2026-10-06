@@ -1324,7 +1324,12 @@ motion are filtered.
   It survives a pan, a sheet and the locate button, as Google Maps' does; the compass, which stays
   visible while a tilt is held, returns the map to north and flat and lets it go, and so does
   starting a drive. A tilt that ends under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped: that is a
-  pinch's wobble. The idle test compares against the active target, so a kept
+  pinch's wobble.
+- A move that begins with two fingers is not a pan until the fingers have traveled
+  `TWO_FINGER_PAN_DP` (44) with no tilt or pinch begun: the tilt detector claims its gesture only
+  after 20 dp, the move detector starts first, and judged at its first event every tilt was read
+  as a pan (the follow dropped on the browse map, the camera detached in a drive). A rotation
+  releases the browse follow by its own listener. The idle test compares against the active target, so a kept
   tilt does not keep the loop running.
 - **In follow mode the puck is a Compose overlay**, not a map symbol, drawn at
   `projection.toScreenLocation` of the same point computed right after the camera move. A

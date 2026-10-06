@@ -167,6 +167,8 @@ private const val ROUTE_PENDING_MAX_PASSES = 40
 // The 3D puck overlay waits this long after a gesture's last camera move before it replaces the
 // map's own symbol (see the detached branch of the nav ticker).
 private const val PUCK_GESTURE_SETTLE_MS = 180L
+/** Two fingers moving together count as a pan past this much travel with no tilt or pinch begun. */
+private const val TWO_FINGER_PAN_DP = 44f
 /** A two-finger tilt on the browse map that ends below this is dropped, not kept. */
 private const val BROWSE_TILT_KEEP_MIN_DEG = 8.0
 private const val TILE_LOD_PITCH_DEG = 30.0
@@ -991,6 +993,10 @@ fun VelaMapView(
     val navPadEase = remember { doubleArrayOf(0.0) } // puck-low top padding as a height fraction, eased on (re)attach
     val wasNavRef = remember { booleanArrayOf(false) } // a drive actually ran - gates the one-shot camera teardown
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
+    // A two-finger drag is not yet a pan: the tilt (shove) detector needs 20 dp of travel before it
+    // claims the gesture, and until then the fingers also move the map. [0] = the move in flight
+    // began with two fingers and is undecided, [1] = its travel so far in px.
+    val twoFingerMove = remember { floatArrayOf(0f, 0f) }
     val shoving = remember { booleanArrayOf(false) } // two-finger tilt gesture in flight - ticker steps aside
     val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
     val browseUserTilt = remember { doubleArrayOf(Double.NaN) } // kept until the compass is tapped or a drive starts
@@ -3985,7 +3991,7 @@ fun VelaMapView(
                     // time the camera first moves, onScaleBegin/onShoveBegin has set the flag —
                     // the ordering the nav listener already relies on. gestureMove stays set
                     // either way so "Search this area" still keys off a zoom change.
-                    if (gestureMove[0] && !scaling[0] && !shoving[0]) userPan.value()
+                    if (gestureMove[0] && !scaling[0] && !shoving[0] && twoFingerMove[0] == 0f) userPan.value()
                 }
                 // Tell a PAN from a PINCH during nav (the move-started reason can't): a pan
                 // detaches the follow-camera so you can look around (the Re-center button
@@ -3993,7 +3999,10 @@ fun VelaMapView(
                 // followed at. While actively pinching, `scaling` suppresses the follow animation
                 // so it can't fight your fingers; on release we adopt your zoom as the override.
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
-                    override fun onMoveBegin(detector: MoveGestureDetector) {}
+                    override fun onMoveBegin(detector: MoveGestureDetector) {
+                        twoFingerMove[0] = if (detector.pointersCount >= 2) 1f else 0f
+                        twoFingerMove[1] = 0f
+                    }
                     // Detach on a genuine PAN — decided in onMove, NOT onMoveBegin: by the time
                     // onMove fires, onScaleBegin has already set `scaling` for a pinch, so a pinch's
                     // incidental translation isn't mistaken for a pan (that misread is what made the
@@ -4003,6 +4012,16 @@ fun VelaMapView(
                         // A shove's incidental translation must not read as a pan either (same
                         // misread the scaling guard fixes for pinch) - it detached the camera the
                         // moment a two-finger tilt started.
+                        // Two fingers: a pan only once they have gone farther than a tilt needs to
+                        // begin without one beginning. Since the tilt threshold went to 20 dp
+                        // (#627) the move started first, and every tilt dropped the follow.
+                        if (twoFingerMove[0] != 0f) {
+                            if (scaling[0] || shoving[0]) return
+                            twoFingerMove[1] += kotlin.math.hypot(detector.lastDistanceX, detector.lastDistanceY)
+                            if (twoFingerMove[1] < TWO_FINGER_PAN_DP * context.resources.displayMetrics.density) return
+                            twoFingerMove[0] = 0f
+                            if (!navModeHolder.value) userPan.value()
+                        }
                         if (navModeHolder.value && !scaling[0] && !shoving[0]) {
                             overviewLive[0] = false
                             navPanned.value()
@@ -4010,7 +4029,16 @@ fun VelaMapView(
                             zoomOverride.value(false)
                         }
                     }
-                    override fun onMoveEnd(detector: MoveGestureDetector) {}
+                    override fun onMoveEnd(detector: MoveGestureDetector) { twoFingerMove[0] = 0f }
+                })
+                // Turning the map by hand is taking the camera: the browse follow lets go (it would
+                // ease the bearing straight back). The two-finger wait above no longer does it.
+                map.addOnRotateListener(object : MapLibreMap.OnRotateListener {
+                    override fun onRotateBegin(detector: org.maplibre.android.gestures.RotateGestureDetector) {
+                        if (!navModeHolder.value) userPan.value()
+                    }
+                    override fun onRotate(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
+                    override fun onRotateEnd(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
                 })
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
                     override fun onScaleBegin(detector: StandardScaleGestureDetector) {
