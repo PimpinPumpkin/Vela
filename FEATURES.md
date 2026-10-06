@@ -2667,7 +2667,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   still ask the OpenStreetMap geocoder too, after Vela's own matches. Before, only the geocoder
   answered, and it knows no categories.
 - ✅ **Ask before ending navigation (2026-09-29, #624).** Settings > Navigation, off by default:
-  the red X and Back during a drive ask "End navigation?" first.
+  the red X asks "End navigation?" first. Back during a drive always asks, setting or not
+  (2026-10-06): a back swipe from the screen edge used to end the drive at once.
 - ✅ **Place packs for every piece of a split country or state (2026-09-29).** Northern
   California, the German states, the French regions and the other split regions use their
   parent's place pack for offline search and offline addresses; "Get places" used to do nothing on

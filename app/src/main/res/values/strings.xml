@@ -235,7 +235,7 @@
     <string name="settings_link_action_start">Start navigation</string>
     <string name="settings_link_action_hint">What happens when another app hands Vela a location. Start navigation suits delivery apps that send one stop after another.</string>
     <string name="settings_confirm_end_nav">Ask before ending navigation</string>
-    <string name="settings_confirm_end_nav_hint">The red X and Back during a drive ask first, so a stray tap does not end it</string>
+    <string name="settings_confirm_end_nav_hint">Back during a drive always asks first. With this on, the red X asks too</string>
     <string name="nav_end_confirm_title">End navigation?</string>
     <string name="nav_end_confirm_body">The route and its stops are cleared.</string>
     <string name="nav_end_confirm_end">End</string>

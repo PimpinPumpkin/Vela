@@ -1375,7 +1375,7 @@ Defaults that make the safe path the easy one:
   button only while no spot is saved. With Google-free on, online search runs Vela's own search
   (packs + the places archive, downloaded or STREAMED via `PmtilesReader.Archive.http` range reads)
   and leads with it; category queries skip Photon when Vela answers (Photon has no categories).
-  `NavEndConfirm` (off by default, #624) routes the nav X and Back-during-nav through a VelaDialog.
+  Back during a drive ALWAYS asks before ending it (2026-10-06: a back swipe ended the drive, as it does in Google Maps); `NavEndConfirm` (off by default, #624) makes the nav X ask too.
   **With the LAYERS button enabled the browse margin is statusBar + 200dp instead (2026-07-15):** the
   layers circle owns statusBar+128dp in the same corner and its IconButton touch overflow reaches
   ~190dp, which sat exactly on the compass (user report); 200dp clears the touch target, not just

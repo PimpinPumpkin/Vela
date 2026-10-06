@@ -576,8 +576,9 @@ fun MapScreen(
             onDismiss = { iconPickFor = null },
         )
     }
-    // Ending a drive: straight away, or after a confirm when Settings > Navigation asks for one
-    // (NavEndConfirm, off by default, issue #624). The red X and Back during a drive both come here.
+    // Ending a drive. Back (a swipe from the edge, easy to make by accident) always asks first; the
+    // red X ends it straight away unless Settings > Navigation asks for a confirm there too
+    // (NavEndConfirm, off by default, issue #624).
     var confirmEndNav by remember { mutableStateOf(false) }
     val requestEndNav: () -> Unit = { if (app.vela.ui.NavEndConfirm.on.value) confirmEndNav = true else vm.stopNav() }
     if (confirmEndNav && state.navigating) {
@@ -657,7 +658,7 @@ fun MapScreen(
             // whole drive - ending nav because you browsed gas stations would be brutal.
             state.navigating && state.results.isNotEmpty() -> vm.clearSearch()
             state.navigating && navSearchOpen -> { navSearchOpen = false; focusManager.clearFocus() }
-            state.navigating -> requestEndNav()
+            state.navigating -> confirmEndNav = true
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
