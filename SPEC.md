@@ -2588,6 +2588,10 @@ custom maps) are not drawn while navigating.
   memory once, because a provider query per keystroke janks. Dedupe against network rows by name
   plus coarse location AND by feature id where both sides have one (saved and list places often
   carry none, so the name key is the one that always works).
+- A contact's address is kept in history as a BARE place (`SavedPlace.bare`): reopened, it shows
+  the contact's name and the address at the saved point, with no search. Any other saved or recent
+  place takes a Google listing's details only from a listing within 30 m, or within 250 m whose
+  name agrees (`PlaceNames.agree`); the nearest hit for the name alone is never adopted.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 

@@ -3839,6 +3839,13 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **A contact's address reopened from history (2026-10-05).** `SavedPlace.bare` marks a label on a
+  point (set by `selectContactPlace`); `selectSaved` reopens a bare one as saved, name and address,
+  with no search. For every other saved or recent place the enrichment search adopts a listing
+  only within `SAVED_ENRICH_SAME_SPOT_M` (30 m), or within 250 m when the names agree
+  (`PlaceNames.agree`); it used to take the nearest hit for the name whatever it was, which opened
+  a business in the same part of town under a contact's name. History rows saved before the flag
+  go through the second rule. Not device-checked (no contact on the test phone this session).
 - **Amber quarter mile under the car (2026-10-05, SPEC 4.8).** `routeGradient` chose its base color
   from the PIECE's spans: a 400 m cut piece with no span of its own fell to `routeColor`, the
   trip's overall traffic color, while the ahead window (which nearly always holds a span) was blue.

@@ -1403,7 +1403,7 @@ class MapViewModel @Inject constructor(
      *  (assign-as-Home/Work, stop and endpoint pickers, a stop on a live drive), minus the
      *  search-by-name enrichment: searching "John Snow" near a house finds nothing useful. */
     private fun selectContactPlace(base: Place) {
-        val sp = SavedPlace.of(base)
+        val sp = SavedPlace.of(base).copy(bare = true)
         if (consumeAssign(sp)) return
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingDest) { setDirectionsDestination(base); return }
@@ -1767,6 +1767,8 @@ class MapViewModel @Inject constructor(
 
     fun selectSaved(sp: SavedPlace) {
         if (consumeAssign(sp)) return
+        // A contact's address from history opens as it was saved: the person's name and the address.
+        if (sp.bare) { selectContactPlace(sp.toPlace()); return }
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingDest) { setDirectionsDestination(base); return }
@@ -1788,9 +1790,22 @@ class MapViewModel @Inject constructor(
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
         // the star stays filled.
         viewModelScope.launch {
+            // The listing has to BE this place: the same name, close by. The nearest hit for the
+            // name used to be taken whatever it was called and however far, so a contact's address
+            // kept under the contact's name (or a labeled pin) opened a business in the same part
+            // of town.
             val full = runCatching {
-                dataSource.search(sp.name, sp.location).places.minByOrNull { it.location.distanceTo(sp.location) }
+                dataSource.search(sp.name, sp.location).places
+                    .filter {
+                        val d = it.location.distanceTo(sp.location)
+                        // On the saved point itself the name may differ (a saved place can be renamed).
+                        d <= SAVED_ENRICH_SAME_SPOT_M || (d <= SAVED_ENRICH_MAX_M && app.vela.core.util.PlaceNames.agree(it.name, sp.name))
+                    }
+                    .minByOrNull { it.location.distanceTo(sp.location) }
             }.getOrNull()
+            if (full == null && sp.address != null && _state.value.selected?.id == sp.id) {
+                _state.update { st -> if (st.selected?.id == sp.id && st.selected.address.isNullOrBlank()) st.copy(selected = st.selected.copy(address = sp.address)) else st }
+            }
             if (full != null && _state.value.selected?.id == sp.id) {
                 val enriched = full.copy(id = sp.id)
                 _state.update { it.copy(selected = enriched) }
@@ -9486,6 +9501,9 @@ class MapViewModel @Inject constructor(
         const val TRANSIT_LINE_CELLS_PER_VIEW = 24
         const val TRANSIT_LINE_CELLS_KEPT = 96
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
+        /** A saved or recent place takes a listing's details only from one this close to it. */
+        const val SAVED_ENRICH_MAX_M = 250.0
+        const val SAVED_ENRICH_SAME_SPOT_M = 30.0
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
                                               // symbol is re-collided per drag frame (budget-GPU jank)

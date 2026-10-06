@@ -17,6 +17,10 @@ data class SavedPlace(
     val icon: String? = null,
     /** Shown on the search page (issue #622 follow-up); unpinned ones live in the Saved sheet. */
     val pinned: Boolean = false,
+    /** A label on a point, not a listing: a contact's address under the contact's name. Opening it
+     *  again shows exactly this name and address and never searches the name, which would open
+     *  whatever business near that address the name happens to resemble. Defaulted, so older payloads decode. */
+    val bare: Boolean = false,
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
