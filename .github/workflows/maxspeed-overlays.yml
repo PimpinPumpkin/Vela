@@ -36,7 +36,7 @@ jobs:
     outputs:
       matrix: ${{ steps.sel.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - id: sel
         env:
           GRP: ${{ inputs.group }}
@@ -76,7 +76,7 @@ jobs:
       max-parallel: 8
       matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install osmium + tippecanoe
         run: |
           sudo apt-get update
@@ -91,7 +91,7 @@ jobs:
           MANIFEST_MODE: emit
           ENTRY_OUT: ${{ matrix.id }}.json
         run: bash scripts/build-maxspeed-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: entry-${{ matrix.id }}
           path: ${{ matrix.id }}.json
@@ -105,10 +105,10 @@ jobs:
       group: maxspeed-overlays-manifest-merge
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: entries
           pattern: entry-*

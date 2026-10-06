@@ -1,0 +1,94 @@
+name: Security checks
+
+# Three checks that run on GitHub's machines, not on anyone's laptop:
+#   scan          a static scan of the app's source for known insecure Android patterns
+#                 (mobsfscan), reported to the repository's code scanning page.
+#   dependencies  the full list of libraries the build really resolves is sent to GitHub's
+#                 dependency graph, which is what Dependabot's vulnerability alerts and the
+#                 exportable bill of materials (SBOM) are computed from.
+#   review        on a pull request, fails when it adds a library with a known high-severity
+#                 vulnerability.
+# None of these gate a release: a finding is a report to read, not a red build of the app.
+
+on:
+  push:
+    branches: [ main, canary ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '20 7 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Static scan
+        # Exit code 1 means "found something", which is a report, not a failure.
+        run: |
+          pip install --quiet mobsfscan==1.0.1
+          mobsfscan --config .mobsf --sarif -o mobsfscan.sarif app/src/main core/src/main || true
+          mobsfscan --config .mobsf app/src/main core/src/main || true
+      - name: Report to code scanning
+        # A pull request from a fork has no permission to write results; the log above has them.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        with:
+          sarif_file: mobsfscan.sarif
+          category: mobsfscan
+
+  dependencies:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # the dependency graph API is a write to the repository's metadata
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - name: Fetch the prebuilt libraries the build needs
+        # The same three fetches as ci.yml (they are release assets, not Maven artifacts).
+        run: |
+          mkdir -p core/libs app/libs
+          base="https://github.com/PimpinPumpkin/Vela/releases/download"
+          for f in osmand-java.jar osmand-shared-jvm.jar gnu-trove-osmand.jar kxml2-vela.jar; do
+            curl -fsSL -o "core/libs/$f" "$base/obf-runtime/$f"
+          done
+          v=$(sed -n 's/^vela.cronetVersion=//p' gradle.properties)
+          curl -fsSL -o "app/libs/cronet-$v.aar" "$base/cronet-runtime/cronet-$v.aar"
+          curl -fsSL -o app/libs/sherpa-onnx-1.13.3.aar "$base/tts-runtime/sherpa-onnx-1.13.3.aar"
+      - name: Send the resolved dependencies to the dependency graph
+        uses: gradle/actions/dependency-submission@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
+      - name: Export the bill of materials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${{ github.repository }}/dependency-graph/sbom" --jq .sbom > vela-sbom.spdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vela-sbom
+          path: vela-sbom.spdx.json
+          retention-days: 90
+
+  review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high

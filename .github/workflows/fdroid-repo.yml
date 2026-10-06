@@ -69,7 +69,7 @@ jobs:
       (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event != 'push'))
       && (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v'))
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Install fdroidserver
         # pip, NOT apt: Ubuntu's fdroidserver 2.2.1 ships an androguard too old to parse
@@ -203,7 +203,7 @@ jobs:
           cp -r build/docs-site fdroid/docs
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: fdroid
 
@@ -215,4 +215,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

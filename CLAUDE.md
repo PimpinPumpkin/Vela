@@ -3899,6 +3899,21 @@ architecture note.
   `TripScrub` kept the LONGEST public run of the route line; the zone round the last fix cuts
   the line in two and the longer piece is the part never driven. It keeps the run the surviving
   fixes are on (`drivenPublicRun`). Trips shared before this cannot be audited against their line.
+- **Security checks and hardening (2026-10-06, asked for on the GrapheneOS forum).**
+  `.github/workflows/security.yml` (mobsfscan to code scanning, Gradle dependency submission on
+  main, dependency review on pull requests, an SBOM artifact), `scorecard.yml`, and
+  `.github/dependabot.yml` (monthly, grouped). EVERY action in every workflow is pinned to a
+  commit SHA with the version in a trailing comment; a new `uses:` line gets the same (resolve
+  with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`; an annotated tag needs a second lookup
+  through `git/tags/<sha>`). A new workflow declares `permissions:`. App side:
+  `WebViewIdentity.apply` turns off file access, content access and geolocation for every
+  WebView, and the backup rules (`res/xml/backup_rules.xml` + `data_extraction_rules.xml`, the
+  same INCLUDE list in both) carry settings, saved data and trips only: a new preference file or
+  user data file is NOT backed up until it is added to both. Known and open: MainActivity is
+  `singleTop`, which the scanner flags for task hijacking on unpatched Android 8 and 9;
+  `singleTask` is the fix and needs a pass over how links from other apps open first.
+  `SECURITY.md` lists all of it for users. The repository's private vulnerability reporting,
+  Dependabot alerts and secret scanning are repository settings, not files.
 - **Browse-follow tilt (PR #673, 2026-10-06).** The free-drive follow ticker gates every camera
   write on `!shoving[0]` as it does on `scaling`, and `browseUserTilt` holds the gesture's tilt as
   the ticker's tilt target (attitude ease and the idle-settling test both). It is cleared only by

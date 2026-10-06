@@ -1,0 +1,11 @@
+---
+# Rules that do not apply to a maps app with no account and no secrets on screen. Everything
+# else is reported.
+- ignore-rules:
+  - android_root_detection        # Vela runs on rooted and custom ROMs on purpose
+  - android_safetynet             # no Google Play services
+  - android_prevent_screenshot    # a map is meant to be screenshotted
+  - android_ssl_pinning           # Google rotates certificates; a pin would break the app
+  - android_certificate_transparency
+  - android_tapjacking
+  - android_manifest_domain_config_cleartext   # localhost only, for local testing
