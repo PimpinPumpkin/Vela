@@ -6,8 +6,9 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 
 /**
- * Hides every symbol layer except street names while the nav camera swings through a turn or
- * follows a gesture, and shows them again once it has been calm for [SETTLE_MS]. Symbol placement
+ * Hides every symbol layer except street names while the nav camera swings through a turn, and
+ * shows them again once it has been calm for [SETTLE_MS]. (Not for a hand gesture since
+ * 2026-10-06: strokes with rests between flipped the set once per stroke.) Symbol placement
  * re-runs on every frame the camera rotates, and that is where a turn's frames went: on a 4a demo
  * drive, turns ran 30-49 fps with the map's symbols up and 53-60 with them hidden; no single group
  * of layers carried the cost on its own (SPEC 4.7b).

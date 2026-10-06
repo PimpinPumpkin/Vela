@@ -3839,6 +3839,25 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Hand gestures during a drive: what was measured (2026-10-06, SPEC 4.7b).** 4a, a drive in San
+  Francisco, camera detached. (1) A pan, pinch or rotate no longer hides labels the way a
+  follow-camera turn does: a hand moves in strokes with rests, so the set was hidden and restored
+  once per stroke and each flip is a relayout. Timed one-second strokes at 70 degrees a second:
+  53 to 55 fps without the hiding, 51 with it (three runs against one, so a small gain, not a
+  large one). Dial `debug.vela.tune.gestureDeclutter 1` restores it. (2) With every symbol layer
+  hidden the same strokes run 57 to 58 fps and zoom strokes 54 against 45 to 49; no single group
+  carries it. What is left is the engine placing and drawing symbols over a tilted view, and tile
+  work when the zoom crosses a level. MapLibre's level of detail for tilted views (after the
+  pinned 11.8.0) is the next real lever. THREE MEASURING TRAPS: `debug.vela.spin w70` runs timed
+  strokes in the app, because toggling a rate from adb lands the strokes anywhere and identical
+  settings measured 50 and 55 fps; the switches are polled every 2 s unless `debug.vela.hide` is
+  set (then 250 ms), so set it to a token that matches nothing; and a DETACHED, untouched map does
+  not redraw, so its frame gaps are idleness: count only the seconds where bearing or zoom
+  changed (the trip file's "lowest second" in a free-camera window is the same thing). And in
+  `top -H`, MapLibre's native threads INHERIT the name of the Java thread that started them:
+  "queued-work-loo", "ConnectivityThr", "Alarm", "AsyncTask" and "binder" at 50% beside the
+  Workers were the map's own threads. A preferences write probe (file times every 100 ms) found
+  three writes in 20 s. Check a suspicious thread with a Java stack sample before believing its name.
 - **A reroute goes the way the car is going (2026-10-05).** Google's directions request has no
   heading, and since 2026-10-02 the driven line is Google's wherever it differs, so the
   `bearings=` fix for the open router (2026-08-17) stopped mattering: from a car just past a turn
@@ -3973,7 +3992,7 @@ architecture note.
   `Style.routeSet` so its outline follows. A new route piece layer needs an outline and routeSet.
 - **Turns drop everything but street names (2026-10-02, `ui/map/TurnDeclutter`, SPEC 4.7b).** While
   the nav camera swings (bearing error 15+ degrees for 3 frames; was 10 until 2026-10-03) or a
-  gesture moves it in nav, every visible symbol layer except street names, shields, exit numbers,
+  gesture moves it in nav (gestures no longer do since 2026-10-06, see the note on hand gestures), every visible symbol layer except street names, shields, exit numbers,
   `vela-nav-` callouts and the arrow is hidden; back after 1 s calm (was 500 ms). No single layer
   group was the cost, so it is all or nothing. EVERY FLIP IS A RELAYOUT of every tile of every
   source the hidden layers use (4a, Perfetto: 300-680 ms of worker CPU in the 250 ms around each

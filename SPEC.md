@@ -1526,7 +1526,8 @@ frame after it. START_DEG was 10 and SETTLE_MS 500 until 2026-10-03: with the ca
 constant a gentle curve holds a steady 8 to 11 degree error, so the map flipped through every bend
 (six flips in 24 s of a demo drive, a restore followed 220 ms later by a hide), and at 1x the cost
 only moved from the swing to the restore. A real turn's error passes 15 within a frame or two. A detached nav camera
-(pan, pinch, rotate) does the same while it has moved in the last `DETACHED_MOVING_MS` (250 ms);
+(pan, pinch, rotate) did the same until 2026-10-06 and no longer does (see "Work beside the map
+during a drive");
 the overview hides its own set and takes the layers back first. Only layers that were visible when
 the hide began are touched, and the open places layers are re-filtered by `applyOpenPlacesHidden`
 after a restore, since they have a second owner. Same drive with it on: turns 48-60. Settings >
@@ -1604,6 +1605,12 @@ at 3x):
   signed storage address a release file redirects to until a minute before the `se` time it
   carries, at most 30 minutes; anything but a success drops it. Each range read of a streamed
   archive was two round trips, the release address and then the read.
+
+A hand gesture (pan, pinch, rotate) during a drive does not hide labels; only a turn of the
+follow camera does (`TurnDeclutter`). A hand moves the map in strokes with rests between, and one
+hide and one restore per stroke is two relayouts per stroke. Timed strokes on a 4a in San
+Francisco: 53 to 55 fps without the hiding, 51 with it. With every symbol layer hidden the same
+strokes run 57 to 58 fps, which is the engine's floor for symbols over a tilted view on that phone.
 
 Same drive before and after: following 33 -> 57 fps (longest frame gap 264 -> 51 ms), camera
 detached and still 40 -> 56, detached and turning at 40 degrees a second 25 -> 54. A 4 km route

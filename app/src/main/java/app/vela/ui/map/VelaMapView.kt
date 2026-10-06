@@ -2918,6 +2918,7 @@ fun VelaMapView(
         val puckGestureSwap = app.vela.ui.AppTune.local("puckGestureSwap")?.let { it != 0.0 } ?: true
         // Test dial `debug.vela.tune.turnDeclutter 0`: never hide layers in turns or gestures (A/B).
         val turnDeclutterTune = app.vela.ui.AppTune.local("turnDeclutter")?.let { it != 0.0 } ?: true
+        val gestureDeclutterTune = app.vela.ui.AppTune.local("gestureDeclutter")?.let { it != 0.0 } ?: false
         var buffersReset = true
         var lastNanos = 0L
         // STANDING STILL COSTS NOTHING (issue #605, 2026-09-25): the loop used to redraw the map at
@@ -3299,11 +3300,17 @@ fun VelaMapView(
                             detachedCam[2] = live.zoom; detachedCam[3] = live.bearing; detachedCam[4] = live.tilt
                             detachedMovedMs[0] = nowMs
                         } else idleFrames++
-                        // A pan, pinch or rotate drops the same layers as a turn while it moves (not
-                        // the overview, which hides its own set).
+                        // A pan, pinch or rotate does NOT drop the labels the way a turn of the
+                        // follow camera does. A hand moves the map in short strokes with rests
+                        // between, so the labels were hidden and restored once per stroke, and
+                        // each flip re-lays out every tile: on a 4a turning the map in one-second
+                        // strokes through a city, 51 fps with freezes of 435 to 742 ms with the
+                        // hiding, 55 fps and no gap over 86 ms without (2026-10-05). Passing "not
+                        // moving" also restores a set hidden by a turn the gesture interrupted.
+                        // Test dial `debug.vela.tune.gestureDeclutter 1` brings the hiding back.
                         turnDeclutter.update(
                             style,
-                            app.vela.ui.TurnDeclutterPref.on.value && turnDeclutterTune && !overviewLive[0] &&
+                            gestureDeclutterTune && app.vela.ui.TurnDeclutterPref.on.value && turnDeclutterTune && !overviewLive[0] &&
                                 nowMs - detachedMovedMs[0] < DETACHED_MOVING_MS,
                             nowMs,
                         ) { applyOpenPlacesHidden(it) }
@@ -4279,16 +4286,29 @@ fun VelaMapView(
                             val spin = runCatching {
                                 @Suppress("PrivateApi")
                                 val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
-                                (m.invoke(null, "debug.vela.spin") as? String).orEmpty().trim().toDoubleOrNull()
-                            }.getOrNull() ?: 0.0
-                            if (spin != spinRate[0]) {
-                                spinRate[0] = spin
-                                if (spin != 0.0) bisectHandler.post(object : Runnable {
-                                    var last = android.os.SystemClock.elapsedRealtime()
+                                (m.invoke(null, "debug.vela.spin") as? String).orEmpty().trim()
+                            }.getOrNull().orEmpty()
+                            // "w70" is a hand's pattern, timed here so every run is the same: a one
+                            // second stroke at 70 degrees a second, a 1.5 s rest, the other way, a rest.
+                            // Toggling a plain rate from adb put the strokes wherever the shell landed
+                            // them, and identical settings then measured 50 and 55 fps.
+                            val strokes = spin.startsWith("w")
+                            val spinDeg = spin.removePrefix("w").toDoubleOrNull() ?: 0.0
+                            val spinKey = if (strokes) -spinDeg - 100_000.0 else spinDeg
+                            if (spinKey != spinRate[0]) {
+                                spinRate[0] = spinKey
+                                if (spinDeg != 0.0) bisectHandler.post(object : Runnable {
+                                    val began = android.os.SystemClock.elapsedRealtime()
+                                    var last = began
                                     override fun run() {
-                                        if (spinRate[0] == 0.0) return
+                                        if (spinRate[0] != spinKey) return
                                         val now = android.os.SystemClock.elapsedRealtime()
-                                        runCatching { map.moveCamera(CameraUpdateFactory.bearingTo((map.cameraPosition.bearing + spinRate[0] * (now - last) / 1000.0).mod(360.0))) }
+                                        val rate = if (!strokes) spinDeg else when (((now - began) % 5_000L)) {
+                                            in 0L until 1_000L -> spinDeg
+                                            in 2_500L until 3_500L -> -spinDeg
+                                            else -> 0.0
+                                        }
+                                        if (rate != 0.0) runCatching { map.moveCamera(CameraUpdateFactory.bearingTo((map.cameraPosition.bearing + rate * (now - last) / 1000.0).mod(360.0))) }
                                         last = now
                                         bisectHandler.postDelayed(this, 16)
                                     }
