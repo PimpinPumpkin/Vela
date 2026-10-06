@@ -3845,7 +3845,14 @@ architecture note.
   only within `SAVED_ENRICH_SAME_SPOT_M` (30 m), or within 250 m when the names agree
   (`PlaceNames.agree`); it used to take the nearest hit for the name whatever it was, which opened
   a business in the same part of town under a contact's name. History rows saved before the flag
-  go through the second rule. Not device-checked (no contact on the test phone this session).
+  go through the second rule. The TYPED results' history and saved rows open through
+  `selectSaved` too (`pickLocalSuggestion`): through `selectPlace` the stored stub went straight
+  to the details fetch, which searches "name address" and merges what it finds (a contact's
+  address came up with the supermarket's description), and the row was written back to history
+  without its mark. Checked on the 4a with a test contact holding two addresses: each history
+  row, in the Recents list and in the typed results, opens its own address with no business
+  details. Typing on the 4a: tap the on-screen keys (`adb input text` trips the keyboard mode);
+  `content insert` into `com.android.contacts/data` works from the shell for a second address.
 - **Amber quarter mile under the car (2026-10-05, SPEC 4.8).** `routeGradient` chose its base color
   from the PIECE's spans: a 400 m cut piece with no span of its own fell to `routeColor`, the
   trip's overall traffic color, while the ahead window (which nearly always holds a span) was blue.

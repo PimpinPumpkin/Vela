@@ -2592,6 +2592,7 @@ custom maps) are not drawn while navigating.
   the contact's name and the address at the saved point, with no search. Any other saved or recent
   place takes a Google listing's details only from a listing within 30 m, or within 250 m whose
   name agrees (`PlaceNames.agree`); the nearest hit for the name alone is never adopted.
+  History and saved rows in the typed results open the same way as in the Recents list.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 

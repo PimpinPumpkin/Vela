@@ -1360,6 +1360,15 @@ class MapViewModel @Inject constructor(
     fun pickLocalSuggestion(s: LocalSuggestion) {
         when {
             s.kind == LocalSuggestion.Kind.CONTACT && s.query != null -> openContactAddress(s.label, s.query)
+            // A history or saved row opens the way the Recents list opens it. Sent through
+            // selectPlace, the stored stub (a name and a point) went straight to the details
+            // fetch, which searches "name address" and merges what it finds: a contact's address
+            // came up with the description of the supermarket beside it, and the reopened row
+            // was written back to history without its contact mark.
+            s.kind == LocalSuggestion.Kind.RECENT_PLACE && s.place != null ->
+                selectSaved(_state.value.recentPlaces.firstOrNull { it.place.id == s.place.id }?.place ?: SavedPlace.of(s.place))
+            s.kind == LocalSuggestion.Kind.SAVED_PLACE && s.place != null && savedStore.saved().any { it.id == s.place.id } ->
+                selectSaved(savedStore.saved().first { it.id == s.place.id })
             s.place != null -> selectPlace(s.place)
             s.query != null -> searchRecent(s.query)
         }
