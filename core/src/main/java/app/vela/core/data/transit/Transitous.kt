@@ -666,8 +666,17 @@ object Transitous {
 
     // --- helpers ----------------------------------------------------------------------------------
 
+    /** Names in the app's language where the feed has them (issue #674): the service takes a bare
+     *  language code and falls back to the feed's own names for one it does not have. Without it
+     *  a Tokyo rail stop reads "新宿 Shinjuku" in every language. */
+    internal fun withLanguage(url: String, locale: Locale = Locale.getDefault()): String {
+        val lang = when (val l = locale.language.lowercase(Locale.ROOT)) { "iw" -> "he"; "in" -> "id"; "ji" -> "yi"; else -> l }
+        if (lang.length !in 2..3 || "language=" in url) return url
+        return url + (if ('?' in url) "&" else "?") + "language=" + lang
+    }
+
     private fun get(http: OkHttpClient, url: String): String? = runCatching {
-        http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { resp ->
+        http.newCall(Request.Builder().url(withLanguage(url)).header("User-Agent", UA).build()).execute().use { resp ->
             if (!resp.isSuccessful) null else resp.body?.string()
         }
     }.getOrNull()

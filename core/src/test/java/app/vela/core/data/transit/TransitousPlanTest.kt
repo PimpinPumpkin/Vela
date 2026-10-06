@@ -59,4 +59,13 @@ class TransitousPlanTest {
         org.junit.Assert.assertTrue(Transitous.planUrl(o, d, 3, at, emptySet()).contains("arriveBy=true"))
         org.junit.Assert.assertFalse(Transitous.planUrl(o, d, 0, null, emptySet()).contains("time="))
     }
+
+    @Test fun requestsAskForTheAppLanguage() {
+        val u = "https://api.transitous.org/api/v1/stoptimes?stopId=x&n=5"
+        assertEquals("$u&language=ja", Transitous.withLanguage(u, java.util.Locale.JAPAN))
+        assertEquals("$u&language=zh", Transitous.withLanguage(u, java.util.Locale.TRADITIONAL_CHINESE))
+        assertEquals("$u&language=he", Transitous.withLanguage(u, java.util.Locale("iw", "IL")))
+        assertEquals("$u&language=en", Transitous.withLanguage(u, java.util.Locale.US))
+        assertEquals("$u&language=ja", Transitous.withLanguage("$u&language=ja", java.util.Locale.US))
+    }
 }
