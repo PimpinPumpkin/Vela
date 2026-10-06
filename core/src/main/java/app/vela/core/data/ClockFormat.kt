@@ -9,6 +9,13 @@ object ClockFormat {
     // sometimes with a no-break or narrow no-break space before the marker).
     private val AMPM = Regex("""^(\d{1,2}):(\d{2})[\s\u00A0\u202F]?([AaPp])[Mm]$""")
 
+    /** The moment [epochSec] in [zone] as the clock in use shows it ("4:35 PM" or "16:35"). The
+     *  transit payload carries every time as a number beside its text, so the text's language
+     *  (and Google's own 12/24-hour choice for it) never has to be read. */
+    fun at(epochSec: Long, zone: java.time.ZoneId): String =
+        java.time.format.DateTimeFormatter.ofPattern(if (use24h) "HH:mm" else "h:mm a", java.util.Locale.US)
+            .format(java.time.Instant.ofEpochSecond(epochSec).atZone(zone))
+
     /** [text] as the clock in use shows it: "4:35 PM" becomes "16:35" under a 24-hour clock.
      *  Anything that is not a plain 12-hour time is returned unchanged. */
     fun show(text: String?): String? {

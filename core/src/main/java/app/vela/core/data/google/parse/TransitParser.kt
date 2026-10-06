@@ -74,8 +74,8 @@ object TransitParser {
         return TransitItinerary(
             departureEpochSec = dep.at(0).long(),
             arrivalEpochSec = arr.at(0).long(),
-            departureText = app.vela.core.data.ClockFormat.show(dep.at(2).str()),
-            arrivalText = app.vela.core.data.ClockFormat.show(arr.at(2).str()),
+            departureText = clock(dep),
+            arrivalText = clock(arr),
             durationText = t.at(3, 1).str(),
             distanceText = t.at(2, 1).str(),
             agency = t.at(6, 4, 0, 0).str() ?: agencyNode.at(0).str(),
@@ -137,7 +137,7 @@ object TransitParser {
     private fun parseAlerts(node: JsonElement?): List<String> =
         node.arr()?.mapNotNull { it.at(2).str()?.takeIf { s -> s.length in 4..140 } }.orEmpty()
 
-    private val FARE = Regex("""^[$€£¥]\s?\d[\d.,]*(?:\s?[-–]\s?[$€£¥]?\d[\d.,]*)?$""")
+    private val FARE = Regex("""^(?:[$€£¥]\s?\d[\d.,]*(?:\s?[-–]\s?[$€£¥]?\d[\d.,]*)?|\d[\d,]*\s?[円元₩])$""")
 
     /** Best-effort fare: scan the trip summary for a currency-shaped string. Many US
      *  agencies (Miami-Dade here) send none, so this is usually null — Google itself
@@ -186,7 +186,10 @@ object TransitParser {
             line = line,
             departText = board?.timeText ?: (if (line != null) times.firstOrNull() else null),
             arriveText = alight?.timeText ?: (if (line != null) times.lastOrNull() else null),
-            headsign = sum.at(14, 2, 1, 0).str()?.takeIf { it.length in 2..80 },
+            // The destination is the badge entry tagged 7. It used to be read by position
+            // ([14][2]), which on a line with a service type is that type ("Rapid", tag 15).
+            // One character is a real destination in Japanese and Chinese.
+            headsign = (tagged(sum.at(14), 7) ?: sum.at(14, 2).takeIf { it.at(0).long() != 15L }.at(1, 0).str())?.takeIf { it.length in 1..80 },
             boardStop = board,
             alightStop = alight,
             numStops = stops.at(2).long()?.toInt()?.takeIf { it in 1..500 },
@@ -202,9 +205,9 @@ object TransitParser {
     private fun parseStopTime(node: JsonElement?): TransitStopTime? {
         val n = node ?: return null
         val name = n.at(0).str()?.takeIf { it.isNotBlank() } ?: return null
-        // Google's English "h:mm AM" text, shown as the clock in use (discussion #637).
-        val realtime = app.vela.core.data.ClockFormat.show(n.at(2, 2).str() ?: n.at(3, 2).str())
-        val scheduled = app.vela.core.data.ClockFormat.show(n.at(7, 2).str() ?: n.at(8, 2).str())
+        // Formatted from the tuple's own epoch and zone, as the clock in use (discussion #637).
+        val realtime = clock(n.at(2)) ?: clock(n.at(3))
+        val scheduled = clock(n.at(7)) ?: clock(n.at(8))
         val lat = n.at(4, 2).dbl(); val lng = n.at(4, 3).dbl()
         return TransitStopTime(
             name = name,
@@ -228,14 +231,37 @@ object TransitParser {
         }
     }
 
-    private val TIME = Regex("""^\d{1,2}:\d{2}\s?[AP]M$""")
+    /** A time tuple, `[epochSec, "Area/City", text, utcOffsetSec, ...]`, as the clock in use shows
+     *  it. The page is fetched in the app's language (issue #674) and its text follows that
+     *  ("4:54 AM" in English, "4:54" in Japanese), so the number is what is read; the text is
+     *  the fallback for a tuple without one. */
+    private fun clock(t: JsonElement?): String? {
+        val epoch = t.at(0).long()
+        if (epoch != null && epoch > 1_000_000_000L) {
+            val zone = t.at(1).str()?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() }
+                ?: t.at(3).long()?.let { runCatching { java.time.ZoneOffset.ofTotalSeconds(it.toInt()) }.getOrNull() }
+            if (zone != null) return app.vela.core.data.ClockFormat.at(epoch, zone)
+        }
+        return app.vela.core.data.ClockFormat.show(t.at(2).str())
+    }
 
-    /** Every "h:mm AM/PM" in a leg, in document order — board time first, alight last. */
+    /** The first string of the badge entry tagged [tag] (`[[5,[name,..]],[15,[type]],[7,[headsign]]]`). */
+    private fun tagged(badge: JsonElement?, tag: Long): String? =
+        badge.arr()?.firstOrNull { it.at(0).long() == tag }?.at(1, 0).str()
+
+    private fun isTimeTuple(n: JsonElement): Boolean =
+        n is JsonArray && (n.at(0).long() ?: 0L) > 1_000_000_000L && n.at(1).str()?.contains('/') == true
+
+    private val TIME = Regex("""^\d{1,2}:\d{2}(?:[\s\u00A0\u202F]?[AP]M)?$""")
+
+    /** Every call time in a leg, in document order (board first, alight last): the time tuples
+     *  by their shape, else a bare clock string. */
     private fun collectTimes(leg: JsonElement): List<String> {
         val out = ArrayList<String>()
         fun walk(n: JsonElement) {
-            when (n) {
-                is JsonArray -> n.forEach(::walk)
+            when {
+                isTimeTuple(n) -> clock(n)?.let { out.add(it) }
+                n is JsonArray -> n.forEach(::walk)
                 else -> n.str()?.let { if (TIME.matches(it)) out.add(app.vela.core.data.ClockFormat.show(it) ?: it) }
             }
         }

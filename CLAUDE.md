@@ -3201,9 +3201,10 @@ architecture note.
   `ALT_ROUTE_EDGE_LAYER` (line-gap-width over the same source). The gray fill read as one more road
   on a dense grid. Colors chosen from the palette values, NOT yet looked at on a device.
 - **The clock is a setting (discussion #637, 2026-10-01):** Settings > Appearance > Clock, pref
-  `clock_mode` (system / 12 / 24), read by `Clock24.refresh`. Google's transit pages are fetched in
-  English with "h:mm AM" text; `ClockFormat.show` converts those at parse time (itinerary times,
-  stop times, Google-fallback boards), so text already on screen changes at the next fetch.
+  `clock_mode` (system / 12 / 24), read by `Clock24.refresh`. Transit directions times are
+  formatted from the payload's epochs (`ClockFormat.at`, since 2026-10-06); only the Google stop
+  BOARD fallback is still fetched in English with "h:mm AM" text that `ClockFormat.show`
+  converts. Text already on screen changes at the next fetch.
 - **Typed suggestions come from Google's OWN autocomplete (2026-09-22):** `MapDataSource.suggest`
   (`GoogleMapsDataSource.suggest` + `SuggestParser`) hits the keyless
   `/s?tbm=map&gs_ri=maps&suggest=p` request the maps web page fires per keystroke, with the
@@ -3903,12 +3904,22 @@ architecture note.
   `Transitous.withLanguage` adds `language=<bare code>` to every request that goes through
   `get()` (stops, boards, trips, plans): without it the Tokyo rail feed answers "新宿 Shinjuku" to
   everyone. The service wants the bare code (`ja`, not `ja-JP`) and falls back for one it lacks.
-  Cached stops keep their old names until refetched. The REPORTED names (Google's transit
-  directions) are still English: that page is pinned to `hl=en` for its "h:mm AM" times, and
-  every time, distance and duration in its payload has a numeric twin (epoch + tz at the time
-  tuples, seconds, meters), so the fix is formatting from those and then unpinning. The stop
-  BOARD parser is the one that truly needs English (its anchor is an AM/PM regex). Plan and
-  estimates are in the session's investigation; about 5 hours for directions.
+  Cached stops keep their old names until refetched. **Second half, same day: Google's transit
+  DIRECTIONS page follows the app language** (`WebDirectionsFetcher.pageLanguage`, the reviews
+  page's rule). `TransitParser` no longer reads the page's clock text: a time tuple is
+  `[epochSec, "Area/City", text, utcOffsetSec, schedEpoch]` and `clock()` formats the epoch in
+  its zone through `ClockFormat.at`, so the 12/24-hour setting holds in every language (the
+  text is "4:54 AM" in English and "4:54" in Japanese). The destination is the badge entry
+  TAGGED 7; it was read by position, which on a line with a service type is that type ("Rapid",
+  tag 15), in English too. Durations and distances are still Google's own text ("19 分").
+  ROLLBACK WITHOUT A RELEASE: calibration `tuning` `transitAppLanguage` 0 puts every phone back
+  on the English page (the parser reads both). Test one language on one phone with
+  `adb shell setprop debug.vela.tune.transitHl ja`. FIXTURES: `core/src/test/resources/
+  google_transit/tokyo-{ja,en}.json`, two trips each, captured from the app with
+  `setprop log.tag.VelaCapture DEBUG` (the payload goes to logcat as `T <id> <n> <piece>`
+  lines), session tokens scrubbed; `theSameTripParsesAlikeInJapaneseAndEnglish` compares them.
+  STILL ENGLISH-ONLY: the Google stop BOARD fallback (`WebStopDeparturesFetcher`, pinned `hl=en`;
+  its parser's anchor is an AM/PM regex) and the "min late" text.
 - **Library updates (2026-10-06).** Dependabot's first grouped pull request failed its build:
   core-ktx 1.19, material3 1.5 alpha, navigation 2.10 and hilt-navigation 1.4 need compileSdk 37.
   The rest went in by hand (coroutines 1.11, serialization 1.11, rhino 1.7.15.1, commons-logging

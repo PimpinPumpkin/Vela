@@ -16,6 +16,10 @@ object AppTune {
     fun local(key: String): Double? = runCatching { sysGet?.invoke(null, "debug.vela.tune.$key") as? String }
         .getOrNull()?.toDoubleOrNull()
 
+    /** A device-only test hook that carries text (`adb shell setprop debug.vela.tune.<key> ja`). */
+    fun text(key: String): String? = runCatching { sysGet?.invoke(null, "debug.vela.tune.$key") as? String }
+        .getOrNull()?.takeIf { it.isNotBlank() }
+
     @Suppress("PrivateApi")
     private val sysGet by lazy {
         runCatching { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java) }.getOrNull()

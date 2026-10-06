@@ -2643,8 +2643,17 @@ custom maps) are not drawn while navigating.
 
 **Clock.** Settings > Appearance > Clock (`clock_mode`): the device's 12/24-hour setting, or
 12-hour or 24-hour for Vela alone. `Clock24.on` and `:core` `ClockFormat.use24h` carry the result;
-arrival clocks, board times and trip stamps read it, and `ClockFormat.show` converts the
-"h:mm AM" text Google's transit pages carry.
+arrival clocks, board times and trip stamps read it. Transit directions times are formatted
+from the payload's own epoch and time zone (`ClockFormat.at`), never from its clock text, which
+follows the page's language; `ClockFormat.show` converts the "h:mm AM" text of the one page still
+fetched in English, Google's stop-board fallback.
+
+**Transit page language.** Google's transit directions page is fetched in the app's language
+(`hl`, the reviews page's rule; `gl=us`), so stop, line and agency names arrive as that reader
+would see them. The parser reads times from `[epochSec, zone, text, utcOffsetSec, schedEpoch]`
+tuples by their numbers and the destination from the badge entry tagged 7. Calibration `tuning`
+`transitAppLanguage` 0 returns every install to the English page. The open transit feed takes
+`language=<bare code>` on every request.
 
 **Typed addresses.** `AddressQuery.parse` reads a leading house number and the street's first
 word that is not a direction or a street type; `matches` is true when both are whole words of a

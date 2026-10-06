@@ -81,8 +81,17 @@ class WebDirectionsFetcher @Inject constructor(
         else "!4m${entries.size + 3}!4m${entries.size + 2}!2m${entries.size}!" + entries.joinToString("!") + "!3e3"
         val url = "https://www.google.com/maps/dir/" +
             "${origin.lat},${origin.lng}/${destination.lat},${destination.lng}" +
-            "/data=$data?hl=en&gl=us"
+            "/data=$data?hl=${pageLanguage()}&gl=us"
         val raw = request(TOTAL_TIMEOUT_MS) { id -> load(url, id) }
+        // CAPTURE for the parser's fixtures: the raw payload to logcat in pieces, only when a
+        // developer asks (adb shell setprop log.tag.VelaCapture DEBUG). Never a URL: Google's
+        // page address carries a position taken from the session.
+        if (!raw.isNullOrEmpty() && android.util.Log.isLoggable("VelaCapture", android.util.Log.DEBUG)) runCatching {
+            val id = System.currentTimeMillis().toString(36)
+            android.util.Log.d("VelaCapture", "TBEGIN $id ${pageLanguage()} ${raw.length}")
+            raw.replace('\n', ' ').chunked(3000).forEachIndexed { i, c -> android.util.Log.d("VelaCapture", "T $id $i $c") }
+            android.util.Log.d("VelaCapture", "TEND $id")
+        }
         return if (raw.isNullOrEmpty()) emptyList()
         else runCatching { TransitParser.parse(raw, origin, destination) }.getOrDefault(emptyList())
     }
@@ -90,6 +99,15 @@ class WebDirectionsFetcher @Inject constructor(
     override fun onPageFinished(view: WebView, url: String?, requestId: String) {
         main.postDelayed({ view.evaluateJavascript(JsNames.of(extract(requestId)), null) }, SETTLE_MS)
     }
+
+    /** The page's language: the app's (issue #674: names came back romanized for a Japanese
+     *  reader), the same rule the reviews page uses. Every time, distance and duration the parser
+     *  needs has a number beside its text, so the text's language no longer matters to it. The
+     *  dial `transitAppLanguage` 0 puts the fleet back on English without a release; the test
+     *  hook `debug.vela.tune.transitHl` forces one language on one phone. */
+    private fun pageLanguage(): String =
+        app.vela.ui.AppTune.text("transitHl")
+            ?: if (app.vela.ui.AppTune.on("transitAppLanguage", true)) WebReviewsFetcher.reviewsHl() else "en"
 
     private companion object {
         const val TOTAL_TIMEOUT_MS = 20_000L

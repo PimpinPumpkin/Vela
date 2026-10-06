@@ -1120,6 +1120,38 @@ class SearchParserHoursTest {
 }
 
 class TransitParserTest {
+    private fun fixture(name: String) = javaClass.getResourceAsStream("/google_transit/$name")!!.bufferedReader().readText()
+
+    // The same Shinjuku to Tokyo Station trips captured from the app in Japanese and in English
+    // (issue #674). Everything the parser derives from numbers must agree between the two; only
+    // the names differ. The page's own clock text does differ ("5:38" and "5:38 AM").
+    @Test fun theSameTripParsesAlikeInJapaneseAndEnglish() {
+        app.vela.core.data.ClockFormat.use24h = false
+        val ja = TransitParser.parse(fixture("tokyo-ja.json"))
+        val en = TransitParser.parse(fixture("tokyo-en.json"))
+        assertEquals(2, ja.size); assertEquals(2, en.size)
+        val j = ja[0]; val e = en[0]
+        assertEquals(e.departureEpochSec, j.departureEpochSec)
+        assertEquals(e.departureText, j.departureText)
+        assertEquals(e.arrivalText, j.arrivalText)
+        assertTrue(Regex("""\d{1,2}:\d{2} [AP]M""").matches(j.departureText!!))
+        assertEquals(e.steps.size, j.steps.size)
+        val jr = j.steps.first { it.line != null }; val er = e.steps.first { it.line != null }
+        assertEquals("中央線", jr.line!!.name)
+        assertEquals("東京行", jr.headsign)
+        assertEquals("新宿駅", jr.boardStop!!.name)
+        assertEquals("Shinjuku Station", er.boardStop!!.name)
+        assertEquals(er.boardStop!!.timeText, jr.boardStop!!.timeText)
+        assertEquals(er.alightStop!!.timeText, jr.alightStop!!.timeText)
+        assertEquals(er.numStops, jr.numStops)
+        assertEquals(er.line!!.colorHex, jr.line!!.colorHex)
+        // The destination, not the service type that sits before it in the badge.
+        assertTrue(er.headsign!!.contains("Tokyo", ignoreCase = true) || er.headsign!!.contains("Tōkyō"))
+        app.vela.core.data.ClockFormat.use24h = true
+        assertTrue(Regex("""\d{2}:\d{2}""").matches(TransitParser.parse(fixture("tokyo-ja.json"))[0].departureText!!))
+        app.vela.core.data.ClockFormat.use24h = false
+    }
+
 
     // Faithful to a live Davis→Sacramento `!3e3` capture (2026-06-18): trips at
     // root[0][1], each trip is [summary, …] so the summary is trip[0]; within the
@@ -1216,8 +1248,8 @@ class TransitParserTest {
         """[1783456549,"America/New_York","4:35 PM"],null,null,null,null,""" +
         """[1783456243,"America/New_York","4:30 PM"],null,3]"""
     private val alightStop = """["Aventura Blvd & #2740 (Bank)","AVTB#276",""" +
-        """[1783458840,"America/New_York","4:54 PM"],null,null,null,null,""" +
-        """[1783458540,"America/New_York","4:49 PM"],null,null,3]"""
+        """[1783457640,"America/New_York","4:54 PM"],null,null,null,null,""" +
+        """[1783457340,"America/New_York","4:49 PM"],null,null,3]"""
     private val intermStop = """["NE 10 Av & NE 180 Ter","A10V1801",""" +
         """[1783456644,"America/New_York","4:37 PM"],null,null,null,null,null,null,null,3]"""
     private val ride = """[$boardStop,$alightStop,17,"#5c7ca2",0,null,2,[$intermStop]]"""
