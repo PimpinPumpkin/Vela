@@ -3901,10 +3901,16 @@ architecture note.
   fixes are on (`drivenPublicRun`). Trips shared before this cannot be audited against their line.
 - **Browse-follow tilt (PR #673, 2026-10-06).** The free-drive follow ticker gates every camera
   write on `!shoving[0]` as it does on `scaling`, and `browseUserTilt` holds the gesture's tilt as
-  the ticker's tilt target (attitude ease and the idle-settling test both) until Re-center or the
-  follow session ends. A tilt ending under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped. Pausing only
-  during the gesture flattened the map on release. NOT gesture-checked here: adb cannot inject two
-  fingers; the 4a check was launch, locate, and the follow loop still going idle.
+  the ticker's tilt target (attitude ease and the idle-settling test both). It is cleared only by
+  the compass tap (north and flat) or a drive starting, NOT by the locate button or the follow
+  ending: Google Maps was checked on the 4a (pinch and tilt keep following, the tilt survives a pan
+  and a recenter). The compass's fade-at-north is switched off while a tilt is held, or there is
+  no way back to flat. A tilt ending under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped. TWO-FINGER
+  GESTURES FROM ADB: `sendevent` is denied on the 4a, so a small dex run with `app_process`
+  injects MotionEvents through `InputManagerGlobal.injectInputEvent` (two pointers, each from a to
+  b); a session's scratch copy is `Mt.java`. Google's follow state reads from its location
+  button's content description ("Enter compass mode" following, "Re-center map to your location"
+  not).
 - **Saved pins stay pins, and Rename is on the sheet (discussion #681, 2026-10-06).** A saved pin
   or address (`SavedPlace.isPoint`) reopens through `selectContactPlace` with no search: the
   enrichment search for "505 2nd Street" on its own point adopted a real-estate office in the same

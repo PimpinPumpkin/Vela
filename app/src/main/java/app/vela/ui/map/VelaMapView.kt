@@ -993,7 +993,7 @@ fun VelaMapView(
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
     val shoving = remember { booleanArrayOf(false) } // two-finger tilt gesture in flight - ticker steps aside
     val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
-    val browseUserTilt = remember { doubleArrayOf(Double.NaN) } // retained until Re-center or follow ends
+    val browseUserTilt = remember { doubleArrayOf(Double.NaN) } // kept until the compass is tapped or a drive starts
     val browseZoomGoal = remember { doubleArrayOf(Double.NaN) } // locate-tap standard zoom, eased by the browse ticker
     val browseFlying = remember { booleanArrayOf(false) } // cold-engage flight in progress - ticker parks until it lands
     // Has this follow SESSION already engaged? The cold-engage fly-to-street-zoom below must run
@@ -2470,7 +2470,7 @@ fun VelaMapView(
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
             browseZoomGoal[0] = Double.NaN
-            browseUserTilt[0] = Double.NaN
+            if (navMode) browseUserTilt[0] = Double.NaN // a pan or a sheet keeps the angle, like Google's
             browseEst.reset()
             browseEngaged[0] = false
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
@@ -4042,6 +4042,8 @@ fun VelaMapView(
                     override fun onShoveBegin(detector: ShoveGestureDetector) {
                         shoving[0] = true
                         if (!navModeHolder.value) {
+                            // The compass is the way back to flat, so it shows while a tilt is held.
+                            map.uiSettings.setCompassFadeFacingNorth(false)
                             browseZoomGoal[0] = Double.NaN
                             // Cancel an owned locate flight before handing the camera to the fingers.
                             map.cancelTransitions()
@@ -4064,6 +4066,7 @@ fun VelaMapView(
                             // A few degrees is a pinch's wobble, not a chosen angle: back to automatic.
                             val t = map.cameraPosition.tilt
                             browseUserTilt[0] = if (t < BROWSE_TILT_KEEP_MIN_DEG) Double.NaN else t
+                            if (browseUserTilt[0].isNaN()) map.uiSettings.setCompassFadeFacingNorth(true)
                         }
                         shoving[0] = false
                     }
@@ -4528,7 +4531,11 @@ fun VelaMapView(
                     }
                     findCompass(mapView)?.setOnClickListener {
                         if (!onCompassTapHolder.value()) {
-                            map.animateCamera(CameraUpdateFactory.bearingTo(0.0), 300)
+                            // North up and flat, and the kept tilt is let go (Google's compass does both).
+                            browseUserTilt[0] = Double.NaN
+                            map.uiSettings.setCompassFadeFacingNorth(true)
+                            map.animateCamera(CameraUpdateFactory.newCameraPosition(
+                                CameraPosition.Builder(map.cameraPosition).bearing(0.0).tilt(0.0).build()), 300)
                         }
                     }
                 }
@@ -4558,7 +4565,7 @@ fun VelaMapView(
         // Browse keeps Google's fade-when-north; NAV shows the compass the whole drive - a
         // stationary route start is often still north-up, which faded it out right when the
         // user looked for it (user 2026-07-14; Google pins it during nav too).
-        map.uiSettings.setCompassFadeFacingNorth(!navMode)
+        map.uiSettings.setCompassFadeFacingNorth(!navMode && browseUserTilt[0].isNaN())
 
         // Fraction of the route already driven (for the traversed-gray gradient) —
         // 0 unless we're navigating and on the line.
@@ -4955,7 +4962,6 @@ fun VelaMapView(
             // route/markers would otherwise hold the camera. Force a move to the user, once per tap.
             recenterTick != lastRecenterTick -> {
                 lastRecenterTick = recenterTick
-                browseUserTilt[0] = Double.NaN
                 val t = myLocation ?: cameraTarget
                 if (t != null) {
                     lastCameraTarget = t

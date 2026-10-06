@@ -1320,9 +1320,11 @@ motion are filtered.
   2.5 s); the follow target is a continuously integrated estimate (`FollowEstimator`) fed the
   **raw** accepted fix, not the low-passed one, with half of each residual spread over 0.9 s.
 - A two-finger tilt during free-drive follow pauses every follow camera write and becomes the
-  follow's tilt target (`browseUserTilt`) in place of the automatic 0 degrees (slow) or 55 (driving),
-  until Re-center or the follow ends. A tilt that ends under `BROWSE_TILT_KEEP_MIN_DEG` (8) is
-  dropped: that is a pinch's wobble. The idle test compares against the active target, so a kept
+  follow's tilt target (`browseUserTilt`) in place of the automatic 0 degrees (slow) or 55 (driving).
+  It survives a pan, a sheet and the locate button, as Google Maps' does; the compass, which stays
+  visible while a tilt is held, returns the map to north and flat and lets it go, and so does
+  starting a drive. A tilt that ends under `BROWSE_TILT_KEEP_MIN_DEG` (8) is dropped: that is a
+  pinch's wobble. The idle test compares against the active target, so a kept
   tilt does not keep the loop running.
 - **In follow mode the puck is a Compose overlay**, not a map symbol, drawn at
   `projection.toScreenLocation` of the same point computed right after the camera move. A
