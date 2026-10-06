@@ -3940,6 +3940,16 @@ architecture note.
   `singleTask` is the fix and needs a pass over how links from other apps open first.
   `SECURITY.md` lists all of it for users. The repository's private vulnerability reporting,
   Dependabot alerts and secret scanning are repository settings, not files.
+- **Issue triage (2026-10-06).** `.github/workflows/issue-triage.yml` runs
+  `scripts/issue-triage.py` when an issue is opened: a comment listing earlier issues that share
+  its wording (IDF-weighted word overlap, `MIN_SCORE`), and the `incomplete` label plus a note on a
+  bug report whose "Vela version" field is older than the current stable (skipped for
+  `STABLE_GRACE` after a promotion). No model and no outside service, and it never closes an
+  issue. It reads the form's `### ` headings, so renaming "Vela version", "What happened" or
+  "What you want" in `.github/ISSUE_TEMPLATE/` needs the same rename in the script. An `issues`
+  workflow runs from `main` only, so a change takes effect when canary merges. Try a change with
+  `GH_TOKEN=... python3 scripts/issue-triage.py --dry-run <issue number>`, which prints and posts
+  nothing.
 - **Browse-follow tilt (PR #673, 2026-10-06).** The free-drive follow ticker gates every camera
   write on `!shoving[0]` as it does on `scaling`, and `browseUserTilt` holds the gesture's tilt as
   the ticker's tilt target (attitude ease and the idle-settling test both). It is cleared only by

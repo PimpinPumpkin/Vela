@@ -103,6 +103,11 @@ every open issue is something that can actually be acted on.
   cannot be built. If you do not know the source, say that and name what you checked. The
   list of things that will not be built is in [ROADMAP.md](ROADMAP.md) under "Not going
   to happen".
+- **A new issue gets an automatic first look.** A workflow compares it with earlier issues,
+  open and closed, and comments with the closest few by shared wording. If one is the same
+  thing, say so and add your detail there. A bug report naming a build older than the current
+  stable is labeled `incomplete` and asked to update. This is plain text matching
+  (`scripts/issue-triage.py`), not a model, and it never closes anything.
 - **Incomplete issues are closed without further explanation**, the same way NewPipe
   and most small projects handle them, and they are labeled `incomplete` so the reason
   is on the record. Fill in the template and it will be read.
