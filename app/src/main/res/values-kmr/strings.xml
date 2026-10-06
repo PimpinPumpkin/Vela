@@ -1,3 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="cat_restaurants">Xwaringeh</string>
+    <string name="cat_coffee">Qehwexane</string>
+    <string name="cat_gas">Xaz</string>
+    <string name="cat_ev">Tijiîkirina EV</string>
+    <string name="cat_hotels">Otêl</string>
+    <string name="cat_pharmacy">Dermanxane</string>
+    <string name="cat_atms">ATM</string>
+    <string name="cat_parks">Park</string>
+    <string name="cat_things_to_do">Tiştên bo kirinê</string>
+    <string name="cat_bars">Bar</string>
+    <string name="cat_parking">Park</string>
+    <string name="cat_hospitals">Nexweşxane</string>
+    <string name="cat_banks">Benk</string>
+    <string name="settings_title">Sazkarî</string>
 </resources>
