@@ -134,9 +134,9 @@ class WebDirectionsFetcher @Inject constructor(
               }
               function attempt(){
                 var best = findBest();
-                if (best && best.length > 5000){ VelaBridge.onResult('$id', best.slice(0, 1500000)); return; }
+                if (best && best.length > 5000){ VelaBridge.onResult('$id', best.slice(0, 6000000)); return; }
                 if (tries++ < 12) setTimeout(attempt, 600);
-                else VelaBridge.onResult('$id', best ? best.slice(0, 1500000) : "");
+                else VelaBridge.onResult('$id', best ? best.slice(0, 6000000) : "");
               }
               attempt();
             })();

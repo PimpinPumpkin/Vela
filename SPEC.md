@@ -3629,6 +3629,14 @@ Details:
   contain them.
 
 ---
+- A ridden leg in Japan carries no generic vehicle icon, only its operator's and the transfers'
+  walk icons. The mode then comes from the operator icon's path: `shinkansen`, `jp-jr` or
+  `jp2ltr` is a train, `metro` or `subway` a subway, any other operator icon a generic ride.
+  A leg with an operator icon is never a walk.
+- The page's payload is taken up to 6 MB. A cut payload does not parse, and the chooser then
+  shows the open planner's trips; a long intercity trip in Japanese passes 1.5 MB.
+- Durations Vela formats itself use the platform's short units in every language but English
+  ("6 h 16 min"), including the open planner's.
 
 ## 9. Voice, dictation and language
 

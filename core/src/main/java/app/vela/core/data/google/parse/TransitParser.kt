@@ -382,6 +382,9 @@ object TransitParser {
         // Filenames are language-neutral and Google names them per mode: bus2.png, subway2.png,
         // rail.png, tram.png, ferry.png, walk.png.
         val hay = StringBuilder()
+        // Agency-scoped line icons ("jp2ltr-v2/osaka-metro/M.png"), kept apart from the filenames:
+        // they are consulted only when no generic vehicle icon names the mode (see below).
+        val agency = StringBuilder()
         fun walk(n: JsonElement) {
             when (n) {
                 is JsonArray -> n.forEach(::walk)
@@ -390,18 +393,30 @@ object TransitParser {
                         // Keep only the filename: an agency line icon (us-ny-mta/2.png) must not
                         // contribute its operator name to the mode guess.
                         hay.append(it.substringAfterLast('/')).append(' ')
+                        if (it.endsWith(".png") && !it.startsWith("//") && "/" in it) agency.append(it.lowercase()).append(' ')
                     }
                 }
             }
         }
         walk(node)
         val s = hay.toString().lowercase()
+        val a = agency.toString()
         return when {
             "bus" in s -> TransitMode.BUS
             "subway" in s -> TransitMode.SUBWAY
             "tram" in s -> TransitMode.TRAM
             "rail" in s || "train" in s -> TransitMode.TRAIN
             "ferry" in s -> TransitMode.FERRY
+            // JAPAN (issue #674): a ridden leg there carries NO generic vehicle icon, only the
+            // operator's own ("jp-jr-shinkansen-blue.png", "jp2ltr-v2/jr-west-kansai/A.png"), and
+            // the walk icons of the transfers around it, so every train drew as a walk. The
+            // vehicle word beside the icon is in the page's language, so the icon path decides:
+            // a metro or subway operator is a subway, the lettered rail lines and JR are trains.
+            "shinkansen" in s -> TransitMode.TRAIN
+            a.contains("metro") || a.contains("subway") -> TransitMode.SUBWAY
+            a.contains("jp2ltr") || a.contains("jp-jr") -> TransitMode.TRAIN
+            // A line icon with no mode anyone named is still something you ride.
+            a.isNotBlank() -> TransitMode.GENERIC
             "walk" in s -> TransitMode.WALK
             else -> TransitMode.GENERIC
         }

@@ -648,8 +648,13 @@ object Transitous {
         )
     }
 
+    /** Set by the app to its own duration formatter, so a planned trip's times read in the app's
+     *  language like every other duration on screen. Null (unit tests) = the English form below. */
+    @Volatile var durationFormatter: ((Long) -> String)? = null
+
     /** "45 min" / "1 h 5 min", the shape the chooser's chips already fold. */
     internal fun durationText(secs: Long): String {
+        durationFormatter?.let { f -> runCatching { return f(secs.coerceAtLeast(60)) } }
         val m = ((secs + 30) / 60).coerceAtLeast(1)
         return if (m < 60) "$m min" else if (m % 60 == 0L) "${m / 60} h" else "${m / 60} h ${m % 60} min"
     }

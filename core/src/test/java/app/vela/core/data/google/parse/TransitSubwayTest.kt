@@ -95,4 +95,23 @@ class TransitSubwayTest {
         assertNotNull(TransitParser.guessModeForTest(leg))
         assertEquals(TransitMode.GENERIC, TransitParser.guessModeForTest(leg))
     }
+
+    // Issue #674: Japan's ridden legs carry only the operator's icon plus the transfers' walk
+    // icons. Badge nodes as captured from a Tokyo to Osaka trip on the Japanese page.
+    private fun badges(vararg icons: String) = Json.parseToJsonElement(
+        "[" + icons.joinToString(",") { """[5,null,[3,"$it",null,"x",[["//maps.gstatic.com/mapfiles/transit/iw2/svg/${it.removeSuffix(".png")}.svg",1,[44,44],null,0]]]]""" } + "]")
+
+    @Test fun `a shinkansen between two walks is a train`() {
+        assertEquals(TransitMode.TRAIN, TransitParser.guessModeForTest(badges("walk.png", "jp-jr-shinkansen-blue.png", "walk.png")))
+    }
+
+    @Test fun `a lettered JR line is a train and a metro line is a subway`() {
+        assertEquals(TransitMode.TRAIN, TransitParser.guessModeForTest(badges("walk.png", "jp2ltr-v2/jr-west-kansai/A.png")))
+        assertEquals(TransitMode.SUBWAY, TransitParser.guessModeForTest(badges("walk.png", "jp2ltr-v2/osaka-metro/M.png")))
+    }
+
+    @Test fun `an operator icon nobody can classify is a ride, never a walk`() {
+        assertEquals(TransitMode.GENERIC, TransitParser.guessModeForTest(badges("walk.png", "xx-some-operator/7.png")))
+        assertEquals(TransitMode.WALK, TransitParser.guessModeForTest(badges("walk.png")))
+    }
 }

@@ -3920,6 +3920,21 @@ architecture note.
   lines), session tokens scrubbed; `theSameTripParsesAlikeInJapaneseAndEnglish` compares them.
   STILL ENGLISH-ONLY: the Google stop BOARD fallback (`WebStopDeparturesFetcher`, pinned `hl=en`;
   its parser's anchor is an AM/PM regex) and the "min late" text.
+- **Three leftovers from #674 (2026-10-07).** (1) `formatDuration` uses the platform's units
+  (`android.icu.text.MeasureFormat`, SHORT) for every app language but English, which keeps
+  "6 h 16 min"; the open planner's times go through it too (`Transitous.durationFormatter`, set
+  in VelaApp). (2) `TransitParser.guessMode`: a ridden leg in Japan has no generic vehicle icon,
+  only the operator's (`jp-jr-shinkansen-blue.png`, `jp2ltr-v2/<operator>/<letter>.png`) and the
+  transfers' `walk.png`, so every train drew as a walk. The icon PATH decides now (shinkansen,
+  `jp-jr`, `jp2ltr` = train; `metro` / `subway` = subway; any other operator icon = a generic
+  ride, never a walk). The word beside the icon is the page's language, do not read it.
+  (3) `WebDirectionsFetcher` cut the page's payload at 1.5 MB; Tokyo to Osaka in Japanese is
+  larger, the cut JSON failed to parse and the chooser silently showed the open planner's trips
+  instead of Google's. The cap is 6 MB. If a long trip shows trip numbers as line names, that
+  is the open planner standing in: check `VelaCapture: TBEGIN` for the payload length first.
+  Test the app in another language without touching Settings:
+  `adb shell cmd locale set-app-locales app.vela --user 0 --locales ja` (and `""` to undo).
+  Open: a line pill reading "MAIN" in the reporter's screenshot, not reproduced.
 - **Unconfirmed Overture rows rank as ordinary places (2026-10-06, a forum report from DC).**
   `tools/build-places-region.sh`, table `unconfirmed`: confidence under 0.75 AND no second source
   (no row in `srcbonus` with a bonus, none in `marksize`) caps prominence at 3.0 and is never a

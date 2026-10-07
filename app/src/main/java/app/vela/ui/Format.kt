@@ -61,10 +61,27 @@ fun formatArea(m2: Double): String =
 
 fun formatDuration(seconds: Double): String {
     val totalMin = (seconds / 60.0).roundToInt()
-    if (totalMin < 1) return "<1 min"
-    if (totalMin < 60) return "$totalMin min"
     val h = totalMin / 60
     val m = totalMin % 60
+    // English keeps its own short form ("6 h 16 min"). Every other language takes the platform's
+    // units, so Japanese reads "6 時間 16 分" beside Google's transit times instead of "6 h 16 min"
+    // (issue #674). Any failure falls back to the English form.
+    val locale = AppLocale.effective()
+    if (locale.language != "en") {
+        runCatching {
+            val f = android.icu.text.MeasureFormat.getInstance(locale, android.icu.text.MeasureFormat.FormatWidth.SHORT)
+            val hours = android.icu.util.Measure(h, android.icu.util.MeasureUnit.HOUR)
+            val mins = android.icu.util.Measure(maxOf(m, if (totalMin < 1) 1 else 0), android.icu.util.MeasureUnit.MINUTE)
+            return when {
+                totalMin < 1 -> "<" + f.formatMeasures(mins)
+                h == 0 -> f.formatMeasures(mins)
+                m == 0 -> f.formatMeasures(hours)
+                else -> f.formatMeasures(hours, mins)
+            }
+        }
+    }
+    if (totalMin < 1) return "<1 min"
+    if (totalMin < 60) return "$totalMin min"
     return if (m == 0) "$h h" else "$h h $m min"
 }
 

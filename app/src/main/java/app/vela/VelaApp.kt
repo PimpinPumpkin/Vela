@@ -105,6 +105,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
             app.vela.core.data.google.BrowserViewport.set(w, h)
         }
         app.vela.ui.Clock24.refresh(this) // the 12/24-hour clock setting (issue #357); MainActivity refreshes it on resume
+        app.vela.core.data.transit.Transitous.durationFormatter = { secs -> app.vela.ui.formatDuration(secs.toDouble()) }
         AppTheme.init(this)
         DynamicColor.init(this)
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
