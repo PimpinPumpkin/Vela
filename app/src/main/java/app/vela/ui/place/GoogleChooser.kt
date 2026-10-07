@@ -466,22 +466,26 @@ fun GoogleStyleDirectionsPanel(
                                 Row(
                                     Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    // One "Avoid" label and four short chips: with "Avoid" on every
+                                    // chip the fourth sat off the edge of a phone, unseen.
+                                    Text(stringResource(R.string.place_avoid_label), style = MaterialTheme.typography.labelLarge, color = dim)
                                     FilterChip(
                                         selected = avoidTolls, onClick = { onAvoidTolls(!avoidTolls) },
-                                        label = { Text(stringResource(R.string.place_avoid_tolls)) },
+                                        label = { Text(stringResource(R.string.place_avoid_short_tolls)) },
                                         shape = CircleShape,
                                         modifier = Modifier.dpadHighlight(CircleShape),
                                     )
                                     FilterChip(
                                         selected = avoidHighways, onClick = { onAvoidHighways(!avoidHighways) },
-                                        label = { Text(stringResource(R.string.place_avoid_highways)) },
+                                        label = { Text(stringResource(R.string.place_avoid_short_highways)) },
                                         shape = CircleShape,
                                         modifier = Modifier.dpadHighlight(CircleShape),
                                     )
                                     FilterChip(
                                         selected = avoidFerries, onClick = { onAvoidFerries(!avoidFerries) },
-                                        label = { Text(stringResource(R.string.place_avoid_ferries)) },
+                                        label = { Text(stringResource(R.string.place_avoid_short_ferries)) },
                                         shape = CircleShape,
                                         modifier = Modifier.dpadHighlight(CircleShape),
                                     )
@@ -697,7 +701,7 @@ internal fun AvoidCamerasChip() {
             app.vela.ui.FlockRouteAlert.set(context, !on)
             app.vela.ui.RouteActions.camerasChanged?.invoke()
         },
-        label = { Text(stringResource(R.string.place_avoid_cameras)) },
+        label = { Text(stringResource(R.string.place_avoid_short_cameras)) },
         shape = CircleShape,
         modifier = Modifier.dpadHighlight(CircleShape),
     )

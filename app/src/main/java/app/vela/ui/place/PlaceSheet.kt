@@ -1894,25 +1894,27 @@ fun DirectionsPanel(
                 Row(
                     Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Text(stringResource(R.string.place_avoid_label), style = MaterialTheme.typography.labelLarge, color = dim)
                     FilterChip(
                         selected = avoidTolls,
                         onClick = { onAvoidTolls(!avoidTolls) },
-                        label = { Text(stringResource(R.string.place_avoid_tolls)) },
+                        label = { Text(stringResource(R.string.place_avoid_short_tolls)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                     )
                     FilterChip(
                         selected = avoidHighways,
                         onClick = { onAvoidHighways(!avoidHighways) },
-                        label = { Text(stringResource(R.string.place_avoid_highways)) },
+                        label = { Text(stringResource(R.string.place_avoid_short_highways)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                     )
                     FilterChip(
                         selected = avoidFerries,
                         onClick = { onAvoidFerries(!avoidFerries) },
-                        label = { Text(stringResource(R.string.place_avoid_ferries)) },
+                        label = { Text(stringResource(R.string.place_avoid_short_ferries)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                     )

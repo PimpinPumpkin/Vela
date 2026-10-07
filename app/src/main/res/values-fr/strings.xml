@@ -579,9 +579,6 @@
     <string name="settings_map_colors_modern">Moderne</string>
     <string name="settings_map_colors_classic">Classique</string>
     <string name="settings_map_colors_hint">Moderne reprend la palette actuelle de Google Maps. Classique est l\'ancien style de Vela : routes blanches, autoroutes jaunes, verts francs.</string>
-    <string name="place_avoid_tolls">Éviter les péages</string>
-    <string name="place_avoid_highways">Éviter les autoroutes</string>
-    <string name="place_avoid_ferries">Éviter les ferries</string>
     <string name="map_parking_find">Trouver ma voiture</string>
     <string name="map_parking_move_here">Déplacer le parking ici</string>
     <string name="map_parking_earlier">Emplacements précédents</string>
@@ -1217,4 +1214,9 @@
     <string name="car_location_denied">La position est désactivée. Activez-la pour Vela dans les paramètres de votre téléphone.</string>
     <string name="settings_page_transitions">Transitions entre les pages</string>
     <string name="settings_page_transitions_hint">Anime les pages et les panneaux inférieurs à l\'ouverture et à la fermeture, et affiche un aperçu de la page précédente lors du geste de retour.</string>
+    <string name="place_avoid_label">Éviter</string>
+    <string name="place_avoid_short_tolls">Péages</string>
+    <string name="place_avoid_short_highways">Autoroutes</string>
+    <string name="place_avoid_short_ferries">Ferries</string>
+    <string name="place_avoid_short_cameras">Caméras</string>
 </resources>

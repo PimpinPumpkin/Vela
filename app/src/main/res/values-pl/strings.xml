@@ -640,9 +640,6 @@
     <string name="settings_map_colors_modern">Nowoczesne</string>
     <string name="settings_map_colors_classic">Klasyczne</string>
     <string name="settings_map_colors_hint">Nowoczesne odpowiadają obecnej palecie Google Maps. Klasyczne to wcześniejszy wygląd Vela: białe drogi, żółte autostrady, wyraziste zielenie.</string>
-    <string name="place_avoid_tolls">Unikaj opłat drogowych</string>
-    <string name="place_avoid_highways">Unikaj autostrad</string>
-    <string name="place_avoid_ferries">Unikaj promów</string>
     <string name="map_parking_find">Znajdź mój samochód</string>
     <string name="map_parking_move_here">Przenieś parking tutaj</string>
     <string name="map_parking_earlier">Wcześniejsze miejsca</string>
@@ -1235,4 +1232,9 @@
     <string name="car_location_denied">Lokalizacja jest wyłączona. Włącz ją dla Veli w ustawieniach telefonu.</string>
     <string name="settings_page_transitions">Przejścia między stronami</string>
     <string name="settings_page_transitions_hint">Animuje otwieranie i zamykanie stron oraz paneli u dołu ekranu i wyświetla podgląd poprzedniej strony podczas przesuwania wstecz.</string>
+    <string name="place_avoid_label">Omijaj</string>
+    <string name="place_avoid_short_tolls">Opłaty</string>
+    <string name="place_avoid_short_highways">Autostrady</string>
+    <string name="place_avoid_short_ferries">Promy</string>
+    <string name="place_avoid_short_cameras">Kamery</string>
 </resources>

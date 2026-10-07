@@ -579,9 +579,6 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Klassisk</string>
     <string name="settings_map_colors_hint">Modern följer Google Maps nuvarande palett. Klassisk är Velas tidigare utseende: vita vägar, gula motorvägar, riktiga gröna toner.</string>
-    <string name="place_avoid_tolls">Undvik vägtullar</string>
-    <string name="place_avoid_highways">Undvik motorvägar</string>
-    <string name="place_avoid_ferries">Undvik färjor</string>
     <string name="map_parking_find">Hitta min bil</string>
     <string name="map_parking_move_here">Flytta parkeringen hit</string>
     <string name="map_parking_earlier">Tidigare parkeringar</string>
@@ -1230,4 +1227,9 @@
     <string name="car_location_denied">Plats är avstängd. Slå på den för Vela i telefonens inställningar.</string>
     <string name="settings_page_transitions">Sidövergångar</string>
     <string name="settings_page_transitions_hint">Animerar sidor och bottenpaneler när de öppnas och stängs, och förhandsvisar föregående sida när du sveper bakåt.</string>
+    <string name="place_avoid_label">Undvik</string>
+    <string name="place_avoid_short_tolls">Vägtullar</string>
+    <string name="place_avoid_short_highways">Motorvägar</string>
+    <string name="place_avoid_short_ferries">Färjor</string>
+    <string name="place_avoid_short_cameras">Kameror</string>
 </resources>

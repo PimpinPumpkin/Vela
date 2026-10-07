@@ -633,9 +633,6 @@
     <string name="notif_ask_skip">スキップ</string>
     <string name="place_time_past_toast">その時刻は過ぎています。現在時刻に設定しました。</string>
     <string name="settings_ui_scale">表示サイズ</string>
-    <string name="place_avoid_tolls">有料道路を回避</string>
-    <string name="place_avoid_highways">高速道路を回避</string>
-    <string name="place_avoid_ferries">フェリーを回避</string>
     <string name="settings_map_colors">地図の色</string>
     <string name="settings_map_colors_modern">モダン</string>
     <string name="settings_map_colors_classic">クラシック</string>
@@ -1272,4 +1269,9 @@
     <string name="car_location_denied">位置情報がオフです。スマートフォンの設定で Vela の位置情報をオンにしてください。</string>
     <string name="settings_page_transitions">ページの切り替え</string>
     <string name="settings_page_transitions_hint">ページや画面下部のパネルの開閉をアニメーションで表示し、戻るスワイプ操作中に前のページをプレビューします。</string>
+    <string name="place_avoid_label">回避</string>
+    <string name="place_avoid_short_tolls">有料道路</string>
+    <string name="place_avoid_short_highways">高速道路</string>
+    <string name="place_avoid_short_ferries">フェリー</string>
+    <string name="place_avoid_short_cameras">カメラ</string>
 </resources>

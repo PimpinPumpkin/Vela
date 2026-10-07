@@ -609,9 +609,6 @@
     <string name="notif_ask_skip">דלג</string>
     <string name="place_time_past_toast">הזמן הזה עבר. הוגדר לעכשיו.</string>
     <string name="settings_ui_scale">גודל הממשק</string>
-    <string name="place_avoid_tolls">הימנע מכבישי אגרה</string>
-    <string name="place_avoid_highways">הימנע מכבישים מהירים</string>
-    <string name="place_avoid_ferries">הימנע ממעבורות</string>
     <string name="shortcut_home">בית</string>
     <string name="shortcut_work">עבודה</string>
     <string name="settings_map_colors">צבעי מפה</string>
@@ -1203,4 +1200,9 @@
     <string name="car_location_denied">המיקום כבוי. הפעל אותו עבור Vela בהגדרות הטלפון.</string>
     <string name="settings_page_transitions">מעברים בין דפים</string>
     <string name="settings_page_transitions_hint">מנפיש דפים וחלוניות תחתונות בעת פתיחה וסגירה, ומציג תצוגה מקדימה של הדף הקודם בעת החלקה לחזרה.</string>
+    <string name="place_avoid_label">להימנע</string>
+    <string name="place_avoid_short_tolls">כבישי אגרה</string>
+    <string name="place_avoid_short_highways">כבישים מהירים</string>
+    <string name="place_avoid_short_ferries">מעבורות</string>
+    <string name="place_avoid_short_cameras">מצלמות</string>
 </resources>

@@ -633,9 +633,6 @@
     <string name="notif_ask_skip">略過</string>
     <string name="place_time_past_toast">該時間已過，已設為現在。</string>
     <string name="settings_ui_scale">介面大小</string>
-    <string name="place_avoid_tolls">避開收費路段</string>
-    <string name="place_avoid_highways">避開高速公路</string>
-    <string name="place_avoid_ferries">避開渡輪</string>
     <string name="settings_map_colors">地圖顏色</string>
     <string name="settings_map_colors_modern">現代</string>
     <string name="settings_map_colors_classic">經典</string>
@@ -1272,4 +1269,9 @@
     <string name="car_location_denied">定位已關閉。請在手機設定中為 Vela 開啟。</string>
     <string name="settings_page_transitions">頁面轉場</string>
     <string name="settings_page_transitions_hint">開啟和關閉頁面及底部面板時播放動畫，並在滑動返回時預覽上一頁。</string>
+    <string name="place_avoid_label">避開</string>
+    <string name="place_avoid_short_tolls">收費道路</string>
+    <string name="place_avoid_short_highways">高速公路</string>
+    <string name="place_avoid_short_ferries">渡輪</string>
+    <string name="place_avoid_short_cameras">攝影機</string>
 </resources>

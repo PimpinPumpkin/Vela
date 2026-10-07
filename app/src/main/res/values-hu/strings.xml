@@ -749,9 +749,6 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Klasszikus</string>
     <string name="settings_map_colors_hint">A Modern a Google app jelenlegi palettáját követi. A Klasszikus a Vela korábbi kinézete: fehér utak, sárga autópályák, valódi zöldek. A kettő sötét módban különbözik leginkább jelenleg.</string>
-    <string name="place_avoid_tolls">Díjköteles utak elkerülése</string>
-    <string name="place_avoid_highways">Autópályák elkerülése</string>
-    <string name="place_avoid_ferries">Kompok elkerülése</string>
     <string name="map_satellite_toggle">Műholdas nézet</string>
     <string name="map_layers">Rétegek</string>
     <string name="settings_layers_button">Rétegek gomb megjelenítése</string>
@@ -1188,4 +1185,9 @@
     <string name="car_location_denied">A helymeghatározás ki van kapcsolva. Kapcsold be a Velának a telefonod beállításaiban.</string>
     <string name="settings_page_transitions">Oldalátmenetek</string>
     <string name="settings_page_transitions_hint">Animálja az oldalak és az alsó panelek megnyitását és bezárását, és a visszalépési kézmozdulat közben megjeleníti az előző oldal előnézetét.</string>
+    <string name="place_avoid_label">Kerülendő</string>
+    <string name="place_avoid_short_tolls">Fizetős utak</string>
+    <string name="place_avoid_short_highways">Autópályák</string>
+    <string name="place_avoid_short_ferries">Kompok</string>
+    <string name="place_avoid_short_cameras">Kamerák</string>
 </resources>

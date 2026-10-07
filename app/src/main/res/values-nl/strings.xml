@@ -634,9 +634,6 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Klassiek</string>
     <string name="settings_map_colors_hint">Modern volgt het huidige palet van Google Maps. Klassiek is de eerdere look van Vela: witte wegen, gele snelwegen, echte groentinten.</string>
-    <string name="place_avoid_tolls">Tolwegen vermijden</string>
-    <string name="place_avoid_highways">Snelwegen vermijden</string>
-    <string name="place_avoid_ferries">Veerboten vermijden</string>
     <string name="map_parking_find">Mijn auto zoeken</string>
     <string name="map_parking_move_here">Parkeerplek hierheen verplaatsen</string>
     <string name="map_parking_earlier">Eerdere parkeerplekken</string>
@@ -1217,4 +1214,9 @@
     <string name="car_location_denied">Locatie staat uit. Zet die aan voor Vela in de instellingen van je telefoon.</string>
     <string name="settings_page_transitions">Paginaovergangen</string>
     <string name="settings_page_transitions_hint">Animeert pagina\'s en panelen onderaan bij het openen en sluiten, en toont een voorbeeld van de vorige pagina wanneer je terugveegt.</string>
+    <string name="place_avoid_label">Vermijden</string>
+    <string name="place_avoid_short_tolls">Tol</string>
+    <string name="place_avoid_short_highways">Snelwegen</string>
+    <string name="place_avoid_short_ferries">Veerboten</string>
+    <string name="place_avoid_short_cameras">Camera\'s</string>
 </resources>

@@ -581,9 +581,6 @@
     <string name="settings_map_colors_modern">Сучасні</string>
     <string name="settings_map_colors_classic">Класичні</string>
     <string name="settings_map_colors_hint">Сучасні повторюють поточну палітру Google Maps. Класичні повертають попередній вигляд Vela: білі дороги, жовті магістралі, насичена зелень.</string>
-    <string name="place_avoid_tolls">Уникати платних доріг</string>
-    <string name="place_avoid_highways">Уникати шосе</string>
-    <string name="place_avoid_ferries">Уникати поромів</string>
     <string name="map_parking_find">Знайти моє авто</string>
     <string name="map_parking_move_here">Перемістити парковку сюди</string>
     <string name="map_parking_earlier">Попередні місця</string>
@@ -1248,4 +1245,9 @@
     <string name="car_location_denied">Геолокацію вимкнено. Увімкніть її для Vela в налаштуваннях телефона.</string>
     <string name="settings_page_transitions">Переходи між сторінками</string>
     <string name="settings_page_transitions_hint">Анімує відкриття й закриття сторінок і нижніх панелей та показує попередню сторінку під час жесту повернення.</string>
+    <string name="place_avoid_label">Уникати</string>
+    <string name="place_avoid_short_tolls">Платні дороги</string>
+    <string name="place_avoid_short_highways">Автомагістралі</string>
+    <string name="place_avoid_short_ferries">Пороми</string>
+    <string name="place_avoid_short_cameras">Камери</string>
 </resources>

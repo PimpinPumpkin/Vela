@@ -634,9 +634,6 @@
     <string name="settings_map_colors_modern">Moderno</string>
     <string name="settings_map_colors_classic">Clássico</string>
     <string name="settings_map_colors_hint">Moderno segue a paleta atual do Google Maps. Clássico é o visual anterior do Vela: ruas brancas, rodovias amarelas, verdes fortes.</string>
-    <string name="place_avoid_tolls">Evitar pedágios</string>
-    <string name="place_avoid_highways">Evitar rodovias</string>
-    <string name="place_avoid_ferries">Evitar balsas</string>
     <string name="map_parking_find">Encontrar meu carro</string>
     <string name="map_parking_move_here">Mover estacionamento para cá</string>
     <string name="map_parking_earlier">Locais anteriores</string>
@@ -1218,4 +1215,9 @@
     <string name="car_location_denied">A localização está desativada. Ative-a para o Vela nas configurações do celular.</string>
     <string name="settings_page_transitions">Transições de página</string>
     <string name="settings_page_transitions_hint">Anima a abertura e o fechamento de páginas e painéis inferiores e mostra uma prévia da página anterior ao deslizar para voltar.</string>
+    <string name="place_avoid_label">Evitar</string>
+    <string name="place_avoid_short_tolls">Pedágios</string>
+    <string name="place_avoid_short_highways">Rodovias</string>
+    <string name="place_avoid_short_ferries">Balsas</string>
+    <string name="place_avoid_short_cameras">Câmeras</string>
 </resources>

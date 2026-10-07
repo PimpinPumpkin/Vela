@@ -1082,10 +1082,6 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Classic</string>
     <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens. The two differ most in dark mode right now.</string>
-    <string name="place_avoid_tolls">Avoid tolls</string>
-    <string name="place_avoid_highways">Avoid highways</string>
-    <string name="place_avoid_ferries">Avoid ferries</string>
-    <string name="place_avoid_cameras">Avoid cameras</string>
     <string name="shortcut_home" translatable="false">Home</string>
     <string name="shortcut_work" translatable="false">Work</string>
     <string name="map_satellite_toggle">Satellite view</string>
@@ -1312,4 +1308,9 @@
     <string name="driven_route_save">Save the way you drove</string>
     <string name="settings_page_transitions">Page transitions</string>
     <string name="settings_page_transitions_hint">Animate pages and bottom sheets as they open and close, and preview the previous page as you swipe back.</string>
+    <string name="place_avoid_label">Avoid</string>
+    <string name="place_avoid_short_tolls">Tolls</string>
+    <string name="place_avoid_short_highways">Highways</string>
+    <string name="place_avoid_short_ferries">Ferries</string>
+    <string name="place_avoid_short_cameras">Cameras</string>
 </resources>

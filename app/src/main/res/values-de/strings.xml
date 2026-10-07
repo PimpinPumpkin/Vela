@@ -579,9 +579,6 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Klassisch</string>
     <string name="settings_map_colors_hint">Modern entspricht der aktuellen Google-Palette. Klassisch ist der frühere Vela-Look: weiße Straßen, gelbe Autobahnen, kräftige Grüntöne.</string>
-    <string name="place_avoid_tolls">Mautstraßen vermeiden</string>
-    <string name="place_avoid_highways">Autobahnen vermeiden</string>
-    <string name="place_avoid_ferries">Fähren vermeiden</string>
     <string name="map_parking_find">Mein Auto finden</string>
     <string name="map_parking_move_here">Parkplatz hierher verschieben</string>
     <string name="map_parking_earlier">Frühere Parkplätze</string>
@@ -1217,4 +1214,9 @@
     <string name="car_location_denied">Standort ist aus. Aktiviere ihn für Vela in den Einstellungen deines Handys.</string>
     <string name="settings_page_transitions">Seitenübergänge</string>
     <string name="settings_page_transitions_hint">Animiert Seiten und untere Bedienfelder beim Öffnen und Schließen und zeigt beim Zurückwischen eine Vorschau der vorherigen Seite.</string>
+    <string name="place_avoid_label">Meiden</string>
+    <string name="place_avoid_short_tolls">Maut</string>
+    <string name="place_avoid_short_highways">Autobahnen</string>
+    <string name="place_avoid_short_ferries">Fähren</string>
+    <string name="place_avoid_short_cameras">Kameras</string>
 </resources>

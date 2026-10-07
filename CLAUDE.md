@@ -3851,7 +3851,10 @@ architecture note.
   highways and ferries. It flips the SAME switch as Settings > Navigation > Cameras
   (`FlockRouteAlert`) and asks for the routes again through `RouteActions.camerasChanged` (a
   holder in PlaceContent.kt, set in the view model's init, so MapScreen takes no callback).
-  Sticky like its neighbors. Checked on the 4a, Davis to Sacramento: chip on, routes refetched,
+  Sticky like its neighbors. The row is ONE "Avoid" label and four short chips (Tolls, Highways,
+  Ferries, Cameras; strings `place_avoid_label` and `place_avoid_short_*`, filled by hand in 17
+  languages, Kurmanji left to Weblate): with "Avoid" on every chip the fourth was off the edge
+  of a phone. In English the fourth chip now shows cut at the edge, which says the row scrolls. Checked on the 4a, Davis to Sacramento: chip on, routes refetched,
   counts [5, 6], "5 cameras on this route" under the time.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
