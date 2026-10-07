@@ -26,4 +26,9 @@ object AppTune {
     }
 
     fun on(key: String, default: Boolean): Boolean = value(key, if (default) 1.0 else 0.0) >= 0.5
+
+    /** A switch only adb can turn on. Anything that opens the app up for inspection (the WebView
+     *  inspector, raw reply dumps, the network log) reads this, never [on]: a settings bundle must
+     *  not be able to switch those on for the fleet. */
+    fun localOn(key: String): Boolean = (local(key) ?: 0.0) >= 0.5
 }

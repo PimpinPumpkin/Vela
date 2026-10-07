@@ -63,7 +63,7 @@ object CronetHolder {
      *  Cronet's own NetLog of the next 90 s into `files/netlog/`, cookies stripped, so the exact
      *  headers Cronet puts on a Google request can be read off the phone. */
     private fun maybeNetLog(e: CronetEngine) {
-        if (!app.vela.ui.AppTune.on("netLog", false)) return
+        if (!app.vela.ui.AppTune.localOn("netLog")) return
         val dir = appContext.getExternalFilesDir("netlog") ?: return
         val f = File(dir, "cronet-${System.currentTimeMillis()}.json")
         runCatching { e.startNetLogToFile(f.absolutePath, false) }.onSuccess {

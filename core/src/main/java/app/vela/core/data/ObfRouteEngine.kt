@@ -104,7 +104,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         val originIn = cands.any { it.covers(origin) }
         val destIn = cands.any { it.covers(destination) }
         if (!originIn || !destIn) {
-            android.util.Log.d(TAG, "route: endpoint outside installed data (origin in=$originIn, destination in=$destIn; origin ${"%.4f".format(origin.lat)},${"%.4f".format(origin.lng)})")
+            android.util.Log.d(TAG, "route: endpoint outside installed data (origin in=$originIn, destination in=$destIn)")
             return null
         }
         return cands

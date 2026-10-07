@@ -77,7 +77,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.diag.GoogleUsageStore.init(this) // Settings > Privacy > Requests to Google
         // adb-only: `setprop debug.vela.tune.feedDump 1` saves raw review-feed replies to
         // Android/data/app.vela/files/feeddump/ (ReviewFeedDebug). Never on otherwise.
-        if (app.vela.ui.AppTune.on("feedDump", false)) {
+        if (app.vela.ui.AppTune.localOn("feedDump")) {
             val dir = getExternalFilesDir("feeddump")
             app.vela.core.data.google.ReviewFeedDebug.sink = { raw ->
                 dir?.let { java.io.File(it, "qv9Egd-${System.currentTimeMillis()}.txt").writeText(raw) }
@@ -85,7 +85,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         }
         // adb-only: `setprop debug.vela.tune.netLog 1` also opens the WebViews to Chrome's remote
         // inspector (adb forward to webview_devtools_remote_<pid>), for reading their real headers.
-        if (app.vela.ui.AppTune.on("netLog", false)) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
+        if (app.vela.ui.AppTune.localOn("netLog")) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())

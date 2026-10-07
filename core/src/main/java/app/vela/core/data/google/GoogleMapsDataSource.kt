@@ -368,13 +368,14 @@ class GoogleMapsDataSource @Inject constructor(
             .replace("{W}", BrowserViewport.width.toString()).replace("{H}", BrowserViewport.height.toString())
         val url = "${cal.suggestEndpoint}&pb=${pb.enc()}&q=${query.enc()}&tch=1&ech=${RequestShape.nextEch()}".localized(lang)
         val raw = try { get(url) } catch (e: Exception) {
-            android.util.Log.w("VelaSuggest", "\"$query\": ${e.javaClass.simpleName} ${e.message}")
+            android.util.Log.w("VelaSuggest", "${query.length} chars: ${e.javaClass.simpleName} ${e.message}")
             throw e
         }
         val parsed = SuggestParser.parse(raw, cal.suggestPaths)
         // One line per keystroke pause, like VelaUpdate/VelaWeb: what the autocomplete answered,
         // and the head of the body when it answered nothing (a consent page, a block, a reshape).
-        android.util.Log.i("VelaSuggest", "\"$query\" span $span → ${parsed.places.size} places, ${parsed.queries.size} queries" +
+        // The typed text itself stays out of the system log.
+        android.util.Log.i("VelaSuggest", "${query.length} chars, span $span → ${parsed.places.size} places, ${parsed.queries.size} queries" +
             if (parsed.places.isEmpty() && parsed.queries.isEmpty()) " body[${raw.length}]=${raw.take(120).replace('\n', ' ')}" else "")
         diag.record("suggest", "\"$query\" near ${at.lat},${at.lng} span $span → ${parsed.places.size} places, ${parsed.queries.size} queries", url)
         SuggestResult(parsed.places, parsed.queries)

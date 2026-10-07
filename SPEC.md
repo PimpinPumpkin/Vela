@@ -580,6 +580,9 @@ Constraints:
   overrides when set), because a browser that never sends it looks less like one. Measured neutral on page timing once the response streams.
 - Every dial can be overridden on a device with `adb shell setprop debug.vela.tune.<key> <n>`
   (`ui/AppTune`), for testing without a calibration push.
+- `netLog` (Cronet's network log and the WebView remote inspector) and `feedDump` (raw review-feed
+  replies saved to the app's files) are read from the property alone (`AppTune.localOn`). A
+  bundle cannot turn them on.
 - `debug.vela.tune.demoClock <minutes since midnight>` is the screenshot clock (`ui/DemoClock`),
   read from the property alone (`AppTune.local`), never from a bundle. Set, it pins "now" to the
   time's next occurrence: place status lines are recomputed from the place's own hours at that

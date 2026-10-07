@@ -2394,7 +2394,7 @@ fun MapScreen(
                     navSearchOpen = false
                     navSearchQuery = ""
                     focusManager.clearFocus()
-                    android.util.Log.d("VelaNavSearch", "picked '$q' along the route")
+                    android.util.Log.d("VelaNavSearch", "picked a search along the route")
                     vm.searchAlongRoute(q)
                 },
                 onClose = { navSearchOpen = false; focusManager.clearFocus() },
