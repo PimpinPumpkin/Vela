@@ -255,7 +255,9 @@ What is established:
 - Android keeps two records of an install: who performed it (`installingPackageName`) and, from
   Android 11, who started it (`initiatingPackageName`). The car reads the second as well as the
   first. `adb install -i com.android.vending` sets only the installer and leaves the shell as the
-  initiator, and the car still refuses the app.
+  initiator, and the car still refuses the app. On Android 14 every install made from adb leaves
+  the shell as the initiator, whichever installer `-i` names, and `pm set-installer` is refused.
+  Shizuku installs as the shell user, so it should leave the same records.
 - An in-app update replaces both records, and the car drops Vela until it is installed the same
   way again. So when either record names Play (`InstallSource.setForCar`), the updater holds the
   downloaded APK back, says "This update will drop Vela from Android Auto", and offers the file to

@@ -46,6 +46,8 @@ What is known:
 - What the check reads is not settled. One car log shows Android Auto asking Play for each
   app's owners and denying a package that has none. A later report says the record that
   counts is who started the install (`initiatingPackageName`).
+- Nothing run from adb changes who started the install. On Android 14 `-i` sets the installing
+  package and the initiating package stays the shell.
 - It works with a root installer that runs the install as Play, and on stock Android with an
   installer that goes through Google's package installer, which GrapheneOS does not ship.
   Aftermarket head units with their own receiver list Vela after King Installer plus an ADB
