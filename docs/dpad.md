@@ -85,6 +85,13 @@ results sheet, and stays during a drive and over a minimized results bar. Choose
 mounted and, on a D-pad-first device, focuses and engages it at once. `ChooseOnMapOverlay` draws
 the pin and banner there in place of the pill and crosshair.
 
+Settings > Navigation > "Zoom in key" and "Zoom out key" give zoom to two keys of the user's
+choice, such as 2 and 5 on a keypad (`ui/ZoomKeys.kt`). They zoom one level from anywhere on
+the map, engaged or not, and rest while a Settings page is open. `MainActivity.dispatchKeyEvent`
+offers a key that types only after nothing else took it, so the same key still types in a text
+field, and offers a key that does not type (volume, camera) first. The arrows, OK and Back
+cannot be assigned.
+
 A plus and minus pill sits in the bottom-right stack above the parking button, in D-pad mode or
 with Settings > Navigation > "Prefer buttons over swipes" on. It shows only on the bare map and
 in the area picker (`AreaPickOverlay`).

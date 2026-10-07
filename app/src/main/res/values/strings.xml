@@ -1155,6 +1155,12 @@
     <string name="settings_pip_turn_card">Turn card in the mini map</string>
     <string name="settings_pip_turn_card_hint">During navigation in picture-in-picture, shows the next turn as a card across the top and the time left along the bottom. Off: one bar along the bottom with the road, the distance to the turn and the arrival time, like Google\'s mini map.</string>
     <string name="settings_prefer_buttons">Prefer buttons over swipes</string>
+    <string name="settings_zoom_key_in">Zoom in key</string>
+    <string name="settings_zoom_key_out">Zoom out key</string>
+    <string name="settings_zoom_key_none">Not set</string>
+    <string name="settings_zoom_keys_hint">Two keys that zoom the map from anywhere on it, such as 2 and 5 on a keypad. In a text field they still type.</string>
+    <string name="settings_zoom_key_press">Press the key to use. The arrows, OK and Back are taken.</string>
+    <string name="settings_zoom_key_clear">Clear</string>
     <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a gesture: zoom in and out buttons on the map, and the step list button on the navigation bar. Always on for phones without a touch screen.</string>
     <string name="settings_faster_auto">Take faster routes automatically</string>
     <string name="settings_faster_auto_hint">When a faster route comes up mid drive, it is taken if you do not answer within a few seconds. Turn this off and an unanswered offer is dismissed instead. Either way the offer never stays on the map waiting.</string>

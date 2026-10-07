@@ -4065,6 +4065,11 @@ The whole UI works with a five-key D-pad and no touchscreen.
   narrow screen reports `MIN_WIDTH_DP` (360 dp) of width. At 360 dp and above it does nothing.
 - `adb shell input text` and `keyevent` flip the live input mode to Keyboard, which disables the
   unarmed search field. That is the test tool's effect.
+- Zoom keys (`ui/ZoomKeys`, prefs `zoom_key_in` and `zoom_key_out`, 0 for none): two key codes
+  set in Settings > Navigation by pressing the key. `MainActivity.dispatchKeyEvent` zooms one
+  level on the key's first down while the map is showing. A printing key is offered after
+  `super`, so a text field keeps it. A non-printing key is offered before. The arrows, OK,
+  Enter, Back, Home, Menu and Power cannot be assigned.
 
 Per-surface audits and the contributor procedure are in `docs/dpad.md`. The regression suite is
 `dpad_test_suite/` (`run_all.sh`, `audit_static.sh`, `audit_dynamic.sh`). CI runs

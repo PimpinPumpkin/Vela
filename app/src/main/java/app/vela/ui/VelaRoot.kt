@@ -55,6 +55,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     val navController = androidx.navigation.compose.rememberNavController()
     val page by navController.currentBackStackEntryAsState()
     val showSettings = page?.destination?.route?.let { it != app.vela.ui.settings.MAP_ROUTE } == true
+    ZoomKeys.mapShowing = !showSettings
     val openSettings: () -> Unit = {
         navController.navigate(app.vela.ui.settings.SettingsSection.HUB.route) { launchSingleTop = true }
     }

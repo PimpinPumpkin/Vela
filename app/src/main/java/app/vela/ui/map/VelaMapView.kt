@@ -4525,6 +4525,7 @@ fun VelaMapView(
                 dpadHolder.value?.let { c ->
                     c.mapView = mv
                     c.map = map
+                    app.vela.ui.ZoomKeys.zoomBy = { c.zoomBy(it) } // the assigned zoom keys (issue #694)
                     c.onTap = { handleTap(it) }
                     c.onLongPress = { pt -> longPress.value(LatLng(pt.latitude, pt.longitude)) }
                     c.markPan = {
