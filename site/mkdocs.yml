@@ -96,7 +96,6 @@ nav:
       - What reaches Google: privacy.md
       - Install with F-Droid: fdroid.md
       - Every feature: features.md
-      - Languages: languages.md
       - Android Auto: android-auto.md
       - D-pad and keypad phones: dpad.md
   - The book:
@@ -119,7 +118,7 @@ nav:
       - Roadmap: roadmap.md
       - Shipped and settled: roadmap-history.md
       - Contributing: contributing.md
-      - Translating: translating.md
+      - Languages and translating: translating.md
       - Building from source: building.md
       - Security: security.md
       - Maintainer notes: project-notes.md

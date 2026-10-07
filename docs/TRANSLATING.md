@@ -1,122 +1,139 @@
-# Translating Vela
+# Languages and translating
 
-Vela ships in 15 languages (the canonical layer-by-layer table is in
-[LANGUAGES.md](LANGUAGES.md)). Translations are community-maintained, and they
-happen on Weblate:
+Vela's interface is offered in 18 languages. Translations are done by the community on
+Weblate:
 
 **<https://hosted.weblate.org/engage/vela-maps/>**
 
+## What works in each language
+
+The interface, the spoken directions, the downloadable neural voice and on-device dictation
+are separate systems, so support differs by language.
+
+| Language | Code | App text | Spoken directions | Vela voice | Dictation |
+|---|---|:-:|:-:|:-:|:-:|
+| English | `en` | yes | yes | yes (US and British) | yes |
+| French | `fr` | yes | yes | yes | yes |
+| German | `de` | yes | yes | yes | yes |
+| Spanish | `es` | yes | yes | yes (Spain and Mexico) | yes |
+| Italian | `it` | yes | yes | yes | yes |
+| Portuguese (Portugal) | `pt` | yes | yes | yes (Brazilian voice) | yes |
+| Portuguese (Brazil) | `pt-BR` | yes | yes (the Portuguese table) | yes | yes |
+| Dutch | `nl` | yes | yes | yes | yes |
+| Russian | `ru` | yes | yes | yes | yes |
+| Polish | `pl` | yes | yes | yes | yes |
+| Swedish | `sv` | yes | yes | yes | yes |
+| Ukrainian | `uk` | yes | yes | yes | yes |
+| Hungarian | `hu` | yes | yes | yes | yes |
+| Estonian | `et` | in progress | English | system voice | yes |
+| Chinese (Simplified) | `zh` | yes | yes | yes (Mandarin) | yes |
+| Chinese (Traditional) | `zh-TW` | yes | yes | yes (the Mandarin voice) | yes |
+| Japanese | `ja` | yes | yes | system voice | yes |
+| Hebrew | `he` | yes | yes | system voice | yes |
+
+- **App text** means the language has its own string file. A string nobody has translated yet
+  shows in English. Categories, hours and open or closed lines from Google arrive in the app
+  language too. Place names, street names and reviews are data and are never translated.
+- **Spoken directions** are built from grammar templates per language (`NavStrings` in
+  `:core`), so cases and word order are right.
+- **Vela voice** is the downloadable neural voice (Piper). There is no Piper voice for
+  Japanese, Hebrew or Estonian, so those use the phone's own text-to-speech in that language.
+  If the phone has none, navigation stays silent and a hint points at the voice settings.
+- **Dictation** runs on the phone. The default model is multilingual Whisper, set to the app
+  language. Settings > Search offers SenseVoice (English, Chinese, Japanese, Korean,
+  Cantonese) and Moonshine (English only) as alternatives.
+
+The language setting is in Settings > Appearance. "Follow system language" is on by default.
+
+Hungarian was contributed by Zsolt Laszlo Kaiser, Brazilian Portuguese by Netocon, and
+Estonian was started by Priit Jõerüüt.
+
 ## Translate on Weblate
 
-1. Open the link above and sign in (an email account or a GitHub login both
-   work).
-2. Pick your language and translate in the browser. Weblate shows the English
-   original next to your text and warns about a missing placeholder as you
-   type. No git client and no Android toolchain needed.
-3. Save. Weblate sends saved translations to the repo as a pull request, and
-   once a maintainer merges it they ship in the next build. You keep commit
-   credit for your strings.
-   A pull request from Weblate that only changes translations, keeps every placeholder and
-   passes the build is merged automatically; anything else waits for the maintainer.
+1. Open the link above and sign in (email or a GitHub login).
+2. Pick your language and translate in the browser. Weblate shows the English next to your
+   text and warns about a missing placeholder as you type.
+3. Save. Weblate sends saved translations to the repo as a pull request under your name. A
+   pull request that only changes translations, keeps every placeholder and passes the build
+   merges by itself. Anything else waits for the maintainer.
 
-## Or translate by pull request
+A partial translation is useful: what is not translated falls back to English.
 
-The older flow still works, and suits a one-line fix:
+Missing your language? Start it on Weblate, or open an issue. A new language needs the
+interface strings first. Spoken directions and the word tables below are added by a
+maintainer afterwards.
 
-1. Find your language file: `app/src/main/res/values-<lang>/strings.xml`
-   (for example `values-de` for German, `values-zh-rTW` for Traditional
-   Chinese). The English original is `app/src/main/res/values/strings.xml`.
-2. Edit or add the strings you want to fix. You can do this entirely in the
-   GitHub web editor: open the file, press the pencil, and commit to a new
-   branch. No git client and no Android toolchain needed.
-3. Open a pull request. A maintainer reviews it against the rules below and
-   merges. You keep commit credit for your strings.
+## Or by pull request
 
-Anything you do not translate simply falls back to English, so a partial
-contribution is genuinely useful and never breaks the app.
+For a one-line fix: edit `app/src/main/res/values-<lang>/strings.xml` (for example
+`values-de`, or `values-zh-rTW` for Traditional Chinese) in GitHub's web editor and open a
+pull request. The English original is `app/src/main/res/values/strings.xml`.
 
-Missing your language entirely? Start it on Weblate, or open an issue and say
-which one. A new language needs the UI strings first; spoken directions and the
-open/closed keyword table are separate layers a maintainer wires up afterwards
-(see below, and the full checklist under "Adding a language" in
-[LANGUAGES.md](LANGUAGES.md)).
+## Rules
+
+- **Placeholders match the English set.** `%1$s` stays a string and `%1$d` a number. Move them
+  around the sentence, but keep every one. A `%d` handed a word crashes the app, so
+  `tools/check-translations.py` fails a pull request whose placeholders differ.
+- **Plurals need your language's categories.** Russian, Ukrainian and Polish need `one`,
+  `few`, `many`, `other`; Hebrew `one`, `two`, `many`, `other`; Chinese and Japanese only
+  `other`. Weblate shows the right set.
+- **No em dashes.** Use a comma or a colon, or rephrase. A numeric range is the one exception.
+- **Escape apostrophes** as `\'` when editing the file by hand. On Weblate, type a plain one.
+- **Never translate data:** place names, street names, reviews.
+- **Keep it short.** These strings sit on chips, rows and buttons.
+
+One word is not translatable yet: the "Open" / "Closed" on a status line Vela computes from
+the hours itself, which the status coloring reads.
 
 ## What lives where
 
-The UI strings above are the layer that is open to everyone. The rest is code
-or config and changes through pull requests too, but needs a maintainer:
-
 | Layer | Where | How to change |
 |---|---|---|
-| App UI strings (about 1,180) | `app/src/main/res/values-<lang>/strings.xml` | Weblate, or a PR (both flows above) |
-| Spoken turn-by-turn | `core/src/main/java/app/vela/core/i18n/NavStrings.kt` (one table per language) | PR, needs native review |
-| Open/closed status keywords | compiled tables in `SearchParser`; `calibration.json` can override them (`statusClosedWords`/`statusOpenWords`) | PR, or a signed calibration push for a hot fix |
-| Transit-category words | `calibration.json` (`transitCategoryWords`, `transitExcludeWords`), with a compiled fallback | PR plus a signed calibration push |
-| Voice commands ("take me home") | `core/.../search/QueryIntent.kt`, with the phrases Settings shows in `VoiceCommandExamples.kt` | PR, needs native review |
-| Review page labels | `core/.../data/ReviewWords.kt` (captured from Google's own page in that language) | PR |
-| Neural voice | Piper voice catalog (`PiperCatalog`) | depends on an upstream Piper voice existing |
+| App text | `app/src/main/res/values-<lang>/strings.xml` | Weblate, or a pull request |
+| Spoken directions | `core/src/main/java/app/vela/core/i18n/NavStrings.kt`, one table per language | Pull request, needs a native reviewer |
+| Open and closed keywords | tables in `SearchParser`; `calibration.json` can override (`statusClosedWords`, `statusOpenWords`) | Pull request, or a signed calibration push |
+| Transit category words | `calibration.json` (`transitCategoryWords`, `transitExcludeWords`), with a compiled fallback | Pull request plus a calibration push |
+| Voice commands | `core/.../search/QueryIntent.kt`, examples in `VoiceCommandExamples.kt` | Pull request, needs a native reviewer |
+| Review page labels | `core/.../data/ReviewWords.kt`, captured from Google's page in that language | Pull request |
+| Generic business words | `core/.../util/PlaceNames.kt`, mirrored in `tools/place-generic-words.txt` | Pull request |
+| Neural voice | `PiperCatalog` | Needs a Piper voice to exist upstream |
 
-## Rules that keep translations shippable
+## Adding a language (maintainers)
 
-- **Placeholders must match the English set.** `%1$s` stays a string and
-  `%1$d` stays a number; you may move them around the sentence, but keep every
-  one. A `%d` handed a word crashes the app the moment that string is shown, so
-  CI (`tools/check-translations.py`) fails any pull request whose placeholders
-  differ from English.
-- **Plurals need the right CLDR categories for your language.** Russian,
-  Ukrainian and Polish need `one`/`few`/`many`/`other`; Hebrew needs
-  `one`/`two`/`many`/`other`; Chinese and Japanese only `other`. Copy the
-  category set from an existing file in your language if you are unsure.
-  Weblate shows the right set for your language on its own.
-- **No em dashes.** Use a comma, a colon, or rephrase. The one legitimate
-  dash is a numeric range. (House style across the whole repo.)
-- **Escape apostrophes** as `\'` when you edit strings.xml by hand. A raw one
-  fails the release build even when a debug build passes. On Weblate, type a
-  plain apostrophe: it does the escaping.
-- **Never translate data.** Place names, street names, reviews and anything
-  else that comes from the map or from Google is shown as-is.
-- **Keep it short.** These strings live on phone-width chips, rows and
-  buttons; when in doubt, prefer the shorter phrasing.
+1. `values-<code>/strings.xml`, translated from the English file.
+2. `AppLocale.SUPPORTED` and its name map (`app/ui/AppLocale.kt`). This puts the language in
+   the picker and everywhere the app language flows.
+3. A `NavStrings` table in `core/i18n/`.
+4. The open and closed keyword table, and the transit category words.
+5. The other word tables in the list above.
+6. A Piper voice in `PiperCatalog`, if one exists.
 
-Some English literals are deliberately NOT translatable: strings that double
-as logic keys (the "Open"/"Closed" word on a status line Vela works out from
-the hours itself feeds the status coloring). They stay inline in code until
-display text is split from the key, so don't be surprised if one is missing
-from strings.xml. The category chips used to be in this group; their labels
-are translatable now.
+`QueryIntentTest`, `PlaceStatusTest` and `SpokenRoadNamesTest` each hold a list of languages.
+Add the new code to each and run `./gradlew :core:test`.
 
-## For maintainers: the Weblate component
+## The Weblate component (maintainers)
 
-The project is <https://hosted.weblate.org/projects/vela-maps/>, on hosted
-Weblate's libre plan (free for open source, subject to their approval). One
-component, `app`, covers the app:
+The project is <https://hosted.weblate.org/projects/vela-maps/>, on hosted Weblate's free plan
+for open source. One component, `app`:
 
-- Repo: `https://github.com/PimpinPumpkin/Vela`, branch `main`
-- File mask: `app/src/main/res/values-*/strings.xml`
-- Monolingual base: `app/src/main/res/values/strings.xml`
-- Format: Android string resources; license GPL-3.0-or-later
-- Language codes: the repo uses Android's legacy `values-iw` for Hebrew and
-  `values-zh-rTW` for Traditional Chinese. Weblate reads them as `he` and
-  `zh_Hant` (checked when the component was created) and writes back to the
-  same folders.
-- A second component, the glossary, was created by Weblate and lives only
-  there.
+- Repo `https://github.com/PimpinPumpkin/Vela`, branch `main`
+- File mask `app/src/main/res/values-*/strings.xml`, base file `values/strings.xml`
+- Format: Android string resources. License GPL-3.0-or-later.
+- The repo uses Android's `values-iw` for Hebrew and `values-zh-rTW` for Traditional Chinese.
+  Weblate reads them as `he` and `zh_Hant` and writes back to the same folders.
 
-Both directions are automatic. A GitHub webhook on the repo (push events, to
-`https://hosted.weblate.org/hooks/github/`) tells Weblate about new strings.
-Going the other way, the component's version control is set to GitHub pull
-requests with no push URL: Weblate commits translations to its own copy of the
-repo (readable at `https://hosted.weblate.org/git/vela-maps/app/`), pushes them
-to a fork under its own GitHub account and opens a pull request against `main`.
-It holds no write access to this repo. Review that pull request like any
-other: the em-dash and placeholder rules above are the checklist, and
-`tools/check-translations.py` runs in CI. Translators cannot edit the English
-base file or add and remove keys from Weblate; both are switched off.
+A GitHub webhook (push events, to `https://hosted.weblate.org/hooks/github/`) tells Weblate
+about new strings. Going the other way, Weblate commits translations to its own copy of the
+repo, pushes them to a fork under its own GitHub account and opens a pull request against
+`main`. It has no write access to this repo. Translators cannot edit the English file or add
+and remove keys.
 
-Adding a new string to the app: add it to the English base
-(`values/strings.xml`) only, in the same commit as the feature. Translators
-fill the locales on Weblate (or by pull request); untranslated strings fall
-back to English in the meantime, and `python3 tools/check-translations.py`
-prints what each language is missing. Hand-editing a `values-<lang>` file
-directly is still fine, but Weblate may hold unmerged changes to the same
-file, so merge its open pull request first when one is waiting.
+`weblate-automerge.yml` merges such a pull request after CI passes, when
+`scripts/weblate-automerge-check.py` finds that it comes from Weblate's account and fork,
+touches only `values-<lang>/strings.xml`, uses only keys that exist in English, keeps every
+placeholder, and adds no web address, link or em dash. The repository variable
+`WEBLATE_AUTOMERGE=off` switches it off. It cannot judge what a translation says.
+
+New strings go into the English file only, in the same commit as the feature.
+`python3 tools/check-translations.py` prints what each language is missing. Before editing a
+`values-<lang>` file by hand, merge Weblate's open pull request if one is waiting.

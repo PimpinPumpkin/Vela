@@ -13,7 +13,7 @@ This folder is also the source of the documentation website at
 <a href="FAQ.md"><strong>Questions and answers</strong><span>Are the places Google's? Does it work offline? How do I run it with no Google at all?</span></a>
 <a href="../PRIVACY.md"><strong>What reaches Google</strong><span>Every request the app can make, which setting controls it, and what stays on the phone.</span></a>
 <a href="../FDROID.md"><strong>Install with F-Droid</strong><span>Add Vela's own repository to any F-Droid client, or use Obtainium.</span></a>
-<a href="../FEATURES.md"><strong>Every feature</strong><span>The complete list, newest first, with the date each one landed.</span></a>
+<a href="../FEATURES.md"><strong>Every feature</strong><span>What the app does, one line each.</span></a>
 </div>
 
 ## How it works
@@ -32,7 +32,7 @@ This folder is also the source of the documentation website at
 | [Data and rebakes](book/02-data-and-rebakes.md) | Every hosted dataset and when it is rebuilt |
 | [Surveillance cameras](book/03-cameras.md) | The camera dataset, the warnings, avoiding them |
 | [Navigation](book/04-navigation.md) | The per-fix loop, rerouting, traffic rechecks, pausing a drive |
-| [Routing](book/05-routing.md) | Which router answers, and how traffic is added |
+| [Routing](book/05-routing.md) | Whose route you drive, and where the turn instructions come from |
 | [Search](book/06-search.md) | Suggestions, voice commands, offline search |
 | [Talking to Google](book/07-talking-to-google.md) | What Vela asks Google, and how it looks like a browser doing it |
 | [Offline](book/08-offline.md) | Region downloads, the offline map, updates |
@@ -47,4 +47,4 @@ This folder is also the source of the documentation website at
 - [Translating](TRANSLATING.md): adding or fixing a language.
 - [Building from source](BUILDING.md): the toolchain and the runtime pieces CI fetches.
 - [Security](../SECURITY.md): reporting a vulnerability.
-- [Maintainer notes](../CLAUDE.md): the long-form build rules, gotchas and history behind the code.
+- [Maintainer notes](../CLAUDE.md): the rules and traps for anyone changing the code.

@@ -24,24 +24,24 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 > **Vela is in beta, so you may run into bugs.** If you do, open an issue and fill out the
 > template. Nightlies and canary builds are newer still and less tested than the weekly stable.
 
-A degoogled maps & navigation client for Android - *what NewPipe is to YouTube,
-for Google Maps.* The map itself is open data: open vector tiles for the
-basemap, and **Vela data** for the places on it - Overture Maps and
-AllThePlaces, positioned with OpenStreetMap, baked into tiles in this repo and
-streamed from its releases - so browsing around never asks Google anything.
-Routes come from the open OSRM router. Search, tap a place or ask for a route
-and the device itself scrapes Google's public web endpoints (per-user, no
-backend) for the things only Google does well: search, hours, reviews and
-photos, and **traffic-aware ETAs**. Built to run on GrapheneOS and other no-GMS
-ROMs.
+A degoogled maps and navigation app for Android: *what NewPipe is to YouTube,
+for Google Maps.* The map is open data. The basemap is open vector tiles, and
+the places on it are **Vela data**: Overture Maps and AllThePlaces, positioned
+with OpenStreetMap, baked into tiles in this repo and streamed from its
+releases. Browsing around never asks Google anything. Search, tap a place or
+ask for a route, and the phone itself asks Google's public web endpoints, with
+no account, no key and no server in between, for what only Google does well:
+search, hours, reviews, photos, and routes that know about traffic and closed
+roads. Built to run on GrapheneOS and other phones without Google Play
+services.
 
 <p align="center"><img src="docs/not-google-maps.png" width="320" alt="A tub of I Can't Believe It's Not Butter relabeled I can't believe it's not Google Maps"></p>
 
 ## What reaches Google, by default
 
-**It is not a Google Maps wrapper.** The map is a native Android app drawing open vector tiles
-(Jetpack Compose and MapLibre) - no Google SDK, no Play Services, no API key, nothing to sign in
-to. It looks like Google Maps because that is the point; underneath, almost none of it is.
+**It is not a Google Maps wrapper.** Vela is a native Android app drawing open vector tiles
+(Jetpack Compose and MapLibre). There is no Google SDK in it, no Play Services, no API key and
+nothing to sign in to. It looks like Google Maps on purpose.
 
 | What you do | What reaches Google |
 | --- | --- |
@@ -49,16 +49,16 @@ to. It looks like Google Maps because that is the point; underneath, almost none
 | The places drawn on the map | **Nothing, by default.** Open data baked in this repo: Overture Maps and AllThePlaces, positioned with OpenStreetMap |
 | Drop a pin, tap a house number | **Nothing.** OpenStreetMap's Nominatim names the spot |
 | Read a departure board | **Nothing, for the stops Vela draws from open transit data:** the board comes from Transitous. Where Transitous has no coverage, Vela falls back to the stop's Google page |
-| Ask for directions | **The traffic, and only the traffic.** The route itself is computed by open OSRM, or on the phone from an OsmAnd-format region file (Google's own route only if the open router is down); Google is asked anonymously for the live ETA on top of it, and every couple of minutes while you drive, which Settings → Navigation turns off. For a walk Google is asked once for its route, used only when it is much shorter |
+| Ask for directions | **Where the trip starts and ends, anonymously.** A driving route is Google's own, so it knows about traffic and closed roads. The turn-by-turn instructions are put on it from OpenStreetMap, by the open OSRM and Valhalla routers, which are sent the same trip. While you drive, Google is asked again when you leave the route and every couple of minutes for traffic; Settings → Navigation turns the second off. Walking and cycling routes come from the open routers (for a walk Google is asked once, and its route used only when it is much shorter). Offline, the route is computed on the phone |
 | Type a search | **Your text, anonymously**, like a logged-out browser. Typing sends Google's own autocomplete each time you pause; submitting sends a Google search. Text that starts with a house number also goes to the open Photon geocoder |
-| Tap a place | **An anonymous lookup of that place** - no account, no app key. Hours, reviews and photos are the things only Google does well. Settings → Places can stop the lookup for places tapped on the map |
+| Tap a place | **An anonymous lookup of that place**, with no account and no app key, for its hours, reviews and photos. Settings → Places can stop the lookup for places tapped on the map |
 | Everything you save | **Nothing, ever.** No account, no Vela backend, no Vela telemetry; saved places, history and settings stay on the phone |
 
-Download a region and it keeps working with no network: the map, search, routing and
-turn-by-turn navigation. Offline, or with **Settings → Privacy → Use Vela without Google**, the
-answer becomes *nothing at all*. A few things only a real browser engine gets, the first page of
-a place's reviews among them, are read from a Google page in an offscreen WebView, anonymously;
-the full list is in [PRIVACY.md](PRIVACY.md#the-hidden-webviews).
+Download a region and the map, search, routing and turn-by-turn navigation work with no
+network. Offline, or with **Settings → Privacy → Use Vela without Google** on, nothing reaches
+Google at all. A few things Google only serves to a real browser, a place's reviews among them,
+are read from a Google page in an offscreen WebView, anonymously; the list is in
+[PRIVACY.md](PRIVACY.md#the-hidden-webviews).
 
 **[The full comparison against the Google Maps app and Google Maps web is below](#privacy)**, and
 the per-request detail is in [PRIVACY.md](PRIVACY.md).
@@ -73,26 +73,22 @@ the per-request detail is in [PRIVACY.md](PRIVACY.md).
 |:-:|:-:|:-:|:-:|:-:|
 | <img src="docs/screenshots/06-transit.png" width="150"> | <img src="docs/screenshots/07-bus-stop.png" width="150"> | <img src="docs/screenshots/11-stop-list.png" width="150"> | <img src="docs/screenshots/08-map-light.png" width="150"> | <img src="docs/screenshots/09-place-light.png" width="150"> |
 
-*Turn-by-turn with lane guidance, route shields and the speedometer; the keyless
-OpenFreeMap basemap wearing Google's own sampled colors and Google Sans Flex labels, with
-rated POI icons and the tiered dots; live place data; the directions panel with
-alternates, traffic in plain words and the avoid toggles; live departure boards
-with a tap-through stop list for every route; and the in-app light/dark themes
-(decoupled from the OS).*
+*Turn-by-turn with lane guidance, route shields and the speedometer. The OpenFreeMap
+basemap in Google's colors with Google Sans Flex labels. Place pages with live data. The
+route picker with alternates, traffic and the avoid switches. Live departure boards with
+the stop list for every route. Light and dark themes, set in the app.*
 
 ## Install
 
 [<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela)&nbsp;&nbsp;[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid (Vela's own repo)" height="54">](FDROID.md)
 
-Obtainium auto-tracks the
-**weekly stable** release. Turn on "include prereleases" and you get the
-**nightly** channel instead. 
+Obtainium tracks the **weekly stable** release. Turn on "include prereleases" for
+the **nightly** channel.
 
-The F-Droid badge is
-**Vela's own repository**, not the f-droid.org catalog - add
+The F-Droid badge is **Vela's own repository**, not the f-droid.org catalog. Add
 `https://pimpinpumpkin.github.io/Vela/repo` to any F-Droid client and it serves
-the same signed APKs, weekly stable by default (fingerprint and nightly-channel
-setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
+the same signed APKs, weekly stable by default (fingerprint and nightly setup in
+[FDROID.md](FDROID.md)). Or take an APK straight from
 [Releases](https://github.com/PimpinPumpkin/Vela/releases).
 
 ### Check you got the real thing
@@ -128,9 +124,9 @@ releases. It is not a checksum of a particular APK, and it is not the same as
 the F-Droid repo fingerprint in [FDROID.md](FDROID.md), which signs the repo
 index rather than the app.
 
-There's also a one-page tour at
-**[pimpinpumpkin.github.io/Vela](https://pimpinpumpkin.github.io/Vela/)**, and every doc in this
-repository (the FAQ, the book, the full specification) is published there as a searchable site at
+There is a one-page tour at
+**[pimpinpumpkin.github.io/Vela](https://pimpinpumpkin.github.io/Vela/)**, and the docs in this
+repository are published as a searchable site at
 **[pimpinpumpkin.github.io/Vela/docs](https://pimpinpumpkin.github.io/Vela/docs/)**.
 
 [![Support Vela on Buy Me a Coffee](https://img.shields.io/badge/support%20vela-buy%20me%20a%20coffee-ffdd00)](https://buymeacoffee.com/PimpinPumpkin)
@@ -140,220 +136,201 @@ repository (the FAQ, the book, the full specification) is published there as a s
 
 ## What you get
 
-- **Live traffic, straight from Google.** Vela reads the same real-time traffic
-  Google Maps shows, so ETAs are traffic-aware, the fastest route leads the list,
-  and every option says light, moderate or heavy traffic in plain words next to
-  its green/amber/red time. Turn-by-turn navigation rides on it: lane diagrams,
-  exit shields, a speedometer with the posted limit, and automatic reroutes when
-  a jam builds ahead.
-- **The places on the map are open data; Google fills in the details.** Every pin,
-  dot and label you pan past is **Vela data** - Overture Maps and AllThePlaces,
-  positioned with OpenStreetMap, baked into map tiles in this repo and streamed
-  from its releases, and carried offline with a downloaded region. Browsing sends
-  Google nothing. Tapping a place is what asks Google, and it answers with what
-  open data has no equivalent of: hours with holidays included, reviews you can
-  search, photo galleries, busy times, phone and website, with a warning if a
-  place would be closed when you arrive. **Settings → Places → "Place icons on the map"**
-  switches the map between Vela data (the default), Both, or Google, and a
-  separate toggle stops even a tapped place from being looked up. The
-  [FAQ](docs/FAQ.md) has the per-feature breakdown of what uses what.
-- **Zero Google on your phone, and almost zero in your life.** No Play Services,
-  no account, no app key, no ads, no GCM/FCM, no Play Integrity. Google never sees
-  your map browsing, your saved places, or your account; your GPS trail stays on the
-  phone. A position reaches Google only in a few specific requests: a route from your
-  location, a search that ranks places near you first, and the anonymous re-route and
-  traffic checks while you navigate. The full breakdown is in the [Privacy](#privacy)
-  section below.
-- **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
-  community DeFlock project's OpenStreetMap data) draw out of the box, and the
-  optional **Settings → Navigation → Avoid surveillance cameras** counts the cameras on
-  each route (only the ones pointed along your road) and quietly picks a
-  lower-camera option when the detour is small. Two more opt-ins in the same
-  place give you a heads-up card or a spoken "License plate camera ahead" as you
-  approach one while navigating.
-  The dataset lives on your phone and refreshes itself weekly.
-- **Vela Voice.** Spoken turn-by-turn from a neural voice that runs entirely on
-  your phone, and a mic that transcribes your search on-device too. Nothing you
-  say ever touches a cloud speech service.
+- **Routes and traffic from Google.** A driving route is the one Google would give
+  you, with live traffic and closed roads accounted for. Each option shows its
+  time in green, amber or red and says light, moderate or heavy traffic in words.
+  Turn-by-turn navigation runs on top: lane diagrams, exit shields, a speedometer
+  with the posted limit, and a faster-route offer when a jam builds ahead.
+- **The places on the map are open data, and Google fills in the details.** Every
+  pin, dot and label you pan past is **Vela data**: Overture Maps and AllThePlaces,
+  positioned with OpenStreetMap, baked into map tiles in this repo, streamed from
+  its releases and carried offline with a downloaded region. Browsing sends Google
+  nothing. Tapping a place asks Google for what open data lacks: hours with
+  holidays, reviews you can search, photos, busy times, phone and website, and a
+  warning if the place will be closed when you arrive. **Settings → Places →
+  "Place icons on the map"** switches the map between Vela data (the default),
+  Both, or Google, and a separate switch stops a tapped place from being looked
+  up. The [FAQ](docs/FAQ.md) says what each feature uses.
+- **No Google on your phone.** No Play Services, no account, no app key, no ads.
+  Google never sees your map browsing or your saved places, and your GPS trail
+  stays on the phone. A position reaches Google only in specific requests: a
+  route from where you are, a search that ranks nearby places first, and the
+  reroute and traffic checks while you navigate. [Privacy](#privacy) has the
+  breakdown.
+- **Flock cameras on the map.** Mapped license plate cameras (the community
+  DeFlock project's OpenStreetMap data) are drawn out of the box. **Avoid
+  surveillance cameras**, in Settings → Navigation or the route picker, counts
+  the cameras pointed along each route and picks a lower-camera one when the
+  detour is small. Two more switches give a card or a spoken "License plate
+  camera ahead" as you approach one. The dataset lives on the phone and updates
+  weekly.
+- **Vela Voice.** Spoken directions from a neural voice that runs on the phone,
+  and a mic that transcribes your search on the phone too. Nothing you say goes
+  to a speech service.
 
-  🔊 **Hear it** - the actual in-app voice at the default pace:
+  🔊 **Hear it**, the in-app voice at its default pace:
 
   https://github.com/user-attachments/assets/17f246e4-51c8-4d01-998b-dcd7f29dc15f
 
-- **Parking memory.** Tap **P** when you park, tap the pin later for walking
-  directions back, long-press for your parking history.
-- **Material You theming, if you want it.** An optional toggle tints Vela's
-  chrome with your wallpaper colors (Android 12+); off by default, and the map
-  itself stays clean either way.
-- **Offline maps and routing.** Download a state or country once and its maps,
-  turn-by-turn routing, and every place in it stay searchable with no signal -
-  typed street addresses included.
-- **Live gas prices.** Search for gas and every station's current price is right
-  on its map marker, in the result list, and on the place page.
-- **Live public transit.** Departure boards and station-by-station stop timelines
-  come from open GTFS feeds (the schedules and realtime updates transit agencies
-  publish, served by the community Transitous project), supplemented with Google
-  for traffic-aware transit directions and for boards where the open feeds have
-  no coverage. Tap a stop for live times, tap a route for every stop it makes.
-- **Satellite imagery map**: See the world from a birds-eye view, powered by Esri.
-- **Street View**: real panoramas in-app, keyless - open on a place, look around, walk the street with arrows, and go back in time through older captures; half-screen over the live map or full screen.
-- **Lists**: the bookmark button next to the category chips opens **Your lists**.
-  Create one there, or add any place from its page (⋮ → Save to list), with a note
-  per place. Lists back up to a file from Settings.
-- **Import a Google Maps list**: paste a `maps.app.goo.gl` share link into the
-  search bar. The list's places show up as results with the owner's notes; tap
-  **Save list** to keep a local copy.
-- **Fixes itself when Google moves things.** The scraping recipes live in a signed
-  config the app checks at launch - when Google shifts a field or an endpoint, a
-  repair ships to every install in minutes, no update needed. The same channel can
-  push a heads-up notice ("search is down, fix coming") straight onto the map. See [`SPEC.md`](SPEC.md) sections 3 and 11 for details.
-- **Say it or type it.** "Take me home", "get me to work", "navigate to the station",
-  "Davis to San Francisco", "nearest pharmacy", "what's my ETA": the search box understands
-  those as actions, spoken through the mic or typed, in every language the app speaks, with
-  English understood everywhere too, and a slip in the command words ("navigat to the
-  station") still lands. Dictation is a small on-device speech model; the understanding is
-  plain rules on the phone. Neither step leaves it; only the search or route that comes out
-  of them does.
-- **The rest.** Android Auto, 15 languages,
-  in-app light/dark, full D-pad operation for keypad phones, place lists, and a
-  built-in updater with weekly-stable or nightly channels.
+- **Offline maps and routing.** Download a state or a country, or just the area
+  on screen, and its map, its places, typed street addresses and turn-by-turn
+  routing work with no signal.
+- **Public transit.** Departure boards and the stop list of every run come from
+  the open timetables transit agencies publish (served by the community
+  Transitous project). Transit directions come from Google, with the open
+  planner as the fallback. Rail lines draw in their own colors, and a trip draws
+  along its real track.
+- **Gas prices.** Search for gas and each station's price is on its marker, in
+  the list and on its page.
+- **Street View** in the app: look around, walk the street, go back to older
+  captures, half screen over the map or full screen.
+- **Satellite imagery** from Esri.
+- **Lists and saved routes.** Keep places in lists with a note each, save a route
+  you like, pin a trip to the home screen, and back all of it up to a file.
+  Paste a shared Google Maps list or a My Maps link into the search bar to
+  import it.
+- **Parking.** Tap **P** when you park, tap the pin later for the walk back.
+- **Say it or type it.** "Take me home", "navigate to the station", "Davis to San
+  Francisco", "nearest pharmacy", "what's my ETA": the search box treats those as
+  actions, spoken or typed, in every language the app speaks.
+- **It repairs itself when Google moves things.** The request recipes live in a
+  signed file the app checks at launch. When Google shifts a field, a fix reaches
+  every install in minutes with no app update. [`SPEC.md`](SPEC.md) sections 3
+  and 11 describe it.
+- **The rest.** 18 languages, light and dark themes, optional wallpaper colors,
+  full operation by D-pad on keypad phones, a built-in updater with stable,
+  nightly and canary channels, and Android Auto screens (a car accepts a
+  sideloaded app only in some setups; see [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md)).
 
-The complete running feature list lives in [FEATURES.md](FEATURES.md).
-
-
-## Common questions
-
-Where the places on the map come from, what each feature uses, and how to run Vela with no
-Google contact at all: **[docs/FAQ.md](docs/FAQ.md)**. The short version is that the map and
-its businesses are open data by default, and Google answers searches, place pages and live
-traffic.
+The whole list is in [FEATURES.md](FEATURES.md).
 
 ## Why a degoogled app uses Google
 
 A phone without Google Play Services cannot run Google Maps, and the open map
-datasets fall well short on search, reviews, hours, and live traffic. So for those,
-Vela is a client of Google's public web endpoints. It asks them the same way a
-logged-out browser does, from each user's own phone, with no account, no shared API
-key, and no server in the middle. NewPipe does the same for YouTube. There are no
-ads, and your search history, saved places, and settings stay on the phone. If you
-run GrapheneOS or another no-GMS ROM, this gets you working maps back.
+datasets fall well short on search, reviews, hours and live traffic. So for those,
+Vela is a client of Google's public web endpoints. It asks them the way a
+logged-out browser does, from each user's own phone, with no account, no shared
+API key and no server in the middle. NewPipe does the same for YouTube. There are
+no ads, and your search history, saved places and settings stay on the phone.
 
-The map itself, the streets, the labels, and house numbers come from OpenStreetMap (in much of the US the house numbers come from OpenAddresses instead), and routes come from the open OSRM router. Google is only used for place details, search, and live traffic, plus extras you open yourself such as Street View and transit directions. So street names and house numbers can differ from what Google Maps shows, and how much detail you see offline depends on how well OpenStreetMap covers your area. I'm thinking of ways to improve OSM and fill the gaps in the data. Stay tuned.
+The map, the streets, the labels and the house numbers come from OpenStreetMap
+(in much of the US the house numbers come from OpenAddresses). The businesses on
+the map come from Overture and AllThePlaces. Google is used for search, place
+details, driving routes and traffic, plus things you open yourself such as Street
+View and transit directions. So street names and house numbers can differ from
+what Google Maps shows, and how much you see offline depends on how well
+OpenStreetMap covers your area. I'm thinking of ways to improve OSM and fill the
+gaps in the data. Stay tuned.
 
 ## Privacy
 
-There is **no Vela backend, no account, and no Vela telemetry**. Vela fetches from Google
-directly from your phone like a logged-out browser - Google sees your IP, query, and
-map area, but **not a Google account or any app key**, much like using
-`google.com/maps` in an incognito window. Google does keep its own logged-out session
-cookie; Vela starts a new one every week by default (**Settings → Privacy → Google
-session**: weekly, daily, or every launch, plus a button to start one now). Your saved
-places, history, and settings never leave the device. **[Read the full breakdown of
-exactly what each service receives → `PRIVACY.md`](PRIVACY.md).**
+There is **no Vela backend, no account and no Vela telemetry**. Vela fetches from
+Google directly from your phone like a logged-out browser. Google sees your IP,
+your query and the map area, but **not a Google account or any app key**, much
+like `google.com/maps` in an incognito window. Google does keep its own
+logged-out session cookie; Vela starts a new one every week by default
+(**Settings → Privacy → Google session**: weekly, daily, or every launch, plus a
+button to start one now). Your saved places, history and settings never leave the
+device. **[What each service receives is in `PRIVACY.md`](PRIVACY.md).**
 
-The short version: Google shrinks from *knowing who you are and everywhere you go* to
-*occasionally answering an anonymous question*. With the default place source your map
-browsing never reaches Google at all, and your GPS trace is never uploaded anywhere.
-While you're actively navigating, Vela does ask Google for fresh traffic from your current
-position every couple of minutes - that's what powers the faster-route offers and the live
-arrival time - and that re-check can be turned off in **Settings → Navigation** ("Live
-traffic re-checks while navigating"); off-course re-routes remain, since turn-by-turn can't
-work without them.
+In short, Google goes from knowing who you are and everywhere you go to answering
+anonymous questions now and then. With the default place source your map browsing
+never reaches Google, and your GPS trace is never uploaded anywhere. While you
+navigate, Vela asks Google for fresh traffic from your current position every
+couple of minutes, which is what powers the faster-route offers and the live
+arrival time. **Settings → Navigation → "Live traffic re-checks while
+navigating"** turns that off. Reroutes when you leave the route stay, because
+turn-by-turn cannot work without them.
 
 | What Google gets | Google Maps app | Google Maps web | Vela |
 | --- | --- | --- | --- |
-| Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
-| A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; a logged-out Google session cookie that Vela replaces weekly by default, and an IP like any website visitor |
-| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing - position stays on the phone. Searches send the map area you are looking at and, to rank places near you first, can ask about a small area around you; a route from your location sends that point as the start. While navigating, anonymous re-routes and the optional live-traffic re-check send your current position (toggleable in Settings → Navigation) |
-| Every pan and zoom of the map | Yes - their servers render the map | Yes | No, by default - map tiles come from OpenFreeMap and the places on them from Vela's own data, so Google never sees you browse |
+| Tied to your Google account | Yes, always signed in | Yes unless incognito | Never. There is no login |
+| A persistent device identifier | Yes (device and ad IDs via Play Services) | Browser cookies | No account, no app key. A logged-out Google session cookie that Vela replaces weekly by default, and an IP like any website visitor |
+| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing. Searches send the map area you are looking at and, to rank nearby places first, can ask about a small area around you. A route from your location sends that point as the start. While navigating, reroutes and the optional traffic re-check send your current position |
+| Every pan and zoom of the map | Yes, their servers render the map | Yes | No, by default. Map tiles come from OpenFreeMap and the places on them from Vela's own data |
 | Your searches | Yes, saved to your account history | Yes | The text reaches Google anonymously, as you type (autocomplete) and when you search |
 | Place pages you open | Yes | Yes | The place lookup reaches Google anonymously, under that logged-out session cookie |
-| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM, or OsmAnd-format region files on the phone; Google answers anonymous traffic checks - at planning, and during the drive for re-routes and the optional faster-route scanning |
+| Turn-by-turn routes | Yes, full trip telemetry | Yes | Google is asked anonymously for the route between two points, and again during the drive for reroutes and the optional traffic re-check. The open OSRM and Valhalla routers get the same trip, to supply the turn instructions. Your GPS trail as a whole never leaves the phone |
 | Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
 | Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
-| Works with no Google contact at all | No | No | Yes - one switch (Settings → Privacy → Use Vela without Google), and downloaded regions show the map, search, route, and navigate fully offline |
-
-Full per-request detail is in [PRIVACY.md](PRIVACY.md).
+| Works with no Google contact at all | No | No | Yes. One switch (Settings → Privacy → Use Vela without Google), and downloaded regions show the map, search, route and navigate offline |
 
 ## How it works
 
-Every capability, the method behind it, and the file to read first is laid out in
-**[SPEC.md](SPEC.md)**, the authoritative technical specification: the basemap, the places
-bake, the Google extractor, open routing, navigation, the offline stack and the signed
-remote-repair channel.
+[SPEC.md](SPEC.md) is the technical reference: the basemap, the places bake, the
+requests to Google, routing, navigation, the offline data and the signed
+remote-repair channel. [The book](docs/book/README.md) explains each subsystem in
+plainer words.
 
 | File | What's in it |
 |---|---|
-| [`README.md`](README.md) | This - what Vela is, why, and the privacy comparison |
-| [`SPEC.md`](SPEC.md) | Every technical rule, contract, constant and constraint |
-| [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source, module architecture, and the release pipeline |
-| [`docs/LANGUAGES.md`](docs/LANGUAGES.md) | The 15 supported languages, layer by layer (UI, spoken nav, neural voice, dictation), and how to add one |
-| [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | Translating Vela - in the browser on [Weblate](https://hosted.weblate.org/engage/vela-maps/), or edit one file and open a PR |
-| [`FEATURES.md`](FEATURES.md) | The full, categorized list of every shipped capability (the encyclopedia) |
-| [`ROADMAP.md`](ROADMAP.md) | What is still open + the big bets (self-hosted tiles, OSM contributions, a Play listing, opt-in telemetry, a Vela-own traffic layer); shipped and dead-end entries live in `docs/ROADMAP-HISTORY.md` |
-| [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives, per request |
-| [`CLAUDE.md`](CLAUDE.md) | Build rules, module layout, and the hard-won gotchas - for contributors (human or AI) |
-| [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation - design, findings, per-surface audit, and the merge-with-upstream policy |
-| [`docs/book/`](docs/book/README.md) | Subsystem explainers: how places rank, when data is rebaked, what the camera rules are |
-| [`docs/FAQ.md`](docs/FAQ.md) | The questions people ask first, including what each feature sends to Google |
+| [`SPEC.md`](SPEC.md) | Every technical rule, contract and constant |
+| [`docs/book/`](docs/book/README.md) | Each subsystem explained: how places rank, when data is rebuilt, how a route is put together |
+| [`FEATURES.md`](FEATURES.md) | What the app does, one line each |
+| [`PRIVACY.md`](PRIVACY.md) | What each service receives |
+| [`docs/FAQ.md`](docs/FAQ.md) | The questions people ask first |
+| [`ROADMAP.md`](ROADMAP.md) | What is open. What shipped or was dropped is in [`docs/ROADMAP-HISTORY.md`](docs/ROADMAP-HISTORY.md) |
+| [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source |
+| [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | The languages, and how to translate (in the browser on [Weblate](https://hosted.weblate.org/engage/vela-maps/)) |
+| [`docs/dpad.md`](docs/dpad.md) | Operation without a touchscreen |
+| [`CLAUDE.md`](CLAUDE.md) | Rules and traps for anyone changing the code, human or AI |
 
-## Degoogled / GrapheneOS notes
+## GrapheneOS notes
 
-- **Location:** AOSP `LocationManager`, never `FusedLocationProviderClient`. On
-  GrapheneOS, enabling PSDS (Settings → Location) drops the cold GPS fix from
-  ~30s to a few seconds - Vela shows a one-time tip when it notices a slow fix.
+- **Location:** Vela uses Android's own `LocationManager`, never Google's fused
+  provider. On GrapheneOS, enabling PSDS (Settings → Location) drops the cold GPS
+  fix from about 30 seconds to a few. Vela shows a one-time tip when it notices a
+  slow fix.
 
 ## Roadmap
 
-Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
-release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
+Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] F-Droid submission + reproducible build
-- [ ] A Google Play listing, so Android Auto works on factory head units: a separate build
-      with the Google half compiled out (map, offline routing, places from OpenStreetMap and
-      Overture), honestly described, while the full app stays on GitHub, Obtainium and F-Droid.
-      Play forbids an app that downloads its missing half later, so the two stay two.
-      A big job (a developer account, review, a flavor split); on the radar, not started.
-- [ ] An iOS build. The engine module is plain Kotlin and would move to Kotlin Multiplatform;
-      the map (MapLibre), the neural voice (sherpa-onnx) and the hidden-page scrapes all have
-      iOS counterparts. The whole interface would be rewritten. On the radar, not started.
+- [ ] Android Auto without a Google Play listing.
+- [ ] F-Droid's own catalog, which needs a build with no prebuilt parts.
+- [ ] A Google Play listing, so Android Auto works on factory head units: a separate
+      build with the Google half compiled out, while the full app stays on GitHub,
+      Obtainium and F-Droid. A big job. On the radar, not started.
+- [ ] An iOS build. The engine module is plain Kotlin and would move to Kotlin
+      Multiplatform; the interface would be rewritten. On the radar, not started.
 
-**Not going to happen** - anything that needs you to sign in to Google or hand data to a
-backend: contributing reviews/photos/edits, live location sharing and share-ETA, a location
-timeline, and the login-gated data Google strips from anonymous requests (live busyness).
-Vela's whole point is that no account and no server ever sees you.
-
+**Not going to happen:** anything that needs you to sign in to Google or hand data to
+a backend. That covers contributing reviews, photos or edits, live location sharing,
+a location timeline, and the data Google strips from anonymous requests (live
+busyness). No account and no server ever sees you.
 
 ## A note on the name
 
-**Vela Maps** (`app.vela`) - the navigator's constellation "the Sails", and
-"sail" in several languages.
+**Vela Maps** (`app.vela`): the navigator's constellation "the Sails", and "sail"
+in several languages.
 
 ## Contributing
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first - it covers the hard rules (no
-backend, no static Google keys, degoogled runtime, the `:core`/`:app` module
-boundary, docs-in-the-same-commit, and translations for all 15 languages) and how to
-send a change. There is no separate code-of-conduct document by design: keep it
-about the code. Security issues go through [`SECURITY.md`](SECURITY.md) (GitHub
-private vulnerability reporting), not a public issue.
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. It covers the hard rules (no
+backend, no static Google keys, no Google libraries, the `:core` / `:app` module
+boundary, docs in the same commit) and how to send a change. There is no separate
+code of conduct: keep it about the code. Security issues go through
+[`SECURITY.md`](SECURITY.md) (GitHub private vulnerability reporting), not a
+public issue.
 
 ## Map data
 
-The map itself is [OpenStreetMap](https://www.openstreetmap.org/copyright) data, © OpenStreetMap
-contributors, available under the Open Database License, served as vector tiles by
-[OpenFreeMap](https://openfreemap.org). Offline routing regions, place packs, house-number and
-building overlays are built from OpenStreetMap, OpenAddresses and Microsoft Building Footprints
-extracts and carry their licenses in the release notes of the hosting release. The places on the
-map are Overture Maps (CDLA-Permissive 2.0) and AllThePlaces data, positioned with OpenStreetMap.
-Closed places are weeded out with Foursquare OS Places (Apache 2.0), OpenStreetMap and Wikidata.
-Transit boards come from Transitous and the agencies' own GTFS feeds. Satellite imagery is Esri
-World Imagery, with Google imagery where Esri has none at close zoom.
+The map is [OpenStreetMap](https://www.openstreetmap.org/copyright) data, ©
+OpenStreetMap contributors, under the Open Database License, served as vector tiles
+by [OpenFreeMap](https://openfreemap.org). Offline routing regions, place packs,
+house-number and building overlays are built from OpenStreetMap, OpenAddresses and
+Microsoft Building Footprints extracts and carry their licenses in the release
+notes of the hosting release. The places on the map are Overture Maps
+(CDLA-Permissive 2.0) and AllThePlaces data, positioned with OpenStreetMap. Closed
+places are weeded out with Foursquare OS Places (Apache 2.0), OpenStreetMap and
+Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds.
+Satellite imagery is Esri World Imagery, with Google imagery where Esri has none
+at close zoom.
 
 ## License
 
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
-Vela is Free Software: you can use, study, share, and improve it at your will. You may use, modify, and redistribute this project only if your modifications remain open-source under the same license.
+Vela is Free Software: you can use, study, share and improve it at your will. You may use, modify and redistribute this project only if your modifications remain open source under the same license.
 
 The app bundles the Google Sans Flex font, copyright The Google Sans Flex Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt). Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.

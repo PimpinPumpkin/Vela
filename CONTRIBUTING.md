@@ -34,8 +34,8 @@ too).
    to be impossible, move its entry to `docs/ROADMAP-HISTORY.md` in the same commit
    rather than striking it through. Stale docs are treated as a bug. If a change
    genuinely needs no doc edit, say why in the commit message.
-6. **Every user-facing string is translatable** (the 15-language matrix is in
-   [docs/LANGUAGES.md](docs/LANGUAGES.md)). Add new strings to the English base
+6. **Every user-facing string is translatable** (the languages are listed in
+   [docs/TRANSLATING.md](docs/TRANSLATING.md)). Add new strings to the English base
    `res/values/strings.xml`; translations come in through Weblate, or as pull requests against `values-<lang>/strings.xml` (see
    [docs/TRANSLATING.md](docs/TRANSLATING.md)), and an untranslated string falls
    back to English until they do. Match placeholder types to the arguments (an Int

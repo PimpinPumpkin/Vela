@@ -32,7 +32,6 @@ PAGES = {
     "PRIVACY.md": "privacy.md",
     "FDROID.md": "fdroid.md",
     "FEATURES.md": "features.md",
-    "docs/LANGUAGES.md": "languages.md",
     "docs/ANDROID-AUTO.md": "android-auto.md",
     "docs/dpad.md": "dpad.md",
     "docs/book/README.md": "book/index.md",
