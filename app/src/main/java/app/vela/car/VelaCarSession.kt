@@ -7,6 +7,7 @@ import androidx.car.app.Screen
 import androidx.car.app.ScreenManager
 import androidx.car.app.CarToast
 import androidx.car.app.Session
+import app.vela.car.screen.ActiveNavCarScreen
 import app.vela.car.screen.RoutePreviewCarScreen
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -18,7 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -52,6 +55,13 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
                 runCatching { CarToast.makeText(carContext, msg, CarToast.LENGTH_LONG).show() }
             }
         }
+        // A drive started anywhere, on this screen or on the phone, opens the drive screen. This
+        // is the only place that pushes it.
+        scope.launch {
+            deps.navSession.state.map { it.navigating && !it.arrived }.distinctUntilChanged().collect { on ->
+                if (on) showDriveScreen()
+            }
+        }
         CarLocationAccess.check(carContext)
         feedJob = scope.launch {
             // Wait for the permission: the landing screen asks for it when the car connected
@@ -79,7 +89,22 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
         parseNavDest(intent)?.let { (dest, name) ->
             return RoutePreviewCarScreen(carContext, deps, name, dest)
         }
-        return MainCarScreen(carContext, deps)
+        val home = MainCarScreen(carContext, deps)
+        // Connected in the middle of a drive: the drive screen, with the landing screen under it.
+        val nav = deps.navSession.state.value
+        if (nav.navigating && !nav.arrived) {
+            carContext.getCarService(ScreenManager::class.java).push(home)
+            return ActiveNavCarScreen(carContext, deps)
+        }
+        return home
+    }
+
+    private fun showDriveScreen() {
+        val screens = carContext.getCarService(ScreenManager::class.java)
+        // Before the first screen exists, onCreateScreen decides.
+        if (screens.stackSize == 0 || screens.top is ActiveNavCarScreen) return
+        screens.popToRoot()
+        screens.push(ActiveNavCarScreen(carContext, deps))
     }
 
     /** A navigation intent delivered while the app is already running (the host reuses the session). */

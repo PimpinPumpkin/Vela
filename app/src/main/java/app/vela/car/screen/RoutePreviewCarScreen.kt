@@ -184,7 +184,7 @@ class RoutePreviewCarScreen(
             }
             deps.navSession.start(named, dest, destName, engine, emptyList(), TravelMode.DRIVE)
             runCatching { NavigationService.start(carContext.applicationContext) }
-            screenManager.push(ActiveNavCarScreen(carContext, deps))
+            // VelaCarSession opens the drive screen when the session reports the drive.
         }
     }
 
