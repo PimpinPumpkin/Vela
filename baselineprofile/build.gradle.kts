@@ -1,14 +1,10 @@
-// Baseline-profile GENERATOR module. Runs the app on a device, records the classes/methods the
-// hot paths touch (startup, map pan, settings scroll), and writes them to
-// app/src/release/generated/baselineProfiles/ - which is COMMITTED, so every CI release build
-// bakes it and androidx.profileinstaller AOT-compiles those paths at install time. Sideloaded
-// installs (Obtainium) get no Play cloud profiles; without this every nightly ran
-// interpreter-cold until overnight background dexopt.
+// Baseline-profile GENERATOR module. Runs the app on the emulator below, records the classes and
+// methods the hot paths touch (startup, map pan, Settings), and writes them to
+// app/src/release/generated/baselineProfiles/, which is committed. Every release build bakes
+// the file in, and androidx.profileinstaller hands it to the system on first launch so those
+// paths are compiled ahead of time. Sideloaded installs get no Play cloud profiles.
 //
-// Regenerate (any API 33+ device, e.g. the wired test phone; release keystore env so the
-// nonMinified variant installs over the existing app):
-//   VELA_KEYSTORE_PATH=... VELA_KEYSTORE_PASSWORD=... VELA_KEY_ALIAS=vela \
-//     ./gradlew :app:generateBaselineProfile
+// Regenerate: ./gradlew :app:generateBaselineProfile
 plugins {
     alias(libs.plugins.android.test)
     alias(libs.plugins.baselineprofile)

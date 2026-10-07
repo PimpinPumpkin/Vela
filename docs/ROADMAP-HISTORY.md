@@ -18,6 +18,11 @@ says so.
   pull request 672).
 - A car with an instrument-cluster display gets its own Android Auto session
   (`ClusterSession`). Such cars crashed Vela before.
+- The app's own baseline profile ships. The generator used to stop at the welcome screen, so
+  no run had recorded the map, and an ignore rule kept the file out of git.
+- D-pad: the static audit passes and runs in CI. Twelve text fields no longer trap focus, the
+  default route chooser opens on the Drive tab, and a tap-to-close scrim is no longer a focus
+  stop.
 - Android Auto fixes found on the Desktop Head Unit: the map froze after a screen change until
   the old surface was collected, the turn card was missing because maneuvers carried no icon, a
   drive started on the phone never opened the car's drive screen, and the car ignored the

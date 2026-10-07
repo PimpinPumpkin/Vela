@@ -4444,6 +4444,15 @@ recomposition. Neither can be parallelized, so the rules send each less work.
   `app/src/release/generated/baselineProfiles/baseline-prof.txt` on a Gradle-managed emulator,
   and a release build bakes in the profile it finds there. Never run it on a connected phone:
   the harness uninstalls the app, which deletes saved places, trips and grants.
+- The journey (`BaselineProfileGenerator`) grants the app's permissions, leaves the welcome
+  screen, takes the "no" side of each first-run prompt, pans the map and walks Settings. A
+  prompt left up covers the map and the run records that prompt alone. After changing the
+  journey, check that the file has `MapScreen` and `SettingsHub` entries.
+- On a Pixel 4a a cold start reaches its first frame in about 1,100 ms with nothing compiled
+  and 830 to 900 ms with the profile compiled. The libraries' own rules give most of that. The
+  app's rules add about 50 ms and take the 99th-percentile frame of a first Settings visit from
+  62 ms to 53 ms. GrapheneOS compiles the whole app at install (`speed`), so there the profile
+  changes nothing.
 
 ---
 

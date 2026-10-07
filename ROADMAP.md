@@ -157,8 +157,6 @@ Small items, one pull request each.
   `CarMapRenderer` draws no search results, so a driver cannot see which way each place is.
 - The car's route preview draws the selected route alone: no other routes in gray and no pin at
   the destination. A paused drive keeps the blue line where the phone's turns lavender.
-- A baseline profile has never shipped. The ignore rule that kept it out of git is fixed, and
-  the monthly `baseline-profile.yml` run has yet to commit one.
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
   link (65% under `hl=ja`), so open icons draw beside their Google twin. Options: run the
