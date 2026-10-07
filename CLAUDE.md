@@ -3930,12 +3930,18 @@ architecture note.
   hospital and museum checked kept its zoom because OpenStreetMap or a chain locator lists it.
   The bake prints `unconfirmed_rows_capped`. Reaches phones as regions rebake. Reminder that bit
   again: a backtick in a SQL comment inside the unquoted heredoc runs as a shell command.
-- **`CATEGORY_APP_MAPS` (issue #683, 2026-10-06).** Both launcher aliases declare it beside MAIN
-  and LAUNCHER: Android Automotive (Android running in the car itself, not Android Auto) fills
-  its map panel with an app that has it, and `pm query-activities -a android.intent.action.MAIN
-  -c android.intent.category.APP_MAPS` lists Vela beside Google Maps on a phone. That is ALL
-  that was done: Vela is not tested on Automotive, declares no automotive feature and is not
-  marked distraction-optimized, so a car may still refuse to show it while moving.
+- **`CATEGORY_APP_MAPS` (issue #683, 2026-10-06).** Each launcher alias has a SECOND intent filter,
+  MAIN + DEFAULT + APP_MAPS. Android Automotive (Android running in the car itself, not Android
+  Auto) starts whatever answers that in its home screen's map panel, by an IMPLICIT intent, and an
+  implicit start only matches a filter that declares DEFAULT: with APP_MAPS added to the launcher
+  filter alone, `pm query-activities` listed Vela and the car launcher's start still came back
+  "not resolved" (result -91) and the panel stayed black. Checked on the Automotive emulator
+  (`system-images;android-34-ext9;android-automotive;arm64-v8a`, AVD `vela_car`, run with
+  `-no-window -port 5580`; homebrew's avdmanager cannot see the SDK's images, so the AVD's
+  config.ini was written by hand; `screencap -d <display id>` because the car has two displays;
+  the car's user is 10): Vela fills the map panel and was picked over the built-in placeholder.
+  NOT done: no automotive feature declared, not marked distraction-optimized, not tried with the
+  car "moving", so a real car may still cover it while driving.
 - **compileSdk 37 and OkHttp 5.5 (2026-10-06).** OkHttp 5 and the newer androidx libraries refuse
   to build against 36 (the AAR metadata check). 37 changes no runtime behavior; targetSdk stays
   35. OkHttp 5 needed no code change. Checked on the 4a: fresh map tiles (MapLibre's own client

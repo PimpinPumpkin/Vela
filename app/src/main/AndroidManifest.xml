@@ -157,8 +157,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <!-- "The maps app" to the system (issue #683): Android Automotive picks what fills its
-                     map panel by this category, and "open maps" requests resolve by it on a phone. -->
+            </intent-filter>
+            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
+                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
+                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
+                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
+                 the category on the launcher filter alone the start came back "not resolved"). -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.APP_MAPS" />
             </intent-filter>
         </activity-alias>
@@ -172,8 +179,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <!-- "The maps app" to the system (issue #683): Android Automotive picks what fills its
-                     map panel by this category, and "open maps" requests resolve by it on a phone. -->
+            </intent-filter>
+            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
+                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
+                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
+                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
+                 the category on the launcher filter alone the start came back "not resolved"). -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.APP_MAPS" />
             </intent-filter>
         </activity-alias>
