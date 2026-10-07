@@ -5,10 +5,11 @@ import app.vela.core.model.Route
 import app.vela.core.model.TravelMode
 
 /**
- * A source of routes. Two implementations:
- *  - **online** ([RouteGeometry] / OSRM, plus Google's traffic overlay) — the default when connected;
+ * A source of routes. Implementations:
+ *  - **online** ([RouteGeometry] / OSRM, plus Google's traffic overlay) - the default when connected;
  *  - **on-device** ([ObfRouteEngine]) - used offline, routing from the obf region files downloaded
- *    per region.
+ *    per region; [ObfBmsspRouteEngine] is a second on-device engine over the same files (see
+ *    FORK.md), gated by the `sortingBarrierRouter` calibration flag behind [SortingBarrierEngine].
  *
  * The seam lets `GoogleMapsDataSource.directions()` pick by connectivity + region availability
  * without knowing which engine answered.
@@ -49,4 +50,9 @@ interface RouteEngine {
      *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline
      *  limit data, so the default is null. Call off the main thread. Convert to mph at the UI boundary. */
     fun currentRoadLimit(lat: Double, lng: Double): Double? = null
+
+    /** Drop cached region readers and derived state. Call when the obf files under the engine
+     *  change (region install/delete, storage move, cell change) so the next route re-opens them.
+     *  Engines that cache nothing implement nothing. */
+    fun shutdown() {}
 }

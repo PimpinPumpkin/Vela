@@ -274,7 +274,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
     }
 
     /** Drop cached readers (after an install/delete changes the set). */
-    fun shutdown() {
+    override fun shutdown() {
         synchronized(routeLock) {
             limitCtx = null
             limitCtxKey = ""

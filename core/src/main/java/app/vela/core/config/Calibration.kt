@@ -90,6 +90,10 @@ data class Calibration(
     // default; flipping this true in the signed bundle puts everyone who never touched the toggle
     // back on the classic panel, without an app release (their own choice always wins).
     val classicRoutePicker: Boolean = false,
+    // Fork experiment switch (off by default): drives are tried on the sorting-barrier SSSP
+    // engine (ObfBmsspRouteEngine, arXiv:2504.17033) FIRST; every refusal or miss falls back
+    // to the OsmAnd router. Remote-pushable like the others; see FORK.md for measured timings.
+    val sortingBarrierRouter: Boolean = false,
     // Fleet-tunable NUMBERS: a flat name -> value map so a new dial is a config edit, never a
     // schema change. Read through [tune]; a missing key means the compiled default passed at the
     // call site, so an old bundle can never break a new app (and vice versa). Current dials:
