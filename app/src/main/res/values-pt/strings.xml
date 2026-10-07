@@ -828,7 +828,7 @@
     <string name="settings_house_numbers_hint">Os números de porta vêm do OpenStreetMap e, nos EUA, do OpenAddresses. Um edifício que não tenha número em nenhum dos dois não mostra nenhum, mesmo que a pesquisa continue a encontrar a morada através da Google.</string>
     <string name="settings_show_pois">Mostrar locais</string>
     <string name="settings_show_pois_hint">Ícones de estabelecimentos e locais no mapa de exploração. Desligado = um mapa limpo; os locais pesquisados continuam a aparecer.</string>
-    <string name="settings_places_source">Os locais vêm de</string>
+    <string name="settings_places_source">Ícones de locais no mapa</string>
     <string name="settings_places_source_open">Dados da Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Ambos</string>

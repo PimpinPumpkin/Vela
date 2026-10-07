@@ -8,7 +8,7 @@ route - see [the book](book/README.md).
 
 ## Are the shops and restaurants on the map Google's?
 
-Not by default. Settings > Places > "Places come from" has three choices:
+Not by default. Settings > Places > "Place icons on the map" has three choices:
 
 - **Vela data** (the default): the businesses on the map come from open data baked into
   Vela's own map files, plus the shops mapped in OpenStreetMap. Panning around asks Google
@@ -71,7 +71,7 @@ What you lose: reviews, photos, opening hours, live traffic and its arrival time
 View, transit directions, the satellite close-ups, and the long tail of businesses that only
 Google knows about.
 
-The four individual toggles the older recipe used (Places come from, Look up tapped places,
+The four individual toggles the older recipe used (Place icons on the map, Look up tapped places,
 Live traffic re-checks, the traffic overlay) still exist; the switch does not change them, it
 sits above them.
 

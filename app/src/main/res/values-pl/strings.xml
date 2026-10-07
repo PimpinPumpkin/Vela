@@ -835,7 +835,7 @@
     <string name="settings_house_numbers_hint">Numery domów pochodzą z OpenStreetMap, a w USA z OpenAddresses. Budynek, który nie ma numeru w żadnym z nich, nie pokaże go, choć wyszukiwanie i tak znajdzie adres przez Google.</string>
     <string name="settings_show_pois">Pokazuj miejsca</string>
     <string name="settings_show_pois_hint">Ikony firm i miejsc na przeglądanej mapie. Wył. = czysta mapa; wyszukane miejsca nadal się pokazują.</string>
-    <string name="settings_places_source">Źródło miejsc</string>
+    <string name="settings_places_source">Ikony miejsc na mapie</string>
     <string name="settings_places_source_open">Dane Veli</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Oba</string>

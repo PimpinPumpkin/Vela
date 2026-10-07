@@ -850,7 +850,7 @@
     <string name="settings_house_numbers_normal">Normál</string>
     <string name="settings_house_numbers_far">Távolabbról is</string>
     <string name="settings_house_numbers_hint">A házszámok az OpenStreetMap-ből, az Egyesült Államokban pedig az OpenAddresses-ből származnak. Amelyik épülethez egyikben sincs szám, annál nem jelenik meg semmi, még akkor sem, ha a keresés a Google-n keresztül továbbra is megtalálja a címet.</string>
-    <string name="settings_places_source">A helyek forrása</string>
+    <string name="settings_places_source">Helyikonok a térképen</string>
     <string name="settings_places_source_open">Vela-adat</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Mindkettő</string>

@@ -875,7 +875,7 @@ Defaults that make the safe path the easy one:
   rows by topic; shared groups live in `sections/MovedGroups.kt`): Appearance (theme incl. the new
   AMOLED true-black ThemeMode, interface size, map colors, Material You, units, follow-system
   language toggle), Map (how the map looks only: layer toggles, 3D, missing-building fill, house
-  numbers), Places (`PlacesSettings`, was Place pages: `PlacesSourceGroup` "Places come from",
+  numbers), Places (`PlacesSettings`, was Place pages: `PlacesSourceGroup` "Place icons on the map",
   `PlacesOnMapGroup` show places / tapped-place lookup / civic / transit stops / icon size, then the
   place-page toggles), Navigation (keep-screen-on, traffic lights, vibrate chips,
   `CameraSettingsGroup` with every surveillance/speed camera row, `LiveRechecksGroup`), Voice
@@ -1778,6 +1778,11 @@ Defaults that make the safe path the easy one:
   path in it, so `/maps`-prefixed hosts (google.com, www.google.com, goo.gl) and pathless hosts
   (maps.google.com, maps.app.goo.gl) live in separate filters. Check with
   `adb shell pm query-activities --brief -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d <url>`.
+- **The places-source setting is named for what it controls (2026-10-07):** "Place icons on the
+  map" (was "Places come from"), and "Place icons: X" in the Layers menu. People read the old name
+  as where ALL place data comes from; search, the place page, hours, reviews and photos are
+  Google either way. A wider "never load Google's pages" switch was considered and dropped the
+  same day: it reads the same as "Use Vela without Google". Keep new privacy controls few.
 - **Place sheet tabs (2026-09-27):** `PlaceTabs` renders Overview / Reviews / Photos / Updates / Menu under the action pills
   (Updates with two or more posts; Overview keeps the newest; over three tabs the row scrolls). A bare
   address or pin (`Place.isListing()` false: no category, rating, count or featured review) gets no
@@ -6413,7 +6418,7 @@ Gotchas:
   downloaded region (a whole-country download today gets all its pieces, a Land download later gets one),
   and `sourcesFor` streams the smallest covering piece. The full bake is `places-overlays.yml` (the bake conductor runs the daily seventh; a full
   rebake is a `shard` a/b dispatch, the matrix caps at 256 jobs), max-parallel 8; `MapPoiPrefs.placesSource` (Settings > Data & privacy since
-  2026-09-16, was Map; "Places come from": `open` ("Vela data", compiled default) / `google` / `both`; the FLEET DEFAULT
+  2026-09-16, was Map; "Place icons on the map": `open` ("Vela data", compiled default) / `google` / `both`; the FLEET DEFAULT
   is remote since 2026-09-16 (`calibration.json` `defaultPlacesSource`, v20 -> `Calibration.defaultPlacesSource`
   -> the VM pushes it into `MapPoiPrefs.setRemoteDefault` at init + after refresh, same channel as
   defaultMapPalette; only people who never touched the picker follow it, an explicit pick wins).

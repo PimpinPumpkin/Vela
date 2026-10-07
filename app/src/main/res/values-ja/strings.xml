@@ -809,7 +809,7 @@
     <string name="settings_house_numbers_hint">番地は OpenStreetMap、米国では OpenAddresses のデータです。どちらにも番号がない建物には表示されませんが、検索では Google 経由でその住所を見つけられます。</string>
     <string name="settings_show_pois">場所を表示</string>
     <string name="settings_show_pois_hint">地図の閲覧中に店舗や施設のアイコンを表示します。オフにすると地図がすっきりしますが、検索した場所は表示されます。</string>
-    <string name="settings_places_source">場所データの取得元</string>
+    <string name="settings_places_source">地図上の場所アイコン</string>
     <string name="settings_places_source_open">Vela のデータ</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">両方</string>

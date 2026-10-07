@@ -816,7 +816,7 @@
     <string name="settings_house_numbers_hint">门牌号来自 OpenStreetMap，在美国还来自 OpenAddresses。两者都没有号码的建筑不会显示门牌号，但搜索仍可通过 Google 找到该地址。</string>
     <string name="settings_show_pois">显示地点</string>
     <string name="settings_show_pois_hint">浏览地图上的商家和地点图标。关闭后地图更清爽；搜索到的地点仍会显示。</string>
-    <string name="settings_places_source">地点数据来自</string>
+    <string name="settings_places_source">地图上的地点图标</string>
     <string name="settings_places_source_open">Vela 数据</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">两者</string>

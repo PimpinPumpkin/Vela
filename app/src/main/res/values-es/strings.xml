@@ -749,7 +749,7 @@
     <string name="settings_house_numbers_hint">Los números de casa vienen de OpenStreetMap y, en EE. UU., de OpenAddresses. Un edificio que no tenga número en ninguno de los dos no muestra ninguno, aunque la búsqueda siga encontrando la dirección a través de Google.</string>
     <string name="settings_show_pois">Mostrar lugares</string>
     <string name="settings_show_pois_hint">Iconos de negocios y lugares en el mapa al explorar. Desactivado = un mapa limpio; los lugares que busques se siguen mostrando.</string>
-    <string name="settings_places_source">Los lugares vienen de</string>
+    <string name="settings_places_source">Iconos de lugares en el mapa</string>
     <string name="settings_places_source_open">Datos de Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Ambos</string>

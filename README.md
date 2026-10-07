@@ -153,7 +153,7 @@ repository (the FAQ, the book, the full specification) is published there as a s
   Google nothing. Tapping a place is what asks Google, and it answers with what
   open data has no equivalent of: hours with holidays included, reviews you can
   search, photo galleries, busy times, phone and website, with a warning if a
-  place would be closed when you arrive. **Settings → Places → "Places come from"**
+  place would be closed when you arrive. **Settings → Places → "Place icons on the map"**
   switches the map between Vela data (the default), Both, or Google, and a
   separate toggle stops even a tapped place from being looked up. The
   [FAQ](docs/FAQ.md) has the per-feature breakdown of what uses what.

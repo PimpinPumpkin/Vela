@@ -7,7 +7,7 @@ dot for the rest, more of them the further you zoom in. Tap one and a sheet open
 hours, reviews, photos and phone.
 
 Those are two different systems. The pins are open data that ships from this repository. The
-sheet is Google, asked only when you tap. **Settings > Places > "Places come from"** decides
+sheet is Google, asked only when you tap. **Settings > Places > "Place icons on the map"** decides
 which system draws the map:
 
 | Mode | Who draws the pins | Reaches Google while browsing | Works offline |

@@ -1992,7 +1992,7 @@ widens from fuel-only to `NAV_DRIVE_GROUPS`, and a tap on a place does not selec
 
 ### 5.1 Sources
 
-Settings > Places > "Places come from" (`MapPoiPrefs.placesSource`, pref
+Settings > Places > "Place icons on the map" (`MapPoiPrefs.placesSource`, pref
 `map_places_source`), also in the map's Layers menu with the "Use Vela without Google" switch
 (issue #626; the menu flips the same holders), has three values:
 
