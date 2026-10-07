@@ -998,6 +998,36 @@ object RouteGeometry {
     private const val START_LOOK_M = 80.0
     private const val AGAINST_DEG = 120.0
 
+    /** Going on instead of turning around may cost this much over Google's best route... */
+    const val FORWARD_MAX_EXTRA_S = 180.0
+    /** ...or this share of the best route's time, when that is more. */
+    const val FORWARD_MAX_EXTRA_SHARE = 0.08
+
+    /**
+     * Which of Google's routes a reroute may follow, given the way the car is going. Google is
+     * asked without a heading, so its best route can start back the way the car came, and a
+     * route that tells a moving car to turn around is set aside for one that goes on
+     * ([startsAgainst]). Only while going on costs little, though: past [FORWARD_MAX_EXTRA_S]
+     * (or [FORWARD_MAX_EXTRA_SHARE] of the best time) turning around is the fast way. Without
+     * the limit a forward alternate 20 minutes longer was taken over the best route.
+     *
+     * The result leads with the route to follow. Empty means the open router's own route, which
+     * was asked WITH the heading and usually goes round the block: [openSeconds] is its time,
+     * free of traffic, compared with the best route's time free of traffic.
+     */
+    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?): List<Route> {
+        if (google.isEmpty()) return google
+        fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
+        val best = google.minByOrNull { eta(it) }!!
+        val forward = google.filterNot { startsAgainst(it.polyline, headingDeg) }
+        if (best in forward) return forward
+        val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(best) * FORWARD_MAX_EXTRA_SHARE)
+        val affordable = forward.filter { eta(it) - eta(best) <= allowance }
+        if (affordable.isNotEmpty()) return affordable
+        if (openSeconds != null && openSeconds - best.durationSeconds <= allowance) return emptyList()
+        return listOf(best) + google.filter { it !== best }
+    }
+
     /** True if Google's traffic-aware route [google] takes a meaningfully DIFFERENT path than
      *  OSRM's free-flow [osrm] — i.e. Google rerouted around a jam. Samples points along Google's
      *  line and checks whether any strays > [thresholdM] from OSRM's line. */

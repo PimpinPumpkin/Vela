@@ -1431,7 +1431,10 @@ LADDER_SNAP_RESERVE_MS       6_000   an escalated fetch stops waiting for Google
   request is rejected. Planning fetches and stationary fixes send none.
 - Google's request carries no heading. On a fetch that has one, a Google route whose first 80 m
   run more than 120 degrees off it (`RouteGeometry.startsAgainst`) is set aside when the open
-  router answered, so the hybrid cannot tell a moving car to turn around.
+  router answered, so the hybrid cannot tell a moving car to turn around. `forwardChoice`
+  limits what that may cost: a forward Google route within `FORWARD_MAX_EXTRA_S` (180 s) or
+  `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
+  is that close without traffic, else the best route, turn-around and all.
 - A reroute that lands after the driver is back on the original route is discarded
   (`route === fromRoute && onRouteStreak >= BACK_ON_COURSE_HITS`). One grazing fix is not enough.
 - A provisional route is never driven raw. `NavSession.driveable` names a provisional top

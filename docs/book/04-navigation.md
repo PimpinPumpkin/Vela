@@ -189,7 +189,8 @@ once the sources recover.
 The heading is the fix's course at the start point. Without it, a reroute computed a few tens of
 meters down the wrong road often says to turn around. The open router and the on-phone router
 both take it. Google's request has no heading, so a Google route that starts against yours is
-set aside when the open router answered. A stopped car has no fresh course and sends none.
+set aside when the open router answered, unless going on would cost minutes more than turning
+around (book 5). A stopped car has no fresh course and sends none.
 Planning sends none.
 
 The answer is checked before it is driven (`NavSession.driveable`). It must end within
