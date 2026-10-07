@@ -227,4 +227,28 @@ class PlaceNamesI18nTest {
         assertEquals(PlaceNames.Match.NONE, m("松屋", "吉野家"))
         assertEquals(PlaceNames.Match.NONE, m("店", "本店"))
     }
+
+    // Android 9's ICU regex throws on the JVM-only Is<Script> property syntax, so the CJK gate is a
+    // script check, not a regex (2026-10-06). Pinned here: the samples, and every code point
+    // against the JVM regex it replaced, so the matched set cannot drift.
+    @Test fun `the CJK gate matches Han, kana, Hangul and Thai and nothing else`() {
+        for (s in listOf("星巴克", "渋谷店", "ひらがな", "スターバックス", "스타벅스", "ร้านกาแฟ", "Cafe 星巴克", "a𠮷")) {
+            assertTrue(s, PlaceNames.hasCjk(s))
+        }
+        for (s in listOf("", "Starbucks", "Café Münster", "Привет", "שלום", "مرحبا", "7-Eleven", "ー", "123 !?")) {
+            assertFalse(s, PlaceNames.hasCjk(s))
+        }
+    }
+
+    @Test fun `the CJK gate matches exactly what the old regex matched`() {
+        val old = Regex("[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}\\p{IsThai}]")
+        var cp = 0
+        while (cp <= Character.MAX_CODE_POINT) {
+            if (cp !in 0xD800..0xDFFF) {
+                val s = String(Character.toChars(cp))
+                assertEquals("U+" + Integer.toHexString(cp), old.containsMatchIn(s), PlaceNames.hasCjk(s))
+            }
+            cp++
+        }
+    }
 }

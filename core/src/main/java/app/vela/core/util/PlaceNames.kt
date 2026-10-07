@@ -315,7 +315,26 @@ object PlaceNames {
      * "スターバックス" (VARIANT), "星巴克咖啡" is "星巴克", "セブン-イレブン渋谷駅前店" contains
      * "セブン-イレブン" (OVERLAP, the extra is a branch name).
      */
-    private val CJK = Regex("[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}\\p{IsThai}]")
+    /**
+     * Any Han, Hiragana, Katakana, Hangul or Thai character. This was a regex of `\p{IsHan}`-style
+     * classes, and Android's ICU regex rejects that Java-only `Is<Script>` syntax on Android 9
+     * with a PatternSyntaxException (U_ILLEGAL_ARGUMENT_ERROR), which took this whole object down
+     * on first use there. A script check is what `\p{IsXxx}` means on the JVM
+     * (Character.UnicodeScript.forName), so the matched set is the same, with no regex.
+     */
+    internal fun hasCjk(s: String): Boolean {
+        var i = 0
+        while (i < s.length) {
+            val cp = s.codePointAt(i)
+            when (Character.UnicodeScript.of(cp)) {
+                Character.UnicodeScript.HAN, Character.UnicodeScript.HIRAGANA, Character.UnicodeScript.KATAKANA,
+                Character.UnicodeScript.HANGUL, Character.UnicodeScript.THAI -> return true
+                else -> {}
+            }
+            i += Character.charCount(cp)
+        }
+        return false
+    }
     private val CJK_SUFFIXES = listOf(
         // ja
         "駅前店", "本店", "支店", "分店", "店舗", "店", "薬局", "銀行", "支行", "病院", "医院", "診療所", "歯科", "学校", "公園", "駅", "駐車場",
@@ -494,7 +513,7 @@ object PlaceNames {
         val na = normalized(a); val nb = normalized(b)
         if (na.isEmpty() || nb.isEmpty()) return Match.NONE
         if (na == nb) return Match.EXACT
-        if (CJK.containsMatchIn(na) || CJK.containsMatchIn(nb)) return cjkMatch(na, nb)
+        if (hasCjk(na) || hasCjk(nb)) return cjkMatch(na, nb)
         // Plurals fold PAIRWISE ("Sola Salons" against "Sola Salon Studios"): a word loses its "s"
         // only when the other name carries the singular, so "Davis" and "Wells" stay themselves.
         val ra = na.split(' '); val rb = nb.split(' ')
