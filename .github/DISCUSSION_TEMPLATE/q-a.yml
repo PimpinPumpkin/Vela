@@ -6,6 +6,8 @@ body:
         [bug report](https://github.com/PimpinPumpkin/Vela/issues/new?template=bug_report.yml), and something you
         want added goes in a [feature request](https://github.com/PimpinPumpkin/Vela/issues/new?template=feature_request.yml).
         Those are tracked and closed when they are done. A question here is not.
+
+        The [FAQ](https://pimpinpumpkin.github.io/Vela/docs/) answers the common ones.
   - type: checkboxes
     id: kind
     attributes:
@@ -13,7 +15,7 @@ body:
       options:
         - label: This is a question, not a bug report or a feature request.
           required: true
-        - label: I looked in the [FAQ](https://pimpinpumpkin.github.io/Vela/docs/) and searched the existing questions.
+        - label: I looked in the FAQ and searched the existing questions.
           required: true
   - type: textarea
     id: question
