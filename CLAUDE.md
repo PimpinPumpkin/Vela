@@ -4080,6 +4080,16 @@ architecture note.
   sign-in or payment screen for an overlay to imitate.
   `SECURITY.md` lists all of it for users. The repository's private vulnerability reporting,
   Dependabot alerts and secret scanning are repository settings, not files.
+- **Build-tool library alerts (2026-10-07).** Eight of the nine Dependabot alerts were libraries
+  the Android Gradle plugin brings onto the BUILD classpath (BouncyCastle, jose4j, jdom2,
+  commons-lang3, httpclient), none of them in the app (`:app:dependencies --configuration
+  releaseRuntimeClasspath` has none; check there before worrying about an alert). The root
+  `build.gradle.kts` holds that classpath to the first fixed version of each through
+  `buildscript { dependencies { constraints { classpath(...) } } }`; `./gradlew buildEnvironment`
+  shows what resolved. BouncyCastle is what signs the APK, so after touching it: clean release
+  build, `apksigner verify`, install over the existing build, and a green canary build (which
+  signs with the real key). `wire-runtime` is flagged too and is on no build classpath this
+  shows; left alone.
 - **Issue triage (2026-10-06).** `.github/workflows/issue-triage.yml` runs
   `scripts/issue-triage.py` when an issue is opened: a comment listing earlier issues that share
   its wording (IDF-weighted word overlap, `MIN_SCORE`), and the `incomplete` label plus a note on a
