@@ -116,26 +116,21 @@ class SelfUpdater @Inject constructor(
             // phone, which is what "checking for updates is slow" was. The app-release TAGS come
             // from the refs endpoint instead (~200 KB for 550 tags, no bodies, no assets) and a
             // release is fetched one tag at a time (~15 KB each), at most a dozen per check.
-            fun appRuns(): List<Int> = runCatching {
-                val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/git/matching-refs/tags/v0."))
-                (0 until arr.length()).mapNotNull { i ->
-                    val ref = arr.getJSONObject(i).optString("ref")
-                    Regex("""^refs/tags/v0\.\d+\.(\d+)$""").find(ref)?.groupValues?.get(1)?.toIntOrNull()
-                }.distinct().sortedDescending()
-            }.getOrDefault(emptyList())
-            fun releaseForRun(run: Int, minor: Int? = null): JSONObject? = runCatching {
-                // The tag's minor is not in the run number; try the current line first, then the
-                // older ones (the line moved 0.2 -> 0.3 -> 0.4 already).
-                val minors = listOfNotNull(minor) + listOf(4, 3, 2).filter { it != minor }
-                minors.firstNotNullOfOrNull { m ->
-                    runCatching { JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/v0.$m.$run")) }.getOrNull()
-                }
+            // Fetched once per check, and only by the paths that need it.
+            val appTags: List<Pair<Int, String>> by lazy {
+                runCatching {
+                    val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/git/matching-refs/tags/v0."))
+                    appReleaseTags((0 until arr.length()).map { arr.getJSONObject(it).optString("ref") })
+                }.getOrDefault(emptyList())
+            }
+            fun releaseForTag(tag: String): JSONObject? = runCatching {
+                JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/$tag"))
             }.getOrNull()
             fun nightlyInfo(): UpdateInfo? {
                 // The newest app tag that has a published, non-draft release (a nightly, or a stable
                 // that was a nightly): the highest run is the newest either way.
-                for (run in appRuns().take(3)) {
-                    val o = releaseForRun(run) ?: continue
+                for ((_, tag) in appTags.take(3)) {
+                    val o = releaseForTag(tag) ?: continue
                     if (o.optBoolean("draft")) continue
                     return releaseToInfo(o) ?: continue
                 }
@@ -155,11 +150,10 @@ class SelfUpdater @Inject constructor(
             // The releases between the installed and the offered one, one small fetch each,
             // capped so a phone many releases behind does not spend its API allowance.
             val history = runCatching {
-                val minor = picked.versionName.substringAfter("0.").substringBefore(".").toIntOrNull()
-                appRuns()
-                    .filter { run -> 2000 + run in (currentVersionCode + 1)..picked.versionCode }
+                appTags
+                    .filter { (run, _) -> 2000 + run in (currentVersionCode + 1)..picked.versionCode }
                     .take(HISTORY_MAX_RELEASES)
-                    .mapNotNull { run -> releaseForRun(run, minor) }
+                    .mapNotNull { (_, tag) -> releaseForTag(tag) }
                     .filterNot { it.optBoolean("draft") }
                     .filter { it.optBoolean("prerelease") == (channel != CHANNEL_STABLE) }
                     .mapNotNull { o -> releaseToInfo(o)?.let { it to o.optString("body") } }

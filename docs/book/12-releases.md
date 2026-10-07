@@ -129,8 +129,10 @@ its switch (`self_update_check`) and runs at most once in 20 hours.
 
 - Stable reads `releases/latest`. The promotion marks each stable Latest and the data releases are
   prereleases, so Latest is the newest stable.
-- Nightly lists the app tags through `git/matching-refs/tags/v0.` and takes the highest of the
-  newest three runs that has a published release, nightly or stable.
+- Nightly lists the app tags through `git/matching-refs/tags/v0.`, once per check, and takes the
+  highest of the newest three runs that has a published release, nightly or stable. A release
+  is fetched by the tag name the list gave (`appReleaseTags`), so a new version line such as
+  `v0.5.<run>` needs no change in the app.
 - Canary reads `releases/tags/canary` and the version lines in its notes, and also runs the nightly
   check. The higher code wins, so a canary that has fallen behind the nightlies strands nobody.
 
@@ -243,9 +245,6 @@ under `VelaUpdate`.
   stable means getting a fixed one out before the promotion.
 - Moving from canary or nightly to stable offers nothing until stable passes the installed build.
   The updater never offers a lower code.
-- The nightly lookup rebuilds the tag from the run number and tries only `v0.4`, `v0.3` and `v0.2`
-  (`releaseForRun`). If the minor moves to 0.5 before a build that knows it is widely installed,
-  nightly users stop seeing updates. Reading the tag names from the refs list would fix it.
 - A canary build's What's new can describe a newer canary, because the release it reads is replaced
   on every push. A nightly pruned before its first launch has no release, so its dialog never
   shows and the app asks again at each launch.

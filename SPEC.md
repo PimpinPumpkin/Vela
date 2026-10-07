@@ -4608,8 +4608,9 @@ carries `<prefix>-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and `<pref
 
 - `SelfUpdater` compares on the scale `2000 + run`. `legacyCode` divides a code of 20000 or
   more by ten.
-- Stable reads `releases/latest`, nightly lists tags through `git/matching-refs/tags/v0.` and
-  reads `releases/tags/<tag>`, canary reads its rolling tag. The releases list is never fetched:
+- Stable reads `releases/latest`, nightly lists tags through `git/matching-refs/tags/v0.` (once
+  per check; `appReleaseTags` keeps each run's real tag name) and reads `releases/tags/<tag>`,
+  canary reads its rolling tag. The releases list is never fetched:
   the data releases carry about 450 assets each and made a check 4 to 9 MB.
 - A stable check with nothing newer is 1 request. Nightly and canary checks are 2 to 4. An
   offered update adds at most `HISTORY_MAX_RELEASES` (8) for the notes of the versions between

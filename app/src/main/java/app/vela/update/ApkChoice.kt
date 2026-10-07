@@ -32,3 +32,18 @@ object ApkChoice {
  *  `(2000 + run) * 10 + digit`, are 20000 and up; anything below is already legacy (or a local
  *  dev build, kept under 1000). */
 fun legacyCode(versionCode: Int): Int = if (versionCode >= 20000) versionCode / 10 else versionCode
+
+/**
+ * The app's release tags out of a tag-refs listing, as run number to tag, newest run first. The
+ * tag is kept as GitHub names it, so a release is fetched by its real tag and a new version line
+ * (`v0.5.<run>`) needs no change here. A run that appears under two lines keeps the higher one.
+ */
+fun appReleaseTags(refs: List<String>): List<Pair<Int, String>> =
+    refs.mapNotNull { ref ->
+        val m = Regex("""^refs/tags/(v0\.(\d+)\.(\d+))$""").find(ref) ?: return@mapNotNull null
+        Triple(m.groupValues[3].toIntOrNull() ?: return@mapNotNull null, m.groupValues[2].toIntOrNull() ?: 0, m.groupValues[1])
+    }
+        .sortedWith(compareByDescending<Triple<Int, Int, String>> { it.first }.thenByDescending { it.second })
+        .distinctBy { it.first }
+        .map { it.first to it.third }
+
