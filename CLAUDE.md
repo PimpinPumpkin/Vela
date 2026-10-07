@@ -2548,6 +2548,23 @@ Defaults that make the safe path the easy one:
   account and opens a pull request against `main` (no write access to this repo). Its commit
   subjects read `Translations: update <language>`. Weblate may hold unmerged changes to a
   `values-<lang>` file, so merge its open pull request before a bulk hand-edit of the locales.
+  **Weblate's pull requests merge themselves since 2026-10-07** (`weblate-automerge.yml`, after CI
+  passes, runs `scripts/weblate-automerge-check.py`): Weblate's own account and fork, only
+  `values-<lang>/strings.xml` touched, every key an existing translatable English string,
+  placeholders equal to the English ones, no web address, link or em dash. Anything else is
+  left open with the reasons in the run's summary (never a red run). It reads the pull request
+  as text through the API and never checks it out; the merge names the checked commit. Off
+  switch: repository variable `WEBLATE_AUTOMERGE=off`. It cannot judge what a translation SAYS;
+  who may translate is set in Weblate (open to any registered user today, the owner's call
+  while the project is small). A merge made by the workflow's token starts no build on main;
+  the daily nightly picks it up. Replay a rule change against history with
+  `WEBLATE_CHECK_CLOSED=1 python3 scripts/weblate-automerge-check.py <merged pr>`. After one of
+  these merges, canary is behind main: merge `origin/main` into the working branch before the
+  next push to main.
+  **The Gradle setup action stays on v5 (2026-10-07):** from v6 its caching is a closed-source
+  component under Gradle's terms of use, accepted by upgrading. Dependabot is told to ignore
+  that action's major versions. If v5 stops working, replace the action with `actions/cache`
+  and a wrapper checksum step.
   Match the
   `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
   **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the

@@ -1,0 +1,50 @@
+name: Weblate auto-merge
+
+# Merges a translation pull request from Weblate once the build has passed on it and
+# scripts/weblate-automerge-check.py finds nothing a person needs to look at. Anything else is
+# left open, untouched. Turn it off with the repository variable WEBLATE_AUTOMERGE=off.
+#
+# Safety: this runs after CI, from main's own copy of this file and of the script. Nothing from
+# the pull request is checked out or executed here; its files are read as text through the API.
+# The merge names the exact commit that was checked, so a push made in between is not merged.
+on:
+  workflow_run:
+    workflows: [ CI ]
+    types: [ completed ]
+
+permissions:
+  contents: read
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == 'weblate/Vela' &&
+      vars.WEBLATE_AUTOMERGE != 'off'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check, then merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          PR=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --author weblate \
+                 --json number,headRefOid -q ".[] | select(.headRefOid == \"$HEAD_SHA\") | .number" | head -1)
+          if [ -z "$PR" ]; then
+            echo "No open Weblate pull request at $HEAD_SHA." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if python3 scripts/weblate-automerge-check.py "$PR" > check.txt 2>&1; then
+            gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge --match-head-commit "$HEAD_SHA"
+            echo "Merged #$PR." >> "$GITHUB_STEP_SUMMARY"
+          else
+            # Not a failure: a person merges this one. A red run would only send another email.
+            { echo "Left #$PR for a person:"; echo '```'; cat check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -16,6 +16,8 @@ happen on Weblate:
 3. Save. Weblate sends saved translations to the repo as a pull request, and
    once a maintainer merges it they ship in the next build. You keep commit
    credit for your strings.
+   A pull request from Weblate that only changes translations, keeps every placeholder and
+   passes the build is merged automatically; anything else waits for the maintainer.
 
 ## Or translate by pull request
 

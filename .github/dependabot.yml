@@ -13,3 +13,10 @@ updates:
     groups:
       actions:
         patterns: [ "*" ]
+    ignore:
+      # From v6 this action's caching is a closed-source component under Gradle's own terms of
+      # use, accepted by upgrading. Vela stays on v5, the last fully open line. If v5 stops
+      # working (GitHub retires its Node runtime), replace the action with actions/cache and a
+      # wrapper checksum step; do not lift this without reading the terms.
+      - dependency-name: "gradle/actions"
+        update-types: [ "version-update:semver-major" ]
