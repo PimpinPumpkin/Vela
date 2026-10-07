@@ -4181,7 +4181,9 @@ the same `:core` singletons as the phone (`CarDeps`).
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
-  nearest results with a distance span, and a row previews a route. A category row's marker is a
+  nearest results with a distance span, and a row previews a route. Each row carries a
+  numbered pin (`CarMapRenderer.pinBitmap`), and `showResults` draws the same pins on the map
+  and frames them with the car until the screen is left. A category row's marker is a
   `Row.IMAGE_TYPE_SMALL` image, because the host tints an icon to one color.
 - Location permission can be missing when a car connects before onboarding ran. The session's
   feed and the renderer wait on `CarLocationAccess.granted`, the landing list leads with an

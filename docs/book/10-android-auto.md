@@ -156,7 +156,7 @@ dark with the car.
 | Screen | Template | What it holds |
 | --- | --- | --- |
 | `MainCarScreen` | `PlaceListNavigationTemplate` | The landing list: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby". Buttons for Search, Saved and Settings. |
-| `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, over the live map. Opened with no category, it lists the phone's quick categories. |
+| `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, each with a numbered pin on its row and the same pin on the map, which frames them with the car. Opened with no category, it lists the phone's quick categories. |
 | `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
 | `CarSettingsScreen` | `ListTemplate` | Spoken directions and the three avoids, written to the preferences the phone uses. |
 | `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
@@ -301,7 +301,6 @@ phone. It says nothing about the gate either.
 - On a head unit that runs the ownership check, a plain sideload of Vela is not listed.
 - The map moves in snapshot steps, well under the phone's frame rate. A live map needs a
   View-backed renderer, which the template surface does not offer.
-- Nearby results are not drawn on the car map. The list is the only place they show.
 - Search along the route searches around the car and sorts by distance. It does not follow the
   route ahead, and a pick always becomes the next stop.
 - Only typed search has an offline fallback. Nearby and search along the route need a connection.

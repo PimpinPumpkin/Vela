@@ -50,7 +50,9 @@ class NearbyCarScreen(
         val renderer = deps.mapRenderer(carContext)
         carContext.getCarService(AppManager::class.java).setSurfaceCallback(renderer)
         renderer.start()
-        renderer.follow()
+        // Back from a route preview lands here with the results still listed: pin them again.
+        val shown = results?.take(MAX_ROWS)
+        if (chip != null && !shown.isNullOrEmpty()) renderer.showResults(shown.map { it.location }) else renderer.follow()
     }
 
     override fun onGetTemplate(): Template {
@@ -63,7 +65,7 @@ class NearbyCarScreen(
         val list = ItemList.Builder()
         if (res.isEmpty()) list.setNoItemsMessage(carContext.getString(app.vela.R.string.car_along_none))
         // PlaceListNavigationTemplate caps its list at six rows and throws past that.
-        res.take(MAX_ROWS).forEach { list.addItem(resultRow(it, here)) }
+        res.take(MAX_ROWS).forEachIndexed { i, p -> list.addItem(resultRow(p, here, i + 1)) }
         return PlaceListNavigationTemplate.Builder()
             .setTitle(title)
             .setHeaderAction(Action.BACK)
@@ -84,8 +86,13 @@ class NearbyCarScreen(
             .build()
     }
 
-    private fun resultRow(p: Place, here: LatLng?): Row {
+    private fun resultRow(p: Place, here: LatLng?, number: Int): Row {
         val row = Row.Builder().setTitle(p.name)
+        // The same numbered pin the map draws at the place.
+        row.setImage(
+            CarIcon.Builder(IconCompat.createWithBitmap(app.vela.car.CarMapRenderer.pinBitmap(number))).build(),
+            Row.IMAGE_TYPE_SMALL,
+        )
         val address = p.address?.takeIf { it.isNotBlank() }
         if (here != null) {
             // A distance span is what the template wants on a row; the host formats it.
@@ -122,7 +129,9 @@ class NearbyCarScreen(
             } catch (e: Exception) {
                 emptyList()
             }
-            results = here?.let { h -> found.sortedBy { it.location.distanceTo(h) } } ?: found
+            val sorted = here?.let { h -> found.sortedBy { it.location.distanceTo(h) } } ?: found
+            results = sorted
+            deps.mapRenderer(carContext).showResults(sorted.take(MAX_ROWS).map { it.location })
             invalidate()
         }
     }

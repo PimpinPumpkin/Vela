@@ -114,12 +114,35 @@ class CarMapRenderer(
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
     @Volatile private var previewOthers: List<Route> = emptyList()
+    @Volatile private var resultPins: List<LatLng> = emptyList()
     @Volatile private var lastPanMs = 0L // last user pan/zoom; auto-recenter kicks in after RECENTER_MS
     // A fling's remaining glide, surface pixels per second (right is east, down is south).
     private var flingVx = 0.0
     private var flingVy = 0.0
 
-    private companion object {
+    companion object {
+        private val PIN_FILL = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#ea4335") }
+        private val PIN_RING = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE }
+        private val PIN_TEXT = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textAlign = Paint.Align.CENTER; isFakeBoldText = true
+        }
+
+        /** A red disc with a white ring and a number: one result, on the map and on its row. */
+        fun drawNumberedPin(canvas: Canvas, cx: Float, cy: Float, r: Float, n: Int) {
+            PIN_RING.strokeWidth = r * 0.2f
+            PIN_TEXT.textSize = r * 1.15f
+            canvas.drawCircle(cx, cy, r, PIN_FILL)
+            canvas.drawCircle(cx, cy, r, PIN_RING)
+            canvas.drawText(n.toString(), cx, cy + r * 0.4f, PIN_TEXT)
+        }
+
+        /** [drawNumberedPin] as a bitmap, for the result's row in the list. */
+        fun pinBitmap(n: Int, px: Int = 72): android.graphics.Bitmap {
+            val bmp = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
+            drawNumberedPin(Canvas(bmp), px / 2f, px / 2f, px * 0.42f, n)
+            return bmp
+        }
+
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
         val LIMIT_INK = Color.parseColor("#111111")
         val LIMIT_OVER = Color.parseColor("#e8514a") // the phone's over-the-limit red
@@ -143,6 +166,7 @@ class CarMapRenderer(
         flingVx = 0.0; flingVy = 0.0
         previewRoute = null
         previewOthers = emptyList()
+        resultPins = emptyList()
         overview = false
         following = true
         requestRender()
@@ -168,12 +192,25 @@ class CarMapRenderer(
         requestRender()
     }
 
+    /** Nearby results as numbered pins, framed together with the car, so a driver can see which
+     *  way each row of the list is. The numbers match [pinBitmap] on the rows. [follow] clears them. */
+    fun showResults(points: List<LatLng>) {
+        flingVx = 0.0; flingVy = 0.0
+        previewRoute = null
+        previewOthers = emptyList()
+        resultPins = points
+        following = points.isEmpty()
+        if (points.isNotEmpty()) framePoints(points + listOfNotNull(puck))
+        requestRender()
+    }
+
     /** Frame [route] on the surface for the route-preview screen (no live follow). [others] are
      *  the routes not picked, drawn in gray under it so the choice can be seen on the map. */
     fun showPreview(route: Route?, others: List<Route> = emptyList()) {
         flingVx = 0.0; flingVy = 0.0
         previewRoute = route
         previewOthers = others
+        resultPins = emptyList()
         following = false
         frameRoute(route)
         requestRender()
@@ -283,7 +320,7 @@ class CarMapRenderer(
                 speedLimitKmh = if (navigating() && app.vela.ui.SpeedDisplay.on.value) // hidden: no lookup either
                     withContext(Dispatchers.Default) { runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng) }.getOrNull() }
                 else null
-                if (previewRoute != null && !navigating()) { requestRender(); return@collect } // preview owns the camera
+                if ((previewRoute != null || resultPins.isNotEmpty()) && !navigating()) { requestRender(); return@collect } // a preview or the results own the camera
                 // Auto-recenter a few seconds after the user pans (Google-style: pan to look around, then snap back).
                 if (!following && !overview && android.os.SystemClock.uptimeMillis() - lastPanMs > RECENTER_MS) following = true
                 if (following) {
@@ -659,6 +696,7 @@ class CarMapRenderer(
                 runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
                 runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
             }
+            if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
             runCatching { drawPuck(canvas, snap, sx, sy) } // puck always drawn
             runCatching { drawAttribution(canvas) }
         } finally {
@@ -709,6 +747,11 @@ class CarMapRenderer(
             val b = project(snap, poly[i + 1], sx, sy) ?: continue
             canvas.drawLine(a.x, a.y, b.x, b.y, trafficPaints[lvl] ?: trafficPaints[0]!!)
         }
+    }
+
+    private fun drawResultPin(canvas: Canvas, snap: MapSnapshot, at: LatLng, n: Int, sx: Float, sy: Float) {
+        val pt = project(snap, at, sx, sy) ?: return
+        drawNumberedPin(canvas, pt.x, pt.y, 17f, n)
     }
 
     /** The destination: a red dot with a white ring, where the route ends. */
@@ -855,7 +898,11 @@ class CarMapRenderer(
     }
 
     private fun frameRoute(route: Route?) {
-        val poly = route?.polyline ?: return
+        framePoints(route?.polyline ?: return)
+    }
+
+    /** Center on [poly]'s bounding box at a zoom that fits it, north up. */
+    private fun framePoints(poly: List<LatLng>) {
         if (poly.isEmpty()) return
         var minLat = 90.0; var maxLat = -90.0; var minLng = 180.0; var maxLng = -180.0
         for (p in poly) {

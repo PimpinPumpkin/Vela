@@ -225,7 +225,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Vela can appear in the car's launcher, depending on how it was installed. See the [Android Auto
   guide](docs/ANDROID-AUTO.md).
 - The home list has Home, Work, recent and saved places, then nearby gas, charging, food, coffee and
-  parking.
+  parking. Nearby results are numbered on the list and on the map.
 - Search from the car, preview up to three routes, and start the drive.
 - The drive screen has the map, a turn card with lanes, the arrival estimate, your speed and the
   limit.
