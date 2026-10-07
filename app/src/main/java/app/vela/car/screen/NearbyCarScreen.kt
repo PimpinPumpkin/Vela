@@ -148,7 +148,7 @@ class NearbyCarScreen(
             return Row.Builder()
                 .setTitle(ctx.getString(c.label))
                 .apply {
-                    if (marker != null) setImage(CarIcon.Builder(IconCompat.createWithBitmap(marker)).build(), Row.IMAGE_TYPE_ICON)
+                    if (marker != null) setImage(CarIcon.Builder(IconCompat.createWithBitmap(marker)).build(), Row.IMAGE_TYPE_SMALL)
                 }
                 .setBrowsable(true)
                 .setOnClickListener(onClick)

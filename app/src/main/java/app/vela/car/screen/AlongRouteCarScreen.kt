@@ -41,7 +41,7 @@ class AlongRouteCarScreen(carContext: CarContext, private val deps: CarDeps) : S
                         .apply {
                             if (marker != null) setImage(
                                 androidx.car.app.model.CarIcon.Builder(androidx.core.graphics.drawable.IconCompat.createWithBitmap(marker)).build(),
-                                Row.IMAGE_TYPE_ICON,
+                                Row.IMAGE_TYPE_SMALL,
                             )
                         }
                         .setOnClickListener { search(chip.query) }
