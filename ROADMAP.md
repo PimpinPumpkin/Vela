@@ -20,6 +20,40 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 
 Roughly in the order they are worth doing. Each one is small enough for a single PR.
 
+**The order from here (set 2026-10-07).** Finish and verify what is in flight (the bug reports
+of the week, a check of everything on the main phone), then Android Auto with everything we have,
+then the rest of this list.
+
+- **Android Auto without Google Play (the next big push).** It works today on a rooted phone
+  or off GrapheneOS, where an installer can make the install look like Play's; the car refuses a
+  plain sideload (pinned #179, and the gate is described under "On the radar"). A Play listing
+  is not the route, at least not now. To pull together when this starts: the experiment that
+  builds Vela under another app's id to learn exactly what the car's check reads
+  (`-PappId=`); the unposted reply about which install record the car reads; the
+  instrument-cluster session fix of 2026-10-07, which no real car has run yet; and the car map
+  rounds that were never checked on a head unit.
+- **Screenshots and the website.** The README and site shots predate the interface work of early
+  October (place page tabs, the route picker's rows, the drive bar, the themed look). Retake the
+  set with the demo tools and the screenshot clock, then the site copies.
+- **The Compose toolkit upgrade, as its own job.** core-ktx 1.19, navigation-compose 2.10,
+  hilt-navigation-compose 1.4 and the newer material3 pull Compose from 1.7 to 1.10 or 1.11
+  across the whole app. Held back on purpose on 2026-10-06; it needs a full pass over the sheets,
+  the gestures and D-pad operation, on both phones, before it lands.
+- **California traffic incidents from the official feed (the buildable part of #688).** The
+  Highway Patrol's incident feed needs no key and answered with live incidents on 2026-10-06
+  (type and coordinates). A small per-region incident provider, starting there and testable in
+  Davis and Sacramento; other regions as their official feeds are found (a German, a French and
+  a Finnish one were named in the same survey and not checked). User-submitted reports stay
+  parked: every open option found needs somebody's server or has no moderation.
+- **Read places from Vela Almanac.** The separate open dataset (US places merged from the open
+  sources, with dated evidence of what is still open) replaces the three closure steps in the
+  places bake and, later, the merge itself. Waiting on its first published files; the bake then
+  reads one file per state. Streaming and the per-region offline archives stay as they are.
+- **F-Droid's own catalog.** Vela's self-hosted F-Droid repository works; the official catalog
+  builds every app from source and cannot take the prebuilt voice runtime (sherpa-onnx) or the
+  prebuilt Cronet. The work is a build flavor that compiles or leaves out each of them, and
+  reproducible output. Wanted, not started.
+
 - **Grid cells: the catalog bake (2026-09-28).** The US catalog group is baking; the rest of
   the world is `grid-cells.yml` `all` with `shard` a and b, four bakes at a time (the releases
   sort last by construction and the uploads wait out the API hour).
@@ -77,6 +111,10 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   archive was measured 2026-09-18 and does not pay: only 12% of Microsoft's Delaware footprints
   are in OSM, so a merged archive is double the size and saves nothing; parked behind self-hosted
   tiles, where deleting the render-time coverage gate becomes possible. Numbers in the history.)
+- **Docs pass (owed, 2026-10-07).** The maintainer notes have grown to about 7,000 lines of dated
+  entries, most of them appended in the last three weeks. One session of its own: rules stay,
+  history moves to the spec or the roadmap history file, and anything a fix made untrue goes.
+  Then the same read over the README, FAQ and the handbook chapters touched since September.
 - **Docs audit and cleanup (queued 2026-09-15; the roadmap half done 2026-09-21).** README,
   FEATURES, PRIVACY, CLAUDE and docs/ grew by accretion: features described three times in three
   tenses, a FEATURES file that reads as a changelog, contributor notes in CLAUDE.md findable by

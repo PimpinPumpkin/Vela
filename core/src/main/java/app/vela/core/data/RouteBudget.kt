@@ -97,14 +97,21 @@ object RerouteFallback {
         val t0 = clock()
         fun waited() = (clock() - t0) / 1_000_000L
         // (a) Google already answered: no reason to spin up a native compute at all.
+        // Whether Google had ALREADY answered (with nothing) is decided here, once. Asking
+        // `google.isCompleted` again further down read an answer that landed in between as "it
+        // answered empty" and never looked at it: the route was thrown away and the fetch waited
+        // out the on-device compute instead (found 2026-10-07 through a test that failed one
+        // run in several on a busy machine).
+        var googleWasEmpty = false
         if (google.isCompleted) {
             val g = runCatching { google.await() }.getOrDefault(emptyList())
             if (g.isNotEmpty()) return Outcome(g, Source.GOOGLE_READY, waited(), onDeviceTried = false)
+            googleWasEmpty = true
         }
         val offline: Deferred<List<Route>>? = onDevice?.let { block ->
             CoroutineScope(Dispatchers.IO).async { runCatching { block() }.getOrDefault(emptyList()) }
         }
-        var g: List<Route>? = if (google.isCompleted) emptyList() else null
+        var g: List<Route>? = if (googleWasEmpty) emptyList() else null
         var o: List<Route>? = if (offline == null) emptyList() else null
         withTimeoutOrNull(budgetMs.coerceAtLeast(0L)) {
             while (g.isNullOrEmpty() && o.isNullOrEmpty() && (g == null || o == null)) {
