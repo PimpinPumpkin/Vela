@@ -3999,6 +3999,10 @@ reuses it.
 - The road name (`RoadLabel`, pref `road_label`) defaults to `PUCK`: a pill under the arrow,
   clamped to the window. The other values are `BAR` (centered above the bar), `IN_BAR` (the bar's
   handle row) and `OFF`.
+- What it says is `core/nav/roadLabel(name, ref)`, on the phone and in the car: the road's own
+  name when it has one, its number on an Interstate or where the name only says the number
+  again ("State Route 9"), and whichever exists otherwise. The number stays on the turn card as
+  the current road's chip. It was the number first.
 - "Searching for GPS" sits above the arrow, with bottom center as the fallback before a puck
   position exists.
 - Landscape: the turn card and the bar sit in the left column, `NAV_LAND_EDGE_DP` (8 dp) from the

@@ -63,7 +63,9 @@ The compass shows for the whole drive, and a tap switches between heading-up and
 
 "Current road name" (Settings > Navigation) puts the name under the arrow (the default), above
 the bar, inside the bar, or nowhere. Away from the car (a pan, a pinch, a step preview) the name
-hides and a Re-center pill takes the speed box's place.
+hides and a Re-center pill takes the speed box's place. It shows the road's own name where it
+has one, as the street signs do: "W Covell Blvd", with the route number on the turn card's chip.
+An Interstate, or a road whose name is only its number in words, shows the number.
 
 ### Street callouts
 

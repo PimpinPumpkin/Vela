@@ -6675,18 +6675,18 @@ private fun routeBubblesFor(
 }
 
 /** The road the pill names while navigating: the one you are ON (the leg's road, or the last
- *  silent rename already passed on it, ref first), else, on an unnamed stretch such as an on- or
- *  off-ramp, the road it leads onto, the one the next instruction names. The pill used to vanish
- *  the moment a ramp began (user 2026-09-23), which is exactly when the driver wants to know where
- *  the lane is taking them. */
+ *  silent rename already passed on it), else, on an unnamed stretch such as an on- or off-ramp,
+ *  the road it leads onto, the one the next instruction names. The pill used to vanish the moment
+ *  a ramp began (user 2026-09-23), which is exactly when the driver wants to know where the lane
+ *  is taking them. Name or number is `roadLabel`'s choice: the name where the road has its own. */
 private fun navRoadLabel(state: MapUiState): String? {
     val mans = state.activeRoute?.maneuvers ?: return null
     val i = state.nav.stepIndex
     mans.getOrNull(i - 1)?.let { m ->
         val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
-        (ref?.takeIf { it.isNotBlank() } ?: name?.takeIf { it.isNotBlank() })?.let { return it }
+        app.vela.core.nav.roadLabel(name, ref)?.let { return it }
     }
-    return mans.getOrNull(i)?.let { next -> next.ref?.takeIf { it.isNotBlank() } ?: next.road?.takeIf { it.isNotBlank() } }
+    return mans.getOrNull(i)?.let { next -> app.vela.core.nav.roadLabel(next.road, next.ref) }
 }
 
 /** The road you are on, for the "Inside the bottom bar" road-name placement (issue #553), or null

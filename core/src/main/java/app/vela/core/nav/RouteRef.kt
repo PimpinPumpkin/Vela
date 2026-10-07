@@ -40,3 +40,35 @@ fun parseRouteRef(label: String): RouteRef {
     }
     return RouteRef(type, number, dir, t)
 }
+
+/** Words a road name is made of when it only says its route number again ("State Route 9"). */
+private val ROUTE_WORDS: Set<String> = setOf(
+    "state", "route", "rte", "rt", "highway", "hwy", "sr", "sh", "us", "interstate", "county", "road", "cr",
+    "trunk", "provincial", "national", "nationale", "departementale", "bundesstrasse", "bundesstraße", "autobahn",
+    "autoroute", "carretera", "strada", "statale", "rodovia", "north", "south", "east", "west", "n", "s", "e", "w",
+)
+
+/** True when [name] is the road's number in words: one number, the one in [ref], and nothing
+ *  else but route words. "9th Street" on SR 9 has a name of its own. */
+internal fun restatesRef(name: String, ref: String): Boolean {
+    val tokens = name.lowercase().split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
+    val numbers = tokens.filter { t -> t.any { it.isDigit() } }
+    if (numbers.size != 1) return false
+    val refNumber = Regex("""\d+\p{L}?""").find(ref.lowercase().replace(" ", ""))?.value ?: return false
+    return numbers.single() == refNumber && tokens.all { it == refNumber || it in ROUTE_WORDS }
+}
+
+/**
+ * What to call the road being driven, from its [name] and its route number [ref]. The name when
+ * the road has one of its own: that is what its street signs say, and what Google's road label
+ * shows on a numbered road through a town. The number on an Interstate, which is not known by a
+ * name, and where the name only says the number again.
+ */
+fun roadLabel(name: String?, ref: String?): String? {
+    val n = name?.trim()?.takeIf { it.isNotEmpty() }
+    val r = ref?.trim()?.takeIf { it.isNotEmpty() }
+    if (n == null) return r
+    if (r == null) return n
+    if (parseRouteRef(r).type == ShieldType.INTERSTATE) return r
+    return if (restatesRef(n, r)) r else n
+}
