@@ -26,3 +26,27 @@ plugins {
     alias(libs.plugins.kotlin.ksp) apply false
     alias(libs.plugins.hilt) apply false
 }
+
+// The same holds for two classpaths the block above does not reach. Android lint resolves its own
+// tool classpath in every module (androidLintTool), and the baseline-profile generator's trace
+// reader brings wire-runtime into that test module. Neither is in the app.
+subprojects {
+    configurations.matching { it.name == "androidLintTool" }.configureEach {
+        resolutionStrategy.force(
+            "org.bouncycastle:bcprov-jdk18on:1.85",
+            "org.bouncycastle:bcpkix-jdk18on:1.85",
+            "org.bouncycastle:bcutil-jdk18on:1.85",
+            "org.apache.commons:commons-lang3:3.18.0",
+            "org.apache.httpcomponents:httpclient:4.5.14",
+        )
+    }
+    if (name == "baselineprofile") {
+        configurations.configureEach {
+            resolutionStrategy.force(
+                "com.squareup.wire:wire-runtime:6.4.5",
+                "com.squareup.wire:wire-runtime-jvm:6.4.5",
+            )
+        }
+    }
+}
+

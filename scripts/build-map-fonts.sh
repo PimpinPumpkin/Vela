@@ -56,7 +56,7 @@ AX="wdth=100 opsz=14 GRAD=0 ROND=0"
 fonttools varLib.instancer "$TTF" wght=400 slnt=0 $AX -o flex-regular.ttf
 fonttools varLib.instancer "$TTF" wght=700 slnt=0 $AX -o flex-bold.ttf
 fonttools varLib.instancer "$TTF" wght=400 slnt=-10 $AX -o flex-italic.ttf
-[ -d node_modules/fontnik ] || npm install --silent fontnik
+[ -d node_modules/fontnik ] || npm install --silent fontnik@0.7.7
 rm -rf flex
 node "$HERE/flex_glyphs.js" flex
 python3 "$HERE/composite_glyphs.py" flex fonts_mid fonts_out

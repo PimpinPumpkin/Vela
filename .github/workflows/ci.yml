@@ -77,6 +77,10 @@ jobs:
           # platform + build-tools it needs on its own.
           packages: platform-tools
 
+      - name: Check the Gradle wrapper
+        # The wrapper jar is the one binary in the repository; this checks it is Gradle's own.
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 

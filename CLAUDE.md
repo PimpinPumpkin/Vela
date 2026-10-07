@@ -4122,8 +4122,30 @@ architecture note.
   `buildscript { dependencies { constraints { classpath(...) } } }`; `./gradlew buildEnvironment`
   shows what resolved. BouncyCastle is what signs the APK, so after touching it: clean release
   build, `apksigner verify`, install over the existing build, and a green canary build (which
-  signs with the real key). `wire-runtime` is flagged too and is on no build classpath this
-  shows; left alone.
+  signs with the real key). **Seven of the nine stayed open after that**, because the root
+  `buildscript` block does not reach two other classpaths: Android lint resolves its own tool
+  classpath in every module (`androidLintTool`), and the baseline-profile generator's trace reader
+  brings `wire-runtime` into `:baselineprofile`. The `subprojects { }` block at the end of the
+  root build file forces both. To find where an alerted version comes from, read GitHub's own
+  list first (`gh api repos/<repo>/dependency-graph/sbom`, every version it saw), then
+  `./gradlew :<module>:dependencies` (ALL configurations, not one) and search for the old version.
+- **Code scanning triage (2026-10-07).** Of about 230 open findings, what was real: the WebView
+  inspector, the review-feed dump and the network log were commented "adb-only" but read through
+  `AppTune.on`, which falls back to the remote settings bundle, so a signed bundle could have
+  switched them on for every install. They read `AppTune.localOn` now; anything that opens the
+  app up for inspection uses that, never `on`. Three log lines carried what the log rule forbids
+  (a route end's coordinates in `VelaObf`, the typed text in `VelaSuggest` and `VelaNavSearch`).
+  The F-Droid job installed the newest fdroidserver on every run while holding the index signing
+  key; its versions are fixed in `tools/fdroid-requirements.txt` (move them by hand, see the
+  file). CI checks the Gradle wrapper jar. Switched off in `.mobsf` with reasons: the
+  hardcoded-string rule (every `const val KEY`), raw SQL (all read, all bound arguments) and
+  logging (fires on any log call). Dismissed on GitHub with a comment each, rule left on so a
+  new case is still reported: the three WebViews with scripts on, the debug inspector line,
+  the backup flag, the timing jitter's random numbers. NOT fixable and dismissed: Scorecard's
+  token findings (the bake and release workflows upload release files with the built-in token;
+  `contents: write` is the narrowest permission that allows it, at job level it is flagged the
+  same) and its repository-policy findings (review of every change, branch protection, fuzzing,
+  a best-practices badge).
 - **Issue triage (2026-10-06).** `.github/workflows/issue-triage.yml` runs
   `scripts/issue-triage.py` when an issue is opened: a comment listing earlier issues that share
   its wording (IDF-weighted word overlap, `MIN_SCORE`), and the `incomplete` label plus a note on a

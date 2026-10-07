@@ -14,3 +14,13 @@
   # set in Gradle, where the scanner does not look. Its other remedy, singleInstance with an
   # empty task affinity, would change how every link from another app opens the map.
   - android_task_hijacking2
+  # Fires on every `const val KEY = "..."`: 132 findings, all of them names of settings in the
+  # preferences file, none a secret. GitHub's own secret scanning covers real credentials.
+  - android_kotlin_hardcoded
+  # The offline place and address search. Every query was read on 2026-10-07: typed text goes in
+  # as bound arguments, and what is joined into the SQL text is column lists, table names from a
+  # fixed table and numeric ids.
+  - android_kotlin_sql_raw_query
+  # Fires on any log call. The rule the project keeps is narrower and checked by hand: no
+  # coordinates, typed text or place names in a log line.
+  - android_kotlin_logging
