@@ -61,8 +61,18 @@ object ManeuverMapper {
             // the card shows when the router actually said otherwise.
             b.setRoundaboutExitNumber(m.roundaboutExit?.takeIf { it > 0 } ?: 1)
         }
+        glyph(m.type)?.let { b.setIcon(it) }
         return b.build()
     }
+
+    /** The phone's glyph for a maneuver. Android Auto draws no turn card for a step whose maneuver
+     *  has no icon, so every maneuver sent to the car gets one. */
+    private fun glyph(type: ManeuverType): androidx.car.app.model.CarIcon? = runCatching {
+        val bmp = app.vela.service.NavGlyphs.bitmap(type, GLYPH_PX, android.graphics.Color.TRANSPARENT)
+        androidx.car.app.model.CarIcon.Builder(androidx.core.graphics.drawable.IconCompat.createWithBitmap(bmp)).build()
+    }.getOrNull()
+
+    private const val GLYPH_PX = 128
 
     /** A car [Step] for the current maneuver: the spoken cue + the road name being entered. */
     fun carStep(m: VelaManeuver): Step {
@@ -108,7 +118,9 @@ object ManeuverMapper {
         // close, the turn itself leads with the following one as "then".
         if (continueCue != null && distanceToNext > CONTINUE_FAR_M) {
             b.setCurrentStep(
-                Step.Builder(continueCue).setManeuver(Maneuver.Builder(Maneuver.TYPE_STRAIGHT).build()).build(),
+                Step.Builder(continueCue).setManeuver(
+                    Maneuver.Builder(Maneuver.TYPE_STRAIGHT).apply { glyph(ManeuverType.STRAIGHT)?.let { setIcon(it) } }.build(),
+                ).build(),
                 carDistance(distanceToNext, imperial),
             )
             runCatching { b.setNextStep(carStep(next)) }
