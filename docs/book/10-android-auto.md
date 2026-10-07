@@ -96,7 +96,8 @@ every `TICK_MS` (70 ms) and asks for one snapshot at a time. A request that arri
 in flight marks the map dirty, and the next snapshot starts when the current one lands.
 
 All screens share one renderer and switch its mode: browse (north up, centered on you, no route),
-preview (the chosen route framed) and nav (heading up, following). A renderer per screen freezes
+preview (the chosen route framed in blue, the other listed routes in gray under it, a red dot
+at the destination) and nav (heading up, following, the line ahead lavender while paused). A renderer per screen freezes
 the map, because the host does not deliver the surface again to a new callback. The snapshotter
 is kept across screens while the surface size is unchanged, since a new one reloads the style and
 the map flashes.
@@ -304,9 +305,7 @@ phone. It says nothing about the gate either.
 - Search along the route searches around the car and sorts by distance. It does not follow the
   route ahead, and a pick always becomes the next stop.
 - Only typed search has an offline fallback. Nearby and search along the route need a connection.
-- The route preview is driving only and shows three routes at most. The map draws the selected
-  route alone, with no pin at the destination.
-- A paused drive keeps the blue line on the car. The phone turns it lavender.
+- The route preview is driving only and shows three routes at most.
 - A drive started from the car with the phone app never opened has no navigation controller, so
   it gets no corridor dots and no alert toasts.
 - The speed limit sign needs a downloaded region. The phone falls back to an online limit overlay

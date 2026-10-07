@@ -156,8 +156,6 @@ Small items, one pull request each.
   take. An ARM phone then downloads 74 MB instead of 108.
 - Pins for the car's nearby results. The car lists nearby places as rows only.
   `CarMapRenderer` draws no search results, so a driver cannot see which way each place is.
-- The car's route preview draws the selected route alone: no other routes in gray and no pin at
-  the destination. A paused drive keeps the blue line where the phone's turns lavender.
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
   link (65% under `hl=ja`), so open icons draw beside their Google twin. Options: run the

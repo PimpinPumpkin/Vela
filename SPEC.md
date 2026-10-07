@@ -4194,6 +4194,9 @@ the same `:core` singletons as the phone (`CarDeps`).
   turn as the next step. A
   search icon opens `AlongRouteCarScreen`: the quick categories as rows, a pick searches around
   the car, and a result becomes the next stop through `NavSession.addStop`.
+- The preview draws the selected route in blue over the other listed routes in gray
+  (`showPreview(route, others)`), with a red dot at the destination. The drive draws the same
+  dot, and the line ahead in the phone's paused lavender while the drive is paused.
 - Map action strips: recenter, zoom in, zoom out on the landing map; overview (re-frame the
   selected route), zoom in, zoom out on the preview; recenter, zoom in, zoom out and an overview
   toggle (`toggleOverview`, exempt from the pan auto-recenter) on the drive.

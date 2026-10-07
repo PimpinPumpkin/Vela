@@ -113,6 +113,7 @@ class CarMapRenderer(
 
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
+    @Volatile private var previewOthers: List<Route> = emptyList()
     @Volatile private var lastPanMs = 0L // last user pan/zoom; auto-recenter kicks in after RECENTER_MS
     // A fling's remaining glide, surface pixels per second (right is east, down is south).
     private var flingVx = 0.0
@@ -141,6 +142,7 @@ class CarMapRenderer(
     fun follow() {
         flingVx = 0.0; flingVy = 0.0
         previewRoute = null
+        previewOthers = emptyList()
         overview = false
         following = true
         requestRender()
@@ -166,16 +168,23 @@ class CarMapRenderer(
         requestRender()
     }
 
-    /** Frame [route] on the surface for the route-preview screen (no live follow). */
-    fun showPreview(route: Route?) {
+    /** Frame [route] on the surface for the route-preview screen (no live follow). [others] are
+     *  the routes not picked, drawn in gray under it so the choice can be seen on the map. */
+    fun showPreview(route: Route?, others: List<Route> = emptyList()) {
         flingVx = 0.0; flingVy = 0.0
         previewRoute = route
+        previewOthers = others
         following = false
         frameRoute(route)
         requestRender()
     }
 
     private val drivenPaint = strokePaint("#7b8494", 14f)
+    private val otherRoutePaint = strokePaint("#8a93a3", 11f)
+    private val pausedPaint = strokePaint("#9c8ad6", 15f) // the phone's paused-drive lavender
+    private val pinFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#ea4335") }
+    private val pinRing = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
+    private val pinDot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
     private val bgPaint = Paint().apply { color = Color.parseColor("#0f1420") }
     // Traffic colors (match the phone route line): free-flow blue → amber → red.
     private val trafficPaints = mapOf(
@@ -644,7 +653,11 @@ class CarMapRenderer(
                 if (app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) } // Settings > Navigation (issue #625)
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
+                for (other in previewOthers) {
+                    if (other.polyline.size >= 2) runCatching { canvas.drawPath(pathOf(snap, other.polyline, other.polyline.indices, sx, sy), otherRoutePaint) }
+                }
                 runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
+                runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
             }
             runCatching { drawPuck(canvas, snap, sx, sy) } // puck always drawn
             runCatching { drawAttribution(canvas) }
@@ -672,8 +685,12 @@ class CarMapRenderer(
             }
         }
         // Draw the WHOLE route ahead in blue first (robust baseline — always shows), gray behind.
+        // A paused drive is lavender ahead, as on the phone, with no traffic colors over it.
+        val paused = navSession.state.value.paused
         if (splitI > 0) canvas.drawPath(pathOf(snap, poly, 0..splitI, sx, sy), drivenPaint)
-        if (splitI < poly.lastIndex) canvas.drawPath(pathOf(snap, poly, splitI..poly.lastIndex, sx, sy), trafficPaints[0]!!)
+        if (splitI < poly.lastIndex) canvas.drawPath(pathOf(snap, poly, splitI..poly.lastIndex, sx, sy), if (paused) pausedPaint else trafficPaints[0]!!)
+        runCatching { drawDestination(canvas, snap, poly.last(), sx, sy) }
+        if (paused) return
 
         // Overlay per-span traffic color on the ahead portion (best-effort; the blue baseline shows
         // regardless if this finds nothing).
@@ -692,6 +709,14 @@ class CarMapRenderer(
             val b = project(snap, poly[i + 1], sx, sy) ?: continue
             canvas.drawLine(a.x, a.y, b.x, b.y, trafficPaints[lvl] ?: trafficPaints[0]!!)
         }
+    }
+
+    /** The destination: a red dot with a white ring, where the route ends. */
+    private fun drawDestination(canvas: Canvas, snap: MapSnapshot, at: LatLng, sx: Float, sy: Float) {
+        val pt = project(snap, at, sx, sy) ?: return
+        canvas.drawCircle(pt.x, pt.y, 13f, pinFill)
+        canvas.drawCircle(pt.x, pt.y, 13f, pinRing)
+        canvas.drawCircle(pt.x, pt.y, 4.5f, pinDot)
     }
 
     private fun pathOf(snap: MapSnapshot, poly: List<LatLng>, range: IntRange, sx: Float, sy: Float): Path {

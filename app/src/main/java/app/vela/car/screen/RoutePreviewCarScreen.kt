@@ -51,7 +51,13 @@ class RoutePreviewCarScreen(
         val renderer = deps.mapRenderer(carContext)
         carContext.getCarService(AppManager::class.java).setSurfaceCallback(renderer)
         renderer.start()
-        renderer.showPreview(routes.getOrNull(selected))
+        showSelected(renderer)
+    }
+
+    /** The selected route framed in blue, the other listed routes in gray under it. */
+    private fun showSelected(renderer: app.vela.car.CarMapRenderer) {
+        val shown = routes.take(3)
+        renderer.showPreview(shown.getOrNull(selected), shown.filterIndexed { i, _ -> i != selected })
     }
 
     override fun onGetTemplate(): Template {
@@ -78,7 +84,7 @@ class RoutePreviewCarScreen(
         val shown = routes.take(3)
         val list = ItemList.Builder()
         shown.forEach { r -> list.addItem(routeRow(r)) }
-        list.setOnSelectedListener { idx -> selected = idx; deps.mapRenderer(carContext).showPreview(shown.getOrNull(idx)) }
+        list.setOnSelectedListener { idx -> selected = idx; showSelected(deps.mapRenderer(carContext)) }
         list.setSelectedIndex(selected.coerceIn(0, shown.lastIndex))
         builder.setItemList(list.build())
         builder.setNavigateAction(
@@ -92,7 +98,7 @@ class RoutePreviewCarScreen(
         val renderer = deps.mapRenderer(carContext)
         builder.setMapActionStrip(
             ActionStrip.Builder()
-                .addAction(mapAction(app.vela.R.drawable.ic_car_overview) { renderer.showPreview(shown.getOrNull(selected)) })
+                .addAction(mapAction(app.vela.R.drawable.ic_car_overview) { showSelected(renderer) })
                 .addAction(mapAction(app.vela.R.drawable.ic_car_zoom_in) { renderer.zoomBy(1.0) })
                 .addAction(mapAction(app.vela.R.drawable.ic_car_zoom_out) { renderer.zoomBy(-1.0) })
                 .build(),
@@ -159,7 +165,7 @@ class RoutePreviewCarScreen(
             }.getOrDefault(emptyList())
             loading = false
             invalidate()
-            deps.mapRenderer(carContext).showPreview(routes.getOrNull(selected)) // frame the route once fetched
+            showSelected(deps.mapRenderer(carContext)) // frame the route once fetched
         }
     }
 
