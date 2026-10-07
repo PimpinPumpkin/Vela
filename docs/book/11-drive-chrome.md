@@ -180,7 +180,9 @@ the car reaches the road the icon is drawn at the raw fix, and the map still til
 
 The overview button is a toggle. It cuts to a fit of the remaining route, and a second press or
 Re-center cuts back and tilts in like a start. Each cut fades off a veil in the map's land color
-over 320 ms (`CUT_FADE_MS`), so the new tiles do not pop.
+over 320 ms (`CUT_FADE_MS`), so the new tiles do not pop. Swiping the turn card or tapping a step
+in the list while the overview is up leaves it for that step, and "tap to resume" goes back to
+the car.
 
 ### What the map hides
 

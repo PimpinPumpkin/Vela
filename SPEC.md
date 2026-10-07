@@ -1593,8 +1593,11 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
   route overview places a tile set at every zoom it crosses: seconds 2 to 4 ran 6 to 20 fps
   flying and 29 to 59 cutting. A 0.55 s tilt ease has one second at 5 to 9 fps.
 - The overview and the way back are cuts too. A fresh Overview press `moveCamera`s to the fit;
-  the 4 s refits animate. Re-attaching from more than `CUT_BACK_ZOOM_GAP` (1.5) zoom levels out
-  seeds the camera at the car, flat.
+  the 4 s refits (`OVERVIEW_REFIT_MS`) animate. Re-attaching from more than `CUT_BACK_ZOOM_GAP`
+  (1.5) zoom levels out seeds the camera at the car, flat.
+- A step previewed from the overview ends it: the camera goes to the step and stays, and
+  resuming the preview returns to the car (`MapViewModel.previewStep`). A pan, a pinch,
+  Re-center and a preview all stop the refit within a quarter second.
 - Each cut lays a veil in the map's land color under the puck at `CUT_VEIL_ALPHA` (0.85), faded
   off over `CUT_FADE_MS` (320 ms). It is a `drawRect(alpha)`; a layer alpha renders offscreen.
 - The overview hides the `OVERVIEW_HIDE_PREFIXES` layers (places, POIs, minor road names, house

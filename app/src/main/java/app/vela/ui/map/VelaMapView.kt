@@ -338,6 +338,8 @@ private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the na
 // SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
 // (0.55 s: one 5-9 fps second as the horizon's tiles all arrived together).
 private const val NAV_START_TILT_TAU_S = 3.0
+/** How often the live route overview refits to the road still ahead. */
+private const val OVERVIEW_REFIT_MS = 4_000
 // Layers hidden while the nav overview shows (by id prefix): places, minor road and path names,
 // house numbers, one-way arrows, controls, cameras, transit stops, nav callouts, 3D buildings.
 private val OVERVIEW_HIDE_PREFIXES = listOf(
@@ -2795,7 +2797,12 @@ fun VelaMapView(
         try {
             fitRemaining(if (fresh) 0 else 700)
             while (overviewLive[0] && navModeHolder.value) {
-                kotlinx.coroutines.delay(4_000)
+                // Waits in short steps, so whatever ends the overview gets its layers back at once.
+                var waited = 0
+                while (waited < OVERVIEW_REFIT_MS && overviewLive[0] && navModeHolder.value) {
+                    kotlinx.coroutines.delay(250)
+                    waited += 250
+                }
                 if (!overviewLive[0] || !navModeHolder.value) break
                 fitRemaining(600)
             }
@@ -5036,6 +5043,8 @@ fun VelaMapView(
             // nav-follow) so you can look ahead at where you'd turn.
             previewTarget != null -> {
                 lastNavTarget = null // so nav-follow re-centers cleanly when the preview ends
+                // The live overview refits every few seconds and took the camera straight back.
+                overviewLive[0] = false
                 if (previewTarget != lastPreviewTarget) {
                     lastPreviewTarget = previewTarget
                     // JUMP, don't fly (2026-07-21, real-drive "lag when swiping through turns"):

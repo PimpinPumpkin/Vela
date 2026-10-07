@@ -4083,8 +4083,12 @@ class MapViewModel @Inject constructor(
 
     fun closeSteps() = _state.update { it.copy(showSteps = false, previewStepIndex = null) }
 
-    /** Tapped a step in the list → preview that maneuver's spot on the map. */
-    fun previewStep(index: Int) = _state.update { it.copy(previewStepIndex = index) }
+    /** Tapped a step in the list → preview that maneuver's spot on the map. From the route
+     *  overview the preview takes the camera, and resuming goes back to the car. */
+    fun previewStep(index: Int) = _state.update {
+        if (it.inNavOverview) it.copy(previewStepIndex = index, inNavOverview = false, navCameraDetached = false)
+        else it.copy(previewStepIndex = index)
+    }
 
     /** Leave step-preview (the banner swipe / steps list) and return to live nav. */
     fun clearPreview() = _state.update { it.copy(previewStepIndex = null) }
