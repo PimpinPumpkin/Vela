@@ -231,6 +231,7 @@ adb:
 | Settings hub | The Back button, or the row of the page just left | Back, to the map |
 | Settings page | The Back button | Back, to the hub |
 | Welcome, then the Google choice page | Get started, then Continue | OK. Back on the choice page returns to Welcome |
+| The first run's "What Google is used for" list | The Back button, as on a Settings page | Back, to the choice page |
 | `VelaDialog` | The dismiss button. Arrows reach confirm | Back |
 | `VelaMenu` | The first item | Back |
 | Time and date picker (`PickerDialog`), Your lists (`ListsSheet`), voice capture (`VoiceCaptureDialog`) | Their OK, New list and Done buttons | Back |

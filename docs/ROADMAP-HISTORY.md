@@ -19,7 +19,8 @@ says so.
 - A car with an instrument-cluster display gets its own Android Auto session
   (`ClusterSession`). Such cars crashed Vela before.
 - The first run asks whether to use Google and says what each answer gives and sends, before
-  the map loads. The welcome page no longer claims searches stay on the device.
+  the map loads. Settings > Privacy lists every Google switch in one place, and the first run
+  can open the same list. The welcome page no longer claims searches stay on the device.
 - The app's own baseline profile ships. The generator used to stop at the welcome screen, so
   no run had recorded the map, and an ignore rule kept the file out of git.
 - D-pad: the static audit passes and runs in CI. Twelve text fields no longer trap focus, the

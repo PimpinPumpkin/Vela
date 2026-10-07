@@ -60,12 +60,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             switchModifier = topRow,
         )
-        ToggleRow(
-            label = stringResource(R.string.settings_other_locations_auto),
-            checked = app.vela.ui.OtherLocationsAuto.on.value,
-            onCheckedChange = { app.vela.ui.OtherLocationsAuto.set(context, it) },
-            hint = stringResource(R.string.settings_other_locations_auto_hint),
-        )
+        OtherLocationsRow()
         // Contacts-in-search (issue #243): READ_CONTACTS is asked HERE, at the point of use —
         // flipping the toggle on — never at install/onboarding. A denial leaves it off.
         val scope = rememberCoroutineScope()

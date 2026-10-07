@@ -123,12 +123,7 @@ internal fun PlacesOnMapGroup() {
         if (app.vela.ui.MapPoiPrefs.showPois.value) {
             if (app.vela.ui.MapPoiPrefs.openPlaces) {
                 GroupDivider()
-                ToggleRow(
-                    label = stringResource(R.string.settings_places_lookup),
-                    checked = app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value,
-                    onCheckedChange = { app.vela.ui.MapPoiPrefs.setLookupTappedPlaces(context, it) },
-                    hint = stringResource(R.string.settings_places_lookup_hint),
-                )
+                TappedLookupRow()
             }
             GroupDivider()
             ToggleRow(
@@ -196,7 +191,7 @@ internal fun PlacesOnMapGroup() {
 
 /** Where the map's places come from: Vela data, Google, or both, with what each costs. */
 @Composable
-internal fun PlacesSourceGroup(topRow: Modifier = Modifier) {
+internal fun PlacesSourceGroup(topRow: Modifier = Modifier, compact: Boolean = false) {
     val context = LocalContext.current
         SettingsGroup {
             // Where the map's businesses come from (Map, then Privacy on 2026-09-16, then Places on
@@ -233,33 +228,36 @@ internal fun PlacesSourceGroup(topRow: Modifier = Modifier) {
                     },
                 ),
             )
-            // Said once, for all three: the choice is about the map's icons, nothing else.
-            Hint(stringResource(R.string.settings_places_source_note))
-            // The short hints carry what matters; the rest (who maintains the data, where Vela
-            // serves it from, what still touches Google) lives behind Learn more.
-            var placesInfo by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            androidx.compose.material3.TextButton(
-                onClick = { placesInfo = true },
-                modifier = Modifier.padding(start = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-            ) { Text(stringResource(R.string.settings_places_source_more)) }
-            if (placesInfo) {
-                app.vela.ui.VelaDialog(
-                    onDismissRequest = { placesInfo = false },
-                    title = stringResource(R.string.settings_places_source_more_title),
-                    text = { Text(stringResource(R.string.settings_places_source_more_body)) },
-                    confirmText = stringResource(android.R.string.ok),
-                    onConfirm = { placesInfo = false },
-                    dismissText = stringResource(R.string.settings_places_source_more_credit),
-                    onDismiss = {
-                        placesInfo = false
-                        runCatching {
-                            context.startActivity(
-                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://overturemaps.org/")),
-                            )
-                        }
-                    },
-                    dismissLowEmphasis = true,
-                )
+            // The one-list overview keeps the picker and its one-line cost; the rest is on Places.
+            if (!compact) {
+                // Said once, for all three: the choice is about the map's icons, nothing else.
+                Hint(stringResource(R.string.settings_places_source_note))
+                // The short hints carry what matters; the rest (who maintains the data, where Vela
+                // serves it from, what still touches Google) lives behind Learn more.
+                var placesInfo by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                androidx.compose.material3.TextButton(
+                    onClick = { placesInfo = true },
+                    modifier = Modifier.padding(start = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_places_source_more)) }
+                if (placesInfo) {
+                    app.vela.ui.VelaDialog(
+                        onDismissRequest = { placesInfo = false },
+                        title = stringResource(R.string.settings_places_source_more_title),
+                        text = { Text(stringResource(R.string.settings_places_source_more_body)) },
+                        confirmText = stringResource(android.R.string.ok),
+                        onConfirm = { placesInfo = false },
+                        dismissText = stringResource(R.string.settings_places_source_more_credit),
+                        onDismiss = {
+                            placesInfo = false
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://overturemaps.org/")),
+                                )
+                            }
+                        },
+                        dismissLowEmphasis = true,
+                    )
+                }
             }
             // ("OpenStreetMap shops too" is gone, 2026-09-23: the places bake carries OSM's
             // businesses and landmarks itself now, and the basemap's own point layers are hidden
@@ -271,18 +269,7 @@ internal fun PlacesSourceGroup(topRow: Modifier = Modifier) {
 /** The ~2 min traffic and route re-check during navigation (a Google request each time). */
 @Composable
 internal fun LiveRechecksGroup(vm: app.vela.ui.map.MapViewModel) {
-        var liveRechecks by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(vm.liveRechecksOn()) }
-        SettingsGroup {
-        app.vela.ui.settings.ToggleRow(
-            label = stringResource(R.string.settings_live_rechecks),
-            checked = liveRechecks,
-            onCheckedChange = { on ->
-                liveRechecks = on
-                vm.setLiveRechecks(on)
-            },
-            hint = stringResource(R.string.settings_live_rechecks_hint),
-        )
-        }
+        SettingsGroup { LiveRechecksRow(vm) }
 }
 
 /** Simulated drive and simulated location, for demos and screenshots (moved from Navigation to

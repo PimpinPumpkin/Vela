@@ -14,7 +14,8 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Saved places: export and import of places and lists, saved routes, parking history.
 - Offline maps: area and region downloads, automatic updates, storage
   ([chapter 8](08-offline.md)).
-- Privacy: "Use Vela without Google", the Google session, the request counter, Clear history
+- Privacy: "Use Vela without Google", every switch for what Google is used for in one list, the
+  Google session, the request counter, Clear history
   ([chapter 7](07-talking-to-google.md)).
 - Performance: what loads ahead of time, how the map is drawn.
 - Diagnostics: diagnostics export, saved trips, the location and driving simulators.

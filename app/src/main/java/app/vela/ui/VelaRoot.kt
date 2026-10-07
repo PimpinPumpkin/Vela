@@ -34,7 +34,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     val context = LocalContext.current
 
     if (!Onboarding.welcomeDone.value) {
-        WelcomeScreen(onGetStarted = { Onboarding.completeWelcome(context) })
+        WelcomeScreen(vm, onGetStarted = { Onboarding.completeWelcome(context) })
         return
     }
 

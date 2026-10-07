@@ -726,6 +726,7 @@
     <string name="welcome_feature_open_source_body">GPLv3, built for GrapheneOS and other de-Googled phones.</string>
     <string name="welcome_get_started">Get started</string>
     <string name="welcome_continue">Continue</string>
+    <string name="welcome_google_customize">Choose what Google is used for</string>
     <string name="welcome_google_title">Use Google?</string>
     <string name="welcome_google_intro">You can change this later in Settings, or turn off just parts of it.</string>
     <string name="welcome_google_on_title">Use Google</string>
@@ -933,6 +934,9 @@
     <string name="settings_full_place_load_hint">Off, a place loads its first few photos and first page of reviews, and More photos or All reviews fetch the rest. On, every place you open walks its whole photo gallery and up to 50 reviews, which is slower and sends Google many more requests.</string>
     <string name="settings_speech_preload">Load voice search at startup</string>
     <string name="settings_speech_preload_hint">Loads the voice search model when Vela opens, so the mic listens at once. It uses about 300 MB until two quiet minutes pass. Off, it loads when you tap into the search box. On by default on phones with about 8 GB of memory or more.</string>
+    <string name="settings_google_uses">What Google is used for</string>
+    <string name="settings_google_uses_hint">Turn one off and Vela stops asking Google for it. Each switch is also on its own page.</string>
+    <string name="settings_google_uses_traffic">Traffic and routes</string>
     <string name="settings_google_free_links">Open shared Google Maps links</string>
     <string name="settings_maps_links">Google Maps links</string>
     <string name="settings_storage">Store downloaded regions on</string>

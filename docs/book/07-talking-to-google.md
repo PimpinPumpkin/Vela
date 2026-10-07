@@ -372,7 +372,10 @@ One switch in Settings > Privacy (`ui/GoogleFree`, pref `google_free`, off by de
 mirrored into the core module's `NoGoogle` flag and checked wherever a Google request would
 start. A new install is asked first: the page after the welcome screen (`GoogleChoice` in
 `WelcomeScreen.kt`) offers "Use Google", preselected, and "No Google", each with a line on what
-it gives and what Google sees, and sets the switch before the map is composed. With it on:
+it gives and what Google sees, and sets the switch before the map is composed. "Choose what
+Google is used for" on that page opens the per-feature switches, the same list Settings >
+Privacy shows while Google is on (`GoogleUsesSection`): the place source, reviews, photos,
+popular times, tapped-place lookups, and the traffic requests of a route and a drive. With it on:
 
 - Search answers from Photon and the downloaded place packs: names and addresses, and
   categories only where a region is downloaded. Google's autocomplete returns nothing, so the

@@ -4397,7 +4397,14 @@ Regressing one of these blocks a release.
   is served. No sign-in is offered.
 - Onboarding is welcome, the Google choice, location, notifications, voice. The choice page
   (`GoogleChoice` in `WelcomeScreen.kt`) sets `GoogleFree` before `MapScreen` is composed, so
-  no request to Google is made before the answer. "Use Google" is preselected.
+  no request to Google is made before the answer. "Use Google" is preselected. "Choose what
+  Google is used for" under Continue opens `GoogleUsesSection` as a first-run page, with the
+  same switches as Settings > Privacy.
+- Settings > Privacy lists every switch that decides what Google is asked
+  (`GoogleUsesSection`, shown while Google is on): the place source, what a place page loads,
+  and what a route and a drive ask. Each row is a shared composable in
+  `ui/settings/sections/GoogleUses.kt`, drawn again on its own page with its explanation. The
+  list shows labels only.
 - Permissions are asked in context. A
   coarse-only grant gets a one-time explainer and a true accuracy circle. Navigation needs fine
   location and offers an upgrade dialog. A permanently denied locate tap opens system settings.

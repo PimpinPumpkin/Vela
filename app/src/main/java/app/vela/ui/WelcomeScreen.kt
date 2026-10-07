@@ -64,17 +64,42 @@ import app.vela.ui.dpadHighlight
 /** First run: what Vela is, then the one choice that decides what leaves the phone. Nothing
  *  behind this screen is composed until both are done, so no request is made before the answer. */
 @Composable
-fun WelcomeScreen(onGetStarted: () -> Unit) {
+fun WelcomeScreen(vm: app.vela.ui.map.MapViewModel, onGetStarted: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
-    if (step == 0) {
-        WelcomeIntro(onNext = { step = 1 })
-    } else {
-        val context = LocalContext.current
-        androidx.activity.compose.BackHandler { step = 0 }
-        GoogleChoice(onContinue = { useGoogle ->
-            GoogleFree.set(context, !useGoogle)
-            onGetStarted()
-        })
+    val context = LocalContext.current
+    when (step) {
+        0 -> WelcomeIntro(onNext = { step = 1 })
+        1 -> {
+            androidx.activity.compose.BackHandler { step = 0 }
+            GoogleChoice(
+                onContinue = { useGoogle ->
+                    GoogleFree.set(context, !useGoogle)
+                    onGetStarted()
+                },
+                onCustomize = { step = 2 },
+            )
+        }
+        else -> {
+            androidx.activity.compose.BackHandler { step = 1 }
+            GoogleUsesPage(vm, onBack = { step = 1 }, onDone = {
+                GoogleFree.set(context, false)
+                onGetStarted()
+            })
+        }
+    }
+}
+
+/** The per-feature switches from Settings > Privacy, reachable before the map exists: the same
+ *  section, in the same frame as a Settings page, with Continue under it. */
+@Composable
+private fun GoogleUsesPage(vm: app.vela.ui.map.MapViewModel, onBack: () -> Unit, onDone: () -> Unit) {
+    app.vela.ui.settings.SettingsScaffold(stringResource(R.string.settings_google_uses), onBack) { topRow ->
+        app.vela.ui.settings.sections.GoogleUsesSection(vm, topRow, title = false)
+        Spacer(Modifier.height(20.dp))
+        Box(Modifier.padding(horizontal = 16.dp)) {
+            WelcomeButton(stringResource(R.string.welcome_continue), autoFocus = false, onGetStarted = onDone)
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -135,7 +160,7 @@ private fun WelcomeIntro(onNext: () -> Unit) {
                 stringResource(R.string.welcome_feature_open_source_body),
             )
             Spacer(Modifier.height(40.dp))
-            WelcomeButton(stringResource(R.string.welcome_get_started), onNext)
+            WelcomeButton(stringResource(R.string.welcome_get_started), onGetStarted = onNext)
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -147,7 +172,7 @@ private fun WelcomeIntro(onNext: () -> Unit) {
  * "Use Vela without Google", and the full list of what is sent is in PRIVACY.md.
  */
 @Composable
-private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit) {
+private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit, onCustomize: () -> Unit) {
     var useGoogle by rememberSaveable { mutableStateOf(true) }
     val scroll = rememberScrollState()
     val minH = LocalConfiguration.current.screenHeightDp.dp
@@ -194,6 +219,14 @@ private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit) {
             )
             Spacer(Modifier.height(32.dp))
             WelcomeButton(stringResource(R.string.welcome_continue)) { onContinue(useGoogle) }
+            // Only with Google on: with it off there is nothing left to choose.
+            if (useGoogle) {
+                Spacer(Modifier.height(4.dp))
+                androidx.compose.material3.TextButton(
+                    onClick = onCustomize,
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(24.dp)),
+                ) { Text(stringResource(R.string.welcome_google_customize)) }
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -271,11 +304,11 @@ private fun VelaMark(size: androidx.compose.ui.unit.Dp) {
  *  dialog buttons), so this is a directly `.focusable()` box with OK via `.onKeyEvent` and touch
  *  via `pointerInput`, styled like the filled Button it replaces. */
 @Composable
-private fun WelcomeButton(label: String, onGetStarted: () -> Unit) {
+private fun WelcomeButton(label: String, autoFocus: Boolean = true, onGetStarted: () -> Unit) {
     val fr = remember { FocusRequester() }
     val dpadFirst = rememberDpadFirstDevice()
     LaunchedEffect(dpadFirst) {
-        if (dpadFirst) repeat(40) {
+        if (dpadFirst && autoFocus) repeat(40) {
             if (runCatching { fr.requestFocus() }.isSuccess) return@LaunchedEffect
             kotlinx.coroutines.delay(50)
         }

@@ -22,7 +22,9 @@ logged-out browser's. They are not tied to an account.
   map area or the trip's endpoints. It does not see a Google account, and no key labels the
   traffic as Vela's. The one possible label is a header Android's WebView adds; see below.
 - **One switch turns Google off:** Settings > Privacy > "Use Vela without Google". The first run
-  asks the same question before the map loads, and says what each answer sends. Search then
+  asks the same question before the map loads. With Google on, the Privacy page lists every
+  smaller switch in one place: reviews, photos, tapped-place lookups, the traffic requests.
+  With the main switch on, search
   uses OpenStreetMap (the Photon geocoder) and your downloaded regions, routes come from the
   open routers with no live traffic, and no request goes to a Google host. One exception:
   opening a shared short link (`maps.app.goo.gl/...`) asks Google's link shortener where it

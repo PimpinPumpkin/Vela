@@ -28,14 +28,8 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
     SettingsScaffold(stringResource(R.string.settings_map), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         SettingsGroup {
-        ToggleRow(
-            label = stringResource(R.string.settings_live_traffic),
-            checked = app.vela.ui.Traffic.on.value,
-            onCheckedChange = { app.vela.ui.Traffic.set(context, it) },
-            hint = stringResource(R.string.settings_live_traffic_hint),
-            // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
-            switchModifier = topRow,
-        )
+        // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
+        LiveTrafficRow(switchModifier = topRow)
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_transit_layer),

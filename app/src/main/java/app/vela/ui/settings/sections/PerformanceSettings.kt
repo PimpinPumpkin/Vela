@@ -36,12 +36,7 @@ internal fun PerformanceSettingsScreen(onBack: () -> Unit) {
             switchModifier = topRow,
         )
         GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_full_place_load),
-            checked = app.vela.ui.FullPlaceLoad.on.value,
-            onCheckedChange = { app.vela.ui.FullPlaceLoad.set(context, it) },
-            hint = stringResource(R.string.settings_full_place_load_hint),
-        )
+        FullPlaceLoadRow()
         GroupDivider()
         // From Navigation (2026-10-03): it exists for the frame rate in turns, so it lives with the
         // other speed choices.

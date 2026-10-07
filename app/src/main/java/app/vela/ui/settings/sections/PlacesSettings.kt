@@ -27,51 +27,7 @@ internal fun PlacesSettingsScreen(onBack: () -> Unit) {
         PlacesOnMapGroup()
         Spacer(Modifier.height(8.dp))
         SettingsGroup(title = stringResource(R.string.settings_place_pages)) {
-        ToggleRow(
-            label = stringResource(R.string.settings_show_reviews),
-            checked = app.vela.ui.ShowReviews.on.value,
-            onCheckedChange = { app.vela.ui.ShowReviews.set(context, it) },
-            hint = stringResource(R.string.settings_show_reviews_hint),
-        )
-        if (app.vela.ui.ShowReviews.on.value) {
-            GroupDivider()
-            ToggleRow(
-                label = stringResource(R.string.settings_reviews_on_tap),
-                checked = app.vela.ui.ReviewsOnTap.on.value,
-                onCheckedChange = { app.vela.ui.ReviewsOnTap.set(context, it) },
-                hint = stringResource(R.string.settings_reviews_on_tap_hint),
-            )
-        }
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_read_all_reviews),
-            checked = app.vela.ui.LiveReviews.on.value,
-            onCheckedChange = { app.vela.ui.LiveReviews.set(context, it) },
-            hint = stringResource(R.string.settings_read_all_reviews_hint),
-        )
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_load_photos),
-            checked = app.vela.ui.LoadPhotos.on.value,
-            onCheckedChange = { app.vela.ui.LoadPhotos.set(context, it) },
-            hint = stringResource(R.string.settings_load_photos_hint),
-        )
-        if (app.vela.ui.LoadPhotos.on.value) {
-            GroupDivider()
-            ToggleRow(
-                label = stringResource(R.string.settings_photos_on_tap),
-                checked = app.vela.ui.PhotosOnTap.on.value,
-                onCheckedChange = { app.vela.ui.PhotosOnTap.set(context, it) },
-                hint = stringResource(R.string.settings_photos_on_tap_hint),
-            )
-        }
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_details_retry),
-            checked = app.vela.ui.DetailsRetry.on.value,
-            onCheckedChange = { app.vela.ui.DetailsRetry.set(context, it) },
-            hint = stringResource(R.string.settings_details_retry_hint),
-        )
+        ReviewAndPhotoRows()
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_hide_adult),

@@ -190,7 +190,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Privacy controls
 
 - No account, no ads, no analytics and no Vela server.
-- The first run asks whether to use Google, and says what each answer gives and sends.
+- The first run asks whether to use Google, and can open the list of what Google is used for.
+- Settings > Privacy has every switch that decides what Google is asked, in one list.
 - "Use Vela without Google" stops every request to Google. Reviews, photos, live traffic and Street
   View go away.
 - "Open shared Google Maps links" still lets a short link resolve when Google is off.

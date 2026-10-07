@@ -51,15 +51,13 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
                     onCheckedChange = { app.vela.ui.GoogleFree.setResolveLinks(context, it) },
                     hint = stringResource(R.string.settings_google_free_links_hint),
                 )
-            } else {
-                app.vela.ui.settings.GroupDivider()
-                app.vela.ui.settings.ToggleRow(
-                    label = stringResource(R.string.settings_route_traffic_on_tap),
-                    checked = app.vela.ui.RouteTrafficOnTap.on.value,
-                    onCheckedChange = { app.vela.ui.RouteTrafficOnTap.set(context, it); vm.syncRouteTraffic() },
-                    hint = stringResource(R.string.settings_route_traffic_on_tap_hint),
-                )
             }
+        }
+        // With Google on: everything it is used for, switch by switch. The same rows sit on
+        // their own pages; this is the one place that lists them all.
+        if (!app.vela.ui.GoogleFree.on.value) {
+            Spacer(Modifier.height(8.dp))
+            GoogleUsesSection(vm)
         }
         // How long one Google session lives (2026-09-23, web/SessionRotation): a saved cookie is a
         // pseudonymous history, a new one gets Google's limited view. Pointless with Google off.
