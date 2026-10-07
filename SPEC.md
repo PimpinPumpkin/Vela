@@ -2206,6 +2206,32 @@ address, plus `(confidence - 0.5) * 1.6`, plus `srcbonus`. An Overture row with 
 a landmark: Overture's low-confidence rows are where closed and miscategorized places sit, and the
 category prior alone ranked them with real museums and hospitals.
 
+**Closed places are removed before scoring.** Overture's confidence is not a sign of life (rows
+closed for years carry 0.92 to 0.99) and its `operating_status` is almost never set, so three
+outside signals delete rows from `raw`:
+
+- **Foursquare, by exact id** (`FSQ_SQL`). For a row whose first Overture source is Foursquare,
+  `sources[1].record_id` is Foursquare's own place id. Rows whose id has a `date_closed` in the
+  Foursquare OS Places release of 2025-02-06 (read from a public mirror, `FSQ_BASE`) are dropped.
+  No names are compared. A row a live second source lists (an OpenStreetMap business of the same
+  name key within about 150 m, or a chain locator match) is kept, because the mirror cannot see a
+  reopening. Overture's `update_time` on these rows is its import date and is not used.
+  `FSQ_CLOSED=off` skips the step; an unreachable mirror skips it with a log line.
+- **OpenStreetMap lifecycle tags** (`GONE_SQL`). Named nodes and ways tagged `disused:`, `was:`,
+  `abandoned:` or `closed:` + `shop` / `amenity` / `tourism` / `leisure`, with no live tag of
+  those four, form a closed list. A non-OSM row with the same whole name key within about 80 m
+  is dropped unless a live OSM business of that name is also there.
+- **Wikidata** (shell step before `GONE_SQL`). An OSM object whose linked item has a dissolved or
+  demolished date (P576) in the past is removed from the OSM inputs and added to the closed
+  list. P3999 (date of official closure) is not used: it is set on venues that closed once and
+  are open again. `WD_CLOSED=off` skips it.
+
+Measured on the District of Columbia box (82,217 places before): 1,499 dropped by Foursquare (28
+more kept by a live source), 104 by OpenStreetMap's tags, one hospital by Wikidata. A chain's own
+locator is NOT used as a closure signal: the locator data is incomplete per brand and the rule
+demoted open stores. Foursquare OS Places is Apache 2.0; its notice is
+`tools/licenses/FSQ-OS-PLACES-NOTICE.txt`. No Foursquare record is published in a Vela archive.
+
 **Baked minzoom** comes from the ranks, first match wins: a tenant (other than fuel) z17; a
 landmark with `xrank` 1 z11, `xrank` at most 3 z12, `lrank` at most 4 z14, `lrank` at most 10
 z15; `crank` 1 with prominence at least 6 z13; `crank` at most 2, or prominence at least 5 with

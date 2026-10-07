@@ -248,6 +248,30 @@ at 3.0 and never a landmark. In a test bake of the District of Columbia that was
 among them an aquarium that closed in 2013 and had been labeled as a landmark from a city view.
 It still appears when you zoom right in.
 
+**Closed places** (2026-10-06). Overture rarely removes anything: month to month about 2.5% of
+its rows change, and a restaurant that shut in 2015 can sit in it at confidence 0.92. So the bake
+asks three other sources what has closed, and deletes those rows outright.
+
+- Foursquare. About one Overture row in ten came from Foursquare, and Foursquare records a closing
+  date that Overture does not carry over. The bake matches those rows by Foursquare's own id, so
+  no name guessing is involved, and drops the ones Foursquare marks closed. The copy it reads is
+  from February 2025 (newer releases need an account), so it knows nothing after that, and a row
+  that OpenStreetMap or a chain's locator still lists is kept in case it reopened.
+- OpenStreetMap. When a shop closes, mappers retag it (`disused:shop`, `was:amenity`) and leave
+  the name. A place from another source with that name within about 80 m is dropped, unless
+  OpenStreetMap also has a live business of that name there.
+- Wikidata. A mapped building whose Wikidata entry has a dissolved or demolished date stops
+  counting as a landmark.
+
+In the District of Columbia test bake that was 1,499 places from Foursquare (792 of them
+restaurants, 143 bars), 104 from OpenStreetMap and one closed hospital from Wikidata, out of
+82,217. Checked by hand, the larger ones are real: two cinemas, a department store, a mall that
+was renamed, and a museum's old address (its current one stays).
+
+One idea was tried and left out: treating a chain store as closed when the chain's own store
+locator has no branch nearby. The locator data turned out to be missing open stores, so the rule
+would have hidden real ones.
+
 **One set of map points** (2026-09-22, behind the `placesOneSetRev` dial). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
 OpenFreeMap from OSM) drew parks, temples, schools and museums as a second set that the phone had
 to reconcile with Vela's places and that cost half the frame rate in Tokyo. The bake now takes

@@ -68,7 +68,9 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   (2026-09-15 and 2026-09-18). The long tail with no web presence at all is next:
   chamber-of-commerce member lists and municipal business-license registers where a city
   publishes them as open data, one scraper per source in the AllThePlaces spider shape. The goal
-  is the small independent places Overture misses, not another copy of what it has.
+  is the small independent places Overture misses, not another copy of what it has. The survey
+  under "Vela's own record of what is still open" (Big bets) says how thin those registers are
+  as a source of places; read it before writing a scraper.
 - **Region downloads pull the building overlay.** A saved viewport area already pulls the
   Microsoft footprints; a whole-region download does not, so a downloaded state has no houses
   where OSM is thin. Identical bytes, no bake change. (Merging the footprints INTO the basemap
@@ -453,6 +455,67 @@ this would need; an optional one-tap upload sink for diagnostics would ride the 
   telemetry"; that line changes the day this ships.
 - Could ride the existing **signed channel** for config (endpoint, sample rate, kill switch).
 
+### Vela's own record of what is still open  *(the long game for place data; starts in the USA)*
+
+**The problem.** Overture adds places and almost never takes one away: about 2.5% of its rows
+change month to month, closed flags come and go, and a restaurant that shut in 2015 sits in it
+at confidence 0.92. The bake now removes what Foursquare, OpenStreetMap and Wikidata say is
+closed (SPEC 5.2), but the Foursquare copy it can read without an account stops at February
+2025, so that signal ages from here. In twenty years an unpruned dataset is mostly ghosts.
+
+**Not starting from zero.** The list of places already exists: Overture, OpenStreetMap and the
+chain locators. What is missing is one dated fact per place, "a public record showed this open
+on <date>" or "showed it closed on <date>". So the project is a ledger keyed by the ids the bake
+already carries (Overture's, OpenStreetMap's), fed by public registers, and read by the bake as
+confirm or close. It adds no places in its first version.
+
+**Where US permit and commerce data lives (surveyed 2026-10-06).** There is no national
+collection of business licenses. Licensing is by city or county, every schema is different, and
+about 100 of roughly 19,500 municipalities publish a live feed, covering about a tenth of the
+population. What does exist, in the order worth building:
+
+1. **National sector registers**, all anonymous bulk downloads: FDIC bank branches (78,061
+   offices with coordinates, branch closings dated, updated weekly), USDA SNAP retailers (250,628
+   grocery, convenience and fuel stores with coordinates and twenty years of authorization
+   dates), CMS hospitals, NCES public schools, NPPES health providers, the IRS nonprofit file.
+   Full US coverage, a few percent of all places each, and the first two carry real closing
+   dates.
+2. **State alcohol licenses and statewide food licensing**: California, Texas, New York,
+   Colorado, Missouri and Oregon publish daily lists with status and dates, and Florida publishes
+   every restaurant and hotel license weekly. Bars, restaurants and liquor stores for over 40% of
+   the population, which is the category that churns most.
+3. **Health inspections**, about a fifth of the population. They use the trade name, carry
+   coordinates, and Chicago's has an explicit "Out of Business" result.
+4. **Big-city license feeds** (New York City, Los Angeles, Chicago, San Francisco, the District
+   of Columbia and about twenty more), one adapter each.
+
+**Why licenses are confirm-or-close only.** In the District of Columbia's feed (279,971 rows,
+76,331 active, refreshed daily) 45% of active licenses are housing rentals, only 24% carry a
+trade name (a grocery appears as its legal entity), and 50,840 rows are "Expired - Enforcement",
+which is late paperwork more often than a closed shop. Sacramento hides the address on a third
+of its rows. So a record is matched by address plus a loose name to a place the bake already
+has, an active match counts as "seen alive", and a removal needs an explicit closed status with
+a recent date AND a second signal.
+
+**Cost.** Each adapter is small. At thirty sources expect a few to break every quarter (two
+portals had moved hosts on the day of the survey), and city layers often state no license, which
+is not the same as permission to redistribute; closure facts derived from them and never
+republished are the safer use.
+
+**Open questions before building.**
+- Overture's BrightQuery source is itself built from government filings. If its rows carry a
+  status or a last-seen date, much of this is already there under Overture's license.
+- Foursquare's current releases need an account and carry a logo clause. Taking one refreshes
+  the best closure signal there is; it is the maintainer's decision.
+- The match rate of a license feed against the bake's places in one city has not been measured.
+
+**First step.** FDIC and SNAP as two adapters in the places bake, confirm and close only,
+measured on the District of Columbia and Sacramento.
+
+Outside the USA the equivalents are national and better: France's SIRENE lists every
+establishment with its address and an open or closed state, and the UK's Food Standards Agency
+publishes every food business. Those would come after the US shape is proven.
+
 ### Vela traffic layer
 
 Depends on the telemetry above. Aggregate opted-in traces → per-segment speed vs.
@@ -462,6 +525,13 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
 ## Investigated, parked or dead
 
 One line each, so nobody re-chases them; the full probes are in the history file.
+
+- **Closed places by checking each place's website (2026-10-06)**: measured on the District of
+  Columbia, dead links ran 18% for doubtful places and 16% for confident ones, so a dead site says
+  nothing about the place.
+- **Closed chain branches from the chain's own locator (2026-10-06)**: the locator data is
+  incomplete per brand (7 points for a brand with 11 open stores in the test box), so "not in the
+  locator" demoted open stores. Built, measured, removed.
 
 - **Owner posts ("closed for renovation until...")**: a keyless endpoint exists
   (`/maps/preview/localposts`) but its `pb` grammar needs a live capture from a business that

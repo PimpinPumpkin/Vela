@@ -3930,6 +3930,23 @@ architecture note.
   hospital and museum checked kept its zoom because OpenStreetMap or a chain locator lists it.
   The bake prints `unconfirmed_rows_capped`. Reaches phones as regions rebake. Reminder that bit
   again: a backtick in a SQL comment inside the unquoted heredoc runs as a shell command.
+- **Closed places are deleted in the bake (2026-10-06, SPEC 5.2).** Three steps in
+  `tools/build-places-region.sh`, all before `CREATE TABLE scored`: `FSQ_SQL` (Overture rows
+  whose Foursquare id has a `date_closed` in the 2025-02-06 Foursquare OS Places mirror, joined
+  on `sources[1].record_id`; S3 path only, skipped for `LOCAL`), `GONE_SQL` (names OpenStreetMap
+  tags `disused:` / `was:` / `abandoned:` / `closed:`, within ~80 m, unless a live OSM business
+  of that name is there) and a shell step that asks Wikidata's query service for P576 on every
+  linked item and moves those objects from the OSM inputs to the closed list. Each is best
+  effort and logs one line (`foursquare:`, `osm: N named places marked closed`, `wikidata:`);
+  `FSQ_CLOSED=off` / `WD_CLOSED=off` skip two of them. District of Columbia box: 1,499 + 104 + 1
+  of 82,217. THREE THINGS LEARNED: Overture's `update_time` is its import date, not a sign the
+  place is alive (a first cut that spared rows "refreshed since the mirror" spared 1,473 of
+  1,527); Overture's confidence is not either (closed restaurants at 0.92 to 0.99); and the
+  chain locator cannot prove a branch closed, its data is incomplete per brand (rule built,
+  measured, removed; the comment in the script has the numbers). To inspect a bake, run a copy
+  of the script FROM `tools/` (it reads files beside itself) with `duckdb -bail <file.duckdb>`
+  and the two `rm -rf "$WORK"` lines turned off. Never edit the script while a bake is running:
+  bash reads it as it goes. The Foursquare notice is `tools/licenses/FSQ-OS-PLACES-NOTICE.txt`.
 - **`CATEGORY_APP_MAPS` (issue #683, 2026-10-06).** Each launcher alias has a SECOND intent filter,
   MAIN + DEFAULT + APP_MAPS. Android Automotive (Android running in the car itself, not Android
   Auto) starts whatever answers that in its home screen's map panel, by an IMPLICIT intent, and an

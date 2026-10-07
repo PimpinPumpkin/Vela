@@ -171,6 +171,90 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
   fi
 fi
 
+# GONE (2026-10-06): places OpenStreetMap's mappers have marked closed. A shop that shuts is
+# retagged with a lifecycle prefix (disused:shop=, was:amenity=, abandoned:..., closed:...) and
+# keeps its name; Overture has no such memory, so the same shop stays "open" there for years.
+# Features that ALSO carry a live shop/amenity/tourism tag are a new tenant and are left out.
+GONE_NDJSON=""
+if [ -n "${OSM_SRC:-}" ] && [ -f "${OSM_SRC:-}" ]; then
+  osmium tags-filter --overwrite -o "$WORK/gone.osm.pbf" "$OSM_SRC" \
+    nw/disused:shop nw/disused:amenity nw/disused:tourism nw/disused:leisure \
+    nw/was:shop nw/was:amenity nw/was:tourism nw/was:leisure \
+    nw/abandoned:shop nw/abandoned:amenity nw/abandoned:tourism \
+    nw/closed:shop nw/closed:amenity nw/closed:tourism >/dev/null 2>&1 || true
+  if [ -s "$WORK/gone.osm.pbf" ]; then
+    osmium export -f geojsonseq --geometry-types=point,polygon --overwrite -o "$WORK/gone.geojsonseq" "$WORK/gone.osm.pbf" >/dev/null 2>&1 || true
+    if [ -s "$WORK/gone.geojsonseq" ]; then
+      tr -d '\036' < "$WORK/gone.geojsonseq" \
+        | jq -c '.properties as $p
+            | select(($p.shop // $p.amenity // $p.tourism // $p.leisure) == null)
+            | ($p.name // $p["old_name"] // $p["disused:name"] // $p["was:name"] // "") as $n
+            | select($n != "")
+            | (if .geometry.type == "Point" then .geometry.coordinates
+               else (.geometry.coordinates[0] | [(map(.[0]) | add / length), (map(.[1]) | add / length)]) end) as $c
+            | {name: $n, lng: $c[0], lat: $c[1]}' > "$WORK/gone.ndjson" 2>/dev/null || true
+      [ -s "$WORK/gone.ndjson" ] && GONE_NDJSON="$WORK/gone.ndjson"
+    fi
+  fi
+  [ -n "$GONE_NDJSON" ] && echo "osm: $(wc -l < "$GONE_NDJSON") named places marked closed by mappers" || echo "osm: no closed-place tags in this region"
+fi
+# WIKIDATA SAYS IT IS GONE (2026-10-06). An OpenStreetMap object can outlive what it stands for: a
+# hospital that shut in 2019 is still tagged as a hospital, a demolished stadium still has its
+# outline. Where the object links a Wikidata item and that item has a dissolved / abolished /
+# demolished date (P576) in the past, the object is no longer a source: no landmark row, no
+# Wikidata or size credit, and its name joins the closed list above so the other sources' rows
+# for it go too. P576 only. The date of official closure (P3999) was measured and left out: it
+# is set on theaters and stations that closed once and are open again. In the District of
+# Columbia 6 of 1,740 linked items qualify, all correct. Best effort; WD_CLOSED=off skips it.
+if [ "${WD_CLOSED:-on}" != "off" ] && { [ -n "$OSM_NDJSON" ] || [ -n "$MARKS_NDJSON" ]; }; then
+  cat $OSM_NDJSON $MARKS_NDJSON 2>/dev/null | jq -r '.props.wikidata // empty' 2>/dev/null \
+    | { grep -E '^Q[0-9]+$' || true; } | sort -u > "$WORK/qids.txt"
+  : > "$WORK/wdgone.txt"
+  if [ -s "$WORK/qids.txt" ]; then
+    rm -f "$WORK"/qidpart.*
+    split -l 300 "$WORK/qids.txt" "$WORK/qidpart."
+    for part in "$WORK"/qidpart.*; do
+      vals=$(sed 's/^/wd:/' "$part" | tr '\n' ' ')
+      curl -s -m 60 -A "VelaMaps-bake (https://github.com/PimpinPumpkin/Vela)" -H 'Accept: text/csv' \
+        --data-urlencode "query=SELECT DISTINCT ?q WHERE { VALUES ?q { $vals } ?q wdt:P576 ?d . FILTER(?d <= NOW()) }" \
+        https://query.wikidata.org/sparql 2>/dev/null | { grep -oE 'Q[0-9]+' || true; } >> "$WORK/wdgone.txt"
+      sleep 1
+    done
+    rm -f "$WORK"/qidpart.*
+  fi
+  if [ -s "$WORK/wdgone.txt" ]; then
+    sort -u "$WORK/wdgone.txt" | jq -R '{(.): 1}' | jq -s 'add' > "$WORK/wdgone.json"
+    for f in $OSM_NDJSON $MARKS_NDJSON; do
+      jq -c --slurpfile g "$WORK/wdgone.json" 'select($g[0][.props.wikidata // ""] == 1) | {name: .name, lng: .lng, lat: .lat}' "$f" >> "$WORK/gone.ndjson" 2>/dev/null || true
+      jq -c --slurpfile g "$WORK/wdgone.json" 'select($g[0][.props.wikidata // ""] != 1)' "$f" > "$f.keep" 2>/dev/null && mv "$f.keep" "$f"
+    done
+    [ -s "$WORK/gone.ndjson" ] && GONE_NDJSON="$WORK/gone.ndjson"
+    echo "wikidata: $(sort -u "$WORK/wdgone.txt" | wc -l | tr -d ' ') linked items are dissolved or demolished, of $(wc -l < "$WORK/qids.txt" | tr -d ' ')"
+  else
+    echo "wikidata: no dissolved items among $(wc -l < "$WORK/qids.txt" | tr -d ' ') (or the service did not answer)"
+  fi
+fi
+
+GONE_SQL=""
+if [ -n "$GONE_NDJSON" ]; then
+  LIVE_SQL="CREATE TABLE osmlive (sk VARCHAR, lng DOUBLE, lat DOUBLE);"
+  [ -n "$OSM_NDJSON" ] && LIVE_SQL="CREATE TABLE osmlive AS SELECT snapkey(name) AS sk, lng, lat FROM read_json('$OSM_NDJSON', columns = {name: 'VARCHAR', lng: 'DOUBLE', lat: 'DOUBLE'}) WHERE snapkey(name) IS NOT NULL;"
+read -r -d '' GONE_SQL <<GONESQL || true
+-- A row is left out when a mapper-closed place of the same whole name lies within about 80 m,
+-- unless a LIVE OpenStreetMap business of that name is there too (it moved next door, or
+-- reopened and the old node was kept). Rows that come from OpenStreetMap itself are never touched.
+CREATE TABLE osmgone AS SELECT snapkey(name) AS sk, lng, lat FROM read_json('$GONE_NDJSON', columns = {name: 'VARCHAR', lng: 'DOUBLE', lat: 'DOUBLE'}) WHERE snapkey(name) IS NOT NULL AND length(snapkey(name)) >= 4;
+$LIVE_SQL
+CREATE TABLE gonekeys AS SELECT id, lat, lng, snapkey(name) AS sk FROM raw WHERE id NOT LIKE 'osm:%';
+CREATE TABLE gonehits AS
+SELECT DISTINCT r.id FROM gonekeys r JOIN osmgone g ON g.sk = r.sk AND abs(r.lat - g.lat) < 0.00075 AND abs(r.lng - g.lng) < 0.001
+WHERE r.id NOT IN (
+  SELECT r2.id FROM gonekeys r2 JOIN osmlive l ON l.sk = r2.sk AND abs(r2.lat - l.lat) < 0.00075 AND abs(r2.lng - l.lng) < 0.001);
+DELETE FROM raw WHERE id IN (SELECT id FROM gonehits);
+SELECT (SELECT count(*) FROM osmgone) AS closed_by_mappers_in_box, (SELECT count(*) FROM gonehits) AS rows_dropped_as_closed_in_osm;
+GONESQL
+fi
+
 ATP_SQL=""
 if [ -n "$ATP_NDJSON" ]; then
 read -r -d '' ATP_SQL <<ATPSQL || true
@@ -270,6 +354,48 @@ else
   # has xmin = xmax = lng), so the rows are the same set either way.
   BBOXPRED="AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N"
 fi
+
+# FOURSQUARE'S CLOSED FLAG, BY EXACT ID (2026-10-06). Overture imports about four million
+# Foursquare places and does not carry over Foursquare's date_closed: in the District of Columbia
+# 1,527 of them were closed in Foursquare and open or unknown in Overture. For a row whose Overture
+# source IS Foursquare the source's record id is Foursquare's own place id, so the join is exact
+# and no names are compared. The Foursquare copy read here is a public mirror of the 2025-02-06
+# release (the official releases need an account since late 2025), so a closure after that date
+# is not seen, and a place that reopened since would be dropped wrongly: a row that a LIVE second
+# source lists (an OpenStreetMap business of the same name within ~150 m, or the chain's own
+# locator) is therefore kept. Overture's update_time on these rows is its own import date (they
+# cluster on a handful of days), not a sign of life, so it is not used. A sample of 45 of the
+# District's matches read as known closures (restaurants gone since 2012 to 2024), which Overture
+# carries at confidence 0.92. Best effort: if the mirror is unreachable the bake goes on without
+# it. FSQ_CLOSED=off skips it. Apache 2.0, notice in tools/licenses/FSQ-OS-PLACES-NOTICE.txt.
+FSQ_SQL=""
+FSQ_BASE="${FSQ_BASE:-https://data.source.coop/fused/fsq-os-places/2025-02-06/places}"
+if [ -z "$LOCAL" ] && [ "${FSQ_CLOSED:-on}" != "off" ]; then
+  if duckdb -c "INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
+      COPY (SELECT o.id FROM (
+              SELECT id, sources[1].record_id AS rec FROM $SRC
+              WHERE bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N AND sources[1].dataset = 'Foursquare') o
+            JOIN (SELECT fsq_place_id FROM read_parquet(list_transform(range(0, 81), i -> '$FSQ_BASE/' || i || '.parquet'))
+                  WHERE longitude BETWEEN $W AND $E AND latitude BETWEEN $S AND $N AND date_closed IS NOT NULL) f
+            ON f.fsq_place_id = o.rec) TO '$WORK/fsqclosed.csv' (HEADER false);" >/dev/null 2>"$WORK/fsq.err" && [ -s "$WORK/fsqclosed.csv" ]; then
+    echo "foursquare: $(wc -l < "$WORK/fsqclosed.csv") Overture rows it marks closed"
+    FSQ_LIVE="CREATE TABLE fsqlive (id VARCHAR);"
+    [ -n "$OSM_NDJSON" ] && FSQ_LIVE="$FSQ_LIVE
+INSERT INTO fsqlive SELECT DISTINCT r.id FROM (SELECT id, lat, lng, snapkey(name) AS sk FROM raw WHERE id IN (SELECT id FROM fsqclosed)) r
+  JOIN (SELECT snapkey(name) AS sk, lng, lat FROM read_json('$OSM_NDJSON', columns = {name: 'VARCHAR', lng: 'DOUBLE', lat: 'DOUBLE'})) l
+  ON l.sk = r.sk AND abs(r.lat - l.lat) < 0.0015 AND abs(r.lng - l.lng) < 0.002 WHERE r.sk IS NOT NULL;"
+    [ -n "$ATP_NDJSON" ] && FSQ_LIVE="$FSQ_LIVE
+INSERT INTO fsqlive SELECT rid FROM atpfill UNION SELECT id FROM atp_snap;"
+    FSQ_SQL="CREATE TABLE fsqclosed AS SELECT * FROM read_csv('$WORK/fsqclosed.csv', header = false, columns = {'id': 'VARCHAR'});
+$FSQ_LIVE
+DELETE FROM raw WHERE id IN (SELECT id FROM fsqclosed) AND id NOT IN (SELECT id FROM fsqlive);
+SELECT (SELECT count(*) FROM fsqclosed) AS closed_in_foursquare,
+  (SELECT count(*) FROM fsqclosed WHERE id IN (SELECT id FROM fsqlive)) AS kept_a_live_source_lists_them;"
+  else
+    echo "foursquare: closed list not available ($(head -c 200 "$WORK/fsq.err" 2>/dev/null | tr '\n' ' ')), baking without it"
+  fi
+fi
+
 # Overture ADDRESSES for the unit-level snap above. Skipped on the local-parquet dev path (the
 # extract has places only), which leaves the table empty and every stacked row on the ring.
 if [ -n "$LOCAL" ]; then
@@ -730,6 +856,8 @@ FROM corek a JOIN corek b ON b.ck = a.ck AND abs(b.lat - a.lat) < 0.00055 AND ab
 GROUP BY a.id;
 DELETE FROM raw WHERE id IN (SELECT id FROM coreleader WHERE id <> leader);
 SELECT (SELECT count(*) FROM coreleader WHERE id <> leader) AS same_business_variant_rows_dropped;
+$FSQ_SQL
+$GONE_SQL
 CREATE TABLE scored AS
 SELECT *,
   CASE
@@ -955,6 +1083,10 @@ SELECT id FROM spread
 WHERE COALESCE(confidence, 0.5) < 0.75
   AND id NOT IN (SELECT id FROM srcbonus WHERE b > 0)
   AND id NOT IN (SELECT id FROM marksize);
+-- NOT a rule here: "a chain row with no point of its brand in the chain's own locator nearby is a
+-- closed branch". Measured on the District of Columbia box 2026-10-06 and rejected: the locator
+-- data is not complete per brand (it had 7 points for a brand with 11 open stores in the box, 44
+-- for a pharmacy chain with 55), so the rule ranked open stores down with the closed ones.
 UPDATE spread SET prominence = least(prominence, 3.0) WHERE id IN (SELECT id FROM unconfirmed);
 SELECT (SELECT count(*) FROM unconfirmed) AS unconfirmed_rows_capped, (SELECT count(*) FROM spread) AS of_rows;
 CREATE TABLE ranked AS
