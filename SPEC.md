@@ -1949,7 +1949,8 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - Demo drive (pref `demo_drive`, off by default): `DemoTrace.fromRoute` turns a planned route
   into one `ReplayFix` per second and runs it down the same hermetic path. It is presented as
   real navigation: the replay controls are hidden and End cancels the demo job, whose `finally`
-  resumes live GPS.
+  resumes live GPS. A demo that reaches the end of its route stays on the arrival card, as a
+  real drive does, and Done ends it through `stopNav`.
 - `LocationProvider.pinned` holds the simulated position (`SimLocation.onChange` sets it in
   `VelaApp`). While it is set, or a replay runs, `updates()` asks the phone for no fixes: it
   emits the pinned point once a second (provider `SIM_PROVIDER`) and mirrors the replay's fixes

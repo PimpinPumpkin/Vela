@@ -406,11 +406,24 @@ internal class NavController(
                 if (replayJob === coroutineContext[Job]) {
                     replayJob = null
                     navSession.replayMode = false
-                    if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; host.destination = null }
-                    NavigationService.stop(appContext)
+                    // A demo that drove to its end stops on the arrival card, as a real drive
+                    // does, and Done ends it through stopNav. One that was ended early is torn
+                    // down here.
+                    val arrived = replayOwnsNav && navSession.state.value.arrived
+                    if (replayOwnsNav && !arrived) { navSession.stop(); host.destination = null }
+                    replayOwnsNav = false
+                    if (!arrived) NavigationService.stop(appContext)
                     host.clearSpeedLimit()
                     _state.update {
-                        it.copy(
+                        if (arrived) {
+                            // The driven route stays under the card. The chooser and its other
+                            // routes do not come back.
+                            it.copy(
+                                replaying = false, demoDriving = false, speedLimitKmh = null,
+                                routes = emptyList(), directionsOpen = false, showSteps = false, previewStepIndex = null,
+                                myLocation = resumeLoc ?: it.myLocation, mySpeed = null, mySpeedRaw = null,
+                            )
+                        } else it.copy(
                             replaying = false, demoDriving = false, speedLimitKmh = null,
                             routes = emptyList(), activeRoute = null, directionsOpen = false,
                             showSteps = false, previewStepIndex = null,
