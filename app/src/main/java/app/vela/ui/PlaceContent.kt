@@ -219,6 +219,8 @@ object SavedActions {
  *  again through here; a holder so MapScreen takes no new callback (it is at the method limit). */
 object RouteActions {
     @Volatile var camerasChanged: (() -> Unit)? = null
+    /** "Add to home screen" in the route card's menu: pins the trip on screen as a shortcut. */
+    @Volatile var pinTrip: (() -> Unit)? = null
 }
 
 object ShapeActions {

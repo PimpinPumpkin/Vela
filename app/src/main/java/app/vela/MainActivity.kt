@@ -158,6 +158,8 @@ class MainActivity : ComponentActivity() {
      *  system maps handler; turn whichever we got into a search or a dropped pin. */
     private fun handleIntent(intent: Intent?) {
         when (intent?.action) {
+            // A trip pinned to the home screen from the route picker (issue #675).
+            app.vela.ui.TripShortcut.ACTION -> app.vela.ui.TripShortcut.read(intent)?.let { (points, mode) -> vm.openTripShortcut(points, mode) }
             Intent.ACTION_VIEW -> {
                 val data = intent.data?.toString() ?: return
                 // A My Maps custom map link imports like a shared list (issue #669).

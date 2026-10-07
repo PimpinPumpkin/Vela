@@ -247,6 +247,7 @@ fun RouteTopCard(
                                 item(stringResource(R.string.route_update, editingRouteName)) { menu = false; onUpdateRoute(stops.isNotEmpty()) }
                             }
                             if (onSaveRoute != null) item(stringResource(R.string.route_save)) { menu = false; naming = true }
+                            item(stringResource(R.string.trip_shortcut_add)) { menu = false; app.vela.ui.RouteActions.pinTrip?.invoke() }
                         }
                     }
                 }

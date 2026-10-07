@@ -1998,6 +1998,17 @@ Defaults that make the safe path the easy one:
   PINNED saved places/routes; the bookmark sheet has all. "Save the way you drove" lives on the
   arrival card, which demo drives never show: test with a mock-GPS drive and
   `debug.vela.tune.drivenOfferAlways 1`.
+- **A trip as a home-screen shortcut (issue #675, 2026-10-07):** the route card's menu has "Add to
+  home screen" (`RouteActions.pinTrip` holder -> `MapViewModel.pinTripShortcut` ->
+  `ui/TripShortcut.pin`, a pinned shortcut through `ShortcutManagerCompat`). The trip rides in
+  the shortcut's intent (`app.vela.action.OPEN_TRIP`, parallel name / lat / lng arrays, NaN =
+  "your location", plus the travel mode), so nothing is stored in Vela. `MainActivity.handleIntent`
+  reads it and `openTripShortcut` opens the picker: destination alone = `routeToSelected`,
+  anything else through `applyTrip`. A shortcut, not an app widget, on purpose: no provider, no
+  setup screen, works on every launcher from Android 8. Checked on the 4a: pin from a Davis to
+  Sacramento route, launcher dialog, cold-start tap opens the same trip. NOT checked: a trip
+  with a fixed start or stops, and a mode other than driving. `adb shell am start` cannot pass
+  a double array, so test through a real pinned shortcut.
 - **Per-place icons (issue #629, 2026-09-30):** `SavedPlace.icon` / `ListPlace.icon` override the
   list's icon on the map pin (null = the list's). The picker (`IconPicker`, shared with the list
   editor, and `PlaceIconDialog` in MapScreen) opens from the place sheet's save menu. Its button

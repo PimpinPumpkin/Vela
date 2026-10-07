@@ -2799,6 +2799,13 @@ did not read as closed at a glance.
   car. Settings > Map "Parking button" (`ParkingButton`, default on) hides the button while no
   spot is saved; a saved spot keeps it, the way back to the car.
 
+**Trip shortcuts.** The route card's menu pins the shown trip to the home screen as a launcher
+shortcut. Its intent (action `app.vela.action.OPEN_TRIP`) carries the points as parallel arrays of
+names, latitudes and longitudes, where a NaN coordinate means "your location" at the time of the
+tap, and the travel mode. Nothing about the shortcut is stored in the app. Opening one selects the
+destination and routes; a fixed start, stops, or a trip ending at the user's location go through
+the trip editor's apply path.
+
 
 ---
 

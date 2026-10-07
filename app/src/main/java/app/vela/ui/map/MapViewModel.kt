@@ -5185,7 +5185,7 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, selected = null) }
     }
 
-    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
+    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
@@ -5557,6 +5557,28 @@ class MapViewModel @Inject constructor(
             }
         }
         route(_state.value.travelMode)
+    }
+
+    /** Pin the trip the route picker shows to the home screen (issue #675). */
+    private fun pinTripShortcut() {
+        val s = _state.value
+        val points = tripPointsForEditor().map { it.place }
+        val ok = app.vela.ui.TripShortcut.pin(appContext, points, s.travelMode, appContext.getString(R.string.mapscreen_your_location))
+        if (!ok) flashStatus(appContext.getString(R.string.trip_shortcut_unsupported))
+    }
+
+    /** A home-screen trip shortcut was tapped: open the route picker on that trip. */
+    fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
+        val anchor = points.last() ?: points.first() ?: return
+        linkMode = mode
+        linkOrigin = null
+        selectPlace(anchor)
+        routeToSelected()
+        // "Your location" to one place is what routeToSelected already set up; anything else (a
+        // fixed start, stops, or a trip that ends where you are) goes through the trip editor's path.
+        if (points.size > 2 || points.first() != null || points.last() == null) {
+            applyTrip(points.map { app.vela.ui.place.TripPoint(it) })
+        }
     }
 
     fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }

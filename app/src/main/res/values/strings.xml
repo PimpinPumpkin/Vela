@@ -1280,6 +1280,8 @@
     <string name="settings_puck_shape_duck">Rubber duck</string>
     <string name="route_saved_label">Your route: %1$s</string>
     <string name="route_save">Save this route</string>
+    <string name="trip_shortcut_add">Add to home screen</string>
+    <string name="trip_shortcut_unsupported">This home screen cannot pin shortcuts</string>
     <string name="route_save_title">Save route</string>
     <string name="route_save_hint">Name</string>
     <string name="route_save_default">Route to %1$s</string>
