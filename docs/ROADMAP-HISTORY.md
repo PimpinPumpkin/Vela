@@ -12,7 +12,8 @@ says so.
 ### October 2026
 
 - The arrival card of a drive offers "Save parking spot", and a simulated drive ends on the
-  arrival card as a real one does.
+  arrival card as a real one does. The parked car's sheet shows its distance and how long ago
+  it was saved.
 - Screenshots retaken with the current interface, in the README and on the site.
 - Docs pass. The maintainer notes were cut to rules and traps. The dated log they replaced is
   in the git history of `CLAUDE.md`.

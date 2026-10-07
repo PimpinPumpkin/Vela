@@ -141,7 +141,7 @@ Small items, one pull request each.
   draws one plain badge for every state route.
 - A "download this region" nudge when an avoid option is on, Google cannot be reached and no
   downloaded region covers the trip.
-- Parking: distance and age on the chip, a note or photo.
+- Parking: a note or photo on the saved spot.
 - On-street bike lanes. Painted lanes (`cycleway=lane`) are not in the OpenMapTiles schema and
   need a baked layer, never a per-viewport Overpass query. The painted-roads test under
   "Richer roads" draws them.

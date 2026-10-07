@@ -953,6 +953,12 @@ fun PlaceSheet(
             // doesn't wrap mid-word next to the stars; ellipsized if huge.
             val rest = listOfNotNull(
                 place.distanceMeters?.let { formatDistance(it) },
+                // The parked car: how long ago, in the phone's words ("2 hours ago").
+                if (isParking) app.vela.ui.ParkingActions.parkedAt?.invoke()?.takeIf { it > 0L }?.let {
+                    android.text.format.DateUtils.getRelativeTimeSpanString(
+                        it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS,
+                    ).toString()
+                } else null,
                 place.priceText,
                 place.category,
             )

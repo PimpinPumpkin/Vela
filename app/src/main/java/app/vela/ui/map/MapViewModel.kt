@@ -5194,6 +5194,7 @@ class MapViewModel @Inject constructor(
     init {
         app.vela.ui.ParkingActions.saveHere = ::saveParkingSpot
         app.vela.ui.ParkingActions.arrivedByCar = { _state.value.travelMode == TravelMode.DRIVE }
+        app.vela.ui.ParkingActions.parkedAt = { _state.value.parkedAtMillis }
     }
     init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
 
@@ -5348,7 +5349,7 @@ class MapViewModel @Inject constructor(
      *  Google detail fetches [selectPlace] runs. [label] is the localized "Parked car". */
     fun showParkedCar(label: String) {
         val spot = _state.value.parkingSpot ?: return
-        val p = Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot)
+        val p = fromHere(Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot))
         // A parked car never fetches reviews/photos/details — but the PREVIOUS place's in-flight
         // scrape (and its reviews/shimmer flags) would otherwise bleed onto the parking sheet
         // ("loading reviews on the parked car" bug). Cancel + clear them, like the pin/POI paths.

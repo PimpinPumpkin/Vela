@@ -232,6 +232,8 @@ object ParkingActions {
     @Volatile var saveHere: (() -> Boolean)? = null
     /** Was the trip that just ended a drive? Walking to a place parks nothing. */
     @Volatile var arrivedByCar: (() -> Boolean)? = null
+    /** When the current spot was saved, in epoch milliseconds. 0 with none. */
+    @Volatile var parkedAt: (() -> Long)? = null
 }
 
 object ShapeActions {
