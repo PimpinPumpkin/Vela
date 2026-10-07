@@ -2,6 +2,7 @@ package app.vela.ui.settings.sections
 
 import app.vela.ui.icons.Sym
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +29,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -238,8 +240,24 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             }
             trips.forEachIndexed { ti, t ->
                 if (ti > 0) GroupDivider()
+                val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
                 Row(
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        // A long press on a trip selects it, entering the selection mode when it
+                        // is off. In the mode a tap on the row toggles it, as its checkbox does.
+                        // dpad-ok: the Select button above and the row's checkbox are the key path.
+                        .pointerInput(t.id, selecting) {
+                            detectTapGestures(
+                                onLongPress = {
+                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    if (!selecting) { selecting = true; selected = setOf(t.id) }
+                                    else selected = if (t.id in selected) selected - t.id else selected + t.id
+                                },
+                                onTap = { if (selecting) selected = if (t.id in selected) selected - t.id else selected + t.id },
+                            )
+                        }
+                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Two single lines: when (the thing people scan by) on top, then the figures
