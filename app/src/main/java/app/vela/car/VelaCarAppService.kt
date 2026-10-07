@@ -51,6 +51,14 @@ class VelaCarAppService : CarAppService() {
     // is negligible for a non-Play, self-distributed nav app. (2026-07-07)
     override fun createHostValidator(): HostValidator = HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
+    // A car with an instrument-cluster display opens a SECOND session for it, and that display
+    // accepts the navigation template only. Handing it the main session (whose first screen is a
+    // place list) crashed Vela the moment it was picked in the car: "PlaceListNavigationTemplate
+    // is not allowed for session with display type 1" (issue #179, 2026-10-06).
+    override fun onCreateSession(sessionInfo: androidx.car.app.SessionInfo): Session =
+        if (sessionInfo.displayType == androidx.car.app.SessionInfo.DISPLAY_TYPE_CLUSTER) ClusterSession()
+        else onCreateSession()
+
     override fun onCreateSession(): Session {
         // The neural voice is wired into VoiceGuide by the phone's view model; a drive started from
         // the car with the phone UI closed had no synth attached and fell back to the system TTS
@@ -66,4 +74,21 @@ class VelaCarAppService : CarAppService() {
         CarDeps(navSession, locationProvider, mapDataSource, recentPlaces, savedPlaces, shortcuts, voiceGuide, routeEngine, offlinePois, offlineAddresses),
         )
     }
+}
+
+/** The instrument cluster's session: one bare navigation template. The turn, distance and arrival
+ *  shown there come from the trip data the main session publishes through NavigationManager; this
+ *  screen only has to exist and be of the one kind the cluster allows. */
+private class ClusterSession : Session() {
+    override fun onCreateScreen(intent: android.content.Intent): androidx.car.app.Screen =
+        object : androidx.car.app.Screen(carContext) {
+            override fun onGetTemplate(): androidx.car.app.model.Template =
+                androidx.car.app.navigation.model.NavigationTemplate.Builder()
+                    .setActionStrip(
+                        androidx.car.app.model.ActionStrip.Builder()
+                            .addAction(androidx.car.app.model.Action.APP_ICON)
+                            .build(),
+                    )
+                    .build()
+        }
 }

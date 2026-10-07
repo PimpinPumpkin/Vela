@@ -802,6 +802,14 @@ Defaults that make the safe path the easy one:
   Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO`, which is
   declared but unused: nothing reads `CarHardware`, so the car speed badge is GPS speed everywhere.
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
+- **The car's instrument cluster gets its own session (issue #179, 2026-10-07).** Vela declares
+  `FEATURE_CLUSTER`, so a car with a cluster display opens a second session with
+  `SessionInfo.DISPLAY_TYPE_CLUSTER`, where only `NavigationTemplate` is allowed.
+  `VelaCarAppService.onCreateSession(SessionInfo)` returns `ClusterSession` (one bare navigation
+  template) for it; before, it got the main session and its place list, and Vela crashed when
+  picked in the car ("PlaceListNavigationTemplate is not allowed for session with display type
+  1"). NOT run on a cluster: the DHU needs a cluster configured and no car was at hand. Any new
+  first screen must never be reachable from the cluster session.
 - **Picture-in-picture nav (2026-07-25):** MainActivity carries `supportsPictureInPicture` +
   autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
   onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
