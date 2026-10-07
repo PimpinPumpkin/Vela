@@ -4010,7 +4010,9 @@ reuses it.
 - On: `GoogleStyleDirectionsPanel` (`ui/place/GoogleChooser.kt`). The mode is the title, the mode
   tabs carry each mode's time, one summary shows the selected route with the alternates behind an
   "other routes" line and as time bubbles on the map, and a bottom bar has Start, Add stops and
-  Share. It has three states: minimized, summary and list.
+  Share. It has three states: minimized, summary and list. Tapping a step in the list drops
+  the picker to the summary, so the map shows the step, and `startNav` clears the previewed
+  step.
 - Off: the classic `DirectionsPanel`, which lists every route. Transit always uses it.
 - In drive mode both pickers show one "Avoid" label and four chips: Tolls, Highways, Ferries,
   Cameras. Cameras is the `FlockRouteAlert` switch and refetches through

@@ -253,7 +253,8 @@ internal class NavController(
         // The pre-nav search's results are stale junk once driving - and the nav bottom slot
         // yields to a NON-EMPTY results list (the in-nav along-route flow), so leftovers from
         // planning made the chooser's Start bar render over a live drive (device 2026-07-14).
-        _state.update { it.copy(results = emptyList(), query = "", resultsCollapsed = false) }
+        // A step looked at in the chooser is not carried into the drive, which would open on it.
+        _state.update { it.copy(results = emptyList(), query = "", resultsCollapsed = false, previewStepIndex = null) }
         navStartJob = scope.launch {
             // If they hit Start before a picked alternate finished naming, name it first (this IS
             // on the critical path - the route isn't drivable until it's named - but it's a fast

@@ -533,7 +533,13 @@ fun GoogleStyleDirectionsPanel(
                                         StepRow(
                                             m = m, active = false, highlighted = false, romanize = { it },
                                             destName = destName, destAddress = destAddress,
-                                            onClick = { onStep(i) },
+                                            // The list drops to the summary, or it covers the map
+                                            // the step is shown on. Keys go back to the Drive tab.
+                                            onClick = {
+                                                onStep(i)
+                                                collapsed.value = true
+                                                runCatching { firstFocus.requestFocus() }
+                                            },
                                         )
                                     }
                                 }
