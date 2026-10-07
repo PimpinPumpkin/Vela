@@ -1317,6 +1317,7 @@ fun VelaMapView(
     LaunchedEffect(navMode, routePolyline, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         if (!navMode || routePolyline.size < 2) return@LaunchedEffect
+        resetNavLabelsForLine(style)
         var lastApplied: List<String>? = null
         // QUANTIZED (2026-07-16, the "camera dropping frames since the bubbles" report): the
         // first cut ran the query every 4 s and re-filtered whenever the sliding window moved a
@@ -6870,6 +6871,22 @@ private fun resetNavLabelCut(style: Style, @Suppress("UNUSED_PARAMETER") progres
     if (cut != navLabelCutAt) {
         navLabelPendingCut = maxOf(navLabelPendingCut, cut)
         setNavLabelCut(style, cut)
+    }
+}
+
+/** A new route line measures its callouts from its own start. The cut kept the old line's
+ *  progress, so after a reroute, a healed route, an added stop or an accepted faster route every
+ *  white callout of the new line counted as passed, for as far as the old line had been driven:
+ *  47 minutes into a drive, none showed for the rest of it (2026-10-07). */
+private fun resetNavLabelsForLine(style: Style) {
+    navLabelFeatures = emptyList()
+    navLabelFading.clear()
+    navLabelHanded.clear()
+    navLabelPendingCut = -1e12
+    runCatching {
+        style.getSourceAs<GeoJsonSource>(NAV_XLABEL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        uploadNavLabelFade(style)
+        setNavLabelCut(style, -1e12)
     }
 }
 

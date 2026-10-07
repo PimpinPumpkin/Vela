@@ -92,6 +92,10 @@ or leaves a side. It then fades over 1.2 s on its own layer (`NAV_ROADLABEL_FADE
 has one opacity for the whole layer. An opacity per callout would be data-driven and re-run
 symbol placement on every tick.
 
+"Passed" is a distance along the route line, so it starts over whenever the line changes: a
+reroute, an added stop, a faster route you accept. When it did not, the white callouts stayed
+hidden after the change for as far as you had already driven.
+
 The street the next turn enters gets a blue callout 30 m in. A ramp, fork or keep whose
 instruction names a numbered exit gets a green one `EXIT_CALLOUT_AHEAD_M = 70` m past the
 maneuver point, on the ramp. `ExitLabel.of` finds the number beside an exit word from a

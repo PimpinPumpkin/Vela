@@ -1938,6 +1938,11 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   their placement every tick.
 - The main layers' filter is one `atM` threshold, lifted on re-upload over any callout whose
   street was already let go within 60 m.
+- `atM` is measured along the current route line, so a new line starts the threshold over
+  (`resetNavLabelsForLine`, at the top of the label effect). It used to be reset only when
+  navigation started, and a reroute, a healed route, an added stop or an accepted faster
+  route left every white callout of the new line hidden for as far as the old line had been
+  driven.
 
 ### 4.10 Trips, replay and demo mode
 
