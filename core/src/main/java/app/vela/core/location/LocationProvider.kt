@@ -13,11 +13,22 @@ import app.vela.core.model.LatLng
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** Provider name on a fix that stands for the simulated position. */
+const val SIM_PROVIDER = "sim"
+/** Provider name on a fix from a demo drive or a trip replay. */
+const val REPLAY_PROVIDER = "replay"
 
 /** One point of a recorded trip, replayed as a synthetic [Location]. */
 data class ReplayFix(val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float)
@@ -56,6 +67,7 @@ class LocationProvider @Inject constructor(
     /** Most recent OS last-known across providers, falling back to our cache. */
     @SuppressLint("MissingPermission")
     fun lastKnown(): LatLng? {
+        pinned?.let { return it }
         val mgr = lm ?: return cachedLatLng()
         val best = PROVIDERS
             .filter { mgr.allProviders.contains(it) }
@@ -76,8 +88,39 @@ class LocationProvider @Inject constructor(
     // fixes with doppler ≈ 0 while parked and everything settles by itself; the battery delta
     // during active use is negligible (the GPS engine runs either way — the filter only gated
     // CALLBACKS, not the hardware).
+    fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 0f): Flow<Location> = channelFlow {
+        simulating.collectLatest { sim ->
+            (if (sim) simulatedUpdates() else deviceUpdates(minIntervalMs, minDistanceM)).collect { send(it) }
+        }
+    }
+
+    /** A pretend position (Settings > Diagnostics > Simulate my location). While set, [lastKnown]
+     *  and [updates] answer with it and the phone's own fixes are not asked for at all. The phone
+     *  map applies the setting itself; this is what makes the car screens follow it too, so a
+     *  demo on a head unit never shows where the phone really is. */
+    var pinned: LatLng?
+        get() = pinnedPoint
+        set(value) { pinnedPoint = value; simulating.value = value != null || replayActive }
+
+    @Volatile private var pinnedPoint: LatLng? = null
+    @Volatile private var replayActive = false
+    private val simulating = MutableStateFlow(false)
+    /** Fixes of a running [replay], so every collector of [updates] follows the same drive. */
+    private val mirrored = MutableSharedFlow<Location>(extraBufferCapacity = 16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    private fun simulatedUpdates(): Flow<Location> = channelFlow {
+        launch { mirrored.collect { send(it) } }
+        while (true) {
+            val p = pinnedPoint
+            if (p != null && !replayActive) {
+                send(Location(SIM_PROVIDER).apply { latitude = p.lat; longitude = p.lng; accuracy = 5f; time = System.currentTimeMillis() })
+            }
+            delay(1_000)
+        }
+    }
+
     @SuppressLint("MissingPermission")
-    fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 0f): Flow<Location> =
+    private fun deviceUpdates(minIntervalMs: Long, minDistanceM: Float): Flow<Location> =
         callbackFlow {
             val mgr = lm ?: run { close(); return@callbackFlow }
             // An explicit object, NOT the SAM lambda: the lambda only implements
@@ -138,22 +181,29 @@ class LocationProvider @Inject constructor(
      *  and that can start partway in: fixes before [startAt] are emitted with no wait, so the
      *  consumer runs through them to arrive at that moment in the right state. */
     fun replay(fixes: List<ReplayFix>, speed: () -> Float, startAt: Int): Flow<Location> = flow {
+        replayActive = true
+        simulating.value = true
+        try {
         var prevT: Long? = null
         for ((i, fix) in fixes.withIndex()) {
             while (i >= startAt && speed() <= 0f) delay(100)
             val gap = if (i < startAt) 0L else prevT?.let { ((fix.t - it) / speed().coerceAtLeast(0.1f)).toLong().coerceIn(0L, 2_000L) } ?: 0L
             if (gap > 0) delay(gap)
             prevT = fix.t
-            emit(
-                Location("replay").apply {
-                    latitude = fix.lat
-                    longitude = fix.lng
-                    bearing = fix.bearing
-                    this.speed = fix.speed
-                    accuracy = 5f
-                    time = fix.t // recorded fix time, so consumers can compute the real inter-fix dt
-                },
-            )
+            val loc = Location(REPLAY_PROVIDER).apply {
+                latitude = fix.lat
+                longitude = fix.lng
+                bearing = fix.bearing
+                this.speed = fix.speed
+                accuracy = 5f
+                time = fix.t // recorded fix time, so consumers can compute the real inter-fix dt
+            }
+            if (i >= startAt) mirrored.tryEmit(loc)
+            emit(loc)
+        }
+        } finally {
+            replayActive = false
+            simulating.value = pinnedPoint != null
         }
     }
 

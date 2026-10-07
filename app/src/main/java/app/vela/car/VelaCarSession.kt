@@ -68,7 +68,10 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
             // before Vela was set up on the phone.
             CarLocationAccess.granted.first { it }
             deps.locationProvider.updates().collect { loc ->
-                val gps = loc.provider == android.location.LocationManager.GPS_PROVIDER
+                // The simulated position counts as a fix. A demo drive's fixes do not: the phone
+                // feeds those to the session itself.
+                val gps = loc.provider == android.location.LocationManager.GPS_PROVIDER ||
+                    loc.provider == app.vela.core.location.SIM_PROVIDER
                 if (gps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
                     val speed = if (loc.hasSpeed()) loc.speed.toDouble() else null
                     deps.navSession.onLocation(LatLng(loc.latitude, loc.longitude), app.vela.ui.Units.imperial.value, speed)

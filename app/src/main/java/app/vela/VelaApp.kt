@@ -21,6 +21,7 @@ import javax.inject.Inject
 class VelaApp : Application(), coil.ImageLoaderFactory {
     @Inject lateinit var diag: DiagLog
     @Inject lateinit var http: okhttp3.OkHttpClient
+    @Inject lateinit var locationProvider: app.vela.core.location.LocationProvider
 
     /** Coil with a HARD memory-cache cap. The default budget is ~25% of the app's heap CLASS,
      *  and largeHeap makes that class huge - on a 512 MB large heap Coil happily retains up to
@@ -146,6 +147,10 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
             app.vela.offline.RegionPolys.ensureLoaded(this@VelaApp)
             app.vela.data.FlockCameras.ensureLoaded(this@VelaApp)
             app.vela.data.FlockCameras.refresh(this@VelaApp, app.vela.BuildConfig.FLOCK_MANIFEST_URL)
+        }
+        app.vela.ui.SimLocation.onChange = {
+            locationProvider.pinned = it
+            android.util.Log.i("VelaSim", "simulated location " + if (it != null) "on" else "off")
         }
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)

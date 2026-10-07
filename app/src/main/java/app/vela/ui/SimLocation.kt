@@ -20,12 +20,18 @@ object SimLocation {
     /** True while a simulated location is active. */
     val on: Boolean get() = point.value != null
 
+    /** Told of the point at start and on every change, so the location provider (which the car
+     *  screens read) pretends the same thing as the phone map. Set in [app.vela.VelaApp]. */
+    var onChange: ((LatLng?) -> Unit)? = null
+
     fun init(context: Context) {
         point.value = parse(prefs(context).getString(KEY, null))
+        onChange?.invoke(point.value)
     }
 
     fun set(context: Context, p: LatLng?) {
         point.value = p
+        onChange?.invoke(p)
         prefs(context).edit().apply {
             if (p == null) remove(KEY) else putString(KEY, "${p.lat},${p.lng}")
         }.apply()

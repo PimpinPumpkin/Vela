@@ -385,8 +385,12 @@ internal class NavController(
                 NavigationService.start(appContext)
                 // `adb shell setprop debug.vela.tune.demoSpeedup 3` runs the demo at a trip replay's
                 // speed, so playback-only behavior can be reproduced without a recorded trip.
+                var sawNav = false
                 locationProvider.replay(fixes, speedup = demoSpeedup()).collect { loc ->
                     if (replayJob !== coroutineContext[Job]) return@collect // superseded
+                    // Ended somewhere else (the car's End button): the trace stops with the drive.
+                    if (navSession.state.value.navigating) sawNav = true
+                    else if (sawNav) { coroutineContext[Job]?.cancel(); return@collect }
                     val here = LatLng(loc.latitude, loc.longitude)
                     _state.update {
                         it.copy(

@@ -246,7 +246,8 @@ class CarMapRenderer(
                 // parked, and taking them ungated jumped the arrow around a stationary car. The nav
                 // engine already gates the same way (GPS-only, ≤50 m). Before any puck (bootstrap),
                 // accept anything so browse shows a location immediately.
-                val goodGps = loc.provider == android.location.LocationManager.GPS_PROVIDER &&
+                val goodGps = (loc.provider == android.location.LocationManager.GPS_PROVIDER ||
+                    loc.provider == app.vela.core.location.SIM_PROVIDER || loc.provider == app.vela.core.location.REPLAY_PROVIDER) &&
                     (!loc.hasAccuracy() || loc.accuracy <= 50f)
                 if (!goodGps && puck != null) return@collect
                 val raw = LatLng(loc.latitude, loc.longitude)
@@ -257,7 +258,10 @@ class CarMapRenderer(
                 val course = if (loc.hasBearing() && speedMps > STOPPED_MPS) loc.bearing.toDouble() else routeHeading(here)
                 estimator.onFix(here.lat, here.lng, speedMps, course, android.os.SystemClock.elapsedRealtime())
                 targetPuck = here
-                if (puck == null) puck = here // first fix: snap into place, don't glide in from null
+                if (puck == null) {
+                    puck = here // first fix: snap into place, don't glide in from null
+                    android.util.Log.i("VelaCar", "first fix from ${loc.provider}")
+                }
                 if (showingWorld) {
                     // Leave the placeholder world view for the street view the map normally opens at.
                     showingWorld = false
