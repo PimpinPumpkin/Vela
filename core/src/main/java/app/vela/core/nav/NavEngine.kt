@@ -27,6 +27,10 @@ object NavEngine {
                                               // while MOVING it also counts DOUBLE - >90 m is never
                                               // jitter, so a clear wrong road reroutes in ~2 fixes
     private const val ARRIVE_RADIUS_M = 25.0
+    /** The step advances no farther than this from its turn at a crawl or a standstill. */
+    private const val ADVANCE_MIN_M = 5.0
+    /** In [NavState.spoken]: the turn-now line of the step has been said (0 and 1 are the bands). */
+    const val TURN_NOW_SLOT = 2
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
@@ -416,8 +420,13 @@ object NavEngine {
         // snaps the destination to the road, and parking 30-50 m short/off used to never arrive —
         // then "Rerouting" fired in the parking lot.
         val turnNowM = (v * 2.5).coerceIn(ARRIVE_RADIUS_M, 90.0)
+        // THE STEP MOVES ON WHEN THE CAR IS AT THE TURN, which at low speed is later than the
+        // voice says it. Both used to happen 25 m out, so a car waiting at a stop line 20 m short
+        // of its left turn was shown the turn after it, 0.9 miles on, and the road name under the
+        // car was the next road's (a real drive, 2026-10-07). At speed the two still coincide.
+        val advanceM = (v * 2.5).coerceIn(ADVANCE_MIN_M, 90.0)
         if (idxCur < maneuvers.lastIndex) {
-            if (dtn <= turnNowM) {
+            if (dtn <= turnNowM && TURN_NOW_SLOT !in spoken) {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
@@ -425,6 +434,9 @@ object NavEngine {
                     events += NavEvent.Speak(turnText, interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
+                spoken = spoken + TURN_NOW_SLOT
+            }
+            if (dtn <= advanceM) {
                 stepIndex = idxCur + 1
                 spoken = emptySet()
             }
@@ -527,7 +539,7 @@ object NavEngine {
             val lines = ArrayList<String>()
             if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), full)
             if (leg >= near * 0.85 && 1 !in said) lines += nav().inThen(spokenDistance(near, imperial), if (farSpoken || said.isNotEmpty()) short else full)
-            lines += now
+            if (TURN_NOW_SLOT !in said) lines += now
             // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
             out += if (i == fromStep && nearestFirst) lines.reversed() else lines
         }

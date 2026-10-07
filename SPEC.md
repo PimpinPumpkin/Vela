@@ -1363,6 +1363,10 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Prompt distances scale with speed v: far `max(400 m, v × 35 s)`, near `max(150 m, v × 10 s)`,
   each rounded to 50 m, and turn-now `v × 2.5 s` clamped to 25 to 90 m. `spoken` stores band
   slots, so each prompt speaks the true distance.
+- The step advances at `v × 2.5 s` clamped to `ADVANCE_MIN_M` (5 m) to 90 m, so at a crawl or a
+  standstill the card and the road name stay on the turn in hand until the car is at it. The
+  turn-now line is still said 25 m out, once (`TURN_NOW_SLOT` in `spoken`). Both used to happen
+  25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork

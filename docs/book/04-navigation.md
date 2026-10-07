@@ -73,6 +73,10 @@ Each step gets at most a far and a near prompt, then the short turn-now line. At
 floors apply. A prompt speaks the real distance, so a turn 40 m into a short step is not
 announced as "in 400 meters".
 
+The card moves to the next step when the car is at the turn: 2.5 s ahead at speed, and no more
+than 5 m ahead at a crawl. Waiting at a stop line before a turn, the card still shows that
+turn. The voice says "turn left" 25 m out either way.
+
 - The first prompt for a step leads with lane guidance when the step has lanes.
 - In English a later prompt for the same step drops the sign's "toward ..." tail.
 - A merge gets only the near prompt. The destination gets one near prompt.
