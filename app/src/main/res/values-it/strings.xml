@@ -831,9 +831,9 @@
     <string name="settings_places_source_open">Dati Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Entrambi</string>
-    <string name="settings_places_source_open_hint">I dati sui luoghi di Vela disegnano le attività sulla mappa, così spostarsi non interroga mai Google e funziona anche offline. Cercare o toccare un luogo passa comunque da Google per orari, recensioni e foto.</string>
-    <string name="settings_places_source_google_hint">Google viene interrogato per i luoghi in vista a ogni spostamento della mappa. Non si disegna nulla offline e ogni spostamento invia a Google la posizione della mappa.</string>
-    <string name="settings_places_source_both_hint">I dati di Vela disegnano la mappa e, quando smetti di spostarla, una sola richiesta a Google aggiunge ciò che manca. Le aggiunte compaiono solo online.</string>
+    <string name="settings_places_source_open_hint">Le icone vengono dai dati di Vela. Spostare la mappa non interroga mai Google e funziona anche offline.</string>
+    <string name="settings_places_source_google_hint">Le icone vengono da Google. Ogni spostamento invia a Google la posizione della mappa e offline non si disegna nulla.</string>
+    <string name="settings_places_source_both_hint">Le icone di Vela, più quello che Google ha in aggiunta quando smetti di spostare la mappa.</string>
     <string name="settings_places_source_more">Scopri di più</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">Da dove arrivano i dati sui luoghi di Vela</string>
@@ -1315,4 +1315,5 @@
     <string name="trip_shortcut_add">Aggiungi alla schermata Home</string>
     <string name="trip_shortcut_unsupported">Questa schermata Home non consente di aggiungere scorciatoie</string>
     <string name="trip_shortcut_themed">Come le icone a tema</string>
+    <string name="settings_places_source_note">Cercare o toccare un luogo passa comunque da Google per orari, recensioni e foto, qualunque opzione tu scelga.</string>
 </resources>

@@ -753,9 +753,9 @@
     <string name="settings_places_source_open">Vela-Daten</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Beide</string>
-    <string name="settings_places_source_open_hint">Velas eigene Ortsdaten zeichnen die Geschäfte auf der Karte, sodass beim Verschieben nie Google gefragt wird und es offline funktioniert. Für Öffnungszeiten, Rezensionen und Fotos fragt eine Suche oder das Antippen eines Ortes weiterhin Google.</string>
-    <string name="settings_places_source_google_hint">Bei jedem Verschieben werden die Orte im Ausschnitt bei Google abgefragt. Offline wird nichts gezeichnet, und jedes Verschieben sendet Ihre Kartenposition an Google.</string>
-    <string name="settings_places_source_both_hint">Velas Daten zeichnen die Karte, und sobald Sie aufhören zu verschieben, ergänzt eine einzelne Google-Anfrage, was fehlt. Die Ergänzungen erscheinen nur online.</string>
+    <string name="settings_places_source_open_hint">Die Symbole stammen aus Velas eigenen Daten. Beim Verschieben wird nie Google gefragt, und es funktioniert offline.</string>
+    <string name="settings_places_source_google_hint">Die Symbole stammen von Google. Jedes Verschieben sendet Ihre Kartenposition an Google, und offline wird nichts gezeichnet.</string>
+    <string name="settings_places_source_both_hint">Velas Symbole, dazu alles, was Google zusätzlich hat, sobald Sie aufhören zu verschieben.</string>
     <string name="settings_places_source_more">Mehr erfahren</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">Angetippte Orte bei Google nachschlagen</string>
@@ -1315,4 +1315,5 @@
     <string name="trip_shortcut_add">Zum Startbildschirm hinzufügen</string>
     <string name="trip_shortcut_unsupported">Dieser Startbildschirm kann keine Verknüpfungen anheften</string>
     <string name="trip_shortcut_themed">Wie designte Symbole</string>
+    <string name="settings_places_source_note">Eine Suche oder das Antippen eines Ortes fragt bei jeder Auswahl weiterhin Google nach Öffnungszeiten, Rezensionen und Fotos.</string>
 </resources>

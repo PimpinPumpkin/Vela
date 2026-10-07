@@ -813,9 +813,9 @@
     <string name="settings_places_source_open">Vela のデータ</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">両方</string>
-    <string name="settings_places_source_open_hint">Vela 独自の場所データで地図上の店舗を描画するため、地図を動かしても Google に問い合わせず、オフラインでも動作します。場所を検索したりタップしたりすると、営業時間・クチコミ・写真は Google から取得します。</string>
-    <string name="settings_places_source_google_hint">地図を動かすたびに、表示範囲の場所を Google に問い合わせます。オフラインでは何も表示されず、地図を動かすたびに表示位置が Google に送信されます。</string>
-    <string name="settings_places_source_both_hint">Vela のデータで地図を描画し、地図を動かし終えたときに 1 回だけ Google に問い合わせて足りない場所を補います。補われた場所はオンライン時のみ表示されます。</string>
+    <string name="settings_places_source_open_hint">アイコンは Vela 独自のデータから表示します。地図を動かしても Google に問い合わせず、オフラインでも動作します。</string>
+    <string name="settings_places_source_google_hint">アイコンは Google から取得します。地図を動かすたびに表示位置が Google に送信され、オフラインでは何も表示されません。</string>
+    <string name="settings_places_source_both_hint">Vela のアイコンに加えて、地図を動かし終えたときに Google にしかない場所を補います。</string>
     <string name="settings_places_source_more">詳細</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">タップした場所を Google で調べる</string>
@@ -1368,4 +1368,5 @@
     <string name="trip_shortcut_add">ホーム画面に追加</string>
     <string name="trip_shortcut_unsupported">このホーム画面はショートカットの固定に対応していません</string>
     <string name="trip_shortcut_themed">テーマアイコンに合わせる</string>
+    <string name="settings_places_source_note">どれを選んでも、場所を検索したりタップしたりすると、営業時間・クチコミ・写真は Google から取得します。</string>
 </resources>

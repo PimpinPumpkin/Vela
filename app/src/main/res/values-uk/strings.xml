@@ -757,9 +757,9 @@
     <string name="settings_places_source_open">Дані Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Обидва</string>
-    <string name="settings_places_source_open_hint">Власні дані Vela про місця малюють заклади на карті, тож рух картою ніколи не звертається до Google, і це працює офлайн. Пошук чи дотик до місця все одно йде в Google по години роботи, відгуки та фото.</string>
-    <string name="settings_places_source_google_hint">Щоразу, коли ви рухаєте карту, Vela запитує в Google місця у видимій області. Нічого не малюється офлайн, і кожен рух картою надсилає Google вашу позицію.</string>
-    <string name="settings_places_source_both_hint">Дані Vela малюють карту, а коли ви припиняєте рух картою, один запит до Google додає те, чого бракує. Додаткові місця показуються лише онлайн.</string>
+    <string name="settings_places_source_open_hint">Значки беруться з власних даних Vela. Рух картою ніколи не звертається до Google, і це працює офлайн.</string>
+    <string name="settings_places_source_google_hint">Значки беруться з Google. Кожен рух картою надсилає Google вашу позицію, і офлайн нічого не малюється.</string>
+    <string name="settings_places_source_both_hint">Значки Vela, а коли ви припиняєте рух картою, ще й те, що додатково має Google.</string>
     <string name="settings_places_source_more">Докладніше</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">Звідки беруться дані Vela про місця</string>
@@ -1350,4 +1350,5 @@
     <string name="trip_shortcut_add">Додати на головний екран</string>
     <string name="trip_shortcut_unsupported">Цей головний екран не підтримує закріплення ярликів</string>
     <string name="trip_shortcut_themed">Як тематичні значки</string>
+    <string name="settings_places_source_note">Пошук чи дотик до місця все одно йде в Google по години роботи, відгуки та фото, хоч би що ви вибрали.</string>
 </resources>

@@ -753,9 +753,9 @@
     <string name="settings_places_source_open">Datos de Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Ambos</string>
-    <string name="settings_places_source_open_hint">Los datos de lugares propios de Vela dibujan los negocios en el mapa, así que desplazarse por él nunca consulta a Google y funciona sin conexión. Al buscar o tocar un lugar se sigue recurriendo a Google para el horario, las reseñas y las fotos.</string>
-    <string name="settings_places_source_google_hint">Se consulta a Google por los lugares a la vista cada vez que desplazas el mapa. No se dibuja nada sin conexión y cada desplazamiento envía tu posición del mapa a Google.</string>
-    <string name="settings_places_source_both_hint">Los datos de Vela dibujan el mapa y, al dejar de desplazarlo, una única consulta a Google añade lo que falte. Esos extras solo aparecen con conexión.</string>
+    <string name="settings_places_source_open_hint">Los iconos salen de los datos propios de Vela. Desplazar el mapa nunca consulta a Google y funciona sin conexión.</string>
+    <string name="settings_places_source_google_hint">Los iconos vienen de Google. Cada desplazamiento envía tu posición del mapa a Google y no se dibuja nada sin conexión.</string>
+    <string name="settings_places_source_both_hint">Los iconos de Vela, más lo que Google tenga de más cuando dejas de desplazar el mapa.</string>
     <string name="settings_places_source_more">Más información</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">Buscar en Google los lugares que tocas</string>
@@ -1315,4 +1315,5 @@
     <string name="trip_shortcut_add">Añadir a la pantalla de inicio</string>
     <string name="trip_shortcut_unsupported">Esta pantalla de inicio no permite fijar accesos directos</string>
     <string name="trip_shortcut_themed">Como los iconos con tema</string>
+    <string name="settings_places_source_note">Al buscar o tocar un lugar se sigue consultando a Google el horario, las reseñas y las fotos, elijas lo que elijas.</string>
 </resources>

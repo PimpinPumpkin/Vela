@@ -832,9 +832,9 @@
     <string name="settings_places_source_open">Dados da Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Ambos</string>
-    <string name="settings_places_source_open_hint">Os dados de locais da própria Vela desenham os estabelecimentos no mapa, por isso arrastar o mapa nunca consulta a Google, e funciona offline. Pesquisar ou tocar num local continua a consultar a Google para horários, avaliações e fotos.</string>
-    <string name="settings_places_source_google_hint">A Google é consultada sobre os locais à vista sempre que arrasta o mapa. Nada é desenhado offline, e cada movimento envia a sua posição no mapa para a Google.</string>
-    <string name="settings_places_source_both_hint">Os dados da Vela desenham o mapa e, quando para de arrastar, um pedido à Google acrescenta o que faltar. Os extras só aparecem online.</string>
+    <string name="settings_places_source_open_hint">Os ícones vêm dos dados da própria Vela. Arrastar o mapa nunca consulta a Google, e funciona offline.</string>
+    <string name="settings_places_source_google_hint">Os ícones vêm da Google. Cada movimento envia a sua posição no mapa para a Google, e nada é desenhado offline.</string>
+    <string name="settings_places_source_both_hint">Os ícones da Vela, mais o que a Google tiver a mais quando para de arrastar.</string>
     <string name="settings_places_source_more">Saber mais</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">De onde vêm os dados de locais da Vela</string>
@@ -1316,4 +1316,5 @@
     <string name="trip_shortcut_add">Adicionar ao ecrã inicial</string>
     <string name="trip_shortcut_unsupported">Este ecrã inicial não permite fixar atalhos</string>
     <string name="trip_shortcut_themed">Como os ícones temáticos</string>
+    <string name="settings_places_source_note">Pesquisar ou tocar num local continua a consultar a Google para horários, avaliações e fotos, seja qual for a opção escolhida.</string>
 </resources>

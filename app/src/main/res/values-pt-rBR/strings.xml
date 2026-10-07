@@ -832,9 +832,9 @@
     <string name="settings_places_source_open">Dados do Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Ambos</string>
-    <string name="settings_places_source_open_hint">Os dados de locais do próprio Vela desenham os estabelecimentos no mapa, por isso arrastar o mapa nunca consulta o Google, e funciona off-line. Pesquisar ou tocar em um local continua consultando o Google para horários, avaliações e fotos.</string>
-    <string name="settings_places_source_google_hint">O Google é consultado sobre os locais à vista sempre que você arrasta o mapa. Nada é desenhado off-line, e cada movimento envia a sua posição no mapa ao Google.</string>
-    <string name="settings_places_source_both_hint">Os dados do Vela desenham o mapa e, quando você para de arrastar, uma solicitação ao Google acrescenta o que faltar. Os extras só aparecem on-line.</string>
+    <string name="settings_places_source_open_hint">Os ícones vêm dos dados do próprio Vela. Arrastar o mapa nunca consulta o Google, e funciona off-line.</string>
+    <string name="settings_places_source_google_hint">Os ícones vêm do Google. Cada movimento envia a sua posição no mapa ao Google, e nada é desenhado off-line.</string>
+    <string name="settings_places_source_both_hint">Os ícones do Vela, mais o que o Google tiver a mais quando você para de arrastar.</string>
     <string name="settings_places_source_more">Saiba mais</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">De onde vêm os dados de locais do Vela</string>
@@ -1316,4 +1316,5 @@
     <string name="trip_shortcut_add">Adicionar à tela inicial</string>
     <string name="trip_shortcut_unsupported">Esta tela inicial não permite fixar atalhos</string>
     <string name="trip_shortcut_themed">Como os ícones com tema</string>
+    <string name="settings_places_source_note">Pesquisar ou tocar em um local continua consultando o Google para horários, avaliações e fotos, seja qual for a opção escolhida.</string>
 </resources>

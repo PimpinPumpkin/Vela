@@ -820,9 +820,9 @@
     <string name="settings_places_source_open">Vela 数据</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">两者</string>
-    <string name="settings_places_source_open_hint">由 Vela 自己的地点数据绘制地图上的商家，平移地图时从不请求 Google，离线也能使用。搜索或点按某个地点时，营业时间、评价和照片仍来自 Google。</string>
-    <string name="settings_places_source_google_hint">每次平移地图都会向 Google 请求视野内的地点。离线时不显示任何内容，且每次平移都会把您的地图位置发送给 Google。</string>
-    <string name="settings_places_source_both_hint">由 Vela 的数据绘制地图，停止平移后再用一次 Google 请求补齐缺少的内容。补充内容仅在联网时显示。</string>
+    <string name="settings_places_source_open_hint">图标来自 Vela 自己的数据。平移地图时从不请求 Google，离线也能使用。</string>
+    <string name="settings_places_source_google_hint">图标来自 Google。每次平移都会把您的地图位置发送给 Google，离线时不显示任何内容。</string>
+    <string name="settings_places_source_both_hint">显示 Vela 的图标，停止平移后再补上 Google 额外提供的地点。</string>
     <string name="settings_places_source_more">了解详情</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">Vela 的地点数据来自哪里</string>
@@ -1387,4 +1387,5 @@
     <string name="trip_shortcut_add">添加到主屏幕</string>
     <string name="trip_shortcut_unsupported">此主屏幕不支持固定快捷方式</string>
     <string name="trip_shortcut_themed">匹配主题图标</string>
+    <string name="settings_places_source_note">无论选择哪一项，搜索或点按某个地点时，营业时间、评价和照片仍来自 Google。</string>
 </resources>

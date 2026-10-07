@@ -811,9 +811,9 @@
     <string name="settings_places_source_open">נתוני Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">שניהם</string>
-    <string name="settings_places_source_open_hint">נתוני המקומות של Vela משרטטים את העסקים על המפה, כך שגלילה במפה לעולם לא פונה ל-Google, וזה עובד גם ללא חיבור. חיפוש או הקשה על מקום עדיין פונים ל-Google לשעות, ביקורות ותמונות.</string>
-    <string name="settings_places_source_google_hint">Google נשאל על המקומות שבתצוגה בכל גלילה. שום דבר לא משורטט ללא חיבור, וכל גלילה שולחת ל-Google את מיקום המפה שלך.</string>
-    <string name="settings_places_source_both_hint">הנתונים של Vela משרטטים את המפה, וכשתפסיק לגלול בקשה אחת ל-Google מוסיפה את מה שחסר. התוספות מוצגות רק כשיש חיבור.</string>
+    <string name="settings_places_source_open_hint">הסמלים מגיעים מהנתונים של Vela עצמה. גלילה במפה לעולם לא פונה ל-Google, וזה עובד גם ללא חיבור.</string>
+    <string name="settings_places_source_google_hint">הסמלים מגיעים מ-Google. כל גלילה שולחת ל-Google את מיקום המפה שלך, ושום דבר לא משורטט ללא חיבור.</string>
+    <string name="settings_places_source_both_hint">הסמלים של Vela, ובנוסף מה שיש ל-Google מעבר לכך כשתפסיק לגלול.</string>
     <string name="settings_places_source_more">מידע נוסף</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">בדוק ב-Google מקומות שהקשת עליהם</string>
@@ -1305,4 +1305,5 @@
     <string name="trip_shortcut_add">הוסף למסך הבית</string>
     <string name="trip_shortcut_unsupported">מסך הבית הזה לא תומך בהצמדת קיצורי דרך</string>
     <string name="trip_shortcut_themed">כמו סמלים מעוצבים</string>
+    <string name="settings_places_source_note">חיפוש או הקשה על מקום עדיין פונים ל-Google לשעות, ביקורות ותמונות, בכל אפשרות שתבחר.</string>
 </resources>

@@ -753,9 +753,9 @@
     <string name="settings_places_source_open">Données Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Les deux</string>
-    <string name="settings_places_source_open_hint">Les données de lieux de Vela dessinent les commerces sur la carte : se déplacer n\'interroge jamais Google, et cela fonctionne hors ligne. Rechercher ou toucher un lieu passe toujours par Google pour les horaires, les avis et les photos.</string>
-    <string name="settings_places_source_google_hint">Google est interrogé pour les lieux affichés à chaque déplacement de la carte. Rien ne s\'affiche hors ligne, et chaque déplacement envoie votre position sur la carte à Google.</string>
-    <string name="settings_places_source_both_hint">Les données de Vela dessinent la carte et, dès que vous arrêtez de la déplacer, une seule requête Google ajoute ce qui manque. Ces compléments n\'apparaissent qu\'en ligne.</string>
+    <string name="settings_places_source_open_hint">Les icônes viennent des données de Vela. Déplacer la carte n\'interroge jamais Google, et cela fonctionne hors ligne.</string>
+    <string name="settings_places_source_google_hint">Les icônes viennent de Google. Chaque déplacement envoie votre position sur la carte à Google, et rien ne s\'affiche hors ligne.</string>
+    <string name="settings_places_source_both_hint">Les icônes de Vela, plus ce que Google a en supplément dès que vous arrêtez de déplacer la carte.</string>
     <string name="settings_places_source_more">En savoir plus</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">D\'où viennent les données de lieux de Vela</string>
@@ -1315,4 +1315,5 @@
     <string name="trip_shortcut_add">Ajouter à l\'écran d\'accueil</string>
     <string name="trip_shortcut_unsupported">Cet écran d\'accueil ne peut pas épingler de raccourcis</string>
     <string name="trip_shortcut_themed">Comme les icônes à thème</string>
+    <string name="settings_places_source_note">Rechercher ou toucher un lieu interroge toujours Google pour les horaires, les avis et les photos, quel que soit votre choix.</string>
 </resources>

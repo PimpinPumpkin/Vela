@@ -815,9 +815,9 @@
     <string name="settings_places_source_open">Vela 資料</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">兩者都用</string>
-    <string name="settings_places_source_open_hint">由 Vela 自己的地點資料繪製地圖上的商家，平移地圖時不會向 Google 發出請求，離線也能用。搜尋或點按地點時，仍會向 Google 取得營業時間、評論和相片。</string>
-    <string name="settings_places_source_google_hint">每次平移都會向 Google 請求畫面中的地點。離線時不會顯示任何地點，而且每次平移都會把你查看的地圖位置傳給 Google。</string>
-    <string name="settings_places_source_both_hint">由 Vela 的資料繪製地圖，停止平移後再用一次 Google 請求補上缺少的地點。補上的內容只在連線時顯示。</string>
+    <string name="settings_places_source_open_hint">圖示來自 Vela 自己的資料。平移地圖時不會向 Google 發出請求，離線也能用。</string>
+    <string name="settings_places_source_google_hint">圖示來自 Google。每次平移都會把你查看的地圖位置傳給 Google，離線時不會顯示任何地點。</string>
+    <string name="settings_places_source_both_hint">顯示 Vela 的圖示，停止平移後再補上 Google 額外提供的地點。</string>
     <string name="settings_places_source_more">瞭解詳情</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_source_more_title">Vela 的地點資料來自哪裡</string>
@@ -1368,4 +1368,5 @@
     <string name="trip_shortcut_add">加到主畫面</string>
     <string name="trip_shortcut_unsupported">這個主畫面不支援釘選捷徑</string>
     <string name="trip_shortcut_themed">配合主題圖示</string>
+    <string name="settings_places_source_note">無論選哪一項，搜尋或點按地點時，仍會向 Google 取得營業時間、評論和相片。</string>
 </resources>

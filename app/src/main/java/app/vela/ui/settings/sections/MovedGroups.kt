@@ -232,6 +232,8 @@ internal fun PlacesSourceGroup(topRow: Modifier = Modifier) {
                     },
                 ),
             )
+            // Said once, for all three: the choice is about the map's icons, nothing else.
+            Hint(stringResource(R.string.settings_places_source_note))
             // The short hints carry what matters; the rest (who maintains the data, where Vela
             // serves it from, what still touches Google) lives behind Learn more.
             var placesInfo by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }

@@ -312,9 +312,10 @@
     <string name="settings_places_source_open">Vela data</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Both</string>
-    <string name="settings_places_source_open_hint">Vela\'s own place data draws the businesses on the map, so panning around never asks Google, and it works offline. Which places lead is decided by what kind of place they are (hospitals, supermarkets, malls and campuses first), then brand and detail. Searching or tapping a place still goes to Google for hours, reviews and photos.</string>
-    <string name="settings_places_source_google_hint">Google is asked for the places in view every time you pan. Nothing draws offline, and every pan sends your map position to Google. Google\'s places are ranked by how many reviews they have, so the busiest name in a plaza takes the label even when it is not the anchor store.</string>
-    <string name="settings_places_source_both_hint">Vela\'s data draws the map, and once you stop panning one Google request adds anything it lacks. The extras show online only, and they arrive a beat after the map, so a few icons appear late and can take a label off a neighbor as they land.</string>
+    <string name="settings_places_source_open_hint">Icons come from Vela\'s own data. Panning never contacts Google, and it works offline.</string>
+    <string name="settings_places_source_google_hint">Icons come from Google. Every pan sends your map position to Google, and nothing draws offline.</string>
+    <string name="settings_places_source_both_hint">Vela\'s icons, plus anything extra Google has once you stop panning.</string>
+    <string name="settings_places_source_note">Searching, or tapping a place, still asks Google for hours, reviews and photos whichever you pick.</string>
     <string name="settings_places_source_more">Learn more</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">Look up tapped places on Google</string>

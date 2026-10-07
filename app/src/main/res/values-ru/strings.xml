@@ -757,9 +757,9 @@
     <string name="settings_places_source_open">Данные Vela</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Оба</string>
-    <string name="settings_places_source_open_hint">Организации на карте рисуются по собственным данным Vela, поэтому при перемещении карты запросы к Google не уходят, и всё работает офлайн. При поиске или нажатии на место часы работы, отзывы и фото по-прежнему берутся из Google.</string>
-    <string name="settings_places_source_google_hint">Google запрашивается о местах в видимой области при каждом перемещении карты. Офлайн не рисуется ничего, и каждое перемещение сообщает Google, какую область карты вы смотрите.</string>
-    <string name="settings_places_source_both_hint">Карту рисуют данные Vela, а когда вы перестаёте двигать карту, один запрос к Google добавляет то, чего в них не хватает. Эти дополнения видны только онлайн.</string>
+    <string name="settings_places_source_open_hint">Значки берутся из собственных данных Vela. При перемещении карты запросы к Google не уходят, и всё работает офлайн.</string>
+    <string name="settings_places_source_google_hint">Значки берутся из Google. Каждое перемещение сообщает Google, какую область карты вы смотрите, а офлайн не рисуется ничего.</string>
+    <string name="settings_places_source_both_hint">Значки Vela и всё, что есть у Google сверх них, когда вы перестаёте двигать карту.</string>
     <string name="settings_places_source_more">Подробнее</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">Искать нажатые места в Google</string>
@@ -1350,4 +1350,5 @@
     <string name="trip_shortcut_add">Добавить на главный экран</string>
     <string name="trip_shortcut_unsupported">Этот главный экран не умеет закреплять ярлыки</string>
     <string name="trip_shortcut_themed">Как тематические значки</string>
+    <string name="settings_places_source_note">При поиске или нажатии на место часы работы, отзывы и фото по-прежнему берутся из Google, что бы вы ни выбрали.</string>
 </resources>

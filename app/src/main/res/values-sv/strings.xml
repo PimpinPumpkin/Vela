@@ -753,9 +753,9 @@
     <string name="settings_places_source_open">Vela-data</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Båda</string>
-    <string name="settings_places_source_open_hint">Velas egna platsdata ritar företagen på kartan, så att panorering aldrig frågar Google, och det fungerar offline. Att söka eller trycka på en plats går fortfarande till Google för öppettider, recensioner och foton.</string>
-    <string name="settings_places_source_google_hint">Google tillfrågas om platserna i vyn varje gång du panorerar. Inget ritas offline, och varje panorering skickar din kartposition till Google.</string>
-    <string name="settings_places_source_both_hint">Velas data ritar kartan, och när du slutat panorera fyller en enda Google-förfrågan på med det som saknas. Tilläggen visas bara online.</string>
+    <string name="settings_places_source_open_hint">Ikonerna kommer från Velas egna data. Panorering frågar aldrig Google, och det fungerar offline.</string>
+    <string name="settings_places_source_google_hint">Ikonerna kommer från Google. Varje panorering skickar din kartposition till Google, och inget ritas offline.</string>
+    <string name="settings_places_source_both_hint">Velas ikoner, plus det Google har utöver dem när du slutat panorera.</string>
     <string name="settings_places_source_more">Läs mer</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">Slå upp platser du trycker på hos Google</string>
@@ -1328,4 +1328,5 @@
     <string name="trip_shortcut_add">Lägg till på startskärmen</string>
     <string name="trip_shortcut_unsupported">Den här startskärmen kan inte fästa genvägar</string>
     <string name="trip_shortcut_themed">Som ikoner med tema</string>
+    <string name="settings_places_source_note">Att söka eller trycka på en plats frågar fortfarande Google om öppettider, recensioner och foton, vilket du än väljer.</string>
 </resources>

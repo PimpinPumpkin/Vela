@@ -854,9 +854,9 @@
     <string name="settings_places_source_open">Vela-adat</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Mindkettő</string>
-    <string name="settings_places_source_open_hint">A Vela saját helyadata rajzolja ki az üzleteket a térképen, így a térkép mozgatása soha nem kérdezi meg a Google-t, és offline is működik. A keresés vagy egy helyre koppintás továbbra is a Google-höz fordul a nyitvatartásért, a véleményekért és a fotókért.</string>
-    <string name="settings_places_source_google_hint">A Vela minden mozgatásnál lekéri a Google-től a látott helyeket. Offline semmi nem rajzolódik ki, és minden mozgatás elküldi a térképpozíciódat a Google-nek.</string>
-    <string name="settings_places_source_both_hint">A Vela adata rajzolja a térképet, és amint abbahagyod a mozgatást, egyetlen Google-kérés kiegészíti azzal, ami hiányzik. A kiegészítések csak online látszanak.</string>
+    <string name="settings_places_source_open_hint">Az ikonok a Vela saját adataiból származnak. A térkép mozgatása soha nem fordul a Google-höz, és offline is működik.</string>
+    <string name="settings_places_source_google_hint">Az ikonok a Google-től származnak. Minden mozgatás elküldi a térképpozíciódat a Google-nek, és offline semmi nem rajzolódik ki.</string>
+    <string name="settings_places_source_both_hint">A Vela ikonjai, és amint abbahagyod a mozgatást, mindaz, amit a Google ezen felül ismer.</string>
     <string name="settings_places_source_more">Tudj meg többet</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">Megkoppintott helyek keresése a Google-ben</string>
@@ -1281,4 +1281,5 @@
     <string name="trip_shortcut_add">Hozzáadás a kezdőképernyőhöz</string>
     <string name="trip_shortcut_unsupported">Ez a kezdőképernyő nem tud parancsikonokat kitűzni</string>
     <string name="trip_shortcut_themed">A témázott ikonokhoz igazítva</string>
+    <string name="settings_places_source_note">A keresés vagy egy helyre koppintás bármelyik beállításnál a Google-től kéri le a nyitvatartást, a véleményeket és a fotókat.</string>
 </resources>
