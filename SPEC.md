@@ -2448,6 +2448,9 @@ when the feature ids match. Two requests at most.
   Call, Website, Share, Menu). The address shows only when the name repeats, the place is
   unrated, or there is no photo strip. No extra request is made per result. A closed place
   reads in plain red on dark surfaces (`themedStatusColor`).
+- A result's distance is from the point its search ranked from. A tapped map place and a saved
+  or recent place are looked up around their own point, so `MapViewModel.fromHere` sets their
+  distance from the user's position, or none without a fix.
 
 #### Suggestions and addresses
 

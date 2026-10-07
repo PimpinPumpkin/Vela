@@ -223,6 +223,9 @@ on-device address hits + address rows + Google's pages (nearby pass first) + amb
 - `rankBias` picks the point that the order and the shown distances are computed from. It is
   your position when you are within 50 km of the window's center. Otherwise Google ranks from
   the window center, so browsing another city does not reorder around you.
+- A place opened by tapping the map or from Saved and Recent is looked up around its own point,
+  so that lookup's distance is to itself. `fromHere` replaces it with the distance from you, or
+  with none when there is no fix.
 
 When the window is 50 km or more from you and no result's name matches the query, `homeNameHits`
 searches once around you. Results there that match the name exactly or up to generic words

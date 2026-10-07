@@ -1820,7 +1820,7 @@ class MapViewModel @Inject constructor(
             }
             if (full != null && _state.value.selected?.id == sp.id) {
                 // A name of your own stays on the sheet; the listing's fills in when they agree.
-                val enriched = full.copy(id = sp.id, name = if (app.vela.core.util.PlaceNames.agree(full.name, sp.name)) full.name else sp.name)
+                val enriched = fromHere(full.copy(id = sp.id, name = if (app.vela.core.util.PlaceNames.agree(full.name, sp.name)) full.name else sp.name))
                 _state.update { it.copy(selected = enriched) }
                 requestReviews(enriched)
                 fetchPhotos(enriched)
@@ -2043,6 +2043,12 @@ class MapViewModel @Inject constructor(
     // search bias skews ranking toward null island; no bias at all lets gl/hl regional ranking win.
     private fun plausibleBias(l: LatLng?): LatLng? =
         l?.takeUnless { kotlin.math.abs(it.lat) < 0.5 && kotlin.math.abs(it.lng) < 0.5 }
+
+    /** [p] with its distance measured from the user, or none without a fix. For a place found by
+     *  a lookup centered on the place itself (a tapped icon, a saved place): that lookup's
+     *  distance is to its own center, and read "10 ft" on every such place. */
+    private fun fromHere(p: Place): Place =
+        p.copy(distanceMeters = plausibleBias(_state.value.myLocation)?.distanceTo(p.location))
 
     /** Map settled after a user pan: offer "Search this area" while results show. */
     fun onCameraIdle(center: LatLng) {
@@ -4536,7 +4542,7 @@ class MapViewModel @Inject constructor(
             // Google answers with the local-script name even under hl=en (a Hebrew title over an
             // English app's Latin pin, user 2026-09-15): keep the map's own label when it is in
             // the app language's script and Google's is not (core NameScript, unit-tested).
-            val full = resolved?.first?.let { f -> f.copy(name = app.vela.core.util.NameScript.prefer(uiLang, f.name, placeholder.name)) }
+            val full = resolved?.first?.let { f -> fromHere(f.copy(name = app.vela.core.util.NameScript.prefer(uiLang, f.name, placeholder.name))) }
             // Remember the listing for an instant second tap, unless the session was still on the
             // slim flavor (no review count, no hours) and would pin a stripped listing for the
             // rest of the session. A later tap then resolves it again, fuller.
