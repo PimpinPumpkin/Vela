@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.vela.R
 import app.vela.ui.settings.GroupDivider
+import app.vela.ui.settings.settingsAnchor
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.Hint
@@ -122,7 +123,7 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         Text(
             stringResource(R.string.settings_house_numbers),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.settingsAnchor(stringResource(R.string.settings_house_numbers)).padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
         )
         listOf(
             app.vela.ui.HouseNumbers.NEAR to stringResource(R.string.settings_house_numbers_near),

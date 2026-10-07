@@ -34,6 +34,7 @@ import app.vela.R
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadRowSibling
 import app.vela.ui.settings.GroupDivider
+import app.vela.ui.settings.settingsAnchor
 import app.vela.ui.settings.Hint
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
@@ -168,7 +169,7 @@ internal fun PlacesOnMapGroup() {
                 stringResource(R.string.settings_poi_icon_size),
                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.settingsAnchor(stringResource(R.string.settings_poi_icon_size)).padding(top = 4.dp),
             )
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val sizeFocus = remember { List(3) { FocusRequester() } }

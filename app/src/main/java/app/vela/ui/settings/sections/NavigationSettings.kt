@@ -35,6 +35,7 @@ import app.vela.core.feedback.Haptics
 import app.vela.core.model.TravelMode
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.GroupDivider
+import app.vela.ui.settings.settingsAnchor
 import app.vela.ui.settings.Hint
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
@@ -169,7 +170,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Text(
             stringResource(R.string.settings_puck_size),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.settingsAnchor(stringResource(R.string.settings_puck_size)).padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
         )
         listOf(
             app.vela.ui.PuckStyle.SIZE_NORMAL to stringResource(R.string.settings_puck_size_normal),
@@ -187,7 +188,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Text(
             stringResource(R.string.settings_puck_style),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.settingsAnchor(stringResource(R.string.settings_puck_style)).padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
         )
         listOf(
             app.vela.ui.PuckStyle.STYLE_BLUE to stringResource(R.string.settings_puck_style_blue),
