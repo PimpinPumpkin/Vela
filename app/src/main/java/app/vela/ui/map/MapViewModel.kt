@@ -5185,7 +5185,7 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, selected = null) }
     }
 
-    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape }
+    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")

@@ -1085,6 +1085,7 @@
     <string name="place_avoid_tolls">Avoid tolls</string>
     <string name="place_avoid_highways">Avoid highways</string>
     <string name="place_avoid_ferries">Avoid ferries</string>
+    <string name="place_avoid_cameras">Avoid cameras</string>
     <string name="shortcut_home" translatable="false">Home</string>
     <string name="shortcut_work" translatable="false">Work</string>
     <string name="map_satellite_toggle">Satellite view</string>

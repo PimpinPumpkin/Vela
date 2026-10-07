@@ -1856,6 +1856,8 @@ spans, so it is one color end to end.
 - **Avoid surveillance cameras** re-ranks the alternates already offered, preferring the
   fewest-camera route within a small detour (at most the lesser of 25 percent of the ETA and 10
   minutes). It does not graph-route around cameras.
+  The route pickers' "Avoid cameras" chip is the same switch (`FlockRouteAlert`) and refetches
+  the routes when flipped.
 - **Try side streets around cameras** (off by default, nested under the re-rank) adds one
   candidate route when routes still pass cameras: for every route that does, `CameraDetour` groups
   its cameras into clusters (join distance 40 m, nearest first, at most 3) and offers the

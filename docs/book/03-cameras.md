@@ -13,6 +13,8 @@ everything else, all of which is off by default:
 - **Avoid surveillance cameras.** Each route in the picker shows how many cameras it passes
   ("3 cameras on this route"), the alternates pane names the route with the fewest, and Vela
   quietly moves a lower-camera route to the top when the extra time is small.
+  The route picker has the same switch as an "Avoid cameras" chip beside tolls, highways and
+  ferries, so it can be turned off for one trip.
 - **Try side streets around cameras**, shown only while the row above is on. When the leading
   route still passes cameras, Vela does what people do by hand: it puts a point on the street
   beside each camera, routes the trip through it, and offers the result at the top of the list if

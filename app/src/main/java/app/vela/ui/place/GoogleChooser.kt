@@ -485,6 +485,7 @@ fun GoogleStyleDirectionsPanel(
                                         shape = CircleShape,
                                         modifier = Modifier.dpadHighlight(CircleShape),
                                     )
+                                    AvoidCamerasChip()
                                 }
                                 if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
                                     Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.Top) {
@@ -680,4 +681,24 @@ internal fun SavedRouteChip(name: String, modifier: Modifier = Modifier) {
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
     }
+}
+
+/** The per-trip door to Settings > Navigation > "Avoid surveillance cameras" (discussion #676: it
+ *  was switched on once in Settings and forgotten, and a route that was not the fastest led the
+ *  list with no way to say "not this time" where the other avoid options are). Same switch, same
+ *  stickiness as the tolls, highways and ferries chips beside it. */
+@Composable
+internal fun AvoidCamerasChip() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val on = app.vela.ui.FlockRouteAlert.on.value
+    FilterChip(
+        selected = on,
+        onClick = {
+            app.vela.ui.FlockRouteAlert.set(context, !on)
+            app.vela.ui.RouteActions.camerasChanged?.invoke()
+        },
+        label = { Text(stringResource(R.string.place_avoid_cameras)) },
+        shape = CircleShape,
+        modifier = Modifier.dpadHighlight(CircleShape),
+    )
 }

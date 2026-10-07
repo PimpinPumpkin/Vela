@@ -215,6 +215,12 @@ object SavedActions {
     @Volatile var rename: ((place: app.vela.core.model.Place, name: String) -> Unit)? = null
 }
 
+/** The route pickers' "Avoid cameras" chip flips [FlockRouteAlert] itself and asks for the routes
+ *  again through here; a holder so MapScreen takes no new callback (it is at the method limit). */
+object RouteActions {
+    @Volatile var camerasChanged: (() -> Unit)? = null
+}
+
 object ShapeActions {
     @Volatile var delete: (() -> Unit)? = null
     @Volatile var edit: (() -> Unit)? = null

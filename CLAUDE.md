@@ -3846,6 +3846,13 @@ architecture note.
   then `detour pick: …`. It depends on the
   same-day waypoint work: Google prices every candidate through its stops with traffic, so the cap
   compare is honest. DRIVE only, and epoch-guarded like the re-rank.
+- **"Avoid cameras" chip in both route pickers (discussion #676, 2026-10-07).**
+  `AvoidCamerasChip` (GoogleChooser.kt, used by the classic panel too) sits after tolls,
+  highways and ferries. It flips the SAME switch as Settings > Navigation > Cameras
+  (`FlockRouteAlert`) and asks for the routes again through `RouteActions.camerasChanged` (a
+  holder in PlaceContent.kt, set in the view model's init, so MapScreen takes no callback).
+  Sticky like its neighbors. Checked on the 4a, Davis to Sacramento: chip on, routes refetched,
+  counts [5, 6], "5 cameras on this route" under the time.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.

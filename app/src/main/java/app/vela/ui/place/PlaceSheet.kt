@@ -1916,6 +1916,7 @@ fun DirectionsPanel(
                         shape = androidx.compose.foundation.shape.CircleShape,
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                     )
+                    AvoidCamerasChip()
                 }
                 // Honesty note: with a toggle on but no offline region covering the trip, the online
                 // routers cannot honor it and used to just quietly route through tolls/highways
