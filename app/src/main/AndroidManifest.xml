@@ -98,6 +98,10 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Vela">
+            <!-- Android Automotive: a navigation app may stay on screen while the car moves. Without
+                 this the car greys Vela out of its app list the moment it is in gear (seen on the
+                 emulator); a production car also wants the app to come from a store it trusts. -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
 
             <!-- Share TO Vela: a Google Maps share link, a URL, or a plain address from any
                  app's share sheet opens/imports/searches without the copy-paste dance. -->
@@ -154,6 +158,10 @@
             android:label="@string/app_name"
             android:exported="true"
             android:enabled="true">
+            <!-- Android Automotive: a navigation app may stay on screen while the car moves. Without
+                 this the car greys Vela out of its app list the moment it is in gear (seen on the
+                 emulator); a production car also wants the app to come from a store it trusts. -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -176,6 +184,10 @@
             android:label="@string/app_name_generic"
             android:exported="true"
             android:enabled="false">
+            <!-- Android Automotive: a navigation app may stay on screen while the car moves. Without
+                 this the car greys Vela out of its app list the moment it is in gear (seen on the
+                 emulator); a production car also wants the app to come from a store it trusts. -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

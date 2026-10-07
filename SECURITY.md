@@ -42,7 +42,7 @@ On every push to `main` and `canary`, on every pull request, and weekly
   public at https://scorecard.dev/viewer/?uri=github.com/PimpinPumpkin/Vela
 
 Every GitHub Action the workflows use is pinned to an exact commit, and workflows get only
-the token permissions they need.
+the token permissions they need. Secret scanning with push protection is on.
 
 These are tools, and tools miss things. The project is written with heavy use of AI
 assistants and reviewed by one maintainer; if you read the code and something looks wrong,

@@ -3940,8 +3940,13 @@ architecture note.
   `-no-window -port 5580`; homebrew's avdmanager cannot see the SDK's images, so the AVD's
   config.ini was written by hand; `screencap -d <display id>` because the car has two displays;
   the car's user is 10): Vela fills the map panel and was picked over the built-in placeholder.
-  NOT done: no automotive feature declared, not marked distraction-optimized, not tried with the
-  car "moving", so a real car may still cover it while driving.
+  MOVING (`adb shell cmd car_service emulate-driving-state drive`, driving state 2): Vela in the
+  map panel stays on screen, but the car greyed Vela's icon out of its app list and a tap did
+  nothing, because the app was not marked distraction-optimized. MainActivity and both aliases
+  now carry `<meta-data android:name="distractionOptimized" android:value="true"/>`; with it the
+  icon is live while driving and opens the map. The emulator trusts that mark from any app; a
+  production car also requires an install source it trusts, so a sideloaded Vela may still be
+  greyed out there. No automotive feature is declared.
 - **compileSdk 37 and OkHttp 5.5 (2026-10-06).** OkHttp 5 and the newer androidx libraries refuse
   to build against 36 (the AAR metadata check). 37 changes no runtime behavior; targetSdk stays
   35. OkHttp 5 needed no code change. Checked on the 4a: fresh map tiles (MapLibre's own client
