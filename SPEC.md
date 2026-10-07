@@ -2578,7 +2578,8 @@ it with regexes.
   arrival card of a drive has "Save parking spot" (`ParkingActions.saveHere`), which saves the
   current position as the button does. A walk, a ride or a transit trip does not offer it.
   "Find my car" opens the spot as a sheet whose facts line gives the distance from you and how
-  long ago it was saved (`ParkingActions.parkedAt`).
+  long ago it was saved (`ParkingActions.parkedAt`). On a key-first device the arrival card opens
+  with focus on Done, and each of its buttons draws the focus ring.
 - Imports accept GPX, KML and GeoJSON including Google Takeout (`core/data/PlaceImport`). GPX
   is latitude first; KML and GeoJSON are longitude first. A KML placemark with several
   coordinate tuples is skipped. Only name, coordinate and a given address are taken. Ids derive

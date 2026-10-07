@@ -107,6 +107,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadFieldEscape
+import app.vela.ui.dpadAutoFocus
 import app.vela.ui.dpadHighlight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -1241,12 +1242,20 @@ fun ArrivalSummary(
                 Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.driven_route_title), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                androidx.compose.material3.OutlinedButton(onClick = { naming = true }, modifier = Modifier.fillMaxWidth()) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { naming = true },
+                    modifier = Modifier.fillMaxWidth().dpadHighlight(androidx.compose.material3.ButtonDefaults.outlinedShape),
+                ) {
                     Text(stringResource(R.string.driven_route_save))
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+            // Key-first devices: the card opens on Done, so OK ends the trip.
+            val doneFocus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+            Button(
+                onClick = onDone,
+                modifier = Modifier.fillMaxWidth().dpadAutoFocus(doneFocus).dpadHighlight(androidx.compose.material3.ButtonDefaults.shape),
+            ) {
                 Text(stringResource(R.string.nav_done))
             }
         }
