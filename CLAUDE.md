@@ -3940,9 +3940,11 @@ architecture note.
   effort and logs one line (`foursquare:`, `osm: N named places marked closed`, `wikidata:`);
   `FSQ_CLOSED=off` / `WD_CLOSED=off` skip two of them. `FSQ_HF_TOKEN` (repo secret, optional)
   switches the Foursquare read to the newest gated release on Hugging Face; the `foursquare:`
-  log line ends with the source used, so a wave that fell back to the mirror is visible. The
-  token path was NOT run when it was written (no token on the build machine): check that line
-  on the first bake after the secret is set. District of Columbia box: 1,499 + 104 + 1
+  log line ends with the source used, so a wave that fell back to the mirror is visible. Run
+  with a token on 2026-10-06: the District of Columbia box matched 1,838 rows against the
+  2026-09-15 release (1,527 on the mirror) and the step added no measurable time. A 403 from
+  Hugging Face means the account has not accepted the dataset's terms (or a fine-grained token
+  lacks gated-repo read access), and DuckDB reports it as "HTTP 0". District of Columbia box: 1,499 + 104 + 1
   of 82,217. THREE THINGS LEARNED: Overture's `update_time` is its import date, not a sign the
   place is alive (a first cut that spared rows "refreshed since the mirror" spared 1,473 of
   1,527); Overture's confidence is not either (closed restaurants at 0.92 to 0.99); and the
