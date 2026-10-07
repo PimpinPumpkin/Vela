@@ -4069,6 +4069,13 @@ architecture note.
   workflow runs from `main` only, so a change takes effect when canary merges. Try a change with
   `GH_TOKEN=... python3 scripts/issue-triage.py --dry-run <issue number>`, which prints and posts
   nothing.
+- **Discussions are questions only (2026-10-07).** The categories are Q&A, Announcements and
+  Show and tell; Ideas, General and Polls were deleted because bugs and requests filed there
+  were never tracked or closed (three in one week). `.github/DISCUSSION_TEMPLATE/q-a.yml` is the
+  Q&A form (the file name must equal the category's slug) with a required "not a bug or a
+  request" checkbox, and the new-issue page's link (`ISSUE_TEMPLATE/config.yml`) opens it
+  directly. Close a discussion once it is answered; one that is really a bug or a request gets
+  a pointer to the form and is closed. Both files are read from `main`.
 - **Browse-follow tilt (PR #673, 2026-10-06).** The free-drive follow ticker gates every camera
   write on `!shoving[0]` as it does on `scaling`, and `browseUserTilt` holds the gesture's tilt as
   the ticker's tilt target (attitude ease and the idle-settling test both). It is cleared only by

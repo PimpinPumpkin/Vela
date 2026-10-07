@@ -90,6 +90,9 @@ every open issue is something that can actually be acted on.
   temperature if you have a way to read it, or a screen recording of the lag. Add the
   diagnostics export, and the version you are on. The current stable is fine; a report on a
   build older than that is closed, so update first.
+- **Discussions are for questions only.** Something broken is a bug report and something you
+  want added is a feature request; both go through the issue forms, where they are tracked and
+  closed. A bug or a request posted as a discussion is closed with a pointer to the form.
 - **Feature requests are read, not voted on.** The maintainer decides. A request that
   does not fit the project is closed as not planned, without a debate, and stays
   closed; reopening it or filing it again under another title is not a discussion.
