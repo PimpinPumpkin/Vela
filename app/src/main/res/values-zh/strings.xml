@@ -402,7 +402,6 @@
     <!-- welcome: WelcomeScreen.kt -->
     <string name="welcome_tagline">地图与导航，去谷歌化。</string>
     <string name="welcome_feature_no_tracking_title">无追踪</string>
-    <string name="welcome_feature_no_tracking_body">无 Google 账号，无广告，无数据分析。您的搜索只留在您的设备上。</string>
     <string name="welcome_feature_places_title">真实的地点与路线</string>
     <string name="welcome_feature_places_body">实时搜索、评价、照片、公交，以及考虑路况的路线。</string>
     <string name="welcome_feature_open_source_title">免费且开源</string>

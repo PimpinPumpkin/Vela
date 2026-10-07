@@ -384,7 +384,6 @@
     <string name="steps_continue">המשך</string>
     <string name="welcome_tagline">מפות &amp; ניווט, ללא Google.</string>
     <string name="welcome_feature_no_tracking_title">ללא מעקב</string>
-    <string name="welcome_feature_no_tracking_body">ללא חשבון Google, ללא פרסומות, ללא ניתוח נתונים. החיפושים שלך נשארים במכשיר שלך.</string>
     <string name="welcome_feature_places_title">מקומות &amp; מסלולים אמיתיים</string>
     <string name="welcome_feature_places_body">חיפוש חי, ביקורות, תמונות, תחבורה ציבורית, ומסלולים מודעי-תנועה.</string>
     <string name="welcome_feature_open_source_title">חינמי &amp; קוד פתוח</string>

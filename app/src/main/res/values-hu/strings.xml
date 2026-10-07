@@ -462,7 +462,6 @@
     <string name="steps_continue">Tovább</string>
     <string name="welcome_tagline">Térképek és navigáció, degoogled.</string>
     <string name="welcome_feature_no_tracking_title">Nincs nyomkövetés</string>
-    <string name="welcome_feature_no_tracking_body">Nincs Google-fiók, nincs reklám, nincs analitika. A kereséseid az eszközödön maradnak.</string>
     <string name="welcome_feature_places_title">Valódi helyek és útvonalak</string>
     <string name="welcome_feature_places_body">Élő keresés, vélemények, fotók, tömegközlekedés és forgalomfüggő útvonaltervezés.</string>
     <string name="welcome_feature_open_source_title">Ingyenes és nyílt forráskódú</string>

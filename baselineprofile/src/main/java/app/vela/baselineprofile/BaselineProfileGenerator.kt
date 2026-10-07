@@ -28,6 +28,8 @@ class BaselineProfileGenerator {
         startActivityAndWait()
         device.waitForIdle()
         device.wait(Until.findObject(By.text("Get started")), 2000)?.click()
+        // The Google choice, left on its default: the paths that talk to Google are the hot ones.
+        device.wait(Until.findObject(By.text("Continue")), 2000)?.click()
         dismissPrompts()
         Thread.sleep(5000) // style + first tiles settle
         dismissPrompts() // the offers that wait for a first fix or a network answer

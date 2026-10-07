@@ -4395,7 +4395,10 @@ Regressing one of these blocks a release.
   `CONSENT` to `PENDING` is dropped.
 - The hidden WebViews run Google's JavaScript with no account, for data only a browser engine
   is served. No sign-in is offered.
-- Permissions are asked in context. Onboarding is welcome, location, notifications, voice. A
+- Onboarding is welcome, the Google choice, location, notifications, voice. The choice page
+  (`GoogleChoice` in `WelcomeScreen.kt`) sets `GoogleFree` before `MapScreen` is composed, so
+  no request to Google is made before the answer. "Use Google" is preselected.
+- Permissions are asked in context. A
   coarse-only grant gets a one-time explainer and a true accuracy circle. Navigation needs fine
   location and offers an upgrade dialog. A permanently denied locate tap opens system settings.
 - `MemoryPressure` passes `onTrimMemory` to registered releasers, and a new large or native

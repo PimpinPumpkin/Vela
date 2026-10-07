@@ -353,7 +353,6 @@
     <string name="steps_continue">Прямуйте далі</string>
     <string name="welcome_tagline">Карти й навігація без Google.</string>
     <string name="welcome_feature_no_tracking_title">Без стеження</string>
-    <string name="welcome_feature_no_tracking_body">Без облікового запису Google, без реклами, без аналітики, ваші пошуки залишаються на пристрої.</string>
     <string name="welcome_feature_places_title">Справжні місця й маршрути</string>
     <string name="welcome_feature_places_body">Живий пошук, відгуки, фото, транспорт і маршрути з урахуванням трафіку.</string>
     <string name="welcome_feature_open_source_title">Безкоштовний і з відкритим кодом</string>

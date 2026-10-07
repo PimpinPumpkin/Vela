@@ -390,7 +390,6 @@
     <string name="steps_continue">Continuar</string>
     <string name="welcome_tagline">Mapas e navegação, sem Google.</string>
     <string name="welcome_feature_no_tracking_title">Sem rastreamento</string>
-    <string name="welcome_feature_no_tracking_body">Sem conta Google, sem anúncios, sem análises: suas pesquisas ficam no seu dispositivo.</string>
     <string name="welcome_feature_places_title">Locais e rotas reais</string>
     <string name="welcome_feature_places_body">Pesquisa ao vivo, avaliações, fotos, transporte público e direções sensíveis ao trânsito.</string>
     <string name="welcome_feature_open_source_title">Gratuito e de código aberto</string>

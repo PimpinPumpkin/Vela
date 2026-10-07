@@ -353,7 +353,6 @@
     <string name="steps_continue">Continúa</string>
     <string name="welcome_tagline">Mapas y navegación, sin Google.</string>
     <string name="welcome_feature_no_tracking_title">Sin rastreo</string>
-    <string name="welcome_feature_no_tracking_body">Sin cuenta de Google, sin anuncios, sin analíticas: tus búsquedas permanecen en tu dispositivo.</string>
     <string name="welcome_feature_places_title">Lugares y rutas reales</string>
     <string name="welcome_feature_places_body">Búsqueda en directo, reseñas, fotos, transporte e indicaciones con tráfico.</string>
     <string name="welcome_feature_open_source_title">Gratis y de código abierto</string>

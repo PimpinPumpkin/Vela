@@ -370,7 +370,9 @@ not carry the browser identity.
 
 One switch in Settings > Privacy (`ui/GoogleFree`, pref `google_free`, off by default),
 mirrored into the core module's `NoGoogle` flag and checked wherever a Google request would
-start. With it on:
+start. A new install is asked first: the page after the welcome screen (`GoogleChoice` in
+`WelcomeScreen.kt`) offers "Use Google", preselected, and "Do not use Google", with what each
+gives and sends, and sets the switch before the map is composed. With it on:
 
 - Search answers from Photon and the downloaded place packs: names and addresses, and
   categories only where a region is downloaded. Google's autocomplete returns nothing, so the

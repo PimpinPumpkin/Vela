@@ -390,7 +390,6 @@
     <string name="steps_continue">Doorgaan</string>
     <string name="welcome_tagline">Kaarten en navigatie, gedegoogeld.</string>
     <string name="welcome_feature_no_tracking_title">Geen tracking</string>
-    <string name="welcome_feature_no_tracking_body">Geen Google-account, geen advertenties, geen analyse, uw zoekopdrachten blijven op uw toestel.</string>
     <string name="welcome_feature_places_title">Echte plaatsen en routes</string>
     <string name="welcome_feature_places_body">Live zoeken, recensies, foto\'s, OV en verkeersbewuste routes.</string>
     <string name="welcome_feature_open_source_title">Gratis en open source</string>

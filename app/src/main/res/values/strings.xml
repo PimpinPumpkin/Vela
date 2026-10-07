@@ -719,12 +719,22 @@
     <!-- welcome: WelcomeScreen.kt -->
     <string name="welcome_tagline">Maps &amp; navigation, degoogled.</string>
     <string name="welcome_feature_no_tracking_title">No tracking</string>
-    <string name="welcome_feature_no_tracking_body">No Google account, no ads, no analytics. Your searches stay on your device.</string>
+    <string name="welcome_feature_private_body">No account, no ads, no analytics, and no Vela server.</string>
     <string name="welcome_feature_places_title">Real places &amp; routes</string>
     <string name="welcome_feature_places_body">Live search, reviews, photos, transit, and traffic-aware directions.</string>
     <string name="welcome_feature_open_source_title">Free &amp; open source</string>
     <string name="welcome_feature_open_source_body">GPLv3, built for GrapheneOS and other de-Googled phones.</string>
     <string name="welcome_get_started">Get started</string>
+    <string name="welcome_continue">Continue</string>
+    <string name="welcome_google_title">Should Vela use Google?</string>
+    <string name="welcome_google_intro">Either way there is no account and nothing to sign in to.</string>
+    <string name="welcome_google_on_title">Use Google</string>
+    <string name="welcome_google_on_gives">You get search, reviews, photos, opening hours, live traffic and Street View.</string>
+    <string name="welcome_google_on_sends">Google gets your searches, the places you open, each trip\'s start and end, and your position when a drive reroutes or checks traffic. Where Vela has no place data, it also gets the map area on screen. No account is attached, but Google sees your IP address.</string>
+    <string name="welcome_google_off_title">Do not use Google</string>
+    <string name="welcome_google_off_gives">Nothing is sent to Google.</string>
+    <string name="welcome_google_off_sends">Search, places and routes come from OpenStreetMap and other open data. Community-run services answer them and get your searches and trips, unless you download the region. There are no reviews, photos, live traffic or Street View, and opening hours are often missing.</string>
+    <string name="welcome_google_later">You can change this in Settings, under Privacy.</string>
     <string name="whatsnew_title">What\'s new in %1$s</string> <!-- format -->
     <string name="whatsnew_got_it">Got it</string>
     <string name="whatsnew_full_notes">Full notes</string>

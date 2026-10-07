@@ -402,7 +402,6 @@
     <!-- welcome: WelcomeScreen.kt -->
     <string name="welcome_tagline">地図とナビを、脱Googleで。</string>
     <string name="welcome_feature_no_tracking_title">トラッキングなし</string>
-    <string name="welcome_feature_no_tracking_body">Google アカウントなし、広告なし、アナリティクスなし。検索内容は端末内にとどまります。</string>
     <string name="welcome_feature_places_title">リアルな場所情報とルート</string>
     <string name="welcome_feature_places_body">リアルタイム検索、クチコミ、写真、公共交通機関、交通状況を反映した経路。</string>
     <string name="welcome_feature_open_source_title">無料・オープンソース</string>

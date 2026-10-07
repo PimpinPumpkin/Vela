@@ -353,7 +353,6 @@
     <string name="steps_continue">Continuer</string>
     <string name="welcome_tagline">Cartes et navigation, dégooglisées.</string>
     <string name="welcome_feature_no_tracking_title">Aucun suivi</string>
-    <string name="welcome_feature_no_tracking_body">Pas de compte Google, pas de publicité, pas d\'analyse, vos recherches restent sur votre appareil.</string>
     <string name="welcome_feature_places_title">Vrais lieux et itinéraires</string>
     <string name="welcome_feature_places_body">Recherche en direct, avis, photos, transports et itinéraires tenant compte du trafic.</string>
     <string name="welcome_feature_open_source_title">Gratuit et open source</string>

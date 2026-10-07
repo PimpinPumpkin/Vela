@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # First-run flow, D-pad-first:
-#   (a) the Welcome screen opens focused on Get-started, and OK advances;
+#   (a) the Welcome screen opens focused on Get-started, and OK advances to the Google choice
+#       page, which opens focused on Continue;
 #   (b) each onboarding dialog (VelaDialog) opens focused on its safe "Not now" button.
 # Clears app data to force the first run, then re-grants location so no system permission dialog
 # interrupts (that dialog is AOSP, out of scope). docs/dpad.md.
@@ -17,6 +18,11 @@ launch_fresh 3.5
 assert_on_screen "Get started"
 assert_focus_ytop_between 400 660 "Welcome Get-started button (bottom)"
 key "$K_OK" 2                                    # advance past Welcome
+
+# (a2) the Google choice page opens focused on Continue, which keeps the default.
+assert_on_screen "Continue"
+assert_something_focused "Google choice page (Continue)"
+key "$K_OK" 2
 
 # (b) first onboarding dialog — its dismiss button is focused.
 assert_on_screen "Not now"

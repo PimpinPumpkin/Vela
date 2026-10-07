@@ -390,7 +390,6 @@
     <string name="steps_continue">Prosegui</string>
     <string name="welcome_tagline">Mappe e navigazione, degoogled.</string>
     <string name="welcome_feature_no_tracking_title">Nessun tracciamento</string>
-    <string name="welcome_feature_no_tracking_body">Nessun account Google, nessuna pubblicità, nessuna analisi: le tue ricerche restano sul dispositivo.</string>
     <string name="welcome_feature_places_title">Luoghi e percorsi reali</string>
     <string name="welcome_feature_places_body">Ricerca in tempo reale, recensioni, foto, mezzi pubblici e indicazioni che tengono conto del traffico.</string>
     <string name="welcome_feature_open_source_title">Gratuita e open source</string>

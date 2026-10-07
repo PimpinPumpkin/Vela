@@ -49,8 +49,8 @@ requests are in [PRIVACY.md](../PRIVACY.md).
 
 ## Can I use Vela without Google at all?
 
-Yes. **Settings > Privacy > "Use Vela without Google"** turns off every request to a Google
-host: places on the map come from Vela's own data, search uses OpenStreetMap and the regions
+Yes. The first run asks, and **Settings > Privacy > "Use Vela without Google"** is the same
+switch afterward. It turns off every request to a Google host: places on the map come from Vela's own data, search uses OpenStreetMap and the regions
 you have downloaded, routes come from the open routers, and nothing else asks Google (no
 Street View, no traffic overlay, no satellite close-ups, no reviews or photos). Download the region you live in under Settings > Offline
 maps and the map, search, addresses, routing and navigation all work with no signal too.

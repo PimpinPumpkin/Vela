@@ -16,6 +16,7 @@ dismiss_onboarding() {
 goto_map() {
   launch_fresh 3.5
   if on_screen "Get started"; then key "$K_OK" 2; fi
+  if on_screen "Continue"; then key "$K_OK" 2; fi   # the Google choice page, left on its default
   dismiss_onboarding
 }
 

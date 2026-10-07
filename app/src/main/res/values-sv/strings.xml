@@ -353,7 +353,6 @@
     <string name="steps_continue">Fortsätt</string>
     <string name="welcome_tagline">Kartor &amp; navigering, avgooglade.</string>
     <string name="welcome_feature_no_tracking_title">Ingen spårning</string>
-    <string name="welcome_feature_no_tracking_body">Inget Google-konto, ingen reklam, ingen analys, dina sökningar stannar på din enhet.</string>
     <string name="welcome_feature_places_title">Riktiga platser &amp; rutter</string>
     <string name="welcome_feature_places_body">Sökning i realtid, recensioner, foton, kollektivtrafik och trafikmedvetna vägbeskrivningar.</string>
     <string name="welcome_feature_open_source_title">Fri &amp; öppen källkod</string>

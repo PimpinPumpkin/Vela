@@ -230,7 +230,7 @@ adb:
 | Street View | The panorama | Back disengages, then leaves full screen, then closes |
 | Settings hub | The Back button, or the row of the page just left | Back, to the map |
 | Settings page | The Back button | Back, to the hub |
-| Welcome | Get started | OK |
+| Welcome, then the Google choice page | Get started, then Continue | OK. Back on the choice page returns to Welcome |
 | `VelaDialog` | The dismiss button. Arrows reach confirm | Back |
 | `VelaMenu` | The first item | Back |
 | Time and date picker (`PickerDialog`), Your lists (`ListsSheet`), voice capture (`VoiceCaptureDialog`) | Their OK, New list and Done buttons | Back |

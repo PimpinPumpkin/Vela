@@ -394,7 +394,6 @@
     <string name="steps_continue">Jedź dalej</string>
     <string name="welcome_tagline">Mapy i nawigacja, odgooglowane.</string>
     <string name="welcome_feature_no_tracking_title">Bez śledzenia</string>
-    <string name="welcome_feature_no_tracking_body">Bez konta Google, bez reklam, bez analityki, Twoje wyszukiwania zostają na urządzeniu.</string>
     <string name="welcome_feature_places_title">Prawdziwe miejsca i trasy</string>
     <string name="welcome_feature_places_body">Wyszukiwanie na żywo, opinie, zdjęcia, komunikacja i trasy uwzględniające ruch.</string>
     <string name="welcome_feature_open_source_title">Darmowe i otwartoźródłowe</string>

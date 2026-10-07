@@ -75,7 +75,6 @@
     <string name="place_swap_start_destination">Vaheta lähte- ja sihtpunkt</string>
     <string name="welcome_tagline">Kaardid ja tee juhatamine ilma Google\'i abita.</string>
     <string name="welcome_feature_no_tracking_title">Ei mingit jälitamist</string>
-    <string name="welcome_feature_no_tracking_body">Pole vaja Google\'i kontot, ei kuvata reklaame ega kasutata analüütikat. Sinu otsingud jäävad sinu nutiseadmesse.</string>
     <string name="welcome_feature_places_title">Päris kohad ja teekonnad</string>
     <string name="welcome_feature_places_body">Otsing reaalajas, arvustused, fotod, ühistransport ja liiklustingimustega arvestamine.</string>
     <string name="welcome_feature_open_source_title">Vaba ja avatud lähtekoodiga</string>

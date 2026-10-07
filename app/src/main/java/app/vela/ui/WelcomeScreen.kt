@@ -20,22 +20,32 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -50,9 +60,26 @@ import app.vela.R
 import app.vela.ui.rememberDpadFirstDevice
 import app.vela.ui.dpadHighlight
 
-/** First-run welcome — what Vela is and why, then a single Get-started button. */
+/** First run: what Vela is, then the one choice that decides what leaves the phone. Nothing
+ *  behind this screen is composed until both are done, so no request is made before the answer. */
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    if (step == 0) {
+        WelcomeIntro(onNext = { step = 1 })
+    } else {
+        val context = LocalContext.current
+        androidx.activity.compose.BackHandler { step = 0 }
+        GoogleChoice(onContinue = { useGoogle ->
+            GoogleFree.set(context, !useGoogle)
+            onGetStarted()
+        })
+    }
+}
+
+/** What Vela is and why, then a single Get-started button. */
+@Composable
+private fun WelcomeIntro(onNext: () -> Unit) {
     // Scrollable so the Get-started button is always reachable — on a small D-pad screen
     // (e.g. 480×640 keypad phone) the fixed layout pushed the button off the bottom with no
     // way to scroll to it, so a D-pad user couldn't SEE it (it was focusable-when-clipped,
@@ -99,7 +126,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
             WelcomeFeature(
                 Sym.VisibilityOff,
                 stringResource(R.string.welcome_feature_no_tracking_title),
-                stringResource(R.string.welcome_feature_no_tracking_body),
+                stringResource(R.string.welcome_feature_private_body),
             )
             WelcomeFeature(
                 Sym.Place,
@@ -112,18 +139,109 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                 stringResource(R.string.welcome_feature_open_source_body),
             )
             Spacer(Modifier.height(40.dp))
-            GetStartedButton(onGetStarted)
+            WelcomeButton(stringResource(R.string.welcome_get_started), onNext)
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
-/** Filled primary "Get started" button that AUTO-FOCUSES on a D-pad device. A Material `Button`
- *  wouldn't take requestFocus (its nested focusable isn't reachable — same as dialog buttons), so
- *  this is a directly-`.focusable()` box (the only reliable focus target) with OK via `.onKeyEvent`
- *  and touch via `pointerInput`. Styled to look like the filled Button it replaces. */
+/**
+ * Use Google or not, asked once before the map exists. Each option says what it gives and what
+ * it sends, in the same order, so the two can be compared line by line. Google is preselected:
+ * it is the app most people installed. The same switch is Settings > Privacy > "Use Vela
+ * without Google".
+ */
 @Composable
-private fun GetStartedButton(onGetStarted: () -> Unit) {
+private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit) {
+    var useGoogle by rememberSaveable { mutableStateOf(true) }
+    val scroll = rememberScrollState()
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .verticalScroll(scroll)
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.welcome_google_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.welcome_google_intro),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(20.dp))
+            ChoiceCard(
+                selected = useGoogle,
+                title = stringResource(R.string.welcome_google_on_title),
+                gives = stringResource(R.string.welcome_google_on_gives),
+                sends = stringResource(R.string.welcome_google_on_sends),
+                onClick = { useGoogle = true },
+            )
+            Spacer(Modifier.height(12.dp))
+            ChoiceCard(
+                selected = !useGoogle,
+                title = stringResource(R.string.welcome_google_off_title),
+                gives = stringResource(R.string.welcome_google_off_gives),
+                sends = stringResource(R.string.welcome_google_off_sends),
+                onClick = { useGoogle = false },
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                stringResource(R.string.welcome_google_later),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(20.dp))
+            WelcomeButton(stringResource(R.string.welcome_continue)) { onContinue(useGoogle) }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/** One option: a radio mark, its name, what it gives, then what it sends. The whole card is the
+ *  one focus stop, and the radio inside is display only. */
+@Composable
+private fun ChoiceCard(selected: Boolean, title: String, gives: String, sends: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Surface(
+        shape = shape,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .dpadHighlight(shape)
+            .clip(shape)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+    ) {
+        Row(Modifier.padding(start = 6.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
+            RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(gives, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(6.dp))
+                Text(sends, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+/** The filled primary button of a first-run page, which takes focus on a D-pad device. A Material
+ *  `Button` would not take requestFocus here (its nested focusable is not reachable, the same as
+ *  dialog buttons), so this is a directly `.focusable()` box with OK via `.onKeyEvent` and touch
+ *  via `pointerInput`, styled like the filled Button it replaces. */
+@Composable
+private fun WelcomeButton(label: String, onGetStarted: () -> Unit) {
     val fr = remember { FocusRequester() }
     val dpadFirst = rememberDpadFirstDevice()
     LaunchedEffect(dpadFirst) {
@@ -152,7 +270,7 @@ private fun GetStartedButton(onGetStarted: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            stringResource(R.string.welcome_get_started),
+            label,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onPrimary,
         )

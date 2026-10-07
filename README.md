@@ -46,7 +46,7 @@ nothing to sign in to. It looks like Google Maps on purpose.
 | What you do | What reaches Google |
 | --- | --- |
 | Pan, zoom, browse the map | **Nothing.** Tiles from OpenFreeMap, streets and labels from OpenStreetMap |
-| The places drawn on the map | **Nothing, by default.** Open data baked in this repo: Overture Maps and AllThePlaces, positioned with OpenStreetMap |
+| The places drawn on the map | **Nothing, where Vela has place data.** Open data baked in this repo: Overture Maps and AllThePlaces, positioned with OpenStreetMap. Where Vela has none for the area on screen, Google's places are drawn and Google is sent that area |
 | Drop a pin, tap a house number | **Nothing.** OpenStreetMap's Nominatim names the spot |
 | Read a departure board | **Nothing, for the stops Vela draws from open transit data:** the board comes from Transitous. Where Transitous has no coverage, Vela falls back to the stop's Google page |
 | Ask for directions | **Where the trip starts and ends, anonymously.** A driving route is Google's own, so it knows about traffic and closed roads. The turn-by-turn instructions are put on it from OpenStreetMap, by the open OSRM and Valhalla routers, which are sent the same trip. While you drive, Google is asked again when you leave the route and every couple of minutes for traffic; Settings → Navigation turns the second off. Walking and cycling routes come from the open routers (for a walk Google is asked once, and its route used only when it is much shorter). Offline, the route is computed on the phone |
@@ -56,7 +56,7 @@ nothing to sign in to. It looks like Google Maps on purpose.
 
 Download a region and the map, search, routing and turn-by-turn navigation work with no
 network. Offline, or with **Settings → Privacy → Use Vela without Google** on, nothing reaches
-Google at all. A few things Google only serves to a real browser, a place's reviews among them,
+Google at all. The first run asks which you want, before the map loads. A few things Google only serves to a real browser, a place's reviews among them,
 are read from a Google page in an offscreen WebView, anonymously; the list is in
 [PRIVACY.md](PRIVACY.md#the-hidden-pages).
 
