@@ -220,7 +220,9 @@ object SavedActions {
 object RouteActions {
     @Volatile var camerasChanged: (() -> Unit)? = null
     /** "Add to home screen" in the route card's menu: pins the trip on screen as a shortcut. */
-    @Volatile var pinTrip: (() -> Unit)? = null
+    @Volatile var pinTrip: ((label: String, iconKey: String, themed: Boolean) -> Unit)? = null
+    /** The current trip's travel mode as a shortcut glyph key, the dialog's starting pick. */
+    @Volatile var modeKey: (() -> String)? = null
 }
 
 object ShapeActions {

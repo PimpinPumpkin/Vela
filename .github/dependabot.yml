@@ -18,5 +18,5 @@ updates:
       # use, accepted by upgrading. Vela stays on v5, the last fully open line. If v5 stops
       # working (GitHub retires its Node runtime), replace the action with actions/cache and a
       # wrapper checksum step; do not lift this without reading the terms.
-      - dependency-name: "gradle/actions"
+      - dependency-name: "gradle/actions/setup-gradle"
         update-types: [ "version-update:semver-major" ]

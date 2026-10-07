@@ -198,6 +198,8 @@ fun RouteTopCard(
                 if ((googleStyle && showStopControls) || onSaveRoute != null) {
                     var menu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                     var naming by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    var pinning by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    if (pinning) TripShortcutDialog(destinationName, travelModeKey = app.vela.ui.RouteActions.modeKey?.invoke() ?: "drive", onDismiss = { pinning = false })
                     if (naming && onSaveRoute != null) {
                         var draft by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(defaultRouteName) }
                         var keepStops by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
@@ -247,7 +249,7 @@ fun RouteTopCard(
                                 item(stringResource(R.string.route_update, editingRouteName)) { menu = false; onUpdateRoute(stops.isNotEmpty()) }
                             }
                             if (onSaveRoute != null) item(stringResource(R.string.route_save)) { menu = false; naming = true }
-                            item(stringResource(R.string.trip_shortcut_add)) { menu = false; app.vela.ui.RouteActions.pinTrip?.invoke() }
+                            item(stringResource(R.string.trip_shortcut_add)) { menu = false; pinning = true }
                         }
                     }
                 }
@@ -338,5 +340,66 @@ private fun ConnectorRow(dim: Color) {
         }
         Spacer(Modifier.width(8.dp))
         HorizontalDivider(Modifier.weight(1f), color = dim.copy(alpha = 0.18f))
+    }
+}
+
+private val SHORTCUT_GLYPHS: Map<String, androidx.compose.ui.graphics.vector.ImageVector> = mapOf(
+    "drive" to Sym.DirectionsCar, "transit" to Sym.DirectionsBus, "bike" to Sym.DirectionsBike, "walk" to Sym.DirectionsWalk,
+    "home" to Sym.Home, "work" to Sym.Work, "star" to Sym.Star, "favorite" to Sym.Favorite, "flag" to Sym.Flag,
+    "place" to Sym.Place, "restaurant" to Sym.Restaurant, "shopping" to Sym.ShoppingCart,
+)
+
+/** Name, glyph and look for a trip's home-screen shortcut (issue #675), then the launcher's own
+ *  confirmation. The look can copy the launcher's themed icons, which a shortcut does not get
+ *  by itself. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun TripShortcutDialog(destinationName: String, travelModeKey: String, onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = androidx.compose.runtime.remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
+    var name by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(destinationName.take(24)) }
+    var icon by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(travelModeKey) }
+    var themed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(prefs.getBoolean("trip_shortcut_themed", false)) }
+    app.vela.ui.VelaDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.trip_shortcut_add),
+        confirmText = stringResource(R.string.trip_shortcut_add),
+        onConfirm = {
+            prefs.edit().putBoolean("trip_shortcut_themed", themed).apply()
+            onDismiss()
+            app.vela.ui.RouteActions.pinTrip?.invoke(name, icon, themed)
+        },
+        dismissText = stringResource(R.string.list_cancel),
+        onDismiss = onDismiss,
+    ) {
+        androidx.compose.material3.OutlinedTextField(
+            value = name, onValueChange = { name = it.take(24) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth().dpadHighlight(),
+        )
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(top = 12.dp),
+        ) {
+            app.vela.ui.map.PoiIcons.SHORTCUT_ICON_KEYS.forEach { key ->
+                val sel = key == icon
+                androidx.compose.material3.Surface(
+                    shape = CircleShape,
+                    color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { icon = key },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            SHORTCUT_GLYPHS[key] ?: Sym.DirectionsCar, contentDescription = key,
+                            tint = if (sel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text(stringResource(R.string.trip_shortcut_themed), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            androidx.compose.material3.Switch(checked = themed, onCheckedChange = { themed = it }, modifier = Modifier.dpadHighlight(CircleShape))
+        }
     }
 }

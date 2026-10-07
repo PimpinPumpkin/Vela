@@ -68,4 +68,31 @@ class TransitousPlanTest {
         assertEquals("$u&language=en", Transitous.withLanguage(u, java.util.Locale.US))
         assertEquals("$u&language=ja", Transitous.withLanguage("$u&language=ja", java.util.Locale.US))
     }
+
+    // Issue #677: a ride's real path, picked out of a plan reply by its two stops.
+    private fun leg(mode: String, from: Pair<Double, Double>, to: Pair<Double, Double>, pts: List<Pair<Double, Double>>, mids: Int = 0) =
+        """{"mode":"$mode","from":{"name":"a","lat":${from.first},"lon":${from.second}},"to":{"name":"b","lat":${to.first},"lon":${to.second}},""" +
+            """"intermediateStops":[${(0 until mids).joinToString(",") { "{}" }}],""" +
+            """"legGeometry":{"points":"${app.vela.core.data.google.PolylineCodec.encode(pts.map { app.vela.core.model.LatLng(it.first, it.second) })}","precision":5,"length":${pts.size}}}"""
+
+    private val a = 38.5437 to -121.7377
+    private val b = 38.5843 to -121.5004
+    private val curve = (0..20).map { (a.first + (b.first - a.first) * it / 20.0 + 0.004 * kotlin.math.sin(it / 20.0 * Math.PI)) to (a.second + (b.second - a.second) * it / 20.0) }
+
+    @Test fun `a ride between the two stops gives its path`() {
+        val json = """{"itineraries":[{"legs":[${leg("WALK", a, a, listOf(a, a))},${leg("REGIONAL_RAIL", a, b, curve)}]}]}"""
+        val path = Transitous.pickLegShape(json, app.vela.core.model.LatLng(a.first, a.second), app.vela.core.model.LatLng(b.first, b.second))
+        assertEquals(21, path?.size)
+    }
+
+    @Test fun `a path that is only the stops again is not a shape`() {
+        val json = """{"itineraries":[{"legs":[${leg("BUS", a, b, listOf(a, (38.56 to -121.62), b), mids = 1)}]}]}"""
+        assertEquals(null, Transitous.pickLegShape(json, app.vela.core.model.LatLng(a.first, a.second), app.vela.core.model.LatLng(b.first, b.second)))
+    }
+
+    @Test fun `a ride that starts somewhere else is not this ride`() {
+        val far = 38.60 to -121.80
+        val json = """{"itineraries":[{"legs":[${leg("BUS", far, b, curve)}]}]}"""
+        assertEquals(null, Transitous.pickLegShape(json, app.vela.core.model.LatLng(a.first, a.second), app.vela.core.model.LatLng(b.first, b.second)))
+    }
 }

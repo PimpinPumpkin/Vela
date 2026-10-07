@@ -660,6 +660,50 @@ object PoiIcons {
         return bmp
     }
 
+    // Glyphs a home-screen trip shortcut can wear: the travel modes plus the saved-place set.
+    private val SHORTCUT_CODEPOINTS = SAVED_CODEPOINTS + mapOf(
+        "drive" to 0xe531, "transit" to 0xe530, "bike" to 0xe52f, "walk" to 0xe536,
+    )
+    val SHORTCUT_ICON_KEYS = listOf("drive", "transit", "bike", "walk", "home", "work", "star", "favorite", "flag", "place", "restaurant", "shopping")
+
+    /**
+     * The icon of a home-screen trip shortcut (issue #675): an adaptive-icon bitmap, a glyph on a
+     * full-bleed ground. [themed] copies the look the launcher gives themed app icons (the
+     * wallpaper's own tones, Android 12+), because a launcher does not theme a shortcut by
+     * itself and a full-color one stands out in a row of themed icons; otherwise Vela's own
+     * teal with a white glyph. The colors are read once, when the shortcut is made.
+     */
+    fun shortcutIcon(context: Context, iconKey: String, themed: Boolean): Bitmap {
+        val w = 324 // 108 dp at 3x: the adaptive icon canvas, of which the launcher shows the middle
+        val bmp = Bitmap.createBitmap(w, w, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val night = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        var fg = Color.WHITE
+        if (themed && android.os.Build.VERSION.SDK_INT >= 31) {
+            val bg = context.getColor(if (night) android.R.color.system_accent2_800 else android.R.color.system_accent1_100)
+            fg = context.getColor(if (night) android.R.color.system_accent1_200 else android.R.color.system_accent1_700)
+            canvas.drawColor(bg)
+        } else if (themed) {
+            canvas.drawColor(if (night) 0xFF2B2F36.toInt() else 0xFFE3E6EA.toInt())
+            fg = if (night) 0xFFC8CDD4.toInt() else 0xFF3C4043.toInt()
+        } else {
+            canvas.drawRect(0f, 0f, w.toFloat(), w.toFloat(), Paint().apply {
+                shader = android.graphics.LinearGradient(0f, 0f, w.toFloat(), w.toFloat(), 0xFF0D3D43.toInt(), 0xFF149387.toInt(), android.graphics.Shader.TileMode.CLAMP)
+            })
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+            textSize = w * 0.34f
+            typeface = typeface(context) ?: Typeface.DEFAULT
+            color = fg
+        }
+        val text = String(Character.toChars(SHORTCUT_CODEPOINTS[iconKey] ?: 0xe531))
+        val fm = paint.fontMetrics
+        canvas.drawText(text, w / 2f, w / 2f - (fm.ascent + fm.descent) / 2f, paint)
+        return bmp
+    }
+
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
         // Google-style POI: a category-colored dot with a white glyph sitting in front of a
         // muted-gray TEARDROP/pin backing whose point extends below the dot (NO white ring), with a

@@ -1672,7 +1672,8 @@ fun VelaMapView(
     }
 
     // Transit itinerary preview (issue #233): draw/clear the expanded chooser row's legs.
-    LaunchedEffect(transitPreview, styleRef) {
+    val transitShapesVersion = TransitShapes.version.intValue
+    LaunchedEffect(transitPreview, styleRef, transitShapesVersion) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { ensureTransitPreview(style, transitPreview) }
     }
@@ -7511,7 +7512,11 @@ private fun ensureTransitPreview(style: Style, itin: app.vela.core.model.Transit
         if (s.mode == app.vela.core.model.TransitMode.WALK) {
             val a = s.walkFrom ?: cursor
             val b = s.walkTo
-            if (a != null && b != null && (a.lat != b.lat || a.lng != b.lng)) {
+            val walked = TransitShapes.of(s)
+            if (walked != null) {
+                feats += Feature.fromGeometry(LineString.fromLngLats(walked.map { Point.fromLngLat(it.lng, it.lat) }))
+                    .apply { addStringProperty("kind", "walk") }
+            } else if (a != null && b != null && (a.lat != b.lat || a.lng != b.lng)) {
                 feats += Feature.fromGeometry(
                     LineString.fromLngLats(listOf(Point.fromLngLat(a.lng, a.lat), Point.fromLngLat(b.lng, b.lat))),
                 ).apply { addStringProperty("kind", "walk") }
@@ -7525,7 +7530,10 @@ private fun ensureTransitPreview(style: Style, itin: app.vela.core.model.Transit
             }
             if (pts.size >= 2) {
                 val color = s.line?.colorHex?.takeIf { it.startsWith("#") } ?: TRANSIT_PREV_FALLBACK_COLOR
-                feats += Feature.fromGeometry(LineString.fromLngLats(pts.map { Point.fromLngLat(it.lng, it.lat) }))
+                // The ride's real path where one is known (issue #677), else straight lines through
+                // the stops. The stop dots below stay on the stops either way.
+                val line = TransitShapes.of(s) ?: pts
+                feats += Feature.fromGeometry(LineString.fromLngLats(line.map { Point.fromLngLat(it.lng, it.lat) }))
                     .apply { addStringProperty("kind", "ride"); addStringProperty("c", color) }
                 pts.forEachIndexed { i, p ->
                     feats += Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply {

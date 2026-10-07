@@ -5185,7 +5185,7 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, selected = null) }
     }
 
-    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
+    init { app.vela.ui.SavedActions.rename = { p, name -> if (!p.isListing()) savedStore.setBare(p.id, true); renameSaved(SavedPlace.of(p), name) }; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
@@ -5560,10 +5560,10 @@ class MapViewModel @Inject constructor(
     }
 
     /** Pin the trip the route picker shows to the home screen (issue #675). */
-    private fun pinTripShortcut() {
+    private fun pinTripShortcut(label: String, iconKey: String, themed: Boolean) {
         val s = _state.value
         val points = tripPointsForEditor().map { it.place }
-        val ok = app.vela.ui.TripShortcut.pin(appContext, points, s.travelMode, appContext.getString(R.string.mapscreen_your_location))
+        val ok = app.vela.ui.TripShortcut.pin(appContext, points, s.travelMode, appContext.getString(R.string.mapscreen_your_location), label, iconKey, themed)
         if (!ok) flashStatus(appContext.getString(R.string.trip_shortcut_unsupported))
     }
 
@@ -6198,11 +6198,45 @@ class MapViewModel @Inject constructor(
     /** A drill-down row expanded/collapsed in the transit chooser — the map draws the expanded
      *  itinerary's legs (issue #233). Collapsing only clears the preview if that row still owns
      *  it, so expanding B then collapsing A can't blank B's drawing. */
-    fun onTransitRowExpanded(itin: TransitItinerary, expanded: Boolean) = _state.update {
-        when {
-            expanded -> it.copy(transitPreview = itin)
-            it.transitPreview === itin -> it.copy(transitPreview = null)
-            else -> it
+    fun onTransitRowExpanded(itin: TransitItinerary, expanded: Boolean) {
+        _state.update {
+            when {
+                expanded -> it.copy(transitPreview = itin)
+                it.transitPreview === itin -> it.copy(transitPreview = null)
+                else -> it
+            }
+        }
+        if (expanded) shapeTransitLegs(itin)
+    }
+
+    private var transitShapeJob: Job? = null
+
+    /** Look up the real path of each ride in the previewed trip (issue #677): one request per
+     *  ride to the open transit planner, one after another, at most [TRANSIT_SHAPE_MAX_LEGS].
+     *  The trip is already drawn with straight lines; each path replaces its line as it lands.
+     *  Skipped on a constrained link and offline; a ride with no path found keeps its lines. */
+    private fun shapeTransitLegs(itin: TransitItinerary) {
+        transitShapeJob?.cancel()
+        if (offlineNow() || _state.value.lowData) return
+        val rides = itin.steps.filter { it.mode != app.vela.core.model.TransitMode.WALK && app.vela.ui.map.TransitShapes.of(it) == null }
+            .take(TRANSIT_SHAPE_MAX_LEGS)
+        if (rides.isEmpty()) return
+        transitShapeJob = viewModelScope.launch {
+            var found = 0
+            for (s in rides) {
+                val a = s.boardStop?.location ?: continue
+                val b = s.alightStop?.location ?: continue
+                // The trip's own start time: a ride later in the trip may come back as an earlier run
+                // of the same line, whose path is the same.
+                val depart = itin.departureEpochSec
+                val path = withContext(Dispatchers.IO) {
+                    runCatching { app.vela.core.data.transit.Transitous.legShape(http, a, b, depart) }.getOrNull()
+                        ?: if (s.mode == app.vela.core.model.TransitMode.BUS) busRoadPath(s) else null
+                } ?: continue
+                app.vela.ui.map.TransitShapes.put(s, path)
+                found++
+            }
+            android.util.Log.i("VelaTransit", "ride paths: $found of ${rides.size}")
         }
     }
 
@@ -6321,6 +6355,31 @@ class MapViewModel @Inject constructor(
     // legs, a short final walk can't fire a premature "arrived", and it can't double-fire with Next.
     private var transitLegArmed = false
     private val TRANSIT_ARRIVE_M = 40.0
+    /** A bus with no published path runs on roads: the road route through its stops, in order,
+     *  stands in. Refused when it comes out much longer than the stops' own straight-line chain
+     *  (a stop the router put on the wrong side of a barrier), so a wrong path is never drawn
+     *  in place of honest straight lines. Rail gets no such guess. */
+    private fun busRoadPath(s: app.vela.core.model.TransitStep): List<LatLng>? {
+        val stops = buildList {
+            s.boardStop?.location?.let { add(it) }
+            s.intermediateStops.forEach { st -> st.location?.let { add(it) } }
+            s.alightStop?.location?.let { add(it) }
+        }
+        if (stops.size < 2) return null
+        // The router takes a bounded number of points: keep the ends and an even spread between.
+        val pts = if (stops.size <= TRANSIT_ROAD_MAX_STOPS) stops
+        else (0 until TRANSIT_ROAD_MAX_STOPS).map { stops[it * (stops.size - 1) / (TRANSIT_ROAD_MAX_STOPS - 1)] }
+        val route = app.vela.core.data.RouteGeometry.routeVia(http, pts, TravelMode.DRIVE, tries = 1, callTimeoutMs = 8_000L)
+            .firstOrNull()?.polyline?.takeIf { it.size >= 2 } ?: return null
+        var chain = 0.0
+        for (i in 1 until stops.size) chain += stops[i - 1].distanceTo(stops[i])
+        var len = 0.0
+        for (i in 1 until route.size) len += route[i - 1].distanceTo(route[i])
+        return route.takeIf { len <= chain * 1.8 + 300 }
+    }
+
+    private val TRANSIT_ROAD_MAX_STOPS = 20
+    private val TRANSIT_SHAPE_MAX_LEGS = 5
     private val TRANSIT_ARM_M = 90.0 // must have been at least this far from the leg end to arm
 
     /** Begin guiding through [itin] leg by leg. Speaks the first instruction; GPS auto-advances. */

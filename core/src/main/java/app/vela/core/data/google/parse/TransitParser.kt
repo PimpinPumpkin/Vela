@@ -224,11 +224,7 @@ object TransitParser {
         val realtime = n.at(2, 0).long() ?: n.at(3, 0).long() ?: return null
         val scheduled = n.at(7, 0).long() ?: n.at(8, 0).long() ?: return null
         val diffMin = ((realtime - scheduled) / 60.0).roundToInt()
-        return when {
-            diffMin >= 1 -> "$diffMin min late"
-            diffMin <= -1 -> "${abs(diffMin)} min early"
-            else -> null
-        }
+        return app.vela.core.i18n.DelayText.of(diffMin)
     }
 
     /** A time tuple, `[epochSec, "Area/City", text, utcOffsetSec, ...]`, as the clock in use shows

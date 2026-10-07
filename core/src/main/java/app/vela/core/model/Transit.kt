@@ -53,6 +53,10 @@ data class TransitStep(
     // turn-by-turn walking directions for the leg on demand (OSRM foot). Null for ride legs.
     val walkFrom: LatLng? = null,
     val walkTo: LatLng? = null,
+    // The leg's real path on the ground (the track or road for a ride, the footpath for a walk)
+    // where the source carries one. Null = unknown: the map then joins the stops with straight
+    // lines. Filled by the open planner's own answers; Google's itineraries carry none.
+    val path: List<LatLng>? = null,
 )
 
 /**

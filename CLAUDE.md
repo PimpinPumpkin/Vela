@@ -2009,6 +2009,16 @@ Defaults that make the safe path the easy one:
   Sacramento route, launcher dialog, cold-start tap opens the same trip. NOT checked: a trip
   with a fixed start or stops, and a mode other than driving. `adb shell am start` cannot pass
   a double array, so test through a real pinned shortcut.
+- **The shortcut's name, glyph and look (2026-10-07, owner: "the shortcuts have the non-monochrome
+  icon").** A launcher themes app icons, not pinned shortcuts, so a shortcut made from the
+  launcher icon stood out full-color in a row of themed icons. "Add to home screen" now opens
+  `TripShortcutDialog` (RouteTopCard.kt): a name, twelve glyphs (the travel mode first; drawn
+  by `PoiIcons.shortcutIcon` from the bundled Material Icons font as an adaptive bitmap) and
+  "Match themed icons", which paints the icon in the launcher's own themed colors
+  (`system_accent2_800` + `system_accent1_200` at night, `system_accent1_100` +
+  `system_accent1_700` by day, Android 12+; grays below). The colors are read once, when the
+  shortcut is made: it does not follow a later wallpaper change. Seen on the 4a beside themed
+  app icons: same ground, same glyph tone. The switch is remembered (`trip_shortcut_themed`).
 - **Per-place icons (issue #629, 2026-09-30):** `SavedPlace.icon` / `ListPlace.icon` override the
   list's icon on the map pin (null = the list's). The picker (`IconPicker`, shared with the list
   editor, and `PlaceIconDialog` in MapScreen) opens from the place sheet's save menu. Its button
@@ -3985,6 +3995,20 @@ architecture note.
   icon entry is followed at once by a text entry for the same line. `iconLineNames` skips an
   icon whose next sibling is a name; an icon with no name after it (a New York subway bullet)
   still stands for its line. Reproduced and rechecked on the 4a with Wakayama to Namba.
+- **Transit trips draw their real path (issue #677, 2026-10-07).** Google's itineraries carry
+  stops and no track, so the preview joined stops with straight lines that crossed rivers and
+  blocks. When a trip row is expanded, `MapViewModel.shapeTransitLegs` asks for each ride's path
+  (at most 5 rides, one after another, not offline or on a constrained link): first
+  `Transitous.legShape` (the open planner asked for a ride between the two stops; a leg whose
+  ends are within 300 m of them gives its `legGeometry`, precision 7 on the public instance),
+  then for a BUS with none, `busRoadPath` (the road route through its stops, refused when over
+  1.8x the stops' own chain). Rail with no published path keeps straight lines: no guess.
+  Paths live in `ui/map/TransitShapes` (keyed by the step OBJECT; a copied itinerary would
+  collapse the chooser's row) and `ensureTransitPreview` reads them; the open planner's own
+  itineraries carry `TransitStep.path` from the start, walks included. TWO TRAPS:
+  `maxTransfers=0` makes the public planner answer nothing at all, and the planner's leg can be
+  only the stops again (4 points), which is not a shape. Seen on the 4a: Davis to Sacramento by
+  bus, 1 of 1 path found, the line follows the freeway. Log `VelaTransit: ride paths: N of M`.
 - **Unconfirmed Overture rows rank as ordinary places (2026-10-06, a forum report from DC).**
   `tools/build-places-region.sh`, table `unconfirmed`: confidence under 0.75 AND no second source
   (no row in `srcbonus` with a bonus, none in `marksize`) caps prominence at 3.0 and is never a
@@ -6108,6 +6132,21 @@ Gotchas:
   multisets, `\n` counts and XML validated per key). Weblate was not live then, so this was the flow:
   when `values/strings.xml` grows, re-run the per-locale catch-up before a stable. Voice-command
   examples are localized (a French address in fr, Ukrainian places in uk), not transliterated.
+- **Translation catch-up, second round (2026-10-07, from #674).** THE DEFAULT ROUTE PICKER WAS
+  ENGLISH IN EVERY LANGUAGE: its strings (`exp_chooser_*`) were written `translatable="false"`
+  while it was an experiment and never flipped when it became the default, along with the
+  camera settings, Home / Work and the soft-key rows (30 strings). All translatable now; only
+  the app name and the three map credits stay fixed. 89 strings filled in 16 languages by one
+  agent per language writing JSON to the scratchpad, merged by a script that checks
+  placeholders and escapes for Android (the agents never touch the repo). When a feature
+  graduates from an experiment, grep its strings for `translatable="false"`. Delay notes
+  ("5 min late") are app strings now through `core/i18n/DelayText` (set in VelaApp), like the
+  duration formatter. Estonian and Kurmanji are left to their Weblate translators.
+- **Place page at large font sizes (issue #692, 2026-10-07).** The tab row is always the
+  scrolling kind (tabs as wide as their labels; the fixed row cut "Rezensionen" with three tabs),
+  and the review summary is a `FlowRow`, so a long "Show reviews" label drops to its own line
+  where it used to squeeze the stars into a sliver. Reproduce with
+  `adb shell settings put system font_scale 1.3` plus a long-word language; put it back to 1.0.
 - **Offline round two (user's own list, 2026-09-21).** (1) `TransitBoardCache` keeps every board
   fetched (48, by stop coordinate); offline, `fetchStopDepartures` and `onTransitStopTap` show the
   cached one with `stopDeparturesCachedAt` and the sheet prints "Last seen X". (2) The offline

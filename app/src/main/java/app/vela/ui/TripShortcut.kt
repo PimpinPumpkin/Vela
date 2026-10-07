@@ -30,7 +30,10 @@ object TripShortcut {
     private const val HERE = Double.NaN
 
     /** Asks the launcher to pin the trip. False when the launcher cannot pin shortcuts. */
-    fun pin(context: Context, points: List<Place?>, mode: TravelMode, hereLabel: String): Boolean {
+    fun pin(
+        context: Context, points: List<Place?>, mode: TravelMode, hereLabel: String,
+        label: String? = null, iconKey: String? = null, themed: Boolean = false,
+    ): Boolean {
         if (points.size < 2 || points.all { it == null }) return false
         if (!ShortcutManagerCompat.isRequestPinShortcutSupported(context)) return false
         val intent = Intent(context, MainActivity::class.java)
@@ -44,13 +47,25 @@ object TripShortcut {
         val to = points.last()?.name ?: hereLabel
         // The launcher shows the short label under the icon; the destination is what tells two
         // shortcuts apart there. The long one is for the launcher's own dialogs.
-        val info = ShortcutInfoCompat.Builder(context, "trip-" + (from + to + mode.name + points.size).hashCode())
-            .setShortLabel(to.take(24))
-            .setLongLabel("$from → $to".take(60))
-            .setIcon(IconCompat.createWithResource(context, R.mipmap.ic_launcher))
+        val name = label?.trim().orEmpty().ifBlank { to }
+        val icon = runCatching {
+            IconCompat.createWithAdaptiveBitmap(app.vela.ui.map.PoiIcons.shortcutIcon(context, iconKey ?: defaultIcon(mode), themed))
+        }.getOrElse { IconCompat.createWithResource(context, R.mipmap.ic_launcher) }
+        val info = ShortcutInfoCompat.Builder(context, "trip-" + (from + to + mode.name + points.size + name).hashCode())
+            .setShortLabel(name.take(24))
+            .setLongLabel("$from \u2192 $to".take(60))
+            .setIcon(icon)
             .setIntent(intent)
             .build()
         return runCatching { ShortcutManagerCompat.requestPinShortcut(context, info, null) }.getOrDefault(false)
+    }
+
+    /** The glyph a shortcut starts with: its travel mode. */
+    fun defaultIcon(mode: TravelMode): String = when (mode) {
+        TravelMode.TRANSIT -> "transit"
+        TravelMode.BICYCLE -> "bike"
+        TravelMode.WALK -> "walk"
+        else -> "drive"
     }
 
     /** The trip a shortcut's intent carries: its points (null = your location) and its mode. */

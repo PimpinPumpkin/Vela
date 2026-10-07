@@ -119,8 +119,8 @@
     <string name="settings_transit_stops_train">Train stations</string>
     <string name="settings_topography">Terrain shading</string>
     <string name="settings_topography_hint">Shades hills and mountains on the map. Off by default.</string>
-    <string name="settings_flock" translatable="false">Surveillance cameras</string>
-    <string name="settings_flock_hint" translatable="false">Shows mapped automated license-plate reader (Flock) cameras, from the community DeFlock project in OpenStreetMap. On by default.</string>
+    <string name="settings_flock">Surveillance cameras</string>
+    <string name="settings_flock_hint">Shows mapped automated license-plate reader (Flock) cameras, from the community DeFlock project in OpenStreetMap. On by default.</string>
     <string name="settings_speed_cams">Speed cameras</string>
     <string name="settings_speed_cam_warn">Warn me out loud</string>
     <string name="settings_speed_cam_warn_hint">Says \"Speed camera ahead\" as you approach one while navigating, timed to give about twelve seconds\' notice. Follows your spoken-directions setting. Warning about cameras while driving is restricted in some countries, so this is off unless you turn it on.</string>
@@ -132,26 +132,26 @@
     <string name="nav_flock_camera_ahead">License plate camera ahead</string>
     <string name="nav_flock_cameras_ahead">License plate cameras ahead</string>
     <string name="settings_speed_cams_hint">Shows fixed radar and speed cameras mapped in OpenStreetMap. Fixed installations only; coverage follows the map, strongest in Europe. Off by default.</string>
-    <string name="exp_chooser_fastest" translatable="false">Fastest route now</string>
-    <string name="exp_chooser_slower" translatable="false">%1$s slower than the fastest route</string>
-    <string name="exp_chooser_via" translatable="false">via %1$s</string>
-    <string name="exp_chooser_options" translatable="false">Route options</string>
-    <string name="exp_chooser_more" translatable="false">More options</string>
-    <string name="exp_chooser_add_stops" translatable="false">Add stops</string>
-    <string name="exp_chooser_alts_none" translatable="false">Only one route</string>
-    <string name="exp_chooser_alts_title" translatable="false">Alternate routes</string>
-    <string name="exp_chooser_alts_back" translatable="false">Back</string>
-    <string name="exp_chooser_along" translatable="false">Add a stop along the way</string>
-    <string name="exp_chooser_share_text" translatable="false">Directions to %1$s: %2$s, %3$s</string>
-    <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
-    <string name="settings_flock_detour" translatable="false">Try side streets around cameras</string>
-    <string name="settings_flock_detour_hint" translatable="false">When the top route still passes cameras, tries a point just off the road at each camera and routes through it, the way you would by long-pressing the map. A route that passes fewer cameras within the same small detour goes to the top of the list. Costs a few extra route requests per trip. Off by default.</string>
-    <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route (a camera aimed across the road is left out, since it reads cross traffic) and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
-    <plurals name="dir_cameras_avoided" translatable="false">
+    <string name="exp_chooser_fastest">Fastest route now</string>
+    <string name="exp_chooser_slower">%1$s slower than the fastest route</string>
+    <string name="exp_chooser_via">via %1$s</string>
+    <string name="exp_chooser_options">Route options</string>
+    <string name="exp_chooser_more">More options</string>
+    <string name="exp_chooser_add_stops">Add stops</string>
+    <string name="exp_chooser_alts_none">Only one route</string>
+    <string name="exp_chooser_alts_title">Alternate routes</string>
+    <string name="exp_chooser_alts_back">Back</string>
+    <string name="exp_chooser_along">Add a stop along the way</string>
+    <string name="exp_chooser_share_text">Directions to %1$s: %2$s, %3$s</string>
+    <string name="settings_flock_route_alert">Avoid surveillance cameras</string>
+    <string name="settings_flock_detour">Try side streets around cameras</string>
+    <string name="settings_flock_detour_hint">When the top route still passes cameras, tries a point just off the road at each camera and routes through it, the way you would by long-pressing the map. A route that passes fewer cameras within the same small detour goes to the top of the list. Costs a few extra route requests per trip. Off by default.</string>
+    <string name="settings_flock_route_alert_hint">Counts the license-plate reader (Flock) cameras on each route (a camera aimed across the road is left out, since it reads cross traffic) and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
+    <plurals name="dir_cameras_avoided">
         <item quantity="one">Passes %1$d fewer camera than the fastest route</item>
         <item quantity="other">Passes %1$d fewer cameras than the fastest route</item>
     </plurals>
-    <plurals name="dir_cameras_on_route" translatable="false">
+    <plurals name="dir_cameras_on_route">
         <item quantity="one">%1$d camera on this route</item>
         <item quantity="other">%1$d cameras on this route</item>
     </plurals>
@@ -864,6 +864,8 @@
     <string name="transit_nav_next">Next</string>
     <string name="place_last_available">Last available</string>
     <string name="place_transit_prefer">Prefer</string>
+    <string name="transit_min_late">%1$d min late</string>
+    <string name="transit_min_early">%1$d min early</string>
     <string name="place_transit_route">Route</string>
     <string name="place_transit_fewer_transfers">Fewer transfers</string>
     <string name="place_transit_less_walking">Less walking</string>
@@ -1082,8 +1084,8 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Classic</string>
     <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens. The two differ most in dark mode right now.</string>
-    <string name="shortcut_home" translatable="false">Home</string>
-    <string name="shortcut_work" translatable="false">Work</string>
+    <string name="shortcut_home">Home</string>
+    <string name="shortcut_work">Work</string>
     <string name="map_satellite_toggle">Satellite view</string>
     <string name="map_satellite_attribution" translatable="false">Esri, Maxar, Earthstar Geographics</string>
     <string name="map_satellite_attribution_google" translatable="false">Google</string>
@@ -1177,12 +1179,12 @@
     <string name="settings_speeding_alert">Speeding alert</string>
     <string name="settings_speeding_alert_hint">Says \"You\'re over the speed limit\" once you have been over the posted limit for a few seconds, and again after you slow down and creep back over it. Only where a posted limit is known, the one the speed badge shows. Off unless you turn it on.</string>
     <string name="nav_speeding_alert">You\'re over the speed limit</string>
-    <string name="settings_softkeys" translatable="false">Hardware softkeys</string>
-    <string name="settings_softkeys_hint" translatable="false">Zoom the map with the phone\'s two soft keys. Keypad phones only.</string>
-    <string name="settings_softkeys_calibrate" translatable="false">Calibrate soft keys</string>
-    <string name="settings_softkeys_calibrate_hint" translatable="false">If the soft keys don\'t zoom, tap here and press your left then right soft key so Vela learns their codes.</string>
-    <string name="map_zoom_mode_hint" translatable="false">Zoom:  ◀ out   ·   in ▶      BACK to exit</string>
-    <string name="map_move_mode_hint" translatable="false">Move map:  ◀ ▲ ▼ ▶      BACK to exit</string>
+    <string name="settings_softkeys">Hardware softkeys</string>
+    <string name="settings_softkeys_hint">Zoom the map with the phone\'s two soft keys. Keypad phones only.</string>
+    <string name="settings_softkeys_calibrate">Calibrate soft keys</string>
+    <string name="settings_softkeys_calibrate_hint">If the soft keys don\'t zoom, tap here and press your left then right soft key so Vela learns their codes.</string>
+    <string name="map_zoom_mode_hint">Zoom:  ◀ out   ·   in ▶      BACK to exit</string>
+    <string name="map_move_mode_hint">Move map:  ◀ ▲ ▼ ▶      BACK to exit</string>
     <string name="softkey_options">Options</string>
     <string name="softkey_search">Search</string>
     <string name="softkey_move_map">Move map</string>
@@ -1190,7 +1192,7 @@
     <string name="softkey_recenter">Recenter</string>
     <string name="softkey_mute">Mute</string>
     <string name="softkey_unmute">Unmute</string>
-    <string name="softkey_zoom_menu" translatable="false">Zoom (◀ − ▶ +)</string>
+    <string name="softkey_zoom_menu">Zoom (◀ − ▶ +)</string>
     <string name="map_asr_downloading">Downloading Vela Voice mic · %1$d%%</string>  <!-- format -->
     <string name="map_asr_installing">Installing Vela Voice mic…</string>
     <string name="map_asr_waiting">Vela Voice mic · waiting for the voice</string>
@@ -1230,8 +1232,8 @@
         <item quantity="one">%1$d other route</item>
         <item quantity="other">%1$d other routes</item>
     </plurals>
-    <string name="exp_chooser_alts_same" translatable="false">About the same time</string>
-    <string name="exp_chooser_fewest_cams" translatable="false">fewest cameras</string>
+    <string name="exp_chooser_alts_same">About the same time</string>
+    <string name="exp_chooser_fewest_cams">fewest cameras</string>
     <string name="nav_hold_controls">Pause or mute</string>
     <string name="nav_stop_offer_add">Add stop</string>
     <string name="nav_stop_offer_ahead">%1$s ahead</string>
@@ -1315,4 +1317,5 @@
     <string name="place_avoid_short_highways">Highways</string>
     <string name="place_avoid_short_ferries">Ferries</string>
     <string name="place_avoid_short_cameras">Cameras</string>
+    <string name="trip_shortcut_themed">Match themed icons</string>
 </resources>

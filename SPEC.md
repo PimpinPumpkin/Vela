@@ -3640,6 +3640,11 @@ Details:
   walk icons. The mode then comes from the operator icon's path: `shinkansen`, `jp-jr` or
   `jp2ltr` is a train, `metro` or `subway` a subway, any other operator icon a generic ride.
   A leg with an operator icon is never a walk.
+- The preview draws a ride along its real path where one is known: the open planner's leg
+  geometry (matched to the ride by both stops within 300 m), else for a bus the road route
+  through its stops when that is at most 1.8 times the stops' straight-line chain. A ride with
+  neither keeps straight lines through its stops. Lookups run when a trip is expanded, at most
+  five rides, never offline or on a constrained link.
 - In a trip summary, an operator icon entry followed directly by a text entry is one line (icon
   plus name); the icon's file name is used as the line's name only when no text entry follows.
 - The page's payload is taken up to 6 MB. A cut payload does not parse, and the chooser then

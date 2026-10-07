@@ -1,6 +1,7 @@
 package app.vela.core.data.transit
 
 import app.vela.core.model.StopDeparture
+import app.vela.core.model.distanceTo
 import app.vela.core.model.StopDepartureLine
 import app.vela.core.model.StopDepartures
 import app.vela.core.model.TransitLine
@@ -570,6 +571,67 @@ object Transitous {
         return runCatching { parsePlan(body, origin, destination) }.getOrDefault(emptyList())
     }
 
+    /** A leg's drawn path from the planner's `legGeometry` (an encoded polyline with its own
+     *  precision, 7 on the public instance). Null when absent or shorter than two points. */
+    internal fun legPath(leg: org.json.JSONObject): List<LatLng>? {
+        val g = leg.optJSONObject("legGeometry") ?: return null
+        val pts = g.optString("points", "").takeIf { it.isNotBlank() } ?: return null
+        val precision = g.optInt("precision", 6).coerceIn(5, 7)
+        return runCatching { app.vela.core.data.google.PolylineCodec.decode(pts, precision) }.getOrNull()
+            ?.filter { it.lat in -90.0..90.0 && it.lng in -180.0..180.0 }?.takeIf { it.size >= 2 }
+    }
+
+    /**
+     * The real path of ONE ride between two stops, for an itinerary that has none of its own
+     * (Google's): the planner is asked for a direct ride from [board] to [alight] around
+     * [departEpochSec], and the path of a ride leg that starts and ends at those stops is
+     * returned. Null when no such leg comes back or its path is only the stops again, so the
+     * caller keeps its straight lines. One request; issue #677.
+     */
+    fun legShape(http: OkHttpClient, board: LatLng, alight: LatLng, departEpochSec: Long?): List<LatLng>? {
+        val url = buildString {
+            append(BASE).append("/api/v1/plan?fromPlace=").append(board.lat).append(',').append(board.lng)
+            append("&toPlace=").append(alight.lat).append(',').append(alight.lng)
+            // No maxTransfers: the public instance answers nothing at all with maxTransfers=0
+            // (seen 2026-10-07); a leg is matched by its two stops instead.
+            append("&numItineraries=5")
+            // A little before the departure, so the run itself is among the answers.
+            if (departEpochSec != null) append("&time=").append(java.time.Instant.ofEpochSecond(departEpochSec - 120))
+        }
+        val body = get(http, url) ?: return null
+        return runCatching { pickLegShape(body, board, alight) }.getOrNull()
+    }
+
+    /** Pure half of [legShape]: the best matching ride leg's path in a plan reply. */
+    internal fun pickLegShape(json: String, board: LatLng, alight: LatLng): List<LatLng>? {
+        val its = org.json.JSONObject(json).optJSONArray("itineraries") ?: return null
+        val chord = board.distanceTo(alight)
+        var best: List<LatLng>? = null
+        for (i in 0 until its.length()) {
+            val legs = its.getJSONObject(i).optJSONArray("legs") ?: continue
+            for (k in 0 until legs.length()) {
+                val leg = legs.getJSONObject(k)
+                if (leg.optString("mode", "") in setOf("WALK", "BIKE", "CAR", "RENTAL")) continue
+                val from = leg.optJSONObject("from")?.let { point(it) } ?: continue
+                val to = leg.optJSONObject("to")?.let { point(it) } ?: continue
+                if (from.distanceTo(board) > LEG_SHAPE_STOP_M || to.distanceTo(alight) > LEG_SHAPE_STOP_M) continue
+                val path = legPath(leg) ?: continue
+                // A path that is only the stops again adds nothing over the chords already drawn,
+                // and one far longer than the ride is some other way round.
+                val stops = (leg.optJSONArray("intermediateStops")?.length() ?: 0) + 2
+                var len = 0.0
+                for (p in 1 until path.size) len += path[p - 1].distanceTo(path[p])
+                if (path.size <= stops + 1 || len > chord * LEG_SHAPE_MAX_RATIO + 500) continue
+                if (best == null || path.size > best.size) best = path
+            }
+        }
+        return best
+    }
+
+    /** A planner leg counts as "this ride" when both its ends are within this of the stops. */
+    private const val LEG_SHAPE_STOP_M = 300.0
+    private const val LEG_SHAPE_MAX_RATIO = 4.0
+
     /** The plan reply's itineraries, in the planner's order. Pure; fixture-tested. */
     internal fun parsePlan(json: String, origin: LatLng, destination: LatLng): List<TransitItinerary> {
         val root = JSONObject(json)
@@ -592,6 +654,7 @@ object Transitous {
                 steps += TransitStep(
                     mode = TransitMode.WALK, durationText = durationText(secs),
                     walkFrom = from?.let { point(it) } ?: origin, walkTo = to?.let { point(it) } ?: destination,
+                    path = legPath(leg),
                 )
                 continue
             }
@@ -615,6 +678,7 @@ object Transitous {
                 headsign = leg.optString("headsign", "").takeIf { it.isNotBlank() },
                 boardStop = board, alightStop = alight, numStops = mids.size + 1,
                 delayText = delayMin?.let { delayText(it) }, intermediateStops = mids,
+                path = legPath(leg),
             )
         }
         if (steps.none { it.line != null }) return null // a walk-only answer is not a transit trip
@@ -659,11 +723,7 @@ object Transitous {
         return if (m < 60) "$m min" else if (m % 60 == 0L) "${m / 60} h" else "${m / 60} h ${m % 60} min"
     }
 
-    private fun delayText(min: Int): String? = when {
-        min > 0 -> "$min min late"
-        min < 0 -> "${-min} min early"
-        else -> null
-    }
+    private fun delayText(min: Int): String? = app.vela.core.i18n.DelayText.of(min)
 
     private const val PLAN_MAX = 5
     /** The chooser's vehicle numbers (Google's, issue #431) as the planner's mode names. */

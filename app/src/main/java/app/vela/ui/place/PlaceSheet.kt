@@ -4779,15 +4779,13 @@ private fun PlaceTabRow(
             Tab(selected = i == selected, onClick = { onSelect(key) }, text = { Text(label, maxLines = 1, softWrap = false) })
         }
     }
-    // More than three tabs scroll sideways (Google's layout) instead of squeezing their labels.
-    if (tabs.size > 3) {
-        androidx.compose.material3.ScrollableTabRow(
-            selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink,
-            edgePadding = 0.dp, modifier = modifier, tabs = tabContent,
-        )
-    } else {
-        TabRow(selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink, modifier = modifier, tabs = tabContent)
-    }
+    // Always the scrolling row, whose tabs are as wide as their labels (Google's layout). The
+    // fixed row gives each tab an equal share, and with three tabs on a large font a share is
+    // narrower than "Rezensionen": the labels lost their last letters (issue #692).
+    androidx.compose.material3.ScrollableTabRow(
+        selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink,
+        edgePadding = 0.dp, modifier = modifier, tabs = tabContent,
+    )
 }
 
 /** Rating, star histogram and Google's featured snippet, with a link to the Reviews tab. */
@@ -4797,17 +4795,28 @@ private fun ReviewSummaryCard(place: Place, ink: Color, dim: Color, onOpen: () -
         Modifier.fillMaxWidth().padding(top = 18.dp).clip(RoundedCornerShape(12.dp))
             .background(dim.copy(alpha = 0.08f)).padding(start = 14.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(String.format(Locale.US, "%.1f", place.rating ?: 0.0), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium, color = ink)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                app.vela.ui.RatingStars(place.rating ?: 0.0)
-                place.reviewCount?.let {
-                    Text(pluralStringResource(R.plurals.place_review_count, it, it), style = MaterialTheme.typography.bodySmall, color = dim)
+        // A flow, not a row with a weighted middle: in German the button reads "Bewertungen
+        // anzeigen", and on a large font it took the row and squeezed the stars and the count
+        // into a column three letters wide (issue #692). The button drops to its own line
+        // when the two do not fit side by side.
+        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.align(Alignment.CenterVertically)) {
+                Text(String.format(Locale.US, "%.1f", place.rating ?: 0.0), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium, color = ink)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    app.vela.ui.RatingStars(place.rating ?: 0.0)
+                    place.reviewCount?.let {
+                        Text(pluralStringResource(R.plurals.place_review_count, it, it), style = MaterialTheme.typography.bodySmall, color = dim, maxLines = 1, softWrap = false)
+                    }
                 }
             }
-            TextButton(onClick = onOpen, modifier = Modifier.dpadHighlight(CircleShape)) {
-                Text(stringResource(R.string.place_show_reviews))
+            TextButton(onClick = onOpen, modifier = Modifier.align(Alignment.CenterVertically).dpadHighlight(CircleShape)) {
+                Text(stringResource(R.string.place_show_reviews), maxLines = 1, softWrap = false)
             }
         }
         place.ratingHistogram?.takeIf { it.isNotEmpty() }?.let {
