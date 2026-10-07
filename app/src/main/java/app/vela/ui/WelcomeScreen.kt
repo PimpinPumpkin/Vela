@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
@@ -108,12 +109,7 @@ private fun WelcomeIntro(onNext: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(24.dp))
-            Icon(
-                Sym.Explore,
-                contentDescription = null,
-                modifier = Modifier.size(76.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            VelaMark(84.dp)
             Spacer(Modifier.height(16.dp))
             Text("Vela Maps", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
@@ -146,24 +142,28 @@ private fun WelcomeIntro(onNext: () -> Unit) {
 }
 
 /**
- * Use Google or not, asked once before the map exists. Each option says what it gives and what
- * it sends, in the same order, so the two can be compared line by line. Google is preselected:
- * it is the app most people installed. The same switch is Settings > Privacy > "Use Vela
- * without Google".
+ * Use Google or not, asked once before the map exists. Each option is two short lines: what you
+ * get, then what Google sees. Google is preselected. The same switch is Settings > Privacy >
+ * "Use Vela without Google", and the full list of what is sent is in PRIVACY.md.
  */
 @Composable
 private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit) {
     var useGoogle by rememberSaveable { mutableStateOf(true) }
     val scroll = rememberScrollState()
+    val minH = LocalConfiguration.current.screenHeightDp.dp
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .verticalScroll(scroll)
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .heightIn(min = minH)
+                .padding(horizontal = 28.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
+            VelaMark(56.dp)
+            Spacer(Modifier.height(20.dp))
             Text(
                 stringResource(R.string.welcome_google_title),
                 style = MaterialTheme.typography.headlineSmall,
@@ -172,10 +172,11 @@ private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit) {
             Spacer(Modifier.height(6.dp))
             Text(
                 stringResource(R.string.welcome_google_intro),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(28.dp))
             ChoiceCard(
                 selected = useGoogle,
                 title = stringResource(R.string.welcome_google_on_title),
@@ -191,28 +192,21 @@ private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit) {
                 sends = stringResource(R.string.welcome_google_off_sends),
                 onClick = { useGoogle = false },
             )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                stringResource(R.string.welcome_google_later),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(32.dp))
             WelcomeButton(stringResource(R.string.welcome_continue)) { onContinue(useGoogle) }
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
-/** One option: a radio mark, its name, what it gives, then what it sends. The whole card is the
+/** One option: a radio mark, its name, what you get, and what Google sees. The whole card is the
  *  one focus stop, and the radio inside is display only. */
 @Composable
 private fun ChoiceCard(selected: Boolean, title: String, gives: String, sends: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(20.dp)
     Surface(
         shape = shape,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        color = if (selected) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface,
         border = BorderStroke(
             if (selected) 2.dp else 1.dp,
             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
@@ -223,16 +217,52 @@ private fun ChoiceCard(selected: Boolean, title: String, gives: String, sends: S
             .clip(shape)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
     ) {
-        Row(Modifier.padding(start = 6.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
-            RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+        Row(
+            Modifier.padding(start = 8.dp, end = 18.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(horizontal = 10.dp))
             Column {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(gives, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(6.dp))
-                Text(sends, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(2.dp))
+                // One paragraph, so the two sentences wrap together. The second is dimmer.
+                val dim = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        append(gives)
+                        append(" ")
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = dim))
+                        append(sends)
+                        pop()
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
+    }
+}
+
+/** The Vela mark as the launcher draws it: the two-tone sail on the brand gradient. The launcher
+ *  foreground keeps its art inside the adaptive icon's safe zone, so it is drawn 1.5 times the
+ *  box and clipped. */
+@Composable
+private fun VelaMark(size: androidx.compose.ui.unit.Dp) {
+    Box(
+        Modifier
+            .size(size)
+            .clip(RoundedCornerShape(percent = 27))
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(androidx.compose.ui.graphics.Color(0xFF0D3D43), androidx.compose.ui.graphics.Color(0xFF149387)),
+                ),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = null,
+            modifier = Modifier.requiredSize(size * 1.5f),
+        )
     }
 }
 
