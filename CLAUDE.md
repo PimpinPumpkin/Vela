@@ -2011,8 +2011,8 @@ Defaults that make the safe path the easy one:
   reads it and `openTripShortcut` opens the picker: destination alone = `routeToSelected`,
   anything else through `applyTrip`. A shortcut, not an app widget, on purpose: no provider, no
   setup screen, works on every launcher from Android 8. Checked on the 4a: pin from a Davis to
-  Sacramento route, launcher dialog, cold-start tap opens the same trip. NOT checked: a trip
-  with a fixed start or stops, and a mode other than driving. `adb shell am start` cannot pass
+  Sacramento route, launcher dialog, cold-start tap opens the same trip. A trip with a fixed start and one stop was checked the same way on
+  2026-10-07. NOT checked: a mode other than driving. `adb shell am start` cannot pass
   a double array, so test through a real pinned shortcut.
 - **The shortcut's name, glyph and look (2026-10-07, owner: "the shortcuts have the non-monochrome
   icon").** A launcher themes app icons, not pinned shortcuts, so a shortcut made from the
@@ -4019,6 +4019,12 @@ architecture note.
   `maxTransfers=0` makes the public planner answer nothing at all, and the planner's leg can be
   only the stops again (4 points), which is not a shape. Seen on the 4a: Davis to Sacramento by
   bus, 1 of 1 path found, the line follows the freeway. Log `VelaTransit: ride paths: N of M`.
+  **Rail was broken west of 107 degrees until 2026-10-07:** `PolylineCodec.decode` used 32-bit
+  numbers, the planner's paths have 7 decimals, and a longitude past about 107 degrees east or
+  west overflowed, so the path was "found" and drawn on another continent (the Davis bus above
+  had used the road fallback, which is why it showed). 64-bit now, `PolylinePrecisionTest` holds
+  a real San Francisco leg. Checked on the 4a: Powell to Berkeley on BART follows the tube.
+  To test transit at night, set the screenshot clock (`debug.vela.tune.demoClock 720`).
 - **Unconfirmed Overture rows rank as ordinary places (2026-10-06, a forum report from DC).**
   `tools/build-places-region.sh`, table `unconfirmed`: confidence under 0.75 AND no second source
   (no row in `srcbonus` with a bonus, none in `marksize`) caps prominence at 3.0 and is never a

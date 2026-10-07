@@ -12,7 +12,8 @@ import app.vela.core.model.LatLng
  * asks it for **6** — at 5, a latitude step is 1.11 m, so every route vertex is snapped to a
  * meter-ish grid and a physically straight road arrives visibly kinked. That quantization is
  * scatter the nav puck then has to smooth back out; asking for the extra digit removes it at the
- * source and costs nothing (same vertex count, ~15% more characters).
+ * source and costs nothing (same vertex count, ~15% more characters). The open transit planner
+ * sends **7**.
  */
 object PolylineCodec {
 
@@ -20,27 +21,30 @@ object PolylineCodec {
         val scale = Math.pow(10.0, precision.toDouble())
         val path = ArrayList<LatLng>()
         var index = 0
-        var lat = 0
-        var lng = 0
+        // Long, not Int: at 7 decimals a longitude past about 107 degrees doubles to more than an
+        // Int holds in the zigzag step, and the whole line came out on another continent (found
+        // 2026-10-07 on a San Francisco ride; New York decoded fine).
+        var lat = 0L
+        var lng = 0L
         while (index < encoded.length) {
             var shift = 0
-            var result = 0
+            var result = 0L
             var b: Int
             do {
                 b = encoded[index++].code - 63
-                result = result or ((b and 0x1f) shl shift)
+                result = result or ((b and 0x1f).toLong() shl shift)
                 shift += 5
             } while (b >= 0x20)
-            lat += if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lat += if (result and 1L != 0L) (result shr 1).inv() else result shr 1
 
             shift = 0
-            result = 0
+            result = 0L
             do {
                 b = encoded[index++].code - 63
-                result = result or ((b and 0x1f) shl shift)
+                result = result or ((b and 0x1f).toLong() shl shift)
                 shift += 5
             } while (b >= 0x20)
-            lng += if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lng += if (result and 1L != 0L) (result shr 1).inv() else result shr 1
 
             path.add(LatLng(lat / scale, lng / scale))
         }
