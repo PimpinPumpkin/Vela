@@ -25,17 +25,35 @@ Set 2026-10-07.
    1.4 and the newer material3 pull Compose from 1.7 to 1.10 or 1.11 across the whole app. It
    waits until it can be its own job: a full pass over the sheets, the gestures and D-pad
    operation, on both test phones.
-4. California traffic incidents from the official feed (issue #688). The Highway Patrol's
-   incident feed needs no key and returns type and coordinates. Build a small per-region
-   incident provider starting there, testable in Davis and Sacramento. Reports from users
-   stay parked: every open option needs somebody's server or has no moderation.
-5. Read places from Vela Almanac, a separate open dataset of US places with dated evidence of
+4. Read places from Vela Almanac, a separate open dataset of US places with dated evidence of
    what is still open. It replaces the three closure steps in the places bake and later the
    merge itself. Blocked on its first published files. The bake then reads one file per
    state.
-6. F-Droid's own catalog. The official catalog builds every app from source and cannot take
+5. F-Droid's own catalog. The official catalog builds every app from source and cannot take
    the prebuilt voice runtime (sherpa-onnx) or the prebuilt Cronet. The work is a build
    flavor that compiles or leaves out each of them, and reproducible output. Not started.
+
+Traffic incidents from official feeds (issue #688) are out of this list. They belong in a
+sister project beside Vela Almanac, which Vela would read as data.
+
+## Less to Google
+
+The direction for the Google half: keep what only Google has, and send it less. Candidates,
+none built:
+
+- Traffic re-checks from a point ahead. A drive asks Google for a fresh route from its live
+  position about every two minutes (`NavSession.maybeRecheck`). Asking from a junction a
+  kilometer or two down the route gives the same traffic for the road ahead without the live
+  position. The time to that junction is the phone's own estimate, and an offered faster route
+  has to be joined to the stretch still being driven.
+- Routes computed on the phone with Google's traffic. The on-phone router already answers
+  offline. Fed congestion read from the traffic overlay's tiles, it could answer online too,
+  and Google would see which map tiles were loaded and never a start, an end or a position. Open
+  questions: what the tiles encode per road, how far out they must be fetched for a long trip,
+  and how the times compare with Google's own.
+- A first run that starts from less. Someone who picks "Use Google" gets every default at once,
+  the two-minute re-check included. The same holds for someone who starts without Google and
+  turns it on later.
 
 ## Android Auto without Google Play
 
