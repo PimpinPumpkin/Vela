@@ -379,6 +379,7 @@ signed file the app fetches at launch (SPEC 11).
 - When a new car `Surface` arrives, release the old one. It holds the buffer queue's connection.
 - A row image that has colors is `Row.IMAGE_TYPE_SMALL`. The host tints `IMAGE_TYPE_ICON`.
 - Only `VelaCarSession` pushes the drive screen.
+- `updateTrip()` goes out at most once a second. The host drops faster ones.
 
 ### Data and bakes
 

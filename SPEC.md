@@ -4191,7 +4191,9 @@ the same `:core` singletons as the phone (`CarDeps`).
   view (`WORLD_CENTER` 20,0 at `WORLD_ZOOM` 1.5) until the first fix. With no center the car map
   stays black.
 - The turn card needs `NavigationManager.navigationStarted()`, `updateTrip()`, and an icon on
-  the step's `Maneuver`: Android Auto draws no card for a maneuver without one.
+  the step's `Maneuver`: Android Auto draws no card for a maneuver without one. `updateTrip()`
+  is sent when the step, its shown distance, the minutes left or the distance left (in 100 m)
+  changes, and at most once a second (`TRIP_MIN_GAP_MS`). The host drops faster updates.
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`, `Step` and `Trip`, sets the phone's
   glyph as the icon (`NavGlyphs.bitmap`), and reads the roundabout direction and exit number
   from the route's geometry.

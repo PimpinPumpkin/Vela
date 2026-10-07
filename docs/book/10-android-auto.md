@@ -197,7 +197,9 @@ The host draws the turn card, and needs three things first:
    `navigationEnded()`. The screen ends it on arrival, on stop and when it is destroyed, or the
    host stays in a navigating state for the next session.
 2. `updateTrip()` with the current step and the destination. This is the host's navigation data
-   channel. It also feeds the instrument cluster and a head-up display.
+   channel. It also feeds the instrument cluster and a head-up display. Vela sends it when
+   something it shows has changed, and at most once a second. The drive screen is rebuilt on
+   every navigation state, several times a second, and the host drops updates sent that fast.
 3. An icon on the step's maneuver. Android Auto draws no card for a maneuver without one, so
    `ManeuverMapper` sets the glyph the phone's banner shows.
 

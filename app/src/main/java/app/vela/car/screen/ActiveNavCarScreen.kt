@@ -35,6 +35,8 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
     // is why the ETA appeared but the next-turn banner never did). navigationStarted/Ended must be
     // balanced (a second navigationStarted() before navigationEnded() throws), so gate on this flag.
     private var navDeclared = false
+    private var lastTripKey = ""
+    private var lastTripMs = 0L
     private var callbackSet = false
 
     init {
@@ -122,7 +124,16 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         // Gearhead logged "No corresponding nav client source / Unable to send navigation status"
         // without it — on this Honda the turn card appears gated on the Trip data, not just the
         // template. Best-effort; guarded so a build/host hiccup can't blank the template.
-        if (navDeclared && next != null) {
+        // Sent when what it shows has changed, and at most about once a second: the host drops
+        // faster updates ("Rate limiting turn event message"), and the template is rebuilt on
+        // every navigation state, which can be several times a second.
+        val shownStep = ManeuverMapper.carDistance(s.nav.distanceToNextManeuver, imperial)
+        val tripKey = "${s.nav.stepIndex}|${shownStep.displayDistance}|${shownStep.displayUnit}|" +
+            "${(s.remainingDuration / 60).toInt()}|${(s.remainingDistance / 100).toInt()}"
+        val nowMs = android.os.SystemClock.elapsedRealtime()
+        if (navDeclared && next != null && tripKey != lastTripKey && nowMs - lastTripMs >= TRIP_MIN_GAP_MS) {
+            lastTripKey = tripKey
+            lastTripMs = nowMs
             runCatching {
                 val secsToStep = if (s.remainingDistance > 0.0)
                     s.remainingDuration * (s.nav.distanceToNextManeuver / s.remainingDistance) else 0.0
@@ -212,5 +223,10 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         // Only stop — the state collector observes navigating=false and pops once (no double-pop).
         deps.navSession.stop()
         runCatching { NavigationService.stop(carContext.applicationContext) }
+    }
+
+    private companion object {
+        /** The least time between two trip updates. Android Auto drops them faster than this. */
+        const val TRIP_MIN_GAP_MS = 1_000L
     }
 }
