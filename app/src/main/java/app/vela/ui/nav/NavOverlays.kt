@@ -1218,6 +1218,25 @@ fun ArrivalSummary(
                     )
                 }
             }
+            // Where the drive ended is where the car is: one tap saves it, the same as the map's
+            // parking button. Not offered after a walk or a ride, or with that button hidden.
+            if (app.vela.ui.ParkingButton.on.value && app.vela.ui.ParkingActions.arrivedByCar?.invoke() == true) {
+                var parked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val noFix = stringResource(R.string.map_parking_no_fix)
+                Spacer(Modifier.height(16.dp))
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        if (app.vela.ui.ParkingActions.saveHere?.invoke() == true) parked = true
+                        else android.widget.Toast.makeText(context, noFix, android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    enabled = !parked,
+                    modifier = Modifier.fillMaxWidth().dpadHighlight(androidx.compose.material3.ButtonDefaults.outlinedShape),
+                ) {
+                    Icon(Sym.LocalParking, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+                    Text(stringResource(if (parked) R.string.map_parking_saved else R.string.map_parking_save))
+                }
+            }
             if (onSaveDriven != null) {
                 Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.driven_route_title), style = MaterialTheme.typography.bodyMedium)

@@ -338,7 +338,9 @@ the snapped endpoint counts as arriving. If you drive back out of the zone still
 held reroute fires.
 
 On arrival the foreground service stops and leaves a notification you can swipe away, and a
-recorded trip is saved.
+recorded trip is saved. The arrival card shows the trip's time and distance. After a drive it
+has "Save parking spot", which does what the map's parking button does, unless that button is
+turned off in Settings.
 
 ### Resuming after the app was killed
 

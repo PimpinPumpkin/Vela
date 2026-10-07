@@ -2570,7 +2570,9 @@ it with regexes.
 - Recents are timestamped under new preference keys. The legacy keys are read once and left in
   place for a downgraded build.
 - Parking is one tap on the P button, with a history. Settings > Map "Parking button"
-  (`ParkingButton`, default on) hides the button while no spot is saved.
+  (`ParkingButton`, default on) hides the button while no spot is saved. With it on, the
+  arrival card of a drive has "Save parking spot" (`ParkingActions.saveHere`), which saves the
+  current position as the button does. A walk, a ride or a transit trip does not offer it.
 - Imports accept GPX, KML and GeoJSON including Google Takeout (`core/data/PlaceImport`). GPX
   is latitude first; KML and GeoJSON are longitude first. A KML placemark with several
   coordinate tuples is skipped. Only name, coordinate and a given address are taken. Ids derive

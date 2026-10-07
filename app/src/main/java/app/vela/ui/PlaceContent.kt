@@ -225,6 +225,15 @@ object RouteActions {
     @Volatile var modeKey: (() -> String)? = null
 }
 
+/** The parking spot, for surfaces away from the map's own parking button: the arrival card
+ *  offers to save where a drive ended. Set by the view model. */
+object ParkingActions {
+    /** Saves the current position as the parking spot. False with no fix. */
+    @Volatile var saveHere: (() -> Boolean)? = null
+    /** Was the trip that just ended a drive? Walking to a place parks nothing. */
+    @Volatile var arrivedByCar: (() -> Boolean)? = null
+}
+
 object ShapeActions {
     @Volatile var delete: (() -> Unit)? = null
     @Volatile var edit: (() -> Unit)? = null
