@@ -9,3 +9,8 @@
   - android_certificate_transparency
   - android_tapjacking
   - android_manifest_domain_config_cleartext   # localhost only, for local testing
+  # StrandHogg 2.0. The rule's own text says a target SDK of 29 or higher fixes it at platform
+  # level, and it fired because it read the MINIMUM SDK (26) as the target: the target (35) is
+  # set in Gradle, where the scanner does not look. Its other remedy, singleInstance with an
+  # empty task affinity, would change how every link from another app opens the map.
+  - android_task_hijacking2

@@ -4039,9 +4039,13 @@ architecture note.
   `WebViewIdentity.apply` turns off file access, content access and geolocation for every
   WebView, and the backup rules (`res/xml/backup_rules.xml` + `data_extraction_rules.xml`, the
   same INCLUDE list in both) carry settings, saved data and trips only: a new preference file or
-  user data file is NOT backed up until it is added to both. Known and open: MainActivity is
-  `singleTop`, which the scanner flags for task hijacking on unpatched Android 8 and 9;
-  `singleTask` is the fix and needs a pass over how links from other apps open first.
+  user data file is NOT backed up until it is added to both. The scanner's task-hijacking finding
+  (`android_task_hijacking2`, StrandHogg 2.0) was a misread and is ignored in `.mobsf` since
+  2026-10-07: its own text says a target SDK of 29+ fixes it, and it took the minimum SDK (26)
+  for the target because the target (35) is set in Gradle. An earlier note here called
+  `singleTask` the fix; that was wrong, the rule asks for `singleInstance` plus an empty task
+  affinity, which would change how links from other apps open the map. Not done: Vela has no
+  sign-in or payment screen for an overlay to imitate.
   `SECURITY.md` lists all of it for users. The repository's private vulnerability reporting,
   Dependabot alerts and secret scanning are repository settings, not files.
 - **Issue triage (2026-10-06).** `.github/workflows/issue-triage.yml` runs
