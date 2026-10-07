@@ -1022,3 +1022,11 @@ done so it *earns* trust rather than spends it:
   tunnels with their roads, and street names are spaced 140 px instead of 250 so each block's
   street is named. Pans measured the same on a 4a. Dials `roadWidthScale` and `roadNameSpacing`.
   Lanes and medians stay open (they need tiles with a lane count).
+
+- **The WebView proxy by default.** Turn `webProxy` on by default once it has run on
+  real sessions for a while (a device A/B is running). The proxy's other half, answering Google's
+  page telemetry on the phone, already shipped on its own as Settings > Privacy "Block Google's
+  page telemetry" (2026-09-25, off by default, works with the proxy on or off).
+  **Done 2026-09-28:** the signed remote settings carry `webProxy: 1` (version 25), so the proxy is
+  on for every install that has fetched them; the compiled default stays off as the fallback.
+  The roadmap kept listing it as open until 2026-10-07.

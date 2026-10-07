@@ -195,10 +195,6 @@ then the rest of this list.
   the region's language when the phone's differs and keep the English copy for the sheet, or
   bake a romanized name into the archive where Overture carries none (it has no alternate names
   in Japan). Needs a device in the region; not chased blind.
-- **The WebView proxy by default.** Turn `webProxy` on by default once it has run on
-  real sessions for a while (a device A/B is running). The proxy's other half, answering Google's
-  page telemetry on the phone, already shipped on its own as Settings > Privacy "Block Google's
-  page telemetry" (2026-09-25, off by default, works with the proxy on or off).
 - **One APK per chip type: flip the switch (2026-09-23).** Built and off: the updater picks the
   APK for the phone's chip type (`update/ApkChoice`), the versionCode is `(2000+run)*10 + chip
   digit`, CI and the F-Droid workflow handle per-chip releases (SPEC 15). What is left: once a

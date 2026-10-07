@@ -5242,7 +5242,7 @@ Gotchas:
   `CronetHolder` fails to load the library once and every Google request stays on OkHttp. 108.4 MB,
   against 98.0 MB before Cronet and 121.9 MB with Cronet on every ABI. Never add an `abiFilters`
   to shed size: it drops the x86 emulator (and the baseline-profile job runs on one). The WebView proxy
-  (`webProxy`, default off) must use `WebViewCookieJar`, never the app's jar: the app's session is new
+  (`webProxy`: compiled default off, but ON for every install since 2026-09-28 through `calibration.json` `tuning`, so read the bundle before saying a dial is off) must use `WebViewCookieJar`, never the app's jar: the app's session is new
   every launch and Google limits new sessions, the WebView's is aged. Test dials on a device with
   `setprop debug.vela.tune.<key>` (`ui/AppTune`); side-install test builds as `-PappId=app.vela.dev`.
 - **Avoids reach the nav session (2026-09-16).** `RoutingPrefs.avoidTolls/Highways/Ferries` mirror

@@ -566,7 +566,7 @@ Constraints:
   place sheet behave as before; the APK grew 0.7 MB. The engine is an `ExperimentalCronetEngine`
   with the network-quality estimator on (its estimates feed `Downlink` / `RTT`). Bump
   `vela.cronetVersion` with the claimed Chrome major.
-- **The WebView proxy** (`app/web/WebProxy`, calibration `webProxy`, default OFF): a Google WebView's
+- **The WebView proxy** (`app/web/WebProxy`, calibration `webProxy`: compiled default off, ON for the fleet through the remote settings since 2026-09-28): a Google WebView's
   GETs go out over Cronet, streamed, with the WebView's OWN cookies (`WebViewCookieJar`, so the page
   keeps its aged session), which removes `X-Requested-With: app.vela`. POSTs reach the proxy through
   a document-start shim (`WebProxy.SHIM`) that tags each XHR, fetch or sendBeacon with a one-time id
