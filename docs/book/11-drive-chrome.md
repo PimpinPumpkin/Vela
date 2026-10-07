@@ -159,7 +159,9 @@ over the whole route smears the cut across `routeLength / 256` meters.
 The arrow is a Compose overlay placed at its point's screen position right after each camera
 move. As a map symbol it landed on time or a frame late at random, because a source update is
 asynchronous and the camera move is not. Its position is a filtered estimate of meters along the
-route, not the raw fix.
+route, not the raw fix, and it is drawn on the route line itself. Its heading comes from a copy of
+the line with short median jogs straightened, so the arrow and the camera hold their heading
+through one.
 
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
 rubber duck, which in a drive are low-poly 3D models (`ui/map/Puck3D.kt`).

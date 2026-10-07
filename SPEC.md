@@ -1748,8 +1748,11 @@ Measured and not worth doing:
   from Google's or whose length is off by a third keeps Google's line.
 - MapScreen draws `roundBends(removeZigzags(straightenCircles(line)))` (`core/nav/RouteSmoothing`).
   Guidance keeps the router's line.
-- The arrow rides `puckLine`, `straightenJogs` of the drawn line. Progress is measured on the
-  drawn line and scaled onto it.
+- The arrow sits on the drawn line. Its heading, and so the camera's, comes from `puckLine`,
+  `straightenJogs` of the drawn line, so neither turns into a median jog and back out.
+  `RouteSmoothing.alongOriginal` and `mapAlong` map a distance on the drawn line to the same
+  place on `puckLine`. On 39 captured routes the arrow is never more than 1.4 m from the line.
+  Riding `puckLine` it was over 3 m off on 29 of them, up to 11.7 m.
 
 The rules only drop or cut router vertices, and never touch a bend that keeps turning one way.
 
@@ -1760,10 +1763,10 @@ The rules only drop or cut router vertices, and never touch a bend that keeps tu
   four passes, at most 5.3 m of movement.
 - `roundBends`: bends under `ROUND_MAX_TURN_DEG` (45) are cut twice, by at most
   `ROUND_MAX_CUT_M` (8 m) or a quarter of the shorter side. Junction corners stay exact.
-- The median-jog rule (arrow only): a stretch up to 140 m that leaves a straight road by 1 to
-  12 m and rejoins it within 2 m, on the same heading in and out within 3 degrees and along the
-  chord within 7, becomes its chord. On the drawn line it put the stripe on the median of a
-  divided road (up to 11.3 m off).
+- The median-jog rule (the arrow's heading only): a stretch up to 140 m that leaves a straight
+  road by 1 to 12 m and rejoins it within 2 m, on the same heading in and out within 3 degrees
+  and along the chord within 7, becomes its chord. On the drawn line it put the stripe on the
+  median of a divided road (up to 11.3 m off).
 
 `RouteSmoothingTest` bounds them over 39 captured Google lines: no line longer, no length change
 over 0.5 percent, no router point more than 12 m from the smoothed line.

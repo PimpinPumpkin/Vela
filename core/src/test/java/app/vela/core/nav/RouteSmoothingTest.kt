@@ -140,4 +140,41 @@ class RouteSmoothingTest {
         val median = walk(90.0 to 200.0, 31.0 to 11.6, 90.0 to 40.0, 149.0 to 11.6, 90.0 to 200.0)
         assertEquals(median, RouteSmoothing.straightenCircles(median))
     }
+
+    @Test fun `a distance on the line maps to the same place on its straightened copy`() {
+        // Three median jogs near the start (each 10 m to the side), then 3 km of straight road.
+        val jog = arrayOf(31.0 to 11.6, 90.0 to 40.0, 149.0 to 11.6)
+        val poly = walk(90.0 to 200.0, *jog, 90.0 to 200.0, *jog, 90.0 to 200.0, *jog, 90.0 to 3000.0)
+        val smooth = RouteSmoothing.straightenJogs(poly)
+        assertTrue("the jogs were straightened", smooth.size < poly.size)
+        val at = RouteSmoothing.alongOriginal(poly, smooth)!!
+        val cum = DoubleArray(smooth.size).also { for (k in 1 until smooth.size) it[k] = it[k - 1] + smooth[k - 1].distanceTo(smooth[k]) }
+        val polyCum = DoubleArray(poly.size).also { for (k in 1 until poly.size) it[k] = it[k - 1] + poly[k - 1].distanceTo(poly[k]) }
+        fun at(line: List<LatLng>, c: DoubleArray, m: Double): LatLng {
+            var k = 1
+            while (k < c.size - 1 && c[k] < m) k++
+            val t = ((m - c[k - 1]) / (c[k] - c[k - 1])).coerceIn(0.0, 1.0)
+            return LatLng(line[k - 1].lat + (line[k].lat - line[k - 1].lat) * t, line[k - 1].lng + (line[k].lng - line[k - 1].lng) * t)
+        }
+        // Past the jogs the two lines are the same road, so the same distance is the same point.
+        for (m in listOf(1200.0, 2000.0, 3500.0)) {
+            val onLine = at(poly, polyCum, m)
+            val mapped = at(smooth, cum, RouteSmoothing.mapAlong(at, cum, m))
+            assertTrue("at $m m the copy is ${onLine.distanceTo(mapped)} m away", onLine.distanceTo(mapped) < 0.5)
+        }
+        // One ratio for the whole route, as it was, leaves it meters ahead after the jogs.
+        val ratio = cum.last() / polyCum.last()
+        val drift = at(poly, polyCum, 1200.0).distanceTo(at(smooth, cum, 1200.0 * ratio))
+        assertTrue("one ratio drifts $drift m (lengths ${polyCum.last()} and ${cum.last()})", drift > 3.0)
+        // Inside a jog the copy is beside the line: the jog's width away, and no further.
+        val mid = 200.0 + 11.6 + 20.0
+        val beside = at(poly, polyCum, mid).distanceTo(at(smooth, cum, RouteSmoothing.mapAlong(at, cum, mid)))
+        assertTrue("inside the jog the copy is $beside m away", beside in 9.0..11.0)
+    }
+
+    @Test fun `a line that is not a copy has no map`() {
+        val poly = walk(90.0 to 200.0)
+        val other = walk(0.0 to 200.0)
+        assertEquals(null, RouteSmoothing.alongOriginal(poly, other.drop(1)))
+    }
 }

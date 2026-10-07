@@ -1279,14 +1279,15 @@ fun VelaMapView(
         if (navFollowing) { lastNavTarget = null; lastNavBearing = null }
     }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
-    // The ARROW rides a smoothed copy of the line (2026-10-03): short jogs around an island are
-    // straightened so it does not swerve round something the car drives straight past. The LINE
-    // only has its digitizing zigzags taken out (MapScreen, `removeZigzags`, at most ~5 m, wobble
-    // the generalized tile roads do not have); the median-jog rule moved it up to 11 m (measured on
-    // the captured Google lines) and put it on the median or the verge once divided roads drew as
-    // two carriageways. Progress is measured on the drawn line and scaled onto this one.
+    // The ARROW SITS ON THE DRAWN LINE and takes its HEADING from a smoothed copy of it
+    // (2026-10-07). The copy has short jogs around a median or an island straightened
+    // (2026-10-03), so the arrow and the camera do not turn into a jog and back out of it. The
+    // arrow rode that copy too, which put it up to 12 m off the line wherever one was straightened:
+    // the line stays on the carriageway, because straightened it sat on the median. `puckAt` maps
+    // a distance on the drawn line to the same place on the copy.
     val puckLine = remember(routePolyline) { app.vela.core.nav.RouteSmoothing.straightenJogs(routePolyline) }
     val puckCum = remember(puckLine) { cumLengths(puckLine) }
+    val puckAt = remember(puckLine) { app.vela.core.nav.RouteSmoothing.alongOriginal(routePolyline, puckLine) }
 
     // CROSS-STREET-ONLY nav labels (user 2026-07-16: "only show roads we are on or that we
     // directly cross"). Once per 400 m quantum of progress (the loop ticks every 2 s), take the loaded
@@ -3094,8 +3095,8 @@ fun VelaMapView(
                 val maxHoldBack = navPuck.speed * 0.25 + 0.5 // ...and of braking, so it never reverses
                 val corr = (err / PUCK_CORRECT_TIME_S).coerceIn(-maxHoldBack, maxCatchUp)
                 navPuck.progressM += ((navPuck.speed + corr) * dtT.coerceAtMost(0.5)).coerceAtLeast(0.0)
-                val toPuck = if (routeCum.isNotEmpty() && routeCum.last() > 0.0 && puckCum.isNotEmpty()) puckCum.last() / routeCum.last() else 1.0
-                val puckM = navPuck.progressM * toPuck
+                val puckM = puckAt?.let { app.vela.core.nav.RouteSmoothing.mapAlong(it, puckCum, navPuck.progressM) }
+                    ?: (navPuck.progressM * (if (routeCum.isNotEmpty() && routeCum.last() > 0.0 && puckCum.isNotEmpty()) puckCum.last() / routeCum.last() else 1.0))
                 val (_, segBrg) = pointAtMeters(puckLine, puckCum, puckM)
                 // Lateral de-jitter: drawn straight off the polyline, the puck traced every
                 // lane-level micro-kink of the dense OSM geometry - side-to-side wiggle "like a
@@ -3121,7 +3122,7 @@ fun VelaMapView(
                 var sLng = 0.0
                 for (k in 0 until PUCK_SMOOTH_SAMPLES) {
                     val off = -win + 2.0 * win * k / (PUCK_SMOOTH_SAMPLES - 1)
-                    val (sp, _) = pointAtMeters(puckLine, puckCum, puckM + off)
+                    val (sp, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + off)
                     sLat += sp.lat
                     sLng += sp.lng
                 }

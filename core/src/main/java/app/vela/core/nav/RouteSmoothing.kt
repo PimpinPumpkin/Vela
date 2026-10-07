@@ -43,6 +43,44 @@ object RouteSmoothing {
 
     fun straightenJogs(poly: List<LatLng>): List<LatLng> = removeZigzags(straightenMedianJogs(poly))
 
+    /**
+     * For each vertex of [smoothed], how far along [original] it sits. Every rule here only drops
+     * vertices, so a smoothed line's vertices are the original's own, in order. Null when one is
+     * not found (a line that was not made from [original]).
+     */
+    fun alongOriginal(original: List<LatLng>, smoothed: List<LatLng>): DoubleArray? {
+        if (original.isEmpty() || smoothed.isEmpty()) return null
+        val out = DoubleArray(smoothed.size)
+        var k = 0
+        var run = 0.0
+        for (j in smoothed.indices) {
+            while (k < original.size && original[k] !== smoothed[j]) {
+                if (k + 1 < original.size) run += original[k].distanceTo(original[k + 1])
+                k++
+            }
+            if (k >= original.size) return null
+            out[j] = run
+        }
+        return out
+    }
+
+    /**
+     * The distance along the smoothed line that matches [m] along the original: [at] is
+     * [alongOriginal] and [cum] the smoothed line's running length. A stretch that was straightened
+     * is shorter than the stretch it replaced, so one ratio for the whole route puts everything
+     * after it ahead of where it is.
+     */
+    fun mapAlong(at: DoubleArray, cum: DoubleArray, m: Double): Double {
+        if (at.size != cum.size || at.size < 2) return m
+        if (m <= at[0]) return cum[0]
+        if (m >= at[at.size - 1]) return cum[cum.size - 1]
+        val idx = java.util.Arrays.binarySearch(at, m)
+        val j = (if (idx >= 0) idx else -idx - 1).coerceIn(1, at.size - 1)
+        val span = at[j] - at[j - 1]
+        val t = if (span <= 0.0) 0.0 else (m - at[j - 1]) / span
+        return cum[j - 1] + (cum[j] - cum[j - 1]) * t
+    }
+
     /** Gentle bends only: a vertex turning less than this is rounded off, a sharper one (a real
      *  corner at a junction) is kept exactly. */
     const val ROUND_MAX_TURN_DEG = 45.0
