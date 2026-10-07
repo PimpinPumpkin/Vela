@@ -154,6 +154,10 @@ jobs:
               || { rm -f prev.pmtiles; echo "could not fetch the published archive; no patch this run"; }
           fi
       - name: Bake ${{ matrix.id }}
+        env:
+          # Optional. With it the bake reads Foursquare's current closed list; without it, the
+          # February 2025 mirror.
+          FSQ_HF_TOKEN: ${{ secrets.FSQ_HF_TOKEN }}
         run: |
           # pipefail: the bake's output goes through tee, and without this a crashed bake exits 0,
           # the upload step reads the missing archive as "no places" and the run is green. DuckDB

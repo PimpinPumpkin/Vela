@@ -2216,7 +2216,11 @@ outside signals delete rows from `raw`:
   No names are compared. A row a live second source lists (an OpenStreetMap business of the same
   name key within about 150 m, or a chain locator match) is kept, because the mirror cannot see a
   reopening. Overture's `update_time` on these rows is its import date and is not used.
-  `FSQ_CLOSED=off` skips the step; an unreachable mirror skips it with a log line.
+  `FSQ_CLOSED=off` skips the step; an unreachable mirror skips it with a log line. With
+  `FSQ_HF_TOKEN` set (a Hugging Face token whose account accepted the dataset's terms; the
+  repository secret of the same name in `places-overlays.yml`) the newest release of
+  `foursquare/fsq-os-places` is read instead, and the mirror is the fallback when that read
+  fails. The log line names which one was used.
 - **OpenStreetMap lifecycle tags** (`GONE_SQL`). Named nodes and ways tagged `disused:`, `was:`,
   `abandoned:` or `closed:` + `shop` / `amenity` / `tourism` / `leisure`, with no live tag of
   those four, form a closed list. A non-OSM row with the same whole name key within about 80 m

@@ -3938,7 +3938,11 @@ architecture note.
   of that name is there) and a shell step that asks Wikidata's query service for P576 on every
   linked item and moves those objects from the OSM inputs to the closed list. Each is best
   effort and logs one line (`foursquare:`, `osm: N named places marked closed`, `wikidata:`);
-  `FSQ_CLOSED=off` / `WD_CLOSED=off` skip two of them. District of Columbia box: 1,499 + 104 + 1
+  `FSQ_CLOSED=off` / `WD_CLOSED=off` skip two of them. `FSQ_HF_TOKEN` (repo secret, optional)
+  switches the Foursquare read to the newest gated release on Hugging Face; the `foursquare:`
+  log line ends with the source used, so a wave that fell back to the mirror is visible. The
+  token path was NOT run when it was written (no token on the build machine): check that line
+  on the first bake after the secret is set. District of Columbia box: 1,499 + 104 + 1
   of 82,217. THREE THINGS LEARNED: Overture's `update_time` is its import date, not a sign the
   place is alive (a first cut that spared rows "refreshed since the mirror" spared 1,473 of
   1,527); Overture's confidence is not either (closed restaurants at 0.92 to 0.99); and the

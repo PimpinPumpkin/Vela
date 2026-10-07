@@ -368,17 +368,40 @@ fi
 # District's matches read as known closures (restaurants gone since 2012 to 2024), which Overture
 # carries at confidence 0.92. Best effort: if the mirror is unreachable the bake goes on without
 # it. FSQ_CLOSED=off skips it. Apache 2.0, notice in tools/licenses/FSQ-OS-PLACES-NOTICE.txt.
+#
+# WITH A TOKEN (2026-10-06): FSQ_HF_TOKEN, a Hugging Face token whose account has accepted the
+# dataset's terms, reads the NEWEST release there instead (foursquare/fsq-os-places,
+# release/dt=<date>), so closures keep arriving. The token reaches DuckDB through the HF_TOKEN
+# environment variable, never the command line. Without one, or when that read fails, the
+# February 2025 mirror is used as before.
 FSQ_SQL=""
 FSQ_BASE="${FSQ_BASE:-https://data.source.coop/fused/fsq-os-places/2025-02-06/places}"
-if [ -z "$LOCAL" ] && [ "${FSQ_CLOSED:-on}" != "off" ]; then
-  if duckdb -c "INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
+fsq_closed() {  # $1 = SQL run first, $2 = the table expression to read Foursquare from
+  duckdb -c "INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2'; $1
       COPY (SELECT o.id FROM (
               SELECT id, sources[1].record_id AS rec FROM $SRC
               WHERE bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N AND sources[1].dataset = 'Foursquare') o
-            JOIN (SELECT fsq_place_id FROM read_parquet(list_transform(range(0, 81), i -> '$FSQ_BASE/' || i || '.parquet'))
+            JOIN (SELECT fsq_place_id FROM $2
                   WHERE longitude BETWEEN $W AND $E AND latitude BETWEEN $S AND $N AND date_closed IS NOT NULL) f
-            ON f.fsq_place_id = o.rec) TO '$WORK/fsqclosed.csv' (HEADER false);" >/dev/null 2>"$WORK/fsq.err" && [ -s "$WORK/fsqclosed.csv" ]; then
-    echo "foursquare: $(wc -l < "$WORK/fsqclosed.csv") Overture rows it marks closed"
+            ON f.fsq_place_id = o.rec) TO '$WORK/fsqclosed.csv' (HEADER false);" >/dev/null 2>"$WORK/fsq.err" && [ -s "$WORK/fsqclosed.csv" ]
+}
+if [ -z "$LOCAL" ] && [ "${FSQ_CLOSED:-on}" != "off" ]; then
+  FSQ_FROM=""
+  if [ -n "${FSQ_HF_TOKEN:-}" ]; then
+    FSQ_DT=$(curl -s -m 30 -H "Authorization: Bearer $FSQ_HF_TOKEN" "https://huggingface.co/api/datasets/foursquare/fsq-os-places/tree/main/release" 2>/dev/null \
+      | jq -r '.[].path' 2>/dev/null | { grep -E '^release/dt=[0-9-]+$' || true; } | sort | tail -1)
+    if [ -n "$FSQ_DT" ] && HF_TOKEN="$FSQ_HF_TOKEN" fsq_closed "CREATE SECRET fsqhf (TYPE HUGGINGFACE, PROVIDER credential_chain);" \
+        "read_parquet('hf://datasets/foursquare/fsq-os-places/$FSQ_DT/places/parquet/*.parquet')"; then
+      FSQ_FROM="Foursquare ${FSQ_DT#release/dt=}"
+    else
+      echo "foursquare: the current release could not be read ($(head -c 160 "$WORK/fsq.err" 2>/dev/null | tr '\n' ' ')), trying the 2025 mirror"
+    fi
+  fi
+  if [ -z "$FSQ_FROM" ] && fsq_closed "" "read_parquet(list_transform(range(0, 81), i -> '$FSQ_BASE/' || i || '.parquet'))"; then
+    FSQ_FROM="the 2025-02-06 mirror"
+  fi
+  if [ -n "$FSQ_FROM" ]; then
+    echo "foursquare: $(wc -l < "$WORK/fsqclosed.csv") Overture rows it marks closed ($FSQ_FROM)"
     FSQ_LIVE="CREATE TABLE fsqlive (id VARCHAR);"
     [ -n "$OSM_NDJSON" ] && FSQ_LIVE="$FSQ_LIVE
 INSERT INTO fsqlive SELECT DISTINCT r.id FROM (SELECT id, lat, lng, snapkey(name) AS sk FROM raw WHERE id IN (SELECT id FROM fsqclosed)) r
