@@ -120,6 +120,8 @@ class CarMapRenderer(
 
     private companion object {
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
+        val LIMIT_INK = Color.parseColor("#111111")
+        val LIMIT_OVER = Color.parseColor("#e8514a") // the phone's over-the-limit red
         val WORLD_CENTER = LatLng(20.0, 0.0)
         const val WORLD_ZOOM = 1.5
         const val TICK_MS = 70L      // render-loop cadence (snapshots gate the real fps below this)
@@ -195,6 +197,12 @@ class CarMapRenderer(
     }
     private val limitNum = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#111111"); textAlign = Paint.Align.CENTER; textSize = 36f; isFakeBoldText = true
+    }
+    private val limitEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#202124"); style = Paint.Style.STROKE; strokeWidth = 3f
+    }
+    private val limitWord = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#3c4043"); textAlign = Paint.Align.CENTER; textSize = 13f; isFakeBoldText = true
     }
 
     // Night tint: darken + slight blue base so the map isn't a blinding white slab after dark.
@@ -729,8 +737,9 @@ class CarMapRenderer(
         canvas.restore()
     }
 
-    /** Bottom-right current-speed badge (km/h or mph per the user's units), plus a Google-style
-     *  round speed-limit sign to its left when the road's posted limit is known (offline graph). */
+    /** Bottom-right current-speed badge (km/h or mph per the user's units), plus the posted limit
+     *  to its left when it is known: the US "SPEED LIMIT" sign in miles, the round red-ring sign
+     *  in kilometers, the same choice the phone makes. The number turns red past the limit. */
     private fun drawSpeed(canvas: Canvas) {
         val imperial = app.vela.ui.Units.imperial.value
         val v = if (imperial) speedMps * 2.236936 else speedMps * 3.6
@@ -746,14 +755,27 @@ class CarMapRenderer(
         canvas.drawText(num.toString(), cx, cy + 6f, badgeNum)
         canvas.drawText(unit, cx, cy + 30f, badgeUnit)
 
-        // Speed-limit sign (white disc, red ring) to the left of the speed badge.
         speedLimitKmh?.let { kmh ->
             val limit = (if (imperial) kmh / 1.609344 else kmh).roundToInt()
             if (limit <= 0) return
-            val lx = cx - 2 * rad - 18f; val ly = cy; val lr = 42f
-            canvas.drawCircle(lx, ly, lr, limitDisc)
-            canvas.drawCircle(lx, ly, lr, limitRing)
-            canvas.drawText(limit.toString(), lx, ly + 14f, limitNum)
+            limitNum.color = if (v > limit + (if (imperial) 3 else 5)) LIMIT_OVER else LIMIT_INK
+            val ly = cy
+            if (imperial) {
+                val hw = 34f; val hh = 44f
+                val lx = cx - rad - 14f - hw
+                val sign = RectF(lx - hw, ly - hh, lx + hw, ly + hh)
+                canvas.drawRoundRect(sign, 9f, 9f, limitDisc)
+                canvas.drawRoundRect(sign, 9f, 9f, limitEdge)
+                canvas.drawText("SPEED", lx, ly - 24f, limitWord)
+                canvas.drawText("LIMIT", lx, ly - 10f, limitWord)
+                canvas.drawText(limit.toString(), lx, ly + 30f, limitNum)
+            } else {
+                val lr = 42f
+                val lx = cx - rad - 14f - lr
+                canvas.drawCircle(lx, ly, lr, limitDisc)
+                canvas.drawCircle(lx, ly, lr, limitRing)
+                canvas.drawText(limit.toString(), lx, ly + 14f, limitNum)
+            }
         }
     }
 
