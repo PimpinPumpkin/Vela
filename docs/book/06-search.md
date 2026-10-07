@@ -2,561 +2,445 @@
 
 ## What you see
 
-You tap the bar and start typing. Before you have finished the word, rows appear: first the
-things that are already yours (a search you ran last week, a place you opened, a saved place, a
-contact's address if you allowed it), then Google's own suggestions, then a few plain query
-rows such as "Starbucks" that run a search when tapped. Every row except a contact carries a
-small north-west arrow on the right that puts the row's text into the box without searching, so
-you can finish a long name or address by hand.
+Tap the bar and type. From the second character rows appear: first your own (recent searches,
+places you opened, saved places, a contact's address if you allowed it), then place suggestions,
+then a few plain query rows such as "Starbucks" that run a search when tapped. Every row except
+a contact has an arrow that puts its text in the box without searching, so you can finish a long
+name or address by hand.
 
-Press Enter and you get a results list with pins on the map. The places next to you lead it, the
-list can grow with a "More results" row at the bottom, and a house address you typed resolves to
-that house even when the search itself only knew businesses.
+Press Enter and you get a results list with pins on the map. Places next to you lead, a "More
+results" row can extend the list, and a typed house address resolves to that house even when the
+search itself only knew businesses. Pan the map while results show and "Search this area"
+appears.
 
-Some things you type are not searches at all. "Take me home", "Davis to San Francisco", "nearest
-pharmacy" and "what's my ETA" are read as actions first. With no signal, the same box searches
-the region you downloaded. With Google turned off, it searches OpenStreetMap. While a route is
-up, the chips and the free-text field search along it instead of around the map.
+Each result is a card: the name, one line of facts (rating, count, distance, price, kind), the
+open or closed line, up to three amenity ticks, up to three photos, and buttons that act without
+opening the place (Directions, Call, Website, Share, and Menu when there are menu photos). All
+of it comes from the one search reply. Nothing is fetched per result, so most cards have one
+photo and none has a review line. The address shows when the place is unrated, when its name
+repeats in the list, or when the card has no photos.
+
+Some things you type are commands. "Take me home", "Davis to San Francisco", "nearest pharmacy"
+and "what's my ETA" are read as actions first. With no signal the box searches the regions you
+downloaded. With Google turned off it searches open data. While a route is up, the chips and the
+search field search along it.
+
+With nothing typed, the search page shows your recent searches and places, and the saved places
+and routes you pinned. Pins are off by default. The bookmark button's sheet lists everything you
+saved, each row with a pin toggle.
 
 ## Where the data comes from
 
-- **Typed suggestions** come from Google's own search-as-you-type request, the keyless
-  `/s?tbm=map&gs_ri=maps&suggest=p` call that the Google Maps web page fires on every keystroke.
-  It is not the search endpoint, and it answers a partial address far better.
-- **Results after Enter** come from Google's calibrated map search (`/search?tbm=map`), the same
-  keyless scrape that opens a place. How that request is dressed and kept current is the subject
-  of [chapter 7](07-talking-to-google.md).
-- **Address help** comes from two more places. Photon (photon.komoot.io, komoot's community
-  OpenStreetMap geocoder, keyless under a fair-use policy) is asked about any query that starts
-  with a house number, and answers every search when Google is turned off. The on-device
-  address index, built from OpenStreetMap `addr:housenumber` points and street centerlines in
-  the region packs, answers without any network at all.
-- **Offline results** come from the region packs: the whole-region place index and the address
-  index described in [chapter 8](08-offline.md). Nothing is fetched.
-- **Your own rows** (recent searches, recent places, saved places and list members, contacts)
-  never leave the phone to be matched. A contact's **address string** is the one thing that goes
-  out, and only when you pick the row; the name stays on the phone.
+| What | Source |
+| --- | --- |
+| Suggestions while typing | Google's autocomplete, the keyless `/s?tbm=map&gs_ri=maps&suggest=p` request the Google Maps web page sends on each keystroke |
+| Results after Enter | Google's map search (`/search?tbm=map`), the same keyless request that opens a place. [Chapter 7](07-talking-to-google.md) covers how it is built and kept current |
+| Address help | Photon (photon.komoot.io, komoot's keyless OpenStreetMap geocoder), and the on-device address index built from OpenStreetMap house numbers and street centerlines in the region packs |
+| Offline results | The downloaded place packs, places archives and address index ([chapter 8](08-offline.md)) |
+| Results without Google | Photon, plus Vela's own places data, downloaded or streamed |
+| Your own rows | Recent searches and places, saved places, list members and contacts, matched on the phone |
+
+While you type, the text goes to Google's autocomplete on each pause, to Photon when it starts
+with a house number, and to Google's search only when the autocomplete does not answer. A
+contact's address string is sent to the geocoder when you pick the row. The name stays on the
+phone. A long press on the map is a reverse geocode and goes to OpenStreetMap's Nominatim.
 
 ## How it is decided
 
-### What a typed query is sent to
+Thresholds not listed here are in [SPEC section 5.6](../../SPEC.md).
 
-`MapViewModel.onQueryChange` runs on every keystroke, in this order:
+### While you type
 
-1. Under two characters, everything clears and nothing else happens.
-2. **Local matches, synchronously.** `localMatches()` substring-matches the text against your own
-   data before any network call, so these rows are instant and are the only thing that shows
-   offline.
-3. **Wait for a pause.** A literal 320 ms delay; a newer keystroke cancels the pending one.
-4. **Start the address side-runs**, in parallel, only when the text looks like an address:
-   Photon when it starts with a house number followed by a word
-   (`PhotonGeocoder.looksLikeAddress`), and the on-device geocoder when it starts with a digit
-   or names a street type (`OfflineAddressStore.looksLikeAddress`: street, ave, blvd, dr, rd
-   and so on).
-5. **Ask Google's autocomplete** (`MapDataSource.suggest`). If it answers with anything, its
-   rows are the suggestions and step 6 is skipped. The Photon call already in flight is canceled
-   and its answer ignored, although by then the request has usually already gone out.
-6. **Fallback race**, only when the autocomplete failed or answered nothing (offline, Google
-   off, a block): the calibrated search endpoint, Photon and the local geocoder, merged.
+`MapViewModel.onQueryChange` runs on every keystroke:
 
-A reply that lands after the text has changed is dropped, so a slow answer to "sta" can never
-overwrite the rows for "starb".
+1. Under two characters everything clears.
+2. `localMatches()` matches the text against your own data with no network, so those rows are
+   instant.
+3. It waits 320 ms. A newer keystroke cancels the pending one.
+4. If the text looks like an address, two lookups start in parallel: Photon when it starts with
+   a house number and a word (`PhotonGeocoder.looksLikeAddress`), and the on-device geocoder
+   when it starts with a digit or names a street type (`OfflineAddressStore.looksLikeAddress`).
+5. It asks Google's autocomplete (`MapDataSource.suggest`). If that returns any row, those are
+   the suggestions and Photon's call is canceled.
+6. If the autocomplete fails or returns nothing (offline, Google off, a block), the fallback
+   runs: the search endpoint, Photon and the on-device geocoder, merged.
 
-So the honest answer to "where does my typing go" is: to Google's autocomplete on every pause,
-plus a second autocomplete request centered on you when you are looking 50 km or more away and no
-row starts with what you typed; also to Photon when it starts with a house number; and to the full
-search (up to four requests: the first page, the nearby pass and pages two and three) only when the
-autocomplete did not answer. Tapping a house number or long-pressing the map asks none of these:
-that is a reverse geocode, and it goes to OpenStreetMap's Nominatim alone. Recent searches, saved places and contacts are matched on the
-phone.
+A reply that lands after the text changed is dropped.
 
-### Google's autocomplete
+#### The autocomplete
 
-The request carries the text, the viewport center and the viewport's height as the bias window
-(`!1d<span>!2d<lng>!3d<lat>` in the `pb`), and `hl`/`gl` rewritten to the app language and the
-phone's region like every other Google request.
+The request carries the text, the viewport center and the viewport height as the bias window,
+clamped to 2 to 500 km. `SUGGEST_SPAN_M` (20 km) is the window before the map has a viewport,
+and a typed address gets at least `ADDRESS_SEARCH_SPAN_M` (40 km). The search endpoint ranks by
+prominence over the whole window, which answers a bare house number with a ZIP code in another
+state. The autocomplete lists the nearby houses with that number first.
 
-```
-suggest window = viewport height, clamped to 2_000 .. 500_000 m
-SUGGEST_SPAN_M = 20_000     // the window when there is no viewport yet: a town
-```
+A suggestion with a location is a place row. One without is a query row ("Starbucks", "cvs
+pharmacy hours"), and tapping it runs that text as a search. At most eight place rows and three
+query rows show. On-device address hits lead them when they are within `SUGGEST_NEAR_M` (80 km)
+of the bias point and no Google row within 120 m carries the same house number.
 
-The bias is the reason it exists. The calibrated search endpoint ranks by prominence over the
-whole window, so a bare house number typed at home came back as a ZIP code in another state,
-and "459 Ralston" typed from another state found businesses named Ralston and never the San
-Francisco street. The autocomplete lists the nearby houses with that number first and still
-finds the far street, ranked after them.
+When the view is 50 km or more from you and no suggestion's name starts with what you typed,
+`homeSuggestions` sends one more autocomplete request around you and puts up to three matching
+rows first. It needs four characters and skips addresses.
 
-**The envelope has two quirks.** The body is `{"c":0,"d":")]}'\n<json>"}` followed by a
-comment-style tail, and the app (unlike a desktop browser) gets a **second** object after that
-tail, `{"c":0,"d":"","e":"<token>"}`. The first object also echoes the request URL, which can
-contain braces. So `SuggestParser.unwrap` reads only the first object, finding its closing brace
-by walking the text and skipping braces inside strings; "the last closing brace in the body" is
-never the right one. This was found on a device the day the feature shipped, and
-`SuggestParserTest` pins it.
+Two parsing rules in `SuggestParser`:
 
-Inside, each suggestion is a row of nulls with its content in one column, which the parser
-**searches for** rather than assuming (the first array element whose first child is an array
-starting with a string), so a shifted column still parses. From that block:
+- The response is a `{"c":0,"d":"..."}` object, a comment tail, and for the app a second object.
+  The first object echoes the request URL, which can contain braces. `SuggestParser.unwrap`
+  finds the end of the first object by walking the text and skipping braces inside strings. The
+  last closing brace in the body is the wrong one.
+- A suggestion is a row of nulls with its content in one column. The parser searches for that
+  column (the first array element whose first child is an array starting with a string), so a
+  shifted column still parses. The field paths inside it come from calibration.
 
-- the primary text (a name, or an address's street line) and the secondary line;
-- a location at `[11][2..3]`, or at `[13][0][3][2..3]`;
-- a feature id at `[13][0][0]`, kept only when it has Google's `0x..:0x..` shape.
+#### The fallback
 
-**A row with a location is a place. A row without one is a query row** ("Starbucks" with "See
-locations", "cvs pharmacy hours"): it shows with a search icon and no menu, and tapping it runs
-that text as a search.
+- The search endpoint's rows are sorted into two buckets, inside `SUGGEST_NEAR_M` first, with
+  Google's order kept within each. Google's top row and an exact name match are never demoted,
+  because for a city's name the top row is the city itself.
+- Photon is asked for four rows inside a hard box of about 60 km each way around the bias point.
+  A soft bias let a famous far "123 Main Street" outrank every nearby one.
+- The on-device geocoder is asked for three rows.
 
-When the autocomplete answers, the phone shows at most eight place rows and three query rows.
-The on-device geocoder's hits still lead them, with two filters: they must be within
-`SUGGEST_NEAR_M` of the bias point, and a hit is dropped when a Google row within 120 m already
-carries the same house number. Anything your own rows already showed is removed too (see below).
+Address rows lead, on-device first and then Photon, limited to `SUGGEST_NEAR_M` and
+de-duplicated to about 5 m. A Google row hides an address row only when it is within 120 m and
+carries the same house number. Hiding on distance alone removed the address whenever a business
+shared the block. At most eight rows show, with no query rows.
 
-### The fallback race, when Google's autocomplete does not answer
+### Your own rows and contacts
 
-This is the pipeline that ran before the autocomplete existed, unchanged:
+`localMatches()` returns up to six rows: up to three recent searches containing the text, up to
+three contacts whose name contains it, then recently viewed places, list places and saved places
+matched on name or address. Network rows that repeat one of these are dropped. The match is on
+feature id and on name plus location rounded to about 5 m, since saved and recent places carry
+no feature id.
 
-```
-SUGGEST_NEAR_M = 80_000     // about a metro radius
-```
+Contacts are matched only when Settings > Search > "Search your contacts" is on. It is off by
+default and asks for the contacts permission when turned on. Contacts with a postal address are
+loaded into memory once (`ContactAddresses`), because a provider query per keystroke stutters. A
+contact row shows the person's photo and the address book's label for the address.
 
-- **The search endpoint** answers with the viewport window and your position as the ranking
-  point. Its rows are bucketed by distance with a stable sort: inside `SUGGEST_NEAR_M` first,
-  Google's own order kept within each bucket. Two rows are never demoted: Google's **top** row
-  and an exact name match, because for "fresno" the top row is the city itself and bucketing it
-  under every nearby business with Fresno in its name pushed it off the list.
-- **Photon** is asked for four rows inside a hard box around the bias point, about ±0.55 degrees
-  of latitude and the matching width in longitude (roughly 60 km each way). A soft lat/lon bias
-  was tried first and still let a famous far "123 Main Street" outrank every nearby one.
-- **The on-device geocoder** is asked for three rows.
+Picking a contact (`openContactAddress`) geocodes the address and opens it under the person's
+name, the way Home and Work open. Online it asks Google search and takes, among the top three
+hits, one with no rating and no category, so the house wins over a shop at the same address.
+Offline, or when that misses, it asks the on-device geocoder. The opened place carries only the
+name, the point and the address, so a business at that spot does not lend it a rating or hours.
+If nothing geocodes, the address runs as a plain search.
 
-Address rows lead (local geocoder first, then Photon), filtered to `SUGGEST_NEAR_M` and
-de-duplicated to about 5 m. An address row is only hidden by a Google row that carries the **same
-house number** within 120 m. The older rule, "any Google row within 120 m covers it", ate the
-address every time a business sat on the same block. At most eight rows show, and no query rows
-exist on this path.
+A saved pin or address opens as saved, with no lookup. A saved business looks up its listing
+for photos and reviews. It accepts a hit within `SAVED_ENRICH_SAME_SPOT_M` (30 m), or within
+`SAVED_ENRICH_MAX_M` (250 m) when the names agree, and keeps a name you gave it.
 
-### Local suggestions and contacts
+Saved places and recents appear in suggestions only. Results after Enter are what the providers
+returned.
 
-`localMatches()` builds up to six rows, in this order:
-
-1. **Recent searches** containing the text, up to three, skipping an exact echo of what is being
-   typed.
-2. **Contacts** whose name contains the text, up to three (`ContactAddresses.matches`, limit 3),
-   only when Settings > Search > contacts is on. It is off by default; the contacts permission
-   is asked when you turn it on. The address-bearing contacts are loaded into memory once, because
-   a provider query on every keystroke stutters.
-3. **Recently viewed places**, then **list places**, then **saved places**, matched on name or
-   address and de-duplicated by feature id, or by name plus location when there is none.
-
-A saved pin or address opens exactly as it was saved, with no lookup: searching an address on its
-own point returns whatever business shares the building. A saved business looks up its listing for
-photos and reviews (within 30 m, or within 250 m with an agreeing name) and keeps a name you gave
-it. Rename is in the pinned row's menu and in the save menu on the place's own sheet.
-
-Network rows that repeat a local row are dropped, matched on **both** feature id and a name plus
-location key rounded to about 5 m. The second key matters because saved and recent places carry
-no feature id, so an id-only compare showed them twice.
-
-**Picking a contact** (`openContactAddress`) geocodes the address and opens the result **under
-the person's name**, with the address beneath, the way Home and Work open. Online it asks Google
-search and prefers, among the top three hits, one with no rating and no category (the house
-rather than the shop standing at it); offline, or when that misses, it asks the on-device
-geocoder. The opened place is deliberately bare: whatever else was known about that spot is not
-the contact's. If nothing geocodes, it falls back to a plain search of the address so the usual
-no-results and offline messages show. Contact rows carry the person's photo and a "Contact" chip
-with the address book's own label, and no fill-in arrow.
-
-Saved places and recents enter **suggestions**, not results. A search run with Enter shows what
-the providers returned; your saved places appear in it only if a provider returned them.
-
-### The fill-in arrow
-
-Every suggestion row except a contact, and every recent row on the empty search page, carries
-Google's north-west arrow. `SuggestionRow.onFill` calls `MapViewModel.fillQuery`, which feeds the
-text through `onQueryChange` (so the suggestions refresh for it) without searching, and bumps
-`queryEdits` so the bar can tell the text was set from outside the keyboard.
-
-It fills the row's **primary text only**: a place's name, an address's street line, a recent
-query. Google fills the whole "name, city, state" line; that turned out to leave nothing to
-refine, so Vela does not.
-
-The cursor lands at the **end** of the filled text: `SearchBar` owns a `TextFieldValue` and resets
-it, with the selection at the end, whenever `fillTick` (`queryEdits`) moves.
+The fill-in arrow (`MapViewModel.fillQuery`) puts the row's primary text in the box: a place's
+name, an address's street line, a recent query. It refreshes the suggestions and leaves the
+cursor at the end.
 
 ### Search on Enter
 
-`search()` biases to what you are looking at, not where you are: the viewport center, falling
-back to your position before the map has settled. It then offers the text to the query-intent
-parser (next section), and only if that declines does `runSearch` run. Before the network,
-`runSearch` handles two special shapes: pasted coordinates drop a pin (strict whole-string
-match, so an address with numbers still searches), and a pasted Google Maps share link opens
-the single place it points to, or imports a shared list as results with a Save offer (with Google
-off, the list import is refused and a single-place short link is resolved only while "Open shared
-Google Maps links" is on).
+`search()` biases to the viewport center, or to your position before the map has one. The text
+first goes to the intent parser (below). If that declines, `runSearch` checks two shapes before
+searching. Pasted coordinates drop a pin. A pasted Google Maps share link opens the place it
+points to, imports a shared list as results with a Save offer, or imports a My Maps custom map.
+With Google off, list and custom map imports are refused, and a short link is resolved only
+while "Open shared Google Maps links" is on.
 
-Online, one search is several requests:
+Online, one search is up to four requests:
 
-```
-page size      = the template's !7iN token (20 today)
-pages 2 and 3  = fetched together, only when page 1 came back with at least 18
-NEARBY_SPAN_M  = 2_500      // the nearby pass's window, a walkable radius
-SearchPb.MIN_SPAN_M = 1_000 // the window floor; the ceiling is 500_000
-```
+- The window is the viewport height, between `SearchPb.MIN_SPAN_M` (1 km) and 500 km.
+- Page one, then pages two and three together when page one came back within two rows of full.
+  The page size is the template's `!7i` token, 20 today. Google's keyless ranking favors
+  prominence across the whole window, so a small place next to you can rank 21st to 60th for a
+  category. A specific name returns a short page and costs nothing extra.
+- The nearby pass is one page over a `NEARBY_SPAN_M` (2.5 km) window centered on you, and its
+  results lead the list. It runs when you are within half the window's height of its center and
+  the window is more than 1.5 times `NEARBY_SPAN_M` tall. A search over another city keeps
+  Google's order.
 
-- **The window** is the real viewport height (`spanMeters`), stretched from the template's baked
-  25 km so a zoomed-out search covers what you can see, floored and capped as above.
-- **Three pages.** Google's keyless ranking is prominence-heavy across the whole window, so the
-  modest place right next to you can rank 21st to 60th for a category. Specific names return
-  short pages and never paginate, so they cost nothing extra.
-- **The nearby pass.** When your position is inside the window (within half the window's height
-  of its center) and the window is more than 1.5 times `NEARBY_SPAN_M` tall, a fourth request
-  runs, one page over a 2.5 km window centered on **you**, and its results **lead** the list. The
-  Google app weights distance the same way. Search over another neighborhood or city and no
-  nearby pass runs, so Google's order for where you are looking stands.
-- **The ambient merge.** Places already on the map from the ambient fan-out (chapter 1) whose
-  category or name matches the query, and which the search missed, are **appended**, nearest
-  first, up to 20. Appended, never reshuffled: an earlier experiment taught the project not to
-  reorder Google's list. This costs no network. Address-shaped queries skip it.
-- **More results.** When the three pages together returned at least 40, the list ends in a "More
-  results" row. It pulls the next three pages of the same request (same query, window and ranking
-  point) and appends whatever is new; the row disappears once a pull adds fewer than five, or the
-  query changes.
+Two steps follow with no request:
 
-**A typed house address the results cannot place.** When the text starts with a number followed
-by a word and not one result carries that number in its name or address, the search asks the
-autocomplete as a geocoder and puts up to three of its rows that do carry the number at the top.
-The on-device geocoder's hits (up to three, from whichever of its four layers answers) lead even above those, unless a Google or geocoded row within
-120 m already carries the same number (Google's entry is richer, so it wins the tie).
+- The ambient merge appends places already on the map from the ambient fan-out
+  ([chapter 1](01-places.md)) whose category or name matches and which the search missed,
+  nearest first, up to 20. Google's order is left alone. Address queries skip it.
+- "Hide adult categories" and any refinement in the signed remote transforms filter what Google
+  returned.
 
-The final list is:
+When the three pages returned at least 40 rows, the list ends in "More results". It fetches the
+next three pages of the same request and appends what is new. The row goes away once a pull adds
+fewer than five.
 
-```
-on-device address hits + autocomplete-geocoded rows + Google's pages (nearby pass first) + ambient extras
-```
+If Google answers with nothing, the on-device search runs before "No results" shows. If the
+request fails, the same on-device search runs, and only when that is empty too does the message
+say offline or failed.
 
-Two filters then apply to what Google returned: "Hide adult categories" when it is on, and any
-refinement shipped in the signed remote transforms. No WebView is warmed for a search any more
-(2026-09-23): a tap's photos and details are single requests, and a hidden page loads only when a
-place needs one.
+"Search this area" (`searchThisArea`) reruns the query over the new viewport and keeps the
+results inside the view plus 10% (`AreaNarrow`). When none are inside, the whole answer shows.
 
-If Google answers but finds nothing, the on-device index is tried before showing "No results",
-because it may hold a small local place Google missed. If the request throws, the same on-device
-search runs; only when that is also empty does the message say offline or failed.
+The results sheet shows while there are results, no place is open and the search field is closed
+(`SearchGates`). After a search from a view under 2.5 km tall, the camera stays where it is when
+enough results fall in the visible part of the map: one for a name, three for a kind of place
+(`SearchKind`). Otherwise it frames the first 12 results.
+
+### Other locations of a business
+
+Google answers a business name with one focused place wherever the map is. `SearchParser` adds
+the branches named in that place's related block whose names carry the query. With Settings >
+Search > "Find other locations automatically" on (the default), the search also asks for
+"<name> near me" over a `BRANCH_SPAN_M` (30 km) window around the focused place, which returns a
+list with full cards. Same-name rows within 50 m merge, and up to `BRANCH_FILL_MAX` (3) branches
+without an address are looked up one by one. That is one to five extra requests. With the
+setting off, the list ends in "Show other locations" and the requests run on a tap
+(`searchBranches`).
 
 ### A typed street address
 
-A query that starts with a house number and a street ("912 Miller Dr") should end with that
-address in the list. Google's search often answers it directly. When it answers with businesses
-instead, which is common zoomed in on a busy block, Vela asks Google's autocomplete to geocode the
-text and puts its matching rows first, with the on-device geocoder's hits ahead of those.
+`AddressQuery.parse` recognizes text that starts with a house number and a street. A result is
+that address when the house number and the street's first distinguishing word (not a direction,
+not "St" or "Ave") are both whole words of its name or address. A substring test found the
+digits in ZIP codes and in neighbors' numbers and took a list of businesses for the address.
 
-"Does a result already hold this address?" is decided on whole words: the house number and the
-street's first distinguishing word (not a direction, not "St" or "Ave") must both be words in the
-result's name or address. Until 2026-10-01 the test was whether the digits appeared anywhere, and
-they appear in ZIP codes and in neighbors' house numbers, so a list of nearby businesses counted
-as holding the address and the geocoder was never asked (issue #638).
+When no result within `ADDRESS_SEARCH_SPAN_M` of the view is the address, the search asks the
+autocomplete to geocode the text and takes up to three rows that are. The same constant is the
+least window an address is searched over, so zooming in to one building does not shrink it. The
+on-device geocoder adds up to three hits ahead of those, unless a result within 120 m already is
+the address. An on-device estimate (an interpolated position, or a point on the street) is
+dropped whenever any other result is the address.
 
-Zoom does not shrink an address search. A map zoomed in to one building would otherwise ask about
-a window a kilometer across, and an address a few miles away then lost to one of the same name in
-another state. A typed address is searched over at least 40 km, a match farther than that from the
-view does not stop the nearby lookup, and the rows that are the address are listed nearest first.
+Rows that are the address come first, ordered by how well they agree with the whole typed street
+(`AddressQuery.score` counts the direction and the street type), then by distance. The list is:
 
-### plausibleBias and rankBias
+```
+on-device address hits + address rows + Google's pages (nearby pass first) + ambient extras
+```
 
-Two small rules decide which point a search is about.
+### Which point a search is about
 
-- **`plausibleBias`** throws away any point within half a degree of 0,0 in both latitude and
-  longitude. That is MapLibre's untouched camera on a device that never had a fix (a Wi-Fi
-  tablet), or a bogus provider fix. Biasing to it ranked everything toward open ocean; no bias at
-  all lets the regional ranking win. Every "near" in search goes through it.
-- **`rankBias`** decides the point the **order and the shown distances** are computed from, which
-  is separate from the search window. It is your position when that is within 50 km of the
-  window's center, otherwise nothing (Google ranks from the window center). Searching where you
-  are sorts from you; browsing a city elsewhere does not reshuffle around wherever the screen
-  happens to be centered.
+- `plausibleBias` discards a point within half a degree of 0,0. That is the map's untouched
+  camera on a device that never had a fix, and biasing to it ranks everything toward open ocean.
+- `rankBias` picks the point that the order and the shown distances are computed from. It is
+  your position when you are within 50 km of the window's center. Otherwise Google ranks from
+  the window center, so browsing another city does not reorder around you.
 
-**A name typed while looking far away** (2026-09-22). When the search window is more than 50 km
-from you, and nothing in the window carries the typed name, one extra request goes out around
-you:
-
-- **On Enter** (`homeNameHits`): a near-you result whose name matches the query exactly or up to
-  generic words (`PlaceNames` EXACT or VARIANT) replaces the far results. A category chip's query,
-  an address, and anything under four characters never trigger it, so "coffee" over Tokyo still
-  means Tokyo's coffee.
-- **While typing** (`homeSuggestions`): when no suggestion's normalized name starts with what you
-  typed, up to three near-you autocomplete rows that do lead the list.
-
-The case it exists for: a local restaurant's name typed with the map over another country, where
-Google's window search answered with a loosely similar place over there. `VelaSearch` logs each
-replacement.
-
-`runSearch`, "More results", "A to B" and the typing fallback's search use both; the
-autocomplete request takes only the bias point. Search along a route uses
-neither (below). "Search this area", offered when you pan while results show, re-runs the query
-over the new viewport.
+When the window is 50 km or more from you and no result's name matches the query, `homeNameHits`
+searches once around you. Results there that match the name exactly or up to generic words
+(`PlaceNames`), are not permanently closed and are within `HOME_NAME_MAX_M` (40 km) of you
+replace the far results. A chip's query, an address and anything under four characters never
+trigger it, so "coffee" over Tokyo means Tokyo's coffee.
 
 ### Query intents
 
-Every submitted query, typed or dictated, first goes through
-`core/search/QueryIntents.parse(text, lang)`: rule-based, on the phone, with no server and no
-model. It returns one of:
+Every submitted query, typed or spoken, first goes through `QueryIntents.parse(text, lang)` in
+`core/search`. It is rule-based and runs on the phone.
 
 | Intent | Example | What happens |
 | --- | --- | --- |
-| Home / Work | "take me home", "go to work" | directions to the saved shortcut, opened as a bare place under the shortcut's name; a "set it first" message when unset |
-| NavigateTo | "navigate to the library" | search the rest, then the top hit goes straight into the route chooser |
-| Route | "Davis to San Francisco" | directions from one to the other |
-| Search | "where is the nearest pharmacy near me" | the filler is stripped, "pharmacy" is searched |
-| Eta | "what's my ETA" | while navigating, the remaining time is spoken and shown |
+| Home / Work | "take me home", "go to work" | Directions to the saved shortcut, opened under the shortcut's name. A message when it is unset |
+| NavigateTo | "navigate to the library" | Searches the rest, then opens the route chooser on the top hit |
+| Route | "Davis to San Francisco" | Directions from one to the other |
+| Search | "where is the nearest pharmacy near me" | Strips the filler and searches "pharmacy" |
+| Eta | "what's my ETA" | While navigating, speaks and shows the remaining time |
 
-Null means plain search, so the parser can never make a query worse. There are word tables for
-every app language, and English is tried as a fallback in each, because "navigate to" on a
-French phone is common.
+Null means plain search. There are word tables for 15 languages, which covers every app language
+except Estonian. English is tried as a fallback in each, because "navigate to" on a French phone
+is common. Settings > Search lists example phrases (`VoiceCommandExamples`), and a test parses
+every one.
 
-The guards are what keep it from being clever at the wrong moment:
+The mic turns speech into text with Vela's on-device model when it is installed, or with an
+installed voice-input app, and is hidden when neither exists (`VoiceSearch`).
 
-- A **bare verb** ("go", "take me") counts only before home or work or an explicit "from A to B".
-  "Go karts near me" is a search for go karts.
-- A bare "X to Y" is a route only when X is not a question word or a verb. "Where to eat" stays a
-  search.
-- **"A to B" checks the whole phrase first.** `routeBetween` searches "A to B" as written, and if
-  a listing's name contains it ("Road to Hana"), it shows those results instead of routing
-  between the halves. Then it resolves the origin first and searches the destination around it,
-  preferring an exact name match (the nearest one to the other end when several share a name, so
-  a city and its province are not confused), then a result with no rating and no category (a town or an address),
-  then Google's first row. A miss on either end says so rather than routing from the wrong
-  place.
+Guards:
 
-**The fuzzy pass** runs only after the exact passes miss, and only for languages written with
-spaces, because dictation mishears ("navigat to", "nearst", "ofice"). The tolerance is per word
-and only over the **vocabulary**, never the place you named:
+- A bare verb ("go", "take me") counts only before home or work, or before an explicit "from A
+  to B". "Go karts near me" is a search.
+- A bare "X to Y" is a route only when X is not a question word or a verb. "Where to eat" stays
+  a search.
+- `routeBetween` first searches the whole phrase "A to B". If a listing's name contains it,
+  those results show. Otherwise it resolves the origin, then searches the destination around
+  it. For each end it prefers an exact name match (the one nearest the other end when several
+  share a name), then a result with no rating and no category, then Google's first row. When
+  the destination is not found it stops with a message. When the origin is not found the route
+  opens from where you are and a message says so.
 
-- accents fold, and an accent-only difference matches at any length;
-- one edit (Levenshtein plus adjacent swaps) is allowed from four letters in a leading or
-  trailing phrase and from five in a whole-phrase match, and two edits from eight letters;
-- a single-word phrase never fuzzes ("fine dining" is not "find dining", "hone" is not "home");
-- a multi-word phrase must match word for word, so "home depot" cannot collapse to "home".
+A fuzzy pass runs after the exact passes miss, for languages written with spaces, because
+dictation mishears ("navigat to", "nearst"). It applies per word to the vocabulary only, never
+to the place you named:
 
-Home and Work take the fuzzy compare in both passes, because the exact pass already owns "take me
-to my ofice" once its verb matched.
+- an accent-only difference matches at any length;
+- one edit is allowed from four letters (five when the whole query must equal the phrase), and
+  two from eight;
+- a single-word phrase never fuzzes, so "fine dining" is not "find dining";
+- a multi-word phrase must match word for word, so "home depot" cannot become "home".
+
+Home and Work phrases take the fuzzy compare in the exact pass too. Without that, "take me to my
+ofice" would return as a NavigateTo before the fuzzy pass ran.
 
 ### Offline
 
-`runSearch` polls connectivity on each search. When offline, it skips Google entirely rather than
-waiting for a socket timeout, and searches the downloaded region:
+`runSearch` checks connectivity on each search. Offline it skips Google, which would only wait
+for a socket timeout, and searches the downloads.
 
-```
-OFFLINE_ADDR_FILL  = 20     // offline rows whose blank address is filled from the address index
-OFFLINE_AT_ADDR_M  = 40.0   // a place this close to a typed address is "at" it
-```
+Places come from two sources, ranked together by `OfflineRank`:
 
-- **Places** come from two sources, ranked together by `OfflineRank`:
-  - `OfflinePoiStore.search`: the small area-save index plus every installed region pack (OSM),
-    same SQL. It matches the whole phrase and, for several words, each word of three letters or
-    more, against name and category, and the whole phrase against the address too, and expands
-    category words to the OpenStreetMap values actually stored ("gas" is `Fuel`, "coffee" is
-    `Cafe`). Whole-phrase name matches come first and then the NEAREST rows, both **before** the
-    400-row cap, so a state pack's thousands of cafes cannot push out the one exact name or the
-    ones around you. Without the distance term the cap took rows in table order, effectively
-    random across a state, and "Restaurants" listed places far away. Two rules from issue #657:
-    a query that is itself a known category ("Gas station") is NOT split into words, because
-    "station" matched every charging station; and names are compared with apostrophes and
-    periods dropped and hyphens as spaces on both sides (`OfflineRank.fold`), so "mcdonalds"
-    finds "McDonald's" and "7 eleven" finds "7-Eleven".
-  - `PlacesArchiveSearch`: the downloaded places archives the map draws (Overture, AllThePlaces
-    and OSM, so far more businesses than the pack). It reads the archive's deepest zoom, where
-    every place is present, in rings of tiles out from the search point until it has 60 matches
-    or reaches about 3 km (12 rings of z17 tiles). A restaurant you can tap on the map is one
-    you can search for offline. Downtown Davis: 144 restaurants in 42 ms.
+- `OfflinePoiStore.search` reads the area-save index and every installed place pack. It matches
+  the whole phrase and, for several words, each word of three letters or more, against name and
+  category, and the whole phrase against the address. Category words expand to the
+  OpenStreetMap values stored ("gas" is `Fuel`, "coffee" is `Cafe`). A query that is itself a
+  category ("Gas station") is not split, because "station" matched every charging station. Names
+  compare with apostrophes and periods dropped and hyphens as spaces (`OfflineRank.fold`), so
+  "mcdonalds" finds "McDonald's". The SQL orders whole-phrase name matches first and then the
+  nearest rows before its 400-row cap, so a state pack's thousands of cafes cannot push out an
+  exact name or the ones near you.
+- `PlacesArchiveSearch` reads the downloaded places archives the map draws (Overture,
+  AllThePlaces and OpenStreetMap). It reads the deepest zoom in rings of tiles out from the
+  search point until it has 60 matches or reaches `MAX_RINGS` (12 rings of z17 tiles, about
+  3 km). Downtown Davis: 144 restaurants in 42 ms.
 
-  Ranking: transit stops last unless the query asks for transit (a US stop is named after its
-  corner, so any street word matched hundreds of them), then the number of query words hit (a
-  category row counts for its chip word: "Restaurants" hits the category "Restaurant"), then
-  distance. A category query keeps to 100 km of the search point, so with no data for the area
-  it answers nothing rather than a downloaded state across the country; a name search is never
-  cut. The same name within 120 m is one place. At most 30 rows.
-- **Addresses**, when the text looks like one, come from `OfflineAddressStore.geocode` in four
-  layers, stopping at the first that answers:
-  1. the exact house number on the street;
-  2. the position interpolated between the two nearest mapped numbers on either side;
-  3. the nearest mapped house on the street (the right block, at least);
-  4. the nearest point on the street's centerline, which works with no mapped houses at all.
+The ranking puts transit stops last unless the query asks for transit, then rows that hit more
+query words, then the nearest. A category query keeps to `OfflineRank.CATEGORY_MAX_M` (100 km)
+of the search point, so with no data for the area it answers nothing instead of listing a
+downloaded state far away. The same name within 120 m is one place. At most 30 rows return.
 
-  Street names are normalized on both sides ("W Covell Blvd", "West Covell Boulevard" and "w
-  covell blvd" are the same row), so the fixture address 1451 W Covell Blvd, Davis, CA 95616
-  resolves however it is typed.
-- **Businesses at the address.** For the first three address hits, the places within 40 m are
-  listed **ahead** of the bare house point, with the typed address filled in when they had none.
-  A typed address is usually a way of naming the shop on it.
+Addresses, when the text looks like one, come from `OfflineAddressStore.geocode`, which stops at
+the first layer that answers:
 
-The merged order is businesses at the address, then addresses, then places when the text looked
-like an address; otherwise places, then addresses. If nothing matches, the message distinguishes
-"you have a downloaded area and this is not in it" from "download an area first".
+1. the exact house number on the street;
+2. the position interpolated between the nearest mapped numbers;
+3. the mapped houses on the street, nearest first;
+4. the nearest point on the street's centerline, which needs no mapped houses.
 
-While typing offline, you get your own rows and the on-device geocoder's address rows; the place
-index is not consulted until Enter. What the region download holds, and how big it is, is
-[chapter 8](08-offline.md).
+Street names are normalized on both sides, so "W Covell Blvd" and "West Covell Boulevard" match.
 
-### Google off
+For the first three address hits, places within `OFFLINE_AT_ADDR_M` (40 m) are listed ahead of
+the bare house point, since a typed address usually names the business on it. When the text
+looked like an address the order is businesses at the address, addresses, places. Otherwise it
+is places, then addresses. The first `OFFLINE_ADDR_FILL` (20) place rows that lack an address
+get one from the address index, completed with city, state and ZIP from nearby rows.
 
-With Settings > Privacy > "Use Vela without Google" on, the data source never calls Google:
+When nothing matches, the message tells "not in your downloaded area" apart from "download an
+area first". While typing offline you get your own rows and on-device address rows. The place
+index is read on Enter.
 
-- `suggest` answers empty, so typing always runs the fallback race, with the search endpoint's
-  part answered by Photon too.
-- `search` is two Photon calls, run together and merged: 20 rows ranked by Photon's own importance with a soft bias
-  toward you, then 10 from the hard metro box for the partial-address case. The box used to lead,
-  and on a device it showed fuzzy address rows two states away and never the city itself.
-- The view model runs Vela's own search too (`googleFreeLocal`: the place packs plus the places
-  archive the map draws, Overture, AllThePlaces and OSM, read from the download or, with no
-  download there, STREAMED from the release host the map streams it from). A name it finds
-  within 3 km of the view, or inside it, is answered by that alone too: asking Photon as well
-  took most of ten seconds and brought back the same name in other towns, which made the map
-  fly out from the one on screen (issue #647). A category query
-  ("Restaurants", the chips) is answered by that alone whenever it finds anything, with no
-  Photon call; a name or address query puts Vela's rows first and Photon's after, a same-name
-  row within 120 m dropped (issue #626). Before, the local data answered only when Photon came
-  back empty, so a category search with Google off returned Photon's name matches.
-- Streaming reads the archive by HTTP `Range` (`PmtilesReader.Archive.http`): the header, the
-  directory pages (cached across searches, keyed by the header so a rebake never reuses a stale
-  one), then the z17 tiles in rings around the search point, up to 8 rings (about 2 km), with
-  neighboring tiles merged into one range because PMTiles stores them together. Downtown
-  Wilmington, "Restaurants": 79 matches from 5 requests and 265 KB in under a second the first
-  time, 3 requests and 84 ms after.
-- "More results", the nearby pass and the ambient merge have nothing to work with: the page
-  search and the ambient fan-out answer empty.
+### Without Google
 
-Photon knows names and addresses, not categories. "Coffee" finds places with coffee in the name;
-the region packs understand categories, but online they are consulted only when Photon returns
-nothing. Photon speaks English, German and French; other languages get its default names.
+With Settings > Privacy > "Use Vela without Google" on, the data source never calls Google.
 
-### Directions links from other apps
+- `suggest` returns nothing, so typing always runs the fallback, with Photon answering the
+  search part.
+- `search` is two Photon calls run together: 20 rows by Photon's own ranking with a soft bias
+  toward you, then 10 from the hard box for partial addresses. Photon answers in English, German
+  and French. In any other app language the ranked call asks in English, so a landmark is found
+  by the name people type.
+- `runSearch` also runs `googleFreeLocal`: the place packs plus the places archive. The archive
+  is read from the download or, with none there, streamed from the release host by HTTP range
+  requests (`PmtilesReader.Archive.http`), up to `MAX_RINGS_STREAMED` (8 rings, about 2 km). In
+  a Delaware downtown, "Restaurants" returned 79 matches from 5 requests and 265 KB in under a
+  second the first time, and from 3 requests in 84 ms once the directory was cached.
+- A category query is answered by Vela's data alone when it finds anything. So is a name it
+  finds near the view: within the view's height of its center, at least `GOOGLE_FREE_NEAR_M`
+  (3 km) and at most `GOOGLE_FREE_NEAR_CAP_M` (25 km). Asking Photon as well took most of ten
+  seconds and returned the same name in other towns, which pulled the map away from the one on
+  screen.
+- Addresses, and names with no match near the view, also go to Photon. Vela's rows come first,
+  and a Photon row with the same name within 120 m is dropped.
+- Over a view taller than `GOOGLE_FREE_WIDE_M` (50 km), a name search puts Photon's rows first,
+  keeps at most five of Vela's rows that carry every typed word, and opens the top hit when its
+  name is exactly what was typed. "Eiffel tower" from a world view goes to Paris.
+- "More results", the nearby pass, other locations and the ambient merge do nothing.
 
-A link that asks for directions opens the route chooser on its destination, not just a pin
-(issue #632). Four shapes are read: `maps?saddr=..&daddr=..` (with several stops the last one is
-the destination), the Maps URLs form `maps/dir/?api=1&destination=..&origin=..&travelmode=..`, the
-path form `maps/dir/A/B/`, and the `google.navigation:` intent. A coordinate becomes a pin with
-its address looked up; a name runs a search and takes the top hit. The link's travel mode applies
-to that one trip and does not change your usual mode. A start is honored only when it is more than
-150 m from where you are; "Current Location" or a blank start means here.
+Photon knows names and addresses, not categories. Categories come from Vela's data.
 
-A plain LOCATION link (a `geo:` link, a shared place) shows the place by default. Settings >
-Navigation > "Links from other apps" changes that: "Open directions" sends location links to the
-route chooser as well, and "Start navigation" starts the drive for both kinds as soon as a route
-exists. It still stops for the same things the Start button does (precise location, the
-notification permission). It is there for delivery apps that hand Vela one stop after another.
+### Links from other apps
 
-One limit that is not Vela's: the official Telegram app checks for the Google Maps package before
-it opens any location, so on a phone without Google Maps it never asks another maps app.
+A link that asks for directions opens the route chooser on its destination. `MapLinkParser`
+reads four shapes: `maps?saddr=..&daddr=..` (the last of several stops is the destination),
+`maps/dir/?api=1&destination=..&origin=..&travelmode=..`, `maps/dir/A/B/`, and the
+`google.navigation:` intent. A coordinate becomes a pin with its address looked up. A name runs
+a search and takes the top hit. The link's travel mode applies to that trip only. A start within
+150 m of you, "Current Location" or a blank start means from here.
 
-### What the search page shows of your own places
-
-The search page lists only what you PINNED: saved places and saved routes each carry a pin, off by
-default. Everything you have saved lives in the bookmark button's sheet (lists, saved places, your
-routes), each row with a pin toggle. Places starred before pins existed start unpinned.
-
-A saved place can also carry its own map icon (the place sheet's save menu, "Choose icon"); with
-none it draws its list's icon. The pin is always in the list's color.
-
-### What a result card shows
-
-Each result is a card: the name, one line of facts (rating, count, distance, price, kind), the
-open-or-closed line, one line of amenity ticks, a strip of up to three photos, and a row of
-buttons (Directions, Call, Website, Share) that act without opening the place. All of it comes
-from the one search reply. Nothing more is fetched per result, so most cards have a single photo
-and none has a review line; Google's own app makes a request per place for those. The address is
-left off when the photos and the name are enough to tell the card by, and comes back when the
-name repeats in the list, the place is unrated, or photos are turned off.
+A plain location link (a `geo:` link, a shared place) shows the place. Settings > Navigation >
+"Links from other apps" changes that. "Open directions" sends location links to the route
+chooser too. "Start navigation" starts the drive for both kinds once a route exists, after the
+same checks the Start button makes (precise location, the notification permission). It suits
+delivery apps that hand over one stop after another.
 
 ### Search along a route
 
-With a route on screen (the chooser's chips, the place sheet's along-route chips, or the in-nav
-search field), `searchAlongRoute` behaves differently from the map search in four ways:
+With a route on screen, the chooser's chips, the place sheet's along-route chips and the in-nav
+search field call `searchAlongRoute`:
 
-```
-maxMeters = 3_000.0   // RouteCorridor.alongRoute: a result must be this close to the route line
-```
+- It is one search centered on the route's middle point, with the template's own window (about
+  25 km) and no ranking point. There is no nearby pass, ambient merge, address geocoding or
+  intent parsing.
+- `RouteCorridor.alongRoute` keeps results within 3 km of the line and sorts them in travel
+  order. The distance shown is the distance along the route to the result plus its distance off
+  the line.
+- During a drive it searches only the route ahead of the car (`RouteCorridor.ahead`, cut at
+  `NavState.traveledM`), so places already passed drop out and distances count from the car.
+- A pick becomes a stop. While planning, the destination is kept, the pick is added as a stop
+  and you return to the chooser. Closing the search returns there too. While navigating, a pick
+  from the list becomes the next stop. A tap on the map during a drive does not add one.
 
-- **One window, centered on the route's midpoint**, with the template's own size (about 25 km)
-  and no ranking point. The three pages still run, but with no ranking point there is no nearby
-  pass, and there is no ambient merge, no house-number geocoding and no intent parsing.
-- **A corridor filter.** `RouteCorridor.alongRoute` keeps results within 3 km of the polyline.
-- **Travel order.** The list is sorted by how far along the route each result sits, and the
-  distance shown is that along-route distance plus the result's distance off the line, not the
-  crow-flies distance from the midpoint (which read as two stations at opposite ends of the trip
-  both "5.9 mi" away). Along-route alone showed a place 1 km to the side, level with the car, as
-  "10 ft".
-- **Only the road ahead, while driving.** During a drive the search runs on the route after the
-  car's progress (`RouteCorridor.ahead`, cut at `NavState.traveledM`), so places already passed
-  drop out and distances count from the car, not from where the trip started.
-- **A pick becomes a stop.** Planning a trip, the destination is stashed and the picked place is
-  added as a stop, returning you to the chooser; closing the search returns to the trip too.
-  Navigating, a pick from the list becomes the next stop on the live drive. A stray tap on the map
-  during a drive does not.
+It shares one job with the map search, so the two cancel each other and cannot land out of
+order.
 
-It shares the single-flight job with the map search, so a plain search and an along-route search
-cancel each other rather than landing out of order.
+### Category chips
 
-### The category chips
+`ui/QuickCategories` is the one list behind the map's chip row, the along-route rows, the in-nav
+search and the car's lists: Restaurants, Coffee, Gas, Groceries, Things to do, Hotels, Bars, EV
+charging, Parking, Pharmacy, ATMs, Parks, Hospitals, Banks, Post offices, Campgrounds. The
+in-nav search puts Gas and EV charging first (`forDrive`).
 
-One list, `ui/QuickCategories`, feeds the map's chip row, the route chooser's along-route row, the
-in-nav search and the Android Auto along-route list, in this order: Restaurants, Coffee, Gas,
-Groceries, Things to do, Hotels, Bars, EV charging, Parking, Pharmacy, ATMs, Parks, Hospitals,
-Banks, Post offices, Campgrounds (a chip's label and its query can differ: "Post offices" sends
-"Post office", "EV charging" sends "EV charging station").
+Each chip sends a fixed English query, which Google understands in any locale and the offline
+store expands. Only the label is translated. The fuel chip sends "Petrol station" in regions
+whose English says petrol. Bars is removed while "Hide adult categories" is on, since that
+filter would empty it. A new chip's query must be one the offline store can expand, or the chip
+finds nothing offline.
 
-Each chip sends a **stable English query**, which Google understands in any locale and the
-offline store expands; only the label is translated. Two exceptions: the fuel chip sends "Petrol
-station" in regions whose English says petrol, and the Bars chip is removed while "Hide adult
-categories" is on, since that filter would empty it. Every chip's query must be one the offline
-store can expand, or the chip is dead offline.
-
-On the map, a chip is a typed search (`quickSearch` sets the text and calls `search()`); on a
-route it is `searchAlongRoute`.
+On the map a chip is a typed search (`quickSearch`). On a route it is `searchAlongRoute`.
 
 ### Android Auto
 
-The car's search screen (`SearchCarScreen`) follows the phone's split between typing and
-submitting:
+The car's search screen (`SearchCarScreen`) splits typing from submitting the way the phone
+does:
 
-- **While typing**, after a 300 ms pause, it asks the autocomplete over a 20 km window around the
-  car's last known position (`SUGGEST_SPAN_M = 20_000` on the car side too). When the autocomplete
-  answers empty, it runs the full search instead; when it fails, the downloaded packs answer.
-- **On submit**, or when a query row is tapped, it runs the full search.
-- **With no signal**, or when both come back empty, it reads the downloaded packs the way the
-  phone's offline search does: a typed address from the address geocoder first, then places. The
-  car service opens the packs itself, because a session started from the car never runs the
-  phone's view model, which is what opens them otherwise.
-- Up to two matching contacts lead the list when contacts search is on; six rows show in total.
-  Tapping a result previews a route to it.
+- While typing, after a 300 ms pause, it asks the autocomplete over a 20 km window around the
+  car's last known position. An empty answer runs the full search.
+- A submit, or a tap on a query row, runs the full search. Only a submit shows the spinner.
+- With no signal, or when both return nothing, it reads the downloaded packs: a typed address
+  first, then places. The car service opens the packs itself, because a session started from
+  the car never runs the phone's view model.
+- Up to two matching contacts lead when contacts search is on. Six rows show in total. Tapping a
+  result previews a route to it.
 
-Before 2026-09-22 it ran the full search on every keystroke. That is three pages plus a nearby
-pass per letter, and canceling a coroutine does not abort an OkHttp call already running, so a
-typed word queued a dozen requests behind the per-host connection limit and the head unit's
-spinner waited for the whole backlog. Only a submit shows the spinner now; while typing, the
-previous rows stay until the next answer replaces them, and a superseded keystroke's rows are
-never published.
+It does not run the full search per keystroke. That is up to four requests per letter, and
+canceling a coroutine does not abort an OkHttp call already running, so a typed word queued a
+dozen requests behind the per-host connection limit.
 
-Mid-drive, the car does not offer typing. Its along-route list is the quick categories; a pick
-searches **around the car**, sorts by distance, and adds the result as the next stop. It is not
-corridor-filtered like the phone's. [Chapter 10](10-android-auto.md) covers the rest.
+Mid-drive the car offers no typing. Its along-route list is the quick categories. A pick
+searches around the car, sorts by distance and adds the result as the next stop, with no
+corridor filter. [Chapter 10](10-android-auto.md) covers the rest.
 
 ## Limits
 
-- **Photon hears address-shaped typing even when Google answers.** Its request starts in parallel
-  with the autocomplete and is only canceled afterwards, so the query has already been sent.
-- **Offline address fill covers the first rows only.** With no connection, the blank addresses of
-  the first 20 place rows (`OFFLINE_ADDR_FILL`) are filled from the address index; rows past that
-  read as bare names until you open one (opening a place backfills its address).
-- **The offline fallback after a failed online search is thinner** than the straight offline path:
-  it has no address fill and no "businesses at this address" step.
-- **Search along a route is one window at the route's midpoint.** On a trip much longer than the
-  roughly 25 km window, stops near either end are simply not in the answer; there is no per-leg
-  sampling. It also has no offline path: with no signal it reports that the search failed.
-- **Google off streams at most about 2 km of places.** A category search with no download reads
-  8 rings of tiles around the search point; farther places come only from a place pack, if one
-  is installed.
-- **Intents need a table.** A language without a word table gets English and plain search; Chinese
-  and Japanese get no fuzzy pass over their own words, only over the English fallback.
-- **Your saved places do not enter the results list**, only the suggestions. A search for the name
-  of a saved place relies on the provider finding it again.
+- Photon receives address-shaped typing even when Google answers. Its request starts in
+  parallel with the autocomplete and is canceled only afterwards. Fixing it means waiting for
+  the autocomplete first, which delays address rows on the fallback path.
+- Offline, only the first 20 place rows get an address filled in (`OFFLINE_ADDR_FILL`). Later
+  rows read as bare names until opened.
+- The on-device search that runs after a failed online search is thinner than the offline path.
+  It has no address fill and no "businesses at this address" step.
+- Search along a route is one window at the route's middle. On a trip much longer than about
+  25 km, places near either end are not in the answer. It would need a search per stretch of
+  the route. It also has no offline path and reports that the search failed.
+- With Google off and no download, a category search reads about 2 km of places around the
+  search point. Farther places come only from an installed place pack.
+- Intents need a word table. Estonian gets the English table. Chinese and Japanese get no fuzzy
+  pass over their own words, only over the English fallback.
+- Saved places do not enter the results list, only the suggestions. A search for a saved
+  place's name relies on the provider finding it again.
+- The official Telegram app checks for the Google Maps package before it opens any location, so
+  on a phone without Google Maps it never asks Vela.

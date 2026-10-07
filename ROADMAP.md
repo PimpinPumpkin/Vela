@@ -1,655 +1,349 @@
-# Vela Maps - Roadmap
+# Vela Maps roadmap
 
-> Where Vela is going. [`FEATURES.md`](FEATURES.md) is what's **shipped**;
-> [`SPEC.md`](SPEC.md) is **how it's built**; this file is **what is still open** and the
-> bigger bets. What shipped, and every dead end that was investigated, moved to
-> [`docs/ROADMAP-HISTORY.md`](docs/ROADMAP-HISTORY.md) on 2026-09-21 with its reasoning intact;
-> this file is pruned to what somebody could pick up today. Add ideas here the moment they come
-> up; when one ships, move its entry to the history file in the same commit.
+What is still open. [`FEATURES.md`](FEATURES.md) lists what the app does and
+[`SPEC.md`](SPEC.md) how it is built. What shipped, and what was tried and does not work, is in
+[`docs/ROADMAP-HISTORY.md`](docs/ROADMAP-HISTORY.md).
 
-Last updated: 2026-09-25.
+Add an idea here when it comes up. When an item ships or is proven dead, move it to the history
+file in the same commit.
 
 ## North star
 
-A degoogled, keyless Google-Maps replacement that reaches **parity** with Google
-Maps and, over time, **leans less on Google** by growing Vela's own data layer
-(starting with traffic). Privacy-first, F-Droid, GPLv3 - every new data flow is
-opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
+A Google Maps replacement that needs no Google account, key or Play services, matches Google
+Maps feature for feature, and over time depends less on Google by growing Vela's own data.
+GPLv3. Every new data flow is opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
+
+## The order from here
+
+Set 2026-10-07.
+
+1. Finish and verify what is in flight. The week's bug reports, then a check of everything on
+   the main phone.
+2. Android Auto without Google Play. The next big push. A car lists only navigation apps that
+   Play installed. The next section has the details.
+3. The Compose toolkit upgrade. core-ktx 1.19, navigation-compose 2.10, hilt-navigation-compose
+   1.4 and the newer material3 pull Compose from 1.7 to 1.10 or 1.11 across the whole app. It
+   waits until it can be its own job: a full pass over the sheets, the gestures and D-pad
+   operation, on both test phones.
+4. California traffic incidents from the official feed (issue #688). The Highway Patrol's
+   incident feed needs no key and returns type and coordinates. Build a small per-region
+   incident provider starting there, testable in Davis and Sacramento. Reports from users
+   stay parked: every open option needs somebody's server or has no moderation.
+5. Read places from Vela Almanac, a separate open dataset of US places with dated evidence of
+   what is still open. It replaces the three closure steps in the places bake and later the
+   merge itself. Blocked on its first published files. The bake then reads one file per
+   state.
+6. F-Droid's own catalog. The official catalog builds every app from source and cannot take
+   the prebuilt voice runtime (sherpa-onnx) or the prebuilt Cronet. The work is a build
+   flavor that compiles or leaves out each of them, and reproducible output. Not started.
+
+## Android Auto without Google Play
+
+What is known:
+
+- Android Auto lists a navigation app only when Play installed it. Its "Unknown sources"
+  switch does not cover navigation apps.
+- What the check reads is not settled. One car log shows Android Auto asking Play for each
+  app's owners and denying a package that has none. A later report says the record that
+  counts is who started the install (`initiatingPackageName`).
+- It works with a root installer that runs the install as Play, and on stock Android with an
+  installer that goes through Google's package installer, which GrapheneOS does not ship.
+  Aftermarket head units with their own receiver list Vela after King Installer plus an ADB
+  install.
+- An in-app update replaces the install record, so on a phone set up for the car the updater
+  offers the APK as a file (`InstallSource.setForCar`).
+- The Desktop Head Unit skips the install check. It tests the car screens only.
+
+To do, in order:
+
+1. The ownership experiment. `-PappId=<id>` builds Vela under the id of an app the phone's
+   Play account once installed. If the car lists that sideload, the check is Play's library
+   record alone. If not, the signing certificate counts too. Needs a real car and a stock
+   phone signed in to Play.
+2. Settle on the pinned issue (#179) which install record the car reads.
+3. Run the instrument-cluster session (`ClusterSession`) in a car with a cluster display. No
+   car has run it. The Desktop Head Unit's cluster option forwards turn data only, and that
+   works.
+4. Check the car map gestures (pan, pinch, fling) on a head unit. The Desktop Head Unit takes
+   taps only.
+5. Test one Android "AI box" dongle (Carlinkit, Ottocast and similar): a small Android device
+   on the car's USB port that shows its own screen on the head unit, with no install check.
+   Wireless Android Auto adapters do not help. They still run the phone's Android Auto app.
+
+A phone-side sender is the other route: an app that speaks the Android Auto protocol to a
+real head unit in place of Google's app, so no install check is in the loop. The open
+implementations (aasdk, openauto, the Rust `android-auto` crate) are all the head unit side.
+The sender is Gearslip (Seb3thehacker), a separate project. It can be distributed only if
+the head unit accepts a certificate we can generate. Key material taken from Google's app or
+from head unit firmware cannot be shipped.
+
+Vela's side of that is a small bound service that hands a projection client frames at a size
+it names, takes input back, and publishes the nav state. `CarMapRenderer` already renders to
+a bitmap and `NavSession` publishes what `ManeuverMapper` reads. Whether to hand out frames
+or a URL for a WebView is open. Nav state and input are the same for both.
 
 ## Next up
 
-Roughly in the order they are worth doing. Each one is small enough for a single PR.
+Small items, one pull request each.
 
-**The order from here (set 2026-10-07).** Finish and verify what is in flight (the bug reports
-of the week, a check of everything on the main phone), then Android Auto with everything we have,
-then the rest of this list.
-
-- **Android Auto without Google Play (the next big push).** It works today on a rooted phone
-  or off GrapheneOS, where an installer can make the install look like Play's; the car refuses a
-  plain sideload (pinned #179, and the gate is described under "On the radar"). A Play listing
-  is not the route, at least not now. To pull together when this starts: the experiment that
-  builds Vela under another app's id to learn exactly what the car's check reads
-  (`-PappId=`); the unposted reply about which install record the car reads; the
-  instrument-cluster session fix of 2026-10-07, which no real car has run yet; and the car map
-  rounds that were never checked on a head unit.
-- **Screenshots and the website.** The README and site shots predate the interface work of early
-  October (place page tabs, the route picker's rows, the drive bar, the themed look). Retake the
-  set with the demo tools and the screenshot clock, then the site copies.
-- **The Compose toolkit upgrade, as its own job.** core-ktx 1.19, navigation-compose 2.10,
-  hilt-navigation-compose 1.4 and the newer material3 pull Compose from 1.7 to 1.10 or 1.11
-  across the whole app. Held back on purpose on 2026-10-06; it needs a full pass over the sheets,
-  the gestures and D-pad operation, on both phones, before it lands.
-- **California traffic incidents from the official feed (the buildable part of #688).** The
-  Highway Patrol's incident feed needs no key and answered with live incidents on 2026-10-06
-  (type and coordinates). A small per-region incident provider, starting there and testable in
-  Davis and Sacramento; other regions as their official feeds are found (a German, a French and
-  a Finnish one were named in the same survey and not checked). User-submitted reports stay
-  parked: every open option found needs somebody's server or has no moderation.
-- **Read places from Vela Almanac.** The separate open dataset (US places merged from the open
-  sources, with dated evidence of what is still open) replaces the three closure steps in the
-  places bake and, later, the merge itself. Waiting on its first published files; the bake then
-  reads one file per state. Streaming and the per-region offline archives stay as they are.
-- **F-Droid's own catalog.** Vela's self-hosted F-Droid repository works; the official catalog
-  builds every app from source and cannot take the prebuilt voice runtime (sherpa-onnx) or the
-  prebuilt Cronet. The work is a build flavor that compiles or leaves out each of them, and
-  reproducible output. Wanted, not started.
-
-- **Grid cells: the catalog bake (2026-09-28).** The US catalog group is baking; the rest of
-  the world is `grid-cells.yml` `all` with `shard` a and b, four bakes at a time (the releases
-  sort last by construction and the uploads wait out the API hour).
-- **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
-  place pack, and OSM is missing whole chains in places (the parts store that started this was
-  on the map from the Overture archive and absent from search). The places PMTiles is spatial
-  only, so finding it by name means scanning tiles. Bake a small sidecar per region (name,
-  normalized key, category, lat, lng; a few MB for a state) beside the archive, download it with
-  the archive, and have the offline search branch query it after the pack, deduped by name and
-  distance. Same shape as the road-features file.
-- **Offline timetables per region (open question, 2026-09-21).** The cached boards cover stops
-  the user has tapped online; a stop never tapped shows nothing offline. A real answer is a
-  per-region bake of GTFS stop times: for every stop, each route and headsign with its departure
-  minutes per service day, compacted (a run is the same pattern most days, so store patterns once
-  and reference them). Rough size: raw `stop_times.txt` for a big state's agencies is gigabytes,
-  the compacted per-stop form is a few percent of that, so tens of MB for a mid-size state and a
-  few hundred for California, on top of the routing and places downloads. The pipeline is the real
-  cost: feed discovery (the Mobility Database lists them, but per agency), calendars and
-  exceptions, weekly refresh, and no realtime at all, which is what the online board is for. Worth
-  it only if people navigate by transit offline; the cached boards are the cheap version.
-- **Google-off, per feature.** The master switch shipped 2026-09-21 (Settings > Privacy > "Use
-  Vela without Google"). Still wanted: individual toggles under it, in particular "no Google
-  routing or live traffic" for people who want Google places but not Google directions, and
-  free-flow ETAs that say they are free-flow. (The Transitous plan route shipped 2026-09-28, so
-  transit directions exist with Google off.)
-- **The neural voice's phonemizer is the weak link (2026-09-18, from a drive).** espeak's G2P
-  sits in front of the Piper model and reads text that is not prose: "5:49 PM" came out as "five
-  foot nine". The workarounds are stacking up (street ordinals spelled out, "I-80" and "CA-99"
-  expanded, "take exit 186" rewritten, a comma before " toward ", terminal punctuation on every
-  fragment, clock times spelled out in `SpeechText.spokenClock`), and together they say we are
-  patching the TEXT because we cannot fix the phonemizer. Options by cost: a better-behaved model
-  in the same runtime (Kokoro was too slow in 2026, worth re-measuring on current phones), a model
-  whose front end normalizes its own input, or training one. Whatever is chosen keeps the
-  constraints: in-process, no network, arm64, fast enough on a Pixel 4a. Until then any new spoken
-  string with numbers, units or punctuation gets a `SpeechTextTest` case.
-- **Why one basemap symbol layer can stall a dense city (2026-09-23).** The dense-city frame
-  rate item from 2026-09-16 is mostly closed (history has it): the one-set dial hides Liberty's
-  `poi_r*` layers over a region archive baked at rev 20260923 or later, and Midtown on the 4a
-  now pans at 36-58 fps. What is still not understood is why `poi_r20` alone cost that much:
-  bisected with `debug.vela.hide`, hiding that one layer took Midtown at about 200 ft from 3 fps
-  to 60 on a Pixel 9, and swapping its `in` filter for a `match` lookup changed nothing. Anywhere
-  it still draws with OSM businesses on (an archive older than the dial, or the places layer
-  off), a dense city will crawl the same way. Benchmark with the map's own frame callback
-  (`scripts/map-fps.sh`), with cool-downs; the 4a throttles after minutes of scrubbing.
-- **More places sources for the open bake.** AllThePlaces and OSM business nodes are in the bake
-  (2026-09-15 and 2026-09-18). The long tail with no web presence at all is next:
-  chamber-of-commerce member lists and municipal business-license registers where a city
-  publishes them as open data, one scraper per source in the AllThePlaces spider shape. The goal
-  is the small independent places Overture misses, not another copy of what it has. The survey
-  under "Vela's own record of what is still open" (Big bets) says how thin those registers are
-  as a source of places; read it before writing a scraper.
-- **Region downloads pull the building overlay.** A saved viewport area already pulls the
-  Microsoft footprints; a whole-region download does not, so a downloaded state has no houses
-  where OSM is thin. Identical bytes, no bake change. (Merging the footprints INTO the basemap
-  archive was measured 2026-09-18 and does not pay: only 12% of Microsoft's Delaware footprints
-  are in OSM, so a merged archive is double the size and saves nothing; parked behind self-hosted
-  tiles, where deleting the render-time coverage gate becomes possible. Numbers in the history.)
-- **Docs pass (owed, 2026-10-07).** The maintainer notes have grown to about 7,000 lines of dated
-  entries, most of them appended in the last three weeks. One session of its own: rules stay,
-  history moves to the spec or the roadmap history file, and anything a fix made untrue goes.
-  Then the same read over the README, FAQ and the handbook chapters touched since September.
-- **Docs audit and cleanup (queued 2026-09-15; the roadmap half done 2026-09-21).** README,
-  FEATURES, PRIVACY, CLAUDE and docs/ grew by accretion: features described three times in three
-  tenses, a FEATURES file that reads as a changelog, contributor notes in CLAUDE.md findable by
-  date rather than topic. One pass to state what the app does today in one place, move the
-  history into a changelog, and group CLAUDE.md by subsystem.
-- **Place-page parity, what is left.** "Mentioned in reviews" topic chips render logged-out on
-  the place page, so they are feasible from the reviews scrape. The full-screen reviews page
-  already shows Google's own topic chips (`PanelControls` in PlaceSheet.kt); the inline Reviews
-  tab on the sheet is the part without them. A menu LINK button is parked:
-  the menu URL appears in Google's response inconsistently and its path will not pin; the photo
-  gallery's Menu tab covers the need. Similar-places only rides focused searches; showing it on
-  address-snap and list-tap opens means a focused name lookup on open.
-- **Nav polish, small items.** Highlight the CONTINUING lanes for a compound maneuver (OSRM gives
-  no cross-step lane linkage, so it needs a careful heuristic rather than a guess); per-state
-  and per-province shield SHAPES from the OpenStreetMap Americana set (today `ui/map/RoadShields`
-  draws one interstate shield, one US-route shield and the same plain rounded badge for every
-  state route); a "download this region to use avoid offline" nudge when a toggle is on with no
-  covering region (smaller than it was: Google honors the avoids online since 2026-09-06, so the
-  nudge only matters when Google cannot be reached); parking follow-ups (offer to save the spot
-  automatically when a drive ends, distance and age on the chip, a note or photo).
-- **On-street bike lanes.** Dedicated cycleways render in Google's teal; painted lanes
-  (`cycleway=lane` on a road way) are not in the keyless OMT tile schema and would need a baked
-  layer beside the road features (never per-viewport Overpass, see issue #304).
-- **Street View polish.** Walking can step to a different-year neighbor (the neighbor graph
-  carries no per-pano date, Google stays in-epoch); higher-zoom tiles on pinch-in; coverage-gate
-  the pill.
-- **Map label font trickle-down.** Map text renders from the self-hosted Roboto glyph pack, which
-  matches the app font today; true inheritance means regenerating that pack from the font file
-  the app ships (`scripts/build-map-fonts.sh`) and republishing `map-fonts`. Runtime inheritance
-  is not possible in MapLibre.
-- **Restaurant menu reliability.** Classify tab-less gallery walks, stop caching a tab-less result
-  forever, and separate device render timing from Google-side variance.
-- **D-pad hardware pass.** A real keypad-phone session to tune the pan step, the OK-hold
-  threshold, focus-ring visibility and traversal order; pixel-verify the full-screen reviews
-  page's page-scroll on an unfiltered network; consider an on-screen key-hint pill while the map
-  target is focused. Also give the Google-style route chooser (`GoogleStyleDirectionsPanel`, the
-  default since 2026-09-18) an initial focus target: the classic `DirectionsPanel` focuses its
-  Drive tab on open, the new one has no `rememberDpadAutoFocus` of its own.
-- **Explore (nearby things to do).** A Google-Explore-style surface: nearby restaurants, things to
-  do, events as cards on a bottom sheet from the bare map. The category search already returns
-  what "Nearby" needs; events have no keyless source. Plan, not now.
-- **Voice library next bets.** Host the catalog (`PiperCatalog`) on the signed `calibration.json`
-  so new voices ship without an APK (which also needs the download host pinned in the allowlist
-  so a compromised bundle cannot redirect a voice download); a preview-before-switching play
-  button; a shared `espeak-ng-data` dir across voices (~10 MB per voice). Bigger dictation model
-  tiers in the same catalog.
-- **Japanese offline voice.** Piper has no Japanese phonemizer, so Japanese guidance rides the
-  phone's system TTS. A fully offline voice means Kokoro int8 multi-lang (~126 MB, also Chinese),
-  which needs the multi-file sherpa plumbing restored and an on-device speed re-check first.
-- **Performance pass.** Frame profiling of dense-marker pans and the place sheet in/out churn.
+- Grid cells for the whole catalog. The bake conductor runs the US group and two world shards
+  (`tools/bake-schedule.json`). Next: confirm from `cells-manifest.json` that every region has
+  cells.
+- A name index for the places archive. Offline search reads the archive in rings out to
+  about 3 km (`PlacesArchiveSearch.MAX_RINGS`). Beyond that only the OSM place pack answers,
+  and OSM lacks whole chains. Bake a per-region sidecar (name, key, category, lat, lng) and
+  query it after the pack.
+- Region downloads pull the building overlay. A saved map area downloads the Microsoft
+  footprints (`downloadOverlayForArea`) and a whole-region download does not, so a downloaded
+  state has no houses where OSM is thin. No bake change.
+- More places sources for the open bake: chamber-of-commerce member lists and municipal
+  business-license registers, one scraper per source. The survey under "Vela's own record of
+  what is still open" says how thin those registers are.
+- The neural voice's phonemizer. espeak, in front of the Piper model, misreads text that is
+  not prose: "5:49 PM" came out as "five foot nine". `SpeechText` works around it case by
+  case. The fix is a model that normalizes its own input and is fast enough on a Pixel 4a.
+- Why one basemap layer stalls a dense city. With Liberty's `poi_r20` layer drawn, New York at
+  100 ft runs at 0 to 25 fps on a Pixel 4a, and at 59 with it hidden. Vela hides it over
+  region archives of rev 20260923 or later (`placesOneSetRev`). Elsewhere the stall remains.
+  The cause is unknown.
+- Offline timetables per region, an open question. Cached boards cover only stops opened
+  online. A bake of GTFS stop times is tens of MB for a mid-size state, plus feed discovery
+  per agency and a weekly refresh.
+- Review topic chips on the inline Reviews tab. Google's "mentioned in reviews" chips show
+  only on the full-screen reviews page (`PanelControls` in `PlaceSheet.kt`).
+- "People also search for" after an address or list open. It arrives only with a focused
+  search, so it needs a focused name lookup.
+- Menu tab reliability. Classify gallery walks that return no tabs. Find out whether the
+  gallery request (`hspqX`) can filter by category, so the Menu tab needs no page walk.
+- Lanes that continue into the next maneuver, highlighted on a compound maneuver. OSRM gives
+  no lane linkage across steps, so it needs a careful heuristic.
+- State and province shield shapes from the OpenStreetMap Americana set. `ui/map/RoadShields`
+  draws one plain badge for every state route.
+- A "download this region" nudge when an avoid option is on, Google cannot be reached and no
+  downloaded region covers the trip.
+- Parking: offer to save the spot when a drive ends, distance and age on the chip, a note or
+  photo.
+- On-street bike lanes. Painted lanes (`cycleway=lane`) are not in the OpenMapTiles schema and
+  need a baked layer, never a per-viewport Overpass query. The painted-roads test under
+  "Richer roads" draws them.
+- Street View: walking can step to a neighbor from a different year (the neighbor graph
+  carries no date), higher-zoom tiles on pinch-in, and hiding the pill where there is no
+  coverage.
+- Map label font. To match the app font exactly, rebuild the glyph pack from the app's font
+  file (`scripts/build-map-fonts.sh`) and republish `map-fonts`. MapLibre cannot inherit a
+  font at runtime.
+- D-pad hardware pass on a real keypad phone: pan step, OK-hold threshold, focus ring
+  visibility, traversal order, page scroll on the full-screen reviews page.
+  `GoogleStyleDirectionsPanel` has no initial focus target (`rememberDpadAutoFocus`).
+- Voice library. Host the catalog (`PiperCatalog`) on the signed `calibration.json` so new
+  voices need no app release, with the download host pinned in the allowlist. A preview
+  button. One shared `espeak-ng-data` folder (about 10 MB a voice). Larger dictation models.
+- Japanese offline voice. Piper has no Japanese phonemizer, so Japanese guidance uses the
+  system voice. Kokoro int8 multi-lang (about 126 MB) needs the multi-file sherpa plumbing
+  restored, and it ran at about 0.4x realtime when last bundled, so measure first.
+- Explore: a sheet of nearby restaurants and things to do from the bare map. Events have no
+  keyless source.
 
 ## On the radar
 
-- **Ideas kept from the 2026-10-05 interface round, none built.** A thumbnail in place of the
-  photo strip on result cards (the reply carries about one photo per place, and it is not always
-  a good one). A review line on result cards (needs a request per result, so not as things are).
-  Changing the car icon, and perhaps a few settings, from the pulled-up drive bar. A dotted
-  walking line from a building's door to where the route starts on the road (needs the entrance
-  or the outline). A place photo from the business's own website when Google is off. Moving to
-  Material 3 Expressive: a library upgrade plus a restyle of the hand-drawn drive chrome.
-- **Transition animations and predictive back** (pull request #672, parked 2026-10-05). It
-  rewraps the bottom-sheet block in `MapScreen` and takes over Back for every sheet; to be
-  reviewed against the interface round once that has landed.
-- **Pins for the car's nearby results.** The car's nearby list (gas, food, parking and the rest)
-  shows its places only as rows; `CarMapRenderer` draws the route, the puck and the corridor dots
-  but no search results. Drawing the listed places as pins, the way the phone does, would let a
-  driver see which way each one is.
-- **Android Auto on factory head units (pinned #179).** Android Auto lists only navigation apps
-  installed from Google Play; a sideload appears only with the "Unknown sources" switch or an
-  installer spoof, and any in-app update undoes both. The decision (2026-09-13) is the Play split
-  below. Aftermarket units with their own receiver already list sideloaded Vela after King
-  Installer plus an ADB install.
-- **Both-mode twins across scripts (2026-09-22).** The tap resolve now searches a label in its
-  own script language when the English answer does not name it, but the Both-mode twin pass
-  still compares Google's English-localized ambient names with the archive's local ones, so over
-  Tokyo on an English phone about half the open icons draw beside their Google twin (38% link
-  under `hl=en`, 65% under `hl=ja` through the same rule). Options: run the ambient fan-out in
-  the region's language when the phone's differs and keep the English copy for the sheet, or
-  bake a romanized name into the archive where Overture carries none (it has no alternate names
-  in Japan). Needs a device in the region; not chased blind.
-- **One APK per chip type: flip the switch (2026-09-23).** Built and off: the updater picks the
-  APK for the phone's chip type (`update/ApkChoice`), the versionCode is `(2000+run)*10 + chip
-  digit`, CI and the F-Droid workflow handle per-chip releases (SPEC 15). What is left: once a
-  build with ApkChoice has been the stable for about three weeks, set the repository variable
-  `ABI_SPLITS` to `true`; then point README's install button at
-  `releases/latest/download/vela-maps-arm64.apk` and open each release's notes with "Most phones:
-  vela-maps-arm64.apk. Old 32-bit and keypad phones: armv7." An ARM phone then downloads 74 MB
-  instead of 108, and x86 gets Cronet.
-- **Review feed paging and the Menu tab without a page (2026-09-23).** Confirm the review feed's
-  next-page token (assumed at payload[1]) from a reply on a phone that is not in the limited view;
-  find whether `hspqX` can filter by gallery category, so the Menu tab needs no page walk either.
-  Picking the phone is easier now: since 2026-09-25 `web/GoogleStanding` marks a session limited
-  (a first photo page of 20 or fewer with more to come, or a More reviews tap that loads nothing)
-  and Settings > Privacy > Google session says so. The limit is per session, not per IP, so a
-  second phone on the same connection can still be the full one. The feed itself stays off
-  (`nativeReviewFeed` 0): a full session answers it only with a BotGuard token (`X-maps-bgkey`)
-  that Google's page mints per request, so natively it can never beat a new session's five.
-- **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
-  Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
-  behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden
-  page scrapes map onto WKWebView. The Compose UI would be rewritten and CarPlay is its own
-  approval. A second app's worth of work; listed so nobody thinks it is off the table.
+- One APK per chip type. Built and off (`update/ApkChoice`, SPEC 15). Once a build with
+  `ApkChoice` has been the stable for about three weeks, set the repository variable
+  `ABI_SPLITS` to `true`, point the README install button at
+  `releases/latest/download/vela-maps-arm64.apk`, and say in the release notes which file to
+  take. An ARM phone then downloads 74 MB instead of 108.
+- Pins for the car's nearby results. The car lists nearby places as rows only.
+  `CarMapRenderer` draws no search results, so a driver cannot see which way each place is.
+- The car's route preview draws the selected route alone: no other routes in gray and no pin at
+  the destination. A paused drive keeps the blue line where the phone's turns lavender.
+- A baseline profile has never shipped. The ignore rule that kept it out of git is fixed, and
+  the monthly `baseline-profile.yml` run has yet to commit one.
+- Both-mode twins across scripts. With place icons set to Both, the twin pass compares
+  Google's English names with the archive's local names. Over Tokyo on an English phone 38%
+  link (65% under `hl=ja`), so open icons draw beside their Google twin. Options: run the
+  ambient fan-out in the region's language, or bake a romanized name into the archive.
+- Departure-time ETAs. Parked until someone captures one directions request from the Android
+  Google Maps app with "Depart at" set. The history file lists what was tried.
+- Ideas from the October interface round, none built: a thumbnail or a review line on result
+  cards; the car icon changed from the drive bar; a dotted walking line from a building's
+  door to the start of the route; a place photo from the business's own website when Google
+  is off; Material 3 Expressive.
+- iOS. Not started. `:core` is plain Kotlin and would move to Kotlin Multiplatform. MapLibre
+  and sherpa-onnx have iOS builds. The interface would be rewritten.
 
 ## Big bets
 
-### Serving our own map tiles  *(only if the project gets bigger and is ready to run infrastructure)*
+### Serving our own map tiles
 
-**Not now, and not a code problem.** Vela already bakes the whole world's basemap: 448 PMTiles
-archives, about 93 GB (counted on the `basemap-tiles` release on 2026-09-25), and the app already
-renders from them whenever a downloaded region covers the view, online or off. What it has never
-done is STREAM them.
-Online, with nothing downloaded, the basemap is OpenFreeMap's.
+Vela already bakes the whole world's basemap: 448 PMTiles archives, about 93 GB, counted on
+the `basemap-tiles` release on 2026-09-25. The app draws from them wherever a downloaded
+region covers the view. With nothing downloaded, the online basemap is OpenFreeMap's. Two
+things stop Vela streaming its own:
 
-Streaming ours is mechanically almost free, since the app already reads two other datasets from
-that same release by HTTP range request. Two things stop it being a good idea today:
+- Seams. Our archives are per region and OpenFreeMap is one planet, so a pan across a
+  boundary would swap sources mid-gesture. The fix is one planet-sized archive. A GitHub
+  release asset caps at 2 GB and the planet is about 90.
+- Release hosting is not a CDN. A map session pulls hundreds of tiles.
 
-- **Seams.** Our archives are per region and OpenFreeMap is one planet, so panning across a
-  boundary would swap sources mid-gesture, which is the failure class of issue #552. The fix is one
-  planet-sized archive, and a GitHub release asset caps at 2 GB against a planet of roughly 90.
-- **Release hosting is not a CDN.** An occasional overlay range-read is one thing; a map session
-  pulls hundreds of tiles. That is a different order of traffic on hosting never meant for it.
+The missing piece is hosting: PMTiles on object storage behind a CDN, with a bill and
+somebody carrying it. Do this when the project is ready to run infrastructure. With it, the
+Microsoft building merge reaches streaming users and the render-time coverage gate
+(`runOvlGate`) can be deleted, downloaded and streamed maps share one schema, and Vela stops
+depending on OpenFreeMap's donated bandwidth.
 
-So the missing piece is hosting (PMTiles behind a CDN; object storage plus a small worker is the
-standard path, and the format was designed for it), which means a bill, uptime and somebody
-carrying it. That is the trigger: **do this when the project is big enough to want its own
-infrastructure and ready to run it**, not before.
+### Richer roads
 
-What it would unlock, and why it is worth writing down now:
+Google's street detail without the 3D. Roads at their real width and street names on every
+block shipped. What is left:
 
-- The **Microsoft building merge** stops being an offline-only win. Today it cannot help streaming
-  users because online the basemap belongs to someone else, and `runOvlGate` can only be skipped,
-  not deleted. With our own tiles everywhere, the merge reaches everyone and the gate dies.
-- One schema everywhere: the map a downloaded region draws and the map a streaming user draws stop
-  being two slightly different things.
-- Independence from OpenFreeMap's donated bandwidth, which is the same courtesy already extended to
-  FOSSGIS, Nominatim and Overpass.
+- Road markings. A developer test draws center lines, lane lines, bike lanes, crosswalks,
+  stop lines, turn arrows and medians from OSM tags (`core/data/PaintedRoads`, dial
+  `paintedRoads`, a California bake by `scripts/bake-painted-roads.sh`). Open before
+  shipping: arrows sized by eye, lane counts where OSM has none, painted islands and gores,
+  stop lines at give-way signs, and a bake for every region.
+- Lanes and medians in the basemap. The OpenMapTiles schema has no lane count, so width by
+  lanes needs a basemap baked with an extended schema (a planetiler profile with `lanes` and
+  `divider`). Downloaded regions could get it first. Online needs our own tiles.
 
-Until then the honest position is that OpenFreeMap serves the online map, downloading a region is
-how you get ours, and the buildings question stays parked behind this one.
+### Contributing back to OpenStreetMap
 
-### Richer roads  *(Google's street detail, without the 3D)*
+Vela takes its basemap, routing data, addresses, road features and half its places from OSM
+and gives nothing back. The API is the easy part: notes are a plain POST with no account, and
+editing is OAuth 2.0 with PKCE against the 0.6 API.
 
-Next to Google at the same view, divided roads show both carriageways with a median and big roads
-show their lanes. The first step (roads at their real width, street names on every block) shipped
-2026-10-03, see `docs/ROADMAP-HISTORY.md`. What is left:
+The firewall comes first. OSM forbids data derived from Google, and Vela shows Google's
+places beside OSM's. No OSM edit may be pre-filled, suggested or autocompleted from anything
+that came from Google, and the code has to enforce it:
 
-- **A developer test of the markings exists (2026-10-03, SPEC):** center lines, lane lines, bike
-  lanes, crosswalks, stop lines, turn arrows and medians from OSM tags, a California bake behind a
-  dial. Open before shipping: arrows sized by eye, lane counts where OSM has none (most residential
-  streets), painted islands and gores, stop lines at give-way signs, and a bake for every region.
-- **Lanes and medians (large, needs our own tiles):** the OpenMapTiles schema OpenFreeMap serves
-  has no lane count, so width by lanes, lane lines and painted medians need a basemap baked with an
-  extended schema (planetiler profile + `lanes`, `divider`). Downloaded regions could get it first,
-  since Vela already bakes those; online needs "Serving our own map tiles" above, which a hosted box
-  with a monthly egress allowance could also be.
+- The edit path reads only fields that came from the OSM tile, the open places bake, or what
+  the user typed.
+- A place that carries a Google feature id can open a note and never a tag edit.
+- The two paths share no model object.
 
-### Contributing back to OpenStreetMap  *(wanted; the hard part is a firewall, not an API)*
+Nothing starts until the Data Working Group has been written to. They would act if a
+Google-derived edit got in, and the firewall has to be agreed before there is code.
 
-Vela takes a great deal from OSM - the basemap, the routing graph, the addresses, the road
-features, half the places bake - and gives nothing back. Fixing that is worth doing, and the order
-it has to be done in is the opposite of what it looks like.
+The shape follows StreetComplete: bounded questions about something the user is standing in
+front of, never a free-form tag editor. In order of safety: a note anywhere; "is this still
+here" on a place from the bake; hours, phone and website on a place with no Google listing
+open; a missing house number. Nothing that moves geometry. A later shape is a one-tap fix
+("this place is gone") that a Vela-side service verifies against the business's own website
+and files under OSM's automated-edit guidelines.
 
-**The blocker is not the API.** Notes are a plain POST and need no account; editing is OAuth 2.0
-with PKCE (a public client, no secret to hide) against the 0.6 API, and the whole write path is a
-changeset open, a small diff, a close. That is a week of work. What takes longer is earning the
-right to send it.
+Every changeset carries `created_by=Vela <version>` and an editable comment, uses the app's
+own OAuth client, and can be undone. Testing runs against `master.apis.dev.openstreetmap.org`.
+Notes alone could ship first.
 
-**The firewall comes first, and it is the thing to bring to the community.** OSM forbids data
-derived from Google, and Vela is an app that shows Google's places beside OSM's. So an editor here
-cannot work the way an editor in any other app works: **no OSM edit may ever be pre-filled,
-suggested or autocompleted from anything that came from Google.** That means the code, not the
-wording of a warning. Concretely: the edit path can only read fields whose provenance is the OSM
-tile, the Overture/AllThePlaces bake, or what the user typed; a Place that carries a Google feature
-id can open a NOTE ("there is a shop here that OSM is missing") but never a tag edit; and the two
-paths cannot share a model object, because the moment they do somebody will pass the wrong one.
-Getting that wrong once would be a data incident for OSM and the end of Vela's standing with them.
+### A Google Play listing
 
-**Build it the way StreetComplete did.** Bounded questions with unambiguous answers, asked about
-something the user is standing in front of, never a free-form tag editor. That is what got
-StreetComplete community trust, and it is the difference between useful contributions and a flood
-of drive-by edits from people who have never seen a changeset. A first set, in order of how safe
-they are: a NOTE anywhere (no account, no tags, a human triages it); "is this still here" on a
-place the bake shows and the user is standing at; opening hours, phone and website on a place with
-NO Google listing open; a missing house number. Nothing that moves geometry.
+Not the route for Android Auto for now. It would also reach people who never install an APK
+by hand.
 
-**The etiquette, all of which the community will ask about:** a real `created_by=Vela <version>`
-on every changeset, `source=survey` only when it genuinely was, the app's own OAuth client rather
-than a shared one, testing against the dev API (`master.apis.dev.openstreetmap.org`) and never the
-live one, a visible changeset comment the user can edit, and an obvious way to see and undo what
-you sent.
+The shape that works is a compile-time `play` flavor with the Google extractor left out of
+the APK. What remains is a complete OpenStreetMap app: routing, open places, offline packs,
+the geocoder, speed limits, the basemap, transit, road features and cameras. It loses place
+pages and traffic, and the listing describes that app.
 
-**Who to ask.** The OpenStreetMap Foundation is the legal and infrastructure body; it does not
-approve features, so there is no permission to collect from it. The conversations that matter are
-on the community forum (an editor announcing itself before it ships is normal and welcome), and
-with the Data Working Group specifically about the Google question - they are the ones who would
-act if it went wrong, so they are the ones worth telling first, in writing, before a line of the
-editor exists. Expect the first question to be exactly the firewall above.
+Enabling the Google half after review breaks Play policy, which is enforced on the developer
+account. So there are two distributions: the full app on GitHub, Obtainium and F-Droid, and
+the Play build with a link to the project site. An in-app APK downloader is not allowed.
 
-**Write to the DWG before any of it is built.** That is the gate, not a courtesy: the firewall
-above is a design constraint that has to be agreed before there is code to argue about, and
-turning up with a finished editor and a question about Google derivation is the wrong order.
-Nothing in this entry starts until that conversation has happened.
+Work, roughly in order:
 
-**Not scheduled.** Notes alone would be a real contribution and could ship on their own.
+- A flavor with the Google extractor, the hidden pages and the place-page surfaces compiled
+  out, and search and place paths falling back to the offline stack.
+- `REQUEST_INSTALL_PACKAGES` and the in-app updater removed from that flavor.
+- The Data Safety form, a privacy policy URL, a content rating, and the background location
+  declaration with its demo video.
+- Package id. Play App Signing re-signs, so a Play install and a GitHub install cannot
+  replace each other. Choose one id or two before the first upload. It cannot change later.
+- Listing copy and screenshots that never imply a Google affiliation.
 
-**Same conversation, second shape (queued 2026-09-15): one-tap fixes.** Vela already links an open
-place to the same business elsewhere and can tell when a listing is closed, moved, renamed or
-missing. A Vela-side service could take a user's tap ("this place is gone", "wrong hours"), verify
-the claim against the business's own website, never against Google, and file it as a note or a
-reviewed edit under the OSM import and automated-edit guidelines. Same firewall, same gate: the
-DWG conversation first. Until then in-app fixes stay local (the closed-listing hide list).
+### Opt-in telemetry
 
-### A Google Play listing  *(prep work - the split has to be real, not a disguise)*
+Diagnostics and trip recording are local, opt-in and have no upload. What is left is Vela's
+own traffic data: speed and route traces from opted-in users. This departs from "no
+telemetry, no backend", so:
 
-The reason to want one is **Android Auto**. What the gate actually checks was read off a car log
-on 2026-09-22 (GrapheneOS Pixel 9, sandboxed Play, "Unknown sources" on, install fields spoofed to
-Play by KingInstaller): on connect the Android Auto app asks the Play Store who owns each app,
-Play answers `app owners empty` for anything it did not install, and the validator denies the
-package "failed all other checks". (The Desktop Head Unit is no test of this: on 2026-09-22 it
-listed and ran a plain sideloaded Vela on an account-less 4a, and the log shows Play was never
-asked about the package at all. The head unit skips the ownership gate; the experiment below
-has to happen in the real car.) So it is Play's own install record, not the installer fields;
-no spoof, no stub package, no copied installer and no patched Gearhead (re-signing it breaks its
-signature-gated bindings to Play services, which is the instant crash) can pass it, and the
-developer toggle does not cover a navigation app. A Play listing ends that. It would also reach
-people who will never install an APK by hand.
+- Opt-in only, with a clear consent screen, an easy off and "delete my data".
+- No account. A pseudonymous device token at most. Trim the first and last 100 m or so of
+  each trace and send speed and heading along road segments.
+- It needs the first Vela backend or a privacy-preserving collector, self-hostable.
+- [`PRIVACY.md`](PRIVACY.md) changes in the same commit.
 
-Two ideas that came up the same day and do not work: a Vela BACKEND that does the Google
-fetching so the app on Play is "clean" (it centralizes every user's Google traffic on one address,
-which is the one thing the per-user design exists to avoid, it is trivially blocked, and it puts
-the publishing account under Google's enforcement for server-side scraping instead of on-device
-scraping, which is not better); and installing the Play edition and then sideloading the full
-build over it to inherit Play's record (Play App Signing re-signs, so the two cannot replace each
-other, as the signing note below already says).
+### Vela's own record of what is still open
 
-**The ownership experiment (planned, the build side landed 2026-09-22).** `-PappId=<id>` builds
-Vela under another package name, so it can be sideloaded under the id of an app the phone's Play
-account once installed from Play. That answers whether the check is Play's library record alone
-(a sideload under an owned id passes) or the signing certificate too (it fails). The manifest's
-satellite meta-data reads `${applicationId}`, since its value has to be the package name. It has to run
-in a real car on a stock phone signed in to Play, for the Desktop Head Unit reason above.
+The long game for place data, starting in the USA. Overture adds places and almost never
+removes one. The bake removes what Foursquare, OpenStreetMap and Wikidata mark closed (SPEC
+5.2), but the Foursquare copy readable without an account stops at February 2025.
 
-**The other route worth a test is a dongle.** Not the wireless Android Auto adapters, which still
-run the phone's Android Auto app and hit the same gate, but the Android "AI box" class
-(Carlinkit, Ottocast and the like): a small Android device that plugs into the car's USB, presents
-itself to the head unit over the CarPlay/Android Auto channel, and shows its own screen there.
-Vela installs on the box like on a phone, with no Google gate in the loop; the box gets location
-from the car or its own receiver and data from a SIM or the phone's hotspot. It is the
-"head unit that runs Android" answer in a form that fits an existing car, and it is untested here:
-one box, one drive, and it is either a documented path or a dead one.
+What is missing is one dated fact per place: a public record showed it open, or closed, on a
+date. So the project is a ledger keyed by the ids the bake already carries, fed by public
+registers, and read by the bake as confirm or close. Its first version adds no places.
 
-**The shape that works is a compile-time flavor, not a switch.** A `play` flavor where the Google
-extractor is NOT IN THE APK: no scrape, no hidden path, nothing to turn on. What is left is a
-complete OpenStreetMap maps app, because most of Vela already is one:
+US permit and commerce data, surveyed 2026-10-06. There is no national collection of business
+licenses. About 100 of roughly 19,500 municipalities publish a live feed, covering about a
+tenth of the population. In the order worth building:
 
-- routing and turn by turn from the on-device obf graph (OSRM online as it is today)
-- places from the Overture/OSM bake, offline packs, the address geocoder, speed limits from obf
-- the basemap from OpenFreeMap or a downloaded region
-- transit from Transitous, road features, cameras
-
-What it loses is the Google half: place pages (reviews, photos, hours), the traffic layer, traffic
-ETAs, and Google as the directions fallback. That is a real product difference and the listing has
-to describe the app it ships, not the other one.
-
-**What will NOT work, and is worth being blunt about:** shipping a boring app and restoring the
-Google half afterwards. Downloading executable code outside Play breaks the Device and Network
-Abuse policy, and an app that behaves differently from what review saw breaks Deceptive Behavior.
-Both are enforced at the ACCOUNT level, not the app level, and a suspended developer account is not
-appealable in any way worth planning around. A remote flag that quietly enables scraping is the
-textbook example. The other half of that risk is specific to us: the Google half is built on
-Google's own service, and a Play listing puts the account that publishes it directly under Google's
-enforcement, which is a different exposure than GitHub or F-Droid.
-
-So the honest split is two distributions: the full app stays on GitHub, Obtainium and F-Droid; the
-Play build is the OSM app, honestly described, with a link to the project site for people who want
-the other one. A link is fine; an in-app downloader of an APK is not.
-
-**Work it implies, roughly in order:**
-
-- a flavor dimension, with the Google extractor, the WebView scrape and the place-page surfaces
-  compiled out, and the search/place paths falling back to what the offline stack already does
-- `REQUEST_INSTALL_PACKAGES` and the in-app updater gone from that flavor (Play forbids an app that
-  updates itself), which also means the What's new dialog and the update checker are flavor-aware
-- the Data Safety form, a privacy policy URL, content rating, and the background location
-  declaration with the demo video Play asks for
-- package id and signing: Play App Signing re-signs, so a Play install and a GitHub install cannot
-  replace each other. Either accept that moving between them needs an uninstall, or publish the Play
-  build under its own id and accept two apps on one phone. Decide before the first upload, because
-  the id cannot change afterwards.
-- listing copy and screenshots that never imply a Google affiliation
-
-**The one door nobody has opened: a phone-side Android Auto sender.** Every open implementation of
-the protocol (aasdk, openauto, the Rust `android-auto` crate) is the HEAD UNIT side - they pretend
-to be a car so a phone will project to them. The other direction, an app that speaks the protocol
-straight to a real head unit in place of Google's, barely exists, and it is the only approach where
-Google's allowlist is not in the loop at all: with no gearhead in the conversation there is nothing
-to consult a list. Seb3thehacker reported getting text, buttons and then a WebView onto a car screen
-this way (issue #179).
-
-What decides whether that is big or a curiosity is ONE question: what happened in the TLS handshake.
-If the unit accepted a certificate we can generate, this is clean-room protocol work and shippable.
-If it took a certificate extracted from Google's app, it is the `aauto.aar` problem again - the
-thing that rules Fermata out - and no amount of good engineering fixes it. Everything else (per-unit
-compatibility, wired before wireless, H.264 encode, claiming USB accessory mode) is ordinary work
-that only matters after that answer.
-
-It would not live here either way. A sender is its own project, the size of openauto, and Vela's
-job would be to feed it frames - which is nearly free, because `CarMapRenderer` already renders the
-map to a bitmap for a car surface. One nice alignment: it wants gearhead out of the way to claim
-the accessory, and Vela's users are the people who do not have gearhead.
-
-**That project has a name now: Gearslip** (Seb3thehacker, repo pending). Moving it out of this repo
-does not move the certificate problem: a sender that needs key material extracted from Google's app
-or from head unit firmware cannot be distributed from anywhere - F-Droid would refuse it, and
-redistributing somebody's private key is a different order of risk from a license violation. Where
-the key was FOUND changes nothing about whose it is. So the cert question decides whether Gearslip
-can exist at all, not merely whether Vela can talk to it.
-
-**What is worth building here regardless is the SEAM, not the integration.** A projection client of
-any kind needs three things from Vela: frames at a size it names, input events going back, and the
-nav state for the cluster. Vela already has all three internally (`CarMapRenderer` renders to a
-bitmap, the car screens take input, `NavSession` publishes the state `ManeuverMapper` reads). A
-small bound service exposing them would let a companion render Vela on a car screen without forking
-it - and the same surface serves Google's Desktop Head Unit, an OpenAuto-style receiver on an
-aftermarket unit, an AAOS companion, and anyone else's experiment. It is useful before Gearslip
-works and it stays useful if Gearslip never does, which is the test for building it now.
-
-**Which SEAM depends on what Gearslip can consume, and that is not known yet.** Android Auto is a
-VIDEO protocol, not a web one: the phone renders frames, H.264 encodes them and ships them to the
-unit, which decodes. There is no browser on the other end, so "serve the UI over HTTP" adds a
-renderer rather than reusing one. Two shapes, and the tradeoff is real either way:
-
-- **Frames.** Vela hands out the bitmaps `CarMapRenderer` already produces. Reuses the tuned native
-  renderer, no second map engine, no compositing step. Needs Gearslip to accept an external frame
-  source.
-- **A URL.** Vela serves a car page and the client renders it in a WebView. Consumable by anything
-  that can show a URL, and Seb's own demo got a WebView onto a car screen, so Gearslip may simply
-  BE this shape. The cost is MapLibre GL JS instead of the native renderer plus a compositing pass,
-  which makes the map-render term worse. It is not the dominant term (on wireless the radio and the
-  encoder are) but it is the one term we would be choosing to inflate.
-
-**The half that does NOT depend on the answer is most of the work:** nav state out (what
-`ManeuverMapper` already reads from `NavSession`) and input back. Both transports need those, in
-the same shape. So the decision can wait for Gearslip to have a transport, and nothing is blocked
-by waiting. Frame pacing is worth saying once: a car screen has no use for 60 fps of map, and 30
-halves the encode.
-
-**Not scheduled.** The prep is the flavor split, which is useful on its own: it proves how much of
-Vela stands up with no Google at all, which is the direction the project has been walking anyway.
-
-### Opt-in telemetry  *(planned - deliberate, careful)*
-
-The local halves shipped in June 2026: developer diagnostics (a local breadcrumb log the user
-exports by hand) and trip recording with replay and the offline nav auditor, both opt-in, both
-with no backend and no upload. What is left is the long game:
-
-**Vela's own traffic data.** Crowd-source anonymized speed and route traces from opted-in users
-to build a Vela traffic layer, blended with Google's and eventually replacing it where coverage
-is good, the first real step off Google. The trip recorder is the on-device half of the capture
-this would need; an optional one-tap upload sink for diagnostics would ride the same backend.
-
-**This is a departure from today's "no telemetry, no backend" stance**, so it must be done so it
-*earns* trust rather than spends it:
-- **Opt-in only**, clear consent screen, easy off plus "delete my data", never on by default.
-- **Minimize and anonymize**: no account, a pseudonymous device token at most; trim the precise
-  start and end (snap to road, drop the first and last ~100 m like other traffic apps); send
-  speed and heading along road segments, never "user X went from home to work".
-- Needs **the first Vela backend** (or a privacy-preserving collector); pick something
-  self-hostable. This becomes a thing to run, secure and subpoena-proof, the opposite of the
-  current no-server design, so weigh it.
-- **Update [`PRIVACY.md`](PRIVACY.md) in the same change**: it currently, truthfully, says "no
-  telemetry"; that line changes the day this ships.
-- Could ride the existing **signed channel** for config (endpoint, sample rate, kill switch).
-
-### Vela's own record of what is still open  *(the long game for place data; starts in the USA)*
-
-**The problem.** Overture adds places and almost never takes one away: about 2.5% of its rows
-change month to month, closed flags come and go, and a restaurant that shut in 2015 sits in it
-at confidence 0.92. The bake now removes what Foursquare, OpenStreetMap and Wikidata say is
-closed (SPEC 5.2), but the Foursquare copy it can read without an account stops at February
-2025, so that signal ages from here. In twenty years an unpruned dataset is mostly ghosts.
-
-**Not starting from zero.** The list of places already exists: Overture, OpenStreetMap and the
-chain locators. What is missing is one dated fact per place, "a public record showed this open
-on <date>" or "showed it closed on <date>". So the project is a ledger keyed by the ids the bake
-already carries (Overture's, OpenStreetMap's), fed by public registers, and read by the bake as
-confirm or close. It adds no places in its first version.
-
-**Where US permit and commerce data lives (surveyed 2026-10-06).** There is no national
-collection of business licenses. Licensing is by city or county, every schema is different, and
-about 100 of roughly 19,500 municipalities publish a live feed, covering about a tenth of the
-population. What does exist, in the order worth building:
-
-1. **National sector registers**, all anonymous bulk downloads: FDIC bank branches (78,061
-   offices with coordinates, branch closings dated, updated weekly), USDA SNAP retailers (250,628
-   grocery, convenience and fuel stores with coordinates and twenty years of authorization
-   dates), CMS hospitals, NCES public schools, NPPES health providers, the IRS nonprofit file.
-   Full US coverage, a few percent of all places each, and the first two carry real closing
-   dates.
-2. **State alcohol licenses and statewide food licensing**: California, Texas, New York,
-   Colorado, Missouri and Oregon publish daily lists with status and dates, and Florida publishes
-   every restaurant and hotel license weekly. Bars, restaurants and liquor stores for over 40% of
-   the population, which is the category that churns most.
-3. **Health inspections**, about a fifth of the population. They use the trade name, carry
-   coordinates, and Chicago's has an explicit "Out of Business" result.
-4. **Big-city license feeds** (New York City, Los Angeles, Chicago, San Francisco, the District
+1. National sector registers, all anonymous bulk downloads: FDIC bank branches (78,061 offices
+   with coordinates and dated closings), USDA SNAP retailers (250,628 stores with coordinates
+   and authorization dates), CMS hospitals, NCES public schools, NPPES health providers, the
+   IRS nonprofit file. Full US coverage, a few percent of all places each.
+2. State alcohol and food licenses. California and five other states publish daily lists
+   with status and dates, and one more a weekly restaurant and hotel list. Over 40% of the
+   population.
+3. Health inspections, about a fifth of the population, with trade names and coordinates.
+4. Big-city license feeds (New York City, Los Angeles, Chicago, San Francisco, the District
    of Columbia and about twenty more), one adapter each.
 
-**Why licenses are confirm-or-close only.** In the District of Columbia's feed (279,971 rows,
-76,331 active, refreshed daily) 45% of active licenses are housing rentals, only 24% carry a
-trade name (a grocery appears as its legal entity), and 50,840 rows are "Expired - Enforcement",
-which is late paperwork more often than a closed shop. Sacramento hides the address on a third
-of its rows. So a record is matched by address plus a loose name to a place the bake already
-has, an active match counts as "seen alive", and a removal needs an explicit closed status with
-a recent date AND a second signal.
+Licenses can confirm or close a place and cannot supply places: of the District of
+Columbia's 76,331 active licenses, 45% are housing rentals and 24% carry a trade name. A
+record is matched by address plus a loose name to a place the bake already has. An active
+match counts as seen alive. A removal needs an explicit closed status with a recent date and
+a second signal, since an expired license is usually late paperwork.
 
-**Cost.** Each adapter is small. At thirty sources expect a few to break every quarter (two
-portals had moved hosts on the day of the survey), and city layers often state no license, which
-is not the same as permission to redistribute; closure facts derived from them and never
-republished are the safer use.
+City layers often state no license, so derive closure facts from them and never republish
+the rows.
 
-**Open questions before building.**
-- Overture's BrightQuery source is itself built from government filings. If its rows carry a
-  status or a last-seen date, much of this is already there under Overture's license.
-- Foursquare's current releases need an account and carry a logo clause. Taking one refreshes
-  the best closure signal there is; it is the maintainer's decision.
-- The match rate of a license feed against the bake's places in one city has not been measured.
+Open questions: whether Overture's BrightQuery rows carry a status or a last-seen date;
+whether to take Foursquare's current releases, which need an account and carry a logo clause;
+and how well one city's license feed matches the bake.
 
-**First step.** FDIC and SNAP as two adapters in the places bake, confirm and close only,
-measured on the District of Columbia and Sacramento.
-
-Outside the USA the equivalents are national and better: France's SIRENE lists every
-establishment with its address and an open or closed state, and the UK's Food Standards Agency
-publishes every food business. Those would come after the US shape is proven.
+First step: FDIC and SNAP as two adapters in the places bake, confirm and close only,
+measured on the District of Columbia and Sacramento. National registers outside the USA
+(France's Sirene, the UK Food Standards Agency's list) come after the US shape is proven.
 
 ### Vela traffic layer
 
-Depends on the telemetry above. Aggregate opted-in traces → per-segment speed vs.
-free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Start as a
-*supplement* to Google's `/maps/vt` tiles, grow as coverage allows.
-
-## Investigated, parked or dead
-
-One line each, so nobody re-chases them; the full probes are in the history file.
-
-- **Closed places by checking each place's website (2026-10-06)**: measured on the District of
-  Columbia, dead links ran 18% for doubtful places and 16% for confident ones, so a dead site says
-  nothing about the place.
-- **Closed chain branches from the chain's own locator (2026-10-06)**: the locator data is
-  incomplete per brand (7 points for a brand with 11 open stores in the test box), so "not in the
-  locator" demoted open stores. Built, measured, removed.
-
-- **Owner posts ("closed for renovation until...")**: a keyless endpoint exists
-  (`/maps/preview/localposts`) but its `pb` grammar needs a live capture from a business that
-  actually has posts; none found. Capture one when met, then it is the standard calibration
-  pipeline. Formal temporary-closure status already shows.
-- **Predictive per-departure ETA**: six attempts, dead keyless; the web client sends no time
-  field and its "Leave now" control cannot be driven. The only unblock is one mitmproxy capture
-  of the Android Google Maps app with Depart-at set. The typical best-to-worst window shipped
-  instead.
-- **Live traffic incidents**: Google renders them from proprietary binary `vt` tiles (a
-  reverse-engineering project that breaks on every reshape), Waze's feed is reCAPTCHA-gated
-  (probed four ways 2026-08-08, all 403). Only open DOT/511 feeds remain: fragmented, token-shaped,
-  one region at a time. Congestion coloring covers "where is it slow".
-- **EV charger detail (price, kW, availability)**: stripped from every keyless response; only the
-  type marker arrives. OpenChargeMap would be the open source for it.
-- **Q&A, photo contributor names, per-review photos via the RPC**: each proven login-gated or
-  bot-gated. Do not re-probe. (Photo dates used to be on this line; they were a missing request
-  header, not a gate, and ship since 2026-09-23. The history file has the correction.)
-- **Gallery videos**: rare in the data and would need a gated source plus a player dependency.
-- **Clean always-snap (Google picks the road, an on-device engine names the turns)**: the
-  serverless dense-via version loses ~1 in 10 named turns, the public matchers cap at 10 points.
-  It was going to be GraphHopper's map-matcher; GraphHopper was retired 2026-09-15 and the obf
-  engine has no matcher, so this is open again on that side. Option 3 (snap only on real traffic
-  divergence) stays the online path.
-- **Merge Microsoft footprints into the basemap bake**: measured 2026-09-18, doubles the archive
-  and saves no bytes; parked behind self-hosted tiles.
-- **Parcels**: per-county scraping with a backend and mixed licensing; out of scope.
-
-## Resilience (built - extend as needed)
-
-The signed `calibration.json` channel can already hot-push **config, field paths,
-user notices, and sandboxed JS parse-logic** with no app update (see SPEC section 11). Future
-breakages should be fixed there first.
-
-## Not going to happen (accounts and backends)
-
-- **A shared Google-to-open POI correlation log (asked 2026-09-18, declined).** Clients would
-  contribute the links they resolve (this Overture or OSM id is that Google listing) to a shared
-  store, so a tap on a place nobody on this phone has tapped could skip the lookup. What it buys is
-  ONE saved request on a first tap: the link alone carries no rating, hours, reviews or photos, so
-  the place still has to be fetched, and repeat taps are already free from the on-disk link cache.
-  What it costs is a backend to receive, store, moderate and serve it, forever, plus a contribution
-  channel that reveals which places a user tapped and when. The rows themselves are impersonal
-  (place to place), and batching, delay and dropping rare pairs would blunt the rest, but adding
-  behavioral telemetry to save one request is the wrong side of the trade the project exists to
-  make. Revisit if first-tap linking ever fails at a rate a cache cannot fix; the thing that looked
-  like that (2026-09-18, POIs "not linking") was a 120 m bug in our own ranking.
-
-These stay off the table because they require a Google login or a Vela server, and the
-project's core promise is that neither exists:
-
-- Contributing reviews, photos, or map edits (needs a Google account)
-- Live location sharing / share-ETA (needs a rendezvous backend)
-- Location history / timeline (an anti-goal outright)
-- Live "busier than usual" popular times (Google strips the live histogram from every
-  anonymous request; the typical-week bars we show are the keyless maximum - probed and
-  documented, do not re-chase)
-
----
+Depends on the telemetry above. Opted-in traces become per-segment speed against free flow,
+then a traffic overlay and ETAs that need no Google. It starts as a supplement to Google's
+traffic and replaces it where coverage is good.
 
 ## Architecture work
 
-Carried over from the architecture review (issue #417); the finished items (route provenance as
-one field, the shared hidden-WebView base, `NavController`, the `SearchGates` function) are
-described in SPEC section 2.
+- Finish carving the large files. `NavCamera` out of `VelaMapView`: the follow ticker, the
+  puck overlay and the padding and zoom eases as one class with one `frame()` entry point.
+  `SearchController`: query, suggestions, results, the three pickers and their gates as one
+  tested state machine. The camera piece has to be judged on a drive.
+- Rules in prose become rules in code. A SPEC paragraph that describes a trap gets a unit
+  test, a lint rule, or a type that makes the wrong state impossible, when someone touches it.
+- A router with an owner. Turn-by-turn depends on the FOSSGIS community servers with no
+  agreement, and the only fallback is the on-phone router. A self-hosted router asked first,
+  with FOSSGIS as the fallback, removes that single point of failure. The engine to host is
+  Valhalla (decided 2026-10-03): it serves car, bike and foot, the map matching the drive
+  route uses, and the avoid options FOSSGIS OSRM refuses. Its tiles are memory-mapped, so a
+  free ARM box (4 cores, 24 GB, 200 GB disk) fits North America plus Europe. It would be the
+  first server Vela runs, so `PRIVACY.md` changes the day it ships and request logging stays
+  off. A free tier can be reclaimed, and someone has to update the tiles.
 
-- **Finish carving the three large files.** `NavCamera` in `VelaMapView` (the follow ticker, the
-  puck overlay, the padding and zoom eases as one class with one `frame()` entry point) and
-  `SearchController` (query, suggestions, results, the three pickers and their gates as one
-  tested state machine). The camera piece needs a real drive to judge.
-- **Rules in prose become rules in code.** A SPEC paragraph describing a trap should come with a
-  unit test, a lint rule, or a type that makes the wrong state unrepresentable. Convert
-  opportunistically when touching one; the spec keeps the why, the test keeps the what.
-- **Infrastructure with an owner.** Turn-by-turn depends on the FOSSGIS community servers with no
-  agreement and no fallback except the on-device engine. One self-hosted router, used first with
-  FOSSGIS as the fallback, removes the single failure that takes routing from every user at once.
-  The nav diagnostics record which router answered, so the decision can be made from real drives.
-  **Valhalla, not OSRM, is the engine to host (2026-10-03):** one Valhalla serves car, bike and
-  foot, the map-matching the drive hybrid already leans on (`trace_route`, capped at 200 km on the
-  public server), and costing options that make online "avoid tolls / highways / ferries" honest
-  (FOSSGIS OSRM rejects `exclude=`). Its routing tiles are memory-mapped from disk, so a whole
-  continent runs in modest RAM, where OSRM wants its graph in RAM (a planet car graph is far past
-  any free machine). A free ARM box (Oracle's always-free tier: 4 cores, 24 GB, 200 GB disk, a
-  monthly egress allowance) fits North America plus Europe and maybe the planet's tiles; build the
-  tiles elsewhere and copy them in. Costs: the first server Vela runs (it sees every route request
-  it answers, so `PRIVACY.md` changes the day it ships and request logging stays off), a free tier
-  that can be reclaimed, and someone to update the tiles. FOSSGIS stays as the fallback either way.
+## Not going to happen
+
+These need a Google login or a Vela server, and the project's promise is that neither exists.
+
+- Contributing reviews, photos or map edits to Google. Needs a Google account.
+- Live location sharing and shared ETAs. Needs a rendezvous server.
+- Location history or a timeline. An anti-goal.
+- Live "busier than usual" popular times. Google strips the live histogram from every
+  anonymous request. The typical-week bars are all that is available.
+- A shared log linking Google listings to open place ids (declined 2026-09-18). It saves one
+  request on a first tap, and the place is fetched anyway for its rating, hours and photos.
+  It costs a backend, and a contribution channel that shows which places a user tapped.

@@ -288,8 +288,8 @@ signed file the app fetches at launch (SPEC 11).
   density.
 - Pause a hidden WebView when its fetch is done. A loaded Google page keeps a compositor and
   timers running.
-- A Compose dialog cannot be made to cover the system bars. A full-screen viewer uses
-  transparent bars, `requiredFullScreen()` and a top gradient.
+- A Compose dialog cannot be made to cover the system bars. A full-screen viewer leaves the
+  bars visible and draws a gradient under the status bar.
 
 ### The map (MapLibre)
 
@@ -373,6 +373,13 @@ signed file the app fetches at launch (SPEC 11).
 - New map chrome goes inside the `!pipUi` gate and gets the landscape column treatment
   (`landscapeColumn`).
 
+### Android Auto
+
+- Every `Maneuver` sent to the car has an icon. The host draws no turn card for one without.
+- When a new car `Surface` arrives, release the old one. It holds the buffer queue's connection.
+- A row image that has colors is `Row.IMAGE_TYPE_SMALL`. The host tints `IMAGE_TYPE_ICON`.
+- Only `VelaCarSession` pushes the drive screen.
+
 ### Data and bakes
 
 - A rule in `tools/build-places-region.sh` that relates rows to rows needs an equality to
@@ -434,7 +441,7 @@ signed file the app fetches at launch (SPEC 11).
   `input motionevent`.
 - Log tags worth knowing: `VelaDirections`, `VelaSteps` and `VelaCapture` (set to DEBUG),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
-  `VelaPerf`, `VelaFps`, `VelaCar`.
+  `VelaFps`, `VelaCar`, `VelaSim`.
 - The Android Auto desktop head unit shows Vela's car screens but skips the car's install
   check. Book chapter 10 has the setup.
 - Restore whatever a test changed on the phone.

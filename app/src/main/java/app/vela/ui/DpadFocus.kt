@@ -175,10 +175,8 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
  * confirms focus truly landed**, then stops (so it never fights the user once they navigate
  * away). Apply directly to the target: `Modifier.dpadAutoFocus()`. No-op under touch.
  *
- * NB this still can't focus a `DropdownMenu` popup item - that's a separate, unfixable Compose
- * limitation (the popup only takes item focus on the first key event; requestFocus/moveFocus
- * can't pre-place it, five approaches verified). Menus stay stock DropdownMenus (fully
- * navigable) so touch is byte-identical. See docs/dpad.md "Known limitations".
+ * This cannot focus a `DropdownMenu` popup item: the popup takes item focus only on the first
+ * key event. Menus are `VelaMenu` for that reason (docs/dpad.md, Traps).
  */
 fun Modifier.dpadAutoFocus(): Modifier = composed {
     val fr = remember { FocusRequester() }

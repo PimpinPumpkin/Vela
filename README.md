@@ -58,7 +58,7 @@ Download a region and the map, search, routing and turn-by-turn navigation work 
 network. Offline, or with **Settings → Privacy → Use Vela without Google** on, nothing reaches
 Google at all. A few things Google only serves to a real browser, a place's reviews among them,
 are read from a Google page in an offscreen WebView, anonymously; the list is in
-[PRIVACY.md](PRIVACY.md#the-hidden-webviews).
+[PRIVACY.md](PRIVACY.md#the-hidden-pages).
 
 **[The full comparison against the Google Maps app and Google Maps web is below](#privacy)**, and
 the per-request detail is in [PRIVACY.md](PRIVACY.md).

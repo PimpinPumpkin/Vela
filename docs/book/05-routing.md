@@ -4,705 +4,357 @@
 
 You pick a destination and the chooser shows up to four routes, fastest first, each with an
 arrival time, a distance and a line colored by congestion. You pick one and drive it with every
-turn named. Add a stop and the plan bends through it. Tick "Avoid tolls" and the route leaves the
-toll road. Lose signal in a downloaded area and routing keeps working.
+turn announced. Add a stop and the route goes through it. Tick "Avoid tolls" and the route
+leaves the toll road. Lose signal in a downloaded area and routing keeps working.
 
-Behind that, one request can touch four different routers, and the answer you drive is often
-stitched together from two of them: the roads and turns from an open router, the arrival time and
-the red stretches from Google. This chapter is about which one answers, when, and how the pieces
-are joined.
+On a drive, the line is Google's route and the turn instructions come from open data. Other
+modes and situations differ, as described below. The full list of thresholds is in
+[SPEC section 4](../../SPEC.md).
 
 ## Where the data comes from
 
-- **The open router (primary).** OSRM, on the FOSSGIS community server
-  (`routing.openstreetmap.de`, fair use, no key), one backend per mode: `routed-car`,
-  `routed-bike`, `routed-foot`. It answers with full geometry and every turn, with street names,
-  highway refs, exit numbers and destinations. OpenStreetMap data, ODbL.
-- **Google's keyless directions (traffic, and the fallback).** The same `/maps/preview/directions`
-  request the Google Maps web page makes, with no key and no account. It supplies the in-traffic
-  time, the typical range ("usually 25 to 35 min"), the congestion spans along its own line, and
-  its own alternates. How the request is built and kept current is [chapter 7](07-talking-to-google.md).
-- **The on-phone router.** OsmAnd's pure-Java router (GPLv3, vendored) over `.obf` region files
-  you download. The files are baked in CI from Geofabrik extracts and hosted as GitHub release
-  assets; see [chapter 2](02-data-and-rebakes.md) for the bakes and [chapter 8](08-offline.md) for
-  what a region download holds.
-- **Valhalla, for bikes.** The FOSSGIS Valhalla server (`valhalla1.openstreetmap.de`), the OSRM
-  servers' sibling, used only for safety-weighted bicycle routes.
-- **The map's own vector tiles, for names.** The OpenMapTiles tiles the map draws (OpenFreeMap, or
-  a downloaded region's basemap file) carry every street's name and shape. `LineNamer` uses them to
-  put names on a line it did not route (below).
+- Google's keyless directions: the `/maps/preview/directions` request the Google Maps web page
+  makes, with no key and no account ([chapter 7](07-talking-to-google.md)). It returns the
+  route line, the typical and in-traffic times, congestion spans along the line, and
+  alternates. Its step list is shortened on longer trips (a 6-mile route came back with 2 of
+  about 10 turns), so its steps are used only when nothing else answers.
+- The open router: OSRM on the FOSSGIS community server (`routing.openstreetmap.de`, fair use,
+  no key), with a backend each for car, bike and foot. It returns every turn with street
+  names, exit numbers, sign text and lanes. It knows nothing about traffic or closures.
+- Valhalla on the FOSSGIS server (`valhalla1.openstreetmap.de`): map matching of a line another
+  router drew, and safety-weighted bicycle routes.
+- The map's own vector tiles (zoom 14), from a downloaded region's basemap file when it holds
+  the tile, else from OpenFreeMap. `RoadNameTiles` reads street names and shapes from them.
+- The on-phone router: OsmAnd's Java router (GPLv3, vendored) over the `.obf` region files you
+  download ([chapter 2](02-data-and-rebakes.md), [chapter 8](08-offline.md)).
 
-**Walking is OpenStreetMap's (2026-09-28).** Walking routes come from the open foot router, not
-Google. Google has no traffic to add on foot and its keyless walking steps are abbreviated. Google
-is asked for its walk once, only to see whether it is much shorter; see "Walking" below.
-
-Transit directions are a different story and deliberately stay with Google; that is
-[chapter 9](09-transit.md).
+Transit directions are [chapter 9](09-transit.md).
 
 ## How it is decided
 
-### Why the open router leads
-
-Google's keyless answer comes back with **abbreviated steps** on longer routes: a 6-mile route
-returned 2 of about 10 turns. Its line is complete, but a banner that skips eight turns is not
-navigation. OSRM gives every turn. So since 2026-06-28 the rule is: **turns and geometry from the
-open router, traffic from Google**, with Google as the router only when the open one cannot
-answer.
-
-A planning request (you tapping Directions) fires both at once, so the traffic round trip costs
-nothing extra:
-
-```
-OSRM_TRIES = 3            // FOSSGIS blips on mobile; backoff about 200 ms, then 400 ms
-Google tries = 3          // googleDirectionsRetried; backoff about 300 ms, then 600 ms
-OSRM_PRECISION = 6        // polyline6: a 0.11 m grid instead of polyline's 1.11 m
-```
-
-Each backoff is drawn up to 50% either side of its nominal value (`Jitter`), so the retries do not
-land on a fixed rhythm. OSRM gives up at once on a 4xx, because that answer is deterministic (the
-`exclude=` refusal below is one) and a retry cannot change it; and inside a reroute's budget it
-never sleeps into a backoff that would leave less than `RouteBudget.MIN_TRY_MS` for the next try.
-
-Google got the same retry ladder on 2026-07-14. With one shot, a single empty keyless reply cost
-the whole fetch its traffic, its jam avoidance and its alternates, and the picker led with
-trafficless routes that read minutes faster than anything real.
-
-### Which engine answers, in order
-
-For a driving trip with no stops:
-
-1. **OSRM** answers, and Google answered too: the OSRM route, with Google's traffic laid over it
-   (below). If Google's course went elsewhere, OSRM is also led along Google's line, and that
-   snapped route joins the list when it earns it.
-2. **OSRM** answers, Google did not: the OSRM route alone, trafficless. The drive's recheck heals
-   it later ([chapter 4](04-navigation.md)).
-3. **OSRM is down**, a downloaded region covers both ends: the on-phone route. Complete named
-   turns, no traffic. Wherever the app waits a fixed time for the phone's own router
-   (4 s for an avoid, 6 s for a bike route, a reroute's deadline), the search is stopped when
-   that time is up instead of running on in the background.
-4. **OSRM is down**, no region: Google's own route, tagged `GOOGLE_ABBREVIATED` so the recheck can
-   swap in full steps the moment OSRM is back.
-5. Nothing: no route.
-
-Every route carries a `RouteSource` saying which of these produced it, and the trip log records
-it, so a replay says which router drew the line:
-
-| Source | Meaning |
-| --- | --- |
-| `OSRM` | the open router's own route, and today also a route snapped along Google's line (see Limits) |
-| `OSRM_VIA_SNAP` | OSRM forced along Google's line: the jam snap (with or without stops, since 2026-09-25) and a Google alternate named on pick |
-| `GOOGLE_LINE_NAMED` | Google's line kept, turns from its bends, names from the map tiles: a much-shorter Google walk, and a picked alternate whose snap was refused |
-| `GOOGLE_ABBREVIATED` | Google's own route with its shortened step list, driven because nothing better answered |
-| `GOOGLE_PROVISIONAL` | a Google alternate in the picker, not named yet |
-| `GOOGLE_NAMED` | the parser's raw tag for a Google route; replaced by one of the two above before it leaves the fetch |
-| `OBF`, `VALHALLA` | the on-phone router and the bike router |
-| `GRAPHHOPPER`, `UNKNOWN` | only so old trip files read back |
-
-The on-phone router also takes over in two cases that are not about the network: an avoid with no
-Google answer (see avoids below), and a bike trip in a downloaded area (see bikes below).
-
-### Walking
-
-`walkRoutes` asks the open foot router and, in parallel, Google's walk (6 s cap, skipped for an
-urgent reroute and when traffic-on-tap or Google-free is on). Google's walk joins the list, first,
-only when it is at least 15% shorter (`WALK_GOOGLE_SHORTER`), which is where OpenStreetMap lacks a
-path or a crossing Google knows. Then it is **named, never snapped**: forcing a foot route through
-points on Google's line touches each point on whichever side it lands (the far sidewalk, the far
-carriageway, a flyover deck) and doubles back. Measured on 2026-09-28 against Google's own length:
-a Dhaka walk 4.5 km became 9.9 km, a Davis walk 2.2 km became 2.9 km, and giving each point Google's
-heading did not help. In California the open router's walk matched or beat Google's on every trip
-tried (Davis 2.29 vs 2.21 km and 3.67 vs 3.79 km, Sacramento 3.56 vs 3.61 km), so Google's walk is
-rarely offered there. The Dhaka trip is the case it exists for: 4.6 km named against the open
-router's 5.6 km.
-
-### Naming a line it did not route (`LineNamer`)
-
-Google's line is kept exactly. Turns come from its own bends: the heading change across 32 m either
-side, local peaks of at least 35 degrees, 30 m apart. Each 8 m sample takes the name of the nearest
-street within 25 m (30 m driving) that runs the same way (within 35 degrees); runs shorter than
-40 m are absorbed, since a cross street is picked up for a sample or two at every junction. A turn
-is announced when the name changes across it or it bends 70 degrees or more; a name change with no
-turn is folded into the step before as a rename, as the open router's are. Driving phrases by the
-tiles' road class: joining a motorway or trunk is a ramp, leaving one an exit, a gentle split
-between two a keep. On foot, a road bridge's name (a flyover, marked from the tiles' `transportation`
-bridge segments because the names layer carries no bridge flag) never labels the street under it.
-
-The result carries no lanes and no sign destinations (those sit on the router's junctions, not in
-the tiles), and Google's own step positions are not used: they sit at the start of the stretch
-before a maneuver, a kilometer early on a highway ramp. A line under half named on foot (60%
-driving) is not trusted and the route is dropped. Names cost the few z14 tiles the line crosses,
-fetched in parallel (under a second, often cached) and matched in a few milliseconds.
-
-It serves twice: Google's much-shorter walk, and **driving's fallback when a picked Google
-alternate's snap is refused** (too long, a spur, a sampled point off the road). That fallback used
-to be Google's bare "Turn left, turn right" list.
-
-### Reroutes run on a deadline
-
-A reroute mid-drive is **urgent**: one attempt per source, no retry ladder, and the fetch carries
-the navigation session's deadline into it so no single stage can eat the whole budget.
-
-```
-URGENT_OSRM_TIMEOUT_MS   = 6_000    // the urgent reroute's one open-router call, all in
-URGENT_DEFAULT_BUDGET_MS = 16_000   // an urgent fetch with no deadline passed gets this
-URGENT_GOOGLE_GRACE_MS   = 2_500    // once OSRM has a route, Google gets this long, then trafficless
-PHONE_FIRST_ONLINE_WAIT_MS   = 2_500 // region on the phone: wait this long for OSRM, then take the phone's route
-PHONE_FIRST_ONDEVICE_WAIT_MS = 4_000 // and give the phone's compute this long past it
-LADDER_OSRM_TRY_MS       = 8_000    // the escalated retry's per-try open-router timeout
-LADDER_OSRM_SHARE        = 0.55     // share of its budget the open router may use
-LADDER_SNAP_RESERVE_MS   = 6_000    // room kept for the traffic snap after waiting on Google
-RouteBudget.MIN_TRY_MS   = 1_500    // never start an attempt with less than this left
-```
-
-When the open router comes back empty inside a bounded fetch, `RerouteFallback.pick` takes
-Google's answer if it is already in, otherwise races Google against the on-phone router and takes
-whichever produces a route first. Both run on unstructured scopes on purpose: the native router
-and a blocking HTTP read ignore cancellation, and a structured child would hold the reroute open
-until they finished, which is the wait the deadline exists to remove. Two diagnostics exports are
-behind this: one (issue #397) showed reroutes taking 18 to 40 seconds while OSRM had answered in
-seconds, because the fetch waited out Google's empty replies and their backoff, which is what
-`URGENT_GOOGLE_GRACE_MS` ends; the other (issue #557) showed urgent attempts failing at exactly
-20 seconds while the FOSSGIS car router never answered at all, which is what the budget and
-`RerouteFallback` end.
-
-An urgent reroute skips the divergence snap below, unless an avoid is on. The lean route lands in
-seconds, and the two-minute recheck upgrades it.
-
-### The heading on a reroute
-
-After a wrong turn, a reroute computed a few tens of meters down the wrong road is entitled to say
-"make a U-turn", because from there going back often is the fastest path. The driver carries on,
-and is told to turn around again. So a reroute pins the **first** waypoint to the direction the
-car is pointing:
-
-```
-bearings=<heading>,65       // BEARING_TOLERANCE_DEG = 65 either side, first waypoint only
-```
-
-Wide enough to absorb GPS heading noise and a car mid-turn, narrow enough to exclude a 180 degree
-answer. Every later waypoint gets an empty entry (the count must match or OSRM rejects the whole
-request). The on-phone router gets the same heading as OsmAnd's `initialDirection`, in compass
-radians, as a soft preference. Google has no heading parameter. A planning fetch sends none,
-because the way a parked car faces is not a routing constraint, and a fix with no heading sends
-none either.
-
-### Putting Google's traffic on an open route
-
-`applyTraffic(route, google)` does three things to an OSRM route:
-
-1. **Calibrates the free-flow time.** OSRM's speed model has no signal timing, so on a signalized
-   arterial its time runs far under Google's typical for the same road (a reporter's diagnostics:
-   OSRM 16 minutes where Google's typical was 30). When the route follows Google's course, its
-   durations (route, legs, every maneuver, so the remaining-time sums in the drive agree) are
-   rebased onto Google's typical:
-
-   ```
-   cal    = (googleTypical * distanceScale) / osrmFreeFlow,  clamped 0.5 .. 3.0
-   factor = googleInTraffic / googleTypical,                 clamped 0.5 .. 4.0
-   ETA    = osrmFreeFlow * cal * factor
-   ```
-
-   On a same-course route that works out to Google's own in-traffic time, scaled by the distance
-   ratio. The traffic ratio stays traffic versus typical, so the color does not turn red just
-   because OSRM was optimistic.
-2. **Computes one calibration per response.** The basis is whichever route follows Google's
-   course: the top OSRM route if it does, otherwise the via snap below. Every OSRM route in the
-   reply gets that one factor, because the alternates share the speed model's bias, and
-   calibrating each separately would re-rank them unfairly.
-3. **Carries the congestion spans.** On a same-course route Google's spans map by fraction along
-   the line. On anything else (a divergent route, an alternate, a trip with stops),
-   `RouteGeometry.transferSpans` paints only where the two routes share the road:
-
-   ```
-   stepM = 25     // each span's stretch sampled every 25 m on Google's line
-   tolM  = 35     // a sample within 35 m of the other route marks that spot
-   gapM  = 80     // a break longer than this ends a colored run
-   minM  = 40     // a run shorter than this is dropped
-   ```
-
-   The projection goes through a 0.005 degree cell grid (`SegmentGrid`), so a ten-hour route with
-   tens of thousands of vertices stays cheap. Roads Google did not drive stay uncolored.
-
-### Following Google around a jam
-
-When Google's live route takes a different path from OSRM's free-flow one, Google is usually
-routing around something. Vela then drives OSRM *through Google's line* so you get Google's path
-with OSRM's named turns:
-
-```
-divergent: thresholdM = 700    // any of 5 points sampled on Google's line > 700 m from OSRM's
-sampleVias: count = 12         // interior points of Google's line fed to OSRM as vias
-```
-
-Twelve, not more: a via that lands on a turn is swallowed into a via arrive/depart, and at 60 vias
-about one named turn in ten went missing. The open router's own map matching caps at 10 coordinates, so it cannot
-be used here; the hybrid route further down matches with the open Valhalla server instead.
-
-A snapped route has to pass every guard or it is thrown away:
-
-```
-VIA_SNAP_MAX_M      = 40      // any sampled via OSRM moved farther than this: refused
-SNAP_REACH_M        = 500     // its last point must be this close to the destination
-SNAP_LENGTH_SLACK   = 1.05    // no longer than Google's course x 1.05 ...
-SNAP_LENGTH_SLACK_M = 400     // ... + 400 m
-```
-
-and the **spur test**, which catches the case the others miss: a via that snapped onto an
-off-ramp or a side street moves only a few meters and adds little length, but produces an
-out-and-back "appendix" the puck then drives while the car goes straight (a real drive, 121 m out
-and back). `RouteGeometry.spurAt` projects the snapped route onto Google's line and looks for a
-stretch that travels without progressing:
-
-```
-SPUR_MIN_M             = 80     // a stretch at least this long ...
-SPUR_PROGRESS_FRACTION = 0.45   // ... that advanced less than 45% of the distance traveled
-SPUR_NORMAL_FRACTION   = 0.8    // progress at or above 80% counts as normal and resets the stretch
-SPUR_END_SLACK_M       = 300    // first and last 300 m exempt (approaches differ legitimately)
-SPUR_TURN_NEAR_M       = 150    // refused only if a turn or U-turn sits within 150 m of the spur
-```
-
-The last rule exists because a loop ramp that OSM draws in full and Google's line cuts across has
-the same shape, but carries a merge, never a turn.
-
-Then the snap has to **earn its place in the list**:
-
-```
-SNAP_ETA_MARGIN = 1.2    // Google's live ETA <= calibrated OSRM best x 1.2, or the snap is dropped
-```
-
-A snap that passes is offered beside OSRM's own routes and sorted with them by arrival time, so it
-leads only when it is actually faster; with an avoid on, OSRM's unrestricted routes are left out
-and the snap stands alone.
-
-Before 2026-06-30 any divergence put the snap first, and a longer, wobblier path could lead
-without being faster. The comparison uses the *calibrated* OSRM time: against OSRM's raw
-free-flow, a jam-avoiding snap lost to a fiction every time. With an avoid on, the gate is
-skipped, because Google's avoiding course is slower than the unrestricted one by design.
-
-### Google's line, with the best steps for each part
-
-The 700 m test above is for jams. A closed road sends Google a few blocks around, far less than
-700 m, and the open router does not know the road is closed, so for a long time Vela kept its own
-route through the closure and only borrowed Google's arrival time.
-
-For driving, the route is now Google's line wherever the two differ at all. The open router no
-longer decides the path; it only supplies steps for the parts where it and Google go the same way.
-
-**Finding where they differ.** Vela walks Google's line in 20 m steps and marks each point more
-than 15 m from the open route. Fifteen, because at 25 a parking aisle 18 m beside a street was
-taken for the street. Marked runs close together are joined, runs of 40 m or more become
-"stretches", and each stretch is widened by 90 m and kept 60 m clear of any corner, so the turn
-off the shared road and the turn back onto it are inside it and not at its edge. Then every step
-of the open router outside the stretches is tested: does the open route arrive at it and leave it
-along Google's line? If not (it joins Google's line there from a side street, or leaves it on an
-exit Google does not take), that step gets a stretch of its own. No step is ever thrown away
-without something else covering its place.
-
-**Where the steps on a stretch come from.** In order:
-
-1. A map match. The stretch is sent to the open Valhalla server, which snaps the line onto the
-   road network and answers with the steps of the roads it matched: street names, exit numbers,
-   what the sign says. The service will happily "match" a line that is not on any road, so the
-   answer is kept only if it stays within 22 m of Google's line along its whole length and the
-   two lengths agree within 6% (the first and last 150 m of a trip are let off: the loop out of a
-   parking lot). A match that leaves the line for a short way in the middle is kept, and on
-   that part nothing it says is used: the turns there are read off the corners of Google's line,
-   without names. Lane arrows are not part of its answer, so Vela then asks the open router to
-   drive that exact matched path and takes its steps, lanes included, when its path is the same
-   path to within 8 m; when it is not, the matcher's steps stay and borrow the open router's
-   lanes turn by turn, wherever both make the same turn at the same junction.
-2. The map tiles, when the match fails. Each turn takes the name of the street the line runs
-   along, within 12 m and only where the map is sure. Measured on 90 routes this put a wrong name
-   on 1.4% of named turns and left about a quarter bare, which is why it is second.
-3. The line's bends alone: "Turn right", no name.
-
-If none of this is back in 5.5 seconds, the route still goes out on Google's line with bare turns
-on those stretches. Vela never falls back to the open router's own route here, since that is the
-route through whatever Google went around.
-
-**The server's step text is not trusted as it comes.** Vela asks the same server for the matched
-road pieces themselves (each with its names and length) and corrects three things:
-
-- *A turn's street name.* The text skips the short pieces inside a junction when it picks a
-  name, so a left onto a street that turns into a bridge 120 m later came back as "turn left onto
-  the bridge", and a right onto a bridge as "stay on the embankment" because the first 6 m still
-  carry that name. A name is said only if the path is on that street within the step's first
-  half (and within 60 m) and stays on it 20 m, or half the step if shorter. When the path is
-  plainly on another street for 40 m, that one is said. Otherwise the turn has no name.
-- *Turns it leaves out.* Staying on a numbered route counts as going straight in its text:
-  "Turn right onto Commonwealth Avenue. Continue on MA 2" covered a 90 degree right onto another
-  street 200 m later, because Route 2 goes that way. Where the matched line turns 60 degrees or
-  more with no step near and the street name changes there, Vela adds the turn.
-- *Roundabouts.* Its "enter" step carries the ring's own name. Vela says the street you leave by.
-
-The open router's turn names, on the parts where it and Google agree, go through the same name
-check against the road pieces under its own line. Of 463 on the test routes, 5 lost their name,
-each one a turn where the open router skips a street 10 to 30 m long and names the next.
-
-A wrong street name is worse than none: "Turn right" sends nobody the wrong way, "Turn right
-onto Smith Street" at John Street does. Every rule above fails toward the bare turn.
-
-**Putting it together.** The stretch steps are placed on Google's line by position (not by adding
-up step lengths, which drifts) and in the order the matcher gave them. A left or right from a
-stretch is dropped if Google's line does not actually turn there. Where a stretch step and an
-open step describe one junction, the open one is kept, for its lanes.
-
-**How it was checked.** Counts hide faults that a step list shows at once, so there are three
-checks:
-
-- `StepAudit` compares any route's steps with its line: every left or right must sit where the
-  line bends that way, and every sharp corner of the line must have a step. Each trip logs the
-  result in one line.
-- An end-to-end study (`NamingStudyTest.theHybridEndToEnd`) builds the whole thing for random
-  trips in six cities, using the open router's route through a third point as a stand-in for
-  Google's line, so the true steps are known. On the last run of 79 trips,
-  74 of 76 stretches matched. Of 648 named turns in the truth, the result gave 615 the same
-  name, 25 no name, and 1 a different one (a ramp named for the bridge it leads to); 7 had no
-  step within 40 m (three gentle bends, a ramp, a trip that starts in a parking lot, and one turn
-  the result puts 81 m further on, where the line actually bends). Of 674 lefts and rights in
-  the results, 671 sit on a matching bend of the line.
-- Real Google lines, replayed. Google's directions cannot be fetched from a desk, so a debug
-  switch on the phone logs Google's line for any trip planned, and 39 of them from fourteen
-  cities (San Francisco, Boston, Los Angeles, Portland, Houston, Chicago, New York, Denver,
-  London, Milton Keynes for its roundabouts, Paris, Prague, Tokyo, Tel Aviv, plus an airport, a
-  hospital, a mall and a campus) are kept with the tests. Each is rebuilt into a route and put
-  through the step check, a name check against the road pieces under the whole line, and a
-  simulated drive that confirms every turn is announced, in time, with a cue at the turn. These
-  found what the stand-in never did: a line that loops before setting off shifted every later
-  turn 70 to 100 m early, and a match that strays for 90 m was being thrown away whole. On the
-  current code 46 of 48 stretches match, 178 of 179 lefts and rights sit on a matching bend, and
-  no checked street name fails against the whole line.
-- Trips read by hand on a phone, from a parking lot in Davis: to downtown Sacramento, the
-  airport, a mall across Sacramento, the campus, Woodland, Dixon, West Sacramento and San
-  Francisco. Of 69 lefts and rights, 68 sit on a matching bend of Google's line; the other is a
-  22 m jog.
-
-This route leads the list on Google's own times. The open router's routes shown beside it are
-its second and third choices when the two only differ locally, and none when Google went a
-different way altogether (their times are not comparable). Only when the pieces cannot be put
-together at all does Vela fall back to the jam rule above, and then to the open route.
-
-### Google's alternates, named when you pick one
-
-The picker's alternates are **mostly Google's own**, because those are the traffic-aware choices
-worth having; OSRM's own alternates compete with them in the same dedupe and sort, except while an
-avoid is on. They arrive **provisional** (`GOOGLE_PROVISIONAL`): Google's line and Google's per-route
-in-traffic time are real, but the turns are placeholders. Nothing is spent naming a route you
-never drive. When you pick one, `nameRoute` snaps its line through OSRM with the same 12 vias,
-checks it reaches within `SNAP_REACH_M` of the destination, and remaps the congestion spans onto
-the new geometry.
-
-It **keeps the route's original Google time**. The picker sorted and showed that figure, and
-swapping in a recomputed one at the moment you pick could jump the row past its neighbor. If the
-snap fails, the route is driven on Google's abbreviated steps, tagged so the drive's recheck
-upgrades it when it can. The navigation session names a provisional route itself too, for the
-three fetches it makes on its own (reroute, recheck, added stop), and inside a reroute's deadline
-falls back to the reply's own full-stepped OSRM route if naming runs long.
-
-### The order in the picker
-
-```
-sort key   = durationInTrafficSeconds ?: durationSeconds
-tie-break  = provisional last (a fully named route leads over a look-alike)
-dedupe     = 4 points along a route all within 150 m of an earlier one: same route, dropped
-MAX_ROUTES = 4
-```
-
-The sort key is **exactly the figure the chooser prints**. An earlier attempt sorted on an
-adjusted value, and the route tagged "Fastest" was not the one on top. The axis is fair without
-any fudge: OSRM routes carry the calibrated time times Google's traffic ratio, Google's alternates
-carry their own. A route with genuinely no traffic signal sorts and shows its free-flow time, which
-is at least consistent.
-
-### Is the arrival time still Google's when the route is not?
-
-Mostly, and where it is not, it is built from Google's numbers:
-
-| The route you drive | Its arrival time |
-| --- | --- |
-| OSRM, same course as Google | Google's in-traffic time, scaled by distance |
-| OSRM snapped along Google's line | Google's in-traffic time, scaled by distance (the snap is the calibration basis) |
-| OSRM alternate in the same reply | OSRM x the reply's one calibration x Google's traffic ratio |
-| OSRM top that left Google's course, no usable snap | OSRM free-flow x Google's traffic ratio, uncalibrated |
-| A Google alternate, named on pick | Google's own per-route in-traffic time, kept through the naming |
-| Google's route while OSRM is down | Google's own |
-| Trip with stops, on (or snapped to) Google's course through them | Google's through-the-stops time |
-| Trip with stops, Google's detour through them not worth it | OSRM x a speed ratio x Google's traffic ratio |
-| Trip with stops, Google ignored them | OSRM x a speed ratio x Google's traffic ratio |
-| On-phone, Valhalla bike, or Google turned off | The router's own time, no traffic |
-
-Once you are driving, the two-minute recheck keeps the number honest from a same-course candidate
-([chapter 4](04-navigation.md)).
+### Driving online: Google's line
+
+A planning request asks Google and the open router at the same time, each up to three times
+with a short jittered backoff. The line you drive is Google's top route, because Google knows
+about closures and traffic and the open router does not. The steps come from open data.
+`GoogleMapsDataSource.directions` runs the request and `HybridRoute` joins the pieces.
+
+### Where the two routes share the road
+
+`HybridRoute.stretchesFor` walks Google's line in 20 m steps and marks each point more than
+`OFF_M` (15 m) from the open route. At 25 m, a parking aisle 18 m from a street counted as the
+street. A marked run of at least `MIN_RUN_M` (40 m) becomes a stretch. Each stretch is widened
+by `PAD_M` (90 m) and its ends are kept clear of corners, so the turn off the shared road and
+the turn back onto it fall inside it.
+
+Outside the stretches the two routes are on the same road, and the open router's steps are used
+as they are, with lanes, exit numbers and sign text. A step is used only if the open route
+arrives at it and leaves it along Google's line (80 m before, up to 400 m after). A step that
+fails gets a stretch of its own, so no step is dropped without something covering its place.
+
+With no stretches at all, the open router's route is the route, with Google's time and traffic
+colors on it.
+
+### Steps on a stretch
+
+Where Google's line leaves the open route, the steps come from the first of these that works:
+
+1. A map match. The stretch goes to Valhalla (`ValhallaRouter.matchWithEdges`), which snaps the
+   line onto the road network and returns the steps of the roads it matched: street names, exit
+   numbers, sign text. Valhalla also returns a confident route for a line that is on no road,
+   so the answer is kept only if it stays within `MATCH_OFF_M` (22 m) of Google's line and the
+   two lengths agree within 6%. The first and last 150 m of a trip are not compared, since a
+   line often loops out of a parking lot. Where a kept match strays for a short way, the turns
+   are read from the corners of Google's line, without names. OSRM's own matching on the public
+   server takes 10 coordinates at most, so it cannot do this.
+2. The map tiles. `LineNamer` in strict mode takes the turns from the bends of Google's line. A
+   turn gets a street's name only when the street is within `STRICT_MAX_OFF_M` (12 m), no
+   street with another name is about as close, and the line stays on it for `STRICT_RUN_M`
+   (60 m).
+3. The bends alone: "Turn right".
+
+Tiles come second because, on 90 test routes, naming from the tiles alone put a wrong name on
+1.4% of named turns and left about a quarter bare, and no threshold setting reached zero. With
+the match first, a study against known steps gave 615 of 648 named turns the same name, 25 no
+name and 1 a different name.
+
+Valhalla returns no lane arrows. For a matched stretch, `laneDetail` asks the open router to
+drive the matched path. It takes the open router's steps when the two paths agree to within
+8 m, and otherwise borrows its lanes turn by turn.
+
+All of this gets `HYBRID_WAIT_MS` (5.5 s). Past that, the route goes out on Google's line with
+bare turns on the stretches. The open router's own route never replaces a stretch, because it
+is the route through whatever Google went around.
+
+### No wrong street names
+
+"Turn right" sends nobody the wrong way. "Turn right onto Smith Street" at John Street does. So
+a street name that cannot be confirmed is left out.
+
+Valhalla's step text skips the short pieces inside a junction when it picks a name, and it
+named one left turn after a bridge 120 m further on. So Vela asks the same server for the
+matched road pieces (`trace_attributes`) and checks every turn against them (`checkedRoad`):
+
+- A name is said only if the path is on that street within the step's first half and within
+  `LEAD_MAX_M` (60 m), and stays on it for `HOLD_M` (20 m) or half the step. If the path is on
+  another street for `RENAME_HOLD_M` (40 m), that name is said. Otherwise the turn has no name.
+- Valhalla counts staying on a numbered route as going straight, even through a corner. Where
+  the matched line turns 60 degrees or more with no step near and the street name changes
+  there, Vela adds the turn.
+- At a roundabout, Valhalla's enter step carries the ring's own name. Vela says the street you
+  leave by.
+
+If the road pieces do not come back, matched turns go out without street names. The open
+router's turn names get the same check against the pieces under its own line. That request
+gets `OPEN_NAMES_WAIT_MS` (1.5 s), and with no answer its names stand.
+
+### Joining the pieces
+
+`HybridRoute.stitch` places each stretch step on Google's line by its position, in the order
+the matcher gave. Adding up step lengths put a turn 100 m early by the end of a long stretch.
+A left or right from a stretch is dropped if Google's line does not bend there. Where a stretch
+step and an open step describe the same junction, the open one is kept for its lanes. The
+result is tagged `GOOGLE_HYBRID`.
+
+The line drawn on the map is OpenStreetMap geometry where there is some, so it sits on the
+roads the map draws. Guidance runs on Google's line.
+
+`StepAudit` checks every hybrid and logs one line: each left or right must sit where the line
+bends that way, and each sharp corner must have a step.
+
+If the pieces cannot be joined, the older via snap runs when Google's line strays more than
+700 m from the open route (see Alternates). Failing that, the open route is driven.
+
+### When a source does not answer
+
+- Google does not answer: the open router's routes, with free-flow times, no traffic colors
+  and no Google alternates.
+- The open router does not answer: the on-phone route when a downloaded region covers the
+  trip, with complete named turns and no traffic. Without a region, Google's routes with
+  Google's own short step lists (`GOOGLE_ABBREVIATED`).
+- Neither answers and no region covers the trip: no route.
+
+During a drive, the recheck swaps in full steps or traffic once the missing source answers
+([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
+it, and the trip log records it.
+
+### Alternates and the order of the list
+
+The other rows are mostly Google's own alternates, since those account for traffic. They
+arrive provisional (`GOOGLE_PROVISIONAL`): the line and the in-traffic time are Google's, and
+the steps are placeholders until you pick the route. The open router's second and third routes
+are offered only when its top route follows Google's course (no sampled point more than 700 m
+off). Otherwise their times are uncalibrated and would sort ahead of Google's. Its top route
+is never offered beside Google's line, since it is the way Google chose not to go.
+
+Rows are sorted by the time each row shows (`durationInTrafficSeconds ?: durationSeconds`), so
+the row tagged "Fastest" is the top row. On a tie, a named route goes before a provisional
+one. A route whose sampled points all lie within 150 m of an earlier row is dropped, and the
+list stops at `MAX_ROUTES` (4).
+
+Picking a provisional route names it (`nameRoute`) with the via snap: the open router is
+routed through 12 points sampled on Google's line. Twelve, because a point that lands on a
+turn swallows the turn, and at 60 points about one named turn in ten went missing. The snapped
+route is refused if a point moved more than `VIA_SNAP_MAX_M` (40 m), if it ends more than
+500 m from the destination, if it is longer than Google's route by more than 5% plus 400 m, or
+if it has a spur: an out-and-back with a turn on it, which a point snapped onto a side street
+produces. When the snap is refused, Google's line is kept and `LineNamer` names its turns from
+the tiles (`GOOGLE_LINE_NAMED`, no lanes or sign text). When that fails too, the route is
+driven on Google's short steps. The route keeps the Google time the list showed, so picking it
+cannot move the row.
 
 ### Stops
 
-Since 2026-09-21 Google is **asked for the trip through the stops**. Before that, Vela only ever
-asked Google for the direct trip and used it to calibrate a speed, so every trip with stops was
-the open router's free-flow choice with a ratio on it.
+Google is asked for the trip through the stops: `DirectionsPb.withWaypoints` adds one waypoint
+group per stop between the origin and the destination. The open router is routed through the
+stops at the same time. A trip with stops gets one route, because neither router returns
+alternates for one.
 
-`DirectionsPb.withWaypoints` adds one top-level waypoint group per stop between the origin and
-destination groups, the same repeated field the origin and destination already are, so no group
-count has to change. Checked live from a plain client: Davis to Sacramento direct answered 15.3 mi
-/ 21 min with three alternates; through Woodland it answered one route, 45 min, with per-leg
-distances. **A trip with stops gets one route.** Neither router offers alternates for one.
+This path does not build the hybrid. It compares the two routes the older way:
 
-The open router is routed through the stops in parallel (`routeVia`), and then:
+- `RouteGeometry.stopsOnLine` checks that Google's line passes every stop, in order, within
+  `STOP_ON_LINE_M` (250 m), wide because a stop is often set back in a parking lot. A reply
+  that misses a stop is the direct trip, used only to compare speeds.
+- Google's line stays within 700 m of the open route: the open route, with Google's time and
+  traffic colors.
+- Google went another way: the via snap, leg by leg, with 12 points per leg and the real stop
+  between them. A stop may snap farther than 40 m. The snap is used when Google's time is
+  within `SNAP_ETA_MARGIN` (1.2) of the open route's calibrated time, or when an avoid is on.
+- Otherwise the open route, its speed rebased on Google's.
+- The open router does not answer: each leg on the phone, joined into one route
+  (`chainOnDevice`). If a leg fails, Google's own route, which has lost the stops if Google
+  ignored them.
 
-- **The guard.** `RouteGeometry.stopsOnLine` checks that Google's line actually passes every stop,
-  in order, within `STOP_ON_LINE_M = 250` of a vertex. A stop is often set back from the road (a
-  parking lot, a driveway), so the tolerance is generous; the direct trip misses by kilometers.
-  A reply that misses a stop is treated as the direct trip it is (a recalibrated template without
-  the placeholder groups would produce exactly that), and the diagnostics line reads
-  `googleStops=IGNORED`. That case falls back to comparing average speeds (`speedCal`, clamped
-  0.5 to 3.0), so the extra distance of the stops cancels out.
-- **Same course**: the open route, with Google's real time and spans.
-- **Google took another course**: the open router is snapped along Google's line leg by leg
-  (`sampleViasThrough`: 12 samples per leg with the real stop between them). The stops are exempt
-  from the 40 m via refusal, because a stop in a lot is a stop, not an appendix. Same reach,
-  length, spur and ETA-margin rules as a single trip.
-- **Open router down**: each leg on the phone, stitched into one route (`chainOnDevice`; any leg
-  that fails means no offline route), and only then Google, which if it ignored the stops loses
-  them (the diagnostics line says `STOPS DROPPED`).
-
-**Adding a stop mid-drive** (`NavSession.addStop`) puts the new stop *first*, ahead of the stops
-still to come, and replans once from where you are. It is user-ordered, so it skips the reroute
-cooldown and the "back on course, never mind" discard, and it cancels any deviation reroute in
-flight. The stop joins the plan immediately: if the fetch fails, the list is kept and the next
-reroute or recheck routes through it. The replan is a planning fetch, not an urgent one, so it
-gets the full retry ladder and the divergence snap. When it lands, the ETA calibration from the
-old route is reset, because the fresh route carries fresh traffic. The stops editor's Done goes
-through the same path (`setStops`), and an unchanged list fetches nothing.
-
-**Removing a stop mid-drive** runs the same way. The top of the step list is a stops row on every
-drive: "Edit route" when there are no stops, "Stops" with the list once there are, and then a
-"Remove next" button, which asks first and then replans without that stop
-(`applyStops(stops.drop(1))`). Tapping a place that is already a stop (within 60 m) with
-tap-to-stop on offers "Remove stop" beside "Add stop". The closing-time warning checks each stop at its own
-arrival, estimated from where the stop sits along the line; see [chapter 4](04-navigation.md#stops).
-
-What it does to the plan: it becomes one route through every remaining stop. Passed stops are
-dropped from every later reroute and recheck (`stops.drop(passedStops)`), and each stop gets an
-along-route mark so its cue is spoken once, in order (`STOP_ON_ROUTE_M = 150`: a stop farther than
-that from the new line gets no cue on it). The camera detour's silent side-street points
-([chapter 3](03-cameras.md)) are put back into an edited list where they fall along the route, so
-editing stops does not throw the detour away. The tap-a-place-to-add-it card, and how it prices
-the detour before you commit, belongs to the drive's chrome.
-
-### Saved routes
-
-Pick a route in the chooser and use the ⋮ menu's "Save this route". What is stored is the route's
-own line, its two ends, the travel mode and a name. The next time you ask for a trip with no
-stops, in the same mode, starting within 1 km of the saved start and ending within 250 m of the
-saved end, the saved route is offered:
-
-- If a route already on offer goes the same way (every 25 m sample within 60 m, checked in both
-  directions), that route simply takes the saved name.
-- Otherwise the router is asked for the trip through points placed on the saved line, one in the
-  middle of each stretch where it leaves the fastest route (stretches under 150 m ignored, one
-  more point per 2.5 km, at most 8). The drive keeps those points as silent stops, so a reroute
-  puts you back on your route and not on the router's favorite.
-
-A matching saved route leads the list, already selected, with a colored "Your route" chip. With
-several matches the most recently saved one is on top. It gets a live traffic time like the others.
-
-A trip with stops can be saved two ways, chosen by "Stop at these places" in the save dialog. On,
-it is a RUN: the stops are real stops (a delivery round), it is never offered as an alternate, and
-you start it from "Your routes" with every stop loaded. Off, the stops only shaped the way and the
-result behaves like any saved route. A trip takes at most 10 stops.
-
-To edit one, open it from your saved routes, change the stops or pick another way, and the ⋮ menu
-offers "Save changes to <name>". Rename, pin and delete are in the bookmark button's sheet and in
-Settings > Saved places.
-
-**Save the way you drove.** During a drive the app keeps one fix per 15 m in memory. On arrival,
-if the drive was at least 500 m and left the route planned at the start for a real stretch (the
-same test that places the points above), the arrival card offers to save the way you went. Nothing
-is kept if you decline, and a demo drive never offers it.
+During a drive, a stop you add goes first, ahead of the stops still to come, and the drive
+replans once from where you are (`NavSession.addStop`). The stops editor's Done and "Remove
+next" use the same path (`setStops`). The replan skips the reroute cooldown and runs as a
+planning fetch with all its retries. The new list is the plan at once, so if the fetch fails
+the next reroute or recheck routes through it.
 
 ### Avoid tolls, highways and ferries
 
-The three chips are a driving option and ride every fetch, including the reroutes, rechecks,
-added stops and naming the drive does on its own. What each engine can honor:
+The three switches apply to driving and ride every fetch, including the reroutes, rechecks and
+stop changes the drive makes itself. Avoiding cameras is [chapter 3](03-cameras.md).
 
-| Engine | Tolls | Highways | Ferries | How |
-| --- | --- | --- | --- | --- |
-| Google keyless | yes | yes | yes | flags in the pb's `!6m` feature block |
-| FOSSGIS OSRM | no | no | no | `exclude=` rejected for every value |
-| OSRM snapped to Google | follows Google | follows Google | follows Google | the vias force Google's avoiding course |
-| On-phone obf | yes | yes | yes | routing.xml parameters at calc time |
-| Valhalla (bike) | not sent | not sent | not sent | driving option only |
+Online they ride on Google's request, and Google's route is the avoiding route.
+`DirectionsPb.withAvoid` sets the flags Google's own web page sends, in the request's `!6m`
+feature block. The open router's own routes are not offered, because they were computed
+without the avoid.
 
-**Google.** The flags were found by capturing Google's own web client with the boxes ticked (the
-July note that Google had no keyless avoid was wrong). Inside the `!6m` block's `!2m` submessage,
-`!1b1` avoids highways and `!2b1` avoids tolls; `!7b1` avoids ferries as a direct child of the
-outer `!6m`. `DirectionsPb.withAvoid` places them by pattern and fixes up the group counts, so a
-recalibrated template keeps working as long as the block survives (`avoidSupported`). Checked live:
-Davis to Sacramento with highways avoided goes from 15.3 mi / 21 min on the interstate to 27.1 mi
-/ 46 min on county roads; Galveston to Crystal Beach with ferries avoided goes from a 16.7 mi
-ferry route to a 116 mi road route.
+The open router cannot avoid anything. The FOSSGIS profiles were built without excludable
+classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_EXCLUDE` is
+false and the parameter is never sent.
 
-**OSRM cannot exclude.** The public FOSSGIS profiles were built without excludable classes, and
-the server answers `InvalidValue` (probed 2026-07-11 and again 2026-08-24). Sending the parameter
-400s the whole request, so `OSRM_SUPPORTS_EXCLUDE = false` keeps it off; flip it for a self-hosted
-OSRM built with the classes.
+When Google does not answer and a region is downloaded, the on-phone router computes the
+avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). If nothing
+honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
+use tolls, highways, or ferries" when every route carries the tag.
 
-So online, **Google's route is the avoiding route**. OSRM's plain route diverges from it, the snap
-follows Google's course with named turns, the ETA-margin gate is skipped, and OSRM's unrestricted
-routes are not offered beside it. If the snap fails, Google's own abbreviated route wins over a
-plain one that ignores the avoid.
+### Times and traffic colors
 
-**The on-phone router is the avoid router only when Google did not answer**, with
-`avoid_toll`, `avoid_motorway` and `avoid_ferries` passed at calc time (no baked profiles). The
-car profile's highway parameter is `avoid_motorway`; `avoid_highway` in OsmAnd's routing.xml is
-the horse-riding profile's. The attempt is bounded:
+| Route | Time shown | Traffic colors |
+| --- | --- | --- |
+| Google's line with open steps | Google's in-traffic time | Google's |
+| Open route on Google's course | Google's in-traffic time, scaled by distance | Google's |
+| Other open route (an alternate, stops off Google's course) | Free-flow time times calibration times traffic ratio | Where it shares Google's road |
+| Google alternate | Google's time for that route | Google's for that route |
+| No Google answer, on-phone route, bike route | The router's own time | None |
 
-```
-AVOID_ONDEVICE_TIMEOUT_MS = 4_000
-```
+`applyTraffic` puts Google's numbers on an open-router route. The calibration is Google's
+typical time over OSRM's free-flow time for the same course (clamped 0.5 to 3.0), and the
+traffic ratio is Google's in-traffic time over its typical time (clamped 0.5 to 4.0). The
+calibration exists because OSRM's speed model has no signal timing and runs well under
+Google's typical time on streets with traffic lights. One is computed per reply, from the open
+router's top route when it follows Google's course, and applied to every open route in the
+reply. Calibrating each route separately would reorder them.
 
-Past that, the online chain answers and the result is tagged `avoidNotHonored`. The chooser shows
-the "may still use tolls, highways, or ferries" note only when **every** route carries that tag,
-so a toggled avoid is never ignored silently. Today it shows when Google did not answer (or, on
-a trip with stops, did not route through them) and no downloaded region answered within those 4
-seconds. The open router's own
-alternates are never offered while an avoid is on: they were computed without it. When its top
-route already follows Google's avoiding course, that single route is kept and the rest dropped.
+`RouteGeometry.transferSpans` moves colors onto a line with different geometry: a sample of
+Google's span within 35 m of the other route colors that spot. Road Google did not drive stays
+uncolored.
 
-### Bikes route for safety
+### Reroutes
 
-With **Settings > Navigation > Bike routes prefer bike lanes and quiet streets** on (the default,
-`RoutingPrefs.bikeSafe`), a bike trip skips the fastest-route chain above:
+A reroute during a drive is the same decision under a deadline: one try per source, 1.5 s for
+the stretches, no lane detail, and the on-phone route taken early where a region covers the
+trip. [Chapter 4](04-navigation.md) has the deadlines.
 
-1. The on-phone **obf bicycle profile** where a region covers the trip. It prefers signed cycle
-   routes and lanes and needs no network. Bounded like the avoid path:
+A reroute starts the way the car is pointing. The open router gets `bearings=<heading>,65` on
+the first waypoint: wide enough for GPS noise and a car mid-turn, narrow enough to exclude a
+U-turn. The on-phone router gets the heading as a soft preference. Google's request has no
+heading field, so a Google route that sets off more than 120 degrees against the car's heading
+is set aside when the open router answered. Without these, a reroute computed just past a
+missed turn says "make a U-turn", and so does the next one. A planning fetch sends no heading.
 
-   ```
-   BIKE_ONDEVICE_TIMEOUT_MS = 6_000
-   BIKE_ONDEVICE_URGENT_MS  = 3_000
-   ```
+### Walking
 
-2. Otherwise **Valhalla** with bicycle costing:
+Walking routes come from the open foot router. Google has no traffic to add on foot and its
+walking steps are shortened. `walkRoutes` also asks Google for its walk when planning and puts
+it first in the list only when it is at least 15% shorter (`WALK_GOOGLE_SHORTER`), which
+happens where OpenStreetMap lacks a path or a crossing. On Davis and Sacramento trips the open
+walk matched or beat Google's. On a Dhaka trip Google's was 4.6 km against 5.6 km.
 
-   ```
-   USE_ROADS    = 0.1       // near zero: hunt for cycleways, lanes, quiet streets
-   USE_HILLS    = 0.5       // so a flat detour is not taken to absurd lengths
-   BICYCLE_TYPE = "Hybrid"
-   alternates   = 2         // plain trip only; stops are sent as "through" points
-   ```
+Google's walk keeps its own line, and `LineNamer` names its turns from the tiles. At least half
+the line must be named or the route is dropped, and a road bridge's name never labels the
+street under it. The line is never snapped through the foot router. Points on Google's line
+land on the far sidewalk or a flyover deck, and the snapped route doubled back at each one (20
+to 110% longer on Davis, Sacramento and Dhaka walks).
 
-   Probed on the Davis fixture: the same trip came back as 26 maneuvers along a cycleway corridor
-   at 0.1 and as four turns down a county road at 0.9. Valhalla's maneuvers are translated into
-   the OSRM grammar, so the banner, voice and step list read exactly as they do for any route.
-3. If neither answers, the normal fastest-route chain in bike mode: OSRM, with Google's bike
-   alternates and its line as the fallback, and no traffic.
+### Bikes
 
-No Google traffic on bike routes: bikes do not sit in car traffic, and Google's bike reply carries
-no in-traffic figure to apply. Turn the setting off to go straight to that fastest-route chain.
-Valhalla gets one try on an urgent reroute and two when planning.
+With Settings > Navigation > "Bike routes prefer bike lanes and quiet streets" on (the
+default, `RoutingPrefs.bikeSafe`), a bike trip is routed for safety:
 
-### The on-phone router
+1. The on-phone bicycle profile, where a region covers the trip. It prefers signed cycle
+   routes and lanes. It gets 6 s, or 3 s on a reroute.
+2. Otherwise Valhalla with bicycle costing and `use_roads` at 0.1. On a Davis trip that gave
+   26 steps along a cycleway corridor, against four turns down a county road at 0.9. A trip
+   without stops also gets two alternates. Its steps are translated into OSRM's grammar, so
+   guidance reads the same.
+3. If neither answers, or with the setting off: the fastest route from the OSRM bike backend,
+   with Google's bike routes as alternates.
 
-`ObfRouteEngine` routes over every installed region file that intersects the trip's padded box,
-so a route can cross from one region file into the next:
+Bike routes carry no traffic.
 
-```
-pad = max(0.27 degrees, a quarter of the trip's span)   // about 30 km minimum
-```
+### Offline: the on-phone router
 
-The installed files together must cover both endpoints, or the trip is out of the data and goes
-online. One route at a time (the routing context is single-use and serialized on one lock), one
-route per answer, no alternates, no traffic.
+For driving and walking, `ObfRouteEngine` answers when the open router cannot. It returns one
+route, with no alternates and no traffic.
 
-Its weakness was **long routes**. The OsmAnd router's plain search computes dynamically, with no
-precomputed shortcuts, and past its memory budget it throws rather than slowing down:
+The router is given every installed region file whose box intersects the trip's padded box
+(a quarter of the trip's span, at least about 30 km), so a route can cross from one file into
+the next. A region's box can contain a point its data does not. So each end of the trip must
+have a road within `ENDPOINT_SNAP_M` (2 km) in those files, and the route found must start and
+end that close to the trip's ends. Without this the router joins the nearest roads it has,
+tens of kilometers from each end.
 
-```
-MEMORY_MB        = 256    // the app already runs near its largeHeap ceiling
-NATIVE_MEMORY_MB = 64
-```
+Memory limits the plain search. It has no precomputed shortcuts, and past `MEMORY_MB` (256) it
+fails instead of slowing down. The app already runs near its heap ceiling, so the budget stays
+there. Car profile on a desktop at 256 MB: 57 km in 5.65 s, 151 km fails.
 
-Measured on a desktop against a baked Bavaria file with the shipped configuration, car profile:
-4 km in 0.87 s; 57 km in 5.65 s; 151 km fails at 256 MB (4.6 s given 1024 MB); 348 km fails even
-at 1024 MB (41.9 s given 3072 MB). The threshold depends on how dense the road network is, not on
-a fixed distance.
+OsmAnd's highway hierarchy (HH) removes that limit. The bake writes precomputed shortcuts
+between the main roads into the region file: a car set, a second car set for avoiding
+highways, and a bicycle set. Avoiding tolls or ferries filters the default car set. On a dense
+136 MB region file at 256 MB, a 256 km drive that ran out of memory after 27 s on the plain
+search took 0.5 s and 32 MB with HH.
 
-**The fix is OsmAnd's highway hierarchy (HH), baked in since 2026-09-29.** The bake precomputes
-shortcuts between the main roads for the car profile and writes them into the region's file
-(about 3.5% more bytes), and the app asks for an HH route on every drive. Measured on
-the North Rhine-Westphalia file at the same 256 MB:
+The router falls back to the plain search when a file has no HH (a region downloaded before
+the rebake) or when the trip crosses into a second file. Walking always uses the plain search,
+which failed past about 28 km on that file. Where the app waits a fixed time for this router
+(an avoid, a bike route, a reroute), the search is stopped when the time is up.
 
-```
-trip                          plain search                 HH
-Aachen -> Bielefeld, 256 km   out of memory after 27 s     0.5 s, 32 MB
-Bonn -> Minden, 255 km        "not enough memory", 29 s    0.4 s
-Cologne -> Munster, 148 km    out of memory after 179 s    0.4 s
-Dusseldorf -> Dortmund, 71 km 90 s                         0.3 s, same route
-```
+### Use Vela without Google
 
-Avoiding highways needs shortcuts of its own (the default ones run along the highways), so the
-bake writes a second set for it: 3 MB more on North Rhine-Westphalia. Avoiding tolls or ferries
-reuses the default set, with the router filtering it. Cologne to Munster:
+Settings > Privacy > "Use Vela without Google" makes the Google directions call return empty
+before anything is sent. Every caller reads that as "Google did not answer": routes come from
+the open routers alone, with free-flow times, no Google alternates and no Google fallback. An
+avoid is honored only by the on-phone router in a downloaded area. "Live traffic only when I
+tap", in the same section, does the same until you tap Show traffic on the route list.
 
-```
-avoid                  plain search                       HH
-highways, 161 km       fails past about 30 km             0.6 s
-tolls, 148 km          out of memory (as with no avoid)   0.4 s
-```
+### Saved routes
 
-Germany has no car tolls, so the toll row only shows the filter costs nothing there; a region full
-of toll roads has not been measured.
+"Save this route" in the chooser's ⋮ menu stores the route's line, its two ends, the travel
+mode and a name. A later trip with no stops, in the same mode, that starts within 1 km of the
+saved start and ends within 250 m of the saved end is offered the saved route (`SavedRoutes`):
 
-The router falls back to the plain search by itself when a file has no HH (a region downloaded
-before the rebake), or when a trip crosses into a second file. So those cases behave exactly as
-before: fine in a city, slow or failing across a dense region. Cycling has its own shortcut set
-(baked since 2026-09-30, about 9% of a region file): Cologne to Essen by bike, 76 km, failed with
-the plain search and takes 0.6 s with it. Walking always uses the plain search, and fails past
-about 28 km in North Rhine-Westphalia.
+- If a route already on offer goes the same way (every 25 m sample within 60 m, in both
+  directions), that row takes the saved name.
+- Otherwise the router is asked for the trip through points on the saved line, one in the
+  middle of each stretch of 150 m or more where it leaves the fastest route, at most 8. The
+  drive keeps the points as silent stops, so a reroute returns you to your route.
 
-### GraphHopper, retired
+A matching saved route leads the list, selected, with a "Your route" chip and a live traffic
+time.
 
-The first offline engine was GraphHopper over per-region contraction-hierarchy graphs, from
-2026-06-30 to 2026-09-15. It was fast (a 24-mile route in 188 ms) but heavy: the same data as an
-obf routing section measured about 4 times smaller. It was retired once the obf carried everything
-it did (routes, the speed-limit badge, romanized road names). The first launch after that update
-deletes the old graphs and asks you to download regions again. `RouteSource.GRAPHHOPPER` survives
-only so old trip files read back. Retiring it also removed the only offline CH fallback, which is
-why the long-route limit above matters.
+A trip with stops can be saved two ways, set by "Stop at these places" in the save dialog. On,
+it is a run: the stops are real stops, it is never offered as an alternate, and you start it
+from "Your routes" with every stop loaded. Off, the stops only shaped the line. A trip takes
+at most 10 stops. Edit, rename, pin and delete are in Settings > Saved places.
 
-### Without Google
-
-**Settings > Privacy > Use Vela without Google** makes Google's directions call return empty
-before it is sent. Every caller already reads that as "Google did not answer", so routing becomes
-the open router alone: no traffic, no Google alternates, no Google fallback, and the avoid chips
-honored only on the phone in a downloaded area. The arrival times are OSRM's free-flow, which runs
-optimistic on signalized roads.
+During a drive the app keeps one fix per 15 m in memory. On arrival, if the drive was at least
+500 m long and left the planned route for a real stretch, the arrival card offers "Save the
+way you drove". A replayed trip never offers it.
 
 ## Limits
 
-- **The open router is a community server.** FOSSGIS is fair use with no guarantee. When it hangs,
-  a drive gets Google's abbreviated steps or the on-phone route, and a planning fetch can wait out
-  three tries first. Self-hosting OSRM would fix this and would also allow `exclude=`.
-- **Online avoid depends on Google.** With Google down or turned off, only a downloaded region can
-  honor an avoid, and the on-phone attempt gets 4 seconds.
-- **The alternate ETAs are one ratio.** OSRM's alternates all share Google's single traffic
-  ratio and one calibration, so the picker cannot rank two OSRM alternates by live traffic; only
-  Google's own alternates carry per-route traffic.
-- **A divergent top with no snap is uncalibrated.** An urgent reroute skips the snap, so if the
-  OSRM route leaves Google's course, its time is OSRM's free-flow times Google's ratio until the
-  recheck corrects it.
-- **Stops mean one route.** Neither router returns alternates for a trip with stops, so there is
-  no choice to make in the picker.
-- **A start on an on-ramp can snap wrong.** OSRM snaps a start point on a ramp to the surface
-  street under it, heading hint or not, so a recheck fetched from a ramp can route the first
-  stretch over local streets. Google snaps it correctly, which is why its alternate can lead then.
-- **Long offline trips need an HH file**: a region downloaded after the 2026-09-29 rebake, driving,
-  no avoid, both ends in one file. Otherwise the plain search is metro-scale, and a trip that
-  leaves the installed regions has no offline route at all.
-- **No departure-time planning for driving, walking or cycling.** The keyless request has no
-  departure field, so "Depart at" and "Arrive by" only move the arrival clock the chooser works
-  out (transit alone is refetched for the chosen time, [chapter 9](09-transit.md)); the "usually X
-  to Y" range is the stand-in.
-- **A named alternate gets fewer checks than a jam snap.** `nameRoute` only checks that the snapped
-  line reaches the destination; the 40 m via refusal, the length slack and the spur test are not
-  run on it, so a picked Google alternate can carry the out-and-back "appendix" the jam snap
-  would have refused.
+- The open router and the matcher are community servers with no guarantee. When OSRM does not
+  answer, a drive gets the on-phone route or Google's short steps. When Valhalla does not
+  answer in time, stretches fall to tile names or bare turns, with no lanes or sign text. That
+  is more common on a reroute, where the stretches get 1.5 s. Self-hosting both would fix this
+  and would allow `exclude=`.
+- The open router's turn names go out unchecked when the road pieces under its line are late.
+  On the 90 test routes the check removed 5 turn names and kept 457.
+- Trips with stops and picked alternates still use the via snap. On a trip with stops, Google's
+  line is followed only when it strays more than 700 m, so a detour of a few blocks around a
+  closure is missed. A picked alternate whose snap is refused is named from the tiles in the
+  lenient mode, which can put a neighboring street's name on a turn. Building both with
+  `HybridRoute` would fix it.
+- With Google down or off, only a downloaded region can honor an avoid, and the on-phone
+  attempt gets 4 s.
+- The open router's alternates share one calibration and Google's single traffic ratio, so two
+  of them cannot be ranked by live traffic.
+- Long offline trips need HH: a region downloaded since the rebake, both ends in one file, by
+  car or bike. Otherwise the plain search covers a metro area. A trip that leaves the installed
+  regions has no offline route.
+- No departure-time planning for driving, walking or cycling. The keyless request has no
+  departure field, so "Depart at" and "Arrive by" only shift the arrival clock the chooser
+  works out.

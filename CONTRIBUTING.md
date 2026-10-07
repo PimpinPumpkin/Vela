@@ -1,152 +1,114 @@
 # Contributing to Vela
 
-Thanks for wanting to help. Vela is a degoogled maps client with a small surface and
-strong opinions; this page tells you what a good contribution looks like so your PR
-lands on the first try. The deeper background lives in [SPEC.md](SPEC.md) (how it's
-built and why) and [CLAUDE.md](CLAUDE.md) (build rules and gotchas, useful to humans
-too).
+This page says what a good contribution looks like, so a pull request lands on the first try.
+How the app is built is in [SPEC.md](SPEC.md) and [the book](docs/book/README.md). The rules
+and traps for changing the code are in [CLAUDE.md](CLAUDE.md), which is written for people too.
 
-## Ground rules, in order of importance
+## Ground rules
 
-1. **No backend, no shared keys.** Every install talks to Google like one logged-out
-   browser, from the user's own IP. Never embed a static Google API key, never add a
-   Vela server. This is the project's legal footing and it is not negotiable.
-2. **Don't let your own location leak in by accident.** Working on a maps app means
-   test coordinates, screenshots, sample addresses and commit messages all naturally
-   come from wherever you are, and together they pin you on a map, permanently, in
-   public git history. Deliberate is fine: naming a specific business because its
-   data is broken is a good bug report. Incidental is the problem: fixtures default
-   to the project's Davis / Sacramento, CA area unless there's a reason otherwise,
-   screenshots default to the built-in location simulator, and commit messages name
-   places only when the place is the point. The full checklist is in CLAUDE.md under
-   "Location hygiene"; it applies to humans and AI assistants equally (AI agents
-   with memory files are especially prone to writing down where their user lives),
-   so if an AI writes your patch, hand it that section first.
-3. **Degoogled at runtime.** AOSP `LocationManager` only (never Fused), AOSP
-   `TextToSpeech`, no GMS, no Firebase, no Play Integrity. The app must work fully on
-   GrapheneOS with no Google services installed.
-4. **The module boundary is real.** `:core` is a UI-agnostic extractor (the
-   NewPipeExtractor pattern); `:app` is the Compose UI. MapLibre and Android UI types
-   never leak into `:core`. The one seam between them is `core/data/MapDataSource`.
-5. **Docs move with code, in the same commit.** When behavior changes, update
-   `README.md`, `FEATURES.md`, `SPEC.md`, `CLAUDE.md` and the matching chapter of
-   `docs/book/` as the change needs. When something on `ROADMAP.md` ships or turns out
-   to be impossible, move its entry to `docs/ROADMAP-HISTORY.md` in the same commit
-   rather than striking it through. Stale docs are treated as a bug. If a change
-   genuinely needs no doc edit, say why in the commit message.
-6. **Every user-facing string is translatable** (the languages are listed in
-   [docs/TRANSLATING.md](docs/TRANSLATING.md)). Add new strings to the English base
-   `res/values/strings.xml`; translations come in through Weblate, or as pull requests against `values-<lang>/strings.xml` (see
-   [docs/TRANSLATING.md](docs/TRANSLATING.md)), and an untranslated string falls
-   back to English until they do. Match placeholder types to the arguments (an Int
-   needs `%d`; a `%d` fed a String crashes). Place names, addresses and reviews are
-   data and are never translated. Want to translate rather than code? That guide
-   is the place to start; it all happens in the browser, on Weblate.
+1. **No backend, no shared keys.** Every install talks to Google like one logged-out browser,
+   from the user's own connection. Never embed a Google API key and never add a Vela server.
+   This is the project's legal footing.
+2. **Do not let your own location in by accident.** Working on a maps app, your test
+   coordinates, screenshots, sample addresses and commit messages all come from where you are,
+   and together they put you on a map in public git history for good. Naming a business
+   because its data is broken is fine. Fixtures use the Davis and Sacramento area in
+   California, screenshots use the built-in location simulator, and a commit message names a
+   place only when the place is the point. The full list is in CLAUDE.md under "Location
+   hygiene". It applies to AI assistants too; give one that section before it writes a patch.
+3. **No Google libraries.** Android's own `LocationManager` and `TextToSpeech`, no Play
+   services, no Firebase, no Play Integrity. The app must work on GrapheneOS with no Google
+   services installed.
+4. **Two modules.** `:core` has no interface code. `:app` is the Compose interface. MapLibre
+   and Android UI types stay out of `:core`. `core/data/MapDataSource` is the seam.
+5. **Docs go in the same commit.** A change to behavior updates `SPEC.md`, the book chapter for
+   that subsystem, and `FEATURES.md` as needed. When something on `ROADMAP.md` ships or turns
+   out to be impossible, move its entry to `docs/ROADMAP-HISTORY.md`. If a change needs no doc
+   edit, say why in the commit message. CLAUDE.md says how the docs are written.
+6. **Every string a user sees is translatable.** Add new strings to the English file,
+   `res/values/strings.xml`. Translations arrive through Weblate
+   ([docs/TRANSLATING.md](docs/TRANSLATING.md)), and an untranslated string shows in English
+   until then. Match placeholder types to their arguments. Place names, addresses and reviews
+   are data and are never translated.
 
-## Practical rules you will hit quickly
+## Practical rules
 
-- **Test on a release build.** Debug builds visibly lag during map scroll and
-  navigation; conclusions drawn from them are wrong. `./gradlew :app:assembleRelease`
-  and sideload. `assembleDebug` is fine as a compile check only.
-- **Pure logic gets unit tests in `:core`.** The nav engine, parsers, polyline codec
-  and ranking logic are all plain JVM code with tests (`./gradlew :core:test`). If
-  you add logic that can live there, put it there and test it.
-- **Large downloads never use the shared OkHttp client.** Its 12 second call timeout
-  (which keeps scrapes bounded) silently aborts big bodies mid-read. Derive a client
-  with `callTimeout(0)` like every existing downloader does.
-- **Never trust a remembered Google response shape.** Field numbers and array indices
-  drift; they are marked `CALIBRATE:` and pinned from live captures. If you touch the
-  scraper, verify against a real response, not memory or docs.
-- **Commit subjects are the user-facing changelog.** Releases publish the commit
-  subjects since the last tag as release notes. Write plain-language subjects a user
-  can read, not terse internals. A subject that starts with "Docs:" is left out of the
-  in-app notes, so use that prefix for documentation-only commits.
-- **Install the writing hook once: `bash scripts/install-hooks.sh`.** CI fails a push
-  whose added text has an em dash, a British spelling, or an AI attribution line in a
-  commit message (`scripts/check-writing.sh`). The pre-push hook runs the same check
-  before anything is public, when it can still be fixed.
+- **Test on a release build.** A debug build drops frames on the map, and conclusions drawn
+  from it are wrong. `./gradlew :app:assembleRelease`, then install it.
+- **Logic that has no interface goes in `:core` with unit tests** (`./gradlew :core:test`).
+- **Large downloads never use the shared OkHttp client.** Its 12 second call timeout cuts a
+  big download off without an error. Use a client with `callTimeout(0)`, as the existing
+  downloaders do.
+- **Never trust a remembered Google response.** Field numbers and array positions move. If
+  you touch a parser, check it against a real response.
+- **Commit subjects are the changelog users read.** Write them as plain sentences. A subject
+  that starts with "Docs:" is left out of the in-app notes.
+- **Install the hooks once:** `bash scripts/install-hooks.sh`. CI fails a push whose added text
+  has an em dash, a British spelling, or an AI attribution line. The hook runs the same check
+  before anything is public.
 
 ## Bug reports and feature requests
 
-The tracker is a work queue for one maintainer, not a forum. The rules exist so that
-every open issue is something that can actually be acted on.
+The tracker is a work queue for one maintainer. The rules keep every open issue something that
+can be acted on.
 
-- **One problem or one request per issue.** A report that bundles several things is
-  closed and you are asked to split it.
-- **A bug report must be reproducible from what is written in it.** Steps in order,
-  the version (Settings, About), and for anything about routes, places or the map,
-  the start, the destination or the place. If you would rather not name where you
-  were, use the built-in location simulator (Settings, Diagnostics, Simulate my
-  location) with the project's Davis, CA test area and say so. A report the
-  maintainer cannot reproduce from the text is closed, not investigated.
-- **Diagnostics beat descriptions.** In Settings, Diagnostics, turn on "Share
-  diagnostics", make the problem happen again, then tap "Export debug session". The
-  log is kept on the phone only while that switch is on, so switch it on before you
-  reproduce, not after. Turn on "Redact places in exports" if the file must be safe to
-  post.
-- **Heat, battery and lag reports need a number.** "It runs hot" or "it feels slow" cannot
-  be checked against a fix. Give at least one measurement: the battery percentage Vela used
-  (Android Settings, Battery) over a stated time, how long the drive or route ran, the phone's
-  temperature if you have a way to read it, or a screen recording of the lag. Add the
-  diagnostics export, and the version you are on. The current stable is fine; a report on a
-  build older than that is closed, so update first.
-- **Discussions are for questions only.** Something broken is a bug report and something you
-  want added is a feature request; both go through the issue forms, where they are tracked and
-  closed. A bug or a request posted as a discussion is closed with a pointer to the form.
-- **Feature requests are read, not voted on.** The maintainer decides. A request that
-  does not fit the project is closed as not planned, without a debate, and stays
-  closed; reopening it or filing it again under another title is not a discussion.
-- **Feature requests need a keyless reality check.** Vela has no server and no API keys,
-  and it never signs in to Google. Every phone asks Google for exactly what a logged-out
-  browser would see, from its own connection, and everything else comes from open data
-  (OpenStreetMap, Overture, AllThePlaces, Transitous and similar). So before you file,
-  answer one question in the request: where would the data come from? Things that need a
-  Google account (your saved lists, Timeline, live busyness), a paid API (flight search,
-  most live traffic incident feeds) or a server of our own (sharing your live location)
-  cannot be built. If you do not know the source, say that and name what you checked. The
-  list of things that will not be built is in [ROADMAP.md](ROADMAP.md) under "Not going
-  to happen".
-- **A new issue gets an automatic first look.** A workflow compares it with earlier issues,
-  open and closed, and comments with the closest few by shared wording. If one is the same
-  thing, say so and add your detail there. A bug report naming a build older than the current
-  stable is labeled `incomplete` and asked to update. This is plain text matching
-  (`scripts/issue-triage.py`), not a model, and it never closes anything.
-- **Incomplete issues are closed without further explanation**, the same way NewPipe
-  and most small projects handle them, and they are labeled `incomplete` so the reason
-  is on the record. Fill in the template and it will be read.
+- **One problem or one request per issue.** A report that bundles several is closed and you
+  are asked to split it.
+- **A bug report must be reproducible from what is written in it:** the steps in order, the
+  version (Settings > About), and for anything about routes, places or the map, the start, the
+  destination or the place. If you would rather not say where you were, use the location
+  simulator (Settings > Diagnostics > Simulate my location) in Davis, California and say so.
+  A report that cannot be reproduced from its text is closed.
+- **Diagnostics beat descriptions.** In Settings > Diagnostics turn on "Share diagnostics",
+  make the problem happen again, then tap "Export debug session". The log exists only while
+  that switch is on, so switch it on first. Turn on "Redact places in exports" if the file
+  must be safe to post.
+- **Heat, battery and lag reports need a number:** the battery share Vela used over a stated
+  time, how long the drive ran, the phone's temperature, or a screen recording of the lag.
+  Add the diagnostics export and the version. A report on a build older than the current
+  stable is closed, so update first.
+- **Discussions are for questions only.** A bug or a request posted as a discussion is closed
+  with a pointer to the issue form.
+- **Feature requests are read, not voted on.** The maintainer decides. A request that does not
+  fit is closed as not planned and stays closed.
+- **A feature request says where the data would come from.** Vela has no server and no API
+  keys and never signs in to Google. Each phone asks Google for what a logged-out browser
+  would see, and everything else comes from open data. Things that need a Google account (your
+  saved lists, Timeline, live busyness), a paid API, or a server of our own cannot be built.
+  If you do not know the source, say so and name what you checked. [ROADMAP.md](ROADMAP.md)
+  lists what will not be built.
+- **A new issue gets an automatic first look.** A workflow compares it with earlier issues and
+  comments with the closest few by shared wording. If one is the same thing, add your detail
+  there. A bug report naming a build older than the current stable is labeled `incomplete`.
+  This is plain text matching (`scripts/issue-triage.py`), and it never closes anything.
+- **Incomplete issues are closed without further explanation** and labeled `incomplete`. Fill
+  in the template and it will be read.
 
 ## Using an AI assistant
 
 AI help is welcome, for code and for reports, as long as a person stands behind every word.
 
-- **Have it read the project first.** Before it writes a patch, a bug report or a feature
-  request, point it at [CLAUDE.md](CLAUDE.md), [CONTRIBUTING.md](CONTRIBUTING.md),
-  [FEATURES.md](FEATURES.md), [SPEC.md](SPEC.md) and [ROADMAP.md](ROADMAP.md). CLAUDE.md
-  in particular records how Vela actually works today and which ideas were already tried
-  and dropped. An assistant that has not read it will confidently describe a different app.
-- **You are responsible for every claim.** If the text says the code does something, check
-  the code. If it cites a source, open the source. Invented citations and claims about
-  features Vela does not have get the issue closed.
-- **Do not paste AI output as a reply or an argument.** A decision on an issue is not
-  reopened by a generated essay about why it should be. If you disagree, say why in your
-  own words, briefly, or better, open a pull request that builds it.
-- **The best use is a pull request.** An assistant that has read the docs can write a
-  focused, tested change. That moves the project; a long comment does not.
+- **Have it read the project first:** [CLAUDE.md](CLAUDE.md), this page,
+  [SPEC.md](SPEC.md) and [ROADMAP.md](ROADMAP.md), plus
+  [docs/ROADMAP-HISTORY.md](docs/ROADMAP-HISTORY.md) for what was already tried and dropped.
+  An assistant that has not read them will describe a different app with confidence.
+- **You answer for every claim.** If the text says the code does something, check the code. If
+  it cites a source, open the source. Invented citations and claims about features Vela does
+  not have get the issue closed.
+- **Do not paste AI output as a reply or an argument.** If you disagree with a decision, say
+  why in your own words, briefly, or open a pull request that builds it.
+- **The best use is a pull request.** An assistant that has read the docs can write a focused,
+  tested change.
 
 ## Pull requests
 
-- Keep them small and focused; one change per PR.
-- Say what changed and why in the description. If it touches UI or navigation, note
-  what device you verified on.
-- CI builds and tests every push to `main` and to the `canary` working branch. A nightly
-  release is cut from `main` once a day (only when `main` has moved) and the newest nightly
-  is promoted to stable every Monday, so anything merged reaches nightly users within a day
-  and everyone else within about a week. Treat merges accordingly.
+- Small and focused: one change each.
+- Say what changed and why. If it touches the interface or navigation, say which device you
+  checked it on.
+- Anything merged reaches nightly users within a day and everyone else within about a week.
 
 ## Conduct
 
-Keep it about the code. Contributions are judged on technical merit and nothing
-else: not who you are, not what you believe, not where you're from. Be civil in
-reviews and issues; argue about approaches, not people. Politics, in every
-direction, is off-topic in this repo. That is the whole policy, and there is no
-separate code of conduct document.
+Keep it about the code. Contributions are judged on technical merit and nothing else. Be civil
+in reviews and issues, and argue about approaches, not people. Politics, in every direction,
+is off topic here. That is the whole policy.

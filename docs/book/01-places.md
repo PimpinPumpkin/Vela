@@ -3,201 +3,200 @@
 ## What you see
 
 Pan the map and businesses appear: an icon with a name for the ones worth naming, a colored
-dot for the rest, more of them the further you zoom in. Tap one and a sheet opens with its
-hours, reviews, photos and phone.
+dot for the rest, more of them as you zoom in. Tap one and a sheet opens with its hours,
+reviews, photos and phone.
 
-Those are two different systems. The pins are open data that ships from this repository. The
-sheet is Google, asked only when you tap. **Settings > Places > "Place icons on the map"** decides
-which system draws the map:
+The pins are open data baked in this repository. The sheet is Google, asked when you tap.
+Settings > Places > "Place icons on the map" picks what draws the pins:
 
-| Mode | Who draws the pins | Reaches Google while browsing | Works offline |
-| --- | --- | --- | --- |
-| **Vela data** (default) | The baked open-places layer, plus OpenStreetMap's own shops | Never | Yes, in a downloaded region |
-| **Both** | The open layer, topped up by one Google fan-out per settled view | Once per settled view | The open half does |
-| **Google** | Google's answer for the current view, refetched on every pan | Every pan | No |
+- Vela data (the default): the baked places archive. Browsing does not reach Google where an
+  archive covers the view, and a downloaded region works offline.
+- Both: the archive, plus one Google fan-out per settled view.
+- Google: Google's answer for the view, refetched on every pan. Nothing draws offline.
 
-The default is Vela data, in the shipped config and in the compiled fallback
-(`MapPoiPrefs.placesSource = SOURCE_OPEN`, `Calibration.defaultPlacesSource = "open"`). A phone
-only ends up on another mode because someone picked it.
+Where no archive covers the view, every mode draws Google's places. The default is
+`Calibration.defaultPlacesSource = "open"`, and a remote change to it reaches only people who
+never used the picker. "Show places" off hides every pin. "Parks, schools and civic places" off
+hides the park, education and civic groups.
 
-The tap is the part that changed most recently, so here is what it looks like now. The sheet
-opens on the frame you tap, already showing whatever the map itself knows about the place: its
-name, its kind, and for an open-data pin the street address with city, state and ZIP, the
-phone, the website and often the hours. Under the name a small gray line says where that row
-came from and what is happening to it:
+### Tapping a place
 
-- "From Overture · checking Google" while the lookup runs,
-- "From AllThePlaces (&lt;spider&gt;) · not matched on Google" when nothing matched (the spider is
-  AllThePlaces' own id for the chain's locator scraper),
-- "From OpenStreetMap" when Google was never asked (offline, the lookup switched off, or
-  **Settings > Privacy > "Use Vela without Google"** on).
+The sheet opens at once with what the map knows: name, kind, and for an archive pin the
+address, phone, website and often hours. A gray line under the name gives the row's source:
+"From Overture · checking Google" while the lookup runs, "From AllThePlaces (&lt;spider&gt;) ·
+not matched on Google" when nothing matched, "From OpenStreetMap" when Google was not asked.
+The spider is AllThePlaces' scraper for that chain. An OSM row's line links to its node, way or
+relation, so a wrong place can be fixed at its source. "Hide website & external links"
+removes the link.
 
-An OpenStreetMap row's line is a link to the node (or way or relation), so a place that is wrong
-on the map can be fixed where it came from; with "Hide website & external links" on, the link is
-left off. While Google is asked, the parts the map has nothing for (the rating,
-the reviews tabs, the photos) pulse as gray bars. When the listing lands it replaces the sheet
-in place, the pulsing parts fade in, and the source line disappears, because a Google listing
-is no longer one of the three datasets.
+While Google is asked, the rating, review tabs and photos pulse as gray bars. The listing then
+replaces the sheet in place.
+
+### Route preview
+
+While the route chooser is open the map shows no places: the archive's icons and dots, the
+basemap's points, transit icons, stop badges and saved pins all hide. The destination keeps its
+pin. During a drive the archive shows fuel only ([chapter 11](11-drive-chrome.md)).
 
 ## Where the data comes from
 
-**Overture Maps Places** is the base: an open business dataset maintained by Meta, Microsoft and
-others, read straight from its public S3 bucket at bake time. Overture's places come largely
-from Meta and Bing, so a business with no Facebook page and no Bing entry is simply absent,
+**Overture Maps Places** is the base: an open business dataset from Meta, Microsoft and others,
+read from its public S3 bucket at bake time, newest release unless one is pinned. Its rows come
+mostly from Meta and Bing, so a business with no Facebook page and no Bing entry is absent,
 chains included.
 
-**AllThePlaces** (CC0) fills that hole. It scrapes each chain's own store locator weekly and
-publishes the world as one PMTiles file; the bake reads the newest run
-(`data.alltheplaces.xyz/runs/latest.json`, unless `ATP_RUN` pins one) and pulls the region's z15
-tiles out of it with a few range requests. Locator rows carry OSM-syntax `opening_hours`, which
-Overture never has.
+**AllThePlaces** (CC0) fills that gap. It scrapes each chain's store locator weekly and
+publishes the world as one PMTiles file. The bake takes the region's z15 tiles from the newest
+run (`data.alltheplaces.xyz/runs/latest.json`, unless `ATP_RUN` pins one). Locator rows carry
+OSM-syntax `opening_hours`, which Overture lacks.
 
-**OpenStreetMap** does three jobs. It is a **source**: named business nodes from the region's
-Geofabrik extract go in beside the other two, because OSM is the one dataset in the stack that
-anyone can correct and see corrected in the next bake. It is the **first choice for a place's
-coordinate**: OSM maps the shop where the shop is, not at a parcel centroid. And on the phone,
-OSM's businesses and landmarks are baked into the archive itself now (with the world rebake of
-2026-09-23), so the basemap's own point layers hide over it and the old "OpenStreetMap shops too"
-switch is gone; an archive older than that still gets OSM's shops drawn under it, deduped by name.
-"Parks, schools and civic places" off hides the park, school and civic groups in the archive too.
+**OpenStreetMap**, from the region's Geofabrik extract, does three jobs. Named business nodes
+are a third source, because OSM is the one dataset anyone can correct. An OSM node is the first
+choice for a place's coordinate. And OSM supplies the landmarks: parks, schools, museums,
+places of worship, civic and famous buildings.
+
+Foursquare OS Places, OSM's lifecycle tags and Wikidata say what has closed.
 
 The result is one PMTiles archive per region on the `places-overlays` release, streamed by HTTP
-range requests as you pan, or downloaded whole with a region for offline use.
+range request or downloaded with a region. A seventh of the catalog rebakes every night, so an
+OSM edit reaches the map within a week ([chapter 2](02-data-and-rebakes.md)).
 
-For a tap, two more sources join. **Downloaded place packs** (the per-region OSM SQLite files
-that offline search uses) fill in a tapped label's missing fields. And **Google**, through the
-same keyless search the search bar uses, supplies the listing with reviews, photos and busy
-times, unless the tap lookup or Google as a whole is switched off.
+A tap also reads downloaded place packs (the OSM SQLite files offline search uses) and, unless
+switched off, Google's keyless search.
 
 ## How it is decided
 
 ### Which places exist in a tile, and at what zoom
 
-`tools/build-places-region.sh` loads the three sources into one table, collapses duplicates,
-scores every place, and assigns it a minimum zoom from its rank inside a grid cell.
+`tools/build-places-region.sh` loads the sources into one table, collapses duplicates, deletes
+closed places, scores each row, and sets its minimum zoom from its rank inside grid cells.
+`.github/workflows/places-overlays.yml` runs it per region.
+[SPEC section 5.2](../../SPEC.md) lists every category and threshold.
 
-**What gets in.** Overture's own park, campus-building, housing, real-estate, school and transit
-rows are dropped; parks, schools and civic places come from OpenStreetMap's extract instead (see
-"One set of map points" below), so an `osm:` row is never dropped for its category. A row goes too
-when it has no name, when Overture marks it permanently closed, when its confidence is under 0.4,
-or when it has neither a category nor a website.
+#### What gets in
 
-**How the sources join.** Each later source is deduped against everything already in the
-table, by the same brand or the same two leading significant name words (`nkey`) within a box
-of about 150 m:
+Overture's park, campus-building, housing, real-estate, school and transit rows are dropped;
+OSM supplies those. A row also goes when it has no name, when Overture marks it permanently
+closed, when its confidence is under 0.4, or when it has neither a category nor a website.
 
-- AllThePlaces rows join at confidence 0.85. A locator point that duplicates an Overture row is
-  dropped, but **what it knows is kept** (`atpfill`): the nearest same-name locator point's
-  hours, phone and website go onto the Overture row wherever that row has none. Matched by name,
-  never by brand alone, so one branch's hours cannot land on another branch a block away. On the
-  Davis test box this carried hours onto 60 rows that had none.
-- OSM nodes join at confidence 0.8, under AllThePlaces, so where another source already has the
-  place that row keeps its slot. The same rule applies to a dropped OSM duplicate (`osmfill`):
-  a convenience store whose OSM node carried its hours no longer loses them to the dedupe. Nodes
-  only; a building mapped as an area is the same centroid guess as the parcel point.
+AllThePlaces rows join at confidence 0.85 and OSM nodes at 0.8. Each is deduped against the
+table: a row with the same brand, or the same first two significant name words (`nkey`), within
+about 150 m is dropped. Its hours, phone, website and locality fill the kept row where that
+has none (`atpfill`, `osmfill`), matched by name and never by brand alone, so one branch's hours
+cannot land on the next branch.
 
-**One row per business.** The source dedupes only ever compared a new source against what was
-there, and Overture itself carries businesses twice (a fuel station under its brand and under
-`<brand> Station <town>`, a store and the counter inside it named after the store). After the
-last source is in, two passes collapse what is left, each onto a leader chosen by: not a kiosk
-first, then the higher confidence, then the row that knows more (address, phone, website,
-hours):
+#### One row per business
 
-1. Rows whose **snap key** is equal within about 60 m. The snap key is the whole name folded a
-   little less than the app folds it: accents out, parentheticals out, "&" read as "and", English
-   legal suffixes and a trailing store number dropped, but no street abbreviations expanded and
-   no leading "The" or chain tail removed. Fuel rows also key by their **house
-   number** (`fuel@<number>`), because a forecourt is one per lot and its rows spell the road
-   three different ways.
-2. Rows whose **core key** is equal within the same box. The core key is the snap key minus
-   every generic word in `tools/place-generic-words.txt` (1,856 words, the app's own
-   `PlaceNames.GENERIC`, kept equal by a unit test), so `<Brand> Gas Station` folds onto
-   `<Brand>` and `<Name> Coffee Company` onto `<Name>`. A core key that is only a street number,
-   or a single word under five letters, is not a name and stays out, so "38th Street Deli" and
-   "38th Street Grocery" (both "38th" once the generic words go) stay two rows.
+Overture carries some businesses twice, such as a fuel station under its brand and under
+`<brand> Station <town>`. Two passes collapse rows within about 60 m onto one leader: a
+landmark's row, then not a kiosk, then higher confidence, then more contact fields.
 
-**Prominence** is a category prior plus signals:
+1. Rows with an equal snap key: the whole name with accents and parentheticals removed, "&"
+   read as "and", English legal suffixes and a trailing store number dropped. Fuel rows also
+   key by house number (`fuel@<number>`), since a forecourt is one per lot.
+2. Rows with an equal core key, when every word of one name is in the other. The core key is
+   the snap key minus the generic words in `tools/place-generic-words.txt` (generated from
+   `PlaceNames.GENERIC`; a unit test keeps them equal), so `<Brand> Gas Station` folds onto
+   `<Brand>`. A core key that is only a street number or one short word is skipped.
 
-| Kind of place | Prior |
-| --- | --- |
-| Hospital, university, college, airport, stadium, museum, zoo, amusement park, shopping center, supermarket, department store, grocery store, convention center, casino, aquarium | 4.5 |
-| Hotel, pharmacy, bank, cinema, gym, library, church, bowling alley, hardware store, car dealer, furniture, electronics, sporting goods, home improvement, wholesale club, discount store; and the OSM landmarks people navigate by (attraction, viewpoint, historic building, city hall, courthouse, theater, gallery, cultural center) | 3.2 |
-| Restaurants, cafes, bars, pubs, fast food, bakeries, ice cream, breweries, delis, sandwich and dessert shops, food courts | 2.6 |
-| Wineries, gas stations, EV charging, auto repair, car wash, pet store, bookstore, clothing, shoes, jewelry, florist, liquor, tobacco, toys, bicycles, dentist, vet, optometrist, urgent care, post office, ATM, laundromat, dry cleaner, barber, salons, spa, tattoo; and the everyday OSM landmarks (park, garden, nature reserve, place of worship, school, police and fire station, community center, sports club) | 2.2 |
-| No category at all | 1.6 |
-| Everything else | 1.0 |
-| Offices, agencies, consultants, lawyers, accountants, real estate, insurance and other professional services | 0.5 |
+#### Closed places
 
-plus `+1.6` for a known brand, `+0.5` for a website, `+0.4` for a phone, `+0.2` for an address,
-and `(confidence - 0.5) * 1.6`. So a supermarket with a brand and contact details lands near 7,
-and an uncategorized one-off with no contact details near 1. Food sits above the other everyday
-services and offices at the bottom on purpose: on a crowded block the budget should go to places
-people walk into, not the tenant list upstairs.
+Overture rarely removes anything. Three steps delete closed rows:
 
-Three demotions and one rename run before the ranking:
+- Foursquare. Overture imports Foursquare places without their closing date. The bake joins
+  those rows to Foursquare OS Places by id and drops the ones with a `date_closed`. It reads
+  the newest release with the `FSQ_HF_TOKEN` secret, else a mirror of the 2025-02-06 release.
+  A row that a same-name OSM business within about 150 m or the chain's locator still lists is
+  kept, in case it reopened.
+- OpenStreetMap. Mappers retag a closed shop with a lifecycle prefix (`disused:`, `was:`,
+  `abandoned:`, `closed:`) and leave its name. Another source's row with that name within about
+  80 m is dropped, unless OSM has a live business of that name there.
+- Wikidata. An OSM object whose Wikidata item has a dissolved or demolished date (P576) is not
+  used, and its name joins the closed list.
 
-- A **tenant** (a department of a nearby anchor store, matched by the same street line with the
-  unit dropped, the same brand, or a name that is the anchor's first word plus more; or the
-  anchor brand's own fuel station, charging bay or convenience shop within about 275 m) loses
-  2.0 prominence, so a supermarket's in-store pharmacy cannot take the supermarket's label.
-- A **kiosk** (a Redbox, a Coinstar, an ecoATM, a money-transfer window, a key machine, an ATM)
-  is flagged as a tenant too, but keeps its prominence. Both are baked at minzoom 17, and from
-  z17.5 until z18.5 they draw as dots whatever their rank.
-- **Fuel is exempt** from the tenant minzoom, because a fuel kiosk really is the thing you are
-  looking for while driving.
-- **A forecourt says which one it is.** The pumps are often published under the bare brand name,
-  so the store and its forecourt drew as two icons carrying the same label a few tens of meters
-  apart, and a tap on "the store" was a coin toss. A fuel, charging or convenience row whose
-  name is exactly its anchor's gets " Fuel", " Charging" or " Market" appended. A row that
-  already names itself is left alone, and this is the only place the bake appends to a name. (The
-  one other rename is on the way in: a chain locator that named a branch after its town, "Davis"
-  or "Davis, CA", takes the brand's name instead.)
+In a District of Columbia test bake on the mirror these removed 1,499, 104 and 1 of 82,217
+rows. Closing a chain row when its locator shows no branch nearby was tried and rejected:
+locator data is incomplete per brand, so it hid open stores.
 
-**Where each place sits.** The coordinate prefers OSM, then the AllThePlaces locator, then
-Overture's own point; tenants never move. The AllThePlaces snap needs the whole snap key to match
-and a disagreement of 30 to 120 m: under 30 m the sources agree anyway (a median 7.4 m over the
-Davis chains), and past 120 m it is a different branch. The OSM snap is wider on purpose, because
-OSM pins are placed more carefully and are the ones a person can fix: any distance inside the
-duplicate box (about 150 m), on the whole name or on the name with generic words removed ("Golden
-Dragon" and "Golden Dragon Restaurant"), with each node and each row in at most one pair and only when
-they are each other's best match. A chain (a brand, or a name the region has twice) keeps the
-120 m ceiling. On a Dover, Delaware test box it moved 123 of 141 OSM shop nodes' places onto the
-OSM pin, against 15 under the old band; every looser-name pair was the same business. Overture also puts every tenant of a
-building on one parcel point; a stacked tenant whose address names a unit is moved to Overture's
-own address point for that number and unit within about 200 m, and whatever still shares a
-point is spread on a golden-angle ring 10 to 20 m out, with the best row left in place.
+#### Prominence
 
-**The rest of the address.** The tile's `addr` is the bare street line, and it has to stay that
-way because the tenant match, the unit snap and the fuel house-number key all join on it. The
-city, region and postcode travel in a side table (`locs`) and come out as a separate tile
-property, `loc`, which the app appends. `fmtloc` writes it the way the country writes an
-address: "Davis, CA 95616" in the US, Canada and Australia (a ZIP+4 is cut to the ZIP), city
-then postcode in Britain and Ireland, postcode then city everywhere else. OSM and AllThePlaces
-rows rarely say their country, so they take the region's most common Overture country
-(`regioncc`). Every row in the Davis test box got one.
+Prominence is a category prior plus signals. The prior is 4.5 for anchors (hospital,
+university, airport, museum, mall, supermarket), 3.2 for hotels, banks and big-box retail, 2.6
+for food, 2.2 for everyday shops and services, 1.6 with no category, 1.0 for everything else
+and 0.5 for offices, so a crowded block's budget goes to places people walk into.
 
-**A row without a locality borrows its neighbor's** (the `LOCFILL` step, 2026-09-23, run just before
-the export). OpenStreetMap rows, and a few locator rows, often arrive with only a number and a
-street, so the tile would say "123 Main St" and stop. Such a row takes the `loc` of the nearest row
-that has one within about 300 m (0.0027 degrees, the longitude scaled by latitude), a
-postcode-bearing `loc` ahead of any nearer one without, and a row with nothing in reach stays as it
-was. It is a grid join over 0.004 degree cells and their eight neighbors, never a correlated
-lookup, because a per-row lookup is what made earlier rules quadratic over a whole state. The bake
-log prints `LOCFILL|<rows without>|<rows filled>`. On the Andorra test bake, 737 rows had no
-`loc` and 625 were filled, and 655 of the 676 OSM rows now carry an "AD400 <town>" line. It
-reaches a region at its next places rebake. The offline search does the same thing on the phone
-for place-pack rows ([chapter 8](08-offline.md#searching-with-no-signal)).
+Added to it: +1.6 for a brand, +0.5 for a website, +0.4 for a phone, +0.2 for an address and
+`(confidence - 0.5) * 1.6`. Agreement between sources adds more (`srcbonus`): +0.6 for a paired
+OSM node, +0.6 for a locator match, +0.8 for a Wikidata link on the OSM node or its brand.
 
-**The ranks.** Each place is then ranked by prominence inside four nested grid cells: `frank`
-(about 100 m), `rank` (about 400 m), `crank` (about 1.6 km) and `xrank` (about 6.5 km, and only
-for landmark categories). The minimum zoom follows:
+Three adjustments follow.
+
+- A row with confidence under 0.75 that no second source lists is capped at 3.0 and is never a
+  landmark, so a stale row cannot rank on its category alone. In the District of Columbia test
+  bake that was 13,396 of 82,286 rows.
+- A **tenant** loses 2.0, so a supermarket's pharmacy cannot take the supermarket's label. A
+  tenant is a department of an anchor store, hospital or university within about 200 m: the
+  same street line without the unit, the same brand, or a name that is the anchor's first word
+  plus more. The anchor brand's fuel station, charging bay or convenience shop within about
+  275 m counts too. A kiosk (a coin machine, an ATM) is flagged as a tenant but keeps its
+  prominence.
+- A fuel, charging or convenience row named exactly like its anchor gets " Fuel", " Charging"
+  or " Market" appended, so store and forecourt do not share a label.
+
+#### Landmarks
+
+Parks, schools and museums come from OSM, as points and outlines, with any named building or
+tower that has a Wikidata link. One archive then holds every map point.
+
+A row is a **landmark** when it is in an anchor category. An OSM park, attraction, historic or
+civic building or place of worship is one when it has a Wikidata link, an outline of a hectare
+or more, or names in five or more languages. Landmarks are ordered by notability: outline size
+(log10 of the area in square meters minus 2, capped at 3), +1.5 for a Wikidata link, and fame,
+`0.6 * log2(1 + languages)` capped at 3. Fame counts `name:<lang>` tags; size alone ranks a
+famous tower below every large park. Size and the Wikidata link also add to prominence.
+
+A landmark is never a tenant. An existing row with the landmark's name stands for it and takes
+its credit.
+
+#### Where each place sits
+
+The coordinate is OSM's, then the locator's, then Overture's. Tenants never move.
+
+- The locator snap needs an equal snap key and a disagreement of 30 to 120 m. Under 30 m the
+  sources agree anyway (median 7.4 m over Davis chains). Past 120 m it is another branch.
+- The OSM snap takes any distance inside the 150 m duplicate box, on the snap key or the core
+  key, when node and row are each other's best match. A chain keeps the 120 m ceiling. On a
+  Delaware test box this moved 123 of 141 OSM shop nodes' places onto the OSM pin, against 15
+  with the 30 to 120 m band.
+- Overture stacks a building's tenants on one parcel point. A stacked row whose address names
+  a unit moves to Overture's address point for that unit. The rest are spread on a ring 10 to
+  20 m out.
+
+#### Addresses and names
+
+The tile's `addr` is the bare street line, because the tenant match, the unit snap and the
+fuel key join on it. City, region and postcode come out as `loc`, in the country's own order
+(`fmtloc`). A row with no locality, as most OSM rows are, borrows the `loc` of the nearest row
+that has one within about 300 m (`LOCFILL`). Offline search does the same for place-pack rows
+([chapter 8](08-offline.md)).
+
+The name keys keep letters of every script, so the rules work for Japanese, Cyrillic or Arabic
+names. A non-Latin name carries `name_en` when OSM has one, from its own row, its paired OSM
+node or a region-wide chain dictionary. The app shows it when the UI language uses Latin script
+(`uiWantsLatinLabels`).
+
+#### Ranks and minimum zoom
+
+Each row is ranked by prominence in nested cells: `frank` (about 100 m), `rank` (400 m) and
+`crank` (1.6 km). Landmarks are also ranked by notability in their own 1.6 km budget (`lrank`)
+and in a 6.5 km cell (`xrank`). The first matching line sets the zoom:
 
 | Condition | Appears from |
 | --- | --- |
 | a tenant or kiosk that is not fuel | z17 |
-| a landmark (airport, hospital, university, stadium, mall, zoo, museum...) with `xrank = 1` | z11 |
+| a landmark with `xrank = 1` | z11 |
 | a landmark with `xrank <= 3` | z12 |
-| a landmark with `lrank <= 4` (its own budget, below) | z14 |
+| a landmark with `lrank <= 4` | z14 |
 | a landmark with `lrank <= 10` | z15 |
 | `crank = 1` and prominence >= 6 | z13 |
 | `crank <= 2`, or prominence >= 5 with `crank <= 6` | z14 |
@@ -205,498 +204,248 @@ for landmark categories). The minimum zoom follows:
 | `rank <= 12`, or prominence >= 3.5 with `rank <= 24` | z16 |
 | everything else | z17 |
 
-The rows are tried top to bottom and the first that matches wins. So a downtown thins to its
-landmarks as you zoom out and a village keeps its one cafe at z15. Prominence only ever buys a
-few more places per cell, never an unlimited number; why is the next paragraph but one.
+Prominence buys a few more places per cell, never an unlimited number. Before that cap a
+Shinjuku, Tokyo z16 tile carried 963 places against 86 in Davis, and the view panned at 13 to
+23 fps on a Pixel 4a. After it, 22 to 40. Landmarks have their own budget so a downtown's shops
+cannot take every slot from its parks. Fuel is exempt from the tenant zoom because a fuel
+station is a destination while driving.
 
-Every tile feature carries `id`, `name`, `name_en` (where there is one, see below), `class`,
-`group`, `icon`, `prominence`, `confidence`, the four ranks, `landmark`, `tenant`, `brand`,
-`addr`, `loc`, `website`, `phone`, `hours`, `src` (always `overture`, because the tap gate keys on
-it) and `origin` (`overture`, `atp` or `osm`, which is what to read when telling the datasets
-apart). The row id keeps its origin too: `atp:<spider>:<ref>` for a locator row (a hash of the
-coordinate when the locator has no ref), `osm:n<id>` for an OSM node and `osm:w<id>` or
-`osm:r<id>` for a landmark mapped as an outline, Overture's hex id otherwise.
+Tiles run from z11 to z17. Each feature carries `src` (always `overture`; the tap handler keys
+on it), `origin` (`overture`, `atp` or `osm`) and `mark` (1 for an OSM landmark or named
+building). An id starts `atp:` or `osm:` for those origins.
 
-A seventh of the catalog rebakes every night, so an OSM edit reaches the map within a week on
-its own, and a single region can be rebaked on demand in about two minutes. See
-[chapter 2](02-data-and-rebakes.md) for the schedule and how a phone picks up the new archive.
-
-**The cell budget is a cap** (2026-09-22). A place used to skip its cell's budget outright once
-its prominence was high enough, and in a dense city nearly every shop is: a Shinjuku zoom-16 tile
-carried 963 places against Davis's 86, and a pan over it ran 10 to 14 fps on a 4a. Importance now
-buys a few more places per cell (zoom 14: 2, or 6 at prominence 5; zoom 15: 3, or 8 at 4.5; zoom
-16: 12, or 24 at 3.5), and zoom 17 still carries everything, so a place past the budget comes back
-as a dot when you zoom in. Measured with the Shinjuku test box:
-
-| | z14 | z15 | z16 | z17 | Pan fps on a 4a |
-|---|---|---|---|---|---|
-| Shinjuku before | 418 | 480 | 885 | 474 | 13 to 23 |
-| Shinjuku after | 5 | 53 | 55 | 474 | 22 to 40 |
-| Davis downtown before | 87 | 63 | 83 | 117 | |
-| Davis downtown after | 12 | 47 | 56 | 117 | |
-
-What decides the order inside a cell, with no reviews to go on: the category prior (food 2.6
-above the other everyday services at 2.2, offices, agencies and consultants lowest at 0.5), brand,
-contact details, Overture's confidence, and since the same day AGREEMENT: +0.6 when OSM's node pairs
-with the place, +0.6 when a chain's own locator matched it, +0.8 when OSM links it, or its brand,
-to Wikidata (`srcbonus`, added to prominence before the cells are ranked). The rest of the Tokyo cost is the
-basemap's own OSM point layers (`poi_r*`): hiding them on top of the cap measured 46 to 60 fps.
-
-The reverse also holds. Overture publishes a confidence for every place, and one under 0.75
-that no second source lists is ranked as an ordinary place whatever its category says: capped
-at 3.0 and never a landmark. In a test bake of the District of Columbia that was 13,396 of 82,286 places,
-among them an aquarium that closed in 2013 and had been labeled as a landmark from a city view.
-It still appears when you zoom right in.
-
-**Closed places** (2026-10-06). Overture rarely removes anything: month to month about 2.5% of
-its rows change, and a restaurant that shut in 2015 can sit in it at confidence 0.92. So the bake
-asks three other sources what has closed, and deletes those rows outright.
-
-- Foursquare. About one Overture row in ten came from Foursquare, and Foursquare records a closing
-  date that Overture does not carry over. The bake matches those rows by Foursquare's own id, so
-  no name guessing is involved, and drops the ones Foursquare marks closed. The copy it reads is
-  from February 2025 (newer releases need an account), so it knows nothing after that, and a row
-  that OpenStreetMap or a chain's locator still lists is kept in case it reopened.
-- OpenStreetMap. When a shop closes, mappers retag it (`disused:shop`, `was:amenity`) and leave
-  the name. A place from another source with that name within about 80 m is dropped, unless
-  OpenStreetMap also has a live business of that name there.
-- Wikidata. A mapped building whose Wikidata entry has a dissolved or demolished date stops
-  counting as a landmark.
-
-In the District of Columbia test bake that was 1,499 places from Foursquare (792 of them
-restaurants, 143 bars), 104 from OpenStreetMap and one closed hospital from Wikidata, out of
-82,217. Checked by hand, the larger ones are real: two cinemas, a department store, a mall that
-was renamed, and a museum's old address (its current one stays).
-
-One idea was tried and left out: treating a chain store as closed when the chain's own store
-locator has no branch nearby. The locator data turned out to be missing open stores, so the rule
-would have hidden real ones.
-
-**One set of map points** (2026-09-22, behind the `placesOneSetRev` dial). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
-OpenFreeMap from OSM) drew parks, temples, schools and museums as a second set that the phone had
-to reconcile with Vela's places and that cost half the frame rate in Tokyo. The bake now takes
-those from the region's OSM extract (points and outlines; an outline sits at the average of its
-outer ring), so one archive holds every map point, ranked and budgeted together, and the app hides
-the basemap's copy over any archive baked on or after the dial's date. Landmarks get their own
-budget per ~1.6 km cell (4 at z14, 10 at z15), ordered by notability: outline size (log10 of the
-area, a hectare = +2), a Wikidata link (+1.5 there, +2.0 on prominence) and, since 2026-09-23,
-FAME: how many languages OSM names it in (0.6 x log2(1 + languages), capped at +3; a world-famous
-tower carries dozens of `name:<lang>` tags, a pocket park none). The same score picks the anchor of
-each ~6.5 km cell for z11 and z12. A landmark is never a
-tenant, never folds into a business of the same name key, and gives its English name and Wikidata
-credit to the Overture row it merges into. Measured on test boxes (4a, pan fps; archive size):
-
-| | Current bake | One set | Size change |
-|---|---|---|---|
-| Shinjuku | 20 to 45 | 35 to 58 | +0.5% |
-| Midtown | 20 to 37 | 36 to 58 | +0.3% |
-| Davis downtown | 43 to 59 | 52 to 59 | +4.6% |
-
-Bryant Park, Grand Central, the Empire State Building and Davis's Central Park arrive at z14-15.
-
-**The landmark report.** Every bake prints how its landmarks fared (`LANDMARKS|count|by z15|%`)
-and the ten most notable that only arrive at z16 or later (`LATE|zoom|name|category|notability`);
-the places workflow copies both onto the run's summary page, one block per region. Nobody can look
-at every city, so this is how a misfiring budget or notability order shows up after a world
-rebake. The Midtown test box: 361 landmarks, 81 (22%) by z15; the late ones were Broadway theaters,
-churches and pocket parks.
-The first world bake with the landmarks (2026-09-23, 448 archives) put 91% of about 3.6 million
-landmarks on the map by z15. For scale: the basemap's own point layers start at z15, so before this
-nothing of the kind showed below it anywhere. The lowest regions are dense historic capitals: Macau 53%, Hong Kong
-57%, Prague 62%, Berlin 64%, Washington DC 72%, Ile-de-France 78%, then Taiwan and Guangdong near
-80%. Their late rows are mostly pocket parks, side churches and palaces, which Google also keeps for
-close zoom. The one real miss is a famous landmark with a small footprint: the Berliner Fernsehturm
-scores 2.5 (Wikidata 1.5 plus a 1,000 m2 outline) and loses its cell's ten z15 slots to larger
-parks and museum buildings, so it arrives at z16. Outline size is the wrong measure of fame for a
-tower, which is what the languages term fixes. A Berlin Mitte test box before and after it: the
-Brandenburger Tor, Berliner Dom, Pergamonmuseum and Neue Synagoge move from z15 to z14, the
-Fernsehturm from z16 to z15, and the z11/z12 anchors become Museumsinsel and the Reichstag instead
-of a university campus and a library. It reaches the fleet with the next places rebake.
-At the widest street zooms in Midtown the dense bus-stop layer can still win the space.
-
-**The dial.** The app hides the basemap's point layers over a places archive whose `rev` is at
-least `placesOneSetRev`, read through `AppTune`:
-
-```
-placesOneSetRev = 20260923   // compiled default since 2026-09-24: the world rebake's rev
-                             // a debug.vela.tune.placesOneSetRev property wins, then the signed
-                             // calibration bundle's tuning value, then this default
-```
-
-An archive baked before that date has no landmarks, so over it the basemap's points still draw
-and nothing is lost; that is what the dial protects, and it must never go below the oldest archive
-that carries the landmarks. The default was a "never" value (99999999) until 2026-09-24, with the
-real date arriving only in the calibration bundle. That bundle reaches phones from `main`, so a
-canary build ahead of it kept `poi_r20` on in Manhattan and panned at under 1 fps below 200 ft.
-The cause was found by hiding layers one at a time with the `debug.vela.hide` property while the
-map's frame counter ran: on a Pixel 9, Midtown at about 200 ft panned at 3 fps against 59 at
-1000 ft, symbol layers were the whole cost, and hiding `poi_r20` alone (OpenStreetMap's
-lowest-rank points, thousands of them in Manhattan) brought it back to 60. On a Pixel 4a at 100 ft
-it is 0 to 25 fps with the dial off and 59 with it on. Swapping the layer's exclusion filter for a
-`match` lookup measured no better, so the cost is the layer itself, not its filter. The dial is
-still in the calibration bundle, so the fleet can be moved without a release; the compiled value
-only decides what a build does before that bundle arrives.
-
-**Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep
-letters of every script, as the app's `PlaceNames` does. They used to keep only `a-z0-9`, so a
-Japanese, Chinese, Korean, Cyrillic, Greek, Hebrew, Arabic or Thai name keyed to nothing. In
-those regions no name rule ran at all: OSM's copy of a shop Overture already had went in as a
-second pin, and no OSM or chain-locator position was ever used. Measured on a small Shinjuku box
-with the old and new keys:
-
-| Shinjuku test box | Old keys | New keys |
-|---|---|---|
-| OSM shops added as extra pins | 1,501 | 1,176 |
-| Places moved onto an OSM pin | 453 | 1,566 |
-| Places with an English name | none | 1,021 |
-
-A place whose own name is not Latin carries `name_en` in the tile. It comes from OSM
-(`name:en`, then a romanized `name:*-Latn`, `name:latin` or `brand:en`): the place's own OSM row,
-the OSM node it pairs with by name, or a region-wide chain dictionary. The dictionary maps a
-chain name to its English form when OSM agrees on the spelling, and applies to a name that
-starts with a dictionary key of at least four characters that is itself a chain ("ローソン西新宿1丁目店"
-reads "Lawson"). Overture itself carries no English name there (0 of 14,718 places in a central
-Tokyo box). The app shows `name_en` on the places layer and the sheet for a Latin-script UI
-(`uiWantsLatinLabels`), and the Both-mode twin test compares it too, because Google answers in
-English. The basemap's own shop and transit labels (`poi_r*`, `poi_transit`) follow the same
-one-line rule as place names now, instead of stacking the romanized name over the local one.
+Each bake prints `LANDMARKS|count|by z15|%` and the ten most notable landmarks that arrive
+after z15 (`LATE|...`). The workflow copies both to the run summary.
 
 ### Which of the places in a tile get an icon, a label, or a dot
 
-The tile can hold more than the map should draw, so the app decides per zoom, by rank rather
-than by collision. The steps, with the remotely tunable dials named:
+`VelaMapView` decides per zoom by rank, before collision. The named dials are `AppTune` keys
+and can be tuned remotely.
 
-| Zoom | Gets an icon |
-| --- | --- |
-| below z13 | everything in the tile (only landmarks are in the z11 and z12 tiles) |
-| z13 | `crank <= 2` or prominence >= 6 |
-| z15 | `rank <= 1` or prominence >= 5 |
-| z16 | `rank <= openRankZ16` (3) or prominence >= `openPromZ16` (5.5) |
-| z17 | `rank <= openRankZ17` (8) or prominence >= `openPromZ17` (5.0) |
-| z17.5 | `frank <= openIconCapNear` (8) or prominence >= 6, tenants still dots |
-| z18.5 | `frank <= openIconCapClose` (16) or prominence >= 5 |
-| z19.5 | `frank <= openIconCapMax` (40) or prominence >= 4.5 |
+Below z13 everything in the tile gets an icon; those tiles hold only landmarks. After that a
+place must be near the top of its cell: the top two per 1.6 km cell from z13, the top one per
+400 m cell from z15, `openRankZ16` (3) from z16 and `openRankZ17` (8) from z17. From z17.5 the
+budget is per 100 m block: `openIconCapNear` (8), then `openIconCapClose` (16) from z18.5 and
+`openIconCapMax` (40) from z19.5. At every step a high enough prominence, between 4.5 and 6,
+passes regardless ([SPEC section 5.3](../../SPEC.md)).
 
-From z17.5 two more rules apply: a place in the default (plain-pin) or health group needs to be
-in the top `openGenericBlockTop` (3) of its block or reach `openGenericMinProminence` (4.0),
-else it stays a dot, and an archive baked before `frank` existed falls back to the 400 m `rank`
-with four times the cut (a 400 m cell holds about sixteen 100 m blocks). A landmark the bake
-admitted passes every step whatever its rank, so its own budget in the bake alone decides when it
-appears. Everything below the cut still draws as a category-colored dot: none below
-z15, `rank <= 6` at z15, `rank <= 15` at z16, all from z17.
+A landmark passes every step through z17. From z17.5 a non-fuel tenant stays a dot until
+z18.5, and a place in the default or health group must be in the top `openGenericBlockTop` (3)
+of its block or reach `openGenericMinProminence` (4.0), else it is a dot until
+`GENERIC_ICON_ZOOM` (20.3). This keeps a tower's office tenants from each taking a pin.
 
-Labels follow the icon steps exactly, since a name floating without its icon reads as broken.
-From z17.5 only the top `openLabelCap` (20) per 400 m cell, or prominence >= 3.0, also get a
-name; each label is glyph layout plus a collision pass over four anchor slots, and a mall puts
-dozens in one cell. Icons collide below z18 and may overlap from z18, so a shop under a stack
-still appears when you are close.
+Dots: none below z15, `rank <= 6` at z15, `rank <= 15` at z16, all from z17. From z17 one kind
+is not drawn at all until `GENERIC_REVEAL_ZOOM` (19.5): a generic place as above that ranks
+past `openGenericHideRank` (120) in its 400 m cell. That clears the office dots from a dense
+downtown and leaves a home office on a residential street alone. The rule needs the `mark`
+property, so it never hides a named building.
 
-Note that Vela's zoom number reads about one lower than Google's for the same visible area, a
-consequence of 512 px tiles. Compare the two by matching the area on screen, never the z number.
+Labels follow the icon steps. From z17.5 a label also needs `rank <= openLabelCap` (20) or
+prominence >= 3.0, because each label costs glyph layout and a collision pass. Icons collide
+below z18 and may overlap from z18, so a shop under a stack still appears up close.
+
+Over an archive whose `rev` (its bake date) is at least `placesOneSetRev` (20260923) the app
+hides the basemap's own point layers (`poi_r1`, `poi_r7`, `poi_r20`). On a Pixel 4a this took
+Shinjuku pans from 20 to 45 fps to 35 to 58. An older archive has no landmarks, so over it
+those layers keep drawing, less the points the archive already shows by name. The dial must
+never go below the oldest archive that carries landmarks.
+
+Vela's zoom number reads about one lower than Google's for the same area, because of 512 px
+tiles.
 
 ### Google's own ranking, when Google is drawing
 
-In Google or Both mode the pins come from a fan-out of 15 per-category searches (8 on a low-RAM or low-data device), each
-ordered by its own relevance. There is no global ranking in that answer, so Vela computes one:
+In Google or Both mode, and wherever no archive covers the view, the pins come from a fan-out
+of 15 category searches (8 on a low-RAM or low-data device). Each is ordered by its own
+relevance, so Vela computes one ranking:
 
 ```
-prominence = ln(reviewCount + 1) * (0.6 + rating / 10)      // how many people know it
-           + (categoryPrior - 2.2) * 0.9                    // what kind of place it is
+prominence = ln(reviewCount + 1) * (0.6 + rating / 10)
+           + (categoryPrior - NEUTRAL_PRIOR) * PRIOR_WEIGHT
 ```
 
-A missing rating counts as 3.5. The category prior is the bake's 1.0 to 4.5 scale without its
-food (2.6) and office (0.5) tiers, applied as a difference from the everyday-business tier (`NEUTRAL_PRIOR` 2.2, `PRIOR_WEIGHT`
-0.9), so an ordinary restaurant's number is unchanged. Anchors rise, places with no category at
-all sink. Google's category text arrives in the app's language and the keyword table is
-English, so a non-English session gets the neutral prior and the old reviews-only ranking.
+A missing rating counts as 3.5. `categoryPrior` uses the bake's 4.5, 3.2, 2.2 and 1.0 tiers
+(1.6 with no category), `NEUTRAL_PRIOR` is 2.2 and `PRIOR_WEIGHT` is 0.9, so an ordinary
+restaurant's number is unchanged and anchors rise. The keywords are English and Google's
+category text arrives in the app's language. A category that matches none falls to the 1.0
+tier, so in another language the order is by reviews alone and each place scores about 1.1
+lower.
 
-Ambient labels are tiered by zoom against that prominence: below z15.5 only prominence >= 6.0
-is named, from z15.5 >= 5.0, from z16.5 >= 3.0, and from z17.5 everything. An unnamed symbol
-skips label placement entirely, which is also most of the rendering cost. The layer is capped
-per zoom (`ambientCapMin` 45 to `ambientCapMax` 140, both remotely tunable), and the cap keeps
-the top of the ranking.
+Labels are tiered. Below z15.5 only prominence 6.0 or more is named, from z15.5 it takes 5.0,
+from z16.5 it takes 3.0, and from z17.5 everything is named. An unnamed symbol skips label
+placement, which is most of the layer's cost. The layer keeps the top of the ranking, up to
+`ambientCapMin` (45) places at z14 and `ambientCapMax` (140) at z17.5.
 
 ### Why the map does not reshuffle while you look at it
 
-A settled view is painted several times: the fan-out streams its pool as terms land, the
-duplicate pass re-runs a couple of seconds later, and a cold session refetches the whole fan-out
-once, because Google strips review counts from the first few seconds of a session. Different
-review counts for the same place means a different ranking, which used to reorder labels and
-resize icons under a user who had not moved.
+A settled view is painted several times: the fan-out streams its pool, and a cold session
+refetches once because Google strips review counts in a session's first seconds. A changed
+review count would reorder labels and resize icons under a user who has not moved.
 
-So the first *rich* paint of a view fixes each place's prominence and later paints of the same
-view reuse it (`AmbientStability`). Later answers still add places; they cannot reorder or resize
-what is already on screen. Moving the map forgets it and ranks fresh. A pool whose prominences
-are all zero is never remembered, because that is the stripped cold-start flavor and freezing it
-would pin the flatness the refetch exists to fix.
+`AmbientStability` fixes each place's prominence at the first paint of a view. Later paints can
+add places but cannot reorder or resize what is drawn. Moving the map clears it. A pool with no
+positive prominence is never remembered, since that is the stripped cold-start answer.
 
 ### One rule for "the same business"
 
-Three different places need to decide whether two names are one business: the tap (which Google
-listing did you mean), Both mode (which open pin is Google's copy) and the bake (which rows to
-collapse). They used to have three private rules that drifted apart, and every drift was a
-duplicate icon or a wrong tap. Now all three read `core/util/PlaceNames`, and the bake mirrors it
-in SQL.
+The tap (which Google listing), Both mode (which archive pin is Google's copy) and the bake
+(which rows to collapse) all ask whether two names are one business. All three use
+`core/util/PlaceNames`. The bake mirrors it in SQL.
 
-`normalized` folds a name before any comparison: accents out (plus the letters decomposition
-leaves alone, such as ß, æ, ø, ł, ё), parentheticals out, "&" read as "and", a possessive kept on
-its word, legal forms dropped in every app language (LLC, Inc, GmbH, SARL, SRL, BV, ООО, Kft and
-the rest, written without dots; see Limits), hotel chain tails ("by Wyndham") dropped, a leading "The" dropped, a trailing
-store number dropped, and street abbreviations expanded. `match(a, b)` then answers one of four:
+`normalized` folds a name: accents and parentheticals out, "&" read as "and", legal forms (LLC,
+GmbH, SARL, ООО and others), hotel chain tails, a leading "The" and a trailing store number
+dropped, street abbreviations expanded. `match(a, b)` then returns one of four answers:
 
-| Answer | Meaning | Example |
-| --- | --- | --- |
-| EXACT | equal after normalizing | `<Name> #12` and `<Name>` |
-| VARIANT | one is the other plus only generic words | `<Brand>` and `<Brand> Pharmacy` |
-| OVERLAP | the identifying words agree, with other words around them | `<Name>` and `<Name>-<Partner>` |
-| NONE | different businesses | `<Park> Park` and `<Park> Pool` |
+- EXACT: equal after normalizing (`<Name> #12` and `<Name>`).
+- VARIANT: one is the other plus only generic words (`<Brand>` and `<Brand> Pharmacy`).
+- OVERLAP: the identifying words agree, with other words around them. The main cases are two
+  shared identifying words, and a name inside a longer one that has a strong core (two
+  identifying words, or one of five letters or more that is not an ordinal).
+- NONE: different businesses (`<Park> Park` and `<Park> Pool`).
 
-**Generic words** are words that describe a business rather than name it: categories,
-structure words, street types. The list is one table per app language, thirteen of them UNIONED
-(Chinese and Japanese have none, since their names are compared as strings by `cjkMatch`),
-because the names on a map belong to the region and not to the phone: a bakery's "Boulangerie"
-is generic whatever language the reader uses. On top of that list a caller adds two things it
-learns from the comparison at hand: the town out of the listing's address (`cityWords`, so
-`<Gym> Davis` is `<Gym>`) and `localGeneric`, the words that three or more names in the current
-pool share. That second one matters in a city, where a neighborhood or a landmark sits in a dozen
-names on one screen and used to glue unrelated businesses together.
+Generic words (categories, structure words, street types) describe a business without naming
+it. `GENERIC` is the union of thirteen language tables, because the names on a map belong to
+the region and not to the phone's language. Names in scripts without word breaks (Han, kana,
+Hangul, Thai) are compared as strings (`cjkMatch`). A caller adds the town from the listing's
+address (`cityWords`) and `localGeneric`, the words that three or more names in the current
+pool share, so a neighborhood's name does not join unrelated businesses.
 
-The rules that decide OVERLAP are strict on purpose. One shared identifying word is not enough;
-two are. A nested name needs a "strong core": two identifying words, or one of at least five
-letters that is not an ordinal ("The Finn" does not claim a longer name that mentions Finn).
-Europe's four-letter brands get an allowance when the word leads both names. A shared brand
-prefix of two words counts, as does the shorter name as a phrase inside the longer. Plurals fold
-pairwise, a name glued into one word is read as its words when the other name spells it, and
-names in scripts written without spaces (Han, kana, Hangul, Thai) are compared as strings after
-their descriptor suffixes are stripped (`cjkMatch`).
+Two rules also take the places' kinds (their icon groups):
 
-Two rules also take the places' **kinds** (their icon group):
-
-- `sameBusiness` refuses an OVERLAP between two known, different kinds: a fuel station and the
-  pizza place on its lot can share their identifying words. EXACT and VARIANT still cross kinds,
-  because a store and `<store> Pharmacy` are one business in two listings. The one exception: a
-  VARIANT between a place (a plaza, a park, a stop) and a business is refused, because "Pharmacy
-  at `<Plaza>`" is named after the plaza, not the same thing as it.
+- `sameBusiness` refuses an OVERLAP between two known, different kinds, such as a fuel station
+  and the pizza place on its lot. EXACT and VARIANT cross kinds, because a store and
+  `<store> Pharmacy` are one business. A VARIANT between a park, transit or culture place and a
+  business is refused, since a pharmacy named after a plaza is not the plaza.
 - `sameFuelLot` calls two fuel stations within `FUEL_LOT_M` (30 m) one station whatever their
-  names, since the sources name a forecourt after different things (the brand, the operator, the
-  shop inside). Two known house numbers that differ refuse it at any distance, which is the
-  two-stations-facing-each-other-across-a-road case.
+  names, unless both have house numbers and they differ.
 
-`PlaceNamesMatchTest` pins the fixture pairs and `PlaceNamesI18nTest` pins one pair per language.
-Measured over the Davis fixture, 72% of Google's places link to an archive row through the rule;
-in two dense downtowns 81% and 83%. The remainder is mostly places the archive does not have.
+`PlaceNamesMatchTest` holds the fixture pairs and `PlaceNamesI18nTest` one pair per language.
 
 ### Both mode: which copy is drawn
 
-In Both mode Google wins a twin outright. Its coordinate is the storefront, where Overture stacks
-a building's tenants on one parcel point, and its ranking comes from review counts rather than a
-category prior. The fan-out waits for a 1.5 s settle, and the twin pass (`hideOpenTwins`) runs
-400 ms and 2 s after each upload, only once the map has been still for `TWIN_PASS_STILL_MS`
-(700 ms). It compares the open icons actually rendered on screen against the Google places
-actually drawn, and hides an open pin when:
+Google's copy wins a twin: its coordinate is the storefront and its rank comes from reviews.
+The fan-out waits until the view has settled for 1.5 s. The twin pass (`hideOpenTwins`) runs
+400 ms and 2 s after each upload, once the map has been still for `TWIN_PASS_STILL_MS`
+(700 ms). It compares the archive icons rendered on screen with the Google places drawn, and
+hides an archive pin when:
 
 - its normalized name equals a Google place's within `DEDUPE_SAME_NAME_M` (150 m), or
-- `sameFuelLot` says they are one forecourt (the Google place's house number rides on the map
-  feature for this), or
-- `sameBusiness` agrees within `DEDUPE_NAME_M` (80 m), with the screen's own `localGeneric`
-  words passed in.
+- `sameFuelLot` says they are one forecourt, or
+- `sameBusiness` agrees within `DEDUPE_NAME_M` (80 m).
 
-A pin already hidden is re-checked directly from the source, and released when its Google partner
-is no longer drawn, so an open place is never left hidden with nothing in its place. The same
-pass purges closures: an open pin that matches a permanently closed Google listing within 80 m,
-with no live listing of that name within 150 m, goes into the persisted closed set. A closure is
-a correction; a business that moved down the block is not. Offline nothing is hidden, because
-there is nothing to compare against.
+The pin's `name_en` is tested too, because Google answers in English. A hidden pin is released
+when its Google partner is no longer drawn. An archive pin that matches a permanently closed
+Google listing within 80 m, with no live listing of that name within 150 m, joins the persisted
+closed set.
 
 ### What happens when you tap
 
-**Which feature you tapped.** A tap resolves to what is drawn under your finger, not to whichever
-layer is "more important": a search pin, then a saved pin, then the nearest of (transit stop icon,
-Google ambient POI, basemap or open-places POI). A stop icon competes by distance like everything
-else.
+#### Which feature you tapped
 
-"Under your finger" is literal. The map first asks what is rendered at that exact pixel on the
-icon layers, and when something is, only those compete. An icon hangs above its point like a pin,
-so measuring from each candidate's own point put the shop 40 px "away" while a coin machine's dot
-a few meters off sat right under the thumb. With nothing rendered at that pixel the wider touch
-area decides, so a dot on its own is still tappable.
+A parking pin, a search pin or a saved pin wins outright. Otherwise the nearest of a transit
+stop icon, a Google place and a basemap or archive place wins. The map first asks which icon is
+rendered at the tapped pixel. When a named place is there, only those compete, so a dot a few
+meters away cannot beat the icon under the finger. With nothing at the pixel, a 48 dp box
+decides, so a lone dot stays tappable.
 
-**The sheet, at once.** An open-data pin seeds the sheet from the tile: name, category, street
-line plus `loc`, phone, website, and hours converted from OSM syntax (see below). In the same
-moment, `offlineTwin` looks for a downloaded place-pack row within 80 m whose name agrees, and
-fills any field the tap did not bring without overwriting one it did. A basemap label brings only
-its name, so for those the pack is the difference between a bare title and a full sheet, and
-offline it is what stays.
+#### The sheet
 
-The sheet shows its loading state (`tapResolvingFor`) only when a lookup will actually run: not
-for a transit stop, whose departure board has its own loading state, and not when Google is off.
-Only a section with nothing to show yet is a skeleton: the details block skeletons when there is
-no category and no hours, the body when there is no address, phone, website or hours, and the
-rating and the reviews tabs always wait for the listing. "Hours not listed" is held back too,
-because the map lacking hours says nothing about Google's. A skeleton section fades in over
-280 ms when the listing lands (`rememberReveal`, with `ModulateAlpha` so the fade does not render
-offscreen); text that was already on screen just updates. The Google listing usually has a
-different id than the tapped pin, and every `remember` in the sheet is keyed on the id, so the
-swap used to remount the whole sheet and flash. `sheetAlias` keeps the sheet's key at the
-placeholder's id across that swap, so it recomposes once, in place. If the lookup hangs, a
-watchdog (`TAP_RESOLVE_WATCHDOG_MS`, 6 s) ends the skeletons and the map's own data shows; a late
-listing still fades in.
+An archive pin seeds the sheet from the tile. `offlineTwin` then fills missing fields from a
+downloaded place-pack row within 80 m whose name agrees. A basemap label brings only its name,
+so offline the pack row is all it has. A watchdog (`TAP_RESOLVE_WATCHDOG_MS`, 6 s) ends the
+loading skeletons if the lookup hangs.
 
-**The lookup.** Unless **"Look up tapped places on Google"** is off, the tapped name is searched
-near the tap with `searchOnce`, one page of results and no nearby pass. The full three-page
-search used to spend most of a tap fetching pages two and three for a chain whose first page was
-already full: about 4.3 s of a 4.7 s tap on a test phone, now about 1.3 s.
+#### The lookup
 
-First the tap decides whether it is a transit stop, from the tapped feature's kind. The open
-places layer seeds taps with Overture's category, and "Gas station", "Fire station" and
-"Electric vehicle charging station" all contain the word "station", which once sent every fuel
-tap down the transit path: it searched for `<name> transit stop`, kept only stop listings, found
-none, and linked nothing. The kind now passes the same exclusion list the results use
-(`NON_TRANSIT_CAT`: fuel, charging, fire, police, broadcast, in the app's languages) before any
-transit word is looked for. A real stop resolves to the nearest live transit listing within
-250 m, and falls back to the Transitous board at the tapped point.
+Unless "Look up tapped places on Google" is off, the name is searched near the tap with
+`searchOnce`: one page, no nearby pass. On a Pixel 4a the three-page search spent 4.3 s of a
+4.7 s tap on pages two and three. One page takes about 1.3 s.
 
-For a business, the pick is built from a series of pools, each tried only when the one before is
-empty:
+A transit stop is recognized from the feature's kind, after the exclusion list
+`NON_TRANSIT_CAT` (fuel, charging, fire, police), because "Gas station" contains "station". It
+resolves to the nearest live transit listing within 250 m, else to the Transitous board at the
+tapped point.
 
-1. **Name matches within reach.** Listings that are the same business under
-   `PlaceNames.sameBusiness`, with the town and the pool's shared words as generic, and only
-   within `BUSINESS_TAP_CAP_M` (1.5 km) of the tap. A pin named for a brand agreed with seventeen
-   of that brand's stations miles away, and that full pool kept every nearby fallback from
-   running while the right listing, under the seller's own name, sat 11 m from the pin.
-2. **The same name in another script.** When the tapped label is written in a script Google
-   answers differently (kana or Han in Japan, Han, Hangul, Cyrillic, Hebrew, Thai, Arabic, Greek)
-   and that is not the app's language, `crossScriptCandidates` runs the search again in the
-   label's own language, keeps what agrees, and fetches the nearest one's copy in the app's
-   language so the sheet's category and hours read in your language. Two requests at most, only
-   on a cross-script miss.
-3. **The tapped kind, already in the results** (`sameKindNear`): a listing of the same icon group
-   within `NO_NAME_MATCH_M` (60 m). Free, since it is already there.
-4. **The tapped kind beside the building** (`kindBesideAnchor`). An open-data row named for the
-   site (`<Station> <Pizza counter>`) while Google lists the pumps under a brand finds only the
-   other business in the building, which the kind rule refuses. The nearest name-agreeing listing
-   on the lot is taken as the anchor, a search for the tile's category runs around it, and the
-   nearest same-group listing within 60 m of the anchor is kept. One extra request, only on a tap
-   that would otherwise not link.
-5. **Anything on the lot**: a listing within 60 m, whatever its name.
+For a business, candidates come from the first pool that is not empty:
 
-**The house number gates all of it.** Distance alone cannot tell a fuel station from the one
-across the junction, 40 to 80 m apart. When the tapped row has an address starting with a house
-number (`tappedHouse`, from the tile or the pack twin) and a candidate does too, a different
-number (`houseClash`) rules the candidate out of every pool without a name match, and out of name
-matches beyond `SAME_LOT_M` (120 m). On the lot a mismatch is tolerated, because open-data numbers
-are sometimes wrong, and a candidate whose number agrees (`houseAgrees`) is preferred. A missing
-number on either side decides nothing.
+1. Listings that are the same business under `PlaceNames.sameBusiness`, within
+   `BUSINESS_TAP_CAP_M` (1.5 km). The cap stops a brand's distant branches from filling the
+   pool and blocking the fallbacks.
+2. The same search repeated in the label's language, when its script is not the app
+   language's (`crossScriptCandidates`). Two extra requests at most.
+3. A listing of the tapped icon group within `NO_NAME_MATCH_M` (60 m), already in the results
+   (`sameKindNear`).
+4. The tapped kind beside the building (`kindBesideAnchor`), for a row the archive names after
+   the site while Google lists it under a brand: a category search around the nearest
+   name-agreeing listing on the lot. One extra request.
+5. Anything within 60 m.
 
-Within the chosen pool:
+When the tapped row and a candidate both have a house number and they differ (`houseClash`),
+the candidate is out of every pool without a name match, and out of name matches beyond
+`SAME_LOT_M` (120 m). Distance alone cannot tell a fuel station from the one across the
+junction. On the lot a mismatch is tolerated, because open-data numbers are sometimes wrong,
+and a matching number is preferred.
 
-- **A closed listing never beats a live one.** Google keeps a moved business's old, permanently
-  closed profile beside the live one for months. Closed listings drop out whenever a live
-  candidate exists.
-- **The exact name beats a nearer one, on the lot.** Among candidates within 120 m, a listing
-  whose normalized name equals the tapped name (`PlaceNames.same`) wins over one with extra
-  words. That is what keeps a tap on a store from opening the brand's fuel station or pharmacy.
-  It is confined to the lot because a brand's listing elsewhere can carry the exact name while
-  the one under the finger says `<Name> Coffee Company`.
-- **The same kind beats the same name.** Some brands name the forecourt exactly what they name
-  the store, and the tapped point is the parcel, which can sit nearer the pumps than the doors.
-  Among exact-name matches, one of the tapped kind wins.
-- The nearest remaining listing is the pick, unless one within 35 m has clearly more reviews
-  (`reviews >= 2 * nearest + 5`), which promotes the rich profile of a true duplicate.
+Within the pool a live listing beats a permanently closed one. Within 120 m, a listing whose
+normalized name equals the tapped name beats one with extra words, and among those one of the
+tapped kind wins, so a store tap does not open the brand's fuel station. Then the nearest wins,
+unless one within 35 m has `reviews >= 2 * nearest + 5`, which promotes the fuller profile of a
+duplicate.
 
-A tap on a business never resolves into a transit stop or an intersection
-(`JUNCTION_CATEGORIES`: intersection, junction, crossroads, road, highway), both of which Google
-lists as places and both of which sit meters away on the same corner. The pick must also be near
-the tap: 1.5 km for a business, 30 km for a settlement label, unbounded for a stop. Nothing left
-means the tapped label keeps its own name, point and tile data, and the source line says "not
-matched on Google".
+A business tap never resolves to a transit stop or a junction (`JUNCTION_CATEGORIES`). The pick
+must be within 1.5 km for a business and 30 km for a settlement label. With no pick the label
+keeps its own data and the source line says "not matched on Google".
 
-**After the pick.** When Google's name is not in the app language's script and the map's label
-is, the map's label stays as the title (`NameScript.prefer`). A resolved link is remembered per
-open pin (`openPlaceCache`, 500 entries, persisted to `open_place_links.json`), so the next tap
-is instant and an offline tap opens the last listing seen; a slim, count-less listing is never
-remembered. The cache is dropped when the app's version changes and when a region's archive is
-updated or re-downloaded, because a link made by an older, worse rule would otherwise outlive the
-fix for it. A resolved listing that is permanently closed hides the open pin for good
-(`open_place_closed.json`) only when no live listing of that name sits within 150 m; that list is
-a correction, not a cache, and is never dropped.
+#### After the pick
 
-**Why a tap did not link** is logged, one `VelaTap` line per tap that searched, with no
-coordinates (a tap answered from the remembered link prints none): the tapped label and kind,
-whether the tile seeded the sheet, how many results came back and how many survived the transit filter, the size of
-each pool (`agree`, `near60`, `cross`, `kindNear`, `kind`, `pool`, `exact`, `local`, `sameKind`),
-the tapped house number and how many candidates clashed with it, the three nearest answers, the
-pick before and after the distance cap, and `ms=search/total`. A transit-branch tap shows
-`cap=2147483647m`. Together with the sheet's source line, this says which dataset needs fixing
-for a place that never links.
+If Google's name is not in the app language's script and the map's label is, the map's label
+stays as the title (`NameScript.prefer`).
 
-**When Google is off.** Offline, or with "Use Vela without Google" on, nothing about the tap
-reaches Google: an open pin shows its tile data (plus the pack twin), or the listing remembered
-from an earlier online tap, and a basemap tap keeps its name and whatever the pack knows. No
-spinner waits on a host that cannot answer. With only "Look up tapped places on Google" off, an
-open pin stays on its tile data, while a basemap tap, which has nothing else to show, still
-resolves.
+The link is remembered per archive pin (`openPlaceCache`, 500 entries,
+`open_place_links.json`), so the next tap is instant and an offline tap opens the last listing
+seen. A listing with no review count and no hours is not remembered. The cache is dropped when
+the app's version changes and when a region's archive is updated, so a link made by an older
+rule does not outlive its fix.
+
+A closed pick hides the pin only when no live listing of that name is within 150 m. The hidden
+ids persist in `open_place_closed.json`, capped at `CLOSED_OPEN_PLACES_CAP` (2,000).
+
+Each tap that searched logs one `VelaTap` line with no coordinates: the pool sizes, the three
+nearest answers, the pick and the timings.
+
+Offline, or with "Use Vela without Google" on, an archive pin shows its tile data plus the pack
+row, or the remembered listing. With only "Look up tapped places on Google" off, an archive pin
+stays on its tile data, but a basemap tap has nothing else to show and still resolves.
 
 ### Open-data hours
 
-AllThePlaces and OSM carry hours in OSM's `opening_hours` syntax. `core/util/OsmHours.lines` is
-the one converter for every open source (the tile seed, the place packs, and the Overpass path
-of a saved area). It turns the syntax into the same per-day lines Google gives
-(`Monday: 8 AM–5 PM`), which the sheet's hours section and the open-or-closed badge already read. It covers day
-ranges and lists (with or without spaces after the commas), ranges that wrap past Sunday,
-several time ranges per day, rule groups separated by commas as well as semicolons, `off` and
-`closed`, `24/7` and its spellings, open-ended times ("17:00+" means until midnight), overnight
-ranges, later rules overriding earlier days, and sun events (sunrise, sunset, dawn, dusk) shown
-as words. Public and school holidays are dropped from day lists, and a rule only about holidays
-or dates is skipped, because the lines describe an ordinary week. Anything else is shown as the
-text itself, cleaned of quotes, so nothing is invented.
-
-Measured against the distinct hours strings of every tagged business in one state's place pack,
-the converter went from 86% to 97.7% coverage. Before that, the pack path returned the raw tag,
-which is the "weird raw string" people saw with Google off.
+AllThePlaces and OSM carry hours in OSM's `opening_hours` syntax. `core/util/OsmHours.lines`
+converts it into the per-day lines Google gives (`Monday: 8 AM–5 PM`), which the sheet and the
+open-or-closed badge already read. Holiday and date rules are skipped, because the lines
+describe an ordinary week. Syntax it does not understand is shown as its own text. It converts
+97.7% of the distinct hours strings in one US state's place pack.
 
 ## Limits
 
-- **Coordinates are only as good as the source.** OSM snapping fixes the ones OSM has mapped,
-  locator snapping the chains; everything else is Overture's point, which for a big-box store can
-  be the parcel centroid, and a stacked tenant with no unit in its address gets an invented ring
-  slot.
-- **Chains lead.** A brand is worth +1.6, which is deliberate for recognizability but does mean a
-  chain pharmacy outranks a better independent one nearby. The agreement bonus stacks on top: a
-  branch its chain's locator lists (+0.6) whose OSM node carries the brand's Wikidata link (+0.8)
-  starts +3.0 ahead of an independent with the same contact details.
-- **The open layer has no ratings.** Ranking cannot know that a place is beloved, only what kind
-  of place it is and how completely it is described.
-- **Category priors are keyword lists.** A place whose category string is unusual falls to the
-  1.0 tier and needs a zoom to appear. The Google-side priors are English only.
-- **The bake folds EXACT and VARIANT duplicates, not OVERLAP ones.** An overlap needs the kinds
-  and the pool's shared words, which only the app has, so those twins are merged on screen in
-  Both mode and in the tap, never in the archive. Two more cases are in no rule yet: a non-fuel
-  department listing at the same point under a different name (the shop inside a fuel station
-  beside the station's brand), and Google's own two profiles for one business.
-- **Cross-script linking is half built.** The tap bridges a Japanese label to an English-language
-  listing; the Both-mode twin pass still compares English ambient names against the local-script
-  archive, so in such a city both copies can draw. The cross-script tap has not been checked on a
-  device in Japan.
-- **Legal forms written with dots survive.** The folding checks each word against the legal-form
-  list before it joins runs of single letters, so "S.r.l." becomes "srl" too late to be dropped
-  and "B.V." stays as "bv", so two listings that differ only by a dotted legal form are not EXACT
-  twins.
-- **The locality borrow can miss an east or west neighbor far from the equator.** `LOCFILL`
-  searches the row's 0.004 degree cell and the eight around it, while its reach east and west is
-  0.0027 degrees divided by the cosine of the latitude. Above about 47.5 degrees north or south
-  (Britain, most of Germany, Scandinavia, Canada) a donor within 300 m due east or west can sit two
-  cells away, and the row keeps its bare street line.
-- **Hours and `loc` arrive with a rebake.** A region baked before the fills and the `loc`
-  property shows street-line addresses and fewer hours until its next bake. Hours that exist only
-  as holiday or seasonal rules are not shown as a week.
-- **A rebake is not instant.** See [chapter 2](02-data-and-rebakes.md) for when the data is
-  rebuilt and how a phone picks up a new build.
-
-## Route preview
-
-While the route chooser is up (a route drawn, no drive running) the map shows no places at all:
-the open places layer, the basemap's points, transit icons, stop badges and your saved pins all
-hide, so the route and the trip's own pins are what you read. The destination keeps its place pin
-and its name. Everything returns when the chooser closes or the drive starts (a drive has its own
-rules, above).
+- A place that neither OSM nor a locator has sits on Overture's point, which for a big store
+  can be the parcel centroid. Mapping the shop in OSM fixes it within a week.
+- Chains lead. A brand is +1.6, and with a locator match (+0.6) and a brand Wikidata link
+  (+0.8) a branch starts 3.0 ahead of an independent with the same details. The archive has no
+  ratings, so rank reflects the kind of place and how fully it is described.
+- Category priors are keyword lists. An unusual category falls to the 1.0 tier, and the
+  Google-side keywords are English only.
+- Closures lag. Without `FSQ_HF_TOKEN` the Foursquare copy ends in February 2025, and a closed
+  place that none of the three sources records stays until someone tags it in OSM. A closed
+  Google listing hides the pin on that phone only.
+- The bake folds EXACT and VARIANT duplicates only. An OVERLAP needs the kinds and the pool's
+  shared words, which only the app has. No rule covers a shop inside a fuel station under a
+  different name, or Google's own two profiles for one business.
+- A non-Latin place without `name_en` cannot match Google's English name in Both mode, so both
+  copies can draw.
+- Legal forms written with dots survive. Each word is checked against the legal-form list
+  before single letters are joined, so "S.r.l." becomes "srl" too late.
+- The locality borrow can miss an east or west neighbor above about 47.5 degrees latitude,
+  because `LOCFILL`'s 0.004 degree search cells are not widened with latitude.
+- A downloaded archive stays at its bake until the region is updated
+  ([chapter 2](02-data-and-rebakes.md)). Hours that exist only as holiday or seasonal rules are
+  not shown.

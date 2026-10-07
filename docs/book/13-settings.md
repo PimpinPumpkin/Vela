@@ -1,47 +1,104 @@
-# Settings and page motion
+# 13. Settings and page motion
 
 ## What you see
 
-Settings opens over the map. A category opens its own page; Back returns to the category list,
-then the map. On supported Android devices, swiping back previews the previous page. Releasing
-commits the move; canceling keeps the current page. Settings > Appearance > Page transitions
-turns the animations off without changing the back actions. The preference defaults to on.
+Settings opens over the map as a list of twelve pages with a search field above it.
+
+- Appearance: theme, font, interface size, map colors, units, clock, language, Page transitions.
+- Map: traffic, transit lines, terrain, 3D buildings, map buttons, house numbers.
+- Places: "Place icons on the map", which places the map draws, what a place page loads.
+- Navigation: route picker, road-ahead bar, arrow, speed limit, cameras
+  ([chapter 3](03-cameras.md)), traffic rechecks.
+- Voice: spoken directions, street names, the voice library, speed and volume.
+- Search: voice search, on-device speech engines, contact search.
+- Saved places: export and import of places and lists, saved routes, parking history.
+- Offline maps: area and region downloads, automatic updates, storage
+  ([chapter 8](08-offline.md)).
+- Privacy: "Use Vela without Google", the Google session, the request counter, Clear history
+  ([chapter 7](07-talking-to-google.md)).
+- Performance: what loads ahead of time, how the map is drawn.
+- Diagnostics: diagnostics export, saved trips, the location and driving simulators.
+- About: version, update channel and checks ([chapter 12](12-releases.md)), map data credits,
+  support.
+
+Typing in the search field replaces the list with up to ten matching rows. Tapping one opens
+its page, scrolls to the row and tints it for a moment.
+
+Back from a page returns to the list, then to the map. A back swipe previews the page
+underneath until you release or cancel. Sheets on the map follow a back swipe down with the
+finger. Settings > Appearance > Page transitions turns the motion off and leaves Back working.
+
+On a keypad phone every page opens with its Back button focused, and returning to the list
+focuses the row you came from.
 
 ## Where the data comes from
 
-The motion preference is stored locally as `page_transitions` in `vela_settings`. No network
-request is involved. Settings search includes the new row and opens Appearance at that row.
+Nothing here uses the network. Most settings are stored in the `vela_settings` preference file,
+which Android backup includes. The motion switch is `PageTransitions`, key `page_transitions`,
+on by default. The search index is compiled into the app and matches labels in the app's
+language.
 
 ## How it is decided
 
-Navigation Compose owns the back stack and gesture progress. The map uses `main/map`; Settings
-uses `settings/<section>`. Distinct paths prevent case-insensitive matching from opening Map
-settings on startup. Pages slide over 250 ms with
-quarter-width outgoing motion; back reverses it, and RTL mirrors the direction. The map stays
-composed under a transparent destination so its camera is retained. Every page receives the
-same root map view model. The voice-library shortcut stacks the hub before Voice, and opening
-Voice from Offline replaces Offline so Back still reaches the hub. Search highlights belong to
-the destination entry. Keypad autofocus waits until the destination is RESUMED.
+### Pages and Back
+
+`SettingsScreen` hosts a Navigation Compose `NavHost` drawn over the map, and the host owns the
+back gesture. The start destination is `MAP_ROUTE` (`main/map`), which is empty and
+transparent. `MapScreen` stays composed under it, so the camera is where you left it. The list
+is the hub, `settings/hub`, and each page is `settings/<section>` from the `SettingsSection`
+enum. Navigation matches routes without regard to case, so the map and the Map page have
+different paths.
+
+Opening a page pops back to the hub first, so the stack is never deeper than map, hub, page.
+Voice opened from Offline maps replaces Offline, and the map's no-voice notice pushes the hub
+before Voice. Back from Voice reaches the hub either way.
+
+### Search
+
+`SEARCH_INDEX` in `ui/settings/SettingsHub.kt` maps each row label to its page, and a new row
+is added to it by hand. A query is a case-insensitive substring match on those labels. The
+chosen label travels with the destination entry, and the row built with that label
+(`Modifier.settingsAnchor`) scrolls into view.
+
+### Motion
+
+A Settings page slides in over 250 ms while the page under it moves a quarter of the width the
+other way. Back reverses it, and a right-to-left language mirrors it.
+
+Map sheets go through `SheetTransition`, 250 ms up and 200 ms down. It keeps a snapshot of the
+outgoing sheet until the slide ends, because the state that sheet showed is already cleared.
+Each kind of sheet has one stable key (`BottomOverlay`), so place details that arrive late do
+not replay the entrance. A canceled back swipe returns the sheet and changes nothing.
+
+The step list keeps its own animation, shared with the navigation bar. When browsing and
+navigation swap, the top controls fade and slide (`NavigationChromeTransition`). The map and
+the guidance session stay live.
+
+`PageTransitions` switches all of this off. It does not affect dragging a sheet by hand, the map
+camera or the photo viewer. [SPEC 10.4](../../SPEC.md) has every duration and exception.
+
+### Keypad focus
+
+Every page is built on `SettingsScaffold`. On a phone with no touchscreen, or with a physical
+D-pad, it requests focus on Back every 50 ms while nothing is focused and no key has been
+pressed, because the window can take focus away just after the page opens.
+
+Down from Back goes to the page's first control and Up from it returns to Back. Both are wired
+by hand, because Compose's own directional search clears focus at the edge of the top bar. Left
+and Right with no target are swallowed for the same reason.
+
+A page asks for focus only once its entry is RESUMED (`LocalSettingsPageActive`), so a page
+sliding in does not take focus from the one being left. [docs/dpad.md](../dpad.md) covers the
+rest of keypad operation.
 
 ## Limits
 
-Android 13/14 need the predictive-back developer option for gesture testing. The toggle controls
-Settings page transitions and map sheet entry/exit. Place details, both directions pickers, trip
-editors, results, arrivals, stop offers, transit guidance, and transit route details keep their outgoing snapshot
-while sliding down over 200 ms; entry slides up over 250 ms. Stable overlay keys prevent data
-refreshes from replaying the entrance. The driving steps sheet keeps its existing bar/list motion
-and animates Back before clearing its state. Map camera motion, direct sheet dragging and detent
-settling, photo viewers, and system back-to-home animations keep their own behavior.
-
-
-## Predictive sheet back and navigation mode
-
-A back swipe moves the open sheet down with the finger. Finishing settles it offscreen over
-160 ms and then closes it; canceling returns it over 180 ms without clearing the place or route.
-With Page transitions off, the same actions work without motion. Search, choosing a map point,
-and route alternatives retain their back priority, and ending a drive still asks for confirmation.
-
-Sheet shadows use 4 dp elevation, with the driving steps card retaining 6 dp. Route share and
-close actions reuse Place details' 36 dp circles and 18 dp icons. Switching between browsing and
-navigation fades/slides the top controls (220 ms in, 160 ms out) and animates the bottom bar;
-the map and active guidance are never recreated for the transition.
+- The search finds only the row labels listed in `SEARCH_INDEX`, which is kept by hand. A row
+  inside a collapsed section, such as Guidance volume, is not listed.
+- Android 13 and 14 show the back preview only with the system's predictive back developer
+  option on.
+- When Settings is the first thing in a session to take focus, focus requests do nothing until
+  a key is pressed. That first press lands on Back.
+- Open search, picking an area or a point on the map, the alternates list, a minimized route
+  picker, and the place sheet and step list during a drive handle Back themselves and do not
+  follow the swipe. Back during a drive asks before ending it.

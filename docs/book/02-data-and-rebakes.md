@@ -2,416 +2,238 @@
 
 ## What you see
 
-Nothing, when it works. The map, the places, the speed limits, the stop signs and the camera
-dataset all come from files this repository builds and hosts on GitHub releases. They are
-rebuilt on a schedule, and a phone picks up the new build either by streaming it or by offering
-you an Update on a region you downloaded, in Settings > Offline maps.
+Nothing, when it works. The offline map, the places on it, offline routing and search, speed
+limits, stop signs and the camera layer come from files this repository builds and hosts as GitHub
+release assets. They are rebuilt on a schedule. A phone picks up a new build by streaming it, by
+patching a file it downloaded, or by offering Update on a region in Settings > Offline maps.
 
-When it does not work, what you see is a region that looks wrong for no visible reason: a state
-whose downloaded map has no businesses, a country whose house numbers vanished, or an Update
-button that never appears. Most of this chapter is about why those happened and what now stops
-them.
+While a downloaded region updates, the card shows one of three states:
+
+- a percent, while a small update or a whole file downloads;
+- "Writing the places update" (or map update) with no percent, while a small update is written
+  into the file and checked. The check reads the whole file, which takes minutes on a slow head
+  unit;
+- "The small update did not fit. Downloading..." with a percent from 0, when the check fails.
 
 ## Where the data comes from
 
-One release per dataset, each with its own manifest the app reads, each independently rebuildable
-without shipping an app update. Every one is a fixed-tag prerelease ("infrastructure release")
-whose assets exist nowhere else, so any cleanup that deletes releases selects by the tag pattern
-`v0.*` and never by "prerelease" or "old".
+Each dataset has its own release and manifest and is rebuilt without an app update. The files
+exist nowhere else, so nothing may delete these releases ([chapter 12](12-releases.md)).
 
-| Dataset | Release tag | Manifest | Built from | Used for |
+| Dataset | Built from | Release, manifest | Rebuilt (schedule job) | How a phone gets a new build |
 | --- | --- | --- | --- | --- |
-| Open places | `places-overlays` | `places-overlay-manifest.json` | Overture Places, AllThePlaces, OpenStreetMap | The businesses on the map, offline and online |
-| Offline basemap | `basemap-tiles` | `basemap-manifest.json` | OpenStreetMap via planetiler 0.10.2 | The map itself with no signal |
-| World floor | `basemap-tiles` | `basemap-world.pmtiles` (no manifest of its own) | Natural Earth via planetiler | Coastlines, water, borders and place names anywhere, offline |
-| Offline routing | `obf-regions` | `obf-manifest.json` | OpenStreetMap via OsmAndMapCreator | Turn-by-turn with no signal, and posted speed limits |
-| Offline place search | `poi-packs` | `poi-pack-manifest.json` | OpenStreetMap | Searching places and addresses with no signal |
-| Road features | `road-features` | `road-features-manifest.json` | OpenStreetMap | Traffic lights, stop signs, crossings, speed bumps, speed cameras |
-| Surveillance cameras | `flock-cameras` | `flock-manifest.json` | DeFlock, in OpenStreetMap | The camera layer and the avoid-cameras feature |
-| Buildings | `building-overlays` | `building-overlay-manifest.json` | Microsoft building footprints (ODbL) | Filling OSM's suburban building gaps |
-| House numbers | `address-overlays` | `address-overlay-manifest.json` | OpenAddresses | House numbers where OSM has no `addr:housenumber` |
-| Speed limits | `maxspeed-overlays` | `maxspeed-overlay-manifest.json` | OpenStreetMap `maxspeed` | The posted limit without a routing download |
-| Voices and speech | `asr-models` (speech recognition); Piper voices come from sherpa-onnx's own `tts-models` release; `tts-runtime` holds the build-time sherpa-onnx AAR | Piper catalog in `:core` | Piper, sherpa-onnx | On-device speaking and listening |
-| Map fonts | `map-fonts` | none (one zip) | Roboto over Noto | Label glyphs for the offline style; online they come from GitHub Pages |
+| Places on the map | Overture Places, AllThePlaces, OpenStreetMap | `places-overlays`, `places-overlay-manifest.json` | A seventh of the catalog daily (`places-slice`), so each region weekly | Streamed. A download is patched or replaced |
+| Offline basemap | OpenStreetMap, through planetiler | `basemap-tiles`, `basemap-manifest.json` | 30 days (`basemap-a`, `basemap-b`) | Downloaded only, then patched or replaced |
+| World floor, zooms 0 to 7 | Natural Earth, through planetiler | `basemap-tiles`, `basemap-world.pmtiles` | By hand (`world-lowzoom.yml` with `publish: true`) | Once, with the first basemap download |
+| Offline routing | OpenStreetMap, through OsmAndMapCreator | `obf-regions`, `obf-manifest.json` | 90 days (`obf-us`, `obf-a`, `obf-b`), staged | Whole file, on Update |
+| Place packs (offline search) | OpenStreetMap | `poi-packs`, `poi-pack-manifest.json` | 30 days (`poi-a`, `poi-b`) | Row-level delta or the whole pack |
+| Road features (traffic lights, stop signs, crossings, speed humps, speed cameras) | OpenStreetMap | `road-features`, `road-features-manifest.json` | 30 days (`roads-a`, `roads-b`) | The file for the region you are in, again when `updatedAt` changes |
+| Grid cells, a region in 0.5 degree pieces | OpenStreetMap and the region's places archive | `cells-<region>`, with `cells-manifest.json` on `grid-cells` | 30 days (`cells-us`, `cells-a`, `cells-b`) | The whole cell when `rev` is newer |
+| Surveillance cameras | DeFlock's camera nodes in OpenStreetMap | `flock-cameras`, `flock-manifest.json` | Its own cron, Mondays 08:17 UTC | At app start when `version` is newer |
+| Buildings, where OSM has gaps | Microsoft building footprints (ODbL) | `building-overlays`, `building-overlay-manifest.json` | 90 days (`buildings-us`, `buildings-world`, `buildings-chunk`) | Streamed. A saved copy is never refreshed |
+| House numbers, where OSM has none | OpenAddresses | `address-overlays`, `address-overlay-manifest.json` | 90 days (`addresses`) | Streamed |
+| Speed limits without a routing download | OpenStreetMap `maxspeed` | `maxspeed-overlays`, `maxspeed-overlay-manifest.json` | 90 days (`maxspeed-a`, `maxspeed-b`) | Streamed |
+| Map fonts | Google Sans Flex over Roboto over Noto | `map-fonts` (one zip), also unpacked to GitHub Pages | By hand (`scripts/build-map-fonts.sh`) | From Pages online. The zip comes with the first basemap download |
 
-Every manifest URL is a build constant with a Gradle override for local testing, so a dev build
-can point at a manifest served from the laptop through `adb reverse`:
-`-PplacesManifestUrl`, `-PbasemapManifestUrl`, `-PworldBasemapUrl`, `-PobfManifestUrl`,
-`-PpoiPackManifestUrl`, `-ProadFeaturesManifestUrl`, `-PflockManifestUrl`,
-`-PoverlayManifestUrl` (buildings), `-PaddressManifestUrl`, `-PmaxspeedManifestUrl` and
-`-PmapFontsUrl`. Without one, each reads
-`https://github.com/PimpinPumpkin/Vela/releases/download/<tag>/<file>`, except `-PmapFontsUrl`,
-which overrides the online glyph base on GitHub Pages; the offline font zip's URL is fixed in
-`GlyphPackStore`.
+Not in the table:
 
-**The catalogs.** Rows come from four files in `tools/`, and the ids are shared wherever the
-extract is shared:
+- Speech models (`asr-models`) and Piper voices (sherpa-onnx's own `tts-models` release) are
+  fixed files.
+- `tts-runtime`, `obf-tools` and `cronet-runtime` hold build inputs. `cronet-build.yml` adds the
+  current Chrome for Android stable to `cronet-runtime` every Monday at 06:20 UTC.
+- `routing-graphs` holds the retired GraphHopper graphs. Nothing rebuilds it and no current
+  build reads it; it stays hosted for old app versions. A current build deletes old graphs at
+  first launch (`LegacyGraphs.purge`).
+
+### Catalogs
+
+Regions come from four files in `tools/` that share ids.
 
 | Catalog | Rows | Used by |
 | --- | --- | --- |
-| `routing-regions.json` | 458 | obf, basemap, place packs, road features, speed limits; carries each row's Geofabrik `pbf_url` |
-| `places-regions.json` | 448 | the places bake (its own boxes, same ids, the OSM extract looked up by id in the routing catalog) |
-| `overlay-regions.json` | 361 (groups `us` 51, `world` 185, `chunk` 125) | building footprints |
-| `address-regions.json` | 52 | house numbers (US states with an OpenAddresses source) |
+| `routing-regions.json` | 458 | Everything baked from a Geofabrik extract (each row carries its `pbf_url`) |
+| `places-regions.json` | 448 | Places, with its own boxes |
+| `overlay-regions.json` | 361, in groups `us`, `world`, `chunk` | Buildings |
+| `address-regions.json` | 52 | House numbers |
 
-The routing catalog covers every country-level extract Geofabrik publishes, plus first-level
-sub-areas for the countries Geofabrik divides (`germany-sub`, `france-sub` and so on, dispatched
-together as `all-sub`). `china-sub` joined on 2026-09-21: Geofabrik cuts China into 33
-sub-extracts (every province plus Beijing, Shanghai, Tianjin, Chongqing, Hong Kong and Macau, the
-largest 164 MB), so they bake like `germany-sub` while the whole-country row keeps
-`skip_obf: true`. Eleven rows carry that flag (California, France, Germany, Great Britain, Italy,
-Spain, Japan, India, Indonesia, Brazil, China): they run out of memory in the routing bake even
-filtered, and their sub-area rows cover them. 63 rows are `big: true` (over 450 MB of extract).
+The routing catalog has every country-level extract Geofabrik publishes, plus sub-areas for the
+countries Geofabrik divides (groups such as `germany-sub`). Eleven whole-country and whole-state
+rows carry `skip_obf: true`. Their sub-area rows cover them, so the routing, basemap and
+grid-cell bakes skip them and the places catalog leaves them out. A workflow matrix holds at most
+256 jobs, so the catalog bakes in halves or sets.
+
+Each manifest URL has a Gradle override for local testing (`-PplacesManifestUrl` and the rest,
+in `app/build.gradle.kts`).
 
 ## How it is decided
 
-### When each rebake runs
+### One bake at a time
 
-**One bake at a time, started by the bake conductor** (`bake-conductor.yml`, hourly at :05,
-`scripts/bake-conductor.py`, schedule in `tools/bake-schedule.json`). The data bakes have no crons
-of their own since 2026-09-29: on their own clocks they overlapped, and every bake shares the
-repository's 1,000 GitHub API requests an hour with CI and each other, so a heavy night failed the
-canary release, the F-Droid index and the bakes themselves with HTTP 403 and mailed a failure per
-region. Each hour the conductor:
+The bakes have no schedules of their own. They share the repository's 1,000 GitHub API requests
+an hour with CI, and overlapping bakes failed the app releases and each other with HTTP 403.
+`bake-conductor.yml` runs hourly at :05 (`scripts/bake-conductor.py`) over
+`tools/bake-schedule.json`. Each hour it:
 
-1. settles the run it started last: success marks the job fresh; failed regions are queued for a
-   retry of exactly those regions (a fresh dispatch with the job's region-list input, at most three
-   retries a cycle); a run where only the manifest step failed is rerun (`gh run rerun --failed`);
-2. starts nothing while any heavy bake is running (any workflow in the schedule) or while fewer than 400 API requests are left this hour;
-3. otherwise starts ONE bake: a pending retry first, else the most overdue job.
+1. Settles the run it started last. Failed regions are retried alone, at most `maxRetries` (3)
+   times a cycle. A run where only the manifest merge failed is rerun.
+2. Publishes the staged routing manifest if it is ready.
+3. Starts nothing while a workflow in the schedule is running or queued, or with fewer than
+   `reserve` (400) API requests left this hour.
+4. Otherwise starts one bake: a pending retry, else the most overdue job. A job is due
+   when `everyHours` have passed since its last good run.
 
-Its own run never fails, so it cannot mail a failure. Its record is `state.json` on the
-`bake-conductor` release (targeted at the root commit, like the cells releases, so it never sorts
-above an app release); the run summary shows every job's last good bake and next due date.
+The conductor's run never fails. Its record is `state.json` on the `bake-conductor` release.
+A bake started by hand is fine; the conductor sees it running and waits. A new bake or cadence
+is an edit to the schedule file.
 
-| Job (`tools/bake-schedule.json`) | Due every |
-| --- | --- |
-| Open places, one seventh of the catalog (`places-slice`, the weekday's seventh) | 24 h |
-| Offline place search, two halves (`poi-a`, `poi-b`) | 30 days |
-| Road features, two halves | 30 days |
-| Offline basemap, two halves | 30 days |
-| Grid cells: US, and the rest of the catalog in two sets | 30 days |
-| Buildings (`us`, `world`, `chunk`), house numbers, speed limits (two halves) | 90 days |
-| Surveillance cameras | **Weekly** cron, Mondays 08:17 (small, not a heavy bake) |
-| Offline routing (`obf-regions`, with the highway hierarchy), US and the rest in two sets | 90 days, into the STAGING manifest, which the conductor then publishes as the live `obf-manifest.json` after a clean cycle |
-| World floor | **Manual only** (`world-lowzoom.yml` with `publish: true`) |
+### The daily seventh of places
 
-Every workflow can still be dispatched by hand from the Actions tab; the conductor sees a
-hand-started bake as running and waits for it. Changing a cadence or adding a bake is an edit to
-`tools/bake-schedule.json`, not a new cron.
+The places catalog is sorted by id, and a row bakes on the day where `index % 7` equals the UTC
+weekday (Monday is 0): 64 regions a day. OpenStreetMap is the one source anybody can correct, so
+a fix there reaches the map within a week. The whole catalog is not baked daily because every
+rebake offers the archive again to everyone who downloaded the region. Each bake reads the
+newest Overture release and AllThePlaces run.
 
-The monthly places bake always bakes against the newest Overture release in the public bucket
-(a dispatch can pin one; the fallback is `2026-08-19.0`), and since 2026-09-22 against the newest
-AllThePlaces run too (`runs/latest.json`; the fixed id `2026-09-05-13-32-25` is only the fallback
-when that fetch fails). Before that, every bake since 2026-09-15 carried the same week-old chain
-locator data while AllThePlaces publishes weekly.
+### Routing goes through staging
 
-**The daily seventh.** OpenStreetMap is a real source of places, not just a donor of positions,
-and it is the one source anybody can fix. So a seventh of the places catalog rebakes every day:
-the catalog is sorted by id, and a row bakes on the day where `index % 7` equals the weekday
-(Monday = 0, UTC). Every region comes round once a week, always on the same weekday, about 64 regions a
-day. A seventh rather than everything because every rebake republishes the archive, and anyone
-who downloaded the region is offered it again; streaming users pick it up with no prompt at all.
+The routing bake writes `obf-manifest-staging.json`, which no phone reads. Only the manifest is
+staged: each region's file is overwritten in place as it bakes, and the live `obf-manifest.json`
+is what offers Update and lists new regions. The conductor copies staging over live once all
+three routing jobs finish a clean cycle (every region baked, retries included) and staging passes
+four checks: no live region is missing, no `rev` goes backwards, every row's file is on the
+release, and at least one region is newer. The replaced manifest is kept as
+`obf-manifest-previous.json`; copying it over the live name is the rollback.
 
-**The quarterly group.** The conductor runs the building groups, the house numbers and the two
-speed-limit halves as separate jobs, one after another. `quarterly-data-refresh` is kept for a
-manual all-at-once refresh (it fires them together, which is what the conductor exists to avoid).
-The obf bake runs into the staging manifest, and the conductor copies staging over the live `obf-manifest.json` once all three routing jobs finished a clean cycle (every region baked, retries included) and staging passes its checks: no live region missing, no revision going backwards, every file on the release, something newer; the old live manifest is kept as `obf-manifest-previous.json`. To roll back, copy `obf-manifest-previous.json` over the live name.
+The bake indexes roads only, from an extract that `osmium tags-filter` has cut to about a third
+of its bytes to fit a 16 GB runner. An extract with more than 250 MB of roads (`OBF_SPLIT_MB`)
+is cut into strips, indexed strip by strip and joined. The highway-hierarchy shortcuts
+([chapter 5](05-routing.md)) go in last; a region where that step fails ships without them.
 
-A rebake **overwrites the current generation in place**: same asset names, same manifest. New
-generations only fork when a file format changes, which is a deliberate cutover, never a cron.
+### How a bake runs
 
-### How a bake job runs
+A plan job builds the matrix from a catalog, one job per region bakes and uploads its own file,
+and a last job publishes the manifest. The rules that keep a bake from failing:
 
-Every workflow has the same shape: a `plan` job builds the matrix from a catalog, one job per region
-bakes and uploads only its own archive and emits a manifest entry as a build artifact, and a final
-job publishes the manifest. Parallelism per workflow: places `max-parallel: 8` per shard, basemap 4,
-obf 12, place packs 12, road features 16, buildings, house numbers and speed limits 8.
+- A rebake overwrites the same asset names. A new generation is forked only when a file format
+  changes.
+- Every OSM extract is downloaded through `scripts/fetch-pbf.sh`, which survives a mirror that
+  redirects in a circle.
+- Tools are pinned: planetiler 0.10.2 for the basemap; tippecanoe 2.79.0, go-pmtiles 1.31.2 and
+  DuckDB 1.5.4 for places.
+- The places read of Overture is pruned on its `bbox` column. A filter on the geometry reads
+  every place on earth: on Kentucky the scan took 504 s that way and 3.7 s on `bbox`.
+- A release asset must stay under 2 GiB. A basemap archive that reaches it is rebaked one zoom
+  shallower, and the phone uses an archive shallower than `FULL_MAP_ZOOM` (14) only offline.
 
-**Places.**
+What a places archive carries is [chapter 1](01-places.md). The other bake rules are in
+[SPEC sections 5.2 and 7](../../SPEC.md).
 
-- **The Overture read is pruned on Overture's `bbox` column, not on the geometry** (2026-09-18).
-  The region filter used to be `ST_X`/`ST_Y`, which DuckDB decodes per row, so every place on earth
-  was read for every region: 504 s of a 570 s Kentucky bake, once per region, 414 times a wave. The
-  same filter against the plain `bbox` struct lets row-group statistics skip everything outside the
-  region, and the identical 400,608 rows came back in 3.7 s. The geometry test stays as the exact
-  filter. With the scan down to seconds, `max-parallel` went from 4 to 8.
-- **The toolchain is cached and pinned.** tippecanoe 2.79.0, go-pmtiles 1.31.2 and DuckDB sit in
-  `~/vela-bin` under the cache key `bake-tools-<os>-tippecanoe-2.79.0-pmtiles-1.31.2-duckdb-latest`.
-  Every job used to build tippecanoe from source: 69 s of a roughly two-minute job, 414 times a wave.
-  osmium and jq still come from apt.
-- **Scratch goes on the big disk.** A runner's root has about 14 GB free and `/mnt` about 65 GB; a
-  continent-sized region (Australia: a 619 MB AllThePlaces extract, a 1.3 GB OSM extract, DuckDB's
-  spill and tippecanoe's temp files) fills root, and a runner whose disk fills reports only "the
-  runner has received a shutdown signal". `TMPDIR=/mnt/vela-work` moves all of it. DuckDB runs
-  with `memory_limit = 11GB` and a spill directory under the 16 GB runner, so a big box is a slower
-  bake rather than a dead one.
-- **The AllThePlaces decode streams.** The region's z15 tiles come out of the world archive by range
-  request (`pmtiles extract`), and `tippecanoe-decode` is filtered with `grep` before `jq` so it is
-  read one feature at a time; parsing a dense country as one JSON document took the runner down.
-  A cheap business-tag test runs first because AllThePlaces also carries national address registers
-  (Belgium's decode was 7.1 million rows, nearly all addresses).
-- **What the bake carries for a place** is chapter 1's subject. The parts that decide rebake
-  behavior: a dropped duplicate still donates its hours, phone and website to the row that won
-  (`atpfill` for a chain locator, `osmfill` for an OSM node, nearest same-name match only, never by
-  brand), and every row carries `loc`, its city, state and ZIP formatted the way the country writes
-  them. Both arrived on 2026-09-22, so a region baked before that has neither until its next rebake.
-- **An empty region publishes nothing.** Uninhabited rows (Ashmore and Cartier) have no businesses,
-  tippecanoe refuses an empty input, and the upload step skips them.
-- **The upload retries.** GitHub's asset upload answers 500 on big archives often enough to fail a
-  run by itself (a 300 MB archive, twice on 2026-09-17), so it tries four times, waiting
-  `30 s x try` between attempts.
+### How a manifest is published
 
-**Basemap.** planetiler is pinned to v0.10.2, downloaded with five retries and checked with
-`unzip -t`, because the moving `latest` asset came back as something other than a jar on busy
-runners and killed five jobs of the world bake. `PLANETILER_XMX = 10g`. A GitHub release asset
-must stay under 2 GiB; Nunavut's z14 bake did not, so an archive at or over 2,147,483,648 bytes is
-rebaked one zoom shallower, and fails loudly if it still does not fit. On the phone, an archive
-shallower than `FULL_MAP_ZOOM = 14` (read from byte 101 of its header) is used only offline, since
-streaming draws that ground better.
+For places, basemap and grid cells the manifest is derived from the files on the release
+(`scripts/repair-places-manifest.sh`, `repair-basemap-manifest.sh`, `merge-cells-manifest.sh`).
+GitHub cancels a job that is pending in a concurrency group when a newer run joins, so a merge
+job that folded its own run's entries into the old manifest could be canceled after its archives
+were uploaded. The repair keeps the old row for an unchanged archive (the same size, and not
+uploaded after the row's `rev`), builds a new row for anything else, and lets the run's own
+entries win. Running it twice changes nothing, and the next run repairs a merge that never ran.
 
-**World floor.** `world-lowzoom.yml` bakes z0-7 (default `maxzoom` 7) against Monaco, the smallest
-extract Geofabrik publishes: at those zooms the water, boundary and place layers come from
-planetiler's Natural Earth base data, not from OSM, so a tiny input measures the global cost. The
-result is about 11 MB (10.96 MB published). The app pulls it once alongside the first offline
-download and keeps it out of the per-region candidate list (`WORLD_ID = "world"`), so losing
-signal away from a downloaded region is a coarse map rather than a blank screen.
-
-**Routing.** Routing-only obf, indexed lean (`VelaObfShim`), from an extract pre-filtered by
-`osmium tags-filter` to highway ways, ferry and shuttle-train routes and restriction and route
-relations: that cuts a US state to about a third of its bytes and a quarter of its nodes, which is
-what fits the big rows under a 16 GB runner. `JAVA_HEAP = 12g` (above that the runner kills the
-JVM), `-XX:+UseParallelGC` so a doomed region fails fast. Measured before the filter: Bavaria needed
-`-Xmx22g` and 3 h 7 min on a 32 GB machine for a 694 MB obf. A dispatch writes to
-`obf-manifest-staging.json` by default (`staging: true`), which the app never reads; copying staging
-over `obf-manifest.json` flips the fleet's whole catalog at once. The conductor does that copy
-itself, and only after a clean cycle: all three routing jobs finished with every region baked
-(retries included), no live region missing from staging, no revision going backwards, every file
-present on the release, and something actually newer. A cycle that gave up with regions missing
-never flips. The manifest it replaces is kept as `obf-manifest-previous.json`; copying that back
-over the live name is the rollback.
-
-**Every bake downloads its extract through `scripts/fetch-pbf.sh`.** On 2026-09-30 Geofabrik
-answered every `-latest.osm.pbf` with a redirect to the same name plus a slash, a plain download
-followed it in a circle, and 213 of 231 place-pack jobs failed. The script tries the plain download,
-then walks the redirects one hop at a time dropping the stray slash, and if they run in a circle it
-reads the folder listing and takes the newest dated file for the region.
-
-**House numbers** come from OpenAddresses, not OSM: the bake resolves each source's current job id
-through the OpenAddresses batch API (ids rotate per refresh), and a source ending in `/*` folds every
-county and city source under that prefix into one archive for states with no statewide source.
-
-### How the manifest is published
-
-**Places and basemap: derived from the release.** The last job of a bake used to fold the run's own
-entries into whatever the manifest already said, and it sat in a concurrency group so parallel runs
-could not clobber each other. GitHub cancels a job that is *pending* in a concurrency group as soon
-as a newer one joins, so in a wave of runs the middle merges were killed after their archives had
-already been uploaded: on 2026-09-18, 10 of 25 basemap runs lost their merge and the manifest listed
-99 of 414 regions; on 2026-09-22, 34 of 54 runs of a state-wide places wave lost theirs, published
-new archives under the previous bake's revisions, and mailed a failure each.
-
-So the merge is now a repair. `scripts/merge-places-manifest.sh` and
-`scripts/merge-basemap-manifest.sh` do nothing but `exec` `repair-places-manifest.sh` and
-`repair-basemap-manifest.sh` with today's date and the run's entry directory. Each one:
-
-1. Lists every `places-*.pmtiles` or `basemap-*.pmtiles` asset on the release, with its size.
-2. Keeps the old manifest's row for an archive that has not changed. For both, "unchanged" means
-   the same size in MB **and** an upload date no later than the row's `rev`, because two bakes of
-   a small state can round to the same size (Nebraska, 2026-09-22). The basemap repair used the
-   size alone until the same day.
-3. Builds a fresh row for anything else. Places take name and bounds from `places-regions.json`
-   and look for a `places-<id>.<oldrev>.vpatch` asset to carry as the delta. Basemap takes the name
-   from the routing catalog and the bounds from the archive itself: one range request for the first
-   127 bytes, read by `scripts/pmtiles-bbox.py` (int32 E7 at bytes 102 to 117, min lon, min lat,
-   max lon, max lat), then passed through `scripts/clamp-bbox.py`.
-4. Lets the run's own entry files win for the regions it baked, since they carry the true bake
-   `rev` and any delta.
-5. Uploads with `upload_manifest`: up to five tries, sleeping `RANDOM % 15 + 5` seconds between
-   them, because several merges finishing together race on the one asset (`--clobber` deletes and
-   re-uploads, so the loser sees a 422 "already exists" or a 404; two of nine parallel runs on
-   2026-09-22).
-6. Lists the release again, and if an archive landed meanwhile, rebuilds (basemap once more; places
-   up to three attempts).
-
-The concurrency groups are gone from both merge jobs, and both merges run `if: always()`. The
-manifest is now a function of what is published: running it twice changes nothing, a merge that
-never ran costs nothing, and the next one puts everything back. A run with no entries of its own
-still runs the repair and heals whatever an earlier run left out.
-
-**Everything else still folds.** The obf, place pack and road features workflows serialize whole
-runs with a run-level concurrency group, and the building, house-number and speed-limit merges sit
-in their own merge-job groups; their merge scripts replace rows by id and keep the rest. They are
-dispatched far less often, in fewer and larger runs, which is what keeps the cancellation from
-biting them.
-
-### The Alaska box
-
-Alaska's extract crosses the antimeridian (the Aleutians reach past 180), so every source that
-derives a box from it (the PMTiles header, osmium's header box, Geofabrik's index) reports
-longitude -180 to 180. Read literally, `[49.8, -180, 73, 180]` covers every point between 49.8 N
-and 73 N on Earth. The address-overlay rule hides the basemap's own house-number layer wherever a
-house-number overlay covers the view, so the Netherlands, Britain, Canada and Germany north of
-Munich lost their house numbers to an empty Alaska overlay, while France and Spain, below the band,
-kept theirs (issue #257, fixed 2026-09-22). There was never a data gap to fill.
-
-Three layers of fix:
-
-- **The live manifests** (house numbers, buildings, speed limits, basemap) were patched by hand to
-  `E = -129.9`, which fixed every installed build with no update. The places catalog already had a
-  hand-set Alaska box.
-- **The catalogs and bake scripts** clamp it: `overlay-regions.json` and `address-regions.json`
-  carry `-129.9`, and `scripts/clamp-bbox.py` rewrites an `alaska` box whose west edge is at or
-  below -179 and east edge at or above 179, in the basemap bake, the basemap repair and the
-  speed-limit bake.
-- **The app refuses a globe-wide box.** `RegionPolys.boxCovers` only covers when
-  `e - w < WORLD_SPAN` (350.0) or `n - s >= WORLD_BAND` (120.0). The second clause keeps a real
-  whole-world row, like the world floor, working.
+The other workflows still replace rows by id in the old manifest, serialized by a concurrency
+group.
 
 ### Which region a point is in
 
-Since 2026-09-21 (issue #599) a region is picked by the polygon its extract was cut with, not its
-box. `scripts/region-polys.py` fetches the `.poly` Geofabrik publishes beside every extract in the
-routing catalog, simplifies each to `TOL_DEG = 0.05` (about 5 km), and writes
-`app/src/main/assets/region_polys.json` (458 regions, about 340 KB). `RegionPolys.covers(id, lat,
-lng)` answers from it, or null for an id it has no polygon for (the building catalog, or a row added
-since the last run of the script), and the region stores and catalogs then fall back to `boxCovers` (road features uses a plain
-box test). The tie-break
-among covering regions is still the smallest box. The trigger: Vietnam's extract carries the island
-claims, so its box reaches 114.6 E and swallows Hong Kong, and "download the area you're viewing"
-from Hong Kong announced Vietnam. `RegionPolysTest` fails if a catalog id is missing from the asset,
-so the script has to be rerun whenever a row is added.
+A region is picked by the polygon its extract was cut with, because a bounding box also covers a
+neighbor's land. `scripts/region-polys.py` simplifies the `.poly` file Geofabrik publishes beside
+each extract to about 5 km and writes `app/src/main/assets/region_polys.json`.
+`RegionPolys.covers` answers from it. For an id with no polygon (the building catalog, or a row
+added since the script last ran) the stores fall back to `RegionPolys.boxCovers`. Among covering
+regions the smallest box wins. `RegionPolysTest` fails when a catalog id has no polygon, so
+rerun the script after adding a row.
+
+An extract that crosses the antimeridian reports a box from longitude -180 to 180, which read
+literally covers every point in its latitude band. A house-number overlay with such a box would
+hide the basemap's own house numbers across the band. `boxCovers` therefore rejects a box 350
+degrees wide or more (`WORLD_SPAN`) unless it is also at least 120 degrees tall (`WORLD_BAND`),
+which is the world floor. For the `alaska` row `scripts/clamp-bbox.py` also cuts the east edge
+to -129.9.
 
 ### How your phone picks up a new build
 
-**Streamed data** (places, buildings, house numbers and speed limits while online; the basemap
-archive is never streamed, since online the map comes from OpenFreeMap) is read
-by HTTP range requests against the same URL, so a rebuilt archive is picked up as soon as the cache
-lets go of the old bytes. Forcing it is a matter of clearing the map cache from Settings > Offline
-maps. The places and basemap stores cache each manifest for `MANIFEST_TTL_MS = 60 min` and remember
-a failed fetch for `MISS_MEMO_MS = 10 min`, since the lookup runs on every camera idle. The cache
-expires on purpose: a bake publishes while the app is running, and a process that lives for days
-would otherwise never offer the Update (found on a device, a rebake four minutes old and no Update).
+Streamed data (places, buildings, house numbers, speed limits) is read by HTTP range requests
+against a fixed URL, so a rebuilt archive shows up once the map's tile cache drops the old bytes.
+Settings > Offline maps > Clear map cache forces it. The places and basemap stores cache a
+manifest for 60 minutes (`MANIFEST_TTL_MS`), so a long-running app still sees a new bake.
 
-**Downloaded data** stays exactly as downloaded, which is the point of downloading it. Each
-installed file's revision is recorded beside it (`revs.json` per store), and
-`MapViewModel.refreshRegionUpdates` compares each downloaded region's pieces against the
-manifests when Offline maps opens and again after any download or update: the obf by the routing row's `rev` (only when an installed rev
-is known), and every places and basemap archive whose box center falls inside the region's polygon.
-A region with anything newer, or with a places or map archive that never finished downloading,
-gets an **Update** button (a newer place pack alone does not show it; Update refreshes the pack
-when it is there). One tap refreshes, in order, the place pack,
-the places archives, the basemap archives and the routing file.
+Downloaded data stays as downloaded until it is updated. That includes the map you see online: a
+downloaded basemap archive answers tile requests where it covers them (`LocalBasemapTiles`). Each
+store records the installed revision (`revs.json`), and `MapViewModel.refreshRegionUpdates`
+compares it with the manifests when Offline maps opens and after any download. A region's row
+shows Update when its place pack, its routing file, or a places or basemap archive whose box
+center lies inside the region is newer, or when one of those archives never finished
+downloading. One tap refreshes the place pack, then places, then the map, then routing.
 
-- **Revisions.** Places, basemap and obf rows carry `rev` as the bake date, `YYYYMMDD`. Place packs
-  count instead: `rev` is the live row's plus one. Road features carry an `updatedAt` stamp, and the
-  app re-downloads a region's file on its own whenever the stamp differs (manifest cached
-  `MANIFEST_TTL_MS = 6 h`, `MAX_LOADED = 4` regions in memory). The camera dataset carries a
-  `version`; `FlockCameras.refresh` runs at app start and downloads it only when it beats both the
-  downloaded copy and the floor bundled in the APK.
-- **Same-day caveat.** Two bakes of a region on the same UTC day share a `rev`. The second one
-  overwrites the archive but the manifest's rev does not move, so a phone that downloaded the first
-  bake that morning is never offered the second, and no patch is published between them. The places
-  workflow's `rev` input overrides the stamp for testing.
+What counts as newer:
 
-**Delta updates** (bake publishing since 2026-09-18). A week of OpenStreetMap edits moves about one
-tile in a hundred, so a places rebake publishes a patch against the archive it replaces instead of
-making every downloader take a few hundred MB again. On 2026-09-22 the live places manifest listed
-416 regions, 36 of them with a patch.
+- Places, basemap, routing and grid cells: `rev` is the UTC bake date, `YYYYMMDD`. Two bakes on
+  the same day share a `rev`, so the second is never offered to a phone that has the first and
+  no patch is built between them.
+- Place packs: `rev` counts up by one per bake.
+- Road features: `updatedAt`, compared with the stamp stored beside the file. The manifest is
+  read again every 6 hours.
+- Cameras: `version`. `FlockCameras.refresh` runs at app start and downloads the dataset when
+  it beats both the downloaded copy and the one bundled in the APK ([chapter 3](03-cameras.md)).
 
-- **Built and proven in the bake, or not published.** The job fetches the published archive and
-  its `rev` before baking, runs `scripts/pmtiles-make-patch.py`, applies the result to a copy with
-  `pmtiles-apply-patch.py --verify`, and publishes only if the result carries the new archive's
-  fingerprint and the patch is under a third of the archive. It is uploaded as
-  `places-<id>.<fromRev>.vpatch` and the row gains `delta: {fromRev, url, sizeMb}`. A rebake that
-  also carries a change to the bake script usually fails the one-third test and gets no patch
-  (Guernsey and Jersey the day after the OSM source landed: 2506 of 4586 tiles, 2.17 MB against
-  3.3 MB, refused); nothing checks for script changes as such.
-- **The map bake does the same since 2026-09-28** (`basemap-<id>.<fromRev>.vpatch` on
-  `basemap-tiles`), fetching the old archive after planetiler finishes so the two do not share the
-  runner's disk. `repair-basemap-manifest.sh` finds the patch by name like the places repair.
-  `places-churn.yml` measures real churn by baking one region twice against OSM extracts N days
-  apart (Andorra, six days: 11% of tiles, 25% of bytes, a delta at 22% of a full download).
-- **Applied in place.** `PmtilesPatch` (format `VELAPTCH`, `VERSION = 2`) appends the changed tile
-  blobs and the rebuilt directory past the end of the file, `fsync`s, checks the fingerprint (SHA-256
-  over sorted tile ids, run lengths and tile hashes) against the directory it just wrote, and only
-  then rewrites the 127-byte header. An interrupted apply leaves the old archive intact and longer.
-  The patch names no offsets, only whether each tile rides in the patch or is already in the
-  archive under that id, so it lands on an archive an earlier patch or a compaction already moved.
-- **Only from the exact revision.** The installed `rev` must equal the patch's `fromRev`; a gap,
-  a refusal or a fingerprint mismatch falls back to downloading the region whole.
-- **Dead space is reclaimed locally.** A patch leaves the replaced tiles behind, counted per archive
-  in `dead.json`. Past a fifth of the file (`DEAD_LIMIT_DIVISOR = 5`), `PmtilesCompact` rewrites it
-  in tile order into a temporary file, needing the archive's size plus `MARGIN_BYTES = 32 MB` free,
-  checks the fingerprint and swaps it in. Past half the file in dead bytes, the delta is refused
-  and the region comes down whole. `adb shell setprop debug.vela.compact true` compacts after every
-  patch.
-- **Policy is the user's, and on Wi-Fi by default.** Settings > Offline maps > "Update downloaded
-  regions": "Never on its own" (`RegionUpdates.Mode.OFF`), "On Wi-Fi" (an unmetered network, as the
-  system judges it; the default since 2026-09-25) or "On Wi-Fi and mobile data". It was off until
-  somebody had watched a patch download and apply on a real phone, which happened on 2026-09-19. On Wi-Fi or mobile the app checks a minute after it
-  starts (`AUTO_PATCH_DELAY_MS = 60_000`), every 3 hours after that (`AUTO_PATCH_POLL_MS`), and 15 s
-  after a validated network appears; a check that read the manifests waits 20 hours
-  (`AUTO_PATCH_EVERY_MS`) before the next one, a check that could not read them retries.
-  Then
-  every installed places or basemap archive and place pack whose manifest publishes a patch from the
-  installed revision takes it quietly; routing files publish no patches and a full re-download is
-  never automatic. A tap on Update always tries the patch first, whatever the mode; without one
-  it downloads the archive whole, over the installed copy, which stays until the new one is complete.
-  Every attempt is recorded in the diagnostics ring (kind `delta`, `auto:` for the daily pass) and
-  in logcat under `VelaDelta`.
-- **Place packs have their own deltas.** `poipack_delta.py` publishes a row-level SQLite delta
-  (`<id>.delta.zip`) only when it is under half the full pack, and the app applies it whenever the
-  installed pack's rev equals `fromRev`, independent of the setting above. Basemap, obf and the
-  overlays have no delta: an update is a full download.
+### Patches
 
-So a fix that lands in OpenStreetMap reaches people in this order: the region's day comes round
-(within a week), streaming users see it once their cache lets go, and people who downloaded the
-region see an Update the next time they open Offline maps, within the hour of the bake.
+A week of OpenStreetMap edits changes little of a region: on Kentucky, 1.3% of the tiles and 3.2%
+of the bytes, a 4.4 MB patch against a 183 MB archive. So the places and basemap bakes publish a
+patch against the old archive.
 
-### What the update card is telling you
+- The bake applies the patch to a copy of the published archive and publishes it only if the
+  copy has the new archive's fingerprint and the patch is under a third of the archive.
+- The phone applies it in place (`PmtilesPatch`). It appends the changed tiles and a rebuilt
+  directory, checks the fingerprint, and only then rewrites the header, so an interrupted apply
+  leaves the old archive readable.
+- A patch applies only when the installed `rev` equals its `fromRev`. Otherwise, or on a
+  fingerprint mismatch, the whole file is downloaded over the installed copy, which stays until
+  the new one is complete.
+- Replaced tiles stay in the file as dead bytes. Past a fifth of the file
+  (`DEAD_LIMIT_DIVISOR`) `PmtilesCompact` rewrites the archive without them.
+- Place packs have their own delta, a small SQLite file of rows to delete and insert, published
+  only when it is under half the pack. `PoiPackStore.applyDelta` checks every table's row count
+  against the manifest before committing.
 
-An update of a downloaded region runs up to four files in a row: the place pack (offline search),
-the places file (the map's own places), the map, and routing. Each tries a small update first.
-The card shows three different things, and says which:
+### Automatic updates
 
-- a percent while something downloads, small update or whole file;
-- "Writing the ... update" with a moving bar and no percent while the small update is checked and
-  written into the file already on the phone. For the places file and the map this includes
-  re-reading the whole file to prove the result matches a fresh download, which on a slow head
-  unit takes minutes;
-- "The small update did not fit. Downloading ..." with a percent starting from 0 when that check
-  fails and the whole file is fetched instead.
+Settings > Offline maps > "Update downloaded regions" sets `RegionUpdates.Mode`: "Never on its
+own", "On Wi-Fi" (the default, meaning an unmetered network as the system reports it) or "On
+Wi-Fi and mobile data". When the mode allows the current connection, the app checks a minute
+after start, every 3 hours, and 15 s after a validated network appears. A check that read the
+manifests is not repeated for 20 hours (`AUTO_PATCH_EVERY_MS`). Nothing runs during navigation.
 
-Until 2026-09-30 all three shared one title, so the bar reached 100, sat still, and then counted
-up again with no explanation.
+The pass applies every published patch that starts from an installed revision, for places
+archives, basemap archives and place packs, and downloads again any grid cell with a newer bake
+(a cell is a few MB). It never downloads a whole places, basemap or routing file; those wait for
+Update. A place pack whose delta fails to apply is downloaded whole. A tap on Update tries the
+patch first in every mode. Each attempt is logged under `VelaDelta`.
 
-### Retired data
-
-`routing-graphs` (GraphHopper CH graphs, about 270 assets) is the previous generation of offline
-routing, replaced by `obf-regions` on 2026-09-15. Nothing in the app reads it and the workflow that
-built it is gone. The first launch after that update deletes the old graphs from the phone and
-tells the user to download their regions again (`LegacyGraphs.purge`). The release itself is still
-hosted, unreferenced.
+The patch format and thresholds are in [SPEC section 7](../../SPEC.md). Downloading and deleting
+regions is [chapter 8](08-offline.md).
 
 ## Limits
 
-- **A bad row in a source dataset lives until the next bake.** For places that is up to a week for
-  the OSM and AllThePlaces sides; for buildings, house numbers and speed limits, up to a quarter;
-  for routing, until someone dispatches it. Fixing it in OpenStreetMap is the durable route, and it
-  is why OSM wins the coordinate in the places bake.
-- **Overture publishes monthly**, so "rebake sooner" does not mean "fresher" for the fields that
-  come from Overture. It does for the AllThePlaces and OSM halves.
-- **The routing bake is manual and memory-bound.** A region whose filtered extract still does not
-  fit 12 GB of heap has no routing file, and the obf catalog changes only when someone dispatches it
-  and copies staging over live. If a region's roads have changed materially, dispatching that one
-  region is the fix.
-- **Nothing is versioned per user.** Everyone on a given day gets whatever the release currently
-  holds, which is why rebakes overwrite in place rather than accumulating generations. A patch
-  exists only from the immediately previous revision, so a phone two rebakes behind takes the whole
-  file.
-- **The data releases are huge to list.** Each of `obf-regions`, `places-overlays`, `basemap-tiles`
-  and `road-features` holds about 450 assets, about 780 KB of release JSON apiece, and they sort to
-  the top of the release list because they are republished constantly. The app updater therefore
-  reads app tags from the refs endpoint and never lists releases (a canary check measured three
-  requests, 208 KB); anything else that lists releases has to paginate or bound by tag.
+- A wrong row in a source dataset lives until the next bake, from a week for places to 90 days
+  for routing, buildings, house numbers and speed limits. Fixing it in OpenStreetMap is the
+  durable route.
+- Overture publishes about monthly. In between, the weekly places rebake refreshes only the
+  OpenStreetMap and AllThePlaces parts.
+- A routing region that fails all its retries holds back the Update offer for every routing
+  region, because the staged manifest is published only after a clean cycle and the next cycle
+  is 90 days later. Until then the fix is by hand: dispatch the missing regions with
+  `staging: true` and copy the staging manifest over the live one.
+- Routing files have no patch, so a routing update is always the whole file and never automatic.
+  A places or basemap patch exists only from the previous revision, so a phone two rebakes behind
+  takes the whole file.
+- A building overlay saved with an offline area and the world floor are never refreshed. The
+  font zip is replaced only when an app update raises `GlyphPackStore.PACK_VERSION`.

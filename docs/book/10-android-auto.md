@@ -2,470 +2,327 @@
 
 ## What you see
 
-Plug the phone into a car (or pair it wirelessly) and Vela can show up in the car's launcher as a
-navigation app. The car screen gets a landing list (Home, Work, recent and saved places, then nearby gas, food,
-coffee, parking and charging), a
-search box, a route preview with up to three routes and their times, and a drive screen: the map
-with your arrow and the route, a turn card with lane arrows, the arrival estimate, and a row of
-round buttons for mute, pause, search along the route and end. A second row of buttons on the map
-recenters, zooms and toggles an overview of the rest of the drive. The speed you are doing sits in
-the bottom corner, with the posted limit beside it when Vela knows it.
+Connect the phone to a car, by cable or wirelessly, and Vela can appear in the car's launcher as a
+navigation app. It opens on a list: Home, Work, recent and saved places, then nearby gas, charging,
+food, coffee and parking. From there you search or pick a place, preview up to three routes with
+their times, and start the drive.
 
-Whether it shows up at all is not Vela's call. On the car head units most people have, Android
-Auto lists a navigation app only when Google Play installed it, and Vela is not on Play. That gate
-is its own section below, because it is the thing people ask about first.
+The drive screen is the map with your arrow and the route, a turn card with lane arrows, the
+arrival estimate, and a row of round buttons for mute, pause, search along the route and end. A
+second row on the map recenters, zooms and shows the rest of the route. Your speed sits in the
+bottom corner, with the posted limit beside it when Vela knows it.
+
+Whether Vela is listed depends on how it was installed. Android Auto refuses an app that Google
+Play does not own, and Vela is not on Play. [The install gate](#the-install-gate) says what is
+known. [docs/ANDROID-AUTO.md](../ANDROID-AUTO.md) is the user guide.
+
+A car that runs Android itself (Android Automotive) involves no projection. Vela runs there as the
+ordinary app and can fill the map panel on the car's home screen.
 
 ## Where the data comes from
 
-- **Nothing runs on the head unit.** Android Auto projects: the phone does all of the work and the
-  car shows what the phone's Android Auto app sends it. Vela's car code is a service inside the
-  ordinary Vela app, bound by Android Auto when the car connects.
-- **The car screens use the phone's own instances** of the navigation session, the location
-  provider, the map data source, the saved and recent stores, the voice and the router. The car
-  adds no routing, guidance or voice logic of its own, so a route started on the phone appears on
-  the car and the other way round. How the drive itself runs is [chapter 4](04-navigation.md).
-- **The map picture** is the same Liberty style on OpenFreeMap's vector tiles the phone draws, with
-  the same Roboto-patched style file when the phone has one, rendered by MapLibre on the phone.
-  The snapshotter shares MapLibre's tile cache with the phone map.
-- **Lights, stop signs and speed cameras** along the route come from the phone's navigation
-  controller through a small bridge (`CarBridge`); plate cameras come straight off the bundled
-  camera set ([chapter 3](03-cameras.md)).
-- **The speed limit** on the car is the offline one only, read from a downloaded region's routing
-  file.
+Android Auto projects. The phone does all the work and the head unit shows what the phone's
+Android Auto app sends it. Vela's car code is a service inside the ordinary app
+(`VelaCarAppService`), bound by Android Auto when the car connects.
+
+- The car screens use the phone's own navigation session, location provider, map data source,
+  saved and recent stores, voice and router, handed to them as `CarDeps`. The car has no routing
+  or guidance logic of its own. [Chapter 4](04-navigation.md) covers the drive.
+- The map is the phone's Liberty style on OpenFreeMap vector tiles, with the Roboto-patched style
+  file when the phone has one, rendered by MapLibre on the phone. Tiles inside a downloaded region
+  are read from that file through the phone map's hook (`LocalBasemapTiles`).
+- Routes come from the phone's directions call ([chapter 5](05-routing.md)). Search and nearby
+  places come from the phone's search ([chapter 6](06-search.md)).
+- Lights, stop signs, level crossings, speed humps and speed cameras along the route come from the
+  phone's navigation controller through `CarBridge`. Plate cameras come from the bundled camera
+  set ([chapter 3](03-cameras.md)).
+- The speed limit is read from a downloaded region's routing file ([chapter 8](08-offline.md)).
 
 ## How it is decided
 
 ### What Vela declares
 
-Vela is a **navigation-category templated car app**. The manifest carries a `CarAppService`
-(`VelaCarAppService`) with the `androidx.car.app.category.NAVIGATION` and
-`androidx.car.app.category.FEATURE_CLUSTER` categories, `automotive_app_desc.xml` with
-`<uses name="template"/>`, the `NAVIGATION_TEMPLATES` and `ACCESS_SURFACE` permissions, and a
-second intent filter for `androidx.car.app.action.NAVIGATE` with `geo:` URIs, so "navigate to" from
-the assistant or another app opens straight on a route preview.
+Vela is a navigation-category templated car app. The manifest declares `VelaCarAppService` with
+the `androidx.car.app.category.NAVIGATION` and `FEATURE_CLUSTER` categories,
+`automotive_app_desc.xml` with `<uses name="template"/>`, the `NAVIGATION_TEMPLATES` and
+`ACCESS_SURFACE` permissions, and `minCarApiLevel` 1, the oldest car API. A second intent filter
+takes `androidx.car.app.action.NAVIGATE` with a `geo:` URI. A URI with coordinates opens on a
+route preview to them. A free-text query opens the landing list.
 
-```
-minCarApiLevel = 1        // the oldest car API, the widest set of hosts
-carApp         = 1.4.0    // androidx.car.app and app-projected
-```
+A templated app hands the host a template (a list, a search box, a navigation screen). The host
+draws it in the car's style and enforces its limits, such as six rows in a place list. The app
+draws only the map, on a surface the host provides.
 
-The host validator allows any host (`ALLOW_ALL_HOSTS_VALIDATOR`). The standard release allowlist
-rejected hosts it did not recognize, which showed up as Vela appearing in the launcher and then
-refusing to open.
+The host validator allows any host (`ALLOW_ALL_HOSTS_VALIDATOR`). The sample allowlist rejects
+head units it does not know, and Vela then shows in the launcher and refuses to open.
 
-"Templated" is the important word. A templated app does not draw its own interface: it hands the
-host a template (a list, a search box, a navigation screen) and the host draws it in the car's own
-style, and it enforces the template's rules while doing so. The one thing a navigation app draws
-itself is the map, onto a raw surface the host gives it.
+### One navigation loop
 
-### The session and its location feed
+The process has one `NavSession`. The phone's view model and the car session both feed it, so a
+route started on the phone shows on the car and the other way round. `VelaCarSession` watches the
+session and opens the drive screen when a drive starts, whichever side started it. A car that
+connects in the middle of a drive opens on the drive screen, with the landing list under it.
 
-Each projection is one session (`VelaCarSession`). It starts its own collector on the location
-provider and feeds fixes into the shared navigation session, so guidance keeps running with the
-phone's screen off and the phone app never opened. It uses the same fix gate as the phone:
+Each projection is a `VelaCarSession`. It collects fixes from the location provider and passes
+them to the session under the phone's gate: GPS provider only, accuracy 50 m or better. With
+"Simulate my location" on, the pinned point counts as the fix, and a demo drive started on the
+phone moves the car's arrow too. Guidance
+therefore runs with the phone's screen off and the app never opened. In that case the service
+does what the phone's view model would have done: it attaches the Vela voice, applies the "Spoken
+directions" setting, and opens the downloaded place packs.
 
-```
-GPS provider only, accuracy <= 50 m    // coarser fixes never drive guidance
-```
+A car can connect before Vela was ever opened on the phone, so location was never asked for. Both
+location collectors, the session's and the map's, wait on `CarLocationAccess.granted`. The landing
+list leads with an "Allow location" row that raises Android's permission prompt on the phone, and
+the map shows the whole world until the first fix.
 
-A car can connect before Vela was ever opened on the phone, and then onboarding never asked for
-location. Both location collectors (the session's and the map renderer's) wait on
-`CarLocationAccess.granted` instead of failing, the landing screen leads with an "Allow location"
-row that shows Android's permission prompt on the phone (`CarContext.requestPermissions`), and
-the map draws the world (`WORLD_CENTER`, zoom 1.5) until the first fix brings it to street zoom.
-Before this the renderer had no center to draw around and the car map stayed black.
+### The map is snapshots
 
-The phone's view model is the other feeder of the same session. They do not run together in
-projection, and the session's update is atomic, so a double feed is redundant rather than harmful.
+The host gives a navigation app a `Surface`, and MapLibre's live map is a View that needs a
+window. `CarMapRenderer` uses MapLibre's `MapSnapshotter`, which renders a camera position to a
+bitmap off screen. The renderer draws the bitmap on the car surface with a `Canvas`, then draws
+its own layers on top:
 
-### Why the car map is snapshots
+- The route, gray behind the arrow and blue ahead, with Google's congestion spans in amber, red
+  and dark red.
+- Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5.
+- The speed badge and the limit sign while navigating, unless Settings > Navigation "Show speed
+  and speed limit" is off.
+- One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which
+  prints every tile source's attribution and stays when the logo is turned off.
 
-The host hands a navigation app a `Surface`, not a View, and MapLibre's live map is a View that
-wants a real window. The first cut (2026-07-08) hosted a `MapView` inside a `Presentation` on a
-virtual display bound to that surface. It was replaced the same day by MapLibre's public
-`MapSnapshotter`: an off-screen map that renders a camera position to a `Bitmap`. `CarMapRenderer`
-draws that bitmap onto the car surface with a plain `Canvas`, then draws the route, the arrow, the
-speed badge and the credit on top.
+A snapshot takes roughly 100 to 300 ms, so the car map moves in eased steps. The render loop ticks
+every `TICK_MS` (70 ms) and asks for one snapshot at a time. A request that arrives while one is
+in flight marks the map dirty, and the next snapshot starts when the current one lands.
 
-The cost is frame rate. The renderer's own note puts a snapshot at roughly 100 to 300 ms, so the
-car map moves in steps that are smoothed by easing rather than at 60 fps. For a map that follows
-a car it reads as a moving map; for a map you pan with a finger it is visibly slower than the
-phone.
+All screens share one renderer and switch its mode: browse (north up, centered on you, no route),
+preview (the chosen route framed) and nav (heading up, following). A renderer per screen freezes
+the map, because the host does not deliver the surface again to a new callback. The snapshotter
+is kept across screens while the surface size is unchanged, since a new one reloads the style and
+the map flashes.
 
-```
-TICK_MS = 70     // the render loop's cadence; the snapshot time caps the real rate below it
-```
+On a screen change the host hands over a new `Surface` object for the same buffer queue. The
+queue takes one CPU connection, and the old object holds it until it is released, so the renderer
+releases the old `Surface` when the new one arrives. Left to the garbage collector, every frame
+on the new one fails to lock and the map stands still until a collection happens to run.
 
-A render asks for one snapshot at a time. A request that arrives while one is in flight marks the
-map dirty, and the next snapshot starts as soon as the current one lands, so the map is never more
-than one frame behind and snapshots never pile up.
+### Framing and following
 
-### One renderer for the whole session
+The templates cover part of the surface. The host reports the visible area, which is uncovered
+now, and the stable area, which is never covered. The arrow is framed in the visible area. While
+following in nav it sits `PUCK_DOWN` (0.72) of the way down, so more road shows ahead. The speed
+badge and the credit go in the stable area, because on a tall screen the map buttons stack over a
+corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at zoom 0).
+The 256 px figure doubles the offset and drops the arrow off the bottom edge.
 
-Every car screen uses the **same** renderer and only switches its mode: browse (north-up, centered
-on you, no route, so a finished drive's line does not linger), preview (the chosen route framed in
-blue), and nav (heading-up, following). Per-screen renderers froze the map: handing the host a new
-surface callback does not re-deliver the surface, so the new renderer never received one. The
-renderer also keeps its snapshotter across screen changes when the surface size is unchanged,
-because recreating it reloaded the whole style on every transition and the map flashed.
+The arrow is the phone's puck bitmap, an eighth of the screen's short side times the Arrow size
+setting. It rides the phone's between-fix estimator (`FollowEstimator`) and snaps to the route
+when a fix is within `SNAP_MAX_M` (40 m) of it. Heading is the GPS course when you move faster
+than `STOPPED_MPS` (1 m/s) and the bearing accuracy is 45 degrees or better. Otherwise it is the
+bearing of the route segment you are on, or failing that the last heading. The bearing to the
+nearest route point flickers on a parked car's GPS jitter and swings the view.
 
-### Framing: the visible area, the stable area, the arrow
+Nav zoom runs in five steps from 17.5 below 15 km/h to 15.2 at 100 km/h and up, eased between
+steps. A pan, a pinch or a zoom button stops following until `RECENTER_MS` (6 s) has passed or you
+press recenter. A pan moves the center by the finger's travel in ground meters. Reading the new
+center off the last snapshot adds the framing offset to every scroll event. A pinch zooms about
+the fingers, and a fling glides to a stop. The overview button frames the remaining route north
+up and holds it until you press it again or recenter.
 
-The templates cover part of the surface with their cards and button rows. The host reports two
-rectangles, and the renderer uses each for what it is for:
-
-- The **visible area** is what the templates are not covering right now. The arrow is framed inside
-  it: while following in nav the arrow sits `PUCK_DOWN` of the way down the visible area, so you
-  see the road you are driving into; otherwise the view centers in it.
-- The **stable area** is the part no template ever covers, in any state. The speed badge and the
-  credit live there, because on a tall head unit the map's button row stacks over the bottom
-  corner of the visible area and the badge drew under it (seen on a real unit, 2026-09-22). A
-  stable area smaller than 40 px either way is ignored in favor of the visible area.
-
-```
-PUCK_DOWN = 0.72                  // fraction of the visible area's height, following in nav
-meters per pixel = 78271.517 * cos(lat) / 2^zoom    // MapLibre's 512 px tiles, not 256
-```
-
-The 256 px constant put the look-ahead at twice the intended offset and the arrow fell off the
-bottom edge.
-
-The arrow is the phone's own puck bitmap, not one drawn by the car code, scaled to the car
-screen and multiplied by the Puck size setting (Settings > Navigation):
-
-```
-puck = shortSide / 8 * PuckStyle.scale(), clamped to 24..220 px
-PuckStyle.scale() = 1.0 normal, 1.25 large, 1.5 extra large
-```
-
-A fixed size was wrong on every screen at once: a 22 px radius was a fifth of the height of a
-480 px head unit, and a fortieth of the short side read too small. It turns by your heading minus
-the camera's bearing, so it points straight up in heading-up nav and along your course in a
-north-up view.
+[SPEC section 10.6](../../SPEC.md) lists the rest of the car constants.
 
 ### Theme
 
-**The palette is applied from the first snapshot.** The car map uses the same `applyMapTheme` the
-phone runs, through a small interface that lets it act on a snapshotter instead of a live style.
-The obvious hook, the snapshotter's style-loaded observer, never fires in practice: a style handed
-over as JSON finishes parsing before the observer is attached. So the renderer treats the first
-returned snapshot as proof the style is loaded, applies the palette, throws that frame away and
-renders a themed one. Every car map before that fix (2026-09-22) was stock Liberty under a
-darkening filter. The observer is still attached as a free second chance, and the darkening filter
-is kept only for the moment before the palette lands.
+The car map runs the phone's `applyMapTheme` on the snapshotter. The snapshotter's style-loaded
+observer never fires for a style passed as JSON, because parsing finishes before the observer is
+attached. The renderer takes the first returned snapshot as proof that the style is loaded,
+applies the palette, discards that frame and renders again.
 
-**Which look, light or dark:**
-
-| Phone theme (Settings > Appearance) | Car map |
+| Theme on the phone | Car map |
 | --- | --- |
 | Light | light |
-| Dark, AMOLED | dark (AMOLED gets the true-black palette) |
-| Auto | the sun the phone already computes |
-| System | the car's own day/night signal |
+| Dark, AMOLED black | dark, with the true-black palette for AMOLED |
+| Day and night | follows the sun as the phone computes it |
+| Follow system | the car's own day or night signal |
 
-Google's app follows the car. Vela has a theme setting, so an explicit choice is honored on the
-car too; only "System" defers to the head unit. A driver who had set Vela to dark got a light car
-map because the head unit said day, which is why the rule exists.
-
-**Re-theming.** The car flips day and night on its own. Before every render the renderer checks
-whether the look it applied still matches, and re-applies the palette if not, so a drive that
-starts in daylight goes dark with the car.
-
-The credit is one line, `© OpenStreetMap`, the phone's own text. The library's overlay printed
-every tile source's attribution as a watermark, and turning the logo off does not remove it, so
-the snapshotter's overlay hook is overridden to draw nothing (`QuietSnapshotter`).
-
-### Following, zoom and pan
-
-The arrow does not jump from fix to fix. It rides the phone's between-fix estimator, which
-integrates your speed along your course and folds each fix in as a correction over about a second.
-While navigating it is also snapped onto the route when a fix is close enough, so it rides the
-road:
-
-```
-SNAP_MAX_M   = 40.0    // map-match to the route within this distance, else the raw fix
-STOPPED_MPS  = 1.0     // below this the GPS course is noise
-BEARING_EASE = 0.22    // per tick
-ZOOM_EASE    = 0.06    // per tick, so a zoom tier change takes about a second
-RECENTER_MS  = 6000    // after a pan or pinch, snap back to following
-```
-
-Heading while navigating comes from, in order: the GPS course when moving faster than
-`STOPPED_MPS` with a bearing accuracy of 45 degrees or better; else the bearing of the route
-segment you are on; else the last heading held. A nearest-vertex bearing flickered between
-neighboring points on parked-car jitter and swung the whole view.
-
-The nav zoom tightens as you slow down:
-
-| Speed | Zoom |
-| --- | --- |
-| under 15 km/h | 17.5 |
-| under 40 km/h | 17.0 |
-| under 70 km/h | 16.3 |
-| under 100 km/h | 15.7 |
-| 100 km/h and up | 15.2 |
-
-The zoom buttons step one level (range 2 to 20), and a pan or pinch stops following until
-`RECENTER_MS` has passed or you press recenter.
-
-A pan moves the map center by the finger's travel in ground meters (meters per pixel at the
-current zoom), not by reading a point off the last snapshot. The snapshot's center is the camera
-target, which the renderer offsets into the visible area, so the old pixel lookup added that
-offset to every scroll event and the map flew off; several events landing on one stale snapshot
-also stopped a pan from adding up. A pinch zooms about the fingers, keeping the point under them
-in place. A fling (the host reports one when a finger lifts while moving) keeps the map gliding
-and slows it to a stop:
-
-```
-FLING_TAU_S     = 0.35   // seconds for the glide speed to fall to a third
-FLING_STOP_PX_S = 40.0   // the glide stops below this, in surface pixels per second
-```
-
-Recenter, the zoom buttons, overview and a route preview stop a glide, and the auto-recenter
-waits for it to end. The overview button frames the remaining route
-north-up and stays put until you press it again or recenter.
-
-### What the car map draws
-
-- **The route**, split at the arrow: gray behind, blue ahead, with Google's congestion spans
-  painted amber, red and dark red over the blue.
-- **Corridor dots** from zoom 13.5: lights, stop signs, level crossings and speed humps from the
-  phone's corridor fetch, speed cameras, and plate cameras along the route when the camera layer
-  is on.
-- **The speed badge**, in your units, with a round limit sign beside it while navigating when a
-  downloaded region's routing file has the road's limit (the same `currentRoadLimit` lookup the
-  phone uses, [chapter 8](08-offline.md#routing-with-no-signal)).
-
-The spoken alerts the phone raises (a camera ahead, speeding, a destination closing before you
-arrive) also arrive as a car toast, the template's one transient surface, because a muted car
-heard none of them.
+An explicit choice on the phone holds on the car, so a driver who set Vela to dark does not get a
+light map because the head unit says day. Before each render the renderer checks that the look it
+applied is still the current one and applies the palette again if it changed, so the map goes
+dark with the car.
 
 ### The screens
 
-**Landing (`MainCarScreen`, `PlaceListNavigationTemplate`).** Home, Work, recents and saved places,
-de-duplicated by location, then nearby categories (gas, EV charging, restaurants, coffee,
-parking) in the rows left over, so a new install never shows an empty list. When the categories
-do not all fit, the last row opens every quick category (`NearbyCarScreen` with no category). The
-template throws if handed more rows than its cap:
+| Screen | Template | What it holds |
+| --- | --- | --- |
+| `MainCarScreen` | `PlaceListNavigationTemplate` | The landing list: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby". Buttons for Search, Saved and Settings. |
+| `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, over the live map. Opened with no category, it lists the phone's quick categories. |
+| `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
+| `CarSettingsScreen` | `ListTemplate` | Spoken directions and the three avoids, written to the preferences the phone uses. |
+| `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
+| `RoutePreviewCarScreen` | `RoutePreviewNavigationTemplate` | Up to three driving routes with live-traffic times, and Go. |
+| `ActiveNavCarScreen` | `NavigationTemplate` | The drive. |
+| `AlongRouteCarScreen` | `ListTemplate` | Quick categories, then up to six results around the car. A pick becomes the next stop. |
 
-```
-MAX_ROWS         = 6
-MAX_DESTINATIONS = 3   // destinations on the landing list; Saved has the rest
-```
+The place list template throws past six rows (`MAX_ROWS`), so the landing list is cut before it is
+built. A category row carries the map's own marker as a small image (`Row.IMAGE_TYPE_SMALL`). As
+an icon the host tints it, and the marker becomes a white blob.
 
-**Nearby (`NearbyCarScreen`).** Without a category it is a `ListTemplate` of the phone's quick
-categories, each with the map's own marker. With one it searches around the car and shows the
-six nearest results in a `PlaceListNavigationTemplate` over the live map, each row with a distance
-span (the template requires one on a non-browsable row) and the address; a row previews a route.
-It is the pre-drive twin of search along the route, where a pick becomes a stop.
+While you type in search, the autocomplete answers with one small request, 300 ms after the last
+key, for a 20 km window around the car (`SUGGEST_SPAN_M`). The full search runs when you submit or
+pick a bare query row such as "Starbucks". A full search per keystroke queues requests behind
+OkHttp's per-host limit, because canceling a coroutine does not abort a call already on the wire.
+With no signal, or an empty answer, typed search reads the downloaded place packs and addresses.
 
-Its action strip is Search, Saved and Settings. **Saved (`SavedCarScreen`, `ListTemplate`)** lists
-Home, Work and every saved place (the landing list shows only six, mixed with recents), up to the
-host's list limit (`ConstraintManager.CONTENT_LIMIT_TYPE_LIST`); a row previews a route. **Settings
-(`CarSettingsScreen`, `ListTemplate`)** has toggles for spoken directions and the three avoids,
-written to the same `vela_settings` prefs and `RoutingPrefs` the phone uses.
+The route preview passes the avoid settings to the directions call and waits up to 15 s for a
+first fix. The template refuses a list without a Go action, so an empty result shows a plain
+message. Go names a provisional route first, the way the phone does.
 
-**Search (`SearchCarScreen`, `SearchTemplate`).** While you type, the autocomplete answers (one
-small request, biased to where the car is); the full search runs only when you submit, or when you
-pick one of the bare query rows the autocomplete returns ("Starbucks"). Contacts, when contact
-search is on, lead with up to two rows. Up to six rows in all.
+The drive's button row holds four actions, the template's cap: mute, pause or resume, search along
+the route, and end. A faster-route offer that saves a minute or more takes the mute slot. The
+buttons are icons, because the host draws a titled action as a text pill across the map. End is
+red and carries the primary flag. The host throws on a background color on any other action.
 
-```
-debounce       = 300 ms
-SUGGEST_SPAN_M = 20_000.0   // the autocomplete's window around the car, a town
-```
+Search along the route is two lists because the host refuses typing while the car moves.
 
-It used to run the full search on every keystroke: three result pages plus the nearby pass per
-letter. Canceling a coroutine does not abort an HTTP call already on the wire, so a typed word
-queued a dozen requests behind OkHttp's per-host limit and the spinner waited for all of them.
-Now a superseded keystroke's result is never published (the call already on the wire still runs out; the cancellation is rethrown, never
-turned into an empty list), and only a submit shows the spinner; while typing the previous rows
-stay up until the next answer replaces them.
-
-**Route preview (`RoutePreviewCarScreen`, `RoutePreviewNavigationTemplate`).** Driving routes from
-the same directions call the phone makes ([chapter 5](05-routing.md)), with live-traffic times. It waits up to 15 s (30 polls,
-500 ms apart) for a first fix. The template takes at most three routes and requires a duration or
-distance span on every row, and it refuses a non-loading list without a Go action, so an empty
-result shows a plain message instead. Pressing Go names a provisional route first, the way the
-phone does, and starts the drive with the Vela voice when it is installed and chosen. It passes
-the avoid settings (`RoutingPrefs`) to the directions call; until 2026-10-01 it passed none, so a
-car preview offered toll roads to a driver who had turned tolls off.
-
-**Drive (`ActiveNavCarScreen`, `NavigationTemplate`).** Covered in the next two sections.
-
-**Search along the route (`AlongRouteCarScreen`, two `ListTemplate`s).** The phone's quick
-categories as rows, each with the map's own category marker; a pick searches around the car and
-lists up to six results by distance; a result becomes the **next** stop through the same call the
-phone's in-drive search uses. It is two lists rather than a search box because the host refuses
-typing while the car is moving.
+The alerts the phone speaks (a camera ahead, speeding, a destination that closes before you
+arrive) also show as a car toast, so a muted car still gets them.
 
 ### The turn card and the cluster
 
-The host draws the turn card, not Vela, and it needs two separate things before it will:
+The host draws the turn card, and needs three things first:
 
-1. **`NavigationManager.navigationStarted()`**, after the navigation callback is set. Without it the
-   host shows the arrival estimate and never the turn card, which is exactly what the first
-   version did. The call must be balanced with `navigationEnded()` (a second start throws), so the
-   screen tracks it and ends it on arrival, on stop, and when the screen is destroyed, or the host
-   stays wedged in a "navigating" state for the next session.
-2. **`updateTrip()`** with a `Trip`: the current step with its distance and time, and the
-   destination with its estimate. This is the host's navigation data channel, separate from the
-   template, and it is what feeds the instrument cluster and a head-up display through the
-   `FEATURE_CLUSTER` category. Without it the host logged that it had no navigation source.
+1. `NavigationManager.navigationStarted()`, called after the navigation callback is set. Without
+   it the host shows the arrival estimate and no turn card. It must be balanced by
+   `navigationEnded()`. The screen ends it on arrival, on stop and when it is destroyed, or the
+   host stays in a navigating state for the next session.
+2. `updateTrip()` with the current step and the destination. This is the host's navigation data
+   channel. It also feeds the instrument cluster and a head-up display.
+3. An icon on the step's maneuver. Android Auto draws no card for a maneuver without one, so
+   `ManeuverMapper` sets the glyph the phone's banner shows.
 
-`ManeuverMapper` translates Vela's maneuvers into car maneuvers. Two details worth knowing:
+A car with a cluster display opens a second session for it, and that display accepts the
+navigation template only. `VelaCarAppService` gives it a `ClusterSession` with one bare
+`NavigationTemplate`. The turn and the arrival shown there come from the trip data above. The main
+session's place list is not allowed on that display and crashes the app there.
 
-- **Roundabouts** take their direction of travel from the route's own geometry when it has one,
-  and counter-clockwise otherwise; the exit number comes from the router. The car API throws on a
-  roundabout without an exit number, so 1 is the floor, not a guess.
-- **Far turns** lead with the road you are on:
+`ManeuverMapper` turns Vela's maneuvers into car maneuvers:
 
-```
-CONTINUE_FAR_M = 1_500.0   // past this, the card says "Continue on <road>" and the turn is the "then" step
-```
+- A roundabout takes its direction of travel from the route's geometry when it has one, and
+  counter-clockwise otherwise. The exit number comes from the router, with a floor of 1 because
+  the car API throws on a roundabout with none.
+- Past `CONTINUE_FAR_M` (1,500 m) the card reads "Continue on" and the road you are on, with a
+  straight arrow, and the turn is the "then" step. Closer in, the turn leads.
+- Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
+  lanes.
+- Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to
+  kilometers at 1,000 m. Zero is allowed so the host can say "now".
 
-The road is the phone's rule for its road-name pill: the road the last maneuver entered, following
-its silent renames. Up close, the turn leads and the one after it shows as "then". Lane guidance
-is drawn as a bitmap of arrows (valid lanes white, the rest dimmed) plus the lane data the host
-uses for placement, for up to eight lanes.
-
-Distances round like the phone's: to 10 ft (or m) below 100, to 50 above, switching to miles at
-1,000 ft and to kilometers at 1,000 m, with 0 allowed so the host can say "now".
-
-A paused drive replaces the turn card with a "Paused" message; pausing itself is the phone's pause
-([chapter 4](04-navigation.md)).
-
-### The button rows
-
-```
-action strip:   4 actions   // the template's cap
-map strip:      recenter, zoom in, zoom out, overview
-```
-
-The landing screen's map strip is recenter, zoom in and zoom out, since its map pans and pinches
-like the drive's. The route preview has no puck to recenter on, so its strip is overview (frame the
-selected route again), zoom in and zoom out.
-
-The drive's strip is mute (or a faster-route offer when one saves at least a minute, which takes
-the mute slot because there is no fifth slot), pause or resume, search along the route, and end.
-Every one is **icon-only** (`ic_car_*`): titled actions are drawn by the host as text pills across
-the top of the map, and on a real head unit they read as "Mute Pause End" written over the road.
-End is a red X, and it has to carry the primary flag, because the host throws when a background
-color is set on anything else.
+A paused drive shows "Paused" in place of the turn card.
 
 ### The voice
 
 The voice is the phone's, sent to the car as Android Auto's guidance audio. A drive started from
-the car picks the same engine the phone would (the Vela voice when it is installed and no other
-engine was chosen), and the service attaches the neural voice itself when the phone UI never ran,
-which it did not do before 2026-09-21.
+the car picks the engine the phone would: the Vela voice when it is installed and no other engine
+is chosen.
 
-It will still sound duller in the car than on the phone, and that is the protocol:
+### Android Automotive
 
-```
-Android Auto guidance stream = 16 kHz mono
-```
+Android Automotive is Android running in the car itself. Vela's templated screens belong to
+Android Auto, and on Automotive the ordinary app runs. Two manifest declarations serve it:
 
-Every navigation voice is band-limited on the car, Google's included. A head unit set to play
-navigation prompts over the phone-call link makes it 8 kHz.
+- Each launcher alias has a second intent filter with `MAIN`, `DEFAULT` and
+  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map panel of
+  its home screen. The start is an implicit intent, which only matches a filter that declares
+  `DEFAULT`, so the category cannot sit on the launcher filter alone. On a phone the same filter
+  answers "open maps" requests.
+- `MainActivity` and both aliases carry `distractionOptimized`. Without it the car grays Vela out
+  of its app list once the car is in gear.
 
 ### The install gate
 
-This section says what was observed and what does and does not work. It is not a guide to getting
-past Google's checks.
+What is established:
 
-**What a car log showed** (2026-09-22: a GrapheneOS Pixel 9 with sandboxed Play, Android Auto 17.4,
-"Unknown sources" on, and the install fields reading Play as the installer): when the phone
-connects, the Android Auto app asks the Play Store who owns each app. Play answered
+- When the phone connects, the Android Auto app asks the Play Store who owns each app, and it
+  refuses an app Play does not own. The phone's log shows both steps:
 
-```
-Finsky: PlayGearheadService app.vela, app owners empty
-CAR.VALIDATOR: Package DENIED; failed all other checks [app.vela]
-```
+  ```
+  Finsky: PlayGearheadService app.vela, app owners empty
+  CAR.VALIDATOR: Package DENIED; failed all other checks [app.vela]
+  ```
 
-and the same two lines for CoMaps and Organic Maps. The check is **Play's own install record**,
-not the installer field on the phone.
+- Some installers make the install look like Play's work. On some setups the car then lists Vela:
+  a rooted phone, or stock Android.
+- Android keeps two records of an install: who performed it (`installingPackageName`) and, from
+  Android 11, who started it (`initiatingPackageName`). The car reads the second as well as the
+  first. `adb install -i com.android.vending` sets only the installer and leaves the shell as the
+  initiator, and the car still refuses the app.
+- An in-app update replaces both records, and the car drops Vela until it is installed the same
+  way again. So when either record names Play (`InstallSource.setForCar`), the updater holds the
+  downloaded APK back, says "This update will drop Vela from Android Auto", and offers the file to
+  save for that installer. "Update anyway" installs it. Settings > About shows who installed Vela,
+  and who started the install when that differs.
+- The Desktop Head Unit does not run the ownership check. It lists a plain sideload, so it
+  previews the screens and proves nothing about the gate.
 
-**What that rules out:**
+Vela has no code that gets past the check. A Google Play listing is not the route for now. The
+open work is in [ROADMAP](../../ROADMAP.md) and the pinned issue #179.
 
-- **Installer spoofing.** Setting the install source to Play does not pass, and neither would a
-  stub package named like Google's installer: the question goes to Play, and Play never installed
-  the app.
-- **The "Unknown sources" developer toggle.** It was on in that log and did not cover a navigation
-  app.
-- **GrapheneOS.** No path is known. The one method seen to work on a stock phone (below) goes
-  through a Google package GrapheneOS does not ship.
+### Previewing on the Desktop Head Unit
 
-**What has been seen to work:**
+Google's Desktop Head Unit runs the car screens on a computer.
 
-- **A stock Pixel**, with KingInstaller's method that routes the install through Google's own
-  package installer (`com.google.android.packageinstaller`): Vela was listed.
-- **Aftermarket head units** with their own Android Auto receiver, which can be more lenient than
-  a factory unit's: a user reported Vela listed after KingInstaller plus an ADB install.
-- The older notes in [docs/ANDROID-AUTO.md](../ANDROID-AUTO.md) describe the toggle and the
-  installer spoof as the usual fix; the car log above is newer and says the factory path checks
-  more than either.
+1. Install it with `sdkmanager "extras;google;auto"`. It lands in the SDK under
+   `extras/google/auto/`.
+2. In Android Auto's settings on the phone, tap the version row ten times for developer mode, then
+   pick "Start head unit server" from the overflow menu.
+3. Run `adb forward tcp:5277 tcp:5277`.
+4. Start the head unit with `-c <config>/default.ini` and keep its standard input open, for
+   example with a fifo. With no config it drops the connection after the TLS handshake ("Failed to
+   read from transport"), and it exits when its input closes.
+5. Accept Android Auto's first-run prompts on the phone.
 
-**Test tools that do not answer the question:**
+Turn on "Simulate my location" first. The car map centers on the phone's position, and the
+simulated one is the only way to keep a real address out of a screenshot. The console takes
+`tap <x> <y>`, `screenshot <file>`, `day` and `night`. After reinstalling Vela, quit the head
+unit and start it again.
 
-- **Google's Desktop Head Unit** (the head-unit simulator) listed and ran a plain sideloaded Vela,
-  with no installer claim at all, on a stock Android 14 phone with Play installed and no account
-  signed in. Its log shows why that proves nothing: no ownership lookup happened, and Play noted
-  Vela only as an untracked package. The Desktop Head Unit skips the ownership gate, so it is a
-  **preview tool only**.
-- **Gearslip's "Car preview"** (its debug mode; Gearslip is a separate project by a contributor on
-  issue #179) renders Vela's car screens on the phone through the same host path a head
-  unit gets. It is what found the theme bug above, and like the simulator it tells you nothing
-  about the gate.
+A config with `instrumentcluster = true` makes Android Auto forward the turn data to the head
+unit's cluster. Version 2.0 of the head unit has no cluster display, so it never opens
+`ClusterSession`.
 
-**What Vela does about it.** Nothing in this repository opens the gate, and it is settled that
-nothing can (issue #179). What Vela does is not break the workarounds people already use. An
-install that claims Play as its source loses that claim the moment Vela updates itself, and the
-car drops Vela until it is reinstalled the same way. So when `InstallSource` sees Play recorded
-as the installer on a build that is not distributed there, the in-app updater stops and says so
-("This update will drop Vela from Android Auto"), and offers the downloaded APK as a file instead;
-"Update anyway" installs it and loses the listing. Settings > About shows which package is
-recorded as the installer, so you can check before and after an update.
-
-**What is planned or was considered:**
-
-- **The ownership experiment.** `-PappId=<id>` builds Vela under another package name (never a
-  shipped build). Sideloaded under the id of an app the account once installed from Play, it
-  answers one question: is the check Play's library record alone (it passes), or the signing
-  certificate as well (it fails)? It has to run in a real car, since the simulator skips the check.
-- **A "receiver" app on Play** that holds the car entitlement and shows what Vela renders. The
-  problem is the review, not the code: a Play app that draws a map on a car screen has to declare
-  the navigation category, which puts the receiver itself through Google's review of navigation
-  apps, and an app whose map comes from a second app outside Play behaves differently from what
-  that review saw. The roadmap's Play section explains why that risk lands on the whole developer
-  account.
-- **A Play listing of a Google-free flavor**, the honest version of the same idea, and a
-  phone-side sender that talks to a head unit without Google's app in the loop. Both are in
-  [ROADMAP](../../ROADMAP.md) under "A Google Play listing", with what each would take.
+Gearslip, a separate project, has a "Car preview" debug mode that renders the same screens on the
+phone. It says nothing about the gate either.
 
 ## Limits
 
-- **The gate.** On a factory head unit with a stock Android Auto setup, a sideloaded Vela is not
-  listed, and nothing in the app can change that. See above.
-- **Not re-checked on a unit.** The last rounds of car work (the icon-only strips, the stable-area
-  badge, the first-snapshot theme, the category markers, the new search) were built from photos
-  and logs of a real head unit and checked in Gearslip's preview, but not yet on a head unit again.
-- **The map is a slideshow with good easing.** Snapshot rendering caps the frame rate well below
-  the phone's. A live car map needs a View-backed renderer the template surface does not offer.
-- **Nearby results are not drawn on the car map.** The renderer draws the route, the puck and
-  the corridor dots, not search results, so the list is the only place they show.
-- **Search along the route searches around the car**, sorted by distance, not along the route
-  ahead, and a pick always becomes the next stop.
-- **Few route options on the car.** The preview is driving only and shows at most three routes;
-  the avoid switches live in the car's Settings screen, shared with the phone.
-- **A drive started from the car with the phone app never opened** has no navigation controller on
-  the phone, so it gets no corridor dots and no alert toasts.
-- **The speed-limit sign needs a downloaded region.** The phone falls back to an online limit
-  overlay; the car does not.
-- **The cluster is only as good as the car.** Vela sends the current step and the destination
-  through `updateTrip()`; what a given car's cluster or head-up display does with it is up to the
-  car.
-- **`CAR_INFO` is declared but unused.** The manifest asks for the car's own speed on Android
-  Automotive, but nothing reads it yet; the speed badge is GPS speed.
-- **The voice is band-limited** by the protocol, 16 kHz or 8 kHz as above, and no setting in Vela
-  changes that.
+- On a head unit that runs the ownership check, a plain sideload of Vela is not listed.
+- The map moves in snapshot steps, well under the phone's frame rate. A live map needs a
+  View-backed renderer, which the template surface does not offer.
+- Nearby results are not drawn on the car map. The list is the only place they show.
+- Search along the route searches around the car and sorts by distance. It does not follow the
+  route ahead, and a pick always becomes the next stop.
+- Only typed search has an offline fallback. Nearby and search along the route need a connection.
+- The route preview is driving only and shows three routes at most. The map draws the selected
+  route alone, with no pin at the destination.
+- A paused drive keeps the blue line on the car. The phone turns it lavender.
+- A drive started from the car with the phone app never opened has no navigation controller, so
+  it gets no corridor dots and no alert toasts.
+- The speed limit sign needs a downloaded region. The phone falls back to an online limit overlay
+  and the car does not.
+- The speed badge is GPS speed. The manifest asks for `CAR_INFO`, and nothing reads the car's own
+  speed yet.
+- Approximate location counts as granted on the car, but guidance takes only GPS fixes of 50 m or
+  better.
+- Vela sends the cluster the current step and the destination. What a car's cluster or head-up
+  display does with them is up to the car.
+- Android Auto's guidance stream is 16 kHz mono, so every navigation voice sounds duller in the
+  car than on the phone, Google's included. A head unit set to play prompts over the phone-call
+  link makes it 8 kHz. No setting in Vela changes either.
+- The Automotive declarations were checked on the emulator, which trusts the
+  `distractionOptimized` mark from any app. A production car also wants an install source it
+  trusts, so a sideloaded Vela may still be grayed out while driving.
+
+Not yet seen on a real head unit: the icon-only buttons, the badge and credit in the stable area,
+the palette applied from the first snapshot, category markers on list rows, autocomplete search,
+finger pan, pinch and fling, the "Allow location" row, the Nearby, Saved and Settings screens, and
+the cluster session.

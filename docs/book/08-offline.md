@@ -2,510 +2,302 @@
 
 ## What you see
 
-Settings > Offline maps has two ways in. **Download an area** is Google's picker (issue #609,
-2026-09-25): it drops you on the map with a frame over it (`MapUiState.areaPicking`, the insets
-`MapViewModel.AREA_FRAME_*`, shared by the overlay and the bounds math), and panning and pinching
-choose what the frame covers, from a neighborhood to half a state. Whatever the framing zoom, the
-area is saved at full street detail: every zoom from two above the framing one down to the vector
-tiles' last (14). The card under the frame prices it live: tiles counted per zoom, times the
-region's own density where Vela has its map archive (the archive's size over its box's tiles; the
-Woodland to Dixon frame, mostly farmland, estimated 5 MB and measured 5.9 MB from 509 sampled
-tiles at about 12 KB), else `AREA_TILE_KB` (110 KB). Over `AREA_MAX_TILES` (60,000, about half of a
-large US state) it says to zoom in or take the whole region. The region around the frame (routing,
-place pack, places file, the region's map and building outlines) only comes whole and is a
-checkbox on the same card. Before 2026-09-25 the button lived in Settings, saved whatever the map
-last showed at only a few zoom levels around the current one (so a zoomed-out view was saved with no
-street detail) and pulled the whole region silently. **Entire states &
-countries** is the catalog: one tap on a state, a province or a country downloads everything
-Vela needs to work there with no signal. One card on the map follows the whole download piece by
-piece, and one message at the end says whether the region is ready or only partly there.
+Settings > Offline maps has two ways to put data on the phone. **Download an area** puts a
+frame over the map. Pan and pinch until it covers what you want, and the card under it shows
+the size before anything downloads. **Entire states & countries** is the catalog. One tap on
+a state, province or country downloads everything Vela needs there under one progress card,
+and one message says whether the region is ready or only partly there.
 
-With a region on the phone and no connection, the map still draws streets, names and buildings,
-the businesses still show as pins, search still finds places and typed addresses, a route can
-still be planned and driven with spoken turns and the posted speed limit. The only sign that
-you are offline is a small globe with a slash through it and a grayed "Offline" in the search
-bar. There is no banner, because nothing is broken.
+With that data and no connection, the map draws streets, names and buildings, businesses show
+as pins, search finds places and typed addresses, and a route can be planned and driven with
+spoken turns and the posted speed limit. A globe with a slash and a gray "Offline" in the
+search bar are the only sign. Tapping the globe checks the connection again.
 
-What you do not get is anything that only Google or a live feed can answer: traffic, reviews,
-photos, fresh opening status, transit directions, live departures. Those do not show an error
-either. They simply are not there, and this chapter lists which ones.
+Anything only Google or a live feed can answer is absent, with no error shown: traffic,
+reviews, photos, current opening status, transit directions, live departures. A transit stop
+shows the last board seen there, with the time it was fetched.
+
+The page runs top to bottom: the area download and its settings, Keep viewed places for
+offline, Storage, Downloaded, then the catalog as one alphabetical tree. The tree reads its
+hierarchy from the parentheses in the catalog names (`regionTree`), and a parent row
+downloads its pieces one after another. Sizes are installed sizes, and a region over 1 GB
+(`CONFIRM_MB`) asks first.
 
 ## Where the data comes from
 
-Everything a download pulls is baked by this repository and hosted on GitHub releases, one
-release per dataset. How and when each one is rebuilt is [chapter 2](02-data-and-rebakes.md);
-this chapter is what lands on the phone and what the phone does with it.
+Every file is baked by this repository and hosted on GitHub releases
+([chapter 2](02-data-and-rebakes.md)). [SPEC section 7](../../SPEC.md) lists every manifest,
+rule and constant.
 
-| Piece | On the phone | Format | Example size |
+| Piece | On the phone | Format | Delaware |
 | --- | --- | --- | --- |
-| Routing | `files/obf/<id>.obf` | OsmAnd `.obf`, served raw, so the download is the install | Delaware 20 MB, Luxembourg 39 MB, Saarland 8 MB |
-| Place pack | `files/poipacks/<id>.db` | SQLite (POIs, addresses, street names), zipped for the download | installed is about 2.35 times the zip when the manifest does not say |
-| Places archive | `files/places/<id>.pmtiles` | PMTiles, the open places layer | Kentucky 183 MB; about half a gigabyte for a big US state |
-| Basemap | `files/basemap/<id>.pmtiles` | PMTiles, OpenMapTiles schema from planetiler | Saarland 33 MB at full detail (z14) |
-| World floor | `files/basemap/world.pmtiles` | PMTiles, z0 to z7, no roads | about 11 MB, once |
-| Glyph pack | `files/glyphs/` | the `map-fonts` zip, unpacked | about 200 MB on disk, once |
-| Sprite | `files/sprites/` | copied out of the APK | about 230 KB, once |
+| Routing | `obf/<id>.obf` | OsmAnd `.obf`, served raw | 8 MB |
+| Place pack | `poipacks/<id>.db` | SQLite, zipped for the download | 23 MB (10 MB zipped) |
+| Places archive | `places/<id>.pmtiles` | PMTiles of the open places layer | 58 MB |
+| Basemap | `basemap/<id>.pmtiles` | PMTiles, OpenMapTiles schema | usually the largest piece |
+| World floor | `basemap/world.pmtiles` | PMTiles, z0 to z7, no roads | about 11 MB, once |
+| Glyph pack | `glyphs/` | the `map-fonts` zip, unpacked | about 200 MB on disk, once |
 
-Put together, a Northern California download installs about 800 MB. Before the size shown on
-the row included the places and map archives, the same row read 126 MB, which was routing and
-search only.
+The folders sit under the storage root, internal or the SD card. The region that holds the
+Bay Area installs at about 800 MB.
 
-Two more things arrive by other paths:
-
-- **Road features** (traffic lights, stop signs, crossings, speed humps, speed cameras) are one
-  small file per region, a few hundred KB for a US state. The app pulls the file for the region
-  it is in the first time it needs it, while online. The download button does not fetch it.
-- **A saved area** (the "area you're viewing" button) is MapLibre's own tile download, stored in
-  MapLibre's database, not in the folders above. It also pulls the building overlay for the area.
+Road features (traffic lights, stop signs, crossings, speed humps, speed cameras) are one
+small file per region in `files/roadfeatures`. The app fetches the file for the region it is
+in the first time the map or a route needs it, while online. No download button does.
 
 ## How it is decided
 
-### What one tap pulls
+### What a region download pulls
 
-A catalog row is **one download under one progress card** (`MapViewModel.downloadRoutingGraph`),
-each piece starting when the one before it finishes:
+`MapViewModel.downloadRoutingGraph` runs the pieces in order under one card:
 
-1. the routing `.obf` ("Downloading <region> routing");
-2. then the place pack ("Saving <region> places for offline search"): the region's own, or for a
-   piece of a split country or state its parent's (Northern California gets California's, which
-   then serves Southern California too). A parent pack over 600 MB zipped (Germany's is 1.9 GB) is
-   left for "Get places", which says whose pack it is and how big before it downloads;
-3. then the places archives, if **Include places with downloads** is on (it is by default):
-   step 1 of `fetchRegionArchives`, "Saving <region> places for the map";
-4. then the basemap archives, step 2, "Downloading the <region> map", and once those are in, the
-   glyph pack and the world floor.
+1. The routing file.
+2. The place pack. A piece of a split country or state uses its parent's pack
+   (`RegionPacks.packFor`). A shared parent pack over `AUTO_PARENT_MAX_MB` (600 MB zipped) is
+   left for the row's Get places button, which names the parent and its size first.
+3. The places archives, when Include places with downloads is on (the default).
+4. The basemap archives, then the glyph pack and the world floor if they are missing.
 
-The card names the piece it is on (`regionFileStep` is 1 for the places file, 2 for the map) and
-shows that piece's own percent, which starts again at zero for each file. The place pack runs
-chained (`downloadPoiPack(chained = true)`), so it neither clears the card nor announces itself.
-Nothing says "ready" until the last piece is done, and then exactly one line does:
+One message ends the download: `mapvm_region_ready` when every piece arrived,
+`mapvm_region_incomplete` when one failed, which tells the user to tap Update. Nothing says
+"ready" before the map is in, so nobody turns Wi-Fi off with places drawn on a gray map. A
+piece the catalog has nothing published for counts as complete.
 
-- `mapvm_region_ready`: "<region> is downloaded: map, routes and places work offline", when every
-  piece arrived;
-- `mapvm_region_incomplete`: "<region> is only partly downloaded. Connect and tap Update in
-  Settings, Offline maps to finish it", when any piece failed.
+The places and basemap catalogs are cut differently from the routing catalog. `archivesFor`
+takes the archive with the region's own id, else every archive whose box center lies inside
+the region, else the smallest archive covering the region's center. The same-id rule comes
+first because the center rule alone also pulls parent and neighbor archives.
 
-A piece the catalog has nothing published for counts as complete (there is nothing to finish), and
-so do the places archives when the include setting is off. A cancel stops at the next file and
-says nothing. If the routing file fails, the chain stops there with the routing-failed message. A
-parent row ("Germany", "United States") queues its pieces and downloads them one after another;
-cancel clears the queue.
+### What a picked area pulls
 
-**Why one card.** Until 2026-09-23 only the routing file and the pack ran under the card. The pack
-ended with its own "places are searchable" line and the card went away, while the places file and
-the map, the biggest piece, carried on as separate silent jobs. A user read that line as done,
-turned Wi-Fi off, and had searchable places drawn on a gray map. Now the card stays up until the
-map is in, and the one message at the end is the only thing that says the region is ready.
+`downloadPickedArea` saves the framed box with MapLibre's own tile download, into MapLibre's
+database, from two zoom levels out from the framing zoom through 14, the vector tiles' last.
+The area has street detail whatever zoom it was framed at.
 
-The places and basemap catalogs are cut differently from the routing catalog, so the chain has to
-decide which archives "belong" to a region (`archivesFor`): the archive with the region's own id
-if there is one, else every archive whose box center lies inside the region, else the smallest
-archive covering the region's center. The same-id rule comes first because the center rule alone
-once turned an 800 MB Northern California download into 1.5 GB, pulling the whole-state places
-file, a city test bake and a neighboring state's places and map.
+The size on the card is the tile count times the region's tile density, measured from its
+basemap archive, else `AREA_TILE_KB` (110). Over `AREA_MAX_TILES` (60,000, about half of a
+large US state) the card says to zoom in or take the whole region.
 
-The size on the row and in the confirm dialog is the **installed** size of all of it: the routing
-file (`installedMb`, else the download size, which for an `.obf` is the same number), plus the
-pack (`installedMb`, else the zip times 2.35), plus the places and basemap archives the chain will
-pull. Anything over a gigabyte asks first:
+Tiles alone give a map with no routing or search. The card offers one of two additions:
 
-```
-CONFIRM_MB = 1024
-```
+- The region's grid cells the frame touches. This is the default where cells are baked.
+- The whole region: the download above plus the region's building overlay
+  (`overlays/<id>.pmtiles`).
 
-**Saving the area you're viewing** stores MapLibre tiles from one zoom level above the current
-one to three below it, capped at z16, up to a tile budget:
+Where no place pack covers the area, the whole-region choice fetches places and addresses
+from OpenStreetMap live, padded by `GEOCODE_PAD_DEG` (0.09 degrees, about 10 km each way).
 
-```
-TILE_LIMIT = 50_000   // tiles; past it the save stops and says the area is too large
-```
+### Grid cells
 
-and then treats the region that contains the area as if you had tapped its row: routing, pack,
-places, basemap, plus the building overlay. Only where no place pack covers the area does it fall
-back to fetching places and addresses from OpenStreetMap live, padded around the center:
+Cells are 0.5 degree tiles of one global grid, clipped to the region. Each is a zip of its
+routing file, its place pack and its slice of the region's places tiles
+([SPEC 7.6](../../SPEC.md)). `CellStore` installs the parts under the cell's id into the
+stores a region download fills, so routing, search and the places layer read them with no
+code of their own.
 
-```
-GEOCODE_PAD_DEG = 0.09   // about 10 km of latitude either side, so addresses across the metro resolve
-```
+Cells download one after another under the region card, and a cancel keeps the ones already
+down. Downloaded lists them as one row per region. Downloading the whole region afterwards
+removes its cells, or search would list each place twice. An update pulls the zip again.
+
+Delaware is 10 cells and 37.7 MB against 75.6 MB for the whole region. Four trips across cell
+edges route exactly as over the region file (`ObfCellsProbeTest`). In the region that holds
+the Bay Area the largest cell is 93 MB.
 
 ### Which region a point is in
 
-"The smallest box that covers the point" is wrong at borders, because a region's box is a
-rectangle and the region is not. Vela ships the real boundary of every catalog region (the
-polygon Geofabrik cut the extract with, simplified to a few kilometers, about 340 KB for all
-458 catalog regions) and asks it first; the box is the fallback only for a region with no
-polygon. A box that spans the whole globe in longitude is an extract crossing the antimeridian,
-and it never covers anything by itself:
+A region's box is a rectangle and the region is not, so a neighbor's box often covers a point
+its data does not reach. Vela ships the real boundary of every catalog region
+(`assets/region_polys.json`, Geofabrik's polygons simplified to a few kilometers, 340 KB).
+`RoutingRegion.covers` asks `RegionPolys` first and uses the box only for a region with no
+polygon. Among covering regions the smallest box wins.
+
+Files already on the phone are indexed by box. That is why the router and the basemap pick
+below run a second test against the data itself.
+
+### Offline, or only Google off
 
 ```
-WORLD_SPAN = 350.0   // degrees of longitude: this wide is the antimeridian, not a region
-WORLD_BAND = 120.0   // unless it is also this tall, which is the world archive on purpose
-```
-
-### Offline, or just Google off
-
-Two switches decide what the app asks for, and they are not the same switch.
-
-```
-offlineNow = the latched offline flag || the system reports no internet
+offlineNow = the latched offline flag || no network by either test
 googleOff  = offlineNow || Settings > Privacy > "Use Vela without Google"
 ```
 
-The offline flag latches only if the connection is **still** gone 3 seconds later, so a Wi-Fi to
-cellular handoff does not flash the indicator. Coming back online clears it at once, and so does
-any live search that succeeds.
+Two tests say whether there is a network. Android's is a default network with internet
+capability. Vela's own is `NetHealth`: an HTTP response in the last `FRESH_MS` (15 s) with no
+unreachable host since. When Android reports no network, the flag latches only if, 3 seconds
+later and once Vela's own traffic has gone stale, both tests still say no, so a Wi-Fi to
+cellular handoff does not flash the indicator. The flag clears at once when the network
+returns or any request gets a response.
 
-| | Offline | Google off, online |
-| --- | --- | --- |
-| Map tiles | downloaded basemap, else the world floor | streamed as usual |
-| Search | on-phone packs only | the OpenStreetMap geocoder plus the packs |
-| Routing | the on-phone `.obf` | the open router only, no traffic, no Google fallback |
-| Reviews, photos, details, tap lookup | skipped | skipped |
-| Departure boards | last board seen at that stop | the open feeds, not Google's page |
+The basemap pick is stricter: a network that never validated, such as a car Wi-Fi with no
+data, also counts as offline.
 
-So Google off still uses the network for everything that is not Google. Offline uses nothing.
+Google off still uses the network for everything that is not Google: streamed tiles, the
+open routers and geocoder, Transitous boards. Offline uses nothing.
+
+### The map with no signal
+
+Online, the style always streams. `LocalBasemapTiles`, an interceptor in MapLibre's HTTP
+client, answers a basemap tile request from a downloaded region file when the tile's corners,
+padded by `EDGE_PAD_DEG` (0.05 degrees), lie inside that region's boundary and the file is a
+full-depth bake (`FULL_MAP_ZOOM`, 14). The style never changes, so nothing reloads at the edge
+of the data and no data is spent inside it.
+
+When streaming cannot work, `BasemapTileStore.installedFor` picks one archive to mount as the
+map's source:
+
+- Candidates are the installed archives whose box holds the view's center or a corner,
+  smallest first. The pick asks each file whether its tile carries the road layer
+  (`PmtilesReader.hasRoads` at `COVERAGE_PROBE_Z`, 12), because every archive has water and
+  land cover tiles across its whole box.
+- An archive is mounted, and the mounted one kept, while its roads reach the center tile, one
+  of the eight around it, or a corner of the screen. Requiring every corner dropped a whole
+  downloaded state to the world floor when one corner sat over a lake.
+- Where nothing qualifies the world floor draws coastlines, borders and place names at low
+  zoom.
+- A swap reloads the whole style, so swaps are at least `BASEMAP_SWAP_COOLDOWN_MS` (2 s)
+  apart.
+
+Labels need the glyph pack on the phone, because a labeled tile never completes while a
+remote font host fails to answer.
+
+The places layer (`PmtilesRegionStore.sourcesFor`) mounts every installed archive whose box
+touches the view, nearest first, at most `MAX_MOUNTED` (8), minus any nested inside another,
+which would draw the overlap twice.
 
 ### Routing with no signal
 
-The on-phone router is the **fallback**, not the default: online routing comes from the open
-router, and the `.obf` answers when that comes back empty, which with no connection is always.
-[Chapter 5](05-routing.md) has the handoff and the router itself; the parts that decide what
-works offline are these.
+Online the on-phone router is a fallback, and [chapter 5](05-routing.md) gives the order.
+With no connection it is the only router. `ObfRouteEngine` runs OsmAnd's router over the
+installed `.obf` files.
 
-- **A trip may cross files.** Every installed region that intersects the trip's padded box is
-  handed to the router together, so a drive from one downloaded state into the next works. Both
-  endpoints must fall inside the installed files, or there is no offline route at all.
-- **Avoids work.** Avoid tolls, highways and ferries are applied from the road attributes at
-  calculation time, and walking and cycling come from the same file.
-- **Long routes use the highway hierarchy.** Region files baked since 2026-09-29 carry OsmAnd's
-  precomputed car and bicycle shortcuts, and a 250 km drive across a dense region routes in under
-  a second, avoiding highways or tolls too; long bike rides too once the region is rebaked with
-  the bicycle set. Without them (an older download, a trip across two files, walking) the plain search
-  runs, and past `MEMORY_MB = 256` it throws rather than slowing down, somewhere between 60 and
-  150 km on a dense network (chapter 5 has both sets of numbers). Update the region to get HH.
-- **One route, no alternates, no traffic.** The arrival time is free-flow.
+- A trip may cross files. Every installed file whose box meets the trip's padded box goes to
+  the router together. Both ends must fall inside an installed box and within
+  `ENDPOINT_SNAP_M` (2 km) of a road in the data, or there is no offline route.
+- Avoid tolls, highways and ferries are applied from road attributes at calculation time.
+  Walking and cycling use the same file.
+- Region files carry OsmAnd's highway hierarchy for car and bicycle. With it, 148 km across
+  Delaware takes 0.7 s and 71 MB on a Pixel 4a. Without it the plain search runs inside
+  `MEMORY_MB` (256) and fails somewhere between 60 and 150 km on a dense network.
+- One route, no alternates, no traffic. The arrival time is free-flow.
 
-The same file answers the **posted speed limit** under the puck while driving, so the badge keeps
-working with no signal:
-
-```
-LIMIT_SNAP_M    = 25.0   // a fix farther than this from any road is off the network
-LIMIT_MEMORY_MB = 32     // the lookup only holds the tiles around the puck
-```
-
-A derestricted road reads as blank, never as a number.
+The same files answer the posted speed limit under the puck (`currentRoadLimit`), from the
+nearest road within `LIMIT_SNAP_M` (25 m). A derestricted or untagged road reads as blank.
 
 ### Searching with no signal
 
-With no connection a typed query never goes to Google. It goes to the installed place packs (and
-the small index an area save filled where no pack existed): place names and categories, with
-category words expanded to the OpenStreetMap tags actually stored, plus the four-layer address
-geocoder when the text looks like an address. The rules and constants are in
-[chapter 6](06-search.md#offline). What this chapter adds is what the packs hold.
+With no connection a typed query never goes to Google. It reads three things on the phone,
+and [chapter 6](06-search.md) has the matching and ranking rules:
 
-A pack is one SQLite file per region with four tables, and the schema is normalized because a
-naive one did not fit: street names live once in `streetname`, and the millions of `addr` and
-`streetpt` rows point at them by number.
+- The installed place packs, plus the small index an area save filled where no pack existed:
+  place names and categories (`OfflinePoiStore`).
+- The downloaded places archives, the ones the map draws, read in rings of tiles around the
+  search point out to `MAX_RINGS` (12, about 3 km) (`PlacesArchiveSearch`).
+- For text that looks like an address, `OfflineAddressStore.geocode`, in four layers: the
+  exact house number on the street, a position interpolated between the nearest mapped
+  numbers, any mapped house on the street, then the nearest point on the street's centerline.
 
-| Table | Columns | Used for |
-| --- | --- | --- |
-| `poi` | id, name, lat, lng, category, address, phone, website, hours | place search, the offline sheet |
-| `streetname` | sid, street, street_norm | matching a typed street once per query |
-| `addr` | hn, sid, city, lat, lng | house numbers: exact, interpolated, nearest on the street |
-| `streetpt` | sid, lat, lng | the centerline fallback where a street has no numbers |
+A pack is one SQLite file per region. Street names are stored once and the millions of
+address and centerline rows point at them by number, so a whole-state pack answers as fast as
+a small one.
 
-A query matches street names first (a scan of tens of thousands of rows) and then reaches the big
-tables through their indexes, so a whole-state pack answers as fast as a small one. OpenStreetMap
-tags few businesses with an address, so offline rows borrow one from the nearest mapped house:
-
-```
-REV_ADDR_M   = 60.0    // a mapped house this close is the place's address
-REV_STREET_M = 150.0   // else "on <street>" for a street this close
-```
-
-**The city, state and ZIP come from the neighbors.** OpenStreetMap often tags a place with only its
-number and street, so an offline row used to read "123 Main St" and nothing else. The places
-around it usually do carry the rest, so `OfflineAddressStore.localityNear` asks them: it reads the
-pack places in a box around the point whose address has a locality after the street line, keeps
-the ones with a postcode if there are any, takes the nearest seven, and returns the most common
-answer, the nearest one breaking a tie.
-
-```
-LOCALITY_BOX_DEG  = 0.006   // about 650 m either way: the box the vote reads
-LOCALITY_VOTERS   = 7       // nearest addresses that vote
-LOCALITY_CELL_DEG = 0.005   // answers cached per cell of about 550 m, so a list costs a scan or two
-OFFLINE_ADDR_FILL = 20      // offline search rows filled; the ones on screen
-```
-
-`completeAddress` only touches an address that needs it (`needsLocality`): a bare street line, or
-a street line plus a place name with no postcode. `withLocality` then appends the answer to a bare
-street line, or replaces a bare trailing place name **only when the answer starts with that same
-name** ("Davis" becomes "Davis, CA 95616"). It never swaps one town for another: a row that says
-it is in one town keeps that town even if every neighbor votes for the next one. Nothing nearby with
-a locality means the address stays as it was. It runs on the first `OFFLINE_ADDR_FILL` rows of an
-offline search and on the sheet of a place selected offline, after the street line itself has been
-filled from the nearest house. It needs no rebake; the places layer's own tiles get the same fill at
-bake time ([chapter 1](01-places.md#which-places-exist-in-a-tile-and-at-what-zoom)).
+OpenStreetMap tags few businesses with an address, so an offline row borrows one: the nearest
+mapped house within `REV_ADDR_M` (60 m), else the nearest street within `REV_STREET_M`
+(150 m). The city, state and ZIP come from the neighbors: `localityNear` takes the most common
+answer among the nearest `LOCALITY_VOTERS` (7) pack places within about 650 m. It only
+completes a bare street line, or extends a bare place name the answer starts with ("Davis"
+becomes "Davis, CA 95616"), so it never swaps one town for another.
 
 ### Tapping a place with no signal
 
-A pin from the open places layer carries its own data in the tile, so offline the sheet shows its
-category, address, phone, website and opening hours straight from the file. Online the tap is
-matched to a Google listing, and that link is remembered on the phone:
+A pin from the open places layer carries its category, address, phone, website and hours in
+the tile, and the sheet shows them. A pin tapped before, online, also opens the Google
+listing it resolved to then (500 links in `open_place_links.json`). The links are dropped on
+a new app build and when a region's archive is updated, because a rebake can move the rows.
 
-```
-openPlaceCache = 500 entries, persisted to open_place_links.json
-```
+With Keep viewed places for offline on (the default), a place opened online is saved with what
+was loaded for it (`PlaceCache`, 400 places for 30 days), and offline the sheet fills from
+that copy. Nothing is saved while Use Vela without Google is on. Viewed Street View panoramas
+are kept the same way, up to 150 MB.
 
-Offline, a pin tapped before shows the listing it resolved to last time. The remembered links are
-dropped when the app updates to a new build, and when a region's places archive is updated or
-downloaded again, because a link made by an older rule, or keyed on a row the rebake has moved,
-would keep opening the wrong listing. The list of places found permanently closed is not dropped;
-that is a correction, not a cache.
+A transit stop shows the last board fetched there (`TransitBoardCache`, the newest 48 stops)
+with its fetch time. Stop icons come from the last 24 areas viewed online
+(`TransitStopCache`). [Chapter 9](09-transit.md) has the details.
 
-A basemap label keeps its name and nothing more. A transit stop shows the last board seen there
-(the newest 48 stops are kept), with the time it was fetched so nobody reads yesterday's 8:05 as
-today's, and the stop icons come from the last 24 areas you looked at online; the details are in
-[chapter 9](09-transit.md#offline-copies).
+### Storage, the SD card and deleting
 
-Google's business dots, where that source is in use, come back from a disk cache of the areas
-you browsed (32 areas of 200 places, kept 14 days). The fetch that fills it does not run at all
-offline.
+The Storage row "Saved areas & map cache" counts MapLibre's database, the building overlays,
+the basemap archives, the glyph pack and the road features. "Offline places" counts the place
+packs and the places archives.
 
-### Places and Street View you have already looked at
+MapLibre keeps saved areas and the browsing cache in one SQLite file, and deleting rows does
+not shrink it. Every saved-area delete and every Clear map cache ends by packing the database
+(`OfflineMaps.packDatabase`).
 
-With "keep viewed places" on (the default), a place you open while online is saved with what was
-loaded for it: details, hours, the reviews and photos that had arrived. Offline, the sheet fills
-from that copy, also when you reach the place through an offline search, which knows it under a
-different id (the same name within 60 m is taken as the same place). Up to 400 places are kept
-for 30 days.
+With an SD card mounted, the page offers to store downloads on it (`StorageLocation`). The
+move carries the folders in `FOLDERS` and MapLibre's database, checks each file's length, and
+deletes the source only when every file has copied. Voices, speech models, road features and
+caches stay internal. With the card chosen and missing, the app uses internal storage and the
+page says so.
 
-Street View panoramas you view are kept the same way, up to 150 MB. Street View always tries the
-network first and falls back to the saved panorama only when that fails; with no connection and
-no saved copy it says the spot was not viewed before.
+Deleting a region removes its routing file, its cells, its places and basemap archives, and
+its place pack unless another installed piece shares it. Delete all offline data removes
+every saved area and installed file, the saved places and Street View, and the glyph pack. It
+then sweeps the store folders for anything left, such as an archive whose id left the
+catalog, clears the browsing cache and packs the database. Voices and speech models stay.
 
-Both are removed by their own buttons in Offline maps, by "Clear history" and by "Delete all
-offline data". Nothing is saved while "Use Vela without Google" is on.
+### Updates and patches
 
-### The map at a region's edge
+Every manifest row carries a revision, and the phone records the revision each file came
+from. Opening Offline maps compares them (`refreshRegionUpdates`) and puts Update on a region
+whose routing, places or map is behind. A piece that never arrived counts too, so Update
+finishes a download that was cut short. One tap (`updateRegion`) refreshes the place pack,
+the places archives, the basemap archives, then the routing file.
 
-The basemap pick runs on every camera idle and chooses at most one archive to draw from. A box
-covering the view is not enough, for the same reason as above, so the pick **asks the file**:
-does the tile under the view carry the road layer?
+The place pack takes a row-level delta when the manifest has one from exactly the installed
+revision, applied in one transaction and checked against the manifest's row counts before it
+commits. A places or basemap archive takes a patch on the same condition (`PmtilesPatch`).
+Anything else, and the routing file always, is downloaded whole beside the installed file
+and replaces it only when complete.
 
-```
-COVERAGE_PROBE_Z = 12   // tiles about ten kilometers across
-FULL_MAP_ZOOM    = 14   // an archive baked shallower than this is used only offline
-```
+A rebaked archive changes little. Kentucky over seven days moved 1.3% of its tiles, and the
+patch was 4.4 MB against a 183 MB archive. The patch is applied in place, with the header
+written last, so an interrupted apply leaves the old archive intact. A fingerprint over every
+tile must then equal that of a fresh download, or the region is downloaded whole. The tiles a
+patch replaced stay behind as dead bytes. Past a fifth of the file `PmtilesCompact` rewrites
+the archive without them, with no network. [SPEC 7.3](../../SPEC.md) has the format.
 
-It asks about roads and not about tiles because planetiler's water, land cover and boundaries are
-global, so every archive has tiles across its whole box and out to sea. Answers are memoized per
-archive and tile, and "cannot tell" is never stored as "no".
+Update downloaded regions sets what happens unasked: Never on its own, On Wi-Fi (the
+default), or On Wi-Fi and mobile data, where "Wi-Fi" means a network the system calls
+unmetered. On an automatic setting `maybeAutoPatch` runs a minute after start, every 3 hours
+and when a working network appears, at most once in 20 hours. It applies every published
+patch that fits an installed archive or place pack and pulls newer grid cells. It never
+downloads a region whole and it skips a drive in progress.
 
-Switching archives reloads the whole map style, which is a visible freeze, so the rules differ by
-direction and by connection:
-
-- **Online**, an archive is in use only while the tile at the center, the eight around it and the
-  four corners of the screen all carry its roads. The moment a border comes on screen, the view
-  streams instead, and it keeps streaming until the border has left the screen. One reload each
-  way, none while you pan along the border.
-- **Offline** there is nothing to stream in its place, so the archive in use is **kept** while its
-  roads reach the center, the ring or any corner (`keepMounted`). Before this rule, panning from
-  Pennsylvania across the New York line with only Pennsylvania installed blanked the whole screen,
-  the Pennsylvania half included, for twelve seconds (issue #552).
-  The same loose rule picks an archive to mount in the first place: offline, any installed
-  archive whose roads reach the view beats the world floor. Until 2026-09-26 a fresh offline mount
-  still had to pass the online test, so a screen with one corner over a lake mounted the world
-  floor instead and never recovered (reproduced on a lakeshore downtown with the whole state
-  installed: places on an empty map; after the fix, the state's streets).
-- Either way, swaps are at least `BASEMAP_SWAP_COOLDOWN_MS = 2_000` apart, and a newer camera idle
-  cancels a pending one.
-- Where nothing installed holds the map, the world floor draws: coastlines, water, borders and
-  place names at low zoom, so losing the signal away from a download is a coarse map, not a blank
-  one.
-
-Labels need the glyph pack. An archive installed without it (an interrupted first download)
-installs the pack the next time there is a connection.
-
-The places layer picks the same way but more simply: exactly one source, the smallest installed
-archive covering the center, else the smallest streamed one. One, because nested archives drew
-every business in the overlap twice.
-
-### Storage, and giving the space back
-
-The Offline maps page runs top to bottom: **This area** (save the view, include places, update
-policy), **Storage**, **Downloaded** (every saved area and every installed region, each with its
-own controls), then **Entire states & countries** as one alphabetical tree. The tree reads the
-hierarchy out of the names' parentheticals: "Bayern (Germany)" sits under Germany, and "(state)",
-"(US)" and "(California)" all fold under the United States. The region you are in is marked and
-its parent starts open. The catalog is a lazy list with its own scroll, the height of the screen
-less 160 dp, because composing every row at once cost a 430 ms frame on a Pixel 4a.
-
-The Storage rows are measured from the folders:
-
-| Row | Counts |
-| --- | --- |
-| Saved areas & map cache | MapLibre's database, the building and address overlays, the basemap archives (the world floor included), the label glyph pack, the road features |
-| Offline routing | `files/obf` |
-| Offline places | the place packs and the places archives |
-| Voices & speech models | managed on the Voice page |
-
-MapLibre keeps saved areas and the browsing cache in **one SQLite file**, and deleting rows does
-not shrink it. So every saved-area delete and every **Clear map cache** ends by packing the
-database (a VACUUM). Without it a phone that had saved and deleted a few large areas reported 5 GB
-of map data with nothing listed (issue #601).
-
-Deleting a region removes its routing file, its pack, and every places and basemap archive with
-its id or its center inside it. **Delete all offline data** removes every saved area and every
-installed file the stores know about, then sweeps their folders (`obf`, `poipacks`, `places`,
-`basemap`, `overlays`, `roadfeatures`, and the retired `graphs`) for anything left, such as an
-archive whose id vanished when a country was re-split. It also deletes the label glyph pack the
-offline basemap needs (about 200 MB), which comes back with the next basemap download. It clears the browsing cache and packs the
-database. Voices and speech models stay.
-
-### Updates: patches and compaction
-
-Every manifest row carries a revision (`YYYYMMDD`), and the phone records the revision each file
-came from. Opening Offline maps compares the two (`refreshRegionUpdates`) and puts **Update** on a
-region whose routing, places or map has moved on. One tap (`updateRegion`) refreshes, in order:
-the place pack, the places archives, the basemap archives, then the routing file.
-
-**A piece that never arrived counts as an update too.** For an installed region, a places archive
-the region should have and does not (checked only while Include places with downloads is on) marks
-it "places", and a missing basemap archive marks it "map", exactly as a newer revision would.
-Update then fetches the missing archives (`fetchRegionArchives`, the same steps as the first
-download) after refreshing any that are installed. Without this, a download cut short before its
-map (Wi-Fi off, the app killed) left a gray map and no button anywhere that would fetch it; the
-incomplete message tells the user to tap exactly this.
-
-- **The place pack** takes a row-level delta when the manifest has one for exactly the installed
-  revision: a small SQLite of deleted and inserted rows, applied in one transaction and checked
-  against the manifest's row count for every table before it commits. Otherwise the pack is
-  downloaded whole.
-- **The routing file** is always downloaded whole, next to the old one, which is replaced only
-  when the new one is complete.
-- **The places and basemap archives** can take a patch, when the setting allows it (below).
-
-A rebaked archive changes very little: Kentucky over seven days moved 1.3% of its tiles, and the
-patch was 4.4 MB against a 183 MB archive. The patch is applied **in place**: the changed tiles
-are appended, then the rebuilt directory, then the 127-byte header last. Until that last write
-the old header still describes the old archive, so an interrupted apply leaves it intact, and the
-cost in free space is the patch, not a second copy. The result is then proven: a fingerprint over
-every tile has to equal the fingerprint of a fresh download of that revision, or the region is
-downloaded whole.
-
-A patch leaves the tiles it replaced behind, unreferenced. Those bytes are counted per archive,
-and the phone rewrites the archive without them when they grow, which costs a pass over the file
-and nothing on the network:
-
-```
-DEAD_LIMIT_DIVISOR = 5   // compact once dead bytes pass a fifth of the file
-                         // past half, and compaction still not keeping up, take the region whole
-```
-
-Compaction needs room for a second copy while it runs; without it, it is refused and the archive
-stays correct, just larger.
-
-The policy is the user's: **Update downloaded regions** is Never on its own, On Wi-Fi (the
-default since 2026-09-25), or On Wi-Fi and mobile data, where "Wi-Fi" means the system says the network is not
-metered. It was off by default until then because a feature that rewrites an installed archive was not
-to switch itself on before someone had watched it work. That happened on 2026-09-19 a
-Pixel 9 took a published patch end to end, and the same run found and fixed two bugs (the catalog
-cached for the life of the process, so no update was ever offered, and dead bytes never bounded).
-The default became On Wi-Fi on 2026-09-25; anyone who had picked Never keeps it. On either
-Wi-Fi setting the app checks a minute after start, every 3 hours and when a working network
-appears, at most once in 20 hours, and applies every published patch that fits an installed places or
-basemap archive or place pack, on its own and quietly; it never downloads a region whole by
-itself, and it skips a drive in progress.
-
-The catalogs are cached so a pan does not refetch them, but the cache expires, so a process that
-lives for days still sees a new revision:
-
-```
-MANIFEST_TTL_MS = 3_600_000   // an hour
-MISS_MEMO_MS    =   600_000   // an unreachable manifest is not retried for ten minutes
-```
-
-**The routing catalog is kept on disk** (`app/offline/RegionCatalog.kt`). It is the list the
-Offline maps page is built from, installed regions included, and every successful fetch writes it
-to `files/catalog-<hash>.json` (the hash is of the manifest URL). When the fetch fails, the page
-reads that copy instead. Before 2026-09-23 a failed fetch meant an empty list, so a user who had
-just downloaded a state and opened the page with no signal read it as "nothing is downloaded". A
-phone that has never fetched the catalog still gets an empty page offline.
-
-### Grid cells: part of a region
-
-A region can also be cut into cells, so a frame over one town can pull a few small bundles instead
-of the whole state. The bake is `scripts/build-cells-region.sh` and the workflow `grid-cells.yml`
-(SPEC 7.6). Cells are 0.5 degree tiles of one global grid, clipped to the region (a region too
-large for one release, Alaska, gets coarser tiles); each is one zip
-holding its routing obf, its place pack and its slice of the region's places tiles.
-
-Since 2026-09-28 the area picker reads them. Where the region under the frame has cells baked and
-is not installed whole, the picker's card offers "offline directions and places for just this
-area" with the size and the number of pieces, above the whole-region checkbox; picking one clears
-the other, and the pieces are the default. The pieces download one after another under the same
-card a region download uses ("Delaware, part 2 of 3"), and each one's obf, place pack and places
-slice land in the same folders a whole region fills, so directions, offline search and the places
-layer use them with nothing else to set up. Cancel keeps the pieces already down. Offline maps >
-Downloaded lists them as one row per region ("Part of the region: 3 pieces, 24 MB") with a
-delete; deleting the whole region removes its pieces too.
-
-The places layer draws every installed piece the screen touches (up to eight, nearest first), so
-two neighboring pieces read as one map; a whole region installed beside its pieces is drawn alone,
-and downloading the whole region afterwards removes its pieces, so a search never lists a place
-from both. Pieces update like regions: a newer bake shows on the row ("2 pieces have a newer
-version") with an Update button, and the automatic updates setting pulls them on its own.
-
-Delaware, baked on a laptop with four cells at a time:
-
-| | Cells | Whole region |
-| --- | --- | --- |
-| Tiles touching the box / kept | 15 / 10 | |
-| Routing obf | 7.72 MB | 7.63 MB |
-| Place pack (db / zipped) | 23.8 / 10.4 MB | 23.2 / 10.4 MB |
-| Places tiles | 19.5 MB | 57.5 MB |
-| Download | 37.7 MB | 75.6 MB |
-| Largest / smallest cell | 13.7 / 0.01 MB | |
-| Bake time | 30 s (6 s split, 0 to 17 s per cell) | obf 26 s + pack 5 s |
-
-The routing and pack totals run 1 to 3% over the region's, because a road crossing a cell edge
-is kept whole in both cells. The places column is not like for like: the region's places archive
-is cut by its box, which takes in neighboring states' cities, while each cell's slice keeps only
-the tiles inside the region's boundary. Four trips across cell edges route over the cell files
-exactly as over the region file (same distance, time and steps; `ObfCellsProbeTest`).
-
-Northern California (`california-norcal`), six cells at a time: 308 tiles, 151 kept, 549 MB zipped
-(obf 136, pack 182, places 232) and 793 MB installed, in 7 min 20 s (split 160 s at 10 cells per pass; the default is now 4, see SPEC 7.6 for osmium's
-memory). Cells run from
-2 KB to 93 MB; the largest is the dense corner of the bay, whose obf alone took 118 s. The places
-slices add to 232 MB against the region archive's 247 MB.
+The places and basemap catalogs are cached for an hour (`MANIFEST_TTL_MS`), so a process that
+lives for days still sees a new revision. The routing catalog is also written to disk on
+every fetch (`RegionCatalog`), so installed regions still list with no signal.
 
 ## Limits
 
-- **Offline routing is a city and metro feature.** Long routes fail on memory, not just time,
-  and the fix is OsmAnd's precomputed hierarchy, which the bake does not generate. Until it does,
-  an intercity drive with no signal is not offered.
-- **No traffic, reviews, photos, fresh hours or transit directions offline.** The arrival time of
-  an offline route is free-flow. Transit directions stay with Google on purpose, so with no signal
-  there are none. A departure board is only the last one you saw, with its time on it.
-- **Road features need one online visit.** The file is kept once fetched, but a region you
-  downloaded and never looked at or drove in while online has no traffic lights or stop signs on
-  the drive.
-- **The address interpolation does not know which town it is in.** A state pack can hold a street
-  of the same name in several towns, and the interpolation layer brackets the typed number with
-  the nearest numbers from any of them. The exact-number layer, which runs first, is unaffected.
-- **A borrowed locality is a vote, not a lookup.** A place with no city or ZIP of its own takes the
-  most common one within about 650 m, so a place just across a town or ZIP line from most of its
-  neighbors can be given theirs. A place that names its own town is never changed.
-- **The Storage rows do not count everything.** The small place and address indexes an area save
-  fills where no pack exists live in the app's databases, not the folders above, so they are in
-  none of the rows, and Delete all offline data leaves them in place. The sprite copy (about
-  230 KB) is uncounted too.
-- **Only patches are automatic.** A region whose archive has no patch from its installed
-  revision (a bake that changed too much, or a skipped revision) waits for a tap on Update, which
-  downloads it whole over the installed copy; the old copy stays until the new one is complete.
-- **Places archives change often.** Besides the monthly bake, a seventh of the places catalog is
-  rebaked every night, so a downloaded region's places show Update roughly weekly.
-- **A region's edge is still a seam.** The rules above remove the flicker and the blank screen,
-  but offline, past the last installed archive, the view drops to the world floor's low-zoom map.
+- Transit directions need Google's page or the Transitous planner, so there are none
+  offline.
+- The highway hierarchy is not used for a trip across two region files, a trip over grid
+  cells, a walk, or a file downloaded before it was baked. Those use the plain search, which
+  fails on long routes. Updating the region fixes the last case.
+- Offline steps have no lane diagram. Lane guidance comes from the online router.
+- Road features need an online visit, so a region never looked at or driven in while online
+  has no traffic lights or stop signs. The list that maps a point to its file is held in
+  memory only, so an app started with no connection draws none even with the file on the
+  phone. Bundling the file with the region download would fix both.
+- Address interpolation takes the nearest house numbers on any street of that name in the
+  pack, so where several towns share a street name the estimate can land in the wrong town.
+- A borrowed city and ZIP is a vote. A place just across a town or ZIP line from most of its
+  neighbors can be given theirs.
+- The Storage rows do not count the small place and address indexes an area save fills where
+  no pack exists, and Delete all offline data leaves them.
+- Deleting a region leaves its building overlay and road features. Only Delete all offline
+  data removes those.
+- House numbers from the address overlay are streamed only, so they are missing offline.
+- Only patches are automatic. A region's places are rebaked about once a week, and an archive
+  with no patch from its installed revision waits for a tap on Update.
+- A phone that has never fetched the catalog shows an empty catalog offline.

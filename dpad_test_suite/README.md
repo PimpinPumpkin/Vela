@@ -23,7 +23,7 @@ cd dpad_test_suite
 ADB="adb -s emulator-5554" ./run_all.sh   # pick a device
 ```
 
-`run_all.sh` first calls `setup.sh` (grants location + installs a mock GPS provider at Brooklyn so
+`run_all.sh` first calls `setup.sh` (grants location + installs a mock GPS provider at Davis, California so
 search/routing have a fix - override with `VELA_LAT`/`VELA_LNG`). Then it runs `tests/*.sh` in
 order; each prints `PASS:`/`FAIL:` lines and a per-suite verdict. Exit code is non-zero if any
 suite failed (usable in CI once a device is attached).
@@ -36,6 +36,8 @@ suite failed (usable in CI once a device is attached).
 | `02_settings_autofocus` | Settings opens already focused on the back button (the original "opened un-focused" bug) |
 | `03_welcome_and_dialog_autofocus` | first-run Welcome opens focused on Get-started; each onboarding `VelaDialog` opens focused on "Not now" |
 | `04_place_sheet_and_menu_autofocus` | the place sheet opens focused on its handle; the ⋮ overflow (`VelaMenu`) opens focused on its first item; ↓ walks it; BACK closes the menu not the sheet |
+| `05_choose_on_map_engages` | Choose on map opens with the map target focused and engaged, so arrows move the pin at once |
+| `06_place_actions_reachable` | the place sheet's Directions pill is reachable and OK on it opens directions |
 
 ## Writing a new test
 

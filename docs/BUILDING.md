@@ -1,11 +1,10 @@
 # Building and running Vela
 
-Most people don't need this page: grab the app from the Obtainium or F-Droid
-badge on the [README](../README.md), or an APK from
-[Releases](https://github.com/PimpinPumpkin/Vela/releases). This is for
-building from source.
+To install the app, use the Obtainium or F-Droid badge on the [README](../README.md) or an
+APK from [Releases](https://github.com/PimpinPumpkin/Vela/releases). This page is for building
+from source.
 
-## Build & run
+## Build and run
 
 Standard Android toolchain (JDK 17; the Gradle wrapper fetches Gradle 9.8.0 and AGP 9.4.1).
 
@@ -39,41 +38,34 @@ If `.github/workflows/ci.yml` names a newer file than this page does, trust the 
 # debug build (compile check / local install)
 ./gradlew :app:assembleDebug
 
-# the real distribution build - R8 + resource shrinking.
-# Always ship release: debug builds visibly lag during map scroll/nav.
+# the build that goes on a phone (R8 and resource shrinking).
+# A debug build drops frames on the map and reads as a performance bug.
 ./gradlew :app:assembleRelease
 
 # unit tests for the pure logic in :core (parsers, nav engine, routing, the name rules)
 ./gradlew :core:test
 ```
 
-Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
-`VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`); local builds fall back to the
-debug keystore so `adb install` still works. Keep a hand-set
-`-PappVersionCode` below 1000 so a local build never sits ahead of the
-release line, and use `-PappId=app.vela.dev` to install a test build beside
-the real app instead of over it.
+Release signing comes from environment variables (`VELA_KEYSTORE_PATH`,
+`VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`). Without them a local build is signed with the
+debug keystore, so `adb install` still works. Do not hand out a local build with a
+`-PappVersionCode` above the release line: the next real release then looks like a downgrade.
+`-PappId=app.vela.dev` builds a copy that installs beside the real app.
 
-**CI**: every push to `main` or `canary` builds and tests; a push never cuts
-a release by itself. A daily cron publishes a signed nightly prerelease
-(`v0.4.<run>`) when `main` has moved since the last one, every `canary` push
-replaces the rolling canary build, a weekly job (Mondays) promotes the newest
-nightly to the stable release, and the F-Droid repo index rebuilds off both.
-Docs-only pushes skip CI. The release
-pipeline details (secrets, channels, versioning) live in
-[`CLAUDE.md`](../CLAUDE.md). Out of the box the app talks to the live Google
-source over the keyless OpenFreeMap basemap; `MockMapDataSource` is the
-offline fallback.
+## What CI does
+
+Every push to `main` or `canary` builds and tests. A push to `canary` replaces the rolling
+canary build. A daily job publishes a signed nightly prerelease (`v0.4.<run>`) when `main` has
+moved, and a weekly job (Mondays) promotes the newest nightly to stable. The F-Droid repository
+index is rebuilt after both. Docs-only pushes skip CI. [Chapter 12 of the book](book/12-releases.md)
+has the details.
 
 ## Architecture
 
-Two Gradle modules with a strict boundary (AGP 9.4.1, Kotlin 2.4, Compose, Hilt,
-R8 release builds; `:app` compiles against SDK 36 and targets 35, minimum 26):
-**`:core`** is the UI-agnostic "extractor" in the NewPipeExtractor mold - models,
-the Google scraper and parsers, the open routers and the on-device obf engine, the
-pure nav engine, and the remote-config layer - and **`:app`** is the Compose UI over
-MapLibre. `MapDataSource` is the load-bearing seam between them: Mock for offline
-dev, Google today (with the open places layer, the downloaded packs and the open
-routers filling in around it), and a self-hostable source would drop in the same
-way. The full module tree and every seam are in
-[`SPEC.md`](../SPEC.md).
+Two Gradle modules. `:core` has no interface code: the models, the requests to Google and
+their parsers, the open routers and the on-phone router, the navigation engine, and the remote
+settings. `:app` is the Compose interface over MapLibre. `core/data/MapDataSource` is the seam
+between them. The module tree is in [`SPEC.md`](../SPEC.md) section 2.
+
+Toolchain: JDK 17, Gradle 9.8, AGP 9.4, Kotlin 2.4. The app compiles against SDK 37, targets
+35 and runs on Android 8 (SDK 26) and up.

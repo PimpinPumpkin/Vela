@@ -975,7 +975,7 @@ fun VelaMapView(
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
     // The drive's first camera move is a CUT to the car, flat, and the tilt then eases in over
-    // NAV_START_TILT_TAU_S (SPEC 4.7a, sixth round). navStartCutMs = when it happened, 0 = not yet.
+    // NAV_START_TILT_TAU_S (SPEC 4.7a). navStartCutMs = when it happened, 0 = not yet.
     val navStartCutMs = remember { longArrayOf(0L) }
     val navStartTilting = remember { booleanArrayOf(false) }
     val preEngageAnimUntil = remember { longArrayOf(0L) } // a pre-engage re-point flight is running until this uptime
