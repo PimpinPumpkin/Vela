@@ -727,10 +727,10 @@
     <string name="welcome_get_started">Get started</string>
     <string name="welcome_continue">Continue</string>
     <string name="welcome_google_title">Use Google?</string>
-    <string name="welcome_google_intro">No account either way. You can change this in Settings.</string>
+    <string name="welcome_google_intro">You can change this later in Settings, or turn off just parts of it.</string>
     <string name="welcome_google_on_title">Use Google</string>
     <string name="welcome_google_on_gives">Reviews, photos, live traffic and Street View.</string>
-    <string name="welcome_google_on_sends">Google sees your searches, places and trips.</string>
+    <string name="welcome_google_on_sends">Searches and routes go to Google, with no account.</string>
     <string name="welcome_google_off_title">No Google</string>
     <string name="welcome_google_off_gives">Open data only. No reviews, photos or live traffic.</string>
     <string name="welcome_google_off_sends">Nothing is sent to Google.</string>
