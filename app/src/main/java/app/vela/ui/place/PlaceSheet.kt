@@ -1528,7 +1528,7 @@ internal fun SaveToListSheet(
                         OutlinedTextField(
                             value = newName, onValueChange = { newName = it },
                             label = { Text(stringResource(R.string.list_name_label)) }, singleLine = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).dpadFieldEscape(),
                         )
                         Spacer(Modifier.width(8.dp))
                         Button(onClick = { if (newName.isNotBlank()) { onCreateWith(newName.trim()); newName = ""; creating = false } }, enabled = newName.isNotBlank()) {
@@ -1563,7 +1563,7 @@ private fun NoteEditorDialog(
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },
                     label = { Text(stringResource(R.string.place_note_label)) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp).dpadFieldEscape(),
                 )
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

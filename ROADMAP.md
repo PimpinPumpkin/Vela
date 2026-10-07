@@ -135,8 +135,9 @@ Small items, one pull request each.
   file (`scripts/build-map-fonts.sh`) and republish `map-fonts`. MapLibre cannot inherit a
   font at runtime.
 - D-pad hardware pass on a real keypad phone: pan step, OK-hold threshold, focus ring
-  visibility, traversal order, page scroll on the full-screen reviews page.
-  `GoogleStyleDirectionsPanel` has no initial focus target (`rememberDpadAutoFocus`).
+  visibility, traversal order, page scroll on the full-screen reviews page. Device tests 04 to
+  06 in `dpad_test_suite/` count key presses for one screen size and need target-seeking
+  navigation, as tests 01 and 02 have.
 - Voice library. Host the catalog (`PiperCatalog`) on the signed `calibration.json` so new
   voices need no app release, with the download host pinned in the allowlist. A preview
   button. One shared `espeak-ng-data` folder (about 10 MB a voice). Larger dictation models.

@@ -44,7 +44,7 @@ key "$K_BACK" 1
 if on_screen "Restaurants"; then ok "BACK exits to map"; else bad "BACK did not exit the search overlay"; fi
 
 echo "== Settings (opens on back button; deep traversal never loses focus; BACK exits) =="
-goto_map; focus_search_bar; key "$K_RIGHT"; key "$K_OK" 1.5
+goto_map; open_settings
 if on_screen "Appearance"; then
   [ -n "$(focused)" ] && ok "opens focused (back button)" || bad "Settings opened unfocused"
   integrity "Settings traversal" 22

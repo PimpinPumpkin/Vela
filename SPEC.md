@@ -4065,7 +4065,8 @@ The whole UI works with a five-key D-pad and no touchscreen.
   unarmed search field. That is the test tool's effect.
 
 Per-surface audits and the contributor procedure are in `docs/dpad.md`. The regression suite is
-`dpad_test_suite/` (`run_all.sh`, `audit_static.sh`, `audit_dynamic.sh`).
+`dpad_test_suite/` (`run_all.sh`, `audit_static.sh`, `audit_dynamic.sh`). CI runs
+`audit_static.sh`, which reads the source and needs no device.
 
 ### 10.4 Settings
 

@@ -25,7 +25,7 @@ SPEC 10.3 has the short version of this page.
    cannot be focused before the first key press. Any other window is a raw `Dialog` that focuses
    an explicit `.focusable()` element.
 
-`dpad_test_suite/audit_static.sh` checks rules 2, 3 and 6. Run it after any focus work.
+`dpad_test_suite/audit_static.sh` checks rules 2, 3 and 6, and CI fails a build that breaks one.
 
 ## How it is built
 
@@ -140,8 +140,10 @@ Detection:
 Focus:
 
 - Before anything in the window has held focus, `requestFocus` does nothing, and neither
-  `moveFocus` nor a synthetic key event can put focus on the search bar. So the bare map opens
-  with nothing focused, and the first arrow lands on the search bar, the first focusable.
+  `moveFocus` nor a synthetic key event can put focus on the search bar. So after a touch the
+  bare map opens with nothing focused, and the first arrow lands on the search bar, the first
+  focusable. When the last input was a key, which is always so on a keypad phone, Android
+  focuses the search bar itself as the window opens.
 - `rememberDpadAutoFocus` stops as soon as `requestFocus` does not throw, which can be before
   focus lands. For a target below the fold use `dpadAutoFocus(requester)`.
 - When the focused control leaves composition, Compose clears focus and recovers somewhere
@@ -213,12 +215,11 @@ adb:
 
 | Surface | Focused on open | Leave |
 | --- | --- | --- |
-| Bare map | Nothing. The first arrow lands on the search bar | Back disengages an engaged map |
+| Bare map | The search bar when the last input was a key. After a touch, nothing, and the first arrow lands on the search bar | Back disengages an engaged map |
 | Search overlay | The armed field. Down reaches the rows | Back |
 | Results sheet | The search bar keeps focus. Down reaches the filter chips and rows | Back clears the search |
 | Place sheet | The drag handle | Back |
-| Route chooser (`GoogleStyleDirectionsPanel`, the default) | No target yet (open in ROADMAP) | Back |
-| Classic directions panel (`DirectionsPanel`) | The Drive tab | Back |
+| Route chooser (`GoogleStyleDirectionsPanel`, the default) and the classic panel (`DirectionsPanel`) | The Drive tab | Back |
 | Choose on map | The map target, engaged | OK confirms, Back cancels |
 | Step list | The first step, or the current step during a drive | Back |
 | Transit route detail (`RouteDetailSheet`) | The back arrow | Back |
@@ -233,6 +234,8 @@ adb:
 | `VelaDialog` | The dismiss button. Arrows reach confirm | Back |
 | `VelaMenu` | The first item | Back |
 | Time and date picker (`PickerDialog`), Your lists (`ListsSheet`), voice capture (`VoiceCaptureDialog`) | Their OK, New list and Done buttons | Back |
+| List editor (`ListEditorDialog`) | The name field. Down reaches the icons, the colors and the buttons | Back |
+| Place icon (`PlaceIconDialog`), parking history (`ParkingHistorySheet`) | Cancel, and the newest spot | Back |
 
 ### Known limitations
 
@@ -248,12 +251,12 @@ The suite is in `dpad_test_suite/`. Run all three scripts after any change that 
 
 | Script | Checks |
 | --- | --- |
-| `audit_static.sh` | Scans every `.kt` under `:app`. Fails on a `clickable`, `toggleable` or `selectable` with no `dpadHighlight`, a gesture modifier with no key path nearby, a bare `DropdownMenu` or `AlertDialog`, and `isSystemInDarkTheme()`. Lists bare `.focusable()`, sliders, raw dialogs and unescaped text fields for a manual look |
+| `audit_static.sh` | Scans every `.kt` under `:app`. Fails on a `clickable`, `toggleable` or `selectable` with no `dpadHighlight`, a gesture modifier with no key path nearby, a bare `DropdownMenu` or `AlertDialog`, and `isSystemInDarkTheme()`. A gesture whose key path is in another composable passes with a `// dpad-ok: <where>` comment above it. Lists bare `.focusable()`, sliders, raw dialogs, unescaped text fields and those comments for a manual look. CI runs it |
 | `run_all.sh` | Runs `setup.sh`, then the tests in `tests/` in order. Arguments select tests by prefix: `./run_all.sh 01 02` |
 | `audit_dynamic.sh` | Tours the bare map, search, Settings, the place sheet, directions and Choose on map. Each must open focused (the bare map unfocused), keep focus through a run of down presses, and close on Back |
 
-The tests assert, in order: the bare map opens unfocused and the first down press lands on the
-search bar (01); Settings opens on Back (02); Welcome opens on Get started and the first
+The tests assert, in order: the bare map opens with the map target unfocused and the search bar
+at most one press away (01); Settings opens on Back (02); Welcome opens on Get started and the first
 onboarding dialog on "Not now" (03); the place sheet opens on its handle and its overflow menu on
 the first item (04); Choose on map opens engaged (05); the Directions pill and the From row are
 reachable (06).
@@ -261,6 +264,10 @@ reachable (06).
 - The device must be D-pad-first. On a touch phone run
   `adb shell settings put global vela_force_dpad 1` before launch, and put it back to 0 afterward.
 - Tests 04 to 06 and most of the dynamic audit need live search results and skip without them.
+- Tests 01 and 02 measure positions as a share of the screen and find the Settings button by
+  its description, so they pass on any screen. Tests 04 to 06 and the dynamic audit still count
+  key presses for a small keypad screen. On a tall phone, where the results sheet has more
+  filter chips, they land on the wrong control and fail.
 - Test 03 runs `pm clear` on the package. On a phone whose data matters, install a side-by-side
   build and set `VELA_PKG=app.vela.dev`.
 - `setup.sh` grants location and adds a `gps` test provider (`VELA_LAT` and `VELA_LNG` set the

@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vela.R
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 
 // The map result pins' red (PoiIcons.RESULT_RED) — the destination pin on this card is the same
 // species as the pin the route ends at on the map, so the two must stay the same ink.
@@ -216,7 +217,7 @@ fun RouteTopCard(
                                 onValueChange = { draft = it.take(60) },
                                 singleLine = true,
                                 label = { Text(stringResource(R.string.route_save_hint)) },
-                                modifier = Modifier.fillMaxWidth().dpadHighlight(),
+                                modifier = Modifier.fillMaxWidth().dpadHighlight().dpadFieldEscape(),
                             )
                             // A trip with stops: are they places you stop at (a run), or only the
                             // points that bent the route (a shape)?
@@ -374,7 +375,7 @@ private fun TripShortcutDialog(destinationName: String, travelModeKey: String, o
     ) {
         androidx.compose.material3.OutlinedTextField(
             value = name, onValueChange = { name = it.take(24) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth().dpadHighlight(),
+            modifier = Modifier.fillMaxWidth().dpadHighlight().dpadFieldEscape(),
         )
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),

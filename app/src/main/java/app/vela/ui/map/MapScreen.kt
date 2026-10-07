@@ -185,6 +185,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.theme.isAppInDarkTheme
 import app.vela.ui.theme.isAppInAmoled
@@ -990,7 +991,7 @@ fun MapScreen(
                 onValueChange = { draft = it },
                 singleLine = true,
                 label = { Text(stringResource(R.string.settings_trip_rename_hint)) },
-                modifier = Modifier.fillMaxWidth().dpadHighlight(),
+                modifier = Modifier.fillMaxWidth().dpadHighlight().dpadFieldEscape(),
             )
         }
     }
@@ -5396,7 +5397,7 @@ private fun SavedRow(
                 value = draft,
                 onValueChange = { draft = it },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
             )
         }
     }
@@ -6187,6 +6188,8 @@ private fun ParkingHistorySheet(
     onDismiss: () -> Unit,
 ) {
     val dark = isAppInDarkTheme()
+    // D-pad: the sheet opens on the newest spot, never on Clear all.
+    val firstSpot = app.vela.ui.rememberDpadAutoFocus()
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
@@ -6200,13 +6203,13 @@ private fun ParkingHistorySheet(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onClearAll) { Text(stringResource(R.string.parking_history_clear_all)) }
+                    TextButton(onClick = onClearAll, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.parking_history_clear_all)) }
                 }
                 LazyColumn(Modifier.heightIn(max = 360.dp)) {
                     items(history, key = { it.savedAtMillis }) { entry ->
                         val isCurrent = entry.savedAtMillis == currentAtMillis
                         Row(
-                            Modifier
+                            (if (entry === history.firstOrNull()) Modifier.focusRequester(firstSpot) else Modifier)
                                 .fillMaxWidth()
                                 .dpadHighlight(RoundedCornerShape(8.dp))
                                 .clickable { onRestore(entry) }
@@ -6357,7 +6360,7 @@ private fun IconPicker(icon: String, color: Long, onPick: (String) -> Unit) {
                 },
                 label = { Text(stringResource(R.string.list_emoji_label)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
             )
         }
     }
@@ -6373,6 +6376,7 @@ private fun PlaceIconDialog(
     onDismiss: () -> Unit,
 ) {
     var icon by remember { mutableStateOf(initial ?: "bookmark") }
+    val cancelFocus = app.vela.ui.rememberDpadAutoFocus() // D-pad: the dialog opens on Cancel
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         val maxDialogHeight = (LocalConfiguration.current.screenHeightDp * 0.9f).dp
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
@@ -6384,11 +6388,11 @@ private fun PlaceIconDialog(
                 }
                 Spacer(Modifier.height(20.dp))
                 // Two rows: "Use the list's icon" beside Cancel and Save squeezed Save to one letter per line.
-                TextButton(onClick = { onSave(null) }) { Text(stringResource(R.string.place_icon_default)) }
+                TextButton(onClick = { onSave(null) }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.place_icon_default)) }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.list_cancel)) }
+                    TextButton(onClick = onDismiss, modifier = Modifier.focusRequester(cancelFocus).dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel)) }
                     Spacer(Modifier.width(4.dp))
-                    Button(onClick = { onSave(icon) }) { Text(stringResource(R.string.list_save)) }
+                    Button(onClick = { onSave(icon) }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_save)) }
                 }
             }
         }
@@ -6429,7 +6433,7 @@ private fun ListEditorDialog(
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.list_name_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.list_icon_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -6456,14 +6460,14 @@ private fun ListEditorDialog(
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (onDelete != null) {
-                        TextButton(onClick = onDelete) {
+                        TextButton(onClick = onDelete, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
                             Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error)
                         }
                     }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.list_cancel)) }
+                    TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel)) }
                     Spacer(Modifier.width(4.dp))
-                    Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color) }, enabled = name.isNotBlank()) {
+                    Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color) }, enabled = name.isNotBlank(), modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
                         Text(stringResource(R.string.list_save))
                     }
                 }

@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 import app.vela.ui.settings.Hint
 import app.vela.ui.item
 
@@ -228,7 +229,7 @@ private fun SavedRoutesGroup(vm: MapViewModel, onOpen: (app.vela.core.model.Save
                 onValueChange = { draft = it.take(60) },
                 singleLine = true,
                 label = { Text(stringResource(R.string.route_save_hint)) },
-                modifier = Modifier.fillMaxWidth().dpadHighlight(),
+                modifier = Modifier.fillMaxWidth().dpadHighlight().dpadFieldEscape(),
             )
         }
     }

@@ -31,7 +31,7 @@ def walk():
 def code_of(ln):
     c = ln.split("//", 1)[0]
     s = c.strip()
-    if s.startswith("*") or s.startswith("/*") or s.startswith("*/"):
+    if s.startswith("*") or s.startswith("/*") or s.startswith("*/") or s.startswith("import "):
         return ""
     return c
 def has(regex, ln): return regex.search(code_of(ln)) is not None
@@ -69,6 +69,13 @@ KEYPATH = re.compile(r'(onKeyEvent|onPreviewKeyEvent|MapDpad|mapDpad|Key\.Direct
 def near_keypath(lines, idx, radius=50):
     lo, hi = max(0, idx - radius), min(len(lines), idx + radius)
     return KEYPATH.search("".join(code_of(l) for l in lines[lo:hi])) is not None
+# A gesture whose key path lives in another composable carries a `// dpad-ok: <where>` comment
+# on one of the four lines above it. The note names the key path; it is listed under CHECK.
+def dpad_ok_note(lines, idx):
+    for l in lines[max(0, idx - 4):idx + 1]:
+        m = re.search(r'//\s*dpad-ok:\s*(\S.*)', l)
+        if m: return m.group(1).strip()
+    return None
 
 RE_DROPDOWN = re.compile(r'\bDropdownMenu\s*\(')
 RE_ALERT    = re.compile(r'\bAlertDialog\s*\(')
@@ -103,8 +110,11 @@ for path in walk():
                 viol.append(("MED", f"{name}:{n}", "clickable/toggleable/selectable with no .dpadHighlight (invisible focus)"))
         # E. gesture modifier with no key alternative nearby
         if has(GESTURE, ln):
+            note = dpad_ok_note(lines, i)
             if near_keypath(lines, i):
                 if verbose: oknote.append(f"gest {name}:{n}")
+            elif note:
+                check.append(("gesture", f"{name}:{n}", f"gesture with its key path elsewhere: {note}"))
             else:
                 viol.append(("HIGH", f"{name}:{n}", "gesture (drag/tap) with no key alternative (onKeyEvent/clickable) — D-pad can't reach it"))
         # F. bare .focusable() — needs a ring OR deliberate self-indication → surface for triage

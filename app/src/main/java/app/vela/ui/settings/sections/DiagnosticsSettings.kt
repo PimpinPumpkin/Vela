@@ -44,6 +44,7 @@ import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 import app.vela.ui.dpadRowSibling
 import app.vela.ui.VelaMenu
 import app.vela.ui.item
@@ -349,7 +350,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                     onValueChange = { draft = it },
                     singleLine = true,
                     label = { Text(stringResource(R.string.settings_trip_rename_hint)) },
-                    modifier = Modifier.fillMaxWidth().dpadHighlight(),
+                    modifier = Modifier.fillMaxWidth().dpadHighlight().dpadFieldEscape(),
                 )
             }
         }

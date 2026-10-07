@@ -135,6 +135,7 @@ fun GoogleStyleDirectionsPanel(
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
     val collapsed = remember { mutableStateOf(true) } // Google opens at the summary, not the list
+    val firstFocus = app.vela.ui.rememberDpadAutoFocus() // D-pad: the panel opens on the Drive tab
     // A third, smaller state below the summary (issue #616): the time and Start on one line, so a
     // small screen can see the route. Handle tap: summary <-> minimized (list -> summary); swipe
     // down from the summary minimizes, swipe up restores; a map pan minimizes.
@@ -257,7 +258,7 @@ fun GoogleStyleDirectionsPanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (compact) {
-                    ModeTabs(currentMode, modeEtas, ink, onModeSelected, Modifier.weight(1f))
+                    ModeTabs(currentMode, modeEtas, ink, onModeSelected, Modifier.weight(1f), firstFocus = firstFocus)
                 } else {
                     Text(
                         modeTitle(currentMode),
@@ -279,7 +280,7 @@ fun GoogleStyleDirectionsPanel(
             }
             if (!compact) {
                 Spacer(Modifier.height(10.dp))
-                ModeTabs(currentMode, modeEtas, ink, onModeSelected)
+                ModeTabs(currentMode, modeEtas, ink, onModeSelected, firstFocus = firstFocus)
             }
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
             // The selected route, summarized. Always visible (the collapsed sheet is this).

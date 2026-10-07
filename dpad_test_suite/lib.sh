@@ -121,6 +121,46 @@ assert_focus_ytop_between() {
   local y; y="$(focus_ytop)"
   if [ "$y" -ge "$1" ] && [ "$y" -le "$2" ] 2>/dev/null; then pass "focus Y=$y in [$1,$2] ($3)"; else fail "expected focus Y in [$1,$2] ($3), got $y"; fi
 }
+# screen_h: the display height in px.
+screen_h() { $ADB shell wm size 2>/dev/null | sed -nE 's/.*: *[0-9]+x([0-9]+).*/\1/p' | tail -1; }
+# assert_focus_ytop_pct <lo> <hi> <label>: the focused node's top Y lies between two percentages
+# of the screen height, so one test fits a small keypad phone and a tall touch phone alike.
+assert_focus_ytop_pct() {
+  local y h lo hi; y="$(focus_ytop)"; h="$(screen_h)"; lo=$((h * $1 / 100)); hi=$((h * $2 / 100))
+  if [ "$y" -ge "$lo" ] && [ "$y" -le "$hi" ] 2>/dev/null; then pass "focus Y=$y is $1-$2% down the screen ($3)"; else fail "expected focus $1-$2% down a $h px screen ($3), got Y=$y"; fi
+}
+# find_desc <exact>: bounds of the first node whose content-desc == <exact> (empty if not found).
+find_desc() {
+  $ADB shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  $ADB shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
+import sys, re
+d = sys.stdin.read(); want = sys.argv[1]
+for m in re.finditer(r"<node [^>]*>", d):
+    s = m.group(0); c = re.search(r"content-desc=\"([^\"]*)\"", s); b = re.search(r"bounds=\"([^\"]*)\"", s)
+    if c and c.group(1) == want:
+        print(b.group(1) if b else ""); break
+' "$1"
+}
+# focus_holds <bounds>: 0 (true) if the focused node contains the center of <bounds>.
+focus_holds() {
+  python3 -c '
+import re, sys
+f = [int(x) for x in re.findall(r"\d+", sys.argv[1])]; t = [int(x) for x in re.findall(r"\d+", sys.argv[2])]
+if len(f) != 4 or len(t) != 4: sys.exit(1)
+cx, cy = (t[0] + t[2]) // 2, (t[1] + t[3]) // 2
+sys.exit(0 if f[0] <= cx <= f[2] and f[1] <= cy <= f[3] else 1)
+' "$(focused_bounds)" "$1"
+}
+# focus_to_desc <keycode> <content-desc> [max]: press the key until focus is on the control with
+# that content description. Layouts differ by screen: a wide bar has more buttons before the gear.
+focus_to_desc() {
+  local want; want="$(find_desc "$2")"; [ -z "$want" ] && return 1
+  for _ in $(seq 1 "${3:-6}"); do
+    focus_holds "$want" && return 0
+    key "$1"
+  done
+  focus_holds "$want"
+}
 assert_nothing_focused() {
   if [ -z "$(focused)" ]; then pass "nothing focused (as expected: $1)"; else fail "expected nothing focused ($1), got '$(focused)'"; fi
 }

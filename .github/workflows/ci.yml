@@ -124,6 +124,11 @@ jobs:
         # strings are marked translatable="false" in res/values/strings.xml and skipped.
         run: python3 tools/check-translations.py
 
+      - name: D-pad audit
+        # Every control has a focus ring and every gesture a key path (docs/dpad.md). Reads the
+        # source only; no device.
+        run: bash dpad_test_suite/audit_static.sh
+
       - name: Derive build version
         id: ver
         # versionName is plain semver (0.4.<run>) so Obtainium can compare it;

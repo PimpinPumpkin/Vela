@@ -349,7 +349,7 @@ signed file the app fetches at launch (SPEC 11).
   `VelaDialog`.
 - Every screen opens with something focused (`rememberDpadAutoFocus`), every control has a
   focus ring (`dpadHighlight`), and every gesture has a key path. D-pad code calls the touch
-  paths. `docs/dpad.md` has the rest. Run `dpad_test_suite/audit_static.sh` after focus work.
+  paths. `docs/dpad.md` has the rest. CI runs `dpad_test_suite/audit_static.sh`.
 - D-pad detection counts a touchless device or a physical D-pad only. The virtual input
   device reports a D-pad on every phone.
 - `adb shell input text` flips the app into keyboard mode. Type test input by tapping keys.

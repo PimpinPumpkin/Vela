@@ -19,8 +19,16 @@ goto_map() {
   dismiss_onboarding
 }
 
-# focus_search_bar — from the bare map (nothing focused), the first DOWN lands on the search bar.
-focus_search_bar() { key "$K_DOWN"; }
+# focus_search_bar: put focus on the search bar. With the display in touch mode the bare map opens
+# unfocused and the first DOWN lands there. In key mode Android focuses the bar as the window opens.
+focus_search_bar() { [ -n "$(focused)" ] || key "$K_DOWN"; }
+
+# open_settings: from the bare map, walk right along the search bar to the gear and press OK.
+open_settings() {
+  focus_search_bar
+  focus_to_desc "$K_RIGHT" "Settings" 6 || return 1
+  key "$K_OK" 1.5
+}
 
 # run_coffee — from the bare map, run the "Coffee" category chip search; waits for results.
 # Leaves focus in the results list. Returns 0 if "N results" appeared.

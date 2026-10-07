@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -697,7 +698,13 @@ fun NavSearchChips(
     val autoFocus = app.vela.ui.rememberDpadAutoFocus()
     Box(modifier.fillMaxSize()) {
         // Landscape: the rest of the route stays in view under a tint; a tap on it closes the page.
-        if (landscape) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onClose))
+        // A tap target only, never a focus stop: with keys the close button and Back do this.
+        if (landscape) {
+            Box(
+                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))
+                    .pointerInput(Unit) { detectTapGestures { onClose() } },
+            )
+        }
         Surface(
             color = SheetPalette.bg(dark, amoled),
             contentColor = SheetPalette.ink(dark),
@@ -838,6 +845,7 @@ fun NavControls(
     Card(
         modifier
             .fillMaxWidth()
+            // dpad-ok: OK on NavBarTop's handle opens the step list, the same as this drag.
             .pointerInput(Unit) {
                 val commitPx = with(density) { NAV_BAR_LIFT_COMMIT_DP.dp.toPx() }
                 val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
@@ -1167,7 +1175,7 @@ fun ArrivalSummary(
                 onValueChange = { draft = it.take(60) },
                 singleLine = true,
                 label = { Text(stringResource(R.string.route_save_hint)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
             )
         }
     }

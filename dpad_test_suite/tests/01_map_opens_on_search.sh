@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# The bare map is the one intentionally-unfocused screen: it opens ambient (nothing focused, map
-# NOT engaged), and the user's first arrow lands on the search bar — never an engaged map that
-# needs BACK to leave (docs/dpad.md, 2026-07-08).
+# The bare map never opens engaged: either nothing is focused (the display was in touch mode) or
+# the search bar is (key mode), and focus on the search bar is one press away at most. A map that
+# opened engaged would need BACK before any arrow could reach the bar (docs/dpad.md).
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; source "$D/lib.sh"; source "$D/nav.sh"
-echo "TEST 01: bare map opens ambient, first DOWN -> search bar"
+echo "TEST 01: bare map opens unengaged, search bar within one press"
 
 goto_map
-assert_nothing_focused "bare map on open (map is ambient, not engaged)"
-focus_search_bar                                   # first DOWN
-assert_focus_ytop_between 30 140 "search bar (top of screen)"
+assert_not_on_screen_contains "OK: move the map"   # the pill the map target shows while it has focus
+focus_search_bar
+assert_focus_ytop_pct 0 15 "search bar (top of screen)"
 report

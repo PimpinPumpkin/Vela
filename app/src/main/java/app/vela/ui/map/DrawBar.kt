@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import app.vela.R
 import app.vela.core.util.ShapeMeasure
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 import app.vela.ui.formatArea
 import app.vela.ui.formatDistance
 import app.vela.ui.icons.Sym
@@ -97,7 +98,7 @@ fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
                 OutlinedTextField(
                     value = name, onValueChange = { name = it.take(60) }, singleLine = true,
                     placeholder = { Text(stringResource(R.string.draw_name_hint)) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).dpadFieldEscape(),
                 )
                 IconButton(onClick = vm::drawUndo, enabled = points > 0, modifier = Modifier.dpadHighlight(CircleShape)) {
                     Icon(Sym.Undo, contentDescription = stringResource(R.string.draw_undo))
