@@ -2506,7 +2506,12 @@ Defaults that make the safe path the easy one:
   `ExceptionInInitializerError` once, every later call logged "Rejecting re-init on
   previously-failed class", and Google directions were dead in that build while 660 tests were
   green. Use `Regex.escape(literal)` for literal text, and read logcat after the first device run
-  of any new `object`-level Regex.
+  of any new `object`-level Regex. Java-only property syntax is the same trap: `\p{IsHan}` /
+  `\p{IsHiragana}` (the `Is<Script>` form) throws `PatternSyntaxException: U_ILLEGAL_ARGUMENT_ERROR`
+  on Android 9 (measured on the Galaxy S8+ with a dex probe, 2026-10-06), took `PlaceNames` down on
+  first use, and passes every JVM test. Test scripts with `Character.UnicodeScript.of(codePoint)`
+  (see `PlaceNames.hasCjk`, pinned code point by code point against the old regex); `\p{L}`, `\p{N}`,
+  `\p{M}`, `\p{Ll}`, `\p{Mn}` and `\p{Han}` / `\p{sc=Han}` are fine on ICU.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
   the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
   process-global and survived the recreate, so switching Russian back to English left
