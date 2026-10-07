@@ -343,7 +343,13 @@ class CarMapRenderer(
     }
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {
+        // A screen change hands over a new Surface object for the same buffer queue. The old
+        // object keeps the queue's one CPU connection until it is released, and until then every
+        // lockCanvas on the new one fails and the map stands still.
+        val old = surface
         surface = container.surface
+        if (old != null && old !== surface) runCatching { old.release() }
+        lockFailed = false
         width = container.width
         height = container.height
         // Clear any in-flight-render state: a surface swap (screen transition) cancels the previous
@@ -411,6 +417,7 @@ class CarMapRenderer(
     }
 
     override fun onSurfaceDestroyed(container: SurfaceContainer) {
+        runCatching { surface?.release() }
         surface = null
         runCatching { snapshotter?.cancel() }
         snapshotter = null
@@ -596,11 +603,16 @@ class CarMapRenderer(
         }.onFailure { rendering = false }
     }
 
+    private var lockFailed = false
+
     private fun draw(snap: MapSnapshot) {
         val s = surface ?: return
         if (!s.isValid || width <= 0 || height <= 0) return
         val bmp = runCatching { snap.bitmap }.getOrNull()
-        val canvas: Canvas = try { s.lockCanvas(null) } catch (t: Throwable) { return }
+        val canvas: Canvas = try { s.lockCanvas(null) } catch (t: Throwable) {
+            if (!lockFailed) { lockFailed = true; android.util.Log.w("VelaCar", "car surface would not lock: ${t.javaClass.simpleName}") }
+            return
+        }
         try {
             if (bmp != null) {
                 // The darkening filter was the night look before the palette could be applied; a
