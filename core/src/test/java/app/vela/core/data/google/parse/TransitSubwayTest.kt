@@ -114,4 +114,17 @@ class TransitSubwayTest {
         assertEquals(TransitMode.GENERIC, TransitParser.guessModeForTest(badges("walk.png", "xx-some-operator/7.png")))
         assertEquals(TransitMode.WALK, TransitParser.guessModeForTest(badges("walk.png")))
     }
+
+    // Issue #674: the summary badges of a Wakayama to Namba trip, as captured on the Japanese page.
+    @Test fun `a line drawn as icon plus name is one line, not two`() {
+        val summary = Json.parseToJsonElement("""[
+          [5,null,[3,"jp2ltr-v2/jr-west-kansai/R.png",null,"電車",[["//maps.gstatic.com/mapfiles/transit/iw2/svg/jp2ltr-v2/jr-west-kansai/R.svg",1,[44,44],null,0]]]],
+          [5,["阪和線",1,"#f29810","#000000"]],[9],
+          [1,null,[3,"walk.png",null,"徒歩",[["//maps.gstatic.com/mapfiles/transit/iw2/svg/walk.svg",1,[44,44],null,0]],"3"]],[9],
+          [5,null,[3,"jp2ltr-v2/nankai/KOYA.png",null,"電車",[["//maps.gstatic.com/mapfiles/transit/iw2/svg/jp2ltr-v2/nankai/KOYA.svg",1,[44,44],null,0]]]],
+          [5,["高野線",1,"#04873e","#ffffff"]]]""")
+        val lines = TransitParser.parseLinesForTest(summary, null)
+        assertEquals(listOf("阪和線", "高野線"), lines.map { it.name })
+        assertTrue(lines.all { it.mode == TransitMode.TRAIN })
+    }
 }

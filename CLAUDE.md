@@ -3963,7 +3963,11 @@ architecture note.
   is the open planner standing in: check `VelaCapture: TBEGIN` for the payload length first.
   Test the app in another language without touching Settings:
   `adb shell cmd locale set-app-locales app.vela --user 0 --locales ja` (and `""` to undo).
-  Open: a line pill reading "MAIN" in the reporter's screenshot, not reproduced.
+  (4) The stray "MAIN" / "KOYA" / "NH" labels were the operator ICON's file name
+  (`jp2ltr-v2/nankai/KOYA.png`) added as a second line beside the line's own name: in Japan an
+  icon entry is followed at once by a text entry for the same line. `iconLineNames` skips an
+  icon whose next sibling is a name; an icon with no name after it (a New York subway bullet)
+  still stands for its line. Reproduced and rechecked on the 4a with Wakayama to Namba.
 - **Unconfirmed Overture rows rank as ordinary places (2026-10-06, a forum report from DC).**
   `tools/build-places-region.sh`, table `unconfirmed`: confidence under 0.75 AND no second source
   (no row in `srcbonus` with a bonus, none in `marksize`) caps prominence at 3.0 and is never a

@@ -3640,6 +3640,8 @@ Details:
   walk icons. The mode then comes from the operator icon's path: `shinkansen`, `jp-jr` or
   `jp2ltr` is a train, `metro` or `subway` a subway, any other operator icon a generic ride.
   A leg with an operator icon is never a walk.
+- In a trip summary, an operator icon entry followed directly by a text entry is one line (icon
+  plus name); the icon's file name is used as the line's name only when no text entry follows.
 - The page's payload is taken up to 6 MB. A cut payload does not parse, and the chooser then
   shows the open planner's trips; a long intercity trip in Japanese passes 1.5 MB.
 - Durations Vela formats itself use the platform's short units in every language but English

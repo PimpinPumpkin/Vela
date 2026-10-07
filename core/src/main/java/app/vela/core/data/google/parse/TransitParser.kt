@@ -325,9 +325,23 @@ object TransitParser {
     /** Every agency-scoped line bullet in [root], in document order, distinct; see [iconLineName]. */
     private fun iconLineNames(root: JsonElement): List<String> {
         val out = LinkedHashSet<String>()
+        // An icon entry `[5,null,[3,"<operator>/<code>.png",..]]` followed at once by a text entry
+        // `[5,["<line name>",1,"#fill","#text"]]` is ONE line drawn as icon plus name (Japan:
+        // "jp2ltr-v2/nankai/KOYA.png" then "高野線"). Its file name is not a second line; adding it
+        // put "KOYA", "MAIN", "NH" beside the real names (issue #674). An icon with no name after
+        // it (a New York subway bullet) is the line's only identity and is kept.
+        fun isIcon(e: JsonElement?): Boolean {
+            val a = e as? JsonArray ?: return false
+            val icon = (a.getOrNull(2) as? JsonArray)?.getOrNull(1).str() ?: return false
+            return a.getOrNull(1).str() == null && a.getOrNull(1) !is JsonArray && icon.endsWith(".png") && "/" in icon
+        }
+        fun isPill(e: JsonElement?): Boolean {
+            val pill = (e as? JsonArray)?.getOrNull(1) as? JsonArray ?: return false
+            return pill.getOrNull(0).str() != null && pill.getOrNull(2).str()?.startsWith("#") == true
+        }
         fun walk(n: JsonElement) {
             when (n) {
-                is JsonArray -> n.forEach(::walk)
+                is JsonArray -> n.forEachIndexed { i, c -> if (!(isIcon(c) && isPill(n.getOrNull(i + 1)))) walk(c) }
                 else -> {
                     val v = n.str()
                     if (v != null && v.endsWith(".png") && !v.startsWith("//") && "/" in v) {
