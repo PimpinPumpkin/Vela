@@ -157,6 +157,9 @@ Compose holder.
     RouteGeometry         OSRM turn-by-turn, step and lane parsing, via snapping
     RouteEngine           offline routing interface
     ObfRouteEngine        on-device OsmAnd router over downloaded .obf files
+    ObfBmsspRouteEngine   on-device sorting-barrier SSSP router over the same .obf files (fork)
+    SortingBarrierEngine  calibration-gated composite over both engines (default: ObfRouteEngine)
+    routing/              SSSP package: SsspGraph, Dijkstra baseline, Bmssp, BatchPQ, RoadGraphBuilder
     ValhallaRouter        safety-weighted bicycle routing
     RouteCorridor         search along a route (during a drive: only the part ahead, `ahead`)
     OverpassPois / OverpassEndpoints / OverpassTrafficSignals / OverpassAlprCameras
@@ -1124,6 +1127,22 @@ names (`Route.roadNamesLatin`).
   `ObfStopProbeTest` (`-DvelaObf=<dir with delaware.obf>`): a 2.6 s walk search stops at 308 ms.
 - The region index (`index.json`) is parsed once and kept until the file changes; `covers` and
   `currentRoadLimit` are asked several times a second during a drive.
+
+- **Second on-device engine (this fork): sorting-barrier SSSP.** `ObfBmsspRouteEngine`
+  (`core/routing/`: `RoadGraphBuilder` welds the `.obf` road tiles into one weighted digraph
+  with integer ms weights; `Bmssp` runs the Duan-Mao-Mao-Shu-Yin sorting-barrier algorithm
+  (arXiv:2504.17033, STOC 2025) with its batched priority queue `BatchPQ`; `SsspGraph` keeps
+  the Dijkstra baseline) answers a trip with one single-source-shortest-path run instead of
+  OsmAnd's A*. `CoreModule` binds the composite `SortingBarrierEngine`, gated by the
+  `sortingBarrierRouter` calibration flag, default off: every call goes to `ObfRouteEngine`,
+  and any BMSSP refusal (flag off, no covering region, avoid request, too tight `maxMs`)
+  falls back to it. Measured on the Delaware file, JVM: distances match the Dijkstra baseline
+  exactly; over 745k nodes and 1.48M edges, Wilmington to Rehoboth Beach, 179 ms Dijkstra vs
+  2.3 s BMSSP (about 13x), the same ratio the authors' implementation study reports (see
+  `FORK.md` for the full measurements and port deviations). `RouteEngine.shutdown()` is an
+  interface default since then: the composite forwards it to both engines, and `MapViewModel`
+  calls it directly (it used to cast to `ObfRouteEngine`, which would silently skip
+  invalidation once a composite is injected).
 
 ### 4.6 The navigation loop
 

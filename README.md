@@ -188,6 +188,11 @@ repository (the FAQ, the book, the full specification) is published there as a s
 - **Offline maps and routing.** Download a state or country once and its maps,
   turn-by-turn routing, and every place in it stay searchable with no signal -
   typed street addresses included.
+
+  *This fork only:* an experimental second offline engine routes drives with the 2025
+  sorting-barrier SSSP algorithm (arXiv:2504.17033) over the same region files. It is opt-in
+  via the `sortingBarrierRouter` calibration flag, off by default, and it is **not** faster
+  than the shipping router - see [FORK.md](FORK.md) for the measured numbers.
 - **Live gas prices.** Search for gas and every station's current price is right
   on its map marker, in the result list, and on the place page.
 - **Live public transit.** Departure boards and station-by-station stop timelines

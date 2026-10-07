@@ -63,7 +63,11 @@ tasks.withType<Test>().configureEach {
     System.getProperty("velaTrip")?.let { systemProperty("velaTrip", it) }
     System.getProperty("velaSeg")?.let { systemProperty("velaSeg", it) }
     System.getProperty("velaProbe")?.let { systemProperty("velaProbe", it) }
+    // A BMSSP run on a whole state (Delaware probe: ~745k nodes, ~1.48M edges) now fits the
+    // default test heap: the CSR graph build and the search's primitive-queue batched priority
+    // queue both stay inside 512m, so no fork-heap raise is needed here anymore.
     System.getProperty("velaObf")?.let { systemProperty("velaObf", it) }
+    System.getProperty("velaBench")?.let { systemProperty("velaBench", it) }
     System.getProperty("velaCells")?.let { systemProperty("velaCells", it) }
     System.getProperty("velaLive")?.let { systemProperty("velaLive", it) }
     System.getProperty("velaStudy")?.let { systemProperty("velaStudy", it) }
