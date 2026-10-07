@@ -2431,105 +2431,8 @@ fun MapScreen(
             ) {
                 LocateGlyph(darkTheme)
             }
-            // Parking button, its OWN control above the locate FAB. TAP with NO spot → save here
-            // (the one-tap "I parked" path). TAP with a spot set (teal) → a small hub menu (Find my
-            // car / Move parking here / Earlier spots / Clear) so re-parking is one obvious choice
-            // instead of the old clear-then-tap-again dance (user 2026-07-11: "setting parking again
-            // when you already have a spot is clunky"). LONG-PRESS still jumps straight to history.
-            // A Surface, not SmallFAB: the FAB's clickable eats the down so an outer long-press never
-            // fires; the inner Box detector owns both gestures (same seam the locate FAB needed).
-            val parkingSavedMsg = stringResource(R.string.map_parking_saved)
-            val parkingNoFixMsg = stringResource(R.string.map_parking_no_fix)
-            val parkingMovedMsg = stringResource(R.string.map_parking_moved)
-            val parkingClearedMsg = stringResource(R.string.map_parking_cleared)
-            val parkedCarLabel = stringResource(R.string.map_parked_car)
-            val parkingSet = state.parkingSpot != null
-            var showParkingHistory by remember { mutableStateOf(false) }
-            var showParkingMenu by remember { mutableStateOf(false) }
-            // Settings > Map can hide it (issue #626); a saved spot keeps it, the way back to the car.
-            if (app.vela.ui.ParkingButton.on.value || parkingSet) {
-                Surface(
-                    shape = CircleShape,
-                    // Same surface as the locate button, saved spot or not; the glyph carries the state.
-                    color = mapButtonColor(darkTheme),
-                    // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
-                    // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
-                    // carries state, like the Home/Work rows.
-                    contentColor = mapButtonInk(darkTheme, accent = if (parkingSet) Color(0xFF8AB4F8) else null),
-                    border = mapButtonRing(darkTheme),
-                    shadowElevation = 6.dp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .padding(end = 20.dp, bottom = chromeLift + 92.dp)
-                        .dpadHighlight(CircleShape),
-                ) {
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .pointerInput(parkingSet, state.parkingHistory.size) {
-                                detectTapGestures(
-                                    onTap = {
-                                        if (parkingSet) {
-                                            showParkingMenu = true
-                                        } else {
-                                            val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
-                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    onLongPress = {
-                                        if (state.parkingHistory.isNotEmpty()) showParkingHistory = true
-                                    },
-                                )
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Sym.LocalParking,
-                            contentDescription = stringResource(
-                                if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
-                            ),
-                        )
-                        // The parking hub, anchored to the button. Only reachable when a spot is set.
-                        // VelaMenu, not a bare DropdownMenu - the D-pad rule (docs/dpad.md): a popup
-                        // can't be pre-focused, so key-first devices get the auto-focusing chooser.
-                        app.vela.ui.VelaMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
-                            item(stringResource(R.string.map_parking_find), Sym.DirectionsCar) {
-                                showParkingMenu = false; vm.showParkedCar(parkedCarLabel)
-                            }
-                            // "Move parking here" overwrites the current spot with your live fix; the old
-                            // one is not lost - saveParkingSpot archives it to history. Hidden with no fix.
-                            if (state.myLocation != null) {
-                                item(stringResource(R.string.map_parking_move_here), Sym.MyLocation) {
-                                    showParkingMenu = false
-                                    val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            if (state.parkingHistory.size > 1) {
-                                item(stringResource(R.string.map_parking_earlier), Sym.History) {
-                                    showParkingMenu = false; showParkingHistory = true
-                                }
-                            }
-                            item(stringResource(R.string.map_parking_clear), Sym.Delete) {
-                                showParkingMenu = false
-                                vm.clearParkingSpot()
-                                Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                }
-            }
-            if (showParkingHistory) {
-                ParkingHistorySheet(
-                    history = state.parkingHistory,
-                    currentAtMillis = state.parkedAtMillis,
-                    onRestore = { vm.restoreParkingFromHistory(it); showParkingHistory = false },
-                    onDelete = { vm.deleteParkingHistoryEntry(it) },
-                    onClearAll = { vm.clearParkingHistory(); showParkingHistory = false },
-                    onDismiss = { showParkingHistory = false },
-                )
-            }
+            // The parking button, its menu and its history sheet (ParkingControl, below).
+            ParkingControl(state, vm, darkTheme, chromeLift)
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,
             // so it no longer earns a spot on the map.)
@@ -6396,6 +6299,121 @@ private fun PlaceIconDialog(
                 }
             }
         }
+    }
+}
+
+/**
+ * The parking button, above the locate button. A tap with no spot saves one here. A tap with a
+ * spot set opens a small menu (Find my car, Move parking here, Earlier spots, Clear). A long
+ * press opens the history. A Surface, not a FAB: the FAB's own clickable takes the press and a
+ * long press never fires, so the inner Box owns both gestures.
+ *
+ * By keys the button is a focus stop and OK is the tap. Keys have no long press here, so with no
+ * spot set and a history to open, OK asks which (docs/dpad.md, rule 3).
+ */
+@Composable
+private fun BoxScope.ParkingControl(state: MapUiState, vm: MapViewModel, darkTheme: Boolean, chromeLift: androidx.compose.ui.unit.Dp) {
+    val context = LocalContext.current
+    val parkingSavedMsg = stringResource(R.string.map_parking_saved)
+    val parkingNoFixMsg = stringResource(R.string.map_parking_no_fix)
+    val parkingMovedMsg = stringResource(R.string.map_parking_moved)
+    val parkingClearedMsg = stringResource(R.string.map_parking_cleared)
+    val parkedCarLabel = stringResource(R.string.map_parked_car)
+    val parkingSet = state.parkingSpot != null
+    val hasHistory = state.parkingHistory.isNotEmpty()
+    var showParkingHistory by remember { mutableStateOf(false) }
+    var showParkingMenu by remember { mutableStateOf(false) }
+    val save = {
+        val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+    }
+    val onTap = { if (parkingSet) showParkingMenu = true else save() }
+    val onOk = { if (!parkingSet && hasHistory) showParkingMenu = true else onTap() }
+    // Settings > Map can hide it (issue #626); a saved spot keeps it, the way back to the car.
+    if (app.vela.ui.ParkingButton.on.value || parkingSet) {
+        Surface(
+            shape = CircleShape,
+            // Same surface as the locate button, saved spot or not; the glyph carries the state.
+            color = mapButtonColor(darkTheme),
+            contentColor = mapButtonInk(darkTheme, accent = if (parkingSet) Color(0xFF8AB4F8) else null),
+            border = mapButtonRing(darkTheme),
+            shadowElevation = 6.dp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 20.dp, bottom = chromeLift + 92.dp)
+                .dpadHighlight(CircleShape),
+        ) {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .onKeyEvent { ev ->
+                        val ok = ev.key == androidx.compose.ui.input.key.Key.DirectionCenter || ev.key == androidx.compose.ui.input.key.Key.Enter
+                        if (ok && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) { onOk(); true } else false
+                    }
+                    .focusable()
+                    .pointerInput(parkingSet, state.parkingHistory.size) {
+                        detectTapGestures(
+                            onTap = { onTap() },
+                            onLongPress = { if (hasHistory) showParkingHistory = true },
+                        )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Sym.LocalParking,
+                    contentDescription = stringResource(
+                        if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
+                    ),
+                )
+                // VelaMenu, not a bare DropdownMenu: a popup cannot be focused before the first
+                // key press, so a key-first device gets the chooser that opens focused.
+                app.vela.ui.VelaMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
+                    if (parkingSet) {
+                        item(stringResource(R.string.map_parking_find), Sym.DirectionsCar) {
+                            showParkingMenu = false; vm.showParkedCar(parkedCarLabel)
+                        }
+                        // "Move parking here" overwrites the spot with your live fix. The old one
+                        // is kept: saveParkingSpot moves it to the history. Hidden with no fix.
+                        if (state.myLocation != null) {
+                            item(stringResource(R.string.map_parking_move_here), Sym.MyLocation) {
+                                showParkingMenu = false
+                                val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        if (state.parkingHistory.size > 1) {
+                            item(stringResource(R.string.map_parking_earlier), Sym.History) {
+                                showParkingMenu = false; showParkingHistory = true
+                            }
+                        }
+                        item(stringResource(R.string.map_parking_clear), Sym.Delete) {
+                            showParkingMenu = false
+                            vm.clearParkingSpot()
+                            Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        // Reached by keys only: the long press's key path.
+                        item(stringResource(R.string.map_parking_save), Sym.LocalParking) {
+                            showParkingMenu = false; save()
+                        }
+                        item(stringResource(R.string.parking_history_title), Sym.History) {
+                            showParkingMenu = false; showParkingHistory = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (showParkingHistory) {
+        ParkingHistorySheet(
+            history = state.parkingHistory,
+            currentAtMillis = state.parkedAtMillis,
+            onRestore = { vm.restoreParkingFromHistory(it); showParkingHistory = false },
+            onDelete = { vm.deleteParkingHistoryEntry(it) },
+            onClearAll = { vm.clearParkingHistory(); showParkingHistory = false },
+            onDismiss = { showParkingHistory = false },
+        )
     }
 }
 

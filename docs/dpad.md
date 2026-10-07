@@ -101,6 +101,7 @@ in the area picker (`AreaPickOverlay`).
 | Long press on a suggestion row | The trailing overflow button opens the same menu |
 | Drag to reorder stops (`StopsEditorSheet`) | Up and down buttons on each row in D-pad mode |
 | Street View drag | OK engages look-around: arrows turn the view, plus and minus zoom, OK moves to the nearest link ahead |
+| Long press on the parking button (`ParkingControl`) | OK on the button. With no spot saved and a history to open, it asks: Save parking spot, or Parking history. With a spot saved, the menu has Earlier spots |
 
 ### Settings
 
