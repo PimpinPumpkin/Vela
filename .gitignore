@@ -26,6 +26,8 @@ local.properties
 *.keystore
 *.jks
 release/
+# ...except the app's release source set, which holds the baseline profile every release build bakes in.
+!app/src/release/
 
 # OS
 .DS_Store

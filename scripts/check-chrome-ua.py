@@ -71,13 +71,13 @@ def main():
     pushed = json.loads((ROOT / "calibration.json").read_text()).get("secChUa")
     full = json.loads((ROOT / "calibration.json").read_text()).get("chromeFullVersion")
     build = newest_build(rows, have)
+    rc = 0
     if not full or not full.startswith(f"{have}.0."):
         # The client hints would fall back to "<major>.0.0.0", a version no real Chrome reports.
         print(f"**calibration.json chromeFullVersion is `{full}`, not a Chrome {have} build.** Use: `{build}`\n")
         rc = 1
     elif build and full != build:
         print(f"- chromeFullVersion `{full}`; the newest Chrome {have} build is `{build}` (either is a real build, no action needed)\n")
-    rc = 0
     if pushed and pushed != sec_ch_ua(have):
         # Builds from before 2026-09-23 send the pushed hint as-is; newer ones derive it.
         print(f"**calibration.json secChUa is not what Chrome {have} sends.** Use: `{sec_ch_ua(have)}`\n")

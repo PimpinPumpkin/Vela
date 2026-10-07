@@ -91,7 +91,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet app/src/release/generated/baselineProfiles/; then
+          # git status, not git diff: the first profile is a new file, which a diff does not see.
+          if [ -z "$(git status --porcelain app/src/release/generated/baselineProfiles/)" ]; then
             echo "Profile unchanged - nothing to do."
             exit 0
           fi

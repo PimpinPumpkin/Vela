@@ -2158,7 +2158,7 @@ internal fun DepartTimeChooser(
             val (summary, note) = when (mode) {
                 1 -> stringResource(R.string.place_depart_arrive, time.format(fmt), window(time, lo, hi, +1)) to departNote
                 2 -> stringResource(R.string.place_arriveby_leave, time.format(fmt), window(time, hi, lo, -1)) to departNote
-                else -> stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt)) to
+                else -> stringResource(R.string.place_arrive_approx, (app.vela.ui.DemoClock.now()?.toLocalTime() ?: java.time.LocalTime.now()).plusSeconds(nowDur.toLong()).format(fmt)) to
                     range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
             }
             Column {
