@@ -2,10 +2,13 @@ package app.vela.core.di
 
 import android.content.Context
 import app.vela.core.VelaConfig
+import app.vela.core.config.CalibrationStore
+import app.vela.core.data.ObfBmsspRouteEngine
 import app.vela.core.data.ObfRouteEngine
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.MockMapDataSource
 import app.vela.core.data.RouteEngine
+import app.vela.core.data.SortingBarrierEngine
 import app.vela.core.data.google.GoogleMapsDataSource
 import dagger.Module
 import dagger.Provides
@@ -70,8 +73,14 @@ object CoreModule {
      */
     @Provides
     @Singleton
-    fun routeEngine(@ApplicationContext context: Context): RouteEngine =
-        ObfRouteEngine { File(app.vela.core.data.OfflineRoot.dir ?: context.filesDir, "obf") }
+    fun routeEngine(@ApplicationContext context: Context, calibration: CalibrationStore): RouteEngine {
+        val obfRootOf = { File(app.vela.core.data.OfflineRoot.dir ?: context.filesDir, "obf") }
+        return SortingBarrierEngine(
+            bmssp = ObfBmsspRouteEngine(obfRootOf),
+            osmAnd = ObfRouteEngine(obfRootOf),
+            enabled = { calibration.current().sortingBarrierRouter },
+        )
+    }
 }
 
 /** A cookie jar the app can empty (Settings > Privacy "Start a new Google session"). */

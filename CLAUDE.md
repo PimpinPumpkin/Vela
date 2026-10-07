@@ -6806,7 +6806,12 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   graph 105 MB vs obf routing section 26.9 MB (3.9x); a target-sections obf (routing+address+POI,
   NO map/transport - `scripts/VelaObfShim.java` sets the IndexCreatorSettings booleans the CLI
   lacks) makes Germany ~2 GB where graph+pack was ~8. CoreModule binds `ObfRouteEngine`
-  directly since 2026-09-15 (GraphHopper retired); avoids (toll/motorway/ferry) are DYNAMIC
+  directly since 2026-09-15 (GraphHopper retired); this fork binds the composite
+  `SortingBarrierEngine` instead: same engine by default, with the experimental
+  `ObfBmsspRouteEngine` (sorting-barrier SSSP, `core/routing/`) opted in per the
+  `sortingBarrierRouter` calibration flag; `RouteEngine.shutdown()` is an interface default
+  so region-change invalidation reaches both (MapViewModel calls it, no more casts);
+  avoids (toll/motorway/ferry) are DYNAMIC
   routing.xml params (`avoid_toll`/`avoid_motorway`/`avoid_ferries`) so they work offline with no baked profiles,
   and bicycle/pedestrian profiles come free. Turn mapping pinned by ObfRouteEngineTest (CONTINUE
   is voice-silent - a mis-mapped u-turn gets swallowed; instruction text reuses ghPhrase so all

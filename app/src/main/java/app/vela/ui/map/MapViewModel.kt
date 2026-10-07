@@ -7764,7 +7764,7 @@ class MapViewModel @Inject constructor(
                     flashStatus(appContext.getString(R.string.settings_storage_no_space, (need / (1024 * 1024)).toInt()))
                     return@downloadLaunch
                 }
-                (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+                routeEngine.shutdown()
                 app.vela.core.data.OfflinePacks.reload(emptyList())
                 _state.update { it.copy(placesOverlays = emptyList(), basemapArchive = null, buildingOverlays = emptyList(), addressOverlays = emptyList()) }
                 delay(600) // let the map drop its archive sources
@@ -7807,7 +7807,7 @@ class MapViewModel @Inject constructor(
             } finally {
                 _state.update { it.copy(storageMovePct = null) }
                 poiPackStore.registerPacks()
-                (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+                routeEngine.shutdown()
                 _state.update { it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds()) }
                 refreshPlacesOverlays()
                 refreshBasemapArchive()
@@ -7841,7 +7841,7 @@ class MapViewModel @Inject constructor(
                 // without it).
                 runCatching { app.vela.offline.GlyphPackStore.delete(appContext) }
             }
-            (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+            routeEngine.shutdown()
             kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
                 app.vela.offline.OfflineMaps.deleteAll(appContext) { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
             }
@@ -8076,7 +8076,7 @@ class MapViewModel @Inject constructor(
                 }
             } finally {
                 poiPackStore.registerPacks()
-                (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown() // re-read the region index with the new cells
+                routeEngine.shutdown() // re-read the region index with the new cells
                 _state.update {
                     it.copy(
                         routingDownloadingId = null, regionDownloadName = null,
@@ -8098,7 +8098,7 @@ class MapViewModel @Inject constructor(
     fun deleteCellRegion(regionId: String) {
         viewModelScope.launch {
             kotlinx.coroutines.withContext(Dispatchers.IO) { cellStore.deleteRegion(regionId) }
-            (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+            routeEngine.shutdown()
             _state.update {
                 it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(), cellsInstalled = cellStore.installed())
             }
@@ -9393,7 +9393,7 @@ class MapViewModel @Inject constructor(
                 .distinct().forEach { basemapStore.delete(it) }
         }
         refreshPlacesOverlays()
-        (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown() // drop cached readers for the removed region
+        routeEngine.shutdown() // drop cached readers for the removed region
         _state.update {
             it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(), cellsInstalled = cellStore.installed())
         }

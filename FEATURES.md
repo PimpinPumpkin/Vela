@@ -1446,6 +1446,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   by `tools/graphbuilder`); it was retired on 2026-09-15 once the obf carried everything it did (the
   speed-limit badge and the romanized road names included) at a quarter of the download size. The
   old graphs are deleted on the first launch after the update with a one-time notice.
+  - **Experimental second engine (this fork):** the `sortingBarrierRouter` calibration flag
+    switches car routing to a sorting-barrier SSSP engine (`core/routing/`, arXiv:2504.17033)
+    over the same `.obf` files. It is correct and about 13x slower than the shipped engine at
+    road-network sizes (measured; `FORK.md`); off by default, no UI switch.
   - **Get a region two ways:** pick it under **Settings → Offline maps → Entire states & countries** (regions covering your current
     location sort to the top and are flagged "covers your location"; a **name filter** appears once the
     catalog is large, so a region you're *traveling* to - "Japan", "Texas" - is one type away instead of a
