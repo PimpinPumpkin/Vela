@@ -1051,9 +1051,12 @@ internal class NavController(
                 cams.mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.loc) }.sorted()
             }
             if (routeCamKey == key) {
-                routeCamMeters = meters
+                // One warning per spot: a pair of cameras covering both directions of one road
+                // is 30 m apart along the line and warned twice, a second apart.
+                routeCamMeters = app.vela.core.nav.CameraAlerts.group(meters).map { it.atM }
                 app.vela.car.CarBridge.speedCameras.value = cams.map { it.loc }
                 diag.record("speedcam", "${meters.size} camera(s) on route", "corridor")
+                android.util.Log.i("VelaSpeedCam", "${meters.size} camera(s) on route in ${routeCamMeters.size} spot(s)")
             }
         }
     }
@@ -1149,6 +1152,7 @@ internal class NavController(
             routeCamMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenCams,
         ) ?: return
         spokenCams = spokenCams + i
+        android.util.Log.i("VelaSpeedCam", "warning ${i + 1} of ${routeCamMeters.size}")
         val msg = appContext.getString(R.string.nav_speed_camera_ahead)
         // The card as well as the voice (issue #696): a muted drive got nothing, and the map icon
         // is small at speed.
