@@ -139,7 +139,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   detour.
 - "Try side streets around cameras" also tries the streets beside each camera.
 - "Plate camera heads-up" shows a card near a camera. "Say when a plate camera is ahead" speaks it.
-- "Speed cameras" draws fixed speed cameras. "Warn me out loud" announces one ahead.
+- "Speed cameras" draws fixed speed cameras. "Warn me out loud" announces one ahead and shows a
+  card.
 - "Speeding alert" says when you have been over the posted limit for a few seconds.
 - Plate camera data ships with the app, so it works offline.
 

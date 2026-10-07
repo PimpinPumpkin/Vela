@@ -10,7 +10,7 @@ Settings > Navigation > Cameras has the switches. All but the first are off by d
 
 - Surveillance cameras: the plate camera layer.
 - Speed cameras: amber badges for fixed speed cameras. Under it, Warn me out loud says "Speed
-  camera ahead".
+  camera ahead" and shows it as a heads-up card for 6 seconds.
 - Avoid surveillance cameras: each route shows its count ("3 cameras on this route"), and one
   that passes fewer leads when the extra time is small. Under it, Try side streets around
   cameras builds routes on the streets beside the cameras.

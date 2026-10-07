@@ -1880,7 +1880,9 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
 
 - Camera alerts (`CameraAlerts.due`): `LEAD_SECONDS` 12, floored at `MIN_LEAD_M` 150 and capped
   at `MAX_LEAD_M` 600, silent below `MOVING_FLOOR_MPS` 2.0, once per camera per route, never
-  for a camera behind. Cameras within 40 m along the route are one alert.
+  for a camera behind. Cameras within 40 m along the route are one alert. A speed camera alert
+  is spoken and shown as a heads-up card for 6 s. A plate camera alert is the card, the voice,
+  or both, by its two settings.
 - Speeding alert (off by default): after 4 s continuously over the limit, re-armed after 8 s
   back under, at most once per 45 s, with the badge's 5 km/h tolerance.
 

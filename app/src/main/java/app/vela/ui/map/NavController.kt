@@ -1149,8 +1149,12 @@ internal class NavController(
             routeCamMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenCams,
         ) ?: return
         spokenCams = spokenCams + i
-        voice.speak(appContext.getString(R.string.nav_speed_camera_ahead))
-        app.vela.car.CarBridge.toast(appContext.getString(R.string.nav_speed_camera_ahead))
+        val msg = appContext.getString(R.string.nav_speed_camera_ahead)
+        // The card as well as the voice (issue #696): a muted drive got nothing, and the map icon
+        // is small at speed.
+        host.flashStatus(msg, 6000L)
+        voice.speak(msg)
+        app.vela.car.CarBridge.toast(msg)
     }
 
     private fun refreshNavRouteControls(route: app.vela.core.model.Route, liveFetch: Boolean = true) {

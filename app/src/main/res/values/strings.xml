@@ -123,7 +123,7 @@
     <string name="settings_flock_hint">Shows mapped automated license-plate reader (Flock) cameras, from the community DeFlock project in OpenStreetMap. On by default.</string>
     <string name="settings_speed_cams">Speed cameras</string>
     <string name="settings_speed_cam_warn">Warn me out loud</string>
-    <string name="settings_speed_cam_warn_hint">Says \"Speed camera ahead\" as you approach one while navigating, timed to give about twelve seconds\' notice. Follows your spoken-directions setting. Warning about cameras while driving is restricted in some countries, so this is off unless you turn it on.</string>
+    <string name="settings_speed_cam_warn_hint">Says \"Speed camera ahead\" and shows a card as you approach one while navigating, about twelve seconds ahead. Follows your spoken-directions setting. Warning about cameras while driving is restricted in some countries, so this is off unless you turn it on.</string>
     <string name="nav_speed_camera_ahead">Speed camera ahead</string>
     <string name="settings_flock_nav_card">Plate camera heads-up</string>
     <string name="settings_flock_nav_card_hint">While navigating, shows a card as you get close to a license plate camera on your route. Cameras aimed across your road are skipped. Off by default.</string>
