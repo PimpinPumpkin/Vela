@@ -55,7 +55,7 @@
     <string name="settings_live_traffic">Trafic en temps réel</string>
     <string name="settings_live_traffic_hint">Colore les routes selon le trafic pendant la consultation. La navigation colore déjà votre itinéraire.</string>
     <string name="settings_transit_layer">Mettre en évidence les lignes de transport</string>
-    <string name="settings_transit_layer_hint">Trace les lignes de train et de métro sur la carte.</string>
+    <string name="settings_transit_layer_hint">Trace les lignes de train et de métro sur la carte, chaque ligne avec sa propre couleur (là où les données Open Transit en ont une).</string>
     <string name="settings_read_all_reviews">Bouton « Lire tous les avis »</string>
     <string name="settings_read_all_reviews_hint">Ajoute un bouton qui ouvre la page complète des avis Google dans l\'appli, avec tous les avis. Désactivé = seulement la liste de Vela.</string>
     <string name="settings_buildings_3d">Bâtiments en 3D</string>
@@ -108,7 +108,7 @@
     <string name="settings_diag_redact">Masquer les lieux dans les exports</string>
     <string name="settings_save_trips">Enregistrer mes trajets (pour rejouer)</string>
     <string name="settings_save_trips_hint">Enregistre la trace GPS de chaque trajet sur ce téléphone, pour la rejouer plus tard. Ne quitte jamais le téléphone.</string>
-    <string name="settings_recorded_trips_hint">Trajets enregistrés: appuyez sur Rejouer pour en revoir un sur la carte (3×) :</string>
+    <string name="settings_recorded_trips_hint">Trajets enregistrés : appuyez sur Rejouer pour en revoir un sur la carte (3×) :</string>
     <string name="settings_trip_replay">Rejouer</string>
     <string name="settings_trip_read_error">Impossible de lire ce trajet</string>
     <string name="settings_trip_share">Partager</string>
@@ -235,8 +235,8 @@
     <string name="place_search_reviews">Rechercher dans les avis</string>
     <string name="place_sort_reviews">Trier les avis</string>
     <plurals name="place_review_count">
-        <!-- format -->
         <item quantity="one">%1$d avis</item>
+        <item quantity="many">%1$d avis</item>
         <item quantity="other">%1$d avis</item>
     </plurals>
     <string name="place_reviews_so_far">Avis · %1$d jusqu\'ici</string>
@@ -255,7 +255,7 @@
     <string name="place_copy_link">Copier le lien</string>
     <string name="place_link_copied">Lien copié</string>
     <string name="place_share_gmaps_link">Lien Google Maps</string>
-    <string name="place_share_map_pin">Repère sur la carte (geo:)</string>
+    <string name="place_share_map_pin">Repère sur la carte (geo :)</string>
     <string name="place_open_other_app">Ouvrir dans une autre appli de cartes</string>
     <string name="place_share_coordinates">Coordonnées</string>
     <string name="place_copy_coordinates">Copier les coordonnées</string>
@@ -288,8 +288,8 @@
     <string name="mapscreen_heads_up">À noter</string>
     <string name="mapscreen_dismiss">Ignorer</string>
     <plurals name="mapscreen_results_count">
-        <!-- format -->
         <item quantity="one">%1$d résultat</item>
+        <item quantity="many">%1$d résultats</item>
         <item quantity="other">%1$d résultats</item>
     </plurals>
     <string name="mapscreen_shrink_list">Réduire la liste</string>
@@ -441,8 +441,8 @@
     <string name="settings_update_none">Tu as la version la plus récente.</string>
     <string name="settings_place_pages">Fiches de lieux</string>
     <plurals name="place_transit_stops">
-        <!-- format -->
         <item quantity="one">%1$d arrêt</item>
+        <item quantity="many">%1$d arrêts</item>
         <item quantity="other">%1$d arrêts</item>
     </plurals>
     <string name="place_transit_stop_id">Arrêt %1$s</string>
@@ -593,6 +593,7 @@
     <string name="settings_layers_button_hint">Le bouton de la carte pour satellite, trafic, transports et relief.</string>
     <plurals name="topcard_more_stops">
         <item quantity="one">+%d arrêt de plus</item>
+        <item quantity="many">+%d arrêts de plus</item>
         <item quantity="other">+%d arrêts de plus</item>
     </plurals>
     <string name="settings_places">Lieux</string>
@@ -1035,6 +1036,7 @@
     <string name="nav_stop_offer_detour">+%1$s</string>
     <plurals name="exp_chooser_alts">
         <item quantity="one">%1$d autre itinéraire</item>
+        <item quantity="many">%1$d autres itinéraires</item>
         <item quantity="other">%1$d autres itinéraires</item>
     </plurals>
     <string name="settings_reviews_on_tap">Charger les avis seulement quand je touche</string>
@@ -1119,16 +1121,19 @@
     <string name="mapvm_cells_ready">L\'itinéraire et les lieux de cette partie de %1$s fonctionnent hors ligne</string>
     <string name="mapvm_cells_incomplete">Certains morceaux de %1$s n\'ont pas été téléchargés. Réessayez plus tard.</string>
     <plurals name="area_pick_cells">
-        <item quantity="one">Obtenir l\'itinéraire et les lieux hors ligne pour cette zone seulement : environ %1$s (%2$d partie de la région)</item>
-        <item quantity="other">Obtenir l\'itinéraire et les lieux hors ligne pour cette zone seulement : environ %1$s (%2$d parties de la région)</item>
+        <item quantity="one">Obtenir l\'itinéraire et les lieux hors ligne pour cette zone seulement : environ %1$s (%2$d partie de la région)</item>
+        <item quantity="many">Obtenir l\'itinéraire et les lieux hors ligne pour cette zone seulement : environ %1$s (%2$d parties de la région)</item>
+        <item quantity="other">Obtenir l\'itinéraire et les lieux hors ligne pour cette zone seulement : environ %1$s (%2$d parties de la région)</item>
     </plurals>
     <plurals name="settings_downloaded_cells">
-        <item quantity="one">Partie de la région : %1$d morceau, %2$s</item>
-        <item quantity="other">Partie de la région : %1$d morceaux, %2$s</item>
+        <item quantity="one">Partie de la région : %1$d morceau, %2$s</item>
+        <item quantity="many">Partie de la région : %1$d morceaux, %2$s</item>
+        <item quantity="other">Partie de la région : %1$d morceaux, %2$s</item>
     </plurals>
     <string name="settings_offline_delete_cells">Supprimer ces morceaux</string>
     <plurals name="settings_cells_update_available">
         <item quantity="one">%1$d morceau a une version plus récente</item>
+        <item quantity="many">%1$d morceaux ont une version plus récente</item>
         <item quantity="other">%1$d morceaux ont une version plus récente</item>
     </plurals>
     <string name="settings_confirm_end_nav">Demander avant d\'arrêter la navigation</string>
@@ -1167,6 +1172,7 @@
     <string name="route_save_keep_stops_hint">Désactivé : les arrêts ne servent qu\'à tracer le chemin, et l\'itinéraire est proposé à côté des autres pour ce trajet.</string>
     <plurals name="saved_route_stops">
         <item quantity="one">%1$d arrêt</item>
+        <item quantity="many">%1$d arrêts</item>
         <item quantity="other">%1$d arrêts</item>
     </plurals>
     <string name="mapscreen_section_routes">Vos itinéraires</string>
@@ -1242,10 +1248,12 @@
     <string name="settings_flock_route_alert_hint">Compte les caméras de lecture de plaques (Flock) sur chaque itinéraire (une caméra orientée en travers de la route est ignorée, car elle lit la circulation transversale) et choisit automatiquement celui qui en compte le moins quand il n\'est qu\'un peu plus long. Vous n\'êtes jamais envoyé très loin de votre chemin : là où les caméras sont inévitables, les décomptes s\'affichent simplement et le choix vous revient. Faites un appui long sur la carte pour imposer vous-même un point de passage. Désactivé par défaut.</string>
     <plurals name="dir_cameras_avoided">
         <item quantity="one">Passe devant %1$d caméra de moins que l\'itinéraire le plus rapide</item>
+        <item quantity="many">Passe devant %1$d caméras de moins que l\'itinéraire le plus rapide</item>
         <item quantity="other">Passe devant %1$d caméras de moins que l\'itinéraire le plus rapide</item>
     </plurals>
     <plurals name="dir_cameras_on_route">
         <item quantity="one">%1$d caméra sur cet itinéraire</item>
+        <item quantity="many">%1$d caméras sur cet itinéraire</item>
         <item quantity="other">%1$d caméras sur cet itinéraire</item>
     </plurals>
     <string name="settings_offline_cached_places">Garder les lieux consultés pour le hors ligne</string>
