@@ -1000,6 +1000,11 @@ fun VelaMapView(
     // began with two fingers and is undecided, [1] = its travel so far in px.
     val twoFingerMove = remember { floatArrayOf(0f, 0f) }
     val shoving = remember { booleanArrayOf(false) } // two-finger tilt gesture in flight - ticker steps aside
+    // Two fingers are on the map. A pinch is only recognized after some travel, and until then the
+    // fingers still slide and turn the map a little while the follow loops put it back every frame:
+    // the grab at the start of a pinch out during a drive (2026-10-07). The loops step aside from
+    // the second finger down, as they do for a recognized pinch.
+    val twoDown = remember { booleanArrayOf(false) }
     val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
     val browseUserTilt = remember { doubleArrayOf(Double.NaN) } // kept until the compass is tapped or a drive starts
     val browseZoomGoal = remember { doubleArrayOf(Double.NaN) } // locate-tap standard zoom, eased by the browse ticker
@@ -1159,6 +1164,11 @@ fun VelaMapView(
             var moved = false
             mapView.setOnTouchListener { _, ev ->
                 val dots = drawDotsHolder.value
+                twoDown[0] = when (ev.actionMasked) {
+                    android.view.MotionEvent.ACTION_POINTER_DOWN, android.view.MotionEvent.ACTION_MOVE -> ev.pointerCount >= 2
+                    android.view.MotionEvent.ACTION_POINTER_UP -> ev.pointerCount - 1 >= 2
+                    else -> false // down, up, cancel: one finger or none
+                }
                 when (ev.actionMasked) {
                     android.view.MotionEvent.ACTION_DOWN -> {
                         held = -1
@@ -2535,7 +2545,7 @@ fun VelaMapView(
             var camLat = tgtLat; var camLng = tgtLng
             var lookLat = tgtLat; var lookLng = tgtLng // camera aim point (ahead of the puck while driving)
             var attSettling = false // true while bearing/tilt are still easing (to course-up or north-up)
-            if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0]) {
+            if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
                     // First follow-engagement. If the camera is zoomed OUT past street level - a cold
@@ -2661,7 +2671,7 @@ fun VelaMapView(
             // The locate tap's standard zoom rides the ticker (an animateCamera would be canceled
             // by the ticker's own writes a frame later): ease toward the goal, retire it on arrival.
             var zoomEase = Double.NaN
-            if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0] && !browseZoomGoal[0].isNaN()) {
+            if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0] && !browseZoomGoal[0].isNaN()) {
                 val z = cam.cameraPosition.zoom
                 if (kotlin.math.abs(browseZoomGoal[0] - z) < 0.02) browseZoomGoal[0] = Double.NaN
                 else zoomEase = z + (browseZoomGoal[0] - z) * (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
@@ -2673,9 +2683,9 @@ fun VelaMapView(
                 // catch up (the visible hop). At the eased position the dot stays centered and glides with
                 // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
                 // while pinching, when the camera isn't easing.)
-                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
+                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
-                if (cam != null && !scaling[0] && !shoving[0] && !browseFlying[0]) {
+                if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
                     if (attSettling || !zoomEase.isNaN() || browseDrive[1] > 0.5) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
@@ -3163,7 +3173,7 @@ fun VelaMapView(
                 // for a smooth hand-off from the pre-engage framing / a Re-center. Skipped while
                 // panning (detached) or pinching (the user's fingers win).
                 val cam = mapRef
-                if (cam != null && navFollowingHolder.value && !scaling[0] && !shoving[0]) {
+                if (cam != null && navFollowingHolder.value && !scaling[0] && !shoving[0] && !twoDown[0]) {
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
                     navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtEase / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
@@ -3651,7 +3661,7 @@ fun VelaMapView(
                 // engaged puck uses, so the 3D models do not fall back to the flat symbol.
                 val cam = mapRef
                 val nowMs = android.os.SystemClock.uptimeMillis()
-                if (cam != null && navFollowingHolder.value && navStartTilting[0] && !scaling[0] && !shoving[0] &&
+                if (cam != null && navFollowingHolder.value && navStartTilting[0] && !scaling[0] && !shoving[0] && !twoDown[0] &&
                     nowMs >= preEngageAnimUntil[0]
                 ) {
                     val want = if (navNorthUpHolder.value) 0.0
@@ -5081,7 +5091,7 @@ fun VelaMapView(
                     val brg = lastNavBearing ?: displayBearing ?: 0f
                     val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
                     val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
-                    if ((moved || turned) && !scaling[0]) {
+                    if ((moved || turned) && !scaling[0] && !twoDown[0]) {
                         lastNavTarget = loc
                         lastNavBearing = brg
                         val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)

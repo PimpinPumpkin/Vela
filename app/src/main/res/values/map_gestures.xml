@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overrides MapLibre's own value (0.6dp). A pinch zooms only once the fingers close or open
+         faster than this, per millisecond. At 0.6dp a pinch at an ordinary pace did nothing until it
+         sped up: on a Pixel 4a, 990 px a second zoomed nothing and 1,770 did. -->
+    <dimen name="maplibre_minimum_scale_speed">0.15dp</dimen>
+</resources>

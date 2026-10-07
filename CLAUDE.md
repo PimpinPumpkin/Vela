@@ -438,8 +438,9 @@ signed file the app fetches at launch (SPEC 11).
 - Low-memory path: `setprop debug.vela.lowram true`.
 - A trip between two points without moving the simulated location: open
   `https://www.google.com/maps/dir/?api=1&origin=..&destination=..` as a view intent.
-- Two-finger gestures cannot be injected with `input`. A held back swipe can, with
-  `input motionevent`.
+- Two-finger gestures cannot be injected with `input`: use `scripts/touch/two-finger.sh`. A
+  held back swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
+  zoom once a second (`VelaFps`), which is how to tell whether a pinch zoomed.
 - Log tags worth knowing: `VelaDirections`, `VelaSteps` and `VelaCapture` (set to DEBUG),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
   `VelaFps`, `VelaCar`, `VelaSim`.

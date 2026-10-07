@@ -1527,6 +1527,15 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
 - A two-finger move is a pan only after `TWO_FINGER_PAN_DP` (44 dp) of travel with no tilt or
   pinch begun. The tilt detector claims its gesture after 20 dp, after the move detector
   starts, so a move judged at its first event read every tilt as a pan.
+- The follow loops (drive and free-drive) stop writing the camera from the second finger down
+  (`twoDown`, set by the map's touch listener), not from the pinch being recognized. Until
+  then the fingers slid the map and the loop put it back every frame, which felt like the map
+  holding on.
+- MapLibre starts a pinch zoom only above a span speed. `res/values/map_gestures.xml` lowers
+  `maplibre_minimum_scale_speed` from 0.6 dp to 0.15 dp per millisecond. On a Pixel 4a a pinch
+  closing at 990 px a second zoomed nothing at 0.6 dp, and one at 400 zooms at 0.15. A level
+  tilt drag, a diagonal one with uneven fingers and a two-finger pan still read as tilt and
+  pan. `scripts/touch/two-finger.sh` plays these gestures on a phone.
 - A parked drive slows the loop to `NAV_IDLE_TICK_MS` (120 ms). A moving detached camera keeps
   it at frame rate.
 
