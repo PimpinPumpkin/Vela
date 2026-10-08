@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A `geo:` link's zoom (`?z=17`) is honored. A second pin drop after it cleared the zoom, so
+  every such link opened at the zoom the map already had.
 - A turn that stays on the same street is said as "Turn right", not "Turn right onto" the
   street the car is already on.
 - Settings > Appearance > Directions language sets the language of turns and the voice apart
