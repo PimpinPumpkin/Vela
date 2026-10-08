@@ -15,6 +15,8 @@ says so.
   around them, and warn near them. Both start off.
 - A pinch that twists zooms (it did nothing below a fast pace), and a pinch can turn the map
   in the same gesture. A small turn of the browse map goes back to north.
+- A voice of another language than Vela's says on its row that it is not the one heard
+  (issue 701).
 - Pinching out during a drive flattens the camera (`navTiltCap`), which ends the half-second
   stalls of a tilted city-wide view. Zooming back in tilts it again.
 - Settings > Offline maps no longer grows a tall empty box in languages with long button

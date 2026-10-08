@@ -110,6 +110,13 @@ Settings > Location > Location services. Vela shows a tip with a button to that 
 position has come after a few seconds. PSDS, in the same settings, makes the GPS lock faster
 outdoors.
 
+## Why is the voice I picked not the one I hear?
+
+Directions are spoken in Vela's language, by a voice of that language. A Spanish voice with
+Vela in English is kept but not used, and its row in the voice library says so. Set the
+language in Settings > Appearance and the voice speaks. A directions language apart from the
+app's is not built yet.
+
 ## Where do updates come from?
 
 GitHub releases, through Obtainium, the F-Droid repo or a manual APK. There is a weekly

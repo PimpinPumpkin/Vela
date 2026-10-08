@@ -3863,6 +3863,9 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   selection's language). Failing that, a system TTS in that language speaks. Failing that, it
   stays silent and fires `langUnavailable`, whose card offers a one-tap download of the
   language's recommended voice (`PiperCatalog.defaultFor`, `MapUiState.statusVoiceDownloadId`).
+  A selected voice of another language than the app's is never heard, so its row in the voice
+  library says which language directions are spoken in and which one the voice needs
+  (`VoiceRow`, issue 701).
 - `showStatus` cards dismiss after `STATUS_AUTO_MS` (10 s) with a draining bar
   (`InfoCard(autoMs)`), frozen while focused. A card with a fix (`statusVoiceAction`) stays.
   `flashStatus` cards drain over their own duration.

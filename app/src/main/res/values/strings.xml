@@ -470,6 +470,7 @@
     <string name="settings_voice_gender_neutral">Neutral</string>
     <string name="settings_voice_row_downloading">Downloading… %1$d%%</string> <!-- format -->
     <string name="settings_voice_row_in_use">In use · %1$s · %2$s · %3$s MB</string> <!-- format -->
+    <string name="settings_voice_row_other_language">Directions are spoken in %1$s. To hear this voice, set Vela\'s language to %2$s.</string> <!-- format: %1$s and %2$s are language names -->
     <string name="settings_voice_row_downloaded">Downloaded · %1$s · %2$s · %3$s MB</string> <!-- format -->
     <string name="settings_voice_row_use">Use</string>
     <string name="settings_voice_row_remove">Remove %1$s</string> <!-- format -->

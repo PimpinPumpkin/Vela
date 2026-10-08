@@ -166,6 +166,9 @@ Small items, one pull request each.
   restored, and it ran at about 0.4x realtime when last bundled, so measure first.
 - Explore: a sheet of nearby restaurants and things to do from the bare map. Events have no
   keyless source.
+- A directions language apart from the app's (issue 701): English menus with Spanish spoken
+  turns. The spoken line and the card line come from one `NavStrings` today, so the speech
+  text has to be built from its own.
 
 ### Open from the October 2026 audit
 

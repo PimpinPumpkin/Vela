@@ -60,6 +60,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     val catalog = remember { vm.voiceCatalog() }
     val installed = state.installedVoiceIds
     val selected = state.selectedVoiceId
+    val spokenLang = app.vela.core.i18n.NavStringsRegistry.current().locale.language.ifBlank { "en" }
     val installedMb = catalog.filter { it.id in installed }.sumOf { it.sizeMb }
     var confirmDeleteId by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
@@ -159,6 +160,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                         v = v,
                         installed = v.id in installed,
                         active = v.id == selected,
+                        spokenLang = spokenLang,
                         downloading = state.voiceDownloadingId == v.id,
                         downloadPct = if (state.voiceDownloadingId == v.id) state.voiceDownloadPct ?: 0f else 0f,
                         installing = state.voiceDownloadingId == v.id && state.voiceInstalling,
@@ -203,6 +205,7 @@ private fun VoiceRow(
     v: PiperVoice,
     installed: Boolean,
     active: Boolean,
+    spokenLang: String, // the language directions are spoken in (the app's)
     downloading: Boolean,
     downloadPct: Float,
     installing: Boolean = false, // download done, unpacking the archive (~15 s) - not a stuck 100%
@@ -238,6 +241,18 @@ private fun VoiceRow(
                 else -> "${v.region} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
             }
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Directions are spoken in the app's language, by a voice of that language. A
+            // selected voice of another one waits for the app to be in it, and "In use" alone
+            // read as the pick being ignored (issue 701).
+            if (active && v.langCode != spokenLang) {
+                val ui = app.vela.ui.AppLocale.effective()
+                fun name(code: String) = java.util.Locale.forLanguageTag(code).getDisplayLanguage(ui).ifBlank { code }
+                Text(
+                    stringResource(R.string.settings_voice_row_other_language, name(spokenLang), name(v.langCode)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
         Spacer(Modifier.width(8.dp))
         // D-pad: this trailing control REPLACES itself when used (Download -> spinner ->
