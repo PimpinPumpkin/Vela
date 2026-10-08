@@ -2880,6 +2880,9 @@ shares (`widenStreets`, the road edges, label colors, the hide list, borders).
   day/night override first, then the map mode, then the app theme. `isMapAmoled()` is true only
   while the map follows an app in `ThemeMode.AMOLED`. The map surface, its route colors and the
   scale bar take these. Sheets, cards, bars and settings keep `isAppInDarkTheme()`.
+- `VelaTheme` puts the AMOLED surfaces on whichever dark scheme is in use
+  (`ColorScheme.onTrueBlack`): Vela's own, or the wallpaper's with "Material You colors" on,
+  whose accents are kept.
 - `styleKey` carries the style URI, the dark and AMOLED flags, the palette, satellite, the puck
   style, the house-number level and the offline basemap archive. A change in any of them reloads
   the style.

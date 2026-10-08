@@ -67,7 +67,10 @@ private val DarkColors = darkColorScheme(
 // AMOLED: the dark scheme on TRUE BLACK surfaces (every lit pixel costs battery on OLED, and
 // pure black is its own look). Container roles step up in near-blacks so cards and the title bar
 // still read as layers; the thin borders on Settings cards carry the structure.
-private val AmoledColors = DarkColors.copy(
+private val AmoledColors = DarkColors.onTrueBlack()
+
+/** A dark scheme on true black surfaces, its accents kept: Vela's own, or the wallpaper's. */
+private fun androidx.compose.material3.ColorScheme.onTrueBlack() = copy(
     background = androidx.compose.ui.graphics.Color(0xFF000000),
     surface = androidx.compose.ui.graphics.Color(0xFF000000),
     surfaceDim = androidx.compose.ui.graphics.Color(0xFF000000),
@@ -101,7 +104,11 @@ fun VelaTheme(
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val dyn = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             val saneBackground = if (darkTheme) dyn.background.luminance() < 0.4f else dyn.background.luminance() > 0.6f
-            if (saneBackground) dyn else if (darkTheme) DarkColors else LightColors
+            val scheme = if (saneBackground) dyn else if (darkTheme) DarkColors else LightColors
+            // AMOLED with the wallpaper's colors: its accents on the same true black surfaces.
+            // The wallpaper's own dark surfaces are a tinted gray, which made the two settings
+            // together look like plain Dark on every menu screen (issue 709).
+            if (darkTheme && AppTheme.mode.value == ThemeMode.AMOLED) scheme.onTrueBlack() else scheme
         }
         // AMOLED is a flavor of DARK, so it must yield when something resolves the app to light -
         // the day/night-while-navigating override (issue #262) does exactly that, and without the

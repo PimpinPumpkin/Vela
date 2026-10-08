@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- "AMOLED black" with "Material You colors" keeps its black backgrounds on Settings and the
+  lists. The wallpaper's scheme replaced the whole theme, so the two together looked like
+  Dark (issue 709).
 - "Open now" asks Google for the places open now. It only thinned the 60 results already
   fetched, which late at night left two or three of them, some far away.
 - Low-RAM detection also covers a 32-bit process, a 128 MB heap class and a 2 GB phone
