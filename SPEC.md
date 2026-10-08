@@ -1461,7 +1461,10 @@ LADDER_SNAP_RESERVE_MS       6_000   an escalated fetch stops waiting for Google
   answered within `PHONE_FIRST_ONLINE_WAIT_MS`. The on-device search gets
   `PHONE_FIRST_ONDEVICE_WAIT_MS` more, then the fetch goes back to waiting on the open router. A
   trip with stops chains its legs the same way. The adopted route is offline and trafficless,
-  so the recheck heals it.
+  so the recheck heals it. On such a fetch the open router's call runs outside the fetch's scope
+  (`abandonableAsync`): a scope returns only when its children have finished, and as a child the
+  blocked call would hold the phone's route for the rest of `URGENT_OSRM_TIMEOUT_MS`. The call is
+  canceled when the fetch returns or is canceled, and ends at its own timeout.
 - When the open router gives nothing, `RerouteFallback.pick` takes Google's route if it is
   already back, otherwise races Google against the on-device router inside the remaining budget.
   Google's routes are tagged `GOOGLE_ABBREVIATED`.

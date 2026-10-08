@@ -4,12 +4,20 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Route
 import app.vela.core.model.RouteSource
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The bounded reroute's fallback order when the open router gave nothing (issue #557): Google's
@@ -85,6 +93,57 @@ class RerouteFallbackTest {
         val out = RerouteFallback.pick(google, onDevice = { google.complete(emptyList()); emptyList() }, budgetMs = 5_000)
         assertEquals(RerouteFallback.Source.NONE, out.source)
         assertTrue(out.waitedMs < 2_000)
+    }
+
+    // --- abandonableAsync ---------------------------------------------------------------
+    // The phone-first reroute: the open router's call blocks in a socket read and ignores
+    // cancellation, and the scope has to hand back the phone's route without it.
+
+    @Test fun `a scope that returns early does not wait out a blocking call`() = runBlocking {
+        val hung = CountDownLatch(1)
+        try {
+            val t0 = System.nanoTime()
+            val (out, open) = coroutineScope {
+                val openD = abandonableAsync { hung.await(8, TimeUnit.SECONDS); "open router" }
+                val answer = withTimeoutOrNull(200) { openD.await() } ?: "phone"
+                answer to openD
+            }
+            val tookMs = (System.nanoTime() - t0) / 1_000_000
+            assertEquals("phone", out)
+            // As a child of the scope the call held this for its whole 8 s. The bound is wide for a
+            // loaded CI runner.
+            assertTrue("took $tookMs ms", tookMs < 4_000)
+            assertTrue("the call left behind was not canceled", open.isCancelled)
+        } finally {
+            hung.countDown()
+        }
+    }
+
+    @Test fun `canceling the request cancels the call and does not wait for it`() = runBlocking {
+        val hung = CountDownLatch(1)
+        try {
+            val started = CompletableDeferred<Deferred<String>>()
+            val request = launch(Dispatchers.Default) {
+                coroutineScope {
+                    val openD = abandonableAsync { hung.await(8, TimeUnit.SECONDS); "open router" }
+                    started.complete(openD)
+                    openD.await()
+                }
+            }
+            val open = started.await()
+            val t0 = System.nanoTime()
+            request.cancelAndJoin()
+            val tookMs = (System.nanoTime() - t0) / 1_000_000
+            assertTrue("took $tookMs ms", tookMs < 4_000)
+            assertTrue("the call outlived its request uncanceled", open.isCancelled)
+        } finally {
+            hung.countDown()
+        }
+    }
+
+    @Test fun `a call awaited to its end answers`() = runBlocking {
+        val out = coroutineScope { abandonableAsync { Thread.sleep(50); "open router" }.await() }
+        assertEquals("open router", out)
     }
 
     // --- RouteBudget --------------------------------------------------------------------

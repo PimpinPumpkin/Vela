@@ -16,6 +16,7 @@ import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.RoutingPrefs
 import app.vela.core.data.ValhallaRouter
+import app.vela.core.data.abandonableAsync
 import app.vela.core.data.google.BrowserHeaders.browserHeaders
 import app.vela.core.data.google.BrowserHeaders.browserXhrHeaders
 import app.vela.core.data.google.parse.DirectionsParser
@@ -815,18 +816,23 @@ class GoogleMapsDataSource @Inject constructor(
         // A waypointed trip is a single path: neither router returns alternates for one.
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
-                val viaD = async {
+                val phoneFirst = urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)
+                val viaCall = {
                     RouteGeometry.routeVia(
                         http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg,
                         tries = tries, callTimeoutMs = osrmTryMs, budget = osrmBudget, onFailure = onOsrmFail,
                     )
                 }
+                // Outside the scope when phone first can return ahead of it: a scope waits for its
+                // children, and as one this blocking call would hold the phone's route for the
+                // rest of URGENT_OSRM_TIMEOUT_MS.
+                val viaD = if (phoneFirst) abandonableAsync { viaCall() } else async { viaCall() }
                 // Same urgent grace as the single-destination path below (issue #397).
                 val gD = if (bounded) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                     googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries, waypoints)
                 } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries, waypoints) }
                 // PHONE FIRST for a trip with stops: the legs chained on the downloaded region.
-                val phoneD = if (urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)) {
+                val phoneD = if (phoneFirst) {
                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                         runCatching { chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = PHONE_FIRST_ONLINE_WAIT_MS + PHONE_FIRST_ONDEVICE_WAIT_MS) }.getOrNull()
                     }
@@ -962,16 +968,21 @@ class GoogleMapsDataSource @Inject constructor(
         var openEdgesD: kotlinx.coroutines.Deferred<List<app.vela.core.data.ValhallaRouter.Edge>?>? = null
         var openLine: List<LatLng>? = null
         val fetched = coroutineScope {
+            val phoneFirst = urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)
             // PRIMARY: the open router (OSRM) — complete, street-named turn-by-turn + real geometry.
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
-            val openD = async {
+            val openCall = {
                 RouteGeometry.route(
                     http, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, tries, departBearingDeg,
                     callTimeoutMs = osrmTryMs, budget = osrmBudget, onFailure = onOsrmFail,
                 )
             }
+            // Outside the scope when phone first can return ahead of it: a scope waits for its
+            // children, and as one this blocking call would hold the phone's route for the rest
+            // of URGENT_OSRM_TIMEOUT_MS. The scope's end, or its cancellation, cancels it.
+            val openD = if (phoneFirst) abandonableAsync { openCall() } else async { openCall() }
             // URGENT (a mid-drive reroute): Google runs on an unstructured scope so a dead or slow
             // Google endpoint cannot hold the reroute. A diagnostics export (issue #397, 2026-09-15)
             // showed reroutes taking 18 to 40 s while OSRM had answered in seconds, because the
@@ -985,7 +996,7 @@ class GoogleMapsDataSource @Inject constructor(
             } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries) }
             // PHONE FIRST: an urgent reroute over a downloaded region computes the on-device route
             // in parallel and takes it when the open router is not back inside the short wait.
-            val phoneD = if (urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)) {
+            val phoneD = if (phoneFirst) {
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                     runCatching {
                         routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg, maxMs = PHONE_FIRST_ONLINE_WAIT_MS + PHONE_FIRST_ONDEVICE_WAIT_MS)

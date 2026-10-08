@@ -178,8 +178,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
   car vanishes for several frames at each end of a pinch. The overlay is used throughout.
 - A prepare-ahead voice line renders at background priority and an urgent line cannot cut the
   fragment in progress (`PiperSynth`), so a turn-now can land late between two close turns.
-- "Phone first" waits for the open router's blocking call before it can hand back the phone's
-  route (`openD`, `viaD` are structured children).
 - `FixRules.isUpgrade` lets a GPS fix that follows a poor GPS fix skip `sanePosition`.
 - A replay seek feeds every earlier fix through the engine in one main-thread block.
 - My Maps import compiles a regex per placemark and fetches on the 12 s client.

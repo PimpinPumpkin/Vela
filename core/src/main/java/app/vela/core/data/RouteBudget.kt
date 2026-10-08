@@ -4,6 +4,7 @@ import app.vela.core.model.Route
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
@@ -69,6 +70,20 @@ class RouteBudget private constructor(
                 .build()
         }
     }
+}
+
+/**
+ * An `async` the calling scope does not wait for. `coroutineScope` returns only when every child
+ * has finished, and a child inside a blocking call (a socket read, the on-device router) finishes
+ * when that call does, canceled or not, so a scope that returns early with another answer sits
+ * the call out first. [block] runs outside the scope and is canceled when the scope ends, by
+ * return or by cancellation: its answer is dropped, and a block that has not started never starts.
+ * A call already blocking runs on to its own timeout, so it must have one.
+ */
+internal fun <T> CoroutineScope.abandonableAsync(block: suspend CoroutineScope.() -> T): Deferred<T> {
+    val work = CoroutineScope(Dispatchers.IO).async(block = block)
+    coroutineContext[Job]?.invokeOnCompletion { work.cancel() }
+    return work
 }
 
 /**

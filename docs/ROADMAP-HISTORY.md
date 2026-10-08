@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A reroute over a downloaded region no longer waits out the open router's 6 second timeout
+  before handing back the phone's own route.
 - Whether a turn gets a street name no longer depends on the order a map tile lists its
   streets in: two streets about as close leave it bare either way. The last stretch of a trip
   is found by the length of Google's line, not by the distance Google states.
