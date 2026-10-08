@@ -55,11 +55,23 @@ object MemoryPressure {
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         heapClassMb = am?.memoryClass ?: 0
         val forced = forcedLowRam()
-        lowRam = forced ?: ((am?.isLowRamDevice == true) || (heapClassMb in 1..127))
         val totalMb = am?.let { m -> ActivityManager.MemoryInfo().also { m.getMemoryInfo(it) }.totalMem / (1024 * 1024) } ?: 0L
+        // THIS PROCESS's bitness, not the device's: 64-bit silicon can ship a 32-bit userspace, and
+        // it is the process that runs out of address space.
+        val is32Bit = !android.os.Process.is64Bit()
+        lowRam = forced ?: app.vela.core.data.LowRamMode.classify(
+            isLowRamDevice = am?.isLowRamDevice == true,
+            heapClassMb = heapClassMb,
+            totalRamMb = totalMb.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            is32Bit = is32Bit,
+        )
         modest = lowRam || totalMb in 1..4_300L
         strong = !modest && totalMb >= 7_300L
-        android.util.Log.i("MemoryPressure", "init lowRam=$lowRam heapClassMb=$heapClassMb forced=${forced?.toString() ?: "no"}")
+        android.util.Log.i(
+            "MemoryPressure",
+            "init lowRam=$lowRam heapClassMb=$heapClassMb totalRamMb=$totalMb is32Bit=$is32Bit " +
+                "forced=${forced?.toString() ?: "no"}",
+        )
     }
 
     /**
