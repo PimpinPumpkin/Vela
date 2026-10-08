@@ -9,6 +9,25 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Which stored list saving an import refreshes, and the id a new list gets when it refreshes none.
+ * The same import saved again is found by the id its source gives ([sourceId]: the custom map's
+ * id, the list's link), or, for a list saved before imports carried a source, by the title's id
+ * while it still has that title. A list that only shares the name is the user's own, or another
+ * map with a default title such as "Untitled map", and is never the target.
+ */
+fun importTarget(all: List<PlaceList>, title: String, sourceId: String?): Pair<PlaceList?, String> {
+    val titleId = "list:import:" + title.hashCode().toString(16)
+    val fromSource = sourceId?.let { "list:import:" + it.hashCode().toString(16) }
+    val existing = all.firstOrNull { it.id == fromSource } ?: all.firstOrNull { it.id == titleId && it.name == title }
+    if (existing != null) return existing to existing.id
+    val base = fromSource ?: titleId
+    var id = base
+    var n = 2
+    while (all.any { it.id == id }) id = "$base:${n++}"
+    return null to id
+}
+
 /** Persisted user place-lists (issue #1). Newest-first; all mutations return the fresh list. */
 @Singleton
 class PlaceListStore @Inject constructor(
@@ -20,12 +39,22 @@ class PlaceListStore @Inject constructor(
     // decode throw - the getOrDefault(empty) below would then WIPE the data on next write.
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun lists(): List<PlaceList> =
-        runCatching { json.decodeFromString<List<PlaceList>>(prefs.getString(KEY, "[]") ?: "[]") }
+    // The decoded lists for the stored string they came from. A saved custom map can make the
+    // string megabytes, and the search page reads the lists on every keystroke.
+    @Volatile private var decoded: Pair<String, List<PlaceList>>? = null
+
+    fun lists(): List<PlaceList> {
+        val raw = prefs.getString(KEY, "[]") ?: "[]"
+        decoded?.let { (from, lists) -> if (from == raw) return lists }
+        return runCatching { json.decodeFromString<List<PlaceList>>(raw) }
+            .onSuccess { decoded = raw to it }
             .getOrDefault(emptyList())
+    }
 
     private fun write(lists: List<PlaceList>): List<PlaceList> {
-        prefs.edit().putString(KEY, json.encodeToString(lists)).apply()
+        val raw = json.encodeToString(lists)
+        prefs.edit().putString(KEY, raw).apply()
+        decoded = raw to lists
         return lists
     }
 

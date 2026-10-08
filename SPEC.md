@@ -2570,6 +2570,12 @@ it with regexes.
 - A marker keeps its color (`<IconStyle>`, `Place.pinColor`, `ListPlace.color`) and up to 12
   photos (`gx_media_links` and `<img>`, `ListPlace.photos`).
 - Caps: 2,000 places, 500 shapes, 150,000 shape points.
+- Saving an import (a custom map or a shared list) goes through `importTarget`. The same import
+  saved again refreshes its list and keeps the name, icon, color and sound set on it: the list
+  is found by the id its source gives (`ImportedList.sourceId`, the map's id or the list's
+  link), or, for a list saved before imports carried a source, by the title's id while it
+  still has that title. A list that only shares the name is never replaced, so two maps both
+  called "Untitled map" are two lists.
 - Icons: the KML names an icon only by number (`icon-1577-FFD600`). `MyMapKml.iconNames` reads
   the full names from the viewer page and `MyMapKml.iconUrl` builds the address on
   `mt.googleapis.com/vt/icon`, kept as `Place.pinIconUrl` / `ListPlace.iconUrl`. The plain pin

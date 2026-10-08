@@ -155,6 +155,9 @@ data class ImportedList(
     val places: List<Place> = emptyList(),
     /** A My Maps custom map's lines and areas (issue #669); empty for a shared list. */
     val shapes: List<MapShape> = emptyList(),
+    /** What it was imported from (the custom map's id, the list's link), so saving the same
+     *  import again finds its list and another one with the same title does not. */
+    val sourceId: String? = null,
 )
 
 @Serializable

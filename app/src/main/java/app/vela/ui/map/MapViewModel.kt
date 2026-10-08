@@ -2358,7 +2358,7 @@ class MapViewModel @Inject constructor(
                 // save, its lines and areas are drawn on the map. Google serves the map as KML.
                 MapLinkParser.myMapId(q)?.let { mid ->
                     if (googleOff) { _state.update { it.copy(searching = false) }; toast(R.string.map_import_needs_google); return@launch }
-                    val map = withContext(Dispatchers.IO) { runCatching { dataSource.importMyMap(mid) }.getOrNull() }
+                    val map = withContext(Dispatchers.IO) { runCatching { dataSource.importMyMap(mid) }.getOrNull() }?.copy(sourceId = "mymap:$mid")
                     android.util.Log.i("VelaLink", "custom map: ${map?.places?.size ?: -1} pins, ${map?.shapes?.size ?: -1} shapes")
                     if (map == null) { _state.update { it.copy(searching = false, status = appContext.getString(R.string.map_mymap_failed)) }; return@launch }
                     _state.update {
@@ -2394,7 +2394,7 @@ class MapViewModel @Inject constructor(
                     toast(if (target != null && app.vela.core.data.ShortLinks.isList(target)) R.string.map_import_needs_google else R.string.map_link_unreadable)
                     return@launch
                 }
-                val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }
+                val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }?.copy(sourceId = "list:${q.trim()}")
                 if (imported != null && imported.places.isNotEmpty()) {
                     // Show the places as results and OFFER to save (a banner over the results),
                     // rather than silently persisting a list on every peeked link — user choice
@@ -5181,16 +5181,18 @@ class MapViewModel @Inject constructor(
     }
 
     /** Saves the currently-previewed imported Google list into Your lists (the Save banner).
-     *  Reuses a same-named list on re-import. Returns the new/updated list id. */
+     *  Saving the same import again refreshes its list and keeps the name, icon, color and sound
+     *  set on it. Returns the new/updated list id. */
     fun saveImportedList(): String? {
         val imp = _state.value.pendingImport ?: return null
-        val existing = listStore.lists().firstOrNull { it.name == imp.title }
-        val listId = existing?.id ?: ("list:import:" + imp.title.hashCode().toString(16))
-        val list = app.vela.core.model.PlaceList(
-            id = listId, name = imp.title, icon = "bookmark",
-            description = imp.description, places = imp.places.map { app.vela.core.model.ListPlace.of(it) },
-            shapes = imp.shapes, hiddenLayers = _state.value.pendingHiddenLayers.toList(),
-        )
+        val (existing, listId) = app.vela.core.data.importTarget(listStore.lists(), imp.title, imp.sourceId)
+        val places = imp.places.map { app.vela.core.model.ListPlace.of(it) }
+        val hidden = _state.value.pendingHiddenLayers.toList()
+        val list = existing?.copy(description = imp.description, places = places, shapes = imp.shapes, hiddenLayers = hidden)
+            ?: app.vela.core.model.PlaceList(
+                id = listId, name = imp.title, icon = "bookmark",
+                description = imp.description, places = places, shapes = imp.shapes, hiddenLayers = hidden,
+            )
         val lists = if (existing != null) listStore.update(list) else listStore.create(list)
         _state.update { it.copy(lists = lists, pendingImport = null, openListId = listId) }
         return listId
