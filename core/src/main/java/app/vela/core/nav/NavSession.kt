@@ -481,12 +481,16 @@ class NavSession @Inject constructor(
         if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
         // A jump past the next stop is a skip, not an arrival: hold the stops and reroute through
         // them (again each fix until a new route lands; the reroute gate paces the requests).
+        // A SILENT stop is different. It is a point a saved route or a camera detour was built
+        // through, not somewhere the driver asked to go: driving past the stretch it is on and
+        // rejoining the route means that stretch was declined, so it counts as passed.
         val skipped = synchronized(stopLock) {
             val prev = if (route === progressRoute) progressM else null
             progressRoute = route
             progressM = next.traveledM
             if (route === planRoute && prev != null &&
-                NavEngine.stopSkipped(stopMarks, stops.size, passedStops, prev, next.traveledM, STOP_ARRIVE_TOL_M, STOP_SKIP_JUMP_M)
+                NavEngine.stopSkipped(stopMarks, stops.size, passedStops, prev, next.traveledM, STOP_ARRIVE_TOL_M, STOP_SKIP_JUMP_M) &&
+                !NavEngine.onlySilentSkipped(stopMarks, stops.map { it.silent }, passedStops, prev, next.traveledM, STOP_ARRIVE_TOL_M)
             ) skipHoldRoute = route
             skipHoldRoute != null && skipHoldRoute === route
         }
@@ -946,8 +950,11 @@ class NavSession @Inject constructor(
             // consecutive on-corridor+moving fixes), NOT bare !offRoute, or a real missed-turn reroute could
             // be wrongly abandoned. Still off / only grazed → adopt r as before. Self-healing: a re-deviation
             // re-fires RerouteNeeded on the next rising edge (no cooldown charged — we return before adopt).
+            // Not for a skipped stop: there the car never left the line, and discarding the
+            // answer asked for it again on every fix for the rest of the drive.
             val backNav = _state.value.nav
-            if (_state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
+            val forSkippedStop = synchronized(stopLock) { skipHoldRoute != null && skipHoldRoute === fromRoute }
+            if (!forSkippedStop && _state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
                 note("reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
                 return@launch
             }

@@ -605,6 +605,15 @@ object NavEngine {
         return mark > prevM + tolM && mark <= nowM + tolM
     }
 
+    /** Whether every stop the jump from [prevM] to [nowM] went past is a silent one ([silent] by
+     *  stop index): a via a saved route or a camera detour was built through. The driver took
+     *  another way round that stretch and is back on the route, so nothing is owed to it. A jump
+     *  that also passed a stop the driver asked for is still a skip. */
+    fun onlySilentSkipped(marks: List<Double?>, silent: List<Boolean>, from: Int, prevM: Double, nowM: Double, tolM: Double): Boolean {
+        val jumped = (from until silent.size).filter { i -> marks.getOrNull(i)?.let { it > prevM + tolM && it <= nowM + tolM } == true }
+        return jumped.isNotEmpty() && jumped.all { silent[it] }
+    }
+
     /** The per-route geometry every [update] needs: cumulative meters at each vertex, and each
      *  maneuver's along-route mark. Both depend on the ROUTE alone, yet were rebuilt on every fix:
      *  a full-polyline pass plus a windowed projection of EVERY maneuver over the remaining line,

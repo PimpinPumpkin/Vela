@@ -301,6 +301,8 @@ route, and the voice says "You've reached <stop>".
 - Progress that jumps more than `STOP_SKIP_JUMP_M = 250` past the next stop in one fix is a skip
   (`NavEngine.stopSkipped`). This is a driver who kept going after an edit, on a road the route
   uses later. Nothing is announced and the drive reroutes through the stop.
+  The hidden points of a saved route or a camera detour are the exception: driving past the
+  stretch they are on and rejoining the route drops them, with no reroute back.
 
 Adding or removing a stop mid-drive replans once through the new list (`NavSession.setStops`).
 The order is the user's, so the replan skips the cooldown and the back-on-course discard and

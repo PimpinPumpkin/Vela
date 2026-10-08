@@ -47,3 +47,27 @@ class StopSkippedTest {
         org.junit.Assert.assertFalse(skipped(listOf(3000.0), 0, 100.0, 1500.0))
     }
 }
+
+class OnlySilentSkippedTest {
+    private fun only(marks: List<Double?>, silent: List<Boolean>, from: Int, prev: Double, now: Double) =
+        NavEngine.onlySilentSkipped(marks, silent, from, prev, now, 25.0)
+
+    @Test
+    fun aJumpPastASavedRoutesViaOwesNothing() {
+        org.junit.Assert.assertTrue(only(listOf(900.0), listOf(true), 0, 100.0, 2500.0))
+        org.junit.Assert.assertTrue(only(listOf(900.0, 1500.0), listOf(true, true), 0, 100.0, 2500.0))
+    }
+
+    @Test
+    fun aJumpThatAlsoPassesARealStopIsStillASkip() {
+        org.junit.Assert.assertFalse(only(listOf(900.0, 1500.0), listOf(true, false), 0, 100.0, 2500.0))
+        org.junit.Assert.assertFalse(only(listOf(900.0), listOf(false), 0, 100.0, 2500.0))
+    }
+
+    @Test
+    fun aViaWithNoMarkLeavesTheRealStopBehindItInCharge() {
+        org.junit.Assert.assertFalse(only(listOf(null, 1500.0), listOf(true, false), 0, 100.0, 2500.0))
+        // And a jump with no stop inside it is not this case at all.
+        org.junit.Assert.assertFalse(only(listOf(5000.0), listOf(true), 0, 100.0, 2500.0))
+    }
+}

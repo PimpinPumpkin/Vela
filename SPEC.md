@@ -1211,7 +1211,10 @@ During a drive:
   keeps them all.
 - Progress that jumps more than `STOP_SKIP_JUMP_M` (250 m) past the next stop in one fix is a
   skip (`NavEngine.stopSkipped`). The session holds the stops and reroutes through them each fix
-  until a new route lands.
+  until a new route lands. That reroute is not put through the back-on-course test, which
+  discarded every answer because the car had never left the line. A jump that only passed
+  silent stops is not a skip (`onlySilentSkipped`): the driver went another way round the
+  stretch a saved route or a camera detour was built through, and those points count as passed.
 - `NavSession.setStops` is the one replan entry; `addStop` delegates to it. It ignores the
   reroute cooldown, and the new list is the plan at once, so a failed fetch keeps it.
   `MapViewModel.applyStops` calls it only when the list differs from
