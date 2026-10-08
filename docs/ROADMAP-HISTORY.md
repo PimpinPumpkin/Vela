@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- Settings > Appearance > Directions language sets the language of turns and the voice apart
+  from the menus (issue 701). The banner and the speech share one `NavStrings`, so both follow
+  it.
 - "AMOLED black" with "Material You colors" keeps its black backgrounds on Settings and the
   lists. The wallpaper's scheme replaced the whole theme, so the two together looked like
   Dark (issue 709).

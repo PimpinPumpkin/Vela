@@ -10,8 +10,9 @@ import java.util.Locale
  * App language preference — **follow the system locale by default, or override to a specific language**
  * (like Google Maps' in-app language setting). A process-wide reactive holder + persisted pref, mirroring
  * [app.vela.ui.theme.AppTheme] / [Units]. Setting it drives everything Vela renders in the user's
- * language: the GENERATED nav text (via [NavStringsRegistry]) today, and — as they're localized — the
- * `strings.xml` UI chrome and the scrape locale (hl/gl). Resolved to an actual [Locale] by [effective].
+ * language: the `strings.xml` UI chrome, the scrape locale (hl/gl), and the GENERATED nav text (via
+ * [NavStringsRegistry]) unless [directions] picks another language for it. Resolved to an actual
+ * [Locale] by [effective] and [directionsEffective].
  *
  * Set EXPLICITLY here (main thread, startup + on change) and read from the registry at the leaf, rather
  * than calling `Locale.getDefault()` deep in the nav/TTS code (which runs off the main thread).
@@ -19,6 +20,11 @@ import java.util.Locale
 object AppLocale {
     /** "" = follow the system; otherwise a language code ("en", "fr", "de", …). */
     val language = mutableStateOf("")
+
+    /** The directions language: "" = the same as the app; otherwise a code from [SUPPORTED].
+     *  It drives the generated nav text and the voice, so the menus can stay in one language
+     *  while turns are shown and spoken in another (issue 701). */
+    val directions = mutableStateOf("")
 
     /** The languages Vela's generated nav voice is translated into (and, rolling out, the UI chrome).
      *  This is the source of truth for the in-app language picker — keep it in sync with the NavStrings
@@ -54,6 +60,7 @@ object AppLocale {
 
     fun init(context: Context) {
         language.value = prefs(context).getString(KEY, "") ?: ""
+        directions.value = prefs(context).getString(KEY_DIRECTIONS, "") ?: ""
         apply()
     }
 
@@ -70,6 +77,18 @@ object AppLocale {
         // (the nav voice already switched via apply()); no-op when nothing actually changed.
         if (changed) onLocaleChanged?.invoke()
     }
+
+    /** Set the directions language ("" = the same as the app). Only the nav text and the voice
+     *  read it, so no Activity re-create is needed. */
+    fun setDirections(context: Context, langCode: String) {
+        directions.value = langCode
+        prefs(context).edit().putString(KEY_DIRECTIONS, langCode).apply()
+        apply()
+    }
+
+    /** The resolved directions locale: the override when set, else [effective]. */
+    fun directionsEffective(): Locale = directions.value.takeIf { it.isNotBlank() }
+        ?.let { Locale.forLanguageTag(it) } ?: effective()
 
     /** The resolved locale — the system default when following the system, else the override.
      *  Hyphenated codes ("zh-TW") need [Locale.forLanguageTag]; `Locale("zh-TW")` would create a
@@ -117,9 +136,10 @@ object AppLocale {
 
     /** Push the resolved locale into the app's locale-aware subsystems. */
     private fun apply() {
-        NavStringsRegistry.setLocale(effective())
+        NavStringsRegistry.setLocale(directionsEffective())
     }
 
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "app_language"
+    private const val KEY_DIRECTIONS = "directions_language"
 }

@@ -4,7 +4,8 @@
 
 Settings opens over the map as a list of twelve pages with a search field above it.
 
-- Appearance: theme, font, interface size, map colors, units, clock, language, Page transitions.
+- Appearance: theme, font, interface size, map colors, units, clock, language, directions
+  language, Page transitions.
 - Map: traffic, transit lines, terrain, 3D buildings, map buttons, house numbers.
 - Places: "Place icons on the map", which places the map draws, what a place page loads.
 - Navigation: route picker, road-ahead bar, arrow, speed limit, zoom keys, cameras

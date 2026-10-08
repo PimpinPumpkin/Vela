@@ -47,6 +47,9 @@
     <string name="settings_language">Language</string>
     <string name="settings_follow_system_language">Follow system language</string>
     <string name="settings_language_hint">Changes the app\'s language and the spoken directions. Grab a matching voice in the Voice library.</string>
+    <string name="settings_directions_language">Directions language</string>
+    <string name="settings_directions_same_as_app">Same as app language</string>
+    <string name="settings_directions_language_hint">The language turns are shown and spoken in. Grab a matching voice in the Voice library.</string>
     <string name="settings_search">Search</string>
     <string name="settings_voice_search_toggle">Voice search mic</string>
     <string name="settings_voice_search_hint">Shows a mic in the search bar to speak your search.</string>
@@ -456,7 +459,7 @@
     <string name="settings_expand">Expand</string>
     <string name="settings_voice_lib_empty_hint">★ marks the recommended voices. Every voice runs offline on your phone.</string>
     <string name="settings_voice_lib_installed_hint">Installed: %1$d MB · %2$d voice(s).</string> <!-- format -->
-    <string name="settings_voice_lib_lang_hint">Your app language is %1$s. Download a %2$s voice below so spoken directions match (an English voice would mispronounce %3$s street names).</string> <!-- format -->
+    <string name="settings_voice_lib_lang_hint">Directions are in %1$s. Download a %2$s voice below so the spoken directions match (an English voice would mispronounce %3$s street names).</string> <!-- format -->
     <string name="settings_voice_search">Search voices</string>
     <string name="settings_voice_show_more">Show %1$d more</string>
     <string name="settings_voice_show_less">Show less</string>
@@ -470,7 +473,7 @@
     <string name="settings_voice_gender_neutral">Neutral</string>
     <string name="settings_voice_row_downloading">Downloading… %1$d%%</string> <!-- format -->
     <string name="settings_voice_row_in_use">In use · %1$s · %2$s · %3$s MB</string> <!-- format -->
-    <string name="settings_voice_row_other_language">Directions are spoken in %1$s. To hear this voice, set Vela\'s language to %2$s.</string> <!-- format: %1$s and %2$s are language names -->
+    <string name="settings_voice_row_other_language">Directions are spoken in %1$s. To hear this voice, set the directions language to %2$s.</string> <!-- format: %1$s and %2$s are language names -->
     <string name="settings_voice_row_downloaded">Downloaded · %1$s · %2$s · %3$s MB</string> <!-- format -->
     <string name="settings_voice_row_use">Use</string>
     <string name="settings_voice_row_remove">Remove %1$s</string> <!-- format -->

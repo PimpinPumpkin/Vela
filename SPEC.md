@@ -4071,6 +4071,13 @@ also restores `Locale.setDefault` to the captured device locale: the override is
 and otherwise leaves date formatting and the scrape's `hl` in the previous language. Changing
 the language calls `recreate()`.
 
+The directions language (`AppLocale.directions`, key `directions_language`) is empty by default,
+which means the same as the app. Set, it replaces the app language for `NavStringsRegistry`, so
+turn text on the banner and in speech, the voice's target language, the Voice library's
+suggested voice and the Vela voice id follow it. Menus, transit walk lines from `strings.xml`
+and the scrape keep the app language. Changing it needs no `recreate()`. A route already
+planned keeps the instructions it was built with.
+
 - Strings live in `res/values/strings.xml` (US English) plus one folder per translated language.
   `values-en-rGB` carries only the strings whose British wording differs.
 - Counts use `<plurals>` with each language's CLDR categories.
