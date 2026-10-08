@@ -108,3 +108,17 @@ jobs:
     with:
       tag: ${{ needs.cut.outputs.tag }}
       whats_new: ${{ inputs.whats_new }}
+
+  fdroid:
+    # The F-Droid index rebuilds when CI or the weekly promotion finishes, but not after this
+    # run: the CI it started and the promotion it called were made with the workflow token,
+    # whose events start no other workflow. A dispatch is the one event that token may send.
+    # Without it 0.5.2426 was the stable for hours while the index still offered 0.4.
+    needs: [cut, promote]
+    if: ${{ always() && needs.cut.result == 'success' && (needs.promote.result == 'success' || needs.promote.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rebuild the F-Droid index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run fdroid-repo.yml --repo "$GITHUB_REPOSITORY" --ref main

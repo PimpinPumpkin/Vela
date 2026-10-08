@@ -4892,7 +4892,8 @@ and in `location-guard.yml`.
   tag. It refuses any ref but `main`, a `main` that moved after the run started, and a `main`
   that is not at the optional `sha`. `promote-stable.yml` takes `tag` (the nightly expected to
   be newest; another one stops the run) and `whats_new` (the hand-written list that leads the
-  notes).
+  notes). The run ends by dispatching `fdroid-repo.yml`, which its own token's releases would
+  not trigger.
 - versionName is `0.5.<run>` (`0.4.<run>` until 2026-10-08; the minor is a name, and the run
   number orders releases across minors) and versionCode `(2000 + run) * 10` plus a chip digit. The run
   number must stay in `ci.yml`: another workflow would restart the count.

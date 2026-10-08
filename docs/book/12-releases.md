@@ -29,7 +29,8 @@ repository. There is no update server.
 `channel` nightly cuts a nightly from `main` now, and stable cuts it and promotes that same
 build. It builds nothing: it dispatches `ci.yml`, waits for it, and calls `promote-stable.yml`
 with the tag that run cut. It runs only on `main`, stops if `main` moves under it, and takes an
-optional `sha` that `main` must be at.
+optional `sha` that `main` must be at. It ends by dispatching `fdroid-repo.yml`: work done with
+the workflow's own token starts no other workflow, so the index would not rebuild on its own.
 
 The F-Droid repository is a copy of the same APKs, served from GitHub Pages at
 `https://pimpinpumpkin.github.io/Vela/repo`. The full list of rules and constants is
