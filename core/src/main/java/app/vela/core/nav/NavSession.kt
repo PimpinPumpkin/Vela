@@ -101,7 +101,10 @@ class NavSession @Inject constructor(
     private var autoResumeArmed = false
 
     private var rerouteJob: Job? = null
-    private var rerouteStartedMs = 0L
+    /** When the in-flight reroute started. @Volatile for the same reason as the two below: it is
+     *  one of the four values rerouteGate reads, and a stale read there misjudges the age of the
+     *  in-flight job. */
+    @Volatile private var rerouteStartedMs = 0L
     /** Deadline the in-flight reroute is running under (see [rerouteAttempt]). */
     @Volatile private var rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
     /** Consecutive reroute attempts that came back with nothing; reset on any adopted route. */
