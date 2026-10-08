@@ -68,12 +68,12 @@ jobs:
           # picked obf-tools the week it was created and promoted IT to stable, which knocked the
           # real stable off releases/latest and starved the updater and the F-Droid build of an
           # APK. Every release query here must bound to the v0.* tag scheme.
-          # PAGINATED (2026-09-28): the repo can hold hundreds of data releases (one per region for
-          # the grid cells), so a `--limit N` window can hold no app release at all.
-          NIGHTLY="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
-            --jq '.[] | select(.prerelease) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)"
-          STABLE="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
-            --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)"
+          # One light listing of the app's releases, newest first (scripts/app-releases.sh): the
+          # REST listing carries every asset of every release and times out.
+          source scripts/gh-retry.sh
+          APPS="$(bash scripts/app-releases.sh)"
+          NIGHTLY="$(awk -F'\t' '$2 == "true" && $1 ~ /^v0[.][0-9]+[.][0-9]+$/ { print $1; exit }' <<<"$APPS")"
+          STABLE="$(awk -F'\t' '$2 == "false" && $1 ~ /^v0[.][0-9]+[.][0-9]+$/ { print $1; exit }' <<<"$APPS")"
           if [ -n "$WANT_TAG" ] && [ "$NIGHTLY" != "$WANT_TAG" ]; then
             if [ "$STABLE" = "$WANT_TAG" ]; then echo "$WANT_TAG is already the stable."; exit 0; fi
             echo "::error::The newest nightly is ${NIGHTLY:-none}, not the $WANT_TAG this promotion was asked for."
@@ -105,7 +105,7 @@ jobs:
             NOTES="$(printf 'What'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
           fi
           # Drop the "nightly" from the title: the same release is the stable now.
-          gh release edit "$NIGHTLY" \
+          gh_retry gh release edit "$NIGHTLY" \
             --title "Vela $VER" \
             --prerelease=false \
             --latest \

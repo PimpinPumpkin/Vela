@@ -3739,8 +3739,9 @@ One release per region, tag `cells-<region>`, holds the zips and the fragment
 `cells-<region>.json`. It is created with `--target` the repository's root commit
 (`CELLS_RELEASE_TARGET` in `scripts/bake-lib.sh`). GitHub sorts releases by the target commit's
 date and Obtainium reads only the first 100, so hundreds of data releases created on HEAD
-would push the app's releases off that page. `promote-stable.yml` and `fdroid-repo.yml` page
-through the listing. `cells-manifest.json` on the `grid-cells` release indexes every region:
+would push the app's releases off that page. `ci.yml`, `promote-stable.yml` and
+`fdroid-repo.yml` read the whole list through `scripts/app-releases.sh` (GraphQL, three fields a
+release; the REST listing carries every asset and a page of 100 takes 9 s). `cells-manifest.json` on the `grid-cells` release indexes every region:
 
 ```json
 { "version": 1,

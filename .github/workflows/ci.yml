@@ -296,8 +296,9 @@ jobs:
         # Nightlies keep a rolling thirty, which is a month of bisect range and a month for the
         # weekly reach snapshot (docs/stats) to record one before it goes.
         #
-        # Paginate the FULL release list: an earlier version used `gh release list --limit 200`
-        # and never saw past the newest 200, so hundreds of early nightlies sat untouched forever.
+        # The FULL list of app releases, newest first (scripts/app-releases.sh): an earlier version
+        # used `gh release list --limit 200` and never saw past the newest 200, so hundreds of
+        # early nightlies sat untouched forever.
         # The tag filter is LOAD BEARING: the infrastructure releases (tts-runtime, poi-packs,
         # basemap-tiles, obf-regions, places-overlays, road-features, flock-cameras, asr-models)
         # are prereleases too and host live download assets - only v0.* tags are app releases;
@@ -306,10 +307,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
-            --jq '.[] | select(.tag_name | test("^v0\\.")) | "\(.created_at)\t\(.prerelease)\t\(.tag_name)"' \
-            | sort -r > /tmp/app-releases.txt
-          awk -F'\t' '$2=="true"{print $3}'  /tmp/app-releases.txt | tail -n +31 > /tmp/doomed.txt
+          # A listing that fails prunes nothing: the nightly above is already out, and a red
+          # run here would stop a release that is waiting on this one.
+          if ! GH_RETRY_TRIES=3 bash scripts/app-releases.sh > /tmp/app-releases.txt; then
+            echo "::warning::Could not list the releases; nothing pruned this run."
+            exit 0
+          fi
+          awk -F'\t' '$2 == "true" { print $1 }' /tmp/app-releases.txt | tail -n +31 > /tmp/doomed.txt
           echo "keeping every stable; pruning $(wc -l < /tmp/doomed.txt) old nightlies"
           while read -r tag; do
             [ -n "$tag" ] || continue

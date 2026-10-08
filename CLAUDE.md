@@ -166,6 +166,9 @@ map fonts, road features, cameras, grid cells. Those files exist nowhere else.
 - Anything that deletes or edits releases selects by the tag pattern `v0.*`. Never by
   "prerelease" or age. A cleanup that did otherwise took four offline features down.
 - The repository has hundreds of releases. Page through `gh release list`, or bound it by tag.
+- A workflow lists the app's releases with `scripts/app-releases.sh`. The REST release listing
+  returns every asset of every release: a page of 100 is 25 MB and takes 9 s, and a promotion
+  failed on HTTP 504.
 - A release that is one of many (the `cells-<region>` set) is created on the root commit.
   GitHub sorts by the target commit's date and Obtainium reads the first hundred.
 - The Actions token has 1,000 API requests an hour for the whole repository. GitHub calls in

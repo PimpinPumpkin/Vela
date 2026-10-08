@@ -241,9 +241,12 @@ offline downloads failed until the data was rebuilt. A promotion that took the n
 of any tag promoted a data release, and `releases/latest` then had no APK for the updater or the
 F-Droid build.
 
-The queries in `ci.yml`, `promote-stable.yml` and `fdroid-repo.yml` filter on `^v0\.` and page
-through the whole list. Among hundreds of releases, a fixed `--limit` window can hold no app
-release at all.
+`ci.yml`, `promote-stable.yml` and `fdroid-repo.yml` read the app's releases from
+`scripts/app-releases.sh`, which pages through the whole list and keeps the tags that start with
+`v0.`, newest first by run number. Among hundreds of releases, a fixed `--limit` window can hold
+no app release at all. The script asks GraphQL for the tag, the prerelease flag and the creation
+time only, which takes 2.5 s for about 500 releases. The REST listing returns every asset of
+every release: a page of 100 is 25 MB and takes 9 s, at the edge of GitHub's 10 s limit.
 
 ### Local builds
 
