@@ -3343,7 +3343,7 @@ manifest.
   the existing manifest, serialized by a concurrency group (`obf-regions-manifest`,
   `poi-packs-manifest`, `road-features-manifest`, `building-overlays-manifest-merge`,
   `address-overlays-manifest-merge`, `maxspeed-overlays-manifest-merge`).
-- An address source whose rows carry no house number fails its region with that message
+- An address source whose rows carry no house number is skipped with a warning
   (`build-address-region.sh`), and the published overlay stays. Delaware's source has been
   that way since October 2026.
 
@@ -4990,7 +4990,11 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
   placeholders. Anything else waits for a person. Off switch: repository variable
   `WEBLATE_AUTOMERGE=off`.
 - `security.yml` runs mobsfscan, exports an SBOM and reviews new dependencies on pull requests.
-  `scorecard.yml` runs OpenSSF Scorecard. Neither gates a release.
+  `scorecard.yml` runs OpenSSF Scorecard. Neither gates a release. The SBOM export is tried three
+  times and then ends in a warning: GitHub builds the file on request and can time out.
+- The canary publish step checks that `canary` still points at the commit it built. An overtaken
+  build skips the publish. When the newer push changed a workflow file GitHub refused the older
+  run's tag with HTTP 403 on every retry.
 - `issue-triage.yml` comments on a new issue with earlier ones that share its wording and labels
   a bug report from an outdated build `incomplete`. It never closes one.
 - `download-stats.yml` snapshots release download counts, repository traffic and per-region

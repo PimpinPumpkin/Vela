@@ -46,7 +46,8 @@ release.
 
 `canary` is the working branch. Each push deletes the `canary` release and creates it again on the
 pushed commit, which keeps it at the top of the releases page. The download URL and the updater's
-lookup do not change, and the few seconds of 404 during the swap read as nothing newer. The tag is
+lookup do not change, and the few seconds of 404 during the swap read as nothing newer. A build
+that a newer push to `canary` has overtaken does not publish: the newer build does. The tag is
 not a `v0.*` tag, so the nightly, stable, prune and F-Droid queries never see it. It never changes
 either, so the version is in the notes:
 

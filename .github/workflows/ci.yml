@@ -229,8 +229,21 @@ jobs:
           # during the swap that the updater reads as "nothing newer".
           # Retried as a pair (scripts/gh-retry.sh): a create refused by the API limit after the
           # delete had gone through left users with no canary release until the next push.
+          # A build that a newer push has overtaken leaves the release to that newer build.
+          # Published late it would put an older APK on the channel, and when the newer push
+          # changed a workflow file GitHub refuses this run's tag: every retry answered HTTP 403
+          # for half an hour and the run ended red, ten times in ten days.
+          overtaken() {
+            local tip
+            tip="$(git ls-remote origin refs/heads/canary 2>/dev/null | cut -f1)"
+            [ -n "$tip" ] && [ "$tip" != "$GITHUB_SHA" ]
+          }
           source scripts/gh-retry.sh
           publish_canary() {
+            if overtaken; then
+              echo "canary has moved past ${GITHUB_SHA:0:9}: the newer build publishes."
+              return 0
+            fi
             gh release delete canary --yes --cleanup-tag 2>/dev/null || true
             gh release create canary --prerelease --target "$GITHUB_SHA" --title "Vela $VER" --notes "$NOTES" "${APKS[@]}"
           }

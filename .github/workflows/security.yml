@@ -56,12 +56,23 @@ jobs:
       - name: Export the bill of materials
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api "repos/${{ github.repository }}/dependency-graph/sbom" --jq .sbom > vela-sbom.spdx.json
+        # GitHub builds the file on request and sometimes answers "Request timed out" (HTTP 500).
+        # Three tries, then a warning: a missing export is not a failed security check.
+        run: |
+          for try in 1 2 3; do
+            if gh api "repos/${{ github.repository }}/dependency-graph/sbom" --jq .sbom > vela-sbom.spdx.json; then
+              exit 0
+            fi
+            rm -f vela-sbom.spdx.json
+            sleep $((try * 60))
+          done
+          echo "::warning::GitHub did not produce the bill of materials this run."
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vela-sbom
           path: vela-sbom.spdx.json
           retention-days: 90
+          if-no-files-found: ignore
 
   review:
     if: github.event_name == 'pull_request'

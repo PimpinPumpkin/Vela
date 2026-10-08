@@ -34,8 +34,10 @@ mkdir -p "$OUT"
 api() { gh api -H "Accept: application/vnd.github+json" "$@"; }
 
 # Every release, paginated - the catalog releases push this past 400 and an unpaginated list
-# silently truncates (it has cost this project a wrong damage report before).
-api --paginate "repos/$REPO/releases?per_page=100" \
+# silently truncates (it has cost this project a wrong damage report before). Thirty a page and
+# retried: a page of 100 is 25 MB and takes 9 s, at the edge of GitHub's 10 s limit.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gh-retry.sh"
+gh_retry api --paginate "repos/$REPO/releases?per_page=30" \
   -q '.[] | {tag: .tag_name, pre: .prerelease, at: .published_at,
              assets: [.assets[] | {name: .name, dl: .download_count}]} | @json' > /tmp/vela-rel.jsonl
 

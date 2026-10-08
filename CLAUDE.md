@@ -180,6 +180,9 @@ map fonts, road features, cameras, grid cells. Those files exist nowhere else.
   from one run's own output. A pending job in a concurrency group is canceled when a newer
   run joins, after its files are already uploaded.
 - Under `set -o pipefail`, `gh api --paginate ... | head -1` dies with exit 141. Use `sed -n 1p`.
+- A job that fails for a reason no retry can fix (an upstream source with no data, a build a
+  newer push has overtaken) ends green with a `::warning::`. A red run is mailed, retried by the
+  conductor and shown as failing on the dashboard, so it is kept for things someone must fix.
 
 ### GitHub Pages is one artifact
 
