@@ -143,58 +143,28 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             hint = stringResource(R.string.settings_offline_cached_places_hint),
         )
         GroupDivider()
+        // Sizes are read and the folders cleared off the main thread: up to 400 places and
+        // 150 MB of panoramas.
         var placeCacheTick by remember { mutableStateOf(0) }
-        val placeCacheBytes = remember(placeCacheTick) {
-            app.vela.core.data.PlaceCache.dirSizeBytes(java.io.File(context.filesDir, "placecache"))
-        }
-        val placeCacheText = remember(placeCacheBytes) {
-            if (placeCacheBytes < 1024 * 1024) "${placeCacheBytes / 1024} KB"
-            else fmtMb((placeCacheBytes / 1048576).toInt())
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.settings_offline_cached_places_used, placeCacheText),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            FilledTonalButton(
-                onClick = {
-                    app.vela.core.data.PlaceCache.clear(java.io.File(context.filesDir, "placecache"))
-                    placeCacheTick++
-                },
-                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-            ) { Text(stringResource(R.string.settings_offline_cached_places_clear)) }
-        }
+        CacheRow(
+            tick = placeCacheTick,
+            dir = remember { java.io.File(context.filesDir, "placecache") },
+            size = app.vela.core.data.PlaceCache::dirSizeBytes,
+            usedRes = R.string.settings_offline_cached_places_used,
+            clearRes = R.string.settings_offline_cached_places_clear,
+            clear = app.vela.core.data.PlaceCache::clear,
+            onCleared = { placeCacheTick++ },
+        )
         // Viewed panoramas kept for offline Street View (one equirect per pano).
-        val svCacheBytes = remember(placeCacheTick) {
-            app.vela.core.data.StreetViewCache.dirSizeBytes(java.io.File(context.filesDir, "svcache"))
-        }
-        val svCacheText = remember(svCacheBytes) {
-            if (svCacheBytes < 1024 * 1024) "${svCacheBytes / 1024} KB"
-            else fmtMb((svCacheBytes / 1048576).toInt())
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.settings_offline_cached_sv_used, svCacheText),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            FilledTonalButton(
-                onClick = {
-                    app.vela.core.data.StreetViewCache.clear(java.io.File(context.filesDir, "svcache"))
-                    placeCacheTick++
-                },
-                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-            ) { Text(stringResource(R.string.settings_offline_cached_sv_clear)) }
-        }
+        CacheRow(
+            tick = placeCacheTick,
+            dir = remember { java.io.File(context.filesDir, "svcache") },
+            size = app.vela.core.data.StreetViewCache::dirSizeBytes,
+            usedRes = R.string.settings_offline_cached_sv_used,
+            clearRes = R.string.settings_offline_cached_sv_clear,
+            clear = app.vela.core.data.StreetViewCache::clear,
+            onCleared = { placeCacheTick++ },
+        )
         }
         if (regions.isNotEmpty() && offlineAddrCount == 0) {
             Surface(
@@ -741,6 +711,55 @@ internal fun regionInstalledMb(graph: app.vela.offline.RoutingRegion, pack: app.
  *  manifest does not say). */
 internal fun packInstalledMb(pack: app.vela.offline.RoutingRegion): Int =
     if (pack.installedMb > 0) pack.installedMb else (pack.sizeMb * 2.35).toInt()
+
+/**
+ * One kept-for-offline folder: how much it holds, and its Clear button. The two sit side by side
+ * when they fit. When they do not (a long label, a large font) the button drops to its own line:
+ * in one Row the label took the width and the size text wrapped a syllable to a line, ten lines
+ * tall (issue #698, in German).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun CacheRow(
+    tick: Int,
+    dir: java.io.File,
+    size: (java.io.File) -> Long,
+    usedRes: Int,
+    clearRes: Int,
+    clear: (java.io.File) -> Unit,
+    onCleared: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val bytes by produceState(-1L, tick, dir) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { size(dir) }
+    }
+    val sizeText = when {
+        bytes < 0 -> "…"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        else -> fmtMb((bytes / 1048576).toInt())
+    }
+    androidx.compose.foundation.layout.FlowRow(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            stringResource(usedRes, sizeText),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterVertically).padding(end = 12.dp),
+        )
+        FilledTonalButton(
+            onClick = {
+                scope.launch {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { clear(dir) }
+                    onCleared()
+                }
+            },
+            modifier = Modifier.align(Alignment.CenterVertically).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+        ) { Text(stringResource(clearRes)) }
+    }
+}
 
 internal fun fmtMb(mb: Int): String =
     if (mb >= 1024) String.format(java.util.Locale.getDefault(), "%.1f GB", mb / 1024f) else "$mb MB"
