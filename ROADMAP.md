@@ -185,19 +185,14 @@ Found reading everything since 0.4.1912 and not fixed yet.
 - Strict tile naming's "another street about as close" test depends on the order the tile's
   segments come in (`LineNamer`). The trip-end slack for a matched stretch is keyed to Google's
   stated distance, not the line's length.
-- My Maps import compiles a regex per placemark and fetches on the 12 s client. A `daddr` link
-  is URL-decoded twice, which breaks a plus code.
+- My Maps import compiles a regex per placemark and fetches on the 12 s client.
 - A place starred before its details load, or offline, is stored as bare and never looks up its
   listing again.
-- Interface: the Street View thumbnail stays over the search page; "Place icons" in Layers
-  applies at the next pan; a drawing's typed name is lost when another sheet opens; the area
-  picker ticks the whole region when "just this area" is unticked; Settings > Offline sizes
-  its caches in composition.
+- Interface: a drawing's typed name is lost when another sheet opens.
 - Map: the 3D building tilt gate and the house-number box both flip layout properties; a
   dragged drawing point re-uploads every custom-map shape; the pending route copy can run 40
-  blocking queries per slide under z6; the cut veil is navy or white on the AMOLED, classic
-  dark and satellite palettes; the painted-roads dial builds an HTTP client at every style
-  load.
+  blocking queries per slide under z6; the painted-roads dial builds an HTTP client at every
+  style load.
 
 ## On the radar
 

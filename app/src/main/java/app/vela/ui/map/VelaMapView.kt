@@ -5380,7 +5380,15 @@ fun VelaMapView(
         // offscreen buffer, a full-screen one during the cut's own tile burst.
         Modifier.matchParentSize().drawBehind {
             val a = cutFade.value
-            if (a > 0f) drawRect(androidx.compose.ui.graphics.Color(if (darkTheme) 0xFF162640 else 0xFFF8F7F7), alpha = a)
+            // The land color of the palette in use, so the veil reads as the map dimming and not
+            // as a flash of another color: black on AMOLED and over imagery, slate on classic dark.
+            val classic = app.vela.ui.MapColors.classic()
+            val land = when {
+                amoled || satelliteOn -> 0xFF000000
+                darkTheme -> if (classic) 0xFF2B2F36 else 0xFF162640
+                else -> if (classic) 0xFFF2F1EE else 0xFFF8F7F7
+            }
+            if (a > 0f) drawRect(androidx.compose.ui.graphics.Color(land), alpha = a)
         },
     )
     val puckMesh = if (puckOverlayOn.value) remember(app.vela.ui.PuckStyle.key()) {

@@ -44,9 +44,10 @@ import app.vela.ui.icons.Sym
 /** Small things that float over the map and decide for themselves when to show. One call from
  *  MapScreen, which has no room for more (see the size notes there). */
 @Composable
-fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel, sheetTop: State<Int>) {
+internal fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel, sheet: SheetEdge) {
     if (state.replaying && !state.demoDriving) ReplayControls(state, vm)
-    StreetViewThumb(state, vm, sheetTop)
+    // Only beside its sheet: with the search page up the place stays selected and the sheet is gone.
+    if (sheet.shown.value) StreetViewThumb(state, vm, sheet.top)
 }
 
 /** Google's own Street View preview of the open place, above the place card's left corner (beside

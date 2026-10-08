@@ -2184,7 +2184,7 @@ fun MapScreen(
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp)
                     // Live top edge for the layers button's overlap gate (see placeSheetTopPx).
-                    .onGloballyPositioned { sheetEdge.set(it.positionInRoot().y.roundToInt()) },
+                    .then(sheetEdge.report),
             )
 
             // Search results as a BOTTOM sheet, Google-style — same detent family as the place
@@ -2389,7 +2389,7 @@ fun MapScreen(
         // user an explicit way out (its tap stops the replay and resumes live GPS). A DEMO drive
         // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
         // it (stopNav cancels the demo), so don't show the replay pill over the nav chrome.
-        MapFloaters(state, vm, sheetEdge.top)
+        MapFloaters(state, vm, sheetEdge)
         // Search along the route: Google's page (the whole screen in portrait, the left column
         // over a dimmed map in landscape). Drawn last, so it covers the banner, bar and buttons.
         if (state.navigating && navSearchOpen && state.results.isEmpty()) {
@@ -6876,7 +6876,7 @@ private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomBu
                     Row(
                         Modifier.padding(top = 8.dp)
                             .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                            .toggleable(value = withCells, onValueChange = { v -> withCells = v; if (v) withRegion = false }),
+                            .toggleable(value = withCells, onValueChange = { v -> withCells = v; withRegion = false }), // off leaves both off: the whole region is its own choice
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         androidx.compose.material3.Checkbox(checked = withCells, onCheckedChange = null)
@@ -6989,13 +6989,28 @@ private fun SavedSheetRow(
  * composition needs, which change only when the edge crosses a line. Composition reading the
  * edge itself recomposed all of MapScreen on every frame of a sheet drag or settle.
  */
-private class SheetEdge {
+internal class SheetEdge {
     val top = mutableStateOf(0)
+    /** The place sheet is on screen. False while the search page or another surface has taken
+     *  its place with the place still selected: what floats beside the sheet goes with it. */
+    val shown = mutableStateOf(false)
+    /** Reports the sheet's top edge as it moves, and its leaving. */
+    val report: Modifier = SheetEdgeElement(this)
+
+    fun gone() {
+        if (shown.value) shown.value = false
+        set(0)
+    }
     val above40 = mutableStateOf(true)      // top < 40% of the screen (it covers the search bar)
     val below55 = mutableStateOf(false)     // top > 55% (room for the recenter button above it)
     val clearLayers = mutableStateOf(false) // top below the layers button
     var screenH = 0f
     var layersBottom = 0f
+
+    fun seen(y: Int) {
+        if (!shown.value) shown.value = true
+        set(y)
+    }
 
     fun set(y: Int) {
         top.value = y
@@ -7006,6 +7021,19 @@ private class SheetEdge {
         if (below55.value != b) below55.value = b
         if (clearLayers.value != c) clearLayers.value = c
     }
+}
+
+private class SheetEdgeElement(val edge: SheetEdge) : androidx.compose.ui.node.ModifierNodeElement<SheetEdgeNode>() {
+    override fun create() = SheetEdgeNode(edge)
+    override fun update(node: SheetEdgeNode) { node.edge = edge }
+    override fun equals(other: Any?) = other is SheetEdgeElement && other.edge === edge
+    override fun hashCode() = System.identityHashCode(edge)
+}
+
+private class SheetEdgeNode(var edge: SheetEdge) : Modifier.Node(), androidx.compose.ui.node.GlobalPositionAwareModifierNode {
+    override fun onGloballyPositioned(coordinates: androidx.compose.ui.layout.LayoutCoordinates) =
+        edge.seen(coordinates.positionInRoot().y.roundToInt())
+    override fun onDetach() = edge.gone()
 }
 
 /** The nav puck's screen position, read in layout by the labels pinned to it, plus whether it

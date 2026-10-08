@@ -65,6 +65,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -629,6 +630,11 @@ class MapViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { app.vela.ui.AppVisibility.foreground.collect { app.vela.diag.TripNote.add(if (it) "app: on screen" else "app: off screen") } }
+        // "Place icons" picked in the Layers menu applies at once, not at the next pan: the
+        // other place switches reach onPoiPrefsChanged from the screen, this one had no caller.
+        viewModelScope.launch {
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.MapPoiPrefs.placesSource.value }.drop(1).collect { onPoiPrefsChanged() }
+        }
         viewModelScope.launch {
             _state.map { it.navStarved }.distinctUntilChanged().collect { app.vela.diag.TripNote.add(if (it) "gps: no usable fix" else "gps: fixes back") }
         }

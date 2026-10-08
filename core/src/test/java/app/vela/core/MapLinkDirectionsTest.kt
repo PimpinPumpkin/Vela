@@ -62,4 +62,12 @@ class MapLinkDirectionsTest {
         // A directions link with no destination is not a target at all.
         assertNull(MapLinkParser.parse("https://www.google.com/maps/dir/?api=1&origin=Davis"))
     }
+
+    @Test fun `a plus code in a classic link keeps its plus`() {
+        // %2B is the code's own "+"; the "+" between words are spaces.
+        val l = MapLinkParser.parse("https://maps.google.com/maps?daddr=849VCWC8%2BR9+Mountain+View")!!
+        assertEquals("849VCWC8+R9 Mountain View", l.query)
+        val chained = MapLinkParser.parse("https://maps.google.com/maps?saddr=Davis,+CA&daddr=Sacramento,+CA+to:849VCWC8%2BR9+Mountain+View")!!
+        assertEquals("849VCWC8+R9 Mountain View", chained.query)
+    }
 }

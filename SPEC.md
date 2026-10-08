@@ -1652,8 +1652,9 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
   Re-center and a preview all stop the refit within a quarter second.
 - A step tapped in the step list drops the list (`StepsSheet` dismisses itself), and that close
   keeps the preview (`closeSteps` after a pick). Any other close of the list ends a preview.
-- Each cut lays a veil in the map's land color under the puck at `CUT_VEIL_ALPHA` (0.85), faded
-  off over `CUT_FADE_MS` (320 ms). It is a `drawRect(alpha)`; a layer alpha renders offscreen.
+- Each cut lays a veil in the land color of the palette in use (black on AMOLED and over
+  satellite imagery) under the puck at `CUT_VEIL_ALPHA` (0.85), faded off over `CUT_FADE_MS`
+  (320 ms). It is a `drawRect(alpha)`; a layer alpha renders offscreen.
 - The overview hides the `OVERVIEW_HIDE_PREFIXES` layers (places, POIs, minor road names, house
   numbers, one-way arrows, controls, cameras, transit stops, nav callouts, 3D buildings, the
   building overlay) and restores them in its effect's `finally`. Major road names, shields,
@@ -3654,7 +3655,8 @@ Downloaded group can show and delete them per region.
 `areaDownloadPlan` fills `AreaPlan.cells` with the region's cells whose box intersects the
 frame and are not installed, and `cellsMb` with their `installedMb` sum. Both are empty where
 the whole region is installed or the region has no cells. The card shows a cells checkbox above
-the whole-region one. The two exclude each other and cells are the default.
+the whole-region one. The two exclude each other and cells are the default. Unticking cells
+leaves both off: the whole region is ticked by hand.
 
 `downloadPickedArea(withCells = true)` runs `downloadCells`: one cell at a time under the region
 download card (`routingDownloadingId` = `CELLS_DOWNLOAD_ID`, name "<region>, part k of n"),
@@ -4456,8 +4458,10 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
 - A preview floats on the map for an open place whose search reply names a pano
   (`StreetViewThumb` in `MapFloaters`): above the card's left corner in portrait, beside the
   panel in landscape. It is one `/v1/thumbnail` request with the reply's pano id and yaw. It
-  follows the photo settings, and it is not drawn with Google off, offline, or when the picture
-  fails to load.
+  follows the photo settings, and it is not drawn with Google off, offline, when the picture
+  fails to load, or while the place sheet itself is off screen (`SheetEdge.shown`, set by the
+  sheet's own position reports and cleared when it leaves: the search page keeps the place
+  selected).
 
 ### 10.8 Content gating
 

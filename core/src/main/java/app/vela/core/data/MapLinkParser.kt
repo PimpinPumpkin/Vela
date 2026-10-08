@@ -90,7 +90,9 @@ object MapLinkParser {
         // Classic: /maps?saddr=A&daddr=B[&dirflg=w]. daddr can chain stops ("B+to:C"); the last one
         // is where the trip ends.
         queryParam(raw, "daddr")?.let { d ->
-            val dest = endpoint(decode(d.replace('+', ' ')).split(Regex("""\s+to:""")).last()) ?: return null
+            // Split on the raw value and let endpoint decode the piece, once: decoded here first,
+            // a plus code's own "+" (%2B) came out of the second pass as a space.
+            val dest = endpoint(d.split(DADDR_TO).last()) ?: return null
             val mode = when (queryParam(raw, "dirflg")?.lowercase()?.firstOrNull { it in "dwbr" }) {
                 'w' -> TravelMode.WALK; 'b' -> TravelMode.BICYCLE; 'r' -> TravelMode.TRANSIT; 'd' -> TravelMode.DRIVE; else -> null
             }
@@ -115,6 +117,9 @@ object MapLinkParser {
         val origin = if (parts.size >= 2) endpoint(parts.first()) else null
         return dest.copy(directions = true, origin = origin, mode = mode)
     }
+
+    /** The separator between chained stops in a classic `daddr`, still URL-encoded: "+to:". */
+    private val DADDR_TO = Regex("""(?:\+|%20|\s)+to(?::|%3A)""", RegexOption.IGNORE_CASE)
 
     /** One end of a directions link: a coordinate, a name or address, or null for "where I am". */
     private fun endpoint(value: String?): MapLink? {

@@ -11,6 +11,11 @@ says so.
 
 ### October 2026
 
+- Settings > Offline maps no longer grows a tall empty box in languages with long button
+  labels (issue 698); the cache sizes are read off the main thread.
+- Small fixes from the October audit: the cut veil takes the palette's land color, a classic
+  `daddr` link keeps a plus code, "Place icons" applies at once, the Street View preview goes
+  with its sheet, and unticking "just this area" no longer ticks the whole region.
 - "Traffic-light guidance" works: the switch is read, the lights are marked on the route, and
   the voice names only the ones still ahead. Since July the switch had done nothing and the
   lookup ran on every drive unused.
