@@ -2668,6 +2668,12 @@ when the feature ids match. Two requests at most.
   start, same stops in order) and are dropped at the first edit.
 - The link's mode, its stops, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix,
   apply once to the next `routeToSelected`. The mode is not made sticky.
+- A link that names something at a point (`geo:lat,lng?q=Name`) searches the name near the
+  point. When no result lies within `LINK_ANCHOR_MAX_M` (50 km) of it, the point itself opens
+  under the link's name (`anchorLinkSearch`): the sender gave a position, and the one hit was a
+  namesake on another continent. A category near a point finds places close by and is kept.
+- A `geo:` link's `z=` sets the camera's zoom. It is applied after the pin is dropped, which
+  clears it.
 - A whole Google Maps address in the search box (`MapLinkParser.isMapsUrl`: one token on a
   Google host with a maps path) opens as that link. It used to be searched as text.
 

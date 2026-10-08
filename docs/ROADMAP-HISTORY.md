@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A link that names a place at a coordinate opens that coordinate under the name when the
+  search finds nothing near it, instead of a namesake far away.
 - Typing in the search box on a physical keyboard works past the first letter. The first key
   press turned D-pad mode on, which disabled a field that had been focused by a tap.
 - A `geo:` link's zoom (`?z=17`) is honored. A second pin drop after it cleared the zoom, so

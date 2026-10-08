@@ -2859,6 +2859,7 @@ class MapViewModel @Inject constructor(
             !q.isNullOrBlank() -> {
                 _state.update { it.copy(query = q, center = near ?: it.center, centerZoom = link.zoom) }
                 runSearch(q, near ?: _state.value.myLocation ?: _state.value.center)
+                if (near != null) anchorLinkSearch(q, near)
             }
             near != null -> {
                 onMapLongPress(near)
@@ -2870,6 +2871,27 @@ class MapViewModel @Inject constructor(
                 // drop that once followed this line threw every link's z= away.
                 _state.update { it.copy(center = near, centerZoom = link.zoom) }
             }
+        }
+    }
+
+    /**
+     * A link that names something at a point (`geo:lat,lng?q=Name`, what contacts, calendars and
+     * messengers send). The name is searched near the point; when nothing found is anywhere
+     * near it, the point itself opens under the link's name. The sender gave a position, and a
+     * namesake across the world is not what it meant. A category ("restaurants" near a point)
+     * finds places close by and is left alone.
+     */
+    private fun anchorLinkSearch(label: String, at: LatLng) {
+        val job = searchJob ?: return
+        viewModelScope.launch {
+            job.join()
+            val s = _state.value
+            if (s.query != label || s.navigating || s.directionsOpen || s.results.any { it.location.distanceTo(at) <= LINK_ANCHOR_MAX_M }) return@launch
+            // The search may have opened its far top hit already: only that, or nothing, is replaced.
+            if (s.selected != null && s.results.none { it.id == s.selected.id }) return@launch
+            android.util.Log.i("VelaLink", "named point: ${s.results.size} result(s), none near the link's point; showing the point")
+            _state.update { it.copy(results = emptyList(), status = null, resultsMoreQuery = null, query = "") }
+            selectContactPlace(Place(id = "pin:${at.lat},${at.lng}", name = label, location = at))
         }
     }
 
@@ -9901,6 +9923,8 @@ class MapViewModel @Inject constructor(
         const val GOOGLE_FREE_WIDE_M = 50_000.0
         /** A directions link's start this close to the fix is "from here" (Telegram sends the fix). */
         private const val LINK_ORIGIN_HERE_M = 150.0
+        /** A link's named point: a search hit farther than this from the point is not it. */
+        private const val LINK_ANCHOR_MAX_M = 50_000.0
         /** The most points dragged onto a link's route that are kept. */
         private const val LINK_VIAS_MAX = 12
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
