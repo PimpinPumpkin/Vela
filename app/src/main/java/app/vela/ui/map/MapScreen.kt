@@ -4243,6 +4243,11 @@ private fun MapSurface(
                 }
             }
         },
+        navShields = remember(state.activeRoute, state.navigating, state.travelMode) {
+            val r = state.activeRoute
+            if (!state.navigating || r == null || state.travelMode != app.vela.core.model.TravelMode.DRIVE) emptyList()
+            else app.vela.core.nav.RouteShields.points(r)
+        },
         basemapArchive = state.basemapArchive,
         onOpenPlaceTap = vm::onOpenPlaceTap,
         onRoadLimitKmh = vm::onOverlayRoadLimit,

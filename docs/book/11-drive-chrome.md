@@ -9,8 +9,8 @@ when it reroutes, is [chapter 4](04-navigation.md).
   step list behind it, round buttons on the right edge, the compass, a speed box, the current
   road's name, and an optional road-ahead bar on the left edge.
 - On the map: the route line, the arrow, white callouts for the cross streets ahead, a blue one
-  on the street you turn onto, a green one with your exit number, and the lights and stop signs
-  on your route.
+  on the street you turn onto, a green one with your exit number, the lights and stop signs
+  on your route, and the route number of the road you are on as a shield on the line.
 - Outside the app: a picture-in-picture mini map, the notification, and on Android 16 a live
   update.
 

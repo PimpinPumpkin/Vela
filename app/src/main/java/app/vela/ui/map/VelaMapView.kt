@@ -843,6 +843,7 @@ fun VelaMapView(
     hideCivic: Boolean = false, // "Parks, schools and civic places" off: the open layer drops those groups
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
     navTurnCallout: Pair<LatLng, String>? = null, // the street the next turn enters: blue bubble at the corner
+    navShields: List<app.vela.core.nav.RouteShields.Shield> = emptyList(), // the driven road's number, on the route line
     navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
@@ -1857,6 +1858,34 @@ fun VelaMapView(
                 Feature.fromGeometry(Point.fromLngLat(c.first.lng, c.first.lat)).apply { addStringProperty("name", c.second) },
             ),
         )
+    }
+    // ROUTE SHIELDS: the number of the road being driven, on the route line (RouteShields). The
+    // basemap's own shield layers are hidden in a drive, so without these the driven road has no
+    // number on the map. A handful of points per route, uploaded once.
+    LaunchedEffect(navShields, styleRef, navMode) {
+        val style = styleRef ?: return@LaunchedEffect
+        val shields = navShields.takeIf { navMode }.orEmpty()
+        if (shields.isEmpty() && style.getSource(NAV_SHIELD_SRC) == null) return@LaunchedEffect
+        runCatching {
+            ensureNavShieldLayer(style)
+            style.getSourceAs<GeoJsonSource>(NAV_SHIELD_SRC)?.setGeoJson(
+                FeatureCollection.fromFeatures(
+                    shields.map { sh ->
+                        val kind = when (sh.type) {
+                            app.vela.core.nav.ShieldType.INTERSTATE -> "us-interstate"
+                            app.vela.core.nav.ShieldType.US_ROUTE -> "us-highway"
+                            app.vela.core.nav.ShieldType.STATE -> "us-state"
+                            app.vela.core.nav.ShieldType.GENERIC -> "road"
+                        }
+                        Feature.fromGeometry(Point.fromLngLat(sh.at.lng, sh.at.lat)).apply {
+                            addStringProperty("icon", "vela-shield-${kind}_${sh.text.length.coerceIn(1, 6)}")
+                            addStringProperty("text", sh.text)
+                            addBooleanProperty("light", sh.type == app.vela.core.nav.ShieldType.INTERSTATE)
+                        }
+                    },
+                ),
+            )
+        }
     }
     LaunchedEffect(hideCivic, styleRef) {
         placesHideCivic = hideCivic
@@ -6578,6 +6607,40 @@ private const val NAV_BUBBLE_IMG = "vela-nav-bubble"
 private const val NAV_EXIT_BUBBLE_IMG = "vela-nav-exit-bubble"
 private const val NAV_EXIT_SRC = "vela-nav-exit-src"
 private const val NAV_EXIT_LAYER = "vela-nav-exit"
+private const val NAV_SHIELD_SRC = "vela-nav-shields-src"
+private const val NAV_SHIELD_LAYER = "vela-nav-shields" // "vela-nav-": kept through turns, hidden in the overview
+
+/** The route shield layer: the basemap's shield images (RoadShields.install), upright, under the
+ *  signs and the callouts so those win a collision. */
+private fun ensureNavShieldLayer(style: Style) {
+    if (style.getSource(NAV_SHIELD_SRC) == null) style.addSource(GeoJsonSource(NAV_SHIELD_SRC))
+    if (style.getLayer(NAV_SHIELD_LAYER) != null) return
+    val layer = SymbolLayer(NAV_SHIELD_LAYER, NAV_SHIELD_SRC).withProperties(
+        PropertyFactory.iconImage(Expression.get("icon")),
+        PropertyFactory.iconSize(1f),
+        PropertyFactory.textField(Expression.get("text")),
+        PropertyFactory.textSize(11f),
+        PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        PropertyFactory.textHaloWidth(0f),
+        PropertyFactory.textColor(
+            Expression.switchCase(Expression.get("light"), Expression.color(android.graphics.Color.WHITE), Expression.color(0xFF202124.toInt())),
+        ),
+        // The Interstate's number sits in the blue, under the red band (as on the basemap's).
+        PropertyFactory.textOffset(
+            Expression.switchCase(Expression.get("light"), Expression.literal(arrayOf(0f, 0.22f)), Expression.literal(arrayOf(0f, 0f))),
+        ),
+        PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+        PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+        PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+        PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+        PropertyFactory.iconPadding(6f),
+        PropertyFactory.iconOptional(false),
+        PropertyFactory.textOptional(false),
+    ).apply { minZoom = 11f }
+    val below = listOf(CONTROLS_LAYER, NAV_ROADLABEL_LAYER, NAV_TURN_LAYER).firstOrNull { style.getLayer(it) != null }
+    if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
+}
+
 private const val NAV_TURN_BUBBLE_IMG = "vela-nav-turn-bubble"
 private const val NAV_TURN_SRC = "vela-nav-turn-src"
 private const val NAV_TURN_LAYER = "vela-nav-turn"

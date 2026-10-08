@@ -2836,6 +2836,14 @@ Route shields are Vela's own images (`RoadShields`, `vela-shield-*`, one per ref
 installed after the theme pass. They carry the sign's colors in every palette.
 `vela-exit-shield` adds motorway exit numbers from z12.5.
 
+A drive hides the basemap's three shield layers: every numbered road in view carried them, the
+other carriageway's too. The driven road gets its own instead (`core/nav/RouteShields`, layer
+`vela-nav-shields`): from the steps' refs and mid-leg renames, one shield `FIRST_AFTER_M`
+(350 m) into each numbered stretch of `MIN_STRETCH_M` (900 m) or more, then every `EVERY_M`
+(1,600 m), none within `END_CLEAR_M` (300 m) of its end. Computed once per route in
+`MapSurface`, drawn with the same images, placed under the signs and callouts so those win a
+collision. Hidden in the overview with the other `vela-nav-` layers.
+
 #### Buildings
 
 - The flat `building` fill draws from z16. `building-3d` draws from z17 at 30 percent of its
