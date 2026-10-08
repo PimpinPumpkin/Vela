@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- Several places can be selected in a list or in Saved places, then removed or moved to
+  another list (asked for on Reddit after an import of many places).
 - The arrival card of a drive offers "Save parking spot", and a simulated drive ends on the
   arrival card as a real one does. The parked car's sheet shows its distance and how long ago
   it was saved.

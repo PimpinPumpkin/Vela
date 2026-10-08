@@ -1309,6 +1309,21 @@
     <string name="route_save_default">Route to %1$s</string>
     <string name="route_saved_toast">Route saved. It shows up next to the others whenever you ask for this trip.</string>
     <string name="nav_left_your_route">Left “%1$s”. Taking the fastest way.</string>
+    <string name="bulk_select">Select places</string>
+    <plurals name="bulk_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="bulk_all">All</string>
+    <string name="bulk_move">Move to list</string>
+    <string name="bulk_new_list">New list…</string>
+    <string name="bulk_remove">Remove</string>
+    <plurals name="bulk_remove_title">
+        <item quantity="one">Remove %1$d place?</item>
+        <item quantity="other">Remove %1$d places?</item>
+    </plurals>
+    <string name="bulk_done">Done selecting</string>
+    <string name="bulk_moved">%1$d moved to %2$s</string>
     <string name="settings_saved_routes">Saved routes</string>
     <string name="settings_saved_routes_empty">Pick a route in the route chooser and use ⋮ &gt; Save this route. It shows up next to the others whenever you ask for the same trip.</string>
     <string name="settings_saved_route_rename">Rename</string>

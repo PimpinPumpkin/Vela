@@ -5068,6 +5068,35 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, results = refreshedOpenList(it, lists) ?: it.results) }
     }
 
+    // Several places at once (a Reddit report, 2026-10-07: an import of hundreds of places could
+    // only be cleaned up one place at a time, from each place's own page).
+
+    fun removePlacesFromList(listId: String, ids: Set<String>) {
+        val lists = listStore.removePlaces(listId, ids)
+        _state.update { it.copy(lists = lists, results = refreshedOpenList(it, lists) ?: it.results) }
+    }
+
+    fun movePlacesToList(fromListId: String, ids: Set<String>, toListId: String) {
+        val lists = listStore.movePlaces(fromListId, ids, toListId)
+        _state.update { it.copy(lists = lists, results = refreshedOpenList(it, lists) ?: it.results) }
+        lists.firstOrNull { it.id == toListId }?.let { flashStatus(appContext.getString(R.string.bulk_moved, ids.size, it.name)) }
+    }
+
+    /** Saved places (the starred ones outside any list). */
+    fun removeSavedPlaces(ids: Set<String>) {
+        val saved = savedStore.removeAll(ids)
+        _state.update { it.copy(saved = saved) }
+    }
+
+    fun moveSavedPlacesToList(ids: Set<String>, toListId: String) {
+        val moving = _state.value.saved.filter { it.id in ids }
+        if (moving.isEmpty() || _state.value.lists.none { it.id == toListId }) return
+        val lists = listStore.addPlaces(toListId, moving.map { app.vela.core.model.ListPlace.of(it.toPlace()) })
+        val saved = savedStore.removeAll(ids)
+        _state.update { it.copy(lists = lists, saved = saved) }
+        lists.firstOrNull { it.id == toListId }?.let { flashStatus(appContext.getString(R.string.bulk_moved, moving.size, it.name)) }
+    }
+
     /** When the results sheet is showing an open list, rebuild it from [lists] so a
      *  note edit / removal shows immediately (the rows are a snapshot from openList()). */
     private fun refreshedOpenList(st: MapUiState, lists: List<app.vela.core.model.PlaceList>): List<Place>? =

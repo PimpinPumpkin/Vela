@@ -35,6 +35,13 @@ class SavedPlaceStore @Inject constructor(
 
     fun isSaved(id: String): Boolean = saved().any { it.id == id }
 
+    /** Removes several saved places in one write. */
+    fun removeAll(ids: Set<String>): List<SavedPlace> {
+        val updated = saved().filterNot { it.id in ids }
+        prefs.edit().putString(KEY, json.encodeToString(updated)).apply()
+        return updated
+    }
+
     /** Give a saved place your own name (issue #434): a parking lot saved as coordinates or a
      *  road name gets called what you call it. The place keeps its id and location. */
     fun rename(id: String, name: String): Boolean {

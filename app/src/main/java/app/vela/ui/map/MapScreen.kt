@@ -3033,6 +3033,7 @@ private fun SearchResults(
     loadingMore: Boolean = false,
     moreBranches: Boolean = false, // the row reads "Show other locations" (a name search that landed on one place)
     mapLayers: MapLayers? = null, // an open custom map's layers, to show and hide (issue #669)
+    bulk: ListBulk? = null, // an open list: its places can be selected, then removed or moved
     onMore: () -> Unit = {},
     onActionDirections: (Place) -> Unit = {},
     onActionCall: (Place) -> Unit = {},
@@ -3047,6 +3048,9 @@ private fun SearchResults(
     // one; tap the handle to step up. The X exits the search entirely (results + query),
     // same as backing all the way out.
     var openOnly by remember { mutableStateOf(false) }
+    // The places picked in an open list (long press a card, or the header's select button); null
+    // while not selecting. Forgotten when another list or a search takes the sheet.
+    var picked by remember(listName, bulk != null) { mutableStateOf<Set<String>?>(null) }
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
     var priceMax by remember { mutableStateOf(0) }
     val screenH = LocalConfiguration.current.screenHeightDp
@@ -3265,7 +3269,15 @@ private fun SearchResults(
                             .background(SheetPalette.dim(dark).copy(alpha = 0.4f)),
                     )
                 }
-                Row(
+                val pickedNow = picked
+                if (bulk != null && pickedNow != null) BulkBar(
+                    picked = pickedNow,
+                    all = shown.map { it.id }.toSet(),
+                    bulk = bulk,
+                    ink = SheetPalette.ink(dark),
+                    onChange = { picked = it },
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 8.dp),
+                ) else Row(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 8.dp),
@@ -3298,6 +3310,16 @@ private fun SearchResults(
                     // STAYS: it's the discoverable expand affordance AND the D-pad path (the
                     // handle's tap detector isn't focusable) — removing it would orphan keypad
                     // users (user 2026-07-11).
+                    if (bulk != null && shown.isNotEmpty()) {
+                        // The key path to selecting (a long press on a card is the touch one).
+                        app.vela.ui.place.HeaderCircleButton(
+                            SymOutlined.CheckCircle,
+                            stringResource(R.string.bulk_select),
+                            tint = SheetPalette.ink(dark),
+                            bg = SheetPalette.dim(dark),
+                        ) { picked = emptySet() }
+                        Spacer(Modifier.width(8.dp))
+                    }
                     app.vela.ui.place.HeaderCircleButton(
                         if (!collapsed && expanded) Sym.KeyboardArrowDown else Sym.KeyboardArrowUp,
                         if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
@@ -3471,7 +3493,12 @@ private fun SearchResults(
                         place = place,
                         dark = dark,
                         showAddress = place.rating == null || place.name.trim().lowercase() in repeatedNames,
-                        onPick = { onPick(place) },
+                        selected = picked?.contains(place.id),
+                        onLongPress = if (bulk == null) null else { { picked = (picked ?: emptySet()) + place.id } },
+                        onPick = {
+                            val now = picked
+                            if (now == null) onPick(place) else picked = if (place.id in now) now - place.id else now + place.id
+                        },
                         onActionDirections = { onActionDirections(place) },
                         onActionCall = { onActionCall(place) },
                         onActionShare = { onActionShare(place) },
@@ -3504,11 +3531,14 @@ private fun SearchResults(
 
 /** One Google-style result card: photo strip, text block, action pills. Split out of
  *  SearchResults: the list body overflowed the 64KB per-method bytecode limit. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ResultPlaceCard(
     place: Place,
     dark: Boolean,
     showAddress: Boolean,
+    selected: Boolean? = null, // null outside a selection; else whether this card is picked
+    onLongPress: (() -> Unit)? = null,
     onPick: () -> Unit,
     onActionDirections: () -> Unit,
     onActionCall: () -> Unit,
@@ -3526,8 +3556,9 @@ private fun ResultPlaceCard(
     Column(
         Modifier
             .fillMaxWidth()
+            .then(if (selected == true) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)) else Modifier)
             .dpadHighlight(RoundedCornerShape(6.dp))
-            .clickable { onPick() },
+            .combinedClickable(onClick = { onPick() }, onLongClick = onLongPress),
     ) {
         // Photo strip with GROUPED outer corners (16dp outside, square
         // where images touch), full-bleed above the text, Google-style.
@@ -3542,6 +3573,12 @@ private fun ResultPlaceCard(
         // small before): name at titleMedium, the secondary lines bumped
         // from bodySmall→bodyMedium with a touch more breathing room.
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (selected != null) Icon(
+                if (selected) Sym.CheckCircle else SymOutlined.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else SheetPalette.dim(dark),
+                modifier = Modifier.padding(end = 10.dp).size(22.dp),
+            )
             // A custom map's marker leads with its own icon, or a dot in its color.
             if (place.pinIconUrl != null) {
                 coil.compose.AsyncImage(model = place.pinIconUrl, contentDescription = null, modifier = Modifier.padding(end = 10.dp).size(26.dp))
@@ -3795,6 +3832,7 @@ private fun ResultsSheet(
                 loadingMore = state.resultsLoadingMore,
                 moreBranches = state.resultsBranches,
                 mapLayers = mapLayersOf(state, vm),
+                bulk = listBulkOf(state, vm),
                 onMore = vm::loadMoreResults,
                 onActionDirections = { p ->
                     focusManager.clearFocus()
@@ -5963,6 +6001,8 @@ private fun ListsSheet(
     val savedState = vm?.state?.collectAsState()
     var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
     var creating by remember { mutableStateOf(false) }
+    // The Saved places picked for removing or moving to a list; null while not selecting.
+    var pickedSaved by remember { mutableStateOf<Set<String>?>(null) }
     // D-pad-first initial focus (hard rule, docs/dpad.md): a raw Dialog must place focus
     // itself - land it on the New-list button so the menu opens usable with no wasted press.
     val listsAutoFocus = app.vela.ui.rememberDpadAutoFocus()
@@ -6038,12 +6078,41 @@ private fun ListsSheet(
                     // every saved route, with a pin for the ones the search page should show.
                     val st = savedState?.value
                     if (st != null && st.saved.isNotEmpty()) {
-                        item { SheetSectionLabel(stringResource(R.string.saved_sheet_places)) }
+                        val pickedNow = pickedSaved
+                        item {
+                            if (pickedNow != null) BulkBar(
+                                picked = pickedNow,
+                                all = st.saved.map { it.id }.toSet(),
+                                bulk = remember(lists) {
+                                    ListBulk(
+                                        targets = lists.map { it.id to it.name },
+                                        onRemove = { ids -> vm.removeSavedPlaces(ids) },
+                                        onMove = { ids, to -> vm.moveSavedPlacesToList(ids, to) },
+                                        onCreateList = { name -> onCreateList(name) },
+                                    )
+                                },
+                                ink = MaterialTheme.colorScheme.onSurface,
+                                onChange = { pickedSaved = it },
+                                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 6.dp),
+                            ) else Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.weight(1f)) { SheetSectionLabel(stringResource(R.string.saved_sheet_places)) }
+                                // The key path to selecting (a long press on a row is the touch one).
+                                IconButton(onClick = { pickedSaved = emptySet() }, modifier = Modifier.padding(end = 8.dp).size(40.dp).dpadHighlight(CircleShape)) {
+                                    Icon(SymOutlined.CheckCircle, contentDescription = stringResource(R.string.bulk_select), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
                         items(st.saved, key = { "sp:" + it.id }) { sp ->
+                            val isPicked = pickedNow?.contains(sp.id)
                             SavedSheetRow(
-                                icon = Sym.Star, title = sp.name, sub = sp.address, pinned = sp.pinned,
-                                onOpen = { onDismiss(); vm.selectSaved(sp) },
+                                icon = when (isPicked) { null -> Sym.Star; true -> Sym.CheckCircle; false -> SymOutlined.RadioButtonUnchecked },
+                                title = sp.name, sub = sp.address, pinned = sp.pinned,
+                                onOpen = {
+                                    if (pickedNow == null) { onDismiss(); vm.selectSaved(sp) }
+                                    else pickedSaved = if (sp.id in pickedNow) pickedNow - sp.id else pickedNow + sp.id
+                                },
                                 onPin = { vm.setSavedPlacePinned(sp.id, !sp.pinned) },
+                                onLongPress = { pickedSaved = (pickedNow ?: emptySet()) + sp.id },
                             )
                         }
                     }
@@ -6850,6 +6919,7 @@ private fun SheetSectionLabel(text: String) {
 }
 
 /** A row in the Saved sheet: tap opens it, the pin puts it on (or takes it off) the search page. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SavedSheetRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -6858,12 +6928,13 @@ private fun SavedSheetRow(
     pinned: Boolean,
     onOpen: () -> Unit,
     onPin: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
             .dpadHighlight(RoundedCornerShape(8.dp))
-            .clickable(onClick = onOpen)
+            .combinedClickable(onClick = onOpen, onLongClick = onLongPress)
             .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -6953,6 +7024,23 @@ private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {
 
 /** An open custom map's layers for the results sheet's Layers chip (issue #669). */
 class MapLayers(val names: List<String>, val hidden: Set<String>, val onToggle: (String) -> Unit)
+
+
+/** The bulk actions for the list the results sheet is showing, or null when it is not showing
+ *  one of your lists (a search, an import not yet saved). */
+@Composable
+private fun listBulkOf(state: MapUiState, vm: MapViewModel): ListBulk? {
+    val listId = state.openListId ?: return null
+    if (state.pendingImport != null) return null
+    return remember(listId, state.lists) {
+        ListBulk(
+            targets = state.lists.filter { it.id != listId }.map { it.id to it.name },
+            onRemove = { ids -> vm.removePlacesFromList(listId, ids) },
+            onMove = { ids, to -> vm.movePlacesToList(listId, ids, to) },
+            onCreateList = { name -> vm.createList(name) },
+        )
+    }
+}
 
 /** Non-null when the open list is a saved custom map with two or more layers. */
 private fun mapLayersOf(state: MapUiState, vm: MapViewModel): MapLayers? {

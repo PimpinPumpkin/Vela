@@ -2609,6 +2609,13 @@ it with regexes.
   quick-save.
 - Recents are timestamped under new preference keys. The legacy keys are read once and left in
   place for a downgraded build.
+- Several places at once: a long press on a card of an open list, or on a Saved places row in
+  "Your lists", starts a selection (the select button is the key path). The sheet's title
+  becomes `BulkBar` (`ui/map/ListBulk.kt`): the count, All, Move to list (any other list, or a
+  new one named on the spot) and Remove behind a confirm. The stores write once per action
+  (`PlaceListStore.removePlaces`, `movePlaces`, `addPlaces`, `SavedPlaceStore.removeAll`); a
+  move to a list that is gone moves nothing. Moving a saved place puts it in the list and
+  takes the star off.
 - Parking is one tap on the P button, with a history. Settings > Map "Parking button"
   (`ParkingButton`, default on) hides the button while no spot is saved. With it on, the
   arrival card of a drive has "Save parking spot" (`ParkingActions.saveHere`), which saves the

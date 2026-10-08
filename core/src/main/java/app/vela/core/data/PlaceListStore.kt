@@ -61,6 +61,36 @@ class PlaceListStore @Inject constructor(
         },
     )
 
+    /** Removes several places from a list in one write. */
+    fun removePlaces(listId: String, placeIds: Set<String>): List<PlaceList> = write(
+        lists().map { l -> if (l.id != listId) l else l.copy(places = l.places.filterNot { it.id in placeIds }) },
+    )
+
+    /** Adds several places to a list in one write. One the list already holds is not doubled. */
+    fun addPlaces(listId: String, places: List<ListPlace>): List<PlaceList> = write(
+        lists().map { l ->
+            if (l.id != listId) l
+            else l.copy(places = l.places + places.filter { p -> l.places.none { it.matches(p.id, p.featureId) } })
+        },
+    )
+
+    /** Moves several places from one list to another in one write. Nothing happens when the
+     *  target is missing, so a place is never removed without landing somewhere. */
+    fun movePlaces(fromId: String, placeIds: Set<String>, toId: String): List<PlaceList> {
+        val cur = lists()
+        val moving = cur.firstOrNull { it.id == fromId }?.places?.filter { it.id in placeIds }.orEmpty()
+        if (moving.isEmpty() || fromId == toId || cur.none { it.id == toId }) return cur
+        return write(
+            cur.map { l ->
+                when (l.id) {
+                    fromId -> l.copy(places = l.places.filterNot { it.id in placeIds })
+                    toId -> l.copy(places = l.places + moving.filter { m -> l.places.none { it.matches(m.id, m.featureId) } })
+                    else -> l
+                }
+            },
+        )
+    }
+
     fun removePlace(listId: String, placeId: String, featureId: String? = null): List<PlaceList> = write(
         lists().map { l -> if (l.id != listId) l else l.copy(places = l.places.filterNot { it.matches(placeId, featureId) }) },
     )
