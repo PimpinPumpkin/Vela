@@ -131,4 +131,28 @@ class ValhallaMatchTest {
         val away = long.mapIndexed { i, p -> if (i in 8..18) LatLng(p.lat + 0.00055, p.lng) else p }
         assertEquals(null, ValhallaRouter.offLine(away, long, 0.0, 0.0))
     }
+
+    private fun road(m: Double) = ValhallaRouter.Edge(listOf("A Street"), m, line[0], false)
+    private fun track(m: Double) = ValhallaRouter.Edge(emptyList(), m, line[0], false, track = true)
+
+    @Test fun `a track between two roads is driven through, one at an end is not`() {
+        // Out of a street, 219 m along a farm track, onto the main road.
+        assertEquals(219.0, ValhallaRouter.throughTrackM(listOf(road(84.0), track(206.0), track(13.0), road(900.0))), 1e-9)
+        // A farm at the end of a track, and a trip that ends up one: the only way there.
+        assertEquals(0.0, ValhallaRouter.throughTrackM(listOf(track(300.0), road(900.0))), 1e-9)
+        assertEquals(0.0, ValhallaRouter.throughTrackM(listOf(road(900.0), track(120.0), track(80.0))), 1e-9)
+        assertEquals(0.0, ValhallaRouter.throughTrackM(listOf(track(300.0))), 1e-9)
+        assertEquals(0.0, ValhallaRouter.throughTrackM(emptyList()), 1e-9)
+        // Both: only the one in the middle counts.
+        assertEquals(50.0, ValhallaRouter.throughTrackM(listOf(track(300.0), road(100.0), track(50.0), road(100.0), track(70.0))), 1e-9)
+    }
+
+    @Test fun `an edge's use marks a track`() {
+        val text = """{"shape":"_izlhA~rlgdF_ibE_ibE","edges":[
+            {"names":["A Street"],"length":0.084,"begin_shape_index":0,"use":"road"},
+            {"length":0.206,"begin_shape_index":1,"use":"track"}]}"""
+        val edges = ValhallaRouter.parseEdges(text)!!
+        assertEquals(listOf(false, true), edges.map { it.track })
+        assertEquals(206.0, edges[1].lengthM, 1e-6)
+    }
 }

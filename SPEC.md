@@ -990,6 +990,15 @@ Related corrections:
   covers the steps carried into a hybrid and the plain open route when it goes out. No answer:
   the names stand. A turn not found on the edges keeps its name there and loses it in
   `laneDetail`.
+- The same edges say what kind of road each piece is (`Edge.track`, the service's `use`).
+  OSRM's car profile drives an unsigned farm or forest track as a slow road; in much of Europe
+  it is closed to cars. When the open route drives through `THROUGH_TRACK_MIN_M` (30 m) or more
+  of track (`ValhallaRouter.throughTrackM`: track with ordinary road both before and after, so a
+  trip that starts or ends on one is left alone) and that route is among those offered, the
+  other service's car route replaces it (`ValhallaRouter.driveRoute`, `use_tracks` 0, the same
+  avoid options). It must answer within `OFF_TRACK_WAIT_MS` (4 s; 1.5 s on a reroute) and be at
+  most 1.3 times as long plus 2 km, or the open route stands. A trip with stops is not checked.
+  With Google on the route follows Google's line and only an alternate can be replaced.
 
 #### Stitch
 

@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- With Google off, a driving route no longer cuts through a farm or forest track. The open
+  router treats an unsigned track as a slow road; a route that drives through one is replaced
+  by the other open service's car route.
 - A turn-now between two close turns is no longer held back by a line being prepared ahead:
   the voice thread is raised while it finishes that phrase.
 - A GPS fix that leaps away from a poor GPS fix goes through the outlier hold again. Taken as

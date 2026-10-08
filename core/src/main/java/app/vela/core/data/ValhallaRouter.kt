@@ -100,6 +100,44 @@ object ValhallaRouter {
     }
 
     /**
+     * A car route from this service, for the trip the open router answered with a drive through
+     * a farm track ([throughTrackM]). OSRM's car profile takes an unsigned track as a slow road;
+     * in much of Europe it is closed to cars, and the mapper who left it untagged meant "a track".
+     * This costing keeps off tracks unless the trip starts or ends on one. One try inside
+     * [timeoutMs]; null on any failure, and the caller keeps the route it has.
+     */
+    fun driveRoute(
+        http: OkHttpClient, origin: LatLng, destination: LatLng,
+        avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, timeoutMs: Long = 4_000,
+    ): Route? {
+        val body = buildJsonObject {
+            putJsonArray("locations") {
+                listOf(origin, destination).forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) }
+            }
+            put("costing", "auto")
+            putJsonObject("costing_options") {
+                putJsonObject("auto") {
+                    put("use_tracks", 0.0)
+                    if (avoidTolls) put("use_tolls", 0.0)
+                    if (avoidHighways) put("use_highways", 0.0)
+                    if (avoidFerries) put("use_ferry", 0.0)
+                }
+            }
+            put("units", "kilometers")
+        }.toString()
+        val req = Request.Builder()
+            .url(BASE)
+            .header("User-Agent", VelaConfig.USER_AGENT)
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        val text = runCatching {
+            client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
+        }.getOrNull() ?: return null
+        return runCatching { parse(text).firstOrNull() }.getOrNull()
+    }
+
+    /**
      * MAP MATCHING (2026-10-02): the road network's own steps for a line that was drawn by
      * someone else (Google's route). `trace_route` snaps [shape] onto the graph and answers with
      * the maneuvers of the roads it matched, so a street name here is the name of the road the
@@ -324,8 +362,21 @@ object ValhallaRouter {
         return "line ${cl.last().toInt()} m, matched ${cm.last().toInt()} m; line off the match: ${worst(line, cl, gm)}; match off the line: ${worst(matched, cm, gl)}"
     }
 
-    /** One edge of the matched path: the names the road carries there, in travel order. */
-    data class Edge(val names: List<String>, val lengthM: Double, val begin: LatLng, val soft: Boolean)
+    /** One edge of the matched path: the names the road carries there, in travel order.
+     *  [track] is a farm or forest track (`highway=track`). */
+    data class Edge(val names: List<String>, val lengthM: Double, val begin: LatLng, val soft: Boolean, val track: Boolean = false)
+
+    /**
+     * Meters of farm or forest track a path drives THROUGH: track edges with an ordinary road
+     * somewhere before them and somewhere after. A track the trip starts or ends on is not
+     * counted, since that is the only way to or from the place.
+     */
+    fun throughTrackM(edges: List<Edge>): Double {
+        val first = edges.indexOfFirst { !it.track }
+        val last = edges.indexOfLast { !it.track }
+        if (first < 0) return 0.0
+        return edges.subList(first, last + 1).sumOf { if (it.track) it.lengthM else 0.0 }
+    }
 
     /** The edges `trace_attributes` matched [shape] to, or null. [Edge.soft] marks the pieces
      *  inside a junction (internal edges, turn channels), which carry whichever street's name
@@ -367,6 +418,7 @@ object ValhallaRouter {
                 lengthM = (e["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0) * 1000.0,
                 begin = at,
                 soft = e["internal_intersection"]?.jsonPrimitive?.contentOrNull == "true" || e["use"]?.jsonPrimitive?.contentOrNull == "turn_channel",
+                track = e["use"]?.jsonPrimitive?.contentOrNull == "track",
             )
         }
         return out?.takeIf { it.isNotEmpty() }

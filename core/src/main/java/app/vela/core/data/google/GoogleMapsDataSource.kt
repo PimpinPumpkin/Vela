@@ -1429,6 +1429,21 @@ class GoogleMapsDataSource @Inject constructor(
             val t0 = System.currentTimeMillis()
             val edges = kotlinx.coroutines.withTimeoutOrNull(if (urgent) OPEN_NAMES_WAIT_URGENT_MS else OPEN_NAMES_WAIT_MS) { d.await() }
                 ?: return@let null
+            // The open router drove through a farm track: its route goes, and the other
+            // service's car route takes its place (ValhallaRouter.driveRoute). Only when that
+            // route answers in time and is no great detour; otherwise the open route stands.
+            val trackM = app.vela.core.data.ValhallaRouter.throughTrackM(edges)
+            val onOpenLine = fetched.firstOrNull { it.polyline === openLine }
+            val offTrack = if (trackM >= THROUGH_TRACK_MIN_M && onOpenLine != null) withContext(Dispatchers.IO) {
+                app.vela.core.data.ValhallaRouter.driveRoute(
+                    http, origin, destination, avoidTolls, avoidHighways, avoidFerries, timeoutMs = if (urgent) OFF_TRACK_WAIT_URGENT_MS else OFF_TRACK_WAIT_MS,
+                )
+            }?.takeIf { it.distanceMeters <= onOpenLine.distanceMeters * OFF_TRACK_MAX_RATIO + OFF_TRACK_MAX_EXTRA_M } else null
+            if (trackM >= THROUGH_TRACK_MIN_M) runCatching {
+                android.util.Log.i("VelaDirections", "open route drives ${trackM.toInt()} m of track: " +
+                    (if (offTrack != null) "replaced, ${offTrack.distanceMeters.toInt()} m for ${onOpenLine?.distanceMeters?.toInt()} m" else if (onOpenLine == null) "not offered" else "kept, no other route in time"))
+            }
+            if (offTrack != null) return@let dedupeRoutes(fetched.map { r -> if (r === onOpenLine) offTrack.copy(durationInTrafficSeconds = null) else r })
             val tally = IntArray(4)
             fetched.map { r ->
                 if (r.polyline === openLine)
@@ -2044,6 +2059,14 @@ class GoogleMapsDataSource @Inject constructor(
          *  path (the loop out of a parking lot, the last turn into a driveway). */
         const val MATCH_TRIP_END_SLACK_M = 150.0
         const val OPEN_NAMES_WAIT_MS = 1_500L
+        /** A farm track driven through for less than this is matching noise, not a route choice. */
+        const val THROUGH_TRACK_MIN_M = 30.0
+        /** How long the car route that keeps off tracks may take to answer. */
+        const val OFF_TRACK_WAIT_MS = 4_000L
+        const val OFF_TRACK_WAIT_URGENT_MS = 1_500L
+        /** It replaces the open route only up to this much longer: past it the track is the road. */
+        const val OFF_TRACK_MAX_RATIO = 1.3
+        const val OFF_TRACK_MAX_EXTRA_M = 2_000.0
         const val OPEN_NAMES_WAIT_URGENT_MS = 300L
         const val HYBRID_WAIT_MS = 5_500L // a match (2.5 s) and its lane detail (1.8 s) at their slowest
         const val LANE_TRY_MS = 1_800L
