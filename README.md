@@ -25,7 +25,7 @@ Live traffic, real place data and turn-by-turn navigation, with no Google accoun
 > template. Nightlies and canary builds are newer still and less tested than the weekly stable.
 
 An open-source Google Maps alternative for Android: *what NewPipe is to
-YouTube, for Google Maps.* The map is open data. The basemap is open vector tiles, and
+YouTube, for Google Maps.* The map is open data. The basemap is open vector tiles (OpenStreetMap), and
 the places on it are **Vela data**: Overture Maps and AllThePlaces, positioned
 with OpenStreetMap, baked into tiles in this repo and streamed from its
 releases. Browsing around never asks Google anything. Search, tap a place or
