@@ -299,17 +299,26 @@ Places come from two sources, ranked together by `OfflineRank`:
   category, and the whole phrase against the address. Category words expand to the
   OpenStreetMap values stored ("gas" is `Fuel`, "coffee" is `Cafe`). A query that is itself a
   category ("Gas station") is not split, because "station" matched every charging station. Names
-  compare with apostrophes and periods dropped and hyphens as spaces (`OfflineRank.fold`), so
-  "mcdonalds" finds "McDonald's". The SQL orders whole-phrase name matches first and then the
-  nearest rows before its 400-row cap, so a state pack's thousands of cafes cannot push out an
-  exact name or the ones near you.
+  compare with accents folded, apostrophes and periods dropped and hyphens as spaces
+  (`OfflineRank.fold`), so "mcdonalds" finds "McDonald's" and "cafe" finds "Café". Only Latin
+  letters are folded: in other scripts the marks are part of the spelling (the voicing marks on
+  kana, Thai and Devanagari vowel signs), and a name is compared as typed. The packs
+  store names as OpenStreetMap wrote them and SQLite cannot fold accents, so
+  `OfflinePoiStore.nameMatch` does it in the query: a plain name is matched by LIKE, and a name
+  with any letter outside ASCII by a GLOB pattern in which each letter is a class of its forms
+  (`OfflineRank.glob`: `[eEéÉèÈ...]`, from the Latin-1 and Latin Extended-A and B blocks and the
+  Vietnamese vowels). A query holding "ss" is also tried with "ß". The pattern is kept off plain
+  names because it costs several times what LIKE does per row. The SQL orders whole-phrase name
+  matches first and then the nearest rows before its 400-row cap, so a state pack's thousands of
+  cafes cannot push out an exact name or the ones near you.
 - `PlacesArchiveSearch` reads the downloaded places archives the map draws (Overture,
   AllThePlaces and OpenStreetMap). It reads the deepest zoom in rings of tiles out from the
   search point until it has 60 matches or reaches `MAX_RINGS` (12 rings of z17 tiles, about
   3 km). Downtown Davis: 144 restaurants in 42 ms.
 
 The ranking puts transit stops last unless the query asks for transit, then rows that hit more
-query words, then the nearest. A category query keeps to `OfflineRank.CATEGORY_MAX_M` (100 km)
+query words, then names in which the query starts a word ("shell" puts Shell ahead of a nearer
+Seashell Cafe; Target and Target Optical stay tied), then the nearest. A category query keeps to `OfflineRank.CATEGORY_MAX_M` (100 km)
 of the search point, so with no data for the area it answers nothing instead of listing a
 downloaded state far away. The same name within 120 m is one place. At most 30 rows return.
 

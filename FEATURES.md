@@ -158,6 +158,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Download an area" frames part of the map and saves its map, places, addresses and routing.
 - "Entire states & countries" is a catalog of whole regions to download.
 - With no signal the map draws, places open, and search finds names, categories and typed addresses.
+  A name is found with or without its accents: "cafe" finds "Café".
 - Offline routes cover driving, walking and cycling, with spoken turns, speed limits and avoid
   options, and are labeled offline.
 - "Update downloaded regions" applies small updates on Wi-Fi (the default), on mobile data too, or
