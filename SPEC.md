@@ -498,7 +498,9 @@ OkHttp (no GREASE, ECH or ALPS)
 - `CronetHolder` builds one `ExperimentalCronetEngine` on first use: HTTP/2, QUIC, Brotli, the
   network-quality estimator, a 64 MB disk cache in `cacheDir/cronet`. A navigation goes at
   `REQUEST_PRIORITY_HIGHEST` (`Priority: u=0, i`). The OkHttp call timeout still bounds the
-  wait.
+  wait. A client with no call timeout (`callTimeout(0)`) is bounded at 30 s there, so a Google
+  reply that needs longer is asked through a client with a set deadline
+  (`GoogleMapsDataSource.largeReplyHttp`).
 - The library is Chromium's own prebuilt Release build for the Chrome for Android stable
   version pinned in `gradle.properties` `vela.cronetVersion`, the same major the UA claims.
   Bump the two together. Maven's `cronet-embedded` stopped at 143.
@@ -2630,7 +2632,10 @@ A link `google.com/maps/d/<viewer|edit|embed>?mid=<id>` (`MapLinkParser.myMapId`
 shared list. `MapDataSource.importMyMap` fetches the KML
 (`https://www.google.com/maps/d/kml?mid=<id>&forcekml=1`) and the public viewer page, with no
 key and no session; it is refused under "Use Vela without Google". `core/data/MyMapKml` reads
-it with regexes.
+it with regexes, each compiled once in the object and none per placemark. Both fetches use
+`GoogleMapsDataSource.largeReplyHttp`, the shared client with a 90 s call timeout
+(`LARGE_REPLY_TIMEOUT_S`) and a 60 s read timeout: a large map's KML runs to megabytes, and
+the shared 12 s timeout cuts it off.
 
 - `<Folder>` is a layer (`mapLayer`, `ListPlace.layer`). `<Point>` placemarks become places,
   the description as the note. `<LineString>` and `<Polygon>` (outer ring) become `MapShape`s

@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A My Maps import compiles its patterns once and fetches with a 90 s deadline; a large map
+  parsed slowly and could be cut off by the shared 12 s timeout.
 - A drawing's typed name survives another sheet taking the bottom slot (`DrawState.name`).
 - With Google off, a driving route no longer cuts through a farm or forest track. The open
   router treats an unsigned track as a slow road; a route that drives through one is replaced

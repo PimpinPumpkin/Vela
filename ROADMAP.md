@@ -179,7 +179,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
 - The arrow's swap to the map's own symbol during a gesture (`puckGestureSwap`) is off: the
   car vanishes for several frames at each end of a pinch. The overlay is used throughout.
 - A replay seek feeds every earlier fix through the engine in one main-thread block.
-- My Maps import compiles a regex per placemark and fetches on the 12 s client.
 - A place starred before its details load, or offline, is stored as bare and never looks up its
   listing again.
 - Map: the 3D building tilt gate and the house-number box both flip layout properties; a

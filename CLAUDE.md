@@ -268,6 +268,9 @@ signed file the app fetches at launch (SPEC 11).
 - The shared OkHttp client has a 12 second call timeout. A download through it stops
   mid-body, the error is swallowed, and the file silently never installs. Every large
   download uses a client with `callTimeout(0)`.
+- On a Google host `callTimeout(0)` is not unlimited: the Cronet transport bounds it at 30 s.
+  A Google reply of megabytes takes a client with a set deadline
+  (`GoogleMapsDataSource.largeReplyHttp`).
 - Parse a large response from the stream into a small DTO. Reading the body to a string and
   building a JSON tree holds five to ten times the wire size.
 - Every request that can reach Google goes through the shared client, which counts it and

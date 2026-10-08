@@ -48,32 +48,32 @@ object MyMapKml {
         val names = iconNames(viewerHtml)
         if (!kml.contains("<kml", ignoreCase = true)) return null
         val head = kml.substringBefore("<Folder>").substringBefore("<Placemark>")
-        val title = tag(head.substringAfter("<Document>", head), "name")?.ifBlank { null } ?: "My Maps"
-        val description = tag(head.substringAfter("<Document>", head), "description")?.ifBlank { null }
+        val title = tag(head.substringAfter("<Document>", head), NAME)?.ifBlank { null } ?: "My Maps"
+        val description = tag(head.substringAfter("<Document>", head), DESCRIPTION)?.ifBlank { null }
 
         val styles = HashMap<String, Style>()
         STYLE.findAll(kml).forEach { m ->
             val body = m.groupValues[2]
-            val line = Regex("<LineStyle>(.*?)</LineStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
-            val poly = Regex("<PolyStyle>(.*?)</PolyStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
-            val icon = Regex("<IconStyle>(.*?)</IconStyle>", RegexOption.DOT_MATCHES_ALL).find(body)?.groupValues?.get(1)
+            val line = LINE_LOOK.find(body)?.groupValues?.get(1)
+            val poly = POLY_LOOK.find(body)?.groupValues?.get(1)
+            val icon = ICON_LOOK.find(body)?.groupValues?.get(1)
             styles[m.groupValues[1]] = Style(
-                icon = icon?.let { tag(it, "color") }?.let(::kmlColor),
+                icon = icon?.let { tag(it, COLOR) }?.let(::kmlColor),
                 // A marker with an uploaded image: the export links it. Google's stock blank is not one.
-                href = icon?.let { tag(it, "href") }?.takeIf { it.startsWith("https://") && !it.contains("/mapspro/images/stock/") },
-                line = line?.let { tag(it, "color") }?.let(::kmlColor),
-                width = line?.let { tag(it, "width") }?.toFloatOrNull(),
-                fill = poly?.let { tag(it, "color") }?.let(::kmlColor),
+                href = icon?.let { tag(it, HREF) }?.takeIf { it.startsWith("https://") && !it.contains("/mapspro/images/stock/") },
+                line = line?.let { tag(it, COLOR) }?.let(::kmlColor),
+                width = line?.let { tag(it, WIDTH) }?.toFloatOrNull(),
+                fill = poly?.let { tag(it, COLOR) }?.let(::kmlColor),
             )
         }
         // A StyleMap names a normal and a highlight style; the normal one is the look.
         STYLE_MAP.findAll(kml).forEach { m ->
-            val normal = Regex("<key>normal</key>\\s*<styleUrl>#(.*?)</styleUrl>", RegexOption.DOT_MATCHES_ALL).find(m.groupValues[2])?.groupValues?.get(1)
+            val normal = NORMAL_STYLE.find(m.groupValues[2])?.groupValues?.get(1)
             styles[normal]?.let { styles[m.groupValues[1]] = it }
         }
 
         // One layer says nothing ("Untitled layer" on most maps); several are worth showing.
-        val layered = Regex("<Folder>").findAll(kml).count() > 1
+        val layered = FOLDER.findAll(kml).count() > 1
         val places = ArrayList<Place>()
         val shapes = ArrayList<MapShape>()
         var layer: String? = null
@@ -82,7 +82,7 @@ object MyMapKml {
         var folderShapes = 0
         TOKEN.findAll(kml).forEach { m ->
             when {
-                m.value.startsWith("<Folder") -> { layer = tag(m.value, "name")?.ifBlank { null }; folderPlaces = places.size; folderShapes = shapes.size }
+                m.value.startsWith("<Folder") -> { layer = tag(m.value, NAME)?.ifBlank { null }; folderPlaces = places.size; folderShapes = shapes.size }
                 m.value == "</Folder>" -> {
                     // A directions layer: one line, and points it starts at, passes and ends at.
                     val pts = places.subList(folderPlaces, places.size)
@@ -98,13 +98,13 @@ object MyMapKml {
                 }
                 else -> {
                     val body = m.groupValues[2]
-                    val name = tag(body, "name").orEmpty()
-                    val rawNote = tag(body, "description")
+                    val name = tag(body, NAME).orEmpty()
+                    val rawNote = tag(body, DESCRIPTION)
                     val note = rawNote?.let(::plainText)?.ifBlank { null }
                     // Photos: Google lists them in gx_media_links, and as <img> tags in the description.
-                    val photos = (MEDIA.find(body)?.groupValues?.get(1)?.let(::cdata)?.trim()?.split(Regex("\\s+")).orEmpty() +
+                    val photos = (MEDIA.find(body)?.groupValues?.get(1)?.let(::cdata)?.trim()?.split(SPACES).orEmpty() +
                         IMG.findAll(rawNote.orEmpty()).map { it.groupValues[1] }).filter { it.startsWith("http") }.distinct().take(12)
-                    val styleId = tag(body, "styleUrl")?.removePrefix("#")
+                    val styleId = tag(body, STYLE_URL)?.removePrefix("#")
                     val style = styleId?.let { styles[it] }
                     val iconId = styleId?.let { ICON_STYLE.find(it) }
                     val iconName = iconId?.groupValues?.get(1)?.takeIf { it != PLAIN_PIN }?.let { names[it] }
@@ -155,20 +155,39 @@ object MyMapKml {
     private val MEDIA = Regex("<Data name=\"gx_media_links\">\\s*<value>(.*?)</value>", RegexOption.DOT_MATCHES_ALL)
     private val IMG = Regex("<img[^>]*\\ssrc=\"([^\"]+)\"", RegexOption.IGNORE_CASE)
 
+    // Every pattern is built once, here, never inside parse: a map holds up to MAX_PLACES
+    // placemarks, and a pattern built per placemark is thousands of compilations for one import.
+    private fun element(name: String) = Regex("<$name>(.*?)</$name>", RegexOption.DOT_MATCHES_ALL)
+    private val NAME = element("name")
+    private val DESCRIPTION = element("description")
+    private val STYLE_URL = element("styleUrl")
+    private val COLOR = element("color")
+    private val HREF = element("href")
+    private val WIDTH = element("width")
+    private val LINE_LOOK = element("LineStyle")
+    private val POLY_LOOK = element("PolyStyle")
+    private val ICON_LOOK = element("IconStyle")
+    private val NORMAL_STYLE = Regex("<key>normal</key>\\s*<styleUrl>#(.*?)</styleUrl>", RegexOption.DOT_MATCHES_ALL)
+    private val FOLDER = Regex("<Folder>")
+    private val SPACES = Regex("\\s+")
+    private val LINE_BREAK = Regex("(?i)<br\\s*/?>")
+    private val ANY_TAG = Regex("<[^>]+>")
+    private val BLANK_LINES = Regex("\n{3,}")
+
     private fun cdata(s: String) = s.trim().removePrefix("<![CDATA[").removeSuffix("]]>")
 
-    private fun tag(text: String, name: String): String? =
-        Regex("<$name>(.*?)</$name>", RegexOption.DOT_MATCHES_ALL).find(text)?.groupValues?.get(1)
-            ?.let(::cdata)?.trim()?.let(::unescape)
+    /** The text of the first element [re] (one of the [element] patterns) finds in [text]. */
+    private fun tag(text: String, re: Regex): String? =
+        re.find(text)?.groupValues?.get(1)?.let(::cdata)?.trim()?.let(::unescape)
 
     private fun unescape(s: String) = s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&apos;", "'")
 
     /** A description is HTML (line breaks, links, an image tag for each photo): the words only. */
     private fun plainText(html: String): String =
-        html.replace(Regex("(?i)<br\\s*/?>"), "\n").replace(Regex("<[^>]+>"), "").replace("&nbsp;", " ")
-            .let(::unescape).lines().joinToString("\n") { it.trim() }.replace(Regex("\n{3,}"), "\n\n").trim()
+        html.replace(LINE_BREAK, "\n").replace(ANY_TAG, "").replace("&nbsp;", " ")
+            .let(::unescape).lines().joinToString("\n") { it.trim() }.replace(BLANK_LINES, "\n\n").trim()
 
-    private fun coords(raw: String): List<LatLng> = raw.trim().split(Regex("\\s+")).mapNotNull { t ->
+    private fun coords(raw: String): List<LatLng> = raw.trim().split(SPACES).mapNotNull { t ->
         val p = t.split(',')
         val lng = p.getOrNull(0)?.toDoubleOrNull() ?: return@mapNotNull null
         val lat = p.getOrNull(1)?.toDoubleOrNull() ?: return@mapNotNull null

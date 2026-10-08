@@ -1870,21 +1870,32 @@ class GoogleMapsDataSource @Inject constructor(
     override suspend fun importMyMap(mid: String): app.vela.core.model.ImportedList? = io {
         if (app.vela.core.data.NoGoogle.enabled) return@io null
         runCatching {
-            val kml = get("https://www.google.com/maps/d/kml?mid=${mid.enc()}&forcekml=1", kind = "my map")
+            val kml = get("https://www.google.com/maps/d/kml?mid=${mid.enc()}&forcekml=1", kind = "my map", client = largeReplyHttp)
             // The viewer page names the map's marker icons; without it the pins keep their colors.
-            val viewer = if (kml.contains("#icon-")) runCatching { get("https://www.google.com/maps/d/viewer?mid=${mid.enc()}", kind = "my map") }.getOrNull() else null
+            val viewer = if (kml.contains("#icon-")) runCatching { get("https://www.google.com/maps/d/viewer?mid=${mid.enc()}", kind = "my map", client = largeReplyHttp) }.getOrNull() else null
             app.vela.core.data.MyMapKml.parse(kml, mid, viewer)
         }.getOrNull()
     }
 
     // --- plumbing -----------------------------------------------------------
 
+    /** For a reply that runs to megabytes (a custom map's KML and its viewer page): the shared
+     *  client's 12 s call timeout cuts such a body off, and the failure is swallowed. Derived from
+     *  the shared client, so the request is still counted and still goes out through Cronet. The
+     *  deadline is set rather than removed: the Cronet transport reads `callTimeout(0)` as 30 s. */
+    private val largeReplyHttp by lazy {
+        http.newBuilder()
+            .callTimeout(LARGE_REPLY_TIMEOUT_S, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
+
     /** [aged]: a per-place request (details, photos, the review feed) that rides the WebView's aged
      *  Google session when calibration `agedSession` is on (default 1), see [AgedSession]. */
     private fun agedTag(b: Request.Builder, aged: Boolean): Request.Builder =
         if (aged && calibration.current().tune("agedSession", 1.0) >= 0.5) b.tag(app.vela.core.net.AgedSession::class.java, app.vela.core.net.AgedSession) else b
 
-    private fun get(url: String, aged: Boolean = false, kind: String? = null): String {
+    private fun get(url: String, aged: Boolean = false, kind: String? = null, client: OkHttpClient = http): String {
         val cal = calibration.current()
         val req = Request.Builder()
             .url(url)
@@ -1892,7 +1903,7 @@ class GoogleMapsDataSource @Inject constructor(
             .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
             .let { agedTag(it, aged) }
             .build()
-        http.newCall(req).execute().use { resp ->
+        client.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) {
                 throw CalibrationNeededException("HTTP ${resp.code} from ${req.url.encodedPath}")
             }
@@ -2006,6 +2017,8 @@ class GoogleMapsDataSource @Inject constructor(
         // long route, and the route chooser must not hang.
         /** The autocomplete window when the caller has no viewport: a town, like the web page's default. */
         const val SUGGEST_SPAN_M = 20_000.0
+        /** The whole call for a reply of megabytes ([largeReplyHttp]). */
+        const val LARGE_REPLY_TIMEOUT_S = 90L
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
         /** A mid-drive reroute waits this long for Google's traffic once the open router has answered. */
         const val URGENT_GOOGLE_GRACE_MS = 2_500L

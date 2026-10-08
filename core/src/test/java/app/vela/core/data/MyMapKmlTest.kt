@@ -119,6 +119,30 @@ class MyMapKmlTest {
         assertTrue("a line whose ends are not its layer's points is only a line", m.shapes[1].stops.isEmpty())
     }
 
+    @Test fun `a map at the pin cap reads every placemark with its note and photos`() {
+        val sb = StringBuilder("<kml><Document><name>Big</name><Folder><name>All</name>")
+        for (i in 0 until MyMapKml.MAX_PLACES + 5) {
+            val lat = 38.5400 + (i / 100) * 0.0001
+            val lng = -121.7500 + (i % 100) * 0.0001
+            sb.append("<Placemark><name>Stop $i</name>")
+            sb.append("<description><![CDATA[Line one<br/>line two<BR><br><br><br>line three]]></description>")
+            sb.append("<ExtendedData><Data name=\"gx_media_links\"><value><![CDATA[https://example.com/$i-a.jpg\n  https://example.com/$i-b.jpg]]></value></Data></ExtendedData>")
+            sb.append("<Point><coordinates>\n  $lng,$lat,0\n</coordinates></Point></Placemark>")
+        }
+        sb.append("</Folder></Document></kml>")
+        val m = MyMapKml.parse(sb.toString(), "big")!!
+        assertEquals("Big", m.title)
+        assertEquals(MyMapKml.MAX_PLACES, m.places.size)
+        // The placemarks past the cap are dropped; the last one kept reads whole.
+        val n = MyMapKml.MAX_PLACES - 1
+        val last = m.places.last()
+        assertEquals("Stop $n", last.name)
+        assertEquals("Line one\nline two\n\nline three", last.savedNote)
+        assertEquals(listOf("https://example.com/$n-a.jpg", "https://example.com/$n-b.jpg"), last.photoUrls)
+        assertEquals(38.5400 + (n / 100) * 0.0001, last.location.lat, 1e-6)
+        assertEquals(-121.7500 + (n % 100) * 0.0001, last.location.lng, 1e-6)
+    }
+
     @Test fun `text that is not a custom map reads as nothing`() {
         assertNull(MyMapKml.parse("<html><body>Sign in</body></html>"))
         assertNull(MyMapKml.parse("<kml><Document><name>Empty</name></Document></kml>"))
