@@ -498,6 +498,7 @@ internal class NavController(
         // only when it says something the primary line doesn't.
         val (destName, destAddr) = NavSession.destinationDisplay(s.selected?.name, s.selected?.address, dest)
         navSession.start(route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode, destinationAddress = destAddr.orEmpty())
+        navSession.plannedWayName = route.savedName // a saved route: leaving it is said once (NavSession.reroute)
         beginDriveTrace(route)
         NavigationService.start(appContext)
         persistNav(dest, s.selected?.name.orEmpty(), s.travelMode) // so a process-kill mid-drive can resume
@@ -588,7 +589,7 @@ internal class NavController(
 
     /** The drive's stop list for [route]: the user's stops, or, for a route the camera pass built
      *  through side-street points (issue #600), its whole waypoint plan with those points as SILENT
-     *  stops, so a reroute or recheck keeps the detour instead of routing back past the cameras. */
+     *  stops, so a traffic re-check keeps the detour instead of routing back past the cameras. */
     private fun navStopsFor(route: Route, waypoints: List<app.vela.core.model.Place>): List<NavSession.NavStop> =
         if (route.detourPlan.isEmpty()) waypoints.map { NavSession.NavStop(it.location, it.name) }
         else route.detourPlan.map { p ->

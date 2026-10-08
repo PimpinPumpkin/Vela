@@ -1205,7 +1205,11 @@ During a drive:
   `STOP_ON_ROUTE_M` (150 m) from it has a null mark.
 - `NavSession` holds the stops, the marks and a passed counter, and speaks one cue per stop when
   progress comes within `STOP_ARRIVE_TOL_M` (25 m) of its mark.
-- Reroutes and rechecks fetch with `stops.drop(passedStops)`.
+- Rechecks fetch with `stops.drop(passedStops)`, so a traffic re-check never pulls a drive off
+  a saved route or a camera detour. A reroute after leaving the route drops the silent stops
+  and fetches through the real ones only: the driver is taken on from here, not back to the
+  stretch just left. For a saved route (`plannedWayName`) that is said once,
+  `NavStrings.leftYourRoute`, with a status card naming it (`onLeftPlannedWay`).
 - A stop with a null mark counts as passed only when a later stop with a mark is passed
   (`NavEngine.stopsPassed`). A stops edit, or a reroute that could not fit the stops, therefore
   keeps them all.

@@ -327,7 +327,12 @@ saved start and ends within 250 m of the saved end is offered the saved route (`
   directions), that row takes the saved name.
 - Otherwise the router is asked for the trip through points on the saved line, one in the
   middle of each stretch of 150 m or more where it leaves the fastest route, at most 8. The
-  drive keeps the points as silent stops, so a reroute returns you to your route.
+  drive keeps the points as silent stops, so a traffic re-check keeps you on your route.
+
+Leaving a saved route lets go of it. The reroute drops the hidden points and goes the fastest
+way to the destination, and Vela says so once: "You left your route. Taking the fastest way."
+Real stops are kept. It used to route back to the next hidden point, which was often behind
+the car. A camera detour is let go the same way, without the announcement.
 
 A matching saved route leads the list, selected, with a "Your route" chip and a live traffic
 time.

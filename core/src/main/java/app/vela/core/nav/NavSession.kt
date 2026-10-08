@@ -163,7 +163,7 @@ class NavSession @Inject constructor(
 
     /** An intermediate stop on a multi-stop trip. */
     /** A stop on the drive. [silent] marks a side-street detour point the camera pass added (issue
-     *  #600): routed through like a stop, so a reroute or recheck keeps the detour, but never
+     *  #600): routed through like a stop, so a recheck keeps the detour (a reroute after leaving it drops it), but never
      *  spoken, never listed, never a leg divider. A mid-drive stops EDIT hands back the VISIBLE
      *  list; [withSilentVias] puts the silent points still ahead back into it in route order. */
     data class NavStop(val location: LatLng, val label: String, val silent: Boolean = false)
@@ -199,6 +199,7 @@ class NavSession @Inject constructor(
     ) {
         this.destination = destination
         this.mode = mode
+        plannedWayName = null
         sessionGen += 1               // orphan any in-flight reroute/recheck from a previous session
         rerouteJob?.cancel()
         pendingLatchClear.set(false)  // a stale clear from the previous session must not leak in
@@ -537,6 +538,11 @@ class NavSession @Inject constructor(
      *  only the spoken lines and the route blocks, so a bad decision was invisible until the
      *  maneuver lines were read by hand. Never pass a coordinate through here. */
     var onNote: ((String) -> Unit)? = null
+
+    /** The saved route this drive is on, by name, while it is still on it. Set after [start]. */
+    @Volatile var plannedWayName: String? = null
+    /** The drive left its saved route and is now routed plainly ([plannedWayName] as it was). */
+    var onLeftPlannedWay: ((String) -> Unit)? = null
     private fun note(msg: String) { diag.record("nav", msg); onNote?.invoke(msg) }
 
     /**
@@ -880,7 +886,12 @@ class NavSession @Inject constructor(
         }
         // Reroute THROUGH the stops you haven't reached yet — not straight to the final destination
         // (that used to silently drop your remaining stops on any off-route wobble).
-        val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
+        // The SILENT ones go: they are the points a saved route or a camera detour was built
+        // through, and a driver who has left that way is taken on from here, not back to it
+        // (user 2026-10-07). Going back meant a U-turn to the middle of the stretch just left.
+        val planStops = synchronized(stopLock) { stops.drop(passedStops) }
+        val remainingStops = planStops.filter { !it.silent }
+        val leftPlannedWay = planStops.size != remainingStops.size
         val gen = sessionGen
         // The route we were following when we went off-route. If the driver returns to THIS line while
         // we're fetching (see the back-on-course check below), we abandon the reroute rather than swap.
@@ -985,6 +996,15 @@ class NavSession @Inject constructor(
             if (remainingStops.isNotEmpty() && marks.any { it == null }) {
                 voice.speak(app.vela.core.i18n.NavStringsRegistry.current().stopsNotIncluded())
                 note("reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
+            }
+            if (leftPlannedWay) {
+                note("left the planned way: ${planStops.size - remainingStops.size} hidden point(s) dropped")
+                // Said once, and only for a saved route: a camera detour has no name to leave.
+                plannedWayName?.let { name ->
+                    plannedWayName = null
+                    voice.speak(app.vela.core.i18n.NavStringsRegistry.current().leftYourRoute())
+                    onLeftPlannedWay?.invoke(name)
+                }
             }
             note(
                 "reroute adopted: ${r.source.name.lowercase()} in $tookMs ms" +

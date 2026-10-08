@@ -572,6 +572,7 @@ class MapViewModel @Inject constructor(
         // drive cost" by itself.
         voice.onSpoken = { tripStore.note("S", it) }
         navSession.onNote = { tripStore.note("K", it); app.vela.diag.NavTrace.event(it) } // nav decisions (rechecks, reroutes, swaps)
+        navSession.onLeftPlannedWay = { name -> flashStatus(appContext.getString(R.string.nav_left_your_route, name), 8_000L) }
         // The GraphHopper graphs retired 2026-09-15: reclaim any old install and say so once.
         viewModelScope.launch(Dispatchers.IO) {
             val gone = app.vela.offline.LegacyGraphs.purge(appContext.filesDir)
@@ -5868,7 +5869,7 @@ class MapViewModel @Inject constructor(
     // (same mode, start near its start, end near its end) it joins the list with a live time: the
     // router is asked for the trip through a few via points where the saved line leaves the
     // router's own answer (SavedRoutes.viasAgainst), and the vias ride as the route's detourPlan
-    // so a drive's reroutes keep to it. Appended at the END: the flock counts and the provisional
+    // so a drive's traffic re-checks keep to it (leaving it lets go of it, NavSession.reroute). Appended at the END: the flock counts and the provisional
     // naming index into the list, and the Fastest tag goes by time, not position.
 
     private var savedRoutesJob: kotlinx.coroutines.Job? = null
