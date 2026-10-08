@@ -3852,10 +3852,16 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 (metro, train) while colored lines of that kind are in view. Both hide while a non-transit route
 is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as traffic.
 
-- The endpoint has no mode parameter. The phone drops buses, coaches and boats, cuts a shape at
-  every gap over `CHORD_SPLIT_M` (4 km; a subway bridge is one hop of 2 to 2.5 km), drops a run
-  whose points average over `CHORD_MAX_M` (700 m) apart as a chord, and thins the rest to 4 m.
-  An unreadable reply is "no lines".
+- The endpoint has no mode parameter and answers one polyline per pair of consecutive stops. The
+  phone drops buses, coaches and boats, cuts a shape at every gap over `CHORD_SPLIT_M` (4 km; a
+  subway bridge is one hop of 2 to 2.5 km) and thins what it keeps to 4 m. An unreadable reply
+  is "no lines".
+- A run whose points average over `CHORD_MAX_M` (700 m) apart is dropped as a chord when it is a
+  train's, or a metro's whose routes all report `pathSource` `NONE` (no path, a straight line
+  from stop to stop). Any other metro run is kept at any spacing: straight track between two
+  stations is two points, and a dropped stretch is a hole, because the plain highlight is hidden
+  for the whole kind. Five New York cells: the spacing test would drop 46 of 380 metro runs,
+  39 of 434 km, each 700 to 1,450 m long and 44 of them two points.
 - The request's `zoom` is 8 (long-distance and regional rail) under `TRANSIT_LINES_METRO_ZOOM`
   (10.5), 12 from there. Nothing is asked under `TRANSIT_LINES_MIN_ZOOM` (8), on a constrained
   link, or during a drive.

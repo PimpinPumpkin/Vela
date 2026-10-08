@@ -207,8 +207,8 @@ two-color highlight. Above it, `Transitous.linesInBox` supplies track in each li
 trains from zoom 8, subway, tram and light rail from 10.5, with the lines' short names from 13.
 Lines that share track draw side by side. The plain highlight for a kind hides while colored
 lines of that kind are in view. Two switches pick trains, or subway and tram. The lines are
-hidden while a driving, walking or cycling route is on screen. The request grid is in
-[SPEC section 8](../../SPEC.md).
+hidden while a driving, walking or cycling route is on screen. The request grid, and which
+stretches of a reply are drawn, are in [SPEC section 8](../../SPEC.md).
 
 ### Guidance
 

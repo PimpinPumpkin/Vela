@@ -118,7 +118,8 @@ object Transitous {
     )
 
     @Serializable private data class RoutesReply(val routes: List<RouteDto> = emptyList(), val polylines: List<PolyDto> = emptyList())
-    @Serializable private data class RouteDto(val mode: String = "", val transitRoutes: List<RouteNameDto> = emptyList())
+    // pathSource: where the route's drawn path came from. "NONE" is a straight line from stop to stop.
+    @Serializable private data class RouteDto(val mode: String = "", val transitRoutes: List<RouteNameDto> = emptyList(), val pathSource: String? = null)
     @Serializable private data class RouteNameDto(val color: String? = null, val shortName: String? = null)
     @Serializable private data class PolyDto(val polyline: EncodedDto = EncodedDto(), val routeIndexes: List<Int> = emptyList())
     @Serializable private data class EncodedDto(val points: String = "", val precision: Int = 6)
@@ -170,17 +171,21 @@ object Transitous {
             if (pts.size < 2) continue
             // A feed with no shapes gives a straight chord from stop to stop. Between two subway
             // stations that is close enough; between two cities it is a ruler line across the
-            // map (a first look at Manhattan was a fan of them), so sparse long ones are left out
-            // and the plain highlight shows that track instead.
+            // map (a first look at Manhattan was a fan of them), so sparse long ones are left out.
             // A shape can also be dense through the city and one ruler jump out to the suburbs,
             // which the average hides (discussion #648: commuter rail drew straight lines out of
             // Manhattan). Cut it at every gap over CHORD_SPLIT_M and judge each run on its own.
+            // The spacing test is for trains, and for a metro stretch the service has no path
+            // for. The service answers one polyline per pair of stops, so straight metro track
+            // between two stations is two points, the same as a chord. Dropping it leaves a hole:
+            // the plain highlight is hidden for the whole kind while colored lines are in view.
+            val spacingTest = kind == Kind.TRAIN || rail.all { it.pathSource == PATH_NONE }
             var run = ArrayList<LatLng>()
             fun flush() {
                 if (run.size >= 2) {
                     var len = 0.0
                     for (i in 1 until run.size) len += distM(run[i - 1].lat, run[i - 1].lng, run[i].lat, run[i].lng)
-                    if (len / (run.size - 1) <= CHORD_MAX_M) out += MapLine(simplify(run, LINE_SIMPLIFY_M), colors, kind, labels)
+                    if (!spacingTest || len / (run.size - 1) <= CHORD_MAX_M) out += MapLine(simplify(run, LINE_SIMPLIFY_M), colors, kind, labels)
                 }
                 run = ArrayList()
             }
@@ -198,8 +203,11 @@ object Transitous {
     const val MAX_LABELS = 6
     private const val MAX_LABEL_CHARS = 3
     private const val LINE_SIMPLIFY_M = 4.0
-    /** Average spacing of a shape's points above which it is a chord, not a drawn track. */
+    /** Average spacing of a shape's points above which it is a chord, not a drawn track. Applied
+     *  to trains, and to a metro stretch whose routes all report [PATH_NONE]. */
     private const val CHORD_MAX_M = 700.0
+    /** The service's `pathSource` for a route with no path: straight lines from stop to stop. */
+    private const val PATH_NONE = "NONE"
     /** A single gap this long between two points of a shape is a chord: the shape is cut there.
      *  Above a long bridge's one straight hop (2 to 2.5 km over the East River: at 2 km the subway
      *  lines stopped at the water, #648), far below a ruler line between towns (15 km and more). */

@@ -51,4 +51,39 @@ class TransitousLinesTest {
         val pts = (0..20).map { LatLng(38.5449 + it * 0.0001, -121.7405) }
         assertEquals(2, Transitous.simplify(pts, 4.0).size)
     }
+
+    /** One route on one polyline, the way the service sends a stretch between two stops. */
+    private fun stretch(mode: String, pathSource: String?, vararg p: LatLng): String {
+        val source = if (pathSource == null) "" else ""","pathSource":"$pathSource""""
+        return """
+          {"routes":[{"mode":"$mode","transitRoutes":[{"id":"1","shortName":"1","color":"d82233"}]$source,"segments":[{"from":0,"to":1,"polyline":0}]}],
+           "polylines":[{"polyline":{"points":"${enc(*p)}","precision":5,"length":${p.size}},"colors":["d82233"],"routeIndexes":[0]}],
+           "stops":[],"zoomFiltered":false}
+        """.trimIndent()
+    }
+
+    // Two stations of New York's 1 line, 1,000 m apart on straight track: the feed's shape is the two ends.
+    private val stationA = LatLng(40.81558, -73.95837)
+    private val stationB = LatLng(40.80772, -73.96411)
+
+    @Test fun straightMetroTrackBetweenTwoStationsIsKept() {
+        for (source in listOf("TIMETABLE", "ROUTED", null)) {
+            val lines = Transitous.parseLines(stretch("SUBWAY", source, stationA, stationB))
+            assertEquals("pathSource $source", 1, lines.size)
+            assertEquals(2, lines[0].points.size)
+            assertEquals(listOf("#d82233"), lines[0].colors)
+        }
+    }
+
+    @Test fun aLongChordIsStillLeftOut() {
+        assertTrue("a metro stretch with no path", Transitous.parseLines(stretch("SUBWAY", "NONE", stationA, stationB)).isEmpty())
+        assertTrue("a train's two-point stretch", Transitous.parseLines(stretch("REGIONAL_RAIL", "TIMETABLE", stationA, stationB)).isEmpty())
+        // 5.5 km in one hop: over the cut for every kind.
+        assertTrue("a metro hop over the cut", Transitous.parseLines(stretch("SUBWAY", "TIMETABLE", stationA, LatLng(40.77000, -73.98200))).isEmpty())
+    }
+
+    @Test fun aShortChordWithNoPathIsKept() {
+        // 480 m between two stops, no path: close enough for a metro.
+        assertEquals(1, Transitous.parseLines(stretch("SUBWAY", "NONE", stationB, LatLng(40.80397, -73.96685))).size)
+    }
 }
