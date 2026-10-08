@@ -63,4 +63,53 @@ class OfflineRankTest {
         val lot = place("l", "McDonalds Parking Lot", "Parking", 39.4, -121.0)
         assertEquals(listOf("r", "l"), OfflineRank.rank("mcdonalds", here, listOf(lot, real), 30).map { it.id })
     }
+
+    @Test
+    fun namesMatchWithoutTheirAccents() {
+        assertTrue(OfflineRank.matches("cafe", "Café Central", "Cafe", null))
+        assertTrue(OfflineRank.matches("Café", "Cafe Roma", "Cafe", null))
+        assertTrue(OfflineRank.matches("zurich", "Zürich HB", "Station", null))
+        assertTrue(OfflineRank.matches("strasse", "Hauptstraße", "Bus stop", null))
+        assertTrue(OfflineRank.matches("lodz", "Łódź Kaliska", "Station", null))
+        assertTrue(OfflineRank.matches("istanbul", "İstanbul Kebap", "Restaurant", null))
+        assertTrue(OfflineRank.matches("pho hoa", "Phở Hòa", "Restaurant", null))
+        assertEquals("smorrebrod", OfflineRank.fold("SMØRREBRØD"))
+    }
+
+    @Test
+    fun thePackPatternCarriesEveryFormOfALetter() {
+        val one = OfflineRank.glob("cafe")
+        assertTrue(one.startsWith("*[cC") && one.endsWith("]*"))
+        for (c in "çÇáÁéÉèêë") assertTrue("missing $c", c in one)
+        // A letter with no case or accents stays itself; one with case only gets both.
+        assertEquals("*7 [мМ]*", OfflineRank.glob("7 м"))
+        // GLOB's own characters are matched as text.
+        assertEquals("*[*][?][[][]]*", OfflineRank.glob("*?[]"))
+        // "ss" may be one letter in the name, so it is also tried as ß.
+        assertEquals(null, OfflineRank.globEszett("cafe"))
+        assertTrue("[ßẞ]" in OfflineRank.globEszett("strasse")!! && "ß" !in OfflineRank.glob("strasse"))
+    }
+
+    @Test
+    fun thePackQueryKeepsTheAccentPatternOffPlainNames() {
+        val (sql, args) = OfflinePoiStore.nameMatch("cafe")
+        // LIKE first; the pattern only behind the non-ASCII test. One "?" per argument.
+        assertTrue(sql.indexOf(" LIKE ?") < sql.indexOf("length(name) <> length(CAST(name AS BLOB)) AND"))
+        assertEquals(listOf("%cafe%", OfflineRank.glob("cafe")), args)
+        assertEquals(args.size, sql.count { it == '?' })
+        val (sqlSs, argsSs) = OfflinePoiStore.nameMatch("strasse")
+        assertEquals(3, argsSs.size)
+        assertEquals(argsSs.size, sqlSs.count { it == '?' })
+    }
+
+    @Test
+    fun aNameThatStartsWithTheQueryLeadsOneThatOnlyHoldsIt() {
+        val inside = place("s", "Seashell Cafe", "Cafe", 38.545, -121.741)
+        val station = place("f", "Shell", "Fuel", 38.60, -121.70)
+        assertEquals(listOf("f", "s"), OfflineRank.rank("shell", here, listOf(inside, station), 30).map { it.id })
+        // Two names that both start with it stay tied, so the nearer one still leads.
+        val nearBig = place("b", "Target Optical", "Optician", 38.545, -121.741)
+        val farExact = place("t", "Target", "Department store", 38.60, -121.70)
+        assertEquals(listOf("b", "t"), OfflineRank.rank("target", here, listOf(farExact, nearBig), 30).map { it.id })
+    }
 }

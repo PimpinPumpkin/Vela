@@ -116,7 +116,12 @@ class OfflinePoiStore @Inject constructor(
         val args = ArrayList<String>()
         // Names are compared with apostrophes and periods dropped and hyphens as spaces, on both
         // sides, so "mcdonalds" finds "McDonald's" and "7 eleven" finds "7-Eleven" (issue #657).
-        for (t in nameCat) { clauses.add("$NAME_FOLDED LIKE ?"); args.add("%${OfflineRank.fold(t)}%"); clauses.add("category LIKE ?"); args.add("%$t%") }
+        // Accents are folded too, so "cafe" finds "Café": see nameMatch.
+        for (t in nameCat) {
+            val (sql, a) = nameMatch(OfflineRank.fold(t))
+            clauses.add(sql); args.addAll(a)
+            clauses.add("category LIKE ?"); args.add("%$t%")
+        }
         for (c in cats) { clauses.add("category LIKE ?"); args.add("%$c%") }
         // Whole-query address match, so typing a downloaded POI's street address finds it offline (the
         // general typed-address geocoder is OfflineAddressStore).
@@ -124,8 +129,9 @@ class OfflinePoiStore @Inject constructor(
         // Whole-query NAME matches must survive the LIMIT, not just win the post-sort: a state pack has
         // thousands of category hits ("cafe"), and taking the first 400 in table order dropped an exact
         // name match that lived past them (found while verifying delta updates). The ORDER BY puts
-        // phrase-in-name rows first, THEN the cap applies. Its LIKE arg is the last one bound.
-        args.add("%${OfflineRank.fold(term)}%")
+        // phrase-in-name rows first, THEN the cap applies. Its args are the last bound.
+        val (phraseInName, phraseArgs) = nameMatch(OfflineRank.fold(term))
+        args.addAll(phraseArgs)
         // Then NEAREST first, so the 400 kept are the 400 closest: without it the cut took rows in
         // table order (OSM id order, effectively random across a state) and "restaurants" listed
         // places a hundred miles off while closer ones never made the cut. A flat-earth distance
@@ -135,7 +141,7 @@ class OfflinePoiStore @Inject constructor(
             String.format(java.util.Locale.US, ", ((lat - %.6f) * (lat - %.6f) + (lng - %.6f) * (lng - %.6f) * %.6f)", n.lat, n.lat, n.lng, n.lng, k * k)
         }.orEmpty()
         val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi " +
-            "WHERE ${clauses.joinToString(" OR ")} ORDER BY ($NAME_FOLDED LIKE ?) DESC$nearest LIMIT 400"
+            "WHERE ${clauses.joinToString(" OR ")} ORDER BY $phraseInName DESC$nearest LIMIT 400"
         val rows = ArrayList<Place>()
         fun query(db: android.database.sqlite.SQLiteDatabase) {
             runCatching {
@@ -235,8 +241,24 @@ class OfflinePoiStore @Inject constructor(
         internal val TRANSIT_STOP_CATS = setOf("platform", "stop position", "stop area", "station", "bus station", "bus stop")
         internal val TRANSIT_QUERY_WORDS = listOf("bus", "stop", "station", "transit", "train", "tram", "platform", "metro", "light rail", "subway", "ferry")
 
-        /** The pack's name column as [OfflineRank.fold] folds a query (LIKE already ignores case). */
+        /** The pack's name column with the punctuation [OfflineRank.fold] drops. LIKE ignores
+         *  case for plain letters; accents are [nameMatch]'s job. */
         private const val NAME_FOLDED = "replace(replace(replace(replace(name,'''',''),'\u2019',''),'.',''),'-',' ')"
+
+        /** True for a name with any letter outside ASCII: it has more bytes than characters. */
+        private const val NON_ASCII = "length(name) <> length(CAST(name AS BLOB))"
+
+        /**
+         * The SQL test, and its arguments, for [folded] (text through [OfflineRank.fold]) appearing
+         * in a name whatever its accents. A plain name is matched by LIKE exactly as before. Only a
+         * name with a letter outside ASCII goes on to the accent pattern ([OfflineRank.glob]), which
+         * costs several times what LIKE does per row, and most names in most packs are plain.
+         */
+        internal fun nameMatch(folded: String): Pair<String, List<String>> {
+            val eszett = OfflineRank.globEszett(folded)
+            val accented = "$NAME_FOLDED GLOB ?" + if (eszett != null) " OR name GLOB ?" else ""
+            return "($NAME_FOLDED LIKE ? OR ($NON_ASCII AND ($accented)))" to listOfNotNull("%$folded%", OfflineRank.glob(folded), eszett)
+        }
 
         internal fun categoryKeywords(query: String): List<String> {
             val key = query.trim().lowercase()

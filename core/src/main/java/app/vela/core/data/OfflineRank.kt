@@ -20,9 +20,69 @@ object OfflineRank {
 
     fun isCategoryQuery(query: String): Boolean = OfflinePoiStore.categoryKeywords(query.trim()).isNotEmpty()
 
-    /** A name or query with the punctuation people do not type folded away: apostrophes and
-     *  periods dropped, hyphens as spaces, lowercase. */
-    fun fold(s: String): String = s.lowercase().replace("'", "").replace("\u2019", "").replace(".", "").replace('-', ' ')
+    private val MARKS = Regex("\\p{Mn}+")
+
+    /** A name or query with what people do not type folded away: accents ("cafe" is "Café",
+     *  "zurich" is "Zürich"), apostrophes and periods dropped, hyphens as spaces, lowercase. */
+    fun fold(s: String): String =
+        MARKS.replace(java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFKD), "").lowercase()
+            .replace("ß", "ss").replace("æ", "ae").replace("œ", "oe").replace("ø", "o").replace("ł", "l").replace("đ", "d").replace("ı", "i")
+            .replace("'", "").replace("\u2019", "").replace(".", "").replace('-', ' ')
+
+    /** For each plain letter, every accented letter that [fold] turns into it, both cases: the
+     *  Latin-1 and Latin Extended-A/B blocks (European languages, Turkish) and the Vietnamese
+     *  vowels. The rest of Latin Extended Additional is left out: every letter in a class is
+     *  compared at every position of every name, and those forms are not in place names. */
+    private val ACCENTED: Map<Char, String> by lazy {
+        val out = HashMap<Char, StringBuilder>()
+        for (cp in (0x00C0..0x024F) + (0x1EA0..0x1EF9)) {
+            val c = cp.toChar()
+            val f = fold(c.toString())
+            if (f.length == 1 && f[0] in 'a'..'z') out.getOrPut(f[0]) { StringBuilder() }.append(c)
+        }
+        out.mapValues { it.value.toString() }
+    }
+
+    /** The longest folded text that gets accent classes in [glob]. Past it the letters match by
+     *  case only, which keeps the pattern far under SQLite's 50,000-byte limit. */
+    private const val GLOB_ACCENT_CHARS = 48
+
+    /**
+     * A SQLite GLOB pattern that finds [folded] (text already through [fold]) anywhere in a name,
+     * whatever its case or accents: each letter becomes a class of its forms, so "cafe" is
+     * `*[cCçÇ...][aAáÁ...][fF][eEéÉ...]*`. The packs store names as OpenStreetMap wrote them and
+     * SQLite cannot fold accents itself (its LIKE only ignores case for ASCII), so the folding
+     * is done in the pattern. GLOB reads UTF-8 one character at a time, classes included.
+     */
+    fun glob(folded: String): String = glob(folded, eszett = false)
+
+    /** [glob] with each "ss" read as one "ß", so "strasse" finds "Hauptstraße"; null when the
+     *  text has no "ss". A pattern cannot say "ss or ß", and folding ß in the pack's names in
+     *  SQL costs every search about a fifth more, so this second pattern is only run when it
+     *  can matter. The other letters [fold] spells as two (æ, œ) are typed as themselves by the
+     *  people who search for them, and are not given one. */
+    fun globEszett(folded: String): String? = if ("ss" in folded) glob(folded, eszett = true) else null
+
+    private fun glob(folded: String, eszett: Boolean): String {
+        val sb = StringBuilder("*")
+        var skip = false
+        folded.forEachIndexed { i, c ->
+            if (skip) { skip = false; return@forEachIndexed }
+            if (eszett && c == 's' && folded.getOrNull(i + 1) == 's') { sb.append("[ßẞ]"); skip = true; return@forEachIndexed }
+            when {
+                c == '*' || c == '?' || c == '[' -> sb.append('[').append(c).append(']')
+                c == ']' -> sb.append("[]]")
+                c in 'a'..'z' -> {
+                    sb.append('[').append(c).append(c.uppercaseChar())
+                    if (i < GLOB_ACCENT_CHARS) sb.append(ACCENTED[c].orEmpty())
+                    sb.append(']')
+                }
+                c.uppercaseChar() != c -> sb.append('[').append(c).append(c.uppercaseChar()).append(']')
+                else -> sb.append(c)
+            }
+        }
+        return sb.append('*').toString()
+    }
 
     /** The single words a multi-word query is also matched by (3+ letters). None for a query that
      *  is a known category: "gas station" must not match on "station". */
@@ -48,14 +108,17 @@ object OfflineRank {
     }
 
     /** Transit stops last (unless the query asks for transit), then the rows that answer more of
-     *  the query, then the nearest. A category row answers its word too: "restaurants" is not a
-     *  substring of the category "Restaurant", so before this every chip result tied and far
-     *  name matches ("... Restaurants") could lead. */
+     *  the query, then names where the query starts a word, then the nearest. A category row
+     *  answers its word too: "restaurants" is not a substring of the category "Restaurant", so
+     *  before this every chip result tied and far name matches ("... Restaurants") could lead.
+     *  The word-start step is deliberately coarse: "shell" puts Shell ahead of a nearer Seashell
+     *  Cafe, but Walmart and Walmart Supercenter stay tied so the nearer one still leads. */
     fun rank(query: String, near: LatLng?, rows: List<Place>, limit: Int): List<Place> {
         val term = query.trim()
         val qWords = queryWords(term).ifEmpty { listOf(term) }.map { it.lowercase() }
         val transitQuery = OfflinePoiStore.TRANSIT_QUERY_WORDS.any { term.lowercase().contains(it) }
         val categoryQuery = isCategoryQuery(term)
+        val foldedTerm = fold(term)
         val withDist = rows.map { p -> if (near != null) p.copy(distanceMeters = near.distanceTo(p.location)) else p }
             .filter { p -> !categoryQuery || near == null || (p.distanceMeters ?: 0.0) <= CATEGORY_MAX_M }
         val kept = ArrayList<Place>()
@@ -73,7 +136,10 @@ object OfflineRank {
                     val name = fold(p.name)
                     val cat = (p.category ?: "").lowercase()
                     qWords.count { w -> hay.contains(w) || name.contains(fold(w)) || OfflinePoiStore.categoryKeywords(w).any { cat.contains(it) } }
-                }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
+                }.thenBy { p -> if (categoryQuery || startsAWord(fold(p.name), foldedTerm)) 0 else 1 }
+                .thenBy { it.distanceMeters ?: Double.MAX_VALUE },
         ).take(limit)
     }
+
+    private fun startsAWord(name: String, q: String): Boolean = q.isNotEmpty() && (name.startsWith(q) || name.contains(" $q"))
 }
