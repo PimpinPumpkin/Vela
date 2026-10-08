@@ -16,7 +16,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Pinch and turn in one gesture. A small turn goes back to north when you let go.
 - A layers button for satellite, live traffic, transit lines and terrain shading. "Show layers
   button" hides it.
-- "Highlight transit lines" draws subway, tram and train lines in their own colors.
+- "Highlight transit lines" draws subway, tram and train lines in their own colors. Lines for
+  places you have looked at are kept on the phone, so they show at once and with no signal.
 - Traffic lights, stop signs, railway crossings and speed humps show at close zoom.
 - "House numbers" sets how far out numbers show. "Fill missing buildings" draws buildings the map
   lacks.

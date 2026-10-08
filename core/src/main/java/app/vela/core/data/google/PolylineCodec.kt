@@ -51,13 +51,14 @@ object PolylineCodec {
         return path
     }
 
-    fun encode(path: List<LatLng>): String {
+    fun encode(path: List<LatLng>, precision: Int = 5): String {
+        val scale = Math.pow(10.0, precision.toDouble())
         val sb = StringBuilder()
         var lastLat = 0L
         var lastLng = 0L
         for (p in path) {
-            val lat = Math.round(p.lat * 1e5)
-            val lng = Math.round(p.lng * 1e5)
+            val lat = Math.round(p.lat * scale)
+            val lng = Math.round(p.lng * scale)
             encodeSigned(lat - lastLat, sb)
             encodeSigned(lng - lastLng, sb)
             lastLat = lat

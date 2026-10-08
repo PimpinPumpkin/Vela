@@ -3863,13 +3863,22 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   for the whole kind. Five New York cells: the spacing test would drop 46 of 380 metro runs,
   39 of 434 km, each 700 to 1,450 m long and 44 of them two points.
 - The request's `zoom` is 8 (long-distance and regional rail) under `TRANSIT_LINES_METRO_ZOOM`
-  (10.5), 12 from there. Nothing is asked under `TRANSIT_LINES_MIN_ZOOM` (8), on a constrained
-  link, or during a drive.
+  (10.5), 12 from there. Nothing is asked under `TRANSIT_LINES_MIN_ZOOM` (8) or during a drive.
+  On a constrained link nothing is asked either, and the cells kept on the phone are drawn.
 - Lines come per grid cell: `TRANSIT_LINE_CELL_METRO_DEG` (0.05) at subway level,
   `TRANSIT_LINE_CELL_RAIL_DEG` (0.5) for rail only. A view padded by a quarter takes at most
   `TRANSIT_LINE_CELLS_PER_VIEW` (24), nearest first, three at a time, each drawn as it lands;
   `TRANSIT_LINE_CELLS_KEPT` (96) stay in an LRU. A line returned by two cells draws once. Pixel
   4a over Midtown Manhattan: a four-step zoom-out takes 19 cells in 4.5 s.
+- Every fetched cell is kept on the phone (`TransitLineCache`, `files/transit_lines/`, one JSON
+  file a cell, lines as encoded polylines at 6 decimals). A cell kept there is drawn before any
+  request, so a view seen before has its colors at once and with no connection. It is fetched
+  again when it is over `FRESH_MS` (7 days) old and stays on the map meanwhile. The folder holds
+  at most `MAX_CELLS` (300) files and `MAX_BYTES` (32 MB), oldest fetch first out. A subway
+  level cell of Manhattan is 130 to 160 KB and reads in under 10 ms; fetching it is 2 to 4 MB
+  of JSON. Pixel 4a, upper Manhattan: 6.5 s for a first look at four cells, 41 ms for six cells
+  after a restart in airplane mode. The memory copy is the one the file gives back, so a stretch
+  shared by a fetched cell and a kept one still draws once.
 - Lines sharing a stretch draw as side-by-side strands, one per color, at most 4.
 - Metro stretches carry their lines' letters (`MapLine.labels`: route `shortName` and color) from
   z13 on `TRANSIT_LABELS_LAYER`, below the business icons: "6X" folded into "6", numbers before

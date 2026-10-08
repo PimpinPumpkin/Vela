@@ -210,6 +210,13 @@ lines of that kind are in view. Two switches pick trains, or subway and tram. Th
 hidden while a driving, walking or cycling route is on screen. The request grid, and which
 stretches of a reply are drawn, are in [SPEC section 8](../../SPEC.md).
 
+The colored lines of every map cell you have looked at are kept on the phone
+(`TransitLineCache`). A view seen before draws from there before any request goes out, which
+is also what shows with no connection or on a constrained link. A kept cell is fetched again
+once it is a week old. The first look at a new area still waits for the service: over upper
+Manhattan on a Pixel 4a, 6.5 s for four cells, against 41 ms for six cells read back after a
+restart in airplane mode.
+
 ### Guidance
 
 `TransitNavSheet` takes the bottom half of the screen, with the trip drawn above it and the

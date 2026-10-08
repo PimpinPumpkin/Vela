@@ -9106,16 +9106,19 @@ class MapViewModel @Inject constructor(
     // was megabytes over a city at subway level, a zoom-out's bigger box timed out, and the failure
     // kept the old box's lines, which read as lines only inside a square. A cell is fetched once
     // per service zoom and kept (LRU); a view shows the union of its cells, so a zoom-out fetches
-    // only the cells it adds.
-    private val transitLineCells = object : LinkedHashMap<String, List<app.vela.core.data.transit.Transitous.MapLine>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<app.vela.core.data.transit.Transitous.MapLine>>?) = size > TRANSIT_LINE_CELLS_KEPT
+    // only the cells it adds. Every fetched cell is also kept on the phone (TransitLineCache): a
+    // cell seen before is drawn from there before any request, and is fetched again only once it
+    // is a week old.
+    private val transitLineCells = object : LinkedHashMap<String, app.vela.core.data.transit.TransitLineCache.Cell>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, app.vela.core.data.transit.TransitLineCache.Cell>?) = size > TRANSIT_LINE_CELLS_KEPT
     }
+    private val transitLineCache by lazy { app.vela.core.data.transit.TransitLineCache({ java.io.File(appContext.filesDir, "transit_lines") }) }
     private var transitLinesKey: String? = null
     private var transitLinesJob: Job? = null
 
     private fun refreshTransitLines(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         val off = !app.vela.ui.TransitLayer.on.value || zoom < TRANSIT_LINES_MIN_ZOOM ||
-            app.vela.core.data.LowDataMode.enabled || (_state.value.navigating && _state.value.travelMode == TravelMode.DRIVE)
+            (_state.value.navigating && _state.value.travelMode == TravelMode.DRIVE)
         if (off) {
             transitLinesKey = null
             transitLinesJob?.cancel()
@@ -9143,32 +9146,50 @@ class MapViewModel @Inject constructor(
             fun publish() {
                 // A line crossing a cell edge comes back from both cells, whole: drop the copies.
                 val seen = HashSet<String>()
-                val lines = cells.flatMap { transitLineCells[cellKey(it)].orEmpty() }.filter { l ->
+                val lines = cells.flatMap { transitLineCells[cellKey(it)]?.lines.orEmpty() }.filter { l ->
                     seen.add("${l.points.first()}|${l.points.last()}|${l.points.size}|${l.colors}")
                 }
                 _state.update { it.copy(transitLines = lines) }
             }
             publish()
             val t0 = System.currentTimeMillis()
+            // Cells kept on the phone from an earlier look: on the map before any request.
+            val unread = cells.filter { transitLineCells[cellKey(it)] == null }
+            val kept = if (unread.isEmpty()) emptyList() else withContext(Dispatchers.IO) {
+                unread.mapNotNull { c -> transitLineCache.read(cellKey(c))?.let { cellKey(c) to it } }
+            }
+            if (kept.isNotEmpty()) {
+                kept.forEach { (k, v) -> transitLineCells[k] = v }
+                publish()
+            }
+            // "Use less data" shows what is kept and asks for nothing.
+            if (app.vela.core.data.LowDataMode.enabled) return@launch
             var fetched = 0; var failed = 0
-            // Three at a time, nearest first; each lands on the map as it arrives.
+            // Three at a time, nearest first; each lands on the map as it arrives. A cell with
+            // nothing kept, and a kept one past a week old, which stays on the map meanwhile.
             val gate = kotlinx.coroutines.sync.Semaphore(3)
-            cells.filter { transitLineCells[cellKey(it)] == null }.map { c ->
+            cells.filter { c -> transitLineCells[cellKey(c)].let { it == null || !transitLineCache.isFresh(it) } }.map { c ->
                 launch {
                     val lines = gate.withPermit {
                         val s0 = c.first * cell; val w0 = c.second * cell
                         withContext(Dispatchers.IO) {
                             runCatching { app.vela.core.data.transit.Transitous.linesInBox(transitLinesHttp, s0, w0, s0 + cell, w0 + cell, apiZoom) }.getOrNull()
+                                ?.let { transitLineCache.write(cellKey(c), it) }
                         }
                     }
-                    if (lines == null) { failed++; return@launch } // not cached: the next settle asks again
+                    if (lines == null) {
+                        // Nothing to show for it: the next settle asks again. An old kept cell
+                        // stays as it is and is tried again when the view next changes.
+                        if (transitLineCells[cellKey(c)] == null) failed++
+                        return@launch
+                    }
                     transitLineCells[cellKey(c)] = lines
                     fetched++
                     publish()
                 }
             }.joinAll()
             if (failed > 0) transitLinesKey = null
-            android.util.Log.i("VelaTransit", "lines: ${cells.size} cells (fetched $fetched, failed $failed, service zoom $apiZoom) in ${System.currentTimeMillis() - t0} ms")
+            android.util.Log.i("VelaTransit", "lines: ${cells.size} cells (kept ${kept.size}, fetched $fetched, failed $failed, service zoom $apiZoom) in ${System.currentTimeMillis() - t0} ms")
         }
     }
 
