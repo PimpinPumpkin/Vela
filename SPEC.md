@@ -1408,7 +1408,7 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   street name: a ramp, fork, keep or U-turn at the far distance and keeping its exit number, any
   other maneuver at the near distance, and nothing at the turn. `EXITS` is `BRIEF` for ramps,
   forks, keeps, U-turns and the arrival only; any other maneuver is spoken only at
-  `SpokenDetail.FAST_MPS` (19.4 m/s, 70 km/h) or more, and roundabouts and merges never. The buzz
+  `SpokenDetail.FAST_MPS` (22.2 m/s, 80 km/h) or more, and roundabouts and merges never. The buzz
   at a turn is kept in every value, and `upcomingPrompts` prepares the same lines.
 - The step advances at `v × 2.5 s` clamped to `ADVANCE_MIN_M` (5 m) to 90 m, so at a crawl or a
   standstill the card and the road name stay on the turn in hand until the car is at it. The

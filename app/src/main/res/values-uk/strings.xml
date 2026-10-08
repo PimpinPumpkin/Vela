@@ -1030,7 +1030,7 @@
     <string name="settings_spoken_detail_full">Усе</string>
     <string name="settings_spoken_detail_brief">Коротко</string>
     <string name="settings_spoken_detail_exits">Лише з’їзди з автомагістралі</string>
-    <string name="settings_spoken_detail_hint">«Коротко» оголошує кожен поворот один раз, без назви вулиці. «Лише з’їзди з автомагістралі» мовчить у місті й оголошує з’їзди, розвилки та повороти на високій швидкості. Вібрація на повороті залишається.</string>
+    <string name="settings_spoken_detail_hint">«Коротко» оголошує кожен поворот один раз, без назви вулиці. «Лише з’їзди з автомагістралі» мовчить у місті й оголошує з’їзди, розвилки та повороти на високій швидкості.</string>
     <string name="mapvm_graphs_retired">Офлайн-маршрутизація перейшла на компактніший формат. Завантажте регіони знову в Налаштуваннях, у розділі офлайн-карт.</string>
     <string name="navservice_notif_action_pause">Пауза</string>
     <string name="navservice_notif_action_resume">Продовжити</string>

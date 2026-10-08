@@ -82,6 +82,11 @@ class NavEngineSpokenDetailTest {
         assertEquals("a turn off a fast road is an exit in all but name", 1, approach(turn, 25.0).first.size)
     }
 
+    @Test fun `exits only stays quiet on a 45 mph road`() {
+        SpokenDetail.mode = SpokenDetail.Mode.EXITS
+        assertTrue(approach(turn, 20.1).first.isEmpty())
+    }
+
     @Test fun `exits only leaves roundabouts and merges silent at any speed`() {
         SpokenDetail.mode = SpokenDetail.Mode.EXITS
         assertTrue(approach(route(ManeuverType.ROUNDABOUT, "Take the second exit"), 25.0).first.isEmpty())

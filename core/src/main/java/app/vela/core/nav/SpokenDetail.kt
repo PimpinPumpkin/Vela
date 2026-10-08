@@ -28,8 +28,9 @@ object SpokenDetail {
     /** Set from the app at startup and whenever the Settings choice moves. */
     @Volatile var mode: Mode = Mode.FULL
 
-    /** 70 km/h: at or above this an ordinary turn is spoken in [Mode.EXITS]. */
-    const val FAST_MPS = 19.4
+    /** 80 km/h (50 mph): at or above this an ordinary turn is spoken in [Mode.EXITS]. Lower, a
+     *  45 mph suburban road counted as a highway. */
+    const val FAST_MPS = 22.2
 
     private val EXIT_LIKE = setOf(
         ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT, ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,

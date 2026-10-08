@@ -79,8 +79,8 @@ left". An exit, fork or keep is said from the far distance and keeps its exit nu
 that is what the sign overhead reads; a turn is said from the near distance; nothing is repeated
 at the turn. Highway exits only is Brief for exits, forks, keeps, U-turns and the arrival, and
 silence for the rest. The route carries no road class, so a turn off a fast road is told apart
-from a turn in town by speed: at 70 km/h or more it is spoken. Roundabouts and merges stay
-silent. The buzz at a turn stays in all three.
+from a turn in town by speed: at 80 km/h (50 mph) or more it is spoken. Roundabouts and merges
+stay silent. The buzz at a turn stays in all three.
 
 The card moves to the next step when the car is at the turn: 2.5 s ahead at speed, and no more
 than 5 m ahead at a crawl. Waiting at a stop line before a turn, the card still shows that

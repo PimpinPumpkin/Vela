@@ -430,7 +430,7 @@
     <string name="settings_spoken_detail_full">Tudo</string>
     <string name="settings_spoken_detail_brief">Breve</string>
     <string name="settings_spoken_detail_exits">Apenas saídas de autoestrada</string>
-    <string name="settings_spoken_detail_hint">Breve anuncia cada viragem uma só vez, sem o nome da rua. Apenas saídas de autoestrada fica em silêncio na cidade e anuncia saídas, bifurcações e viragens feitas a alta velocidade. A vibração na viragem mantém-se.</string>
+    <string name="settings_spoken_detail_hint">Breve anuncia cada viragem uma só vez, sem o nome da rua. Apenas saídas de autoestrada fica em silêncio na cidade e anuncia saídas, bifurcações e viragens feitas a alta velocidade.</string>
     <string name="mapvm_voice_lang_missing">As indicações por voz precisam de uma voz em %1$s, adicione uma em Definições → Voz</string>
     <string name="mapvm_no_track_to_replay">Essa viagem não tem traço para reproduzir</string>
     <string name="mapvm_replaying">A reproduzir %1$s…</string>

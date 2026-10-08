@@ -434,7 +434,7 @@
     <string name="settings_spoken_detail_full">Wszystko</string>
     <string name="settings_spoken_detail_brief">Krótko</string>
     <string name="settings_spoken_detail_exits">Tylko zjazdy z autostrady</string>
-    <string name="settings_spoken_detail_hint">Krótko zapowiada każdy skręt raz, bez nazwy ulicy. Tylko zjazdy z autostrady milczy w mieście i zapowiada zjazdy, rozwidlenia oraz skręty przy dużej prędkości. Wibracja przy skręcie pozostaje.</string>
+    <string name="settings_spoken_detail_hint">Krótko zapowiada każdy skręt raz, bez nazwy ulicy. Tylko zjazdy z autostrady milczy w mieście i zapowiada zjazdy, rozwidlenia oraz skręty przy dużej prędkości.</string>
     <string name="mapvm_voice_lang_missing">Wskazówki głosowe wymagają głosu %1$s, dodaj go w Ustawienia → Głos</string>
     <string name="mapvm_no_track_to_replay">Ta podróż nie ma zapisu do odtworzenia</string>
     <string name="mapvm_replaying">Odtwarzanie %1$s…</string>

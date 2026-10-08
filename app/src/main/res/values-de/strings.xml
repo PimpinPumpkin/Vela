@@ -1005,7 +1005,7 @@
     <string name="settings_spoken_detail_full">Alles</string>
     <string name="settings_spoken_detail_brief">Kurz</string>
     <string name="settings_spoken_detail_exits">Nur Autobahnausfahrten</string>
-    <string name="settings_spoken_detail_hint">Kurz sagt jede Abbiegung einmal an, ohne Straßennamen. Nur Autobahnausfahrten bleibt in der Stadt still und meldet Ausfahrten, Gabelungen und Abbiegungen bei hohem Tempo. Die Vibration an der Abbiegung bleibt.</string>
+    <string name="settings_spoken_detail_hint">Kurz sagt jede Abbiegung einmal an, ohne Straßennamen. Nur Autobahnausfahrten bleibt in der Stadt still und meldet Ausfahrten, Gabelungen und Abbiegungen bei hohem Tempo.</string>
     <string name="mapvm_graphs_retired">Das Offline-Routing verwendet jetzt ein kleineres Format. Laden Sie Ihre Regionen unter Einstellungen, Offline-Karten erneut herunter.</string>
     <string name="navservice_notif_action_pause">Pause</string>
     <string name="navservice_notif_action_resume">Fortsetzen</string>

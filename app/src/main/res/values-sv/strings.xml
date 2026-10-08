@@ -1018,7 +1018,7 @@
     <string name="settings_spoken_detail_full">Allt</string>
     <string name="settings_spoken_detail_brief">Kort</string>
     <string name="settings_spoken_detail_exits">Endast motorvägsavfarter</string>
-    <string name="settings_spoken_detail_hint">Kort säger varje sväng en gång, utan gatunamn. Endast motorvägsavfarter är tyst i stan och säger avfarter, vägdelningar och svängar i hög fart. Vibrationen vid svängen finns kvar.</string>
+    <string name="settings_spoken_detail_hint">Kort säger varje sväng en gång, utan gatunamn. Endast motorvägsavfarter är tyst i stan och säger avfarter, vägdelningar och svängar i hög fart.</string>
     <string name="mapvm_graphs_retired">Offlineruttningen har flyttat till ett mindre format. Hämta dina regioner igen under Inställningar, Offlinekartor.</string>
     <string name="navservice_notif_action_pause">Pausa</string>
     <string name="navservice_notif_action_resume">Återuppta</string>
