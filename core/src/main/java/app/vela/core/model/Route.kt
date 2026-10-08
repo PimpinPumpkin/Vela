@@ -37,6 +37,10 @@ data class Maneuver(
     // named form. Null where the router gave us no way to rebuild it (Google's abbreviated steps),
     // in which case speech falls back to [instruction] and simply keeps saying the name.
     val instructionNoRoad: String? = null,
+    // Traffic lights the route drives through on the way to this maneuver, as meters before it
+    // along the line (RouteGeometry.enrichWithLights; "Traffic-light guidance"). The voice says
+    // "Pass the traffic light, then ..." for the ones still ahead of the car when it speaks.
+    val lightsBeforeM: List<Double> = emptyList(),
 ) {
     /** What the VOICE should say for this maneuver, honoring the spoken-street-names preference. */
     fun spokenInstruction(): String =

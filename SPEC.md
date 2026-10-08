@@ -1217,8 +1217,9 @@ During a drive:
   without this such a stop stays ahead for good. The rule is off between a stops edit and the
   route for the new list.
 - The cues and the skip test act only while the engine's route is the very object the marks
-  were measured on (`planRoute`). `applyEnrichedRoute` therefore changes neither: it only puts
-  the light clause on the current step's card.
+  were measured on (`planRoute`). `applyEnrichedRoute(base, lit)` therefore replaces
+  `_state.route`, `planRoute` and every other reference to `base` together, and does nothing
+  unless both still are `base` and no reroute is in flight.
 - Progress that jumps more than `STOP_SKIP_JUMP_M` (250 m) past the next stop in one fix, faster
   than `STOP_SKIP_SPEED_MPS` (70 m/s), is a skip (`NavEngine.stopSkipped`). Ground covered over
   a pause or a GPS gap is slower than that and counts as driven. The session holds the stops
@@ -1387,6 +1388,21 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
+- Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, off by default,
+  English only). With it on, `NavController.lightCues` looks up the signals along each route
+  the drive takes up and `RouteGeometry.enrichWithLights` marks them on the plain left and
+  right turns they come before (`Maneuver.lightsBeforeM`, meters before the turn): signals
+  within `LIGHT_APPROACH_M` (400 m) of the turn and `LIGHT_SNAP_M` (25 m) of the line, one per
+  junction (`LIGHT_CLUSTER_M`, 30 m), never the turn's own. The marked copy goes to the session
+  through `applyEnrichedRoute`; it has the same line, so the route observer writes no trip
+  block and fetches nothing again. Instruction text is not changed. When an approach prompt
+  is spoken, `NavEngine.lightLead` counts the lights still at least `LIGHT_AHEAD_MIN_M` (20 m)
+  ahead of the car and puts "Pass the traffic light, then" (or "Pass 2 traffic lights, then")
+  in front for one or two. A lane prompt, the turn-now line and the arrival cue never take
+  it. The signals come from the downloaded road features. Where no region is downloaded the
+  public Overpass server is asked for the first route of a drive only. With the switch off
+  nothing is looked up. Logcat `VelaDirections` prints how many steps got a light, and how
+  many stops have been passed each time one is counted.
 - Arrival fires within `ARRIVE_RADIUS_M` (25 m) along the route of the arrive maneuver, within
   `ARRIVE_PROX_M` (40 m) straight-line of it, or with under 50 m of route left while stopped and
   within 60 m straight-line. Those three run on the last step. On any step, a car stopped with
@@ -4139,8 +4155,8 @@ announces the turn without the street. The banner, the step list and the road pi
   opener and the faster-route line in `NavSession`. Those two keep the named form for their
   banner and card.
 - Code that rewrites an instruction after the router built it rewrites both forms, or the switch
-  undoes the rewrite. `consolidateExits` and `enrichWithLights` do, and `SpokenRoadNamesTest`
-  pins both.
+  undoes the rewrite. `consolidateExits` does. The traffic-light cue is added at speak time to
+  whichever form is spoken (`NavEngine.lightLead`). `SpokenRoadNamesTest` pins both.
 
 #### Live update notification
 

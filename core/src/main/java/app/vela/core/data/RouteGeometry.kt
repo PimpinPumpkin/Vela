@@ -598,33 +598,35 @@ object RouteGeometry {
     }
 
     /**
-     * Prepend a Google-style landmark clause ("Pass the traffic light, then turn left onto 5th Ave") to a
-     * turn when 1–2 traffic signals sit on the road just before it. Deliberately CONSERVATIVE — Google only
-     * says it when it helps: ONLY plain surface-street turns (not ramps/merges/roundabouts/continues), ONLY
-     * when 1–2 signals fall within ~[LIGHT_APPROACH_M] before the turn AND within ~[LIGHT_SNAP_M] of the driven
-     * line (a light on a parallel street doesn't count), and NEVER for 0 or 3+ (nobody narrates "pass 4
-     * lights"). Standard behavior (no toggle since 2026-07-17), called only for the route being driven. [signals]
-     * = OverpassTrafficSignals.fetchAlong. Best-effort: empty signals or no match → route returned unchanged.
+     * Mark the traffic lights on the approach to each plain turn (`Maneuver.lightsBeforeM`), for
+     * the spoken landmark cue "Pass the traffic light, then turn left onto 5th Avenue". Only
+     * surface-street left and right turns (not ramps, merges, roundabouts or continues), only
+     * signals within [LIGHT_APPROACH_M] before the turn and within [LIGHT_SNAP_M] of the driven
+     * line (a light on a parallel street does not count), and never the turn's own junction.
+     * Signals at one junction count once. The instruction text is left alone: the engine adds
+     * the clause when it speaks, for the lights still ahead of the car (`NavEngine.lightLead`).
+     * The route itself comes back when no turn gains a light.
      */
     fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
         val poly = route.polyline
         if (signals.isEmpty() || poly.size < 2) return route
-        val nav = app.vela.core.i18n.NavStringsRegistry.current()
         fun nearestIdx(p: LatLng): Int {
             var best = 0; var bd = Double.MAX_VALUE
             for (i in poly.indices) { val d = poly[i].distanceTo(p); if (d < bd) { bd = d; best = i } }
             return best
         }
+        var marked = false
         val legs = route.legs.map { leg ->
             val idx = leg.maneuvers.map { nearestIdx(it.location) }
             val newMans = leg.maneuvers.mapIndexed { i, m ->
                 if (i == 0 || (m.type != ManeuverType.TURN_LEFT && m.type != ManeuverType.TURN_RIGHT)) return@mapIndexed m
                 val toIdx = idx[i]; val fromIdx = idx[i - 1]
                 if (toIdx <= fromIdx) return@mapIndexed m
-                // Walk BACK from the turn along the line up to LIGHT_APPROACH_M, collecting the approach points.
-                val approach = ArrayList<LatLng>()
+                // Walk BACK from the turn along the line up to LIGHT_APPROACH_M: each approach
+                // point with its distance before the turn.
+                val approach = ArrayList<Pair<LatLng, Double>>()
                 var acc = 0.0; var k = toIdx
-                while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k]); acc += poly[k].distanceTo(poly[k - 1]); k-- }
+                while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k] to acc); acc += poly[k].distanceTo(poly[k - 1]); k-- }
                 // A signal belonging to the turn's OWN junction is the one you're turning at, not one you
                 // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex — the SAME
                 // radius the clustering below treats as one physical junction (one signal per approach can
@@ -632,28 +634,20 @@ object RouteGeometry {
                 // the turn's own light through; audit 2026-07-07). LIGHT_SNAP_M stays the on-the-driven-line
                 // snap tolerance.
                 val turnPt = poly[toIdx]
-                val matched = signals.filter { s ->
-                    turnPt.distanceTo(s) >= LIGHT_CLUSTER_M && approach.any { it.distanceTo(s) < LIGHT_SNAP_M }
-                }
                 // Cluster the matched nodes: OSM maps one traffic_signals node per approach/carriageway at a
                 // junction, so counting raw nodes would say "pass 2 lights" for one physical intersection.
-                val clusters = ArrayList<LatLng>()
-                for (s in matched) if (clusters.none { it.distanceTo(s) < LIGHT_CLUSTER_M }) clusters.add(s)
-                val count = clusters.size
-                val lead = if (count in 1..2) nav.passLights(count) else ""
-                if (lead.isBlank()) m
-                // Both forms take the clause: without this, turning spoken street names off
-                // silently threw away traffic-light guidance, which is a different feature with
-                // its own switch (issue #596).
-                else m.copy(
-                    instruction = "$lead, then " + m.instruction.replaceFirstChar { it.lowercaseChar() },
-                    instructionNoRoad = m.instructionNoRoad
-                        ?.let { "$lead, then " + it.replaceFirstChar { c -> c.lowercaseChar() } },
-                )
+                val clusters = ArrayList<Pair<LatLng, Double>>()
+                for (s in signals) {
+                    if (turnPt.distanceTo(s) < LIGHT_CLUSTER_M) continue
+                    val (at, before) = approach.minByOrNull { it.first.distanceTo(s) } ?: continue
+                    if (at.distanceTo(s) >= LIGHT_SNAP_M) continue
+                    if (clusters.none { it.first.distanceTo(s) < LIGHT_CLUSTER_M }) clusters.add(s to before)
+                }
+                if (clusters.isEmpty()) m else { marked = true; m.copy(lightsBeforeM = clusters.map { it.second }.sortedDescending()) }
             }
             leg.copy(maneuvers = newMans)
         }
-        return route.copy(legs = legs)
+        return if (marked) route.copy(legs = legs) else route
     }
 
     /** The bearings a roundabout pass needs off one OSRM step. Kept separate from the JSON so the

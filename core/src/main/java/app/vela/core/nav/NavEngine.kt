@@ -409,7 +409,10 @@ object NavEngine {
                     // (real-drive report, 2026-07-17; Google shortens repeats the same way).
                     else -> nav().repeatShort(target.spokenInstruction())
                 }
-                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), instruction))
+                // The landmark cue rides on the plain form only: a lane line already says where
+                // to be, and "pass the light, then use the left 2 lanes" has the order backward.
+                val said = if (isArrive || (firstForStep && lane != null)) instruction else lightLead(target, dtn, instruction)
+                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), said))
                 // A light "get ready" tick once the NEAR band is reached, so bikers/walkers feel
                 // the turn coming without looking or hearing.
                 if (due.last().index == 1 && !isArrive) events += NavEvent.Haptic(target.type, approaching = true)
@@ -545,14 +548,33 @@ object NavEngine {
             val anyApproach = leg >= near * 0.85 || said.isNotEmpty()
             val now = if (anyApproach) short else nav().spokenSign(m.spokenInstruction())
             val lines = ArrayList<String>()
-            if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), full)
-            if (leg >= near * 0.85 && 1 !in said) lines += nav().inThen(spokenDistance(near, imperial), if (farSpoken || said.isNotEmpty()) short else full)
+            if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), if (lane != null) full else lightLead(m, far, full))
+            if (leg >= near * 0.85 && 1 !in said) lines += nav().inThen(
+                spokenDistance(near, imperial),
+                if (farSpoken || said.isNotEmpty()) lightLead(m, near, short) else if (lane != null) full else lightLead(m, near, full),
+            )
             if (TURN_NOW_SLOT !in said) lines += now
             // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
             out += if (i == fromStep && nearestFirst) lines.reversed() else lines
         }
         return out.toList()
     }
+
+    /**
+     * [text] with the landmark cue in front when one or two marked traffic lights
+     * (`Maneuver.lightsBeforeM`) are still ahead of a car [dtn] meters short of the maneuver:
+     * "Pass the traffic light, then turn left onto 5th Avenue". Counted when it is spoken, so a
+     * light already behind the car is never named. Three or more say nothing, and a language
+     * without the phrase (`NavStrings.passLights`) says nothing.
+     */
+    internal fun lightLead(m: Maneuver, dtn: Double, text: String): String {
+        if (m.lightsBeforeM.isEmpty()) return text
+        val ahead = m.lightsBeforeM.count { it <= dtn - LIGHT_AHEAD_MIN_M }
+        val lead = if (ahead in 1..2) nav().passLights(ahead) else ""
+        return if (lead.isBlank()) text else "$lead, then " + text.replaceFirstChar { it.lowercaseChar() }
+    }
+    /** A light counts as ahead when the car has at least this far to go to it. */
+    private const val LIGHT_AHEAD_MIN_M = 20.0
 
     private fun nav() = app.vela.core.i18n.NavStringsRegistry.current()
 

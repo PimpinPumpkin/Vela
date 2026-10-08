@@ -171,10 +171,6 @@ Small items, one pull request each.
 
 Found reading everything since 0.4.1912 and not fixed yet.
 
-- "Traffic-light guidance" does nothing: no code reads `nav_traffic_lights`, and the "pass the
-  light" clause reaches the current step's card only, never the voice or the engine. Either
-  wire the enriched route into the session whole (`_state.route` and `planRoute` together) or
-  remove the switch.
 - Zooming out through z10 to z13.5 mid-drive in a dense city drops frames for 250 to 800 ms
   the first time each zoom is reached (Pixel 4a, San Francisco), with every Vela layer hidden
   or shown. Not traced yet.

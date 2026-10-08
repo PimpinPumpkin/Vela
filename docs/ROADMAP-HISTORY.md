@@ -11,6 +11,11 @@ says so.
 
 ### October 2026
 
+- "Traffic-light guidance" works: the switch is read, the lights are marked on the route, and
+  the voice names only the ones still ahead. Since July the switch had done nothing and the
+  lookup ran on every drive unused.
+- A list with one place reads "1 place" (`lists_place_count` and `map_save_list` are plurals
+  in every language file).
 - The current road name shows a named freeway by its number, and adds the compass direction
   the signs gave ("I 80 E").
 - A list can have a sound that plays when a drive passes one of its places (`PassAlerts`).

@@ -121,9 +121,17 @@ internal class NavController(
                 // audit diffed the trace against a route the driver wasn't on ("arrow on another
                 // street"). TripLog parses the blocks as segments; replay swaps at the same spot.
                 val nsRoute = ns.route
-                if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
-                    if (lastRecordedRoute != null) tripStore.saveRoute(nsRoute, navSession.lastSwapReason)
+                // The same line with its traffic lights marked (lightCues) is the same route: no
+                // trip block, no second look for what lies along it.
+                if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute && nsRoute.polyline === lastRecordedRoute?.polyline) {
                     lastRecordedRoute = nsRoute
+                }
+                if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
+                    val first = lastRecordedRoute == null
+                    if (!first) tripStore.saveRoute(nsRoute, navSession.lastSwapReason)
+                    lastRecordedRoute = nsRoute
+                    // Never in a recorded-trip replay (no live lookups); a simulated drive is a drive.
+                    if (!_state.value.replaying || _state.value.demoDriving) lightCues(nsRoute, first)
                     // An obf route brings its roads' Latin aliases along; the tile path adds more as
                     // nav tiles load, and nav end resets the dictionary to the offline base.
                     if (nsRoute.roadNamesLatin.isNotEmpty()) host.onNavRoadLatin(nsRoute.roadNamesLatin)
@@ -265,17 +273,10 @@ internal class NavController(
             // Google-style courtesy: warn once, card + voice, when this drive lands within an hour
             // of the host.destination's closing time (or after it).
             maybeWarnClosingSoon(named)
-            // START IMMEDIATELY. The "pass the light, then turn" landmark clauses need a live
-            // Overpass fetch (up to a 25 s server timeout) - awaiting it here made tapping Start
-            // dead for up to ~20 s before nav even began (user 2026-07-16, a regression from
-            // making light guidance standard). Nav starts on the un-enriched route now; the
-            // clauses fold in a beat later via NavSession.applyEnrichedRoute (same polyline, only
-            // turn text changes), or never, if the fetch is slow - it's best-effort landmark text.
+            // START IMMEDIATELY. The traffic lights for the "pass the light, then turn" cue are
+            // looked up after the drive has begun (lightCues, from the route observer): waiting
+            // for them here once kept Start dead for up to 20 s.
             if (settingsPrefs.getBoolean("demo_drive", false)) startDemoDrive(named) else launchNav(named)
-            launch {
-                val enriched = enrichLights(named)
-                if (enriched !== named) navSession.applyEnrichedRoute(enriched)
-            }
         }
     }
 
@@ -451,12 +452,31 @@ internal class NavController(
      *  conservative (1-2 lights, plain surface-street turns only) and is a NO-OP in languages whose
      *  NavStrings table doesn't implement passLights (currently all but English). Best-effort + IO;
      *  a fetch miss just leaves the route unchanged. */
-    private suspend fun enrichLights(route: app.vela.core.model.Route): app.vela.core.model.Route {
+    /**
+     * Settings > Navigation "Traffic-light guidance" (pref `nav_traffic_lights`, off by default):
+     * mark the lights before each turn of [route], the one just taken up by the drive, and hand
+     * the marked copy to the session, which speaks "Pass the traffic light, then ..." from it.
+     * Nothing is looked up with the switch off or in a language with no such phrase. The lights
+     * come from the downloaded road features; where no region is downloaded, the public
+     * Overpass server is asked for the [first] route of a drive only, never for each reroute.
+     */
+    private fun lightCues(route: app.vela.core.model.Route, first: Boolean) {
+        if (!settingsPrefs.getBoolean("nav_traffic_lights", false)) return
+        if (app.vela.core.i18n.NavStringsRegistry.current().passLights(1).isBlank()) return
+        scope.launch {
+            val lit = runCatching { enrichLights(route, overpass = first) }.getOrNull() ?: return@launch
+            // Counts only: which turns, and where, stays off the log.
+            runCatching { android.util.Log.i("VelaDirections", "light cues: ${lit.maneuvers.count { it.lightsBeforeM.isNotEmpty() }} of ${lit.maneuvers.size} step(s) have a light before them") }
+            if (lit !== route) navSession.applyEnrichedRoute(route, lit)
+        }
+    }
+
+    private suspend fun enrichLights(route: app.vela.core.model.Route, overpass: Boolean): app.vela.core.model.Route {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val signals = when (host.roadFeaturesCoverRoute(route.polyline)) {
                 MapViewModel.RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.signalsAlong(route.polyline) }
                 MapViewModel.RoadCover.FAILED -> emptyList()
-                MapViewModel.RoadCover.NONE -> app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline)
+                MapViewModel.RoadCover.NONE -> if (overpass) app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline) else emptyList()
             }
             app.vela.core.data.RouteGeometry.enrichWithLights(route, signals)
         }

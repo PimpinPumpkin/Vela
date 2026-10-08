@@ -168,20 +168,33 @@ class NavSession @Inject constructor(
      *  list; [withSilentVias] puts the silent points still ahead back into it in route order. */
     data class NavStop(val location: LatLng, val label: String, val silent: Boolean = false)
 
-    /** Fold a light-ENRICHED copy of the current route in after nav has already started, so
-     *  START never waits on the traffic-signal fetch. The enriched route's polyline and maneuver
-     *  positions are identical; only turn instruction text gains "Pass the light, then ...". The
-     *  current step's card takes its text. The session's routes are left alone: the engine runs
-     *  on `_state.route`, and the stop cues and the skipped-stop check only act while that is the
-     *  very object in [planRoute]. Putting the enriched copy there stopped every stop from being
-     *  counted on any drive with a mapped light, so reroutes and re-checks went back through
-     *  stops already visited. No-op if we've stopped or rerouted since. */
-    fun applyEnrichedRoute(r: Route) {
-        val cur = _state.value.route ?: return
-        if (!_state.value.navigating || cur.polyline.size != r.polyline.size) return
-        val idx = _state.value.nav.stepIndex
-        r.maneuvers.getOrNull(idx)?.instruction?.let { txt ->
-            _state.update { if (it.route === cur) it.copy(maneuverText = txt) else it }
+    /**
+     * Take [lit], a copy of [base] whose turns carry their traffic lights
+     * (`RouteGeometry.enrichWithLights`), as the route being driven, after the drive has started:
+     * Start never waits on the signal lookup. Same line, same maneuvers at the same places, so
+     * progress carries over.
+     *
+     * The engine runs on `_state.route`, and the stop cues and the skipped-stop check act only
+     * while that is the very object in [planRoute]. So the two are replaced together, with every
+     * other reference to [base], or not at all: nothing happens unless both still are [base] (a
+     * reroute, a stops edit or the end of the drive got there first).
+     */
+    fun applyEnrichedRoute(base: Route, lit: Route) {
+        // A reroute in flight was asked from [base] and compares against it when it lands; the
+        // route it brings gets its own lights.
+        if (rerouteJob?.isActive == true) return
+        synchronized(stopLock) {
+            if (planRoute !== base) return
+            var swapped = false
+            _state.update { s ->
+                swapped = s.navigating && s.route === base
+                if (swapped) s.copy(route = lit) else s
+            }
+            if (!swapped) return
+            planRoute = lit
+            if (progressRoute === base) progressRoute = lit
+            if (skipHoldRoute === base) skipHoldRoute = lit
+            if (marksHeldOn === base) marksHeldOn = lit
         }
     }
 
@@ -543,6 +556,8 @@ class NavSession @Inject constructor(
             for (i in passedStops until passed) {
                 if ((stopMarks.getOrNull(i) != null || i >= byMarks) && !stops[i].silent) toSpeak += stops[i].label
             }
+            // Counts only, for a test on a phone: no name, no place.
+            if (passed != passedStops) runCatching { android.util.Log.i("VelaDirections", "stops: $passed of ${stops.size} passed") }
             passedStops = passed
         }
         toSpeak.forEach { label ->
