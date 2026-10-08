@@ -447,6 +447,9 @@ signed file the app fetches at launch (SPEC 11).
   misbehaves, capture the real text before guessing a word.
 - The open or closed state is parsed from the status text. The numeric codes beside it are
   styling.
+- Accents are folded off Latin letters only (`OfflineRank.fold`). Decomposing every script and
+  dropping the marks takes the voicing marks off kana, splits Hangul and drops Thai, Devanagari
+  and Arabic vowel signs, and text folded that way no longer matches a stored name.
 
 ## Testing on a phone
 
