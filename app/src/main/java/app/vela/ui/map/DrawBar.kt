@@ -48,6 +48,9 @@ data class DrawState(
     val pts: List<Double> = emptyList(), val closed: Boolean = false, val color: Long = DRAW_COLORS[0],
     /** A saved shape being changed: Save replaces it where it is kept. Null = a new drawing. */
     val editOf: app.vela.core.model.MapShape? = null,
+    /** The name typed so far. Kept here because the bar leaves composition whenever another
+     *  sheet takes the bottom slot (a place opened from search), and its own state goes with it. */
+    val name: String = "",
 )
 
 /** The colors offered while drawing (ARGB): red, orange, yellow, green, blue, purple. */
@@ -61,7 +64,9 @@ val DRAW_COLORS = listOf(0xFFE53935, 0xFFFB8C00, 0xFFFDD835, 0xFF43A047, 0xFF1E8
  */
 @Composable
 fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
-    var name by remember { mutableStateOf(draw.editOf?.name.orEmpty()) }
+    // The field edits this copy, so typing never waits on the view model's state; every change is
+    // also handed to the view model, which is what the bar starts from when it comes back.
+    var name by remember { mutableStateOf(draw.name) }
     val points = draw.pts.size / 2
     val enough = points >= if (draw.closed) 3 else 2
     Surface(
@@ -96,7 +101,7 @@ fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
             if (points >= 1) Text(stringResource(R.string.draw_hint_points), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
-                    value = name, onValueChange = { name = it.take(60) }, singleLine = true,
+                    value = name, onValueChange = { name = it.take(60); vm.drawSetName(name) }, singleLine = true,
                     placeholder = { Text(stringResource(R.string.draw_name_hint)) },
                     modifier = Modifier.weight(1f).dpadFieldEscape(),
                 )

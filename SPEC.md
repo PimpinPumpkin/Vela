@@ -2673,11 +2673,18 @@ it with regexes.
   removes the last point, then leaves.
 - `DrawBar` (reached through `ShapeBottomBar`, because MapScreen is at the method size limit)
   offers Line or Area, six colors (`DRAW_COLORS`), the live measure, a name, Undo and Save.
+- The typed name is kept in `DrawState.name` (`MapViewModel.drawSetName`). The bar leaves
+  composition whenever another sheet takes the bottom slot, such as a place opened from search
+  while drawing, and starts from the kept name when it returns.
 - A line needs 2 points and an area 3; at most 2,000 points. A finger within 26 dp of a point
   drags it, and a tap removes it. Points cannot be inserted between two existing ones.
 - Save appends a `MapShape` (width 4, an area filled at 25% opacity) to the list
-  `list:drawings` ("My drawings"). The unfinished shape draws a dot per point
-  (`vela-shapes-dots`).
+  `list:drawings` ("My drawings").
+- The unfinished shape and a dot per point (`vela-shapes-dots`) draw from a source of their own
+  (`ensureShapeDraft`, `vela-shapes-draft-src`, a fill and a line layer directly above the saved
+  shapes' fill and line), so a dragged point uploads that one shape. On the saved shapes' source
+  every move event would re-upload and re-tile all of them. `MapSurface` passes the unfinished
+  shape as the last of `shapes`; `VelaMapView` takes it off the saved set.
 - The shape sheet's menu has "Edit this drawing" (`DrawState.editOf`, saved back in place) and
   "Delete this drawing" (`ShapeActions.delete`, `MapViewModel.deleteOpenedShape`).
 

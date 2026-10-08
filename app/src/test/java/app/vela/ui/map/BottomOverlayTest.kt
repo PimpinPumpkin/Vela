@@ -50,6 +50,16 @@ class BottomOverlayTest {
         assertTrue(BottomOverlay.animateChange(BottomOverlay.NAV_CONTROLS, BottomOverlay.NONE))
     }
 
+    @Test fun `a place opened while drawing takes the slot and the drawing keeps its typed name`() {
+        val drawing = MapUiState(drawing = DrawState(name = "Fence line"))
+        assertEquals(BottomOverlay.SHAPES, overlay(drawing))
+        // The drawing bar leaves composition here, so the name cannot live in the bar.
+        val withPlace = drawing.copy(selected = place)
+        assertEquals(BottomOverlay.PLACE, overlay(withPlace))
+        assertEquals("Fence line", withPlace.drawing?.name)
+        assertEquals(BottomOverlay.SHAPES, overlay(withPlace.copy(selected = null)))
+    }
+
     @Test fun `results return after place closes and remain available in pick mode`() {
         val state = MapUiState(results = listOf(place), selected = place)
         assertEquals(BottomOverlay.PLACE, overlay(state))

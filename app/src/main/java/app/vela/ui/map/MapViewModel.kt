@@ -5310,9 +5310,11 @@ class MapViewModel @Inject constructor(
         val shape = openedShape ?: return
         if (_state.value.navigating || listStore.lists().none { shape in it.shapes }) return
         clearSearch()
-        _state.update { it.copy(selected = null, drawing = DrawState(pts = shape.pts, closed = shape.closed, color = shape.color, editOf = shape)) }
+        _state.update { it.copy(selected = null, drawing = DrawState(pts = shape.pts, closed = shape.closed, color = shape.color, editOf = shape, name = shape.name)) }
     }
     fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(pts = d.pts.dropLast(2))) } ?: s }
+    /** The name typed in the drawing bar, kept with the drawing so it outlives the bar. */
+    fun drawSetName(name: String) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(name = name)) } ?: s }
     fun drawSetClosed(closed: Boolean) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(closed = closed)) } ?: s }
     fun drawSetColor(color: Long) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(color = color)) } ?: s }
     fun cancelDrawing() = _state.update { it.copy(drawing = null) }
