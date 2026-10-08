@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A turn-now between two close turns is no longer held back by a line being prepared ahead:
+  the voice thread is raised while it finishes that phrase.
 - A GPS fix that leaps away from a poor GPS fix goes through the outlier hold again. Taken as
   is, one multipath leap moved the dot and the guidance and held them there for two more fixes.
 - A reroute over a downloaded region no longer waits out the open router's 6 second timeout

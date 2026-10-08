@@ -110,29 +110,34 @@ class PiperSynth @Inject constructor(
         if (loadFailed || !VelaPiper.isReady(context)) return
         // BACKGROUND priority while warming (see AsrRecognizer.warmUp: the load competed with the
         // map's render thread at launch). The worker is also the thread that speaks, so a prompt
-        // queued behind a slow background load raises it back ([speak] calls [boostWarm]).
+        // queued behind a slow background load raises it back ([speak] calls [boostBackground]).
         worker.execute {
-            warmingTid = android.os.Process.myTid()
+            backgroundTid = android.os.Process.myTid()
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try { ensureLoaded() } finally {
-                warmingTid = 0
+                backgroundTid = 0
                 android.os.Process.setThreadPriority(SPEAK_PRIORITY)
             }
         }
     }
 
-    @Volatile private var warmingTid = 0
+    /** The worker's thread id while it runs at background priority (a warm-up or a [prepare]),
+     *  else 0. */
+    @Volatile private var backgroundTid = 0
 
-    /** A prompt is waiting: finish any background warm-up at the speaking priority (the default one
-     *  for an urgent line: the drive's opener waited 7.5 s on a cold start on the 4a, 2026-10-03). */
-    private fun boostWarm(urgent: Boolean = false) {
-        val tid = warmingTid
+    /** A prompt is waiting: the worker finishes its background work, a warm-up or the phrase a
+     *  [prepare] has in hand, at the speaking priority (the default one for an urgent line: the
+     *  drive's opener waited 7.5 s on a cold start on the 4a, 2026-10-03). A phrase is one engine
+     *  call and cannot be cut short, so it must not also run slow. */
+    private fun boostBackground(urgent: Boolean = false) {
+        val tid = backgroundTid
         if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, if (urgent) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY) }
     }
 
     /** Bumped by every [speak]: a [prepare] still queued when a real line is asked for is dropped,
      *  so prepare-ahead work never sits between Start and the opener (four queued prepares held a
-     *  cold-start opener back by another 5 s on the 4a). */
+     *  cold-start opener back by another 5 s on the 4a). The one already rendering stops at its
+     *  next phrase. */
     @Volatile private var speaksAsked = 0
 
 
@@ -209,8 +214,9 @@ class PiperSynth @Inject constructor(
     }
 
     override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {
+        // Counted before the raise: [prepare] relies on that order.
         speaksAsked++
-        boostWarm(interrupt)
+        boostBackground(interrupt)
         val myGen = if (interrupt) ++generation else generation
         val asked = android.os.SystemClock.elapsedRealtime()
         worker.execute {
@@ -382,17 +388,22 @@ class PiperSynth @Inject constructor(
         val asked = speaksAsked
         worker.execute {
             if (asked != speaksAsked) { onDone(); return@execute }
+            backgroundTid = android.os.Process.myTid()
             runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
             try {
+                // Read again with the priority down. [speak] counts a line before it raises this
+                // thread, so a line asked up to here ends the work and a later one raises it.
+                if (asked != speaksAsked) return@execute
                 val engine = ensureLoaded() ?: return@execute
                 val sid = speakerId()
                 val spd = speed()
                 val key = preparedKey(text, sid, spd)
                 if (synchronized(prepared) { prepared.containsKey(key) }) return@execute
-                // A line asked to be SPOKEN while this one renders ends it: a turn about to be
-                // missed must not wait behind audio for one that is a minute away.
+                // A line asked to be SPOKEN while this one renders ends it at the next phrase: a
+                // turn about to be missed must not wait behind audio for one that is a minute
+                // away. The phrase in hand finishes first, raised by [boostBackground]. A line that
+                // was on its last phrase is kept: it is paid for, and may be the one asked.
                 val made = synthesize(engine, text, sid, spd) { asked != speaksAsked } ?: return@execute
-                if (asked != speaksAsked) return@execute
                 synchronized(prepared) {
                     prepared[key] = made
                     while (prepared.size > MAX_PREPARED) prepared.remove(prepared.keys.first())
@@ -401,6 +412,7 @@ class PiperSynth @Inject constructor(
             } catch (t: Throwable) {
                 Log.w(TAG, "prepare failed: ${t.message}")
             } finally {
+                backgroundTid = 0
                 runCatching { android.os.Process.setThreadPriority(SPEAK_PRIORITY) }
                 onDone()
             }

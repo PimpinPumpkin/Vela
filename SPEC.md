@@ -1706,7 +1706,7 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
   priority). `NavEngine.startPrompts` gives the far and near approach lines at the 400 m and
   150 m band floors and the turn-now line, in `update`'s wording (`StartPromptsTest`). Up to
   `MAX_PREPARED` (8) lines are kept, by voice, speaker, speed and exact text. A spoken line
-  drops any prepare queued behind it (`speaksAsked`).
+  drops any prepare queued behind it (`speaksAsked`) and raises the one in hand (9.1).
 - No hidden Google page loads during a drive: the details page not while navigating or with
   the route chooser up (`pageWanted`), the review page not while navigating. A loaded page
   works on for about 20 s after its answer, whether stopped, paused or blanked.
@@ -3914,7 +3914,13 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
   spoken turn (far at max(400 m, 35 s), near at max(150 m, 10 s), and turn-now), up to
-  `MAX_PREPARED` (8).
+  `MAX_PREPARED` (8), at background priority.
+- A line asked to be spoken drops every prepare still queued and ends the one being rendered at
+  its next phrase. A phrase is one engine call and cannot be cut, so the line waits for the
+  phrase in hand, and the worker renders that phrase at the waiting line's priority
+  (`PiperSynth.boostBackground`): the default for an imminent turn, the speaking priority
+  otherwise. A voice load started by a warm-up or a prepare is raised the same way. A prepared
+  line that was on its last phrase is kept.
 
 ### 9.2 Foreign scripts
 
