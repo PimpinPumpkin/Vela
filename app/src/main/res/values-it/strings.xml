@@ -55,7 +55,7 @@
     <string name="settings_live_traffic">Overlay traffico in tempo reale</string>
     <string name="settings_live_traffic_hint">Colora le strade in base al traffico mentre esplori. La navigazione colora già il tuo percorso.</string>
     <string name="settings_transit_layer">Evidenzia le linee di trasporto</string>
-    <string name="settings_transit_layer_hint">Disegna le linee di treni e metro sulla mappa.</string>
+    <string name="settings_transit_layer_hint">Traccia le linee ferroviarie e della metropolitana sulla mappa, assegnando a ciascuna il colore corrispondente laddove i dati di trasporto pubblico aperti ne prevedano uno.</string>
     <string name="settings_read_all_reviews">Pulsante “Leggi tutte le recensioni”</string>
     <string name="settings_read_all_reviews_hint">Aggiunge un pulsante che apre la pagina completa delle recensioni di Google nell\'app, con tutte le recensioni. Off = solo l\'elenco di Vela.</string>
     <string name="settings_buildings_3d">Edifici 3D</string>
@@ -116,7 +116,7 @@
     <string name="settings_data_privacy_hint">Vela parla con gli endpoint pubblici di Google direttamente da questo dispositivo: niente backend, niente account, niente chiave API. Google vede IP, ricerca e area della mappa, non chi sei.</string>
     <string name="settings_privacy_button">Quali dati riceve Google</string>
     <string name="settings_google_free">Usa Vela senza Google</string>
-    <string name="settings_google_free_hint">Nulla viene inviato a Google. La ricerca usa OpenStreetMap e le regioni scaricate, i luoghi sulla mappa arrivano dai dati di Vela e i percorsi dal router aperto, senza traffico in tempo reale. Perdi recensioni, foto, orari di apertura, arrivi in tempo reale, Street View, indicazioni con i mezzi pubblici e le viste satellitari ravvicinate; le regioni scaricate funzionano comunque del tutto offline.</string>
+    <string name="settings_google_free_hint">Nulla viene inviato a Google. La funzione di ricerca utilizza OpenStreetMap e le aree scaricate, i luoghi sulla mappa provengono dai dati di Vela e i percorsi sono generati da un sistema di routing aperto, senza informazioni sul traffico in tempo reale. Si perdono recensioni, foto, orari di apertura di Google, orari di arrivo in tempo reale, Street View e le immagini satellitari ad alta risoluzione. Le indicazioni per il trasporto pubblico provengono da un sistema di pianificazione aperto. Le aree scaricate rimangono pienamente utilizzabili offline.</string>
     <string name="settings_diagnostics">Diagnostica</string>
     <string name="settings_diagnostics_hint">Disattivato di default. Se attivo, Vela tiene un breve registro locale che puoi esportare e dare a uno sviluppatore. Nulla viene caricato, e disattivarlo lo cancella.</string>
     <string name="settings_share_diagnostics">Condividi diagnostica</string>
@@ -159,7 +159,7 @@
     <string name="settings_voice_lib_empty_hint">★ indica le voci consigliate. Ogni voce funziona offline sul telefono.</string>
     <string name="settings_voice_lib_installed_hint">Installato: %1$d MB · %2$d voci.</string>
     <!-- format -->
-    <string name="settings_voice_lib_lang_hint">La lingua dell\'app è %1$s: scarica una voce %2$s qui sotto così le indicazioni vocali corrispondono (una voce inglese pronuncerebbe male i nomi delle strade in %3$s).</string>
+    <string name="settings_voice_lib_lang_hint">Le indicazioni sono in %1$s. Scarica una voce in %2$s qui sotto affinché le indicazioni vocali corrispondano (una voce inglese pronuncerebbe in modo errato i nomi delle strade in %3$s).</string>
     <string name="settings_voice_search">Cerca voci</string>
     <string name="settings_voice_show_more">Mostra altri %1$d</string>
     <string name="settings_voice_show_less">Mostra meno</string>
@@ -780,7 +780,7 @@
     <string name="suggestion_contact_badge">Contatto</string>
     <string name="settings_speed_cams">Autovelox</string>
     <string name="settings_speed_cam_warn">Avvisami a voce</string>
-    <string name="settings_speed_cam_warn_hint">Dice \"Autovelox in arrivo\" quando ti avvicini a uno durante la navigazione, con circa dodici secondi di preavviso. Segue l\'impostazione delle indicazioni vocali. In alcuni paesi segnalare gli autovelox alla guida è vietato, quindi è disattivo finché non lo attivi.</string>
+    <string name="settings_speed_cam_warn_hint">Annuncia \"Autovelox in arrivo\" e visualizza un avviso con circa dodici secondi di anticipo mentre segui un percorso. La funzione rispetta le impostazioni relative alle indicazioni vocali. Poiché in alcuni paesi gli avvisi sugli autovelox durante la guida sono soggetti a restrizioni, la funzione è disattivata per impostazione predefinita e deve essere abilitata manualmente.</string>
     <string name="nav_speed_camera_ahead">Autovelox in arrivo</string>
     <string name="settings_flock_nav_card">Avviso telecamere lettura targhe</string>
     <string name="settings_flock_nav_card_hint">Durante la navigazione mostra una scheda quando ti avvicini a una telecamera di lettura targhe sul percorso. Le telecamere puntate di traverso sulla tua strada vengono ignorate. Disattivato di default.</string>
@@ -936,9 +936,9 @@
     <string name="saved_rename_action">Rinomina</string>
     <string name="whatsnew_title">Novità di %1$s</string>
     <string name="whatsnew_got_it">Ho capito</string>
-    <string name="whatsnew_full_notes">Note complete</string>
+    <string name="whatsnew_full_notes">Note di cambiamento complete</string>
     <string name="settings_whatsnew">Novità di questa versione</string>
-    <string name="settings_whatsnew_hint">Le note di rilascio della build che stai usando. Compaiono anche una volta dopo ogni aggiornamento.</string>
+    <string name="settings_whatsnew_hint">Le note di rilascio della build che stai usando.</string>
     <string name="mapvm_export_trips_subject">Viaggi Vela: %1$d percorsi (%2$d punti)</string>
     <string name="mapvm_export_trip_scrubbed_subject">Viaggio Vela: %1$d punti, estremità tagliate</string>
     <string name="mapvm_area_uses_pack">I luoghi e gli indirizzi di questa zona arrivano con il download di %1$s</string>
@@ -1143,14 +1143,14 @@
         <item quantity="other">%1$d sezioni hanno una versione più recente</item>
     </plurals>
     <string name="settings_confirm_end_nav">Chiedi prima di terminare la navigazione</string>
-    <string name="settings_confirm_end_nav_hint">La X rossa e Indietro durante la guida chiedono conferma, così un tocco accidentale non la interrompe</string>
+    <string name="settings_confirm_end_nav_hint">Durante la guida, il sistema chiede sempre prima conferma. Con questa funzione attiva, anche la \"X\" rossa richiede conferma.</string>
     <string name="nav_end_confirm_title">Terminare la navigazione?</string>
     <string name="nav_end_confirm_body">Il percorso e le sue tappe verranno cancellati.</string>
     <string name="nav_end_confirm_end">Termina</string>
     <string name="nav_end_confirm_keep">Continua</string>
     <string name="settings_parking_button">Pulsante parcheggio</string>
     <string name="settings_parking_button_hint">Il pulsante P sulla mappa che salva dove hai parcheggiato. Disattivato: compare solo quando c\'è un parcheggio salvato.</string>
-    <string name="map_layers_places">Luoghi: %1$s</string>
+    <string name="map_layers_places">Icone luoghi: %1$s</string>
     <string name="settings_two_finger_tilt">Inclina con due dita</string>
     <string name="settings_two_finger_tilt_hint">Trascina due dita su o giù per inclinare la mappa in 3D. Disattivato: il pizzico serve solo per lo zoom.</string>
     <string name="settings_speed_display">Mostra velocità e limite di velocità</string>
@@ -1326,4 +1326,62 @@
     <string name="trip_shortcut_unsupported">Questa schermata Home non consente di aggiungere scorciatoie</string>
     <string name="trip_shortcut_themed">Come le icone a tema</string>
     <string name="settings_places_source_note">Cercare o toccare un luogo passa comunque da Google per orari, recensioni e foto, qualunque opzione tu scelga.</string>
+    <string name="settings_directions_language">Lingua delle indicazioni</string>
+    <string name="settings_directions_same_as_app">Uguale alla lingua dell\'app</string>
+    <string name="settings_directions_language_hint">Le lingue in cui le svolte vengono mostrate e pronunciate. Scegli una voce corrispondente nella libreria vocale.</string>
+    <string name="settings_voice_row_other_language">Le indicazioni vengono pronunciate in: %1$s. Per ascoltare questa voce, imposta la lingua delle indicazioni a %2$s.</string>
+    <string name="mapscreen_location_tip_title">Ancora nessuna posizione?</string>
+    <string name="mapscreen_location_tip_body">Spesso il GPS da solo non riesce a ottenere una posizione al chiuso. Su GrapheneOS, attiva la posizione tramite rete in Impostazioni &gt; Posizione &gt; Servizi di localizzazione.</string>
+    <string name="mapscreen_location_tip_settings">Impostazioni posizione</string>
+    <string name="search_saved_tip">I tuoi luoghi salvati si trovano sotto il pulsante dei preferiti qui sopra. Fissane uno per mantenerlo qui.</string>
+    <string name="search_open_now_phrase">aperti ora</string>
+    <string name="welcome_feature_private_body">Nessun account, nessuna pubblicità, nessuna telemetria e nessun server Vela.</string>
+    <string name="welcome_continue">Continua</string>
+    <string name="welcome_cameras_title">Telecamere per targhe</string>
+    <string name="welcome_cameras_intro">Flock e altre telecamere per targhe vengono visualizzate sulla mappa. Vela può anche:</string>
+    <string name="welcome_cameras_avoid">Evitarle</string>
+    <string name="welcome_cameras_warn">Avvisarmi quando mi avvicino</string>
+    <string name="welcome_google_customize">Scegli per cosa verrà utilizzato Google</string>
+    <string name="welcome_google_title">Usare Google?</string>
+    <string name="welcome_google_intro">Puoi cambiarlo successivamente nelle impostazioni o disattivarne alcune funzioni.</string>
+    <string name="welcome_google_on_title">Usa Google</string>
+    <string name="welcome_google_on_gives">Recensioni, foto, traffico live e Street View.</string>
+    <string name="welcome_google_on_sends">Le ricerche e gli itinerari useranno Google, senza un account.</string>
+    <string name="welcome_google_off_title">No Google</string>
+    <string name="welcome_google_off_gives">Solo dati open. Nessuna recensione, foto o traffico in tempo reale.</string>
+    <string name="welcome_google_off_sends">Niente viene inviato a Google.</string>
+    <string name="settings_google_uses">Per cosa viene utilizzato Google</string>
+    <string name="settings_google_uses_hint">Disattivandone una, Vela smette di chiedere a Google quel dato. Ogni tasto si trova inoltre su una pagina a sé stante.</string>
+    <string name="settings_google_uses_traffic">Traffico e itinerari</string>
+    <string name="settings_zoom_key_in">Tasto di zoom in</string>
+    <string name="settings_zoom_key_out">Tasto di zoom out</string>
+    <string name="settings_zoom_key_none">Non impostato</string>
+    <string name="settings_zoom_keys_hint">Due tasti che consentono di ingrandire o ridurre la mappa da qualsiasi punto della stessa, come i tasti 2 e 5 di un tastierino numerico. Se utilizzati all\'interno di un campo di testo, continuano a digitare i caratteri corrispondenti.</string>
+    <string name="settings_zoom_key_press">Premi il tasto da usare. Le freccette, OK e indietro sono già utilizzati.</string>
+    <string name="settings_zoom_key_clear">Pulisci</string>
+    <string name="nav_left_your_route">Lasciato “%1$s”. Percorro la strada più veloce.</string>
+    <string name="list_sound_label">Suono quando passi accanto ad una</string>
+    <string name="list_sound_off">Off</string>
+    <string name="list_sound_ping">Ping</string>
+    <string name="list_sound_bell">Campanello</string>
+    <string name="list_sound_double">Due beep</string>
+    <string name="list_sound_low">Tono basso</string>
+    <string name="list_sound_name">Pronuncia il suo nome</string>
+    <string name="bulk_select">Seleziona posti</string>
+    <plurals name="bulk_selected">
+        <item quantity="one">%1$d selezionato</item>
+        <item quantity="many">%1$d selezionati</item>
+        <item quantity="other">%1$d selezionati</item>
+    </plurals>
+    <string name="bulk_all">Tutti</string>
+    <string name="bulk_move">Sposta nella lista</string>
+    <string name="bulk_new_list">Nuova lista…</string>
+    <string name="bulk_remove">Rimuovi</string>
+    <plurals name="bulk_remove_title">
+        <item quantity="one">Rimuovere %1$d posto?</item>
+        <item quantity="many">Rimuovere %1$d posti?</item>
+        <item quantity="other">Rimuovere %1$d posti?</item>
+    </plurals>
+    <string name="bulk_done">Fine selezione</string>
+    <string name="bulk_moved">%1$d spostato in %2$s</string>
 </resources>
