@@ -377,6 +377,11 @@ class NavSession @Inject constructor(
         note(reason)
         val gen = sessionGen
         rerouteJob?.cancel()
+        // This replan is the in-flight job the reroute gate will judge: stamped like a reroute,
+        // or an off-route fix during it reads the last reroute's start (0 on a drive with none),
+        // calls it stuck and starts over.
+        rerouteStartedMs = SystemClock.elapsedRealtime()
+        rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
         rerouteJob = scope.launch {
             val r = runCatching { dataSource.directions(loc, dest, mode, newRemaining.map { it.location }, avoidTolls = RoutingPrefs.avoidTolls, avoidHighways = RoutingPrefs.avoidHighways, avoidFerries = RoutingPrefs.avoidFerries) }
                 .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }

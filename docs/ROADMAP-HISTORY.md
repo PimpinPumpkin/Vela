@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- An off-route fix while a stop edit is being routed no longer cancels that replan and starts
+  another: the replan is timed from its own start.
 - The version line is 0.5, from the stable that carries the new look and Google-line driving.
 - "Release now" (`release.yml`): one manual run cuts a nightly from main, or cuts and
   promotes it to stable with its What's new list. Two separate dispatches could promote the
