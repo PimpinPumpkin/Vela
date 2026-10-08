@@ -60,6 +60,10 @@ echo "→ $LINES address points"
 echo "→ collapsing repeated per-unit/parcel points"
 python3 "$(cd "$(dirname "$0")" && pwd)/dedup-addresses.py" "$GEOJSON" "$WORK/$ID.dedup.geojsonl"
 mv "$WORK/$ID.dedup.geojsonl" "$GEOJSON"
+# A source can lose its `number` column upstream (Delaware, October 2026: every row empty).
+# Say so here; tippecanoe's "Did not read any valid geometries" names nothing. The published
+# overlay for the region stays as it is.
+[ -s "$GEOJSON" ] || { echo "::error::$SRC has no house numbers upstream ($LINES rows, none usable). The published overlay is kept." >&2; exit 1; }
 
 # House numbers render only at z>=17.5 (VelaMapView minZoom — Google street-level parity), so bake
 # -Z16 -z17: the app never requests tiles below 16 (dead pyramid weight), and maxzoom 17 quarters the

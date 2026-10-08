@@ -3224,6 +3224,9 @@ manifest.
   the existing manifest, serialized by a concurrency group (`obf-regions-manifest`,
   `poi-packs-manifest`, `road-features-manifest`, `building-overlays-manifest-merge`,
   `address-overlays-manifest-merge`, `maxspeed-overlays-manifest-merge`).
+- An address source whose rows carry no house number fails its region with that message
+  (`build-address-region.sh`), and the published overlay stays. Delaware's source has been
+  that way since October 2026.
 
 #### Infrastructure releases
 
