@@ -640,7 +640,9 @@
     <string name="place_save_to_list">Mentés listába</string>
     <string name="place_edit_note">Jegyzet szerkesztése</string>
     <string name="place_note_label">Jegyzet</string>
-    <string name="map_save_list">Lista mentése · %1$d hely</string>
+    <plurals name="map_save_list">
+        <item quantity="other">Lista mentése · %1$d hely</item>
+    </plurals>
     <string name="map_list_saved">„%1$s” elmentve a listáidba</string>
     <string name="settings_update_nightly">Nightly build-ek engedélyezése</string>
     <string name="settings_update_nightly_hint">A legújabb nightly (előzetes) verzióra frissít, nem csak a stabil kiadásokra. A nightly frissebb, de kevésbé tesztelt.</string>
@@ -663,7 +665,9 @@
     <string name="mapvm_export_lists_subject">Vela listák (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Listák exportálása</string>
     <string name="lists_empty_hint">Még nincs lista. Koppints az Újra egy létrehozásához, vagy ments el egy helyet az oldaláról.</string>
-    <string name="lists_place_count">%1$d hely</string>
+    <plurals name="lists_place_count">
+        <item quantity="other">%1$d hely</item>
+    </plurals>
     <string name="settings_advanced">Speciális</string>
     <string name="settings_advanced_hint">Olyan opciók, amikre a legtöbb embernek soha nincs szüksége.</string>
     <string name="settings_developer">Fejlesztői</string>

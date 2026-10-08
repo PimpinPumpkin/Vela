@@ -571,7 +571,9 @@
     <string name="place_save_to_list">儲存至清單</string>
     <string name="place_edit_note">編輯備註</string>
     <string name="place_note_label">備註</string>
-    <string name="map_save_list">儲存清單 · %1$d 個地點</string>
+    <plurals name="map_save_list">
+        <item quantity="other">儲存清單 · %1$d 個地點</item>
+    </plurals>
     <string name="map_list_saved">已將「%1$s」儲存到你的清單</string>
     <string name="settings_update_nightly">包含 Nightly 版本</string>
     <string name="settings_update_nightly_hint">更新到最新的 Nightly 版（預先發布），而不只限於穩定版。Nightly 版較新，但測試較少。</string>
@@ -583,7 +585,9 @@
     <string name="mapvm_export_lists_subject">Vela 清單（%1$d）</string>
     <string name="mapvm_export_lists_chooser">匯出清單</string>
     <string name="lists_empty_hint">尚無清單。點按「新增」建立一份，或從地點頁面儲存地點。</string>
-    <string name="lists_place_count">%1$d 個地點</string>
+    <plurals name="lists_place_count">
+        <item quantity="other">%1$d 個地點</item>
+    </plurals>
     <string name="navservice_notif_eta">%1$s 抵達</string>
     <string name="settings_advanced">進階</string>
     <string name="settings_advanced_hint">大多數人用不到的選項。</string>

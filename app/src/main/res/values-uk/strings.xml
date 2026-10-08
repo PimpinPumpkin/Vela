@@ -515,7 +515,12 @@
     <string name="place_save_to_list">Зберегти в список</string>
     <string name="place_edit_note">Редагувати нотатку</string>
     <string name="place_note_label">Нотатка</string>
-    <string name="map_save_list">Зберегти список · %1$d місць</string>
+    <plurals name="map_save_list">
+        <item quantity="one">Зберегти список · %1$d місце</item>
+        <item quantity="few">Зберегти список · %1$d місця</item>
+        <item quantity="many">Зберегти список · %1$d місць</item>
+        <item quantity="other">Зберегти список · %1$d місця</item>
+    </plurals>
     <string name="map_list_saved">«%1$s» збережено у ваших списках</string>
     <string name="settings_update_nightly">Включати нічні збірки</string>
     <string name="settings_update_nightly_hint">Оновлюватися до найновішої нічної збірки (передрелізу), а не лише до стабільних версій. Нічні свіжіші, але менш перевірені.</string>
@@ -527,7 +532,12 @@
     <string name="mapvm_export_lists_subject">Списки Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Експортувати списки</string>
     <string name="lists_empty_hint">Поки немає списків. Натисніть «Новий» або збережіть місце з його сторінки.</string>
-    <string name="lists_place_count">%1$d місць</string>
+    <plurals name="lists_place_count">
+        <item quantity="one">%1$d місце</item>
+        <item quantity="few">%1$d місця</item>
+        <item quantity="many">%1$d місць</item>
+        <item quantity="other">%1$d місця</item>
+    </plurals>
     <string name="navservice_notif_eta">Прибуття %1$s</string>
     <string name="settings_advanced">Додатково</string>
     <string name="settings_advanced_hint">Параметри, які більшості не потрібні.</string>

@@ -2260,7 +2260,7 @@ fun MapScreen(
                         Icon(Sym.BookmarkBorder, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (imp.shapes.isNotEmpty()) stringResource(R.string.map_save_mymap) else stringResource(R.string.map_save_list, imp.places.size),
+                            if (imp.shapes.isNotEmpty()) stringResource(R.string.map_save_mymap) else saveListLabel(imp.places.size),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Medium,
                         )
@@ -6058,7 +6058,7 @@ private fun ListsSheet(
                             Column(Modifier.weight(1f)) {
                                 Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                                 Text(
-                                    stringResource(R.string.lists_place_count, list.places.size),
+                                    androidx.compose.ui.res.pluralStringResource(R.plurals.lists_place_count, list.places.size, list.places.size),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -7055,6 +7055,12 @@ private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {
 /** An open custom map's layers for the results sheet's Layers chip (issue #669). */
 class MapLayers(val names: List<String>, val hidden: Set<String>, val onToggle: (String) -> Unit)
 
+
+/** "Save list · 12 places", with the count's own plural. A function of its own keeps the call
+ *  in MapScreen as small as the one it replaced. */
+@Composable
+private fun saveListLabel(count: Int): String =
+    androidx.compose.ui.res.pluralStringResource(R.plurals.map_save_list, count, count)
 
 /** The bulk actions for the list the results sheet is showing, or null when it is not showing
  *  one of your lists (a search, an import not yet saved). */

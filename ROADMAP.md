@@ -192,8 +192,7 @@ Found reading everything since 0.4.1912 and not fixed yet.
 - Interface: the Street View thumbnail stays over the search page; "Place icons" in Layers
   applies at the next pan; a drawing's typed name is lost when another sheet opens; the area
   picker ticks the whole region when "just this area" is unticked; Settings > Offline sizes
-  its caches in composition; a list with one place reads "1 places" (`lists_place_count` and
-  `map_save_list` need `<plurals>`).
+  its caches in composition.
 - Map: the 3D building tilt gate and the house-number box both flip layout properties; a
   dragged drawing point re-uploads every custom-map shape; the pending route copy can run 40
   blocking queries per slide under z6; the cut veil is navy or white on the AMOLED, classic

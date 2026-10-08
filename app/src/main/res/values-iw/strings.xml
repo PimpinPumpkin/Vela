@@ -553,7 +553,9 @@
     <string name="place_save_to_list">שמור לרשימה</string>
     <string name="place_edit_note">ערוך הערה</string>
     <string name="place_note_label">הערה</string>
-    <string name="map_save_list">שמור רשימה · %1$d מקומות</string>
+    <plurals name="map_save_list">
+        <item quantity="other">שמור רשימה · %1$d מקומות</item>
+    </plurals>
     <string name="map_list_saved">\"%1$s\" נשמרה לרשימות שלך</string>
     <string name="settings_update_nightly">כלול גרסאות nightly</string>
     <string name="settings_update_nightly_hint">עדכן ל-nightly החדש ביותר (טרום-שחרור) במקום רק לגרסאות יציבות. גרסאות nightly טריות יותר אך פחות נבדקו.</string>
@@ -564,7 +566,9 @@
     <string name="mapvm_export_lists_subject">רשימות Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">ייצא רשימות</string>
     <string name="lists_empty_hint">אין עדיין רשימות. הקש \"חדשה\" כדי ליצור אחת, או שמור מקום מהעמוד שלו.</string>
-    <string name="lists_place_count">%1$d מקומות</string>
+    <plurals name="lists_place_count">
+        <item quantity="other">%1$d מקומות</item>
+    </plurals>
     <string name="navservice_notif_eta">הגעה %1$s</string>
     <string name="settings_advanced">מתקדם</string>
     <string name="settings_advanced_hint">אפשרויות שרוב האנשים לעולם לא צריכים.</string>

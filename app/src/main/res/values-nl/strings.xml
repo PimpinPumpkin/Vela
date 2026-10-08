@@ -568,7 +568,10 @@
     <string name="place_save_to_list">In lijst opslaan</string>
     <string name="place_edit_note">Notitie bewerken</string>
     <string name="place_note_label">Notitie</string>
-    <string name="map_save_list">Lijst opslaan · %1$d plaatsen</string>
+    <plurals name="map_save_list">
+        <item quantity="one">Lijst opslaan · %1$d plaats</item>
+        <item quantity="other">Lijst opslaan · %1$d plaatsen</item>
+    </plurals>
     <string name="map_list_saved">“%1$s” opgeslagen in je lijsten</string>
     <string name="settings_update_nightly">Nightly-builds meenemen</string>
     <string name="settings_update_nightly_hint">Werk bij naar de nieuwste nightly (voorlopige versie) in plaats van alleen stabiele versies. Nightlies zijn verser maar minder getest.</string>
@@ -580,7 +583,10 @@
     <string name="mapvm_export_lists_subject">Vela-lijsten (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Lijsten exporteren</string>
     <string name="lists_empty_hint">Nog geen lijsten. Tik op Nieuw of sla een plaats op vanaf zijn pagina.</string>
-    <string name="lists_place_count">%1$d plaatsen</string>
+    <plurals name="lists_place_count">
+        <item quantity="one">%1$d plaats</item>
+        <item quantity="other">%1$d plaatsen</item>
+    </plurals>
     <string name="navservice_notif_eta">Aankomst %1$s</string>
     <string name="settings_advanced">Geavanceerd</string>
     <string name="settings_advanced_hint">Opties die de meesten nooit nodig hebben.</string>

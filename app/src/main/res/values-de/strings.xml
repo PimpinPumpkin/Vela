@@ -513,7 +513,10 @@
     <string name="place_save_to_list">In Liste speichern</string>
     <string name="place_edit_note">Notiz bearbeiten</string>
     <string name="place_note_label">Notiz</string>
-    <string name="map_save_list">Liste speichern · %1$d Orte</string>
+    <plurals name="map_save_list">
+        <item quantity="one">Liste speichern · %1$d Ort</item>
+        <item quantity="other">Liste speichern · %1$d Orte</item>
+    </plurals>
     <string name="map_list_saved">„%1$s“ in deinen Listen gespeichert</string>
     <string name="settings_update_nightly">Nightly-Builds einschließen</string>
     <string name="settings_update_nightly_hint">Auf den neuesten Nightly (Vorabversion) aktualisieren statt nur auf stabile Versionen. Nightlies sind aktueller, aber weniger getestet.</string>
@@ -525,7 +528,10 @@
     <string name="mapvm_export_lists_subject">Vela-Listen (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Listen exportieren</string>
     <string name="lists_empty_hint">Noch keine Listen. Tippe auf Neu oder speichere einen Ort von seiner Seite.</string>
-    <string name="lists_place_count">%1$d Orte</string>
+    <plurals name="lists_place_count">
+        <item quantity="one">%1$d Ort</item>
+        <item quantity="other">%1$d Orte</item>
+    </plurals>
     <string name="navservice_notif_eta">Ankunft %1$s</string>
     <string name="settings_advanced">Erweitert</string>
     <string name="settings_advanced_hint">Optionen, die die meisten nie brauchen.</string>

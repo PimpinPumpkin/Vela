@@ -986,7 +986,10 @@
     <string name="place_choose_icon">Choose icon</string>
     <string name="place_icon_title">Map icon for %1$s</string> <!-- format: %1$s is the place name -->
     <string name="place_icon_default">Use the list\'s icon</string>
-    <string name="map_save_list">Save list · %1$d places</string>
+    <plurals name="map_save_list">
+        <item quantity="one">Save list · %1$d place</item>
+        <item quantity="other">Save list · %1$d places</item>
+    </plurals>
     <string name="map_save_mymap">Save map</string>
     <string name="shape_line">Line</string>
     <string name="shape_area">Area</string>
@@ -1029,7 +1032,10 @@
     <string name="mapvm_export_lists_subject">Vela lists (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Export lists</string>
     <string name="lists_empty_hint">No lists yet. Tap New to create one, or save a place from its page.</string>
-    <string name="lists_place_count">%1$d places</string>
+    <plurals name="lists_place_count">
+        <item quantity="one">%1$d place</item>
+        <item quantity="other">%1$d places</item>
+    </plurals>
     <string name="navservice_notif_eta">Arrive %1$s</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_advanced_hint">Options most people never need.</string>

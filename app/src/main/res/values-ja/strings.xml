@@ -571,7 +571,9 @@
     <string name="place_save_to_list">リストに保存</string>
     <string name="place_edit_note">メモを編集</string>
     <string name="place_note_label">メモ</string>
-    <string name="map_save_list">リストを保存 · %1$d 件の場所</string>
+    <plurals name="map_save_list">
+        <item quantity="other">リストを保存 · %1$d 件の場所</item>
+    </plurals>
     <string name="map_list_saved">「%1$s」をマイリストに保存しました</string>
     <string name="settings_update_nightly">ナイトリービルドを含める</string>
     <string name="settings_update_nightly_hint">安定版だけでなく、最新のナイトリー（プレリリース）にも更新します。ナイトリーは新しい分、テストは少なめです。</string>
@@ -583,7 +585,9 @@
     <string name="mapvm_export_lists_subject">Vela のリスト（%1$d 件）</string>
     <string name="mapvm_export_lists_chooser">リストをエクスポート</string>
     <string name="lists_empty_hint">リストはまだありません。「新規」をタップして作成するか、場所のページから保存してください。</string>
-    <string name="lists_place_count">%1$d 件の場所</string>
+    <plurals name="lists_place_count">
+        <item quantity="other">%1$d 件の場所</item>
+    </plurals>
     <string name="navservice_notif_eta">%1$s に到着予定</string>
     <string name="settings_advanced">詳細設定</string>
     <string name="settings_advanced_hint">ほとんどの人には不要なオプションです。</string>

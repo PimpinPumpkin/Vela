@@ -513,7 +513,10 @@
     <string name="place_save_to_list">Spara i lista</string>
     <string name="place_edit_note">Redigera anteckning</string>
     <string name="place_note_label">Anteckning</string>
-    <string name="map_save_list">Spara lista · %1$d platser</string>
+    <plurals name="map_save_list">
+        <item quantity="one">Spara lista · %1$d plats</item>
+        <item quantity="other">Spara lista · %1$d platser</item>
+    </plurals>
     <string name="map_list_saved">”%1$s” sparad i dina listor</string>
     <string name="settings_update_nightly">Inkludera nightly-versioner</string>
     <string name="settings_update_nightly_hint">Uppdatera till den senaste nightly (förhandsversion) istället för bara stabila versioner. Nightlies är färskare men mindre testade.</string>
@@ -525,7 +528,10 @@
     <string name="mapvm_export_lists_subject">Vela-listor (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportera listor</string>
     <string name="lists_empty_hint">Inga listor än. Tryck på Ny eller spara en plats från dess sida.</string>
-    <string name="lists_place_count">%1$d platser</string>
+    <plurals name="lists_place_count">
+        <item quantity="one">%1$d plats</item>
+        <item quantity="other">%1$d platser</item>
+    </plurals>
     <string name="navservice_notif_eta">Ankomst %1$s</string>
     <string name="settings_advanced">Avancerat</string>
     <string name="settings_advanced_hint">Alternativ som de flesta aldrig behöver.</string>

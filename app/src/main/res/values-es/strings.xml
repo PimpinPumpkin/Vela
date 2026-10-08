@@ -513,7 +513,10 @@
     <string name="place_save_to_list">Guardar en lista</string>
     <string name="place_edit_note">Editar nota</string>
     <string name="place_note_label">Nota</string>
-    <string name="map_save_list">Guardar lista · %1$d lugares</string>
+    <plurals name="map_save_list">
+        <item quantity="one">Guardar lista · %1$d lugar</item>
+        <item quantity="other">Guardar lista · %1$d lugares</item>
+    </plurals>
     <string name="map_list_saved">“%1$s” guardada en tus listas</string>
     <string name="settings_update_nightly">Incluir versiones nightly</string>
     <string name="settings_update_nightly_hint">Actualiza a la última versión nightly (preliminar) en lugar de solo versiones estables. Las nightly son más recientes pero menos probadas.</string>
@@ -525,7 +528,10 @@
     <string name="mapvm_export_lists_subject">Listas de Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportar listas</string>
     <string name="lists_empty_hint">Aún no hay listas. Toca Nueva o guarda un lugar desde su página.</string>
-    <string name="lists_place_count">%1$d lugares</string>
+    <plurals name="lists_place_count">
+        <item quantity="one">%1$d lugar</item>
+        <item quantity="other">%1$d lugares</item>
+    </plurals>
     <string name="navservice_notif_eta">Llegada %1$s</string>
     <string name="settings_advanced">Avanzado</string>
     <string name="settings_advanced_hint">Opciones que casi nadie necesita.</string>
