@@ -1894,6 +1894,11 @@ under the bridges.
 - A copy outside `projection.visibleRegion` (read at most once per frame) swaps at once. The
   query is a blocking round trip to the render thread, 3 to 45 ms on a Pixel 4a.
   `ROUTE_PENDING_MAX_PASSES` (40) is the backstop for a copy on screen whose tiles never report.
+- A cut piece under `ROUTE_PENDING_MIN_DP` (4 dp) long on screen swaps at once too. MapLibre's
+  tiler drops a line shorter than 0.375 px of its tile, so below about z6 the 400 m piece is in
+  no tile, and waiting on it costs all 40 queries at every slide. A few dp under the arrow cannot
+  be seen to flash. The window still waits at every zoom: its swap shows the far tail with it,
+  which zoomed out is most of the route on screen.
 - While the camera is detached, a cut piece off screen is not repainted per frame.
 - The six piece layers have no opacity transition (`lineOpacityTransition` 0); the default
   300 ms fade dipped the route on every swap.
@@ -2936,8 +2941,16 @@ up to 25 percent darker.
 Extrusions show only with the 3D buildings setting on, satellite off, navigation off and the
 camera tilted: on at `B3D_TILT_ON` (20 degrees), off below `B3D_TILT_OFF` (12). Seen straight
 down, perspective leans tall buildings over the streets beside them. The change is an opacity
-transition of `B3D_FADE_MS` (350 ms), and the layer is hidden after a fade-out so it costs nothing
-while flat.
+transition of `B3D_FADE_MS` (350 ms).
+
+The layer starts hidden and costs nothing until the first tilt. From then on, on that style, the
+tilt gate is paint only: flat, the layer stays visible at opacity 0, which MapLibre skips at
+render, so tilting again re-lays out nothing. A visibility change re-lays out every basemap tile
+(the flip cost in 4.7b), which a gate on visibility pays twice per tilt. The price of staying
+visible: tiles at z17 and closer build the extrusion geometry while flat. The layer is hidden
+outright with the setting off and when a drive starts: after the fade when it is on screen, at
+once when it is at opacity 0, which for a drive is the frame the car-mode strip re-lays out the
+basemap anyway. A walk or a ride keeps it at opacity 0.
 
 ### 6.3 Layer rules
 
@@ -2949,6 +2962,12 @@ while flat.
 - A layer at opacity 0 is skipped: it is not rendered, `queryRenderedFeatures` does not see it and
   its source is not tiled. A layer that must stay live while invisible draws at 0.004
   (`ROUTE_PENDING_OPACITY`).
+- On a source that is tiled anyway, a visible layer at opacity 0 still has its geometry built in
+  every tile in its zoom range (MapLibre 13.6.1 hands a tile every layer of its source whose
+  visibility is not none, whatever the opacity), so showing it again is a paint change. The 3D
+  buildings' tilt gate rests on this (6.2).
+- A visibility or filter change re-lays out every tile of the layer's source, also when the
+  layer is hidden. An opacity change does not.
 - An 8-digit hex color string is rejected and falls back to opaque black.
 - A `fill-pattern` from the style cannot be cleared. The layer is hidden and a flat twin drawn.
 - The pmtiles path never cold-fetches a tile clamped two or more levels below the camera.
@@ -2958,7 +2977,7 @@ while flat.
 | maxzoom | GeoJSON sources |
 | --- | --- |
 | 18 | ambient, markers, traffic controls, transit stops |
-| 16 | plate cameras, their clusters, speed cameras, transit line labels, custom-map shapes |
+| 16 | plate cameras, their clusters, speed cameras, transit line labels, custom-map shapes, the shape being drawn |
 | 14 | accuracy disc, transit lines |
 | 12 | me, parking, saved, Street View |
 
@@ -3026,6 +3045,9 @@ collision. Hidden in the overview with the other `vela-nav-` layers.
   In a drive the box only moves below `HOUSE_NUMBER_NAV_MAX_MPS` (4.5 m/s): a filter change
   re-lays out every basemap tile, and the follow camera reaches the box's edge every few
   hundred meters.
+  The box does not move while the layer is hidden (an address overlay mounted, the overview, a
+  turn): the relayout would be for nothing on screen. The address-overlay effect moves it in
+  the frame it shows the layer again; otherwise the next idle work does.
   Pixel 4a, Montreal: 33 to 50-59 fps at z19 on a dense residential block, 40 to 52 at z20.5
   downtown.
 
@@ -3087,6 +3109,10 @@ lane; bike lanes 1.2 m, set 0.9 m outside), center and lane lines, crosswalks, s
 before the junction, `ARROW_M` 8, set by eye). Lines stop `JUNCTION_TRIM_M` (8 m) short of
 intersections. The crosswalk dash is 0.4 of its width, since at 0.22 MapLibre's dash texture
 draws nothing, and arrows are bitmaps, since as SDF icons the strokes thinned to nothing.
+
+The dial is polled from an effect that restarts at every style load, for every user. Mode 2
+fetches through one HTTP client per process (`paintedRoadsHttp`), built on the first fetch: a
+client built in that effect would set up TLS on the main thread at each style load.
 
 Bake: `scripts/bake-painted-roads.sh <pbf> <name> --upload` (osmium, `PaintedRoadsBakeTest` with
 `-DvelaPaintIn/-DvelaPaintOut`, tippecanoe z15 layer `paint`) onto the `painted-roads` release.

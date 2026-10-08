@@ -162,6 +162,10 @@ private const val ROUTE_TRAFFIC_LAYER = "vela-route-traffic"
 // A pending copy is drawn at this opacity: at 0 MapLibre skips the layer and never tiles its source.
 private const val ROUTE_PENDING_OPACITY = 0.004f
 private const val ROUTE_PENDING_MAX_PASSES = 40
+// A pending cut piece shorter than this on screen (dp) is shown without waiting for its tiles.
+// The tiler drops a line under 0.375 px of its tile (0.75 dp at most on screen), so the tiles of
+// a piece that small never report, and a few dp under the arrow cannot be seen to flash.
+private const val ROUTE_PENDING_MIN_DP = 4.0
 // Camera-idle work while the camera keeps moving: at most once a second, plus once this long
 // after the last idle event (see the idle listener).
 // The 3D puck overlay waits this long after a gesture's last camera move before it replaces the
@@ -403,10 +407,15 @@ private fun houseNumberMinZoom(): Float = app.vela.ui.HouseNumbers.minZoom()
  * filter is a box one screen wider than the view on every side, moved when the settled view comes
  * within a quarter screen of its edge or has shrunk to under a fifth of it. A filter change re-lays
  * the layer on a worker, so this runs from the throttled idle work, never per frame.
+ *
+ * Not while the layer is hidden (an address overlay draws the numbers instead, the nav overview, a
+ * turn): MapLibre re-lays out every basemap tile for a filter change on a hidden layer too. Whoever
+ * shows the layer again calls this in the same frame, or the next idle work does.
  */
 private fun restrictHouseNumbers(map: MapLibreMap, view: MLLatLngBounds, applied: Array<Any?>) {
     val style = map.style ?: return
     val layer = style.getLayer("vela-housenumber") as? SymbolLayer ?: return
+    if (layer.visibility.value == Property.NONE) return
     if (map.cameraPosition.zoom < houseNumberMinZoom() - 0.7) return
     val h = view.latitudeNorth - view.latitudeSouth
     val w = view.longitudeEast - view.longitudeWest
@@ -712,6 +721,11 @@ private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.Cancelab
     override fun onCancel() { if (flightDepth[0] > 0) flightDepth[0]-- }
 }
 
+// The painted-roads test dial's own client (Overpass or `debug.vela.paintUrl`, never Google). One
+// per process, built on the first fetch: a client per style load sets up TLS on the main thread at
+// every theme flip, for a dial that is off outside a developer's phone.
+private val paintedRoadsHttp by lazy { okhttp3.OkHttpClient() }
+
 /**
  * MapLibre wrapped for Compose. Three camera behaviors:
  *  - [navMode]: heading-up, tilted, close follow (drives like a nav app);
@@ -994,7 +1008,9 @@ fun VelaMapView(
     val ovlGateHook = remember { arrayOfNulls<() -> Unit>(1) } // the gate, callable from effects
     val ovlProbeRun = remember { arrayOfNulls<Runnable>(1) } // a probe sequence in flight (one point per frame)
     val tilted3d = remember { mutableStateOf(false) } // camera tilted enough for 3D buildings (hysteresis)
-    val b3dShown = remember { booleanArrayOf(false) }
+    val b3dStyle = remember { arrayOfNulls<Style>(1) } // the style whose building-3d layer is visible (raised or at opacity 0)
+    val b3dRaised = remember { booleanArrayOf(false) } // ... and drawn, at opacity 1
+    val houseNumberBox = remember { arrayOfNulls<Any>(2) } // [style it was applied to, the box], see restrictHouseNumbers
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
@@ -2347,9 +2363,20 @@ fun VelaMapView(
         runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains, darkTheme) }
         runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
     }
-    LaunchedEffect(shapes, drawDots, styleRef) {
+    // The shape being drawn is the last of `shapes` once it has two points (MapSurface appends it).
+    // It draws from a source of its own, so a dragged point uploads that one shape: on one shared
+    // source every move event would re-upload and re-tile every saved shape.
+    val shapeDraft = drawDots?.takeIf { it.size >= 2 }?.let { dots ->
+        shapes.lastOrNull()?.takeIf { it.pts.size == dots.size * 2 && it.pts[0] == dots[0].lat && it.pts[1] == dots[0].lng }
+    }
+    val savedShapes = if (shapeDraft != null) shapes.dropLast(1) else shapes
+    LaunchedEffect(savedShapes, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
-        runCatching { ensureShapes(style, shapes, drawDots.orEmpty()) }.onFailure { android.util.Log.w("VelaShapes", "shapes: ${it.message}") }
+        runCatching { ensureShapes(style, savedShapes) }.onFailure { android.util.Log.w("VelaShapes", "shapes: ${it.message}") }
+    }
+    LaunchedEffect(shapeDraft, drawDots, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { ensureShapeDraft(style, shapeDraft, drawDots.orEmpty()) }.onFailure { android.util.Log.w("VelaShapes", "draft: ${it.message}") }
     }
     LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
@@ -2358,9 +2385,14 @@ fun VelaMapView(
         // The overlay statewide data covers what OSM has too — hide the basemap number layer while the overlay
         // is active, or the SAME address renders twice at a slight offset (device-seen: "5611" / "5607" doubled).
         runCatching {
-            style.getLayer("vela-housenumber")?.setProperties(
-                PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
-            )
+            val numbers = style.getLayer("vela-housenumber") ?: return@runCatching
+            val wasHidden = numbers.visibility.value == Property.NONE
+            numbers.setProperties(PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE))
+            // Shown again: its box stood still while it was hidden. Moved here it costs nothing
+            // more, the visibility change re-lays out the tiles in this frame anyway.
+            if (wasHidden && addressOverlays.isEmpty()) {
+                mapRef?.let { m -> restrictHouseNumbers(m, m.projection.visibleRegion.latLngBounds, houseNumberBox) }
+            }
         }
         // Over satellite imagery: white-with-black-halo like every other label (these layers
         // mount AFTER applySatelliteLabels' style-load sweep, so they style themselves).
@@ -2438,23 +2470,43 @@ fun VelaMapView(
     // leans every tower away from the screen center and over the streets beside it (Midtown),
     // with nothing a top-down view gains from it; flat, the footprints draw alone, as Google's do.
     // The change fades (opacity transition) so tilting does not pop the buildings in.
-    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn && !navMode && tilted3d.value
-    LaunchedEffect(buildings3d, styleRef) {
+    // The tilt gate is PAINT ONLY once the layer has been shown on a style: flat, it stays visible
+    // at opacity 0, which MapLibre skips at render. A visibility change re-lays out every basemap
+    // tile, which a gate on visibility pays twice per tilt. It is hidden outright only with the
+    // setting off and in a drive, where the car-mode strip above re-lays out the basemap in the
+    // same frame anyway. A walk or a ride keeps it at opacity 0.
+    val b3dKeep = app.vela.ui.Buildings3d.on.value && !satelliteOn && !driveNavNow
+    val buildings3d = b3dKeep && !navMode && tilted3d.value
+    LaunchedEffect(buildings3d, b3dKeep, styleRef) {
         runCatching {
-            val l = styleRef?.getLayer("building-3d") as? FillExtrusionLayer ?: return@runCatching
+            val style = styleRef ?: return@runCatching
+            val l = style.getLayer("building-3d") as? FillExtrusionLayer ?: return@runCatching
             l.fillExtrusionOpacityTransition = org.maplibre.android.style.layers.TransitionOptions(B3D_FADE_MS, 0)
-            if (buildings3d) {
-                l.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.fillExtrusionOpacity(1f))
-                b3dShown[0] = true
-            } else if (b3dShown[0]) {
-                b3dShown[0] = false
-                l.setProperties(PropertyFactory.fillExtrusionOpacity(0f))
-                kotlinx.coroutines.delay(B3D_FADE_MS + 60)
-                l.setProperties(PropertyFactory.visibility(Property.NONE))
-            } else {
-                // Never shown on this style: no fade to play, and the opacity is left at 0 so
-                // the first show fades in from nothing.
-                l.setProperties(PropertyFactory.visibility(Property.NONE), PropertyFactory.fillExtrusionOpacity(0f))
+            val inStyle = b3dStyle[0] === style // visible on this style, drawn or at opacity 0
+            when {
+                buildings3d -> {
+                    l.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.fillExtrusionOpacity(1f))
+                    b3dStyle[0] = style; b3dRaised[0] = true
+                }
+                // Flat again: a paint change, and the next tilt is one too.
+                inStyle && b3dKeep -> {
+                    l.setProperties(PropertyFactory.fillExtrusionOpacity(0f))
+                    b3dRaised[0] = false
+                }
+                // On screen and no longer wanted: fade, then hide.
+                inStyle && b3dRaised[0] -> {
+                    b3dStyle[0] = null; b3dRaised[0] = false
+                    l.setProperties(PropertyFactory.fillExtrusionOpacity(0f))
+                    kotlinx.coroutines.delay(B3D_FADE_MS + 60)
+                    // By id on the style: the layer object is not kept across the wait.
+                    style.getLayer("building-3d")?.setProperties(PropertyFactory.visibility(Property.NONE))
+                }
+                // Nothing drawn (never shown on this style, or at opacity 0): no fade to play, and
+                // the opacity is left at 0 so the next show fades in from nothing.
+                else -> {
+                    b3dStyle[0] = null; b3dRaised[0] = false
+                    l.setProperties(PropertyFactory.visibility(Property.NONE), PropertyFactory.fillExtrusionOpacity(0f))
+                }
             }
         }
     }
@@ -2927,7 +2979,6 @@ fun VelaMapView(
     // streamed; 2 = built on the phone for a ~650 m box (Overpass, or `debug.vela.paintUrl`).
     LaunchedEffect(styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
-        val http = okhttp3.OkHttpClient()
         var box: DoubleArray? = null
         var marks: List<app.vela.core.data.PaintedRoads.Mark> = emptyList()
         var mode = 0
@@ -2951,6 +3002,7 @@ fun VelaMapView(
                                 (m.invoke(null, "debug.vela.paintUrl") as? String).orEmpty().trim()
                             }.getOrDefault("")
                             val got = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                val http = paintedRoadsHttp // first use builds it, here on the IO thread
                                 if (url.isNotEmpty()) app.vela.core.data.PaintedRoads.fetchFrom(http, url)
                                 else runCatching { app.vela.core.data.PaintedRoads.fetch(http, nb[0], nb[1], nb[2], nb[3]) }.getOrNull()
                             }
@@ -3581,7 +3633,11 @@ fun VelaMapView(
                     var cutSwapped = false
                     if (slotState[1] >= 0) {
                         val ps = slotState[1]
-                        val blind = cutHi[ps] - cutLo[ps] < 1.0 || !onScreen(cutBox[ps])
+                        // Zoomed far out the piece is under ROUTE_PENDING_MIN_DP long and may be
+                        // in no tile (below about z6 it never is): waiting would cost the query
+                        // on all ROUTE_PENDING_MAX_PASSES frames of every slide. mPerPxHolder is
+                        // meters per dp.
+                        val blind = cutHi[ps] - cutLo[ps] < maxOf(1.0, mPerPxHolder[0] * ROUTE_PENDING_MIN_DP) || !onScreen(cutBox[ps])
                         if (!blind && tilesHold(cutSrcOf(ps), slotState[2])) slotState[3]++
                         // ROUTE_PENDING_MAX_PASSES is the backstop for a copy on screen whose tiles
                         // never report, so nothing stays stale.
@@ -4239,7 +4295,6 @@ fun VelaMapView(
                 // the gate itself (a val lambda can't name itself).
                 val idleEvents = intArrayOf(0) // camera-idle callbacks, counted for the VelaFps line
                 val idleWork = arrayOfNulls<() -> Unit>(1)
-                val houseNumberBox = arrayOfNulls<Any>(2) // [style it was applied to, the box]
                 val idleTrail = arrayOfNulls<Runnable>(1)
                 val idleWorkAt = longArrayOf(0L)
                 val ovlGateRef = arrayOfNulls<() -> Unit>(1)
@@ -7966,68 +8021,106 @@ private const val SHAPES_FILL = "vela-shapes-fill"
 private const val SHAPES_LINE = "vela-shapes-line"
 private const val SHAPES_LABEL = "vela-shapes-label"
 private const val SHAPES_AREA_LABEL = "vela-shapes-area-label"
+// The shape being drawn and its points: a source of their own, so moving a point uploads one shape.
+private const val SHAPES_DRAFT_SRC = "vela-shapes-draft-src"
+private const val SHAPES_DRAFT_FILL = "vela-shapes-draft-fill"
+private const val SHAPES_DRAFT_LINE = "vela-shapes-draft-line"
 
 /**
- * The lines and areas of imported custom maps (Google My Maps, issue #669), in the map's own
- * colors, under every label: an area's fill, then outlines and lines, then the shapes' names
- * (along a line, in the middle of an area). One GeoJSON source, rebuilt when the set changes.
+ * The sources and layers of [ensureShapes] and [ensureShapeDraft], added together once per style
+ * so their order never depends on which came first. Under every label: the saved areas' fill, the
+ * drawn area's, the saved outlines and lines, the drawn one's. On top: the saved shapes' names
+ * (along a line, in the middle of an area), then the drawn shape's points.
  */
-private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape>, dots: List<LatLng> = emptyList()) {
+private fun ensureShapeLayers(style: Style) {
+    if (style.getSource(SHAPES_SRC) != null) return
+    style.addSource(GeoJsonSource(SHAPES_SRC, GeoJsonOptions().withMaxZoom(16)))
+    style.addSource(GeoJsonSource(SHAPES_DRAFT_SRC, GeoJsonOptions().withMaxZoom(16)))
+    val below = firstSymbolLayerId(style)
+    val isArea = Expression.eq(Expression.get("area"), Expression.literal(true))
+    fun fill(id: String, src: String) = FillLayer(id, src).withFilter(isArea).withProperties(
+        PropertyFactory.fillColor(Expression.toColor(Expression.get("fill"))),
+        PropertyFactory.fillOpacity(Expression.get("fillOpacity")),
+    )
+    fun line(id: String, src: String) = LineLayer(id, src).withProperties(
+        PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+        PropertyFactory.lineOpacity(Expression.get("opacity")),
+        PropertyFactory.lineWidth(Expression.get("width")),
+        PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+    )
+    for (l in listOf(
+        fill(SHAPES_FILL, SHAPES_SRC), fill(SHAPES_DRAFT_FILL, SHAPES_DRAFT_SRC),
+        line(SHAPES_LINE, SHAPES_SRC), line(SHAPES_DRAFT_LINE, SHAPES_DRAFT_SRC),
+    )) {
+        if (below != null) style.addLayerBelow(l, below) else style.addLayer(l)
+    }
+    fun label(id: String, area: Boolean) = SymbolLayer(id, SHAPES_SRC)
+        .withFilter(if (area) isArea else Expression.not(isArea))
+        .withProperties(
+            PropertyFactory.textField(Expression.get("name")),
+            PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+            PropertyFactory.textSize(12f),
+            PropertyFactory.textColor(Expression.toColor(Expression.get("color"))),
+            PropertyFactory.textHaloColor("#FFFFFF"), PropertyFactory.textHaloWidth(1.4f),
+            PropertyFactory.symbolPlacement(if (area) Property.SYMBOL_PLACEMENT_POINT else Property.SYMBOL_PLACEMENT_LINE),
+        ).apply { minZoom = 12f }
+    style.addLayer(label(SHAPES_LABEL, area = false)); style.addLayer(label(SHAPES_AREA_LABEL, area = true))
+    // The points of a shape being drawn.
+    style.addLayer(
+        CircleLayer("vela-shapes-dots", SHAPES_DRAFT_SRC).withFilter(Expression.eq(Expression.get("dot"), Expression.literal(true))).withProperties(
+            PropertyFactory.circleRadius(5f), PropertyFactory.circleColor("#FFFFFF"),
+            PropertyFactory.circleStrokeWidth(2f), PropertyFactory.circleStrokeColor("#202124"),
+        ),
+    )
+}
+
+/** One shape as a feature: an area when closed with three points or more, else a line. [idx] is
+ *  what a tap on it hands to `onShapeTap`. */
+private fun shapeFeature(s: app.vela.core.model.MapShape, idx: Int): Feature? {
     fun hex(c: Long) = String.format("#%06X", c and 0xFFFFFF)
     fun alpha(c: Long) = ((c shr 24) and 0xFF) / 255f
+    val pts = s.pts.chunked(2).mapNotNull { if (it.size == 2) Point.fromLngLat(it[1], it[0]) else null }
+    if (pts.size < 2) return null
+    val f = if (s.closed && pts.size >= 3) {
+        val ring = if (pts.first() == pts.last()) pts else pts + pts.first()
+        Feature.fromGeometry(org.maplibre.geojson.Polygon.fromLngLats(listOf(ring)))
+    } else Feature.fromGeometry(LineString.fromLngLats(pts))
+    f.addBooleanProperty("area", s.closed && pts.size >= 3)
+    f.addNumberProperty("idx", idx)
+    f.addStringProperty("name", s.name)
+    f.addStringProperty("color", hex(s.color)); f.addNumberProperty("opacity", alpha(s.color).coerceAtLeast(0.35f))
+    f.addNumberProperty("width", s.width)
+    val fillC = s.fill ?: s.color
+    f.addStringProperty("fill", hex(fillC)); f.addNumberProperty("fillOpacity", if (s.fill != null) alpha(fillC).coerceIn(0.08f, 0.7f) else 0f)
+    return f
+}
+
+/**
+ * The lines and areas of imported custom maps (Google My Maps, issue #669) and of saved drawings,
+ * in their own colors. One GeoJSON source, rebuilt when the set changes. The shape being drawn is
+ * not in it (see [ensureShapeDraft]).
+ */
+private fun ensureShapes(style: Style, shapes: List<app.vela.core.model.MapShape>) {
     if (style.getSource(SHAPES_SRC) == null) {
-        if (shapes.isEmpty() && dots.isEmpty()) return
-        style.addSource(GeoJsonSource(SHAPES_SRC, GeoJsonOptions().withMaxZoom(16)))
-        val below = firstSymbolLayerId(style)
-        val isArea = Expression.eq(Expression.get("area"), Expression.literal(true))
-        val fill = FillLayer(SHAPES_FILL, SHAPES_SRC).withFilter(isArea).withProperties(
-            PropertyFactory.fillColor(Expression.toColor(Expression.get("fill"))),
-            PropertyFactory.fillOpacity(Expression.get("fillOpacity")),
-        )
-        val line = LineLayer(SHAPES_LINE, SHAPES_SRC).withProperties(
-            PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
-            PropertyFactory.lineOpacity(Expression.get("opacity")),
-            PropertyFactory.lineWidth(Expression.get("width")),
-            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-        )
-        if (below != null) { style.addLayerBelow(fill, below); style.addLayerBelow(line, below) } else { style.addLayer(fill); style.addLayer(line) }
-        fun label(id: String, area: Boolean) = SymbolLayer(id, SHAPES_SRC)
-            .withFilter(if (area) isArea else Expression.not(isArea))
-            .withProperties(
-                PropertyFactory.textField(Expression.get("name")),
-                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
-                PropertyFactory.textSize(12f),
-                PropertyFactory.textColor(Expression.toColor(Expression.get("color"))),
-                PropertyFactory.textHaloColor("#FFFFFF"), PropertyFactory.textHaloWidth(1.4f),
-                PropertyFactory.symbolPlacement(if (area) Property.SYMBOL_PLACEMENT_POINT else Property.SYMBOL_PLACEMENT_LINE),
-            ).apply { minZoom = 12f }
-        style.addLayer(label(SHAPES_LABEL, area = false)); style.addLayer(label(SHAPES_AREA_LABEL, area = true))
-        // The points of a shape being drawn.
-        style.addLayer(
-            CircleLayer("vela-shapes-dots", SHAPES_SRC).withFilter(Expression.eq(Expression.get("dot"), Expression.literal(true))).withProperties(
-                PropertyFactory.circleRadius(5f), PropertyFactory.circleColor("#FFFFFF"),
-                PropertyFactory.circleStrokeWidth(2f), PropertyFactory.circleStrokeColor("#202124"),
-            ),
-        )
+        if (shapes.isEmpty()) return
+        ensureShapeLayers(style)
     }
-    val features = shapes.mapNotNull { s ->
-        val pts = s.pts.chunked(2).mapNotNull { if (it.size == 2) Point.fromLngLat(it[1], it[0]) else null }
-        if (pts.size < 2) return@mapNotNull null
-        val f = if (s.closed && pts.size >= 3) {
-            val ring = if (pts.first() == pts.last()) pts else pts + pts.first()
-            Feature.fromGeometry(org.maplibre.geojson.Polygon.fromLngLats(listOf(ring)))
-        } else Feature.fromGeometry(LineString.fromLngLats(pts))
-        f.addBooleanProperty("area", s.closed && pts.size >= 3)
-        f.addNumberProperty("idx", shapes.indexOf(s))
-        f.addStringProperty("name", s.name)
-        f.addStringProperty("color", hex(s.color)); f.addNumberProperty("opacity", alpha(s.color).coerceAtLeast(0.35f))
-        f.addNumberProperty("width", s.width)
-        val fillC = s.fill ?: s.color
-        f.addStringProperty("fill", hex(fillC)); f.addNumberProperty("fillOpacity", if (s.fill != null) alpha(fillC).coerceIn(0.08f, 0.7f) else 0f)
-        f
+    val features = shapes.mapNotNull { s -> shapeFeature(s, shapes.indexOf(s)) }
+    (style.getSource(SHAPES_SRC) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(features))
+}
+
+/** The shape being drawn and a dot per point of it, on a source of their own: this, not the saved
+ *  set, is what a dragged point uploads on every move event. Its index is never read (while
+ *  drawing, a tap adds a point). */
+private fun ensureShapeDraft(style: Style, draft: app.vela.core.model.MapShape?, dots: List<LatLng>) {
+    if (style.getSource(SHAPES_DRAFT_SRC) == null) {
+        if (draft == null && dots.isEmpty()) return
+        ensureShapeLayers(style)
     }
-    val dotFeatures = dots.map { Feature.fromGeometry(Point.fromLngLat(it.lng, it.lat)).apply { addBooleanProperty("dot", true); addBooleanProperty("area", false); addStringProperty("name", "") } }
-    (style.getSource(SHAPES_SRC) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(features + dotFeatures))
+    val dotFeatures = dots.map { Feature.fromGeometry(Point.fromLngLat(it.lng, it.lat)).apply { addBooleanProperty("dot", true); addBooleanProperty("area", false) } }
+    (style.getSource(SHAPES_DRAFT_SRC) as? GeoJsonSource)?.setGeoJson(
+        FeatureCollection.fromFeatures(listOfNotNull(draft?.let { shapeFeature(it, -1) }) + dotFeatures),
+    )
 }
 
 private fun firstSymbolLayerId(style: Style): String? =

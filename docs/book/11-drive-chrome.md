@@ -160,7 +160,9 @@ the cut, even every 150 ms, drops a map frame each time and the whole map vibrat
 over the whole route smears the cut across `routeLength / 256` meters.
 
 - A slide uploads into a hidden second copy of the piece and swaps once the map's tiles report
-  it, so a new gradient is never painted on old geometry.
+  it, so a new gradient is never painted on old geometry. A cut piece off screen, or under
+  `ROUTE_PENDING_MIN_DP` (4 dp) long on it, swaps at once: zoomed far out it is in no tile, and
+  each check is a blocking call to the render thread (SPEC 4.8).
 - A change of color, of the trail setting or of traffic repaints the pieces where they lie
   (`paintReset`). Re-anchoring them showed a strip of the wrong color behind the arrow, because
   paint lands at once and geometry a few frames later.

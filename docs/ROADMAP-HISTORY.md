@@ -11,6 +11,14 @@ says so.
 
 ### October 2026
 
+- Tilting the map no longer re-lays out the basemap twice per tilt: once shown, the 3D
+  buildings fade by opacity instead of being hidden.
+- The house-number box stands still where an address overlay draws the numbers. Moving it
+  there re-laid out every basemap tile for nothing.
+- Dragging a point of a drawing uploads that drawing alone. Each move used to re-upload every
+  saved shape.
+- Zoomed far out in a drive, a slide of the route's cut piece no longer runs 40 blocking tile
+  queries.
 - A place starred or put in a list from a map label before its listing loaded, or offline,
   takes its listing when it is next opened online or its label is tapped again, under the name
   it was saved with. It used to reopen as a name on a point for good.
