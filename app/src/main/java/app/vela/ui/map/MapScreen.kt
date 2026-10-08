@@ -6043,6 +6043,11 @@ private fun ListsSheet(
     // D-pad-first initial focus (hard rule, docs/dpad.md): a raw Dialog must place focus
     // itself - land it on the New-list button so the menu opens usable with no wasted press.
     val listsAutoFocus = app.vela.ui.rememberDpadAutoFocus()
+    // Opened from the search page, the search field keeps its focus behind this dialog, and a
+    // focused field keeps the search page up over whatever is opened next. Every way out to the
+    // map drops that focus first, as a pick on the search page does. Read here, outside the
+    // dialog, this is the screen's focus manager rather than the dialog's.
+    val screenFocus = androidx.compose.ui.platform.LocalFocusManager.current
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
@@ -6056,7 +6061,7 @@ private fun ListsSheet(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    if (vm != null) TextButton(onClick = { vm.startDrawing(); onDismiss() }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
+                    if (vm != null) TextButton(onClick = { screenFocus.clearFocus(); vm.startDrawing(); onDismiss() }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
                         Icon(Sym.Draw, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.draw_action))
@@ -6081,7 +6086,7 @@ private fun ListsSheet(
                             Modifier
                                 .fillMaxWidth()
                                 .dpadHighlight(RoundedCornerShape(8.dp))
-                                .clickable { onOpenList(list.id) }
+                                .clickable { screenFocus.clearFocus(); onOpenList(list.id) }
                                 .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -6145,7 +6150,7 @@ private fun ListsSheet(
                                 icon = when (isPicked) { null -> Sym.Star; true -> Sym.CheckCircle; false -> SymOutlined.RadioButtonUnchecked },
                                 title = sp.name, sub = sp.address, pinned = sp.pinned,
                                 onOpen = {
-                                    if (pickedNow == null) { onDismiss(); vm.selectSaved(sp) }
+                                    if (pickedNow == null) { screenFocus.clearFocus(); onDismiss(); vm.selectSaved(sp) }
                                     else pickedSaved = if (sp.id in pickedNow) pickedNow - sp.id else pickedNow + sp.id
                                 },
                                 onPin = { vm.setSavedPlacePinned(sp.id, !sp.pinned) },
@@ -6163,7 +6168,7 @@ private fun ListsSheet(
                                     r.destLabel.takeIf { it.isNotBlank() },
                                 ).joinToString(" · ").ifBlank { null },
                                 pinned = r.pinned,
-                                onOpen = { onDismiss(); vm.openSavedRoute(r) },
+                                onOpen = { screenFocus.clearFocus(); onDismiss(); vm.openSavedRoute(r) },
                                 onPin = { vm.setSavedRoutePinned(r.id, !r.pinned) },
                             )
                         }
