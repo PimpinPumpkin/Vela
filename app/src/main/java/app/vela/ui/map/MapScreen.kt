@@ -6796,7 +6796,7 @@ private fun navRoadLabel(state: MapUiState): String? {
 
 /** The road you are on, for the "Inside the bottom bar" road-name placement (issue #553), or null
  *  when that placement is not chosen or there is nothing to show. Same source as the floating
- *  pill: the leg's road, or the last silent rename already passed on it, ref first. */
+ *  pill, and the same name-or-number choice. */
 private fun barRoadName(state: MapUiState): String? {
     if (app.vela.ui.RoadLabel.mode.value != app.vela.ui.RoadLabel.IN_BAR) return null
     if (!state.navigating || state.previewStepIndex != null) return null
