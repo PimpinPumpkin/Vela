@@ -9,7 +9,7 @@ Changelog: https://github.com/PimpinPumpkin/Vela/releases
 Name: Vela Maps
 Summary: Google Maps data without Google's apps or tracking
 Description: |-
-  Vela is a degoogled maps app in the NewPipe spirit: open vector tiles for the
+  Vela is a hybrid of OpenStreetMap and Google Maps in the NewPipe spirit: open vector tiles for the
   basemap, and your device talks to Google's public web endpoints directly for
   places, hours, reviews, photos, transit and live traffic. No Google account,
   no Play Services, no API key, no backend server.
