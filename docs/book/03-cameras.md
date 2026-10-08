@@ -116,9 +116,9 @@ so a traffic refresh of the same course does not repeat an alert. A drive starte
 launch waits up to 60 s for the dataset. The card shows for 6 s. Both switches work with the map
 layer off.
 
-The speed camera warning needs the Speed cameras layer on and has no card. Its cameras come from
-a 150 m corridor of the road-features file and must project onto the route within 40 m. They
-carry no direction.
+The speed camera warning needs the Speed cameras layer on and shows the same card. Its cameras
+come from a 150 m corridor of the road-features file and must project onto the route within
+40 m. They carry no direction.
 
 A warning turned on mid-drive applies to the current route at once. Spoken lines follow the
 spoken-directions setting. A recorded-trip replay raises no camera alerts.
