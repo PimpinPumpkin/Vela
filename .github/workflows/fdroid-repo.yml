@@ -46,7 +46,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: fdroid-repo
+  # A run the job's own gate below will skip takes a group of its own. In the shared group it
+  # canceled the real run in progress and then did nothing: a pull request closing fired a
+  # workflow_run that killed the rebuild a push to main had just started (2026-10-08), and a
+  # data release could do the same.
+  group: ${{ ((github.event_name == 'workflow_run' && !(github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event != 'push')) || (github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'v'))) && format('fdroid-repo-skip-{0}', github.run_id) || 'fdroid-repo' }}
   # true (was false): each run rebuilds the entire index + site from scratch, so only the
   # NEWEST run's output matters. Superseding an overlapping run is lossless and stops two
   # deploys from racing the single github-pages environment (the BlobNotFound failure mode).

@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- The F-Droid index job is no longer canceled by a run that would have skipped itself. A
+  push that changed the docs, or a release, could lose its rebuild to one.
 - A link that names a place at a coordinate opens that coordinate under the name when the
   search finds nothing near it, instead of a namesake far away.
 - Typing in the search box on a physical keyboard works past the first letter. The first key
