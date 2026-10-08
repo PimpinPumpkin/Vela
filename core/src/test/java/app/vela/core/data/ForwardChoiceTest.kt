@@ -61,4 +61,14 @@ class ForwardChoiceTest {
         val back = route(north = false, 170.0, 180.0); val on = route(north = true, 174.0, 185.0)
         assertEquals(listOf(on), RouteGeometry.forwardChoice(listOf(back, on), north, null))
     }
+
+    @Test fun `the open router's time is put on Google's clock before it is compared`() {
+        // Best: 2 km in 40 min starting back. The way round is 2.8 km, which the open router
+        // calls 39 min: a minute "shorter" raw, 16 min longer at the best route's speed.
+        val back = route(north = false, 40.0, 55.0); val far = route(north = true, 47.0, 75.0)
+        assertTrue("raw, it looked like the cheap way on", RouteGeometry.forwardChoice(listOf(back, far), north, 39.0 * 60).isEmpty())
+        assertSame(back, RouteGeometry.forwardChoice(listOf(back, far), north, 39.0 * 60, 2_800.0).first())
+        // The same length as the best route: nothing to correct, the way round is taken.
+        assertTrue(RouteGeometry.forwardChoice(listOf(back, far), north, 41.0 * 60, 2_050.0).isEmpty())
+    }
 }

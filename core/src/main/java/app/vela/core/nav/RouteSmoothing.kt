@@ -226,8 +226,7 @@ object RouteSmoothing {
     private fun pointAt(p: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (m <= 0.0) return p[0]
         if (m >= cum[cum.size - 1]) return p[p.size - 1]
-        var k = 1
-        while (cum[k] < m) k++
+        val k = RouteProjection.segmentEnd(cum, m)
         val seg = cum[k] - cum[k - 1]
         if (seg <= 0.0) return p[k]
         val t = (m - cum[k - 1]) / seg

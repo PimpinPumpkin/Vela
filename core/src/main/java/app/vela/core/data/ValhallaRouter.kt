@@ -252,7 +252,7 @@ object ValhallaRouter {
         }.onFailure { onMatchFail?.invoke("no reply: ${it.javaClass.simpleName}") }.getOrNull() ?: return null
         val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
         val check = NameCheck(edges)
-        val matched = parse(text, check).firstOrNull() ?: run { onMatchFail?.invoke("unreadable reply"); return null }
+        val matched = runCatching { parse(text, check).firstOrNull() }.getOrNull() ?: run { onMatchFail?.invoke("unreadable reply"); return null }
         // A match that leaves the line for a short way in the middle (the other side of a big
         // junction, a slip road) is still the match for the rest: throwing it away left 8 km of a
         // captured trip with bare turns over 90 m of disagreement. It is kept, and the caller is
@@ -354,7 +354,9 @@ object ValhallaRouter {
     }
 
     /** Public for the parser test. */
-    fun parseEdges(text: String): List<Edge>? {
+    fun parseEdges(text: String): List<Edge>? = runCatching { parseEdgesOrThrow(text) }.getOrNull()
+
+    private fun parseEdgesOrThrow(text: String): List<Edge>? {
         val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return null
         val pts = root["shape"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it, PRECISION) } ?: return null
         val out = root["edges"]?.jsonArray?.mapNotNull { el ->

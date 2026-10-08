@@ -64,14 +64,26 @@ object RouteProjection {
     fun signalIsOnRoute(poly: List<LatLng>, cum: DoubleArray, loc: LatLng): Boolean =
         alongMeters(poly, cum, loc, SIGNAL_ON_ROUTE_M) != null
 
+    /** The first index from 1 whose cumulative length reaches [m], or the last index: the end of
+     *  the segment [m] falls on. A binary search, because callers ask for points all along a
+     *  line and a scan from the start made that quadratic in the line's length. */
+    fun segmentEnd(cum: DoubleArray, m: Double): Int {
+        var lo = 1
+        var hi = cum.size - 1
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (cum[mid] < m) lo = mid + 1 else hi = mid
+        }
+        return lo
+    }
+
     /** The point [m] meters along [poly] (clamped to its ends). */
     fun pointAt(poly: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (poly.isEmpty()) return LatLng(0.0, 0.0)
         if (poly.size == 1 || m <= 0.0) return poly.first()
         val total = cum.last()
         if (m >= total) return poly.last()
-        var i = 1
-        while (i < cum.size - 1 && cum[i] < m) i++
+        val i = segmentEnd(cum, m)
         val seg = cum[i] - cum[i - 1]
         val f = if (seg <= 0.0) 0.0 else (m - cum[i - 1]) / seg
         val a = poly[i - 1]; val b = poly[i]

@@ -20,8 +20,9 @@ object RoadNameTileSource {
     private const val TILEJSON = "https://tiles.openfreemap.org/planet"
     private const val TEMPLATE_TTL_MS = 6 * 60 * 60 * 1000L
 
+    // Short: a tile is tens of kilobytes, and the route is waiting on this with a deadline of its own.
     private val http = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS).readTimeout(8, TimeUnit.SECONDS).callTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(3, TimeUnit.SECONDS).readTimeout(3, TimeUnit.SECONDS).callTimeout(4, TimeUnit.SECONDS)
         .build()
     @Volatile private var template: String? = null
     @Volatile private var templateAt = 0L
@@ -37,20 +38,27 @@ object RoadNameTileSource {
         }
         val tpl = template() ?: return@withContext null
         val url = tpl.replace("{z}", "$z").replace("{x}", "$x").replace("{y}", "$y")
-        runCatching {
-            http.newCall(Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()).execute()
-                .use { r -> if (r.isSuccessful) r.body?.bytes() else null }
-        }.getOrNull()
+        get(url)
     }
 
-    private fun template(): String? {
+    /** The body of [url], or null. Cancelling the caller cancels the request: a blocking call
+     *  would hold a route that has given up on its street names until the socket timed out. */
+    private suspend fun get(url: String): ByteArray? = kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+        val call = http.newCall(Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build())
+        cont.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { if (cont.isActive) cont.resumeWith(Result.success(null)) }
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val bytes = runCatching { response.use { r -> if (r.isSuccessful) r.body?.bytes() else null } }.getOrNull()
+                if (cont.isActive) cont.resumeWith(Result.success(bytes))
+            }
+        })
+    }
+
+    private suspend fun template(): String? {
         val now = System.currentTimeMillis()
         template?.let { if (now - templateAt < TEMPLATE_TTL_MS) return it }
-        val t = runCatching {
-            http.newCall(Request.Builder().url(TILEJSON).header("User-Agent", VelaConfig.VELA_UA).build()).execute().use { r ->
-                if (!r.isSuccessful) null else JSONObject(r.body!!.string()).getJSONArray("tiles").getString(0)
-            }
-        }.getOrNull()
+        val t = get(TILEJSON)?.let { runCatching { JSONObject(String(it)).getJSONArray("tiles").getString(0) }.getOrNull() }
         if (t != null) { template = t; templateAt = now }
         return t ?: template
     }

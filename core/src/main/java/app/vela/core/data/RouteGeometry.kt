@@ -1013,9 +1013,12 @@ object RouteGeometry {
      *
      * The result leads with the route to follow. Empty means the open router's own route, which
      * was asked WITH the heading and usually goes round the block: [openSeconds] is its time,
-     * free of traffic, compared with the best route's time free of traffic.
+     * free of traffic, compared with the best route's time free of traffic. The open router's
+     * clock runs fast, so with [openMeters] its time is first put on Google's: the route's
+     * length at the best route's average speed, within the 0.5 to 3 the other rebasing uses.
+     * Raw, a way round that was really nine minutes longer read as a minute shorter.
      */
-    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?): List<Route> {
+    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?, openMeters: Double? = null): List<Route> {
         if (google.isEmpty()) return google
         fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
         val best = google.minByOrNull { eta(it) }!!
@@ -1024,7 +1027,11 @@ object RouteGeometry {
         val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(best) * FORWARD_MAX_EXTRA_SHARE)
         val affordable = forward.filter { eta(it) - eta(best) <= allowance }
         if (affordable.isNotEmpty()) return affordable
-        if (openSeconds != null && openSeconds - best.durationSeconds <= allowance) return emptyList()
+        if (openSeconds != null && openSeconds > 0.0) {
+            val cal = if (openMeters != null && openMeters > 0.0 && best.distanceMeters > 0.0 && best.durationSeconds > 0.0)
+                ((openMeters / openSeconds) / (best.distanceMeters / best.durationSeconds)).coerceIn(0.5, 3.0) else 1.0
+            if (openSeconds * cal - best.durationSeconds <= allowance) return emptyList()
+        }
         return listOf(best) + google.filter { it !== best }
     }
 

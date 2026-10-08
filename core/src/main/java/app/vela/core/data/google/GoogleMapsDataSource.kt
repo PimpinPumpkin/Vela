@@ -1017,7 +1017,8 @@ class GoogleMapsDataSource @Inject constructor(
             openLine = openRaw.firstOrNull()?.polyline
             openEdgesD = if (mode == TravelMode.DRIVE && openRaw.firstOrNull()?.source == RouteSource.OSRM)
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                    app.vela.core.data.ValhallaRouter.edges(http, openRaw.first().polyline, timeoutMs = if (urgent) 1_000 else 2_500)
+                    // A reply in a shape the parser does not know is no answer, not a failed route.
+                    runCatching { app.vela.core.data.ValhallaRouter.edges(http, openRaw.first().polyline, timeoutMs = if (urgent) 1_000 else 2_500) }.getOrNull()
                 } else null
             val avoidWanted = (avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE
             if (bounded && openRaw.isEmpty()) {
@@ -1081,7 +1082,7 @@ class GoogleMapsDataSource @Inject constructor(
             // a Google route that starts against it is set aside when the open router answered,
             // unless going on costs minutes more than turning around (RouteGeometry.forwardChoice).
             val google = if (departBearingDeg != null && openRaw.isNotEmpty()) {
-                val chosen = RouteGeometry.forwardChoice(googleAll, departBearingDeg, openRaw.firstOrNull()?.durationSeconds)
+                val chosen = RouteGeometry.forwardChoice(googleAll, departBearingDeg, openRaw.firstOrNull()?.durationSeconds, openRaw.firstOrNull()?.distanceMeters)
                 val against = googleAll.count { RouteGeometry.startsAgainst(it.polyline, departBearingDeg) }
                 if (against > 0) diag.record(
                     "directions",
@@ -1236,9 +1237,15 @@ class GoogleMapsDataSource @Inject constructor(
                 app.vela.core.data.naming.HybridRoute.stitch(gTop!!, openUsed, named.map { it.first to it.second!! }, untrusted.toList())
                     ?.let { r -> r.copy(drawPolyline = app.vela.core.data.naming.HybridRoute.drawLine(gTop.polyline, openUsed.polyline, hybridStretches, matchedShapes)) }
             }
+            // Anything the matching or the stitch throws costs the hybrid, never the route: the
+            // paths below it still answer. (A cancellation is the deadline or the caller, and passes.)
+            suspend fun hybridOrNull(online: Boolean): Route? = try { hybridOf(online) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+                runCatching { android.util.Log.w("VelaDirections", "hybrid failed: ${t.javaClass.simpleName}") }
+                null
+            }
             val hybrid = if (hybridStretches.isEmpty()) null else
-                kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOf(online = true) }
-                    ?: run { stretchSource.fill(0); stretchNames.fill(0); untrusted.clear(); hybridOf(online = false) }
+                kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOrNull(online = true) }
+                    ?: run { stretchSource.fill(0); stretchNames.fill(0); untrusted.clear(); matchedShapes.clear(); hybridOrNull(online = false) }
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gTop?.distanceMeters?.toInt()} m, " +

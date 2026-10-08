@@ -256,6 +256,12 @@ signed file the app fetches at launch (SPEC 11).
   `isReturnDefaultValues` is set.
 - aapt un-gzips and renames an asset ending in `.gz`. Use a neutral extension.
 - `PolylineCodec` handles 5, 6 and 7 decimals. Keep its accumulators 64-bit.
+- A "changed since last frame" test against a value that starts as NaN is never true. Test
+  `isNaN()` first.
+- `File.renameTo` fails across volumes, and the cache folder is always internal. Stage a
+  download beside its target, and move the old copy aside before the swap, never delete it.
+- A point at a distance along a line is `RouteProjection.pointAt` (a binary search). A scan
+  from the start inside a loop over the same line is quadratic on a long route.
 
 ### Network
 

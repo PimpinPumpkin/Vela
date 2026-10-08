@@ -1451,7 +1451,9 @@ LADDER_SNAP_RESERVE_MS       6_000   an escalated fetch stops waiting for Google
   router answered, so the hybrid cannot tell a moving car to turn around. `forwardChoice`
   limits what that may cost: a forward Google route within `FORWARD_MAX_EXTRA_S` (180 s) or
   `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
-  is that close without traffic, else the best route, turn-around and all.
+  is that close without traffic, else the best route, turn-around and all. The open router's
+  time is first put on Google's clock (its length at the best route's average speed, factor
+  held to 0.5 to 3), because its own free-flow time runs fast.
 - A reroute that lands after the driver is back on the original route is discarded
   (`route === fromRoute && onRouteStreak >= BACK_ON_COURSE_HITS`). One grazing fix is not enough.
 - A provisional route is never driven raw. `NavSession.driveable` names a provisional top

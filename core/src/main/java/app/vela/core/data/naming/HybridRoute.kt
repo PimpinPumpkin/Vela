@@ -258,7 +258,10 @@ object HybridRoute {
                 // by more. Never before the turn placed just before it: the order is the matcher's.
                 val tripEnd = (s.fromM <= 0.0 && byLength < TRIP_END_M) || (s.toM >= total - 1.0 && byLength > total - TRIP_END_M)
                 val reach = if (tripEnd) PLACE_REACH_END_M else maxOf(PLACE_REACH_M, prevLen * 0.08)
-                val a = (alongNear(g, cum, man.location, maxOf(byLength - reach, lastPlaced), byLength + reach, SNAP_M) ?: byLength).coerceAtLeast(lastPlaced)
+                // (The window can come out empty: a dropped flat turn moves lastPlaced on and not
+                // the drift, so the turn before it can sit past where the lengths put this one.)
+                val lo = maxOf(byLength - reach, lastPlaced)
+                val a = (alongNear(g, cum, man.location, lo, maxOf(byLength + reach, lo), SNAP_M) ?: byLength).coerceAtLeast(lastPlaced)
                 lastPlaced = a
                 // Where the match is known to be off the line, nothing it says is used; the
                 // line's own corners are read there instead (below).
@@ -422,6 +425,7 @@ object HybridRoute {
     /** Along-distance of the point of [line] nearest [p] between [lo] and [hi] meters along it,
      *  or null when nothing there is within [tolM]. */
     private fun alongNear(line: List<LatLng>, cum: DoubleArray, p: LatLng, lo: Double, hi: Double, tolM: Double): Double? {
+        if (hi < lo) return null
         val k = kotlin.math.cos(Math.toRadians(p.lat))
         var best: Double? = null
         var bestD = tolM
@@ -450,8 +454,7 @@ object HybridRoute {
     private fun pointAt(line: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (m <= 0.0) return line.first()
         if (m >= cum.last()) return line.last()
-        var i = 1
-        while (i < cum.size - 1 && cum[i] < m) i++
+        val i = app.vela.core.nav.RouteProjection.segmentEnd(cum, m)
         val seg = cum[i] - cum[i - 1]
         val f = if (seg <= 0.0) 0.0 else (m - cum[i - 1]) / seg
         return LatLng(line[i - 1].lat + (line[i].lat - line[i - 1].lat) * f, line[i - 1].lng + (line[i].lng - line[i - 1].lng) * f)
