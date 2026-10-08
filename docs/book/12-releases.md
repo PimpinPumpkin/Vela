@@ -128,7 +128,9 @@ when it changes only comments or blank lines, or when its subject starts with `D
 would otherwise read as a feature.
 
 The app shows notes through `plainReleaseNotes`, which strips the Markdown marks and keeps the
-first 24 lines. A stable's generated list covers a week, can run past 24 lines, and reads like a
+first 24 lines. It drops the notes' own "What's new in <version>" heading, which the dialog and
+the update card already show as their title, and stops at "Everything since", so a stable's
+hand-written list is shown whole and the commits under it are left to "Full notes". A stable's generated list covers a week, can run past 24 lines, and reads like a
 git log. So a stable's notes lead with a short hand-written list of the main user-facing
 changes, above the generated one. The promotion cannot write that list, but it can be handed
 it: the `whats_new` input of `release.yml` and `promote-stable.yml` puts it under "What's new

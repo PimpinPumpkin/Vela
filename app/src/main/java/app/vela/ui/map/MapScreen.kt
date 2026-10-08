@@ -5882,15 +5882,22 @@ private fun UpdateCard(
 }
 
 /** Release notes as plain lines: headings, bullets and links stripped, the CI's own
- *  versionName/versionCode bookkeeping lines dropped. Keeps the first 24 lines. */
+ *  versionName/versionCode bookkeeping lines dropped. Keeps the first 24 lines. The notes' own
+ *  first heading ("What's new in 0.5.2426") is dropped, since whatever shows them titles them
+ *  the same way, and a stable's hand-written list ends where the generated one begins
+ *  ("Everything since ..."): the commits after it are what "Full notes" is for. */
 internal fun plainReleaseNotes(notes: String): String =
     notes.lines()
+        .let { l -> val i = l.indexOfFirst { NOTES_HEADING.containsMatchIn(it) }; if (i in 0..3) l.filterIndexed { k, _ -> k != i } else l }
+        .takeWhile { !it.trim().startsWith("Everything since ") && !it.trim().startsWith("Everything in this release") }
         .map { it.trim().trimStart('#').trim() }
         .map { it.replace(Regex("""^[-*]\s+"""), "\u2022 ") }
         .map { it.replace(Regex("""\[([^\]]+)\]\([^)]*\)"""), "$1").replace(Regex("""\*\*|__|`"""), "") }
         .filter { it.isNotBlank() && !it.startsWith("versionName", ignoreCase = true) && !it.startsWith("versionCode", ignoreCase = true) && !it.startsWith("<") }
         .take(24)
         .joinToString("\n")
+
+private val NOTES_HEADING = Regex("""^#*\s*What's (new|changed) in \d""")
 
 /** A notice pushed through the signed calibration channel - level-tinted, with an
  *  optional "Learn more" link and a per-id Dismiss. */
