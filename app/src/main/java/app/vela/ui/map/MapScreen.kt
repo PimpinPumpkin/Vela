@@ -2686,16 +2686,7 @@ fun MapScreen(
         if (state.showPsdsTip && state.selected == null && !searchOpen && !state.navigating &&
             state.resumeNavLabel == null
         ) {
-            InfoCard(
-                title = stringResource(R.string.mapscreen_psds_tip_title),
-                body = stringResource(R.string.mapscreen_psds_tip_body),
-                actionLabel = stringResource(R.string.mapscreen_got_it),
-                onAction = vm::dismissPsdsTip,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(16.dp),
-            )
+            LocationTip(state.tipNetworkLocation, vm)
         }
         // ONE notification area: the heads-up flash, downloads, the update card and pushed notices
         // all STACK here (each with its own dismiss) instead of painting over each other — the old
@@ -7083,6 +7074,27 @@ private fun BoxScope.ShapesOnlySaveBar(title: String, vm: MapViewModel) {
 /** An open custom map's layers for the results sheet's Layers chip (issue #669). */
 class MapLayers(val names: List<String>, val hidden: Set<String>, val onToggle: (String) -> Unit)
 
+
+/** The card shown when no location has come after a few seconds. With no network location on,
+ *  it names that setting and offers the system's location page; else it suggests PSDS. */
+@Composable
+private fun BoxScope.LocationTip(networkOff: Boolean, vm: MapViewModel) {
+    val context = LocalContext.current
+    InfoCard(
+        title = stringResource(if (networkOff) R.string.mapscreen_location_tip_title else R.string.mapscreen_psds_tip_title),
+        body = stringResource(if (networkOff) R.string.mapscreen_location_tip_body else R.string.mapscreen_psds_tip_body),
+        actionLabel = stringResource(R.string.mapscreen_got_it),
+        onAction = vm::dismissPsdsTip,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(16.dp),
+        pillLabel = if (networkOff) stringResource(R.string.mapscreen_location_tip_settings) else null,
+        onPill = if (networkOff) {
+            { runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+        } else null,
+    )
+}
 
 /** "Save list · 12 places", with the count's own plural. A function of its own keeps the call
  *  in MapScreen as small as the one it replaced. */

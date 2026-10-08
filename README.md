@@ -279,8 +279,9 @@ plainer words.
 
 - **Location:** Vela uses Android's own `LocationManager`, never Google's fused
   provider. On GrapheneOS, enabling PSDS (Settings → Location) drops the cold GPS
-  fix from about 30 seconds to a few. Vela shows a one-time tip when it notices a
-  slow fix.
+  fix from about 30 seconds to a few. Indoors GPS may not lock at all: turn on Network
+  location (Settings → Location → Location services). Vela shows a tip when no position
+  has come after a few seconds.
 
 ## Roadmap
 

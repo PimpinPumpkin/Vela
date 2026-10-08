@@ -102,6 +102,14 @@ while driving" (Settings > Navigation), which works but is newer and rougher tha
 That is what it is for. It runs on GrapheneOS, CalyxOS, /e/OS and any other de-Googled
 Android, with no Play Services and no microG.
 
+## Why can't Vela find me indoors?
+
+Vela asks Android for your position, and on a phone with no network location only GPS
+answers. GPS often cannot get a fix indoors. On GrapheneOS, turn on Network location in
+Settings > Location > Location services. Vela shows a tip with a button to that page when no
+position has come after a few seconds. PSDS, in the same settings, makes the GPS lock faster
+outdoors.
+
 ## Where do updates come from?
 
 GitHub releases, through Obtainium, the F-Droid repo or a manual APK. There is a weekly

@@ -371,6 +371,8 @@ data class MapUiState(
     val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
     val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
+    /** The no-fix tip should point at network location: the phone has none switched on. */
+    val tipNetworkLocation: Boolean = false,
     val showSearchThisArea: Boolean = false,
     val showSteps: Boolean = false,
     val previewStepIndex: Int? = null,
@@ -865,7 +867,13 @@ class MapViewModel @Inject constructor(
         locationJob = viewModelScope.launch {
             launch {
                 delay(8_000)
-                if (_state.value.myLocation == null) _state.update { it.copy(showPsdsTip = true) }
+                // No fix after eight seconds: say what usually helps. With no network location on,
+                // that is the thing to turn on (indoors GPS may never lock, issue 699); with it on,
+                // the wait is the GPS's own and PSDS shortens it.
+                if (_state.value.myLocation == null) {
+                    val noNetwork = !locationProvider.networkLocationOn()
+                    _state.update { it.copy(showPsdsTip = true, tipNetworkLocation = noNetwork) }
+                }
             }
             // Device-facing compass for the browse-mode heading cone (GPS bearing is junk at a
             // standstill). Pushed to state ONLY in browse and ONLY on a real change (>=2°), so it

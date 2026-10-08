@@ -227,6 +227,12 @@ class LocationProvider @Inject constructor(
             .apply()
     }
 
+    /** The system has a network location provider and it is on. Without one (GrapheneOS until
+     *  its Network location is switched on, any phone with it off) only GPS answers, and indoors
+     *  that can be never. */
+    fun networkLocationOn(): Boolean =
+        runCatching { lm?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true }.getOrDefault(false)
+
     private companion object {
         // GPS first (accurate), NETWORK second (fast coarse seed).
         val PROVIDERS = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)

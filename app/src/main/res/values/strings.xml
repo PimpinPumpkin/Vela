@@ -620,6 +620,9 @@
     <string name="mapscreen_zoom_out">Zoom out</string>
     <string name="mapscreen_dpad_engage">OK: move the map</string>
     <string name="mapscreen_stop_replay">Stop replay</string>
+    <string name="mapscreen_location_tip_title">No location yet?</string>
+    <string name="mapscreen_location_tip_body">GPS alone often cannot get a fix indoors. On GrapheneOS, turn on Network location in Settings > Location > Location services.</string>
+    <string name="mapscreen_location_tip_settings">Location settings</string>
     <string name="mapscreen_psds_tip_title">Slow GPS lock?</string>
     <string name="mapscreen_psds_tip_body">Enable PSDS in Settings → Location for a much faster fix (on GrapheneOS it routes through their proxy).</string>
     <string name="mapscreen_got_it">Got it</string>
