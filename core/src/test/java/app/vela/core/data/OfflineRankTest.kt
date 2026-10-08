@@ -77,6 +77,23 @@ class OfflineRankTest {
     }
 
     @Test
+    fun otherScriptsAreComparedAsTyped() {
+        // Folding these would strip the marks the pack's names still carry.
+        for (name in listOf("スターバックス", "がっこう", "스타벅스", "ร้านกาแฟ", "हिंदी", "مطعم أبو", "קפה", "星巴克")) {
+            assertEquals(name, OfflineRank.fold(name))
+            assertEquals("*$name*", OfflineRank.glob(OfflineRank.fold(name)))
+        }
+        // Cased scripts lowercase and match either case, letter for letter.
+        assertEquals("музей", OfflineRank.fold("Музей"))
+        assertEquals("*[мМ][уУ][зЗ][еЕ][йЙ]*", OfflineRank.glob(OfflineRank.fold("Музей")))
+        assertEquals("καφέ", OfflineRank.fold("Καφέ"))
+        assertTrue(OfflineRank.matches("музей", "Дом-музей", "Museum", null))
+        assertTrue(OfflineRank.matches("ガソリン", "ガソリンスタンド", "Fuel", null))
+        // A Latin letter typed as a letter and a separate accent folds the same way.
+        assertEquals("cafe", OfflineRank.fold("Cafe\u0301"))
+    }
+
+    @Test
     fun thePackPatternCarriesEveryFormOfALetter() {
         val one = OfflineRank.glob("cafe")
         assertTrue(one.startsWith("*[cC") && one.endsWith("]*"))

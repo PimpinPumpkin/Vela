@@ -300,7 +300,9 @@ Places come from two sources, ranked together by `OfflineRank`:
   OpenStreetMap values stored ("gas" is `Fuel`, "coffee" is `Cafe`). A query that is itself a
   category ("Gas station") is not split, because "station" matched every charging station. Names
   compare with accents folded, apostrophes and periods dropped and hyphens as spaces
-  (`OfflineRank.fold`), so "mcdonalds" finds "McDonald's" and "cafe" finds "Café". The packs
+  (`OfflineRank.fold`), so "mcdonalds" finds "McDonald's" and "cafe" finds "Café". Only Latin
+  letters are folded: in other scripts the marks are part of the spelling (the voicing marks on
+  kana, Thai and Devanagari vowel signs), and a name is compared as typed. The packs
   store names as OpenStreetMap wrote them and SQLite cannot fold accents, so
   `OfflinePoiStore.nameMatch` does it in the query: a plain name is matched by LIKE, and a name
   with any letter outside ASCII by a GLOB pattern in which each letter is a class of its forms

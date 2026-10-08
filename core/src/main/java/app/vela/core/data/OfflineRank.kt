@@ -20,12 +20,22 @@ object OfflineRank {
 
     fun isCategoryQuery(query: String): Boolean = OfflinePoiStore.categoryKeywords(query.trim()).isNotEmpty()
 
-    private val MARKS = Regex("\\p{Mn}+")
+    // The accented Latin letters fold spells plainly: Latin-1, Latin Extended-A and B (European
+    // languages, Turkish) and the Vietnamese vowels. glob builds its classes from the same ranges.
+    private val ACCENTED_LATIN = Regex("[\u00C0-\u024F\u1EA0-\u1EF9]")
+    private val MARKS_ON_LATIN = Regex("([A-Za-z\u00C0-\u024F])\\p{Mn}+")
 
-    /** A name or query with what people do not type folded away: accents ("cafe" is "Café",
-     *  "zurich" is "Zürich"), apostrophes and periods dropped, hyphens as spaces, lowercase. */
+    /** A name or query with what people do not type folded away: accents on Latin letters ("cafe"
+     *  is "Café", "zurich" is "Zürich"), apostrophes and periods dropped, hyphens as spaces,
+     *  lowercase. Only Latin is folded: the pack query can match a folded letter only through
+     *  [glob]'s classes, which are Latin, and decomposing other scripts takes the voicing marks
+     *  off kana, splits Hangul and drops Thai, Devanagari and Arabic vowel signs, which no name
+     *  in a pack would then match. */
     fun fold(s: String): String =
-        MARKS.replace(java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFKD), "").lowercase()
+        MARKS_ON_LATIN.replace(
+            ACCENTED_LATIN.replace(s) { java.text.Normalizer.normalize(it.value, java.text.Normalizer.Form.NFD) },
+            "$1",
+        ).lowercase()
             .replace("ß", "ss").replace("æ", "ae").replace("œ", "oe").replace("ø", "o").replace("ł", "l").replace("đ", "d").replace("ı", "i")
             .replace("'", "").replace("\u2019", "").replace(".", "").replace('-', ' ')
 
