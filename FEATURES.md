@@ -176,12 +176,14 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - The "Voice library" has about 40 Piper voices. Any text-to-speech voice on the phone works too.
 - "Spoken directions" is the on and off switch, the same as mute in a drive.
 - "Guidance volume", "Voice speed" and "Test voice".
-- The voice follows the guidance language, which is Vela's language. Vela offers a download when
-  a language has no voice, and a voice of another language says so on its row.
+- The voice follows the directions language. Vela offers a download when a language has no
+  voice, and a voice of another language says so on its row.
 - English voices say about 3,500 place names the local way. Street names in another script are read
   romanized.
 - 18 languages, including Chinese, Japanese and right-to-left Hebrew. Estonian is partly translated.
 - "Follow system language", or pick one for Vela alone.
+- "Directions language": turns shown and spoken in another language than the menus, such as
+  English menus with Dutch directions. "Same as app language" by default.
 - "Units" for miles or kilometers. "Clock" for 12-hour or 24-hour time.
 
 ## Saved places, lists and sharing

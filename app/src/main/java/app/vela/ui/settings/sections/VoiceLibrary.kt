@@ -65,10 +65,10 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     var confirmDeleteId by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
-    // The app's language - its voices are floated to the top of the browser (Google-style), and if none
-    // is installed yet we nudge the user to grab the matching voice (so nav text + voice speak the same
-    // language, not French words read by an English voice).
-    val appLang = app.vela.ui.AppLocale.effective().language
+    // The directions language - its voices are floated to the top of the browser (Google-style), and if
+    // none is installed yet we nudge the user to grab the matching voice (so nav text + voice speak the
+    // same language, not French words read by an English voice).
+    val appLang = app.vela.ui.AppLocale.directionsEffective().language
     val hasAppLangVoice = catalog.any { it.langCode == appLang && it.id in installed }
 
     Spacer(Modifier.height(6.dp))
@@ -241,8 +241,8 @@ private fun VoiceRow(
                 else -> "${v.region} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
             }
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // Directions are spoken in the app's language, by a voice of that language. A
-            // selected voice of another one waits for the app to be in it, and "In use" alone
+            // Directions are spoken in the directions language, by a voice of that language. A
+            // selected voice of another one waits for directions to be in it, and "In use" alone
             // read as the pick being ignored (issue 701).
             if (active && v.langCode != spokenLang) {
                 val ui = app.vela.ui.AppLocale.effective()

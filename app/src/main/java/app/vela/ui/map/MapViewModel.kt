@@ -7517,11 +7517,11 @@ class MapViewModel @Inject constructor(
     }
 
     /** The Vela voice a fresh install downloads — the fleet default (calibration) for English,
-     *  else the app-language's recommended voice. Public: the voice browser brands this id
+     *  else the directions language's recommended voice. Public: the voice browser brands this id
      *  "Vela voice" and offers a one-tap reinstall when it's missing (user 2026-07-18, after a
      *  crash mid-install left them hunting the list for which voice was the right one). */
     fun defaultVoiceId(): String {
-        val lang = app.vela.ui.AppLocale.effective().language
+        val lang = app.vela.ui.AppLocale.directionsEffective().language
         return if (lang == "en") calibration.current().defaultVoiceId else PiperCatalog.defaultFor(lang).id
     }
 

@@ -320,6 +320,33 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
         }
         Hint(stringResource(R.string.settings_language_hint))
+
+        Spacer(Modifier.height(8.dp))
+        // Directions can be in another language than the menus (issue 701). Same shape as the
+        // app language: one toggle in the common case, the picker only when it is off.
+        SettingsGroup(title = stringResource(R.string.settings_directions_language)) {
+            val sameAsApp = app.vela.ui.AppLocale.directions.value.isBlank()
+            ToggleRow(
+                label = stringResource(R.string.settings_directions_same_as_app),
+                checked = sameAsApp,
+                onCheckedChange = { on ->
+                    // Off -> start the picker on the language directions are in now.
+                    val current = app.vela.ui.AppLocale.language.value.ifBlank { app.vela.ui.AppLocale.deviceDefaultSupported() }
+                    app.vela.ui.AppLocale.setDirections(context, if (on) "" else current)
+                },
+            )
+            if (!sameAsApp) {
+                app.vela.ui.AppLocale.SUPPORTED.forEach { code ->
+                    GroupDivider()
+                    SelectableRow(
+                        label = app.vela.ui.AppLocale.endonym(code),
+                        selected = app.vela.ui.AppLocale.directions.value == code,
+                        onClick = { app.vela.ui.AppLocale.setDirections(context, code) },
+                    )
+                }
+            }
+        }
+        Hint(stringResource(R.string.settings_directions_language_hint))
         Spacer(Modifier.height(24.dp))
     }
 }

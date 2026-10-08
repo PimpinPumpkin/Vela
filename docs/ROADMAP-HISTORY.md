@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- Settings > Appearance > Directions language sets the language of turns and the voice apart
+  from the menus (issue 701). The banner and the speech share one `NavStrings`, so both follow
+  it.
 - "Open now" asks Google for the places open now. It only thinned the 60 results already
   fetched, which late at night left two or three of them, some far away.
 - Low-RAM detection also covers a 32-bit process, a 128 MB heap class and a 2 GB phone
