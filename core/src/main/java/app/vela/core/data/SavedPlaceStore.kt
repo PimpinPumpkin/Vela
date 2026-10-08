@@ -1,13 +1,45 @@
 package app.vela.core.data
 
 import android.content.Context
+import app.vela.core.model.LabelPlace
+import app.vela.core.model.LatLng
+import app.vela.core.model.Place
 import app.vela.core.model.SavedPlace
+import app.vela.core.model.distanceTo
+import app.vela.core.util.PlaceNames
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** How far from a kept map label its listing may be: the saved-place rule's own reach. */
+const val KEPT_LABEL_MAX_M = 250.0
+
+/**
+ * The listing among [listings] of a place kept from the map label [name] at [at], or null. What
+ * is taken is written back to the saved place and the lists, so the test is strict: the names
+ * agree, it is within [KEPT_LABEL_MAX_M], it is open and has a feature id, and its house number
+ * is not another one than [address]'s. A listing named exactly as kept leads, then the nearest.
+ * The caller passes listings only (no bare addresses, no transit stops or junctions).
+ */
+fun keptLabelListing(name: String, at: LatLng, address: String?, listings: List<Place>): Place? {
+    val house = PlaceNames.houseNumber(address)
+    val near = listings.filter { p ->
+        !p.featureId.isNullOrBlank() && !p.permanentlyClosed && p.location.distanceTo(at) <= KEPT_LABEL_MAX_M &&
+            PlaceNames.agree(name, p.name, PlaceNames.cityWords(p.address)) &&
+            (house == null || PlaceNames.houseNumber(p.address).let { it == null || it == house })
+    }
+    return near.filter { PlaceNames.same(name, it.name) }.ifEmpty { near }.minByOrNull { it.location.distanceTo(at) }
+}
+
+/** [all] with [listing] written onto the star kept from the basemap label [heldId] at [at] that
+ *  still awaits one ([SavedPlace.awaitsListing]). Returns [all] itself when there is none. */
+fun linkSaved(all: List<SavedPlace>, heldId: String, at: LatLng, listing: Place): List<SavedPlace> {
+    fun held(p: SavedPlace) = p.awaitsListing && LabelPlace.same(p.id, p.location, heldId, at)
+    return if (all.none { held(it) }) all else all.map { if (held(it)) it.linked(listing) else it }
+}
 
 /** Persisted favorite places (most-recently-saved first). */
 @Singleton
@@ -59,6 +91,16 @@ class SavedPlaceStore @Inject constructor(
         val current = saved()
         if (current.none { it.id == id }) return false
         prefs.edit().putString(KEY, json.encodeToString(current.map { if (it.id == id) it.copy(bare = bare) else it })).apply()
+        return true
+    }
+
+    /** Writes [listing] onto the star kept from the label [heldId] at [at] ([linkSaved]). False
+     *  when no saved place awaits one. */
+    fun link(heldId: String, at: LatLng, listing: Place): Boolean {
+        val current = saved()
+        val linked = linkSaved(current, heldId, at, listing)
+        if (linked === current) return false
+        prefs.edit().putString(KEY, json.encodeToString(linked)).apply()
         return true
     }
 

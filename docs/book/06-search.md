@@ -132,6 +132,13 @@ A saved pin or address opens as saved, with no lookup. A saved business looks up
 for photos and reviews. It accepts a hit within `SAVED_ENRICH_SAME_SPOT_M` (30 m), or within
 `SAVED_ENRICH_MAX_M` (250 m) when the names agree, and keeps a name you gave it.
 
+A place starred or put in a list from a map label before its listing had loaded, or with no
+connection, is kept with the label's name and point only. The next time it is opened online
+with Google on, or its label is tapped, it is looked up by that name. A live listing
+within `KEPT_LABEL_MAX_M` (250 m) whose name agrees is kept from then on: the star reopens as a
+business and each list entry gets the listing's id and address. The name, note and icon you
+set stay. A star you renamed is yours and is not looked up.
+
 Saved places and recents appear in suggestions only. Results after Enter are what the providers
 returned.
 

@@ -30,6 +30,15 @@ data class ListPlace(
     fun matches(id: String, featureId: String?): Boolean =
         this.id == id || (featureId != null && this.featureId == featureId)
 
+    /** Kept from a map label ([LabelPlace]) with no listing behind it: added before the listing
+     *  loaded, or with no connection. It is looked up when opened online. */
+    val awaitsListing: Boolean get() = featureId == null && LabelPlace.isLabel(id)
+
+    /** This entry once [listing] is known for it: the listing's stable id and address. The name,
+     *  note, icon and point stay as kept. */
+    fun linked(listing: Place): ListPlace =
+        copy(featureId = listing.featureId, address = listing.address?.ifBlank { null } ?: address)
+
     fun toPlace(): Place = Place(
         id = id,
         name = name,

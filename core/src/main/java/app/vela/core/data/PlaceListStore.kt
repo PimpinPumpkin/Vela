@@ -1,7 +1,10 @@
 package app.vela.core.data
 
 import android.content.Context
+import app.vela.core.model.LabelPlace
+import app.vela.core.model.LatLng
 import app.vela.core.model.ListPlace
+import app.vela.core.model.Place
 import app.vela.core.model.PlaceList
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.encodeToString
@@ -26,6 +29,23 @@ fun importTarget(all: List<PlaceList>, title: String, sourceId: String?): Pair<P
     var n = 2
     while (all.any { it.id == id }) id = "$base:${n++}"
     return null to id
+}
+
+/**
+ * [all] with [listing] written onto every entry kept from the map label [heldId] at [at] that
+ * still has no listing ([ListPlace.awaitsListing]). A list that already holds the listing under
+ * its own id keeps its entries as they are, so it never holds one place twice. Returns [all]
+ * itself when nothing changes.
+ */
+fun linkListing(all: List<PlaceList>, heldId: String, at: LatLng, listing: Place): List<PlaceList> {
+    if (listing.featureId.isNullOrBlank()) return all
+    fun held(p: ListPlace) = p.awaitsListing && LabelPlace.same(p.id, p.location, heldId, at)
+    var changed = false
+    val out = all.map { l ->
+        if (l.places.none { held(it) } || l.places.any { it.matches(listing.id, listing.featureId) }) l
+        else { changed = true; l.copy(places = l.places.map { if (held(it)) it.linked(listing) else it }) }
+    }
+    return if (changed) out else all
 }
 
 /** Persisted user place-lists (issue #1). Newest-first; all mutations return the fresh list. */
@@ -140,6 +160,14 @@ class PlaceListStore @Inject constructor(
             l.copy(places = l.places.map { if (it.matches(placeId, featureId)) it.copy(icon = icon?.ifBlank { null }) else it })
         },
     )
+
+    /** Writes [listing] onto the entries kept from the label [heldId] at [at] ([linkListing]).
+     *  Nothing is written when no list holds one: a saved custom map makes the write megabytes. */
+    fun link(heldId: String, at: LatLng, listing: Place): List<PlaceList> {
+        val cur = lists()
+        val linked = linkListing(cur, heldId, at, listing)
+        return if (linked === cur) cur else write(linked)
+    }
 
     /** The lists holding this place (drives the sheet's "in a list" affordances). */
     fun listsContaining(placeId: String, featureId: String? = null): List<PlaceList> =

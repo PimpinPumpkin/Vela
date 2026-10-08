@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- A place starred or put in a list from a map label before its listing loaded, or offline,
+  takes its listing when it is next opened online or its label is tapped again, under the name
+  it was saved with. It used to reopen as a name on a point for good.
 - A My Maps import compiles its patterns once and fetches with a 90 s deadline; a large map
   parsed slowly and could be cut off by the shared 12 s timeout.
 - A drawing's typed name survives another sheet taking the bottom slot (`DrawState.name`).

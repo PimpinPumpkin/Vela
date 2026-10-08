@@ -1795,6 +1795,8 @@ class MapViewModel @Inject constructor(
     fun toggleSave() {
         val p = _state.value.selected ?: return
         // A pin or an address is kept as a label on its point; reopening it never looks up a listing.
+        // A map label starred before its listing loaded gets the same mark, and is told apart by
+        // its id (SavedPlace.awaitsListing): that one is looked up when it is next opened online.
         savedStore.toggle(SavedPlace.of(p).copy(bare = !p.isListing()))
         _state.update { it.copy(saved = savedStore.saved()) }
     }
@@ -1804,7 +1806,14 @@ class MapViewModel @Inject constructor(
         // A contact's address from history opens as it was saved: the person's name and the address.
         // So does a saved pin or address (discussion #681): searching "505 2nd Street" on its own
         // point found a business in the same building and opened that under the saved row.
-        if (sp.isPoint) { selectContactPlace(sp.toPlace()); return }
+        if (sp.isPoint) {
+            val point = sp.toPlace()
+            val opens = _state.value.let { !it.pickingStop && !it.pickingDest && !it.pickingOrigin && !it.navigating }
+            selectContactPlace(point)
+            // Starred from a map label before its listing was known: looked up now that it is open.
+            if (opens && sp.awaitsListing) relinkKept(point, detailsOnMiss = false)
+            return
+        }
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingDest) { setDirectionsDestination(base); return }
@@ -2969,11 +2978,74 @@ class MapViewModel @Inject constructor(
         }
         requestReviews(p)
         fetchPhotos(p)
-        fetchPlaceDetails(p)
+        // A star or a list entry kept from a map label before its listing was known looks the
+        // listing up first; the details fetch follows with it, or without it on a miss.
+        if (!(p.featureId == null && keptAwaiting(p.id, p.location) && relinkKept(p, detailsOnMiss = true))) fetchPlaceDetails(p)
         fetchStopDepartures(p)
         backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
         showViewedCopy(p)
+    }
+
+    /** Whether a star or a list entry kept from the map label [id] at [at] still has no listing. */
+    private fun keptAwaiting(id: String, at: LatLng): Boolean {
+        if (!app.vela.core.model.LabelPlace.isLabel(id)) return false
+        val st = _state.value
+        return st.saved.any { it.awaitsListing && app.vela.core.model.LabelPlace.same(it.id, it.location, id, at) } ||
+            st.lists.any { l -> l.places.any { it.awaitsListing && app.vela.core.model.LabelPlace.same(it.id, it.location, id, at) } }
+    }
+
+    /** [listing] goes onto the star and the list entries kept from the label [heldId] at [at]
+     *  ([app.vela.core.data.linkSaved], [app.vela.core.data.linkListing]). The name kept for the
+     *  place is not touched. */
+    private fun linkKept(heldId: String, at: LatLng, listing: Place) {
+        if (!keptAwaiting(heldId, at)) return
+        val starred = savedStore.link(heldId, at, listing)
+        val lists = listStore.link(heldId, at, listing)
+        _state.update {
+            it.copy(
+                saved = if (starred) savedStore.saved() else it.saved,
+                lists = lists, results = if (lists !== it.lists) refreshedOpenList(it, lists) ?: it.results else it.results,
+            )
+        }
+    }
+
+    /**
+     * Looks up the listing of an open place that was kept from a map label before its listing
+     * was known: starred or put in a list while the tap was still resolving, or with no
+     * connection ([app.vela.core.model.LabelPlace]). Without it such a place reopens as a name
+     * on a point every time. A listing that agrees by name ([app.vela.core.data.keptLabelListing])
+     * fills the sheet and is written back ([linkKept]); the kept id and name stay on the sheet,
+     * so the star and the list marks hold. Nothing is asked offline or with Google off, and the
+     * lookup runs only when the place is opened. True when it started.
+     */
+    private fun relinkKept(p: Place, detailsOnMiss: Boolean): Boolean {
+        if (googleOff() || p.name.isBlank()) return false
+        // "Look up tapped places on Google" off covers an open-data place opened from a list too.
+        if (p.id.startsWith(app.vela.core.model.LabelPlace.OPEN) && !app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value) return false
+        viewModelScope.launch {
+            val hit = runCatching {
+                // A stop or a junction is never the listing of a business label (see onPoiTap).
+                val listings = dataSource.searchOnce(p.name, p.location).filter { c ->
+                    c.isListing() && c.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } != true
+                }
+                app.vela.core.data.keptLabelListing(p.name, p.location, p.address, listings)
+            }.getOrNull()
+            android.util.Log.i("VelaTap", "kept label reopened: " + if (hit != null) "listing found" else "no listing agreed") // never the name
+            if (hit == null) {
+                if (detailsOnMiss && isPlaceholder(_state.value.selected, p)) fetchPlaceDetails(p)
+                return@launch
+            }
+            linkKept(p.id, p.location, hit)
+            if (!isPlaceholder(_state.value.selected, p)) return@launch
+            val shown = withListNote(fromHere(hit.copy(id = p.id, name = p.name)))
+            _state.update { if (isPlaceholder(it.selected, p)) it.copy(selected = shown) else it }
+            requestReviews(shown)
+            fetchPhotos(shown)
+            fetchPlaceDetails(shown)
+            fetchStopDepartures(shown)
+        }
+        return true
     }
 
     /** Transit-station category words (English + a few common ones). The board fetch is gated on
@@ -3600,6 +3672,13 @@ class MapViewModel @Inject constructor(
                 ),
             )
         }
+        // A star put on this very sheet (same id, same name) before its details loaded was kept
+        // as a point. The sheet is a listing now, so the mark comes off and it reopens as one.
+        // Only a sheet with a feature id: a saved point reopened is a stub without one, and must
+        // stay a point whatever lands on it.
+        val open = _state.value.selected ?: return
+        if (open.id != p.id || open.featureId.isNullOrBlank() || !open.isListing() || _state.value.saved.none { it.isStarOf(open) }) return
+        if (savedStore.setBare(open.id, false)) _state.update { it.copy(saved = savedStore.saved()) }
     }
 
     /** Pull the full photo gallery by scraping the place's own Google Maps page
@@ -4312,7 +4391,7 @@ class MapViewModel @Inject constructor(
         // Capture the placeholder so the async resolve can gate on FULL equality (name AND location) — two
         // same-named POIs tapped in quick succession (a chain's two branches) otherwise let the slower
         // resolve for the first hijack the second's sheet, since the old gate matched name only (audit 2026-07-06).
-        val placeholder = seed ?: Place(id = "poi:" + name.hashCode(), name = name, location = location)
+        val placeholder = seed ?: Place(id = app.vela.core.model.LabelPlace.basemapId(name), name = name, location = location)
         // A transit STOP is usually named by its intersection ("Main St & 1st Ave"), and Google resolves
         // that bare string to the road JUNCTION, not the stop - so a tapped stop opened as an "Intersection"
         // with no board (issue #71 follow-up; verified in a live capture: "<x> & <y>" -> Intersection,
@@ -4616,6 +4695,12 @@ class MapViewModel @Inject constructor(
             // English app's Latin pin, user 2026-09-15): keep the map's own label when it is in
             // the app language's script and Google's is not (core NameScript, unit-tested).
             val full = resolved?.first?.let { f -> fromHere(f.copy(name = app.vela.core.util.NameScript.prefer(uiLang, f.name, placeholder.name))) }
+            // A star or a list entry kept from this label before its listing was known takes it
+            // now. Only a live listing that agrees by name: the pick's last resorts (the nearest
+            // thing on the lot) are good enough to show, not to write into what the user saved.
+            if (full != null && full.isListing() && !full.permanentlyClosed && nameAgrees(placeholder.name, full.name, full.address)) {
+                linkKept(placeholder.id, placeholder.location, full)
+            }
             // Remember the listing for an instant second tap, unless the session was still on the
             // slim flavor (no review count, no hours) and would pin a stripped listing for the
             // rest of the session. A later tap then resolves it again, fuller.

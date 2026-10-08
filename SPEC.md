@@ -2601,6 +2601,28 @@ when the feature ids match. Two requests at most.
 - A saved pin or address is a point (`SavedPlace.isPoint`: `bare`, a `pin:` id, or a name that
   is the first line of its own address) and reopens as saved, with no search. Saving a place
   that is not a listing (`Place.isListing()` false) sets `bare`; so does a contact's address.
+- A star or a list entry made from a map label before its listing was known (the tap still
+  resolving, no connection, Google off) is kept under the label's id (`LabelPlace`: `poi:` plus
+  the name's hash for a basemap label, `overture:` plus the feature's id for an open place).
+  The star is `bare` with an id that still matches its name (`SavedPlace.awaitsListing`; a
+  renamed one no longer matches and stays a point). The list entry has no feature id
+  (`ListPlace.awaitsListing`).
+- Such a place takes its listing when it is next opened online with Google on
+  (`MapViewModel.relinkKept`, one `searchOnce` by its name), or when a tap on its label (the
+  one it was made during, or a later one) resolves to a live listing that agrees by name. On
+  open, `keptLabelListing` accepts a listing whose name agrees, within `KEPT_LABEL_MAX_M`
+  (250 m), open, with a feature id and no other house number than the kept address; a transit
+  stop or a junction is never taken; the same name leads, then the nearest. The listing is
+  written back (`linkSaved`, `linkListing`): the star loses `bare` and takes the listing's
+  point and address, and every list entry kept from that label takes the feature id and
+  address. The kept name, note and icon are not changed, and a sheet opened from the kept
+  place keeps its id and name, so the star and the list marks hold. A basemap label's id is
+  shared by every place of that name, so only a copy within `LabelPlace.SAME_LABEL_M` (30 m)
+  of the opened one is written.
+- A star put on a sheet that has a feature id before its details loaded (a picked suggestion)
+  loses `bare` when that sheet becomes a listing (`mergeDetails`: same id, same name).
+- None of this asks anything at launch, offline or under "Use Vela without Google". With "Look
+  up tapped places on Google" off, an `overture:` entry opened from a list is not looked up.
 - Any other saved or recent place takes a listing's details only from one within 30 m, or
   within 250 m whose name agrees (`PlaceNames.agree`).
 - Rename (`SavedActions.rename`) is on the pinned rows and in the sheet's save menu. The
