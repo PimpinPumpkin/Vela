@@ -221,6 +221,8 @@ signed file the app fetches at launch (SPEC 11).
   launch.
 - `MapViewModel` is large. Navigation lives in `NavController`, reached through `NavController.Host`.
 - A hidden Google page is a subclass of `web/HiddenWebView`. Never copy the WebView plumbing.
+- `NavSession` counts stops only while the engine's route (`_state.route`) is the very object
+  in `planRoute`. Replace both together or neither.
 - `MapViewModel` and `NavController` properties that an `init` collector touches are declared
   above `init`. `viewModelScope` is `Main.immediate`, so a collector's first pass runs inline,
   before anything declared below exists.

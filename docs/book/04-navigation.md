@@ -297,10 +297,17 @@ route, and the voice says "You've reached <stop>".
   beats being lost. The stops stay in the plan for the next attempt.
 - A stop more than 150 m from the line has no mark. It counts as passed only once a later stop
   is reached (`NavEngine.stopsPassed`), so every stop survives the moments between a stops edit
-  and the new route.
-- Progress that jumps more than `STOP_SKIP_JUMP_M = 250` past the next stop in one fix is a skip
-  (`NavEngine.stopSkipped`). This is a driver who kept going after an edit, on a road the route
-  uses later. Nothing is announced and the drive reroutes through the stop.
+  and the new route. When no later stop has a mark either, it is reached within
+  `STOP_NEAR_PIN_M = 250` of its pin, which is how a stop in the middle of a mall or a park
+  ends.
+- Progress that jumps more than `STOP_SKIP_JUMP_M = 250` past the next stop in one fix, at more
+  than `STOP_SKIP_SPEED_MPS = 70`, is a skip (`NavEngine.stopSkipped`). This is a driver who
+  kept going after an edit, on a road the route uses later. Nothing is announced and the drive
+  reroutes through the stop. A pause, or a GPS gap in a garage at the stop, is not a skip: the
+  ground was covered at a speed a car makes.
+- Stops are only counted while the route being driven is the one their marks were measured on,
+  so the traffic-light pass leaves the session's routes alone. With its copy swapped in, no
+  stop is counted and reroutes and re-checks go back through stops already visited.
   The hidden points of a saved route or a camera detour are the exception: driving past the
   stretch they are on and rejoining the route drops them, with no reroute back.
 

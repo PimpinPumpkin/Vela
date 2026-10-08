@@ -169,22 +169,19 @@ class NavSession @Inject constructor(
     data class NavStop(val location: LatLng, val label: String, val silent: Boolean = false)
 
     /** Fold a light-ENRICHED copy of the current route in after nav has already started, so
-     *  START never waits on the Overpass traffic-signal fetch (that blocked nav start for up to
-     *  ~25 s, the server timeout, once light guidance became standard - user 2026-07-16). The
-     *  enriched route's polyline and maneuver POSITIONS are identical; only turn instruction TEXT
-     *  gains "Pass the light, then ...". So swapping planRoute (what the engine reads each fix) and
-     *  re-emitting the current step's text is safe and needs no re-anchor. No-op if we've stopped
-     *  or rerouted since (a different polyline = the clauses are for a route we're no longer on).
-     *  Deliberately does NOT touch _state.route, so the trip recorder doesn't log a phantom swap. */
+     *  START never waits on the traffic-signal fetch. The enriched route's polyline and maneuver
+     *  positions are identical; only turn instruction text gains "Pass the light, then ...". The
+     *  current step's card takes its text. The session's routes are left alone: the engine runs
+     *  on `_state.route`, and the stop cues and the skipped-stop check only act while that is the
+     *  very object in [planRoute]. Putting the enriched copy there stopped every stop from being
+     *  counted on any drive with a mapped light, so reroutes and re-checks went back through
+     *  stops already visited. No-op if we've stopped or rerouted since. */
     fun applyEnrichedRoute(r: Route) {
-        synchronized(stopLock) {
-            val cur = planRoute ?: return
-            if (!_state.value.navigating || cur.polyline.size != r.polyline.size) return
-            planRoute = r
-        }
+        val cur = _state.value.route ?: return
+        if (!_state.value.navigating || cur.polyline.size != r.polyline.size) return
         val idx = _state.value.nav.stepIndex
         r.maneuvers.getOrNull(idx)?.instruction?.let { txt ->
-            _state.update { it.copy(maneuverText = txt) }
+            _state.update { if (it.route === cur) it.copy(maneuverText = txt) else it }
         }
     }
 
@@ -357,6 +354,7 @@ class NavSession @Inject constructor(
         synchronized(stopLock) {
             stops = newRemaining
             stopMarks = List(newRemaining.size) { null } // measured against no route yet: cues hold
+            marksHeldOn = planRoute
             passedStops = 0
         }
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
@@ -412,6 +410,8 @@ class NavSession @Inject constructor(
         lastLoc = loc
         lastBearing = bearingDeg
         if (s.paused) {
+            // Whatever is driven during the hold was driven: the first fix after it is not a jump.
+            synchronized(stopLock) { progressRoute = null }
             maybeAutoResume(loc, route, speedMps, accuracyM)
             return
         }
@@ -487,9 +487,14 @@ class NavSession @Inject constructor(
         // rejoining the route means that stretch was declined, so it counts as passed.
         val skipped = synchronized(stopLock) {
             val prev = if (route === progressRoute) progressM else null
+            val nowMs = SystemClock.elapsedRealtime()
+            // Only a jump no car makes is a skip. Progress that crossed the stop over a GPS gap
+            // (a garage at the stop, a tunnel) was driven, however far it moved in one fix.
+            val tooFast = prev != null && (next.traveledM - prev) / ((nowMs - progressAtMs) / 1000.0).coerceAtLeast(0.5) > STOP_SKIP_SPEED_MPS
             progressRoute = route
             progressM = next.traveledM
-            if (route === planRoute && prev != null &&
+            progressAtMs = nowMs
+            if (route === planRoute && prev != null && tooFast &&
                 NavEngine.stopSkipped(stopMarks, stops.size, passedStops, prev, next.traveledM, STOP_ARRIVE_TOL_M, STOP_SKIP_JUMP_M) &&
                 !NavEngine.onlySilentSkipped(stopMarks, stops.map { it.silent }, passedStops, prev, next.traveledM, STOP_ARRIVE_TOL_M)
             ) skipHoldRoute = route
@@ -500,7 +505,7 @@ class NavSession @Inject constructor(
             if (!replayMode) reroute(loc, bearingDeg) // replays play recorded swaps back instead
         } else {
             skipNoted = false
-            announceStopsPassed(route, next.traveledM)
+            announceStopsPassed(route, next.traveledM, loc)
         }
         maybeRecheck(loc, next)
     }
@@ -508,6 +513,9 @@ class NavSession @Inject constructor(
     // The progress seen on the last fix, for the jump check above (guarded by stopLock).
     private var progressRoute: Route? = null
     private var progressM = 0.0
+    private var progressAtMs = 0L
+    // The route the marks were cleared on by a stops edit, until the route for the new list lands.
+    private var marksHeldOn: Route? = null
     private var skipHoldRoute: Route? = null
     private var skipNoted = false
 
@@ -517,13 +525,23 @@ class NavSession @Inject constructor(
      *  which dropped every stop on the first fix after a stops edit. [route] must be the route
      *  [traveledM] was measured on: if a reroute swapped the plan mid-fix, the identity check drops
      *  the stale frame instead of comparing old progress to new marks (which would fire every cue at once). */
-    private fun announceStopsPassed(route: Route, traveledM: Double) {
+    private fun announceStopsPassed(route: Route, traveledM: Double, loc: LatLng) {
         val toSpeak = mutableListOf<String>()
         synchronized(stopLock) {
             if (route !== planRoute) return
-            val passed = NavEngine.stopsPassed(stopMarks, stops.size, passedStops, traveledM, STOP_ARRIVE_TOL_M)
+            val byMarks = NavEngine.stopsPassed(stopMarks, stops.size, passedStops, traveledM, STOP_ARRIVE_TOL_M)
+            // A stop whose pin is too far from any road to get a mark (the middle of a mall or a
+            // park) is reached by coming near the pin. With no later mark to pass it by, it used
+            // to stay ahead for good: every reroute went back to it and no re-check was accepted.
+            // Not while the marks are held for a list whose route has not landed.
+            var passed = byMarks
+            if (planRoute !== marksHeldOn) {
+                while (passed < stops.size && (passed until stops.size).all { stopMarks.getOrNull(it) == null } &&
+                    loc.distanceTo(stops[passed].location) <= STOP_NEAR_PIN_M
+                ) passed++
+            }
             for (i in passedStops until passed) {
-                if (stopMarks.getOrNull(i) != null && !stops[i].silent) toSpeak += stops[i].label
+                if ((stopMarks.getOrNull(i) != null || i >= byMarks) && !stops[i].silent) toSpeak += stops[i].label
             }
             passedStops = passed
         }
@@ -1185,6 +1203,10 @@ class NavSession @Inject constructor(
         /** Progress farther than this in ONE fix is a jump, not driving (1 Hz fixes at highway
          *  speed move about 35 m). */
         const val STOP_SKIP_JUMP_M = 250.0
+        /** ...and only at a speed no car reaches, so ground covered over a GPS gap is not a jump. */
+        const val STOP_SKIP_SPEED_MPS = 70.0
+        /** An unmarked stop is reached within this of its pin. */
+        const val STOP_NEAR_PIN_M = 250.0
 
         /** Primary + secondary display lines for a destination, robust to partial data. Offline
          *  routing often has no business name — just "123 Main St" from the offline geocoder, a

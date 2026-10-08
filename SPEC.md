@@ -1212,10 +1212,17 @@ During a drive:
   `NavStrings.leftYourRoute`, with a status card naming it (`onLeftPlannedWay`).
 - A stop with a null mark counts as passed only when a later stop with a mark is passed
   (`NavEngine.stopsPassed`). A stops edit, or a reroute that could not fit the stops, therefore
-  keeps them all.
-- Progress that jumps more than `STOP_SKIP_JUMP_M` (250 m) past the next stop in one fix is a
-  skip (`NavEngine.stopSkipped`). The session holds the stops and reroutes through them each fix
-  until a new route lands. That reroute is not put through the back-on-course test, which
+  keeps them all. With no later mark, it is reached when the car comes within
+  `STOP_NEAR_PIN_M` (250 m) of its pin: the middle of a mall or a park gets no mark, and
+  without this such a stop stays ahead for good. The rule is off between a stops edit and the
+  route for the new list.
+- The cues and the skip test act only while the engine's route is the very object the marks
+  were measured on (`planRoute`). `applyEnrichedRoute` therefore changes neither: it only puts
+  the light clause on the current step's card.
+- Progress that jumps more than `STOP_SKIP_JUMP_M` (250 m) past the next stop in one fix, faster
+  than `STOP_SKIP_SPEED_MPS` (70 m/s), is a skip (`NavEngine.stopSkipped`). Ground covered over
+  a pause or a GPS gap is slower than that and counts as driven. The session holds the stops
+  and reroutes through them each fix until a new route lands. That reroute is not put through the back-on-course test, which
   discarded every answer because the car had never left the line. A jump that only passed
   silent stops is not a skip (`onlySilentSkipped`): the driver went another way round the
   stretch a saved route or a camera detour was built through, and those points count as passed.
