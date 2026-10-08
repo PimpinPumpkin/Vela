@@ -38,11 +38,13 @@ fun ScaleBar(
     if (metersPerPixel <= 0.0 || metersPerPixel.isNaN() || metersPerPixel.isInfinite()) return
     val density = LocalDensity.current
     val imperial = Units.imperial.value
-    val maxBarPx = with(density) { 96.dp.toPx() }
+    // MapLibre's meters per pixel are per density-independent pixel, so the bar is sized in dp.
+    // Sized in physical pixels its label was too large by the screen's density: a bar marked
+    // 1000 ft covered 383 ft on a Pixel 4a.
     val (meters, label) = remember(metersPerPixel, imperial) {
-        niceScale(metersPerPixel * maxBarPx, imperial)
+        niceScale(metersPerPixel * MAX_BAR_DP, imperial)
     }
-    val barDp = with(density) { (meters / metersPerPixel).toFloat().toDp() }
+    val barDp = (meters / metersPerPixel).toFloat().dp
     val ink = if (dark) Color(0xFFE8EAED) else Color(0xFF3C4043)
     val shadow = if (dark) Color(0xB3000000) else Color(0x80FFFFFF)
 
@@ -74,6 +76,9 @@ private fun DrawScope.drawBracket(color: Color, sw: Float, dx: Float, dy: Float)
     drawLine(color, Offset(xl, yb), Offset(xl, yt), sw, StrokeCap.Round) // left tick
     drawLine(color, Offset(xr, yb), Offset(xr, yt), sw, StrokeCap.Round) // right tick
 }
+
+/** The widest the bar may be, in dp. */
+private const val MAX_BAR_DP = 96.0
 
 private val METRIC = doubleArrayOf(
     1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0,

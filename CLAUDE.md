@@ -314,6 +314,8 @@ signed file the app fetches at launch (SPEC 11).
 ### The map (MapLibre)
 
 - `maxzoom` on a layer is exclusive.
+- `getMetersPerPixelAtLatitude` is meters per dp, not per physical pixel. The scale bar sized
+  itself in pixels and its label was too large by the screen's density.
 - Past a GeoJSON source's `maxzoom`, every visible tile lays out all of its parent's
   features. A dense source gets maxzoom 16 to 18.
 - An 8-digit hex color string is rejected and falls back to opaque black. A layer at opacity
