@@ -204,6 +204,23 @@ class HybridRouteTest {
         assertEquals(1, out.maneuvers.count { it.road == "Big Highway" })
     }
 
+    @Test fun theTripEndSlackGoesByTheLinesOwnLength() {
+        // Google leaves the open route 3.3 km in and stays a block east of it, so the last stretch
+        // runs to the end of its line. The route states 4500 m; its line measures about 4.7 km.
+        val g = route(listOf(p(0.0, 0.0), p(0.03, 0.0), p(0.03, 0.003), p(0.04, 0.003)), emptyList(), RouteSource.GOOGLE_NAMED)
+        val lineM = HybridRoute.lengthOf(g.polyline)
+        val last = HybridRoute.stretches(g.polyline, openLine).last()
+        assertEquals(lineM, last.toM, 0.01)
+        assertEquals(0.0 to 150.0, HybridRoute.tripEndSlack(last, lineM, 150.0))
+        // From the trip's start to 100 m short of the line's end. That is past the stated distance
+        // and still not the trip's end: the start only.
+        val short = HybridRoute.Stretch(0.0, lineM - 100.0)
+        assertTrue(short.toM > g.distanceMeters)
+        assertEquals(150.0 to 0.0, HybridRoute.tripEndSlack(short, lineM, 150.0))
+        // In the middle of the trip: neither end.
+        assertEquals(0.0 to 0.0, HybridRoute.tripEndSlack(HybridRoute.Stretch(900.0, 2700.0), lineM, 150.0))
+    }
+
     @Test fun nothingNamedMeansNoHybrid() {
         assertNull(HybridRoute.stitch(google, open, emptyList()))
     }

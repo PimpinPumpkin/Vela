@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- Whether a turn gets a street name no longer depends on the order a map tile lists its
+  streets in: two streets about as close leave it bare either way. The last stretch of a trip
+  is found by the length of Google's line, not by the distance Google states.
 - A Google Maps directions link with several places opens as a trip with its stops, and a
   whole Maps address pasted into the search box opens as a link instead of being searched as
   text. A trip planned on a desktop now carries over.

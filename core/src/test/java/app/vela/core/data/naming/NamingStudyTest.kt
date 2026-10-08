@@ -259,11 +259,8 @@ class NamingStudyTest {
                 val named = st.map { s ->
                     Thread.sleep(600)
                     val piece = HybridRoute.slice(google.polyline, s.fromM, s.toM)
-                    val m = app.vela.core.data.ValhallaRouter.matchWithEdges(
-                        http, piece, timeoutMs = 20_000,
-                        startSlackM = if (s.fromM <= 0.0) 150.0 else 0.0,
-                        endSlackM = if (s.toM >= google.distanceMeters - 1.0) 150.0 else 0.0,
-                    )
+                    val (startSlack, endSlack) = HybridRoute.tripEndSlack(s, HybridRoute.lengthOf(google.polyline), 150.0)
+                    val m = app.vela.core.data.ValhallaRouter.matchWithEdges(http, piece, timeoutMs = 20_000, startSlackM = startSlack, endSlackM = endSlack)
                     if (one != null) { println("ONE stretch ${s.fromM.toInt()}..${s.toM.toInt()} matched=${m != null}"); m?.let { dump("match", it.route.maneuvers) } }
                     if (m != null) { src[0]++; return@map s to m.route.maneuvers }
                     val sub = google.copy(polyline = piece, distanceMeters = s.toM - s.fromM, legs = emptyList(), trafficSpans = emptyList())

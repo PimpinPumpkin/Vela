@@ -1157,6 +1157,9 @@ class GoogleMapsDataSource @Inject constructor(
             }
             val hybridStretches = if (mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5)
                 app.vela.core.data.naming.HybridRoute.stretchesFor(gTop.polyline, open.first()) else emptyList()
+            // Which stretch ends the trip is read off the line's own length: stretches are meters
+            // along the line, and Google's stated distance is not.
+            val gLineM = if (hybridStretches.isEmpty() || gTop == null) 0.0 else app.vela.core.data.naming.HybridRoute.lengthOf(gTop.polyline)
             val tHybrid = System.currentTimeMillis()
             // Each stretch where Google leaves the open route gets its steps from the best source
             // that answers, in this order (how many took each is logged):
@@ -1179,11 +1182,11 @@ class GoogleMapsDataSource @Inject constructor(
                     async(Dispatchers.IO) {
                         val piece = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
                         val len = st.toM - st.fromM
+                        val (startSlack, endSlack) = app.vela.core.data.naming.HybridRoute.tripEndSlack(st, gLineM, MATCH_TRIP_END_SLACK_M)
                         val m = if (online && len <= MATCH_MAX_M)
                             app.vela.core.data.ValhallaRouter.matchWithEdges(
                                 http, piece, timeoutMs = if (urgent) 1_200 else 2_500,
-                                startSlackM = if (st.fromM <= 0.0) MATCH_TRIP_END_SLACK_M else 0.0,
-                                endSlackM = if (st.toM >= gTop.distanceMeters - 1.0) MATCH_TRIP_END_SLACK_M else 0.0,
+                                startSlackM = startSlack, endSlackM = endSlack,
                             ) else null
                         val matched = m?.route
                         if (matched != null) {
@@ -1198,11 +1201,7 @@ class GoogleMapsDataSource @Inject constructor(
                             // Those steps carry the open router's names, so they pass the same
                             // check against the matched edges; without edges the matcher's stand.
                             val dt = IntArray(4)
-                            val lane = if (urgent || m.edges == null) null else laneDetail(
-                                matched, LANE_TRY_MS,
-                                trimStartM = if (st.fromM <= 0.0) MATCH_TRIP_END_SLACK_M else 0.0,
-                                trimEndM = if (st.toM >= gTop.distanceMeters - 1.0) MATCH_TRIP_END_SLACK_M else 0.0,
-                            )
+                            val lane = if (urgent || m.edges == null) null else laneDetail(matched, LANE_TRY_MS, trimStartM = startSlack, trimEndM = endSlack)
                             // The open router's own steps carry its names, which pass the check
                             // against the matched edges; borrowed lanes sit on the matcher's steps,
                             // whose names are already checked.
@@ -1248,7 +1247,7 @@ class GoogleMapsDataSource @Inject constructor(
                     ?: run { stretchSource.fill(0); stretchNames.fill(0); untrusted.clear(); matchedShapes.clear(); hybridOrNull(online = false) }
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
-                    "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gTop?.distanceMeters?.toInt()} m, " +
+                    "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gLineM.toInt()} m (Google states ${gTop?.distanceMeters?.toInt()} m), " +
                     (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size}); stretches matched ${stretchSource[0]} (${stretchSource[3]} with lane detail), from tiles ${stretchSource[1]}, bare ${stretchSource[2]}; their turn names kept ${stretchNames[0]} renamed ${stretchNames[1]} dropped ${stretchNames[2]}, no edges for ${stretchNames[3]}, off the line in ${untrusted.size} place(s)" else "NOT placed, older path") +
                     " in ${System.currentTimeMillis() - tHybrid} ms")
                 // Do the steps describe Google's line? Counts only (StepAudit).

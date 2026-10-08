@@ -182,9 +182,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
   route (`openD`, `viaD` are structured children).
 - `FixRules.isUpgrade` lets a GPS fix that follows a poor GPS fix skip `sanePosition`.
 - A replay seek feeds every earlier fix through the engine in one main-thread block.
-- Strict tile naming's "another street about as close" test depends on the order the tile's
-  segments come in (`LineNamer`). The trip-end slack for a matched stretch is keyed to Google's
-  stated distance, not the line's length.
 - My Maps import compiles a regex per placemark and fetches on the 12 s client.
 - A place starred before its details load, or offline, is stored as bare and never looks up its
   listing again.

@@ -41,7 +41,8 @@ object LineNamer {
     /** Strict mode's own matching distance (the lenient one is 30 m driving). */
     internal var STRICT_MAX_OFF_M = 12.0
     /** Strict mode: two differently named streets this close in distance to a sample, both
-     *  running its way, leave the sample unnamed. */
+     *  running its way, leave the sample unnamed. The farther one counts past
+     *  [STRICT_MAX_OFF_M] too. */
     internal var AMBIGUOUS_M = 12.0
     /** Part of the line that must carry a name before the result is trusted. */
     const val MIN_NAMED_SHARE = 0.6
@@ -284,9 +285,11 @@ object LineNamer {
         }
         fun nearestAligned(p: LatLng, brg: Double, maxOff: Double, strict: Boolean = false): NamedLine? {
             val gx = (p.lng * kx / cell).toInt(); val gy = (p.lat * 111_320.0 / cell).toInt()
-            var best: NamedLine? = null; var bestD = maxOff
-            // The nearest street with ANOTHER name running the same way (a frontage road beside a
-            // highway, the next street of a tight grid): close enough, and the sample is unsure.
+            // The nearest street, and the nearest with ANOTHER name running the same way (a frontage
+            // road beside a highway, the next street of a tight grid): close enough, and the sample
+            // is unsure. Both are taken over every segment and maxOff is applied last, so a street
+            // past maxOff still counts as the other one whatever order the segments come in.
+            var best: NamedLine? = null; var bestD = Double.MAX_VALUE
             var otherD = Double.MAX_VALUE
             for (dx in -1..1) for (dy in -1..1) for (seg in grid[key(gx + dx, gy + dy)].orEmpty()) {
                 val diff = abs(RouteGeometry.bearingDelta(brg, seg.brg)).let { if (it > 90.0) 180.0 - it else it }
@@ -297,7 +300,8 @@ object LineNamer {
                     bestD = d; best = seg.line
                 } else if (best != null && seg.line.name != best.name) otherD = minOf(otherD, d)
             }
-            if (strict && best != null && otherD - bestD < AMBIGUOUS_M) return null
+            if (bestD >= maxOff) return null
+            if (strict && otherD - bestD < AMBIGUOUS_M) return null
             return best
         }
         private fun segDist(p: LatLng, a: LatLng, b: LatLng): Double {

@@ -942,7 +942,10 @@ are padded 40 m. The match is refused when one stray run exceeds `OFF_RUN_MAX_M`
 strays total more than `OFF_TOTAL_SHARE` (8% of the line, 400 m at least), or the lengths differ
 by more than `MATCH_LENGTH_SLACK` (6%) plus 30 m, the end slack and the strays. On a stretch that
 touches the trip's start or end, the first or last `MATCH_TRIP_END_SLACK_M` (150 m) is not
-compared. Accepted strays (`Match.off`) reach the stitch as untrusted intervals.
+compared. A stretch touches the end when it runs to within 1 m of the measured length of
+Google's line (`HybridRoute.tripEndSlack`), the scale stretches are cut on. Google's stated
+distance is not that length and is not used. Accepted strays (`Match.off`) reach the stitch as
+untrusted intervals.
 
 Lanes come from the open router, because the matcher has none (`laneDetail`, planning fetches
 only, and only when the edges came back). The open router is led along the matched path with a
@@ -1034,10 +1037,13 @@ or sign destinations and ignores Google's step positions.
 - Under `MIN_NAMED_SHARE` (60%) of the line named, or `MIN_NAMED_SHARE_WALK` (50%), the result
   is null.
 - Strict mode, used for stretches, is never refused for a low named share. It matches within
-  `STRICT_MAX_OFF_M` (12 m). A sample with two differently named aligned streets within
-  `AMBIGUOUS_M` (12 m) of each other in distance is unnamed. A turn names its street only when
-  the line stays on it `STRICT_RUN_M` (60 m), a ramp or rename `STRICT_FAR_RUN_M` (100 m). Refs
-  containing "historic" are dropped.
+  `STRICT_MAX_OFF_M` (12 m). A sample is unnamed when the nearest aligned street with another
+  name is less than `AMBIGUOUS_M` (12 m) farther from it than the nearest street. That other
+  street counts at any distance, past `STRICT_MAX_OFF_M` too. Both are found over every segment
+  near the sample before either limit is applied, so the order the tiles list them in does not
+  decide whether the other street is seen. A turn names its street only when the line stays on
+  it `STRICT_RUN_M` (60 m), a ramp or rename `STRICT_FAR_RUN_M` (100 m). Refs containing
+  "historic" are dropped.
 
 The source is `GOOGLE_LINE_NAMED` when it names a whole route. Names come from `RoadNameTiles`:
 the z14 tiles the line crosses (48 at most, 96 kept in an LRU), fetched by the app's

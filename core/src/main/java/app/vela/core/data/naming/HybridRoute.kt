@@ -71,6 +71,19 @@ object HybridRoute {
     /** Meters along Google's line, padded. */
     data class Stretch(val fromM: Double, val toM: Double)
 
+    /** The length of [line] in meters, on the scale a [Stretch] is measured. */
+    fun lengthOf(line: List<LatLng>): Double = if (line.size < 2) 0.0 else cumulative(line).last()
+
+    /**
+     * How much of a stretch's match may sit off the line at its start and at its end: [slackM]
+     * at an end that is the trip's own, else 0. [lineM] is [lengthOf] the line the stretch was
+     * cut from, never the route's stated distance. That figure is not measured along the line:
+     * where it runs longer the last stretch loses its slack, and where it runs shorter a stretch
+     * that stops short of the end gets it.
+     */
+    fun tripEndSlack(s: Stretch, lineM: Double, slackM: Double): Pair<Double, Double> =
+        (if (s.fromM <= 0.0) slackM else 0.0) to (if (s.toM >= lineM - 1.0) slackM else 0.0)
+
     /** Where [google] leaves [open], as padded and merged stretches along [google]. Empty when
      *  the two are the same way. */
     fun stretches(google: List<LatLng>, open: List<LatLng>): List<Stretch> {
