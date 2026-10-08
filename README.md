@@ -4,9 +4,9 @@
 
 # Vela Maps
 
-**Google Maps, degoogled.**
+**The best of OpenStreetMap and Google Maps, in one app.**
 
-Live traffic, real place data and turn-by-turn navigation, with zero Google on your phone.
+Live traffic, real place data and turn-by-turn navigation, with no Google account, no Play Services and no Google code on your phone.
 
 [![Stable release](https://img.shields.io/github/v/release/PimpinPumpkin/Vela?label=stable&color=149387)](https://github.com/PimpinPumpkin/Vela/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/PimpinPumpkin/Vela/ci.yml?branch=main&label=build)](https://github.com/PimpinPumpkin/Vela/actions/workflows/ci.yml)
@@ -24,16 +24,16 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 > **Vela is in beta, so you may run into bugs.** If you do, open an issue and fill out the
 > template. Nightlies and canary builds are newer still and less tested than the weekly stable.
 
-A degoogled maps and navigation app for Android: *what NewPipe is to YouTube,
-for Google Maps.* The map is open data. The basemap is open vector tiles, and
+An open-source Google Maps alternative for Android: *what NewPipe is to
+YouTube, for Google Maps.* The map is open data. The basemap is open vector tiles, and
 the places on it are **Vela data**: Overture Maps and AllThePlaces, positioned
 with OpenStreetMap, baked into tiles in this repo and streamed from its
 releases. Browsing around never asks Google anything. Search, tap a place or
 ask for a route, and the phone itself asks Google's public web endpoints, with
 no account, no key and no server in between, for what only Google does well:
 search, hours, reviews, photos, and routes that know about traffic and closed
-roads. Built to run on GrapheneOS and other phones without Google Play
-services.
+roads. Built for degoogled phones such as GrapheneOS, and it runs on stock
+Android too.
 
 <p align="center"><img src="docs/not-google-maps.png" width="320" alt="A tub of I Can't Believe It's Not Butter relabeled I can't believe it's not Google Maps"></p>
 
@@ -151,7 +151,7 @@ repository are published as a searchable site at
   "Place icons on the map"** switches the map between Vela data (the default),
   Both, or Google, and a separate switch stops a tapped place from being looked
   up. The [FAQ](docs/FAQ.md) says what each feature uses.
-- **No Google on your phone.** No Play Services, no account, no app key, no ads.
+- **No Google software on your phone.** No Play Services, no account, no app key, no ads.
   Google never sees your map browsing or your saved places, and your GPS trail
   stays on the phone. A position reaches Google only in specific requests: a
   route from where you are, a search that ranks nearby places first, and the
@@ -204,7 +204,7 @@ repository are published as a searchable site at
 
 The whole list is in [FEATURES.md](FEATURES.md).
 
-## Why a degoogled app uses Google
+## Why Vela talks to Google at all
 
 A phone without Google Play Services cannot run Google Maps, and the open map
 datasets fall well short on search, reviews, hours and live traffic. So for those,
