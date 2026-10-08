@@ -142,6 +142,15 @@ Small items, one pull request each.
 - A "download this region" nudge when an avoid option is on, Google cannot be reached and no
   downloaded region covers the trip.
 - Parking: a note or photo on the saved spot.
+- Managing saved and imported places in bulk: select several in a list (long press, as on
+  recorded trips), then delete them or move them to another list. Today a place is removed or
+  moved one at a time from its own page.
+- A sound for a list: an alert when a drive passes a place on it, with a tone chosen per list.
+  It would ride the camera alert's path (`CameraAlerts`), during a drive or while the map
+  follows you. No background location.
+- A resumed drive keeps its stops. After the app is killed mid-drive, the resume offer restores
+  the destination, label and mode only: the remaining stops and a saved route's hidden points
+  are gone (`NavController.persistNav`).
 - On-street bike lanes. Painted lanes (`cycleway=lane`) are not in the OpenMapTiles schema and
   need a baked layer, never a per-viewport Overpass query. The painted-roads test under
   "Richer roads" draws them.
