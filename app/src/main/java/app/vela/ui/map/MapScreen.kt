@@ -2007,7 +2007,7 @@ fun MapScreen(
                 points = remember(state.selected, state.directionsOrigin, state.directionsReversed, state.directionsWaypoints) { vm.tripPointsForEditor() },
                 meLabel = stringResource(R.string.mapscreen_your_location),
                 onApply = vm::applyTrip,
-                onAddStop = vm::beginPickStop,
+                onAddStop = vm::beginPickStopFromEditor,
                 onDismiss = vm::closeStopsEditor,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )

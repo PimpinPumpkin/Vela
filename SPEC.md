@@ -2724,6 +2724,9 @@ them. They are not in the saved-places export.
   most `SavedRoutes.MAX_STOPS` (10). A run is never offered as an alternate. `openSavedRoute`
   starts it in its own mode from "Your routes" or the Settings list.
 - A trip takes at most 10 stops: `addStop` refuses the eleventh and `applyTrip` truncates.
+- "Add stop" in the trip editor (`beginPickStopFromEditor`) comes back to the editor when the
+  place is picked or the pick is cancelled, with the new stop as the last row before the
+  destination. "Add stop" on the route card still lands on the route.
 - Opening a saved route sets `openSavedRouteId`, and the card's menu offers "Save changes to
   <name>" (`updateOpenSavedRoute`).
 - During a drive `NavController` keeps one fix per `DRIVE_TRACE_STEP_M` (15 m). On arrival

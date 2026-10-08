@@ -5590,7 +5590,18 @@ class MapViewModel @Inject constructor(
 
     /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
      *  [addStop]/[cancelPickStop] ends the mode. */
-    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
+    fun beginPickStop() {
+        stopPickFromEditor = false
+        _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
+    }
+
+    /** "Add stop" in the trip editor. The pick ends back in the editor, with the new stop as
+     *  the last row to drag into place: reordering took a trip through the menu (issue 702). */
+    fun beginPickStopFromEditor() {
+        beginPickStop()
+        stopPickFromEditor = true
+    }
+    private var stopPickFromEditor = false
 
     /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done).
      *  During nav (issue #402) it opens over the ETA bar; the step sheet closes first so Done
@@ -5708,7 +5719,12 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }
+    fun cancelPickStop() {
+        if (!_state.value.pickingStop) return
+        val editor = stopPickFromEditor
+        stopPickFromEditor = false
+        _state.update { it.copy(pickingStop = false, editingStops = editor || it.editingStops) }
+    }
 
     fun addStopDuringNav(p: Place) = nav.addStopDuringNav(p)
 
@@ -5776,8 +5792,10 @@ class MapViewModel @Inject constructor(
 
     /** Append an intermediate stop and re-route through it. */
     fun addStop(p: Place) {
+        val editor = stopPickFromEditor && _state.value.let { it.pickingStop || it.pickOnMap == MapPick.STOP }
+        stopPickFromEditor = false
         if (_state.value.directionsWaypoints.size >= app.vela.core.nav.SavedRoutes.MAX_STOPS) {
-            _state.update { it.copy(pickingStop = false, pickOnMap = null, directionsOpen = true, results = emptyList(), query = "") }
+            _state.update { it.copy(pickingStop = false, pickOnMap = null, directionsOpen = true, results = emptyList(), query = "", editingStops = editor) }
             flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
             return
         }
@@ -5788,6 +5806,7 @@ class MapViewModel @Inject constructor(
                 // drop the pick UI (query/results) so the route is what's on screen. Setting
                 // directionsOpen BEFORE route() also keeps its stillWanted() guard satisfied.
                 directionsOpen = true, results = emptyList(), query = "", resultsCollapsed = false,
+                editingStops = editor,
             )
         }
         route(_state.value.travelMode)

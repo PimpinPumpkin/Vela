@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A stop added from the "Stops" sheet comes back to the sheet, so building a trip no longer
+  goes through the menu to reorder (issue 702).
 - The first run asks about plate cameras on the same page as the Google question: route
   around them, and warn near them. Both start off.
 - A pinch that twists zooms (it did nothing below a fast pace), and a pinch can turn the map
