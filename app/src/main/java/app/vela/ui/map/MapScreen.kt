@@ -482,8 +482,12 @@ fun MapScreen(
     // the sheet reaches the corner) drops it, continuously as the sheet is dragged.
     val sheetEdge = remember { SheetEdge() }
     sheetEdge.screenH = screenHeightPx
+    // Row-level Menu button target: the place id whose sheet should open onto its
+    // Menu tab. Consumed once (a normal pick, a close or Back clears it) so reopening the
+    // place later doesn't stick on Menu.
+    var sheetMenuAsk by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(state.selected?.id) {
-        if (state.selected == null) { placeSheetExpanded = false; sheetEdge.set(0) }
+        if (state.selected == null) { placeSheetExpanded = false; sheetEdge.set(0); sheetMenuAsk = null }
     }
     LaunchedEffect(state.results) { filteredResultIds = null }
     // Street View gates the panel too: opening the viewer clears `selected`, which used to flip
@@ -538,10 +542,6 @@ fun MapScreen(
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(state.results) { if (state.results.isEmpty()) resultsExpanded = false }
-    // Row-level Menu button target: the place id whose sheet should open onto its
-    // Menu tab. Consumed once (a normal pick or close clears it) so reopening the
-    // place later doesn't stick on Menu.
-    var sheetMenuAsk by remember { mutableStateOf<String?>(null) }
     // The results sheet minimized to its short bottom bar — the chrome shows again then, but
     // lifted above the bar so the FAB / scale bar / Search this area never sit on top of it.
     val resultsMinimized = gates.resultsMinimized
@@ -596,7 +596,8 @@ fun MapScreen(
     }
     var navSearchQuery by remember { mutableStateOf("") }
     LaunchedEffect(state.navigating) {
-        if (!state.navigating) { navSearchOpen = false; navSearchQuery = "" }
+        // (The End prompt too: left up when a drive ended by itself, it opened on the next drive.)
+        if (!state.navigating) { navSearchOpen = false; navSearchQuery = ""; confirmEndNav = false }
     }
     // Measured height of the nav BOTTOM bar (ETA + End) → everything stacked above it (speedometer,
     // speed-limit sign, re-center FAB, GPS-lost chip) offsets from the REAL height instead of a fixed
@@ -1021,7 +1022,10 @@ fun MapScreen(
         // The route's follow-up work (road features along it, the camera count and detours) runs
         // on the CPU right after the route lands; starting the fly-in on top of it dropped the map
         // to 5-7 fps on a 4a. From the chooser it has long finished by the time Start is tapped.
-        if (state.activeRoute != null && !state.navigating && vm.consumeAutoStart()) { vm.awaitRouteWork(); onStartNav() }
+        // The flag is taken after the wait: the wait can end this effect, because the work it
+        // waits for changes the route (a saved route, a camera re-rank, the naming), and a start
+        // taken before it was then lost.
+        if (state.activeRoute != null && !state.navigating && vm.autoStartPending()) { vm.awaitRouteWork(); if (vm.consumeAutoStart()) onStartNav() }
     }
     if (showPreciseNeeded) {
         app.vela.ui.VelaDialog(
@@ -3272,7 +3276,7 @@ private fun SearchResults(
                 }
                 val pickedNow = picked
                 if (bulk != null && pickedNow != null) BulkBar(
-                    picked = pickedNow,
+                    selection = pickedNow,
                     all = shown.map { it.id }.toSet(),
                     bulk = bulk,
                     ink = SheetPalette.ink(dark),
@@ -3837,8 +3841,7 @@ private fun ResultsSheet(
                 onMore = vm::loadMoreResults,
                 onActionDirections = { p ->
                     focusManager.clearFocus()
-                    vm.selectPlace(p)
-                    vm.routeToSelected()
+                    vm.directionsTo(p)
                 },
                 onActionCall = { p ->
                     p.phone?.let { ph ->
@@ -6083,7 +6086,7 @@ private fun ListsSheet(
                         val pickedNow = pickedSaved
                         item {
                             if (pickedNow != null) BulkBar(
-                                picked = pickedNow,
+                                selection = pickedNow,
                                 all = st.saved.map { it.id }.toSet(),
                                 bulk = remember(lists) {
                                     ListBulk(

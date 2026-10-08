@@ -482,6 +482,11 @@ internal class NavController(
     private fun offerDrivenRoute() {
         val trace = driveTrace.toList()
         val planned = drivePlanned
+        // The drive is over, so its trace is too. A drive begun elsewhere (the car screen starts
+        // the session itself) never came through beginDriveTrace, and went on adding to this one.
+        driveTrace.clear()
+        drivePlanned = emptyList()
+        if (planned.size < 2) return
         val forced = app.vela.ui.AppTune.local("drivenOfferAlways")?.let { it >= 0.5 } == true
         scope.launch {
             val own = withContext(Dispatchers.Default) { app.vela.core.nav.SavedRoutes.droveOwnWay(trace, planned) }
@@ -536,6 +541,7 @@ internal class NavController(
         // (finishTrip drops ones too short to be worth keeping).
         if (recorded != null && settingsPrefs.getBoolean("trip_name_on_save", false)) _state.update { it.copy(tripToName = recorded) }
         host.clearSpeedLimit() // clear the speed-limit badge for the next drive
+        driveTrace.clear(); drivePlanned = emptyList() // an ended drive's trace is not the next drive's
         clearPersistedNav() // this drive is over → don't offer to resume it next launch
         _state.update {
             it.copy(

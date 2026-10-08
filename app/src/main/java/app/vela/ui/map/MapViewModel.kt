@@ -2344,7 +2344,7 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
-            _state.update { it.copy(searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
+            _state.update { it.copy(openListId = null, searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
             // A pasted Google Maps SHARE LINK: try the shared-list import (issue #1). The link
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
@@ -2711,6 +2711,7 @@ class MapViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _state.update {
                 it.copy(
+                    openListId = null,
                     query = query, searching = true, directionsOpen = false, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                     resultsCollapsed = false, recents = recentStore.recent(),
                     // Stash the trip's destination: browsing stop candidates must not lose the trip.
@@ -4941,12 +4942,18 @@ class MapViewModel @Inject constructor(
      * refetch (a mode change, an added stop) must not re-launch nav behind the user.
      */
     @Volatile var autoStartOnRoute = false
-        private set
+        private set(v) { field = v; if (v) autoStartArmedAtMs = android.os.SystemClock.elapsedRealtime() }
+    @Volatile private var autoStartArmedAtMs = 0L
+
+    /** A start is waiting for its route. It lapses after [AUTO_START_TTL_MS]: a link that found
+     *  no place, or a search that failed, must not start the next route the user opens. */
+    fun autoStartPending(): Boolean =
+        autoStartOnRoute && android.os.SystemClock.elapsedRealtime() - autoStartArmedAtMs < AUTO_START_TTL_MS
 
     fun consumeAutoStart(): Boolean {
-        if (!autoStartOnRoute) return false
+        val pending = autoStartPending()
         autoStartOnRoute = false
-        return true
+        return pending
     }
 
     /** Directions for the selected place, launching guidance as soon as a route exists. */
@@ -4966,6 +4973,17 @@ class MapViewModel @Inject constructor(
         syncRouteTraffic()
         modeEtaCache.clear()
         route(_state.value.travelMode)
+    }
+
+    /** A result card's Directions pill. While the list is a pick for a trip already being
+     *  planned (a stop, a new start or end, a stop along the way) or for a live drive, the pick
+     *  is the whole action: [selectPlace] makes it, and routing to "the selected place" after it
+     *  would start a fresh trip to the old destination and drop every stop. */
+    fun directionsTo(p: Place) {
+        val s = _state.value
+        val picking = s.navigating || s.alongRouteDest != null || s.pickingStop || s.pickingDest || s.pickingOrigin
+        selectPlace(p)
+        if (!picking) routeToSelected()
     }
 
     fun routeToSelected() {
@@ -5124,16 +5142,22 @@ class MapViewModel @Inject constructor(
     fun moveSavedPlacesToList(ids: Set<String>, toListId: String) {
         val moving = _state.value.saved.filter { it.id in ids }
         if (moving.isEmpty() || _state.value.lists.none { it.id == toListId }) return
-        val lists = listStore.addPlaces(toListId, moving.map { app.vela.core.model.ListPlace.of(it.toPlace()) })
+        // The place's own icon goes with it (the list copy has the same field).
+        val lists = listStore.addPlaces(toListId, moving.map { app.vela.core.model.ListPlace.of(it.toPlace()).copy(icon = it.icon) })
         val saved = savedStore.removeAll(ids)
-        _state.update { it.copy(lists = lists, saved = saved) }
+        _state.update { it.copy(lists = lists, saved = saved, results = refreshedOpenList(it, lists) ?: it.results) }
         lists.firstOrNull { it.id == toListId }?.let { flashStatus(appContext.getString(R.string.bulk_moved, moving.size, it.name)) }
     }
 
     /** When the results sheet is showing an open list, rebuild it from [lists] so a
      *  note edit / removal shows immediately (the rows are a snapshot from openList()). */
     private fun refreshedOpenList(st: MapUiState, lists: List<app.vela.core.model.PlaceList>): List<Place>? =
-        st.openListId?.let { id -> lists.firstOrNull { it.id == id }?.places?.map { it.toPlace() } }
+        st.openListId?.let { id -> lists.firstOrNull { it.id == id }?.let { listRows(it) } }
+
+    /** The rows an open list shows: its places and planned routes, less the layers switched off. */
+    private fun listRows(list: app.vela.core.model.PlaceList): List<Place> =
+        list.places.filter { it.layer == null || it.layer !in list.hiddenLayers }.map { it.toPlace() } +
+            routeRows(list.shapes.filter { it.layer == null || it.layer !in list.hiddenLayers })
 
     /** Sets/clears the owner's note on a place across every list, and reflects it on the
      *  open sheet so the change shows immediately. Keyed by feature id AND place id — the
@@ -5413,8 +5437,7 @@ class MapViewModel @Inject constructor(
     /** Opens a list as search results (its places), the list name in the search bar. */
     fun openList(listId: String) {
         val list = _state.value.lists.firstOrNull { it.id == listId } ?: return
-        val places = list.places.filter { it.layer == null || it.layer !in list.hiddenLayers }.map { it.toPlace() } +
-            routeRows(list.shapes.filter { it.layer == null || it.layer !in list.hiddenLayers })
+        val places = listRows(list)
         _state.update {
             it.copy(
                 results = places, query = list.name, openListId = listId,
@@ -9648,6 +9671,7 @@ class MapViewModel @Inject constructor(
         private const val NAV_DETOUR_TIMEOUT_MS = 8_000L
 
         /** Past this from the trip's chosen start, Start re-plans from where you are (issue #463). */
+        private const val AUTO_START_TTL_MS = 45_000L
         private const val START_FROM_ME_M = 150.0
         /** The least window a typed street address is searched over, and how near a result has to
          *  be to count as "the address around here": about a metro area. */

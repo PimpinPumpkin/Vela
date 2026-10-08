@@ -2633,8 +2633,10 @@ it with regexes.
   becomes `BulkBar` (`ui/map/ListBulk.kt`): the count, All, Move to list (any other list, or a
   new one named on the spot) and Remove behind a confirm. The stores write once per action
   (`PlaceListStore.removePlaces`, `movePlaces`, `addPlaces`, `SavedPlaceStore.removeAll`); a
-  move to a list that is gone moves nothing. Moving a saved place puts it in the list and
-  takes the star off.
+  move to a list that is gone moves nothing. Moving a saved place puts it in the list, with
+  its own icon, and takes the star off. Only rows on show are counted and acted on, so a row
+  picked and then hidden by a filter or a layer switch is left alone. A new search closes the
+  open list (`openListId`).
 - A list's sound: `PlaceList.alert` is a key of `PassAlerts.SOUNDS` (`ping`, `bell`, `double`,
   `low`, `name`) or null, set in the list editor, where picking one plays it. Each fix, live
   or simulated, goes to `PassAlerts.Tracker.onFix` (`core/nav/PassAlerts.kt`) with the places

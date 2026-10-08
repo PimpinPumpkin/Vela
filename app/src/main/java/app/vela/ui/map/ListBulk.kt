@@ -46,18 +46,20 @@ class ListBulk(
 
 /**
  * The bar a selection wears in place of its sheet's title: the count, All, Move to list, Remove
- * and Done. [picked] is read when an action runs, [onChange] takes the next selection, and a
- * null one ends the selecting.
+ * and Done. [selection] is read when an action runs, [onChange] takes the next selection, and a
+ * null one ends the selecting. Only what is in [all], the rows on show, counts and is acted on:
+ * a row picked and then hidden by a filter or a layer switch is not removed behind the user.
  */
 @Composable
 internal fun BulkBar(
-    picked: Set<String>,
+    selection: Set<String>,
     all: Set<String>,
     bulk: ListBulk,
     ink: Color,
     onChange: (Set<String>?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val picked = remember(selection, all) { selection intersect all }
     var moving by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
