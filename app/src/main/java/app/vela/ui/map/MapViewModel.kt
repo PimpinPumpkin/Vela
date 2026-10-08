@@ -958,7 +958,11 @@ class MapViewModel @Inject constructor(
                 // A fix at least twice as accurate as the one showing (itself 50 m or worse) is an
                 // UPGRADE, not an outlier: the first GPS lock after a coarse network position lands
                 // at once instead of being held for two fixes and then crept toward at 12% a fix.
-                val upgrade = app.vela.core.location.FixRules.isUpgrade(_state.value.myAccuracyM, accM)
+                // GPS after GPS is one only when it refines the fix showing (FixRules.isUpgrade).
+                val upgrade = app.vela.core.location.FixRules.isUpgrade(
+                    _state.value.myAccuracyM, accM, shownIsGps = prevWasGps, newIsGps = isGps,
+                    movedM = prev?.distanceTo(rawHere) ?: 0.0,
+                )
                 // Drop outlier leaps + hold the dot when parked (see sanePosition).
                 val here = if (upgrade) { posOutlierStreak[0] = 0; rawHere } else sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                 lastAccM = accM

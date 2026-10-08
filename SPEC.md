@@ -1335,7 +1335,10 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   max(5 m/s, speed) per second of age).
 - A fix at least twice as accurate as the one showing, itself 50 m or worse
   (`FixRules.isUpgrade`), skips the outlier hold and the low-pass, so the first GPS lock lands at
-  once.
+  once. A GPS fix that follows a GPS fix does so only when it lands within twice the shown fix's
+  radius: under poor sky a receiver's accuracy figure halves and doubles from fix to fix, and a
+  multipath leap taken as is becomes the position the outlier hold then keeps against the next
+  good fixes. A first lock sharpening on a phone with no network location still lands at once.
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - The provider registration keeps `minDistanceM = 0`. A distance filter delivers nothing at a

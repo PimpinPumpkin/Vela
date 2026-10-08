@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A GPS fix that leaps away from a poor GPS fix goes through the outlier hold again. Taken as
+  is, one multipath leap moved the dot and the guidance and held them there for two more fixes.
 - A reroute over a downloaded region no longer waits out the open router's 6 second timeout
   before handing back the phone's own route.
 - Whether a turn gets a street name no longer depends on the order a map tile lists its

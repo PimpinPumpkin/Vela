@@ -11,8 +11,17 @@ object FixRules {
     fun betterThanLast(newAccM: Float, lastAccM: Float, ageS: Double, speedMps: Double): Boolean =
         newAccM < lastAccM + maxOf(5.0, speedMps) * ageS
 
-    /** A fix at least twice as accurate as the one showing, which is itself 50 m or worse: an
-     *  upgrade to take as is, not an outlier to hold back. */
-    fun isUpgrade(shownAccM: Float?, newAccM: Float): Boolean =
-        shownAccM != null && shownAccM >= 50f && newAccM * 2f <= shownAccM
+    /**
+     * A fix at least twice as accurate as the one showing, which is itself 50 m or worse: an
+     * upgrade to take as is, not an outlier to hold back. A GPS fix after a GPS fix must also
+     * land within twice the shown fix's own radius ([movedM] from it), so it refines that
+     * position instead of contradicting it: under poor sky a receiver's accuracy figure swings
+     * from fix to fix, and a multipath leap taken as is becomes the position the outlier hold
+     * then keeps against the next good fixes. A first lock sharpening on a phone with no
+     * network location still lands at once.
+     */
+    fun isUpgrade(shownAccM: Float?, newAccM: Float, shownIsGps: Boolean, newIsGps: Boolean, movedM: Double): Boolean {
+        if (shownAccM == null || shownAccM < 50f || newAccM * 2f > shownAccM) return false
+        return !(shownIsGps && newIsGps) || movedM <= 2.0 * shownAccM
+    }
 }
