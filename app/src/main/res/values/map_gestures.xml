@@ -4,4 +4,10 @@
          faster than this, per millisecond. At 0.6dp a pinch at an ordinary pace did nothing until it
          sped up: on a Pixel 4a, 990 px a second zoomed nothing and 1,770 did. -->
     <dimen name="maplibre_minimum_scale_speed">0.15dp</dimen>
+    <!-- Overrides MapLibre's own value (0.9dp). While the fingers also turn, even slightly, a
+         pinch has to be this fast to start. A hand's pinch always turns a little, so at 0.9dp
+         (2,360 px a second on a Pixel 4a) an unhurried one did nothing: a pinch at 1,000 px a
+         second that turned 20 degrees zoomed 0.00 levels, and 0.63 at this value. The same as
+         the plain speed above, so turning costs nothing. -->
+    <dimen name="maplibre_minimum_angled_scale_speed">0.15dp</dimen>
 </resources>

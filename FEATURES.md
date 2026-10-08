@@ -13,6 +13,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   what is drawn.
 - Tap a place, a house number or a building to open it. Long-press to drop a pin.
 - Tilt the map for 3D buildings. "Tilt with two fingers" and "3D buildings" turn those off.
+- Pinch and turn in one gesture. A small turn goes back to north when you let go.
 - A layers button for satellite, live traffic, transit lines and terrain shading. "Show layers
   button" hides it.
 - "Highlight transit lines" draws subway, tram and train lines in their own colors.

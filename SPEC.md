@@ -1587,6 +1587,17 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   closing at 990 px a second zoomed nothing at 0.6 dp, and one at 400 zooms at 0.15. A level
   tilt drag, a diagonal one with uneven fingers and a two-finger pan still read as tilt and
   pan. `scripts/touch/two-finger.sh` plays these gestures on a phone.
+- A pinch whose fingers also turn needs `maplibre_minimum_angled_scale_speed`, lowered from
+  0.9 dp to 0.15 dp. A hand's pinch always turns a little: on a Pixel 4a a pinch at 1,000 px a
+  second with a 20 degree twist zoomed nothing at 0.9 dp and 0.6 levels at 0.15.
+- A pinch and a turn work in one gesture (`isDisableRotateWhenScaling` and
+  `isIncreaseScaleThresholdWhenRotating` off). MapLibre's defaults let whichever is recognized
+  first shut the other out, and with the lower pinch speeds the pinch nearly always won, so
+  the map would not turn. A turn starts after 3 degrees of twist (`TURN_START_DEG`), and after
+  15 once a pinch is under way (`TURN_START_PINCHING_DEG`, set in the scale listener). A turn
+  of the browse map that rests within `BROWSE_TURN_KEEP_MIN_DEG` (12) of north goes back to
+  north, checked at camera idle because the turn's fling runs on after the fingers lift.
+  While a drive follows the car a pinch does not turn the map.
 - A parked drive slows the loop to `NAV_IDLE_TICK_MS` (120 ms). A moving detached camera keeps
   it at frame rate.
 

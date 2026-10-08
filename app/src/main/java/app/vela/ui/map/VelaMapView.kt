@@ -171,6 +171,12 @@ private const val PUCK_GESTURE_SETTLE_MS = 180L
 private const val TWO_FINGER_PAN_DP = 44f
 /** A two-finger tilt on the browse map that ends below this is dropped, not kept. */
 private const val BROWSE_TILT_KEEP_MIN_DEG = 8.0
+/** A turn of the browse map that ends within this of north is dropped the same way. */
+private const val BROWSE_TURN_KEEP_MIN_DEG = 12.0
+/** Twist before a two-finger turn begins: MapLibre's own value, and the one while a pinch that
+ *  started first is under way. A hand's pinch twists some, and at 3 that turned the map. */
+private const val TURN_START_DEG = 3f
+private const val TURN_START_PINCHING_DEG = 15f
 /**
  * The steepest tilt the drive camera takes at a zoom the user pinched to: all of [full] from
  * [NAV_TILT_FULL_ZOOM] in, flat from [NAV_TILT_FLAT_ZOOM] out, a straight line between. A view
@@ -1170,6 +1176,9 @@ fun VelaMapView(
     // Settings > Map "Tilt with two fingers" applies at once, not at the next map start.
     val tiltGestures = app.vela.ui.MapTilt.on.value
     LaunchedEffect(tiltGestures, mapRef) { mapRef?.uiSettings?.isTiltGesturesEnabled = tiltGestures }
+    // A pinch may also turn the map (see the gesture settings at map start), except while a drive
+    // follows the car: the bearing is the camera's there, and a turn would only swing back.
+    LaunchedEffect(navMode, navFollowing, mapRef) { mapRef?.uiSettings?.isDisableRotateWhenScaling = navMode && navFollowing }
     // DRAWING: a finger that comes down on a drawn point owns the gesture. Dragging moves the
     // point, a plain tap removes it; anything else falls through to the map (pan, zoom, and the
     // tap that adds a point). The listener sees the touch before the map's own gestures.
@@ -3804,6 +3813,13 @@ fun VelaMapView(
                 // satisfying near-horizon 3D is reachable; browse-camera moves use
                 // newLatLngZoom (which preserves pitch), so a tilt the user sets sticks.
                 map.uiSettings.isTiltGesturesEnabled = app.vela.ui.MapTilt.on.value
+                // Zoom and turn in one gesture, as on Google's map. MapLibre's defaults make each
+                // shut the other out: a pinch recognized first disables rotation until the fingers
+                // lift, and a rotation recognized first interrupts the pinch until its span has
+                // changed by 75 dp. A pinch that came first asks more twist before the map turns
+                // (TURN_START_PINCHING_DEG, the scale listener below), so a plain one stays put.
+                map.uiSettings.isDisableRotateWhenScaling = false
+                map.uiSettings.isIncreaseScaleThresholdWhenRotating = false
                 // Two-finger tilt was nearly impossible to trigger (user 2026-07-11): stock
                 // shove detection wants the fingers within 20 degrees of level. Widen the
                 // accepted angle so a casual two-finger drag tilts. The START threshold stays
@@ -4114,18 +4130,25 @@ fun VelaMapView(
                 })
                 // Turning the map by hand is taking the camera: the browse follow lets go (it would
                 // ease the bearing straight back). The two-finger wait above no longer does it.
+                val turnEnded = booleanArrayOf(false)
                 map.addOnRotateListener(object : MapLibreMap.OnRotateListener {
                     override fun onRotateBegin(detector: org.maplibre.android.gestures.RotateGestureDetector) {
                         if (!navModeHolder.value) userPan.value()
                     }
                     override fun onRotate(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
-                    override fun onRotateEnd(detector: org.maplibre.android.gestures.RotateGestureDetector) {}
+                    // Checked once the camera rests (the idle listener below), because the
+                    // turn's fling runs on after this call.
+                    override fun onRotateEnd(detector: org.maplibre.android.gestures.RotateGestureDetector) {
+                        turnEnded[0] = !navModeHolder.value
+                    }
                 })
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
                     override fun onScaleBegin(detector: StandardScaleGestureDetector) {
                         scaling[0] = true
                         overviewLive[0] = false
                         browseZoomGoal[0] = Double.NaN // fingers beat a pending locate-tap zoom
+                        val turn = map.gesturesManager.rotateGestureDetector
+                        if (!turn.isInProgress) turn.angleThreshold = TURN_START_PINCHING_DEG
                     }
                     // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
                     // if the end callback is missed; we keep FOLLOWING at it and never detach.
@@ -4150,6 +4173,7 @@ fun VelaMapView(
                             zoomOverride.value(true)
                         }
                         scaling[0] = false
+                        map.gesturesManager.rotateGestureDetector.angleThreshold = TURN_START_DEG
                     }
                 })
                 // Two-finger TILT (shove). Without this the nav ticker kept writing its own tilt
@@ -4335,6 +4359,17 @@ fun VelaMapView(
                 ovlGateHook[0] = runOvlGate
                 map.addOnCameraIdleListener {
                     idleEvents[0]++
+                    // A turn that comes to rest within a few degrees of north was a pinch's wobble:
+                    // back to north, as a slight tilt is dropped. A pinch can turn the map, and
+                    // without this a sloppy one left it 5 degrees off for good.
+                    if (turnEnded[0]) {
+                        turnEnded[0] = false
+                        val b = map.cameraPosition.bearing.mod(360.0)
+                        val off = minOf(b, 360.0 - b)
+                        if (!navModeHolder.value && off > 0.05 && off <= BROWSE_TURN_KEEP_MIN_DEG) {
+                            runCatching { map.animateCamera(CameraUpdateFactory.bearingTo(0.0), 180) }
+                        }
+                    }
                     if (gestureMove[0]) {
                         gestureMove[0] = false
                         map.cameraPosition.target?.let { t ->
