@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- "Release now" (`release.yml`): one manual run cuts a nightly from main, or cuts and
+  promotes it to stable with its What's new list. Two separate dispatches could promote the
+  previous day's build.
 - Tilting the map no longer re-lays out the basemap twice per tilt: once shown, the 3D
   buildings fade by opacity instead of being hidden.
 - The house-number box stands still where an address overlay draws the numbers. Moving it

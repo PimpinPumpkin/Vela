@@ -1,0 +1,110 @@
+name: Release now
+
+# Takes main's head to a release channel in one manual run, for a build that should not wait for
+# the 10:30 UTC nightly cron or the Monday promotion:
+#   nightly  cut a nightly from main now
+#   stable   cut it, then promote that same build to stable
+#
+# It builds nothing itself. The nightly is cut by dispatching ci.yml, because the version comes
+# from ci.yml's own run counter and another workflow's counter would start at 1. The promotion is
+# promote-stable.yml, called with the tag this run cut, so the build that becomes stable is the
+# one made from the commit this run started on. Done by hand as two dispatches, a promotion sent
+# before the new nightly existed promoted the previous day's build.
+#
+# `sha`, when given, must be main's head: the run stops if main has moved since the release was
+# asked for. `whats_new` is the hand-written list that leads a stable's notes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "nightly: cut a nightly from main now. stable: cut it and promote it."
+        type: choice
+        options: [nightly, stable]
+        default: nightly
+      sha:
+        description: "The commit main must be at (optional). The run stops if main is elsewhere."
+        type: string
+        default: ''
+      whats_new:
+        description: "stable only: the What's new list that leads the notes, one '- ' line per item (optional)."
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+  actions: write # dispatches ci.yml
+
+concurrency: release-now
+
+jobs:
+  cut:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.cut.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # tags, to find the nightly cut from this commit
+
+      - name: Check this run is for main's head
+        env:
+          WANT: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run this on main, not on $GITHUB_REF_NAME."; exit 1
+          fi
+          NOW="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$NOW" != "$GITHUB_SHA" ]; then
+            echo "::error::main moved to ${NOW:0:9} after this run started on ${GITHUB_SHA:0:9}."; exit 1
+          fi
+          if [ -n "$WANT" ] && [[ "$GITHUB_SHA" != "$WANT"* ]]; then
+            echo "::error::main is at ${GITHUB_SHA:0:9}, not at the $WANT this release was asked for."; exit 1
+          fi
+
+      - name: Cut the nightly from this commit
+        id: cut
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The newest app tag, when it sits on this commit. App tags only (v0.*): the repo also
+          # tags its data releases.
+          at_head() {
+            git fetch -q --tags --force origin
+            local t
+            t="$(git tag -l 'v0.[0-9]*' --sort=-v:refname | head -n1)"
+            if [ -n "$t" ] && [ "$(git rev-parse "${t}^{commit}")" = "$GITHUB_SHA" ]; then echo "$t"; fi
+          }
+          TAG="$(at_head)"
+          if [ -n "$TAG" ]; then
+            echo "$TAG is already cut from this commit."
+          else
+            # A minute of slack for the clocks: the run is matched by commit as well.
+            SINCE="$(date -u -d '1 minute ago' +%Y-%m-%dT%H:%M:%SZ)"
+            gh workflow run ci.yml --ref main
+            RUN=""
+            for _ in $(seq 1 30); do
+              sleep 10
+              RUN="$(gh run list --workflow ci.yml --event workflow_dispatch --branch main --limit 10 \
+                --json databaseId,createdAt,headSha \
+                --jq "[.[] | select(.headSha == \"$GITHUB_SHA\" and .createdAt >= \"$SINCE\")][0].databaseId // empty")"
+              [ -n "$RUN" ] && break
+            done
+            if [ -z "$RUN" ]; then echo "::error::The CI run did not start."; exit 1; fi
+            echo "Waiting for CI run $RUN."
+            gh run watch "$RUN" --exit-status --interval 30
+            TAG="$(at_head)"
+            if [ -z "$TAG" ]; then echo "::error::CI finished without a nightly on ${GITHUB_SHA:0:9}."; exit 1; fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Nightly ${TAG} is cut from ${GITHUB_SHA:0:9}." >> "$GITHUB_STEP_SUMMARY"
+
+  promote:
+    if: inputs.channel == 'stable'
+    needs: cut
+    uses: ./.github/workflows/promote-stable.yml
+    with:
+      tag: ${{ needs.cut.outputs.tag }}
+      whats_new: ${{ inputs.whats_new }}

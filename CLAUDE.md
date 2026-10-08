@@ -150,6 +150,9 @@ screen silently stops recomposing.
   are changes that only touch docs paths.
 - A stable's notes lead with a short hand-written "What's new" list. The in-app dialog shows
   the release body as it is.
+- `release.yml` ("Release now") takes main's head to a nightly or a stable in one manual run
+  and is the only by-hand path: it cuts through `ci.yml` and promotes the build it cut, with
+  the What's new list as an input. It is the maintainer's to start, or to approve each time.
 - Never name a release `v0.4.0` by hand. The updater reads the run number out of the tag.
 - Contributor pull requests are read in full and tested before they land, and are taken by
   cherry-pick with the author kept.

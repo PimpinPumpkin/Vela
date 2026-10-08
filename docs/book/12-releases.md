@@ -25,6 +25,12 @@ repository. There is no update server.
 | Nightly | One prerelease a day when `main` has moved | `v0.4.<run>` | `ci.yml`, daily at 10:30 UTC or on dispatch |
 | Stable | The newest nightly, made a full release | The nightly's tag | `promote-stable.yml`, Mondays 16:00 UTC or on dispatch |
 
+`release.yml` ("Release now") does both by hand in one run, for a build that should not wait:
+`channel` nightly cuts a nightly from `main` now, and stable cuts it and promotes that same
+build. It builds nothing: it dispatches `ci.yml`, waits for it, and calls `promote-stable.yml`
+with the tag that run cut. It runs only on `main`, stops if `main` moves under it, and takes an
+optional `sha` that `main` must be at.
+
 The F-Droid repository is a copy of the same APKs, served from GitHub Pages at
 `https://pimpinpumpkin.github.io/Vela/repo`. The full list of rules and constants is
 [SPEC section 15](../../SPEC.md).
@@ -118,9 +124,12 @@ would otherwise read as a feature.
 
 The app shows notes through `plainReleaseNotes`, which strips the Markdown marks and keeps the
 first 24 lines. A stable's generated list covers a week, can run past 24 lines, and reads like a
-git log. So on the day a stable is cut, a person edits its notes
-(`gh release edit v0.4.<run> --notes-file`) to put a short list of the main user-facing changes
-above the generated one. The promotion workflow cannot write that list.
+git log. So a stable's notes lead with a short hand-written list of the main user-facing
+changes, above the generated one. The promotion cannot write that list, but it can be handed
+it: the `whats_new` input of `release.yml` and `promote-stable.yml` puts it under "What's new
+in <version>", and the generated list follows under "Everything since <previous stable>". A
+promotion run without it (the Monday cron) leaves the notes to be edited by hand
+(`gh release edit v0.4.<run> --notes-file`).
 
 ### The in-app updater
 

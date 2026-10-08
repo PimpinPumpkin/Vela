@@ -4860,6 +4860,12 @@ and in `location-guard.yml`.
   retitled `Vela <version>` with the notes regenerated. Each push to `canary` replaces the one
   release on the fixed tag `canary`, which is not a `v0.*` tag. Its notes carry the
   `versionCode:` line the updater reads.
+- `release.yml` is the manual path to a channel: input `channel` nightly dispatches `ci.yml`
+  on `main` and waits for the nightly, and stable then calls `promote-stable.yml` with that
+  tag. It refuses any ref but `main`, a `main` that moved after the run started, and a `main`
+  that is not at the optional `sha`. `promote-stable.yml` takes `tag` (the nightly expected to
+  be newest; another one stops the run) and `whats_new` (the hand-written list that leads the
+  notes).
 - versionName is `0.4.<run>` and versionCode `(2000 + run) * 10` plus a chip digit. The run
   number must stay in `ci.yml`: another workflow would restart the count.
 - Never name a release `v0.4.0`. The updater takes the run number from the tag, reads code 2000

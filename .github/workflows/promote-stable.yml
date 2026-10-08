@@ -10,11 +10,34 @@ name: Promote weekly stable
 # The promoted release's notes are regenerated to span everything since the
 # PREVIOUS stable, so weekly users see the whole week's changelog, not just the
 # last push's slice.
+#
+# Two optional inputs, for a promotion asked for by hand or by release.yml:
+#   tag        the nightly expected to be the newest; the run stops if another one is
+#   whats_new  a hand-written list that leads the notes, above the generated changelog. The
+#              in-app What's new dialog shows the notes as they are, so the list is what people
+#              read first.
 
 on:
   schedule:
     - cron: "0 16 * * 1" # Mondays 16:00 UTC
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The nightly expected to be promoted, such as v0.4.2400 (optional). The run stops if the newest is another."
+        type: string
+        default: ''
+      whats_new:
+        description: "The What's new list that leads the notes, one '- ' line per item (optional)."
+        type: string
+        default: ''
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        default: ''
+      whats_new:
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -32,6 +55,8 @@ jobs:
       - name: Promote newest nightly to stable
         env:
           GH_TOKEN: ${{ github.token }}
+          WANT_TAG: ${{ inputs.tag }}
+          WHATS_NEW: ${{ inputs.whats_new }}
         run: |
           set -euo pipefail
           # Newest prerelease and newest stable, by run number (the tag scheme is
@@ -49,6 +74,11 @@ jobs:
             --jq '.[] | select(.prerelease) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)"
           STABLE="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
             --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | sed -n 1p)"
+          if [ -n "$WANT_TAG" ] && [ "$NIGHTLY" != "$WANT_TAG" ]; then
+            if [ "$STABLE" = "$WANT_TAG" ]; then echo "$WANT_TAG is already the stable."; exit 0; fi
+            echo "::error::The newest nightly is ${NIGHTLY:-none}, not the $WANT_TAG this promotion was asked for."
+            exit 1
+          fi
           if [ -z "$NIGHTLY" ]; then
             echo "No nightly to promote."
             exit 0
@@ -67,7 +97,13 @@ jobs:
             COMPARE=""
           fi
           [ -z "$LOG" ] && LOG="- Maintenance and internal changes"
-          NOTES="$(printf 'What'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
+          if [ -n "$WHATS_NEW" ]; then
+            SINCE="Everything since ${STABLE#v}"
+            [ -n "$STABLE" ] || SINCE="Everything in this release"
+            NOTES="$(printf 'What'\''s new in %s\n\n%s\n\n%s\n\n%s\n\n%s\n' "$VER" "$WHATS_NEW" "$SINCE" "$LOG" "$COMPARE")"
+          else
+            NOTES="$(printf 'What'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
+          fi
           # Drop the "nightly" from the title: the same release is the stable now.
           gh release edit "$NIGHTLY" \
             --title "Vela $VER" \
