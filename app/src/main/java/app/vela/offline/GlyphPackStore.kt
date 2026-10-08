@@ -73,10 +73,15 @@ object GlyphPackStore {
     /** Download and unzip the glyph pack if it is not installed. True when installed afterwards. */
     suspend fun ensureInstalled(context: Context, http: OkHttpClient, refresh: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
+            val root = glyphRoot(context)
+            // Staged and swapped beside the pack. The cache folder is always internal and the pack
+            // can be on the card, and a rename across volumes fails after the old pack is gone.
+            val staging = File(root.parentFile, "glyphs.new")
+            val old = File(root.parentFile, "glyphs.old")
+            if (!root.exists() && old.exists()) old.renameTo(root) // a swap that was cut short
             // A stale pack is replaced only when asked (the caller checks the connection); a failed
             // refresh leaves the old pack in place, which still draws every label.
             if (installed(context) && !(refresh && stale(context))) return@withLock true
-            val root = glyphRoot(context)
             val tmp = File(context.cacheDir, "map-fonts.zip.tmp")
             val client = http.newBuilder().callTimeout(0, java.util.concurrent.TimeUnit.SECONDS).readTimeout(60, java.util.concurrent.TimeUnit.SECONDS).build()
             runCatching {
@@ -84,7 +89,7 @@ object GlyphPackStore {
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
                     resp.body!!.byteStream().use { input -> tmp.outputStream().use { input.copyTo(it) } }
                 }
-                val staging = File(context.cacheDir, "glyphs-staging").apply { deleteRecursively(); mkdirs() }
+                staging.deleteRecursively(); staging.mkdirs()
                 ZipInputStream(tmp.inputStream().buffered()).use { zip ->
                     while (true) {
                         val e = zip.nextEntry ?: break
@@ -100,12 +105,17 @@ object GlyphPackStore {
                 }
                 check(File(staging, "Noto Sans Regular/0-255.pbf").isFile) { "pack has no Noto Sans Regular" }
                 File(staging, "version.txt").writeText(PACK_VERSION.toString())
-                root.deleteRecursively()
-                check(staging.renameTo(root)) { "rename failed" }
+                old.deleteRecursively()
+                if (root.exists()) check(root.renameTo(old)) { "could not set the old pack aside" }
+                if (!staging.renameTo(root)) { old.renameTo(root); error("rename failed") }
+                old.deleteRecursively()
                 tmp.delete()
                 android.util.Log.i("VelaBasemap", "glyph pack installed")
                 true
-            }.getOrElse { tmp.delete(); android.util.Log.w("VelaBasemap", "glyph pack install failed", it); installed(context) }
+            }.getOrElse {
+                tmp.delete(); staging.deleteRecursively()
+                android.util.Log.w("VelaBasemap", "glyph pack install failed", it); installed(context)
+            }
         }
     }
 

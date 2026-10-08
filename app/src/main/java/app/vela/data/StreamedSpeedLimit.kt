@@ -35,7 +35,9 @@ object StreamedSpeedLimit {
     fun limitAt(uris: List<String>, lat: Double, lng: Double): Double? {
         for (uri in uris) {
             val a = archive(uri) ?: continue
-            val h = a.header ?: continue
+            // A header that could not be read (no signal on the first lookup) is held by the
+            // archive for good: let it go, and the lookup after next asks again.
+            val h = a.header ?: run { archives.remove(uri)?.let { runCatching { it.close() } }; continue }
             val z = h.maxZoom
             val n = 1 shl z
             val x = floor((lng + 180.0) / 360.0 * n).toInt().coerceIn(0, n - 1)

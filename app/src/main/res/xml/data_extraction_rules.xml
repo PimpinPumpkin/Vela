@@ -4,6 +4,7 @@
     <cloud-backup>
         <include domain="sharedpref" path="vela_settings.xml" />
         <include domain="sharedpref" path="vela_onboarding.xml" />
+        <include domain="sharedpref" path="vela_notices.xml" />
         <include domain="sharedpref" path="vela_units.xml" />
         <include domain="sharedpref" path="vela_shortcuts.xml" />
         <include domain="sharedpref" path="vela_saved.xml" />
@@ -17,6 +18,7 @@
     <device-transfer>
         <include domain="sharedpref" path="vela_settings.xml" />
         <include domain="sharedpref" path="vela_onboarding.xml" />
+        <include domain="sharedpref" path="vela_notices.xml" />
         <include domain="sharedpref" path="vela_units.xml" />
         <include domain="sharedpref" path="vela_shortcuts.xml" />
         <include domain="sharedpref" path="vela_saved.xml" />

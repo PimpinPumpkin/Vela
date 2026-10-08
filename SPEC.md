@@ -3514,7 +3514,10 @@ Each rule prevents a blank map.
 2. A labeled tile completes only once every glyph range and the sprite resolve, and with no
    signal a remote host never answers. Both are served from `file://`: glyphs from the pack in
    `glyphs/` (`GlyphPackStore`, `PACK_VERSION` 2; an older pack is replaced once per run on an
-   unmetered validated network), the sprite from `filesDir/sprites/`, copied from the APK.
+   unmetered validated network), the sprite from `filesDir/sprites/`, copied from the APK. The
+   new pack is unzipped to `glyphs.new` beside the old one and swapped in by rename, with the
+   old pack moved to `glyphs.old` first and put back if the swap fails: a rename from the
+   cache folder fails when the maps are on the card.
 3. A process that starts offline on the remote style leaves the engine's shared glyph and
    sprite managers with requests that never answer, for every later style. The archive is
    therefore picked before the first style load (`refreshBasemapArchive(seed)` at init).
@@ -3641,7 +3644,9 @@ Progress is the zip's bytes.
 
 When a region download completes with its pack and places archive, the region's installed
 cells are deleted. Otherwise offline search answers from the cell pack and the region pack and
-lists every place twice.
+lists every place twice. The files must be on the phone (`regionPlacesInstalled`): the download
+steps also report success when nothing is published for the region, when its pack is a large
+shared one that does not ride along, and when a manifest cannot be read.
 
 `deleteCellRegion(regionId)` removes every cell of the region from all three stores.
 `deleteRoutingGraph(id)` and "Delete all offline data" remove cells too (7.1a).

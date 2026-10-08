@@ -9204,7 +9204,10 @@ class MapViewModel @Inject constructor(
                 android.util.Log.i("VelaRegion", "${region.id}: pack=$packOk places=$placesOk map=$mapOk canceled=${regionCancel.get()}")
                 // The whole region now holds everything its grid cells did (SPEC 7.6.5): drop them,
                 // or offline search answers from both packs and lists every place twice.
-                if (packOk && placesOk && cellStore.installed().any { it.regionId == region.id }) {
+                // Only once the region's own files are really on the phone: both steps above also
+                // answer "complete" when nothing is published for the region, when its pack is a
+                // big shared one that does not ride along, and when a manifest could not be read.
+                if (packOk && placesOk && cellStore.installed().any { it.regionId == region.id } && regionPlacesInstalled(region)) {
                     kotlinx.coroutines.withContext(Dispatchers.IO) { runCatching { cellStore.deleteRegion(region.id) } }
                     _state.update { it.copy(cellsInstalled = cellStore.installed()) }
                 }
@@ -9287,6 +9290,17 @@ class MapViewModel @Inject constructor(
     /** The region's places or map archives that are not installed yet, downloaded one by one with
      *  the region card showing [step] (1 places file, 2 map) and the percent; stops on cancel.
      *  True when everything the region needs from [store] is installed afterwards. */
+    /** The region's place pack is installed, and its places archives too when those ride along. */
+    private suspend fun regionPlacesInstalled(region: app.vela.offline.RoutingRegion): Boolean {
+        val pack = runCatching {
+            app.vela.offline.RegionPacks.packFor(region, poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL), poiPackStore.installedIds())
+        }.getOrNull()
+        if (pack == null || pack.id !in poiPackStore.installedIds()) return false
+        if (!app.vela.ui.MapPoiPrefs.placesWithDownloads.value) return true
+        val picks = archivesFor(region, runCatching { placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL) }.getOrDefault(emptyList()))
+        return picks.isNotEmpty() && picks.all { it.id in placesStore.installedIds() }
+    }
+
     private suspend fun fetchRegionArchives(
         region: app.vela.offline.RoutingRegion,
         store: app.vela.offline.PmtilesRegionStore,
