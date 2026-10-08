@@ -4672,6 +4672,8 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
         onRemoveFromList = { place, listId -> vm.removePlaceFromList(listId, place) },
         onCreateListWith = { place, name -> vm.addPlaceToList(vm.createList(name), place) },
         saved = state.saved.filter { it.pinned },
+        savedTip = !vm.savedPinTipDone.value && state.saved.isNotEmpty() && state.saved.none { it.pinned },
+        onDismissSavedTip = vm::dismissSavedPinTip,
         recents = state.recents,
         recentPlaces = state.recentPlaces,
         home = state.home,
@@ -4869,6 +4871,9 @@ private fun SearchEntryContent(
     onRemoveFromList: (Place, String) -> Unit = { _, _ -> },
     onCreateListWith: (Place, String) -> Unit = { _, _ -> },
     saved: List<SavedPlace>,
+    /** Saved places exist and none is pinned here: say where they are, once ([SavedPinTip]). */
+    savedTip: Boolean = false,
+    onDismissSavedTip: () -> Unit = {},
     recents: List<RecentQuery>,
     recentPlaces: List<RecentPlace>,
     home: SavedPlace?,
@@ -5054,6 +5059,10 @@ private fun SearchEntryContent(
                 SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved, onRenameSaved, onUnpinSaved)
                 Divider()
             }
+        } else if (savedTip) {
+            SectionLabel(stringResource(R.string.mapscreen_section_saved))
+            SavedPinTip(onDismissSavedTip)
+            Divider()
         }
         // ONE chronological "Recent" list — Google mixes recently-viewed places and recent
         // searches by time rather than bucketing them; the icon tells them apart (pin for a
@@ -5435,6 +5444,31 @@ private fun PickStopBanner(@Suppress("UNUSED_PARAMETER") onCancel: () -> Unit) {
             // Explicit color: no Surface on the search page means no LocalContentColor.
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * In the Saved section's place for someone with saved places and none pinned, until dismissed.
+ * This page listed every saved place before pins; after an update that brought them, the
+ * section was empty and the places looked gone.
+ */
+@Composable
+private fun SavedPinTip(onDismiss: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(SymOutlined.Bookmarks, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(
+            stringResource(R.string.search_saved_tip),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+        )
+        TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(androidx.compose.material3.ButtonDefaults.textShape)) {
+            Text(stringResource(R.string.mapscreen_got_it))
+        }
     }
 }
 

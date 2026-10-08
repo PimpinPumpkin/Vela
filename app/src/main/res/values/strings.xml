@@ -630,6 +630,7 @@
     <string name="mapscreen_psds_tip_title">Slow GPS lock?</string>
     <string name="mapscreen_psds_tip_body">Enable PSDS in Settings → Location for a much faster fix (on GrapheneOS it routes through their proxy).</string>
     <string name="mapscreen_got_it">Got it</string>
+    <string name="search_saved_tip">Your saved places are under the bookmark button above. Pin one to keep it here.</string>
     <string name="mapscreen_heads_up">Heads up</string>
     <string name="mapscreen_dismiss">Dismiss</string>
     <plurals name="mapscreen_results_count"> <!-- format -->

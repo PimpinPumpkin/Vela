@@ -11,6 +11,10 @@ says so.
 
 ### October 2026
 
+- The search page says once where saved places are when none is pinned. It used to list them
+  all, so after the update that brought pins they looked gone.
+- The What's new dialog no longer repeats its title as the first line, and ends with the
+  hand-written list.
 - The F-Droid index job is no longer canceled by a run that would have skipped itself. A
   push that changed the docs, or a release, could lose its rebuild to one.
 - A link that names a place at a coordinate opens that coordinate under the name when the

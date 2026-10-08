@@ -2751,7 +2751,9 @@ the shared 12 s timeout cuts it off.
 - `SavedPlace.of(Place)` carries an optional address, defaulted null so older payloads decode.
   Every store's JSON sets `ignoreUnknownKeys`, so a downgrade survives.
 - `SavedPlace.pinned` and `SavedRoute.pinned` (default false) decide what the search page
-  shows; the bookmark button's sheet has the pin toggles.
+  shows; the bookmark button's sheet has the pin toggles. Before pins the page listed every
+  saved place, so with saved places and none pinned its Saved section shows one line saying
+  where they are (`SavedPinTip`), until "Got it" (`saved_pin_tip_done` in `vela_notices`).
 - `SavedPlace.icon` and `ListPlace.icon` hold a glyph name or `emoji:X`. The pin draws
   `ListPlace.icon ?: PlaceList.icon` and `SavedPlace.icon ?: "bookmark"` in the list's color.
   "Choose icon" calls `MapViewModel.setPlaceIcon`, which writes every list copy and the

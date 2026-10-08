@@ -1542,6 +1542,13 @@ class MapViewModel @Inject constructor(
         _state.update { st -> st.copy(notices = calibration.current().notices.filterNot { it.id in dismissed }) }
     }
 
+    /** The search page's one-time note on where saved places went (SavedPinTip), dismissed. */
+    val savedPinTipDone = androidx.compose.runtime.mutableStateOf(noticePrefs.getBoolean(KEY_SAVED_PIN_TIP, false))
+    fun dismissSavedPinTip() {
+        savedPinTipDone.value = true
+        noticePrefs.edit().putBoolean(KEY_SAVED_PIN_TIP, true).apply()
+    }
+
     fun dismissNotice(id: String) {
         val dismissed = noticePrefs.getStringSet(KEY_DISMISSED, emptySet()).orEmpty() + id
         noticePrefs.edit().putStringSet(KEY_DISMISSED, dismissed).apply()
@@ -9929,6 +9936,7 @@ class MapViewModel @Inject constructor(
         private const val LINK_VIAS_MAX = 12
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
+        const val KEY_SAVED_PIN_TIP = "saved_pin_tip_done"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
         /** The least time between two offline-basemap source swaps. A swap re-points every basemap
          *  layer and re-lays out the map, so at a downloaded region's edge this is what keeps a pan
