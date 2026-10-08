@@ -3344,8 +3344,11 @@ manifest.
   `poi-packs-manifest`, `road-features-manifest`, `building-overlays-manifest-merge`,
   `address-overlays-manifest-merge`, `maxspeed-overlays-manifest-merge`).
 - An address source whose rows carry no house number is skipped with a warning
-  (`build-address-region.sh`), and the published overlay stays. Delaware's source has been
-  that way since October 2026.
+  (`build-address-region.sh`), and the published overlay stays. Delaware is baked from every
+  source under `us/de/` for that reason: OpenAddresses' statewide file has an empty `number` in
+  all 532,164 rows (its source definition names the column `HOUSENUMBNER`, the state's layer
+  calls it `HOUSENUMBER`), while the three county files and two city files carry 515,694
+  distinct house numbers between them.
 
 #### Infrastructure releases
 

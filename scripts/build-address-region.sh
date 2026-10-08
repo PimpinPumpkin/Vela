@@ -60,7 +60,7 @@ echo "→ $LINES address points"
 echo "→ collapsing repeated per-unit/parcel points"
 python3 "$(cd "$(dirname "$0")" && pwd)/dedup-addresses.py" "$GEOJSON" "$WORK/$ID.dedup.geojsonl"
 mv "$WORK/$ID.dedup.geojsonl" "$GEOJSON"
-# A source can lose its `number` column upstream (Delaware, October 2026: every row empty).
+# A source can lose its `number` column upstream (Delaware's statewide file: every row empty).
 # There is nothing to bake then, and a retry cannot help: skip the region with a warning and
 # leave its published overlay as it is. tippecanoe's own "Did not read any valid geometries"
 # names nothing, and a red run here was retried by the conductor three times a day.

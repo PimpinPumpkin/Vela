@@ -82,7 +82,7 @@
     {
       "id": "delaware",
       "name": "Delaware (state)",
-      "source": "us/de/statewide",
+      "source": "us/de/*",
       "bbox": [
         38.45,
         -75.79,
