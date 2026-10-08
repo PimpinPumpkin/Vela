@@ -4562,7 +4562,9 @@ Regressing one of these blocks a release.
   (`GoogleChoice` in `WelcomeScreen.kt`) sets `GoogleFree` before `MapScreen` is composed, so
   no request to Google is made before the answer. "Use Google" is preselected. "Choose what
   Google is used for" under Continue opens `GoogleUsesSection` as a first-run page, with the
-  same switches as Settings > Privacy.
+  same switches as Settings > Privacy. The same page asks about plate cameras (`CameraChoices`):
+  "Route around them" sets `FlockRouteAlert`, "Warn me as I get close" sets the card and the
+  spoken warning of `FlockNavAlert`. Both start off and are written on Continue.
 - Settings > Privacy lists every switch that decides what Google is asked
   (`GoogleUsesSection`, shown while Google is on): the place source, what a place page loads,
   and what a route and a drive ask. Each row is a shared composable in

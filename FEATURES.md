@@ -200,6 +200,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - No account, no ads, no analytics and no Vela server.
 - The first run asks whether to use Google, and can open the list of what Google is used for.
+  The same page asks whether to route around plate cameras and warn near them.
 - Settings > Privacy has every switch that decides what Google is asked, in one list.
 - "Use Vela without Google" stops every request to Google. Reviews, photos, live traffic and Street
   View go away.

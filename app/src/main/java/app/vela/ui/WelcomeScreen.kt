@@ -28,6 +28,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,24 +68,33 @@ import app.vela.ui.dpadHighlight
 fun WelcomeScreen(vm: app.vela.ui.map.MapViewModel, onGetStarted: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     val context = LocalContext.current
+    // The plate camera choices sit on the Google page and are kept here, so the detour through
+    // "Choose what Google is used for" does not lose them.
+    var avoidCameras by rememberSaveable { mutableStateOf(FlockRouteAlert.on.value) }
+    var warnCameras by rememberSaveable { mutableStateOf(FlockNavAlert.any) }
+    fun finish(useGoogle: Boolean) {
+        GoogleFree.set(context, !useGoogle)
+        FlockRouteAlert.set(context, avoidCameras)
+        FlockNavAlert.setCard(context, warnCameras)
+        FlockNavAlert.setVoice(context, warnCameras)
+        onGetStarted()
+    }
     when (step) {
         0 -> WelcomeIntro(onNext = { step = 1 })
         1 -> {
             androidx.activity.compose.BackHandler { step = 0 }
             GoogleChoice(
-                onContinue = { useGoogle ->
-                    GoogleFree.set(context, !useGoogle)
-                    onGetStarted()
-                },
+                avoidCameras = avoidCameras,
+                warnCameras = warnCameras,
+                onAvoidCameras = { avoidCameras = it },
+                onWarnCameras = { warnCameras = it },
+                onContinue = ::finish,
                 onCustomize = { step = 2 },
             )
         }
         else -> {
             androidx.activity.compose.BackHandler { step = 1 }
-            GoogleUsesPage(vm, onBack = { step = 1 }, onDone = {
-                GoogleFree.set(context, false)
-                onGetStarted()
-            })
+            GoogleUsesPage(vm, onBack = { step = 1 }, onDone = { finish(useGoogle = true) })
         }
     }
 }
@@ -172,7 +182,14 @@ private fun WelcomeIntro(onNext: () -> Unit) {
  * "Use Vela without Google", and the full list of what is sent is in PRIVACY.md.
  */
 @Composable
-private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit, onCustomize: () -> Unit) {
+private fun GoogleChoice(
+    avoidCameras: Boolean,
+    warnCameras: Boolean,
+    onAvoidCameras: (Boolean) -> Unit,
+    onWarnCameras: (Boolean) -> Unit,
+    onContinue: (useGoogle: Boolean) -> Unit,
+    onCustomize: () -> Unit,
+) {
     var useGoogle by rememberSaveable { mutableStateOf(true) }
     val scroll = rememberScrollState()
     val minH = LocalConfiguration.current.screenHeightDp.dp
@@ -217,7 +234,9 @@ private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit, onCustomize: 
                 sends = stringResource(R.string.welcome_google_off_sends),
                 onClick = { useGoogle = false },
             )
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(20.dp)) // wider than between the two answers above: this is another question
+            CameraChoices(avoidCameras, warnCameras, onAvoidCameras, onWarnCameras)
+            Spacer(Modifier.height(24.dp))
             WelcomeButton(stringResource(R.string.welcome_continue)) { onContinue(useGoogle) }
             // Only with Google on: with it off there is nothing left to choose.
             if (useGoogle) {
@@ -229,6 +248,53 @@ private fun GoogleChoice(onContinue: (useGoogle: Boolean) -> Unit, onCustomize: 
             }
             Spacer(Modifier.height(8.dp))
         }
+    }
+}
+
+/**
+ * The other first-run question, on the same page: license plate cameras. The map draws them
+ * either way (Settings > Navigation > "Surveillance cameras"). The two switches are "Avoid
+ * surveillance cameras" and, together, "Plate camera heads-up" and "Say when a plate camera is
+ * ahead". Both start off.
+ */
+@Composable
+private fun CameraChoices(avoid: Boolean, warn: Boolean, onAvoid: (Boolean) -> Unit, onWarn: (Boolean) -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 6.dp)) {
+            Text(stringResource(R.string.welcome_cameras_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                stringResource(R.string.welcome_cameras_intro),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            CameraSwitch(stringResource(R.string.welcome_cameras_avoid), avoid, onAvoid)
+            CameraSwitch(stringResource(R.string.welcome_cameras_warn), warn, onWarn)
+        }
+    }
+}
+
+/** One switch line of [CameraChoices]: the whole line is the one focus stop. */
+@Composable
+private fun CameraSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .dpadHighlight(shape)
+            .clip(shape)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(end = 8.dp))
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
     }
 }
 

@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- The first run asks about plate cameras on the same page as the Google question: route
+  around them, and warn near them. Both start off.
 - Pinching out during a drive flattens the camera (`navTiltCap`), which ends the half-second
   stalls of a tilted city-wide view. Zooming back in tilts it again.
 - Settings > Offline maps no longer grows a tall empty box in languages with long button

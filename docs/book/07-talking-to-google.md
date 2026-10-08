@@ -375,7 +375,9 @@ start. A new install is asked first: the page after the welcome screen (`GoogleC
 it gives and what Google sees, and sets the switch before the map is composed. "Choose what
 Google is used for" on that page opens the per-feature switches, the same list Settings >
 Privacy shows while Google is on (`GoogleUsesSection`): the place source, reviews, photos,
-popular times, tapped-place lookups, and the traffic requests of a route and a drive. With it on:
+popular times, tapped-place lookups, and the traffic requests of a route and a drive. The page
+also carries the two plate camera questions, which have nothing to do with Google and sit there
+so the first run stays one page shorter. With it on:
 
 - Search answers from Photon and the downloaded place packs: names and addresses, and
   categories only where a region is downloaded. Google's autocomplete returns nothing, so the

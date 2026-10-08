@@ -729,6 +729,10 @@
     <string name="welcome_feature_open_source_body">GPLv3, built for GrapheneOS and other de-Googled phones.</string>
     <string name="welcome_get_started">Get started</string>
     <string name="welcome_continue">Continue</string>
+    <string name="welcome_cameras_title">Plate cameras</string>
+    <string name="welcome_cameras_intro">Flock and other license plate readers show on the map. Vela can also:</string>
+    <string name="welcome_cameras_avoid">Route around them</string>
+    <string name="welcome_cameras_warn">Warn me as I get close</string>
     <string name="welcome_google_customize">Choose what Google is used for</string>
     <string name="welcome_google_title">Use Google?</string>
     <string name="welcome_google_intro">You can change this later in Settings, or turn off just parts of it.</string>
