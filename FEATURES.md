@@ -37,6 +37,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Photos in a grid by category with a full-screen viewer, and popular times by day and hour.
 - Buttons for Directions, Start, Call, Website, Save and Share, plus Order or Reserve where offered.
 - Share sends a Google Maps link, a geo: pin, coordinates or the address, or opens another map app.
+- A Google Maps directions link opens as the trip it describes, with its start, its stops and its
+  travel mode. Paste one from a desktop browser into the search box, or tap it in any app.
 - "People also search for" and "Also at this location" rows open related places.
 - A tapped map place opens at once with open data and names its source while Google's listing loads.
 - Closed places are marked permanently or temporarily closed. Gas stations show their fuel price.

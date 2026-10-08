@@ -13,6 +13,8 @@ data class MapLink(
     val origin: MapLink? = null,
     /** The travel mode the link asked for, when it asked. */
     val mode: TravelMode? = null,
+    /** The places a directions link passes through between its start and its end, in order. */
+    val stops: List<MapLink> = emptyList(),
 ) {
     val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null)
 }
@@ -28,7 +30,9 @@ data class MapLink(
  *  - `https://www.google.com/maps/search/coffee` / `?q=...`    → a search
  *  - directions (issue #632), each opening the route chooser on the destination:
  *      `maps.google.com/maps?saddr=A&daddr=B&dirflg=w`, `google.com/maps/dir/?api=1&destination=B
- *      &origin=A&travelmode=walking`, `google.com/maps/dir/A/B/@...`, `google.navigation:q=B&mode=w`
+ *      &origin=A&travelmode=walking`, `google.com/maps/dir/A/B/@...`, `google.navigation:q=B&mode=w`.
+ *      A link with more than two places (`/dir/A/B/C/D`, `daddr=B+to:C`, `waypoints=B|C`) keeps
+ *      the ones between as [MapLink.stops].
  *
  * Pure Kotlin (no `android.net.Uri`) so it's unit-testable in `:core`.
  */
@@ -64,6 +68,16 @@ object MapLinkParser {
      *  `edit`, `embed` and `u/0/` forms), or null (issue #669). */
     fun myMapId(raw: String): String? = MY_MAP.find(raw.trim())?.groupValues?.get(1)
 
+    /** A whole Google Maps web address typed or pasted where a search goes: one token, on a
+     *  Google host, with a maps path. Short share links are [isShareLink]'s. */
+    fun isMapsUrl(raw: String): Boolean {
+        val t = raw.trim()
+        if (t.any { it.isWhitespace() }) return false
+        return MAPS_URL.containsMatchIn(t)
+    }
+
+    private val MAPS_URL = Regex("""^(?:https?://)?(?:(?:www\.|maps\.)?google\.[a-z.]{2,6}/maps[/?]|maps\.google\.[a-z.]{2,6}/)""", RegexOption.IGNORE_CASE)
+
     fun parse(raw: String): MapLink? {
         val link = when {
             raw.startsWith("google.navigation:", ignoreCase = true) -> parseNavigation(raw)
@@ -92,30 +106,75 @@ object MapLinkParser {
         queryParam(raw, "daddr")?.let { d ->
             // Split on the raw value and let endpoint decode the piece, once: decoded here first,
             // a plus code's own "+" (%2B) came out of the second pass as a space.
-            val dest = endpoint(d.split(DADDR_TO).last()) ?: return null
+            val chain = d.split(DADDR_TO)
+            val dest = endpoint(chain.last()) ?: return null
             val mode = when (queryParam(raw, "dirflg")?.lowercase()?.firstOrNull { it in "dwbr" }) {
                 'w' -> TravelMode.WALK; 'b' -> TravelMode.BICYCLE; 'r' -> TravelMode.TRANSIT; 'd' -> TravelMode.DRIVE; else -> null
             }
-            return dest.copy(directions = true, origin = endpoint(queryParam(raw, "saddr")), mode = mode)
+            return dest.copy(directions = true, origin = endpoint(queryParam(raw, "saddr")), mode = mode, stops = chain.dropLast(1).mapNotNull { endpoint(it) })
         }
         if ("/dir/" !in raw && !raw.substringBefore('?').endsWith("/dir")) return null
         val mode = when (queryParam(raw, "travelmode")?.lowercase()) {
             "walking" -> TravelMode.WALK; "bicycling" -> TravelMode.BICYCLE; "transit" -> TravelMode.TRANSIT
             "driving", "two-wheeler" -> TravelMode.DRIVE; else -> null
         }
-        // Maps URLs API: /maps/dir/?api=1&destination=B&origin=A&travelmode=walking
+        // Maps URLs API: /maps/dir/?api=1&destination=B&origin=A&waypoints=C|D&travelmode=walking
         queryParam(raw, "destination")?.let { d ->
             val dest = endpoint(d) ?: return null
-            return dest.copy(directions = true, origin = endpoint(queryParam(raw, "origin")), mode = mode)
+            val stops = queryParam(raw, "waypoints")?.split(WAYPOINT_SEP)?.mapNotNull { endpoint(it) }.orEmpty()
+            return dest.copy(directions = true, origin = endpoint(queryParam(raw, "origin")), mode = mode, stops = stops)
         }
-        // Path form: /maps/dir/A/B/@lat,lng,z/data=... (an empty A = "from where I am").
+        // Path form: /maps/dir/A/B/C/@lat,lng,z/data=... (an empty A = "from where I am"). The
+        // first is the start, the last the end, any between are stops.
         val parts = raw.substringBefore('?').substringAfter("/dir/", "").split('/')
             .takeWhile { !it.startsWith("@") && !it.startsWith("data=") }
             .let { if (it.lastOrNull()?.isEmpty() == true) it.dropLast(1) else it }
         if (parts.isEmpty()) return null
-        val dest = endpoint(parts.last()) ?: return null
-        val origin = if (parts.size >= 2) endpoint(parts.first()) else null
-        return dest.copy(directions = true, origin = origin, mode = mode)
+        // The data blob carries each place's own coordinate, which saves looking the names up
+        // and cannot land on another town of the same name. Used only when it lists exactly
+        // the places of the path.
+        val pins = dirPins(raw).takeIf { it.size == parts.size }
+        val ends = parts.mapIndexed { i, part ->
+            val e = endpoint(part)
+            val pin = pins?.get(i)
+            if (e != null && e.lat == null && pin != null) e.copy(lat = pin.first, lng = pin.second) else e
+        }
+        val dest = ends.last() ?: return null
+        val origin = if (ends.size >= 2) ends.first() else null
+        val stops = if (ends.size > 2) ends.subList(1, ends.size - 1).filterNotNull() else emptyList()
+        val blobMode = when (DATA_MODE.find(raw.substringAfter("/data=", ""))?.groupValues?.get(1)) {
+            "0" -> TravelMode.DRIVE; "1" -> TravelMode.BICYCLE; "2" -> TravelMode.WALK; "3" -> TravelMode.TRANSIT; else -> null
+        }
+        return dest.copy(directions = true, origin = origin, mode = mode ?: blobMode, stops = stops)
+    }
+
+    /** Between the stops of a Maps URLs `waypoints`: a pipe, plain or encoded. */
+    private val WAYPOINT_SEP = Regex("""\||%7C""", RegexOption.IGNORE_CASE)
+    private val DATA_MODE = Regex("""!3e([0-3])(?:!|$|\?)""")
+    private val DATA_WAYPOINT = Regex("""1m(\d+)""")
+
+    /**
+     * The coordinate of each place in a directions link's `data=` blob, in order, null where
+     * the blob has none for that place. The blob is "!"-separated fields; each place is a
+     * `1m<n>` field followed by its `n` fields, among them `1d<lng>` and `2d<lat>`:
+     * `!1m5!1m1!1s0x...!2m2!1d-121.7405!2d38.5449`.
+     */
+    internal fun dirPins(raw: String): List<Pair<Double, Double>?> {
+        val data = raw.substringAfter("/data=", "").substringBefore('?').substringBefore('/')
+        if (data.isEmpty()) return emptyList()
+        val f = data.split('!').filter { it.isNotEmpty() }
+        var i = f.indexOfFirst { DATA_WAYPOINT.matches(it) }
+        if (i < 0) return emptyList()
+        val out = ArrayList<Pair<Double, Double>?>()
+        while (i < f.size) {
+            val n = DATA_WAYPOINT.matchEntire(f[i])?.groupValues?.get(1)?.toIntOrNull() ?: break
+            val block = f.subList(i + 1, minOf(f.size, i + 1 + n))
+            val lng = block.firstOrNull { it.startsWith("1d") }?.drop(2)?.toDoubleOrNull()
+            val lat = block.firstOrNull { it.startsWith("2d") }?.drop(2)?.toDoubleOrNull()
+            out += if (lat != null && lng != null && lat in -90.0..90.0 && lng in -180.0..180.0) lat to lng else null
+            i += 1 + n
+        }
+        return out
     }
 
     /** The separator between chained stops in a classic `daddr`, still URL-encoded: "+to:". */

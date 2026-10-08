@@ -358,11 +358,18 @@ Photon knows names and addresses, not categories. Categories come from Vela's da
 ### Links from other apps
 
 A link that asks for directions opens the route chooser on its destination. `MapLinkParser`
-reads four shapes: `maps?saddr=..&daddr=..` (the last of several stops is the destination),
+reads four shapes: `maps?saddr=..&daddr=..` (the last of several places is the destination),
 `maps/dir/?api=1&destination=..&origin=..&travelmode=..`, `maps/dir/A/B/`, and the
 `google.navigation:` intent. A coordinate becomes a pin with its address looked up. A name runs
 a search and takes the top hit. The link's travel mode applies to that trip only. A start within
 150 m of you, "Current Location" or a blank start means from here.
+
+A link with more than two places opens as a trip with stops, up to ten. That covers a trip
+planned in Google Maps on a desktop: copy the address bar, and either open the link on the
+phone (from a calendar event, a note, a message) or paste it into Vela's search box. The
+desktop link carries each place's coordinate, so nothing is looked up by name and the trip is
+the one that was planned, in its order. Points dragged onto the route on the desktop are not
+read; add them as stops.
 
 A plain location link (a `geo:` link, a shared place) shows the place. Settings > Navigation >
 "Links from other apps" changes that. "Open directions" sends location links to the route

@@ -2586,13 +2586,22 @@ when the feature ids match. Two requests at most.
   (default), open the route chooser, or start navigation. Start also applies to directions
   links and passes the precise-location and notification gates.
 - Directions links open the route chooser on the destination: `maps?saddr=&daddr=[&dirflg=]`
-  (the last `to:` stop wins), `maps/dir/?api=1&destination=&origin=&travelmode=`,
-  `maps/dir/A/B/@...` (an empty A is "from here") and the `google.navigation:q=|ll=&mode=`
+  (the last `to:` place is the destination), `maps/dir/?api=1&destination=&origin=&waypoints=&travelmode=`,
+  `maps/dir/A/B/C/@...` (an empty A is "from here") and the `google.navigation:q=|ll=&mode=`
   intent. `MapLink.directions` routes `openDeepLink` to `openDirectionsLink`: a coordinate
   becomes a reverse-geocoded pin, a name runs the "navigate to" search
   (`openDirectionsOnResult`).
-- The link's mode, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix, apply once
-  to the next `routeToSelected`. The mode is not made sticky.
+- The places between the start and the end are `MapLink.stops`, at most
+  `SavedRoutes.MAX_STOPS`. A path-form link from a desktop browser carries each place's own
+  coordinate in its `data=` blob (`MapLinkParser.dirPins`: a `1m<n>` field per place, with
+  `1d<lng>` and `2d<lat>` among its `n` fields, and `3e<0-3>` for the mode). The pins are used
+  only when the blob lists exactly the path's places; such a place is taken as named and
+  pinned, with no lookup (`linkPin`), and the trip is fetched once. A name with no pin is
+  searched near the destination and the trip rerouted (`applyLinkTrip`).
+- The link's mode, its stops, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix,
+  apply once to the next `routeToSelected`. The mode is not made sticky.
+- A whole Google Maps address in the search box (`MapLinkParser.isMapsUrl`: one token on a
+  Google host with a maps path) opens as that link. It used to be searched as text.
 
 #### Google My Maps
 

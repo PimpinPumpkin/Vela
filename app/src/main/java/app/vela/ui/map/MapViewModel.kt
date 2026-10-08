@@ -1475,7 +1475,7 @@ class MapViewModel @Inject constructor(
      *  the user was hunting for a stop, not abandoning the drive. */
     fun clearSearch() {
         openDirectionsOnResult = false
-        linkMode = null; linkOrigin = null
+        linkMode = null; linkOrigin = null; linkStops = emptyList()
         suggestJob?.cancel()
         val backToTrip = _state.value.alongRouteDest
         if (backToTrip != null) {
@@ -2324,6 +2324,16 @@ class MapViewModel @Inject constructor(
         // Pasted coordinates ("37.77, -122.42" or a geo: string) drop a reverse-geocoded pin
         // there instead of going to the search endpoint as text - same handling a bare external
         // geo: link gets. Strict whole-string match, so addresses with numbers still search.
+        // A whole Google Maps address pasted from a browser (a place, a search, or a trip planned
+        // on a desktop with its stops) opens like the same link tapped in another app. It used to
+        // be searched as text, which finds nothing.
+        if (MapLinkParser.isMapsUrl(q) && !MapLinkParser.isShareLink(q)) {
+            MapLinkParser.parse(q)?.let { link ->
+                _state.update { it.copy(suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), searching = false, query = "") }
+                openDeepLink(link)
+                return
+            }
+        }
         MapLinkParser.parseBareCoordinate(q)?.let { link ->
             val at = LatLng(link.lat!!, link.lng!!)
             recentStore.add(q)
@@ -2634,7 +2644,7 @@ class MapViewModel @Inject constructor(
                     }
                 } else {
                     openDirectionsOnResult = false
-                    linkMode = null; linkOrigin = null
+                    linkMode = null; linkOrigin = null; linkStops = emptyList()
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
                     // isn't showing up" report): try the on-device OSM index (it may hold a small local
                     // place Google misses), and if that's empty too, say "No results" plainly.
@@ -2788,7 +2798,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun openDeepLink(link: MapLink) {
-        linkMode = null; linkOrigin = null
+        linkMode = null; linkOrigin = null; linkStops = emptyList()
         // The user's choice for links (LinkAction): a plain location link can open directions,
         // and either kind can start the drive once its route lands (the one-tap Start path, so
         // the precise-location and notification gates still apply).
@@ -2831,6 +2841,7 @@ class MapViewModel @Inject constructor(
     // not made sticky, since the link chose it, not the user.
     @Volatile private var linkMode: TravelMode? = null
     @Volatile private var linkOrigin: MapLink? = null
+    @Volatile private var linkStops: List<MapLink> = emptyList()
 
     private fun openDirectionsLink(link: MapLink) {
         val me = _state.value.myLocation
@@ -2840,14 +2851,19 @@ class MapViewModel @Inject constructor(
             val la = o.lat; val ln = o.lng
             la != null && ln != null && me != null && me.distanceTo(LatLng(la, ln)) < LINK_ORIGIN_HERE_M
         }
+        linkStops = link.stops.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
+        if (link.stops.size > linkStops.size) flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
         diag.record("search", "directions link: dest ${if (link.lat != null) "point" else "name"}, " +
-            "start ${if (linkOrigin == null) "here" else "given"}, mode ${link.mode ?: "sticky"}")
+            "start ${if (linkOrigin == null) "here" else "given"}, ${linkStops.size} stop(s), mode ${link.mode ?: "sticky"}")
         val la = link.lat; val ln = link.lng
         if (la != null && ln != null) {
             val pt = LatLng(la, ln)
             _state.update { it.copy(center = pt, centerZoom = link.zoom) }
             viewModelScope.launch {
-                val place = runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
+                // Only a directions link pairs a name with that place's own coordinate. A place
+                // or geo: link's point can be the sharer's map center or a "near here" hint.
+                val place = (if (link.directions) linkPin(link) else null)
+                    ?: runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
                     ?: Place(id = "pin:$la,$ln", name = appContext.getString(R.string.mapvm_dropped_pin), location = pt)
                 selectPlace(place)
                 routeToSelected()
@@ -2860,22 +2876,40 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** The start a directions link named: a coordinate becomes a pin, a name is searched near the
-     *  destination and its first hit taken. */
-    private fun applyLinkOrigin(o: MapLink) {
+    /** A place of a directions link that came with its name and its own coordinate (the link's
+     *  data blob): used as it is, with no lookup. */
+    private fun linkPin(o: MapLink): Place? {
+        val la = o.lat ?: return null; val ln = o.lng ?: return null
+        val name = o.query?.takeIf { it.isNotBlank() } ?: return null
+        return Place(id = "pin:$la,$ln", name = name, location = LatLng(la, ln))
+    }
+
+    /** One place of a directions link: a coordinate becomes a pin, a name is searched near the
+     *  destination and its first hit taken. Null when a name finds nothing. */
+    private suspend fun linkPlace(o: MapLink, near: LatLng?): Place? {
+        linkPin(o)?.let { return it }
+        val la = o.lat; val ln = o.lng
+        if (la != null && ln != null) {
+            val pt = LatLng(la, ln)
+            return runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
+                ?: Place(id = "pin:$la,$ln", name = appContext.getString(R.string.mapvm_dropped_pin), location = pt)
+        }
+        val q = o.query ?: return null
+        return runCatching { dataSource.search(q, near, rankFrom = near).places.firstOrNull() }.getOrNull()
+            ?: run { showStatus(appContext.getString(R.string.intent_place_not_found, q)); null }
+    }
+
+    /** The start and the stops a directions link named, looked up and applied in one reroute. */
+    private fun applyLinkTrip(o: MapLink?, stops: List<MapLink>) {
         val dest = _state.value.selected?.location
         viewModelScope.launch {
-            val la = o.lat; val ln = o.lng
-            val place = if (la != null && ln != null) {
-                val pt = LatLng(la, ln)
-                runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
-                    ?: Place(id = "pin:$la,$ln", name = appContext.getString(R.string.mapvm_dropped_pin), location = pt)
-            } else {
-                val q = o.query ?: return@launch
-                runCatching { dataSource.search(q, dest, rankFrom = dest).places.firstOrNull() }.getOrNull()
-                    ?: run { showStatus(appContext.getString(R.string.intent_place_not_found, q)); return@launch }
+            val start = o?.let { linkPlace(it, dest) }
+            val mids = stops.mapNotNull { linkPlace(it, dest) }
+            if (!_state.value.directionsOpen || (start == null && mids.isEmpty())) return@launch
+            _state.update {
+                it.copy(directionsOrigin = start ?: it.directionsOrigin, directionsWaypoints = mids, pickingOrigin = false, pickingDest = false, pickOnMap = null)
             }
-            if (_state.value.directionsOpen) setDirectionsOrigin(place)
+            route(_state.value.travelMode)
         }
     }
 
@@ -5021,12 +5055,23 @@ class MapViewModel @Inject constructor(
         syncRoutingAvoid()
         val fromLink = linkMode.also { linkMode = null }
         val mode = fromLink ?: if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
+        // A link's own start and stops. When each came with its coordinate they are set before
+        // the first route request, so a planned trip is fetched once, as planned; a name has to
+        // be looked up first, and the trip is rerouted when it lands.
+        val linkStart = linkOrigin.also { linkOrigin = null }
+        val linkMids = linkStops.also { linkStops = emptyList() }
+        val pinStart = linkStart?.let { linkPin(it) }
+        val pinMids = linkMids.mapNotNull { linkPin(it) }
+        val linkPinned = (linkStart == null || pinStart != null) && pinMids.size == linkMids.size
+        if (linkPinned && (pinStart != null || pinMids.isNotEmpty())) {
+            _state.update { it.copy(directionsOrigin = pinStart, directionsWaypoints = pinMids) }
+        }
         when {
             fromLink != null -> { _state.update { it.copy(travelMode = fromLink) }; route(fromLink) }
             mode != _state.value.travelMode -> setTravelMode(mode)
             else -> route(mode)
         }
-        linkOrigin?.let { o -> linkOrigin = null; applyLinkOrigin(o) }
+        if (!linkPinned) applyLinkTrip(linkStart, linkMids)
     }
 
     // ---- Parking spot ----------------------------------------------------------------
@@ -5709,7 +5754,7 @@ class MapViewModel @Inject constructor(
     fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
         val anchor = points.last() ?: points.first() ?: return
         linkMode = mode
-        linkOrigin = null
+        linkOrigin = null; linkStops = emptyList()
         selectPlace(anchor)
         routeToSelected()
         // "Your location" to one place is what routeToSelected already set up; anything else (a
