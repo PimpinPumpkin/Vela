@@ -306,4 +306,18 @@
     <string name="settings_house_numbers_far">De la o distanță mai mare</string>
     <string name="settings_house_numbers_hint">Numerele caselor provin de la OpenStreetMap și, în SUA, de la OpenAddresses. Dacă o clădire nu are un număr în niciuna dintre locuri, aceasta nu va apărea, deși o căutare pe Google va găsi totuși adresa.</string>
     <string name="settings_show_pois">Afișează locurile</string>
+    <string name="settings_show_pois_hint">Pictograme pentru afaceri și locuri pe harta de navigare. Dezactivat = o hartă curată; locurile căutate sunt afișate în continuare.</string>
+    <string name="settings_places_source">Pictogramele locațiilor pe hartă</string>
+    <string name="settings_places_source_open">Date Vela</string>
+    <string name="settings_places_source_google">Google</string>
+    <string name="settings_places_source_both">Ambele</string>
+    <string name="settings_places_source_open_hint">Pictogramele provin din datele proprii ale Vela. Panoramarea nu contactează niciodată Google și funcționează off-line.</string>
+    <string name="settings_places_source_google_hint">Pictogramele provin de la Google. Fiecare panoramare trimite poziția ta pe hartă către Google și nimic nu se afișează off-line.</string>
+    <string name="settings_places_source_both_hint">Pictogramele Vela, plus orice altceva are Google după ce oprești panoramarea.</string>
+    <string name="settings_places_source_note">Când cauți sau dai clic pe o locație, programul de lucru, recenziile și fotografiile provin în continuare de la Google, indiferent de ce alegi.</string>
+    <string name="settings_places_source_more">Află mai multe</string>
+    <string name="settings_places_source_more_credit">Hărți Overture</string>
+    <string name="settings_places_lookup">Caută locurile atinse în Google</string>
+    <string name="settings_places_lookup_hint">Atingerea unui loc îi preia programul de lucru, recenziile și fotografiile de pe Google, iar Vela memorizează potrivirea, astfel încât următoarea atingere este instantanee. Dezactivat = un loc atins afișează doar datele din Vela (nume, tip, adresă, telefon, site web) și nimic despre atingere nu ajunge la Google. Căutarea și indicațiile de orientare folosesc în continuare Google.</string>
+    <string name="settings_places_source_more_title">De unde provin datele despre locațiile Vela</string>
 </resources>
