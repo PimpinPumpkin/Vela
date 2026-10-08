@@ -2545,7 +2545,13 @@ when the feature ids match. Two requests at most.
   the query changes.
 - "Search this area" keeps the results inside the view, padded by 10% per side
   (`AreaNarrow.PAD`), or the whole answer when none fall inside.
-- Filters are local to the fetched results and also drop the map pins.
+- Filters are local to the fetched results and also drop the map pins. "Open now" also asks
+  again: the fetch is about 60 results, and late at night nearly all of them are closed, so
+  the chip calls `MapViewModel.searchOpenNow` (through `SearchActions`), which searches the
+  same words with `search_open_now_phrase` ("open now") added, and Google answers with open
+  places. The search box keeps the user's words and the reworded search is not added to the
+  recents. Off asks the plain search again. A saved or imported list, an offline search and
+  Google off keep the local filter only.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands.
 - The camera frames the first `SEARCH_FIT_LEAD` (12) results; an open list or custom map is

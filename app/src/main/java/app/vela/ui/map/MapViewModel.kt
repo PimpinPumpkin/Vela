@@ -2014,6 +2014,33 @@ class MapViewModel @Inject constructor(
     }
 
     /** Re-run the current query biased to the area the user has panned to. */
+    /**
+     * The results list's "Open now" chip, on or off. The chip's own filter only thins the 60 or
+     * so results already fetched, and late at night nearly all of those are closed: three left
+     * of sixty, one of them miles away, with open places nearby. So turning it on asks Google
+     * for the same search with "open now" added, which it answers with open places, and turning
+     * it off asks for the plain search again. The search box keeps the user's words and the
+     * reworded search stays out of the recents. Nothing is asked for a saved or imported list,
+     * offline, or with Google off: there the chip filters what is shown, as before.
+     */
+    fun searchOpenNow(on: Boolean) {
+        val s = _state.value
+        val base = openNowBase ?: s.query.trim()
+        if (base.isEmpty() || googleOff() || s.openListId != null || s.pendingImport != null || s.navigating || s.results.isEmpty()) return
+        if (MapLinkParser.parseBareCoordinate(base) != null || MapLinkParser.isMapsUrl(base) || MapLinkParser.isShareLink(base)) return
+        val near = plausibleBias(mapCenter) ?: plausibleBias(s.myLocation)
+        if (on) {
+            runSearch(base + " " + appContext.getString(R.string.search_open_now_phrase), near, remember = false)
+            openNowBase = base
+        } else if (openNowBase != null) {
+            openNowBase = null
+            runSearch(base, near, remember = false)
+        }
+    }
+    /** The user's search while the list shows the "open now" wording of it, else null. */
+    private var openNowBase: String? = null
+    init { app.vela.ui.SearchActions.openNow = ::searchOpenNow }
+
     fun searchThisArea() {
         val here = plausibleBias(mapCenter)
         // The results are narrowed to this view (AreaNarrow), and the camera's remembered center
@@ -2332,7 +2359,7 @@ class MapViewModel @Inject constructor(
     // Maps in two hidden views on the chance a place got tapped, two whole web apps per search.
     // A tap's photos and reviews are single RPCs now; the pages load only when actually needed.)
 
-    private fun runSearch(q: String, near: LatLng?) {
+    private fun runSearch(q: String, near: LatLng?, remember: Boolean = true) {
         if (q.isEmpty()) return
         // Pasted coordinates ("37.77, -122.42" or a geo: string) drop a reverse-geocoded pin
         // there instead of going to the search endpoint as text - same handling a bare external
@@ -2365,8 +2392,11 @@ class MapViewModel @Inject constructor(
             _state.update { if (it.offline) it.copy(offline = false) else it }
         }
         suggestJob?.cancel()
-        recentStore.add(q)
-        _state.update { it.copy(recents = recentStore.recent()) }
+        if (remember) {
+            openNowBase = null // a search of the user's own: the chip's reworded one is over
+            recentStore.add(q)
+            _state.update { it.copy(recents = recentStore.recent()) }
+        }
         // A search strongly predicts opening a place — warm the detail WebViews now so
         // popular times AND the photo gallery land faster when the user taps a result
         // (both idempotent; the photo warm primes the renderer + HTTP/2 sockets + cache

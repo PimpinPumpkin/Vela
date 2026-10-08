@@ -240,3 +240,9 @@ object ShapeActions {
     @Volatile var delete: (() -> Unit)? = null
     @Volatile var edit: (() -> Unit)? = null
 }
+
+/** The results list's "Open now" chip tells the view model through here, so the search can be
+ *  asked again for open places: a holder, since MapScreen cannot take another callback. */
+object SearchActions {
+    @Volatile var openNow: ((on: Boolean) -> Unit)? = null
+}

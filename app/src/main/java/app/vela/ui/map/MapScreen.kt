@@ -3382,7 +3382,7 @@ private fun SearchResults(
                     if (!results.any { it.pinColor != null || it.pinIconUrl != null || it.mapLayer != null }) {
                     ElevatedFilterChip(
                         selected = openOnly,
-                        onClick = { openOnly = !openOnly },
+                        onClick = { openOnly = !openOnly; app.vela.ui.SearchActions.openNow?.invoke(openOnly) },
                         label = { Text(stringResource(R.string.mapscreen_filter_open_now)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
                         colors = chipColors,

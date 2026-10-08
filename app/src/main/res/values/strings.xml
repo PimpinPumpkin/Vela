@@ -637,6 +637,8 @@
     <string name="mapscreen_expand_list">Expand list</string>
     <string name="mapscreen_close_results">Close search results</string>
     <string name="mapscreen_filter_open_now">Open now</string>
+    <!-- Not shown. Added to a search sent to Google when "Open now" is on, to ask for places open now. Use the words Google Maps understands in your language, lower case. -->
+    <string name="search_open_now_phrase">open now</string>
     <string name="mapscreen_more_results">More results</string>
     <string name="mapscreen_other_locations">Show other locations</string>
     <string name="settings_other_locations_auto">Find other locations automatically</string>
