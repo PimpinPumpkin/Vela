@@ -375,7 +375,27 @@ object NavEngine {
         // byte-identical, the T is what moves the open-road prompt earlier (~+0.2 mi at 70 mph).
         val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
         val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
-        if (!voiceSilent) {
+        val detail = SpokenDetail.mode
+        if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
+            // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
+            val fromFar = !isArrive && (SpokenDetail.exitLike(target.type) || v >= SpokenDetail.FAST_MPS)
+            val band = if (fromFar) farM else nearM
+            if (spoken.isEmpty() && dtn <= band && SpokenDetail.speaks(detail, target.type, v) &&
+                (!isArrive || dtn > ARRIVE_RADIUS_M * 2)
+            ) {
+                spoken = setOf(0, 1)
+                val sayM = (if (dtn >= band * 0.85) band else round10(dtn)).coerceAtLeast(10.0)
+                val line = when {
+                    isArrive -> nav().destinationAhead()
+                    // An exit keeps its number and road: that is what the sign overhead says.
+                    SpokenDetail.exitLike(target.type) -> nav().repeatShort(target.spokenInstruction())
+                    else -> nav().repeatShort(target.instructionNoRoad ?: target.spokenInstruction())
+                }
+                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), line))
+                if (!isArrive) events += NavEvent.Haptic(target.type, approaching = true)
+            }
+        }
+        if (!voiceSilent && detail == SpokenDetail.Mode.FULL) {
             val bands = listOf(farM, nearM)
             val due = bands.withIndex().filter { (slot, d) ->
                 dtn <= d && slot !in spoken &&
@@ -440,7 +460,8 @@ object NavEngine {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
                     val turnText = if (spoken.isEmpty()) nav().spokenSign(target.spokenInstruction()) else nav().repeatShort(target.spokenInstruction())
-                    events += NavEvent.Speak(turnText, interrupt = true)
+                    // The shorter modes said their one line on the approach; the buzz below stays.
+                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(turnText, interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 spoken = spoken + TURN_NOW_SLOT
@@ -540,6 +561,17 @@ object NavEngine {
             taken++
             val said = if (i == fromStep) spoken else emptySet()
             val leg = ms[i - 1].distanceMeters
+            val detail = SpokenDetail.mode
+            if (detail != SpokenDetail.Mode.FULL) {
+                // The one line the shorter modes say (see update); nothing else is worth preparing.
+                if (said.isEmpty() && SpokenDetail.speaks(detail, m.type, speedMps)) {
+                    val band = if (SpokenDetail.exitLike(m.type) || speedMps >= SpokenDetail.FAST_MPS) far else near
+                    val line = if (SpokenDetail.exitLike(m.type)) nav().repeatShort(m.spokenInstruction())
+                        else nav().repeatShort(m.instructionNoRoad ?: m.spokenInstruction())
+                    if (leg >= band * 0.85) out += nav().inThen(spokenDistance(band, imperial), line)
+                }
+                continue
+            }
             val lane = app.vela.core.model.laneGuidance(m.lanes)
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())

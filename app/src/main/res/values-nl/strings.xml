@@ -426,6 +426,11 @@
     <string name="settings_spoken_directions">Gesproken aanwijzingen</string>
     <string name="settings_spoken_road_names">Straatnamen uitspreken</string>
     <string name="settings_spoken_road_names_hint">Uit, dan worden afslagen zonder straatnaam aangekondigd: \"Sla linksaf\" in plaats van \"Sla linksaf de Dorpsstraat in\". De kaart en de stappenlijst tonen hem nog steeds.</string>
+    <string name="settings_spoken_detail">Hoeveel de stem zegt</string>
+    <string name="settings_spoken_detail_full">Alles</string>
+    <string name="settings_spoken_detail_brief">Kort</string>
+    <string name="settings_spoken_detail_exits">Alleen snelwegafritten</string>
+    <string name="settings_spoken_detail_hint">Kort meldt elke afslag één keer, zonder straatnaam. Alleen snelwegafritten blijft stil in de stad en meldt afritten, splitsingen en afslagen bij hoge snelheid.</string>
     <string name="mapvm_voice_lang_missing">Gesproken instructies vereisen een %1$s-stem, voeg er een toe via Instellingen → Stem</string>
     <string name="mapvm_no_track_to_replay">Die rit heeft geen spoor om te herhalen</string>
     <string name="mapvm_replaying">%1$s herhalen…</string>

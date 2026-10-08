@@ -498,6 +498,11 @@
     <string name="settings_spoken_directions">Hangos útvonalvezetés</string>
     <string name="settings_spoken_road_names">Utcanevek bemondása</string>
     <string name="settings_spoken_road_names_hint">Kikapcsolva a kanyarok utcanév nélkül hangzanak el: \"Fordulj balra\" a \"Fordulj balra a Fő utcára\" helyett. A térkép és a lépéslista továbbra is mutatja.</string>
+    <string name="settings_spoken_detail">Mennyit mondjon a hang</string>
+    <string name="settings_spoken_detail_full">Mindent</string>
+    <string name="settings_spoken_detail_brief">Röviden</string>
+    <string name="settings_spoken_detail_exits">Csak autópálya-lehajtók</string>
+    <string name="settings_spoken_detail_hint">A Röviden minden kanyart egyszer mond be, utcanév nélkül. A Csak autópálya-lehajtók városban csendben marad, és a lehajtókat, elágazásokat és a nagy sebességnél vett kanyarokat mondja be.</string>
     <string name="mapvm_voice_lang_missing">A hangos útvonalvezetéshez %1$s hang szükséges. Szerezz egyet a Beállítások → Hang menüben</string>
     <string name="mapvm_voice_lang_system">A(z) %1$s útvonalvezetés a telefonod hangját használja. Adj hozzá egyet a rendszer hangbeállításaiban.</string>
     <string name="mapvm_resume_waiting_gps">GPS várakozás a navigáció folytatásához…</string>

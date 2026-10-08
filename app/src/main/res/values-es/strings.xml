@@ -1001,6 +1001,11 @@
     <string name="search_fill_cd">Poner en el cuadro de búsqueda</string>
     <string name="settings_spoken_road_names">Decir los nombres de las calles</string>
     <string name="settings_spoken_road_names_hint">Si está desactivado, los giros se anuncian sin el nombre de la calle: «Gira a la izquierda» en vez de «Gira a la izquierda por la calle Mayor». El mapa y la lista de pasos lo siguen mostrando.</string>
+    <string name="settings_spoken_detail">Cuánto dice la voz</string>
+    <string name="settings_spoken_detail_full">Todo</string>
+    <string name="settings_spoken_detail_brief">Breve</string>
+    <string name="settings_spoken_detail_exits">Solo salidas de autopista</string>
+    <string name="settings_spoken_detail_hint">Breve anuncia cada giro una sola vez, sin el nombre de la calle. Solo salidas de autopista guarda silencio en ciudad y avisa de salidas, bifurcaciones y giros a alta velocidad.</string>
     <string name="mapvm_graphs_retired">Las rutas sin conexión usan ahora un formato más pequeño. Vuelve a descargar tus regiones en Ajustes, Mapas sin conexión.</string>
     <string name="navservice_notif_action_pause">Pausar</string>
     <string name="navservice_notif_action_resume">Reanudar</string>

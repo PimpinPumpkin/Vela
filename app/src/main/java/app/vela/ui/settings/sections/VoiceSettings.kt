@@ -40,6 +40,7 @@ import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
+import app.vela.ui.settings.settingsAnchor
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadRowSibling
@@ -73,6 +74,25 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                 onCheckedChange = { app.vela.ui.SpokenRoadNames.set(context, it) },
                 hint = stringResource(R.string.settings_spoken_road_names_hint),
             )
+            // How much is said (issue #718): the step between everything and the switch above.
+            GroupDivider()
+            Text(
+                stringResource(R.string.settings_spoken_detail),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.settingsAnchor(stringResource(R.string.settings_spoken_detail)).padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+            )
+            listOf(
+                app.vela.core.nav.SpokenDetail.Mode.FULL to stringResource(R.string.settings_spoken_detail_full),
+                app.vela.core.nav.SpokenDetail.Mode.BRIEF to stringResource(R.string.settings_spoken_detail_brief),
+                app.vela.core.nav.SpokenDetail.Mode.EXITS to stringResource(R.string.settings_spoken_detail_exits),
+            ).forEach { (id, label) ->
+                SelectableRow(
+                    label = label,
+                    selected = app.vela.ui.SpokenDetail.mode.value == id,
+                    onClick = { app.vela.ui.SpokenDetail.set(context, id) },
+                )
+            }
+            Hint(stringResource(R.string.settings_spoken_detail_hint))
         }
         }
         Spacer(Modifier.height(4.dp))
