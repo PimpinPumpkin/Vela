@@ -1059,6 +1059,11 @@
     <string name="search_fill_cd">検索ボックスに入力</string>
     <string name="settings_spoken_road_names">道路名を読み上げる</string>
     <string name="settings_spoken_road_names_hint">オフにすると、曲がる案内で道路名を読み上げません（「中央通りを左折です」ではなく「左折です」）。地図とルート詳細には引き続き表示されます。</string>
+    <string name="settings_spoken_detail">音声案内の量</string>
+    <string name="settings_spoken_detail_full">すべて</string>
+    <string name="settings_spoken_detail_brief">簡潔</string>
+    <string name="settings_spoken_detail_exits">高速道路の出口のみ</string>
+    <string name="settings_spoken_detail_hint">「簡潔」は各案内を一度だけ、道路名なしで読み上げます。「高速道路の出口のみ」は市街地では黙り、出口、分岐、高速走行中の右左折だけを読み上げます。</string>
     <string name="mapvm_graphs_retired">オフライン経路検索のデータ形式が小さくなりました。設定 ▸ オフライン マップ で地域をもう一度ダウンロードしてください。</string>
     <string name="navservice_notif_action_pause">一時停止</string>
     <string name="navservice_notif_action_resume">再開</string>

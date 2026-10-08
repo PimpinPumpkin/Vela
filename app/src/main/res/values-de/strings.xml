@@ -1001,6 +1001,11 @@
     <string name="search_fill_cd">In das Suchfeld übernehmen</string>
     <string name="settings_spoken_road_names">Straßennamen ansagen</string>
     <string name="settings_spoken_road_names_hint">Wenn aus, werden Abbiegungen ohne Straßennamen angesagt, also „Links abbiegen“ statt „Links abbiegen in die Hauptstraße“. Karte und Wegbeschreibung zeigen ihn weiterhin.</string>
+    <string name="settings_spoken_detail">Wie viel die Stimme sagt</string>
+    <string name="settings_spoken_detail_full">Alles</string>
+    <string name="settings_spoken_detail_brief">Kurz</string>
+    <string name="settings_spoken_detail_exits">Nur Autobahnausfahrten</string>
+    <string name="settings_spoken_detail_hint">Kurz sagt jede Abbiegung einmal an, ohne Straßennamen. Nur Autobahnausfahrten bleibt in der Stadt still und meldet Ausfahrten, Gabelungen und Abbiegungen bei hohem Tempo.</string>
     <string name="mapvm_graphs_retired">Das Offline-Routing verwendet jetzt ein kleineres Format. Laden Sie Ihre Regionen unter Einstellungen, Offline-Karten erneut herunter.</string>
     <string name="navservice_notif_action_pause">Pause</string>
     <string name="navservice_notif_action_resume">Fortsetzen</string>

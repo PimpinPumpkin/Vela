@@ -1059,6 +1059,11 @@
     <string name="search_fill_cd">填入搜尋框</string>
     <string name="settings_spoken_road_names">唸出街道名稱</string>
     <string name="settings_spoken_road_names_hint">關閉時，轉彎提示不會唸出街道名稱：只說「左轉」，而不是「左轉進入中山路」。地圖和步驟清單仍會顯示。</string>
+    <string name="settings_spoken_detail">語音播報的詳細程度</string>
+    <string name="settings_spoken_detail_full">全部</string>
+    <string name="settings_spoken_detail_brief">簡短</string>
+    <string name="settings_spoken_detail_exits">僅高速公路出口</string>
+    <string name="settings_spoken_detail_hint">「簡短」每個轉彎只播報一次，不唸路名。「僅高速公路出口」在市區保持安靜，只播報出口、岔路和高速行駛時的轉彎。</string>
     <string name="mapvm_graphs_retired">離線路線規劃已改用更小的格式。請在「設定 ▸ 離線地圖」重新下載你的區域。</string>
     <string name="navservice_notif_action_pause">暫停</string>
     <string name="navservice_notif_action_resume">繼續</string>
