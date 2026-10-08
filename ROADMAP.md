@@ -167,6 +167,43 @@ Small items, one pull request each.
 - Explore: a sheet of nearby restaurants and things to do from the bare map. Events have no
   keyless source.
 
+### Open from the October 2026 audit
+
+Found reading everything since 0.4.1912 and not fixed yet.
+
+- "Traffic-light guidance" does nothing: no code reads `nav_traffic_lights`, and the "pass the
+  light" clause reaches the current step's card only, never the voice or the engine. Either
+  wire the enriched route into the session whole (`_state.route` and `planRoute` together) or
+  remove the switch.
+- Zooming out through z10 to z13.5 mid-drive in a dense city drops frames for 250 to 800 ms
+  the first time each zoom is reached (Pixel 4a, San Francisco), with every Vela layer hidden
+  or shown. Not traced yet.
+- The arrow's swap to the map's own symbol during a gesture (`puckGestureSwap`) is off: the
+  car vanishes for several frames at each end of a pinch. The overlay is used throughout.
+- A prepare-ahead voice line renders at background priority and an urgent line cannot cut the
+  fragment in progress (`PiperSynth`), so a turn-now can land late between two close turns.
+- "Phone first" waits for the open router's blocking call before it can hand back the phone's
+  route (`openD`, `viaD` are structured children).
+- `FixRules.isUpgrade` lets a GPS fix that follows a poor GPS fix skip `sanePosition`.
+- A replay seek feeds every earlier fix through the engine in one main-thread block.
+- Strict tile naming's "another street about as close" test depends on the order the tile's
+  segments come in (`LineNamer`). The trip-end slack for a matched stretch is keyed to Google's
+  stated distance, not the line's length.
+- My Maps import compiles a regex per placemark and fetches on the 12 s client. A `daddr` link
+  is URL-decoded twice, which breaks a plus code.
+- A place starred before its details load, or offline, is stored as bare and never looks up its
+  listing again.
+- Interface: the Street View thumbnail stays over the search page; "Place icons" in Layers
+  applies at the next pan; a drawing's typed name is lost when another sheet opens; the area
+  picker ticks the whole region when "just this area" is unticked; Settings > Offline sizes
+  its caches in composition; a list with one place reads "1 places" (`lists_place_count` and
+  `map_save_list` need `<plurals>`).
+- Map: the 3D building tilt gate and the house-number box both flip layout properties; a
+  dragged drawing point re-uploads every custom-map shape; the pending route copy can run 40
+  blocking queries per slide under z6; the cut veil is navy or white on the AMOLED, classic
+  dark and satellite palettes; the painted-roads dial builds an HTTP client at every style
+  load.
+
 ## On the radar
 
 - One APK per chip type. Built and off (`update/ApkChoice`, SPEC 15). Once a build with
