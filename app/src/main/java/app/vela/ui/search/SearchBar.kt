@@ -239,7 +239,12 @@ fun SearchBar(
                             }
                         }
                         .onFocusChanged {
-                            if (!it.isFocused) fieldArmed = false
+                            // A focused field is an armed one, however it got its focus. A tap
+                            // focuses it with no arming, and the first key typed on a physical
+                            // keyboard then turns dpadMode on: unarmed, the field was disabled
+                            // under the cursor, focus fell to the back arrow and the rest of
+                            // the word was lost.
+                            fieldArmed = it.isFocused
                             onFocusChange(it.isFocused)
                         },
                 )

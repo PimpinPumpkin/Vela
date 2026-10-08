@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- Typing in the search box on a physical keyboard works past the first letter. The first key
+  press turned D-pad mode on, which disabled a field that had been focused by a tap.
 - A `geo:` link's zoom (`?z=17`) is honored. A second pin drop after it cleared the zoom, so
   every such link opened at the zoom the map already had.
 - A turn that stays on the same street is said as "Turn right", not "Turn right onto" the

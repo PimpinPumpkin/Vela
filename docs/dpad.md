@@ -178,6 +178,9 @@ Search bar (`SearchBar.kt`, `MapScreen`):
   search. In D-pad mode the field is disabled and cannot take focus until armed. OK on the text
   region arms and focuses it, and losing focus disarms it. A field that was only unfocusable
   swallowed taps on phones with both a touchscreen and a keypad.
+- A focused field counts as armed, however it got its focus. A tap focuses it with no arming,
+  and the first key typed on a physical keyboard turns D-pad mode on: unarmed, the field was
+  disabled under the cursor and everything after the first character was lost.
 - The arming `clickable` is on the text region. On the whole card it made the bar one focus stop
   and the Settings gear unreachable.
 - The overlay is open while `searchExpanded` is set or the field has focus (`SearchGates`). A
@@ -213,9 +216,9 @@ Menus, dialogs and web pages:
 
 adb:
 
-- `adb shell input text` and `input keyevent` flip the input mode to Keyboard. `rememberDpadMode`
-  turns on, the unarmed search field is disabled, and typed text stops after one character. Type
-  test input by tapping the on-screen keys.
+- `adb shell input text` and `input keyevent` flip the input mode to Keyboard, as a physical
+  keyboard does: `rememberDpadMode` turns on and the focus rings appear. Typing into a field
+  that already has focus keeps working.
 
 ## Surfaces
 
