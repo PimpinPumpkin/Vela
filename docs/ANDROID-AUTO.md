@@ -6,6 +6,32 @@ active turn-by-turn with the map drawn onto the car surface. This page covers ho
 to get it to show up, because sideloaded navigation apps are fussier than most
 people expect.
 
+## Which way works on your phone
+
+Real cars only list a sideloaded navigation app when Google Play counts it as installed by Play.
+Each row is a way to get there; find your phone's column.
+
+| How you install Vela | Stock Android, or a ROM with Google apps | GrapheneOS (sandboxed Play) | Rooted, any ROM |
+|---|:---:|:---:|:---:|
+| Plain install + Android Auto "Unknown sources" | ❌ | ❌ | ❌ |
+| King Installer, "Google installer" method (no root) | ✅ | ❌ (GrapheneOS has no Google installer) | ✅ |
+| King Installer, Shizuku method | not tested | ❌ | not tested |
+| [AAEnabler](https://github.com/malebuffy/AAEnabler) (no root) | ✅ | not tested | not tested |
+| [PlayInstaller](https://github.com/alltechdev/PlayInstaller) (installs as Play using root) | needs root | needs root | ✅ |
+| `adb install -i com.android.vending` | ❌ | ❌ | ❌ |
+| Desktop Head Unit (Google's car simulator) | ✅ | ✅ | ✅ |
+
+- **Stock / Google apps:** the phone needs a Google account signed in to the Play Store.
+- **GrapheneOS: still being investigated.** No method has passed a real car's check yet. Android
+  Auto asks the sandboxed Play Store who owns Vela and gets no answer. If you get it working,
+  please say how in the issue tracker.
+- **Aftermarket head units** run their own receiver and are often more lenient: "Unknown sources"
+  plus King Installer has worked on one even where a car refuses.
+- **The Desktop Head Unit skips the check**, so it shows the car screens but says nothing about
+  whether your car will list Vela.
+- **An in-app update undoes the Play install record.** Vela holds the update back and offers the
+  APK as a file when it sees a Play install, so you can reinstall it the same way.
+
 ## The short version
 
 Vela is a **navigation template app**. Android Auto hides sideloaded navigation

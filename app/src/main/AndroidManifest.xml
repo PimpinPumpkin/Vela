@@ -244,6 +244,17 @@
                 <data android:scheme="geo" />
             </intent-filter>
         </service>
+        <!-- Navigation as a media session (SPEC 13): reaches car screens that list media
+             apps but not a sideloaded navigation app. Content only appears when the driver
+             turns it on (Settings > Navigation); the service is otherwise dormant. -->
+        <service
+            android:name=".car.media.VelaMediaService"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
         <!-- Marks Vela as optimized for constrained satellite data (issue #235): carriers that
              gate satellite cell service to approved apps (Rogers, AT&T, KDDI) allow its traffic.
              Everything heavy is already optional/deferrable, so the label is honest. -->

@@ -1381,4 +1381,10 @@
     <string name="place_avoid_short_ferries">Ferries</string>
     <string name="place_avoid_short_cameras">Cameras</string>
     <string name="trip_shortcut_themed">Match themed icons</string>
+    <!-- Navigation on the car's media screen -->
+    <string name="car_media_idle_title">Vela</string>
+    <string name="car_media_idle_subtitle">Pick a saved or recent place to drive to.</string>
+    <string name="car_media_navigating">Navigating</string>
+    <string name="settings_car_media">Show the map on the car\'s media screen</string>
+    <string name="settings_car_media_sub">On cars that do not list Vela as a navigation app, it can appear as a media app instead: the map as the artwork, the next turn as the title. The map is a still image refreshed as you drive, not a moving map.</string>
 </resources>

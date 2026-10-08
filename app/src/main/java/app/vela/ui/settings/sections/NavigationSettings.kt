@@ -300,6 +300,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.SpeedingAlert.set(context, it) },
             hint = stringResource(R.string.settings_speeding_alert_hint),
         )
+        // Navigation on the car's media screen (SPEC 13): a way onto car screens that do not list
+        // a sideloaded nav app. Off by default; the map is a still image refreshed as you drive.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_car_media),
+            checked = app.vela.ui.CarMedia.on.value,
+            onCheckedChange = { app.vela.ui.CarMedia.set(context, it) },
+            hint = stringResource(R.string.settings_car_media_sub),
+        )
         }
 
         SettingsGroup {

@@ -35,10 +35,16 @@ rhino = "1.7.15.1"
 # Android for Cars app library (Android Auto projection). Templated host UI;
 # the map itself renders onto the car surface via a virtual display.
 carApp = "1.4.0"
+# androidx.media: the classic MediaBrowserServiceCompat + MediaSessionCompat, which Android
+# Auto's media UI reads. Vela declares a media session that presents navigation as "now playing"
+# (map as the artwork, the next turn as the title) so it reaches car screens that admit media
+# apps but not sideloaded template apps (SPEC 13).
+mediaCompat = "1.7.0"
 
 [libraries]
 androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 androidx-car-app-projected = { group = "androidx.car.app", name = "app-projected", version.ref = "carApp" }
+androidx-media = { group = "androidx.media", name = "media", version.ref = "mediaCompat" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-webkit = { group = "androidx.webkit", name = "webkit", version = "1.17.0" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }

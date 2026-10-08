@@ -290,6 +290,7 @@ dependencies {
     implementation(libs.maplibre.android)
     implementation(libs.androidx.car.app) // Android Auto (projection): templates + car surface
     implementation(libs.androidx.car.app.projected) // projected host connector (phone → car)
+    implementation(libs.androidx.media) // MediaBrowserService: navigation as a media session on the car (SPEC 13)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

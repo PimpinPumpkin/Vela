@@ -115,6 +115,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
         Traffic.init(this)
         TransitLayer.init(this)
+        app.vela.ui.CarMedia.init(this)
+        app.vela.car.media.CardDemo.maybeRender(this) // adb-only: debug.vela.cardshot=demo writes a card image
         app.vela.ui.SatelliteLayer.init(this) // persisted satellite-imagery toggle
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
