@@ -11,6 +11,10 @@ says so.
 
 ### October 2026
 
+- "Open now" asks Google for the places open now. It only thinned the 60 results already
+  fetched, which late at night left two or three of them, some far away.
+- Low-RAM detection also covers a 32-bit process, a 128 MB heap class and a 2 GB phone
+  (pull request 706).
 - An off-route fix while a stop edit is being routed no longer cancels that replan and starts
   another: the replan is timed from its own start.
 - The version line is 0.5, from the stable that carries the new look and Google-line driving.

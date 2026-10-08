@@ -50,13 +50,9 @@ object LowRamMode {
         is32Bit: Boolean = false,
     ): Boolean = when {
         isLowRamDevice -> true
-        // A 32-bit process is constrained whatever the phone holds, because the limit is address
-        // space rather than RAM, and scudo answers a failed mmap by aborting the process. That
-        // arrives as a native SIGABRT ("Scudo ERROR: internal map or unmap failure") inside
-        // whatever allocated next, so the crash never names what filled the space. Measured on a
-        // QM215 handset running a 32-bit userspace on 64-bit silicon: 3566 MB of RAM, heap class
-        // 256, isLowRamDevice false, dead 49 s into a routing session after three main-thread ANRs
-        // blocked on the GC, with lowmemorykiller reporting "watermarks ok" throughout.
+        // A 32-bit process is constrained whatever the phone holds: the limit is address space,
+        // and the allocator aborts the process on a failed mmap. A handset with 3.5 GB, heap
+        // class 256 and a 32-bit userspace died that way in the middle of a route.
         is32Bit -> true
         heapClassMb in 1..LOW_HEAP_CLASS_MB -> true
         totalRamMb in 1..LOW_TOTAL_RAM_MB -> true

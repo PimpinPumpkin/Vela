@@ -4704,7 +4704,9 @@ Regressing one of these blocks a release.
   trim only, since a reload mid-drive delays a prompt. MapLibre's native caches, every hidden
   WebView and the image cache go on a severe trim.
 - `MemoryPressure.lowRam` selects a smaller image cache, no speech warm-up, no speculative
-  WebView warm-up and an 8-term ambient fan-out.
+  WebView warm-up and an 8-term ambient fan-out. It is `LowRamMode.classify`: a Go-configured
+  device, a 32-bit process (the limit is address space, whatever the RAM), a heap class up to
+  128 MB, total RAM up to 2048 MB, or both of those unreadable.
 - `ConstrainedNetwork` reads `NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED` and `TRANSPORT_SATELLITE`
   by name through reflection. A platform without them reports false. On a constrained link the
   photo walk is skipped and the ambient fan-out takes the lean path.
