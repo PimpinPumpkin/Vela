@@ -330,6 +330,9 @@ signed file the app fetches at launch (SPEC 11).
   MapLibre's native threads inherit the name of the Java thread that started them.
 - Test in a dense city at replay speed, with cool-downs. The 4a throttles after a few minutes
   and every number drops.
+- A layer A/B (`debug.vela.hide`) alternates its arms in a balanced order and has a placebo arm
+  with some other layer hidden. The first sweep into a zoom level pays for cold tiles, so the
+  arm that always goes first looks worse. Compare total frames over identical gestures.
 - A `withFrameNanos` loop needs an idle exit, and every write in it is change-gated. A parked
   drive must draw nothing.
 - Anything that must sit still on screen while the map moves is a Compose overlay projected
@@ -442,8 +445,9 @@ signed file the app fetches at launch (SPEC 11).
   at `&`, drops `-p app.vela`, and another maps app opens it.
 - A simulated drive's fixes skip the live fix handler (`replaying`). Anything that should run
   per fix in a demo is also called from `NavController`'s replay collector, through `Host`.
-- Two-finger gestures cannot be injected with `input`: use `scripts/touch/two-finger.sh`. A
-  held back swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
+- Two-finger gestures cannot be injected with `input`: use `scripts/touch/two-finger.sh`. Its
+  `[repeat] [cycles]` arguments play a zoom sweep out and back in one process. A held back
+  swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
   zoom once a second (`VelaFps`), which is how to tell whether a pinch zoomed.
 - Log tags worth knowing: `VelaDirections`, `VelaSteps` and `VelaCapture` (set to DEBUG),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,

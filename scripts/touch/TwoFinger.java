@@ -7,10 +7,13 @@ import java.lang.reflect.Method;
  * Plays a two-finger gesture on a test phone: `input` sends one finger only, and writing to
  * /dev/input is denied to the shell.
  *
- *   scripts/touch/two-finger.sh x1a y1a x1b y1b x2a y2a x2b y2b [steps] [stepMs] [holdMs]
+ *   scripts/touch/two-finger.sh x1a y1a x1b y1b x2a y2a x2b y2b [steps] [stepMs] [holdMs] [repeat] [cycles]
  *
  * Finger 1 goes from (x1a,y1a) to (x1b,y1b) and finger 2 from (x2a,y2a) to (x2b,y2b) in [steps]
  * moves [stepMs] apart, both stay down for [holdMs], then lift. Pixels of the screen.
+ *
+ * With [cycles], one run plays a sweep that many times: the gesture [repeat] times, then its
+ * reverse [repeat] times. A frame rate test uses this so no new process starts mid-measurement.
  */
 public class TwoFinger {
     static Object im; static Method inject;
@@ -23,6 +26,17 @@ public class TwoFinger {
         try { c = Class.forName("android.hardware.input.InputManagerGlobal"); } catch (Throwable t) { c = Class.forName("android.hardware.input.InputManager"); }
         im = c.getMethod("getInstance").invoke(null);
         inject = c.getMethod("injectInputEvent", android.view.InputEvent.class, int.class);
+        int repeat = a.length > 11 ? Integer.parseInt(a[11]) : 1;
+        int cycles = a.length > 12 ? Integer.parseInt(a[12]) : 0;
+        if (cycles <= 0) { for (int r = 0; r < repeat; r++) play(v, n, ms, hold); return; }
+        float[] back = { v[2], v[3], v[0], v[1], v[6], v[7], v[4], v[5] };
+        for (int k = 0; k < cycles; k++) {
+            for (int r = 0; r < repeat; r++) { play(v, n, ms, hold); Thread.sleep(120); }
+            for (int r = 0; r < repeat; r++) { play(back, n, ms, hold); Thread.sleep(120); }
+        }
+    }
+
+    static void play(float[] v, int n, long ms, long hold) throws Exception {
         long down = SystemClock.uptimeMillis();
         send(down, MotionEvent.ACTION_DOWN, 1, v[0], v[1], v[4], v[5]);
         send(down, MotionEvent.ACTION_POINTER_DOWN | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), 2, v[0], v[1], v[4], v[5]);
