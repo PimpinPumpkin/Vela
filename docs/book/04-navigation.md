@@ -345,6 +345,9 @@ The drive arrives when any of these holds:
 - You are within `ARRIVE_PROX_M = 40` of the destination in a straight line. Routers snap the
   destination to the road, and you may park beside it.
 - You are stopped with 50 m or less left and within 60 m in a straight line.
+- You are stopped with `END_PARK_ALONG_M = 60` or less left and within 40 m in a straight
+  line, whatever turns remain. The first three are tested on the last step only, and a car
+  parked just short of a last turn into a lot never gets to it.
 
 The voice says which side the destination is on when the route knows it, else "You have
 arrived". Within `DEST_ZONE_M = 150` of the destination nothing reroutes, so parking short of

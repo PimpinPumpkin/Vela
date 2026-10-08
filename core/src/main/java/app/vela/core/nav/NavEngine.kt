@@ -32,6 +32,7 @@ object NavEngine {
     /** In [NavState.spoken]: the turn-now line of the step has been said (0 and 1 are the bands). */
     const val TURN_NOW_SLOT = 2
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
+    private const val END_PARK_ALONG_M = 60.0 // stopped this close to the end along the route, with turns still unsaid, is arrived
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
     private const val STOP_ON_ROUTE_M = 150.0 // a waypoint farther than this from the line isn't on this route
@@ -425,7 +426,12 @@ object NavEngine {
         // of its left turn was shown the turn after it, 0.9 miles on, and the road name under the
         // car was the next road's (a real drive, 2026-10-07). At speed the two still coincide.
         val advanceM = (v * 2.5).coerceIn(ADVANCE_MIN_M, 90.0)
-        if (idxCur < maneuvers.lastIndex) {
+        // Parked just short of the last turn (the lot's entrance, a driveway round the corner):
+        // the step stays on that turn until the car is at it, so without this the arrival test
+        // below, which runs on the last step, is never reached and the drive never ends.
+        val crowEnd = loc.distanceTo(maneuvers.last().location)
+        val parkedAtEnd = !moving && remaining <= END_PARK_ALONG_M && crowEnd <= ARRIVE_PROX_M
+        if (idxCur < maneuvers.lastIndex && !parkedAtEnd) {
             if (dtn <= turnNowM && TURN_NOW_SLOT !in spoken) {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
@@ -441,13 +447,15 @@ object NavEngine {
                 spoken = emptySet()
             }
         } else {
-            val crow = loc.distanceTo(target.location)
+            val crow = crowEnd
             // Stationary clause requires crow ≤ 60 (not 120): a red light 45 m along-route short
             // of a just-past-the-intersection destination must not end the session from the
             // stop line (arrival tears the whole nav session + service down).
-            val arrivedNow = dtn <= ARRIVE_RADIUS_M ||
-                crow <= ARRIVE_PROX_M ||
-                (remaining <= 50.0 && !moving && crow <= 60.0)
+            val arrivedNow = parkedAtEnd || (idxCur == maneuvers.lastIndex && (
+                dtn <= ARRIVE_RADIUS_M ||
+                    crow <= ARRIVE_PROX_M ||
+                    (remaining <= 50.0 && !moving && crow <= 60.0)
+                ))
             if (arrivedNow) {
                 events += NavEvent.Arrived
                 // ONE line, not two stacked (user 2026-07-15): when the route knows the side, the

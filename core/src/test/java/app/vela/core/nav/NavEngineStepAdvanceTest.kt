@@ -69,4 +69,42 @@ class NavEngineStepAdvanceTest {
         st = step(st, east(255.0), 20.0, 90.0).first
         assertEquals(2, st.stepIndex)
     }
+
+    /** East 400 m, then a left into a lot whose end is 20 m in. */
+    private val lotRoute: Route by lazy {
+        val poly = (0..40).map { east(it * 10.0) } + (1..2).map { northOf(400.0, it * 10.0) }
+        val ms = listOf(
+            Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 400.0, 0.0),
+            Maneuver(ManeuverType.TURN_LEFT, "Turn left", east(400.0), 20.0, 0.0),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+        )
+        Route(poly, listOf(RouteLeg(420.0, 60.0, null, ms)), 420.0, 60.0, null)
+    }
+
+    @Test fun `parking just short of a last turn into the destination still arrives`() {
+        var st = NavState()
+        var arrived = false
+        fun go(at: LatLng, speed: Double) {
+            val (s, ev) = NavEngine.update(lotRoute, st, at, speedMps = speed, bearingDeg = 90.0)
+            st = s
+            if (ev.any { it is NavEvent.Arrived }) arrived = true
+        }
+        var m = 0.0
+        while (m < 360.0) { go(east(m), 8.0); m += 8.0 }
+        assertTrue("still driving, 40 m short of the turn: not there yet", !arrived)
+        for (x in listOf(372.0, 380.0, 385.0)) go(east(x), 2.5)
+        assertTrue("rolling up to the entrance is not arriving", !arrived)
+        repeat(3) { go(east(385.0), 0.0) }
+        assertTrue("parked 15 m before the turn, 35 m of route left", arrived)
+    }
+
+    @Test fun `stopping short of a turn in mid route is not an arrival`() {
+        var st = NavState()
+        var arrived = false
+        var m = 0.0
+        while (m < 250.0) { val (s, ev) = step(st, east(m), 8.0, 90.0); st = s; if (ev.any { it is NavEvent.Arrived }) arrived = true; m += 8.0 }
+        repeat(5) { val (s, ev) = step(st, east(285.0), 0.0, 90.0); st = s; if (ev.any { it is NavEvent.Arrived }) arrived = true }
+        assertTrue(!arrived)
+        assertEquals(1, st.stepIndex)
+    }
 }

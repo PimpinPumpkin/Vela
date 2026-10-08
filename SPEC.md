@@ -1389,7 +1389,10 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
 - Arrival fires within `ARRIVE_RADIUS_M` (25 m) along the route of the arrive maneuver, within
   `ARRIVE_PROX_M` (40 m) straight-line of it, or with under 50 m of route left while stopped and
-  within 60 m straight-line.
+  within 60 m straight-line. Those three run on the last step. On any step, a car stopped with
+  `END_PARK_ALONG_M` (60 m) or less of route left and within `ARRIVE_PROX_M` of the end has
+  arrived: the step does not move on at a standstill, so a car parked short of a last turn
+  into a lot never reaches the last step.
 - ETA sums the remaining step durations, the current leg pro-rated, times the route's traffic
   ratio, then times `etaScale`. It is never remaining distance over average speed, unless the
   steps carry under 70% of the route's duration.
