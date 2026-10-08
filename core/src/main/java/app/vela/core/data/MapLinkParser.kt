@@ -13,8 +13,11 @@ data class MapLink(
     val origin: MapLink? = null,
     /** The travel mode the link asked for, when it asked. */
     val mode: TravelMode? = null,
-    /** The places a directions link passes through between its start and its end, in order. */
+    /** The places a directions link passes through between its start and its end, in order.
+     *  One marked [via] only shapes the route (a point dragged onto it on a desktop). */
     val stops: List<MapLink> = emptyList(),
+    /** A point the route passes through without stopping; it has a coordinate and no name. */
+    val via: Boolean = false,
 ) {
     val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null)
 }
@@ -131,17 +134,23 @@ object MapLinkParser {
             .let { if (it.lastOrNull()?.isEmpty() == true) it.dropLast(1) else it }
         if (parts.isEmpty()) return null
         // The data blob carries each place's own coordinate, which saves looking the names up
-        // and cannot land on another town of the same name. Used only when it lists exactly
-        // the places of the path.
-        val pins = dirPins(raw).takeIf { it.size == parts.size }
+        // and cannot land on another town of the same name, and the points dragged onto the
+        // route. Used only when it lists exactly the places of the path.
+        val blob = dirBlob(raw).takeIf { it.size == parts.size }
         val ends = parts.mapIndexed { i, part ->
             val e = endpoint(part)
-            val pin = pins?.get(i)
+            val pin = blob?.get(i)?.pin
             if (e != null && e.lat == null && pin != null) e.copy(lat = pin.first, lng = pin.second) else e
         }
         val dest = ends.last() ?: return null
         val origin = if (ends.size >= 2) ends.first() else null
-        val stops = if (ends.size > 2) ends.subList(1, ends.size - 1).filterNotNull() else emptyList()
+        // In travel order: each place after the start, and after every place but the end the
+        // points dragged onto the leg that leaves it.
+        val stops = ArrayList<MapLink>()
+        for (k in 0 until ends.size - 1) {
+            if (k > 0) ends[k]?.let { stops += it }
+            blob?.get(k)?.vias?.forEach { (la, ln) -> stops += MapLink(lat = la, lng = ln, via = true) }
+        }
         val blobMode = when (DATA_MODE.find(raw.substringAfter("/data=", ""))?.groupValues?.get(1)) {
             "0" -> TravelMode.DRIVE; "1" -> TravelMode.BICYCLE; "2" -> TravelMode.WALK; "3" -> TravelMode.TRANSIT; else -> null
         }
@@ -152,30 +161,59 @@ object MapLinkParser {
     private val WAYPOINT_SEP = Regex("""\||%7C""", RegexOption.IGNORE_CASE)
     private val DATA_MODE = Regex("""!3e([0-3])(?:!|$|\?)""")
     private val DATA_WAYPOINT = Regex("""1m(\d+)""")
+    private val DATA_SUB = Regex("""3m(\d+)""")
+
+    /** One place of a directions link's blob: its own coordinate (lat, lng) or null, and the
+     *  points dragged onto the leg that leaves it. */
+    internal class BlobPlace(val pin: Pair<Double, Double>?, val vias: List<Pair<Double, Double>>)
 
     /**
-     * The coordinate of each place in a directions link's `data=` blob, in order, null where
-     * the blob has none for that place. The blob is "!"-separated fields; each place is a
-     * `1m<n>` field followed by its `n` fields, among them `1d<lng>` and `2d<lat>`:
-     * `!1m5!1m1!1s0x...!2m2!1d-121.7405!2d38.5449`.
+     * The places in a directions link's `data=` blob, in order. The blob is "!"-separated
+     * fields; each place is a `1m<n>` field followed by its `n` fields:
+     * `!1m5!1m1!1s0x...!2m2!1d-121.7405!2d38.5449` (`2m2`, then `1d<lng>` and `2d<lat>`).
+     * A point dragged onto the route sits in the block of the place before it, as
+     * `!3m4!1m2!1d<lng>!2d<lat>!3s0x...`, which makes that block `1m10`, `1m15` and so on.
      */
-    internal fun dirPins(raw: String): List<Pair<Double, Double>?> {
+    internal fun dirBlob(raw: String): List<BlobPlace> {
         val data = raw.substringAfter("/data=", "").substringBefore('?').substringBefore('/')
         if (data.isEmpty()) return emptyList()
         val f = data.split('!').filter { it.isNotEmpty() }
         var i = f.indexOfFirst { DATA_WAYPOINT.matches(it) }
         if (i < 0) return emptyList()
-        val out = ArrayList<Pair<Double, Double>?>()
+        fun coord(lngField: String?, latField: String?): Pair<Double, Double>? {
+            val lng = lngField?.takeIf { it.startsWith("1d") }?.drop(2)?.toDoubleOrNull() ?: return null
+            val lat = latField?.takeIf { it.startsWith("2d") }?.drop(2)?.toDoubleOrNull() ?: return null
+            return if (lat in -90.0..90.0 && lng in -180.0..180.0) lat to lng else null
+        }
+        val out = ArrayList<BlobPlace>()
         while (i < f.size) {
             val n = DATA_WAYPOINT.matchEntire(f[i])?.groupValues?.get(1)?.toIntOrNull() ?: break
             val block = f.subList(i + 1, minOf(f.size, i + 1 + n))
-            val lng = block.firstOrNull { it.startsWith("1d") }?.drop(2)?.toDoubleOrNull()
-            val lat = block.firstOrNull { it.startsWith("2d") }?.drop(2)?.toDoubleOrNull()
-            out += if (lat != null && lng != null && lat in -90.0..90.0 && lng in -180.0..180.0) lat to lng else null
+            var pin: Pair<Double, Double>? = null
+            val vias = ArrayList<Pair<Double, Double>>()
+            var k = 0
+            while (k < block.size) {
+                val sub = DATA_SUB.matchEntire(block[k])
+                when {
+                    // The place's own coordinate comes before any dragged point.
+                    block[k] == "2m2" && pin == null && vias.isEmpty() -> { pin = coord(block.getOrNull(k + 1), block.getOrNull(k + 2)); k += 3 }
+                    sub != null -> {
+                        val len = sub.groupValues[1].toIntOrNull() ?: 0
+                        val inner = block.subList(minOf(block.size, k + 1), minOf(block.size, k + 1 + len))
+                        if (inner.firstOrNull() == "1m2") coord(inner.getOrNull(1), inner.getOrNull(2))?.let { vias += it }
+                        k += 1 + len
+                    }
+                    else -> k++
+                }
+            }
+            out += BlobPlace(pin, vias)
             i += 1 + n
         }
         return out
     }
+
+    /** The coordinate of each place in the blob, null where it has none ([dirBlob]). */
+    internal fun dirPins(raw: String): List<Pair<Double, Double>?> = dirBlob(raw).map { it.pin }
 
     /** The separator between chained stops in a classic `daddr`, still URL-encoded: "+to:". */
     private val DADDR_TO = Regex("""(?:\+|%20|\s)+to(?::|%3A)""", RegexOption.IGNORE_CASE)

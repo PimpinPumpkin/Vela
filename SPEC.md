@@ -2648,6 +2648,13 @@ when the feature ids match. Two requests at most.
   only when the blob lists exactly the path's places; such a place is taken as named and
   pinned, with no lookup (`linkPin`), and the trip is fetched once. A name with no pin is
   searched near the destination and the trip rerouted (`applyLinkTrip`).
+- A point dragged onto the route on a desktop sits in the blob inside the block of the place
+  before it (`3m4`, `1m2`, `1d<lng>`, `2d<lat>`, `3s<id>`), and comes out as a stop marked
+  `MapLink.via`, in travel order, at most `LINK_VIAS_MAX` (12). The view model keeps them as
+  the trip's `LinkPlan`: `route` goes through the stops and the dragged points together and
+  stamps the result's `detourPlan`, so a drive passes them as silent stops
+  (`NavController.navStopsFor`). They hold while the trip is the link's (same end, same given
+  start, same stops in order) and are dropped at the first edit.
 - The link's mode, its stops, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix,
   apply once to the next `routeToSelected`. The mode is not made sticky.
 - A whole Google Maps address in the search box (`MapLinkParser.isMapsUrl`: one token on a

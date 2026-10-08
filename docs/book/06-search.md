@@ -375,8 +375,9 @@ A link with more than two places opens as a trip with stops, up to ten. That cov
 planned in Google Maps on a desktop: copy the address bar, and either open the link on the
 phone (from a calendar event, a note, a message) or paste it into Vela's search box. The
 desktop link carries each place's coordinate, so nothing is looked up by name and the trip is
-the one that was planned, in its order. Points dragged onto the route on the desktop are not
-read; add them as stops.
+the one that was planned, in its order. Points dragged onto the route on the desktop come
+along too: the route passes through them and a drive treats them as silent stops, never
+announced or listed. Editing the stops lets go of them.
 
 A plain location link (a `geo:` link, a shared place) shows the place. Settings > Navigation >
 "Links from other apps" changes that. "Open directions" sends location links to the route

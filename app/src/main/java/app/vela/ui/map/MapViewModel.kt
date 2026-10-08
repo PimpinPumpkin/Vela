@@ -2856,6 +2856,14 @@ class MapViewModel @Inject constructor(
     @Volatile private var linkOrigin: MapLink? = null
     @Volatile private var linkStops: List<MapLink> = emptyList()
 
+    /** The trip of a link that carried points dragged onto its route: every point between start
+     *  and end in travel order, the stops and the dragged ones, for the trip to [dest] (from
+     *  [origin], or from here when null). [route] goes through all of them while the trip is
+     *  still the link's, and they ride on as the route's plan, so a drive passes the dragged
+     *  points as silent stops. */
+    private class LinkPlan(val points: List<LatLng>, val dest: LatLng, val origin: LatLng?)
+    @Volatile private var linkPlan: LinkPlan? = null
+
     private fun openDirectionsLink(link: MapLink) {
         val me = _state.value.myLocation
         linkMode = link.mode
@@ -2864,10 +2872,11 @@ class MapViewModel @Inject constructor(
             val la = o.lat; val ln = o.lng
             la != null && ln != null && me != null && me.distanceTo(LatLng(la, ln)) < LINK_ORIGIN_HERE_M
         }
-        linkStops = link.stops.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
-        if (link.stops.size > linkStops.size) flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
+        var places = 0; var dragged = 0
+        linkStops = link.stops.filter { if (it.via) dragged++ < LINK_VIAS_MAX else places++ < app.vela.core.nav.SavedRoutes.MAX_STOPS }
+        if (places > app.vela.core.nav.SavedRoutes.MAX_STOPS) flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
         diag.record("search", "directions link: dest ${if (link.lat != null) "point" else "name"}, " +
-            "start ${if (linkOrigin == null) "here" else "given"}, ${linkStops.size} stop(s), mode ${link.mode ?: "sticky"}")
+            "start ${if (linkOrigin == null) "here" else "given"}, ${linkStops.count { !it.via }} stop(s), ${linkStops.count { it.via }} dragged point(s), mode ${link.mode ?: "sticky"}")
         val la = link.lat; val ln = link.lng
         if (la != null && ln != null) {
             val pt = LatLng(la, ln)
@@ -5148,12 +5157,19 @@ class MapViewModel @Inject constructor(
         // the first route request, so a planned trip is fetched once, as planned; a name has to
         // be looked up first, and the trip is rerouted when it lands.
         val linkStart = linkOrigin.also { linkOrigin = null }
-        val linkMids = linkStops.also { linkStops = emptyList() }
+        val linkAll = linkStops.also { linkStops = emptyList() }
+        val linkMids = linkAll.filter { !it.via }
         val pinStart = linkStart?.let { linkPin(it) }
         val pinMids = linkMids.mapNotNull { linkPin(it) }
         val linkPinned = (linkStart == null || pinStart != null) && pinMids.size == linkMids.size
+        linkPlan = null
         if (linkPinned && (pinStart != null || pinMids.isNotEmpty())) {
             _state.update { it.copy(directionsOrigin = pinStart, directionsWaypoints = pinMids) }
+        }
+        // Points dragged onto the route come with every place's coordinate, or not at all.
+        if (linkPinned && linkAll.any { it.via }) {
+            val points = linkAll.mapNotNull { m -> m.lat?.let { la -> m.lng?.let { ln -> LatLng(la, ln) } } }
+            if (points.size == linkAll.size) linkPlan = LinkPlan(points, sel.location, pinStart?.location)
         }
         when {
             fromLink != null -> { _state.update { it.copy(travelMode = fromLink) }; route(fromLink) }
@@ -6068,6 +6084,12 @@ class MapViewModel @Inject constructor(
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
+        // A link's dragged points apply while the trip is still the link's: the same end, the
+        // same start when it gave one, and its stops in its order. Any edit lets go of them.
+        val plan = linkPlan?.takeIf { lp ->
+            lp.dest == dest && (lp.origin == null || lp.origin == origin) && lp.points.filter { it in stops } == stops
+        }?.points
+        if (plan == null) linkPlan = null
         val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec)
         beginModeEtas(etaKey)
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec, etaKey); return }
@@ -6078,7 +6100,8 @@ class MapViewModel @Inject constructor(
         savedRoutesJob?.cancel()
         routeJob = viewModelScope.launch {
             try {
-                val routes = dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
+                val routes = if (plan == null) dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
+                    else dataSource.directions(origin, dest, mode, plan, s.avoidTolls, s.avoidHighways, s.avoidFerries).map { it.copy(detourPlan = plan) }
                 if (!stillWanted()) return@launch // backed out / switched mode mid-fetch — don't resurrect it
                 _state.update {
                     it.copy(
@@ -6106,7 +6129,7 @@ class MapViewModel @Inject constructor(
                 // wrong turns/ETA that only "corrected" when Start named it. Name it NOW (OSRM snap +
                 // re-applied traffic), exactly as picking an alternate does, so preview == nav.
                 if (routes.firstOrNull()?.provisional == true) selectRoute(0)
-                if (routes.isNotEmpty() && stops.isEmpty()) offerSavedRoutes(origin, dest, mode, s.avoidTolls, s.avoidHighways, s.avoidFerries, ::stillWanted)
+                if (routes.isNotEmpty() && stops.isEmpty() && plan == null) offerSavedRoutes(origin, dest, mode, s.avoidTolls, s.avoidHighways, s.avoidFerries, ::stillWanted)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // superseded by a newer route()/cleared — don't touch state on a dead job
             } catch (e: CalibrationNeededException) {
@@ -9853,6 +9876,8 @@ class MapViewModel @Inject constructor(
         const val GOOGLE_FREE_WIDE_M = 50_000.0
         /** A directions link's start this close to the fix is "from here" (Telegram sends the fix). */
         private const val LINK_ORIGIN_HERE_M = 150.0
+        /** The most points dragged onto a link's route that are kept. */
+        private const val LINK_VIAS_MAX = 12
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close

@@ -43,7 +43,7 @@ says so.
   is found by the length of Google's line, not by the distance Google states.
 - A Google Maps directions link with several places opens as a trip with its stops, and a
   whole Maps address pasted into the search box opens as a link instead of being searched as
-  text. A trip planned on a desktop now carries over.
+  text. A trip planned on a desktop now carries over, with the points dragged onto its route.
 - A stop added from the "Stops" sheet comes back to the sheet, so building a trip no longer
   goes through the menu to reorder (issue 702).
 - The first run asks about plate cameras on the same page as the Google question: route

@@ -136,4 +136,40 @@ class MapLinkDirectionsTest {
         assertFalse(MapLinkParser.isMapsUrl("https://www.google.com/search?q=maps"))
         assertFalse(MapLinkParser.isMapsUrl("google maps"))
     }
+
+    @Test fun `points dragged onto the route come out as vias, in travel order`() {
+        // The first place's block is 1m10 with one dragged point, the second 1m15 with two.
+        val l = MapLinkParser.parse(
+            "https://www.google.com/maps/dir/Sacramento/Davis/San+Francisco/@38.2,-122.0,9z/data=!4m34!4m33" +
+                "!1m10!1m1!1s0x1:0x2!2m2!1d-121.4944!2d38.5816!3m4!1m2!1d-121.6!2d38.5!3s0x3:0x4" +
+                "!1m15!1m1!1s0x5:0x6!2m2!1d-121.7405!2d38.5449!3m4!1m2!1d-121.9!2d38.4!3s0x7:0x8!3m4!1m2!1d-122.1!2d38.2!3s0x9:0xa" +
+                "!1m5!1m1!1s0xb:0xc!2m2!1d-122.4194!2d37.7749!3e0",
+        )!!
+        assertEquals(38.5816, l.origin!!.lat!!, 1e-6)
+        assertEquals(37.7749, l.lat!!, 1e-6)
+        assertEquals(listOf(true, false, true, true), l.stops.map { it.via })
+        assertEquals(38.5, l.stops[0].lat!!, 1e-9); assertEquals(-121.6, l.stops[0].lng!!, 1e-9)
+        assertEquals("Davis", l.stops[1].query); assertEquals(38.5449, l.stops[1].lat!!, 1e-6)
+        assertEquals(38.2, l.stops[3].lat!!, 1e-9)
+        assertNull(l.stops[0].query)
+    }
+
+    @Test fun `a dragged point is never taken for the place's own coordinate`() {
+        // A block with a dragged point and no coordinate of its own: the place keeps its name only.
+        val blob = MapLinkParser.dirBlob("https://www.google.com/maps/dir/A/B/data=!4m10!4m9!1m4!3m4!1m2!1d-121.6!2d38.5!1m0!3e0")
+        assertEquals(2, blob.size)
+        assertNull(blob[0].pin)
+        assertEquals(1, blob[0].vias.size)
+        assertEquals(38.5, blob[0].vias[0].first, 1e-9)
+        assertTrue(blob[1].vias.isEmpty())
+    }
+
+    @Test fun `a two place trip with a dragged point has no stops, only the via`() {
+        val l = MapLinkParser.parse(
+            "https://www.google.com/maps/dir/Sacramento/Davis/data=!4m19!4m18!1m10!1m1!1s0x1:0x2!2m2!1d-121.4944!2d38.5816!3m4!1m2!1d-121.6!2d38.62!3s0x3:0x4!1m5!1m1!1s0x5:0x6!2m2!1d-121.7405!2d38.5449!3e0",
+        )!!
+        assertEquals(1, l.stops.size)
+        assertTrue(l.stops[0].via)
+        assertEquals(38.62, l.stops[0].lat!!, 1e-9)
+    }
 }
