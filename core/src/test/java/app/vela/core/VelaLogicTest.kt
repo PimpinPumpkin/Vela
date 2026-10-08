@@ -888,6 +888,14 @@ class NavReplayTest {
                 println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}${seg.flags?.let { " [$it]" } ?: ""}")
             }
         }
+        // What the road pill shows partway along each step of each recorded route.
+        parsed2.segments.forEachIndexed { si, seg ->
+            val mans = seg.route?.maneuvers ?: return@forEachIndexed
+            println("[NavReplay] road label by step, route $si:")
+            mans.forEachIndexed { i, m ->
+                println("  [$i] ${m.instruction} -> ${app.vela.core.nav.roadLabelAt(mans, i + 1, m.distanceMeters / 2, orNext = true) ?: "(none)"}")
+            }
+        }
         val byProvider = pts.groupingBy { it.provider ?: "(unrecorded)" }.eachCount()
         println("[NavReplay] fixes by provider: " + byProvider.entries.joinToString { "${it.key}=${it.value}" })
         val decisions = parsed2.events.filter { it.tag == "K" }

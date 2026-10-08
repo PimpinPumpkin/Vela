@@ -65,7 +65,15 @@ The compass shows for the whole drive, and a tap switches between heading-up and
 the bar, inside the bar, or nowhere. Away from the car (a pan, a pinch, a step preview) the name
 hides and a Re-center pill takes the speed box's place. It shows the road's own name where it
 has one, as the street signs do: "W Covell Blvd", with the route number on the turn card's chip.
-An Interstate, or a road whose name is only its number in words, shows the number.
+An Interstate, a named freeway ("Capital City Freeway" reads "US 50"), or a road whose name is
+only its number in words, shows the number. An expressway or a parkway keeps its name, because
+many are known by nothing else.
+
+A number gets a compass letter when the signs on the way onto the road gave one: "I 80 E" after
+a ramp signed "I 80 East". The letter comes only from sign text in the route steps. A turn onto
+a numbered road at an ordinary junction has no sign in the data, so the number shows alone. It
+is not worked out from the direction of travel, since Interstate 80 East runs north along the
+bay. The direction of travel only chooses between the two when one sign names both.
 
 ### Street callouts
 

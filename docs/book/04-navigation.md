@@ -379,11 +379,11 @@ The step list opens on the step you are on. Steps already driven sit above it, g
 names each stop where its leg begins.
 
 The road name is the road entered by the last maneuver you passed, following any rename along
-the way. It shows the route number when the road has one, and on an unnamed ramp the road the
-ramp leads onto. "Current road name" (Settings > Navigation) puts it under the arrow (the
-default), above the bottom bar, inside the bar, or nowhere. Under the arrow it follows the arrow
-and is clamped to stay on screen. Above the bar it stays centered and has room for a long name.
-Inside the bar it takes no map space.
+the way, and on an unnamed ramp the road the ramp leads onto. Whether it shows the name or the
+number is in [chapter 11](11-drive-chrome.md). "Current road name" (Settings > Navigation) puts
+it under the arrow (the default), above the bottom bar, inside the bar, or nowhere. Under the
+arrow it follows the arrow and is clamped to stay on screen. Above the bar it stays centered
+and has room for a long name. Inside the bar it takes no map space.
 
 The notification shows the current maneuver's glyph, the distance to it, the time and distance
 left and the arrival time, with Pause and End. When the voice speaks while the app is in the

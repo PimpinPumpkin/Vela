@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- The current road name shows a named freeway by its number, and adds the compass direction
+  the signs gave ("I 80 E").
 - A list can have a sound that plays when a drive passes one of its places (`PassAlerts`).
 - Several places can be selected in a list or in Saved places, then removed or moved to
   another list.

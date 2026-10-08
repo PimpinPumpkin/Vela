@@ -109,9 +109,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val then = s.route?.maneuvers?.getOrNull(s.nav.stepIndex + 1) // "then …" junction preview
 
         // The road you are on: the leg's road, following its silent renames (the phone's pill rule).
-        val currentRoad = s.route?.maneuvers?.getOrNull(s.nav.stepIndex - 1)?.let { prev ->
-            prev.roadAt(prev.distanceMeters - s.nav.distanceToNextManeuver).let { (n, r) -> app.vela.core.nav.roadLabel(n, r) }
-        }
+        val currentRoad = s.route?.maneuvers?.let { app.vela.core.nav.roadLabelAt(it, s.nav.stepIndex, s.nav.distanceToNextManeuver) }
         val continueCue = currentRoad?.let { carContext.getString(app.vela.R.string.car_continue_on, it) }
         val info: androidx.car.app.navigation.model.NavigationTemplate.NavigationInfo =
             if (s.paused) androidx.car.app.navigation.model.MessageInfo.Builder(carContext.getString(app.vela.R.string.car_paused)).build()

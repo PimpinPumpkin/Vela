@@ -4040,10 +4040,23 @@ reuses it.
 - The road name (`RoadLabel`, pref `road_label`) defaults to `PUCK`: a pill under the arrow,
   clamped to the window. The other values are `BAR` (centered above the bar), `IN_BAR` (the bar's
   handle row) and `OFF`.
-- What it says is `core/nav/roadLabel(name, ref)`, on the phone and in the car: the road's own
-  name when it has one, its number on an Interstate or where the name only says the number
-  again ("State Route 9"), and whichever exists otherwise. The number stays on the turn card as
-  the current road's chip. It was the number first.
+- What it says is `core/nav/roadLabelAt`, on the phone and in the car. `roadLabel(name, ref,
+  heading)` picks the road's own name when it has one, and its number on an Interstate, on a
+  named freeway (`isFreewayName`: the name ends in Freeway or Motorway, or starts with
+  Autoroute, Autostrada, Autopista, Autovia or Autobahn), or where the name only says the
+  number again ("State Route 9"). An expressway, a parkway or a turnpike keeps its name. The
+  number stays on the turn card as the current road's chip.
+- A number is followed by a compass letter when a guide sign gave one: "I 80 E".
+  `signedHeading` reads it from the text of the step that entered the road ("toward I 80 East:
+  Sacramento"), else from the steps before it that are unnamed or already on that route, up to
+  `SIGN_LOOKBACK` (8) steps. The word before the number must be a route prefix. A router that
+  sends "I 80 East" as the number or the name is read the same way, as is a name that restates
+  the number with a direction. A sign that names both directions ("I 5 North, I 5 South") is
+  settled by the leg's bearing, which must be within `HEADING_PICK_DEG` (60) of one of them. No
+  letter shows after a plain turn onto a numbered road, or when the leg runs more than
+  `HEADING_MAX_OFF_DEG` (135) from the one signed direction. Bearings are only read on a leg
+  of `HEADING_CHECK_MIN_M` (300 m) or more. The letter is never taken from the bearing alone:
+  a route signed east can run north. A name never gets a letter.
 - "Searching for GPS" sits above the arrow, with bottom center as the fallback before a puck
   position exists.
 - Landscape: the turn card and the bar sit in the left column, `NAV_LAND_EDGE_DP` (8 dp) from the

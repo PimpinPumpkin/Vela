@@ -98,7 +98,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Your speed and the posted limit. "Show speed and speed limit" hides them.
 - "Road ahead bar" is a strip with the traffic, lights, stop signs, crossings and cameras still
   ahead.
-- "Current road name" goes above the bottom bar, under the arrow, inside the bar, or off.
+- "Current road name" goes above the bottom bar, under the arrow, inside the bar, or off. A
+  freeway shows its number, with the compass direction when the signs give one ("I 80 E").
 - Street-name callouts where cross streets meet your route, with your turn and exit highlighted.
 - The number of the road you are on, as a shield on the route line about every mile.
 - Pause holds the drive with no rerouting, voice or offers. "Pause button on the navigation bar"
