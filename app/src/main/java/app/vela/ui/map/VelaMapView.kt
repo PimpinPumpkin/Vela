@@ -171,6 +171,18 @@ private const val PUCK_GESTURE_SETTLE_MS = 180L
 private const val TWO_FINGER_PAN_DP = 44f
 /** A two-finger tilt on the browse map that ends below this is dropped, not kept. */
 private const val BROWSE_TILT_KEEP_MIN_DEG = 8.0
+/**
+ * The steepest tilt the drive camera takes at a zoom the user pinched to: all of [full] from
+ * [NAV_TILT_FULL_ZOOM] in, flat from [NAV_TILT_FLAT_ZOOM] out, a straight line between. A view
+ * tilted 55 degrees at city-wide zoom reaches to the horizon and loads the tiles for all of it:
+ * on a Pixel 4a in San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive drew
+ * 4,195 frames tilted (16 stalls over 250 ms, the longest 943 ms) and 5,728 flat (2 stalls).
+ * The camera's own zoom never goes below 15.8, so only a pinch meets this.
+ */
+internal fun navTiltCap(zoom: Double, full: Double = 55.0): Double =
+    full * ((zoom - NAV_TILT_FLAT_ZOOM) / (NAV_TILT_FULL_ZOOM - NAV_TILT_FLAT_ZOOM)).coerceIn(0.0, 1.0)
+internal const val NAV_TILT_FULL_ZOOM = 15.0
+internal const val NAV_TILT_FLAT_ZOOM = 12.5
 private const val TILE_LOD_PITCH_DEG = 30.0
 private const val TILE_LOD_RADIUS = 1.0
 private const val TILE_LOD_SCALE = 6.0
@@ -3314,11 +3326,13 @@ fun VelaMapView(
                     ) { applyOpenPlacesHidden(it) }
                     camState[3] += (tgtZoom - camState[3]) * kZoom
                     // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
-                    val tiltTgt = when {
+                    val tiltWanted = when {
                         navNorthUpHolder.value -> 0.0
                         !navUserTilt[0].isNaN() -> navUserTilt[0]
                         else -> 55.0
                     }
+                    // Zoomed out by hand, the camera lies flatter (navTiltCap).
+                    val tiltTgt = if (navUserZoom[0].isNaN()) tiltWanted else minOf(tiltWanted, navTiltCap(navUserZoom[0]))
                     // The drive's opening tilt eases in slowly after the start cut; everything else
                     // (the compass toggle, a shove) keeps the bearing's constant.
                     val tiltTau = if (navStartTilting[0]) NAV_START_TILT_TAU_S.toFloat() else 0.55f
@@ -4117,8 +4131,17 @@ fun VelaMapView(
                     // if the end callback is missed; we keep FOLLOWING at it and never detach.
                     override fun onScale(detector: StandardScaleGestureDetector) {
                         if (navModeHolder.value) {
-                            navUserZoom[0] = map.cameraPosition.zoom
+                            val cp = map.cameraPosition
+                            navUserZoom[0] = cp.zoom
                             zoomOverride.value(true)
+                            // Flatten as the pinch zooms out, while it is happening: the ticker
+                            // stands aside during a gesture, and a tilted view of a whole city is
+                            // what stalls (navTiltCap).
+                            val cap = navTiltCap(cp.zoom)
+                            if (cp.tilt > cap + 0.5) runCatching {
+                                map.moveCamera(CameraUpdateFactory.tiltTo(cap))
+                                navTiltEase[0] = cap
+                            }
                         }
                     }
                     override fun onScaleEnd(detector: StandardScaleGestureDetector) {

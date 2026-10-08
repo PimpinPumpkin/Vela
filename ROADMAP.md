@@ -171,9 +171,6 @@ Small items, one pull request each.
 
 Found reading everything since 0.4.1912 and not fixed yet.
 
-- Zooming out through z10 to z13.5 mid-drive in a dense city drops frames for 250 to 800 ms
-  the first time each zoom is reached (Pixel 4a, San Francisco), with every Vela layer hidden
-  or shown. Not traced yet.
 - The arrow's swap to the map's own symbol during a gesture (`puckGestureSwap`) is off: the
   car vanishes for several frames at each end of a pinch. The overlay is used throughout.
 - A prepare-ahead voice line renders at background priority and an urgent line cannot cut the

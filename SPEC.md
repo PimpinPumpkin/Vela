@@ -1564,6 +1564,15 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   degrees and a turn is tens.
 - Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s. A pinch
   sets an override that a pan or Re-center clears.
+- Tilt is 55 degrees heading-up (0 north-up, or the angle a two-finger tilt set), capped by
+  `navTiltCap` at a zoom the user pinched to: the whole tilt from `NAV_TILT_FULL_ZOOM` (15) in,
+  flat from `NAV_TILT_FLAT_ZOOM` (12.5) out, linear between. The cap is applied during the
+  pinch itself (`onScale`), where the follow ticker stands aside, and by the ticker after it.
+  A view tilted 55 degrees at city-wide zoom reaches the horizon and loads the tiles for all
+  of it. Pixel 4a, San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive:
+  4,195 frames and 16 stalls over 250 ms (longest 943 ms) uncapped, 5,178 frames and none
+  (longest frame 148 ms) capped, 5,554 flat. The camera's own zoom stays at 15.8 or above, so
+  only a pinch meets the cap.
 - Cosmetic eases take `dtEase`, the frame time capped at `0.065 x replaySpeedup` s. Integration
   keeps the real time. Uncapped, one long frame moves an ease 45 to 70 percent of its error.
 - A two-finger move is a pan only after `TWO_FINGER_PAN_DP` (44 dp) of travel with no tilt or

@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- Pinching out during a drive flattens the camera (`navTiltCap`), which ends the half-second
+  stalls of a tilted city-wide view. Zooming back in tilts it again.
 - Settings > Offline maps no longer grows a tall empty box in languages with long button
   labels (issue 698); the cache sizes are read off the main thread.
 - Small fixes from the October audit: the cut veil takes the palette's land color, a classic

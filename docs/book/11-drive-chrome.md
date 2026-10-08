@@ -186,6 +186,9 @@ The camera follows the arrow, tilted 55 degrees. Its zoom runs from 18.5 at a st
 at 30 m/s. The bearing eases over 1.6 s for a small error and 0.35 s past 25 degrees, so noise in
 the line does not swing the map. A pinch sets a zoom that holds until a pan or Re-center. The
 camera lets go of the map as soon as a second finger touches it, and a slow pinch zooms.
+Pinching out flattens the camera, fully by zoom 12.5, and zooming back in past 15 tilts it
+again: tilted at 55 degrees, a view of a whole city reaches the horizon and stalled the map for
+up to a second on a Pixel 4a.
 
 Start cuts to the car: the camera jumps to the nav zoom, flat, and tilts in with
 `NAV_START_TILT_TAU_S = 3` s. A flight down from the route overview loads a set of tiles at every
