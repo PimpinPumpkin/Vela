@@ -1309,6 +1309,13 @@
     <string name="route_save_default">Route to %1$s</string>
     <string name="route_saved_toast">Route saved. It shows up next to the others whenever you ask for this trip.</string>
     <string name="nav_left_your_route">Left “%1$s”. Taking the fastest way.</string>
+    <string name="list_sound_label">Sound when you drive past one</string>
+    <string name="list_sound_off">Off</string>
+    <string name="list_sound_ping">Ping</string>
+    <string name="list_sound_bell">Bell</string>
+    <string name="list_sound_double">Two beeps</string>
+    <string name="list_sound_low">Low tone</string>
+    <string name="list_sound_name">Say its name</string>
     <string name="bulk_select">Select places</string>
     <plurals name="bulk_selected">
         <item quantity="one">%1$d selected</item>

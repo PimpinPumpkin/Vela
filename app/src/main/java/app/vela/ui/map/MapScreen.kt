@@ -72,6 +72,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ElevatedFilterChip
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -6138,17 +6139,25 @@ private fun ListsSheet(
     if (creating) {
         ListEditorDialog(
             initial = null,
-            onSave = { name, icon, color -> onCreateList(name); creating = false },
+            // The new list takes the icon, the color and the sound picked here: it used to be made
+            // with the defaults whatever was chosen.
+            onSave = { name, icon, color, alert ->
+                val id = onCreateList(name)
+                onUpdateList(app.vela.core.model.PlaceList(id, name.trim(), icon, color, alert = alert))
+                creating = false
+            },
             onDelete = null,
             onDismiss = { creating = false },
+            onPreviewSound = { sound, n -> vm?.playListSound(sound, n) },
         )
     }
     editing?.let { list ->
         ListEditorDialog(
             initial = list,
-            onSave = { name, icon, color -> onUpdateList(list.copy(name = name, icon = icon, color = color)); editing = null },
+            onSave = { name, icon, color, alert -> onUpdateList(list.copy(name = name, icon = icon, color = color, alert = alert)); editing = null },
             onDelete = { onDeleteList(list.id); editing = null },
             onDismiss = { editing = null },
+            onPreviewSound = { sound, n -> vm?.playListSound(sound, n) },
         )
     }
 }
@@ -6496,13 +6505,15 @@ private fun BoxScope.ParkingControl(state: MapUiState, vm: MapViewModel, darkThe
 @Composable
 private fun ListEditorDialog(
     initial: app.vela.core.model.PlaceList?,
-    onSave: (name: String, icon: String, color: Long) -> Unit,
+    onSave: (name: String, icon: String, color: Long, alert: String?) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
+    onPreviewSound: (sound: String, name: String) -> Unit = { _, _ -> },
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: "bookmark") }
     var color by remember { mutableStateOf(initial?.color ?: LIST_COLORS.first()) }
+    var alert by remember { mutableStateOf(initial?.alert) }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         // Cap the dialog to most of the screen: with the emoji grid + free-type field open the
         // content grows past a short screen, which pushed the color row and Save button off the
@@ -6548,6 +6559,26 @@ private fun ListEditorDialog(
                         )
                     }
                 }
+                Spacer(Modifier.height(16.dp))
+                // A sound as a drive passes one of the list's places (PassAlerts). Picking one plays it.
+                Text(stringResource(R.string.list_sound_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val choices = listOf<Pair<String?, Int>>(
+                        null to R.string.list_sound_off, "ping" to R.string.list_sound_ping, "bell" to R.string.list_sound_bell,
+                        "double" to R.string.list_sound_double, "low" to R.string.list_sound_low,
+                        app.vela.core.nav.PassAlerts.NAME to R.string.list_sound_name,
+                    )
+                    choices.forEach { (key, label) ->
+                        FilterChip(
+                            selected = alert == key,
+                            onClick = { alert = key; if (key != null) onPreviewSound(key, initial?.places?.firstOrNull()?.name ?: name) },
+                            label = { Text(stringResource(label)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                        )
+                    }
+                }
                 } // end scrolling form column
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -6559,7 +6590,7 @@ private fun ListEditorDialog(
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel)) }
                     Spacer(Modifier.width(4.dp))
-                    Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color) }, enabled = name.isNotBlank(), modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
+                    Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color, alert) }, enabled = name.isNotBlank(), modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
                         Text(stringResource(R.string.list_save))
                     }
                 }

@@ -437,13 +437,17 @@ signed file the app fetches at launch (SPEC 11).
 - Any tuning dial: `setprop debug.vela.tune.<key> <n>`.
 - Low-memory path: `setprop debug.vela.lowram true`.
 - A trip between two points without moving the simulated location: open
-  `https://www.google.com/maps/dir/?api=1&origin=..&destination=..` as a view intent.
+  `https://www.google.com/maps/dir/?api=1&origin=..&destination=..` as a view intent. Pass
+  the whole `am start` command to `adb shell` as one quoted string, or the shell cuts the link
+  at `&`, drops `-p app.vela`, and another maps app opens it.
+- A simulated drive's fixes skip the live fix handler (`replaying`). Anything that should run
+  per fix in a demo is also called from `NavController`'s replay collector, through `Host`.
 - Two-finger gestures cannot be injected with `input`: use `scripts/touch/two-finger.sh`. A
   held back swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
   zoom once a second (`VelaFps`), which is how to tell whether a pinch zoomed.
 - Log tags worth knowing: `VelaDirections`, `VelaSteps` and `VelaCapture` (set to DEBUG),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
-  `VelaFps`, `VelaCar`, `VelaSim`.
+  `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`.
 - The Android Auto desktop head unit shows Vela's car screens but skips the car's install
   check. Book chapter 10 has the setup.
 - Restore whatever a test changed on the phone.

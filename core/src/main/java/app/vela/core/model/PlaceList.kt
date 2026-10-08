@@ -90,6 +90,9 @@ data class PlaceList(
     val shapes: List<MapShape> = emptyList(),
     /** Layers of a custom map switched off: their pins and shapes are not drawn or listed. */
     val hiddenLayers: List<String> = emptyList(),
+    /** The sound played when a drive passes one of the places: a key of
+     *  [app.vela.core.nav.PassAlerts.SOUNDS], or null for none. */
+    val alert: String? = null,
 ) {
     /** The custom map's layers, in the order they first appear. */
     val layers: List<String> get() = (places.mapNotNull { it.layer } + shapes.mapNotNull { it.layer }).distinct()

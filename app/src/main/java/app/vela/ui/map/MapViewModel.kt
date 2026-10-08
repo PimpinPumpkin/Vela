@@ -533,6 +533,8 @@ class MapViewModel @Inject constructor(
         override fun flashStatus(msg: String, millis: Long) = this@MapViewModel.flashStatus(msg, millis)
         override fun showStatus(msg: String, voiceAction: Boolean) = this@MapViewModel.showStatus(msg, voiceAction)
         override fun updateSpeedLimit(here: LatLng) = this@MapViewModel.updateSpeedLimit(here)
+        override fun passAlert(here: LatLng, speedMps: Double?) =
+            this@MapViewModel.passAlert(here, speedMps, android.os.SystemClock.elapsedRealtime())
         override fun clearSpeedLimit() = this@MapViewModel.clearSpeedLimit()
         override fun clearSelection() = this@MapViewModel.clearSelection()
         override fun neuralSynthFor(engineId: String?): PiperSynth? = this@MapViewModel.neuralSynthFor(engineId)
@@ -1019,6 +1021,7 @@ class MapViewModel @Inject constructor(
                 maybeAdvanceTransitNav(here)
                 // Save the fix to the active trip (no-op unless one is recording).
                 tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits)
+                passAlert(here, speed?.toDouble(), nowMs)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
                 // restrictions / GrapheneOS). No-op unless a session is active. GUIDANCE IS
@@ -5068,8 +5071,36 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = lists, results = refreshedOpenList(it, lists) ?: it.results) }
     }
 
-    // Several places at once (a Reddit report, 2026-10-07: an import of hundreds of places could
-    // only be cleaned up one place at a time, from each place's own page).
+    // ---- A list's sound when a drive passes one of its places (PassAlerts) ----
+
+    private val passTracker = app.vela.core.nav.PassAlerts.Tracker()
+    private var passTargetsFor: List<app.vela.core.model.PlaceList>? = null
+    private var passTargets: List<app.vela.core.nav.PassAlerts.Target> = emptyList()
+
+    private fun passAlert(here: LatLng, speedMps: Double?, nowMs: Long) {
+        val lists = _state.value.lists
+        if (lists !== passTargetsFor) {
+            passTargetsFor = lists
+            passTargets = lists.filter { !it.alert.isNullOrBlank() }.flatMap { l ->
+                l.places.map { p -> app.vela.core.nav.PassAlerts.Target("${l.id}|${p.id}", p.name, LatLng(p.lat, p.lng), l.alert!!, l.name) }
+            }
+        }
+        if (passTargets.isEmpty()) return
+        val goingTo = if (navSession.state.value.navigating) listOfNotNull(destination) + navSession.remainingStops().map { it.location } else emptyList()
+        val hit = passTracker.onFix(here, speedMps, nowMs, passTargets, goingTo) ?: return
+        android.util.Log.i("VelaPassAlert", "passing a listed place: ${hit.sound}, ${passTargets.size} place(s) watched") // never the name
+        playListSound(hit.sound, hit.name)
+        flashStatus(if (hit.list.isBlank()) hit.name else "${hit.name} · ${hit.list}", 5_000L)
+    }
+
+    /** Plays a list sound: its tone, or [name] spoken for the "say its name" choice. Also the
+     *  list editor's preview. */
+    fun playListSound(sound: String, name: String) {
+        val notes = app.vela.core.nav.PassAlerts.notes(sound)
+        if (notes != null) voice.placeTone(notes) else if (sound == app.vela.core.nav.PassAlerts.NAME && name.isNotBlank()) voice.speak(name)
+    }
+
+    // Several places at once.
 
     fun removePlacesFromList(listId: String, ids: Set<String>) {
         val lists = listStore.removePlaces(listId, ids)

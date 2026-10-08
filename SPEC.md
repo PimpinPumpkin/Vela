@@ -2616,6 +2616,18 @@ it with regexes.
   (`PlaceListStore.removePlaces`, `movePlaces`, `addPlaces`, `SavedPlaceStore.removeAll`); a
   move to a list that is gone moves nothing. Moving a saved place puts it in the list and
   takes the star off.
+- A list's sound: `PlaceList.alert` is a key of `PassAlerts.SOUNDS` (`ping`, `bell`, `double`,
+  `low`, `name`) or null, set in the list editor, where picking one plays it. Each fix, live
+  or simulated, goes to `PassAlerts.Tracker.onFix` (`core/nav/PassAlerts.kt`) with the places
+  of every list that has a sound. A place sounds when the fix comes within `RADIUS_M` 150 of it
+  at `MIN_SPEED_MPS` 2 or faster, once until the car is `EXIT_M` 250 away, and at most once in
+  `AGAIN_MS` 15 minutes. Several at once sound the nearest only. The first fix of a session
+  marks the places it is beside without sounding. During a drive, a place within 150 m of the
+  destination or a remaining stop is skipped. The tone plays on the guidance stream through
+  `VoiceGuide.placeTone` and `name` is spoken, so muting the voice mutes both. The status card
+  shows the place and its list. Fixes only arrive while the map is open or a drive is
+  running; nothing asks for background location. Log tag `VelaPassAlert` (sound and count,
+  never the name).
 - Parking is one tap on the P button, with a history. Settings > Map "Parking button"
   (`ParkingButton`, default on) hides the button while no spot is saved. With it on, the
   arrival card of a drive has "Save parking spot" (`ParkingActions.saveHere`), which saves the

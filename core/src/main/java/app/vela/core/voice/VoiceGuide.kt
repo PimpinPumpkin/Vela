@@ -78,6 +78,9 @@ class VoiceGuide @Inject constructor(
      *  of the reroute chime, so an offer never sounds like an error. Muted with the voice. */
     fun fasterRouteChime() = chime(listOf(587.33 to 120, 880.0 to 200))
 
+    /** A list's own sound as a drive passes one of its places (PassAlerts). Muted with the voice. */
+    fun placeTone(notes: List<Pair<Double, Int>>) = chime(notes)
+
     /** Plays [notes] (hertz to milliseconds, 30 ms apart) on the navigation-guidance stream. */
     private fun chime(notes: List<Pair<Double, Int>>) {
         if (muted) return

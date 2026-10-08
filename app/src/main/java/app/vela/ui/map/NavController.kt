@@ -63,6 +63,8 @@ internal class NavController(
         fun flashStatus(msg: String, millis: Long = 4500L)
         fun showStatus(msg: String, voiceAction: Boolean = false)
         fun updateSpeedLimit(here: LatLng)
+        /** A list's sound for a place this fix is passing (a simulated drive's fixes skip the live handler). */
+        fun passAlert(here: LatLng, speedMps: Double?)
         fun clearSpeedLimit()
         fun clearSelection()
         fun neuralSynthFor(engineId: String?): PiperSynth?
@@ -402,6 +404,7 @@ internal class NavController(
                     navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble())
                     recordDriveFix(here)
                     host.updateSpeedLimit(here)
+                    host.passAlert(here, loc.speed.toDouble())
                 }
             } finally {
                 if (replayJob === coroutineContext[Job]) {

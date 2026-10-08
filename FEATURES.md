@@ -184,6 +184,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Export saved places and lists to a file and import them. Import also reads GPX, KML and GeoJSON.
 - Select several places in a list or in Saved places (long press one, or the select button), then
   remove them or move them to another list or a new one.
+- A list can have a sound. Driving past one of its places plays it and shows the place on a card.
+  Choose a tone or "Say its name" in the list's editor. It works while Vela is open or guiding.
 - A shared Google Maps list link opens with the owner's notes and can be saved as a list.
 - A Google My Maps link opens with its pins, lines and areas, and can be saved.
 - Draw a line or an area on the map from Your lists.
