@@ -266,4 +266,17 @@
     <string name="settings_routing_downloading">Tê daxistin... %1$d%%</string>
     <string name="settings_routing_updating">Tê rojanekirin… %1$d%%</string>
     <string name="nav_end_confirm_keep">Bidomîne</string>
+    <string name="exp_chooser_alts_back">Vegere</string>
+    <string name="settings_storage_title">Embar</string>
+    <string name="settings_storage_measuring">Tê pîvandin…</string>
+    <string name="settings_trip_replay">Bersivê bide</string>
+    <string name="shortcut_work">Kar</string>
+    <string name="welcome_continue">Bidomîne</string>
+    <string name="settings_zoom_key_clear">Pak bike</string>
+    <string name="list_sound_off">Vemirî</string>
+    <string name="bulk_all">Hemû</string>
+    <string name="bulk_remove">Rake</string>
+    <string name="exp_chooser_via">Bi riya %1$s</string>
+    <string name="exp_chooser_more">Bêtir vebijêrk</string>
+    <string name="exp_chooser_add_stops">Rawestgehan tevlî bike</string>
 </resources>
