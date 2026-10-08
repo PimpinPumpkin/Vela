@@ -90,7 +90,7 @@ Two Gradle modules.
 
 `:app` reads `:core`; `:core` cannot read `:app`. A setting that must act inside `:core` is
 written by `:app` into a plain flag there: `CategoryFilter.enabled`, `LowRamMode`,
-`LowDataMode`, `NoGoogle`, `RoutingPrefs`, `SpokenRoadNames`.
+`LowDataMode`, `NoGoogle`, `RoutingPrefs`, `SpokenRoadNames`, `SpokenDetail`.
 
 #### Use Vela without Google
 
@@ -221,7 +221,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
-  `SpeedingAlert`, `SpokenRoadNames`, `Topography`, `Traffic`, `TransitLayer`,
+  `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `Topography`, `Traffic`, `TransitLayer`,
   `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
 - `MemoryPressure`, `PipMode` and `ConstrainedNetwork` hold runtime state, not a pref.
 - One view model. `MapViewModel` owns `MapUiState` and delegates navigation to `NavController`
@@ -1403,6 +1403,13 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Prompt distances scale with speed v: far `max(400 m, v × 35 s)`, near `max(150 m, v × 10 s)`,
   each rounded to 50 m, and turn-now `v × 2.5 s` clamped to 25 to 90 m. `spoken` stores band
   slots, so each prompt speaks the true distance.
+- "How much the voice says" (`SpokenDetail`, Settings, Voice) has three values. `FULL` is the
+  far, near and turn-now lines above. `BRIEF` says each maneuver once, in its short form with no
+  street name: a ramp, fork, keep or U-turn at the far distance and keeping its exit number, any
+  other maneuver at the near distance, and nothing at the turn. `EXITS` is `BRIEF` for ramps,
+  forks, keeps, U-turns and the arrival only; any other maneuver is spoken only at
+  `SpokenDetail.FAST_MPS` (19.4 m/s, 70 km/h) or more, and roundabouts and merges never. The buzz
+  at a turn is kept in every value, and `upcomingPrompts` prepares the same lines.
 - The step advances at `v × 2.5 s` clamped to `ADVANCE_MIN_M` (5 m) to 90 m, so at a crawl or a
   standstill the card and the road name stay on the turn in hand until the car is at it. The
   turn-now line is still said 25 m out, once (`TURN_NOW_SLOT` in `spoken`). Both used to happen

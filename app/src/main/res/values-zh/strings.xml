@@ -1078,6 +1078,11 @@
     <string name="search_fill_cd">填入搜索框</string>
     <string name="settings_spoken_road_names">播报街道名称</string>
     <string name="settings_spoken_road_names_hint">关闭后，转弯播报不含街道名称：播报“左转”而不是“左转进入中山路”。地图和步骤列表中仍会显示。</string>
+    <string name="settings_spoken_detail">语音播报的详细程度</string>
+    <string name="settings_spoken_detail_full">全部</string>
+    <string name="settings_spoken_detail_brief">简短</string>
+    <string name="settings_spoken_detail_exits">仅高速出口</string>
+    <string name="settings_spoken_detail_hint">“简短”每个转弯只播报一次，不读路名。“仅高速出口”在市区保持安静，只播报出口、岔路和高速行驶时的转弯。转弯处的振动保留。</string>
     <string name="mapvm_graphs_retired">离线路线已改用更小的格式。请在设置 ▸ 离线地图中重新下载您的区域。</string>
     <string name="navservice_notif_action_pause">暂停</string>
     <string name="navservice_notif_action_resume">继续</string>

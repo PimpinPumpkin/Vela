@@ -96,6 +96,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A turn banner with arrow, distance, road name, highway shields, exit numbers and lanes. Swipe it
   to look ahead.
 - Spoken directions with street names and lanes. "Say street names" off shortens them.
+- "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits
+  only (quiet in town; speaks for exits, forks and turns taken at speed).
 - A bottom bar with time left, distance and arrival time. Swipe it up for the step list.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an

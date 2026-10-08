@@ -420,6 +420,11 @@
     <string name="settings_spoken_directions">הוראות מדוברות</string>
     <string name="settings_spoken_road_names">הכרז שמות רחובות</string>
     <string name="settings_spoken_road_names_hint">כשכבוי, הפניות מוכרזות בלי שם הרחוב: \"פנה שמאלה\" במקום \"פנה שמאלה לרחוב הרצל\". המפה ורשימת השלבים עדיין מציגות אותו.</string>
+    <string name="settings_spoken_detail">כמה הקול אומר</string>
+    <string name="settings_spoken_detail_full">הכול</string>
+    <string name="settings_spoken_detail_brief">בקצרה</string>
+    <string name="settings_spoken_detail_exits">רק יציאות מכביש מהיר</string>
+    <string name="settings_spoken_detail_hint">בקצרה מכריז על כל פנייה פעם אחת, בלי שם הרחוב. רק יציאות מכביש מהיר נשאר שקט בעיר ומכריז על יציאות, התפצלויות ופניות במהירות גבוהה. הרטט בפנייה נשאר.</string>
     <string name="mapvm_voice_lang_missing">הוראות מדוברות דורשות קול %1$s. השג אחד בהגדרות ← קול</string>
     <string name="mapvm_no_track_to_replay">לנסיעה הזו אין מסלול לשידור חוזר</string>
     <string name="mapvm_replaying">משדר %1$s…</string>

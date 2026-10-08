@@ -1026,6 +1026,11 @@
     <string name="search_fill_cd">Вставити в рядок пошуку</string>
     <string name="settings_spoken_road_names">Називати вулиці</string>
     <string name="settings_spoken_road_names_hint">Вимк. = повороти оголошуються без назви вулиці: «Поверніть ліворуч» замість «Поверніть ліворуч на Кленову вулицю». На карті й у списку кроків назва залишається.</string>
+    <string name="settings_spoken_detail">Скільки каже голос</string>
+    <string name="settings_spoken_detail_full">Усе</string>
+    <string name="settings_spoken_detail_brief">Коротко</string>
+    <string name="settings_spoken_detail_exits">Лише з’їзди з автомагістралі</string>
+    <string name="settings_spoken_detail_hint">«Коротко» оголошує кожен поворот один раз, без назви вулиці. «Лише з’їзди з автомагістралі» мовчить у місті й оголошує з’їзди, розвилки та повороти на високій швидкості. Вібрація на повороті залишається.</string>
     <string name="mapvm_graphs_retired">Офлайн-маршрутизація перейшла на компактніший формат. Завантажте регіони знову в Налаштуваннях, у розділі офлайн-карт.</string>
     <string name="navservice_notif_action_pause">Пауза</string>
     <string name="navservice_notif_action_resume">Продовжити</string>

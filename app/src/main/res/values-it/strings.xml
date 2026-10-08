@@ -426,6 +426,11 @@
     <string name="settings_spoken_directions">Indicazioni vocali</string>
     <string name="settings_spoken_road_names">Pronuncia i nomi delle strade</string>
     <string name="settings_spoken_road_names_hint">Se disattivato, le svolte vengono annunciate senza il nome della strada: \"Svolta a sinistra\" invece di \"Svolta a sinistra in Via Roma\". La mappa e l\'elenco dei passaggi lo mostrano comunque.</string>
+    <string name="settings_spoken_detail">Quanto dice la voce</string>
+    <string name="settings_spoken_detail_full">Tutto</string>
+    <string name="settings_spoken_detail_brief">Breve</string>
+    <string name="settings_spoken_detail_exits">Solo uscite autostradali</string>
+    <string name="settings_spoken_detail_hint">Breve annuncia ogni svolta una sola volta, senza il nome della strada. Solo uscite autostradali resta in silenzio in città e annuncia uscite, biforcazioni e svolte prese ad alta velocità. La vibrazione alla svolta rimane.</string>
     <string name="mapvm_voice_lang_missing">Le indicazioni vocali richiedono una voce %1$s, aggiungila in Impostazioni → Voce</string>
     <string name="mapvm_no_track_to_replay">Quel viaggio non ha una traccia da riprodurre</string>
     <string name="mapvm_replaying">Riproduzione di %1$s…</string>

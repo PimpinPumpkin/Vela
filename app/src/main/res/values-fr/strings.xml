@@ -1002,6 +1002,11 @@
     <string name="search_fill_cd">Insérer dans la recherche</string>
     <string name="settings_spoken_road_names">Annoncer les noms de rues</string>
     <string name="settings_spoken_road_names_hint">Désactivé, les changements de direction sont annoncés sans le nom de la rue : « Tournez à gauche » au lieu de « Tournez à gauche sur la rue Principale ». La carte et la liste des étapes l\'affichent toujours.</string>
+    <string name="settings_spoken_detail">Ce que dit la voix</string>
+    <string name="settings_spoken_detail_full">Tout</string>
+    <string name="settings_spoken_detail_brief">Bref</string>
+    <string name="settings_spoken_detail_exits">Sorties d\'autoroute seulement</string>
+    <string name="settings_spoken_detail_hint">Bref annonce chaque virage une seule fois, sans le nom de la rue. Sorties d\'autoroute seulement reste silencieux en ville et annonce les sorties, les bifurcations et les virages pris à vive allure. La vibration au virage est conservée.</string>
     <string name="mapvm_graphs_retired">Le routage hors ligne passe à un format plus compact. Téléchargez à nouveau vos régions dans Paramètres, Cartes hors ligne.</string>
     <string name="navservice_notif_action_pause">Pause</string>
     <string name="navservice_notif_action_resume">Reprendre</string>
