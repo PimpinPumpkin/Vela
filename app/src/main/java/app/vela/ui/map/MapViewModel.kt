@@ -791,7 +791,9 @@ class MapViewModel @Inject constructor(
                 if (fg && _state.value.navigating && _state.value.previewStepIndex == null &&
                     _state.value.navCameraDetached
                 ) {
-                    _state.update { it.copy(navCameraDetached = false) }
+                    // The overview goes with it: left set, the map kept its overview layers hidden
+                    // and refit to the whole route every few seconds under the follow camera.
+                    _state.update { it.copy(navCameraDetached = false, inNavOverview = false) }
                 }
             }
         }

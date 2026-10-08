@@ -1574,9 +1574,10 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
 
 - The overlay also draws before the puck engages, at the raw fix, and while the camera is
   detached, projected through the live camera.
-- While a gesture moves a detached camera, and for `PUCK_GESTURE_SETTLE_MS` (180 ms) after, the
-  puck is the map's own flat symbol: the app window's overlay lands a frame apart from the
-  map's surface.
+- The overlay stays up while a gesture moves a detached camera, re-projected every frame. A
+  swap to the map's own flat symbol for the gesture and `PUCK_GESTURE_SETTLE_MS` (180 ms)
+  after exists behind the test dial `puckGestureSwap`; it is off because the car vanishes for
+  several frames at each end of a pinch on a Pixel 4a (San Francisco fixture).
 - The browse map uses the GeoJSON symbol.
 
 #### Free-drive follow
@@ -2916,6 +2917,9 @@ collision. Hidden in the overview with the other `vela-nav-` layers.
   (`restrictHouseNumbers`). The basemap tiles stop at z14, so past that every number in a tile
   draws each frame, on screen or not. The throttled idle work moves the box when the view comes
   within a quarter screen of its edge or has shrunk to under a fifth of the view it was built for.
+  In a drive the box only moves below `HOUSE_NUMBER_NAV_MAX_MPS` (4.5 m/s): a filter change
+  re-lays out every basemap tile, and the follow camera reaches the box's edge every few
+  hundred meters.
   Pixel 4a, Montreal: 33 to 50-59 fps at z19 on a dense residential block, 40 to 52 at z20.5
   downtown.
 

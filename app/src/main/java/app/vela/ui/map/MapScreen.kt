@@ -4282,6 +4282,7 @@ private fun MapSurface(
                 }
             }
         },
+        inNavOverview = state.inNavOverview,
         navShields = remember(state.activeRoute, state.navigating, state.travelMode) {
             val r = state.activeRoute
             if (!state.navigating || r == null || state.travelMode != app.vela.core.model.TravelMode.DRIVE) emptyList()

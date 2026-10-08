@@ -175,6 +175,8 @@ private const val TILE_LOD_PITCH_DEG = 30.0
 private const val TILE_LOD_RADIUS = 1.0
 private const val TILE_LOD_SCALE = 6.0
 private const val IDLE_WORK_GAP_MS = 1000L
+/** In a drive the house-number box only moves below this speed (10 mph). */
+private const val HOUSE_NUMBER_NAV_MAX_MPS = 4.5f
 private const val IDLE_WORK_TRAIL_MS = 250L
 private const val NAV_CUT_M = 400.0       // cut piece length: 256 gradient texels over 400 m = 1.6 m each
 private const val NAV_CUT_SLACK_M = 100.0 // slide the piece forward when the arrow gets this close to its end
@@ -844,6 +846,7 @@ fun VelaMapView(
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
     navTurnCallout: Pair<LatLng, String>? = null, // the street the next turn enters: blue bubble at the corner
     navShields: List<app.vela.core.nav.RouteShields.Shield> = emptyList(), // the driven road's number, on the route line
+    inNavOverview: Boolean = false, // the view model's word on whether the route overview is up
     navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
@@ -1094,6 +1097,9 @@ fun VelaMapView(
             zoomOverride.value(false)
         }
     }
+    // The overview also ends without a Re-center tick: a return to the app re-attaches the
+    // camera, and a drive can end with the overview up. The loop reads this flag to stop.
+    LaunchedEffect(inNavOverview, navMode) { if (!inNavOverview || !navMode) overviewLive[0] = false }
     remember { MapLibre.getInstance(context).also { app.vela.offline.LocalBasemapTiles.installIntoMapLibre() } }
     // D-pad-only operation (docs/dpad.md): MapLibre's MapView calls requestFocus() on
     // itself and overrides onKeyDown to handle hardware D-pad keys (DPAD_CENTER = zoom in,
@@ -2825,13 +2831,17 @@ fun VelaMapView(
         // The turn declutter hands its layers back first, or the overview would not see them as
         // visible and would leave them up when the declutter restores them.
         turnDeclutter.restore(styleRef) { applyOpenPlacesHidden(it) }
-        val hiddenForOverview = ArrayList<org.maplibre.android.style.layers.Layer>()
-        styleRef?.takeIf { it.isFullyLoaded }?.let { st ->
+        // Ids and the style they were hidden on, never the layer objects: after a style reload
+        // (a theme flip at dusk, the offline basemap mounting) those belong to a style that is
+        // gone, and a call on one goes into freed native memory.
+        val hiddenForOverview = ArrayList<String>()
+        val hiddenOn = styleRef?.takeIf { it.isFullyLoaded }
+        hiddenOn?.let { st ->
             for (layer in st.layers) {
                 val id = layer.id
                 if (OVERVIEW_HIDE_PREFIXES.any { id.startsWith(it) } && layer.visibility.value != Property.NONE) {
                     layer.setProperties(PropertyFactory.visibility(Property.NONE))
-                    hiddenForOverview += layer
+                    hiddenForOverview += id
                 }
             }
         }
@@ -2848,7 +2858,10 @@ fun VelaMapView(
                 fitRemaining(600)
             }
         } finally {
-            hiddenForOverview.forEach { runCatching { it.setProperties(PropertyFactory.visibility(Property.VISIBLE)) } }
+            val st = styleRef
+            if (st != null && st === hiddenOn && st.isFullyLoaded) hiddenForOverview.forEach { id ->
+                runCatching { st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.VISIBLE)) }
+            }
         }
     }
 
@@ -2992,8 +3005,10 @@ fun VelaMapView(
         // Test dial `debug.vela.tune.camTurnTau` (seconds): how quickly the camera swings through a
         // turn; read once per drive.
         val camTurnTau = app.vela.ui.AppTune.local("camTurnTau")?.takeIf { it in 0.1..3.0 } ?: CAM_BRG_TAU_TURN
-        // Test dial `debug.vela.tune.puckGestureSwap 0`: keep the 3D overlay during gestures.
-        val puckGestureSwap = app.vela.ui.AppTune.local("puckGestureSwap")?.let { it != 0.0 } ?: true
+        // Test dial `debug.vela.tune.puckGestureSwap 1`: swap to the map's own symbol while a
+        // gesture moves the camera. Off: on a 4a the car vanished for several frames at each end
+        // of a pinch, because the symbol is not on screen the frame the overlay is dropped.
+        val puckGestureSwap = app.vela.ui.AppTune.local("puckGestureSwap")?.let { it != 0.0 } ?: false
         // Test dial `debug.vela.tune.turnDeclutter 0`: never hide layers in turns or gestures (A/B).
         val turnDeclutterTune = app.vela.ui.AppTune.local("turnDeclutter")?.let { it != 0.0 } ?: true
         val gestureDeclutterTune = app.vela.ui.AppTune.local("gestureDeclutter")?.let { it != 0.0 } ?: false
@@ -3391,7 +3406,10 @@ fun VelaMapView(
                         // A parked car slows this loop to NAV_IDLE_TICK_MS; a moving camera (the
                         // user's pan or rotate) must keep it at frame rate or the overlay trails.
                         val t = live.target
-                        val camMoved = t == null || kotlin.math.abs(t.latitude - detachedCam[0]) > 1e-7 ||
+                        // (A first frame has nothing to compare with and counts as moved: every
+                        // comparison with the NaN the array starts as is false, so this was never
+                        // true and the loop idled at 8 Hz under a moving map.)
+                        val camMoved = t == null || detachedCam[0].isNaN() || kotlin.math.abs(t.latitude - detachedCam[0]) > 1e-7 ||
                             kotlin.math.abs(t.longitude - detachedCam[1]) > 1e-7 ||
                             kotlin.math.abs(live.zoom - detachedCam[2]) > 1e-4 ||
                             kotlin.math.abs(live.bearing - detachedCam[3]) > 0.01 || kotlin.math.abs(live.tilt - detachedCam[4]) > 0.01
@@ -4192,7 +4210,9 @@ fun VelaMapView(
                             if (ovlGateKey[0] != "off") { overlayState.value("none"); ovlGateKey[0] = "off" }
                             return@runCatching
                         }
-                        val ovl = style.layers.filter { it.id.startsWith("vela-ovl-") }
+                        // Ids, not the layer objects: the probe below runs over the next dozen
+                        // frames, and a style swap in between leaves objects of a style that is gone.
+                        val ovl = style.layers.filter { it.id.startsWith("vela-ovl-") }.map { it.id }
                         if (ovl.isEmpty()) {
                             if (ovlGateKey[0] != "none") { overlayState.value("none"); ovlGateKey[0] = "none" }
                             return@runCatching
@@ -4275,7 +4295,9 @@ fun VelaMapView(
                                     ovlGateKey[0] = ""
                                     ovlDirty[0] = true
                                 } else {
-                                    runCatching { ovl.forEach { if (it.visibility.value != want) it.setProperties(PropertyFactory.visibility(want)) } }
+                                    val now = map.style
+                                    if (now == null || now !== style || !now.isFullyLoaded) { ovlGateKey[0] = ""; return } // another style: ask again on it
+                                    runCatching { ovl.forEach { id -> now.getLayer(id)?.let { if (it.visibility.value != want) it.setProperties(PropertyFactory.visibility(want)) } } }
                                     overlayState.value(if (osmDense) "hidden" else "drawing")
                                 }
                                 android.util.Log.d("VelaOverlay", "osmCover=${"%.2f".format(cover)} (${hits[0]}/${points.size}) dense=$osmDense settled=${ovlRenderSettled[0]} z=${"%.1f".format(zoomNow)}")
@@ -4316,7 +4338,11 @@ fun VelaMapView(
                     // Keep the VM's "area you're viewing" current so the offline
                     // download can be triggered from Settings, not a map FAB.
                     val b = map.projection.visibleRegion.latLngBounds
-                    restrictHouseNumbers(map, b, houseNumberBox)
+                    // A filter change re-lays out every basemap tile, and in a drive the view
+                    // reaches the box's edge every few hundred meters. The box waits for the car
+                    // to be slow: nobody reads house numbers at speed, and the relayout is a
+                    // dropped frame under a moving map.
+                    if (!(navModeHolder.value && (mySpeedHolder.value ?: 0f) > HOUSE_NUMBER_NAV_MAX_MPS)) restrictHouseNumbers(map, b, houseNumberBox)
                     viewport.value(
                         b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast,
                         map.cameraPosition.zoom,
@@ -4640,6 +4666,8 @@ fun VelaMapView(
         val pipNow = app.vela.ui.PipMode.active.value
         map.uiSettings.isCompassEnabled = !pipNow
         map.uiSettings.setAllGesturesEnabled(!pipNow)
+        // ("All" turns tilt back on, and this block runs on every update: the setting comes last.)
+        if (!tiltGestures) map.uiSettings.isTiltGesturesEnabled = false
         // Browse keeps Google's fade-when-north; NAV shows the compass the whole drive - a
         // stationary route start is often still north-up, which faded it out right when the
         // user looked for it (user 2026-07-14; Google pins it during nav too).

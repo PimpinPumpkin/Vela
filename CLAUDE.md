@@ -326,6 +326,11 @@ signed file the app fetches at launch (SPEC 11).
 - The pmtiles path never cold-fetches a tile two or more levels under the camera. A layer
   whose archive stops at z17 arms at z17 and gates visibility by opacity.
 - The bundled style JSON is one minified line. Edit it with a script that re-dumps compact.
+- Never keep a `Layer` object from `style.layers` past the call that fetched it. Keep the id
+  and the style, and look the layer up again on that same style: after a reload the old
+  objects point into a style that is gone.
+- `setAllGesturesEnabled(true)` turns every gesture on, tilt included. Apply a gesture setting
+  after it.
 
 ### Frame rate
 
