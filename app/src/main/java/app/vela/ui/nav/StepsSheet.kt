@@ -380,7 +380,9 @@ fun StepsSheet(
                             romanize = ::romanize,
                             destName = destName,
                             destAddress = destAddress,
-                            onClick = { onStep(i) },
+                            // The list drops with the pick, or it covers the map the step is
+                            // shown on. The preview outlives the close (MapViewModel.closeSteps).
+                            onClick = { onStep(i); dismiss() },
                             modifier = if (i == firstAhead) Modifier.focusRequester(stepsAutoFocus) else Modifier,
                         )
                     }

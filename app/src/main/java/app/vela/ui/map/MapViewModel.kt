@@ -4079,15 +4079,25 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun openSteps() = _state.update { it.copy(showSteps = true) }
+    fun openSteps() { stepPickedInList = false; _state.update { it.copy(showSteps = true) } }
 
-    fun closeSteps() = _state.update { it.copy(showSteps = false, previewStepIndex = null) }
+    /** Closing the step list ends a step preview, except the close that follows picking a step in
+     *  it: the list dropped so the map can show that step. */
+    fun closeSteps() {
+        val picked = stepPickedInList
+        stepPickedInList = false
+        _state.update { if (picked) it.copy(showSteps = false) else it.copy(showSteps = false, previewStepIndex = null) }
+    }
+    private var stepPickedInList = false
 
     /** Tapped a step in the list → preview that maneuver's spot on the map. From the route
      *  overview the preview takes the camera, and resuming goes back to the car. */
-    fun previewStep(index: Int) = _state.update {
-        if (it.inNavOverview) it.copy(previewStepIndex = index, inNavOverview = false, navCameraDetached = false)
-        else it.copy(previewStepIndex = index)
+    fun previewStep(index: Int) {
+        if (_state.value.showSteps) stepPickedInList = true
+        _state.update {
+            if (it.inNavOverview) it.copy(previewStepIndex = index, inNavOverview = false, navCameraDetached = false)
+            else it.copy(previewStepIndex = index)
+        }
     }
 
     /** Leave step-preview (the banner swipe / steps list) and return to live nav. */

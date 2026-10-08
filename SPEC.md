@@ -1617,6 +1617,8 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
 - A step previewed from the overview ends it: the camera goes to the step and stays, and
   resuming the preview returns to the car (`MapViewModel.previewStep`). A pan, a pinch,
   Re-center and a preview all stop the refit within a quarter second.
+- A step tapped in the step list drops the list (`StepsSheet` dismisses itself), and that close
+  keeps the preview (`closeSteps` after a pick). Any other close of the list ends a preview.
 - Each cut lays a veil in the map's land color under the puck at `CUT_VEIL_ALPHA` (0.85), faded
   off over `CUT_FADE_MS` (320 ms). It is a `drawRect(alpha)`; a layer alpha renders offscreen.
 - The overview hides the `OVERVIEW_HIDE_PREFIXES` layers (places, POIs, minor road names, house

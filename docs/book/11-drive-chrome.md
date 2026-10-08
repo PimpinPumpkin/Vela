@@ -191,7 +191,7 @@ The overview button is a toggle. It cuts to a fit of the remaining route, and a 
 Re-center cuts back and tilts in like a start. Each cut fades off a veil in the map's land color
 over 320 ms (`CUT_FADE_MS`), so the new tiles do not pop. Swiping the turn card or tapping a step
 in the list while the overview is up leaves it for that step, and "tap to resume" goes back to
-the car.
+the car. A tap in the step list also drops the list, so the map shows the step.
 
 ### What the map hides
 
