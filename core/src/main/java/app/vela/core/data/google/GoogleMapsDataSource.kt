@@ -952,6 +952,15 @@ class GoogleMapsDataSource @Inject constructor(
                 if (avoidWantedHere && via != null && !honoredByGoogle) {
                     result = result.map { it.copy(avoidNotHonored = true) }
                 }
+                // The plain trip's farm-track check, for a trip through stops: when the line
+                // offered is the open router's own and it cuts through a track, the other
+                // service's car route through the same points takes its place.
+                if (mode == TravelMode.DRIVE && via != null && result.firstOrNull()?.polyline === via.polyline) {
+                    offTrackRoute(via, listOf(origin) + waypoints + destination, avoidTolls, avoidHighways, avoidFerries, urgent)?.let { other ->
+                        val timed = applyTraffic(other, g, freeFlowCal = speedCal(other, g), withSpans = false)
+                        result = listOf(if (avoidWantedHere && !honoredByGoogle) timed.copy(avoidNotHonored = true) else timed)
+                    }
+                }
                 val line = "$mode multi-stop ×${waypoints.size} → via=${via != null} onDevice=${onDevice != null} " +
                     "googleStops=${when { g == null -> "none"; gStops != null -> "honored"; else -> "IGNORED" }} " +
                     "divergent=$divergentStops snapKept=$snapKeptStops " +
@@ -1436,7 +1445,7 @@ class GoogleMapsDataSource @Inject constructor(
             val onOpenLine = fetched.firstOrNull { it.polyline === openLine }
             val offTrack = if (trackM >= THROUGH_TRACK_MIN_M && onOpenLine != null) withContext(Dispatchers.IO) {
                 app.vela.core.data.ValhallaRouter.driveRoute(
-                    http, origin, destination, avoidTolls, avoidHighways, avoidFerries, timeoutMs = if (urgent) OFF_TRACK_WAIT_URGENT_MS else OFF_TRACK_WAIT_MS,
+                    http, listOf(origin, destination), avoidTolls, avoidHighways, avoidFerries, timeoutMs = if (urgent) OFF_TRACK_WAIT_URGENT_MS else OFF_TRACK_WAIT_MS,
                 )
             }?.takeIf { it.distanceMeters <= onOpenLine.distanceMeters * OFF_TRACK_MAX_RATIO + OFF_TRACK_MAX_EXTRA_M } else null
             if (trackM >= THROUGH_TRACK_MIN_M) runCatching {
@@ -1455,6 +1464,29 @@ class GoogleMapsDataSource @Inject constructor(
         if ((avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE && !avoidHonored) {
             planned.map { it.copy(avoidNotHonored = true) }
         } else planned
+    }
+
+    /**
+     * The other open service's car route through [points] when [open], the open router's own
+     * line, drives through a farm track; null when it does not, or when nothing better answers
+     * in time. Two requests at most, both bounded. A line past the matcher's 200 km is not
+     * checked: the edge request fails and the open route stands.
+     */
+    private fun offTrackRoute(
+        open: Route, points: List<LatLng>, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, urgent: Boolean,
+    ): Route? {
+        if (open.source != RouteSource.OSRM) return null
+        val edges = runCatching { ValhallaRouter.edges(http, open.polyline, timeoutMs = if (urgent) 1_000 else 2_500) }.getOrNull() ?: return null
+        val trackM = ValhallaRouter.throughTrackM(edges)
+        if (trackM < THROUGH_TRACK_MIN_M) return null
+        val other = ValhallaRouter.driveRoute(
+            http, points, avoidTolls, avoidHighways, avoidFerries, timeoutMs = if (urgent) OFF_TRACK_WAIT_URGENT_MS else OFF_TRACK_WAIT_MS,
+        )?.takeIf { it.distanceMeters <= open.distanceMeters * OFF_TRACK_MAX_RATIO + OFF_TRACK_MAX_EXTRA_M }
+        runCatching {
+            android.util.Log.i("VelaDirections", "open route through ${points.size - 2} stop(s) drives ${trackM.toInt()} m of track: " +
+                if (other != null) "replaced, ${other.distanceMeters.toInt()} m for ${open.distanceMeters.toInt()} m" else "kept, no other route in time")
+        }
+        return other
     }
 
     /**

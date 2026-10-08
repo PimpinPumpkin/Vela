@@ -999,7 +999,9 @@ Related corrections:
   trip that starts or ends on one is left alone) and that route is among those offered, the
   other service's car route replaces it (`ValhallaRouter.driveRoute`, `use_tracks` 0, the same
   avoid options). It must answer within `OFF_TRACK_WAIT_MS` (4 s; 1.5 s on a reroute) and be at
-  most 1.3 times as long plus 2 km, or the open route stands. A trip with stops is not checked.
+  most 1.3 times as long plus 2 km, or the open route stands. A trip with stops gets the same
+  check when the line offered is the open router's own (`offTrackRoute`, the other service
+  asked through the same points). A line longer than the matcher's 200 km is not checked.
   With Google on the route follows Google's line and only an alternate can be replaced.
 
 #### Stitch

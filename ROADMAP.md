@@ -106,8 +106,6 @@ or a URL for a WebView is open. Nav state and input are the same for both.
 
 Small items, one pull request each.
 
-- The farm-track check for a trip with stops. Only a plain trip is checked today
-  (`ValhallaRouter.throughTrackM`); `routeVia` has no edges to read.
 - Grid cells for the whole catalog. The bake conductor runs the US group and two world shards
   (`tools/bake-schedule.json`). Next: confirm from `cells-manifest.json` that every region has
   cells.

@@ -103,16 +103,24 @@ object ValhallaRouter {
      * A car route from this service, for the trip the open router answered with a drive through
      * a farm track ([throughTrackM]). OSRM's car profile takes an unsigned track as a slow road;
      * in much of Europe it is closed to cars, and the mapper who left it untagged meant "a track".
-     * This costing keeps off tracks unless the trip starts or ends on one. One try inside
-     * [timeoutMs]; null on any failure, and the caller keeps the route it has.
+     * This costing keeps off tracks unless the trip starts or ends on one. [points] are the
+     * start, any stops, and the end. One try inside [timeoutMs]; null on any failure, and the
+     * caller keeps the route it has.
      */
     fun driveRoute(
-        http: OkHttpClient, origin: LatLng, destination: LatLng,
+        http: OkHttpClient, points: List<LatLng>,
         avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, timeoutMs: Long = 4_000,
     ): Route? {
+        if (points.size < 2) return null
         val body = buildJsonObject {
             putJsonArray("locations") {
-                listOf(origin, destination).forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) }
+                points.forEachIndexed { i, p ->
+                    add(buildJsonObject {
+                        put("lat", p.lat); put("lon", p.lng)
+                        // The points between are passed through, as in [route]: one leg, no U-turn.
+                        if (i in 1 until points.lastIndex) put("type", "through")
+                    })
+                }
             }
             put("costing", "auto")
             putJsonObject("costing_options") {
