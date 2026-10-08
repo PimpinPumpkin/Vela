@@ -634,9 +634,13 @@ object ValhallaRouter {
                 val end = m["end_shape_index"]?.jsonPrimitive?.intOrNull ?: begin
                 val at = shape.getOrNull(if (type == "arrive") end else begin) ?: shape.last()
                 val side = if (type == "arrive") mod else null
+                // A turn that keeps the road the car is on is said without the name: "onto X"
+                // tells the driver the street changes, and a street that bends at three
+                // junctions read as three new streets of the same name.
+                val said = if (sameRoad && type == "turn") null else road
                 raw += Maneuver(
                     type = RouteGeometry.osrmType(type, mod),
-                    instruction = RouteGeometry.osrmPhrase(type, mod, road, dest, exitNo, rbSaid),
+                    instruction = RouteGeometry.osrmPhrase(type, mod, said, dest, exitNo, rbSaid),
                     instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, dest, exitNo, rbSaid),
                     ref = ref,
                     roundaboutExit = rbExit,

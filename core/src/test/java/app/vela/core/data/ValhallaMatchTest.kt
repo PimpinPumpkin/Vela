@@ -155,4 +155,19 @@ class ValhallaMatchTest {
         assertEquals(listOf(false, true), edges.map { it.track })
         assertEquals(206.0, edges[1].lengthM, 1e-6)
     }
+
+    @Test fun `a turn that stays on the same street is said without its name`() {
+        // A Street bends right at a junction and goes on as A Street; then a left onto B Street.
+        val text = """{"trip":{"legs":[{"shape":"g_rohAflmegF?o}@fw@??o}@","maneuvers":[
+            {"type":1,"street_names":["A Street"],"begin_shape_index":0,"end_shape_index":1,"length":0.087,"time":10},
+            {"type":10,"street_names":["A Street"],"begin_shape_index":1,"end_shape_index":2,"length":0.1,"time":12},
+            {"type":15,"street_names":["B Street"],"begin_shape_index":2,"end_shape_index":3,"length":0.087,"time":10},
+            {"type":4,"begin_shape_index":3,"end_shape_index":3,"length":0,"time":0}]}],
+            "summary":{"length":0.274,"time":32}}}"""
+        val steps = ValhallaRouter.parse(text).first().maneuvers
+        val stay = steps.first { it.instruction.startsWith("Turn right") }
+        assertEquals("Turn right", stay.instruction)
+        assertEquals("A Street", stay.road)
+        assertTrue("a real change of street keeps its name: ${steps.map { it.instruction }}", steps.any { it.instruction == "Turn left onto B Street" })
+    }
 }

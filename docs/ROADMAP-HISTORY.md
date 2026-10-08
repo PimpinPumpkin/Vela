@@ -11,6 +11,8 @@ says so.
 
 ### October 2026
 
+- A turn that stays on the same street is said as "Turn right", not "Turn right onto" the
+  street the car is already on.
 - Settings > Appearance > Directions language sets the language of turns and the voice apart
   from the menus (issue 701). The banner and the speech share one `NavStrings`, so both follow
   it.

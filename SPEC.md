@@ -986,6 +986,9 @@ Related corrections:
   step within `UNSAID_NEAR_M` (50 m), and the street name `UNSAID_SIDE_M` (45 m) before differs
   from the one after, a turn is inserted and named by the same rule.
 - Roundabouts: the enter step takes the exit step's street. The ring's own name is never said.
+- A turn that keeps the street the car is already on (the matcher's road equals the previous
+  step's) is said without the name, "Turn right": "onto X" says the street changes. The step
+  keeps its `road`.
 - `ValhallaRouter.recheck` runs the check on another router's turns. The open route's steps are
   checked against `ValhallaRouter.edges` for its own line, requested when the open router
   answers and waited for `OPEN_NAMES_WAIT_MS` (1.5 s; `OPEN_NAMES_WAIT_URGENT_MS` 0.3 s). This
