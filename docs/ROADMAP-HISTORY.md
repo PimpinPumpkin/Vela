@@ -11,6 +11,7 @@ says so.
 
 ### October 2026
 
+- The version line is 0.5, from the stable that carries the new look and Google-line driving.
 - "Release now" (`release.yml`): one manual run cuts a nightly from main, or cuts and
   promotes it to stable with its What's new list. Two separate dispatches could promote the
   previous day's build.

@@ -141,7 +141,7 @@ screen silently stops recomposing.
 
 - `canary` is the working branch. Pushing it replaces the one rolling `canary` release.
 - `main` builds and tests on push. A daily job (10:30 UTC) cuts a nightly prerelease
-  `v0.4.<run>` when main has moved. Mondays 16:00 UTC the newest nightly is promoted to stable.
+  `v0.5.<run>` when main has moved. Mondays 16:00 UTC the newest nightly is promoted to stable.
   Do not dispatch CI per merge.
 - Releases are cut inside `ci.yml` because the version code is `(2000 + run number) * 10`
   plus a chip digit. Another workflow would restart the count.
@@ -153,7 +153,7 @@ screen silently stops recomposing.
 - `release.yml` ("Release now") takes main's head to a nightly or a stable in one manual run
   and is the only by-hand path: it cuts through `ci.yml` and promotes the build it cut, with
   the What's new list as an input. It is the maintainer's to start, or to approve each time.
-- Never name a release `v0.4.0` by hand. The updater reads the run number out of the tag.
+- Never name a release `v0.5.0` by hand. The updater reads the run number out of the tag.
 - Contributor pull requests are read in full and tested before they land, and are taken by
   cherry-pick with the author kept.
 

@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "The nightly expected to be promoted, such as v0.4.2400 (optional). The run stops if the newest is another."
+        description: "The nightly expected to be promoted, such as v0.5.2420 (optional). The run stops if the newest is another."
         type: string
         default: ''
       whats_new:

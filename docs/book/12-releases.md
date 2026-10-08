@@ -22,7 +22,7 @@ repository. There is no update server.
 | Channel | Release | Tag | Cut by |
 | --- | --- | --- | --- |
 | Canary | One prerelease, replaced on each push | `canary` | `ci.yml`, on a push to the `canary` branch |
-| Nightly | One prerelease a day when `main` has moved | `v0.4.<run>` | `ci.yml`, daily at 10:30 UTC or on dispatch |
+| Nightly | One prerelease a day when `main` has moved | `v0.5.<run>` | `ci.yml`, daily at 10:30 UTC or on dispatch |
 | Stable | The newest nightly, made a full release | The nightly's tag | `promote-stable.yml`, Mondays 16:00 UTC or on dispatch |
 
 `release.yml` ("Release now") does both by hand in one run, for a build that should not wait:
@@ -52,7 +52,7 @@ either, so the version is in the notes:
 ```
 Canary branch.
 
-versionName: 0.4.1822-canary
+versionName: 0.5.2420-canary
 versionCode: 38220
 
 Latest change: <newest user-facing commit subject>
@@ -77,9 +77,13 @@ their tags.
 `ci.yml` derives both from `github.run_number`:
 
 ```
-versionName = 0.4.<run>              (canary: 0.4.<run>-canary)
+versionName = 0.5.<run>              (canary: 0.5.<run>-canary)
 versionCode = (2000 + <run>) * 10    plus a chip digit, 0 for the all-in-one APK
 ```
+
+The minor is a name: `0.4` until the stable of 2026-10-08, `0.5` from it. The run number is what
+orders releases, in the tag, in the updater and in the version code, so a `0.5` build is an
+upgrade from every `0.4` one.
 
 The counter counts every run of `ci.yml`, pushes and pull requests included. Nightly numbers
 therefore have gaps, and all three channels share one rising versionCode. Switching channel in
@@ -88,7 +92,7 @@ either direction is an upgrade to the installer.
 - Releases are cut inside `ci.yml`. Another workflow's counter would start at 1 and send the code
   backward.
 - The versionName is plain semver so that Obtainium can compare it.
-- Never name a release `v0.4.0`. The updater takes the run number from the tag, reads code 2000
+- Never name a release `v0.5.0`. The updater takes the run number from the tag, reads code 2000
   and never offers it.
 
 The updater compares on the older scale `2000 + run`. `legacyCode` (`update/ApkChoice.kt`) divides
@@ -129,7 +133,7 @@ changes, above the generated one. The promotion cannot write that list, but it c
 it: the `whats_new` input of `release.yml` and `promote-stable.yml` puts it under "What's new
 in <version>", and the generated list follows under "Everything since <previous stable>". A
 promotion run without it (the Monday cron) leaves the notes to be edited by hand
-(`gh release edit v0.4.<run> --notes-file`).
+(`gh release edit v0.5.<run> --notes-file`).
 
 ### The in-app updater
 

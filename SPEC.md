@@ -4854,7 +4854,7 @@ and in `location-guard.yml`.
   root `build.gradle.kts` pins the build tools' own libraries, none of which is in the app. CI
   validates the Gradle wrapper jar.
 - Channels. A push to `main` or `canary` builds and tests only. The nightly prerelease
-  `v0.4.<run>` is cut by `ci.yml` at 10:30 UTC when `main` has moved, or on dispatch, titled
+  `v0.5.<run>` is cut by `ci.yml` at 10:30 UTC when `main` has moved, or on dispatch, titled
   `Vela <version> nightly` with notes that open "Nightly build." `promote-stable.yml` (Mondays
   16:00 UTC) promotes the newest nightly to stable: same tag, same signed APK, no rebuild,
   retitled `Vela <version>` with the notes regenerated. Each push to `canary` replaces the one
@@ -4866,9 +4866,10 @@ and in `location-guard.yml`.
   that is not at the optional `sha`. `promote-stable.yml` takes `tag` (the nightly expected to
   be newest; another one stops the run) and `whats_new` (the hand-written list that leads the
   notes).
-- versionName is `0.4.<run>` and versionCode `(2000 + run) * 10` plus a chip digit. The run
+- versionName is `0.5.<run>` (`0.4.<run>` until 2026-10-08; the minor is a name, and the run
+  number orders releases across minors) and versionCode `(2000 + run) * 10` plus a chip digit. The run
   number must stay in `ci.yml`: another workflow would restart the count.
-- Never name a release `v0.4.0`. The updater takes the run number from the tag, reads code 2000
+- Never name a release `v0.5.0`. The updater takes the run number from the tag, reads code 2000
   and never offers it. Keep local development builds below versionCode 1000.
 - Release notes are the commit subjects since the previous `v0.[0-9]*` tag
   (`scripts/changelog.sh`, which leaves out docs-only commits). The in-app dialog shows the body

@@ -13,7 +13,7 @@ body:
     attributes:
       label: Vela version
       description: Open Vela, go to Settings, then About. Use the exact number.
-      placeholder: "0.4.827"
+      placeholder: "0.5.2420"
     validations:
       required: true
   - type: dropdown

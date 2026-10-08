@@ -60,7 +60,7 @@ jobs:
     #    and not after a PUSH run: a push builds and tests only, it releases nothing, so the
     #    index would come out the same (it ran and got canceled on every main push, 2026-09-29).
     #    The nightly cut (schedule / dispatch) and the weekly promotion are what change it.
-    #  - release: only for an APP release (tag like v0.4.854). The infra/data releases
+    #  - release: only for an APP release (tag like v0.5.2420). The infra/data releases
     #    (asr-models, routing-graphs, map-fonts, tts-models, poi-packs, flock-cameras...) fire
     #    release events too when their assets are updated, and two of them overlapping raced the
     #    single github-pages environment and failed the deploy (2026-07-20). App tags start "v";

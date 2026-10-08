@@ -131,7 +131,8 @@ jobs:
 
       - name: Derive build version
         id: ver
-        # versionName is plain semver (0.4.<run>) so Obtainium can compare it;
+        # versionName is plain semver (0.5.<run>) so Obtainium can compare it. The minor is a name
+        # (0.4 until 2026-10-08): the run number is what orders releases, across minors too.
         # versionCode is (2000+run)*10 since 2026-09-23 (was 2000+run): the last digit is the chip
         # type in a per-chip build (app/build.gradle.kts `splits`, the ABI_SPLITS repo variable),
         # 0 for the all-in-one APK. The jump is one-way and every build is still an upgrade; the
@@ -147,9 +148,9 @@ jobs:
           # honestly; the CODE stays on the one monotonic (2000+run)*10 line for every channel, so
           # moving between canary/nightly/stable is always a plain upgrade for the installer.
           if [ "${{ github.ref }}" = "refs/heads/canary" ]; then
-            echo "name=0.4.${{ github.run_number }}-canary" >> "$GITHUB_OUTPUT"
+            echo "name=0.5.${{ github.run_number }}-canary" >> "$GITHUB_OUTPUT"
           else
-            echo "name=0.4.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+            echo "name=0.5.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           fi
           echo "code=$(( (2000 + ${{ github.run_number }}) * 10 ))" >> "$GITHUB_OUTPUT"
 
@@ -254,7 +255,7 @@ jobs:
             echo "main has not moved since $LAST - no nightly today."
             exit 0
           fi
-          VER="0.4.${{ github.run_number }}"
+          VER="0.5.${{ github.run_number }}"
           mapfile -t APKS < <(bash scripts/stage-apks.sh vela-maps "vela-maps-v${VER}.apk")
           # Build the changelog from the commit subjects since the previous release. Our commit
           # subjects are written as plain-language changelog lines, so this reads as real release
@@ -269,7 +270,7 @@ jobs:
           fi
           [ -z "$LOG" ] && LOG="- Maintenance and internal changes"
           # The title and the first line say NIGHTLY: the release page listed nightlies and
-          # stables with the same "Vela 0.4.N" title and only the prerelease badge apart, and the
+          # stables with the same "Vela 0.5.N" title and only the prerelease badge apart, and the
           # in-app What's new dialog shows the body verbatim, so people could not tell which
           # channel they were reading (user 2026-09-21). promote-stable.yml retitles and rewrites.
           NOTES="$(printf 'Nightly build.\n\nWhat'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"

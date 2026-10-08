@@ -33,7 +33,7 @@ android {
         minSdk = 26
         targetSdk = 35
         // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives them from the
-        // run number: 0.4.<run> / (2000+run)*10 since 2026-09-23, the last digit being the chip
+        // run number: 0.5.<run> / (2000+run)*10 since 2026-09-23 (0.4.<run> until 2026-10-08), the last digit being the chip
         // type in a per-chip build, see `splits` below). Defaults are local/dev only.
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?) ?: "0.3.0"
