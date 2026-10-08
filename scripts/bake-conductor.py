@@ -84,6 +84,13 @@ def save_state(state):
     gh("release", "upload", TAG, "state.json", "--clobber", "--repo", REPO)
 
 
+def failed_regions(run):
+    """The matrix regions that failed in a run, and the names of any other failed jobs."""
+    failed = [j["name"] for j in run["jobs"] if j.get("conclusion") in ("failure", "timed_out", "cancelled")]
+    ids = sorted({m.group(1) for n in failed for m in [MATRIX_JOB.match(n)] if m})
+    return ids, [n for n in failed if not MATRIX_JOB.match(n)]
+
+
 def settle(job, st, now, max_retries):
     """Fold the outcome of the job's last run into its state. Returns True when state changed."""
     run_id = st.get("runId")
@@ -97,16 +104,15 @@ def settle(job, st, now, max_retries):
         # lastClean: every region of this cycle is baked (a retry that succeeds covers the regions
         # the first run lost). A cycle that gives up below sets lastSuccess only, which is what
         # keeps a flip (FLIPS) from publishing a half-baked catalog.
-        st.update(lastSuccess=now, lastClean=now, retries=0, retryIds=[], rerun=False, lastError="")
+        st.update(lastSuccess=now, lastClean=now, retries=0, retryIds=[], rerun=False, lastError="", lost=[])
         print(f"{job['id']}: run {run_id} succeeded")
         return True
-    failed = [j["name"] for j in v["jobs"] if j.get("conclusion") in ("failure", "timed_out", "cancelled")]
-    ids = sorted({m.group(1) for n in failed for m in [MATRIX_JOB.match(n)] if m})
-    other = [n for n in failed if not MATRIX_JOB.match(n)]
+    ids, other = failed_regions(v)
     st["lastError"] = f"run {run_id}: {len(ids)} region(s) failed" + (f", plus {', '.join(other)}" if other else "")
     if st.get("retries", 0) >= max_retries:
         # Out of retries: count it as done for this cycle; the next cadence tries again from scratch.
-        st.update(lastSuccess=now, retries=0, retryIds=[], rerun=False)
+        # `lost` is what flip() watches: a region baked by hand afterward makes the cycle clean.
+        st.update(lastSuccess=now, retries=0, retryIds=[], rerun=False, lost=ids if not other else None)
         print(f"::warning::{job['id']}: giving up until the next cycle ({st['lastError']})")
     elif ids:
         st.update(retryIds=ids, rerun=False)
@@ -119,6 +125,38 @@ def settle(job, st, now, max_retries):
     return True
 
 
+def heal(job_id, st, f, tag):
+    """A cycle that gave up on some regions is clean once each of them has been baked since (one
+    region dispatched by hand after a fix does that): its file on the release is newer than the
+    cycle's last attempt and the staging manifest has its row. Without this the staged manifest
+    waited a whole cadence, 90 days for routing, for a cycle that could not fail. Returns True
+    when state changed."""
+    changed = False
+    lost = st.get("lost")
+    if lost is None and st.get("runId"):
+        # A record from before `lost` was kept: read the regions off the run that gave up.
+        run = ghj("run", "view", str(st["runId"]), "--repo", REPO, "--json", "conclusion,jobs")
+        ids, other = failed_regions(run) if run and run.get("conclusion") != "success" else ([], ["?"])
+        if other or not ids:
+            return False
+        lost = st["lost"] = ids
+        changed = True
+    if not lost:
+        return changed
+    gh("release", "download", tag, "--repo", REPO, "-p", f["staging"], "-O", "staging.json", "--clobber")
+    rows = {r.get("id"): r for r in json.load(open("staging.json")).get("regions", [])}
+    uploaded = {a["name"]: calendar.timegm(time.strptime(a["updatedAt"][:19], "%Y-%m-%dT%H:%M:%S"))
+                for a in (ghj("release", "view", tag, "--repo", REPO, "--json", "assets") or {}).get("assets", [])}
+    since = st.get("dispatchedAt", st.get("lastSuccess", 0))
+    still = [i for i in lost if not rows.get(i, {}).get("url")
+             or uploaded.get(rows[i]["url"].rsplit("/", 1)[-1], 0) <= since]
+    if still:
+        return changed
+    print(f"{job_id}: the region(s) its last cycle lost were baked since ({' '.join(lost[:10])}); the cycle is clean")
+    st.update(lastClean=st["lastSuccess"], lastError="", lost=[])
+    return True
+
+
 def flip(f, state, now):
     """Copy a staging manifest over the live one once every job feeding it finished a CLEAN cycle
     after the last flip, and the staging manifest passes its checks. The old live manifest is kept
@@ -126,12 +164,18 @@ def flip(f, state, now):
     fs = state.setdefault("flip:" + f["id"], {})
     last = fs.get("lastFlip", 0)
     sts = [state.get(j, {}) for j in f["jobs"]]
-    if not all(st.get("settled", True) and st.get("lastClean", 0) > last for st in sts):
-        return False
-    if any(st.get("lastSuccess", 0) > st.get("lastClean", 0) for st in sts):
-        # A later cycle gave up with regions missing: wait for a clean one.
+    if not all(st.get("settled", True) for st in sts):
         return False
     tag = f["tag"]
+    healed = False
+    for j, st in zip(f["jobs"], sts):
+        if st.get("lastSuccess", 0) > st.get("lastClean", 0):
+            healed |= heal(j, st, f, tag)
+    if not all(st.get("lastClean", 0) > last for st in sts):
+        return healed
+    if any(st.get("lastSuccess", 0) > st.get("lastClean", 0) for st in sts):
+        # A later cycle gave up with regions missing: wait for a clean one.
+        return healed
     for name, out in ((f["staging"], "staging.json"), (f["live"], "live.json")):
         gh("release", "download", tag, "--repo", REPO, "-p", name, "-O", out, "--clobber")
     staging = json.load(open("staging.json")).get("regions", [])

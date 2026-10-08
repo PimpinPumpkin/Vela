@@ -3630,7 +3630,9 @@ reads. `flip()` copies it over `obf-manifest.json` once all three routing jobs f
 cycle (every region baked, retries included) and staging passes its checks: no live region
 missing, no rev going backward, every row's file on the release, something newer. The old live
 manifest is kept as `obf-manifest-previous.json`. A cycle that gave up with regions missing
-never flips.
+does not flip until each of those regions has been baked since (`heal()`: the region's file on
+the release is newer than the cycle's last attempt, which one region dispatched by hand does).
+The record keeps the lost regions as `lost`.
 
 Every bake downloads its extract through `scripts/fetch-pbf.sh`: a plain download, then the
 redirects walked one hop at a time with a trailing slash dropped from a file name, then the

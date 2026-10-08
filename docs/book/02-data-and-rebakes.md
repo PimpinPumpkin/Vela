@@ -104,6 +104,12 @@ four checks: no live region is missing, no `rev` goes backwards, every row's fil
 release, and at least one region is newer. The replaced manifest is kept as
 `obf-manifest-previous.json`; copying it over the live name is the rollback.
 
+A cycle that runs out of retries with regions still failing is not clean, and nothing is
+published. It becomes clean when each of those regions has been baked since, for example by a
+dispatch of that one region after a fix: the conductor sees a file newer than the cycle's last
+attempt. Before that rule a single failed region held the whole catalog's update back for the
+90 days until the next cycle.
+
 The bake indexes roads only, from an extract that `osmium tags-filter` has cut to about a third
 of its bytes to fit a 16 GB runner. An extract with more than 250 MB of roads (`OBF_SPLIT_MB`)
 is cut into strips, indexed strip by strip and joined. The highway-hierarchy shortcuts
