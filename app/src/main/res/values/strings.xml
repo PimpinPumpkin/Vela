@@ -252,6 +252,8 @@
     <string name="map_layers_places">Place icons: %1$s</string> <!-- format: %1$s is a source, "Vela data", "Google" or "Both" -->
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
+    <string name="settings_keep_north_up">Keep north up</string>
+    <string name="settings_keep_north_up_hint">The map never turns: two-finger rotation is off and drives stay north-up.</string>
     <string name="settings_speed_display">Show speed and speed limit</string>
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="mapvm_area_pack_big">Offline search here uses the place pack for all of %1$s. Get it from Settings > Offline maps.</string> <!-- format: %1$s country or state name -->

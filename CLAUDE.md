@@ -346,8 +346,8 @@ signed file the app fetches at launch (SPEC 11).
 - Never keep a `Layer` object from `style.layers` past the call that fetched it. Keep the id
   and the style, and look the layer up again on that same style: after a reload the old
   objects point into a style that is gone.
-- `setAllGesturesEnabled(true)` turns every gesture on, tilt included. Apply a gesture setting
-  after it.
+- `setAllGesturesEnabled(true)` turns every gesture on, tilt and rotation included. Apply a
+  gesture setting after it.
 
 ### Frame rate
 

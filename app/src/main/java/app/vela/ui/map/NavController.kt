@@ -170,8 +170,9 @@ internal class NavController(
                         navigating = ns.navigating,
                         navPaused = ns.paused,
                         // Every drive starts in the chosen orientation (heading-up unless
-                        // Settings > Navigation says north-up). The compass toggle is per-drive.
-                        navNorthUp = if (navStarted) app.vela.ui.NavNorthUp.on.value else it.navNorthUp,
+                        // Settings > Navigation says north-up, or Settings > Map keeps north up).
+                        // The compass toggle is per-drive.
+                        navNorthUp = if (navStarted) app.vela.ui.NavNorthUp.on.value || app.vela.ui.NorthLock.on.value else it.navNorthUp,
                         arrived = ns.arrived,
                         nav = ns.nav,
                         maneuverText = ns.maneuverText,
@@ -602,8 +603,15 @@ internal class NavController(
      *  actual bounds fit off MapScreen's overview tick. */
     fun navOverview() = _state.update { it.copy(navCameraDetached = true, previewStepIndex = null, inNavOverview = true) }
 
-    /** The in-nav compass button: toggle the follow camera between heading-up and north-up. */
-    fun toggleNavNorthUp() = _state.update { it.copy(navNorthUp = !it.navNorthUp) }
+    /** The in-nav compass button: toggle the follow camera between heading-up and north-up.
+     *  "Keep north up" holds it north-up. */
+    fun toggleNavNorthUp() {
+        if (app.vela.ui.NorthLock.on.value) {
+            _state.update { it.copy(navNorthUp = true) }
+            return
+        }
+        _state.update { it.copy(navNorthUp = !it.navNorthUp) }
+    }
 
     fun navStopsForEditor(): List<Place> {
         val known = _state.value.directionsWaypoints

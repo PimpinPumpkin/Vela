@@ -41,6 +41,11 @@ number and route numbers in the text. Lane arrows and the "Then" tab appear with
 Off route the headline reads "Rerouting". In landscape the banner and the bar are a column on
 the left.
 
+A ramp, a fork or a keep shows the slight-left or slight-right arrow, the way you go and nothing
+else. A picture with both branches looked like a road sign offering either one. The step list,
+the mini map, the notification and Android Auto take their glyphs from the same table
+(`maneuverGlyph`).
+
 ### The bottom bar and the step list
 
 The bar is white in the light theme, near black in the dark ones, and the theme's surface with
@@ -60,6 +65,9 @@ for 6 seconds, a second tap pauses, and a long press mutes. Search opens a page 
 field, category tiles led by fuel and charging, and recent searches.
 
 The compass shows for the whole drive, and a tap switches between heading-up and north-up.
+"Keep north up" (Settings > Map) holds every drive north-up and flat, so the compass has nothing
+to switch and fades at north as it does on the browse map. It also turns off two-finger rotation
+everywhere, and the map goes back to north at the next camera rest if anything else turns it.
 
 "Current road name" (Settings > Navigation) puts the name under the arrow (the default), above
 the bar, inside the bar, or nowhere. Away from the car (a pan, a pinch, a step preview) the name

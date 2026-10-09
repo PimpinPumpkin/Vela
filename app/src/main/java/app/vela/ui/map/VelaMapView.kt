@@ -181,6 +181,14 @@ private const val BROWSE_TURN_KEEP_MIN_DEG = 12.0
  *  started first is under way. A hand's pinch twists some, and at 3 that turned the map. */
 private const val TURN_START_DEG = 3f
 private const val TURN_START_PINCHING_DEG = 15f
+/** With "Keep north up" on, a resting camera turned more than this from north is put back. */
+private const val NORTH_LOCK_SLACK_DEG = 0.05
+
+/** How far [bearing] is from north, either way, in degrees (0 to 180). */
+private fun bearingOffNorth(bearing: Double): Double {
+    val b = bearing.mod(360.0)
+    return minOf(b, 360.0 - b)
+}
 /**
  * The steepest tilt the drive camera takes at a zoom the user pinched to: all of [full] from
  * [NAV_TILT_FULL_ZOOM] in, flat from [NAV_TILT_FLAT_ZOOM] out, a straight line between. A view
@@ -1017,7 +1025,12 @@ fun VelaMapView(
     val b3dRaised = remember { booleanArrayOf(false) } // ... and drawn, at opacity 1
     val houseNumberBox = remember { arrayOfNulls<Any>(2) } // [style it was applied to, the box], see restrictHouseNumbers
     val navFollowingHolder = rememberUpdatedState(navFollowing)
-    val navNorthUpHolder = rememberUpdatedState(navNorthUp)
+    // Settings > Map "Keep north up" (NorthLock): no rotation gesture, every drive north-up, and a
+    // bearing that arrives any other way goes back to north when the camera rests.
+    val northLock = app.vela.ui.NorthLock.on.value
+    val northLockHolder = rememberUpdatedState(northLock)
+    val navNorthUpOn = navNorthUp || northLock
+    val navNorthUpHolder = rememberUpdatedState(navNorthUpOn)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
     // The drive's first camera move is a CUT to the car, flat, and the tilt then eases in over
     // NAV_START_TILT_TAU_S (SPEC 4.7a). navStartCutMs = when it happened, 0 = not yet.
@@ -1197,6 +1210,15 @@ fun VelaMapView(
     // Settings > Map "Tilt with two fingers" applies at once, not at the next map start.
     val tiltGestures = app.vela.ui.MapTilt.on.value
     LaunchedEffect(tiltGestures, mapRef) { mapRef?.uiSettings?.isTiltGesturesEnabled = tiltGestures }
+    // "Keep north up" applies at once too. A following drive camera eases itself to north (the
+    // ticker reads navNorthUpHolder); any other camera is turned back here.
+    LaunchedEffect(northLock, mapRef) {
+        val m = mapRef ?: return@LaunchedEffect
+        m.uiSettings.isRotateGesturesEnabled = !northLock && !app.vela.ui.PipMode.active.value
+        if (northLock && !(navModeHolder.value && navFollowingHolder.value) && bearingOffNorth(m.cameraPosition.bearing) > NORTH_LOCK_SLACK_DEG) {
+            m.animateCamera(CameraUpdateFactory.bearingTo(0.0), 300)
+        }
+    }
     // A pinch may also turn the map (see the gesture settings at map start), except while a drive
     // follows the car: the bearing is the camera's there, and a turn would only swing back.
     LaunchedEffect(navMode, navFollowing, mapRef) { mapRef?.uiSettings?.isDisableRotateWhenScaling = navMode && navFollowing }
@@ -2721,9 +2743,12 @@ fun VelaMapView(
                 // out to be about the puck moving SIDEWAYS, and course-up is what Google does).
                 browseDrive[0] += (browseFix[3] - browseDrive[0]) * (1.0 - kotlin.math.exp(-dt / 1.0))
                 if (browseDrive[1] < 0.5 && browseDrive[0] > 2.5 && !browseFix[4].isNaN()) browseDrive[1] = 1.0
+                // "Keep north up": still driving (the beam keeps preferring the GPS course), but
+                // the camera takes the north-up branch below.
+                val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value
                 val tiltGoal = if (!browseUserTilt[0].isNaN()) browseUserTilt[0]
-                    else if (browseDrive[1] > 0.5) 55.0 else 0.0
-                if (browseDrive[1] > 0.5) {
+                    else if (headingUp) 55.0 else 0.0
+                if (headingUp) {
                     // Heading-up, nav-style: ease the live camera toward the course (updated only
                     // while the course is trustworthy - above walking speed), tilt toward nav's 55,
                     // and aim the camera a speed-scaled distance AHEAD of the puck so the road
@@ -2800,7 +2825,7 @@ fun VelaMapView(
                 val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
-                    if (attSettling || !zoomEase.isNaN() || browseDrive[1] > 0.5) {
+                    if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value)) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
                         // preserved, so a pinch level survives). While driving the aim point
@@ -3874,6 +3899,7 @@ fun VelaMapView(
                 // satisfying near-horizon 3D is reachable; browse-camera moves use
                 // newLatLngZoom (which preserves pitch), so a tilt the user sets sticks.
                 map.uiSettings.isTiltGesturesEnabled = app.vela.ui.MapTilt.on.value
+                map.uiSettings.isRotateGesturesEnabled = !app.vela.ui.NorthLock.on.value
                 // Zoom and turn in one gesture, as on Google's map. MapLibre's defaults make each
                 // shut the other out: a pinch recognized first disables rotation until the fingers
                 // lift, and a rotation recognized first interrupts the pinch until its span has
@@ -4419,6 +4445,14 @@ fun VelaMapView(
                 ovlGateHook[0] = runOvlGate
                 map.addOnCameraIdleListener {
                     idleEvents[0]++
+                    // "Keep north up": whatever turned the map (a restored camera, an animation that
+                    // carried a bearing), it goes back to north once the camera rests. A following
+                    // drive camera is left to its ticker, which eases to north itself.
+                    if (northLockHolder.value && !(navModeHolder.value && navFollowingHolder.value) &&
+                        bearingOffNorth(map.cameraPosition.bearing) > NORTH_LOCK_SLACK_DEG
+                    ) {
+                        runCatching { map.animateCamera(CameraUpdateFactory.bearingTo(0.0), 180) }
+                    }
                     // A turn that comes to rest within a few degrees of north was a pinch's wobble:
                     // back to north, as a slight tilt is dropped. A pinch can turn the map, and
                     // without this a sloppy one left it 5 degrees off for good.
@@ -4608,7 +4642,7 @@ fun VelaMapView(
                                             in 2_500L until 3_500L -> -spinDeg
                                             else -> 0.0
                                         }
-                                        if (rate != 0.0) runCatching { map.moveCamera(CameraUpdateFactory.bearingTo((map.cameraPosition.bearing + rate * (now - last) / 1000.0).mod(360.0))) }
+                                        if (rate != 0.0 && !northLockHolder.value) runCatching { map.moveCamera(CameraUpdateFactory.bearingTo((map.cameraPosition.bearing + rate * (now - last) / 1000.0).mod(360.0))) }
                                         last = now
                                         bisectHandler.postDelayed(this, 16)
                                     }
@@ -4784,12 +4818,15 @@ fun VelaMapView(
         val pipNow = app.vela.ui.PipMode.active.value
         map.uiSettings.isCompassEnabled = !pipNow
         map.uiSettings.setAllGesturesEnabled(!pipNow)
-        // ("All" turns tilt back on, and this block runs on every update: the setting comes last.)
+        // ("All" turns tilt and rotation back on, and this block runs on every update: the
+        // settings come last.)
         if (!tiltGestures) map.uiSettings.isTiltGesturesEnabled = false
+        if (northLock) map.uiSettings.isRotateGesturesEnabled = false
         // Browse keeps Google's fade-when-north; NAV shows the compass the whole drive - a
         // stationary route start is often still north-up, which faded it out right when the
-        // user looked for it (user 2026-07-14; Google pins it during nav too).
-        map.uiSettings.setCompassFadeFacingNorth(!navMode && browseUserTilt[0].isNaN())
+        // user looked for it (user 2026-07-14; Google pins it during nav too). With "Keep north
+        // up" the drive compass has nothing to switch, so it fades at north like the browse one.
+        map.uiSettings.setCompassFadeFacingNorth((!navMode || northLock) && browseUserTilt[0].isNaN())
 
         // Fraction of the route already driven (for the traversed-gray gradient) —
         // 0 unless we're navigating and on the line.
@@ -5282,7 +5319,7 @@ fun VelaMapView(
                             // fps for three seconds); a cut loads one viewport, and the slow tilt
                             // lets the horizon's tiles arrive a few at a time.
                             navStartCutMs[0] = now
-                            navStartTilting[0] = !navNorthUp
+                            navStartTilting[0] = !navNorthUpOn
                             navTiltEase[0] = 0.0
                             cutReveal()
                             map.moveCamera(
@@ -5291,7 +5328,7 @@ fun VelaMapView(
                                         .target(MLLatLng(loc.lat, loc.lng))
                                         .zoom(zoom)
                                         .tilt(0.0)
-                                        .bearing(if (navNorthUp) 0.0 else brg.toDouble())
+                                        .bearing(if (navNorthUpOn) 0.0 else brg.toDouble())
                                         .padding(0.0, map.height * 0.45, 0.0, 0.0)
                                         .build(),
                                 ),
@@ -5304,10 +5341,10 @@ fun VelaMapView(
                                     .target(MLLatLng(loc.lat, loc.lng))
                                     .zoom(zoom)
                                     // Still tilting in from the cut: the same ease the ticker runs.
-                                    .tilt(if (navNorthUp) 0.0 else if (navStartTilting[0])
+                                    .tilt(if (navNorthUpOn) 0.0 else if (navStartTilting[0])
                                         55.0 * (1.0 - kotlin.math.exp(-(now - navStartCutMs[0]) / 1000.0 / NAV_START_TILT_TAU_S))
                                         else 55.0)
-                                    .bearing(if (navNorthUp) 0.0 else brg.toDouble())
+                                    .bearing(if (navNorthUpOn) 0.0 else brg.toDouble())
                                     .padding(0.0, map.height * 0.45, 0.0, 0.0)
                                     .build(),
                             ),

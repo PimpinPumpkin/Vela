@@ -217,7 +217,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
-  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `OfflinePlaces`, `Onboarding`,
+  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
@@ -823,6 +823,7 @@ the page fills it after load, and a small stub sits beside it.
 | Places > Wait for popular times | `DetailsRetry`, `details_retry`, on | off makes `placeTries()` 1 |
 | Privacy > Live traffic only when I tap | `RouteTrafficOnTap`, `route_traffic_on_tap`, off | clears `RoutingPrefs.googleTraffic` for each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not prefetched. The chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches |
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
+| Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
@@ -1451,6 +1452,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   and every route number in the instruction text, deduplicated by `routeKey` (letters and
   number; spaces, dashes and a trailing direction dropped), three at most. The card's "then" row
   skips a roundabout's own exit step and shows the maneuver after it at the summed distance.
+- Turn glyphs come from one table, `maneuverGlyph` (`ui/nav/ManeuverGlyph.kt`), for the turn
+  card, the step list, picture-in-picture, the notification and Android Auto (`NavGlyphs`).
+  Ramps, forks and keeps draw the slight-left or slight-right arrow: a glyph that also drew the
+  branch not taken read as a sign allowing either way. Merges keep the merge glyph and
+  roundabouts their ring.
 
 #### Rerouting
 
@@ -1635,7 +1641,8 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   15 once a pinch is under way (`TURN_START_PINCHING_DEG`, set in the scale listener). A turn
   of the browse map that rests within `BROWSE_TURN_KEEP_MIN_DEG` (12) of north goes back to
   north, checked at camera idle because the turn's fling runs on after the fingers lift.
-  While a drive follows the car a pinch does not turn the map.
+  While a drive follows the car a pinch does not turn the map. With "Keep north up" (`NorthLock`)
+  no gesture turns it, and every drive runs north-up and flat.
 - A parked drive slows the loop to `NAV_IDLE_TICK_MS` (120 ms). A moving detached camera keeps
   it at frame rate.
 
@@ -1659,7 +1666,9 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
 - The target is `FollowEstimator`, fed the raw accepted fix, with half of each residual spread
   over 0.9 s.
 - The bearing eases toward the GPS course with a speed-scaled look-ahead
-  (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow.
+  (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow. With "Keep
+  north up" the follow stays north-up at any speed, flat unless tilted by hand, and the beam still
+  prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
 - A two-finger tilt pauses the follow's camera writes and becomes its tilt target
@@ -4684,7 +4693,8 @@ The map:
   the roughly 1 Hz fixes with `FollowEstimator`, and eases the heading and the speed-tiered zoom
   (`ZOOM_EASE` 0.06 per `TICK_MS` 70 ms tick). The puck is the phone's puck bitmap rotated by
   heading minus camera bearing, framed at `PUCK_DOWN` (0.72) of the visible area's height while
-  following. Meters per pixel assume 512 px tiles.
+  following. The camera bearing is the heading while following a drive, and 0 (north-up) with the
+  phone's `NorthLock` on. Meters per pixel assume 512 px tiles.
 - A pan moves the center by the finger's travel in meters (`shiftCenter`). Reading the new center
   off the last snapshot's `latLngForPixel` adds the visible-area offset to every scroll event. A
   pinch keeps the point under the fingers in place. A fling decays exponentially (`FLING_TAU_S`

@@ -7,12 +7,15 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import app.vela.core.model.ManeuverType
+import app.vela.ui.nav.ManeuverGlyph
+import app.vela.ui.nav.maneuverGlyph
 
 /**
  * Canvas-drawn maneuver arrows for the nav notification's large icon (a white glyph on the
  * Vela-teal rounded square, Google-Maps style). The in-app banner glyphs are Compose
  * ImageVectors, which can't be rasterized outside a composition, so the notification draws
- * its own small set here. Geometry is on a 0..96 grid scaled to the requested pixel size.
+ * its own small set here. Which picture a type gets comes from the same [maneuverGlyph] table the
+ * app's banner uses. Geometry is on a 0..96 grid scaled to the requested pixel size.
  */
 object NavGlyphs {
 
@@ -35,17 +38,15 @@ object NavGlyphs {
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
 
         // Left-hand variants are the right-hand paths mirrored around the vertical axis.
-        val mirrored = type in setOf(
-            ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.KEEP_LEFT,
-            ManeuverType.SHARP_LEFT, ManeuverType.FORK_LEFT, ManeuverType.RAMP_LEFT,
-        )
+        val glyph = maneuverGlyph(type)
+        val mirrored = glyph == ManeuverGlyph.LEFT || glyph == ManeuverGlyph.SLIGHT_LEFT || glyph == ManeuverGlyph.SHARP_LEFT
         if (mirrored) {
             c.save()
             c.scale(-1f, 1f, sizePx / 2f, sizePx / 2f)
         }
 
-        when (type) {
-            ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT -> {
+        when (glyph) {
+            ManeuverGlyph.LEFT, ManeuverGlyph.RIGHT -> {
                 val p = Path().apply {
                     moveTo(38f * s, 76f * s)
                     lineTo(38f * s, 46f * s)
@@ -55,10 +56,8 @@ object NavGlyphs {
                 c.drawPath(p, stroke)
                 c.drawPath(arrowHead(64f, 34f, 90f, s), fill)
             }
-            ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
-            ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
-            ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT,
-            -> {
+            // Ramps, forks and keeps too: only the branch the driver takes is drawn.
+            ManeuverGlyph.SLIGHT_LEFT, ManeuverGlyph.SLIGHT_RIGHT -> {
                 val p = Path().apply {
                     moveTo(44f * s, 78f * s)
                     lineTo(44f * s, 58f * s)
@@ -67,7 +66,7 @@ object NavGlyphs {
                 c.drawPath(p, stroke)
                 c.drawPath(arrowHead(58f, 34f, 30f, s), fill)
             }
-            ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT -> {
+            ManeuverGlyph.SHARP_LEFT, ManeuverGlyph.SHARP_RIGHT -> {
                 val p = Path().apply {
                     moveTo(40f * s, 78f * s)
                     lineTo(40f * s, 42f * s)
@@ -76,7 +75,7 @@ object NavGlyphs {
                 c.drawPath(p, stroke)
                 c.drawPath(arrowHead(62f, 60f, 140f, s), fill)
             }
-            ManeuverType.UTURN -> {
+            ManeuverGlyph.UTURN -> {
                 val p = Path().apply {
                     moveTo(60f * s, 76f * s)
                     lineTo(60f * s, 42f * s)
@@ -87,7 +86,7 @@ object NavGlyphs {
                 c.drawPath(p, stroke)
                 c.drawPath(arrowHead(34f, 58f, 180f, s), fill)
             }
-            ManeuverType.MERGE -> {
+            ManeuverGlyph.MERGE -> {
                 val left = Path().apply {
                     moveTo(32f * s, 78f * s)
                     quadTo(48f * s, 60f * s, 48f * s, 44f * s)
@@ -101,27 +100,12 @@ object NavGlyphs {
                 c.drawPath(right, stroke)
                 c.drawPath(arrowHead(48f, 26f, 0f, s), fill)
             }
-            ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT -> {
-                val main = Path().apply {
-                    moveTo(48f * s, 78f * s)
-                    lineTo(48f * s, 58f * s)
-                    lineTo(62f * s, 36f * s)
-                }
-                val stub = Path().apply {
-                    moveTo(48f * s, 58f * s)
-                    lineTo(36f * s, 40f * s)
-                }
-                c.drawPath(main, stroke)
-                c.drawPath(stub, stroke.apply { alpha = 140 })
-                stroke.alpha = 255
-                c.drawPath(arrowHead(62f, 36f, 32f, s), fill)
-            }
-            ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT -> {
+            ManeuverGlyph.ROUNDABOUT -> {
                 c.drawCircle(48f * s, 52f * s, 15f * s, stroke)
                 c.drawLine(48f * s, 37f * s, 48f * s, 22f * s, stroke)
                 c.drawPath(arrowHead(48f, 22f, 0f, s), fill)
             }
-            ManeuverType.ARRIVE -> {
+            ManeuverGlyph.FLAG -> {
                 // Destination flag: pole + pennant.
                 c.drawLine(38f * s, 76f * s, 38f * s, 22f * s, stroke)
                 val pennant = Path().apply {
@@ -132,7 +116,7 @@ object NavGlyphs {
                 }
                 c.drawPath(pennant, fill)
             }
-            else -> { // DEPART, CONTINUE, STRAIGHT, UNKNOWN: straight-ahead arrow
+            ManeuverGlyph.ORIGIN, ManeuverGlyph.STRAIGHT, ManeuverGlyph.UNKNOWN -> { // straight-ahead arrow
                 c.drawLine(48f * s, 78f * s, 48f * s, 30f * s, stroke)
                 c.drawPath(arrowHead(48f, 30f, 0f, s), fill)
             }
