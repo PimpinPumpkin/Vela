@@ -470,6 +470,11 @@ private const val TRAFFIC_TILES =
  *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
 data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null, val fuelPrice: String? = null, val houseNumber: String? = null, val drawn: Boolean = true)
 
+/** What the results fit keys on: the markers without their fuel prices, which can land after
+ *  the results do (UK prices, SPEC 5.8) and must not frame the cluster again. */
+private fun markerFitKey(markers: List<MapMarker>): Int =
+    markers.fold(markers.size) { h, m -> 31 * h + m.copy(fuelPrice = null).hashCode() }
+
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
 // setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
 // source is empty and must repopulate). Single map instance, so file scope is fine.
@@ -5380,8 +5385,8 @@ fun VelaMapView(
                 }
             }
 
-            frameMarkers && markers.isNotEmpty() && markers.hashCode() != lastFittedMarkersKey -> {
-                lastFittedMarkersKey = markers.hashCode()
+            frameMarkers && markers.isNotEmpty() && markerFitKey(markers) != lastFittedMarkersKey -> {
+                lastFittedMarkersKey = markerFitKey(markers)
                 // Consume the pending camera target: the results-sheet inset growing nulls
                 // lastCameraTarget (to re-frame a place against the sheet), and with it null the
                 // else-branch below re-fires on the STALE center (the VM center only updates on

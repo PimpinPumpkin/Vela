@@ -68,6 +68,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Traffic layer; satellite past z19 | Google raster tiles, both off by default | Yes | No |
 | Traffic controls (lights, stops, crossings, humps) | Per-region road-features bake, Overpass only where no region exists | No | Yes |
 | Surveillance and speed cameras | Bundled and hosted DeFlock dataset; OSM speed cameras | No | Yes |
+| Fuel prices on gas stations | US: Google's search reply. UK: the government's Fuel Finder, trimmed and hosted on the `fuel-gb` release (5.8) | US: in the search. UK: no | UK: the last file downloaded |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
 | Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
@@ -296,7 +297,7 @@ Results are at `root[64][i]`, and each entry's place node is `[1]`. The keys are
 | `website` | `[1][7][0]` | |
 | `phone` | `[1][178][0][0]` | |
 | `priceText` | `[1][4][2]` | a range such as "$10-20"; `SearchParser.priceLevelOf` derives the 1 to 4 level |
-| `fuelPrice` | `[1][88][0]` | |
+| `fuelPrice` | `[1][88][0]` | "$5.34/Regular" on US stations; absent on UK ones, which 5.8 fills |
 | `actionLabel`, `actionUrl` | `[1][75][0][0][5][0]`, `[1][75][0][0][5][1][2][0]` | the Book, Reserve or Order link |
 | `featureId` | `[1][10]` | `0xHIGH:0xLOW` |
 | `placeId` | `[1][78]` | |
@@ -2836,6 +2837,85 @@ them. They are not in the saved-places export.
   off the planned route) fills `drivenRouteOffer`, and the arrival card offers to save the
   trace. `debug.vela.tune.drivenOfferAlways` forces the offer.
 
+### 5.8 UK fuel prices
+
+Google's keyless search carries a price for US gas stations (`fuelPrice`, 3.2) and none for UK
+ones. For those Vela reads the UK government's Fuel Finder, which publishes every forecourt's
+prices under the Open Government Licence v3.0.
+
+#### The feed
+
+`.github/workflows/fuel-gb.yml` runs hourly at :23 on its own cron, outside the bake conductor
+(7.3).
+
+- It asks the gov.uk CSV first
+  (`https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv`)
+  with the bakes' user agent and logs the answer. The service returns CloudFront 403 to
+  connections from outside the UK, GitHub's runners included. The fallback is `data.csv` on
+  `main` of `matthewgall/fuelfinder-archive`, from raw.githubusercontent.com, which republishes
+  the same file about twice a day (09:05 and 15:05 UTC). Its own runner is self-hosted.
+- Nothing is uploaded when the source's sha256 equals the published manifest's `sourceSha256`.
+  That check reads the manifest as a release download, not through the API, so an unchanged hour
+  costs no API request. A publish is about seven.
+- `tools/build-fuel-gb.py` drops permanently closed forecourts, coordinates outside 49 to 61.5 N
+  and 9.5 W to 2.5 E, prices outside 100 to 250 p (the source has placeholders such as 299.9),
+  and forecourts left with no price or no report time. It writes `fuel-gb.csv.gz` (gzip with no
+  timestamp, so one source gives one file) and `fuel-gb-manifest.json`.
+- The file is CSV with the header `brand,lat,lng,e10,e5,b7s,b7p,updated`: coordinates to 5
+  decimals, prices in pence (blank when absent), and `updated` the newest price report among the
+  kept fuels in unix seconds. On the 2026-10-08 source it held 8,124 of 8,133 forecourts, 473 KB,
+  148 KB gzipped. E10 is on 97% of forecourts and standard diesel (B7S) on 99%.
+- The manifest holds `version`, `generated`, `source` (`gov.uk` or `archive`), `sourceUrl`,
+  `sourceSha256`, `stations`, `newestPrice`, `newestPriceEpoch`, `file`, `fileSha256` and
+  `fileBytes`.
+- A source that cannot be fetched or read, or whose newest price is more than 3 days old (exit
+  3), ends the run green with a `::warning::`, and the published file stays. A publish that fails
+  ends in a warning while the published manifest is under a day old and fails the run after that.
+- The `fuel-gb` release is created on the root commit when missing, like the `cells-<region>`
+  set (`CELLS_RELEASE_TARGET` in `scripts/bake-lib.sh`). The data file is replaced before the
+  manifest, through `scripts/gh-retry.sh`.
+
+#### On the phone
+
+`core/data/FuelGbStore` keeps the file in `fuelgb/` under `StorageLocation.root`.
+
+- Nothing is fetched until a gas station inside the UK box (49.8 to 60.9 N, 8.7 W to 1.8 E,
+  `FuelGb.inUk`) has no price. The box takes in Ireland, where nothing matches.
+- At most every `CHECK_EVERY_MS` (3 h, the stamp file `checked`) it reads the manifest and
+  downloads the data file only when `fileSha256` differs from the stored manifest's. GitHub's
+  release downloads give no conditional request to lean on, so the manifest is the change test.
+  The download is checked for the gzip magic and the sha256, parsed, staged beside the target,
+  and swapped in with the old copy moved aside first. A failure is retried after
+  `RETRY_AFTER_MS` (15 min) and never replaces a good file.
+- The client is the shared one with no call timeout, a 60 s read timeout and `VelaConfig.VELA_UA`.
+- The forecourts are held in flat arrays with a 0.01 degree grid. A severe trim
+  (`MemoryPressure.isSevere`) drops them, and the next use reads the file again.
+- `ui/map/UkFuelPrices` watches `MapUiState.results` and `selected` by identity. Google results,
+  place-pack results, places-archive results and a tapped open-data place all pass through that
+  state, so the prices work with Google off. Results show at once and the prices land when the
+  file is ready. A gas station is the `fuel` group of `PoiIcons.groupFor`, less categories that
+  say "charg".
+
+#### Matching
+
+- `FuelGb.pick` takes the forecourts within `MATCH_M` (75 m), nearest first. One whose brand
+  agrees with the place's name wins when it is at most `BRAND_SLACK_M` (25 m) farther than the
+  nearest. A brand agrees when one of its words, filler words dropped ("ltd", "petrol", "fuels",
+  "the"), is a word of the name, apostrophes removed ("Sainsbury's" against "SAINSBURYS").
+- Google's 20 results for a London petrol-station search all had a forecourt within 63 m, 18 of
+  the same brand. The other two were a supermarket shop on another brand's forecourt, where the
+  nearest forecourt is the right one.
+- `FuelGb.label` shows nothing for a forecourt whose newest report is older than `MAX_AGE_S`
+  (45 days). Otherwise the text is "172.9p/E10 · 199.9p/B7": petrol first (E10, else E5), then
+  standard diesel as B7. These are the labels on UK pumps, so the text is not translated.
+- The text goes in `Place.fuelPrice`, so it shows where Google's price shows: the result bubble
+  (`PoiIcons.fuelShort`, the text before the first '/', is the petrol price), the results row's
+  pump line, and the place sheet's pump line, first in the Overview body. That line sits below the
+  action pills, so a price that lands after the sheet opened moves nothing above them.
+- The results camera fit keys on the markers without their prices (`markerFitKey`), so a late
+  price does not frame the results again.
+- A place is filled once. A newer file reaches the next search or tap.
+
 ---
 
 ## 6. Map rendering
@@ -3303,6 +3383,7 @@ exists and shows one status line asking the user to download those regions again
 | Address overlay | `address-overlays.yml`, `scripts/build-address-region.sh` | `address-overlays` | `address-overlay-manifest.json` | 90 days | streamed |
 | Maxspeed overlay | `maxspeed-overlays.yml`, `scripts/build-maxspeed-region.sh` | `maxspeed-overlays` | `maxspeed-overlay-manifest.json` | 90 days | streamed |
 | ALPR cameras | `flock-cameras.yml`, `scripts/build-flock-cameras.py` | `flock-cameras` | `flock-manifest.json` | Mondays 08:17 UTC | bundled asset, refreshed at launch |
+| UK fuel prices (5.8) | `fuel-gb.yml`, `tools/build-fuel-gb.py` | `fuel-gb` | `fuel-gb-manifest.json` | checked hourly, published when the source changed | `fuelgb/`, checked at most every 3 h when a UK gas station needs a price |
 | Glyphs | `scripts/build-map-fonts.sh` | `map-fonts`, asset `map-fonts.zip` | none | by hand | `glyphs/<stack>/<range>.pbf` |
 
 The glyph set is also unpacked to GitHub Pages (`/fonts`) for the online map. The releases
@@ -3367,7 +3448,7 @@ because the repository holds hundreds.
 ### 7.1a Where the files live
 
 `offline/StorageLocation` roots the folders in `StorageLocation.FOLDERS` (`obf`, `poipacks`,
-`places`, `basemap`, `overlays`, `glyphs`, `cells`) at `filesDir` or at the app's folder on a
+`places`, `basemap`, `overlays`, `glyphs`, `cells`, `fuelgb`) at `filesDir` or at the app's folder on a
 removable SD card (`getExternalFilesDirs`, no permission). Pref `offline_storage` is `internal`
 (default) or `sd`. The choice is in Settings > Offline maps and shows only when a card is
 mounted or the card is the chosen location.
@@ -3399,7 +3480,7 @@ card.
   cache in one SQLite file, and a delete alone frees no bytes. Clear map cache packs too.
 - "Delete all offline data" (`deleteAllOfflineData`, behind a confirm naming the total): every
   saved area, routing file, pack, places and basemap archive, building overlay, cell, the road
-  features, the glyph pack and any legacy graph folder. It then sweeps the store folders for
+  features, the UK fuel price file, the glyph pack and any legacy graph folder. It then sweeps the store folders for
   files no index reaches (keeping `index.json`, `revs.json`, `dead.json`), clears the browsing,
   place and Street View caches and packs the database. Voices and speech models stay.
 
@@ -3518,7 +3599,8 @@ limit on the phone.
 A manifest row's `rev` is an integer that only grows. The obf, basemap, places and cells bakes
 stamp the UTC bake date as `YYYYMMDD`. Place packs count up, one past the live manifest's rev
 for that region, which is the `fromRev` their deltas key on. A road-features file is
-downloaded again when the manifest's `updatedAt` differs from the stored stamp.
+downloaded again when the manifest's `updatedAt` differs from the stored stamp, and the UK fuel
+price file when the manifest's `fileSha256` differs from the stored manifest's (5.8).
 
 `MapViewModel.refreshRegionUpdates` lists each installed region's update kinds: `routing` (a
 newer rev than the installed one), `places` and `map` (a newer archive whose box center lies
@@ -3630,7 +3712,9 @@ spend it and fail other workflows with HTTP 403, so the bakes have no crons of t
 Its state is `state.json` on the `bake-conductor` release, and its run never fails. Cadences
 (`everyHours`): a seventh of the places catalog every 24 h (`slice` is the UTC weekday); place
 packs, road features, basemap and grid cells every 30 days; routing files, buildings, addresses
-and maxspeed every 90 days. ALPR cameras keep their own weekly cron.
+and maxspeed every 90 days. ALPR cameras keep their own weekly cron, and UK fuel prices their own
+hourly one (5.8): that job fetches one small file and spends no API request while its source is
+unchanged.
 
 The routing bake merges into `obf-manifest-staging.json` (`staging=true`), which the app never
 reads. `flip()` copies it over `obf-manifest.json` once all three routing jobs finished a clean
@@ -4821,7 +4905,8 @@ recomposition. Neither can be parallelized, so the rules send each less work.
 `PRIVACY.md` is the user-facing accounting and must agree with section 1.4. In the default
 configuration browsing the map does not contact Google. Search, opening a place, a driving route
 and transit directions do. Routes also reach FOSSGIS, transit boards Transitous, reverse
-geocoding Nominatim. With "Use Vela without Google" on, only the open services are asked.
+geocoding Nominatim. A UK gas station without a price makes the phone fetch the fuel price file
+from GitHub (5.8). With "Use Vela without Google" on, only the open services are asked.
 
 ### 14.1a State files
 
@@ -5028,6 +5113,7 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
   asset counts weekly into `docs/stats` (`scripts/download-stats.sh`). They are byproducts of
   hosting and they expire. `docs/stats/README.md` says how to read them.
 - `bake-conductor.yml` starts the data bakes (section 7.3).
+- `fuel-gb.yml` publishes the UK fuel prices hourly on its own cron (section 5.8).
 
 #### On a device
 

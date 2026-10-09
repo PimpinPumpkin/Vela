@@ -1204,6 +1204,16 @@ fun PlaceSheet(
                 },
             ) {
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
+            // Gas stations: the fuel price, bold, first in the body like Google's gas prices card
+            // ("$5.34/Regular" from Google, "172.9p/E10 · 199.9p/B7" in the UK). Below the action
+            // pills, so a price that lands after the sheet opened moves nothing above them.
+            place.fuelPrice?.let { fp ->
+                Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Sym.LocalGasStation, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(fp, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = ink, modifier = Modifier.weight(1f))
+                }
+            }
             place.fullAddress()?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),

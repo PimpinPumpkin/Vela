@@ -43,7 +43,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   the search box, or tap it in any app.
 - "People also search for" and "Also at this location" rows open related places.
 - A tapped map place opens at once with open data and names its source while Google's listing loads.
-- Closed places are marked permanently or temporarily closed. Gas stations show their fuel price.
+- Closed places are marked permanently or temporarily closed. Gas stations show their fuel price:
+  Google's in the US, the UK government's Fuel Finder prices (E10 and diesel) in the UK, with
+  Google on or off.
 - Street View in the app: look around, walk between panoramas, view older captures.
 - "Show reviews" and "Load photos" turn those off. "Load reviews only when I tap" and "Load photos
   only when I tap" defer them.

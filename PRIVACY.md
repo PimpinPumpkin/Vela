@@ -61,6 +61,7 @@ logged-out browser's. They are not tied to an account.
 | **Overpass** (OpenStreetMap) | only where no baked region file covers the spot: traffic lights and stop signs, the opt-in speed camera layer, and with "Traffic-light guidance" on the lights along a route when its drive starts | your IP, a bounding box |
 | **raw.githubusercontent.com, api.github.com, GitHub Pages** | at launch (settings file, map fonts), about once a day for the update check, once after an update for the What's new notes | your IP. A plain file download |
 | **GitHub release files** | downloading regions, voices and app updates, and streaming the place, building and house-number layers as you browse | your IP, and which file or byte range is fetched, which implies your rough map area |
+| **GitHub release files** (UK fuel prices) | a gas station in the UK shows up in your results or on a place page without a price; at most every 3 hours after that | your IP. The file is the same one nationwide for everyone, so it says only that you looked at a UK gas station |
 
 None of these receives a Google account, a name, a device id or your contacts.
 

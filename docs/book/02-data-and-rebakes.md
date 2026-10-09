@@ -3,8 +3,8 @@
 ## What you see
 
 Nothing, when it works. The offline map, the places on it, offline routing and search, speed
-limits, stop signs and the camera layer come from files this repository builds and hosts as GitHub
-release assets. They are rebuilt on a schedule. A phone picks up a new build by streaming it, by
+limits, stop signs, the camera layer and UK fuel prices come from files this repository builds and
+hosts as GitHub release assets. They are rebuilt on a schedule. A phone picks up a new build by streaming it, by
 patching a file it downloaded, or by offering Update on a region in Settings > Offline maps.
 
 While a downloaded region updates, the card shows one of three states:
@@ -30,6 +30,7 @@ exist nowhere else, so nothing may delete these releases ([chapter 12](12-releas
 | Road features (traffic lights, stop signs, crossings, speed humps, speed cameras) | OpenStreetMap | `road-features`, `road-features-manifest.json` | 30 days (`roads-a`, `roads-b`) | The file for the region you are in, again when `updatedAt` changes |
 | Grid cells, a region in 0.5 degree pieces | OpenStreetMap and the region's places archive | `cells-<region>`, with `cells-manifest.json` on `grid-cells` | 30 days (`cells-us`, `cells-a`, `cells-b`) | The whole cell when `rev` is newer |
 | Surveillance cameras | DeFlock's camera nodes in OpenStreetMap | `flock-cameras`, `flock-manifest.json` | Its own cron, Mondays 08:17 UTC | At app start when `version` is newer |
+| UK fuel prices | The UK government's Fuel Finder, through matthewgall/fuelfinder-archive | `fuel-gb`, `fuel-gb-manifest.json` | Its own cron, hourly at :23 (`fuel-gb.yml`), published when the source changed | When a UK gas station needs a price, checked again at most every 3 hours |
 | Buildings, where OSM has gaps | Microsoft building footprints (ODbL) | `building-overlays`, `building-overlay-manifest.json` | 90 days (`buildings-us`, `buildings-world`, `buildings-chunk`) | Streamed. A saved copy is never refreshed |
 | House numbers, where OSM has none | OpenAddresses | `address-overlays`, `address-overlay-manifest.json` | 90 days (`addresses`) | Streamed |
 | Speed limits without a routing download | OpenStreetMap `maxspeed` | `maxspeed-overlays`, `maxspeed-overlay-manifest.json` | 90 days (`maxspeed-a`, `maxspeed-b`) | Streamed |
@@ -85,6 +86,11 @@ an hour with CI, and overlapping bakes failed the app releases and each other wi
 The conductor's run never fails. Its record is `state.json` on the `bake-conductor` release.
 A bake started by hand is fine; the conductor sees it running and waits. A new bake or cadence
 is an edit to the schedule file.
+
+Two small jobs keep crons of their own: the camera dataset weekly, and the UK fuel prices
+hourly, because that source changes twice a day. The fuel job reads the published manifest as a
+plain download and uploads nothing while the source is unchanged, so most hours spend no API
+request.
 
 ### The daily seventh of places
 
@@ -146,6 +152,26 @@ entries win. Running it twice changes nothing, and the next run repairs a merge 
 
 The other workflows still replace rows by id in the old manifest, serialized by a concurrency
 group.
+
+### UK fuel prices
+
+Google's keyless search gives US gas stations a price and UK ones none. The UK government's
+Fuel Finder publishes every forecourt's prices, but its site refuses connections from outside the
+UK, GitHub's runners among them, and its API needs a personal key. `fuel-gb.yml` therefore tries
+the site, logs the refusal, and takes the copy matthewgall/fuelfinder-archive republishes on
+GitHub. `tools/build-fuel-gb.py` trims it to brand, position, four prices (E10, E5, standard and
+premium diesel) and the time of the newest report, about 150 KB gzipped for some 8,100
+forecourts, and drops placeholder prices outside 100 to 250 p. A source whose newest price is
+more than 3 days old, or that cannot be fetched, ends the run green with a warning and the
+published file stays.
+
+The phone downloads the file the first time a UK gas station without a price shows up in
+results or on a place sheet, and checks the small manifest again at most every 3 hours. A gas
+station takes the nearest forecourt within 75 m. A forecourt of the place's own brand wins when
+it is at most 25 m farther, so a Tesco forecourt beside an Esso goes to the Tesco listing, while
+a supermarket shop on another brand's forecourt takes that forecourt. Prices older than 45 days
+are not shown. The text reads "172.9p/E10 · 199.9p/B7"; the map bubble shows the petrol price.
+The rules and constants are in [SPEC section 5.8](../../SPEC.md).
 
 ### Which region a point is in
 
@@ -243,3 +269,6 @@ regions is [chapter 8](08-offline.md).
   takes the whole file.
 - A building overlay saved with an offline area and the world floor are never refreshed. The
   font zip is replaced only when an app update raises `GlyphPackStore.PACK_VERSION`.
+- UK fuel prices depend on one person's archive repository while the government's site refuses
+  GitHub's runners. If the archive stops, the runs warn and the app keeps showing the last file
+  until its prices pass 45 days.

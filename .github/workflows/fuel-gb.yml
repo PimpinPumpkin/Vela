@@ -1,0 +1,113 @@
+# UK fuel prices (SPEC 5.8): trims the UK government's Fuel Finder CSV with tools/build-fuel-gb.py
+# and hosts it on the `fuel-gb` release, where the app reads it for UK gas stations (Google's
+# keyless search carries no UK price). The source changes about twice a day, so this checks
+# hourly on its own cron: the one bake the conductor does not start (CLAUDE.md, Releases). A run
+# whose source has not changed spends no GitHub API request.
+#
+# The gov.uk file is tried first and answers non-UK connections, GitHub's runners among them,
+# with HTTP 403; the matthewgall/fuelfinder-archive copy is the fallback. A source that cannot be
+# fetched or read, or whose newest price is over 3 days old, ends the run green with a warning
+# and leaves the published file in place. `fuel-gb` is an infra release: never delete it.
+name: UK fuel prices
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # the fuel-gb release
+
+concurrency:
+  group: fuel-gb
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            scripts
+            tools
+
+      - name: Fetch, trim and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          source scripts/bake-lib.sh # CELLS_RELEASE_TARGET, the root commit data releases sit on
+          source scripts/gh-retry.sh
+          export GH_RETRY_TRIES=3
+          UA="VelaMaps-bake (https://github.com/PimpinPumpkin/Vela)"
+          GOV="https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
+          ARCHIVE="https://raw.githubusercontent.com/matthewgall/fuelfinder-archive/main/data.csv"
+          REL="https://github.com/$REPO/releases/download/fuel-gb"
+          mkdir -p work out
+
+          summary() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          warn_end() { echo "::warning::$1"; summary "$1"; exit 0; }
+          is_fuel_csv() { [[ "$(head -1 "$1" 2>/dev/null)" == *forecourts.location.latitude* ]]; }
+
+          # The published manifest (a plain download, not an API request).
+          published="$(curl -fsSL -m 60 "$REL/fuel-gb-manifest.json" 2>/dev/null || true)"
+          pub_sha="$(jq -r '.sourceSha256 // empty' <<<"$published" 2>/dev/null || true)"
+          pub_gen="$(jq -r '.generated // empty' <<<"$published" 2>/dev/null || true)"
+
+          src=""; src_url=""
+          gov_code="$(curl -sS -L -m 120 -A "$UA" -o work/gov.csv -w '%{http_code}' "$GOV" 2>/dev/null)" || true
+          echo "gov.uk Fuel Finder answered HTTP ${gov_code:-000}"
+          if [ "${gov_code:-}" = 200 ] && is_fuel_csv work/gov.csv; then
+            src=gov.uk; src_url="$GOV"; mv work/gov.csv work/source.csv
+          else
+            arc_code="$(curl -sS -L -m 300 --retry 3 --retry-delay 15 -A "$UA" -o work/archive.csv -w '%{http_code}' "$ARCHIVE" 2>/dev/null)" || true
+            echo "fuelfinder-archive answered HTTP ${arc_code:-000}"
+            if [ "${arc_code:-}" = 200 ] && is_fuel_csv work/archive.csv; then
+              src=archive; src_url="$ARCHIVE"; mv work/archive.csv work/source.csv
+            fi
+          fi
+          [ -n "$src" ] || warn_end "No Fuel Finder source could be fetched (gov.uk HTTP ${gov_code:-000}, archive HTTP ${arc_code:-000}). The published file stays."
+
+          sha="$(sha256sum work/source.csv | cut -d' ' -f1)"
+          if [ -n "$pub_sha" ] && [ "$pub_sha" = "$sha" ]; then
+            echo "Source ($src) unchanged since the published file ($pub_gen)."
+            summary "Source ($src) unchanged since the published file ($pub_gen). Nothing uploaded."
+            exit 0
+          fi
+
+          rc=0
+          python3 tools/build-fuel-gb.py work/source.csv out --source "$src" --source-url "$src_url" --max-age-days 3 || rc=$?
+          [ "$rc" -eq 3 ] && warn_end "The $src source's newest price is more than 3 days old. The published file stays."
+          [ "$rc" -eq 0 ] || warn_end "The $src source could not be read (tools/build-fuel-gb.py exit $rc). The published file stays."
+
+          # A publish that fails is retried by the next run; once the published file is a day
+          # old the run fails, because then something needs fixing.
+          publish_failed() {
+            local age=999999
+            if [ -n "$pub_gen" ]; then age=$(( $(date -u +%s) - $(date -u -d "$pub_gen" +%s) )); fi
+            [ "$age" -lt 86400 ] && warn_end "Could not publish to the fuel-gb release; the next run tries again."
+            echo "::error::The fuel-gb release has not been updated for a day and this run could not publish."
+            exit 1
+          }
+
+          NOTES="UK fuel prices for Vela Maps: the UK government's Fuel Finder data, from matthewgall/fuelfinder-archive, trimmed by tools/build-fuel-gb.py and checked hourly by fuel-gb.yml. Contains public sector information licensed under the Open Government Licence v3.0. Data files for the app; do not delete."
+          if ! view_err="$(gh release view fuel-gb --repo "$REPO" --json tagName 2>&1 >/dev/null)"; then
+            if grep -qi "not found" <<<"$view_err"; then
+              gh_retry gh release create fuel-gb --repo "$REPO" --prerelease --target "$CELLS_RELEASE_TARGET" \
+                --title "UK fuel prices" --notes "$NOTES" >/dev/null || publish_failed
+            else
+              echo "$view_err"
+              publish_failed
+            fi
+          fi
+          # The data file first, so a manifest never names a file that is not there yet.
+          gh_retry gh release upload fuel-gb out/fuel-gb.csv.gz --repo "$REPO" --clobber || publish_failed
+          gh_retry gh release upload fuel-gb out/fuel-gb-manifest.json --repo "$REPO" --clobber || publish_failed
+
+          stations="$(jq -r .stations out/fuel-gb-manifest.json)"
+          newest="$(jq -r .newestPrice out/fuel-gb-manifest.json)"
+          bytes="$(jq -r .fileBytes out/fuel-gb-manifest.json)"
+          summary "Published $stations forecourts from $src, newest price $newest, $bytes bytes."

@@ -61,7 +61,8 @@ before posting.
 Code, comments, docs, commits and the base strings are US English. Exceptions, all data:
 `values-en-rGB`; strings that must match a foreign source (OSM tag values such as
 `fitness_centre`, the MOTIS field `cancelled`), where a keyword list keeps both spellings;
-platform names (`isCancelled`); and GitHub's workflow function `cancelled()`. After a spelling
+platform names (`isCancelled`); GitHub's workflow function `cancelled()`; and the name of the
+Open Government Licence, which the UK fuel price credit must quote. After a spelling
 sweep, grep `.github/workflows` for `cancelled()` before pushing: `canceled()` does not parse
 and the workflow fails with zero jobs.
 
@@ -161,7 +162,7 @@ screen silently stops recomposing.
 
 Every tag that does not start with `v0.` is file hosting: voices, speech models, the Cronet
 and sherpa builds, routing regions, place packs, the places and basemap archives, overlays,
-map fonts, road features, cameras, grid cells. Those files exist nowhere else.
+map fonts, road features, cameras, grid cells, UK fuel prices. Those files exist nowhere else.
 
 - Anything that deletes or edits releases selects by the tag pattern `v0.*`. Never by
   "prerelease" or age. A cleanup that did otherwise took four offline features down.
@@ -174,7 +175,9 @@ map fonts, road features, cameras, grid cells. Those files exist nowhere else.
 - The Actions token has 1,000 API requests an hour for the whole repository. GitHub calls in
   a workflow go through `scripts/gh-retry.sh`, and a bake leaves 200 for everything else.
 - Bakes have no schedules of their own. `bake-conductor.yml` starts one at a time from
-  `tools/bake-schedule.json`. A new bake is an entry there.
+  `tools/bake-schedule.json`. A new bake is an entry there. The exception is `fuel-gb.yml` (UK
+  fuel prices), which checks hourly on its own cron: it fetches one small file and spends no API
+  request while its source is unchanged.
 - Every OSM extract download goes through `scripts/fetch-pbf.sh`.
 - A manifest is derived from the files on its release (`scripts/repair-*-manifest.sh`), never
   from one run's own output. A pending job in a concurrency group is canceled when a newer

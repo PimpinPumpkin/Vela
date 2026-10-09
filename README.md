@@ -324,7 +324,10 @@ Microsoft Building Footprints extracts and carry their licenses in the release
 notes of the hosting release. The places on the map are Overture Maps
 (CDLA-Permissive 2.0) and AllThePlaces data, positioned with OpenStreetMap. Closed
 places are weeded out with Foursquare OS Places (Apache 2.0), OpenStreetMap and
-Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds.
+Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds. UK fuel
+prices come from the UK government's Fuel Finder, through
+[matthewgall/fuelfinder-archive](https://github.com/matthewgall/fuelfinder-archive), and
+contain public sector information licensed under the Open Government Licence v3.0.
 Satellite imagery is Esri World Imagery, with Google imagery where Esri has none
 at close zoom.
 

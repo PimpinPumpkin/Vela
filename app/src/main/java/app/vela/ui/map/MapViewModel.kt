@@ -549,6 +549,8 @@ class MapViewModel @Inject constructor(
         override fun onNavRoadLatin(map: Map<String, String>) = this@MapViewModel.onNavRoadLatin(map)
     }
     private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost)
+    // UK gas stations get their price from the Fuel Finder file (SPEC 5.8). Above init like nav.
+    private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
 
 
     init {
@@ -809,6 +811,7 @@ class MapViewModel @Inject constructor(
         // The streamed speed limit is read through the shared client, counted with the map's own requests.
         app.vela.data.StreamedSpeedLimit.http = http.newBuilder().addInterceptor(app.vela.diag.NetCount).addInterceptor(app.vela.offline.ReleaseRedirects).build()
         nav.bind()
+        ukFuel.bind()
         // Turning the transit lines on (or off) acts at once, not at the next pan.
         viewModelScope.launch {
             androidx.compose.runtime.snapshotFlow { app.vela.ui.TransitLayer.on.value }.collect {
@@ -8189,7 +8192,7 @@ class MapViewModel @Inject constructor(
                 runCatching { overlayStore.installedIds().forEach { overlayStore.delete(it) } }
                 val keep = setOf("index.json", "revs.json", "dead.json")
                 runCatching { cellStore.clearIndex() }
-                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs", "cells")) {
+                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs", "cells", "fuelgb")) {
                     val base = if (folder in app.vela.offline.StorageLocation.FOLDERS) app.vela.offline.StorageLocation.root(appContext) else appContext.filesDir
                     java.io.File(base, folder).listFiles()?.forEach { f ->
                         if (f.name !in keep) runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
