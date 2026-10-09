@@ -3282,9 +3282,9 @@ Gate state is composable-scoped, because `getMapAsync` can register listeners tw
 The status says "ready" once, after the last piece, or "incomplete" when one failed. A places
 or basemap piece that never arrived shows as an update on the region's row (7.3).
 
-Saving an area with the whole-region box checked runs the same download for the smallest
-region covering the area's center and also pulls the smallest covering building overlay
-(`downloadRoutingForArea`). Address and maxspeed overlays are only streamed. Road features
+Saving an area with the whole-region box checked runs the same download for the region
+`RegionPick` names for the area's center (7.2) and also pulls the smallest covering building
+overlay (`downloadRoutingForArea`). Address and maxspeed overlays are only streamed. Road features
 download per region the first time the map or a route needs them (4.9).
 
 GraphHopper graphs are retired. `LegacyGraphs.purge` deletes `filesDir/graphs` at launch when it
@@ -3491,6 +3491,14 @@ settings row.
 A region download pulls the places or basemap archive with the region's id (`archivesFor`).
 Without one it pulls every archive whose box center lies inside the region, and without any of
 those the smallest archive covering the region's center.
+
+`RegionPick` decides which region a download is offered or started for: the smallest covering
+region, unless a larger covering region is installed, which then answers as already
+downloaded. A phone that holds a whole state is therefore not offered one of its parts. It
+serves the area picker's plan and its "too large" line (`areaDownloadPlan`), the region that
+comes with a saved area, the one-time routing offer, and the places and basemap archives of a
+saved area. The low-zoom world basemap covers every point and never counts as installed
+coverage.
 
 #### Places layer
 

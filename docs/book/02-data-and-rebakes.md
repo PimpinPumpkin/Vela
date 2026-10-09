@@ -179,6 +179,10 @@ added since the script last ran) the stores fall back to `RegionPolys.boxCovers`
 regions the smallest box wins. `RegionPolysTest` fails when a catalog id has no polygon, so
 rerun the script after adding a row.
 
+A download is offered for the smallest covering region unless a larger covering one is already
+on the phone (`RegionPick`). Someone who downloaded a whole state before it was offered in
+parts keeps using it and is not asked to download a part.
+
 An extract that crosses the antimeridian reports a box from longitude -180 to 180, which read
 literally covers every point in its latitude band. A house-number overlay with such a box would
 hide the basemap's own house numbers across the band. `boxCovers` therefore rejects a box 350
