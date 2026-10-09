@@ -27,21 +27,102 @@ object FuelGb {
     const val MATCH_M = 75.0
     /** A forecourt whose brand agrees with the place's name wins over a nearer one by up to this. */
     const val BRAND_SLACK_M = 25.0
-    /** A forecourt whose newest price is older than this shows nothing. */
-    const val MAX_AGE_S = 45L * 86_400L
+    /** A forecourt whose newest price report is older than this shows nothing. Stations report
+     *  only when a price changes, so an old report is often still the price; in the 2026-10-08
+     *  file 57% of forecourts had reported within 7 days of its newest report, 87% within 14,
+     *  96% within 21. */
+    const val MAX_AGE_S = 21L * 86_400L
+    /** A file whose newest report is older than this shows no prices at all: the feed stopped. */
+    const val FEED_MAX_AGE_S = 2L * 86_400L
 
-    // The box that decides whether a place could be in the Fuel Finder data at all, and so
-    // whether the file is worth downloading. It also takes in Ireland, where nothing matches.
+    /** Google's language-independent type for a gas station in the search reply ([Place.placeType]). */
+    const val GAS_STATION_TYPE = "SearchResult.TYPE_GAS_STATION"
+    /** The country Fuel Finder covers ([Place.countryCode]); Northern Ireland is part of it. */
+    const val FUEL_FINDER_COUNTRY = "GB"
+
+    // Where a place without a country could be in the Fuel Finder data, which decides whether the
+    // file is worth downloading: this box, less the island of Ireland, except Northern Ireland.
     const val UK_SOUTH = 49.8
     const val UK_NORTH = 60.9
     const val UK_WEST = -8.7
     const val UK_EAST = 1.8
 
-    fun inUk(p: LatLng): Boolean = p.lat in UK_SOUTH..UK_NORTH && p.lng in UK_WEST..UK_EAST
+    // (lat, lng) pairs. The island polygon runs through the sea between Ireland and Great Britain,
+    // clear of Wales, Galloway, Kintyre and Islay; west of the box it does not matter.
+    private val IRELAND = doubleArrayOf(
+        51.2, -11.0, 51.2, -6.0, 53.6, -5.85, 54.0, -5.4, 55.45, -6.2, 55.6, -7.0, 55.6, -11.0,
+    )
+    // Coarse Northern Ireland, kept a little inside the border where the two sides are close: every
+    // Northern Ireland forecourt in the 2026-10-08 file is inside it, and the Republic's border towns
+    // (Lifford, Muff, Omeath, Pettigo, Clones, Dundalk) are outside.
+    private val NORTHERN_IRELAND = doubleArrayOf(
+        55.35, -6.05, 55.10, -5.70, 54.75, -5.35, 54.00, -5.40, 54.02, -6.05,
+        54.096, -6.25, 54.12, -6.31, 54.05, -6.38, 54.04, -6.45, 54.045, -6.67,
+        54.17, -6.70, 54.19, -6.75, 54.33, -6.88, 54.43, -7.05, 54.30, -7.12,
+        54.235, -7.14, 54.21, -7.24, 54.17, -7.30, 54.13, -7.40, 54.16, -7.52,
+        54.17, -7.60, 54.22, -7.68, 54.292, -7.80, 54.294, -7.90, 54.43, -8.16,
+        54.485, -8.13, 54.50, -8.04, 54.53, -7.85, 54.66, -7.70, 54.79, -7.556,
+        54.832, -7.479, 54.98, -7.42, 55.03, -7.375, 55.062, -7.275, 55.20, -6.97,
+    )
 
-    /** A gas station still without a price, inside the UK box. [isFuel] is the app's own test. */
-    fun wants(place: Place, isFuel: (Place) -> Boolean): Boolean =
-        place.fuelPrice == null && inUk(place.location) && isFuel(place)
+    /** Inside the area a Fuel Finder forecourt can be, for a place with no country. */
+    fun inUk(p: LatLng): Boolean {
+        if (p.lat !in UK_SOUTH..UK_NORTH || p.lng !in UK_WEST..UK_EAST) return false
+        return !inPolygon(IRELAND, p) || inPolygon(NORTHERN_IRELAND, p)
+    }
+
+    private fun inPolygon(poly: DoubleArray, p: LatLng): Boolean {
+        var inside = false
+        val n = poly.size / 2
+        var j = n - 1
+        for (i in 0 until n) {
+            val yi = poly[2 * i]; val xi = poly[2 * i + 1]
+            val yj = poly[2 * j]; val xj = poly[2 * j + 1]
+            if ((yi > p.lat) != (yj > p.lat) && p.lng < (xj - xi) * (p.lat - yi) / (yj - yi) + xi) inside = !inside
+            j = i
+        }
+        return inside
+    }
+
+    /** A gas station: Google's own type when the place has one (the same in every app language),
+     *  else [byCategory], the app's icon rule, for open-data places whose categories are English. */
+    fun isGasStation(place: Place, byCategory: (Place) -> Boolean): Boolean =
+        place.placeType?.let { it == GAS_STATION_TYPE } ?: byCategory(place)
+
+    /** In the Fuel Finder area: Google's country when the place has one, else [inUk]. */
+    fun inFuelFinderArea(place: Place): Boolean =
+        place.countryCode?.equals(FUEL_FINDER_COUNTRY, ignoreCase = true) ?: inUk(place.location)
+
+    /** A gas station still without a price, in the Fuel Finder area. */
+    fun wants(place: Place, byCategory: (Place) -> Boolean): Boolean =
+        place.fuelPrice == null && inFuelFinderArea(place) && isGasStation(place, byCategory)
+
+    /** Whether the file is recent enough to show any price: its newest report within [FEED_MAX_AGE_S]. */
+    fun fresh(data: FuelGbStations, nowSec: Long): Boolean =
+        data.newestReport > 0 && nowSec - data.newestReport <= FEED_MAX_AGE_S
+
+    /** Whole local days from a report at [atSec] to [nowSec]: 0 today, 1 yesterday. */
+    fun daysAgo(atSec: Long, nowSec: Long, zone: java.time.ZoneId): Int {
+        val then = java.time.Instant.ofEpochSecond(atSec).atZone(zone).toLocalDate()
+        val now = java.time.Instant.ofEpochSecond(nowSec).atZone(zone).toLocalDate()
+        return java.time.temporal.ChronoUnit.DAYS.between(then, now).toInt().coerceAtLeast(0)
+    }
+
+    /**
+     * [places] with UK prices filled from the file [load] returns, for a screen with no live state
+     * to update (the car). [load] runs (and may download) only when a place needs a price, so a
+     * list with no UK gas station never touches the network. The same list when nothing changed.
+     */
+    suspend fun fill(
+        places: List<Place>,
+        nowSec: Long,
+        byCategory: (Place) -> Boolean,
+        load: suspend () -> FuelGbStations?,
+    ): List<Place> {
+        if (places.none { wants(it, byCategory) }) return places
+        val data = load() ?: return places
+        return annotateAll(places, data, nowSec, byCategory)
+    }
 
     fun parseGzip(input: InputStream): FuelGbStations =
         GZIPInputStream(input, 1 shl 16).bufferedReader().use { parse(it) }
@@ -122,20 +203,23 @@ object FuelGb {
         return listOfNotNull(petrol, diesel).joinToString(" · ").ifEmpty { null }
     }
 
-    /** [place] with its UK price filled in, or the same instance when there is nothing to fill. */
-    fun annotate(place: Place, data: FuelGbStations, nowSec: Long, isFuel: (Place) -> Boolean): Place {
-        if (!wants(place, isFuel)) return place
+    /** [place] with its UK price and report time filled in, or the same instance when there is
+     *  nothing to fill (not a UK gas station, no forecourt close enough, its prices too old, or
+     *  the whole file stale). [byCategory] is the fallback gas-station test ([isGasStation]). */
+    fun annotate(place: Place, data: FuelGbStations, nowSec: Long, byCategory: (Place) -> Boolean): Place {
+        if (!fresh(data, nowSec) || !wants(place, byCategory)) return place
         val i = pick(data, place.name, place.location) ?: return place
         val text = label(data, i, nowSec) ?: return place
-        return place.copy(fuelPrice = text)
+        return place.copy(fuelPrice = text, fuelPriceAt = data.updated[i])
     }
 
     /** [places] with every UK gas station's price filled in; the same list when none changed. */
-    fun annotateAll(places: List<Place>, data: FuelGbStations, nowSec: Long, isFuel: (Place) -> Boolean): List<Place> {
+    fun annotateAll(places: List<Place>, data: FuelGbStations, nowSec: Long, byCategory: (Place) -> Boolean): List<Place> {
+        if (!fresh(data, nowSec)) return places
         var out: MutableList<Place>? = null
         for (k in places.indices) {
             val p = places[k]
-            val q = annotate(p, data, nowSec, isFuel)
+            val q = annotate(p, data, nowSec, byCategory)
             if (q !== p) {
                 if (out == null) out = places.toMutableList()
                 out[k] = q
@@ -182,6 +266,9 @@ class FuelGbStations(
     val updated: LongArray,
 ) {
     val size: Int get() = lat.size
+
+    /** The newest price report in the file, unix seconds (0 for an empty file). */
+    val newestReport: Long = updated.maxOrNull() ?: 0L
 
     private val grid: HashMap<Long, IntArray> = HashMap<Long, MutableList<Int>>().let { g ->
         for (i in lat.indices) g.getOrPut(key(cell(lat[i]), cell(lng[i]))) { ArrayList(4) }.add(i)

@@ -70,6 +70,45 @@ class SearchSnapTest {
         assertEquals(null, places[1].fuelPrice)
     }
 
+    /** The same [88] block carries Google's language-independent type at [1] and the place's
+     *  country at [2][1] (SPEC 5.8). The nodes are trimmed from a London petrol-station search
+     *  and a bike-shop search; in the UK [88][0] is a fuel label, which the digit gate keeps out
+     *  of fuelPrice. Coordinates are London's. */
+    @Test fun parsesPlaceTypeAndCountry() {
+        fun place(name: String, lng: String, p88: String) = "[null," + arr(
+            89,
+            9 to "[null,null,51.5074,$lng]",
+            11 to "\"$name\"",
+            13 to "[\"Petrol Station\"]",
+            88 to p88,
+        ) + "]"
+        val gb = """["Diesel fuel","SearchResult.TYPE_GAS_STATION",["SearchResult.TYPE_GAS_STATION","GB",69,84,85,151],"Esso",[null,null,201,202,1196,570]]"""
+        val shop = """[null,"SearchResult.TYPE_SPORTING_GOODS",["SearchResult.TYPE_SPORTING_GOODS","FR",73,84,85,151],"Bikes",[null,null,273,274,1231,585]]"""
+        val bare = """[null,null,null,"Repairs",[null,null,188,187,1166,186]]"""
+        val root = arr(65, 64 to "[" + place("Esso", "-0.1278", gb) + "," + place("Bikes", "-0.1300", shop) + "," + place("Repairs", "-0.1320", bare) + "]")
+        val places = SearchParser.parse("petrol station", Json.parseToJsonElement(root)).places
+        assertEquals(3, places.size)
+        assertEquals("SearchResult.TYPE_GAS_STATION", places[0].placeType)
+        assertEquals("GB", places[0].countryCode)
+        assertEquals(null, places[0].fuelPrice) // "Diesel fuel" is a label, not a price
+        assertEquals("SearchResult.TYPE_SPORTING_GOODS", places[1].placeType)
+        assertEquals("FR", places[1].countryCode)
+        assertEquals(null, places[2].placeType)
+        assertEquals(null, places[2].countryCode)
+    }
+
+    /** The new paths are defaults a bundle may override, and the repo's own bundle (which does not
+     *  list them) still yields them through parseBundle's merge over DEFAULT_PATHS. */
+    @Test fun placeTypePathsReachTheBundle() {
+        val f = listOf(java.io.File("../calibration.json"), java.io.File("calibration.json")).first { it.exists() }
+        val cal = app.vela.core.config.CalibrationStore.parseBundle(f.readText())!!
+        assertEquals(listOf(1, 88, 1), cal.paths["placeType"])
+        assertEquals(listOf(1, 88, 2, 1), cal.paths["countryCode"])
+        val moved = app.vela.core.config.CalibrationStore.parseBundle("""{"version":99,"paths":{"countryCode":[1,89,2,1]}}""")!!
+        assertEquals(listOf(1, 89, 2, 1), moved.paths["countryCode"])
+        assertEquals(listOf(1, 88, 1), moved.paths["placeType"])
+    }
+
     /** "People also search for": the focused result's sibling list at root[2][11][0], each
      *  entry [featureId, name, [[_,_,lat,lng], …, rating@6]]. (Verified on-device against a
      *  real response: 8 related salons for a focused nail-salon search.) */

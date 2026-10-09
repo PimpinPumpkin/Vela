@@ -297,7 +297,9 @@ Results are at `root[64][i]`, and each entry's place node is `[1]`. The keys are
 | `website` | `[1][7][0]` | |
 | `phone` | `[1][178][0][0]` | |
 | `priceText` | `[1][4][2]` | a range such as "$10-20"; `SearchParser.priceLevelOf` derives the 1 to 4 level |
-| `fuelPrice` | `[1][88][0]` | "$5.34/Regular" on US stations; absent on UK ones, which 5.8 fills |
+| `fuelPrice` | `[1][88][0]` | "$5.34/Regular" on US stations; on UK ones a label ("Diesel fuel") the digit gate rejects, and 5.8 fills the price |
+| `placeType` | `[1][88][1]` | `SearchResult.TYPE_<KIND>`, language-independent; null when the block is empty |
+| `countryCode` | `[1][88][2][1]` | two letters ("GB", "FR") |
 | `actionLabel`, `actionUrl` | `[1][75][0][0][5][0]`, `[1][75][0][0][5][1][2][0]` | the Book, Reserve or Order link |
 | `featureId` | `[1][10]` | `0xHIGH:0xLOW` |
 | `placeId` | `[1][78]` | |
@@ -2879,8 +2881,8 @@ prices under the Open Government Licence v3.0.
 
 `core/data/FuelGbStore` keeps the file in `fuelgb/` under `StorageLocation.root`.
 
-- Nothing is fetched until a gas station inside the UK box (49.8 to 60.9 N, 8.7 W to 1.8 E,
-  `FuelGb.inUk`) has no price. The box takes in Ireland, where nothing matches.
+- Nothing is fetched until a gas station in the Fuel Finder area has no price (the rules are
+  under Matching).
 - At most every `CHECK_EVERY_MS` (3 h, the stamp file `checked`) it reads the manifest and
   downloads the data file only when `fileSha256` differs from the stored manifest's. GitHub's
   release downloads give no conditional request to lean on, so the manifest is the change test.
@@ -2893,11 +2895,23 @@ prices under the Open Government Licence v3.0.
 - `ui/map/UkFuelPrices` watches `MapUiState.results` and `selected` by identity. Google results,
   place-pack results, places-archive results and a tapped open-data place all pass through that
   state, so the prices work with Google off. Results show at once and the prices land when the
-  file is ready. A gas station is the `fuel` group of `PoiIcons.groupFor`, less categories that
-  say "charg".
+  file is ready.
 
 #### Matching
 
+- A place is a gas station when Google's reply types it `SearchResult.TYPE_GAS_STATION`
+  (`Place.placeType`, path `placeType` = `[1][88][1]`), which is the same in every app language.
+  A place with no type (open data, the place packs, whose categories come out of the bakes in
+  English) falls back to the `fuel` group of `PoiIcons.groupFor`, less categories that say
+  "charg" (`UkFuelPrices.isFuelByCategory`).
+- A place is in the Fuel Finder area when Google's country for it is `GB` (`Place.countryCode`,
+  path `countryCode` = `[1][88][2][1]`). A place with no country is tested by `FuelGb.inUk`: the
+  box 49.8 to 60.9 N, 8.7 W to 1.8 E, less a coarse polygon of the island of Ireland, except a
+  coarse polygon of Northern Ireland (35 points, kept a little inside the border where the two
+  sides are close). Fuel Finder covers Northern Ireland (592 forecourts in the 2026-10-08 file,
+  every one inside the area) and not the Republic, whose border towns (Lifford, Muff, Omeath,
+  Pettigo, Clones, Dundalk) are outside it, so a Republic user never triggers the download. The
+  polygons only gate the download; a match still needs a forecourt within `MATCH_M`.
 - `FuelGb.pick` takes the forecourts within `MATCH_M` (75 m), nearest first. One whose brand
   agrees with the place's name wins when it is at most `BRAND_SLACK_M` (25 m) farther than the
   nearest. A brand agrees when one of its words, filler words dropped ("ltd", "petrol", "fuels",
@@ -2906,8 +2920,18 @@ prices under the Open Government Licence v3.0.
   the same brand. The other two were a supermarket shop on another brand's forecourt, where the
   nearest forecourt is the right one.
 - `FuelGb.label` shows nothing for a forecourt whose newest report is older than `MAX_AGE_S`
-  (45 days). Otherwise the text is "172.9p/E10 · 199.9p/B7": petrol first (E10, else E5), then
-  standard diesel as B7. These are the labels on UK pumps, so the text is not translated.
+  (21 days). Stations report only when a price changes, so an old report is often still the
+  price: in the 2026-10-08 file a forecourt's newest report was within 1 day of the file's newest
+  for 15% of forecourts, 3 days for 31%, 7 days for 57%, 14 days for 87%, 21 days for 96% and 30
+  days for 99%. Otherwise the
+  text is "172.9p/E10 · 199.9p/B7": petrol first (E10, else E5), then standard diesel as B7.
+  These are the labels on UK pumps, so the text is not translated.
+- A file whose newest report is more than `FEED_MAX_AGE_S` (2 days) old fills nothing at all
+  (`FuelGb.fresh`): the archive has stopped, and every price in it is aging. Prices come back
+  with the next fresh file.
+- The report time goes in `Place.fuelPriceAt` (unix seconds). The place sheet's pump line adds
+  "Updated today", "Updated yesterday" or "Updated N days ago" after the prices, in local
+  calendar days (`FuelGb.daysAgo`). Google's US prices carry no time and show none.
 - The text goes in `Place.fuelPrice`, so it shows where Google's price shows: the result bubble
   (`PoiIcons.fuelShort`, the text before the first '/', is the petrol price), the results row's
   pump line, and the place sheet's pump line, first in the Overview body. That line sits below the

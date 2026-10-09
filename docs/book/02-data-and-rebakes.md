@@ -166,12 +166,23 @@ more than 3 days old, or that cannot be fetched, ends the run green with a warni
 published file stays.
 
 The phone downloads the file the first time a UK gas station without a price shows up in
-results or on a place sheet, and checks the small manifest again at most every 3 hours. A gas
-station takes the nearest forecourt within 75 m. A forecourt of the place's own brand wins when
-it is at most 25 m farther, so a Tesco forecourt beside an Esso goes to the Tesco listing, while
-a supermarket shop on another brand's forecourt takes that forecourt. Prices older than 45 days
-are not shown. The text reads "172.9p/E10 · 199.9p/B7"; the map bubble shows the petrol price.
-The rules and constants are in [SPEC section 5.8](../../SPEC.md).
+results or on a place sheet, and checks the small manifest again at most
+every 3 hours. A Google place counts as a UK gas station by the type and country Google's reply
+carries, which read the same in every app language; an open-data place, which has neither, by its
+category and position. That position test leaves out the Republic of Ireland, which Fuel Finder
+does not cover, and keeps Northern Ireland, which it does, so a phone in Dublin never downloads
+the file.
+
+A gas station takes the nearest forecourt within 75 m. A forecourt of the place's own brand wins
+when it is at most 25 m farther, so a Tesco forecourt beside an Esso goes to the Tesco listing,
+while a supermarket shop on another brand's forecourt takes that forecourt. The text reads
+"172.9p/E10 · 199.9p/B7"; the map bubble shows the petrol price.
+
+Stations report a price only when it changes, so an old report is often still the price, and the
+place sheet says how old it is ("Updated 3 days ago"). A station whose newest report is more
+than 21 days old shows nothing, and a file whose newest report is more than 2 days old shows no
+prices at all, because then the archive has stopped. The rules and constants are in
+[SPEC section 5.8](../../SPEC.md).
 
 ### Which region a point is in
 
@@ -270,5 +281,5 @@ regions is [chapter 8](08-offline.md).
 - A building overlay saved with an offline area and the world floor are never refreshed. The
   font zip is replaced only when an app update raises `GlyphPackStore.PACK_VERSION`.
 - UK fuel prices depend on one person's archive repository while the government's site refuses
-  GitHub's runners. If the archive stops, the runs warn and the app keeps showing the last file
-  until its prices pass 45 days.
+  GitHub's runners. If the archive stops, the runs warn, and two days later the app shows no UK
+  prices until it starts again.

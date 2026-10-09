@@ -263,6 +263,12 @@ data class Calibration(
             // "gas stations" capture 2026-07-10 ([88] also carries the station type marker +
             // chain name; [0] is the price). Null on every non-fuel place.
             "fuelPrice" to listOf(1, 88, 0),
+            // The same block's language-independent type ("SearchResult.TYPE_GAS_STATION") and the
+            // place's country ("GB"), from captures of a London and a French search 2026-10-08:
+            // [88] = [label, type, [type, country, ...], name, ...]. In the UK [88][0] is a fuel
+            // label ("Diesel fuel"), which fuelPrice's digit gate keeps out.
+            "placeType" to listOf(1, 88, 1),
+            "countryCode" to listOf(1, 88, 2, 1),
             "website" to listOf(1, 7, 0),
             // Action link (Google's "Book online" / "Reserve a table" / "Order online"
             // button): the primary action node at [1][75][0][0][5] — label [0], URL [1][2][0].

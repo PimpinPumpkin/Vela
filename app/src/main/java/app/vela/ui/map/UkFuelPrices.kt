@@ -21,7 +21,8 @@ import java.io.File
  * [FuelGbStore] downloads the first time it is needed and checks again at most every 3 hours.
  * Results show at once; the prices land when the file is ready. Whatever made the places
  * (Google, the downloaded packs, the places archives, a tapped open-data place) goes through the
- * same state, so this needs no hook in any of them, and works with Google off.
+ * same state, so this needs no hook in any of them, and works with Google off. The car's screens
+ * have no shared state and call [fill] instead.
  *
  * Construct it ABOVE the view model's `init` and call [bind] from there: the collector's first
  * pass runs inline.
@@ -33,7 +34,7 @@ internal class UkFuelPrices(
     http: okhttp3.OkHttpClient,
 ) {
     private val store = storeFor(appContext, http)
-    private val fuel: (Place) -> Boolean = { isFuel(it) }
+    private val byCategory: (Place) -> Boolean = { isFuelByCategory(it) }
     private var job: Job? = null
 
     fun bind() {
@@ -45,7 +46,7 @@ internal class UkFuelPrices(
     }
 
     private fun onPlaces(results: List<Place>, selected: Place?) {
-        if (results.none { FuelGb.wants(it, fuel) } && (selected == null || !FuelGb.wants(selected, fuel))) return
+        if (results.none { FuelGb.wants(it, byCategory) } && (selected == null || !FuelGb.wants(selected, byCategory))) return
         store.current?.let(::apply)
         if (job?.isActive == true) return
         job = scope.launch {
@@ -56,19 +57,29 @@ internal class UkFuelPrices(
     private fun apply(data: FuelGbStations) {
         val now = System.currentTimeMillis() / 1000
         state.update { s ->
-            val results = FuelGb.annotateAll(s.results, data, now, fuel)
-            val selected = s.selected?.let { FuelGb.annotate(it, data, now, fuel) }
+            val results = FuelGb.annotateAll(s.results, data, now, byCategory)
+            val selected = s.selected?.let { FuelGb.annotate(it, data, now, byCategory) }
             if (results === s.results && selected === s.selected) s else s.copy(results = results, selected = selected)
         }
     }
 
     companion object {
-        /** A gas station by the map's own icon rule, without the chargers that share its group. */
-        fun isFuel(p: Place): Boolean =
+        /** The fallback gas-station test for a place without Google's type (open data, the place
+         *  packs): the map's own icon rule, without the chargers that share its group. */
+        fun isFuelByCategory(p: Place): Boolean =
             PoiIcons.groupFor(p.name, p.category) == "fuel" &&
                 p.category?.lowercase()?.contains("charg") != true
 
-        // One store per process, so a recreated view model keeps the parsed file.
+        /** [places] with UK prices filled from the shared store, for the car's result rows.
+         *  Downloads the file first when a UK gas station needs it; the same list otherwise. */
+        suspend fun fill(context: Context, http: okhttp3.OkHttpClient, places: List<Place>): List<Place> =
+            FuelGb.fill(places, System.currentTimeMillis() / 1000, ::isFuelByCategory) {
+                val store = storeFor(context.applicationContext, http)
+                store.ensure()
+                store.current
+            }
+
+        // One store per process, so a recreated view model and the car share the parsed file.
         @Volatile private var shared: FuelGbStore? = null
 
         private fun storeFor(context: Context, http: okhttp3.OkHttpClient): FuelGbStore = shared ?: synchronized(this) {

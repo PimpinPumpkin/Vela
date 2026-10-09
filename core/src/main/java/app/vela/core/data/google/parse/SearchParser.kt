@@ -191,6 +191,10 @@ object SearchParser {
             // Gas stations carry a live fuel price ("$5.34/Regular"); sanity-gate on a digit so
             // a shape drift can never put a stray label where the UI expects a price.
             fuelPrice = field("fuelPrice").str()?.trim()?.takeIf { it.any(Char::isDigit) && it.length <= 24 },
+            // The reply's own type and country (SPEC 5.8): the same in every app language, so a
+            // UK gas station is found as one whatever its category reads.
+            placeType = field("placeType").str()?.takeIf { it.startsWith("SearchResult.TYPE_") && it.length <= 64 },
+            countryCode = field("countryCode").str()?.takeIf { it.length == 2 && it.all(Char::isLetter) }?.uppercase(),
             website = field("website").str(),
             // Action link (Book/Reserve/Order) — only when there's a real http(s) URL, so a
             // shape change can never render a button that opens garbage.

@@ -166,6 +166,87 @@ class FuelGbTest {
         assertFalse(FuelGb.inUk(LatLng(38.5449, -121.7405)))
     }
 
+    // ── Ireland: Fuel Finder covers Northern Ireland, not the Republic ───────────────────────
+
+    @Test fun northernIrelandIsInTheRepublicIsNot() {
+        // Belfast, Derry, Strabane (on the border river), Newry, Belleek, Enniskillen.
+        listOf(54.597 to -5.930, 55.000 to -7.320, 54.8306 to -7.4768, 54.176 to -6.338,
+            54.477 to -8.096, 54.344 to -7.639).forEach { (la, lo) -> assertTrue("$la,$lo", FuelGb.inUk(LatLng(la, lo))) }
+        // Dublin, Dundalk, Monaghan, Letterkenny, Wexford, and the border towns facing Strabane,
+        // Derry and Warrenpoint (Lifford, Muff, Omeath).
+        listOf(53.350 to -6.260, 54.000 to -6.400, 54.249 to -6.968, 54.950 to -7.730, 52.336 to -6.463,
+            54.8346 to -7.4824, 55.0689 to -7.2703, 54.0897 to -6.2607).forEach { (la, lo) -> assertFalse("$la,$lo", FuelGb.inUk(LatLng(la, lo))) }
+        // Points on Great Britain's coast facing Ireland stay in: Anglesey, Pembrokeshire, Galloway, Kintyre.
+        listOf(53.310 to -4.630, 51.880 to -5.270, 54.840 to -5.120, 55.310 to -5.800).forEach { (la, lo) -> assertTrue("$la,$lo", FuelGb.inUk(LatLng(la, lo))) }
+    }
+
+    // ── Google's type and country decide; the category is only the fallback ──────────────────
+
+    @Test fun googleTypeAndCountryWinOverCategoryAndPosition() {
+        // A German-language category on a Google gas station: the type decides.
+        val de = station("Esso", esso, category = "Tankstelle").copy(placeType = FuelGb.GAS_STATION_TYPE, countryCode = "GB")
+        assertEquals("172.9p/E10 · 199.9p/B7", FuelGb.annotate(de, data, now, isFuel).fuelPrice)
+        // A shop on a forecourt that Google types as a convenience store: no price.
+        val shop = station("Esso", esso).copy(placeType = "SearchResult.TYPE_CONVENIENCE_STORE", countryCode = "GB")
+        assertSame(shop, FuelGb.annotate(shop, data, now, isFuel))
+        // A country outside the feed is never matched, wherever the point sits.
+        val ie = station("Esso", esso).copy(placeType = FuelGb.GAS_STATION_TYPE, countryCode = "IE")
+        assertSame(ie, FuelGb.annotate(ie, data, now, isFuel))
+        // No type (an open-data place): the category rule, and the position, decide.
+        assertEquals("172.9p/E10 · 199.9p/B7", FuelGb.annotate(station("Esso", esso), data, now, isFuel).fuelPrice)
+    }
+
+    // ── Outdated prices ──────────────────────────────────────────────────────────────────────
+
+    @Test fun aStationOlderThanThreeWeeksShowsNothing() {
+        val t = 1_791_454_066L
+        val d = FuelGb.parse(StringReader("brand,lat,lng,e10,updated\nESSO,51.50740,-0.12780,172.9,${t - 20 * 86_400}\nBP,51.51000,-0.12000,169.9,$t\n"))
+        assertEquals("172.9p/E10", FuelGb.label(d, 0, t))
+        assertNull(FuelGb.label(d, 0, t + 2 * 86_400)) // 22 days
+    }
+
+    @Test fun aStaleFileShowsNoPricesAtAll() {
+        val p = station("Esso", esso)
+        // The file's newest report is 2026-10-08 10:07 UTC: a day later prices show...
+        assertNotNull(FuelGb.annotate(p, data, data.newestReport + 86_400, isFuel).fuelPrice)
+        // ...three days later the feed has stopped, and nothing is filled, the fresh Esso included.
+        assertFalse(FuelGb.fresh(data, data.newestReport + 3 * 86_400))
+        assertSame(p, FuelGb.annotate(p, data, data.newestReport + 3 * 86_400, isFuel))
+        val list = listOf(p)
+        assertSame(list, FuelGb.annotateAll(list, data, data.newestReport + 3 * 86_400, isFuel))
+    }
+
+    @Test fun annotationCarriesTheReportTime() {
+        val filled = FuelGb.annotate(station("Esso", esso), data, now, isFuel)
+        assertEquals(data.updated[data.brand.indexOf("ESSO")], filled.fuelPriceAt)
+        // Google's US price keeps no time.
+        assertNull(station("ARCO", LatLng(38.5449, -121.7405), price = "$5.34/Regular").fuelPriceAt)
+    }
+
+    @Test fun daysAgoCountsLocalCalendarDays() {
+        val utc = java.time.ZoneId.of("UTC")
+        val noon = 1_791_460_800L // 2026-10-08 12:00 UTC
+        assertEquals(0, FuelGb.daysAgo(noon - 3_600, noon, utc))
+        assertEquals(1, FuelGb.daysAgo(noon - 13 * 3_600, noon, utc)) // 23:00 the day before
+        assertEquals(5, FuelGb.daysAgo(noon - 5 * 86_400, noon, utc))
+        assertEquals(0, FuelGb.daysAgo(noon + 60, noon, utc)) // a clock a little behind
+    }
+
+    // ── The helper the car's screens use ─────────────────────────────────────────────────────
+
+    @Test fun fillLoadsOnlyWhenAUkGasStationNeedsAPrice() = runBlocking {
+        var loads = 0
+        val load: suspend () -> FuelGbStations? = { loads++; data }
+        val us = listOf(station("ARCO", LatLng(38.5449, -121.7405), price = "$5.34/Regular"), station("Cafe", esso, category = "Cafe"))
+        assertSame(us, FuelGb.fill(us, now, isFuel, load))
+        assertEquals(0, loads)
+        val uk = listOf(station("Tesco", tesco))
+        assertEquals("169.9p/E10 · 189.9p/B7", FuelGb.fill(uk, now, isFuel, load)[0].fuelPrice)
+        assertEquals(1, loads)
+        // Nothing loaded (offline, no file yet): the list comes back as it was.
+        assertSame(uk, FuelGb.fill(uk, now, isFuel) { null })
+    }
+
     // ── The store ────────────────────────────────────────────────────────────────────────────
 
     private class FakeRelease(var data: ByteArray) {

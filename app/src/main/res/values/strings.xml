@@ -1135,6 +1135,12 @@
     <string name="settings_map_data_overture_button">Overture Maps license</string>
     <string name="settings_map_data_fuel_gb">UK fuel prices come from the UK government\'s Fuel Finder, republished by matthewgall/fuelfinder-archive on GitHub. Contains public sector information licensed under the Open Government Licence v3.0.</string>
     <string name="settings_map_data_ogl_button">Open Government Licence</string>
+    <string name="place_fuel_updated_today">Updated today</string>
+    <string name="place_fuel_updated_yesterday">Updated yesterday</string>
+    <plurals name="place_fuel_updated_days">
+        <item quantity="one">Updated %d day ago</item>
+        <item quantity="other">Updated %d days ago</item>
+    </plurals>
     <string name="map_layers">Layers</string>
     <string name="settings_layers_button">Show layers button</string>
     <string name="settings_layers_button_hint">The button on the map that flips satellite, traffic, transit and terrain.</string>

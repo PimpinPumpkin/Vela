@@ -24,6 +24,14 @@ data class Place(
     // Gas stations only: Google's live fuel price, e.g. "$5.34/Regular" — shown on the result
     // marker, the list row and the place sheet. Null for every other kind of place.
     val fuelPrice: String? = null,
+    /** When the station last reported [fuelPrice], unix seconds. Set for UK prices only
+     *  (Fuel Finder, SPEC 5.8); Google's US prices carry no time. */
+    val fuelPriceAt: Long? = null,
+    /** Google's language-independent place type from the search reply ("SearchResult.TYPE_GAS_STATION"),
+     *  null for places from other sources. */
+    val placeType: String? = null,
+    /** The place's country as Google gives it in the search reply ("GB", "FR"), null elsewhere. */
+    val countryCode: String? = null,
     val phone: String? = null,
     val website: String? = null,
     val actionLabel: String? = null,  // Google's action button text ("Book online", "Reserve a table", "Order online")

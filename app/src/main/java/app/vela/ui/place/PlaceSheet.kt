@@ -1206,12 +1206,28 @@ fun PlaceSheet(
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
             // Gas stations: the fuel price, bold, first in the body like Google's gas prices card
             // ("$5.34/Regular" from Google, "172.9p/E10 · 199.9p/B7" in the UK). Below the action
-            // pills, so a price that lands after the sheet opened moves nothing above them.
+            // pills, so a price that lands after the sheet opened moves nothing above them. A UK
+            // price says how old its station's report is (SPEC 5.8); Google's carry no time.
             place.fuelPrice?.let { fp ->
+                val age = place.fuelPriceAt?.let { at ->
+                    val days = app.vela.core.data.FuelGb.daysAgo(at, System.currentTimeMillis() / 1000, java.time.ZoneId.systemDefault())
+                    when (days) {
+                        0 -> stringResource(R.string.place_fuel_updated_today)
+                        1 -> stringResource(R.string.place_fuel_updated_yesterday)
+                        else -> pluralStringResource(R.plurals.place_fuel_updated_days, days, days)
+                    }
+                }
                 Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Sym.LocalGasStation, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(fp, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = ink, modifier = Modifier.weight(1f))
+                    Text(
+                        buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ink)) { append(fp) }
+                            if (age != null) withStyle(SpanStyle(color = dim)) { append("  ·  $age") }
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
             place.fullAddress()?.let { addr ->
