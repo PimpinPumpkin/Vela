@@ -179,6 +179,9 @@ object NavEngine {
         // distance-first, but distance alone can't catch a wrong turn onto a road that runs within
         // the corridor of the planned one - the heading term ([HEADING_OFF_DEG]) does.
         bearingDeg: Double? = null,
+        // The next stop on a drive with stops (NavSession), so the voice says it is coming the
+        // way it says the destination is. Null = no stop cues, everything else unchanged.
+        stop: StopAhead? = null,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -403,6 +406,21 @@ object NavEngine {
         val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
         val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
         val detail = SpokenDetail.mode
+
+        // The next stop is said after the last maneuver before it ("Turn left onto Covell
+        // Boulevard, then Davis Food Co-op will be on your right"), and "into the parking lot"
+        // when the map says that turn enters one. Only on the step's first line and its turn-now
+        // line, so a stop is named at most twice for its turn.
+        val stopLeft = when (stop?.side) { "left" -> true; "right" -> false; else -> null }
+        val thenStopHere = stop != null && !isArrive && !isDepart && idxCur == stopLegManeuver(route, manAlong, stop.atM)
+        val lotTurnLeft = if (thenStopHere && stop!!.intoLot && lotTurnFits(target, stop.atM - manAlong[idxCur])) turnLeftOf(target.type) else null
+        var stopCuedNow = false
+        fun withStop(line: String): String {
+            if (!thenStopHere) return line
+            stopCuedNow = true
+            return if (lotTurnLeft != null) nav().intoLotThen(lotTurnLeft, stop!!.label, stopLeft)
+            else nav().thenStop(line, stop!!.label, stopLeft)
+        }
         if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
             // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
             val fromFar = !isArrive && (SpokenDetail.exitLike(target.type) || v >= SpokenDetail.FAST_MPS)
@@ -418,7 +436,7 @@ object NavEngine {
                     SpokenDetail.exitLike(target.type) -> nav().repeatShort(target.spokenInstruction())
                     else -> nav().repeatShort(target.instructionNoRoad ?: target.spokenInstruction())
                 }
-                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), line))
+                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), withStop(line)))
                 if (!isArrive) events += NavEvent.Haptic(target.type, approaching = true)
             }
         }
@@ -458,7 +476,12 @@ object NavEngine {
                 }
                 // The landmark cue rides on the plain form only: a lane line already says where
                 // to be, and "pass the light, then use the left 2 lanes" has the order backward.
-                val said = if (isArrive || (firstForStep && lane != null)) instruction else lightLead(target, dtn, instruction)
+                // A line that names the stop after it takes no light cue either: two "then"s.
+                val said = when {
+                    firstForStep && thenStopHere -> withStop(instruction)
+                    isArrive || (firstForStep && lane != null) -> instruction
+                    else -> lightLead(target, dtn, instruction)
+                }
                 events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), said))
                 // A light "get ready" tick once the NEAR band is reached, so bikers/walkers feel
                 // the turn coming without looking or hearing.
@@ -488,7 +511,7 @@ object NavEngine {
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
                     val turnText = if (spoken.isEmpty()) nav().spokenSign(target.spokenInstruction()) else nav().repeatShort(target.spokenInstruction())
                     // The shorter modes said their one line on the approach; the buzz below stays.
-                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(turnText, interrupt = true)
+                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(withStop(turnText), interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 spoken = spoken + TURN_NOW_SLOT
@@ -524,6 +547,19 @@ object NavEngine {
                 ) to events
             }
         }
+        // The stop's own approach cue, when no maneuver line named it: "In 500 feet, Davis Food
+        // Co-op will be on your right", at the near distance, like the destination's. Said once
+        // per stop, in every voice setting (the stop is an arrival), never off route, and never
+        // on top of another line in the same fix (the next fix still has it in range).
+        var stopCuedAt = if (stopCuedNow && stop != null) stop.atM else state.stopCuedAtM
+        if (stop != null && stopCuedAt != stop.atM && !offRoute && events.none { it is NavEvent.Speak }) {
+            val toStop = stop.atM - traveled
+            if (toStop <= nearM && toStop > ARRIVE_RADIUS_M * 2) {
+                val sayM = (if (toStop >= nearM * 0.85) nearM else round10(toStop)).coerceAtLeast(10.0)
+                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), nav().stopAhead(stop.label, stopLeft)))
+                stopCuedAt = stop.atM
+            }
+        }
         val newTarget = maneuvers[stepIndex]
         // Distance to the next turn measured ALONG the road, not crow-flies (which on a long
         // curved step reads wildly wrong) — the maneuver's window-anchored projection (see
@@ -549,8 +585,91 @@ object NavEngine {
             traveledM = traveled,
             reacquireHits = reacquireHits,
             rerouteBlocked = rerouteBlocked,
+            stopCuedAtM = stopCuedAt,
         )
         return newState to events
+    }
+
+    /** How far past the last maneuver before a stop the stop may sit for that maneuver to say it
+     *  ("..., then <stop> will be on your right"): "then" means soon. */
+    const val STOP_THEN_M = 300.0
+    /** How far past a turn into a parking lot the stop may sit for the turn to say so. */
+    const val LOT_THEN_M = 150.0
+    /** A stop's pin this close to the route line is on the road: "ahead", not a side. */
+    private const val SIDE_MIN_OFF_M = 8.0
+    /** The line is read this far either side of the stop's mark for the side test. */
+    private const val SIDE_SPAN_M = 25.0
+    /** More bend than this through the mark and the side is not said (a corner, a U-turn). */
+    private const val SIDE_MAX_BEND_DEG = 45.0
+
+    /** The voice says nothing for this maneuver in any setting: a continue or a straight-on with no
+     *  real fork in its lanes. */
+    private fun quiet(m: Maneuver) =
+        (m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) && !app.vela.core.model.continueHasGenuineFork(m.lanes)
+
+    /** The maneuver whose leg the stop at [atM] sits on, among those the voice speaks (a silent
+     *  rename on the way is passed over), when the stop is within [STOP_THEN_M] of it; else -1. */
+    internal fun stopLegManeuver(route: Route, manAlong: DoubleArray, atM: Double): Int {
+        val ms = route.maneuvers
+        var k = -1
+        for (i in ms.indices) { if (manAlong[i] <= atM) k = i else break }
+        while (k > 0 && quiet(ms[k])) k--
+        if (k <= 0 || ms[k].type == ManeuverType.ARRIVE || ms[k].type == ManeuverType.DEPART) return -1
+        return if (atM - manAlong[k] <= STOP_THEN_M) k else -1
+    }
+
+    /** "left" for a left turn of any sharpness, "right" for a right one, null otherwise. */
+    private fun turnLeftOf(type: ManeuverType): Boolean? = when (type) {
+        ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT -> true
+        ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT -> false
+        else -> null
+    }
+
+    /** A turn that can be said as "into the parking lot": a left or right onto a road with no name
+     *  and no number, with the stop at most [LOT_THEN_M] past it. */
+    private fun lotTurnFits(m: Maneuver, stopPastM: Double): Boolean =
+        turnLeftOf(m.type) != null && m.road.isNullOrBlank() && m.ref.isNullOrBlank() && stopPastM in 0.0..LOT_THEN_M
+
+    /** The maneuver before the stop at [atM] that might turn into its parking lot, for the map
+     *  lookup that decides it ([ParkingLotTurn]): its index, and its along-route meters. Null
+     *  when the last turn before the stop cannot be one (a named road, not a turn, too far). */
+    fun lotTurnCandidate(route: Route, atM: Double): Pair<Int, Double>? {
+        if (route.polyline.size < 2 || route.maneuvers.isEmpty()) return null
+        val man = geomFor(route).manAlong
+        val k = stopLegManeuver(route, man, atM)
+        if (k < 0 || !lotTurnFits(route.maneuvers[k], atM - man[k])) return null
+        return k to man[k]
+    }
+
+    /**
+     * Which side of the road the stop at [stop] is on for a car driving [route] past its mark
+     * [atM]: "left" or "right", from where its pin sits against the line's direction there (the
+     * test the open router uses for the destination's own side), or null when that cannot be told
+     * honestly: the pin is on the line (under [SIDE_MIN_OFF_M]), or the line bends more than
+     * [SIDE_MAX_BEND_DEG] through the mark (a corner, a turn into the lot at the stop itself).
+     */
+    fun stopSide(route: Route, stop: LatLng, atM: Double): String? {
+        val poly = route.polyline
+        if (poly.size < 2) return null
+        val cum = geomFor(route).cum
+        val total = cum.last()
+        val p = RouteProjection.pointAt(poly, cum, atM)
+        if (p.distanceTo(stop) < SIDE_MIN_OFF_M) return null
+        val a = RouteProjection.pointAt(poly, cum, (atM - SIDE_SPAN_M).coerceAtLeast(0.0))
+        val b = RouteProjection.pointAt(poly, cum, (atM + SIDE_SPAN_M).coerceAtMost(total))
+        val kx = 111_320.0 * cos(Math.toRadians(p.lat))
+        fun dx(u: LatLng, w: LatLng) = (w.lng - u.lng) * kx
+        fun dy(u: LatLng, w: LatLng) = (w.lat - u.lat) * 111_320.0
+        val inLen = hypot(dx(a, p), dy(a, p))
+        val outLen = hypot(dx(p, b), dy(p, b))
+        if (inLen < 3.0 && outLen < 3.0) return null
+        if (inLen >= 3.0 && outLen >= 3.0) {
+            val turn = Math.toDegrees(kotlin.math.atan2(dx(a, p) * dy(p, b) - dy(a, p) * dx(p, b), dx(a, p) * dx(p, b) + dy(a, p) * dy(p, b)))
+            if (kotlin.math.abs(turn) > SIDE_MAX_BEND_DEG) return null
+        }
+        // The direction of travel through the mark, and the pin against it: positive is to the left.
+        val cross = dx(a, b) * dy(p, stop) - dy(a, b) * dx(p, stop)
+        return if (cross > 0) "left" else "right"
     }
 
     /** The active language's nav strings (spoken frame + distance + arrival), English by default. */

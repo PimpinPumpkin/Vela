@@ -1431,6 +1431,32 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
+  engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
+  the engine's route is `planRoute`. The last spoken maneuver before the stop
+  (`NavEngine.stopLegManeuver`, a silent continue passed over), when the stop is at most
+  `STOP_THEN_M` (300 m) past it, says it after itself on its first line and on its turn-now line:
+  `NavStrings.thenStop`, "Turn left onto Covell Boulevard, then Davis Food Co-op will be on your
+  right". That line takes no traffic-light lead. Otherwise the stop gets its own line at the near
+  distance, `NavStrings.stopAhead` in `inThen` ("In 150 meters, Davis Food Co-op will be on your
+  right"): once per stop (`NavState.stopCuedAtM`), never off route, never in a fix that already
+  speaks, never within 50 m. `BRIEF` puts the clause on the maneuver's one line; `EXITS` says the
+  stop's own line, as it says the arrival's.
+- The side is `NavEngine.stopSide`: where the stop's pin sits against the line's direction
+  through its mark, read 25 m either way. It is null ("will be ahead") when the pin is within
+  `SIDE_MIN_OFF_M` (8 m) of the line or the line bends more than 45 degrees through the mark.
+- When that maneuver is a left or right onto a road with no name and no number and the stop is at
+  most `LOT_THEN_M` (150 m) past it (`NavEngine.lotTurnCandidate`), `ParkingLotTurn.entersLot`
+  reads the map's z14 tiles along the route (`RoadNameTiles.roadsAlong`, the `transportation`
+  layer's `class` and `service`), every 8 m from 10 m past the turn for up to 60 m or to the
+  stop. Every sample's nearest car road within 12 m has to be a service road that is not an
+  alley, and one a `parking_aisle`. Then the line is `NavStrings.intoLotThen`, "Turn left into the
+  parking lot, then Davis Food Co-op is on your right". No router marks a parking aisle, so this
+  is the only source. One lookup per route and stop, in the background, within
+  `LOT_LOOKUP_TIMEOUT_MS` (8 s); until it answers, or when the tiles cannot be read, the plain
+  wording stands.
+- `stopAhead`, `thenStop` and `intoLotThen` are in every `NavStrings` table, with a blank name
+  read as "your stop".
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.

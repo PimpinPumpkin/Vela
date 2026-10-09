@@ -126,7 +126,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Turn card in the mini map" sets the mini map's layout.
 - If the app is closed mid-drive, the next launch offers to resume.
 - In a tunnel Vela keeps estimating your position.
-- Stops and arrival are announced, with the trip's time and distance at the end.
+- A stop is announced as it comes up ("then Davis Food Co-op will be on your right", "turn left into
+  the parking lot" where the map shows one) and when you reach it. Arrival is announced with the
+  trip's time and distance.
 - "Tap places while driving (experiment)" offers a tapped place as a stop, with the time it adds.
 - During a drive the only places on the map are gas stations. "Simplify the map in turns" hides more
   while turning.

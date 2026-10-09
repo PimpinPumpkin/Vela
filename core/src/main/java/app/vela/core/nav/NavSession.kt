@@ -465,7 +465,10 @@ class NavSession @Inject constructor(
         // tighter than driving because the path is narrow. See NavEngine.offRouteCorridor.
         val offRoute = NavEngine.offRouteCorridor(mode, accuracyM)
         val farOff = NavEngine.farOffDistance(mode, offRoute)
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, bearingDeg)
+        // The stop the drive is heading for, so the engine can say it is coming. Only while the
+        // marks were measured on this very route (planRoute).
+        val stopAhead = synchronized(stopLock) { if (route === planRoute) stopAheadFor(route, nav.traveledM) else null }
+        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, bearingDeg, stopAhead)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // The figures to the next stop, measured on this fix's progress. Only while the marks were
         // measured on this very route (planRoute): against another route they mean nothing.
@@ -543,6 +546,36 @@ class NavSession @Inject constructor(
             announceStopsPassed(route, next.traveledM, loc)
         }
         maybeRecheck(loc, next)
+    }
+
+    /** The next stop as the engine needs it for its approach cue: its mark, its name, which side
+     *  of the road it is on ([NavEngine.stopSide]) and whether the turn before it enters its
+     *  parking lot. Called under [stopLock] with [route] === [planRoute]. */
+    private fun stopAheadFor(route: Route, traveledM: Double): StopAhead? {
+        val i = nextStopIndex(stops.map { it.silent }, stopMarks, passedStops, traveledM)
+        if (i < 0) return null
+        val mark = stopMarks[i] ?: return null
+        val s = stops[i]
+        return StopAhead(mark, s.label, NavEngine.stopSide(route, s.location, mark), lotTurn(route, mark))
+    }
+
+    /** One map lookup per route and stop: whether the turn before the stop enters a parking lot
+     *  ([ParkingLotTurn]). It runs in the background and answers no until it has looked; a turn
+     *  is approached long before its prompt, and the tiles are cached by the map anyway. */
+    private class LotLookup(val route: Route, val atM: Double) { @Volatile var intoLot = false }
+    @Volatile private var lotLookup: LotLookup? = null
+
+    private fun lotTurn(route: Route, atM: Double): Boolean {
+        lotLookup?.let { if (it.route === route && it.atM == atM) return it.intoLot }
+        val look = LotLookup(route, atM)
+        lotLookup = look
+        val (_, turnM) = NavEngine.lotTurnCandidate(route, atM) ?: return false
+        scope.launch {
+            val yes = runCatching { kotlinx.coroutines.withTimeoutOrNull(LOT_LOOKUP_TIMEOUT_MS) { ParkingLotTurn.entersLot(route, turnM, atM) } }.getOrNull() == true
+            look.intoLot = yes
+            if (yes) note("next stop: the turn before it enters a parking lot")
+        }
+        return false
     }
 
     // The progress seen on the last fix, for the jump check above (guarded by stopLock).
@@ -1244,6 +1277,8 @@ class NavSession @Inject constructor(
         const val STOP_SKIP_SPEED_MPS = 70.0
         /** An unmarked stop is reached within this of its pin. */
         const val STOP_NEAR_PIN_M = 250.0
+        /** The parking-lot lookup's whole budget: a tile or two from the map's store or its host. */
+        const val LOT_LOOKUP_TIMEOUT_MS = 8_000L
 
         /** The index in the stop list of the stop a drive at [traveledM] is heading for: the first
          *  stop not yet passed ([NavEngine.stopsPassed]) that is not a silent via, or -1 when there

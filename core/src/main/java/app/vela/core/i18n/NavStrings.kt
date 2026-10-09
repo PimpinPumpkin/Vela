@@ -68,6 +68,20 @@ interface NavStrings {
     /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
     fun reachedStop(label: String): String
 
+    /** A stop coming up, framed by [inThen] ("In 500 feet, <this>"). EN "<stop> will be on your
+     *  right" (or left), or "<stop> will be ahead" when [left] is null (the side is not known). A
+     *  blank [label] is "your stop". Built like [destinationAhead] and [destinationSide]. */
+    fun stopAhead(label: String, left: Boolean?): String
+
+    /** [instruction] (the last maneuver before a stop) with the stop after it. EN "Turn left onto
+     *  Covell Boulevard, then <stop> will be on your right" (or "will be ahead"). */
+    fun thenStop(instruction: String, label: String, left: Boolean?): String
+
+    /** The last turn before a stop when it turns into the parking lot the stop sits in. EN "Turn
+     *  left into the parking lot, then <stop> is on your right". [turnLeft] is the turn's
+     *  direction, [left] the stop's side (null = ahead). */
+    fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String
+
     /** Spoken when auto-switching to a faster route — EN "Taking the faster route. <first instruction>". */
     fun fasterRoute(firstInstruction: String): String
 
@@ -192,6 +206,19 @@ object EnNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "You've reached $label" else "You've reached your stop"
+
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "Your stop" }
+        return when (left) { true -> "$who will be on your left"; false -> "$who will be on your right"; null -> "$who will be ahead" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, then " + stopAhead(label.ifBlank { "your stop" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
+        val where = when (left) { true -> "is on your left"; false -> "is on your right"; null -> "is ahead" }
+        return "Turn ${if (turnLeft) "left" else "right"} into the parking lot, then ${label.ifBlank { "your stop" }} $where"
+    }
 
     override fun fasterRoute(firstInstruction: String): String = "Taking the faster route. $firstInstruction"
 
@@ -374,6 +401,19 @@ object FrNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Vous êtes arrivé à $label" else "Vous êtes arrivé à votre étape"
 
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "Votre étape" }
+        return when (left) { true -> "$who sera sur votre gauche"; false -> "$who sera sur votre droite"; null -> "$who sera devant vous" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, puis " + stopAhead(label.ifBlank { "votre étape" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
+        val where = when (left) { true -> "est sur votre gauche"; false -> "est sur votre droite"; null -> "est devant vous" }
+        return "Tournez à ${if (turnLeft) "gauche" else "droite"} dans le parking, puis ${label.ifBlank { "votre étape" }} $where"
+    }
+
     override fun fasterRoute(firstInstruction: String): String = "Itinéraire plus rapide. $firstInstruction"
     override fun rerouting(): String = "Recalcul de l'itinéraire"
     override fun fasterRouteAvailable(minutes: Int): String =
@@ -465,6 +505,17 @@ object DeNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Sie haben $label erreicht" else "Sie haben Ihren Zwischenstopp erreicht"
+
+    private fun deStopSide(left: Boolean?) = when (left) { true -> "links"; false -> "rechts"; null -> "voraus" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Ihr Zwischenstopp" }} liegt ${deStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, dann liegt ${label.ifBlank { "Ihr Zwischenstopp" }} ${deStopSide(left)}"
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Biegen Sie ${if (turnLeft) "links" else "rechts"} auf den Parkplatz ab, dann liegt ${label.ifBlank { "Ihr Zwischenstopp" }} ${deStopSide(left)}"
 
     override fun fasterRoute(firstInstruction: String): String = "Schnellere Route wird genommen. $firstInstruction"
     override fun rerouting(): String = "Route wird neu berechnet"
@@ -583,6 +634,17 @@ object EsNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Ha llegado a $label" else "Ha llegado a su parada"
 
+    private fun esStopSide(left: Boolean?) = when (left) { true -> "a su izquierda"; false -> "a su derecha"; null -> "más adelante" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Su parada" }} estará ${esStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, y luego " + stopAhead(label.ifBlank { "su parada" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Gire a la ${if (turnLeft) "izquierda" else "derecha"} hacia el aparcamiento, y luego ${label.ifBlank { "su parada" }} está ${esStopSide(left)}"
+
     override fun fasterRoute(firstInstruction: String): String = "Tomando la ruta más rápida. $firstInstruction"
     override fun rerouting(): String = "Recalculando la ruta"
     override fun fasterRouteAvailable(minutes: Int): String =
@@ -683,6 +745,17 @@ object ItNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Sei arrivato a $label" else "Sei arrivato alla tua tappa"
 
+    private fun itStopSide(left: Boolean?) = when (left) { true -> "sulla tua sinistra"; false -> "sulla tua destra"; null -> "più avanti" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "La tua tappa" }} sarà ${itStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, poi " + stopAhead(label.ifBlank { "la tua tappa" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Svolta a ${if (turnLeft) "sinistra" else "destra"} nel parcheggio, poi ${label.ifBlank { "la tua tappa" }} è ${itStopSide(left)}"
+
     override fun fasterRoute(firstInstruction: String): String = "Percorso più veloce. $firstInstruction"
     override fun rerouting(): String = "Ricalcolo del percorso"
     override fun fasterRouteAvailable(minutes: Int): String =
@@ -778,6 +851,17 @@ object PtNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Você chegou a $label" else "Você chegou à sua parada"
+
+    private fun ptStopSide(left: Boolean?) = when (left) { true -> "à sua esquerda"; false -> "à sua direita"; null -> "adiante" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Sua parada" }} estará ${ptStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, depois " + stopAhead(label.ifBlank { "sua parada" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Vire à ${if (turnLeft) "esquerda" else "direita"} no estacionamento, depois ${label.ifBlank { "sua parada" }} está ${ptStopSide(left)}"
 
     override fun fasterRoute(firstInstruction: String): String = "Pegando a rota mais rápida. $firstInstruction"
     override fun rerouting(): String = "Recalculando a rota"
@@ -903,6 +987,17 @@ object NlNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "U hebt $label bereikt" else "U hebt uw tussenstop bereikt"
 
+    private fun nlStopSide(left: Boolean?) = when (left) { true -> "aan de linkerkant"; false -> "aan de rechterkant"; null -> "verderop" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Uw tussenstop" }} ligt ${nlStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, daarna ligt ${label.ifBlank { "uw tussenstop" }} ${nlStopSide(left)}"
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Sla ${if (turnLeft) "linksaf" else "rechtsaf"} de parkeerplaats op, daarna ligt ${label.ifBlank { "uw tussenstop" }} ${nlStopSide(left)}"
+
     override fun fasterRoute(firstInstruction: String): String = "Snellere route gekozen. $firstInstruction"
     override fun rerouting(): String = "Route wordt opnieuw berekend"
     override fun fasterRouteAvailable(minutes: Int): String =
@@ -993,6 +1088,17 @@ object RuNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Вы прибыли в $label" else "Вы прибыли к остановке"
+
+    private fun ruStopSide(left: Boolean?) = when (left) { true -> "слева"; false -> "справа"; null -> "впереди" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Остановка" }} будет ${ruStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, затем " + stopAhead(label.ifBlank { "остановка" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Поверните ${if (turnLeft) "налево" else "направо"} на парковку, затем ${label.ifBlank { "остановка" }} будет ${ruStopSide(left)}"
 
     override fun fasterRoute(firstInstruction: String): String = "Перехожу на более быстрый маршрут. $firstInstruction"
     override fun rerouting(): String = "Перестроение маршрута"
@@ -1165,6 +1271,17 @@ object PlNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Dotarłeś do $label" else "Dotarłeś do przystanku"
 
+    private fun plStopSide(left: Boolean?) = when (left) { true -> "po lewej stronie"; false -> "po prawej stronie"; null -> "przed tobą" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Przystanek" }} będzie ${plStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, a potem " + stopAhead(label.ifBlank { "przystanek" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Skręć ${if (turnLeft) "w lewo" else "w prawo"} na parking, a potem ${label.ifBlank { "przystanek" }} będzie ${plStopSide(left)}"
+
     override fun fasterRoute(firstInstruction: String): String = "Wybieram szybszą trasę. $firstInstruction"
     override fun rerouting(): String = "Przeliczanie trasy"
     override fun fasterRouteAvailable(minutes: Int): String =
@@ -1299,6 +1416,17 @@ object SvNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Du är framme vid $label" else "Du är framme vid ditt stopp"
 
+    private fun svStopSide(left: Boolean?) = when (left) { true -> "till vänster"; false -> "till höger"; null -> "framför dig" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Ditt stopp" }} ligger ${svStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, sedan ligger ${label.ifBlank { "ditt stopp" }} ${svStopSide(left)}"
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Sväng ${if (turnLeft) "vänster" else "höger"} in på parkeringen, sedan ligger ${label.ifBlank { "ditt stopp" }} ${svStopSide(left)}"
+
     override fun fasterRoute(firstInstruction: String): String = "Byter till en snabbare rutt. $firstInstruction"
     override fun rerouting(): String = "Räknar om rutten"
     override fun fasterRouteAvailable(minutes: Int): String =
@@ -1397,6 +1525,17 @@ object UkNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Ви прибули до $label" else "Ви прибули до зупинки"
+
+    private fun ukStopSide(left: Boolean?) = when (left) { true -> "ліворуч"; false -> "праворуч"; null -> "попереду" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "Зупинка" }} буде ${ukStopSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, потім " + stopAhead(label.ifBlank { "зупинка" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Поверніть ${if (turnLeft) "ліворуч" else "праворуч"} на парковку, потім ${label.ifBlank { "зупинка" }} буде ${ukStopSide(left)}"
 
     override fun fasterRoute(firstInstruction: String): String = "Переходимо на швидший маршрут. $firstInstruction"
     override fun rerouting(): String = "Перебудова маршруту"
@@ -1523,6 +1662,17 @@ object ZhNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "已到达$label" else "已到达途经点"
 
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "途经点" }
+        return when (left) { true -> "${who}在左侧"; false -> "${who}在右侧"; null -> "${who}就在前方" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "${instruction}，然后" + stopAhead(label, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "${if (turnLeft) "向左转" else "向右转"}进入停车场，然后" + stopAhead(label, left)
+
     override fun fasterRoute(firstInstruction: String): String = "已切换到更快的路线。$firstInstruction"
     override fun rerouting(): String = "正在重新规划路线"
     override fun fasterRouteAvailable(minutes: Int): String = "发现更快的路线，约可节省 $minutes 分钟"
@@ -1625,6 +1775,17 @@ object ZhTwNavStrings : NavStrings {
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "已到達$label" else "已到達途經點"
 
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "途經點" }
+        return when (left) { true -> "${who}在左側"; false -> "${who}在右側"; null -> "${who}就在前方" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "${instruction}，然後" + stopAhead(label, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "${if (turnLeft) "向左轉" else "向右轉"}進入停車場，然後" + stopAhead(label, left)
+
     override fun fasterRoute(firstInstruction: String): String = "已切換到更快的路線。$firstInstruction"
     override fun rerouting(): String = "正在重新規劃路線"
     override fun fasterRouteAvailable(minutes: Int): String = "找到更快的路線，約可節省 $minutes 分鐘"
@@ -1720,6 +1881,17 @@ object JaNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "$label に到着しました" else "経由地に到着しました"
+
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "経由地" }
+        return when (left) { true -> "${who}は左側です"; false -> "${who}は右側です"; null -> "${who}はこの先です" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "${instruction}。その先、" + stopAhead(label, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "${if (turnLeft) "左" else "右"}に曲がって駐車場に入ると、" + stopAhead(label, left)
 
     override fun fasterRoute(firstInstruction: String): String = "より速いルートに切り替えます。$firstInstruction"
     override fun rerouting(): String = "ルートを再検索しています"
@@ -1824,6 +1996,17 @@ object HeNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "הגעת ל$label" else "הגעת לעצירה שלך"
+
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val side = when (left) { true -> "מצד שמאל"; false -> "מצד ימין"; null -> "לפניך" }
+        return if (label.isNotBlank()) "$label יהיה $side" else "העצירה שלך תהיה $side"
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, ואז " + stopAhead(label, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "פנה ${if (turnLeft) "שמאלה" else "ימינה"} לחניון, ואז " + stopAhead(label, left)
 
     override fun fasterRoute(firstInstruction: String): String = "עובר למסלול המהיר יותר. $firstInstruction"
     override fun rerouting(): String = "מחשב מסלול מחדש"
@@ -1971,6 +2154,17 @@ object HuNavStrings : NavStrings {
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "Megérkeztél ide: $label" else "Megérkeztél a köztes megállóhoz"
+
+    private fun huStopSide(left: Boolean?) = when (left) { true -> "a bal oldalon"; false -> "a jobb oldalon"; null -> "előtted" }
+
+    override fun stopAhead(label: String, left: Boolean?): String =
+        "${label.ifBlank { "A köztes megálló" }} ${huStopSide(left)} lesz"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, majd " + stopAhead(label.ifBlank { "a köztes megálló" }, left)
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Fordulj ${if (turnLeft) "balra" else "jobbra"} a parkolóba, majd " + stopAhead(label.ifBlank { "a köztes megálló" }, left)
 
     override fun fasterRoute(firstInstruction: String): String = "Gyorsabb útvonalra váltás. $firstInstruction"
     override fun rerouting(): String = "Újratervezés"
