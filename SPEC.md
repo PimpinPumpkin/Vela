@@ -1448,6 +1448,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   and every route number in the instruction text, deduplicated by `routeKey` (letters and
   number; spaces, dashes and a trailing direction dropped), three at most. The card's "then" row
   skips a roundabout's own exit step and shows the maneuver after it at the summed distance.
+- Turn glyphs come from one table, `maneuverGlyph` (`ui/nav/ManeuverGlyph.kt`), for the turn
+  card, the step list, picture-in-picture, the notification and Android Auto (`NavGlyphs`).
+  Ramps, forks and keeps draw the slight-left or slight-right arrow: a glyph that also drew the
+  branch not taken read as a sign allowing either way. Merges keep the merge glyph and
+  roundabouts their ring.
 
 #### Rerouting
 

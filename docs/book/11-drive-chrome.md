@@ -41,6 +41,11 @@ number and route numbers in the text. Lane arrows and the "Then" tab appear with
 Off route the headline reads "Rerouting". In landscape the banner and the bar are a column on
 the left.
 
+A ramp, a fork or a keep shows the slight-left or slight-right arrow, the way you go and nothing
+else. A picture with both branches looked like a road sign offering either one. The step list,
+the mini map, the notification and Android Auto take their glyphs from the same table
+(`maneuverGlyph`).
+
 ### The bottom bar and the step list
 
 The bar is white in the light theme, near black in the dark ones, and the theme's surface with
