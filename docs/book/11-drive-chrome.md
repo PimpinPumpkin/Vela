@@ -65,6 +65,9 @@ for 6 seconds, a second tap pauses, and a long press mutes. Search opens a page 
 field, category tiles led by fuel and charging, and recent searches.
 
 The compass shows for the whole drive, and a tap switches between heading-up and north-up.
+"Keep north up" (Settings > Map) holds every drive north-up and flat, so the compass has nothing
+to switch and fades at north as it does on the browse map. It also turns off two-finger rotation
+everywhere, and the map goes back to north at the next camera rest if anything else turns it.
 
 "Current road name" (Settings > Navigation) puts the name under the arrow (the default), above
 the bar, inside the bar, or nowhere. Away from the car (a pan, a pinch, a step preview) the name

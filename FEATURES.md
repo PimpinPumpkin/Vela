@@ -14,6 +14,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Tap a place, a house number or a building to open it. Long-press to drop a pin.
 - Tilt the map for 3D buildings. "Tilt with two fingers" and "3D buildings" turn those off.
 - Pinch and turn in one gesture. A small turn goes back to north when you let go.
+- "Keep north up" stops the map turning: no two-finger rotation, and the map stays north-up while
+  you drive, with or without a route, on the phone and in Android Auto.
 - A layers button for satellite, live traffic, transit lines and terrain shading. "Show layers
   button" hides it.
 - "Highlight transit lines" draws subway, tram and train lines in their own colors. Lines for
@@ -114,7 +116,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Pause holds the drive with no rerouting, voice or offers. "Pause button on the navigation bar"
   moves it.
 - An overview button fits the rest of the route, and Re-center returns to the drive.
-- The compass switches heading-up and north-up. "Start drives north-up" sets the default.
+- The compass switches heading-up and north-up. "Start drives north-up" sets the default, and
+  "Keep north up" holds every drive north-up.
 - "Navigation icon" is an arrow, a car, a UFO, a pirate ship or a rubber duck, with "Arrow size" and
   "Arrow colors".
 - "Vibrate on turns", "Keep screen on while navigating" and "Ask before ending navigation".

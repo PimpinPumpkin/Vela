@@ -97,7 +97,8 @@ in flight marks the map dirty, and the next snapshot starts when the current one
 
 All screens share one renderer and switch its mode: browse (north up, centered on you, no route),
 preview (the chosen route framed in blue, the other listed routes in gray under it, a red dot
-at the destination) and nav (heading up, following, the line ahead lavender while paused). A renderer per screen freezes
+at the destination) and nav (heading up, or north up with the phone's "Keep north up" on,
+following, the line ahead lavender while paused). A renderer per screen freezes
 the map, because the host does not deliver the surface again to a new callback. The snapshotter
 is kept across screens while the surface size is unchanged, since a new one reloads the style and
 the map flashes.

@@ -19,8 +19,8 @@ import app.vela.ui.settings.Hint
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
 
-/** Map sub-screen: how the map looks (traffic, transit, topography, layers button, 3D,
- * missing-building fill, house numbers). Cameras live under Navigation, places under Places
+/** Map sub-screen: how the map looks and moves (traffic, transit, topography, layers button,
+ * tilt, north lock, 3D, missing-building fill, house numbers). Cameras live under Navigation, places under Places
  * (settings reshuffle, 2026-09-17). */
 @Composable
 internal fun MapSettingsScreen(onBack: () -> Unit) {
@@ -77,6 +77,13 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             checked = app.vela.ui.MapTilt.on.value,
             onCheckedChange = { app.vela.ui.MapTilt.set(context, it) },
             hint = stringResource(R.string.settings_two_finger_tilt_hint),
+        )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_keep_north_up),
+            checked = app.vela.ui.NorthLock.on.value,
+            onCheckedChange = { app.vela.ui.NorthLock.set(context, it) },
+            hint = stringResource(R.string.settings_keep_north_up_hint),
         )
         GroupDivider()
         ToggleRow(
