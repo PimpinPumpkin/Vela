@@ -59,10 +59,16 @@ object StreamedSpeedLimit {
 
     private fun nearest(lines: List<MvtLines.Line>, lat: Double, lng: Double): Double? {
         val k = 111_320.0 * cos(Math.toRadians(lat))
+        // Local time on the phone: a timed limit ("130 @ (19:00-06:00)") is read at each lookup,
+        // so the badge changes at 19:00 without the tile being read again.
+        val now = java.time.LocalDateTime.now()
         var best: Double? = null
         var bestD = SNAP_M
         for (l in lines) {
-            val kmh = OsmMaxspeed.fromTags(l.props["maxspeed"], l.props["maxspeed:forward"], l.props["maxspeed:backward"]) ?: continue
+            val kmh = OsmMaxspeed.fromTags(
+                l.props["maxspeed"], l.props["maxspeed:forward"], l.props["maxspeed:backward"],
+                l.props["maxspeed:conditional"], now,
+            ) ?: continue
             val pts = l.points
             for (i in 0 until pts.size - 1) {
                 val ax = (pts[i].lng - lng) * k; val ay = (pts[i].lat - lat) * 111_320.0
