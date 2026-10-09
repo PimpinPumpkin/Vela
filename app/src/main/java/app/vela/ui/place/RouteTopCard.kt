@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,6 +93,10 @@ fun RouteTopCard(
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
     val dim = MaterialTheme.colorScheme.onSurfaceVariant
+    // A trip from a link: while its places are looked up the card lists them as the link names
+    // them, and nothing on it can be edited until they have all answered.
+    val link = LinkTrip.view.value
+    val resolving = link?.resolving == true
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -107,7 +112,9 @@ fun RouteTopCard(
                     tint = dim,
                 )
             }
-            Column(Modifier.weight(1f)) {
+            if (resolving && link != null) Column(Modifier.weight(1f)) {
+                LinkTripRows(link, meName = originName, ink = ink, dim = dim)
+            } else Column(Modifier.weight(1f)) {
                 EndpointRow(
                     text = originName,
                     // Blue only for "Your location", as on Google's card; a named place reads in plain ink.
@@ -194,8 +201,10 @@ fun RouteTopCard(
                         Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyMedium, color = dim)
                     }
                 }
+                // A place from the link that found nothing stays named here until the trip is edited.
+                link?.notFound?.takeIf { it.isNotEmpty() }?.let { NotFoundNote(it) }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (!resolving) Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if ((googleStyle && showStopControls) || onSaveRoute != null) {
                     var menu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                     var naming by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -327,6 +336,97 @@ private fun EndpointRow(
             modifier = Modifier.weight(1f, fill = false),
         )
         if (trailing != null) { Spacer(Modifier.weight(1f)); trailing() }
+    }
+}
+
+/** How many of a link's stops the loading card lists before the rest are counted. */
+private const val LINK_ROWS_MAX = 6
+
+/**
+ * The card while a link's places are looked up: the start (or you), every stop and the end, each
+ * by the name or address the link carries, with a mark for where its lookup stands. Nothing here
+ * is a control; the back arrow beside it still cancels.
+ */
+@Composable
+private fun LinkTripRows(link: LinkTrip.View, meName: String, ink: Color, dim: Color) {
+    val me = link.origin == null
+    EndpointRow(
+        text = link.origin?.label ?: meName,
+        textColor = if (me) MaterialTheme.colorScheme.primary else ink,
+        editable = false, editLabel = "", onClick = null,
+        trailing = link.origin?.lookup?.let { l -> @Composable { LookupMark(l) } },
+    ) {
+        Box(Modifier.size(12.dp).border(2.dp, if (me) MaterialTheme.colorScheme.primary else dim, CircleShape))
+    }
+    ConnectorRow(dim)
+    for (s in link.stops.take(LINK_ROWS_MAX)) {
+        EndpointRow(
+            text = s.label, textColor = ink, editable = false, editLabel = "", onClick = null,
+            trailing = { LookupMark(s.lookup) },
+        ) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
+        }
+        ConnectorRow(dim)
+    }
+    if (link.stops.size > LINK_ROWS_MAX) {
+        val more = link.stops.size - LINK_ROWS_MAX
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.width(GLYPH_RAIL + 8.dp))
+            Text(pluralStringResource(R.plurals.topcard_more_stops, more, more), style = MaterialTheme.typography.labelMedium, color = dim)
+        }
+        ConnectorRow(dim)
+    }
+    EndpointRow(
+        text = link.destination.label, textColor = ink, bold = true,
+        editable = false, editLabel = "", onClick = null,
+        trailing = { LookupMark(link.destination.lookup) },
+    ) {
+        Icon(Sym.Place, contentDescription = null, tint = DestinationRed, modifier = Modifier.size(20.dp))
+    }
+    Text(
+        stringResource(R.string.link_trip_finding),
+        style = MaterialTheme.typography.labelMedium,
+        color = dim,
+        modifier = Modifier
+            .padding(start = GLYPH_RAIL + 8.dp, top = 2.dp, bottom = 4.dp)
+            .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+    )
+}
+
+/** Where one place's lookup stands: a spinner, a check, or a warning when it found nothing. */
+@Composable
+private fun LookupMark(lookup: LinkTrip.Lookup) {
+    val m = Modifier.padding(end = 6.dp).size(18.dp)
+    when (lookup) {
+        LinkTrip.Lookup.LOOKING -> {
+            val cd = stringResource(R.string.link_trip_looking_cd)
+            androidx.compose.material3.CircularProgressIndicator(
+                m.padding(1.dp).semantics { contentDescription = cd }, strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        LinkTrip.Lookup.FOUND -> Icon(Sym.Check, contentDescription = stringResource(R.string.link_trip_found_cd), tint = MaterialTheme.colorScheme.primary, modifier = m)
+        LinkTrip.Lookup.NOT_FOUND -> Icon(Sym.Warning, contentDescription = stringResource(R.string.link_trip_not_found_cd), tint = MaterialTheme.colorScheme.error, modifier = m)
+    }
+}
+
+/** The places from a link that found nothing, under the trip, read out when it appears. */
+@Composable
+private fun NotFoundNote(names: List<String>) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 2.dp)
+            .semantics(mergeDescendants = true) { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+    ) {
+        Box(Modifier.width(GLYPH_RAIL).padding(top = 2.dp), contentAlignment = Alignment.Center) {
+            Icon(Sym.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            pluralStringResource(R.plurals.link_trip_not_found, names.size, names.joinToString(", ")),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
     }
 }
 

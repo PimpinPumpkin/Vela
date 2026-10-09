@@ -40,7 +40,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Share sends a Google Maps link, a geo: pin, coordinates or the address, or opens another map app.
 - A Google Maps directions link opens as the trip it describes, with its start, its stops, the
   points you dragged the route through and its travel mode. Paste one from a desktop browser into
-  the search box, or tap it in any app.
+  the search box, or tap it in any app. Every place shows at once while it is looked up, and the
+  route comes once; a place that cannot be found is named on the card.
 - "People also search for" and "Also at this location" rows open related places.
 - A tapped map place opens at once with open data and names its source while Google's listing loads.
 - Closed places are marked permanently or temporarily closed. Gas stations show their fuel price.

@@ -1140,6 +1140,15 @@
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
     </plurals>
+    <string name="link_trip_finding">Finding the places in this trip</string>
+    <string name="link_trip_while_navigating">End navigation to open this trip</string>
+    <string name="link_trip_looking_cd">Looking it up</string>
+    <string name="link_trip_found_cd">Found</string>
+    <string name="link_trip_not_found_cd">Not found</string>
+    <plurals name="link_trip_not_found">
+        <item quantity="one">Could not find %1$s. The route goes on without it.</item>
+        <item quantity="other">Could not find %1$s. The route goes on without them.</item>
+    </plurals>
     <string name="settings_places">Places</string>
     <string name="settings_privacy">Privacy</string>
     <string name="settings_cameras_group">Cameras</string>

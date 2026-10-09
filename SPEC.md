@@ -2664,8 +2664,20 @@ when the feature ids match. Two requests at most.
   coordinate in its `data=` blob (`MapLinkParser.dirPins`: a `1m<n>` field per place, with
   `1d<lng>` and `2d<lat>` among its `n` fields, and `3e<0-3>` for the mode). The pins are used
   only when the blob lists exactly the path's places; such a place is taken as named and
-  pinned, with no lookup (`linkPin`), and the trip is fetched once. A name with no pin is
-  searched near the destination and the trip rerouted (`applyLinkTrip`).
+  pinned, with no lookup (`linkPin`).
+- A link with stops, or with a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix, opens
+  as a trip (`openTripLink`). The chooser opens at once, and the endpoints card lists the start,
+  every stop and the destination by `MapLink.label` (the link's name or address, else its
+  coordinate), each with its own spinner, check or warning (`LinkTrip`, a holder the card reads
+  because MapScreen takes no new parameter). `linkPlace` looks the destination up near the user,
+  then the start and every stop together near the destination: a name with its own coordinate as
+  it is, a bare coordinate reverse-geocoded, a name or address by search, an address the search
+  does not carry by the autocomplete geocoder, and with no connection the downloaded places and
+  addresses. The trip is routed once, when every place has answered. A place that found nothing
+  is left out and named on the card in a note a screen reader reads out, until the trip is
+  edited (`linkTripFor`, checked in `route`). A destination that found nothing closes the chooser
+  with "Could not find". Back cancels the lookups, and the mode tabs work during them. During a
+  drive a trip link only says "End navigation to open this trip".
 - A point dragged onto the route on a desktop sits in the blob inside the block of the place
   before it (`3m4`, `1m2`, `1d<lng>`, `2d<lat>`, `3s<id>`), and comes out as a stop marked
   `MapLink.via`, in travel order, at most `LINK_VIAS_MAX` (12). The view model keeps them as
@@ -2673,8 +2685,8 @@ when the feature ids match. Two requests at most.
   stamps the result's `detourPlan`, so a drive passes them as silent stops
   (`NavController.navStopsFor`). They hold while the trip is the link's (same end, same given
   start, same stops in order) and are dropped at the first edit.
-- The link's mode, its stops, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix,
-  apply once to the next `routeToSelected`. The mode is not made sticky.
+- The link's mode applies to its trip only (the next `routeToSelected` for a single
+  destination) and is not made sticky.
 - A link that names something at a point (`geo:lat,lng?q=Name`) searches the name near the
   point. When no result lies within `LINK_ANCHOR_MAX_M` (50 km) of it, the point itself opens
   under the link's name (`anchorLinkSearch`): the sender gave a position, and the one hit was a

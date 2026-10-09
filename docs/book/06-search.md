@@ -383,10 +383,19 @@ a search and takes the top hit. The link's travel mode applies to that trip only
 A link with more than two places opens as a trip with stops, up to ten. That covers a trip
 planned in Google Maps on a desktop: copy the address bar, and either open the link on the
 phone (from a calendar event, a note, a message) or paste it into Vela's search box. The
-desktop link carries each place's coordinate, so nothing is looked up by name and the trip is
-the one that was planned, in its order. Points dragged onto the route on the desktop come
-along too: the route passes through them and a drive treats them as silent stops, never
-announced or listed. Editing the stops lets go of them.
+desktop link usually carries each place's coordinate, so those places are not looked up by name
+and the trip is the one that was planned, in its order. Points dragged onto the route on the
+desktop come along too: the route passes through them and a drive treats them as silent stops,
+never announced or listed. Editing the stops lets go of them.
+
+A trip link opens all at once. The route chooser comes up straight away with the start, every
+stop and the destination listed by the name or address the link carries, each with a spinner
+that turns into a check. The destination is looked up first, near you, and then every other
+place together, near the destination. Only when all of them have answered is the trip routed,
+once. A place that finds nothing gets a warning mark, the route goes on without it, and the card
+says which one it was ("Could not find Woodland, CA") until the trip is edited. A screen reader
+reads that line out when it appears. A destination that finds nothing has no trip to show, so
+the chooser closes and the status says which name failed.
 
 A plain location link (a `geo:` link, a shared place) shows the place. Settings > Navigation >
 "Links from other apps" changes that. "Open directions" sends location links to the route
