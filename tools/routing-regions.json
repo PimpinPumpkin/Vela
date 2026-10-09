@@ -1,5 +1,5 @@
 {
-  "_comment": "World catalog of offline-routing regions. CI (.github/workflows/obf-regions.yml) bakes these into OsmAnd .obf routing files on the `obf-regions` release; the app lists whatever ends up in obf-manifest.json (the GraphHopper graphs were retired 2026-09-15). `group` on dispatch takes one name, a comma/space-separated list, or all-sub for every <country>-sub group (a matrix of <=256 jobs). The same catalog feeds obf-regions.yml, poi-packs.yml, road-features.yml and basemap-tiles.yml. `big:true` regions have large PBFs (a country-sized graph) and can run long / need RAM - build them in small batches. To add a region: append {id,name,group,pbf_url} with a Geofabrik .osm.pbf URL; ids must be unique (re-running an id updates it in place). `skip_obf:true` marks the whole-country rows too large for the obf bake even after the roads-only filter; their sub-area rows cover them, and poi-packs and the other bakes still use the row.",
+  "_comment": "World catalog of offline-routing regions. CI (.github/workflows/obf-regions.yml) bakes these into OsmAnd .obf routing files on the `obf-regions` release; the app lists whatever ends up in obf-manifest.json (the GraphHopper graphs were retired 2026-09-15). `group` on dispatch takes one name, a comma/space-separated list, or all-sub for every <country>-sub group (a matrix of <=256 jobs). The same catalog feeds obf-regions.yml, poi-packs.yml, road-features.yml and basemap-tiles.yml. `big:true` regions have large PBFs (a country-sized graph) and can run long / need RAM - build them in small batches. To add a region: append {id,name,group,pbf_url} with a Geofabrik .osm.pbf URL; ids must be unique (re-running an id updates it in place). A region Geofabrik does not publish is cut from another row's extract: pbf_url is cut:<parent id>:<polygon file>, an osmium .poly under tools/region-cuts (scripts/fetch-pbf.sh makes the extract; the Texas parts). After adding a row run scripts/region-polys.py. `skip_obf:true` marks the whole-country rows too large for the obf bake even after the roads-only filter, and a whole state offered in parts instead (Texas); their sub-area rows cover them, and poi-packs and the other bakes still use the row.",
   "regions": [
     {
       "id": "alabama",
@@ -281,7 +281,32 @@
       "name": "Texas (state)",
       "group": "us",
       "big": true,
-      "pbf_url": "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf",
+      "skip_obf": true
+    },
+    {
+      "id": "texas-north",
+      "name": "North Texas (Texas)",
+      "group": "texas-sub",
+      "pbf_url": "cut:texas:tools/region-cuts/texas-north.poly"
+    },
+    {
+      "id": "texas-east",
+      "name": "East Texas and Gulf Coast (Texas)",
+      "group": "texas-sub",
+      "pbf_url": "cut:texas:tools/region-cuts/texas-east.poly"
+    },
+    {
+      "id": "texas-south",
+      "name": "Central and South Texas (Texas)",
+      "group": "texas-sub",
+      "pbf_url": "cut:texas:tools/region-cuts/texas-south.poly"
+    },
+    {
+      "id": "texas-west",
+      "name": "West Texas and Panhandle (Texas)",
+      "group": "texas-sub",
+      "pbf_url": "cut:texas:tools/region-cuts/texas-west.poly"
     },
     {
       "id": "utah",

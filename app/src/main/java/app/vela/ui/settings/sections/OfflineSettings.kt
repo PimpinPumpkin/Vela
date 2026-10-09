@@ -355,11 +355,11 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             // with installed and nearby ones pulled to the top). The catalog's hierarchy is in the
             // names: "Bayern (Germany)", "Alberta (Canada)", "Beijing (China)", "Alabama (state)",
             // "Puerto Rico (US)", "Northern California (California)". A parenthetical names the
-            // parent; "(state)", "(US)" and "(California)" all sit under the United States. A
-            // parent is one row that expands to its pieces and downloads them all in one tap; a
-            // country with no pieces is a plain row. Everything sorts by name, the region you are
-            // in is marked and its parent starts open.
-            val nodes = remember(state.routingRegions) { regionTree(state.routingRegions) }
+            // parent; "(state)", "(US)" and a state listed in parts ([US_SPLIT_STATES]) all sit
+            // under the United States. A parent is one row that expands to its pieces and
+            // downloads them all in one tap; a country with no pieces is a plain row. Everything
+            // sorts by name, the region you are in is marked and its parent starts open.
+            val nodes = remember(state.routingRegions, state.routingInstalledIds) { regionTree(state.routingRegions, state.routingInstalledIds) }
             var routeFilter by remember { mutableStateOf("") }
             // The field sits low on the page, so the keyboard covered the rows it filters (user
             // 2026-09-22): on focus the page scrolls so the field lands at the TOP of what is left
@@ -468,16 +468,27 @@ internal data class RegionNode(
     val parent: Boolean get() = whole != null || pieces.size > 1 || (pieces.size == 1 && pieces[0].name != title)
 }
 
-/** The catalog as parents and leaves, by the names' trailing parentheticals, sorted by title. */
-internal fun regionTree(all: List<app.vela.offline.RoutingRegion>): List<RegionNode> {
+/** US states the catalog lists in parts ("Northern California (California)", "North Texas
+ *  (Texas)"): their parts sit under the United States with the other states. A state missing here
+ *  shows as a parent of its own beside the countries. */
+internal val US_SPLIT_STATES = setOf("california", "texas")
+
+/** The catalog as parents and leaves, by the names' trailing parentheticals, sorted by title.
+ *  [installed]: region ids on the phone. A state the catalog lists in parts keeps its whole-state
+ *  row only where that file is installed, so it can still be updated and deleted there; everyone
+ *  else is offered the parts alone. */
+internal fun regionTree(all: List<app.vela.offline.RoutingRegion>, installed: Set<String> = emptySet()): List<RegionNode> {
     val paren = Regex("""\s*\(([^()]+)\)\s*$""")
+    fun parentOf(r: app.vela.offline.RoutingRegion) = paren.find(r.name)?.groupValues?.get(1)?.trim()
+    val inParts = all.mapNotNull { parentOf(it)?.lowercase() }.filter { it in US_SPLIT_STATES }.toSet()
     val byParent = LinkedHashMap<String, MutableList<app.vela.offline.RoutingRegion>>()
     val leaves = ArrayList<app.vela.offline.RoutingRegion>()
     for (r in all) {
-        val p = paren.find(r.name)?.groupValues?.get(1)?.trim()
+        val p = parentOf(r)
+        if (p.equals("state", true) && r.id !in installed && pieceName(r).lowercase() in inParts) continue
         val parent = when {
             p == null -> null
-            p.equals("state", true) || p.equals("US", true) || p.equals("California", true) -> "United States"
+            p.equals("state", true) || p.equals("US", true) || p.lowercase() in US_SPLIT_STATES -> "United States"
             else -> p
         }
         if (parent == null) leaves += r else byParent.getOrPut(parent) { ArrayList() } += r

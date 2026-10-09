@@ -3420,8 +3420,9 @@ places" counts `poipacks/` and `places/`.
 
 A dispatch takes region ids, a list of groups, or `all-sub` (every `<country>-sub` group). A
 matrix holds at most 256 jobs, so catalog-wide bakes run as shards or group sets. `skip_obf`
-marks whole-country rows too large for the obf bake. Their sub-area rows cover them, and the
-obf and cells bakes skip them. After adding a catalog row, run `scripts/region-polys.py`.
+marks a whole country or state that its sub-area rows replace: eleven are too large for the obf
+bake, and Texas is offered in parts instead. The obf, basemap and cells bakes skip those rows.
+After adding a catalog row, run `scripts/region-polys.py`.
 
 #### A region cut from a bigger extract
 
@@ -3455,6 +3456,48 @@ box from `tools/places-regions.json`, as for every region.
 - Neighboring cuts overlap, so a trip near a seam routes inside one part, and their outer edge
   is the parent's own polygon, so the parts together hold what the parent holds and a region's
   box claims no ground outside it.
+- A cut's places archive covers its whole box, like any region's: the bake reads Overture by
+  the box, and `PmtilesRegionStore.sourcesFor` picks an installed archive by its box. Only the
+  OpenStreetMap rows in it stop at the polygon.
+
+#### Texas in four parts
+
+Geofabrik publishes no Texas sub-extracts. The catalog cuts four (group `texas-sub`), and the
+whole-state row carries `skip_obf` and is left out of the places catalog, as California's is.
+
+| Row | Name | Holds | Counties | Nodes | Extract |
+| --- | --- | --- | --- | --- | --- |
+| `texas-north` | North Texas | Dallas-Fort Worth, Wichita Falls | 31 | 31% | 213 MB |
+| `texas-east` | East Texas and Gulf Coast | Houston, Beaumont, Tyler, College Station | 55 | 26% | 178 MB |
+| `texas-south` | Central and South Texas | Austin, San Antonio, Waco, Corpus Christi, Laredo, the Rio Grande Valley | 75 | 31% | 204 MB |
+| `texas-west` | West Texas and Panhandle | El Paso, Midland, Lubbock, Amarillo, Abilene | 93 | 14% | 85 MB |
+
+Measured on the Texas extract of 2026-10-08: 95.2 M nodes, 690 MB. The parts are not equal
+quarters because no seam cuts a metro area: the four core counties of Dallas-Fort Worth hold
+21% of the state's nodes and everything west of the 100th meridian 13%.
+
+- Every county is whole in one part. West ends at the 100th meridian, and at 99 W north of
+  31.6 N, which puts Abilene's counties in it. North ends near 31.8 N and 96 W. East begins at
+  the western lines of Freestone, Leon, Brazos, Grimes, Waller, Austin, Wharton and Matagorda
+  counties.
+- Each part reaches about 4.5 km past its seam, so the overlap bands are about 9 km wide.
+- The outer edge is Geofabrik's Texas polygon, which holds the open Gulf down to 25.7 N. There
+  the East and South seam runs due south from Matagorda Bay.
+- The places bake reads a part's box, as it does for every region, so the seams keep each box
+  off the other parts' cities: East's box ends east of Dallas and South's ends west of
+  Houston. On Overture release 2026-09-23.1 the four boxes hold 2.06 M places, the four
+  polygons 1.64 M, and the box of the whole state 2.42 M.
+- Merged back, the four extracts hold every relation of the whole extract, all but 15 of its
+  11.84 M ways and all but 160 of its 95.15 M nodes. What is missing lies on or outside the
+  edge of Geofabrik's polygon.
+- Baked for `texas-west` on a laptop: routing file 40 MB with the highway hierarchy (whole
+  Texas is 216 MB, and its latest bake has none), place pack 24 MB zipped (252 MB), places
+  99 MB (801 MB), road features 93 KB (1,093 KB), maxspeed 13 MB (66 MB).
+
+In Settings, `regionTree` lists a split state's parts under United States with the other
+states (`US_SPLIT_STATES`). The whole-state row is listed only where that file is installed,
+so it can be updated and deleted there. Everyone else is offered the parts alone, and
+Download all does not fetch the state twice.
 
 #### The routing file bake
 

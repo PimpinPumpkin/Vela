@@ -4172,16 +4172,6 @@
       ]
     },
     {
-      "id": "texas",
-      "name": "Texas (state)",
-      "bbox": [
-        25.67,
-        -106.91,
-        36.53,
-        -93.02
-      ]
-    },
-    {
       "id": "thailand",
       "name": "Thailand",
       "bbox": [
@@ -4309,6 +4299,46 @@
         -65.18,
         18.49,
         -63.96
+      ]
+    },
+    {
+      "id": "texas-north",
+      "name": "North Texas (Texas)",
+      "bbox": [
+        31.4,
+        -99.25,
+        34.23,
+        -95.71
+      ]
+    },
+    {
+      "id": "texas-east",
+      "name": "East Texas and Gulf Coast (Texas)",
+      "bbox": [
+        25.69,
+        -96.72,
+        33.98,
+        -93.01
+      ]
+    },
+    {
+      "id": "texas-south",
+      "name": "Central and South Texas (Texas)",
+      "bbox": [
+        25.83,
+        -100.85,
+        32.08,
+        -96.03
+      ]
+    },
+    {
+      "id": "texas-west",
+      "name": "West Texas and Panhandle (Texas)",
+      "bbox": [
+        28.94,
+        -106.65,
+        36.53,
+        -98.9
       ]
     },
     {

@@ -17,7 +17,7 @@ class RegionPickTest {
     private val routing = listOf(
         r("texas", 25.7, -106.9, 36.5, -93.0),
         r("texas-north", 31.4, -99.2, 34.2, -95.7),
-        r("texas-east", 28.2, -97.1, 34.0, -93.5),
+        r("texas-east", 25.7, -96.7, 34.0, -93.0),
         r("oklahoma", 33.6, -103.0, 37.0, -94.4),
     )
 

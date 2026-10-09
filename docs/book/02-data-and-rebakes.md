@@ -51,15 +51,16 @@ Regions come from four files in `tools/` that share ids.
 
 | Catalog | Rows | Used by |
 | --- | --- | --- |
-| `routing-regions.json` | 458 | Everything baked from a Geofabrik extract (each row carries its `pbf_url`) |
-| `places-regions.json` | 448 | Places, with its own boxes |
+| `routing-regions.json` | 462 | Everything baked from a Geofabrik extract (each row carries its `pbf_url`) |
+| `places-regions.json` | 451 | Places, with its own boxes |
 | `overlay-regions.json` | 361, in groups `us`, `world`, `chunk` | Buildings |
 | `address-regions.json` | 52 | House numbers |
 
 The routing catalog has every country-level extract Geofabrik publishes, plus sub-areas for the
-countries Geofabrik divides (groups such as `germany-sub`). Eleven whole-country and whole-state
-rows carry `skip_obf: true`. Their sub-area rows cover them, so the routing, basemap and
-grid-cell bakes skip them and the places catalog leaves them out. A workflow matrix holds at most
+countries Geofabrik divides (groups such as `germany-sub`) and four parts of Texas that Vela
+cuts itself (`texas-sub`). Twelve whole-country and whole-state rows carry `skip_obf: true`.
+Their sub-area rows cover them, so the routing, basemap and grid-cell bakes skip them and the
+places catalog leaves them out. A workflow matrix holds at most
 256 jobs, so the catalog bakes in halves or sets.
 
 Each manifest URL has a Gradle override for local testing (`-PplacesManifestUrl` and the rest,
@@ -148,12 +149,27 @@ already takes its extract from that script, so a cut bakes like any other region
 in every manifest is the polygon's box. The catalog format and the osmium options are in
 [SPEC 7.2](../../SPEC.md).
 
-Three rules for drawing the polygons of a split:
+Four rules for drawing the polygons of a split:
 
-- The outer edge is the parent's own polygon. The parts then hold exactly what the parent
-  holds, and no part's box reaches past the parent's.
+- The outer edge is the parent's own polygon. The parts then hold what the parent holds, and
+  no part's box reaches past the parent's.
 - Neighbors overlap by a few kilometers, so a trip near a seam routes inside one part.
 - Seams follow administrative lines, which keeps a town in one part.
+- The places bake reads a region's box, and the phone picks an installed places archive by
+  its box. A seam is therefore drawn to keep one part's box off another part's cities, or
+  that part's places archive carries them too.
+
+Texas is the first. Whole, it was a download of about 2.1 GB. Its four parts follow county
+lines and hold 31% (North Texas, around Dallas-Fort Worth), 26% (East Texas and the Gulf
+Coast, around Houston), 31% (Central and South Texas, around Austin and San Antonio) and 14%
+(West Texas and the Panhandle) of the state's OpenStreetMap nodes. They are not equal because
+no seam cuts a metro area. The whole-state files stay on the releases for the phones that have
+them and are no longer rebuilt for routing, the map and places. The boundaries and the
+measurements are in [SPEC 7.2](../../SPEC.md).
+
+A part is listed in the app once the routing manifest carries it, so its place pack, places,
+basemap, road features and grid cells are baked first. A part downloaded before its own places
+and basemap archives exist would pull the whole state's.
 
 ### How a manifest is published
 
