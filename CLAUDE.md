@@ -348,6 +348,9 @@ signed file the app fetches at launch (SPEC 11).
   objects point into a style that is gone.
 - `setAllGesturesEnabled(true)` turns every gesture on, tilt and rotation included. Apply a
   gesture setting after it.
+- Three things move the camera to the fix in the first second of a launch: the first run of the
+  recenter branch, the first target fly, and the launch-center effect. A map that opens anywhere
+  else starts with all three marked done (`startFramed` in `VelaMapView`).
 
 ### Frame rate
 

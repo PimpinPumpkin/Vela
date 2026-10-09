@@ -254,6 +254,13 @@
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_keep_north_up">Keep north up</string>
     <string name="settings_keep_north_up_hint">The map never turns: two-finger rotation is off and drives stay north-up.</string>
+    <string name="settings_start_view">Where the map opens</string>
+    <string name="settings_start_view_here">Where I am</string>
+    <string name="settings_start_view_last">Where I left the map</string>
+    <string name="settings_start_view_place">A place I choose</string>
+    <string name="settings_start_view_use_current">Use the current map view</string>
+    <string name="settings_start_view_hint">Where the map is when you start Vela. A link from another app still opens on its own place.</string>
+    <string name="settings_start_view_saved">Vela will open on this view.</string>
     <string name="settings_speed_display">Show speed and speed limit</string>
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="mapvm_area_pack_big">Offline search here uses the place pack for all of %1$s. Get it from Settings > Offline maps.</string> <!-- format: %1$s country or state name -->

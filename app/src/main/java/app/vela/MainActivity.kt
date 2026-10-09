@@ -75,6 +75,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         handleIntent(intent)
+        // After the intent, before the map exists: a link keeps the camera, anything else opens
+        // on the view chosen in Settings > Map.
+        vm.openStartView()
         setContent {
             // Read the theme at the call site (a recomposing scope) and pass it in
             // — reading it inside VelaTheme's default arg didn't reliably invalidate
@@ -161,6 +164,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         app.vela.ui.AppVisibility.foreground.value = false
+        app.vela.ui.StartView.saveLast(this) // the view the map was left on, for the next launch
     }
 
     /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the

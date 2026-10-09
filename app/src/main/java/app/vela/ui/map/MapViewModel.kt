@@ -116,6 +116,11 @@ data class MapUiState(
     // Camera zoom requested by a deep link (geo:...?z=17); one-shot - any ordinary selection
     // (place tap, long-press, search) clears it back to the default framing zooms.
     val centerZoom: Double? = null,
+    // The map opened on a view that is not the phone's position (app.vela.ui.StartView), so it
+    // does not follow the fix. Cleared by the locate button, a drive, or the fix it waited for.
+    val startHold: Boolean = false,
+    // That view's zoom, for the map's creation only: cleared once the map has settled on it.
+    val startZoom: Double? = null,
     // The satellite imagery's capture year for the viewport (Esri metadata), shown in the attribution.
     val imageryYear: String? = null,
     // Deep satellite imagery for this area (issue #244): 0 = none known, 20..22 = Esri serves
@@ -868,6 +873,10 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(myLocation = sim, center = it.center ?: sim, myLocationStale = false, showPsdsTip = false, myAccuracyM = null) }
             return
         }
+        // Permission granted during the session (the locate button's ask, "Only this time"): that
+        // was a request to see where the phone is, so the first fix takes the camera whatever the
+        // start view.
+        if (!startHadPermission && _state.value.startHold) startAwaitsFix = true
         locationJob = viewModelScope.launch {
             launch {
                 delay(8_000)
@@ -1026,6 +1035,12 @@ class MapViewModel @Inject constructor(
                 // varies by hours across a country, so a theme that guesses from the clock alone is
                 // wrong for most of the world most of the year.
                 app.vela.ui.theme.AppTheme.rememberLocation(appContext, here.lat, here.lng)
+                // A start view that stood in for the phone's position gives way to the first fix,
+                // like the locate button, unless the map has been panned or put to use since.
+                val awaited = startAwaitsFix
+                val arrive = awaited && !userPannedSinceLaunch &&
+                    _state.value.let { s -> !s.navigating && s.selected == null && !s.directionsOpen && s.results.isEmpty() }
+                startAwaitsFix = false
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,
@@ -1037,7 +1052,10 @@ class MapViewModel @Inject constructor(
                         // Drives the map's accuracy halo: a coarse-permission or network fix reports
                         // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
                         myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
-                        showPsdsTip = false, center = it.center ?: here.takeUnless { userPannedSinceLaunch }, myLocationStale = false,
+                        showPsdsTip = false, myLocationStale = false,
+                        center = if (arrive) here else it.center ?: here.takeUnless { userPannedSinceLaunch },
+                        recenterTick = if (arrive) it.recenterTick + 1 else it.recenterTick,
+                        startHold = it.startHold && !awaited,
                     )
                 }
                 restartStaleTimer()
@@ -1197,6 +1215,46 @@ class MapViewModel @Inject constructor(
      *  (issue #362, and the same complaint on the 4a; 2026-09-13). */
     @Volatile private var userPannedSinceLaunch = false
     fun onUserPanned() { userPannedSinceLaunch = true }
+
+    // --- where the map opens (app.vela.ui.StartView) -------------------------------------------
+    private var startDecided = false
+    // An intent opened a place, a search or a route before the start view was decided.
+    @Volatile private var launchLink = false
+    // The start view stands in for the phone's position: the first fix takes the camera.
+    @Volatile private var startAwaitsFix = false
+    private var startHadPermission = true
+
+    /**
+     * Puts the map on its start view (Settings > Map, "Where the map opens"). The activity calls
+     * this once, after it has handled the launch intent and before the map is composed: the map
+     * is then created on that view, and a link that opened a place or a route keeps the camera,
+     * as does a drive already running (the activity reopened from its notification).
+     * It reads the permission and stored values only. It asks for nothing and fetches nothing.
+     */
+    fun openStartView() {
+        if (startDecided) return
+        startDecided = true
+        startHadPermission = locationProvider.hasPermission()
+        val s = _state.value
+        val start = app.vela.ui.startFor(
+            mode = app.vela.ui.StartView.mode.value,
+            taken = launchLink || s.navigating,
+            locationOn = locationProvider.canLocate(),
+            fix = s.myLocation,
+            last = app.vela.ui.StartView.last(appContext),
+            home = s.home?.let { LatLng(it.lat, it.lng) },
+            place = app.vela.ui.StartView.place.value,
+        ) ?: return
+        if (!start.hold) return // the last known fix, or nothing: what init already set up
+        startAwaitsFix = start.untilFix
+        _state.update { it.copy(center = start.center, startZoom = start.zoom ?: app.vela.ui.StartView.HOME_ZOOM, startHold = true) }
+        refreshBasemapArchive(start.center) // the offline map is picked for where the map opens
+        // A drive takes the camera, and the map follows the car again when it ends.
+        viewModelScope.launch {
+            _state.first { it.navigating || !it.startHold }
+            _state.update { it.copy(startHold = false) }
+        }
+    }
 
     /** As the user types, fetch live place suggestions (debounced) so the search
      *  page shows real matches — name + address — to tap, like Google's
@@ -2831,6 +2889,7 @@ class MapViewModel @Inject constructor(
      *  place name - just searches. Share payloads are usually "Check out X! https://..." so the
      *  link is fished out of the prose first. */
     fun openSharedText(raw: String) {
+        if (raw.isNotBlank()) launchLink = true // read once, by openStartView
         val token = raw.trim().split(Regex("\\s+")).firstOrNull {
             MapLinkParser.isShareLink(it) || it.startsWith("http", ignoreCase = true) || it.startsWith("geo:", ignoreCase = true)
         }
@@ -2852,6 +2911,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun openDeepLink(link: MapLink) {
+        launchLink = true
         linkMode = null
         // A trip still being looked up from an earlier link gives way to this one.
         linkTripJob?.cancel()
@@ -6011,6 +6071,7 @@ class MapViewModel @Inject constructor(
     /** A home-screen trip shortcut was tapped: open the route picker on that trip. */
     fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
         val anchor = points.last() ?: points.first() ?: return
+        launchLink = true
         linkMode = mode
         selectPlace(anchor)
         routeToSelected()
@@ -7688,7 +7749,7 @@ class MapViewModel @Inject constructor(
 
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
-    fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1) }
+    fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1, startHold = false) }
 
     /** Demo-drive simulates the route with no GPS, so the precise-location nav gate skips it. */
     fun demoDriveOn(): Boolean =
@@ -7706,7 +7767,7 @@ class MapViewModel @Inject constructor(
         // gray the pinned dot ~30 s in (same hole as the startLocation() sim branch).
         staleTimerJob?.cancel(); staleTimerJob = null
         _state.update {
-            it.copy(myLocation = here, center = here, recenterTick = it.recenterTick + 1, myLocationStale = false)
+            it.copy(myLocation = here, center = here, recenterTick = it.recenterTick + 1, myLocationStale = false, startHold = false)
         }
     }
 
@@ -7739,6 +7800,7 @@ class MapViewModel @Inject constructor(
 
     fun onViewport(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         viewport = doubleArrayOf(south, west, north, east, zoom)
+        if (_state.value.startZoom != null) _state.update { it.copy(startZoom = null) } // the map is on its start view
         refreshAreaPick()
         val center = LatLng((south + north) / 2, (west + east) / 2)
         // onViewport fires on EVERY camera idle (unlike onCameraIdle, which is gesture-gated and can

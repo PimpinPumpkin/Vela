@@ -7,7 +7,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Appearance: theme, font, interface size, map colors, units, clock, language, directions
   language, Page transitions.
 - Map: traffic, transit lines, terrain, tilt, "Keep north up", 3D buildings, map buttons, house
-  numbers.
+  numbers, where the map opens.
 - Places: "Place icons on the map", which places the map draws, what a place page loads.
 - Navigation: route picker, road-ahead bar, arrow, speed limit, zoom keys, cameras
   ([chapter 3](03-cameras.md)), traffic rechecks.
@@ -63,6 +63,23 @@ is added to it by hand. A query is a case-insensitive substring match on those l
 chosen label travels with the destination entry, and the row built with that label
 (`Modifier.settingsAnchor`) scrolls into view.
 
+### Where the map opens
+
+Settings > Map > "Where the map opens" has four choices: "Where I am" (the default), "Where I
+left the map", "Home" and "A place I choose". Home is listed only while a Home is saved. "Use
+the current map view" saves the middle of the map and its zoom, as the map sits under Settings,
+and picks "A place I choose".
+
+"Where I am" opens on the last known position and follows the phone. With location off or
+denied it opens where the map was left, and moves to the first fix if one arrives. The other
+three open on their view and stay there until the locate button is tapped or a drive starts. A
+link from another app, a shared place and a pinned trip open on their own place whatever the
+choice.
+
+The view the map was left on is saved when Vela leaves the screen. It is kept with the last
+known position, outside Android backup. The choice and the picked view are in `vela_settings`.
+[SPEC 4.7](../../SPEC.md) has the rules.
+
 ### Motion
 
 A Settings page slides in over 250 ms while the page under it moves a quarter of the width the
@@ -96,6 +113,8 @@ rest of keypad operation.
 
 ## Limits
 
+- A saved map view keeps its center and zoom. A map left turned or tilted opens north-up and
+  flat.
 - The search finds only the row labels listed in `SEARCH_INDEX`, which is kept by hand. A row
   inside a collapsed section, such as Guidance volume, is not listed.
 - Android 13 and 14 show the back preview only with the system's predictive back developer

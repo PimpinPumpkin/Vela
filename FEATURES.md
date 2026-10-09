@@ -27,6 +27,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Driving with no route, the map turns heading-up and shows your speed and the limit.
 - Names in the app language where the data has them, or romanized.
 - A compass, a scale bar and a locate button. "Prefer buttons over swipes" adds zoom buttons.
+- "Where the map opens" starts the map where you are, where you left it, at Home or on a view
+  you pick.
 
 ## Places
 
