@@ -195,9 +195,33 @@ fun ManeuverBanner(
     // the 54dp glyph + full paddings buried the map on sub-500dp-tall displays, so the banner
     // shrinks its chrome there. Ordinary phones and tall head units never trip the gate.
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 500
+    // LARGE TEXT: in portrait the card and its "Then" tab stay within BANNER_MAX_FRACTION of the
+    // screen. Past it the card's text steps down, never below the default size, and tries one step
+    // back up at each new maneuver (never within one, so it cannot flip between two sizes).
+    val baseDensity = LocalDensity.current
+    val conf = LocalConfiguration.current
+    // In real px (the configuration's density): "Interface size" scales LocalDensity, not the screen.
+    val capPx = if (conf.screenHeightDp > conf.screenWidthDp) {
+        (conf.screenHeightDp * conf.densityDpi / 160f * BANNER_MAX_FRACTION).roundToInt()
+    } else Int.MAX_VALUE
+    val fitFloor = (1f / baseDensity.fontScale).coerceAtMost(1f)
+    val fit = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    LaunchedEffect(text, type, previewing, offRoute) {
+        if (fit.floatValue < 1f) fit.floatValue = (fit.floatValue / BANNER_FIT_STEP).coerceAtMost(1f)
+    }
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, baseDensity.fontScale * fit.floatValue),
+    ) {
     // Main card + detached "then" strip share the caller's slot, so measured
     // offsets below (compass, chips) stay right.
-    Column(modifier) {
+    Column(
+        modifier.onSizeChanged { s ->
+            if (s.height > capPx && fit.floatValue > fitFloor + 0.001f) {
+                val step = (capPx.toFloat() / s.height).coerceIn(BANNER_FIT_MIN_STEP, BANNER_FIT_STEP)
+                fit.floatValue = (fit.floatValue * step).coerceAtLeast(fitFloor)
+            }
+        },
+    ) {
     Card(
         Modifier
             .fillMaxWidth()
@@ -279,10 +303,17 @@ fun ManeuverBanner(
                 Column(Modifier.weight(1f)) {
                     val signs = if (rerouting) emptyList() else roadSigns(text, ref)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters),
-                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
+                        // One line that shrinks to fit beside the shield: wrapped at large text it
+                        // took two headline lines. Reset only when its length changes, not on
+                        // every distance tick.
+                        val distText = if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters)
+                        val distStyle = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium
+                        FitText(
+                            distText,
+                            style = distStyle.copy(fontWeight = FontWeight.Bold),
+                            color = LocalContentColor.current,
+                            modifier = Modifier.weight(1f),
+                            resetKey = distText.length,
                         )
                         // The road you're ON, as its stylized shield - persistent for the whole
                         // stretch, right-aligned on the distance row (user 2026-07-16: on the TOP
@@ -292,7 +323,7 @@ fun ManeuverBanner(
                         val cur = if (rerouting) null else currentRef?.trim()?.replace(WS_RUN, " ")
                             ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { it.label == c } }
                         if (cur != null) {
-                            Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.width(8.dp))
                             SignChip(Sign(isExit = false, label = cur), onBanner = true)
                         }
                     }
@@ -316,6 +347,8 @@ fun ManeuverBanner(
                             headline,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
+                            maxLines = BANNER_HEADLINE_LINES,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         if (headline.length < full.length) {
                             val rest = full.substring(headline.length).trim(':', ' ')
@@ -403,7 +436,17 @@ fun ManeuverBanner(
             }
         }
     }
+    }
 }
+
+/** The turn card's most height in portrait, as a fraction of the screen (large text). */
+private const val BANNER_MAX_FRACTION = 0.33f
+/** One step of the card's text toward fitting, and back up at a new maneuver. */
+private const val BANNER_FIT_STEP = 0.9f
+/** The largest single step down, for a card far over its height. */
+private const val BANNER_FIT_MIN_STEP = 0.7f
+/** The instruction's most lines before it is cut with an ellipsis. */
+private const val BANNER_HEADLINE_LINES = 3
 
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
@@ -502,8 +545,14 @@ internal fun SignChip(sign: Sign, onBanner: Boolean = false) {
  *  nav card's trip time against the big driving buttons and Interface-size scaling. Steps down
  *  8% per layout pass while overflowing, floored at 55% of the base size. */
 @Composable
-private fun FitText(text: String, style: androidx.compose.ui.text.TextStyle, color: Color, modifier: Modifier = Modifier) {
-    val scaleState = remember(text) { androidx.compose.runtime.mutableStateOf(1f) }
+private fun FitText(
+    text: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    resetKey: Any = text, // what starts the fit over at full size
+) {
+    val scaleState = remember(resetKey) { androidx.compose.runtime.mutableStateOf(1f) }
     val scale = scaleState.value
     Text(
         text,
