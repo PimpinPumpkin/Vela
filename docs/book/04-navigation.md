@@ -39,6 +39,9 @@ How these are drawn is [chapter 11](11-drive-chrome.md).
   Where no region is baked, the drive asks Overpass once for the route's corridor. The camera
   rules are [chapter 3](03-cameras.md). Whether a stop sign is yours or the cross street's is
   [chapter 11](11-drive-chrome.md).
+- Bridge openings in the Netherlands come from NDW, the Dutch national road data office. Its
+  open feed lists the movable bridges on the main road network, each planned opening, and the
+  bridges open now. A drive asks for it only when its route enters the Netherlands.
 
 ## How it is decided
 
@@ -391,6 +394,17 @@ the car is in.
 you have been more than 5 km/h over the badge's limit for 4 s (`holdMs`). The 5 km/h matches the
 point where the badge turns red. It can speak again after 8 s back under the limit (`rearmMs`),
 and never more often than every 45 s (`minGapMs`).
+
+### Bridge openings
+
+In the Netherlands a movable bridge opens for ships many times a day, and a closed road can hold
+you up for ten minutes or more. Settings > Navigation > Road alerts > "Bridge openings" (on by
+default) announces a bridge on your route once it is within 5 km. "Bridge ahead is open" when
+NDW reports it open now. An "open" report more than an hour old is ignored, because the feed
+keeps a few that were never closed. "Bridge ahead: opening planned at 9:23" when a planned opening falls within
+3 minutes of the time you reach it. Each bridge is announced once, and again if a planned one
+opens before you get there. The feed is asked again every 5 minutes while a bridge is on the
+route. NDW's feed gives no bridge names, so the alert does not name one.
 
 ### The step list, the road name and the notification
 

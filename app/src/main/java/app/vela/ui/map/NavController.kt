@@ -149,6 +149,7 @@ internal class NavController(
                         refreshNavRouteControls(nsRoute)
                         refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
                         refreshRouteFlock(nsRoute) // plate-camera card / voice alerts
+                        refreshRouteBridges(nsRoute) // bridge openings in the Netherlands (NDW)
                     }
                 }
                 if (!ns.navigating) {
@@ -157,6 +158,7 @@ internal class NavController(
                     routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
                     app.vela.car.CarBridge.clear()
                     clearRouteFlock()
+                    clearRouteBridges()
                     speeding.reset()
                 }
                 // Mirror the drive into the theme holder: the "day and night while navigating"
@@ -164,7 +166,7 @@ internal class NavController(
                 app.vela.ui.theme.AppTheme.navigating.value = ns.navigating
                 // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
                 // a scan of a short list; the projection was done once when the route landed.
-                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding() }
+                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding(); maybeWarnBridge(ns) }
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -247,6 +249,18 @@ internal class NavController(
                     if (vs.replaying && !vs.demoDriving) return@collect
                     if (on) routeFlockKey = null // force the projection even for the same route
                     refreshRouteFlock(r)
+                }
+        }
+        // Same for bridge openings: on mid-drive asks NDW now, off clears the list.
+        scope.launch {
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.BridgeAlert.on.value }
+                .collect { on ->
+                    val r = navSession.state.value.route ?: return@collect
+                    if (!navSession.state.value.navigating) return@collect
+                    val vs = _state.value
+                    if (vs.replaying && !vs.demoDriving) return@collect
+                    if (on) routeBridgeKey = null
+                    refreshRouteBridges(r)
                 }
         }
     }
@@ -1205,6 +1219,85 @@ internal class NavController(
         app.vela.car.CarBridge.toast(msg)
     }
 
+    // Movable bridges on the CURRENT route with their NDW openings, ascending along-route meters,
+    // and the alerts already given. Keyed like the camera corridor so a same-course heal neither
+    // refetches nor re-arms what the driver already heard.
+    private var routeBridgeKey: String? = null
+    private var routeBridges: List<app.vela.core.data.BridgeAlerts.OnRoute> = emptyList()
+    private var bridgeAlerted: Set<String> = emptySet()
+    private var routeBridgeJob: kotlinx.coroutines.Job? = null
+
+    private fun clearRouteBridges() {
+        routeBridgeJob?.cancel()
+        routeBridgeKey = null; routeBridges = emptyList(); bridgeAlerted = emptySet()
+    }
+
+    /** Ask NDW for the bridge openings when the route enters the Netherlands, keep the bridges
+     *  within 30 m of the line, and ask again every [BRIDGE_REFRESH_MS] while any are on it: the
+     *  feed says which bridges are open now. A route with none on it asks once. */
+    private fun refreshRouteBridges(route: app.vela.core.model.Route) {
+        if (!app.vela.ui.BridgeAlert.on.value) { clearRouteBridges(); return }
+        val poly = route.polyline
+        if (poly.size < 2 || poly.none { app.vela.core.data.NdwBridgeOpenings.inNetherlands(it) }) { clearRouteBridges(); return }
+        val f = poly.first(); val l = poly.last()
+        val key = String.format(
+            java.util.Locale.US, "%.4f,%.4f|%.4f,%.4f|%d",
+            f.lat, f.lng, l.lat, l.lng, (route.distanceMeters / 500).toInt(),
+        )
+        if (key == routeBridgeKey) return
+        clearRouteBridges()
+        routeBridgeKey = key
+        routeBridgeJob = scope.launch {
+            val cum = withContext(Dispatchers.Default) { app.vela.core.nav.RouteProjection.cumulative(poly) }
+            while (routeBridgeKey == key) {
+                val all = withContext(Dispatchers.IO) { app.vela.core.data.NdwBridgeOpenings.fetch(http) }
+                if (all == null) {
+                    android.util.Log.i("VelaBridge", "NDW bridge feed fetch FAILED")
+                } else {
+                    val onRoute = withContext(Dispatchers.Default) {
+                        all.groupBy { it.loc }.mapNotNull { (loc, openings) ->
+                            app.vela.core.nav.RouteProjection.alongMeters(poly, cum, loc, 30.0)
+                                ?.let { app.vela.core.data.BridgeAlerts.OnRoute(it, openings) }
+                        }.sortedBy { it.atM }
+                    }
+                    if (routeBridgeKey != key) return@launch
+                    routeBridges = onRoute
+                    diag.record("bridge", "${onRoute.size} bridge(s) on route", "ndw")
+                    if (onRoute.isEmpty()) return@launch
+                }
+                kotlinx.coroutines.delay(BRIDGE_REFRESH_MS)
+            }
+        }
+    }
+
+    /** Announce a bridge on the route that is open, or due to open as you reach it, once each.
+     *  Timing lives in :core [app.vela.core.data.BridgeAlerts]. */
+    private fun maybeWarnBridge(ns: app.vela.core.nav.NavSession.State) {
+        if (routeBridges.isEmpty() || !app.vela.ui.BridgeAlert.on.value) return
+        val now = System.currentTimeMillis()
+        val alert = app.vela.core.data.BridgeAlerts.due(
+            routeBridges, ns.nav.traveledM, ns.nav.remainingDistance, ns.nav.remainingDuration, now, bridgeAlerted,
+        ) ?: return
+        val (msg, kind) = when (alert) {
+            is app.vela.core.data.BridgeAlerts.Alert.OpenNow -> {
+                bridgeAlerted = bridgeAlerted + app.vela.core.data.BridgeAlerts.key(alert.index, true)
+                appContext.getString(R.string.nav_bridge_open_ahead) to "open"
+            }
+            is app.vela.core.data.BridgeAlerts.Alert.Planned -> {
+                bridgeAlerted = bridgeAlerted + app.vela.core.data.BridgeAlerts.key(alert.index, false)
+                // The planned start itself, also when it has just passed: clamped to now, an
+                // opening that began two minutes ago read as one that had not begun. Formatted
+                // from the timestamp, not now plus seconds, which dropped a minute.
+                val clock = app.vela.ui.formatClock(alert.startMs)
+                appContext.getString(R.string.nav_bridge_opening_ahead, clock) to "planned"
+            }
+        }
+        android.util.Log.i("VelaBridge", "alert $kind for bridge ${alert.index + 1} of ${routeBridges.size}")
+        host.flashStatus(msg, 6000L)
+        voice.speak(msg)
+        app.vela.car.CarBridge.toast(msg)
+    }
+
     private fun refreshNavRouteControls(route: app.vela.core.model.Route, liveFetch: Boolean = true) {
         val poly = route.polyline
         if (poly.size < 2) return
@@ -1300,3 +1393,6 @@ internal fun controlsOnRoute(poly: List<app.vela.core.model.LatLng>, all: List<a
         }
     }
 }
+
+/** How often the bridge feed is asked again while a bridge is on the route. */
+private const val BRIDGE_REFRESH_MS = 5 * 60_000L
