@@ -120,6 +120,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
         app.vela.ui.ParkingButton.init(this) // parking button shown with no spot saved (issue #626)
         app.vela.ui.LinkAction.init(this) // what a location link from another app does (discussion #640)
+        app.vela.ui.StartView.init(this) // where the map opens, and the view picked for it
         app.vela.ui.NavEndConfirm.init(this) // ask before ending a drive, off by default (issue #624)
         app.vela.ui.SpeedDisplay.init(this) // speed + limit badge on/off, phone and car (issue #625)
         app.vela.ui.Topography.init(this)

@@ -221,8 +221,8 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
-  `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `Topography`, `Traffic`, `TransitLayer`,
-  `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
+  `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
+  `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
 - `MemoryPressure`, `PipMode` and `ConstrainedNetwork` hold runtime state, not a pref.
 - One view model. `MapViewModel` owns `MapUiState` and delegates navigation to `NavController`
   through `NavController.Host`. Nav code never reaches into the view model. Anything an
@@ -821,6 +821,7 @@ the page fills it after load, and a small stub sits beside it.
 | Privacy > Live traffic only when I tap | `RouteTrafficOnTap`, `route_traffic_on_tap`, off | clears `RoutingPrefs.googleTraffic` for each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not prefetched. The chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches |
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
+| Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home` or `place` (4.7, Where the map opens) |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
 red, blue, white, green, yellow), a UFO, a pirate ship or a rubber duck (`drawUfoPuck`,
@@ -1650,6 +1651,51 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   after exists behind the test dial `puckGestureSwap`; it is off because the car vanishes for
   several frames at each end of a pinch on a Pixel 4a (San Francisco fixture).
 - The browse map uses the GeoJSON symbol.
+
+#### Where the map opens
+
+- `MapViewModel` seeds `center` and `myLocation` at construction with the simulated point, else
+  `LocationProvider.lastKnown()`: the newest last-known fix the system holds, else the fix Vela
+  last cached in `vela_location`. `VelaMapView` creates the map there at z15.5, and the first
+  camera pass and the launch-center effect fly to the fix. With no seed the map is MapLibre's
+  world view until the first fix.
+- `MainActivity.onCreate` handles the launch intent, then calls `openStartView()`, before the
+  map is composed.
+- `startFor` (`ui/StartView.kt`, pure, `StartViewTest`) picks the view from the setting
+  (`StartView.mode`, Settings > Map > "Where the map opens"), whether fixes can arrive
+  (`LocationProvider.canLocate()`: a permission granted and a provider on, or a simulated
+  position), the seed fix, the view the map was left on, Home and the picked view.
+- `here` ("Where I am", the default) with location on and a seed fix changes nothing: the map
+  opens on the fix and follows it. With location off, or with no fix yet, it opens on the view
+  the map was left on and waits there for the first fix. With no such view it opens on the seed
+  fix, else the world view.
+- `last` ("Where I left the map"), `home` ("Home", at `HOME_ZOOM` 15.5) and `place` ("A place I
+  choose") open on their view and hold it. A choice whose target is missing (Home removed,
+  nothing saved yet) opens like `here`, and Settings shows "Where I am" (`shownStartMode`). The
+  stored choice is kept, so a new Home brings it back.
+- A held view sets `center`, `startZoom` and `startHold` in `MapUiState`. `VelaMapView` creates
+  the map on `center` at `openZoom` and starts with its three launch moves marked done
+  (`startFramed`: the first run of the recenter branch, the first target fly and the
+  launch-center effect), so the first frame is the start view and nothing animates. `startZoom`
+  is cleared at the first settled viewport.
+- `MapSurface` passes `driveFollowing && !startHold`, so the free-drive follow does not pull a
+  held map to the fix. `recenter()` (the locate button), the start of a drive and "Simulate my
+  location" clear the hold.
+- A view that waits for the first fix gives way to it like a locate tap (`recenterTick`), unless
+  the map was panned or a place, results, directions or a drive are up. A permission granted
+  during the session (the locate button's ask) makes any held view wait this way.
+- An intent that opens a place, a search or a route (`openDeepLink`, `openSharedText`,
+  `openTripShortcut`) sets `launchLink` before the decision, and `startFor` returns nothing. A
+  launch from a link is the same in every mode. So is an activity reopened while a drive runs.
+- A view is `StartCamera`: the point at the middle of the screen and the zoom, noted by the
+  map's idle work as `StartView.live`. The viewport box is off-center on a tilted map and the
+  camera target is off-center under a sheet's padding. Bearing and tilt are not kept.
+- `MainActivity.onStop` writes `live` as `last_view` in `vela_location`, which backups leave
+  out, like the last known fix. The choice (`start_view`) and the picked view
+  (`start_view_loc`, "lat,lng,zoom") are in `vela_settings`. "Use the current map view" stores
+  `live` as the picked view and selects `place`.
+- The decision reads the permission state and stored values. It requests no permission and
+  sends nothing.
 
 #### Free-drive follow
 

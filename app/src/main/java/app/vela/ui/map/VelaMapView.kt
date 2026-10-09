@@ -753,6 +753,7 @@ fun VelaMapView(
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
     cameraTargetZoom: Double? = null, // deep-link z= override for the target fly (null = default framing)
+    openZoom: Double? = null, // the map is created on cameraTarget at this zoom (the start view): nothing to fly to
     recenterTick: Int = 0, // bumped on each recenter tap → force a move even if already "centered"
     cameraBottomInsetPx: Int = 0,
     // Landscape side-panel width (the place/results sheets as a left column): the optical center
@@ -1176,8 +1177,10 @@ fun VelaMapView(
             .textureMode(prefs.getBoolean("texture_render", fragileGpuDefault()))
         // Open where the app already thinks it is (last known fix or the simulated point), at
         // street zoom: from MapLibre's world default the first follow flew in through every zoom.
+        // A start view (Settings > Map, "Where the map opens") comes with its own zoom.
         (cameraTarget ?: myLocation)?.let { p ->
-            opts.camera(org.maplibre.android.camera.CameraPosition.Builder().target(MLLatLng(p.lat, p.lng)).zoom(15.5).build())
+            val zoom = openZoom?.takeIf { cameraTarget != null } ?: 15.5
+            opts.camera(org.maplibre.android.camera.CameraPosition.Builder().target(MLLatLng(p.lat, p.lng)).zoom(zoom).build())
         }
         MapView(context, opts).apply {
             onCreate(null)
@@ -1304,8 +1307,13 @@ fun VelaMapView(
         }
     }
     var appliedStyleKey by remember { mutableStateOf<String?>(null) }
-    var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
-    var lastInsetPx by remember { mutableStateOf(-1) }
+    // A map created on its start view (openZoom) is already framed where it should be. Three
+    // things otherwise move the camera in the first second of every launch, each to the fix or
+    // to the default zoom: the camera pass's first run of the recenter branch and of the target
+    // fly below, and the launch-center effect. All three start as already done.
+    val startFramed = remember { openZoom != null && cameraTarget != null }
+    var lastCameraTarget by remember { mutableStateOf<LatLng?>(if (startFramed) cameraTarget else null) }
+    var lastInsetPx by remember { mutableStateOf(if (startFramed) 0 else -1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedTransitKey by remember { mutableStateOf<Int?>(null) }
     // Whole-trip coords for the chooser fit; during transit NAV the fit narrows to the guided
@@ -1316,7 +1324,7 @@ fun VelaMapView(
         if (!leg.isNullOrEmpty()) leg else all
     }
     val transitFitCoords = transitPrevCoords.ifEmpty { tripEndpoints }
-    var lastRecenterTick by remember { mutableStateOf(-1) }
+    var lastRecenterTick by remember { mutableStateOf(if (startFramed) recenterTick else -1) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
     // The last Street View pano POSITION the camera eased to - re-ease on a walk, not per yaw frame.
@@ -2944,7 +2952,7 @@ fun VelaMapView(
     // it can take a sec for the location to resolve"). Runs in the VIEW layer, so it fires AFTER the map
     // is ready and the fix has landed - and waits for that fix however long it takes. Skipped once the
     // user has taken the wheel (a pan, or a search/route already owns the camera).
-    val didLaunchCenter = remember { booleanArrayOf(false) }
+    val didLaunchCenter = remember { booleanArrayOf(startFramed) }
     LaunchedEffect(mapRef, myLocation, navMode) {
         if (didLaunchCenter[0]) return@LaunchedEffect
         val cam = mapRef ?: return@LaunchedEffect
@@ -4460,6 +4468,11 @@ fun VelaMapView(
                         b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast,
                         map.cameraPosition.zoom,
                     )
+                    // The point at the middle of the screen, for "Where the map opens". The box
+                    // above is off-center on a tilted map and the camera target under a sheet.
+                    runCatching { map.projection.fromScreenLocation(android.graphics.PointF(map.width / 2f, map.height / 2f)) }.getOrNull()?.let { c ->
+                        app.vela.ui.StartCamera.of(c.latitude, c.longitude, map.cameraPosition.zoom)?.let { app.vela.ui.StartView.live = it }
+                    }
                     runOvlGate()
                     // Idle building warm-up: schedule after a beat of stillness; any camera move
                     // cancels it (the move-started listener below).

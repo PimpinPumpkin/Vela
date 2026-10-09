@@ -4053,6 +4053,7 @@ private fun MapSurface(
         locationStale = state.myLocationStale,
         cameraTarget = state.center,
         cameraTargetZoom = state.centerZoom,
+        openZoom = state.startZoom,
         recenterTick = state.recenterTick,
         cameraBottomInsetPx = cameraBottomInset,
         cameraLeftInsetPx = cameraLeftInset,
@@ -4162,7 +4163,8 @@ private fun MapSurface(
         // Grabbing the map with a sheet up drops it down out of the way so the map is yours
         // to look at (Google does the same): the results sheet to its bar, the place sheet to
         // its minimized card. The bar / a drag brings them back.
-        driveFollowing = driveFollowing,
+        // A start view that is not the phone's position holds the map until the locate button.
+        driveFollowing = driveFollowing && !state.startHold,
         onMapTap = onMapTap,
         onUserPan = onUserPan,
         onScaleChanged = { metersPerPixelState.value = it },

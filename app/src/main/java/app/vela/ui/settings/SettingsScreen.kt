@@ -91,7 +91,7 @@ fun SettingsScreen(vm: MapViewModel, navController: androidx.navigation.NavHostC
                             onBack = close,
                         )
                         SettingsSection.APPEARANCE -> AppearanceSettingsScreen(vm, onBack = toHub)
-                        SettingsSection.MAP -> MapSettingsScreen(onBack = toHub)
+                        SettingsSection.MAP -> MapSettingsScreen(onBack = toHub, homeSet = state.home != null)
                         SettingsSection.PLACES -> PlacesSettingsScreen(onBack = toHub)
                         SettingsSection.NAVIGATION -> NavigationSettingsScreen(vm, onBack = toHub)
                         SettingsSection.VOICE -> VoiceSettingsScreen(vm, onBack = toHub, openLibrary = openVoiceLibrary)
