@@ -1696,6 +1696,9 @@ leaves visible. At the default display and font size the frame is unchanged.
   It rises until what hangs under its point clears the bottom chrome by `MARGIN_DP` (8 dp), and
   never above `MIN_PUCK_FRAC` (55 percent). Under the point: `ARROW_BELOW_PX` (62 px, the arrow's
   glyph), plus the road-name pill when it is pinned under the arrow.
+- North-up, the road ahead can run any way on screen, so the arrow takes the middle of the map
+  between the turn card's bottom and the bar's top, never lower than its heading-up place, and
+  the zoom is the speed's.
 - The bottom chrome is the bar's top edge, the road-name pill when it sits above the bar
   (`BAR_PILL_GAP_DP`, 10 dp, over it), and the speed box once its right edge reaches the arrow's
   column (`ARROW_HALF_PX`, 101 px, times the arrow size). At default size the box stays in the

@@ -77,6 +77,8 @@ The compass shows for the whole drive, and a tap switches between heading-up and
 "Keep north up" (Settings > Map) holds every drive north-up and flat, so the compass has nothing
 to switch and fades at north as it does on the browse map. It also turns off two-finger rotation
 everywhere, and the map goes back to north at the next camera rest if anything else turns it.
+North-up, the arrow sits in the middle of the map between the turn card and the bar, because the
+road ahead can run toward any edge of the screen.
 
 "Current road name" (Settings > Navigation) puts the name under the arrow (the default), above
 the bar, inside the bar, or nowhere. Away from the car (a pan, a pinch, a step preview) the name

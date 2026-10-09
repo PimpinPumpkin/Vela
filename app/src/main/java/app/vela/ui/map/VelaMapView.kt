@@ -3327,7 +3327,7 @@ fun VelaMapView(
                     // FRAMING (SPEC 4.7): the arrow's height and the zoom's pull-back follow the map
                     // the chrome leaves visible. Change-gated inside: a new frame only when the
                     // measured chrome moved a dp or more and held still.
-                    navPuck.framer.track(android.os.SystemClock.uptimeMillis(), context, cam.width.toInt(), cam.height.toInt(), navBarTopHolder.value)
+                    navPuck.framer.track(android.os.SystemClock.uptimeMillis(), context, cam.width.toInt(), cam.height.toInt(), navBarTopHolder.value, navNorthUpHolder.value)
                     val navPad = navPuck.framer.pad
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
                         else NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out

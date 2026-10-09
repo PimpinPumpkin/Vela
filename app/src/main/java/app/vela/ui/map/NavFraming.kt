@@ -75,9 +75,17 @@ internal object NavFraming {
         topPx: Double,
         bottomPx: Double,
         belowPuckPx: Double,
+        northUp: Boolean = false,
     ): Frame {
         if (mapHeightPx <= 0.0 || density <= 0.0) return DEFAULT
         val h = mapHeightPx
+        if (northUp) {
+            // North-up, the road ahead can run any way on screen, so the arrow takes the middle of
+            // the map the chrome leaves, never lower than its heading-up place.
+            val bottom = if (bottomPx > 0.0) bottomPx else h
+            val y = ((topPx.coerceIn(0.0, h) + bottom) / 2).coerceIn(h / 2, h * (1 + DEFAULT_PAD) / 2)
+            return Frame(2 * y / h - 1, 0.0)
+        }
         val lowest = if (bottomPx > 0.0) bottomPx - belowPuckPx - MARGIN_DP * density else h
         val defaultY = h * (1 + DEFAULT_PAD) / 2
         val y = min(defaultY, lowest).coerceAtLeast(h * MIN_PUCK_FRAC)
@@ -166,10 +174,10 @@ internal class NavFramer {
     var zoomOffset = 0.0
         private set
 
-    // [map height dp, density x 100, default density x 100, top dp, bottom dp, below-puck dp]
-    private val cur = FloatArray(6)
-    private val seen = FloatArray(6) { Float.NaN }
-    private val adopted = FloatArray(6) { Float.NaN }
+    // [map height dp, density x 100, default density x 100, top dp, bottom dp, below-puck dp, north-up x 100]
+    private val cur = FloatArray(7)
+    private val seen = FloatArray(7) { Float.NaN }
+    private val adopted = FloatArray(7) { Float.NaN }
     private var seenAtMs = 0L
     private var adoptedOnce = false
 
@@ -182,6 +190,7 @@ internal class NavFramer {
         topPx: Float,
         bottomPx: Float,
         belowPuckPx: Float,
+        northUp: Boolean = false,
     ): Boolean {
         if (density <= 0f) return false
         cur[0] = mapHeightPx / density
@@ -190,6 +199,7 @@ internal class NavFramer {
         cur[3] = topPx / density
         cur[4] = bottomPx / density
         cur[5] = belowPuckPx / density
+        cur[6] = if (northUp) 100f else 0f
         if (differs(cur, seen)) {
             cur.copyInto(seen)
             seenAtMs = nowMs
@@ -198,7 +208,7 @@ internal class NavFramer {
         if (adoptedOnce && nowMs - seenAtMs < NavFraming.SETTLE_MS) return false
         val f = NavFraming.frame(
             mapHeightPx.toDouble(), density.toDouble(), defaultDensity.toDouble(),
-            topPx.toDouble(), bottomPx.toDouble(), belowPuckPx.toDouble(),
+            topPx.toDouble(), bottomPx.toDouble(), belowPuckPx.toDouble(), northUp,
         )
         seen.copyInto(adopted)
         adoptedOnce = true
@@ -210,7 +220,7 @@ internal class NavFramer {
 
     /** Reads the measured chrome and calls [update]. In landscape (the chrome is a left column) and
      *  in picture-in-picture nothing covers the arrow's column. */
-    fun track(nowMs: Long, context: android.content.Context, mapWidthPx: Int, mapHeightPx: Int, barTopPx: Float): Boolean {
+    fun track(nowMs: Long, context: android.content.Context, mapWidthPx: Int, mapHeightPx: Int, barTopPx: Float, northUp: Boolean = false): Boolean {
         val dm = context.resources.displayMetrics
         val d = dm.density
         val defaultD = android.util.DisplayMetrics.DENSITY_DEVICE_STABLE / 160f
@@ -227,7 +237,10 @@ internal class NavFramer {
         )
         val below = NavFraming.belowPuck(mode == app.vela.ui.RoadLabel.PUCK, pillH)
         val top = if (clear) 0 else NavChromeEdges.bannerBottomPx
-        return update(nowMs, mapHeightPx, d, if (defaultD > 0f) defaultD else d, top.toFloat(), bottom.toFloat(), below.toFloat())
+        // North-up the arrow centers between the card and the bar itself: the pill and the speed
+        // box sit under a low arrow, and the middle is clear of both.
+        val edge = if (northUp && !clear && barTopPx > 0f) barTopPx.toDouble() else bottom
+        return update(nowMs, mapHeightPx, d, if (defaultD > 0f) defaultD else d, top.toFloat(), edge.toFloat(), below.toFloat(), northUp)
     }
 
     private fun differs(a: FloatArray, b: FloatArray): Boolean {

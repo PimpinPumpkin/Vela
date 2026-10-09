@@ -23,6 +23,16 @@ class NavFramingTest {
         assertEquals(0.0, f.zoomOffset, 1e-9)
     }
 
+    @Test fun `north-up puts the arrow in the middle of the visible map`() {
+        // Card bottom 250 dp, bar top 140 dp from the bottom: the middle is 54 percent down.
+        val f = NavFraming.frame(h, d0, d0, 250 * d0, h - 140 * d0, NavFraming.belowPuck(true, 40 * d0), northUp = true)
+        assertEquals((250 * d0 + h - 140 * d0) / 2 / h, puckFrac(f), 1e-9)
+        assertEquals(0.0, f.zoomOffset, 1e-9)
+        // With nothing measured it is the middle of the map, and never lower than heading-up.
+        assertEquals(0.5, puckFrac(NavFraming.frame(h, d0, d0, 0.0, 0.0, 0.0, northUp = true)), 1e-9)
+        assertTrue(puckFrac(NavFraming.frame(h, d0, d0, 1900.0, h, 0.0, northUp = true)) <= (1 + NavFraming.DEFAULT_PAD) / 2 + 1e-9)
+    }
+
     @Test fun `a lane strip and a then tab at default size leave the zoom alone`() {
         val f = NavFraming.frame(h, d0, d0, 321 * d0, 0.0, 0.0)
         assertEquals(NavFraming.DEFAULT_PAD, f.pad, 1e-9)
