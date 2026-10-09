@@ -428,6 +428,9 @@ signed file the app fetches at launch (SPEC 11).
 - Check a bake wave by counting file dates on the release, not by the run's color.
 - A region is chosen by its real boundary (`RegionPolys`), not its bounding box. After adding
   a catalog row run `scripts/region-polys.py`.
+- A catalog `pbf_url` can be `cut:<parent id>:<polygon file>`, a region cut from another row's
+  extract (SPEC 7.2). Only `scripts/fetch-pbf.sh` reads it. Never download or take apart a
+  `pbf_url` anywhere else.
 - A store of downloaded data takes its folder from `StorageLocation.root` on each access and
   adds it to `StorageLocation.FOLDERS`.
 - A new preference file or user data file is not backed up until it is in both

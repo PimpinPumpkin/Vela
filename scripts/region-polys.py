@@ -5,14 +5,16 @@ A region's bounding box is not its coverage: Vietnam's Geofabrik extract carries
 so its box reaches 114.6 E and swallows Hong Kong, and "download the area you're viewing" from
 Hong Kong announced "Downloading Vietnam". Geofabrik publishes the polygon every extract was cut
 with, next to the pbf (`<name>.poly`), so this fetches one per catalog row, simplifies it, and
-writes them all as ONE compact JSON the app ships in assets/region_polys.json. The app tests a point
+writes them all as ONE compact JSON the app ships in assets/region_polys.json. A `cut:` row
+(scripts/fetch-pbf.sh) has its polygon in the repo, and that file is written unsimplified. The app tests a point
 against the polygon when it has one and falls back to the box otherwise, so a region missing here
 behaves exactly as before.
 
 Usage: scripts/region-polys.py [tools/routing-regions.json] [app/src/main/assets/region_polys.json]
 """
-import json, math, sys, urllib.request, concurrent.futures as cf
+import json, math, os, sys, urllib.request, concurrent.futures as cf
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG = sys.argv[1] if len(sys.argv) > 1 else "tools/routing-regions.json"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "app/src/main/assets/region_polys.json"
 TOL_DEG = 0.05   # ~5 km; the pick decides which country a phone is in, not where a border runs
@@ -77,23 +79,41 @@ def simplify_ring(ring, tol):
     out = a[:-1] + b[:-1]
     return out if len(out) >= 3 else ring[:-1]
 
-def fetch(row):
-    url = row["pbf_url"].replace("-latest.osm.pbf", ".poly")
-    text, err = None, None
+def read_poly(row):
+    """The row's polygon as (source, text, error): the file a `cut:` row names in the repo
+    (scripts/fetch-pbf.sh), else the .poly Geofabrik publishes beside the extract."""
+    url = row["pbf_url"]
+    if url.startswith("cut:"):
+        path = url.split(":", 2)[2]
+        try:
+            return path, open(os.path.join(ROOT, path), encoding="utf-8").read(), None
+        except OSError as e:
+            return path, None, e
+    url = url.replace("-latest.osm.pbf", ".poly")
+    err = None
     for attempt in range(3):  # Geofabrik's DNS drops a request now and then; a miss is a hole in the pick
         try:
             with urllib.request.urlopen(url, timeout=60) as r:
-                text = r.read().decode("utf-8", "replace")
-            break
+                return url, r.read().decode("utf-8", "replace"), None
         except Exception as e:
             err = e
+    return url, None, err
+
+def fetch(row):
+    url, text, err = read_poly(row)
     if text is None:
         return row["id"], None, f"{url}: {err}"
     outers, holes = parse_poly(text)
     if not outers:
         return row["id"], None, f"{url}: no rings"
-    rings = [simplify_ring(o, TOL_DEG) for o in outers]
-    hs = [simplify_ring(h, TOL_DEG) for h in holes]
+    if row["pbf_url"].startswith("cut:"):
+        # Written as is: the file is small already, and its overlap with the neighboring cuts is
+        # narrower than TOL_DEG, so simplifying could open a gap between them.
+        simplify = lambda r: r[:-1] if len(r) > 3 and r[0] == r[-1] else r
+    else:
+        simplify = lambda r: simplify_ring(r, TOL_DEG)
+    rings = [simplify(o) for o in outers]
+    hs = [simplify(h) for h in holes]
     # flat [lat, lng, lat, lng, ...] per ring, 4 decimals (~10 m), holes carried separately
     flat = lambda r: [round(v, 3) for p in r for v in p]
     entry = {"o": [flat(r) for r in rings]}

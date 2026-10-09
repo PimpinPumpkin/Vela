@@ -3413,7 +3413,7 @@ places" counts `poipacks/` and `places/`.
 
 | File | Rows | Bakes |
 | --- | --- | --- |
-| `tools/routing-regions.json` | Every Geofabrik country-level extract, US states, Canadian provinces, and first-level sub-areas of the countries Geofabrik divides: `id`, `name`, `group`, `pbf_url`, optional `big`, `skip_obf` | obf, place packs, road features, basemap, maxspeed, grid cells |
+| `tools/routing-regions.json` | Every Geofabrik country-level extract, US states, Canadian provinces, first-level sub-areas of the countries Geofabrik divides, and regions Vela cuts itself: `id`, `name`, `group`, `pbf_url`, optional `big`, `skip_obf` | obf, place packs, road features, basemap, maxspeed, grid cells |
 | `tools/places-regions.json` | `id`, `name`, `bbox` (the OSM extract is matched by id in the routing catalog) | places |
 | `tools/overlay-regions.json` | Groups `us`, `world`, `chunk`; rows carry `qkprefix` where relevant | building overlays |
 | `tools/address-regions.json` | One row per OpenAddresses source | address overlays |
@@ -3422,6 +3422,39 @@ A dispatch takes region ids, a list of groups, or `all-sub` (every `<country>-su
 matrix holds at most 256 jobs, so catalog-wide bakes run as shards or group sets. `skip_obf`
 marks whole-country rows too large for the obf bake. Their sub-area rows cover them, and the
 obf and cells bakes skip them. After adding a catalog row, run `scripts/region-polys.py`.
+
+#### A region cut from a bigger extract
+
+A row's `pbf_url` is a Geofabrik URL or a cut:
+
+```
+"pbf_url": "cut:<parent id>:<polygon file>"
+```
+
+The parent is another row of `tools/routing-regions.json` with a downloadable `pbf_url`; a cut
+of a cut is refused. The polygon is an osmium `.poly` file under `tools/region-cuts/`, named by
+its path from the repository root. Every other field is as on any row.
+
+`scripts/fetch-pbf.sh` makes the extract. It downloads the parent, runs
+`osmium extract -p <polygon> --strategy smart --set-bounds` and deletes the parent.
+`--strategy smart` keeps a way, a turn restriction's ways and a multipolygon that cross the
+edge whole. `--set-bounds` writes the polygon's box into the header, which the obf, pack, road
+feature, maxspeed and cell bakes publish as the region's `bbox` and
+`tools/build-basemap-region.sh` passes to planetiler as `--bounds`. The places bake reads its
+box from `tools/places-regions.json`, as for every region.
+
+- Every bake reaches the extract through `fetch-pbf.sh`, so a cut needs no change in a bake
+  script or a workflow's region selector. A download that bypasses the script fails on the
+  `cut:` scheme.
+- A job that bakes a cut needs osmium and jq. `basemap-tiles.yml` installs osmium for cut rows
+  only; the other bake workflows install it for every row.
+- `PBF_CACHE_DIR=<dir>` keeps the parent between cuts on one machine. `PBF_DATE=<YYMMDD>`
+  takes Geofabrik's dated extract in place of `-latest` (`places-churn.yml`).
+- `scripts/region-polys.py` reads a cut's polygon from the repository and writes it
+  unsimplified.
+- Neighboring cuts overlap, so a trip near a seam routes inside one part, and their outer edge
+  is the parent's own polygon, so the parts together hold what the parent holds and a region's
+  box claims no ground outside it.
 
 #### The routing file bake
 
@@ -3448,7 +3481,9 @@ degrees) never covers by itself: it is an extract crossing the antimeridian. Amo
 regions the smallest box wins.
 
 The polygon file is baked by `scripts/region-polys.py` from the Geofabrik `.poly` beside each
-extract, simplified to about 5 km, and loaded once at app start. Every region-for-a-point
+extract, simplified to about 5 km, and loaded once at app start. A cut region's polygon is its
+own file, unsimplified, because the overlap between two cuts is narrower than the
+simplification. Every region-for-a-point
 decision goes through these two functions: downloads for the view, the streaming unions, the
 routing offer, updates, the saved-area pack lookup, the road-features region and the Offline
 settings row.
@@ -3641,10 +3676,11 @@ does not flip until each of those regions has been baked since (`heal()`: the re
 the release is newer than the cycle's last attempt, which one region dispatched by hand does).
 The record keeps the lost regions as `lost`.
 
-Every bake downloads its extract through `scripts/fetch-pbf.sh`: a plain download, then the
+Every bake gets its extract through `scripts/fetch-pbf.sh`: a plain download, then the
 redirects walked one hop at a time with a trailing slash dropped from a file name, then the
 newest `<region>-YYMMDD.osm.pbf` in the folder listing. This survives a mirror that redirects
-`-latest.osm.pbf` in a circle.
+`-latest.osm.pbf` in a circle. A `cut:` row's parent is downloaded the same way and the region
+cut out of it (7.2).
 
 ### 7.4 Download discipline
 

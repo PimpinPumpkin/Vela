@@ -122,8 +122,8 @@ and a last job publishes the manifest. The rules that keep a bake from failing:
 
 - A rebake overwrites the same asset names. A new generation is forked only when a file format
   changes.
-- Every OSM extract is downloaded through `scripts/fetch-pbf.sh`, which survives a mirror that
-  redirects in a circle.
+- Every OSM extract comes through `scripts/fetch-pbf.sh`, which survives a mirror that
+  redirects in a circle and cuts a region out of a bigger extract (below).
 - Tools are pinned: planetiler 0.10.2 for the basemap; tippecanoe 2.79.0, go-pmtiles 1.31.2 and
   DuckDB 1.5.4 for places.
 - The places read of Overture is pruned on its `bbox` column. A filter on the geometry reads
@@ -133,6 +133,27 @@ and a last job publishes the manifest. The rules that keep a bake from failing:
 
 What a places archive carries is [chapter 1](01-places.md). The other bake rules are in
 [SPEC sections 5.2 and 7](../../SPEC.md).
+
+### A region Geofabrik does not publish
+
+Geofabrik divides some countries and one US state into sub-extracts and leaves the rest whole.
+A catalog row can instead be cut from another row's extract:
+
+```
+"pbf_url": "cut:<parent id>:tools/region-cuts/<id>.poly"
+```
+
+`fetch-pbf.sh` downloads the parent and runs `osmium extract` with the polygon. Every bake
+already takes its extract from that script, so a cut bakes like any other region, and its box
+in every manifest is the polygon's box. The catalog format and the osmium options are in
+[SPEC 7.2](../../SPEC.md).
+
+Three rules for drawing the polygons of a split:
+
+- The outer edge is the parent's own polygon. The parts then hold exactly what the parent
+  holds, and no part's box reaches past the parent's.
+- Neighbors overlap by a few kilometers, so a trip near a seam routes inside one part.
+- Seams follow administrative lines, which keeps a town in one part.
 
 ### How a manifest is published
 
@@ -151,7 +172,8 @@ group.
 
 A region is picked by the polygon its extract was cut with, because a bounding box also covers a
 neighbor's land. `scripts/region-polys.py` simplifies the `.poly` file Geofabrik publishes beside
-each extract to about 5 km and writes `app/src/main/assets/region_polys.json`.
+each extract to about 5 km and writes `app/src/main/assets/region_polys.json`. A cut region's
+polygon is the file in `tools/region-cuts/`, written as it is.
 `RegionPolys.covers` answers from it. For an id with no polygon (the building catalog, or a row
 added since the script last ran) the stores fall back to `RegionPolys.boxCovers`. Among covering
 regions the smallest box wins. `RegionPolysTest` fails when a catalog id has no polygon, so
