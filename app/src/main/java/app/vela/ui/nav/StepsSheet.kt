@@ -463,6 +463,18 @@ fun NavStopsRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            // With a stop ahead the bar's figures are that stop's; the whole trip is here.
+            NavLegFigures.leg.value?.let { leg ->
+                Text(
+                    stringResource(
+                        R.string.nav_stops_whole_trip,
+                        formatDuration(leg.tripSeconds), formatDistance(leg.tripMeters), app.vela.ui.formatArrivalClock(leg.tripSeconds),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ink,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
         }
     }
     val actions: @Composable () -> Unit = {

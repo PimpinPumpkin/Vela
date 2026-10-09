@@ -14,6 +14,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -1089,14 +1090,31 @@ fun NavBarTop(
                 Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(8.dp))
+            // With a stop still ahead the main figures are the stop's and a line under them names
+            // it. The whole trip is in the step list's stops row (one swipe up): a fourth line here
+            // would shrink the figures read at a glance.
+            val leg = NavLegFigures.leg.value
+            val shownSeconds = leg?.stop?.seconds ?: remainingSeconds
+            val shownMeters = leg?.stop?.distanceM ?: remainingDistanceMeters
+            val stopName = leg?.stop?.label?.takeIf { it.isNotBlank() } ?: stringResource(R.string.nav_bar_your_stop)
+            // A screen reader hears both, in words: the stop's figures, then the whole trip's.
+            val figuresCd = leg?.let {
+                stringResource(
+                    R.string.nav_bar_stop_cd,
+                    formatDuration(it.stop.seconds), formatDistance(it.stop.distanceM), stopName, formatArrivalClock(it.stop.seconds),
+                    formatDuration(it.tripSeconds), formatDistance(it.tripMeters), formatArrivalClock(it.tripSeconds),
+                )
+            }
             Column(
-                Modifier.weight(1f),
+                Modifier.weight(1f).then(
+                    if (figuresCd != null) Modifier.clearAndSetSemantics { contentDescription = figuresCd } else Modifier,
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Both lines SHRINK to fit rather than wrap or ellipsize: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
-                FitDuration(formatDuration(remainingSeconds), style = MaterialTheme.typography.headlineSmall, color = etaColor)
+                FitDuration(formatDuration(shownSeconds), style = MaterialTheme.typography.headlineSmall, color = etaColor)
                 // While PAUSED nothing updates the nav state, so nothing would recompose this and
                 // the arrival clock would sit frozen at whatever minute the stop began - the one
                 // figure that should keep moving while you stand still, because it is what the stop
@@ -1104,8 +1122,8 @@ fun NavBarTop(
                 var pausedTick by remember { mutableStateOf(0) }
                 LaunchedEffect(paused) { while (paused) { kotlinx.coroutines.delay(30_000); pausedTick++ } }
                 FitText(
-                    formatDistance(remainingDistanceMeters) +
-                        " · " + formatArrivalClock(remainingSeconds).also { pausedTick } +
+                    formatDistance(shownMeters) +
+                        " · " + formatArrivalClock(shownSeconds).also { pausedTick } +
                         when {
                             paused -> " · " + stringResource(R.string.nav_paused)
                             offRoute -> " · " + stringResource(R.string.nav_rerouting)
@@ -1115,6 +1133,16 @@ fun NavBarTop(
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (paused) MaterialTheme.colorScheme.primary else if (look.onDark) androidx.compose.ui.graphics.Color(0xFFDADCE0) else barDim,
                 )
+                // Which stop the figures above are for; a long name is cut, never the figures.
+                if (leg != null) {
+                    Text(
+                        stringResource(R.string.nav_bar_to_stop, stopName),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = barDim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
             // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons, 26dp glyphs.

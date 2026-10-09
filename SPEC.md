@@ -1253,6 +1253,21 @@ During a drive:
   reroute cooldown, and the new list is the plan at once, so a failed fetch keeps it.
   `MapViewModel.applyStops` calls it only when the list differs from
   `NavSession.remainingStops()`.
+- `NavSession.State.nextStop` (`NextStop`: label, distance, seconds) is published with every fix
+  and at `start`. The stop is the first one not passed and not silent (`nextStopIndex`); null when
+  there is none, when that stop has no mark, or when the engine's route is not `planRoute`. The
+  distance is along the line to its mark. The time is the engine's remaining time less
+  `NavEngine.secondsBeyond(route, mark)`, the same per-maneuver pro-rating and traffic ratio as
+  the whole trip, times `etaScale`; so the stop's time and the time beyond it add up to the trip,
+  and neither figure can exceed the trip's. Every router returns a trip with stops as one leg, so
+  there are no per-stop times to read.
+- With a `nextStop` the bottom bar (`NavBarTop`, also the step sheet's header) shows the stop's
+  time, distance and arrival clock as its main figures and "To <stop>" under them, and the step
+  sheet's `NavStopsRow` adds "Whole trip: <time> · <distance> · arrive <clock>". The bar's figures
+  carry one screen-reader description with both. `NavController` mirrors the value into
+  `NavLegFigures`, a holder the two composables read, because MapScreen takes no new parameter.
+  A fourth line in the bar would shrink the figures read at a glance, so the whole trip is one
+  swipe away rather than under them.
 
 Step sheet: `NavStopsRow` always leads it. With no stops ahead it reads "Edit route" and opens
 the stops editor. With stops it also offers "Remove next", which after a `VelaDialog` confirm

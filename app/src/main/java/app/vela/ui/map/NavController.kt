@@ -162,6 +162,10 @@ internal class NavController(
                 // Mirror the drive into the theme holder: the "day and night while navigating"
                 // setting (issue #262) is the one theme input that is not a preference.
                 app.vela.ui.theme.AppTheme.navigating.value = ns.navigating
+                // The next stop's figures for the bottom bar, beside the whole trip's.
+                val toStop = ns.nextStop
+                app.vela.ui.nav.NavLegFigures.leg.value =
+                    if (ns.navigating && toStop != null) app.vela.ui.nav.NavLegFigures.Leg(toStop, ns.nav.remainingDistance, ns.nav.remainingDuration) else null
                 // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
                 // a scan of a short list; the projection was done once when the route landed.
                 if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding() }

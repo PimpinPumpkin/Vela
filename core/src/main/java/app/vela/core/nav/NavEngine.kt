@@ -128,6 +128,33 @@ object NavEngine {
         return (approach + rest) * ratio
     }
 
+    /**
+     * Seconds of the trip still to drive past [atM] meters along [route], reckoned the way
+     * [remainingDuration] reckons the whole trip: each maneuver's leg at its own pace, the leg
+     * [atM] falls on pro-rated by how much of it lies beyond, scaled by the route's live-traffic
+     * ratio; the route's average speed when the steps carry no usable durations. So the time to a
+     * point on the route is the engine's remaining time less this, and the two always add up to
+     * the trip (the next-stop figures in [NavSession.nextStop]).
+     */
+    fun secondsBeyond(route: Route, atM: Double): Double {
+        val maneuvers = route.maneuvers
+        if (route.polyline.size < 2 || maneuvers.isEmpty()) return 0.0
+        val geom = geomFor(route)
+        val total = geom.cum.last()
+        val base = route.durationSeconds
+        if (base <= 0.0 || maneuvers.sumOf { it.durationSeconds } < base * 0.7) return (total - atM).coerceAtLeast(0.0) / avgSpeed(route)
+        var t = 0.0
+        // The last maneuver's own duration is left out, as in [remainingDuration]: it is the arrival.
+        for (k in 0 until maneuvers.lastIndex) {
+            val a = geom.manAlong[k]
+            val b = geom.manAlong[k + 1]
+            if (b <= atM) continue
+            val len = b - a
+            t += if (a >= atM || len <= 0.0) maneuvers[k].durationSeconds else maneuvers[k].durationSeconds * (b - atM) / len
+        }
+        return t * ((route.durationInTrafficSeconds ?: base) / base)
+    }
+
     fun update(
         route: Route,
         state: NavState,

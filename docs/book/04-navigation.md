@@ -3,7 +3,8 @@
 ## What you see
 
 A banner with the next turn, an arrow that follows you, a bar with the time and distance left,
-and a voice. Around them:
+and a voice. On a trip with stops the bar's figures are for the next stop, named under them, and
+the whole trip is at the top of the step list. Around them:
 
 - Pause, in the bottom bar. While paused the route line turns lavender.
 - A faster-route offer that settles itself after ten seconds.
@@ -300,6 +301,14 @@ strip. The phone is usually in a cradle when the driver decides to pull in.
 
 A stop counts as passed when progress comes within `STOP_ARRIVE_TOL_M = 25` of its mark on the
 route, and the voice says "You've reached <stop>".
+
+While a stop is ahead, the bottom bar's time, distance and arrival clock are for that stop, with
+"To <stop>" under them. The whole trip moves to the step list's stops row: "Whole trip: 1 hr
+5 min · 42 mi · arrive 3:40 PM". A screen reader hears the bar as one line with both. The stop's
+time is the trip's remaining time less the time past the stop's mark, worked out over the
+maneuvers' own legs and traffic ratio the way the trip's is (`NavSession.nextStop`,
+`NavEngine.secondsBeyond`), so the two always add up. Past the last stop, or when the next stop
+has no mark on the route, the bar shows the whole trip again.
 
 - Every reroute and recheck routes through the stops still ahead.
 - A reroute that could not include them is adopted anyway and says so, because being guided
