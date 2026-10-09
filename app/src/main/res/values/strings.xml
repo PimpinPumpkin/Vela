@@ -1143,6 +1143,11 @@
     <string name="settings_places">Places</string>
     <string name="settings_privacy">Privacy</string>
     <string name="settings_cameras_group">Cameras</string>
+    <string name="settings_road_alerts_group">Road alerts</string>
+    <string name="settings_bridge_openings">Bridge openings</string>
+    <string name="settings_bridge_openings_hint">In the Netherlands, says when a movable bridge on your route is open or due to open as you reach it. Planned and live openings come from NDW\'s open road data, asked only when your route enters the Netherlands.</string>
+    <string name="nav_bridge_open_ahead">Bridge ahead is open</string>
+    <string name="nav_bridge_opening_ahead">Bridge ahead: opening planned at %1$s</string> <!-- format: %1$s is a clock time -->
     <string name="settings_experiments">Experiments</string>
     <string name="settings_hub_places_sub">Source, map icons, place pages</string>
     <string name="settings_hub_appearance_sub">Theme, map style, units, language</string>

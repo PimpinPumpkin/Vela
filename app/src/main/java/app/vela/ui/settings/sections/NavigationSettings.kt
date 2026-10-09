@@ -377,6 +377,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         CameraSettingsGroup()
         Spacer(Modifier.height(8.dp))
+        SettingsGroup(title = stringResource(R.string.settings_road_alerts_group)) {
+            ToggleRow(
+                label = stringResource(R.string.settings_bridge_openings),
+                checked = app.vela.ui.BridgeAlert.on.value,
+                onCheckedChange = { app.vela.ui.BridgeAlert.set(context, it) },
+                hint = stringResource(R.string.settings_bridge_openings_hint),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         LiveRechecksGroup(vm)
         Spacer(Modifier.height(24.dp))
     }

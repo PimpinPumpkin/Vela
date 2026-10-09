@@ -153,6 +153,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Speed cameras" draws fixed speed cameras. "Warn me out loud" announces one ahead and shows a
   card.
 - "Speeding alert" says when you have been over the posted limit for a few seconds.
+- "Bridge openings" in the Netherlands says when a movable bridge on your route is open, or due
+  to open as you reach it. From NDW's open road data. On by default.
 - Plate camera data ships with the app, so it works offline.
 
 ## Offline

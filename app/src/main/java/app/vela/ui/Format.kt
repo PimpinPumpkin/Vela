@@ -138,6 +138,15 @@ fun formatArrivalClock(remainingSeconds: Double): String {
     return arrival.format(fmt)
 }
 
+/** A wall-clock time [epochMs] in the phone's zone, "9:23 AM" or "09:23" by the 12/24-hour
+ *  setting, like [formatArrivalClock]. */
+fun formatClock(epochMs: Long): String {
+    val t = java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+    val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    return t.format(fmt)
+}
+
 /** "Sep 7, 7:42 PM" / "7 Sep, 19:42": a saved trip's or log's timestamp in the device's own date
  *  and time formats. */
 fun formatDateTime(context: Context, epochMs: Long): String {
