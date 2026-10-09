@@ -68,6 +68,8 @@ class AlongRouteCarScreen(carContext: CarContext, private val deps: CarDeps) : S
                 Row.Builder()
                     .setTitle(p.name)
                     .addText(listOfNotNull(dist, p.address).joinToString(" · "))
+                    // A gas station's price on its own line (SPEC 5.8).
+                    .apply { p.fuelPrice?.let { addText(it) } }
                     .setOnClickListener { addStop(p, here) }
                     .build(),
             )
@@ -81,9 +83,13 @@ class AlongRouteCarScreen(carContext: CarContext, private val deps: CarDeps) : S
         lifecycleScope.launch {
             val here = deps.locationProvider.lastKnown()
             val found = runCatching { deps.mapDataSource.search(q, here).places }.getOrDefault(emptyList())
-            results = here?.let { h -> found.sortedBy { it.location.distanceTo(h) } } ?: found
+            val sorted = here?.let { h -> found.sortedBy { it.location.distanceTo(h) } } ?: found
+            results = sorted
             loading = false
             invalidate()
+            // UK gas stations get their price once the Fuel Finder file is ready (SPEC 5.8).
+            val filled = app.vela.ui.map.UkFuelPrices.fill(carContext, deps.http, sorted)
+            if (filled !== sorted && results === sorted) { results = filled; invalidate() }
         }
     }
 

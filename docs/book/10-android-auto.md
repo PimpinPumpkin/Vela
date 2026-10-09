@@ -185,6 +185,11 @@ red and carries the primary flag. The host throws on a background color on any o
 
 Search along the route is two lists because the host refuses typing while the car moves.
 
+A gas station's price is a second text line on its row in search, nearby and search along the
+route: Google's in the US, the UK government's Fuel Finder in the UK ([chapter 2](02-data-and-rebakes.md)).
+The rows show at once; a UK list asks for the Fuel Finder file (downloading it the first time) and
+redraws with the prices, unless a newer search has replaced it.
+
 The alerts the phone speaks (a camera ahead, speeding, a destination that closes before you
 arrive) also show as a car toast, so a muted car still gets them.
 

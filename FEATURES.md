@@ -252,7 +252,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   guide](docs/ANDROID-AUTO.md).
 - The home list has Home, Work, recent and saved places, then nearby gas, charging, food, coffee and
   parking. Nearby results are numbered on the list and on the map.
-- Search from the car, preview up to three routes, and start the drive.
+- Search from the car, preview up to three routes, and start the drive. Gas stations in car
+  results show their fuel price.
 - The drive screen has the map, a turn card with lanes, the arrival estimate, your speed and the
   limit.
 - Buttons for mute, pause, search along the route and end, plus recenter, zoom and overview.

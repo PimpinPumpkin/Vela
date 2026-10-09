@@ -166,7 +166,7 @@ more than 3 days old, or that cannot be fetched, ends the run green with a warni
 published file stays.
 
 The phone downloads the file the first time a UK gas station without a price shows up in
-results or on a place sheet, and checks the small manifest again at most
+results, on a place sheet or in the car's results, and checks the small manifest again at most
 every 3 hours. A Google place counts as a UK gas station by the type and country Google's reply
 carries, which read the same in every app language; an open-data place, which has neither, by its
 category and position. That position test leaves out the Republic of Ireland, which Fuel Finder

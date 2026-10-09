@@ -2896,6 +2896,12 @@ prices under the Open Government Licence v3.0.
   place-pack results, places-archive results and a tapped open-data place all pass through that
   state, so the prices work with Google off. Results show at once and the prices land when the
   file is ready.
+- The car's search, nearby and search-along-route rows add the price as a second text line, US
+  and UK alike (rows allow two). Their results are no shared state, so each screen calls
+  `UkFuelPrices.fill` (`FuelGb.fill`) after drawing them: it loads the store, and downloads the
+  file, only when a row is a UK gas station without a price, and the screen redraws only if its
+  results are still the ones it filled. The store is one per process, shared by the phone and the
+  car; `CarDeps.http` carries the shared client for a car-only session.
 
 #### Matching
 
@@ -4616,7 +4622,8 @@ the same `:core` singletons as the phone (`CarDeps`).
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
-  nearest results with a distance span, and a row previews a route. Each row carries a
+  nearest results with a distance span (a gas station's price on a second line, 5.8), and a row
+  previews a route. Each row carries a
   numbered pin (`CarMapRenderer.pinBitmap`), and `showResults` draws the same pins on the map
   and frames them with the car until the screen is left. A category row's marker is a
   `Row.IMAGE_TYPE_SMALL` image, because the host tints an icon to one color.
