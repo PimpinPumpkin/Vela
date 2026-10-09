@@ -394,6 +394,8 @@ signed file the app fetches at launch (SPEC 11).
 - A drag list keeps one modifier chain and varies the values. Changing the chain when the
   drag starts kills the gesture.
 - An `IconButton` is 48 dp at least, whatever `Modifier.size` says.
+- A `pointerInput(Unit)` block keeps the callback it started with. Read one that can change
+  through `rememberUpdatedState`, or a dialog that asks a second question runs the first answer.
 - Read light or dark with `isAppInDarkTheme()`, and for things drawn on the map
   `isMapDark()`. Never `isSystemInDarkTheme()`.
 - Read wallpaper colors with `wallpaperColorsInUse()`, not the switch.

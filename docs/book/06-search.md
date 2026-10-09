@@ -392,9 +392,13 @@ A trip link opens all at once. The route chooser comes up straight away with the
 stop and the destination listed by the name or address the link carries, each with a spinner
 that turns into a check. The destination is looked up first, near you, and then every other
 place together, near the destination. Only when all of them have answered is the trip routed,
-once. A place that finds nothing gets a warning mark, the route goes on without it, and the card
-says which one it was ("Could not find Woodland, CA") until the trip is edited. A screen reader
-reads that line out when it appears. A destination that finds nothing has no trip to show, so
+once. A lookup that has not answered in 8 seconds counts as not found, so one bad name cannot
+hold the trip. A stop that finds nothing is left out of the route, and a dialog says which one
+("Could not find Woodland, CA. The route skips it.") with "Search for it" and "Skip it". Search
+opens the stop search on the link's own words, and the place you pick goes back into the trip
+where the link had it. Several missing places are asked about one at a time, a start that finds
+nothing last ("Choose a start" or "Start where I am"). The card keeps one line, "1 place not
+found", with "Fix" to open the dialog again. A destination that finds nothing has no trip to show, so
 the chooser closes and the status says which name failed.
 
 A plain location link (a `geo:` link, a shared place) shows the place. Settings > Navigation >

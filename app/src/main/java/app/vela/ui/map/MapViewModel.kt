@@ -3054,6 +3054,31 @@ class MapViewModel @Inject constructor(
 
     private var linkTripJob: Job? = null
 
+    /** [linkPlace] with a deadline, so a name nothing answers for cannot hold the whole trip: an
+     *  unfindable stop took 20 s on a Pixel 4a. The lookup runs unstructured, because a deadline
+     *  only interrupts at a suspension point and a blocked request would outlive it. */
+    private suspend fun linkPlaceWithin(o: MapLink, near: LatLng?): Place? {
+        val lookup = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).async { runCatching { linkPlace(o, near) }.getOrNull() }
+        return kotlinx.coroutines.withTimeoutOrNull(LINK_PLACE_TIMEOUT_MS) { lookup.await() }.also { if (it == null) lookup.cancel() }
+    }
+
+    /** Where each of the trip's stops sat among the link's stops, while the trip is still the
+     *  link's own. A stop found later ([findLinkStop]) goes back in at its place. */
+    private var linkStopSlots: List<Int> = emptyList()
+    /** The link stop being searched for, -1 when none. */
+    private var linkFindSlot = -1
+
+    init { LinkTrip.find = ::findLinkStop; LinkTrip.pickStart = ::beginPickOrigin }
+
+    /** "Search for it" on a stop the link named and nothing answered for: the stop search opens
+     *  on the link's own words, and the pick lands where the link had the stop ([addStop]). */
+    fun findLinkStop(slot: Int) {
+        val row = LinkTrip.view.value?.stops?.getOrNull(slot)?.takeIf { it.lookup == LinkTrip.Lookup.NOT_FOUND } ?: return
+        beginPickStop()
+        linkFindSlot = slot
+        onQueryChange(row.label)
+    }
+
     /** The destination and stops a link's trip ended up with, so [route] can drop the card's
      *  not-found note as soon as the trip is edited into something else. */
     private var linkTripFor: Pair<LatLng, List<LatLng>>? = null
@@ -3061,7 +3086,10 @@ class MapViewModel @Inject constructor(
     /** The endpoints card goes back to the trip as it is: no loading rows, no not-found note. */
     private fun clearLinkTrip() {
         app.vela.ui.place.LinkTrip.view.value = null
+        app.vela.ui.place.LinkTrip.asking.value = null
         linkTripFor = null
+        linkStopSlots = emptyList()
+        linkFindSlot = -1
     }
 
     /**
@@ -3107,7 +3135,7 @@ class MapViewModel @Inject constructor(
         fun found(p: Place?) = if (p != null) LinkTrip.Lookup.FOUND else LinkTrip.Lookup.NOT_FOUND
         linkTripJob = viewModelScope.launch {
             val t0 = android.os.SystemClock.elapsedRealtime()
-            val dest = linkPlace(link, _state.value.myLocation ?: _state.value.center)
+            val dest = linkPlaceWithin(link, _state.value.myLocation ?: _state.value.center)
             mark { it.copy(destination = it.destination.copy(lookup = found(dest))) }
             if (dest == null) {
                 clearLinkTrip()
@@ -3116,10 +3144,10 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             val near = dest.location
-            val startJob = start?.let { o -> async { linkPlace(o, near).also { p -> mark { it.copy(origin = it.origin?.copy(lookup = found(p))) } } } }
+            val startJob = start?.let { o -> async { linkPlaceWithin(o, near).also { p -> mark { it.copy(origin = it.origin?.copy(lookup = found(p))) } } } }
             val midJobs = mids.mapIndexed { i, o ->
                 async {
-                    linkPlace(o, near).also { p ->
+                    linkPlaceWithin(o, near).also { p ->
                         mark { v -> v.copy(stops = v.stops.mapIndexed { j, r -> if (j == i) r.copy(lookup = found(p)) else r }) }
                     }
                 }
@@ -3153,6 +3181,9 @@ class MapViewModel @Inject constructor(
             else {
                 LinkTrip.view.value = v.copy(resolving = false)
                 linkTripFor = dest.location to stops.map { it.location }
+                linkStopSlots = midPlaces.withIndex().filter { it.value != null }.map { it.index }
+                // A place of the planned trip is missing: say so in a dialog, one place at a time.
+                LinkTrip.asking.value = v.nextMissing()
             }
             route(chosenMode)
         }
@@ -5955,6 +5986,7 @@ class MapViewModel @Inject constructor(
      *  [addStop]/[cancelPickStop] ends the mode. */
     fun beginPickStop() {
         stopPickFromEditor = false
+        linkFindSlot = -1 // an ordinary Add stop goes last; findLinkStop sets its place after this
         _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
     }
 
@@ -6084,6 +6116,7 @@ class MapViewModel @Inject constructor(
 
     fun cancelPickStop() {
         if (!_state.value.pickingStop) return
+        linkFindSlot = -1
         val editor = stopPickFromEditor
         stopPickFromEditor = false
         _state.update { it.copy(pickingStop = false, editingStops = editor || it.editingStops) }
@@ -6157,6 +6190,10 @@ class MapViewModel @Inject constructor(
     fun addStop(p: Place) {
         val editor = stopPickFromEditor && _state.value.let { it.pickingStop || it.pickOnMap == MapPick.STOP }
         stopPickFromEditor = false
+        // A stop a link named, found by hand: it goes back where the link had it.
+        val slot = linkFindSlot.also { linkFindSlot = -1 }
+        val had = _state.value.directionsWaypoints
+        val at = if (slot >= 0 && linkStopSlots.size == had.size) LinkTrip.insertAt(linkStopSlots, slot) else had.size
         if (_state.value.directionsWaypoints.size >= app.vela.core.nav.SavedRoutes.MAX_STOPS) {
             _state.update { it.copy(pickingStop = false, pickOnMap = null, directionsOpen = true, results = emptyList(), query = "", editingStops = editor) }
             flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
@@ -6164,13 +6201,25 @@ class MapViewModel @Inject constructor(
         }
         _state.update {
             it.copy(
-                directionsWaypoints = it.directionsWaypoints + p, pickingStop = false, pickOnMap = null,
+                directionsWaypoints = it.directionsWaypoints.toMutableList().apply { add(at.coerceAtMost(size), p) }, pickingStop = false, pickOnMap = null,
                 // A stop pick always belongs to an open trip: return to the directions panel and
                 // drop the pick UI (query/results) so the route is what's on screen. Setting
                 // directionsOpen BEFORE route() also keeps its stillWanted() guard satisfied.
                 directionsOpen = true, results = emptyList(), query = "", resultsCollapsed = false,
                 editingStops = editor,
             )
+        }
+        // The card's note drops this stop; it stays for any other the link named and nothing found.
+        if (slot >= 0) LinkTrip.view.value?.let { v ->
+            val now = v.copy(stops = v.stops.mapIndexed { j, r -> if (j == slot) r.copy(lookup = LinkTrip.Lookup.FOUND) else r })
+            val dest = linkTripFor?.first
+            if (now.notFound.isEmpty() || dest == null) clearLinkTrip()
+            else {
+                LinkTrip.view.value = now
+                linkStopSlots = linkStopSlots.toMutableList().apply { add(at.coerceAtMost(size), slot) }
+                linkTripFor = dest to _state.value.directionsWaypoints.map { it.location }
+                LinkTrip.asking.value = now.nextMissing(after = slot) // on to the next missing place
+            }
         }
         route(_state.value.travelMode)
     }
@@ -6297,6 +6346,11 @@ class MapViewModel @Inject constructor(
         val stops = s.directionsWaypoints.map { it.location }
         // The not-found note of a link's trip stays only while the trip is still the one it opened.
         linkTripFor?.let { (d, st) -> if (d != dest || st != stops) clearLinkTrip() }
+        // A start chosen by hand answers a start the link named and nothing found.
+        if (s.directionsOrigin != null) LinkTrip.view.value?.takeIf { it.missingStart != null }?.let { v ->
+            val now = v.copy(origin = v.origin?.copy(lookup = LinkTrip.Lookup.FOUND))
+            if (now.notFound.isEmpty()) clearLinkTrip() else LinkTrip.view.value = now
+        }
         // A link's dragged points apply while the trip is still the link's: the same end, the
         // same start when it gave one, and its stops in its order. Any edit lets go of them.
         val plan = linkPlan?.takeIf { lp ->
@@ -10119,6 +10173,8 @@ class MapViewModel @Inject constructor(
         private const val LINK_ANCHOR_MAX_M = 50_000.0
         /** The most points dragged onto a link's route that are kept. */
         private const val LINK_VIAS_MAX = 12
+        /** How long one place of a link's trip may take to look up before it counts as not found. */
+        private const val LINK_PLACE_TIMEOUT_MS = 8_000L
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val KEY_SAVED_PIN_TIP = "saved_pin_tip_done"

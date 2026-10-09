@@ -2808,9 +2808,18 @@ when the feature ids match. Two requests at most.
   then the start and every stop together near the destination: a name with its own coordinate as
   it is, a bare coordinate reverse-geocoded, a name or address by search, an address the search
   does not carry by the autocomplete geocoder, and with no connection the downloaded places and
-  addresses. The trip is routed once, when every place has answered. A place that found nothing
-  is left out and named on the card in a note a screen reader reads out, until the trip is
-  edited (`linkTripFor`, checked in `route`). A destination that found nothing closes the chooser
+  addresses. Each lookup has `LINK_PLACE_TIMEOUT_MS` (8 s) and then counts as not found
+  (`linkPlaceWithin`, on an unstructured scope so a blocked request is abandoned): a name nothing
+  answered for held the trip 20 s on a Pixel 4a. The trip is routed once, when every place has
+  answered. A stop that found nothing is left out of the route, and a start that found nothing
+  leaves the trip starting where you are. When the trip lands a dialog says so, one place at a
+  time (`LinkTrip.asking`, `nextMissing`: the stops in order, then the start). For a stop it
+  offers "Search for it", which opens the stop search on the link's words (`findLinkStop`) and
+  puts the pick back where the link had the stop (`LinkTrip.insertAt` over `linkStopSlots`), or
+  "Skip it". For the start it offers "Choose a start" or "Start where I am". The card keeps one
+  line, "1 place not found" with "Fix" to open the dialog again, until every place is answered
+  or the trip is edited (`linkTripFor`, checked in `route`). A destination that found nothing
+  closes the chooser
   with "Could not find". Back cancels the lookups, and the mode tabs work during them. During a
   drive a trip link only says "End navigation to open this trip".
 - A point dragged onto the route on a desktop sits in the blob inside the block of the place

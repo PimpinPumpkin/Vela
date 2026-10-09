@@ -131,6 +131,9 @@ private fun DialogButton(
 ) {
     val fr = remember { FocusRequester() }
     val dpadFirst = rememberDpadFirstDevice()
+    // The tap handler below is installed once, so it reads the action through this: a dialog
+    // whose buttons change while it is up (one question after another) kept the first action.
+    val click = androidx.compose.runtime.rememberUpdatedState(onClick)
     if (autoFocus) {
         // EXACT photo-gallery pattern (the one proven to auto-focus in a raw Dialog): retry a
         // plain requestFocus. Focus target is an explicit .focusable() below (a Material button's
@@ -169,7 +172,7 @@ private fun DialogButton(
             }
             .focusable()
             // Touch tap via pointerInput (NOT .clickable, which would add a 2nd focus target).
-            .pointerInput(Unit) { detectTapGestures { onClick() } }
+            .pointerInput(Unit) { detectTapGestures { click.value() } }
             .padding(horizontal = if (filled) 24.dp else 12.dp, vertical = 10.dp),
     )
 }

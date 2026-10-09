@@ -202,7 +202,11 @@ fun RouteTopCard(
                     }
                 }
                 // A place from the link that found nothing stays named here until the trip is edited.
-                link?.notFound?.takeIf { it.isNotEmpty() }?.let { NotFoundNote(it) }
+                link?.takeIf { it.notFound.isNotEmpty() }?.let { v ->
+                    NotFoundNote(v)
+                    // A dialog of its own for each place, so the next one is announced as new.
+                    LinkTrip.asking.value?.let { ask -> androidx.compose.runtime.key(ask) { LinkTripDialog(v, ask) } }
+                }
             }
             if (!resolving) Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if ((googleStyle && showStopControls) || onSaveRoute != null) {
@@ -409,24 +413,57 @@ private fun LookupMark(lookup: LinkTrip.Lookup) {
     }
 }
 
-/** The places from a link that found nothing, under the trip, read out when it appears. */
+/**
+ * A trip from a link with a place that found nothing: one line on the card saying how many, with
+ * "Fix" to open the dialog again. The dialog itself ([LinkTripDialog]) shows when the trip lands.
+ */
 @Composable
-private fun NotFoundNote(names: List<String>) {
+private fun NotFoundNote(link: LinkTrip.View) {
+    val n = link.notFound.size
     Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier
-            .padding(top = 4.dp, bottom = 2.dp)
-            .semantics(mergeDescendants = true) { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 2.dp).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
     ) {
-        Box(Modifier.width(GLYPH_RAIL).padding(top = 2.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.width(GLYPH_RAIL), contentAlignment = Alignment.Center) {
             Icon(Sym.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
         }
         Spacer(Modifier.width(8.dp))
         Text(
-            pluralStringResource(R.plurals.link_trip_not_found, names.size, names.joinToString(", ")),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
+            pluralStringResource(R.plurals.link_trip_places_missing, n, n),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f),
         )
+        androidx.compose.material3.TextButton(
+            onClick = { LinkTrip.asking.value = link.nextMissing() },
+            modifier = Modifier.dpadHighlight(CircleShape),
+        ) { Text(stringResource(R.string.link_trip_fix)) }
+    }
+}
+
+/**
+ * The not-found dialog, one place at a time: a stop offers the stop search on the link's own
+ * words (the pick goes back where the link had the stop), the start offers the start picker.
+ * Skipping moves on to the next missing place; the card's line stays for coming back.
+ */
+@Composable
+private fun LinkTripDialog(link: LinkTrip.View, ask: Int) {
+    val start = ask == LinkTrip.START
+    val label = if (start) link.missingStart
+        else link.stops.getOrNull(ask)?.takeIf { it.lookup == LinkTrip.Lookup.NOT_FOUND }?.label
+    if (label == null) {
+        // Answered some other way since it was asked.
+        androidx.compose.runtime.LaunchedEffect(ask) { LinkTrip.asking.value = null }
+        return
+    }
+    val skip = { LinkTrip.asking.value = link.nextMissing(after = ask) }
+    app.vela.ui.VelaDialog(
+        onDismissRequest = skip,
+        title = stringResource(if (start) R.string.link_trip_start_title else R.string.link_trip_stop_title),
+        confirmText = stringResource(if (start) R.string.link_trip_pick_start else R.string.link_trip_search),
+        onConfirm = { LinkTrip.asking.value = null; if (start) LinkTrip.pickStart() else LinkTrip.find(ask) },
+        dismissText = stringResource(if (start) R.string.link_trip_start_here else R.string.link_trip_skip),
+        onDismiss = { if (start) LinkTrip.startHere() else skip() },
+    ) {
+        Text(stringResource(if (start) R.string.link_trip_start_missing else R.string.link_trip_stop_missing, label))
     }
 }
 

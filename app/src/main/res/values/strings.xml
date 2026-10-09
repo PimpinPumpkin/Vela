@@ -1164,9 +1164,18 @@
     <string name="link_trip_looking_cd">Looking it up</string>
     <string name="link_trip_found_cd">Found</string>
     <string name="link_trip_not_found_cd">Not found</string>
-    <plurals name="link_trip_not_found">
-        <item quantity="one">Could not find %1$s. The route goes on without it.</item>
-        <item quantity="other">Could not find %1$s. The route goes on without them.</item>
+    <string name="link_trip_stop_missing">Could not find %1$s. The route skips it.</string>
+    <string name="link_trip_start_missing">Could not find %1$s. The trip starts where you are.</string>
+    <string name="link_trip_search">Search for it</string>
+    <string name="link_trip_skip">Skip it</string>
+    <string name="link_trip_stop_title">Stop not found</string>
+    <string name="link_trip_start_title">Start not found</string>
+    <string name="link_trip_pick_start">Choose a start</string>
+    <string name="link_trip_start_here">Start where I am</string>
+    <string name="link_trip_fix">Fix</string>
+    <plurals name="link_trip_places_missing">
+        <item quantity="one">%1$d place not found</item>
+        <item quantity="other">%1$d places not found</item>
     </plurals>
     <string name="settings_places">Places</string>
     <string name="settings_privacy">Privacy</string>
