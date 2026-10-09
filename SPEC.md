@@ -4013,7 +4013,7 @@ cut out of it (7.2).
   clears the queue.
 - Sizes shown are installed sizes: the manifest's `installedMb`, else the download size for an
   obf and the zip times 2.35 for a pack, plus the region's places and basemap archives
-  (`regionExtrasMb`). A region over `CONFIRM_MB` (1024) installed confirms first.
+  (`regionExtrasMb`). The row states that size, and Download starts at once.
 
 #### Offline detection
 

@@ -832,8 +832,6 @@
     <string name="settings_offline_places_with_downloads_hint">Egy régió letöltése a hozzá tartozó Vela-helyadatot is elhozza, így az üzletek jelzés nélkül is látszanak a térképen. Egy nagy államnál nagyjából fél gigabájt. Ki = a helyek csak online töltődnek be.</string>
     <string name="settings_routing_size_installed_here">Telepítve kb. %1$s · lefedi a helyzetedet</string>
     <string name="settings_routing_size_installed">Telepítve kb. %1$s</string>
-    <string name="settings_region_confirm_title">Letöltöd ezt: %1$s?</string>
-    <string name="settings_region_confirm_body">A(z) %1$s telepítve kb. %2$s tárhelyet foglal. Mindennapi használatra a körülötted lévő terület mentése (az oldal tetején) sokkal kisebb.</string>
     <string name="settings_storage_title">Tárhely</string>
     <string name="settings_storage_maps">Mentett területek és térkép-gyorsítótár</string>
     <string name="settings_storage_routing">Offline útvonaltervezés</string>

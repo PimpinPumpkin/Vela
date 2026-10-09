@@ -70,19 +70,6 @@ import org.maplibre.android.offline.OfflineRegion
 internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit, onOpenVoice: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var confirmRegion by remember { mutableStateOf<app.vela.offline.RoutingRegion?>(null) }
-    confirmRegion?.let { region ->
-        val packRegion = vm.autoPackFor(region)
-        app.vela.ui.VelaDialog(
-            onDismissRequest = { confirmRegion = null },
-            title = stringResource(R.string.settings_region_confirm_title, region.name),
-            text = { Text(stringResource(R.string.settings_region_confirm_body, region.name, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))) },
-            confirmText = stringResource(R.string.settings_download),
-            onConfirm = { confirmRegion = null; vm.downloadRoutingGraph(region) },
-            dismissText = stringResource(R.string.settings_cancel),
-            onDismiss = { confirmRegion = null },
-        )
-    }
     SettingsScaffold(stringResource(R.string.settings_offline), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         PageIntro(stringResource(R.string.settings_offline_hint))
@@ -305,7 +292,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             }
             installedRegions.sortedBy { it.name }.forEachIndexed { ri, region ->
                 if (ri > 0 || regions.isNotEmpty()) GroupDivider()
-                RegionRow(region, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
+                RegionRow(region, state, vm, primary?.id, indent = false)
             }
             // Grid cells: part of a region pulled by the area picker (SPEC 7.6), one row per region
             // with every cell's parts summed; delete takes all of that region's cells.
@@ -429,15 +416,15 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         if (ri > 0) GroupDivider()
                         val node = row.node
                         when {
-                            row.piece != null -> RegionRow(row.piece, state, vm, primary?.id, indent = true, onConfirm = { confirmRegion = it })
-                            !node.parent -> RegionRow(node.pieces[0], state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
+                            row.piece != null -> RegionRow(row.piece, state, vm, primary?.id, indent = true)
+                            !node.parent -> RegionRow(node.pieces[0], state, vm, primary?.id, indent = false)
                             node.whole != null -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 // The country's own file carries the row; the chevron opens its pieces.
                                 IconButton(onClick = { expanded[node.title] = !row.open }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
                                     Icon(if (row.open) Sym.ExpandLess else Sym.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
-                                    RegionRow(node.whole, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it }, subtitleSuffix = stringResource(R.string.settings_region_whole_or_pieces, node.pieces.size))
+                                    RegionRow(node.whole, state, vm, primary?.id, indent = false, subtitleSuffix = stringResource(R.string.settings_region_whole_or_pieces, node.pieces.size))
                                 }
                             }
                             else -> ParentRow(node, state, vm, open = row.open, onToggle = { expanded[node.title] = !row.open })
@@ -576,7 +563,6 @@ private fun RegionRow(
     vm: MapViewModel,
     primaryId: String?,
     indent: Boolean,
-    onConfirm: (app.vela.offline.RoutingRegion) -> Unit,
     subtitleSuffix: String? = null,
 ) {
     val installed = region.id in state.routingInstalledIds
@@ -673,12 +659,8 @@ private fun RegionRow(
             else -> {
                 DpadFocusHandoff(keeper)
                 FilledTonalButton(
-                    // Big regions confirm first with the real installed size (issue #214:
-                    // Germany reads 1.6 GB on the row but lands at ~8 GB on disk).
-                    onClick = {
-                        if (regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0) > CONFIRM_MB) onConfirm(region)
-                        else vm.downloadRoutingGraph(region)
-                    },
+                    // The row already states the installed size, so the tap downloads.
+                    onClick = { vm.downloadRoutingGraph(region) },
                     enabled = state.routingDownloadingId == null,
                     modifier = Modifier.dpadFocusKept(keeper),
                 ) { Text(stringResource(R.string.settings_download)) }
@@ -774,5 +756,3 @@ private fun CacheRow(
 
 internal fun fmtMb(mb: Int): String =
     if (mb >= 1024) String.format(java.util.Locale.getDefault(), "%.1f GB", mb / 1024f) else "$mb MB"
-
-private const val CONFIRM_MB = 1024

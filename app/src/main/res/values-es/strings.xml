@@ -729,8 +729,6 @@
     <string name="settings_offline_places_with_downloads_hint">Al descargar una región también se traen los datos de lugares de Vela, para que los negocios aparezcan en el mapa sin señal. Alrededor de medio gigabyte para un estado grande. Desactivado = los lugares solo se cargan con conexión.</string>
     <string name="settings_routing_size_installed_here">Unos %1$s una vez instalada · cubre tu ubicación</string>
     <string name="settings_routing_size_installed">Unos %1$s una vez instalada</string>
-    <string name="settings_region_confirm_title">¿Descargar %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s ocupa unos %2$s de almacenamiento una vez instalada. Para el día a día, guardar solo la zona en la que estás (arriba en esta página) ocupa mucho menos.</string>
     <string name="settings_storage_title">Almacenamiento</string>
     <string name="settings_storage_maps">Zonas guardadas y caché del mapa</string>
     <string name="settings_storage_routing">Rutas sin conexión</string>

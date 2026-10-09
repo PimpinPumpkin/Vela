@@ -730,8 +730,6 @@
     <string name="settings_offline_places_with_downloads_hint">Le téléchargement d\'une région apporte aussi les données de lieux de Vela, pour que les commerces s\'affichent sur la carte sans réseau. Environ un demi-gigaoctet pour un grand état. Désactivé = les lieux ne se chargent qu\'en ligne.</string>
     <string name="settings_routing_size_installed_here">Environ %1$s une fois installée · couvre votre position</string>
     <string name="settings_routing_size_installed">Environ %1$s une fois installée</string>
-    <string name="settings_region_confirm_title">Télécharger %1$s ?</string>
-    <string name="settings_region_confirm_body">%1$s occupe environ %2$s une fois installée. Au quotidien, enregistrer seulement la zone autour de vous (en haut de cette page) est bien plus léger.</string>
     <string name="settings_storage_title">Stockage</string>
     <string name="settings_storage_maps">Zones enregistrées &amp; cache de la carte</string>
     <string name="settings_storage_routing">Routage hors ligne</string>

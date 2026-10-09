@@ -737,8 +737,6 @@
     <string name="settings_offline_places_with_downloads_hint">Завантаження регіону приносить і дані Vela про місця для нього, тож заклади на карті видно без зв\'язку. Приблизно пів гігабайта для великої області. Вимк. = місця завантажуються лише онлайн.</string>
     <string name="settings_routing_size_installed_here">Приблизно %1$s після встановлення · охоплює ваше місцезнаходження</string>
     <string name="settings_routing_size_installed">Приблизно %1$s після встановлення</string>
-    <string name="settings_region_confirm_title">Завантажити %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s займе приблизно %2$s у сховищі після встановлення. Для щоденного користування збереження лише області навколо вас (угорі цієї сторінки) значно менше.</string>
     <string name="settings_storage_title">Сховище</string>
     <string name="settings_storage_maps">Збережені області та кеш карти</string>
     <string name="settings_storage_routing">Офлайн-маршрутизація</string>

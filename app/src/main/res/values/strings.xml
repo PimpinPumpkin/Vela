@@ -271,8 +271,6 @@
     <string name="settings_routing_update_available">Installed · places update available</string>
     <string name="settings_routing_size_installed_here">About %1$s once installed · covers your location</string> <!-- format -->
     <string name="settings_routing_size_installed">About %1$s once installed</string> <!-- format -->
-    <string name="settings_region_confirm_title">Download %1$s?</string> <!-- format -->
-    <string name="settings_region_confirm_body">%1$s takes about %2$s of storage once installed. For day-to-day use, saving just the area around you (top of this page) is far smaller.</string> <!-- format -->
     <string name="settings_storage_title">Storage</string>
     <string name="settings_storage_maps">Saved areas &amp; map cache</string>
     <string name="settings_storage_routing">Offline routing</string>

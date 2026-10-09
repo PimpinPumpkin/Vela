@@ -22,8 +22,7 @@ offline, Storage, Downloaded, then the catalog as one alphabetical tree. The tre
 hierarchy from the parentheses in the catalog names (`regionTree`), and a parent row
 downloads its pieces one after another. California and Texas are offered in parts, listed
 under United States with the other states; a whole-state file from before the split is listed
-only on a phone that has it. Sizes are installed sizes, and a region over 1 GB
-(`CONFIRM_MB`) asks first.
+only on a phone that has it. Sizes are installed sizes, shown on each row.
 
 ## Where the data comes from
 

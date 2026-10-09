@@ -807,8 +807,6 @@
     <string name="settings_offline_places_with_downloads_hint">Il download di una regione porta con sé anche i dati sui luoghi di Vela, così le attività compaiono sulla mappa senza segnale. Circa mezzo gigabyte per uno stato grande. Disattivo = i luoghi arrivano solo online.</string>
     <string name="settings_routing_size_installed_here">Circa %1$s una volta installata · copre la tua posizione</string>
     <string name="settings_routing_size_installed">Circa %1$s una volta installata</string>
-    <string name="settings_region_confirm_title">Scaricare %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s occupa circa %2$s di spazio una volta installata. Per l\'uso quotidiano, salvare solo l\'area intorno a te (in cima a questa pagina) occupa molto meno.</string>
     <string name="settings_storage_title">Spazio di archiviazione</string>
     <string name="settings_storage_maps">Aree salvate e cache della mappa</string>
     <string name="settings_storage_routing">Percorsi offline</string>

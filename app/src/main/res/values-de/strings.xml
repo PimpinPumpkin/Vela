@@ -729,8 +729,6 @@
     <string name="settings_offline_places_with_downloads_hint">Ein Regions-Download bringt auch Velas Ortsdaten dafür mit, sodass die Geschäfte auf der Karte ohne Empfang erscheinen. Rund ein halbes Gigabyte für ein großes Bundesland. Aus = Orte werden nur online geladen.</string>
     <string name="settings_routing_size_installed_here">Etwa %1$s nach der Installation · deckt Ihren Standort ab</string>
     <string name="settings_routing_size_installed">Etwa %1$s nach der Installation</string>
-    <string name="settings_region_confirm_title">%1$s herunterladen?</string>
-    <string name="settings_region_confirm_body">%1$s belegt nach der Installation etwa %2$s Speicher. Für den Alltag ist es viel sparsamer, nur den Bereich um Sie herum zu speichern (oben auf dieser Seite).</string>
     <string name="settings_storage_title">Speicher</string>
     <string name="settings_storage_maps">Gespeicherte Bereiche &amp; Karten-Cache</string>
     <string name="settings_storage_routing">Offline-Routing</string>

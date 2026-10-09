@@ -791,9 +791,7 @@
     <!-- format -->
     <string name="settings_routing_size_installed">安装后约 %1$s</string>
     <!-- format -->
-    <string name="settings_region_confirm_title">要下载%1$s吗？</string>
     <!-- format -->
-    <string name="settings_region_confirm_body">%1$s 安装后约占用 %2$s 存储空间。日常使用只保存您周边的区域（本页顶部）会小得多。</string>
     <!-- format -->
     <string name="settings_storage_title">存储空间</string>
     <string name="settings_storage_maps">已保存区域与地图缓存</string>

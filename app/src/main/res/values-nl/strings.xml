@@ -807,8 +807,6 @@
     <string name="settings_offline_places_with_downloads_hint">Bij het downloaden van een regio komen ook Vela\'s plaatsgegevens mee, zodat de bedrijven op de kaart zonder bereik zichtbaar zijn. Ongeveer een halve gigabyte voor een grote staat. Uit = plaatsen komen alleen online binnen.</string>
     <string name="settings_routing_size_installed_here">Ongeveer %1$s na installatie · dekt je locatie</string>
     <string name="settings_routing_size_installed">Ongeveer %1$s na installatie</string>
-    <string name="settings_region_confirm_title">%1$s downloaden?</string>
-    <string name="settings_region_confirm_body">%1$s neemt na installatie ongeveer %2$s opslag in beslag. Voor dagelijks gebruik is alleen het gebied om je heen opslaan (boven aan deze pagina) veel kleiner.</string>
     <string name="settings_storage_title">Opslag</string>
     <string name="settings_storage_maps">Opgeslagen gebieden &amp; kaartcache</string>
     <string name="settings_storage_routing">Offline routering</string>

@@ -258,8 +258,6 @@
     <string name="settings_routing_update_available">Instalat · actualizare locații disponibilă</string>
     <string name="settings_routing_size_installed_here">Aproximativ %1$s după instalare · acoperă locația ta</string>
     <string name="settings_routing_size_installed">Aproximativ %1$s după instalare</string>
-    <string name="settings_region_confirm_title">Descarci %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s ocupă aproximativ %2$s din spațiu de stocare după instalare. Pentru utilizarea zilnică, salvarea doar a zonei din jurul tău (în partea de sus a acestei pagini) este mult mai mică.</string>
     <string name="settings_storage_title">Stocare</string>
     <string name="settings_storage_maps">Zone salvate și memoria cache a hărții</string>
     <string name="settings_storage_routing">Rutare off-line</string>

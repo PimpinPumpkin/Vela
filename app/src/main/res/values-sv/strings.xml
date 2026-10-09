@@ -729,8 +729,6 @@
     <string name="settings_offline_places_with_downloads_hint">En regionnedladdning tar även med Velas platsdata för den, så att företagen på kartan syns utan täckning. Runt en halv gigabyte för en stor delstat. Av = platser strömmas bara när du är online.</string>
     <string name="settings_routing_size_installed_here">Cirka %1$s installerat · täcker din plats</string>
     <string name="settings_routing_size_installed">Cirka %1$s installerat</string>
-    <string name="settings_region_confirm_title">Hämta %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s tar cirka %2$s lagringsutrymme när det är installerat. För vardagsbruk är det mycket mindre att spara bara området runt dig (högst upp på den här sidan).</string>
     <string name="settings_storage_title">Lagring</string>
     <string name="settings_storage_maps">Sparade områden &amp; kartcache</string>
     <string name="settings_storage_routing">Offlineruttning</string>

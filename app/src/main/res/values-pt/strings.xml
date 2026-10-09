@@ -808,8 +808,6 @@
     <string name="settings_offline_places_with_downloads_hint">A transferência de uma região traz também os dados de locais da Vela, para que os estabelecimentos apareçam no mapa sem rede. Cerca de meio gigabyte para um estado grande. Desligado = os locais só chegam online.</string>
     <string name="settings_routing_size_installed_here">Cerca de %1$s depois de instalado · abrange a sua localização</string>
     <string name="settings_routing_size_installed">Cerca de %1$s depois de instalado</string>
-    <string name="settings_region_confirm_title">Transferir %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s ocupa cerca de %2$s depois de instalado. Para o dia a dia, guardar apenas a área à sua volta (no topo desta página) é muito mais pequeno.</string>
     <string name="settings_storage_title">Armazenamento</string>
     <string name="settings_storage_maps">Áreas guardadas &amp; cache do mapa</string>
     <string name="settings_storage_routing">Percursos offline</string>

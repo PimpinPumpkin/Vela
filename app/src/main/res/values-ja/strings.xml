@@ -787,8 +787,6 @@
     <string name="settings_offline_places_with_downloads_hint">地域をダウンロードすると Vela の場所データも一緒に取得し、電波がなくても地図上に店舗などが表示されます。大きな州で 0.5 GB ほどです。オフの場合、場所はオンライン時のみ読み込まれます。</string>
     <string name="settings_routing_size_installed_here">インストール後の容量は約 %1$s · 現在地を含みます</string>
     <string name="settings_routing_size_installed">インストール後の容量は約 %1$s</string>
-    <string name="settings_region_confirm_title">%1$s をダウンロードしますか？</string>
-    <string name="settings_region_confirm_body">%1$s はインストール後に約 %2$s の容量を使用します。普段使いなら、このページの上部から周辺エリアだけを保存するほうがはるかに軽量です。</string>
     <string name="settings_storage_title">ストレージ</string>
     <string name="settings_storage_maps">保存済みエリアと地図キャッシュ</string>
     <string name="settings_storage_routing">オフライン経路データ</string>
