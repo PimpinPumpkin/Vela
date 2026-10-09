@@ -4248,8 +4248,13 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   `SpeechText.spokenClock` (English) spells out clock times, which otherwise read as a
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
-- `voice_volume` is a gain over the neural voice's float PCM, hard-clipped at full scale. The
-  system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
+- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
+  leveled base (`VoiceLevel`). The voices render well under full scale: Kokoro's default voice
+  peaks at 0.29 and has an RMS of 0.058 on a Pixel 4a. Each line gets one gain,
+  `TARGET_PEAK` (0.85) over the loudest sample that voice and speaker have rendered, between 1
+  and `MAX_LIFT` (4), times the setting. Samples past `KNEE` (0.8) are bent toward full scale by
+  a tanh curve, so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at
+  1.0: Android can only attenuate.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next

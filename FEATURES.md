@@ -192,7 +192,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Spoken directions use a neural voice that runs on the phone. The Vela voice downloads once.
 - The "Voice library" has about 40 Piper voices. Any text-to-speech voice on the phone works too.
 - "Spoken directions" is the on and off switch, the same as mute in a drive.
-- "Guidance volume", "Voice speed" and "Test voice".
+- "Guidance volume", "Voice speed" and "Test voice". The Vela voice is leveled to a standard
+  loudness, and the volume setting scales from there.
 - The voice follows the directions language. Vela offers a download when a language has no
   voice, and a voice of another language says so on its row.
 - English voices say about 3,500 place names the local way. Street names in another script are read
