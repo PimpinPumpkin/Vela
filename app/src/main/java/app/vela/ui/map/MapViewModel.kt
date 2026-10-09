@@ -8418,8 +8418,10 @@ class MapViewModel @Inject constructor(
             runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
                 .also { rs -> if (rs.isNotEmpty()) _state.update { it.copy(routingRegions = rs) } }
         }
-        val region = regions.filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() } ?: return base
-        if (region.id in obfStore.installedIds()) return base.copy(region = region, regionInstalled = true)
+        // The specific region, or a bigger one already on the phone (a whole state beside its parts).
+        val pick = app.vela.offline.RegionPick.routing(regions, lat, lng, obfStore.installedIds()) ?: return base
+        val region = pick.region
+        if (pick.installed) return base.copy(region = region, regionInstalled = true)
         if (_state.value.poiPackRegions.isEmpty()) {
             val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
             _state.update { it.copy(poiPackRegions = packs) }
@@ -8573,11 +8575,11 @@ class MapViewModel @Inject constructor(
                     .also { rs -> _state.update { it.copy(routingRegions = rs) } }
             }
             // smallest covering box = the specific region for this area (boxes overlap at borders; a big
-            // neighbor like British Columbia shouldn't be grabbed for a the metro download)
-            val region = regions.filter { it.covers(lat, lng) }
-                .minByOrNull { it.boxArea() } ?: return@downloadLaunch
-            if (region.id in obfStore.installedIds() || _state.value.routingDownloadingId != null) return@downloadLaunch
-            downloadRoutingGraph(region) // shows its own progress + status
+            // neighbor like British Columbia shouldn't be grabbed for a the metro download), unless a
+            // bigger covering region is already installed
+            val pick = app.vela.offline.RegionPick.routing(regions, lat, lng, obfStore.installedIds()) ?: return@downloadLaunch
+            if (pick.installed || _state.value.routingDownloadingId != null) return@downloadLaunch
+            downloadRoutingGraph(pick.region) // shows its own progress + status
         }
         downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
         if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForArea(lat, lng) // and the places archive, so the map's businesses show offline
@@ -8644,10 +8646,12 @@ class MapViewModel @Inject constructor(
     /** The smallest basemap archive covering ([lat],[lng]), pulled with a viewport download. */
     private fun downloadBasemapForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
-            val region = basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
-                .filter { it.covers(lat, lng) }
-                .minByOrNull { it.area() } ?: return@downloadLaunch
-            if (region.id in basemapStore.installedIds()) return@downloadLaunch
+            val pick = app.vela.offline.RegionPick.archive(
+                basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL), lat, lng,
+                basemapStore.installedIds(), skip = setOf(app.vela.offline.BasemapTileStore.WORLD_ID),
+            ) ?: return@downloadLaunch
+            if (pick.installed) return@downloadLaunch
+            val region = pick.region
             if (basemapStore.download(region) { }) {
                 app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
                 ensureWorldBasemap()
@@ -8661,10 +8665,9 @@ class MapViewModel @Inject constructor(
     private fun downloadPlacesForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)
-            val region = regions.filter { it.covers(lat, lng) }
-                .minByOrNull { it.area() } ?: return@downloadLaunch
-            if (region.id in placesStore.installedIds()) return@downloadLaunch
-            placesStore.download(region) { }
+            val pick = app.vela.offline.RegionPick.archive(regions, lat, lng, placesStore.installedIds()) ?: return@downloadLaunch
+            if (pick.installed) return@downloadLaunch
+            placesStore.download(pick.region) { }
             refreshPlacesOverlays()
         }
     }
@@ -9520,9 +9523,10 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val regions = runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
             if (regions.isEmpty()) { routingOfferChecked = false; return@launch } // try again on a later idle
-            val region = regions.filter { it.covers(anchor.lat, anchor.lng) }
-                .minByOrNull { it.boxArea() } ?: run { markRoutingOfferDone(); return@launch }
-            if (region.id in obfStore.installedIds()) { markRoutingOfferDone(); return@launch }
+            val pick = app.vela.offline.RegionPick.routing(regions, anchor.lat, anchor.lng, obfStore.installedIds())
+                ?: run { markRoutingOfferDone(); return@launch }
+            if (pick.installed) { markRoutingOfferDone(); return@launch }
+            val region = pick.region
             if (_state.value.poiPackRegions.isEmpty()) {
                 val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
                 _state.update { it.copy(poiPackRegions = packs) }

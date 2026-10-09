@@ -78,13 +78,13 @@ fi
 # OSM SHOPS (2026-09-17): the region's OpenStreetMap extract, filtered to named business nodes, is
 # the FIRST choice for a place's coordinate. OSM maps the shop where the shop is, and when it is
 # wrong anyone can fix it in a minute and every map benefits, which is not true of a parcel
-# centroid in a bulk dataset. Needs osmium; OSM_PBF is a Geofabrik URL or a local file, and with it
-# unset the bake behaves exactly as before.
+# centroid in a bulk dataset. Needs osmium; OSM_PBF is a catalog pbf_url (a Geofabrik URL or a
+# cut:, see scripts/fetch-pbf.sh) or a local file, and with it unset the bake behaves exactly as before.
 OSM_NDJSON=""
 MARKS_NDJSON=""
 if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   OSM_SRC="$OSM_PBF"
-  if [ "${OSM_PBF#http}" != "$OSM_PBF" ]; then
+  if [ "${OSM_PBF#http}" != "$OSM_PBF" ] || [ "${OSM_PBF#cut:}" != "$OSM_PBF" ]; then
     echo "osm: fetching $OSM_PBF"
     if bash "$ROOT/scripts/fetch-pbf.sh" "$OSM_PBF" "$WORK/region.osm.pbf"; then OSM_SRC="$WORK/region.osm.pbf"; else OSM_SRC=""; echo "osm: download failed, baking without it"; fi
   fi

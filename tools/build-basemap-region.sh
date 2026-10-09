@@ -5,6 +5,9 @@
 #
 #   tools/build-basemap-region.sh <id> <pbf-url-or-path> <out.pmtiles> [maxzoom]
 #
+# <pbf-url-or-path> is a catalog row's pbf_url (a Geofabrik URL or a cut:, see scripts/fetch-pbf.sh)
+# or a local file.
+#
 # Needs Java 21+ and planetiler.jar next to this script (or PLANETILER=/path/to/planetiler.jar).
 # planetiler downloads its base data (Natural Earth, water polygons, lake centerlines, about
 # 1.2 GB) into data/sources/ on the first run; cache that directory in CI. Saarland at z14 bakes
@@ -21,14 +24,18 @@ set -euo pipefail
 ID="$1"; PBF="$2"; OUT="$3"; MAXZOOM="${4:-14}"
 JAR="${PLANETILER:-$(dirname "$0")/planetiler.jar}"
 WORK="$(mktemp -d)"
-if [[ "$PBF" == http* ]]; then
+if [[ "$PBF" == http* || "$PBF" == cut:* ]]; then
   bash "$(dirname "$0")/../scripts/fetch-pbf.sh" "$PBF" "$WORK/region.osm.pbf"
   PBF="$WORK/region.osm.pbf"
 fi
 # True bounds from Geofabrik's index: the id is the pbf_url path without the -latest suffix
 # ("north-america/us/new-mexico"); a local file or unknown id can only warn.
 BOUNDS=""
-if [[ "${2:-}" == http* || "${BASEMAP_GEOFABRIK_SLUG:-}" != "" ]]; then
+if [[ "${2:-}" == cut:* ]]; then
+  # A region cut from a parent extract (scripts/fetch-pbf.sh): its header box is the box of the
+  # polygon it was cut with. osmium prints (minlon,minlat,maxlon,maxlat), planetiler's W,S,E,N.
+  BOUNDS="$(osmium fileinfo -g header.boxes "$PBF" | sed -n 1p | tr -d '() ')"
+elif [[ "${2:-}" == http* || "${BASEMAP_GEOFABRIK_SLUG:-}" != "" ]]; then
   SLUG="${BASEMAP_GEOFABRIK_SLUG:-}"
   if [[ -z "$SLUG" ]]; then
     SLUG="${2#*download.geofabrik.de/}"; SLUG="${SLUG#download.geofabrik.de/}"

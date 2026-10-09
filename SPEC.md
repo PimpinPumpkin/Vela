@@ -3492,9 +3492,9 @@ Gate state is composable-scoped, because `getMapAsync` can register listeners tw
 The status says "ready" once, after the last piece, or "incomplete" when one failed. A places
 or basemap piece that never arrived shows as an update on the region's row (7.3).
 
-Saving an area with the whole-region box checked runs the same download for the smallest
-region covering the area's center and also pulls the smallest covering building overlay
-(`downloadRoutingForArea`). Address and maxspeed overlays are only streamed. Road features
+Saving an area with the whole-region box checked runs the same download for the region
+`RegionPick` names for the area's center (7.2) and also pulls the smallest covering building
+overlay (`downloadRoutingForArea`). Address and maxspeed overlays are only streamed. Road features
 download per region the first time the map or a route needs them (4.9).
 
 GraphHopper graphs are retired. `LegacyGraphs.purge` deletes `filesDir/graphs` at launch when it
@@ -3624,15 +3624,91 @@ places" counts `poipacks/` and `places/`.
 
 | File | Rows | Bakes |
 | --- | --- | --- |
-| `tools/routing-regions.json` | Every Geofabrik country-level extract, US states, Canadian provinces, and first-level sub-areas of the countries Geofabrik divides: `id`, `name`, `group`, `pbf_url`, optional `big`, `skip_obf` | obf, place packs, road features, basemap, maxspeed, grid cells |
+| `tools/routing-regions.json` | Every Geofabrik country-level extract, US states, Canadian provinces, first-level sub-areas of the countries Geofabrik divides, and regions Vela cuts itself: `id`, `name`, `group`, `pbf_url`, optional `big`, `skip_obf` | obf, place packs, road features, basemap, maxspeed, grid cells |
 | `tools/places-regions.json` | `id`, `name`, `bbox` (the OSM extract is matched by id in the routing catalog) | places |
 | `tools/overlay-regions.json` | Groups `us`, `world`, `chunk`; rows carry `qkprefix` where relevant | building overlays |
 | `tools/address-regions.json` | One row per OpenAddresses source | address overlays |
 
 A dispatch takes region ids, a list of groups, or `all-sub` (every `<country>-sub` group). A
 matrix holds at most 256 jobs, so catalog-wide bakes run as shards or group sets. `skip_obf`
-marks whole-country rows too large for the obf bake. Their sub-area rows cover them, and the
-obf and cells bakes skip them. After adding a catalog row, run `scripts/region-polys.py`.
+marks a whole country or state that its sub-area rows replace: eleven are too large for the obf
+bake, and Texas is offered in parts instead. The obf, basemap and cells bakes skip those rows.
+After adding a catalog row, run `scripts/region-polys.py`.
+
+#### A region cut from a bigger extract
+
+A row's `pbf_url` is a Geofabrik URL or a cut:
+
+```
+"pbf_url": "cut:<parent id>:<polygon file>"
+```
+
+The parent is another row of `tools/routing-regions.json` with a downloadable `pbf_url`; a cut
+of a cut is refused. The polygon is an osmium `.poly` file under `tools/region-cuts/`, named by
+its path from the repository root. Every other field is as on any row.
+
+`scripts/fetch-pbf.sh` makes the extract. It downloads the parent, runs
+`osmium extract -p <polygon> --strategy smart --set-bounds` and deletes the parent.
+`--strategy smart` keeps a way, a turn restriction's ways and a multipolygon that cross the
+edge whole. `--set-bounds` writes the polygon's box into the header, which the obf, pack, road
+feature, maxspeed and cell bakes publish as the region's `bbox` and
+`tools/build-basemap-region.sh` passes to planetiler as `--bounds`. The places bake reads its
+box from `tools/places-regions.json`, as for every region.
+
+- Every bake reaches the extract through `fetch-pbf.sh`, so a cut needs no change in a bake
+  script or a workflow's region selector. A download that bypasses the script fails on the
+  `cut:` scheme.
+- A job that bakes a cut needs osmium and jq. `basemap-tiles.yml` installs osmium for cut rows
+  only; the other bake workflows install it for every row.
+- `PBF_CACHE_DIR=<dir>` keeps the parent between cuts on one machine. `PBF_DATE=<YYMMDD>`
+  takes Geofabrik's dated extract in place of `-latest` (`places-churn.yml`).
+- `scripts/region-polys.py` reads a cut's polygon from the repository and writes it
+  unsimplified.
+- Neighboring cuts overlap, so a trip near a seam routes inside one part, and their outer edge
+  is the parent's own polygon, so the parts together hold what the parent holds and a region's
+  box claims no ground outside it.
+- A cut's places archive covers its whole box, like any region's: the bake reads Overture by
+  the box, and `PmtilesRegionStore.sourcesFor` picks an installed archive by its box. Only the
+  OpenStreetMap rows in it stop at the polygon.
+
+#### Texas in four parts
+
+Geofabrik publishes no Texas sub-extracts. The catalog cuts four (group `texas-sub`), and the
+whole-state row carries `skip_obf` and is left out of the places catalog, as California's is.
+
+| Row | Name | Holds | Counties | Nodes | Extract |
+| --- | --- | --- | --- | --- | --- |
+| `texas-north` | North Texas | Dallas-Fort Worth, Wichita Falls | 31 | 31% | 213 MB |
+| `texas-east` | East Texas and Gulf Coast | Houston, Beaumont, Tyler, College Station | 55 | 26% | 178 MB |
+| `texas-south` | Central and South Texas | Austin, San Antonio, Waco, Corpus Christi, Laredo, the Rio Grande Valley | 75 | 31% | 204 MB |
+| `texas-west` | West Texas and Panhandle | El Paso, Midland, Lubbock, Amarillo, Abilene | 93 | 14% | 85 MB |
+
+Measured on the Texas extract of 2026-10-08: 95.2 M nodes, 690 MB. The parts are not equal
+quarters because no seam cuts a metro area: the four core counties of Dallas-Fort Worth hold
+21% of the state's nodes and everything west of the 100th meridian 13%.
+
+- Every county is whole in one part. West ends at the 100th meridian, and at 99 W north of
+  31.6 N, which puts Abilene's counties in it. North ends near 31.8 N and 96 W. East begins at
+  the western lines of Freestone, Leon, Brazos, Grimes, Waller, Austin, Wharton and Matagorda
+  counties.
+- Each part reaches about 4.5 km past its seam, so the overlap bands are about 9 km wide.
+- The outer edge is Geofabrik's Texas polygon, which holds the open Gulf down to 25.7 N. There
+  the East and South seam runs due south from Matagorda Bay.
+- The places bake reads a part's box, as it does for every region, so the seams keep each box
+  off the other parts' cities: East's box ends east of Dallas and South's ends west of
+  Houston. On Overture release 2026-09-23.1 the four boxes hold 2.06 M places, the four
+  polygons 1.64 M, and the box of the whole state 2.42 M.
+- Merged back, the four extracts hold every relation of the whole extract, all but 15 of its
+  11.84 M ways and all but 160 of its 95.15 M nodes. What is missing lies on or outside the
+  edge of Geofabrik's polygon.
+- Baked for `texas-west` on a laptop: routing file 40 MB with the highway hierarchy (whole
+  Texas is 216 MB, and its latest bake has none), place pack 24 MB zipped (252 MB), places
+  99 MB (801 MB), road features 93 KB (1,093 KB), maxspeed 13 MB (66 MB).
+
+In Settings, `regionTree` lists a split state's parts under United States with the other
+states (`US_SPLIT_STATES`). The whole-state row is listed only where that file is installed,
+so it can be updated and deleted there. Everyone else is offered the parts alone, and
+Download all does not fetch the state twice.
 
 #### The routing file bake
 
@@ -3659,7 +3735,9 @@ degrees) never covers by itself: it is an extract crossing the antimeridian. Amo
 regions the smallest box wins.
 
 The polygon file is baked by `scripts/region-polys.py` from the Geofabrik `.poly` beside each
-extract, simplified to about 5 km, and loaded once at app start. Every region-for-a-point
+extract, simplified to about 5 km, and loaded once at app start. A cut region's polygon is its
+own file, unsimplified, because the overlap between two cuts is narrower than the
+simplification. Every region-for-a-point
 decision goes through these two functions: downloads for the view, the streaming unions, the
 routing offer, updates, the saved-area pack lookup, the road-features region and the Offline
 settings row.
@@ -3667,6 +3745,14 @@ settings row.
 A region download pulls the places or basemap archive with the region's id (`archivesFor`).
 Without one it pulls every archive whose box center lies inside the region, and without any of
 those the smallest archive covering the region's center.
+
+`RegionPick` decides which region a download is offered or started for: the smallest covering
+region, unless a larger covering region is installed, which then answers as already
+downloaded. A phone that holds a whole state is therefore not offered one of its parts. It
+serves the area picker's plan and its "too large" line (`areaDownloadPlan`), the region that
+comes with a saved area, the one-time routing offer, and the places and basemap archives of a
+saved area. The low-zoom world basemap covers every point and never counts as installed
+coverage.
 
 #### Places layer
 
@@ -3855,10 +3941,11 @@ does not flip until each of those regions has been baked since (`heal()`: the re
 the release is newer than the cycle's last attempt, which one region dispatched by hand does).
 The record keeps the lost regions as `lost`.
 
-Every bake downloads its extract through `scripts/fetch-pbf.sh`: a plain download, then the
+Every bake gets its extract through `scripts/fetch-pbf.sh`: a plain download, then the
 redirects walked one hop at a time with a trailing slash dropped from a file name, then the
 newest `<region>-YYMMDD.osm.pbf` in the folder listing. This survives a mirror that redirects
-`-latest.osm.pbf` in a circle.
+`-latest.osm.pbf` in a circle. A `cut:` row's parent is downloaded the same way and the region
+cut out of it (7.2).
 
 ### 7.4 Download discipline
 
