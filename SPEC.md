@@ -1257,6 +1257,21 @@ During a drive:
   reroute cooldown, and the new list is the plan at once, so a failed fetch keeps it.
   `MapViewModel.applyStops` calls it only when the list differs from
   `NavSession.remainingStops()`.
+- `NavSession.State.nextStop` (`NextStop`: label, distance, seconds) is published with every fix
+  and at `start`. The stop is the first one not passed and not silent (`nextStopIndex`); null when
+  there is none, when that stop has no mark, or when the engine's route is not `planRoute`. The
+  distance is along the line to its mark. The time is the engine's remaining time less
+  `NavEngine.secondsBeyond(route, mark)`, the same per-maneuver pro-rating and traffic ratio as
+  the whole trip, times `etaScale`; so the stop's time and the time beyond it add up to the trip,
+  and neither figure can exceed the trip's. Every router returns a trip with stops as one leg, so
+  there are no per-stop times to read.
+- With a `nextStop` the bottom bar (`NavBarTop`, also the step sheet's header) shows the stop's
+  time, distance and arrival clock as its main figures and "To <stop>" under them, and the step
+  sheet's `NavStopsRow` adds "Whole trip: <time> · <distance> · arrive <clock>". The bar's figures
+  carry one screen-reader description with both. `NavController` mirrors the value into
+  `NavLegFigures`, a holder the two composables read, because MapScreen takes no new parameter.
+  A fourth line in the bar would shrink the figures read at a glance, so the whole trip is one
+  swipe away rather than under them.
 
 Step sheet: `NavStopsRow` always leads it. With no stops ahead it reads "Edit route" and opens
 the stops editor. With stops it also offers "Remove next", which after a `VelaDialog` confirm
@@ -1420,6 +1435,32 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
+  engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
+  the engine's route is `planRoute`. The last spoken maneuver before the stop
+  (`NavEngine.stopLegManeuver`, a silent continue passed over), when the stop is at most
+  `STOP_THEN_M` (300 m) past it, says it after itself on its first line and on its turn-now line:
+  `NavStrings.thenStop`, "Turn left onto Covell Boulevard, then Davis Food Co-op will be on your
+  right". That line takes no traffic-light lead. Otherwise the stop gets its own line at the near
+  distance, `NavStrings.stopAhead` in `inThen` ("In 150 meters, Davis Food Co-op will be on your
+  right"): once per stop (`NavState.stopCuedAtM`), never off route, never in a fix that already
+  speaks, never within 50 m. `BRIEF` puts the clause on the maneuver's one line; `EXITS` says the
+  stop's own line, as it says the arrival's.
+- The side is `NavEngine.stopSide`: where the stop's pin sits against the line's direction
+  through its mark, read 25 m either way. It is null ("will be ahead") when the pin is within
+  `SIDE_MIN_OFF_M` (8 m) of the line or the line bends more than 45 degrees through the mark.
+- When that maneuver is a left or right onto a road with no name and no number and the stop is at
+  most `LOT_THEN_M` (150 m) past it (`NavEngine.lotTurnCandidate`), `ParkingLotTurn.entersLot`
+  reads the map's z14 tiles along the route (`RoadNameTiles.roadsAlong`, the `transportation`
+  layer's `class` and `service`), every 8 m from 10 m past the turn for up to 60 m or to the
+  stop. Every sample's nearest car road within 12 m has to be a service road that is not an
+  alley, and one a `parking_aisle`. Then the line is `NavStrings.intoLotThen`, "Turn left into the
+  parking lot, then Davis Food Co-op is on your right". No router marks a parking aisle, so this
+  is the only source. One lookup per route and stop, in the background, within
+  `LOT_LOOKUP_TIMEOUT_MS` (8 s); until it answers, or when the tiles cannot be read, the plain
+  wording stands.
+- `stopAhead`, `thenStop` and `intoLotThen` are in every `NavStrings` table, with a blank name
+  read as "your stop".
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.
@@ -2709,8 +2750,20 @@ when the feature ids match. Two requests at most.
   coordinate in its `data=` blob (`MapLinkParser.dirPins`: a `1m<n>` field per place, with
   `1d<lng>` and `2d<lat>` among its `n` fields, and `3e<0-3>` for the mode). The pins are used
   only when the blob lists exactly the path's places; such a place is taken as named and
-  pinned, with no lookup (`linkPin`), and the trip is fetched once. A name with no pin is
-  searched near the destination and the trip rerouted (`applyLinkTrip`).
+  pinned, with no lookup (`linkPin`).
+- A link with stops, or with a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix, opens
+  as a trip (`openTripLink`). The chooser opens at once, and the endpoints card lists the start,
+  every stop and the destination by `MapLink.label` (the link's name or address, else its
+  coordinate), each with its own spinner, check or warning (`LinkTrip`, a holder the card reads
+  because MapScreen takes no new parameter). `linkPlace` looks the destination up near the user,
+  then the start and every stop together near the destination: a name with its own coordinate as
+  it is, a bare coordinate reverse-geocoded, a name or address by search, an address the search
+  does not carry by the autocomplete geocoder, and with no connection the downloaded places and
+  addresses. The trip is routed once, when every place has answered. A place that found nothing
+  is left out and named on the card in a note a screen reader reads out, until the trip is
+  edited (`linkTripFor`, checked in `route`). A destination that found nothing closes the chooser
+  with "Could not find". Back cancels the lookups, and the mode tabs work during them. During a
+  drive a trip link only says "End navigation to open this trip".
 - A point dragged onto the route on a desktop sits in the blob inside the block of the place
   before it (`3m4`, `1m2`, `1d<lng>`, `2d<lat>`, `3s<id>`), and comes out as a stop marked
   `MapLink.via`, in travel order, at most `LINK_VIAS_MAX` (12). The view model keeps them as
@@ -2718,8 +2771,8 @@ when the feature ids match. Two requests at most.
   stamps the result's `detourPlan`, so a drive passes them as silent stops
   (`NavController.navStopsFor`). They hold while the trip is the link's (same end, same given
   start, same stops in order) and are dropped at the first edit.
-- The link's mode, its stops, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix,
-  apply once to the next `routeToSelected`. The mode is not made sticky.
+- The link's mode applies to its trip only (the next `routeToSelected` for a single
+  destination) and is not made sticky.
 - A link that names something at a point (`geo:lat,lng?q=Name`) searches the name near the
   point. When no result lies within `LINK_ANCHOR_MAX_M` (50 km) of it, the point itself opens
   under the link's name (`anchorLinkSearch`): the sender gave a position, and the one hit was a

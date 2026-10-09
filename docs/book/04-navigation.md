@@ -3,7 +3,8 @@
 ## What you see
 
 A banner with the next turn, an arrow that follows you, a bar with the time and distance left,
-and a voice. Around them:
+and a voice. On a trip with stops the bar's figures are for the next stop, named under them, and
+the whole trip is at the top of the step list. Around them:
 
 - Pause, in the bottom bar. While paused the route line turns lavender.
 - A faster-route offer that settles itself after ten seconds.
@@ -88,7 +89,8 @@ turn. The voice says "turn left" 25 m out either way.
 
 - The first prompt for a step leads with lane guidance when the step has lanes.
 - In English a later prompt for the same step drops the sign's "toward ..." tail.
-- A merge gets only the near prompt. The destination gets one near prompt.
+- A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
+  (see Stops below).
 - A continue or a straight-on is silent unless its lanes show a real fork.
 - The first instruction is spoken once by the drive's opener ("Starting navigation. Head east on
   ..."). The engine skips it.
@@ -301,6 +303,37 @@ strip. The phone is usually in a cradle when the driver decides to pull in.
 A stop counts as passed when progress comes within `STOP_ARRIVE_TOL_M = 25` of its mark on the
 route, and the voice says "You've reached <stop>".
 
+The voice also says a stop is coming, the way it says the destination is:
+
+```
+STOP_THEN_M = 300   // the last turn before a stop names it when the stop is this close past it
+LOT_THEN_M  = 150   // ...and calls it a turn into the parking lot only this close
+```
+
+- The last maneuver the voice speaks before the stop names it after itself, on its first line and
+  again at the turn: "In 400 meters, turn left onto Covell Boulevard, then Davis Food Co-op will be
+  on your right". A stop farther past its turn, or with no spoken turn before it, gets its own line
+  at the near distance: "In 150 meters, Davis Food Co-op will be on your right". Either way it is
+  said once, and never while off route.
+- The side is where the stop's pin sits against the road at the stop (`NavEngine.stopSide`). A
+  pin within 8 m of the line, or a line that bends more than 45 degrees there (a corner), gives
+  "will be ahead" instead of a side that could be wrong.
+- When that last turn is onto a road with no name, Vela reads the map's own tiles along the first
+  60 m past it (`ParkingLotTurn`). Only when they show a parking aisle, reached by service roads
+  and no street or alley, does the turn become "Turn left into the parking lot, then Davis Food
+  Co-op is on your right". No router marks a parking aisle, and a road with no name is just as
+  often a driveway or an unnamed lane, so anything less certain keeps the plain "Turn left".
+- Brief puts the stop on its turn's one line. Highway exits only stays quiet for the turn in town
+  and says the stop's own line, as it says the destination's.
+
+While a stop is ahead, the bottom bar's time, distance and arrival clock are for that stop, with
+"To <stop>" under them. The whole trip moves to the step list's stops row: "Whole trip: 1 hr
+5 min · 42 mi · arrive 3:40 PM". A screen reader hears the bar as one line with both. The stop's
+time is the trip's remaining time less the time past the stop's mark, worked out over the
+maneuvers' own legs and traffic ratio the way the trip's is (`NavSession.nextStop`,
+`NavEngine.secondsBeyond`), so the two always add up. Past the last stop, or when the next stop
+has no mark on the route, the bar shows the whole trip again.
+
 - Every reroute and recheck routes through the stops still ahead.
 - A reroute that could not include them is adopted anyway and says so, because being guided
   beats being lost. The stops stay in the plan for the next attempt.
@@ -446,6 +479,10 @@ switches reach the car screens too. Turn both off before a real drive.
 - A stop's arrival time is an estimate by distance. The trip's time is spread evenly along the
   line, so traffic that sits mostly before or after a stop skews it. That is good enough for a
   one-hour warning window and not for minutes. Keeping per-leg times would fix it.
+- A stop's side is the side its pin is on. A pin set on the far side of a divided road, or behind
+  the building, gives that side.
+- "Into the parking lot" needs the lot's aisles mapped in OpenStreetMap and present in the map's
+  z14 tiles. Where they are not, the turn stays a plain "Turn left".
 - A reroute that cannot pass every remaining stop says it could not include your stops. The
   check counts the camera detour's silent points, so a drive with no visible stops can hear it.
 - A drive resumed after the app was killed has no stops, visible or silent. Only the destination

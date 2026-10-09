@@ -176,27 +176,136 @@ object RoadNameTiles {
                 if (brunnel != "bridge") continue
                 fname = "\u0000"
             } else if (fname.isNullOrBlank() && ref.isNullOrBlank()) continue
-            // Geometry commands: MoveTo (1) starts a part, LineTo (2) extends it; zigzag deltas.
-            var cx = 0; var cy = 0; var gi = 0
-            var part = ArrayList<LatLng>()
-            while (gi < geom.size) {
-                val cmd = geom[gi] and 7; val count = geom[gi] ushr 3; gi++
-                when (cmd) {
-                    1, 2 -> repeat(count) {
-                        if (gi + 1 >= geom.size + 1) return@repeat
-                        cx += zigzag(geom[gi]); cy += zigzag(geom[gi + 1]); gi += 2
-                        if (cmd == 1 && part.size >= 2) { out += NamedLine(fname ?: ref!!, ref, cls, part); part = ArrayList() }
-                        else if (cmd == 1) part = ArrayList()
-                        part += toLatLng(cx, cy)
-                    }
-                    else -> {}
-                }
-            }
-            if (part.size >= 2) out += NamedLine(fname ?: ref!!, ref, cls, part)
+            for (part in lineParts(geom) { gx, gy -> toLatLng(gx, gy) }) out += NamedLine(fname ?: ref!!, ref, cls, part)
         }
         if (bridgeLayer) {
             for (l in out.filter { it.name == "\u0000" }) bridges += l.cls to l.points
             out.removeAll { it.name == "\u0000" }
+        }
+    }
+
+    /** A line feature's geometry as its parts. Commands: MoveTo (1) starts a part, LineTo (2)
+     *  extends it; zigzag deltas in tile units. A part needs two points. */
+    private fun lineParts(geom: IntArray, toLatLng: (Int, Int) -> LatLng): List<List<LatLng>> {
+        val parts = ArrayList<List<LatLng>>()
+        var cx = 0; var cy = 0; var gi = 0
+        var part = ArrayList<LatLng>()
+        while (gi < geom.size) {
+            val cmd = geom[gi] and 7; val count = geom[gi] ushr 3; gi++
+            when (cmd) {
+                1, 2 -> repeat(count) {
+                    if (gi + 1 >= geom.size + 1) return@repeat
+                    cx += zigzag(geom[gi]); cy += zigzag(geom[gi + 1]); gi += 2
+                    if (cmd == 1 && part.size >= 2) { parts += part; part = ArrayList() }
+                    else if (cmd == 1) part = ArrayList()
+                    part += toLatLng(cx, cy)
+                }
+                else -> {}
+            }
+        }
+        if (part.size >= 2) parts += part
+        return parts
+    }
+
+    /** A road from the map's `transportation` layer with its class ("primary", "minor",
+     *  "service", ...) and, for a service road, its kind ("parking_aisle", "driveway", "alley").
+     *  Named or not: a parking aisle has no name, and that is the one this is read for. */
+    data class RoadLine(val cls: String?, val service: String?, val points: List<LatLng>)
+
+    // Lines a car does not drive on; a footpath along a parking aisle must not stand in for it.
+    private val NOT_CAR_ROADS = setOf("path", "rail", "transit", "ferry", "aerialway", "bridleway", "cycleway", "pier")
+
+    private val roadCache = object : LinkedHashMap<Long, List<RoadLine>>(16, 0.75f, true) {
+        override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, List<RoadLine>>) = size > 16
+    }
+
+    /** Every car road in the tiles around [poly] (a short stretch: at most 8 tiles), or null when
+     *  the tiles could not be read. */
+    suspend fun roadsAlong(poly: List<LatLng>): List<RoadLine>? {
+        val f = fetch ?: return null
+        val tiles = tilesAlong(poly)
+        if (tiles.isEmpty() || tiles.size > 8) return null
+        val decoded = coroutineScope {
+            tiles.map { (x, y) ->
+                async {
+                    val key = (x.toLong() shl 32) or y.toLong()
+                    synchronized(roadCache) { roadCache[key] }?.let { return@async it }
+                    val bytes = runCatching { f(ZOOM, x, y) }.getOrNull() ?: return@async null
+                    val roads = runCatching { decodeRoads(bytes, ZOOM, x, y) }.getOrNull() ?: return@async null
+                    synchronized(roadCache) { roadCache[key] = roads }
+                    roads
+                }
+            }.awaitAll()
+        }
+        if (decoded.any { it == null }) return null
+        return decoded.filterNotNull().flatten()
+    }
+
+    /** The car roads of one tile's `transportation` layer, with their class and service kind. */
+    fun decodeRoads(raw: ByteArray, z: Int, x: Int, y: Int): List<RoadLine> {
+        val bytes = if (raw.size > 2 && raw[0] == 0x1f.toByte() && raw[1] == 0x8b.toByte())
+            GZIPInputStream(ByteArrayInputStream(raw)).use { it.readBytes() } else raw
+        val out = ArrayList<RoadLine>()
+        val tile = Pb(bytes, 0, bytes.size)
+        while (tile.more()) {
+            val (field, wire) = tile.key()
+            if (field == 3 && wire == 2) {
+                val (s, e) = tile.lenRange()
+                readRoadsLayer(bytes, s, e, z, x, y, out)
+            } else tile.skip(wire)
+        }
+        return out
+    }
+
+    private fun readRoadsLayer(b: ByteArray, s: Int, e: Int, z: Int, x: Int, y: Int, out: MutableList<RoadLine>) {
+        var name = ""
+        val features = ArrayList<IntRange>()
+        val keys = ArrayList<String>()
+        val values = ArrayList<String?>()
+        var extent = 4096
+        val p = Pb(b, s, e)
+        while (p.more()) {
+            val (field, wire) = p.key()
+            when {
+                field == 1 && wire == 2 -> name = p.string()
+                field == 2 && wire == 2 -> p.lenRange().let { features += it.first until it.second }
+                field == 3 && wire == 2 -> keys += p.string()
+                field == 4 && wire == 2 -> p.lenRange().let { values += readValue(b, it.first, it.second) }
+                field == 5 && wire == 0 -> extent = p.varint().toInt()
+                else -> p.skip(wire)
+            }
+        }
+        if (name != "transportation") return
+        val n = (1 shl z).toDouble()
+        fun toLatLng(gx: Int, gy: Int): LatLng {
+            val lng = (x + gx.toDouble() / extent) / n * 360.0 - 180.0
+            val my = PI * (1 - 2 * (y + gy.toDouble() / extent) / n)
+            return LatLng(Math.toDegrees(atan(sinh(my))), lng)
+        }
+        for (range in features) {
+            val f = Pb(b, range.first, range.last + 1)
+            var tags = IntArray(0)
+            var type = 0
+            var geom = IntArray(0)
+            while (f.more()) {
+                val (field, wire) = f.key()
+                when {
+                    field == 2 && wire == 2 -> tags = f.packed()
+                    field == 3 && wire == 0 -> type = f.varint().toInt()
+                    field == 4 && wire == 2 -> geom = f.packed()
+                    else -> f.skip(wire)
+                }
+            }
+            if (type != 2) continue // lines only
+            var cls: String? = null; var service: String? = null; var subclass: String? = null
+            var i = 0
+            while (i + 1 < tags.size) {
+                val k = keys.getOrNull(tags[i]); val v = values.getOrNull(tags[i + 1])
+                when (k) { "class" -> cls = v; "service" -> service = v; "subclass" -> subclass = v }
+                i += 2
+            }
+            if (cls in NOT_CAR_ROADS || subclass in NOT_CAR_ROADS) continue
+            for (part in lineParts(geom) { gx, gy -> toLatLng(gx, gy) }) out += RoadLine(cls, service, part)
         }
     }
 

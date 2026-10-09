@@ -42,7 +42,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Share sends a Google Maps link, a geo: pin, coordinates or the address, or opens another map app.
 - A Google Maps directions link opens as the trip it describes, with its start, its stops, the
   points you dragged the route through and its travel mode. Paste one from a desktop browser into
-  the search box, or tap it in any app.
+  the search box, or tap it in any app. Every place shows at once while it is looked up, and the
+  route comes once; a place that cannot be found is named on the card.
 - "People also search for" and "Also at this location" rows open related places.
 - A tapped map place opens at once with open data and names its source while Google's listing loads.
 - Closed places are marked permanently or temporarily closed. Gas stations show their fuel price:
@@ -106,7 +107,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Spoken directions with street names and lanes. "Say street names" off shortens them.
 - "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits
   only (quiet in town; speaks for exits, forks and turns taken at speed).
-- A bottom bar with time left, distance and arrival time. Swipe it up for the step list.
+- A bottom bar with time left, distance and arrival time. Swipe it up for the step list. On a trip
+  with stops the figures are for the next stop, named under them, and the whole trip is at the top
+  of the step list.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
@@ -131,7 +134,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Turn card in the mini map" sets the mini map's layout.
 - If the app is closed mid-drive, the next launch offers to resume.
 - In a tunnel Vela keeps estimating your position.
-- Stops and arrival are announced, with the trip's time and distance at the end.
+- A stop is announced as it comes up ("then Davis Food Co-op will be on your right", "turn left into
+  the parking lot" where the map shows one) and when you reach it. Arrival is announced with the
+  trip's time and distance.
 - "Tap places while driving (experiment)" offers a tapped place as a stop, with the time it adds.
 - During a drive the only places on the map are gas stations. "Simplify the map in turns" hides more
   while turning.

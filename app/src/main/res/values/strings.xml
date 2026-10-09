@@ -340,6 +340,10 @@
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
     <string name="nav_edit_route">Edit route</string>
     <string name="nav_edit_route_hint">Add a stop along the way</string>
+    <string name="nav_bar_to_stop">To %1$s</string>
+    <string name="nav_bar_your_stop">your stop</string>
+    <string name="nav_bar_stop_cd">%1$s and %2$s to %3$s, arriving at %4$s. Whole trip %5$s and %6$s, arriving at %7$s.</string>
+    <string name="nav_stops_whole_trip">Whole trip: %1$s · %2$s · arrive %3$s</string>
     <string name="nav_stops_remove_next">Remove next</string>
     <string name="nav_stops_remove_confirm">Remove %1$s from this drive?</string> <!-- format -->
     <string name="nav_stops_remove_action">Remove</string>
@@ -1149,6 +1153,15 @@
     <plurals name="topcard_more_stops">
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
+    </plurals>
+    <string name="link_trip_finding">Finding the places in this trip</string>
+    <string name="link_trip_while_navigating">End navigation to open this trip</string>
+    <string name="link_trip_looking_cd">Looking it up</string>
+    <string name="link_trip_found_cd">Found</string>
+    <string name="link_trip_not_found_cd">Not found</string>
+    <plurals name="link_trip_not_found">
+        <item quantity="one">Could not find %1$s. The route goes on without it.</item>
+        <item quantity="other">Could not find %1$s. The route goes on without them.</item>
     </plurals>
     <string name="settings_places">Places</string>
     <string name="settings_privacy">Privacy</string>
