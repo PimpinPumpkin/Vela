@@ -166,6 +166,9 @@ Small items, one pull request each.
   restored, and it ran at about 0.4x realtime when last bundled, so measure first.
 - Explore: a sheet of nearby restaurants and things to do from the bare map. Events have no
   keyless source.
+- Timed speed limits from a downloaded region. The hosted tiles apply `maxspeed:conditional`;
+  the obf path reads OsmAnd's plain limit, so a downloaded region shows 100 where the tiles show
+  130 at night. Needs the obf bake to keep the tag and `currentRoadLimit` to read it.
 
 ### Open from the October 2026 audit
 

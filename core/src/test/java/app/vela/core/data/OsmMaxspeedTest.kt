@@ -3,6 +3,7 @@ package app.vela.core.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.LocalDateTime
 
 class OsmMaxspeedTest {
     @Test fun bareNumberIsKmh() {
@@ -50,5 +51,82 @@ class OsmMaxspeedTest {
         assertEquals(30 * 1.609344, OsmMaxspeed.fromTags(null, "30 mph", null)!!, 1e-6)
         assertEquals(40.0, OsmMaxspeed.fromTags("none", null, "40")!!, 1e-6) // plain unknown → falls through
         assertNull(OsmMaxspeed.fromTags("none", "signals", null))
+    }
+
+    // 2026-10-05 is a Monday.
+    private fun at(day: Int, hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 10, day, hour, minute)
+    private val MON = 5
+    private val SAT = 10
+    private val SUN = 11
+
+    // The common Dutch motorway tagging: maxspeed=100 by day, 130 in the evening and at night.
+    @Test fun eveningLimitPastMidnight() {
+        val c = "130 @ (19:00-06:00)"
+        assertEquals(130.0, OsmMaxspeed.conditionalKmh(c, at(MON, 19))!!, 1e-6)
+        assertEquals(130.0, OsmMaxspeed.conditionalKmh(c, at(MON, 23, 59))!!, 1e-6)
+        assertEquals(130.0, OsmMaxspeed.conditionalKmh(c, at(MON, 5, 59))!!, 1e-6)
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(MON, 6)))
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(MON, 12)))
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(MON, 18, 59)))
+    }
+
+    @Test fun fromTagsAppliesConditional() {
+        assertEquals(100.0, OsmMaxspeed.fromTags("100", null, null, "130 @ (19:00-06:00)", at(MON, 14))!!, 1e-6)
+        assertEquals(130.0, OsmMaxspeed.fromTags("100", null, null, "130 @ (19:00-06:00)", at(MON, 22))!!, 1e-6)
+        assertEquals(100.0, OsmMaxspeed.fromTags("100", null, null, null, at(MON, 22))!!, 1e-6)
+        // Only a conditional limit, outside its time: no known limit.
+        assertNull(OsmMaxspeed.fromTags(null, null, null, "30 @ (07:00-09:00)", at(MON, 12)))
+    }
+
+    @Test fun weatherAndCommentsAreNeverInForce() {
+        assertNull(OsmMaxspeed.conditionalKmh("70 @ wet", at(MON, 12)))
+        // "At busy times" is set by the overhead signs, not the clock.
+        assertNull(OsmMaxspeed.conditionalKmh("100 @ Mo-Fr 06:00-10:00,15:00-19:00 \"bij grote verkeersdrukte\"", at(MON, 8)))
+        assertNull(OsmMaxspeed.conditionalKmh("100 @ (Mo-Fr 06:00-10:00,15:00-19:00 \"bij grote verkeersdrukte\")", at(MON, 8)))
+        assertNull(OsmMaxspeed.conditionalKmh("40 @ (2026 Jul 17-2027 Apr 21)", at(MON, 12)))
+        assertNull(OsmMaxspeed.conditionalKmh("80 @ (weight>7.5)", at(MON, 12)))
+    }
+
+    @Test fun mixedRulesKeepTheTimeOne() {
+        val c = "130 @ (19:00-06:00); 70 @ wet"
+        assertEquals(130.0, OsmMaxspeed.conditionalKmh(c, at(MON, 21))!!, 1e-6)
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(MON, 12)))
+        assertEquals(130.0, OsmMaxspeed.conditionalKmh("130 @ (19:00-06:00);90 @ wet", at(MON, 21))!!, 1e-6)
+    }
+
+    @Test fun lastMatchingRuleWins() {
+        val c = "120 @ (06:00-22:00); 80 @ (07:00-09:00)"
+        assertEquals(80.0, OsmMaxspeed.conditionalKmh(c, at(MON, 8))!!, 1e-6)
+        assertEquals(120.0, OsmMaxspeed.conditionalKmh(c, at(MON, 12))!!, 1e-6)
+    }
+
+    @Test fun weekdays() {
+        val c = "15 @ (Sa 9:00 - 17:00)"
+        assertEquals(15.0, OsmMaxspeed.conditionalKmh(c, at(SAT, 10))!!, 1e-6)
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(SUN, 10)))
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(SAT, 18)))
+        val workdays = "30 @ (Mo-Fr 07:00-17:00)"
+        assertEquals(30.0, OsmMaxspeed.conditionalKmh(workdays, at(MON, 8))!!, 1e-6)
+        assertNull(OsmMaxspeed.conditionalKmh(workdays, at(SAT, 8)))
+        assertEquals(30.0, OsmMaxspeed.conditionalKmh("30 @ (Sa,Su 07:00-17:00)", at(SUN, 8))!!, 1e-6)
+    }
+
+    // A night range belongs to the day it starts on: Friday night runs into Saturday morning.
+    @Test fun nightRangeKeepsItsStartDay() {
+        val c = "60 @ (Fr 22:00-06:00)"
+        assertEquals(60.0, OsmMaxspeed.conditionalKmh(c, at(SAT, 3))!!, 1e-6)
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(SUN, 3)))
+    }
+
+    @Test fun mphInConditional() {
+        assertEquals(45 * 1.609344, OsmMaxspeed.conditionalKmh("45 mph @ (20:00-06:00)", at(MON, 23))!!, 1e-6)
+    }
+
+    @Test fun blankOrBrokenIsNull() {
+        assertNull(OsmMaxspeed.conditionalKmh(null, at(MON, 12)))
+        assertNull(OsmMaxspeed.conditionalKmh("", at(MON, 12)))
+        assertNull(OsmMaxspeed.conditionalKmh("130", at(MON, 12)))
+        assertNull(OsmMaxspeed.conditionalKmh("none @ (19:00-06:00)", at(MON, 22)))
+        assertNull(OsmMaxspeed.conditionalKmh("130 @ (25:00-26:00)", at(MON, 22)))
     }
 }

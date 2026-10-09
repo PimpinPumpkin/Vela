@@ -24,8 +24,9 @@ bash "$(dirname "$0")/fetch-pbf.sh" "$URL" "$WORK/region.osm.pbf"
 
 # Keep ONLY the ways that carry a posted maxspeed (nearly always highways) - a tiny slice of the PBF, so the
 # overlay is small. maxspeed on a non-highway is negligibly rare; filtering by the tag itself is enough.
+# maxspeed:conditional is kept too: a timed limit ("130 @ (19:00-06:00)") the app applies by the clock.
 echo "→ osmium: keeping ways with a maxspeed tag"
-osmium tags-filter --overwrite -o "$WORK/ms.osm.pbf" "$WORK/region.osm.pbf" w/maxspeed
+osmium tags-filter --overwrite -o "$WORK/ms.osm.pbf" "$WORK/region.osm.pbf" w/maxspeed w/maxspeed:conditional
 
 # Export the road LINES to GeoJSONSeq (one Feature per line, streams into tippecanoe).
 echo "→ osmium export → GeoJSONSeq"
@@ -41,7 +42,7 @@ BBOX=$(python3 "$(dirname "$0")/clamp-bbox.py" "$ID" <<<"$BBOX") # Alaska's anti
 echo "→ tiling with tippecanoe"
 tippecanoe -o "$WORK/$ID.pmtiles" -l maxspeed -n "Vela speed-limit overlay: $NAME" \
   -Z11 -z16 --drop-densest-as-needed --extend-zooms-if-still-dropping -P \
-  -y maxspeed -y maxspeed:forward -y maxspeed:backward \
+  -y maxspeed -y maxspeed:forward -y maxspeed:backward -y maxspeed:conditional \
   --attribution "Speed limits © OpenStreetMap contributors (ODbL)" --force "$WORK/ms.geojsonseq"
 
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.pmtiles" 2>/dev/null || stat -c%s "$WORK/$ID.pmtiles") + 1048575 ) / 1048576 ))
