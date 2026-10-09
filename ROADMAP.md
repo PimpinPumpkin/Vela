@@ -54,6 +54,16 @@ none built:
 - A first run that starts from less. Someone who picks "Use Google" gets every default at once,
   the two-minute re-check included. The same holds for someone who starts without Google and
   turns it on later.
+- Google by choice on the place sheet. A tapped place asks Google at once, and the switches that
+  hold it back are in Settings ("Look up tapped places on Google", "Load reviews only when I
+  tap", "Load photos only when I tap"). The sheet could open on what the open data knows (name,
+  address, phone, OpenStreetMap hours) with one clear control to load Google's hours, reviews and
+  photos, so asking Google is something the user does and sees. It is the change reviewers ask
+  for most (see "What reviews and forums keep raising").
+- A request count that explains itself. Settings, Privacy shows how many requests went to
+  Google in seven days. A light afternoon of testing reads as more than a thousand, with nothing
+  to say that one place sheet or one drive is many requests. Show it per action ("a place: about
+  N", "a drive: about N an hour"), and use the same numbers to find what to cut.
 
 ## Android Auto without Google Play
 
@@ -101,6 +111,53 @@ Vela's side of that is a small bound service that hands a projection client fram
 it names, takes input back, and publishes the nav state. `CarMapRenderer` already renders to
 a bitmap and `NavSession` publishes what `ManeuverMapper` reads. Whether to hand out frames
 or a URL for a WebView is open. Nav state and input are the same for both.
+
+## What reviews and forums keep raising
+
+The same points come back in every review and thread about Vela, in several languages. They are
+kept here so a decision about wording, defaults or a feature can be checked against them. Where
+one has turned into work, the item is named.
+
+- **It is a copy, not an alternative.** Vela keeps the Google Maps habit (the star rating picks
+  the restaurant, Google's traffic picks the road) and removes only the account. The dependence
+  is made comfortable, not cut. Position: this is what Vela is for. It is a way off the Google
+  Maps app for someone who would otherwise keep it, and the north star is to need Google less
+  over time, not to pretend it is not there. Apps built on open data alone take the other road,
+  and for anyone they already serve they are the better choice.
+- **Asking Google should be a visible choice.** Reviewers who accept the trade still object that
+  it happens on a tap, without the user deciding. Before Vela they opened Google Maps in a
+  browser, on purpose, and knew they had. Open item: "Google by choice on the place sheet" under
+  Less to Google.
+- **It takes from Google's users and gives nothing back.** Google's traffic exists because its
+  users report their position; Vela reads the result and contributes none. True, and it cannot
+  be fixed toward Google without an account. What Vela can give back goes to the open side:
+  "Contributing back to OpenStreetMap" under Big bets. One user has already added their local
+  transit agencies to Transitous because Vela showed the gap.
+- **Google can turn it off.** By changing its pages, by serving anonymous sessions less, or
+  through its lawyers, given how closely Vela follows the look. The first is handled by the
+  signed calibration file and the second is shown in the app when it happens. The answer to all
+  three is the same: with Google off Vela is still a working maps app, and every item under
+  "Less to Google" and "Vela's own record of what is still open" makes that version better.
+- **"Degoogled" promises more than the app does.** A packet capture shows Google hosts, so the
+  word gets called false. The README and site now say what is not on the phone (Google code, an
+  account, a key) and call Vela a hybrid of open maps and Google. Still to change: the welcome
+  tagline and the About hint in the app, and the F-Droid repository description. `PRIVACY.md`
+  should also list every host a capture will show, including the ones Google's own pages load in
+  the hidden WebViews.
+- **It is written with AI.** Stated in `SECURITY.md`. Reviewers who raise it mostly conclude the
+  risk is bounded because there is no server, no account and no credential to lose. The
+  automated checks in `SECURITY.md` exist because this was asked.
+- **One person maintains it.** Raised as a durability risk, fairly. "Opt-in telemetry" and "A
+  Google Play listing" under Big bets are the two things that would change what one person can
+  support.
+
+Things reviewers got stuck on, each small:
+
+- Street View could not be found on a place (issue #724).
+- A typed search returned a different place from the one autocomplete offered for the same
+  text.
+- Android Auto was reported as missing, which in a car is true today: see "Android Auto without
+  Google Play" above.
 
 ## Next up
 
