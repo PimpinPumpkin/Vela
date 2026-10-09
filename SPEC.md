@@ -1606,8 +1606,8 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
 - Bearing eases with a time constant from `CAM_BRG_TAU_STILL` (1.6 s) at small error to
   `CAM_BRG_TAU_TURN` (0.35 s) past `CAM_BRG_TURN_DEG` (25 degrees). Geometry noise is a few
   degrees and a turn is tens.
-- Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s. A pinch
-  sets an override that a pan or Re-center clears.
+- Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s, less the
+  framing's pull-back (below). A pinch sets an override that a pan or Re-center clears.
 - Tilt is 55 degrees heading-up (0 north-up, or the angle a two-finger tilt set), capped by
   `navTiltCap` at a zoom the user pinched to: the whole tilt from `NAV_TILT_FULL_ZOOM` (15) in,
   flat from `NAV_TILT_FLAT_ZOOM` (12.5) out, linear between. The cap is applied during the
@@ -1615,7 +1615,7 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   A view tilted 55 degrees at city-wide zoom reaches the horizon and loads the tiles for all
   of it. Pixel 4a, San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive:
   4,195 frames and 16 stalls over 250 ms (longest 943 ms) uncapped, 5,178 frames and none
-  (longest frame 148 ms) capped, 5,554 flat. The camera's own zoom stays at 15.8 or above, so
+  (longest frame 148 ms) capped, 5,554 flat. The camera's own zoom stays at 15.5 or above, so
   only a pinch meets the cap.
 - Cosmetic eases take `dtEase`, the frame time capped at `0.065 x replaySpeedup` s. Integration
   keeps the real time. Uncapped, one long frame moves an ease 45 to 70 percent of its error.
@@ -1645,6 +1645,39 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   no gesture turns it, and every drive runs north-up and flat.
 - A parked drive slows the loop to `NAV_IDLE_TICK_MS` (120 ms). A moving detached camera keeps
   it at frame rate.
+
+#### Framing
+
+`ui/map/NavFraming` places the arrow and sets the zoom's pull-back from the map the drive's chrome
+leaves visible. At the default display and font size the frame is unchanged.
+
+- The arrow sits at a top padding of `DEFAULT_PAD` (0.45 of the map height, 72.5 percent down).
+  It rises until what hangs under its point clears the bottom chrome by `MARGIN_DP` (8 dp), and
+  never above `MIN_PUCK_FRAC` (55 percent). Under the point: `ARROW_BELOW_PX` (62 px, the arrow's
+  glyph), plus the road-name pill when it is pinned under the arrow.
+- The bottom chrome is the bar's top edge, the road-name pill when it sits above the bar
+  (`BAR_PILL_GAP_DP`, 10 dp, over it), and the speed box once its right edge reaches the arrow's
+  column (`ARROW_HALF_PX`, 101 px, times the arrow size). At default size the box stays in the
+  corner and does not count.
+- The look-ahead ratio is the dp between the turn card's bottom and the arrow, over the same on the
+  same phone at its default density (`DisplayMetrics.DENSITY_DEVICE_STABLE`) with the card ending
+  `REF_TOP_DP` (230 dp) down, or `REF_MIN_AHEAD_FRAC` (a quarter) of the map on a short screen. At
+  or above `DEAD_RATIO` (0.8) the zoom is the speed's. At or below `FULL_RATIO` (0.6) it pulls
+  back `log2(ratio)` levels, ramping in between, at most `MAX_ZOOM_OUT` (1.5), and never takes the
+  camera's own zoom below `ZOOM_FLOOR` (15.5): lights and stop signs draw from z15.4. A lane strip
+  and a "Then" tab at default size stay above the dead ratio.
+- The edges are measured where they are drawn into `NavChromeEdges`: the turn card's bottom and
+  the speed box with `onGloballyPositioned`, the pill with `onSizeChanged` (the tallest at the
+  current density and font scale, since a long name shrinks its text). The bar's top is
+  `navBarTopPx`. Values stay while an element hides.
+- `NavFramer` (held by the ticker's `NavPuck`) takes a new frame only after the inputs move by
+  1 dp or more and then hold for `SETTLE_MS` (400 ms), so a bar being dragged or a card animating in
+  does not move the camera. The first frame is taken at once. The pad eases like the camera's
+  position and the zoom like its zoom.
+- In landscape (the chrome is a left column) and in picture-in-picture nothing covers the arrow's
+  column, and the frame is the default.
+- On a 1080 x 2340 px, 420 dpi fixture: card bottom at 250 dp, no change. At 546 dpi with the card
+  capped at a third of the screen (about 257 dp), the zoom pulls back about 0.8 levels.
 
 #### The puck overlay
 
@@ -1956,7 +1989,7 @@ under the bridges.
   per approach, and at 30 m a wide four-way drew two lights.
 - Icon size runs from 0.98 at z15.5 to 1.95 at z19.
 - The browse map fetches them from z16 and draws them from `CONTROLS_BROWSE_SHOW_ZOOM` (z19).
-  Navigation draws from z15.4, just under the camera's 15.8 floor.
+  Navigation draws from z15.4, just under the camera's 15.5 floor (`NavFraming.ZOOM_FLOOR`).
 - A level crossing or hump within 25 m of a light or stop sign is drawn offset down and left
   (`CONTROL_NUDGE_PROP`). Camera badges nudge up and right.
 - OSM maps signals more consistently than stop signs (Delaware's bake: 2,331 signals, 2,144
@@ -4396,6 +4429,16 @@ reuses it.
 - The "Then" tab hangs off the turn card's lower left in the card's color and names the next
   step. The card's lower-left corner is square while the tab shows, and the lower-right too when
   the tab is as wide as the card. Both widths are measured.
+- In portrait the turn card and its "Then" tab stay within `BANNER_MAX_FRACTION` (a third) of the
+  screen height. Past it the card's font scale steps down, by `BANNER_FIT_STEP` (0.9) or down to
+  `BANNER_FIT_MIN_STEP` (0.7) for a card far over, never below the default text size, and tries
+  one step back up at each new maneuver, never within one, so it cannot flip between two sizes.
+  The distance is one line that shrinks to fit beside the road's shield (`FitText`, started over
+  when its length changes, not on every tick). The instruction stops at `BANNER_HEADLINE_LINES`
+  (3) lines.
+- Route shields (`RouteShield`) grow with the font scale up to `SHIELD_MAX_SCALE` (1.6), badge and
+  number together, so a number fits its badge at any text size. A fixed badge with font-scaled
+  digits cut "113" to "11" at 2.0.
 - Away from the car (panned, pinched, previewing a step), `NavRecenterPill` takes the speed box's
   place and the road name hides.
 - The road name (`RoadLabel`, pref `road_label`) defaults to `PUCK`: a pill under the arrow,

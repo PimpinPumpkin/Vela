@@ -46,6 +46,11 @@ else. A picture with both branches looked like a road sign offering either one. 
 the mini map, the notification and Android Auto take their glyphs from the same table
 (`maneuverGlyph`).
 
+With large text the card stays within a third of the screen in portrait. Past that its text steps
+down, never below the default size, and tries one step back up at the next maneuver. The distance
+stays on one line and shrinks to fit, the instruction stops at three lines, and the route shields
+grow with the text so a three-digit number fits its badge.
+
 ### The bottom bar and the step list
 
 The bar is white in the light theme, near black in the dark ones, and the theme's surface with
@@ -148,7 +153,7 @@ merged node sits in the middle of the junction.
 - A light, level crossing or hump counts within `SIGNAL_ON_ROUTE_M = 12` m. Orientation is not
   asked, because a node in the middle of a junction is on two roads.
 
-They draw from z15.4, just under the camera's 15.8 floor, above the route line.
+They draw from z15.4, just under the camera's 15.5 floor, above the route line.
 
 ### The route line during a drive
 
@@ -192,13 +197,28 @@ rubber duck, which in a drive are low-poly 3D models (`ui/map/Puck3D.kt`).
 
 ### The camera
 
-The camera follows the arrow, tilted 55 degrees. Its zoom runs from 18.5 at a standstill to 15.8
-at 30 m/s. The bearing eases over 1.6 s for a small error and 0.35 s past 25 degrees, so noise in
+The camera follows the arrow, tilted 55 degrees, with the arrow 72.5 percent down the map. Its zoom
+runs from 18.5 at a standstill to 15.8 at 30 m/s. The bearing eases over 1.6 s for a small error and 0.35 s past 25 degrees, so noise in
 the line does not swing the map. A pinch sets a zoom that holds until a pan or Re-center. The
 camera lets go of the map as soon as a second finger touches it, and a slow pinch zooms.
 Pinching out flattens the camera, fully by zoom 12.5, and zooming back in past 15 tilts it
 again: tilted at 55 degrees, a view of a whole city reaches the horizon and stalled the map for
 up to a second on a Pixel 4a.
+
+The frame follows the chrome (`NavFraming`, SPEC 4.7). At the default display and font size
+nothing changes. With a large display size or large text:
+
+- The arrow rises until the road-name pill under it clears the bar, the pill above the bar, or a
+  speed box wide enough to reach under the arrow, by 8 dp. It never goes above 55 percent down.
+- The zoom pulls back by how much shorter the map between the turn card and the arrow is than on
+  the same phone at its default size. Above 0.8 of the default nothing changes, so a lane strip or
+  a "Then" tab at default size leaves the zoom alone. Below 0.6 the pull-back keeps the same
+  stretch of road in view, at most 1.5 levels and never below z15.5, where lights and stop signs
+  still draw. On a 1080 x 2340 px, 420 dpi phone set to 546 dpi with the card capped at a third,
+  that is about 0.8 levels.
+- The edges are measured where they are drawn, and a change is taken only once it has held for
+  400 ms and moved a dp or more, so dragging the bar or a card animating in does not move the
+  camera.
 
 Start cuts to the car: the camera jumps to the nav zoom, flat, and tilts in with
 `NAV_START_TILT_TAU_S = 3` s. A flight down from the route overview loads a set of tiles at every
@@ -298,3 +318,5 @@ A tap only offers the place, as a card above the bar and a red "+" pin on the ma
   the minutes are an estimate.
 - Walking and cycling lines are dashed, and a dashed MapLibre line takes no gradient, so they
   have no moving cut.
+- The look-ahead pull-back measures the map in a straight line. Under a 55 degree tilt the top of
+  the view holds more road than the bottom, so a tall card hides more road than the ratio says.

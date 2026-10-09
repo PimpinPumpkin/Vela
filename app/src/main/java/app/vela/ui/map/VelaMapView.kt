@@ -195,7 +195,7 @@ private fun bearingOffNorth(bearing: Double): Double {
  * tilted 55 degrees at city-wide zoom reaches to the horizon and loads the tiles for all of it:
  * on a Pixel 4a in San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive drew
  * 4,195 frames tilted (16 stalls over 250 ms, the longest 943 ms) and 5,728 flat (2 stalls).
- * The camera's own zoom never goes below 15.8, so only a pinch meets this.
+ * The camera's own zoom never goes below 15.5 (NavFraming.ZOOM_FLOOR), so only a pinch meets this.
  */
 internal fun navTiltCap(zoom: Double, full: Double = 55.0): Double =
     full * ((zoom - NAV_TILT_FLAT_ZOOM) / (NAV_TILT_FULL_ZOOM - NAV_TILT_FLAT_ZOOM)).coerceIn(0.0, 1.0)
@@ -3324,8 +3324,13 @@ fun VelaMapView(
                 if (cam != null && navFollowingHolder.value && !scaling[0] && !shoving[0] && !twoDown[0]) {
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
                     navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtEase / 0.6f))
+                    // FRAMING (SPEC 4.7): the arrow's height and the zoom's pull-back follow the map
+                    // the chrome leaves visible. Change-gated inside: a new frame only when the
+                    // measured chrome moved a dp or more and held still.
+                    navPuck.framer.track(android.os.SystemClock.uptimeMillis(), context, cam.width.toInt(), cam.height.toInt(), navBarTopHolder.value)
+                    val navPad = navPuck.framer.pad
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                        else 18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
+                        else NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
                         val cp = cam.cameraPosition
                         camState[0] = cp.target?.latitude ?: pt.lat
@@ -3350,7 +3355,7 @@ fun VelaMapView(
                             camState[2] = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
                             camState[3] = tgtZoom
                             navTiltEase[0] = 0.0
-                            navPadEase[0] = 0.45
+                            navPadEase[0] = navPad
                             cutReveal()
                         }
                         if (navStartCutMs[0] == 0L) {
@@ -3361,7 +3366,7 @@ fun VelaMapView(
                             camState[2] = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
                             camState[3] = tgtZoom
                             navTiltEase[0] = 0.0
-                            navPadEase[0] = 0.45
+                            navPadEase[0] = navPad
                             cutReveal()
                         }
                     }
@@ -3429,8 +3434,8 @@ fun VelaMapView(
                     val tiltTau = if (navStartTilting[0]) NAV_START_TILT_TAU_S.toFloat() else 0.55f
                     navTiltEase[0] += (tiltTgt - navTiltEase[0]) * (1f - kotlin.math.exp(-dtEase / tiltTau)).toDouble()
                     if (navStartTilting[0] && kotlin.math.abs(tiltTgt - navTiltEase[0]) < 0.5) navStartTilting[0] = false
-                    navPadEase[0] += (0.45 - navPadEase[0]) * kPos
-                    if (kotlin.math.abs(0.45 - navPadEase[0]) < 0.002) navPadEase[0] = 0.45 // terminate exactly
+                    navPadEase[0] += (navPad - navPadEase[0]) * kPos
+                    if (kotlin.math.abs(navPad - navPadEase[0]) < 0.002) navPadEase[0] = navPad // terminate exactly
                     val camNow = doubleArrayOf(camState[0], camState[1], camState[2], camState[3], navTiltEase[0], navPadEase[0], leftInsetHolder.value.toDouble())
                     val camTol = doubleArrayOf(1e-7, 1e-7, 0.01, 0.0005, 0.01, 0.0005, 0.5)
                     val camSettled = camNow.indices.all { k -> kotlin.math.abs(camNow[k] - lastCamWrite[k]).let { d -> !d.isNaN() && d < camTol[k] } }
@@ -3445,7 +3450,8 @@ fun VelaMapView(
                                 // Puck LOW on the screen, Google-style: a top padding of ~0.45x
                                 // the view height renders the target at ~72% down, so the road
                                 // AHEAD owns the view instead of splitting it with what's behind
-                                // (user 2026-07-14). Eased in on (re)attach - see the seed above.
+                                // (user 2026-07-14). Less when large chrome under the arrow needs
+                                // the room (navPad, NavFraming). Eased in on (re)attach - see the seed above.
                                 // Padding is sticky camera state - the nav teardown below resets
                                 // it for the browse map. The LEFT inset is the landscape nav
                                 // column (issue #297): this per-frame write replaces the whole
@@ -5310,7 +5316,7 @@ fun VelaMapView(
                         val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)
                         navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
                         val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                            else 18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
+                            else NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
                         val now = android.os.SystemClock.uptimeMillis()
                         if (navStartCutMs[0] == 0L) {
                             // Google's start: cut straight to the car at street zoom, flat, then
@@ -5329,7 +5335,7 @@ fun VelaMapView(
                                         .zoom(zoom)
                                         .tilt(0.0)
                                         .bearing(if (navNorthUpOn) 0.0 else brg.toDouble())
-                                        .padding(0.0, map.height * 0.45, 0.0, 0.0)
+                                        .padding(0.0, map.height * navPuck.framer.pad, 0.0, 0.0)
                                         .build(),
                                 ),
                             )
@@ -5345,7 +5351,7 @@ fun VelaMapView(
                                         55.0 * (1.0 - kotlin.math.exp(-(now - navStartCutMs[0]) / 1000.0 / NAV_START_TILT_TAU_S))
                                         else 55.0)
                                     .bearing(if (navNorthUpOn) 0.0 else brg.toDouble())
-                                    .padding(0.0, map.height * 0.45, 0.0, 0.0)
+                                    .padding(0.0, map.height * navPuck.framer.pad, 0.0, 0.0)
                                     .build(),
                             ),
                             550,
@@ -9154,6 +9160,7 @@ private class NavPuck {
     var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
                                   // exactly when the resume fix needs the window big)
+    val framer = NavFramer()      // where the camera puts the arrow, and the zoom's pull-back (NavFraming)
 }
 
 /** Cumulative along-route distance (m) at each polyline vertex (cum[0] = 0). */

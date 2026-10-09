@@ -23,7 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vela.core.nav.ShieldType
@@ -32,6 +34,19 @@ import app.vela.core.nav.parseRouteRef
 private val InterstateBlue = Color(0xFF003F87)
 private val InterstateRed = Color(0xFFB01E2E)
 private val ShieldInk = Color(0xFF111111)
+
+/** How far a badge grows with the text around it: with the font scale, up to this. */
+private const val SHIELD_MAX_SCALE = 1.6f
+
+/** The badge's scale at the current font scale. Never below 1, so small text keeps today's badge. */
+@Composable
+private fun shieldScale(): Float = LocalDensity.current.fontScale.coerceIn(1f, SHIELD_MAX_SCALE)
+
+/** [base] sp drawn at the badge's own scale rather than the font scale, so the number grows with
+ *  the badge and fits it at any setting. A fixed badge with font-scaled digits cut "113" to "11". */
+@Composable
+private fun shieldSp(base: Float): TextUnit =
+    (base * shieldScale() / LocalDensity.current.fontScale.coerceAtLeast(1f)).sp
 
 /** Google-style route shield for a sign label ("I-80 E", "US 50", "CA-99"). Real interstate and
  *  US-route silhouettes; a neutral white marker for state/provincial routes; the plain bordered
@@ -81,8 +96,10 @@ private fun ShieldBadge(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         // Roomier than the first cut (user 2026-07-16, "text is cramped"): +4dp each way and the
-        // number sized off its length so 3-digit interstates breathe.
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 40.dp, height = 34.dp)) {
+        // number sized off its length so 3-digit interstates breathe. Badge and number scale
+        // together with large text (shieldScale).
+        val k = shieldScale()
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 40.dp * k, height = 34.dp * k)) {
             Canvas(Modifier.fillMaxSize()) {
                 val p = shieldPath(size.width, size.height)
                 drawPath(p, fill)
@@ -95,8 +112,10 @@ private fun ShieldBadge(
                 number,
                 color = numberColor,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (number.length >= 3) 13.sp else 15.sp,
-                modifier = Modifier.padding(top = if (redTop) 5.dp else 0.dp),
+                fontSize = shieldSp(if (number.length >= 3) 13f else 15f),
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(top = if (redTop) 5.dp * k else 0.dp),
             )
         }
         direction?.let {
@@ -111,18 +130,21 @@ private fun ShieldBadge(
 @Composable
 private fun StateMarker(number: String, direction: String?, dim: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        val k = shieldScale()
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(width = 36.dp, height = 32.dp)
-                .background(Color.White, RoundedCornerShape(7.dp))
-                .border(1.5.dp, ShieldInk, RoundedCornerShape(7.dp)),
+                .size(width = 36.dp * k, height = 32.dp * k)
+                .background(Color.White, RoundedCornerShape(7.dp * k))
+                .border(1.5.dp * k, ShieldInk, RoundedCornerShape(7.dp * k)),
         ) {
             Text(
                 number,
                 color = ShieldInk,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (number.length >= 3) 13.sp else 15.sp,
+                fontSize = shieldSp(if (number.length >= 3) 13f else 15f),
+                maxLines = 1,
+                softWrap = false,
             )
         }
         direction?.let {

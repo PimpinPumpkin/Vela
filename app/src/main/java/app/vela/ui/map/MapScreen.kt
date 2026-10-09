@@ -102,6 +102,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -210,7 +211,7 @@ private val SIDE_PANEL_WIDTH_MAX = 600.dp
 
 /** Gap in px between the puck glyph's center and the current-road pill below it (issue #288).
  *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
-private const val PUCK_LABEL_GAP_PX = 62
+private const val PUCK_LABEL_GAP_PX = NavFraming.ARROW_BELOW_PX
 
 /** How far the OpenStreetMap credit lifts to clear the free-drive speed box, which sits in the same
  *  bottom-left corner: the box's height plus its 16 dp margin and a couple of dp of air. */
@@ -4642,8 +4643,12 @@ private fun BoxScope.NavTurnBanner(
             .landscapeColumn(landscapeChrome, sidePanelWidthDp)
             .statusBarsPadding()
             .padding(start = if (landscapeChrome) NAV_LAND_EDGE_DP else 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
-            // Report the banner's bottom edge so the compass can drop just below it (any height).
-            .onGloballyPositioned { onBottomPx((it.positionInRoot().y + it.size.height).roundToInt()) },
+            // Report the banner's bottom edge so the compass can drop just below it (any height),
+            // and to the drive camera, which keeps the road ahead out from under it.
+            .onGloballyPositioned {
+                onBottomPx((it.positionInRoot().y + it.size.height).roundToInt())
+                NavChromeEdges.bannerBottomPx = (it.positionInWindow().y + it.size.height).roundToInt()
+            },
     )
 }
 
@@ -6662,6 +6667,10 @@ private fun RoadPillText(name: String) {
     val text = remember(name) { if (name.length > ROAD_PILL_SHORTEN_AT) app.vela.core.util.RoadNameShort.shorten(name) else name }
     val scale = remember(text) { androidx.compose.runtime.mutableFloatStateOf(1f) }
     val style = MaterialTheme.typography.titleMedium
+    // Its height (the tallest at this density and font scale) is what the drive camera leaves
+    // under the arrow for it.
+    val dens = LocalDensity.current
+    val pillKey = dens.density * 100f + dens.fontScale
     Text(
         text,
         style = style,
@@ -6672,7 +6681,9 @@ private fun RoadPillText(name: String) {
         softWrap = false,
         overflow = TextOverflow.Ellipsis,
         onTextLayout = { if (it.hasVisualOverflow && scale.floatValue > 0.8f) scale.floatValue = (scale.floatValue * 0.94f).coerceAtLeast(0.8f) },
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+        modifier = Modifier
+            .onSizeChanged { NavChromeEdges.pill(it.height, pillKey) }
+            .padding(horizontal = 14.dp, vertical = 6.dp),
     )
 }
 private const val ROAD_PILL_SHORTEN_AT = 16
@@ -6685,7 +6696,13 @@ private fun SpeedWidget(
     modifier: Modifier = Modifier,
 ) {
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { speedBoxRightPx.intValue = 0 } }
-    val modifier = modifier.onGloballyPositioned { c -> speedBoxRightPx.intValue = (c.positionInWindow().x + c.size.width).roundToInt() }
+    val modifier = modifier.onGloballyPositioned { c ->
+        val at = c.positionInWindow()
+        speedBoxRightPx.intValue = (at.x + c.size.width).roundToInt()
+        // The drive camera keeps the arrow above the box once large text widens it under the arrow.
+        NavChromeEdges.speedTopPx = at.y.roundToInt()
+        NavChromeEdges.speedRightPx = speedBoxRightPx.intValue
+    }
     val dark = isAppInDarkTheme()
     val amoled = isAppInAmoled()
     // Smooth the DISPLAYED speed (Google shows the fused estimate, not each raw doppler sample - the
