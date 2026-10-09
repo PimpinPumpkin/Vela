@@ -2942,6 +2942,8 @@ prices under the Open Government Licence v3.0.
   (`PoiIcons.fuelShort`, the text before the first '/', is the petrol price), the results row's
   pump line, and the place sheet's pump line, first in the Overview body. That line sits below the
   action pills, so a price that lands after the sheet opened moves nothing above them.
+- A result with a fuel price draws as a gas station's price bubble whatever language its
+  category is in (`PoiIcons.resultGroup`); the category words the map icons read are English.
 - The results camera fit keys on the markers without their prices (`markerFitKey`), so a late
   price does not frame the results again.
 - A place is filled once. A newer file reaches the next search or tap.
