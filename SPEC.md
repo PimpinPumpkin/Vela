@@ -939,10 +939,18 @@ The first source that answers:
 3. `LineNamer` with no tile lines: bare turns from the line's bends.
 
 Tiles come second because, measured on 90 routes in six areas, they named 1.4% of named turns
-wrong. When the stretches are not done within `HYBRID_WAIT_MS` (5.5 s; `HYBRID_WAIT_URGENT_MS`
-1.5 s), the hybrid is rebuilt with bare turns on every stretch. The open router's own route is
-never substituted for a stretch. A hybrid built past the deadline, or with any stretch bare, is
-marked `namesShort`, and the drive's recheck asks again on the degraded interval.
+wrong. `StretchNamer` runs the three. The tiles under a stretch are read beside its match:
+`TILE_HEDGE_MS` (1 s; `TILE_HEDGE_URGENT_MS` 0.3 s) into a match that has not answered, and at
+once when it fails. The matcher answers a town stretch in 0.35 to 1.2 s, so a healthy one costs
+no tile request. In low data mode the tiles are read only after the match fails.
+
+When the stretches are not done within `HYBRID_WAIT_MS` (5.5 s; `HYBRID_WAIT_URGENT_MS` 1.5 s),
+the hybrid is rebuilt from what each stretch has in hand (`StretchNamer.inHand`): its match if
+that finished, without lanes if those were late; else the tiles already read
+(`RoadNameTiles.linesAlong(fetchMissing = false)`, no request); else bare turns. A matched
+stretch keeps its road shape for the drawn line. The open router's own route is never
+substituted for a stretch. A hybrid built past the deadline, or with any stretch bare, is marked
+`namesShort`, and the drive's recheck asks again on the degraded interval.
 
 A match is accepted by `offLine`, which samples both paths every 30 m. A sample over
 `MATCH_OFF_M` (22 m) from the other path is a stray. Strays within 90 m of each other join and

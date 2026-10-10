@@ -34,9 +34,14 @@ object RoadNameTiles {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, List<NamedLine>>) = size > 96
     }
 
+    /** Forget every tile read so far (tests). */
+    internal fun clearCache() { synchronized(cache) { cache.clear() } }
+
     /** Every named line in the tiles [poly] passes through (plus a ~60 m margin), or null when the
-     *  tiles could not be read or the line crosses more than [MAX_TILES] of them. */
-    suspend fun linesAlong(poly: List<LatLng>): List<NamedLine>? {
+     *  tiles could not be read or the line crosses more than [MAX_TILES] of them. With [fetchMissing]
+     *  false only tiles already read are used and nothing is requested: for a route past its
+     *  deadline, which takes the names that are in hand. */
+    suspend fun linesAlong(poly: List<LatLng>, fetchMissing: Boolean = true): List<NamedLine>? {
         val f = fetch ?: return null
         val tiles = tilesAlong(poly)
         if (tiles.isEmpty() || tiles.size > MAX_TILES) return null
@@ -45,6 +50,7 @@ object RoadNameTiles {
                 async {
                     val key = (x.toLong() shl 32) or y.toLong()
                     synchronized(cache) { cache[key] }?.let { return@async it }
+                    if (!fetchMissing) return@async null
                     val bytes = runCatching { f(ZOOM, x, y) }.getOrNull() ?: return@async null
                     val lines = runCatching { decode(bytes, ZOOM, x, y) }.getOrNull() ?: return@async null
                     synchronized(cache) { cache[key] = lines }

@@ -1197,51 +1197,77 @@ class GoogleMapsDataSource @Inject constructor(
             val stretchSource = IntArray(4) // matched, from tiles, bare, and of the matched: with the open router's lane detail
             // The matched road shape per stretch (OpenStreetMap geometry), for the line to DRAW.
             val matchedShapes = java.util.concurrent.ConcurrentHashMap<app.vela.core.data.naming.HybridRoute.Stretch, List<LatLng>>()
+            // Each stretch's steps from the best source in hand when the route has to go out
+            // (StretchNamer). The tiles are read beside the matcher, so a slow matcher costs no
+            // names; and what a stretch has when the deadline passes is kept, so one slow stretch
+            // does not strip the others, and a matched stretch keeps its road shape for the line.
+            val matches = java.util.concurrent.ConcurrentHashMap<app.vela.core.data.naming.HybridRoute.Stretch, app.vela.core.data.ValhallaRouter.Match>()
+            fun pieceOf(st: app.vela.core.data.naming.HybridRoute.Stretch) = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
+            val namer = app.vela.core.data.naming.StretchNamer(
+                match = { st ->
+                    val (startSlack, endSlack) = app.vela.core.data.naming.HybridRoute.tripEndSlack(st, gLineM, MATCH_TRIP_END_SLACK_M)
+                    val m = if (st.toM - st.fromM <= MATCH_MAX_M)
+                        app.vela.core.data.ValhallaRouter.matchWithEdges(
+                            http, pieceOf(st), timeoutMs = if (urgent) 1_200 else 2_500,
+                            startSlackM = startSlack, endSlackM = endSlack,
+                        ) else null
+                    m?.let {
+                        matches[st] = it
+                        it.off.forEach { o -> untrusted += app.vela.core.data.naming.HybridRoute.Stretch(st.fromM + o.first, st.fromM + o.second) }
+                        if (it.off.isEmpty()) matchedShapes[st] = it.route.polyline
+                        app.vela.core.data.naming.StretchNamer.Named(
+                            it.route.maneuvers, app.vela.core.data.naming.StretchNamer.Source.MATCHED,
+                            names = it.names.copyOf(3), noEdges = it.edges == null,
+                        )
+                    }
+                },
+                // LANES: the matcher gives names, exit numbers and signs but no lane arrows; only
+                // the open router has those. The matched path is on the road network exactly, so
+                // the open router can be led along it with a point in the middle of each step
+                // (never at a turn, which a via swallows), each with the path's heading. Its steps
+                // are used only when its path is the matched path (8 m); else the matcher's stand.
+                // Those steps carry the open router's names, so they pass the same check against
+                // the matched edges; borrowed lanes sit on the matcher's steps, whose names are
+                // already checked. Without edges the matcher's stand.
+                lanes = { st, plain ->
+                    val m = matches[st]
+                    val edges = m?.edges
+                    if (urgent || m == null || edges == null) null else {
+                        val (startSlack, endSlack) = app.vela.core.data.naming.HybridRoute.tripEndSlack(st, gLineM, MATCH_TRIP_END_SLACK_M)
+                        laneDetail(m.route, LANE_TRY_MS, trimStartM = startSlack, trimEndM = endSlack)?.let { (ms, replaced) ->
+                            val dt = IntArray(4)
+                            val steps = if (replaced) app.vela.core.data.ValhallaRouter.recheck(ms, edges, keepUnplaced = false, tally = dt) else ms
+                            app.vela.core.data.naming.StretchNamer.Named(
+                                steps, app.vela.core.data.naming.StretchNamer.Source.MATCHED, lanes = true,
+                                names = if (replaced) intArrayOf(dt[0], dt[1], dt[2] + dt[3]) else plain.names,
+                            )
+                        }
+                    }
+                },
+                tiles = { st, fetch ->
+                    val piece = pieceOf(st)
+                    val len = st.toM - st.fromM
+                    val sub = gTop!!.copy(
+                        polyline = piece, distanceMeters = len, legs = emptyList(), trafficSpans = emptyList(),
+                        durationSeconds = if (gTop.distanceMeters > 0) gTop.durationSeconds * len / gTop.distanceMeters else 0.0,
+                    )
+                    val lines = app.vela.core.data.naming.RoadNameTiles.linesAlong(piece, fetchMissing = fetch).orEmpty()
+                    app.vela.core.data.naming.LineNamer.name(sub, lines, mode, strict = true)?.maneuvers?.let {
+                        app.vela.core.data.naming.StretchNamer.Named(
+                            it, if (lines.isEmpty()) app.vela.core.data.naming.StretchNamer.Source.BARE else app.vela.core.data.naming.StretchNamer.Source.TILES,
+                        )
+                    }
+                },
+                // On a link where bytes are precious the tiles wait for the matcher to fail.
+                hedgeAfterMs = when {
+                    app.vela.core.data.LowDataMode.enabled -> TILE_HEDGE_NEVER_MS
+                    urgent -> TILE_HEDGE_URGENT_MS
+                    else -> TILE_HEDGE_MS
+                },
+            )
             suspend fun hybridOf(online: Boolean): Route? = coroutineScope {
                 val named = hybridStretches.map { st ->
-                    async(Dispatchers.IO) {
-                        val piece = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
-                        val len = st.toM - st.fromM
-                        val (startSlack, endSlack) = app.vela.core.data.naming.HybridRoute.tripEndSlack(st, gLineM, MATCH_TRIP_END_SLACK_M)
-                        val m = if (online && len <= MATCH_MAX_M)
-                            app.vela.core.data.ValhallaRouter.matchWithEdges(
-                                http, piece, timeoutMs = if (urgent) 1_200 else 2_500,
-                                startSlackM = startSlack, endSlackM = endSlack,
-                            ) else null
-                        val matched = m?.route
-                        if (matched != null) {
-                            m.off.forEach { untrusted += app.vela.core.data.naming.HybridRoute.Stretch(st.fromM + it.first, st.fromM + it.second) }
-                            if (m.off.isEmpty()) matchedShapes[st] = matched.polyline
-                            // LANES: the matcher gives names, exit numbers and signs but no lane
-                            // arrows; only the open router has those. The matched path is on the
-                            // road network exactly, so the open router can be led along it with a
-                            // point in the middle of each step (never at a turn, which a via
-                            // swallows), each with the path's heading. Its steps are used only
-                            // when its path is the matched path (8 m); else the matcher's stand.
-                            // Those steps carry the open router's names, so they pass the same
-                            // check against the matched edges; without edges the matcher's stand.
-                            val dt = IntArray(4)
-                            val lane = if (urgent || m.edges == null) null else laneDetail(matched, LANE_TRY_MS, trimStartM = startSlack, trimEndM = endSlack)
-                            // The open router's own steps carry its names, which pass the check
-                            // against the matched edges; borrowed lanes sit on the matcher's steps,
-                            // whose names are already checked.
-                            val detailed = lane?.let { (ms, replaced) -> if (replaced) app.vela.core.data.ValhallaRouter.recheck(ms, m.edges!!, keepUnplaced = false, tally = dt) else ms }
-                            synchronized(stretchNames) {
-                                if (m.edges == null) stretchNames[3]++
-                                if (lane?.second == true) { stretchNames[0] += dt[0]; stretchNames[1] += dt[1]; stretchNames[2] += dt[2] + dt[3] }
-                                else for (k in 0..2) stretchNames[k] += m.names[k]
-                            }
-                            synchronized(stretchSource) { stretchSource[0]++; if (detailed != null) stretchSource[3]++ }
-                            return@async st to (detailed ?: matched.maneuvers)
-                        }
-                        val sub = gTop.copy(
-                            polyline = piece, distanceMeters = len, legs = emptyList(), trafficSpans = emptyList(),
-                            durationSeconds = if (gTop.distanceMeters > 0) gTop.durationSeconds * len / gTop.distanceMeters else 0.0,
-                        )
-                        val lines = if (online) app.vela.core.data.naming.RoadNameTiles.linesAlong(piece).orEmpty() else emptyList()
-                        synchronized(stretchSource) { stretchSource[if (lines.isEmpty()) 2 else 1]++ }
-                        st to app.vela.core.data.naming.LineNamer.name(sub, lines, mode, strict = true)?.maneuvers
-                    }
+                    async(Dispatchers.IO) { st to (if (online) namer.name(st) else namer.inHand(st))?.steps }
                 }.awaitAll()
                 if (named.any { it.second == null }) return@coroutineScope null
                 // The open router's steps that are carried over get their names checked first, at
@@ -1265,7 +1291,20 @@ class GoogleMapsDataSource @Inject constructor(
             var namedInTime = false
             val hybridBuilt = if (hybridStretches.isEmpty()) null else
                 kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOrNull(online = true).also { namedInTime = true } }
-                    ?: run { stretchSource.fill(0); stretchNames.fill(0); untrusted.clear(); matchedShapes.clear(); hybridOrNull(online = false) }
+                    ?: hybridOrNull(online = false)
+            for (st in hybridStretches) {
+                val r = namer.result(st) ?: continue
+                when (r.source) {
+                    app.vela.core.data.naming.StretchNamer.Source.MATCHED -> {
+                        stretchSource[0]++
+                        if (r.lanes) stretchSource[3]++
+                        for (k in 0..2) stretchNames[k] += r.names[k]
+                        if (r.noEdges) stretchNames[3]++
+                    }
+                    app.vela.core.data.naming.StretchNamer.Source.TILES -> stretchSource[1]++
+                    app.vela.core.data.naming.StretchNamer.Source.BARE -> stretchSource[2]++
+                }
+            }
             // How the steps were made rides on the route into the trip file (Route.made): which
             // source named each stretch, how long it took, and whether the deadline passed first.
             val hybrid = hybridBuilt?.copy(
@@ -2131,6 +2170,13 @@ class GoogleMapsDataSource @Inject constructor(
         const val OFF_TRACK_MAX_EXTRA_M = 2_000.0
         const val OPEN_NAMES_WAIT_URGENT_MS = 300L
         const val HYBRID_WAIT_MS = 5_500L // a match (2.5 s) and its lane detail (1.8 s) at their slowest
+        /** How long a stretch's match may run before the map tiles under it are read as well, so
+         *  the names are in hand if the match is late. The matcher answers a town stretch in 0.35
+         *  to 1.2 s (replayed captured lines, 2026-10-09), so a healthy one costs no tile request. */
+        const val TILE_HEDGE_MS = 1_000L
+        const val TILE_HEDGE_URGENT_MS = 300L
+        /** Longer than any deadline: the tiles are read only once the match has failed. */
+        const val TILE_HEDGE_NEVER_MS = 60_000L
         const val LANE_TRY_MS = 1_800L
         /** Borrowing lanes step by step: the open router's step within this of the matcher's, and
          *  its path within [LANE_BORROW_PATH_M] of the matched path 60 m either side. */

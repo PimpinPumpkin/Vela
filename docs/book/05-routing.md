@@ -82,11 +82,17 @@ Valhalla returns no lane arrows. For a matched stretch, `laneDetail` asks the op
 drive the matched path. It takes the open router's steps when the two paths agree to within
 8 m, and otherwise borrows its lanes turn by turn.
 
+The tiles are not left until the match has failed. One second into a match that has not
+answered, the tiles under the stretch are read as well (0.3 s on a reroute), so the names are
+already there if the match is late. A matcher in good health answers a town stretch in 0.35 to
+1.2 s and costs no tile request.
+
 All of this gets `HYBRID_WAIT_MS` (5.5 s). Past that, the route goes out on Google's line with
-bare turns on the stretches. The open router's own route never replaces a stretch, because it
-is the route through whatever Google went around. A route that goes out this way, or with any
-stretch bare, is marked short of names, and the drive asks for it again
-([chapter 4](04-navigation.md)).
+what each stretch has by then: its match if that finished, else names from the tiles already
+read, else bare turns. One slow stretch does not cost the others their names. The open router's
+own route never replaces a stretch, because it is the route through whatever Google went
+around. A route that goes out past the deadline, or with any stretch bare, is marked short of
+names, and the drive asks for it again ([chapter 4](04-navigation.md)).
 
 ### No wrong street names
 
@@ -352,10 +358,10 @@ way you drove". A replayed trip never offers it.
 
 - The open router and the matcher are community servers with no guarantee. When OSRM does not
   answer, a drive gets the on-phone route or Google's short steps. When Valhalla does not
-  answer in time, stretches fall to tile names or bare turns, with no lanes or sign text. That
-  is more common on a reroute, where the stretches get 1.5 s. Bare turns last until the drive's
-  next recheck that comes back named, about 20 seconds. Self-hosting both would fix this and
-  would allow `exclude=`.
+  answer in time, stretches fall to tile names, with no lanes or sign text, and to bare turns
+  only when the tiles did not load either. That is more common on a reroute, where the
+  stretches get 1.5 s. Bare turns last until the drive's next recheck that comes back named,
+  about 20 seconds. Self-hosting both would fix this and would allow `exclude=`.
 - The open router's turn names go out unchecked when the road pieces under its line are late.
   On the 90 test routes the check removed 5 turn names and kept 457.
 - Trips with stops and picked alternates still use the via snap. On a trip with stops, Google's
