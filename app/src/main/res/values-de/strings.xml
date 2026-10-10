@@ -1305,6 +1305,14 @@
     <string name="settings_category_chips_row">Reihe</string>
     <string name="settings_category_chips_button">Eine Schaltfläche</string>
     <string name="settings_category_chips_hidden">Ausgeblendet</string>
+    <string name="settings_map_names">Namen auf der Karte</string>
+    <string name="settings_map_names_english_local">Englisch, wo bekannt, sonst der örtliche Name</string>
+    <string name="settings_map_names_english_latin">Englisch, wo bekannt, sonst umschrieben</string>
+    <string name="settings_map_names_local">Nur örtliche Namen</string>
+    <string name="settings_map_names_hint">Umschriebene Namen entstehen maschinell, wo OpenStreetMap keinen englischen Namen hat, und lesen sich auf Hebräisch und in einigen anderen Schriften schlecht. App-Sprache und Stimme ändern sich nicht.</string>
+    <string name="settings_project">Projekt</string>
+    <string name="settings_project_hint">Quellcode, Fehlermeldungen und Diskussionen sind auf GitHub.</string>
+    <string name="settings_project_github_button">Vela auf GitHub</string>
     <string name="mapvm_rechecking_connection">Verbindung wird geprüft…</string>
     <string name="mapvm_back_online">Wieder online</string>
     <string name="mapvm_still_offline">Noch offline. Vela merkt sofort, wenn die Verbindung wieder da ist.</string>

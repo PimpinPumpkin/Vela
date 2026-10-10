@@ -78,6 +78,10 @@ else
   echo "WARNING: no Geofabrik index bbox for $ID - planetiler will inherit the PBF header bbox, which may claim more ground than the archive holds" >&2
   BOUNDS_ARG=""
 fi
-java -Xmx"${PLANETILER_XMX:-6g}" -jar "$JAR" --osm-path="$PBF" --output="$OUT" --download --http-timeout=10m --http-retries=8 --maxzoom="$MAXZOOM" $BOUNDS_ARG --force >"$WORK/planetiler.log" 2>&1 || { tail -20 "$WORK/planetiler.log"; rm -rf "$WORK"; exit 1; }
+# --transliterate=false: planetiler otherwise fills name:latin with an ICU transliteration where
+# OpenStreetMap has no Latin name, which for Hebrew is a vowel-less skeleton ("lwḥmy h'š") that a
+# reader took for Turkish (issue #738). The streamed tiles carry no such name, so a street with no
+# English name shows its local name online; the offline archive now does the same.
+java -Xmx"${PLANETILER_XMX:-6g}" -jar "$JAR" --osm-path="$PBF" --output="$OUT" --download --http-timeout=10m --http-retries=8 --maxzoom="$MAXZOOM" $BOUNDS_ARG --transliterate=false --force >"$WORK/planetiler.log" 2>&1 || { tail -20 "$WORK/planetiler.log"; rm -rf "$WORK"; exit 1; }
 rm -rf "$WORK"
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1)) region $ID maxzoom $MAXZOOM bounds ${BOUNDS:-<pbf-header>}"

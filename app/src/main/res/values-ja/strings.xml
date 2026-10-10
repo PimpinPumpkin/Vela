@@ -1356,6 +1356,14 @@
     <string name="settings_category_chips_row">横並び</string>
     <string name="settings_category_chips_button">ボタン 1 つ</string>
     <string name="settings_category_chips_hidden">非表示</string>
+    <string name="settings_map_names">地図上の名前</string>
+    <string name="settings_map_names_english_local">英語名があれば英語、なければ現地の名前</string>
+    <string name="settings_map_names_english_latin">英語名があれば英語、なければローマ字</string>
+    <string name="settings_map_names_local">現地の名前のみ</string>
+    <string name="settings_map_names_hint">ローマ字の名前は、OpenStreetMapに英語名がない場所で機械的に作られ、ヘブライ語などいくつかの文字では読みにくくなります。アプリの言語と音声は変わりません。</string>
+    <string name="settings_project">プロジェクト</string>
+    <string name="settings_project_hint">ソースコード、バグ報告、ディスカッションはGitHubにあります。</string>
+    <string name="settings_project_github_button">GitHubのVela</string>
     <string name="mapvm_rechecking_connection">接続を確認しています…</string>
     <string name="mapvm_back_online">オンラインに戻りました</string>
     <string name="mapvm_still_offline">まだオフラインです。接続が戻りしだい、Vela が自動で検知します。</string>

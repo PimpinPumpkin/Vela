@@ -1331,6 +1331,14 @@
     <string name="settings_category_chips_row">Rząd</string>
     <string name="settings_category_chips_button">Jeden przycisk</string>
     <string name="settings_category_chips_hidden">Ukryte</string>
+    <string name="settings_map_names">Nazwy na mapie</string>
+    <string name="settings_map_names_english_local">Angielska, gdy znana, inaczej lokalna</string>
+    <string name="settings_map_names_english_latin">Angielska, gdy znana, inaczej w transliteracji</string>
+    <string name="settings_map_names_local">Tylko nazwy lokalne</string>
+    <string name="settings_map_names_hint">Nazwy w transliteracji są tworzone maszynowo tam, gdzie OpenStreetMap nie ma nazwy angielskiej, i źle się je czyta w hebrajskim i niektórych innych pismach. Język aplikacji i głos się nie zmieniają.</string>
+    <string name="settings_project">Projekt</string>
+    <string name="settings_project_hint">Kod źródłowy, zgłoszenia błędów i dyskusje są na GitHubie.</string>
+    <string name="settings_project_github_button">Vela na GitHubie</string>
     <string name="mapvm_rechecking_connection">Sprawdzanie połączenia…</string>
     <string name="mapvm_back_online">Znów online</string>
     <string name="mapvm_still_offline">Nadal offline. Vela zauważy, gdy tylko połączenie wróci.</string>

@@ -826,6 +826,7 @@ the page fills it after load, and a small stub sits beside it.
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home` or `place` (4.7, Where the map opens) |
+| Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, or the local name alone (4.10, the label rules); rides `styleKey` |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
 red, blue, white, green, yellow), a UFO, a pirate ship or a rubber duck (`drawUfoPuck`,
@@ -3831,6 +3832,12 @@ feature, maxspeed and cell bakes publish as the region's `bbox` and
 `tools/build-basemap-region.sh` passes to planetiler as `--bounds`. The places bake reads its
 box from `tools/places-regions.json`, as for every region.
 
+The basemap bake runs planetiler with `--transliterate=false` (issue #738): left on, it fills
+`name:latin` with an ICU transliteration wherever OpenStreetMap has no Latin name, which for
+Hebrew is a vowel-less skeleton a reader took for Turkish. The streamed tiles carry no such
+name, so a street with no English name shows its local name online, and an archive baked after
+2026-10-10 does the same; older archives keep the skeletons until their cycle rebakes them.
+
 - Every bake reaches the extract through `fetch-pbf.sh`, so a cut needs no change in a bake
   script or a workflow's region selector. A download that bypasses the script fails on the
   `cut:` scheme.
@@ -4552,11 +4559,16 @@ A road name can be in a different script than the guidance language.
   dictionary is still empty, the region's names are all Latin and the warm-up settles at once.
 - The navigation opener is held up to `OPENER_MAX_WAIT_MS` (2.5 s), retrying every 200 ms, until
   the dictionary covers its road. An opener with no non-Latin letter never waits.
-- Road labels use `roadLabelTextField()`: `coalesce(name:en, name:latin, name)` for a
-  Latin-script UI, the local `name` otherwise. Nav bubbles filter on the canonical `name` and
-  display the Latin form.
+- Road labels use `roadLabelTextField()`, by Settings > Map > Names on the map (`MapNames`,
+  pref `map_names`, issue #738): for a Latin-script UI `coalesce(name:en, name:latin, name)`
+  (`english_latin`, the default), `coalesce(name:en, name)` (`english_local`, what Google shows)
+  or `name` (`local`); the local `name` for any other UI. The basemap's `name:latin` is
+  OpenMapTiles' machine romanization where OpenStreetMap has no English name: readable for
+  Cyrillic or Greek, a vowel-less skeleton for Hebrew. The mode rides `styleKey`, so a change
+  reloads the style. Nav bubbles filter on the canonical `name` and display the chosen form.
 - Place, POI and water labels (`PLACE_LABEL_LAYERS`) take the UI language's `name:<lang>` first
-  (`placeLabelTextField()`). Place names are data and are never transliterated.
+  (`placeLabelTextField()`), then the same fallback chain as the roads; `local` is `name` alone.
+  Place names are data and are never transliterated by Vela.
 - `SpokenScript.applyDict` returns in O(length) when the text has no character the reader cannot
   read, and digests each dictionary once per instance. A full scan twice per fix was a 60 ms
   main-thread stall at 1 Hz.

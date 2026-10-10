@@ -5072,7 +5072,7 @@ fun VelaMapView(
         // (issue #344), so a size/color change reloads to re-register it.
         // The offline basemap rides the key: entering or leaving an installed region reloads the
         // style with its tile source pointed at the local archive (or back at OpenFreeMap).
-        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}|base=${basemapArchive ?: ""}"
+        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}|names=${app.vela.ui.MapNames.mode.value}|base=${basemapArchive ?: ""}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             // An installed offline basemap wins over every style source: the remote Liberty URL
@@ -6983,15 +6983,19 @@ private val NON_LATIN_UI_LANGS =
 private fun uiWantsLatinLabels(): Boolean =
     app.vela.ui.AppLocale.effective().language.lowercase() !in NON_LATIN_UI_LANGS
 
-/** The textField expression for a road-name label: the real Latin name (name:en, else the basemap's
- *  name:latin) for a Latin-script UI, falling back to the local `name`; the plain local `name` for a
- *  user who reads a non-Latin script. Same name:latin data the nav voice/banner use. */
-private fun roadLabelTextField(): Expression =
-    if (uiWantsLatinLabels()) {
-        Expression.coalesce(Expression.get("name:en"), Expression.get("name:latin"), Expression.get("name"))
-    } else {
-        Expression.get("name")
+/** The textField expression for a road-name label, by Settings > Map > Names on the map
+ *  ([app.vela.ui.MapNames], issue #738): for a Latin-script UI the real English name (name:en),
+ *  then the basemap's romanized name:latin or the local `name` as chosen, or the local name alone;
+ *  the plain local `name` for a user who reads a non-Latin script. The nav voice and banner keep
+ *  the name:latin data whatever the choice. */
+private fun roadLabelTextField(): Expression {
+    val mode = app.vela.ui.MapNames.mode.value
+    return when {
+        mode == app.vela.ui.MapNames.LOCAL || !uiWantsLatinLabels() -> Expression.get("name")
+        mode == app.vela.ui.MapNames.ENGLISH_LOCAL -> Expression.coalesce(Expression.get("name:en"), Expression.get("name"))
+        else -> Expression.coalesce(Expression.get("name:en"), Expression.get("name:latin"), Expression.get("name"))
     }
+}
 
 /** The OpenMapTiles name fields for the UI language, most specific first.
  *
@@ -7024,12 +7028,15 @@ private fun isTraditionalChinese(locale: java.util.Locale): Boolean =
  *  reader then falls back through the English name (both spellings OpenMapTiles and Liberty use) and
  *  the romanized one, and everyone lands on the local `name` when nothing else is there. */
 private fun placeLabelTextField(): Expression {
+    val mode = app.vela.ui.MapNames.mode.value
+    if (mode == app.vela.ui.MapNames.LOCAL) return Expression.get("name")
     val own = uiLangTagFields()
     val rest = if (uiWantsLatinLabels()) {
-        listOf(
+        listOfNotNull(
             Expression.get("name:en"),
             Expression.get("name_en"),
-            Expression.get("name:latin"),
+            // The romanized name only when asked for (issue #738, the same choice as the roads).
+            if (mode == app.vela.ui.MapNames.ENGLISH_LATIN) Expression.get("name:latin") else null,
             Expression.get("name"),
         )
     } else {

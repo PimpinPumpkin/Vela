@@ -17,7 +17,8 @@ when it reroutes, is [chapter 4](04-navigation.md).
 ## Where the data comes from
 
 - Callout names are read from the basemap tiles already loaded (`transportation_name`). Nothing
-  is fetched. A Latin-script app language gets `name:en`, else `name:latin`, else the local name.
+  is fetched. A Latin-script app language gets `name:en`, else `name:latin`, else the local name,
+  or whatever Settings > Map > Names on the map chose instead.
 - The road-ahead bar draws Google's congestion spans for the route ([chapter 5](05-routing.md))
   and the road features and cameras already fetched along it
   ([chapter 2](02-data-and-rebakes.md), [chapter 3](03-cameras.md)).

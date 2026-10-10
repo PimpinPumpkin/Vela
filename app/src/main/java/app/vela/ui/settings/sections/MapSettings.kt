@@ -142,6 +142,26 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
             )
         }
         Hint(stringResource(R.string.settings_house_numbers_hint))
+        // Which name a road or place label shows (issue #738): English where OpenStreetMap has
+        // one, then the basemap's machine romanization or the local script, or the local name alone.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_map_names),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.settingsAnchor(stringResource(R.string.settings_map_names)).padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.MapNames.ENGLISH_LATIN to stringResource(R.string.settings_map_names_english_latin),
+            app.vela.ui.MapNames.ENGLISH_LOCAL to stringResource(R.string.settings_map_names_english_local),
+            app.vela.ui.MapNames.LOCAL to stringResource(R.string.settings_map_names_local),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.MapNames.mode.value == id,
+                onClick = { app.vela.ui.MapNames.set(context, id) },
+            )
+        }
+        Hint(stringResource(R.string.settings_map_names_hint))
         }
 
         Spacer(Modifier.height(24.dp))

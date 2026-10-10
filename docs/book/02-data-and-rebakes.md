@@ -133,6 +133,9 @@ and a last job publishes the manifest. The rules that keep a bake from failing:
   redirects in a circle and cuts a region out of a bigger extract (below).
 - Tools are pinned: planetiler 0.10.2 for the basemap; tippecanoe 2.79.0, go-pmtiles 1.31.2 and
   DuckDB 1.5.4 for places.
+- The basemap bake does not transliterate names: a street with no English name keeps its local
+  name, as in the streamed tiles. Planetiler's own transliteration made Hebrew streets read as
+  Turkish (issue #738); archives baked before 2026-10-10 still carry those until they rebake.
 - The places read of Overture is pruned on its `bbox` column. A filter on the geometry reads
   every place on earth: on Kentucky the scan took 504 s that way and 3.7 s on `bbox`.
 - A release asset must stay under 2 GiB. A basemap archive that reaches it is rebaked one zoom

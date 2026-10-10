@@ -1306,6 +1306,14 @@
     <string name="settings_category_chips_row">Fila</string>
     <string name="settings_category_chips_button">Um botão</string>
     <string name="settings_category_chips_hidden">Ocultos</string>
+    <string name="settings_map_names">Nomes no mapa</string>
+    <string name="settings_map_names_english_local">Inglês quando conhecido, senão o nome local</string>
+    <string name="settings_map_names_english_latin">Inglês quando conhecido, senão romanizado</string>
+    <string name="settings_map_names_local">Só nomes locais</string>
+    <string name="settings_map_names_hint">Os nomes romanizados são gerados automaticamente onde o OpenStreetMap não tem nome em inglês, e leem-se mal em hebraico e noutros alfabetos. A língua da app e a voz não mudam.</string>
+    <string name="settings_project">Projeto</string>
+    <string name="settings_project_hint">O código-fonte, os relatórios de erros e as discussões estão no GitHub.</string>
+    <string name="settings_project_github_button">Vela no GitHub</string>
     <string name="mapvm_rechecking_connection">A verificar a ligação…</string>
     <string name="mapvm_back_online">De novo online</string>
     <string name="mapvm_still_offline">Ainda offline. A Vela dá por isso assim que a ligação voltar.</string>

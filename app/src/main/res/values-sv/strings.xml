@@ -1318,6 +1318,14 @@
     <string name="settings_category_chips_row">Rad</string>
     <string name="settings_category_chips_button">En knapp</string>
     <string name="settings_category_chips_hidden">Dolda</string>
+    <string name="settings_map_names">Namn på kartan</string>
+    <string name="settings_map_names_english_local">Engelska där det finns, annars det lokala namnet</string>
+    <string name="settings_map_names_english_latin">Engelska där det finns, annars romaniserat</string>
+    <string name="settings_map_names_local">Bara lokala namn</string>
+    <string name="settings_map_names_hint">Romaniserade namn görs av en maskin där OpenStreetMap saknar engelskt namn, och läses dåligt på hebreiska och några andra skriftsystem. Appens språk och rösten ändras inte.</string>
+    <string name="settings_project">Projekt</string>
+    <string name="settings_project_hint">Källkod, felrapporter och diskussioner finns på GitHub.</string>
+    <string name="settings_project_github_button">Vela på GitHub</string>
     <string name="mapvm_rechecking_connection">Kontrollerar anslutningen…</string>
     <string name="mapvm_back_online">Online igen</string>
     <string name="mapvm_still_offline">Fortfarande offline. Vela märker det så fort anslutningen är tillbaka.</string>

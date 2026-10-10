@@ -310,6 +310,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_keep_north_up to SettingsSection.MAP,
     R.string.settings_start_view to SettingsSection.MAP,
     R.string.settings_house_numbers to SettingsSection.MAP,
+    R.string.settings_map_names to SettingsSection.MAP,
     R.string.settings_flock to SettingsSection.NAVIGATION,
     R.string.settings_speed_cams to SettingsSection.NAVIGATION,
     R.string.settings_speed_cam_warn to SettingsSection.NAVIGATION,

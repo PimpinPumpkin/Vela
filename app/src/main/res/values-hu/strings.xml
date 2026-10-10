@@ -1276,6 +1276,14 @@
     <string name="settings_category_chips_row">Sor</string>
     <string name="settings_category_chips_button">Egy gomb</string>
     <string name="settings_category_chips_hidden">Rejtett</string>
+    <string name="settings_map_names">Nevek a térképen</string>
+    <string name="settings_map_names_english_local">Angol, ha ismert, különben a helyi név</string>
+    <string name="settings_map_names_english_latin">Angol, ha ismert, különben átírt</string>
+    <string name="settings_map_names_local">Csak helyi nevek</string>
+    <string name="settings_map_names_hint">Az átírt neveket gép készíti ott, ahol az OpenStreetMapen nincs angol név, és héberül meg néhány más írásban rosszul olvashatók. Az alkalmazás nyelve és a hang nem változik.</string>
+    <string name="settings_project">Projekt</string>
+    <string name="settings_project_hint">A forráskód, a hibajelentések és a beszélgetések a GitHubon vannak.</string>
+    <string name="settings_project_github_button">Vela a GitHubon</string>
     <string name="mapvm_rechecking_connection">Kapcsolat ellenőrzése…</string>
     <string name="mapvm_back_online">Újra online</string>
     <string name="mapvm_still_offline">Még mindig offline. A Vela azonnal észreveszi, amint visszatér a kapcsolat.</string>

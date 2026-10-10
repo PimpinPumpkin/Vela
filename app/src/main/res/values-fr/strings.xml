@@ -1313,6 +1313,14 @@
     <string name="settings_category_chips_row">Rangée</string>
     <string name="settings_category_chips_button">Un seul bouton</string>
     <string name="settings_category_chips_hidden">Masqués</string>
+    <string name="settings_map_names">Noms sur la carte</string>
+    <string name="settings_map_names_english_local">Anglais si connu, sinon le nom local</string>
+    <string name="settings_map_names_english_latin">Anglais si connu, sinon romanisé</string>
+    <string name="settings_map_names_local">Noms locaux seulement</string>
+    <string name="settings_map_names_hint">Les noms romanisés sont produits par une machine là où OpenStreetMap n\'a pas de nom anglais, et se lisent mal en hébreu et dans d\'autres écritures. La langue de l\'appli et la voix ne changent pas.</string>
+    <string name="settings_project">Projet</string>
+    <string name="settings_project_hint">Le code source, les rapports de bugs et les discussions sont sur GitHub.</string>
+    <string name="settings_project_github_button">Vela sur GitHub</string>
     <string name="mapvm_rechecking_connection">Vérification de la connexion…</string>
     <string name="mapvm_back_online">De nouveau en ligne</string>
     <string name="mapvm_still_offline">Toujours hors ligne. Vela le remarquera dès que la connexion reviendra.</string>

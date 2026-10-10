@@ -1344,6 +1344,14 @@
     <string name="settings_category_chips_row">Ряд</string>
     <string name="settings_category_chips_button">Одна кнопка</string>
     <string name="settings_category_chips_hidden">Скрыты</string>
+    <string name="settings_map_names">Названия на карте</string>
+    <string name="settings_map_names_english_local">Английское, если известно, иначе местное</string>
+    <string name="settings_map_names_english_latin">Английское, если известно, иначе латиницей</string>
+    <string name="settings_map_names_local">Только местные названия</string>
+    <string name="settings_map_names_hint">Названия латиницей создаются машиной там, где в OpenStreetMap нет английского названия, и плохо читаются для иврита и некоторых других письменностей. Язык приложения и голос не меняются.</string>
+    <string name="settings_project">Проект</string>
+    <string name="settings_project_hint">Исходный код, сообщения об ошибках и обсуждения находятся на GitHub.</string>
+    <string name="settings_project_github_button">Vela на GitHub</string>
     <string name="mapvm_rechecking_connection">Проверка подключения…</string>
     <string name="mapvm_back_online">Связь восстановлена</string>
     <string name="mapvm_still_offline">Связи всё ещё нет. Vela заметит, как только подключение вернётся.</string>

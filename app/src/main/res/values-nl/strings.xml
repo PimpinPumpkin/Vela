@@ -1305,6 +1305,14 @@
     <string name="settings_category_chips_row">Rij</string>
     <string name="settings_category_chips_button">Eén knop</string>
     <string name="settings_category_chips_hidden">Verborgen</string>
+    <string name="settings_map_names">Namen op de kaart</string>
+    <string name="settings_map_names_english_local">Engels waar bekend, anders de lokale naam</string>
+    <string name="settings_map_names_english_latin">Engels waar bekend, anders geromaniseerd</string>
+    <string name="settings_map_names_local">Alleen lokale namen</string>
+    <string name="settings_map_names_hint">Geromaniseerde namen worden machinaal gemaakt waar OpenStreetMap geen Engelse naam heeft, en lezen slecht in het Hebreeuws en enkele andere schriften. De app-taal en de stem veranderen niet.</string>
+    <string name="settings_project">Project</string>
+    <string name="settings_project_hint">Broncode, bugmeldingen en discussies staan op GitHub.</string>
+    <string name="settings_project_github_button">Vela op GitHub</string>
     <string name="mapvm_rechecking_connection">Verbinding controleren…</string>
     <string name="mapvm_back_online">Weer online</string>
     <string name="mapvm_still_offline">Nog steeds offline. Vela merkt het meteen als de verbinding terug is.</string>

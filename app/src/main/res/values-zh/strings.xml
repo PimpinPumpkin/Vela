@@ -1375,6 +1375,14 @@
     <string name="settings_category_chips_row">一行</string>
     <string name="settings_category_chips_button">一个按钮</string>
     <string name="settings_category_chips_hidden">隐藏</string>
+    <string name="settings_map_names">地图上的名称</string>
+    <string name="settings_map_names_english_local">有英文名则用英文，否则用当地名称</string>
+    <string name="settings_map_names_english_latin">有英文名则用英文，否则用拉丁转写</string>
+    <string name="settings_map_names_local">仅当地名称</string>
+    <string name="settings_map_names_hint">拉丁转写名称在 OpenStreetMap 没有英文名时由机器生成，在希伯来文等一些文字中可读性很差。应用语言和语音不受影响。</string>
+    <string name="settings_project">项目</string>
+    <string name="settings_project_hint">源代码、错误报告和讨论都在 GitHub 上。</string>
+    <string name="settings_project_github_button">GitHub 上的 Vela</string>
     <string name="mapvm_rechecking_connection">正在检查网络连接…</string>
     <string name="mapvm_back_online">已恢复联网</string>
     <string name="mapvm_still_offline">仍处于离线状态。网络一恢复，Vela 就会察觉。</string>

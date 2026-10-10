@@ -1243,6 +1243,14 @@
     <string name="settings_category_chips_row">Row</string>
     <string name="settings_category_chips_button">One button</string>
     <string name="settings_category_chips_hidden">Hidden</string>
+    <string name="settings_map_names">Names on the map</string>
+    <string name="settings_map_names_english_local">English where known, else the local name</string>
+    <string name="settings_map_names_english_latin">English where known, else romanized</string>
+    <string name="settings_map_names_local">Local names only</string>
+    <string name="settings_map_names_hint">Romanized names are made by machine where OpenStreetMap has no English name, and read badly in Hebrew and some other scripts. The app language and the voice do not change.</string>
+    <string name="settings_project">Project</string>
+    <string name="settings_project_hint">Source code, bug reports and discussions are on GitHub.</string>
+    <string name="settings_project_github_button">Vela on GitHub</string>
     <string name="mapvm_rechecking_connection">Checking the connection…</string>
     <string name="mapvm_back_online">Back online</string>
     <string name="mapvm_still_offline">Still offline. Vela will notice the moment the connection is back.</string>
