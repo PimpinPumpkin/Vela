@@ -20,11 +20,13 @@ import app.vela.core.nav.NavReplay
  * - `RP,<encoded-polyline>` — the navigated route's blue line (optional)
  * - `RD,<distanceM>,<durationS>,<durationInTrafficS?>,<reason>,<flags>` — route totals; reason
  *   (start/reroute/faster/heal/stop-added) and flags (provisional;abbreviated;offline;traffic;
- *   steps=N) are appended fields, absent on older trips
+ *   source=X;steps=N;named=KofN, then how the steps were made, [Route.made]) are appended fields,
+ *   absent on older trips
  * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` — one per maneuver (instruction last; may hold commas)
  * - `<lat>,<lng>,<t>,<bearing>,<speed>,<offRoute>,<accuracy>,<provider>,<offRouteHits>` — one per
  *   recorded GPS fix (the last four are appended fields, absent on older trips)
- * - `K,<t>,<text>` — a nav decision (recheck offered / kept, reroute attempt, swap); no coordinates
+ * - `K,<t>,<text>`: a nav decision (recheck offered / kept, reroute attempt, swap) or a note on
+ *   what the drive ran on; no coordinates, no names, no spoken text
  *
  * The line kind is told by the first field, so [parsePoints] naturally ignores the non-fix lines
  * (their first field never parses as a latitude).
@@ -80,6 +82,10 @@ object TripLog {
             if (route.hasLiveTraffic) add("traffic")
             if (route.source != app.vela.core.model.RouteSource.UNKNOWN) add("source=" + route.source.name)
             add("steps=${route.maneuvers.size}")
+            // How many of the turns say where they go, and how the steps were made: the totals
+            // line survives a share's trim, the steps at either end do not.
+            add("named=${route.namedTurns}of${route.turns}")
+            route.made.split(';').filter { it.isNotBlank() }.forEach { add(it.replace(',', ' ').replace('\n', ' ')) }
         }.joinToString(";")
         append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason,$flags\n")
         // The congestion the drive was shown, as level:startMeters:lengthMeters along the line:

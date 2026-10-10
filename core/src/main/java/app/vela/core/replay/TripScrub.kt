@@ -35,6 +35,13 @@ import kotlin.math.sqrt
  * *differences* between them, so this costs nothing and stops a published file from saying
  * exactly when its author drives.
  *
+ * What says nothing about a place is kept for the whole drive, the trimmed ends included: the
+ * `K` notes (nav decisions, how a route got its names, the build and settings, frame rate, the
+ * network), `J` and `B`. The start of a drive is where a route is planned and named, and a trim
+ * that took those notes with the driveway left a naming bug with nothing to read. A note from
+ * before the first surviving fix has a negative time. What it gives away is how long the drive
+ * spent inside a trimmed end, never where.
+ *
  * Unknown line kinds are DROPPED, not passed through. The format is deliberately append-only, so
  * a tag added later would otherwise be published by a scrubber written before it existed. If you
  * add a line kind to [TripLog], decide here whether it is safe to share.
@@ -54,7 +61,7 @@ object TripScrub {
      */
     fun defaultRadius(redact: Boolean): Double = if (redact) RADIUS_OPTIONS_M.max() else DEFAULT_RADIUS_M
 
-    /** An event survives only if a fix this close in time survived (fixes arrive at about 1 Hz). */
+    /** A spoken line survives only if a fix this close in time survived (fixes arrive at about 1 Hz). */
     const val EVENT_NEAR_MS = 3_000L
 
     /** What a scrub did, so it can be shown before anything leaves the device. */
@@ -106,10 +113,9 @@ object TripScrub {
         val tZero = kept.first().second.t
         val keptFrom = kept.first().second.t
         val keptTo = kept.last().second.t
-        // An event (spoken line, jank or battery sample) survives only if a fix within
-        // EVENT_NEAR_MS of it survived: the trimmed windows are not just the two ends. A Home or
-        // Work zone passed mid-trip deletes its fixes, and the spoken "turn onto <its street>"
-        // must go with them.
+        // A spoken line survives only if a fix within EVENT_NEAR_MS of it survived: the trimmed
+        // windows are not just the two ends. A Home or Work zone passed mid-trip deletes its
+        // fixes, and the spoken "turn onto <its street>" must go with them.
         val keptTimes = LongArray(kept.size) { kept[it].second.t }
         fun nearKeptFix(t: Long): Boolean {
             var lo = 0
@@ -179,12 +185,12 @@ object TripScrub {
                     if (t == null || t < keptFrom || t > keptTo || !nearKeptFix(t)) spokenDropped++
                     else out.append(rebaseEvent(line, tZero)).append('\n')
                 }
-                // Frame pacing, battery and nav decisions carry no position (a K line never
-                // holds a coordinate by contract; NavSession keeps those in the diag ring).
+                // Frame pacing, battery and nav decisions carry no position, name or spoken text
+                // (the contract on TripNote and NavSession.onNote), so they are kept from the
+                // trimmed stretches too.
                 "J", "B", "K" -> {
                     val t = line.split(',').getOrNull(1)?.toLongOrNull()
-                    if (t == null || t < keptFrom || t > keptTo || !nearKeptFix(t)) otherDropped++
-                    else out.append(rebaseEvent(line, tZero)).append('\n')
+                    if (t == null) otherDropped++ else out.append(rebaseEvent(line, tZero)).append('\n')
                 }
                 else -> otherDropped++
             }

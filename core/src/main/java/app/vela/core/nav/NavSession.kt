@@ -606,6 +606,8 @@ class NavSession @Inject constructor(
      *  the stale frame instead of comparing old progress to new marks (which would fire every cue at once). */
     private fun announceStopsPassed(route: Route, traveledM: Double, loc: LatLng) {
         val toSpeak = mutableListOf<String>()
+        var passedNow = 0
+        var stopCount = 0
         synchronized(stopLock) {
             if (route !== planRoute) return
             val byMarks = NavEngine.stopsPassed(stopMarks, stops.size, passedStops, traveledM, STOP_ARRIVE_TOL_M)
@@ -625,11 +627,12 @@ class NavSession @Inject constructor(
             // Counts only, for a test on a phone: no name, no place.
             if (passed != passedStops) runCatching { android.util.Log.i("VelaDirections", "stops: $passed of ${stops.size} passed") }
             passedStops = passed
+            passedNow = passed
+            stopCount = stops.size
         }
-        toSpeak.forEach { label ->
-            voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label))
-            note("reached stop: ${label.ifBlank { "(unnamed)" }}")
-        }
+        toSpeak.forEach { label -> voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label)) }
+        // The count, never the stop's name: a note goes into the trip file and out with a share.
+        if (toSpeak.isNotEmpty()) note("reached a stop: $passedNow of $stopCount passed")
     }
 
     /** Every nav decision the session makes, for the diag ring AND the trip file (`K` lines,
@@ -868,9 +871,9 @@ class NavSession @Inject constructor(
                         nextStop = seededNextStop(candidate, candidateEta),
                     )
                 }
-                diag.record(
-                    "nav",
+                note(
                     "recheck upgraded route (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
+                        "named turns ${current.namedTurns} of ${current.turns} -> ${candidate.namedTurns} of ${candidate.turns}, " +
                         "traffic ${current.hasLiveTraffic} -> ${candidate.hasLiveTraffic})",
                 )
                 return@launch
@@ -896,7 +899,8 @@ class NavSession @Inject constructor(
             } else {
                 note(
                     "recheck: kept current route (candidate saves ${saving.toInt()} s, traffic=$trafficAware, " +
-                        "abbreviated=${candidate.abbreviatedSteps}, plausible=$plausible, sameCourse=$sameCourse)",
+                        "abbreviated=${candidate.abbreviatedSteps}, plausible=$plausible, sameCourse=$sameCourse, " +
+                        "named ${candidate.namedTurns} of ${candidate.turns} turns against ${current.namedTurns} of ${current.turns})",
                 )
             }
         }

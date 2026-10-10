@@ -246,8 +246,21 @@ data class Route(
      *  from OpenStreetMap and Google's smoother line sat off their center on every curve. Guidance
      *  keeps [polyline]. */
     val drawPolyline: List<LatLng>? = null,
+    /** How the steps were put together, for the trip file (the `RD` line's flags): `key=value`
+     *  words joined by `;`, counts and milliseconds only. Never a name, a place or a comma. Empty
+     *  when the route was not stitched from more than one source. */
+    val made: String = "",
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
+
+    /** The turns of this route: every step but the start and the arrival. */
+    val turns: Int get() = maneuvers.count { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    /** How many of [turns] say where they go: a road, a number, or the words on a sign. */
+    val namedTurns: Int get() = maneuvers.count {
+        it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE &&
+            (!it.road.isNullOrBlank() || !it.ref.isNullOrBlank() || (it.instructionNoRoad != null && it.instructionNoRoad != it.instruction))
+    }
 
     /** Safe to hand to the nav session as is: not a provisional picker alternate whose steps are
      *  placeholders. The one question NavSession asks before adopting a candidate. */

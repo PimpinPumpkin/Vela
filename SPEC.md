@@ -2193,7 +2193,12 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - Trips are segmented. The start route and every mid-drive swap is its own `RP`/`RD`/`M` block,
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.
-- `RD` carries the route's provenance flags and source name.
+- `RD` carries the route's provenance flags and source name, then `named=KofN` (how many of
+  its turns say a road, a number or a sign) and `Route.made`, how the steps were put together:
+  the open route's source and step count, the stretches where Google's line left it and their
+  meters, how many were matched, named from tiles or left bare, the naming time, `namingLate`
+  when the deadline passed first, and `openNames=` for an open route whose names were checked.
+  Counts and milliseconds only.
 - An `M` line's text may be followed by tab-separated fields: the road the turn enters, its
   ref, and the step's duration. A replay needs the first two for the callout and the shield.
   Remaining time is the sum of the step durations ahead; a file without them has the route's
@@ -2201,8 +2206,10 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - A `T` line after `RD` carries the congestion spans (`level:startMeters:lengthMeters;...`), so
   a replay paints the traffic the drive was shown.
 - Every nav decision is a `K` line written through `NavSession.onNote`, never with a
-  coordinate. An `eta:` note every 30 s records minutes and kilometers left, the step, the
-  traffic ratio, the number of congestion stretches and the route's source.
+  coordinate or a name: a stop reached is noted by count. A recheck's note gives the named
+  turns of the candidate against the current route's. An `eta:` note every 30 s records
+  minutes and kilometers left, the step, the traffic ratio, the number of congestion stretches
+  and the route's source.
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:
   a shared copy's route is trimmed and the offsets no longer fit.
@@ -5269,7 +5276,12 @@ the geometry.
 - An endpoint appears in six places and all are handled: the fixes, the `META` destination, the
   `META` label, the maneuvers, the route polyline's start and the spoken lines.
 - Timestamps rebase to zero.
-- An `S`, `J`, `B` or `K` event survives only if a fix within `EVENT_NEAR_MS` (3 s) survived.
+- An `S` line survives only if a fix within `EVENT_NEAR_MS` (3 s) survived: it is the spoken
+  text and names the street.
+- `K`, `J` and `B` lines are kept for the whole drive, the trimmed ends included. They hold no
+  position, name or spoken text, and the start of a drive is where its route is planned and
+  named. One from before the first surviving fix has a negative time. They show how long the
+  drive spent inside a trimmed end, not where.
 - A route block whose polyline trims to nothing drops its `RD` and `M` lines.
 - A trip that trims to nothing is never sent raw. A batch share leaves it out and counts it.
 

@@ -1262,9 +1262,23 @@ class GoogleMapsDataSource @Inject constructor(
                 runCatching { android.util.Log.w("VelaDirections", "hybrid failed: ${t.javaClass.simpleName}") }
                 null
             }
-            val hybrid = if (hybridStretches.isEmpty()) null else
-                kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOrNull(online = true) }
+            var namedInTime = false
+            val hybridBuilt = if (hybridStretches.isEmpty()) null else
+                kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOrNull(online = true).also { namedInTime = true } }
                     ?: run { stretchSource.fill(0); stretchNames.fill(0); untrusted.clear(); matchedShapes.clear(); hybridOrNull(online = false) }
+            // How the steps were made rides on the route into the trip file (Route.made): which
+            // source named each stretch, how long it took, and whether the deadline passed first.
+            val hybrid = hybridBuilt?.copy(
+                made = listOfNotNull(
+                    "open=${open.first().source.name.lowercase()}${open.first().maneuvers.size}",
+                    "stretches=${hybridStretches.size}",
+                    "stretchM=${hybridStretches.sumOf { it.toM - it.fromM }.toInt()}",
+                    "matched=${stretchSource[0]}", "tiled=${stretchSource[1]}", "bare=${stretchSource[2]}", "lanes=${stretchSource[3]}",
+                    "naming=${System.currentTimeMillis() - tHybrid}ms",
+                    "namingLate".takeIf { !namedInTime },
+                    "urgent".takeIf { urgent },
+                ).joinToString(";"),
+            )
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gLineM.toInt()} m (Google states ${gTop?.distanceMeters?.toInt()} m), " +
@@ -1456,7 +1470,8 @@ class GoogleMapsDataSource @Inject constructor(
             val tally = IntArray(4)
             fetched.map { r ->
                 if (r.polyline === openLine)
-                    app.vela.core.data.ValhallaRouter.recheck(r, edges, keepUnplaced = true, tally = tally) else r
+                    app.vela.core.data.ValhallaRouter.recheck(r, edges, keepUnplaced = true, tally = tally)
+                        .let { it.copy(made = "openNames=kept${tally[0]}renamed${tally[1]}bare${tally[2]}unplaced${tally[3]}") } else r
             }.also {
                 runCatching { android.util.Log.i("VelaDirections", "open names: kept ${tally[0]} renamed ${tally[1]} bare ${tally[2]} unplaced ${tally[3]}, waited ${System.currentTimeMillis() - t0} ms more") }
             }
