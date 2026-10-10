@@ -194,13 +194,13 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             Text(
                 stringResource(R.string.settings_voice_volume),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 4.dp),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
             )
             val volPrefs = androidx.compose.ui.platform.LocalContext.current
                 .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             var voiceVol by remember { mutableStateOf(volPrefs.getFloat("voice_volume", 1.0f)) }
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
                     0.6f to stringResource(R.string.settings_voice_volume_softer),
                     1.0f to stringResource(R.string.settings_voice_volume_normal),
