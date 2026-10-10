@@ -51,6 +51,26 @@ class RouteHealTest {
         assertEquals("steps still heal from any source, as before", "steps", RouteHeal.gains(route(abbreviated = true), route().copy(source = RouteSource.OSRM)))
     }
 
+    /** Meters east and north of the Davis fixture corner. */
+    private fun m(e: Double, n: Double) = LatLng(38.54 + n / 111_320.0, -121.74 + e / (111_320.0 * Math.cos(Math.toRadians(38.54))))
+
+    @Test fun `a re-check route through a block Google avoided reads as the same course, and the names heal still refuses it`() {
+        // Google's line: 3 km north, then east. The open router's answer: the same, except that it
+        // cuts one block east and back around a closed stretch 1.2 km in, 300 m of detour.
+        val google = (0..30).map { m(0.0, it * 100.0) } + (1..10).map { m(it * 100.0, 3000.0) }
+        val open = (0..11).map { m(0.0, it * 100.0) } + listOf(m(150.0, 1200.0), m(150.0, 1500.0)) + (15..30).map { m(0.0, it * 100.0) } + (1..10).map { m(it * 100.0, 3000.0) }
+        fun r(line: List<LatLng>, source: RouteSource, namesShort: Boolean) = Route(
+            line, listOf(RouteLeg(4000.0, 300.0, 310.0, emptyList())), 4000.0, 300.0, 310.0, source = source, namesShort = namesShort,
+        )
+        val current = r(google, RouteSource.GOOGLE_HYBRID, namesShort = true)
+        val candidate = r(open, RouteSource.OSRM, namesShort = false)
+        // The session's same-course test (NavSession.SAME_COURSE_M) samples five points of the
+        // candidate: the block is between two of them, so the two routes pass as one course.
+        assertFalse(app.vela.core.data.RouteGeometry.divergent(current, candidate, 250.0))
+        assertNull("so the heal has to refuse the open router's line on its own", RouteHeal.gains(current, candidate))
+        assertEquals("names", RouteHeal.gains(current, r(google, RouteSource.GOOGLE_HYBRID, namesShort = false)))
+    }
+
     @Test fun `steps and traffic heal as before, and say which`() {
         assertEquals("steps", RouteHeal.gains(route(abbreviated = true), route()))
         assertEquals("traffic", RouteHeal.gains(route(traffic = false), route()))

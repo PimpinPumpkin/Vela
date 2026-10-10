@@ -55,6 +55,17 @@ class RoadCenterTest {
         assertSame(line, RoadCenter.nudge(line, listOf(cross)))
     }
 
+    @Test fun `cross streets at every block do not pull the line off its own street`() {
+        val street = road(pt(-50.0, 0.0), pt(850.0, 0.0))
+        val crossings = (1..8).map { k -> road(pt(k * 100.0, -120.0), pt(k * 100.0, 120.0)) }
+        // A side street that ends at the main one (a T), and a short stub touching it at an angle.
+        val tee = road(pt(450.0, -200.0), pt(450.0, 0.0))
+        val stub = road(pt(650.0, 0.0), pt(700.0, 60.0))
+        val line = listOf(pt(0.0, -3.0), pt(800.0, -3.0))
+        val out = RoadCenter.nudge(line, listOf(street) + crossings + tee + stub)
+        for (p in out) assertEquals("on the street's middle at e=${e(p).toInt()}", 0.0, n(p), 0.3)
+    }
+
     @Test fun `between two roads about as near, neither is chosen`() {
         val north = road(pt(-50.0, 5.0), pt(450.0, 5.0))
         val south = road(pt(-50.0, -6.0), pt(450.0, -6.0))
