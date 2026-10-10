@@ -82,6 +82,11 @@ interface NavStrings {
      *  direction, [left] the stop's side (null = ahead). */
     fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String
 
+    /** Two turns too close together to say one at a time: [instruction] with the turn after it.
+     *  EN "Turn right onto Elm Street, then turn left onto Oak Avenue". Default = [instruction]
+     *  alone: a language leaves this out until it has a line of its own that reads right. */
+    fun thenNext(instruction: String, next: String): String = instruction
+
     /** The last turn of a trip when it turns into the destination's parking lot, as the step's own
      *  text. EN "Turn left into the parking lot". The clause [intoLotThen] opens with. */
     fun intoLot(turnLeft: Boolean): String
@@ -220,6 +225,8 @@ object EnNavStrings : NavStrings {
         "$instruction, then " + stopAhead(label.ifBlank { "your stop" }, left)
 
     override fun intoLot(turnLeft: Boolean): String = "Turn ${if (turnLeft) "left" else "right"} into the parking lot"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction, then " + next.replaceFirstChar { it.lowercase() }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
         val where = when (left) { true -> "is on your left"; false -> "is on your right"; null -> "is ahead" }
@@ -417,6 +424,8 @@ object FrNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "Tournez à ${if (turnLeft) "gauche" else "droite"} dans le parking"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction, puis " + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
         val where = when (left) { true -> "est sur votre gauche"; false -> "est sur votre droite"; null -> "est devant vous" }
         return "Tournez à ${if (turnLeft) "gauche" else "droite"} dans le parking, puis ${label.ifBlank { "votre étape" }} $where"
@@ -523,6 +532,8 @@ object DeNavStrings : NavStrings {
         "$instruction, dann liegt ${label.ifBlank { "Ihr Zwischenstopp" }} ${deStopSide(left)}"
 
     override fun intoLot(turnLeft: Boolean): String = "Biegen Sie ${if (turnLeft) "links" else "rechts"} auf den Parkplatz ab"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction, dann " + next.replaceFirstChar { it.lowercase() }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Biegen Sie ${if (turnLeft) "links" else "rechts"} auf den Parkplatz ab, dann liegt ${label.ifBlank { "Ihr Zwischenstopp" }} ${deStopSide(left)}"
@@ -654,6 +665,8 @@ object EsNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "Gire a la ${if (turnLeft) "izquierda" else "derecha"} hacia el aparcamiento"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction, y luego " + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Gire a la ${if (turnLeft) "izquierda" else "derecha"} hacia el aparcamiento, y luego ${label.ifBlank { "su parada" }} está ${esStopSide(left)}"
 
@@ -767,6 +780,8 @@ object ItNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "Svolta a ${if (turnLeft) "sinistra" else "destra"} nel parcheggio"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction, poi " + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Svolta a ${if (turnLeft) "sinistra" else "destra"} nel parcheggio, poi ${label.ifBlank { "la tua tappa" }} è ${itStopSide(left)}"
 
@@ -875,6 +890,8 @@ object PtNavStrings : NavStrings {
         "$instruction, depois " + stopAhead(label.ifBlank { "sua parada" }, left)
 
     override fun intoLot(turnLeft: Boolean): String = "Vire à ${if (turnLeft) "esquerda" else "direita"} no estacionamento"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction, depois " + next.replaceFirstChar { it.lowercase() }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Vire à ${if (turnLeft) "esquerda" else "direita"} no estacionamento, depois ${label.ifBlank { "sua parada" }} está ${ptStopSide(left)}"
@@ -1117,6 +1134,8 @@ object RuNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "Поверните ${if (turnLeft) "налево" else "направо"} на парковку"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction, затем " + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Поверните ${if (turnLeft) "налево" else "направо"} на парковку, затем ${label.ifBlank { "остановка" }} будет ${ruStopSide(left)}"
 
@@ -1300,6 +1319,8 @@ object PlNavStrings : NavStrings {
         "$instruction, a potem " + stopAhead(label.ifBlank { "przystanek" }, left)
 
     override fun intoLot(turnLeft: Boolean): String = "Skręć ${if (turnLeft) "w lewo" else "w prawo"} na parking"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction, a potem " + next.replaceFirstChar { it.lowercase() }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Skręć ${if (turnLeft) "w lewo" else "w prawo"} na parking, a potem ${label.ifBlank { "przystanek" }} będzie ${plStopSide(left)}"
@@ -1560,6 +1581,8 @@ object UkNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "Поверніть ${if (turnLeft) "ліворуч" else "праворуч"} на парковку"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction, потім " + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Поверніть ${if (turnLeft) "ліворуч" else "праворуч"} на парковку, потім ${label.ifBlank { "зупинка" }} буде ${ukStopSide(left)}"
 
@@ -1698,6 +1721,8 @@ object ZhNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "${if (turnLeft) "向左转" else "向右转"}进入停车场"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction，然后" + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "${if (turnLeft) "向左转" else "向右转"}进入停车场，然后" + stopAhead(label, left)
 
@@ -1812,6 +1837,8 @@ object ZhTwNavStrings : NavStrings {
         "${instruction}，然後" + stopAhead(label, left)
 
     override fun intoLot(turnLeft: Boolean): String = "${if (turnLeft) "向左轉" else "向右轉"}進入停車場"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction，然後" + next.replaceFirstChar { it.lowercase() }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "${if (turnLeft) "向左轉" else "向右轉"}進入停車場，然後" + stopAhead(label, left)
@@ -2039,6 +2066,8 @@ object HeNavStrings : NavStrings {
 
     override fun intoLot(turnLeft: Boolean): String = "פנה ${if (turnLeft) "שמאלה" else "ימינה"} לחניון"
 
+    override fun thenNext(instruction: String, next: String): String = "$instruction, ואז " + next.replaceFirstChar { it.lowercase() }
+
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "פנה ${if (turnLeft) "שמאלה" else "ימינה"} לחניון, ואז " + stopAhead(label, left)
 
@@ -2198,6 +2227,8 @@ object HuNavStrings : NavStrings {
         "$instruction, majd " + stopAhead(label.ifBlank { "a köztes megálló" }, left)
 
     override fun intoLot(turnLeft: Boolean): String = "Fordulj ${if (turnLeft) "balra" else "jobbra"} a parkolóba"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction, majd " + next.replaceFirstChar { it.lowercase() }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
         "Fordulj ${if (turnLeft) "balra" else "jobbra"} a parkolóba, majd " + stopAhead(label.ifBlank { "a köztes megálló" }, left)

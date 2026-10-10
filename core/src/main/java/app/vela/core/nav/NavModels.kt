@@ -25,6 +25,8 @@ data class NavState(
                                          // suppression was a permanent silent limbo)
     val stopCuedAtM: Double = -1.0,    // the mark of the stop whose approach has been said ([StopAhead]),
                                        // so it is said once; a new route starts a fresh NavState
+    val chainedStep: Int = -1,         // the step already said as the "then ..." of the turn before it
+                                       // (NavEngine.chainedNext): its own approach is not said again
 )
 
 /**

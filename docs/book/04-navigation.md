@@ -107,6 +107,12 @@ Prompts duck other audio (`VoiceGuide`). Focus is held for `FOCUS_HOLD_MS = 1500
 so music does not come back up between two prompts, and a phone call that takes focus silences
 guidance. Vela's own voice synthesizes the next lines ahead of time (`NavEngine.upcomingPrompts`).
 
+Two turns within 130 m of each other are said on one line: "Turn right onto Elm Street, then
+turn left onto Oak Avenue", when the first is announced and again at the first turn. The second
+turn is then said only at the turn itself. Said apart, its approach line landed on top of the
+first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
+apart.
+
 Two wording rules live in the routers and are heard here:
 
 - The on-phone router sometimes labels a road's own bend as a turn. A turn it flags

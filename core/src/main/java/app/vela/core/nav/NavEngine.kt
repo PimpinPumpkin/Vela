@@ -366,6 +366,9 @@ object NavEngine {
         // which announces itself as you approach it (Google does the same).
         val isDepart = target.type == ManeuverType.DEPART
         val isArrive = target.type == ManeuverType.ARRIVE
+        // This turn was already said as the "then ..." of the one before it, a block back: its
+        // approach lines are taken as said. Its line at the turn itself still comes.
+        if (state.chainedStep == idxCur && spoken.isEmpty()) spoken = setOf(0, 1)
         // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken as a
         // PREFACE on the first prompt that fires for the step, Google-style ("use the right 2
         // lanes to take exit 172 toward Sacramento"), so the lanes come BEFORE the maneuver.
@@ -421,6 +424,22 @@ object NavEngine {
             return if (lotTurnLeft != null) nav().intoLotThen(lotTurnLeft, stop!!.label, stopLeft)
             else nav().thenStop(line, stop!!.label, stopLeft)
         }
+        // TWO TURNS TOO CLOSE TO SAY ONE AT A TIME. The turn after this one, when it follows
+        // within CHAIN_M, rides on this one's lines: "Turn right onto Elm Street, then turn left
+        // onto Oak Avenue". Said apart, the second turn's approach landed on top of the first
+        // turn's own line or was cut by it. Never on a line that already carries a stop.
+        val nextIdx = if (isArrive || isDepart || thenStopHere) -1 else chainedNext(maneuvers, manAlong, idxCur)
+        var chainedNow = false
+        fun withNext(line: String): String {
+            if (nextIdx < 0) return line
+            // In the shorter settings the second turn loses its street name too, as its own line would.
+            val next = maneuvers[nextIdx]
+            val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
+            else next.instructionNoRoad ?: next.spokenInstruction()
+            val both = nav().thenNext(line, nav().repeatShort(nextText))
+            if (both != line) chainedNow = true
+            return both
+        }
         if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
             // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
             val fromFar = !isArrive && (SpokenDetail.exitLike(target.type) || v >= SpokenDetail.FAST_MPS)
@@ -436,7 +455,7 @@ object NavEngine {
                     SpokenDetail.exitLike(target.type) -> nav().repeatShort(target.spokenInstruction())
                     else -> nav().repeatShort(target.instructionNoRoad ?: target.spokenInstruction())
                 }
-                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), withStop(line)))
+                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), withNext(withStop(line))))
                 if (!isArrive) events += NavEvent.Haptic(target.type, approaching = true)
             }
         }
@@ -477,9 +496,11 @@ object NavEngine {
                 // The landmark cue rides on the plain form only: a lane line already says where
                 // to be, and "pass the light, then use the left 2 lanes" has the order backward.
                 // A line that names the stop after it takes no light cue either: two "then"s.
+                // Nor one that names the turn after it.
                 val said = when {
                     firstForStep && thenStopHere -> withStop(instruction)
                     isArrive || (firstForStep && lane != null) -> instruction
+                    firstForStep && nextIdx >= 0 -> withNext(instruction)
                     else -> lightLead(target, dtn, instruction)
                 }
                 events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), said))
@@ -511,7 +532,7 @@ object NavEngine {
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
                     val turnText = if (spoken.isEmpty()) nav().spokenSign(target.spokenInstruction()) else nav().repeatShort(target.spokenInstruction())
                     // The shorter modes said their one line on the approach; the buzz below stays.
-                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(withStop(turnText), interrupt = true)
+                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(withNext(withStop(turnText)), interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 spoken = spoken + TURN_NOW_SLOT
@@ -586,6 +607,7 @@ object NavEngine {
             reacquireHits = reacquireHits,
             rerouteBlocked = rerouteBlocked,
             stopCuedAtM = stopCuedAt,
+            chainedStep = if (chainedNow) nextIdx else state.chainedStep,
         )
         return newState to events
     }
@@ -620,6 +642,18 @@ object NavEngine {
         while (k > 0 && quiet(ms[k])) k--
         if (k <= 0 || ms[k].type == ManeuverType.ARRIVE || ms[k].type == ManeuverType.DEPART) return -1
         return if (atM - manAlong[k] <= STOP_THEN_M) k else -1
+    }
+
+    /** Two turns this close along the road are said on one line ([chainedNext]): a town block. */
+    const val CHAIN_M = 130.0
+
+    /** The next maneuver the voice speaks after [k], when it is within [CHAIN_M] of it and is not
+     *  the arrival (which has lines of its own); else -1. */
+    internal fun chainedNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int): Int {
+        var j = k + 1
+        while (j < ms.size && quiet(ms[j])) j++
+        if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
+        return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
     }
 
     /** "left" for a left turn of any sharpness, "right" for a right one, null otherwise. */

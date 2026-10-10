@@ -1498,6 +1498,14 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   abbreviated steps or a provisional alternate is left alone.
 - `stopAhead`, `thenStop` and `intoLotThen` are in every `NavStrings` table, with a blank name
   read as "your stop".
+- Two turns within `CHAIN_M` (130 m) of each other along the road are said on one line
+  (`NavEngine.chainedNext`, `NavStrings.thenNext`): "Turn right onto Elm Street, then turn left
+  onto Oak Avenue", on the first turn's first line and on its line at the turn. The second
+  turn's approach lines are then not said (`NavState.chainedStep`); its line at the turn is. Not
+  on a line with lane guidance, a stop or a traffic-light lead, and never onto the arrival.
+  `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
+  turns apart, as before. The chained line is not among `upcomingPrompts`, so the voice renders
+  it when it is spoken.
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.
