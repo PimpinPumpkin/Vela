@@ -81,7 +81,9 @@ North-up, the arrow sits in the middle of the map between the turn card and the 
 road ahead can run toward any edge of the screen.
 
 "Current road name" (Settings > Navigation) puts the name under the arrow (the default), above
-the bar, inside the bar, or nowhere. Away from the car (a pan, a pinch, a step preview) the name
+the bar, inside the bar, or nowhere. Under the arrow it stays clear of the speed readout, so a
+long name beside a wide readout sits to its right instead of behind it. Away from the car (a
+pan, a pinch, a step preview) the name
 hides and a Re-center pill takes the speed box's place. It shows the road's own name where it
 has one, as the street signs do: "W Covell Blvd", with the route number on the turn card's chip.
 An Interstate, a named freeway ("Capital City Freeway" reads "US 50"), or a road whose name is

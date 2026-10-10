@@ -4733,8 +4733,10 @@ reuses it.
 - Away from the car (panned, pinched, previewing a step), `NavRecenterPill` takes the speed box's
   place and the road name hides.
 - The road name (`RoadLabel`, pref `road_label`) defaults to `PUCK`: a pill under the arrow,
-  clamped to the window. The other values are `BAR` (centered above the bar), `IN_BAR` (the bar's
-  handle row) and `OFF`.
+  clamped to the window, and kept right of the speed readout (`speedBoxRightPx` plus 8 dp)
+  whenever its top is above the readout's bottom: with large text the readout is wide and the
+  arrow low enough that a long name slid behind it. The other values are `BAR` (centered above
+  the bar), `IN_BAR` (the bar's handle row) and `OFF`.
 - What it says is `core/nav/roadLabelAt`, on the phone and in the car. `roadLabel(name, ref,
   heading)` picks the road's own name when it has one, and its number on an Interstate, on a
   named freeway (`isFreewayName`: the name ends in Freeway or Motorway, or starts with

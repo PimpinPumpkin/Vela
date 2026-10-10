@@ -1359,9 +1359,16 @@ fun MapScreen(
                                 // the bar, while the car was out on the map.
                                 val origin = coordinates?.positionInWindow() ?: Offset.Zero
                                 val maxX = (windowWidthPx - placeable.width - margin).coerceAtLeast(margin)
+                                val top = (at.y + PUCK_LABEL_GAP_PX).roundToInt()
+                                // Beside the speed readout, never under it: with large text the
+                                // readout is wide and the car low enough that a long name slid
+                                // behind it. The pill gives up being centered on the car there.
+                                val speedTop = NavChromeEdges.speedTopPx
+                                val besideSpeed = speedBoxRightPx.intValue > 0 && speedTop > 0 && top + placeable.height > speedTop
+                                val minX = if (besideSpeed) minOf(speedBoxRightPx.intValue + margin, maxX) else margin
                                 placeable.place(
-                                    (at.x - placeable.width / 2f).roundToInt().coerceIn(margin, maxX) - origin.x.roundToInt(),
-                                    (at.y + PUCK_LABEL_GAP_PX).roundToInt() - origin.y.roundToInt(),
+                                    (at.x - placeable.width / 2f).roundToInt().coerceIn(minX, maxX) - origin.x.roundToInt(),
+                                    top - origin.y.roundToInt(),
                                 )
                             }
                         },
