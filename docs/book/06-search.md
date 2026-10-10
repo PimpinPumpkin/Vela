@@ -121,6 +121,10 @@ default and asks for the contacts permission when turned on. Contacts with a pos
 loaded into memory once (`ContactAddresses`), because a provider query per keystroke stutters. A
 contact row shows the person's photo and the address book's label for the address.
 
+The Home and Work chips open a bare place under the chip's own name, with the saved point and
+address and nothing of a business that sits there (`openShortcut`, the same as typing "home").
+Picked as a stop, an origin or a destination, it reads "Home".
+
 Picking a contact (`openContactAddress`) geocodes the address and opens it under the person's
 name, the way Home and Work open. Online it asks Google search and takes, among the top three
 hits, one with no rating and no category, so the house wins over a shop at the same address.

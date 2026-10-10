@@ -1814,9 +1814,14 @@ class MapViewModel @Inject constructor(
     }
 
     /** Open the place pinned to [kind] (like tapping a saved place). */
+    /** The Home or Work chip. A BARE place under the shortcut's own name, the way the typed
+     *  "home" opens it: selectSaved enriched it by searching its address, which dressed Home as
+     *  the business at that address, and a stop picked from the chip was named for that
+     *  business. As a stop, an origin or a destination it now reads "Home". */
     fun openShortcut(kind: ShortcutKind) {
         val sp = _state.value.let { if (kind == ShortcutKind.HOME) it.home else it.work } ?: return
-        selectSaved(sp)
+        val label = appContext.getString(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
+        selectPlace(Place(id = sp.id, name = label, location = sp.location, address = sp.address))
     }
 
     fun clearShortcut(kind: ShortcutKind) {

@@ -215,7 +215,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
   the stretches where Google leaves the open route come from a public matching server, and a
   late answer leaves tile names or bare turns. The on-phone router's data could do the match
   with no server. Not started.
-- Picking Home as a stop shows the business at that address.
 - A truer time to the next stop. A trip with stops is one Google route with one time, and the
   stop's share is worked out from the steps' own lengths and the traffic ratio, so traffic that
   sits mostly before or after the stop skews it. Google's directions answer may carry a time per
