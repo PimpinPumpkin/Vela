@@ -375,6 +375,9 @@ way you drove". A replayed trip never offers it.
   only when the tiles did not load either. That is more common on a reroute, where the
   stretches get 1.5 s. Bare turns last until the drive's next recheck that comes back named,
   about 20 seconds. Self-hosting both would fix this and would allow `exclude=`.
+- A road that leaves a junction and then curves away is called a turn when the map draws an
+  angle at the junction's node. Telling it from a real turn by the shape of Google's line was
+  tried and dropped (roadmap history, dead ends).
 - The open router's turn names go out unchecked when the road pieces under its line are late.
   On the 90 test routes the check removed 5 turn names and kept 457.
 - Trips with stops and picked alternates still use the via snap. On a trip with stops, Google's

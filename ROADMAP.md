@@ -167,6 +167,27 @@ Small items, one pull request each.
 - Explore: a sheet of nearby restaurants and things to do from the bare map. Events have no
   keyless source.
 
+### Built, not yet checked on a drive
+
+Each of these passed its unit tests and has not been seen or heard where it matters. Take one
+off the list when it has been.
+
+- Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
+  needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
+  `bare=1`, then `recheck upgraded route for names`.
+- A route built past the naming deadline (`StretchNamer.inHand`): tile names where the match was
+  late, and a finished match kept. Seen on a phone only with the matcher switched off
+  (`debug.vela.tune.noMatch`), never with a late one.
+- The nudged route line on a street. It was seen on a phone over a parking-lot stretch, where
+  Google's line was already near the middle. The totals line says `nudged=<meters>`.
+- Two turns said on one line. Not heard on a phone. Dutch, Swedish and Japanese have no joining
+  line (`NavStrings.thenNext`), and the joined line is not among the lines the voice renders
+  ahead of time (`NavEngine.upcomingPrompts`).
+- The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
+  Desktop Head Unit.
+- A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
+- UK fuel prices on a phone in the UK.
+
 ### Open from the October 2026 audit
 
 Found reading everything since 0.4.1912 and not fixed yet.
@@ -187,6 +208,24 @@ Found reading everything since 0.4.1912 and not fixed yet.
   zoom, and each change re-lays out every basemap tile. A free drive with no route does not hold the
   box back by speed as a drive with a route does. A wider box means fewer moves and more numbers
   drawn per frame; which wins needs measuring on a phone.
+
+### From the first drives on 0.5
+
+- Match Google's line on the phone when the region is downloaded. Street names and lanes for
+  the stretches where Google leaves the open route come from a public matching server, and a
+  late answer leaves tile names or bare turns. The on-phone router's data could do the match
+  with no server. Not started.
+- With text at twice its size, the road name under the car slides under the speed limit box
+  when the name is long.
+- The stop editor during a drive. "Add stop" makes the pick the next stop and closes the editor;
+  putting it last takes a drag. Picking Home as a stop shows the business at that address.
+- UK fuel prices. Nothing warns when the archive they come from stops updating (the job ends
+  green with a warning). The price file is not part of a region download, so offline it is
+  whatever the phone last fetched, and it stops showing after two days.
+- One settings panel for everything drawn on the map. The switches for what the map draws are
+  spread over several settings pages.
+- The four Texas parts need their place pack, places, basemap, road features and cells baked
+  before the routing manifest lists them, or their downloads pull the whole state's archives.
 
 ## On the radar
 

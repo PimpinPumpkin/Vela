@@ -20,12 +20,27 @@ A change to behavior updates the docs it touches in the same commit:
 - `FEATURES.md`: one line per thing the app does.
 - `README.md`: only if what the app is, or what reaches Google, changed.
 - `ROADMAP.md`: open items only. When something ships or is proven dead, move its entry to
-  `docs/ROADMAP-HISTORY.md` with one or two lines on why.
+  `docs/ROADMAP-HISTORY.md` with one or two lines on why. Work that is built but has not been
+  seen on a phone or a drive stays listed in `ROADMAP.md` ("Built, not yet checked on a drive")
+  until it has.
 - This file: only for a new rule or trap.
 
 A new doc file is not published until it is in `PAGES` in `scripts/build-docs-site.py` and in
 the nav in `site/mkdocs.yml`. Run `python3 scripts/build-docs-site.py --strict` before pushing
 a docs change.
+
+### The repository explains itself
+
+Someone who opens this repository with no other context has to be able to tell what the app
+does, what is open, what was tried and dropped, and what is unverified. Nothing that matters
+lives only in a chat, a local branch or one machine.
+
+- Every branch with work on it is pushed to GitHub. A branch whose work has landed is deleted,
+  here and there. No local-only branches.
+- A measurement, a decision and its reason go into `SPEC.md`, the book or the roadmap history
+  in the commit that acts on them. An idea that was tried and dropped gets its dead-end entry
+  with the numbers that killed it.
+- Review findings on a pull request are posted on the pull request.
 
 ### How the docs are written
 
@@ -86,6 +101,9 @@ addresses and "checked on a drive to X" notes add up to where the developer live
   the corners: recents, labels and street names.
 - Recorded trips, diagnostics exports and adb dumps hold raw GPS. Never attach them to an
   issue or a commit. The in-app Share on a trip trims the ends (`core/replay/TripScrub`).
+- When reading someone's recorded trip, print road names as tags (R1, R2) and never a name or
+  a coordinate. A tool's output is a transcript too. The study harness prints instructions both
+  after a `|` and inside quotes; mask both.
 - A log line never carries a coordinate, typed text or a place name. A page probe logs
   `location.pathname.split('/@')[0]`: Google puts the session's location after `/@`.
 - `scripts/check-location.sh` runs in the pre-push hook against a private list at
@@ -140,7 +158,9 @@ screen silently stops recomposing.
 
 ## Releases
 
-- `canary` is the working branch. Pushing it replaces the one rolling `canary` release.
+- `canary` is the working branch. Pushing it replaces the one rolling `canary` release. The
+  release's tag is also named `canary`, so the bare name is ambiguous to git: push with
+  `git push origin HEAD:refs/heads/canary`, and name the local branch something else.
 - `main` builds and tests on push. A daily job (10:30 UTC) cuts a nightly prerelease
   `v0.5.<run>` when main has moved. Mondays 16:00 UTC the newest nightly is promoted to stable.
   Do not dispatch CI per merge.
@@ -511,6 +531,12 @@ Checks to run before trusting a routing change: `core/nav/StepAudit`, then
 the step list read by hand. Probe tests that need a region file take `-DvelaObf=<folder>`.
 `RoadCenterTest.deskLine` (`-DvelaNudge=<file>`) nudges a captured line and writes it out for
 drawing.
+
+Reading a shared trip (`SPEC.md` 4.10 has the line kinds): each route block's `RD` line says
+what made the steps (`source=`, `named=KofN`, then `Route.made`), the `K` notes say what the
+drive decided, and `S` lines are what the voice said. To see how a route in it would be named
+now, save its `RP` line as the only `.txt` in a folder and run
+`NamingStudyTest.replayCapturedLines -DvelaStudy=1 -DvelaOne=1 -DvelaLines=<folder>`.
 
 ## Where things are written down
 

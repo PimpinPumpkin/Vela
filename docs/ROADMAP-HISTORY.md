@@ -11,6 +11,55 @@ says so.
 
 ### October 2026
 
+- Two turns within 130 m of each other are said on one line, "Turn right onto Elm Street, then
+  turn left onto Oak Avenue", and the second is then said only at its own corner. In 13
+  languages; Dutch, Swedish and Japanese still say the two apart.
+- A turn that stays on the same street drops the name only when the voice has said that name.
+  A long road that takes the cross street's name for its last block read "Turn right", bare, at
+  that corner.
+- The route line is drawn down the middle of the road. A stretch with no matched road shape is
+  nudged from Google's lane onto the map's own roads, up to 9 m (`RoadCenter`).
+- The turn off the street into the destination's parking lot reads "Turn left into the parking
+  lot". A stop had this already.
+- Street names when the matching service is slow. The map tiles are read beside it, a stretch
+  keeps what it has when the deadline passes, and a route that still went out short of names is
+  asked for again about every 20 seconds of the drive (`StretchNamer`, `RouteHeal`). Before, one
+  slow answer left a whole route with bare turns to the end, drawn on Google's own line.
+- A shared trip keeps its notes from the trimmed ends, and each route's totals line says how
+  many turns are named and which source named them. A stop reached is noted by count; it used
+  to write the stop's name into the file.
+- Trips with stops. A directions link with stops opens as the whole trip; a stop or start that
+  cannot be found is asked about in a dialog. The navigation bar shows the time, distance and
+  arrival for the next stop, with the whole trip on its own line, and the notification and
+  Android Auto show the next stop. The voice says a stop is coming, on which side, and when the
+  turn before it enters its parking lot. A simulated drive follows the route when a stop is
+  added or the stops are edited.
+- Simulate driving keeps a realistic pace, slows for turns and waits 3 s before pulling away. At
+  a constant 72 km/h half the spoken lines were cut off.
+- The Vela voice is about three times louder at Normal and keeps one loudness for the whole
+  drive. Its level is the long-run average of what the voice has said, kept between drives.
+- Spoken directions can be brief (each turn once, no street name) or only for highway exits.
+- "Keep north up" stops the map from turning, and a north-up drive keeps the car in the middle.
+- With a large display size or large text, the drive keeps the road ahead in view and the turn
+  card fits (`NavFraming`).
+- Ramps, forks and keeps show an arrow that points only the way to go.
+- Settings > Map chooses where the map opens: where you are, where you left it, Home, or a view
+  you pick.
+- UK gas stations show their prices, from the government's Fuel Finder data through a public
+  archive of it, refreshed hourly (`fuel-gb.yml`). Prices older than two days are not shown. A
+  priced station shows its bubble in every app language, and Android Auto results show prices.
+- Texas downloads in four parts. A catalog region can be cut out of a bigger extract
+  (`cut:<parent id>:<polygon file>`), and a phone that has the whole region is not offered a
+  part of it.
+- Downloading a large region no longer asks first. Its row already shows the size.
+- Opening Settings from the search page puts the keyboard away. A picked departure or arrival
+  time is kept when the directions sheet is swiped down and back. A saved place, list or route
+  opened from Your lists is no longer hidden behind the search page.
+- Offline search finds names without their accents and puts names that start with the query
+  first. Transit lines seen before show at once and with no signal, and no longer break up on
+  straight track. The scale bar shows the right distance.
+- Refreshed routing files reach phones once a failed region is rebuilt. Build jobs no longer end
+  red for an overtaken canary build, a dead address source or a slow GitHub export.
 - The search page says once where saved places are when none is pinned. It used to list them
   all, so after the update that brought pins they looked gone.
 - The What's new dialog no longer repeats its title as the first line, and ends with the
@@ -344,6 +393,15 @@ Once listed as dead and since fixed. Do not trust older notes that say otherwise
 - Naming turns from map-tile street names by thresholds alone. Over 90 routes in six cities
   no setting reached zero wrong names: the best had 5 wrong of 350, with the cross street's
   name landing on the turn. Tiles are used after the map match, in strict mode.
+- Saying a stated turn as a slight one where Google's line has no corner. A router states a turn
+  from the angle at the junction's node, so a road that leaves a junction and then curves away
+  reads "Turn right". The rule tried: a plain left or right becomes a slight one when no two
+  consecutive 20 m stretches of the line differ in heading by 56 degrees, from 20 m before the
+  step to 70 m past it. It fixed the captured case (50 degrees, against 62 or more at 18 of 19
+  real turns on that drive) and changed 20 of 186 stated turns on the 39 stored routes, most in
+  London, Paris and Prague, none of them looked at. A second test, the line still on its
+  approach heading 10 to 30 m past the step, flipped within 5 m of where the step was placed.
+  Dropped until someone looks at those 20.
 - `exclude=` on FOSSGIS OSRM. Rejected for toll, motorway and ferry. Avoid options go to
   Google online and to the on-phone router offline.
 - GraphHopper as the offline engine. It worked from June to September 2026. Its graphs were
