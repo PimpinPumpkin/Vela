@@ -6146,7 +6146,8 @@ class MapViewModel @Inject constructor(
         navTapDetourJob = viewModelScope.launch {
             // The candidate goes FIRST, which is where NavSession.addStop puts it: the figure has to
             // price the drive the button would actually build.
-            val stops = listOf(p.location) + nav.navRemainingStops().map { it.location }
+            // Last, where addStopDuringNav will put it.
+            val stops = nav.navRemainingStops().map { it.location } + p.location
             val route = withTimeoutOrNull(NAV_DETOUR_TIMEOUT_MS) {
                 runCatching {
                     dataSource.directions(
@@ -6169,7 +6170,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** The tapped place becomes the next stop (the confirm on the in-drive card). */
+    /** The tapped place joins the drive as a stop (the confirm on the in-drive card). */
     fun confirmNavTapStop() {
         val p = _state.value.navTapCandidate ?: return
         clearNavTapStop()

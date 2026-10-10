@@ -217,8 +217,11 @@ Found reading everything since 0.4.1912 and not fixed yet.
   with no server. Not started.
 - With text at twice its size, the road name under the car slides under the speed limit box
   when the name is long.
-- The stop editor during a drive. "Add stop" makes the pick the next stop and closes the editor;
-  putting it last takes a drag. Picking Home as a stop shows the business at that address.
+- Picking Home as a stop shows the business at that address.
+- A truer time to the next stop. A trip with stops is one Google route with one time, and the
+  stop's share is worked out from the steps' own lengths and the traffic ratio, so traffic that
+  sits mostly before or after the stop skews it. Google's directions answer may carry a time per
+  leg; if it does, read it and the bar gets each leg's own figure.
 - UK fuel prices. The price file is not part of a region download, so offline it is whatever
   the phone last fetched, and it stops showing after two days. If the archive it comes from
   ends, the fallback would be the retailers' own price feeds.

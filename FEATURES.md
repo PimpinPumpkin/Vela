@@ -90,7 +90,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Google-style route picker" (the default) shows one route at a time. Off, a classic panel lists
   them all.
 - Add stops by search, on the map or by long-press, and drag to reorder. A stop added from the
-  "Stops" sheet comes back to it, so you can drag it into place and add the next.
+  "Stops" sheet comes back to it, so you can drag it into place and add the next. A stop added
+  during a drive goes last; open the sheet to move it.
 - Avoid tolls, highways, ferries or cameras. Set Leave now, Depart at or Arrive by.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.

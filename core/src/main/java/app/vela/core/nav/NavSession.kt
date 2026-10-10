@@ -343,11 +343,15 @@ class NavSession @Inject constructor(
      *  any in-flight deviation reroute (the user's plan supersedes it). The stop joins the plan
      *  IMMEDIATELY (marks null until the new route lands), so even a failed fetch keeps it -
      *  the next reroute/recheck routes through it once the network recovers. */
-    fun addStop(stop: NavStop, loc: LatLng) {
+    /** Add [stop] to the drive: after the stops still ahead with [atEnd] (the phone, where the
+     *  stops editor can drag it into place), else before them as the next stop (the car, which
+     *  has no editor). */
+    fun addStop(stop: NavStop, loc: LatLng, atEnd: Boolean) {
         // VISIBLE stops only: setStops puts the silent detour vias back itself (withSilentVias), so
         // passing them here routed through every detour point twice.
         val remaining = synchronized(stopLock) { stops.drop(passedStops).filter { !it.silent } }
-        setStops(listOf(stop) + remaining, loc, "add stop mid-nav → ${stop.label}", "stop-added")
+        // The count, not the label: the note goes into the trip file.
+        setStops(if (atEnd) remaining + stop else listOf(stop) + remaining, loc, "add stop mid-nav, ${if (atEnd) "last" else "next"} of ${remaining.size + 1}", "stop-added")
     }
 
     /** [visible] (an edited stop list from the UI, which never sees silent stops) with the silent

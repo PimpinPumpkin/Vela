@@ -658,11 +658,12 @@ internal class NavController(
 
     /** In-nav stop insert: hand the pick to the session (it replans the drive through it) and
      *  clear the search chrome so the nav view is what's on screen again. The chooser's waypoint
-     *  list gains it too, so ending nav back into the panel shows the real trip. */
+     *  list gains it too, so ending nav back into the panel shows the real trip. The stop goes
+     *  last; the stops editor drags it into place. */
     fun addStopDuringNav(p: Place) {
         val loc = _state.value.myLocation ?: return
         warnClosingForAddedStop(p)
-        navSession.addStop(app.vela.core.nav.NavSession.NavStop(p.location, p.name), loc)
+        navSession.addStop(app.vela.core.nav.NavSession.NavStop(p.location, p.name), loc, atEnd = true)
         _state.update {
             it.copy(
                 directionsWaypoints = it.directionsWaypoints + p,

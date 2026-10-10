@@ -1300,8 +1300,11 @@ Step sheet: `NavStopsRow` always leads it. With no stops ahead it reads "Edit ro
 the stops editor. With stops it also offers "Remove next", which after a `VelaDialog` confirm
 calls `applyStops(stops.drop(1))`. Title and buttons share a line only when they fit, measured.
 The mid-drive editor's Add stop applies pending edits, closes, and opens the along-route search
-(`NavSearchChips`); a pick joins the drive through `addStopDuringNav`. The planning pick
-(`beginPickStop`) is not used during a drive, because the search page is never drawn then.
+(`NavSearchChips`); a pick joins the drive through `addStopDuringNav`, which puts it LAST among
+the stops still ahead (`NavSession.addStop(atEnd = true)`): the editor can drag it into place,
+and a stop that jumped the queue could not be undone without it. The tapped-place card's
+"adds N min" prices the drive with the place last too. The planning pick (`beginPickStop`) is
+not used during a drive, because the search page is never drawn then.
 
 Closing-soon warning (`NavController.maybeWarnClosingSoon`, at nav start): each stop ahead is
 checked at its own arrival, then the destination. Only the first place that closes within 60
@@ -4986,7 +4989,8 @@ the same `:core` singletons as the phone (`CarDeps`).
   with "Continue on" the current road (`Maneuver.roadAt`) under a straight arrow and shows the
   turn as the next step. A
   search icon opens `AlongRouteCarScreen`: the quick categories as rows, a pick searches around
-  the car, and a result becomes the next stop through `NavSession.addStop`.
+  the car, and a result becomes the NEXT stop through `NavSession.addStop(atEnd = false)`: the
+  car has no stops editor to move it with.
 - The preview draws the selected route in blue over the other listed routes in gray
   (`showPreview(route, others)`), with a red dot at the destination. The drive draws the same
   dot, and the line ahead in the phone's paused lavender while the drive is paused.

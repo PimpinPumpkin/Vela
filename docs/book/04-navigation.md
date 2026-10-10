@@ -351,6 +351,9 @@ maneuvers' own legs and traffic ratio the way the trip's is (`NavSession.nextSto
 `NavEngine.secondsBeyond`), so the two always add up. Past the last stop, or when the next stop
 has no mark on the route, the bar shows the whole trip again.
 
+- A stop added during the drive from the phone goes last. The stops editor, which is open
+  during a drive, drags it into place. A stop added from the car's search goes next, because
+  the car has no editor.
 - Every reroute and recheck routes through the stops still ahead.
 - A reroute that could not include them is adopted anyway and says so, because being guided
   beats being lost. The stops stay in the plan for the next attempt.

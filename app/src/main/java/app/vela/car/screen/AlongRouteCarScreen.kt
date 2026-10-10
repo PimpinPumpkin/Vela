@@ -95,7 +95,8 @@ class AlongRouteCarScreen(carContext: CarContext, private val deps: CarDeps) : S
 
     private fun addStop(p: Place, here: LatLng?) {
         val loc = here ?: p.location
-        deps.navSession.addStop(NavSession.NavStop(p.location, p.name), loc)
+        // Next, not last: the car has no stops editor to move it with.
+        deps.navSession.addStop(NavSession.NavStop(p.location, p.name), loc, atEnd = false)
         CarToast.makeText(carContext, carContext.getString(app.vela.R.string.car_stop_added, p.name), CarToast.LENGTH_SHORT).show()
         screenManager.pop()
     }
