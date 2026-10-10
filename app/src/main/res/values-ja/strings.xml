@@ -1360,6 +1360,7 @@
     <string name="settings_map_names_english_local">英語名があれば英語、なければ現地の名前</string>
     <string name="settings_map_names_english_latin">英語名があれば英語、なければローマ字</string>
     <string name="settings_map_names_local">現地の名前のみ</string>
+    <string name="settings_map_names_local_english">現地の名前と英語</string>
     <string name="settings_map_names_hint">ローマ字の名前は、OpenStreetMapに英語名がない場所で機械的に作られ、ヘブライ語などいくつかの文字では読みにくくなります。アプリの言語と音声は変わりません。</string>
     <string name="settings_project">プロジェクト</string>
     <string name="settings_project_hint">ソースコード、バグ報告、ディスカッションはGitHubにあります。</string>

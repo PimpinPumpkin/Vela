@@ -1322,6 +1322,7 @@
     <string name="settings_map_names_english_local">Engelska där det finns, annars det lokala namnet</string>
     <string name="settings_map_names_english_latin">Engelska där det finns, annars romaniserat</string>
     <string name="settings_map_names_local">Bara lokala namn</string>
+    <string name="settings_map_names_local_english">Lokalt och engelska</string>
     <string name="settings_map_names_hint">Romaniserade namn görs av en maskin där OpenStreetMap saknar engelskt namn, och läses dåligt på hebreiska och några andra skriftsystem. Appens språk och rösten ändras inte.</string>
     <string name="settings_project">Projekt</string>
     <string name="settings_project_hint">Källkod, felrapporter och diskussioner finns på GitHub.</string>

@@ -1309,6 +1309,7 @@
     <string name="settings_map_names_english_local">Inglés si se conoce, si no el nombre local</string>
     <string name="settings_map_names_english_latin">Inglés si se conoce, si no romanizado</string>
     <string name="settings_map_names_local">Solo nombres locales</string>
+    <string name="settings_map_names_local_english">Local e inglés</string>
     <string name="settings_map_names_hint">Los nombres romanizados se generan a máquina donde OpenStreetMap no tiene nombre en inglés, y se leen mal en hebreo y en otros alfabetos. El idioma de la app y la voz no cambian.</string>
     <string name="settings_project">Proyecto</string>
     <string name="settings_project_hint">El código fuente, los informes de errores y las discusiones están en GitHub.</string>

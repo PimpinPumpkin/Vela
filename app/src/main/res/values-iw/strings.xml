@@ -1296,6 +1296,7 @@
     <string name="settings_map_names_english_local">אנגלית כשידועה, אחרת השם המקומי</string>
     <string name="settings_map_names_english_latin">אנגלית כשידועה, אחרת בתעתיק לטיני</string>
     <string name="settings_map_names_local">שמות מקומיים בלבד</string>
+    <string name="settings_map_names_local_english">מקומי ואנגלית</string>
     <string name="settings_map_names_hint">שמות בתעתיק לטיני נוצרים אוטומטית כשב-OpenStreetMap אין שם באנגלית, ונקראים גרוע בעברית ובכמה כתבים אחרים. שפת האפליקציה והקול לא משתנים.</string>
     <string name="settings_project">הפרויקט</string>
     <string name="settings_project_hint">קוד המקור, דיווחי באגים ודיונים נמצאים ב-GitHub.</string>

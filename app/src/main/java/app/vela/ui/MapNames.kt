@@ -17,6 +17,9 @@ object MapNames {
     const val ENGLISH_LOCAL = "english_local"
     /** The local name alone, English or not. */
     const val LOCAL = "local"
+    /** The local name with the English one after it where OpenStreetMap has one: on a second line
+     *  for a place, on the same line for a street (a label along a line cannot break). */
+    const val LOCAL_ENGLISH = "local_english"
     const val DEFAULT = ENGLISH_LATIN
     val mode = mutableStateOf(DEFAULT)
 

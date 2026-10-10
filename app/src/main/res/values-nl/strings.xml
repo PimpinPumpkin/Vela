@@ -1309,6 +1309,7 @@
     <string name="settings_map_names_english_local">Engels waar bekend, anders de lokale naam</string>
     <string name="settings_map_names_english_latin">Engels waar bekend, anders geromaniseerd</string>
     <string name="settings_map_names_local">Alleen lokale namen</string>
+    <string name="settings_map_names_local_english">Lokaal en Engels</string>
     <string name="settings_map_names_hint">Geromaniseerde namen worden machinaal gemaakt waar OpenStreetMap geen Engelse naam heeft, en lezen slecht in het Hebreeuws en enkele andere schriften. De app-taal en de stem veranderen niet.</string>
     <string name="settings_project">Project</string>
     <string name="settings_project_hint">Broncode, bugmeldingen en discussies staan op GitHub.</string>

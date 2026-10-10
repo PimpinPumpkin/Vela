@@ -1360,6 +1360,7 @@
     <string name="settings_map_names_english_local">有英文名則用英文，否則用當地名稱</string>
     <string name="settings_map_names_english_latin">有英文名則用英文，否則用拉丁轉寫</string>
     <string name="settings_map_names_local">僅當地名稱</string>
+    <string name="settings_map_names_local_english">當地名稱和英文</string>
     <string name="settings_map_names_hint">拉丁轉寫名稱在 OpenStreetMap 沒有英文名時由機器產生，在希伯來文等一些文字中可讀性很差。應用程式語言和語音不受影響。</string>
     <string name="settings_project">專案</string>
     <string name="settings_project_hint">原始碼、錯誤回報和討論都在 GitHub 上。</string>

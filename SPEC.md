@@ -826,7 +826,7 @@ the page fills it after load, and a small stub sits beside it.
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home` or `place` (4.7, Where the map opens) |
-| Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, or the local name alone (4.10, the label rules); rides `styleKey` |
+| Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
 red, blue, white, green, yellow), a UFO, a pirate ship or a rubber duck (`drawUfoPuck`,
@@ -4561,8 +4561,11 @@ A road name can be in a different script than the guidance language.
   the dictionary covers its road. An opener with no non-Latin letter never waits.
 - Road labels use `roadLabelTextField()`, by Settings > Map > Names on the map (`MapNames`,
   pref `map_names`, issue #738): for a Latin-script UI `coalesce(name:en, name:latin, name)`
-  (`english_latin`, the default), `coalesce(name:en, name)` (`english_local`, what Google shows)
-  or `name` (`local`); the local `name` for any other UI. The basemap's `name:latin` is
+  (`english_latin`, the default), `coalesce(name:en, name)` (`english_local`, what Google shows),
+  `name` (`local`), or the local name followed by the English one where OpenStreetMap has a
+  different one (`local_english`: on one line for a road, since a label along a line cannot
+  break, and on two lines with the English a step smaller for a place, by a `format`
+  expression); the local `name` for any other UI. The basemap's `name:latin` is
   OpenMapTiles' machine romanization where OpenStreetMap has no English name: readable for
   Cyrillic or Greek, a vowel-less skeleton for Hebrew. The mode rides `styleKey`, so a change
   reloads the style. Nav bubbles filter on the canonical `name` and display the chosen form.

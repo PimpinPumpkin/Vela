@@ -1348,6 +1348,7 @@
     <string name="settings_map_names_english_local">Англійська, якщо відома, інакше місцева</string>
     <string name="settings_map_names_english_latin">Англійська, якщо відома, інакше латиницею</string>
     <string name="settings_map_names_local">Лише місцеві назви</string>
+    <string name="settings_map_names_local_english">Місцеве й англійське</string>
     <string name="settings_map_names_hint">Назви латиницею створює машина там, де в OpenStreetMap немає англійської назви, і вони погано читаються для івриту та деяких інших письмен. Мова застосунку й голос не змінюються.</string>
     <string name="settings_project">Проєкт</string>
     <string name="settings_project_hint">Початковий код, звіти про помилки й обговорення на GitHub.</string>

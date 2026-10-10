@@ -27,7 +27,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A blue dot with a heading cone, or a wide circle when the fix is approximate.
 - Driving with no route, the map turns heading-up and shows your speed and the limit.
 - Names in the app language where the data has them, or romanized. "Names on the map" can show
-  the local script instead where there is no English name, or local names only.
+  the local script instead where there is no English name, local names only, or local and
+  English together.
 - A compass, a scale bar and a locate button. "Prefer buttons over swipes" adds zoom buttons.
 - "Where the map opens" starts the map where you are, where you left it, at Home or on a view
   you pick.

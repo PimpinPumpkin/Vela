@@ -154,6 +154,7 @@
     <string name="settings_map_names_english_local">Îngilîzî heke hebe, wekî din navê herêmî</string>
     <string name="settings_map_names_english_latin">Îngilîzî heke hebe, wekî din bi tîpên latînî</string>
     <string name="settings_map_names_local">Tenê navên herêmî</string>
+    <string name="settings_map_names_local_english">Herêmî û îngilîzî</string>
     <string name="settings_map_names_hint">Navên bi tîpên latînî ji aliyê makîneyê ve çêdibin li cihên ku OpenStreetMap navê îngilîzî tune, û di îbranî û hin nivîsên din de xirab tên xwendin. Zimanê sepanê û deng naguherin.</string>
     <string name="settings_project">Proje</string>
     <string name="settings_project_hint">Koda çavkanî, raporên çewtiyan û gotûbêj li ser GitHub in.</string>

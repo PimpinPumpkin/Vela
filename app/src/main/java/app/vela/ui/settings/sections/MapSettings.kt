@@ -154,6 +154,7 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
             app.vela.ui.MapNames.ENGLISH_LATIN to stringResource(R.string.settings_map_names_english_latin),
             app.vela.ui.MapNames.ENGLISH_LOCAL to stringResource(R.string.settings_map_names_english_local),
             app.vela.ui.MapNames.LOCAL to stringResource(R.string.settings_map_names_local),
+            app.vela.ui.MapNames.LOCAL_ENGLISH to stringResource(R.string.settings_map_names_local_english),
         ).forEach { (id, label) ->
             SelectableRow(
                 label = label,

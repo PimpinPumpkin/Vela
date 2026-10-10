@@ -1280,6 +1280,7 @@
     <string name="settings_map_names_english_local">Angol, ha ismert, különben a helyi név</string>
     <string name="settings_map_names_english_latin">Angol, ha ismert, különben átírt</string>
     <string name="settings_map_names_local">Csak helyi nevek</string>
+    <string name="settings_map_names_local_english">Helyi és angol</string>
     <string name="settings_map_names_hint">Az átírt neveket gép készíti ott, ahol az OpenStreetMapen nincs angol név, és héberül meg néhány más írásban rosszul olvashatók. Az alkalmazás nyelve és a hang nem változik.</string>
     <string name="settings_project">Projekt</string>
     <string name="settings_project_hint">A forráskód, a hibajelentések és a beszélgetések a GitHubon vannak.</string>

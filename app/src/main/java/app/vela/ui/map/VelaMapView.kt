@@ -6993,9 +6993,20 @@ private fun roadLabelTextField(): Expression {
     return when {
         mode == app.vela.ui.MapNames.LOCAL || !uiWantsLatinLabels() -> Expression.get("name")
         mode == app.vela.ui.MapNames.ENGLISH_LOCAL -> Expression.coalesce(Expression.get("name:en"), Expression.get("name"))
+        // Both on one line: a label along a line cannot break, so this is Liberty's own pairing
+        // of the two scripts, local first.
+        mode == app.vela.ui.MapNames.LOCAL_ENGLISH -> Expression.switchCase(
+            hasOtherEnglishName(),
+            Expression.concat(Expression.get("name"), Expression.literal("  "), Expression.get("name:en")),
+            Expression.get("name"),
+        )
         else -> Expression.coalesce(Expression.get("name:en"), Expression.get("name:latin"), Expression.get("name"))
     }
 }
+
+/** The feature carries an English name that is not simply its local one. */
+private fun hasOtherEnglishName(): Expression =
+    Expression.all(Expression.has("name:en"), Expression.neq(Expression.get("name:en"), Expression.get("name")))
 
 /** The OpenMapTiles name fields for the UI language, most specific first.
  *
@@ -7030,6 +7041,18 @@ private fun isTraditionalChinese(locale: java.util.Locale): Boolean =
 private fun placeLabelTextField(): Expression {
     val mode = app.vela.ui.MapNames.mode.value
     if (mode == app.vela.ui.MapNames.LOCAL) return Expression.get("name")
+    // Local over English on two lines, the English a step smaller, where the two differ.
+    if (mode == app.vela.ui.MapNames.LOCAL_ENGLISH) {
+        return Expression.switchCase(
+            hasOtherEnglishName(),
+            Expression.format(
+                Expression.formatEntry(Expression.get("name")),
+                Expression.formatEntry(Expression.literal("\n")),
+                Expression.formatEntry(Expression.get("name:en"), Expression.FormatOption.formatFontScale(0.85)),
+            ),
+            Expression.get("name"),
+        )
+    }
     val own = uiLangTagFields()
     val rest = if (uiWantsLatinLabels()) {
         listOfNotNull(

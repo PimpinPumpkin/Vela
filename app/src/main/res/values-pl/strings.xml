@@ -1335,6 +1335,7 @@
     <string name="settings_map_names_english_local">Angielska, gdy znana, inaczej lokalna</string>
     <string name="settings_map_names_english_latin">Angielska, gdy znana, inaczej w transliteracji</string>
     <string name="settings_map_names_local">Tylko nazwy lokalne</string>
+    <string name="settings_map_names_local_english">Lokalna i angielska</string>
     <string name="settings_map_names_hint">Nazwy w transliteracji są tworzone maszynowo tam, gdzie OpenStreetMap nie ma nazwy angielskiej, i źle się je czyta w hebrajskim i niektórych innych pismach. Język aplikacji i głos się nie zmieniają.</string>
     <string name="settings_project">Projekt</string>
     <string name="settings_project_hint">Kod źródłowy, zgłoszenia błędów i dyskusje są na GitHubie.</string>
