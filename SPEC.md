@@ -4705,6 +4705,10 @@ reuses it.
 - Landscape browse chrome is one line. The condition (`landscapeOneLine`) does not include
   `!searchOpen`: focusing the bar flips `searchOpen`, and moving the bar to another subtree would
   remount and blur it, which flips `searchOpen` back.
+- The search page's full-size background (`SheetPalette.bg`) is drawn while `searchOpen`, except
+  under `SearchGates.pickingResults`: a search submitted while picking a stop or an endpoint
+  shows its results sheet over the map, and the background drawn there read as a black map
+  under the results (issue 737).
 - In landscape the place card may fill the height, the search bar hides while the place panel or
   the results list is up, and "Search this area" centers in the map beside the panel.
 - The locate, parking and layers buttons share `mapButtonColor`, `mapButtonInk` and

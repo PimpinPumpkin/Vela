@@ -191,7 +191,9 @@ say offline or failed.
 results inside the view plus 10% (`AreaNarrow`). When none are inside, the whole answer shows.
 
 The results sheet shows while there are results, no place is open and the search field is closed
-(`SearchGates`). After a search from a view under 2.5 km tall, the camera stays where it is when
+(`SearchGates`). A search submitted while picking a stop or an endpoint shows its results the same
+way, over the map; the search page's gray background goes away with its entry page, where it used
+to stay and read as a black map under the results. After a search from a view under 2.5 km tall, the camera stays where it is when
 enough results fall in the visible part of the map: one for a name, three for a kind of place
 (`SearchKind`). Otherwise it frames the first 12 results.
 

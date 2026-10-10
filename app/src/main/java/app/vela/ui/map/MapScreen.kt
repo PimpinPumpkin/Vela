@@ -1392,7 +1392,10 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.TopCenter)
                     .then(
-                        if (searchOpen) {
+                        // Not while a search submitted during a stop or endpoint pick shows its
+                        // results: the entry page is gone then, and the full-size sheet gray sat
+                        // over the map as a black screen under the results (issue 737).
+                        if (searchOpen && !pickingResults) {
                             // Same fixed sheet gray as the place sheet / results rows,
                             // not the wallpaper-tinted Material surface (which read as a
                             // slightly different shade).
