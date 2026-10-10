@@ -1390,4 +1390,5 @@
     </plurals>
     <string name="bulk_done">Fine selezione</string>
     <string name="bulk_moved">%1$d spostato in %2$s</string>
+    <string name="settings_start_view">Dove si apre la mappa</string>
 </resources>
