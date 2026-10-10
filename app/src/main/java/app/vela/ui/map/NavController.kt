@@ -20,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -395,22 +396,38 @@ internal class NavController(
                 // `adb shell setprop debug.vela.tune.demoSpeedup 3` runs the demo at a trip replay's
                 // speed, so playback-only behavior can be reproduced without a recorded trip.
                 var sawNav = false
-                locationProvider.replay(fixes, speedup = demoSpeedup()).collect { loc ->
-                    if (replayJob !== coroutineContext[Job]) return@collect // superseded
-                    // Ended somewhere else (the car's End button): the trace stops with the drive.
-                    if (navSession.state.value.navigating) sawNav = true
-                    else if (sawNav) { coroutineContext[Job]?.cancel(); return@collect }
-                    val here = LatLng(loc.latitude, loc.longitude)
-                    _state.update {
-                        it.copy(
-                            myLocation = here, myBearing = loc.bearing, mySpeed = loc.speed,
-                            mySpeedRaw = loc.speed, center = here, myLocationStale = false,
-                        )
+                // The demo drives the route the drive is ON. A stop added or the stops edited
+                // mid-drive replans from where the car is, and the trace is drawn again along the
+                // new line; it used to carry on down the old one, off the route it was showing.
+                var driven = route
+                var trace = fixes
+                while (true) {
+                    var replanned: app.vela.core.model.Route? = null
+                    locationProvider.replay(trace, speedup = demoSpeedup()).takeWhile { replanned == null }.collect { loc ->
+                        if (replayJob !== coroutineContext[Job]) return@collect // superseded
+                        // Ended somewhere else (the car's End button): the trace stops with the drive.
+                        if (navSession.state.value.navigating) sawNav = true
+                        else if (sawNav) { coroutineContext[Job]?.cancel(); return@collect }
+                        val here = LatLng(loc.latitude, loc.longitude)
+                        _state.update {
+                            it.copy(
+                                myLocation = here, myBearing = loc.bearing, mySpeed = loc.speed,
+                                mySpeedRaw = loc.speed, center = here, myLocationStale = false,
+                            )
+                        }
+                        navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble())
+                        recordDriveFix(here)
+                        host.updateSpeedLimit(here)
+                        host.passAlert(here, loc.speed.toDouble())
+                        val now = navSession.state.value.route
+                        if (now != null && now !== driven && navSession.state.value.navigating) {
+                            if (demoReplanned(driven, now, here)) replanned = now else driven = now
+                        }
                     }
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble())
-                    recordDriveFix(here)
-                    host.updateSpeedLimit(here)
-                    host.passAlert(here, loc.speed.toDouble())
+                    val next = replanned ?: break
+                    driven = next
+                    trace = app.vela.core.location.DemoTrace.fromRoute(next, startMps = (_state.value.mySpeed ?: 0f).toDouble().coerceAtLeast(1.0))
+                    if (trace.size < 2) break
                 }
             } finally {
                 if (replayJob === coroutineContext[Job]) {
@@ -653,6 +670,15 @@ internal class NavController(
                 selected = null, alongRouteDest = null, resultsCollapsed = false,
             )
         }
+    }
+
+    /** Whether the drive's route changed to a NEW line that starts where the demo's car is (a
+     *  replan from here), as against the same line handed back with more on it (lights, names). */
+    private fun demoReplanned(driven: app.vela.core.model.Route, now: app.vela.core.model.Route, here: LatLng): Boolean {
+        val a = driven.polyline; val b = now.polyline
+        if (a === b || (a.size == b.size && a.firstOrNull() == b.firstOrNull() && a.lastOrNull() == b.lastOrNull())) return false
+        val start = b.firstOrNull() ?: return false
+        return start.distanceTo(here) <= DEMO_REPLAN_NEAR_M
     }
 
     /** A demo drive's clock multiplier: 1, or the debug dial `demoSpeedup` (playback testing). */
@@ -1296,6 +1322,8 @@ private const val RESUME_FRESH_FIX_WAIT_MS = 8_000L
 
 /** One point of the driven trace per this much travel ("save the way you drove"). */
 private const val DRIVE_TRACE_STEP_M = 15.0
+/** A route that starts within this of the demo's car is a replan from where it is. */
+private const val DEMO_REPLAN_NEAR_M = 150.0
 
 /** The road furniture that is the driver's own: a stop sign whose node is ON the route with its
  *  road running the route's way, and a light, hump or crossing within reach of the line. Used for

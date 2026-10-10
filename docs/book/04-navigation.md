@@ -460,7 +460,8 @@ Two switches in Settings > Diagnostics make every nav screen testable at a desk:
 - "Simulate driving" (`demo_drive`) makes Start drive the planned route along a synthetic trace,
   one fix a second, through the replay path a recorded trip uses. It drives the way a car would:
   each step at the pace the route expects, slower through turns and bends, pulling away at the
-  start and braking at the end, so the voice has the time it has on a real drive. End stops it. Left to run, it
+  start and braking at the end, so the voice has the time it has on a real drive. Add a stop or
+  edit the stops during it and the car follows the new route. End stops it. Left to run, it
   stops on the arrival card as a real drive does.
 
 A simulated drive and a replayed trip never reroute or recheck (`NavSession.replayMode`). Both

@@ -50,7 +50,7 @@ class DemoTraceTest {
         val (route, corners) = staircase(110.0, 11.2)
         val fixes = DemoTrace.fromRoute(route)
         assertTrue(fixes.size > 2)
-        assertTrue("pulls away", fixes.first().speed <= 1.5f)
+        assertTrue("waits, then pulls away", fixes.take(3).all { it.speed == 0f } && fixes[3].speed in 0.5f..1.5f)
         assertEquals(0f, fixes.last().speed, 0f)
         assertTrue("never over the pace", fixes.all { it.speed <= 11.3f })
         assertTrue("gets up to the pace between turns", fixes.any { it.speed > 9.5f })
@@ -77,6 +77,12 @@ class DemoTraceTest {
         val (route, _) = staircase(400.0, null)
         val top = DemoTrace.fromRoute(route).maxOf { it.speed }
         assertTrue("$top", top > 12.5f && top <= 13.5f)
+    }
+
+    @Test fun `a drive handed a new route mid-way carries on at its speed`() {
+        val (route, _) = staircase(400.0, 11.2)
+        val fixes = DemoTrace.fromRoute(route, startMps = 9.0)
+        assertTrue("${fixes.first().speed}", fixes.first().speed in 8.5f..9.5f)
     }
 
     @Test fun `bends are slower the sharper they are`() {

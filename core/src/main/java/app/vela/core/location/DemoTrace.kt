@@ -34,6 +34,9 @@ object DemoTrace {
     private const val TURN_WINDOW_M = 12.0
     /** The slowest the car is ever moved per second, so a profile that touches zero still ends. */
     private const val CRAWL_MPS = 1.0
+    /** Seconds the car sits at the start before pulling away, as a driver does: the opening line
+     *  is being said, and a first turn 70 m on would otherwise cut it off. */
+    private const val START_HOLD_S = 3
 
     /** The speed a bend of [deg] degrees (over [TURN_WINDOW_M] either side) is taken at, m/s. */
     internal fun turnSpeed(deg: Double): Double = when {
@@ -53,8 +56,11 @@ object DemoTrace {
      * a route whose steps carry no times runs at its overall average, else [DEFAULT_MPS]. Bends
      * cap the speed ([turnSpeed]), and the car accelerates at [ACCEL] and brakes at [BRAKE], from
      * a standstill at the start to one at the end.
+     *
+     * [startMps] above zero is a drive already under way that has been handed a new route (a stop
+     * added mid-drive): it carries on from that speed with no wait.
      */
-    fun fromRoute(route: app.vela.core.model.Route): List<ReplayFix> {
+    fun fromRoute(route: app.vela.core.model.Route, startMps: Double = 0.0): List<ReplayFix> {
         val poly = route.polyline
         if (poly.size < 2) return emptyList()
         val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
@@ -87,13 +93,17 @@ object DemoTrace {
         // Brake in time for each slow point and for the end, then pull away from each.
         limit[n] = 0.0
         for (i in n - 1 downTo 0) limit[i] = minOf(limit[i], Math.sqrt(limit[i + 1] * limit[i + 1] + 2 * BRAKE * ds))
-        limit[0] = minOf(limit[0], CRAWL_MPS)
+        limit[0] = minOf(limit[0], maxOf(CRAWL_MPS, startMps))
         for (i in 1..n) limit[i] = minOf(limit[i], Math.sqrt(limit[i - 1] * limit[i - 1] + 2 * ACCEL * ds))
 
         val out = ArrayList<ReplayFix>()
         var m = 0.0
         var t = 0L
         var heading = bearing(poly[0], at(minOf(total, GRID_M))).toFloat()
+        if (startMps <= 0.0) repeat(START_HOLD_S) {
+            out.add(ReplayFix(poly[0].lat, poly[0].lng, t, heading, 0f))
+            t += 1000L
+        }
         while (m < total) {
             val f = m / ds
             val i = f.toInt().coerceAtMost(n - 1)

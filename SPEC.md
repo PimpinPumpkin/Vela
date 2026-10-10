@@ -2213,7 +2213,10 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   13.4 m/s with no times), 13, 8, 5 or 3 m/s through a bend of 18, 40, 70 or 120 degrees
   measured 12 m either side, pulling away at 1.8 m/s2 and braking at 2.2, from rest to rest. A
   constant 72 km/h cut off half the spoken lines on 110 m town blocks; this pace cuts none
-  (`DemoTraceTest`). It is presented as
+  (`DemoTraceTest`). The car waits `START_HOLD_S` (3 s) before pulling away, while the opening
+  line is said. The demo drives the route the drive is on: when it changes to a new line that
+  starts within `DEMO_REPLAN_NEAR_M` (150 m) of the car (a stop added, the stops edited), the
+  trace is drawn again along it from the car's speed (`demoReplanned`). It is presented as
   real navigation: the replay controls are hidden and End cancels the demo job, whose `finally`
   resumes live GPS. A demo that reaches the end of its route stays on the arrival card, as a
   real drive does, and Done ends it through `stopNav`.
