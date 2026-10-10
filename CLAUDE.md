@@ -523,7 +523,8 @@ signed file the app fetches at launch (SPEC 11).
   `[repeat] [cycles]` arguments play a zoom sweep out and back in one process. A held back
   swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
   zoom once a second (`VelaFps`), which is how to tell whether a pinch zoomed.
-- Log tags worth knowing: `VelaDirections`, `VelaSteps` and `VelaCapture` (set to DEBUG),
+- Log tags worth knowing: `VelaDirections`, `VelaSteps`, `VelaCapture` and `VelaSpeak` (set to
+  DEBUG; `VelaSpeak` prints every spoken line, names included, so only on a test phone),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
   `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`.
 - The Android Auto desktop head unit shows Vela's car screens but skips the car's install
