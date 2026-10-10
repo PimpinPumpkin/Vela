@@ -775,8 +775,10 @@ class GoogleMapsDataSource @Inject constructor(
         if (!app.vela.core.data.LowDataMode.enabled) kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             runCatching { app.vela.core.data.naming.RoadNameTiles.roadsAlong(listOf(destination)) }
         }
-        return directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
-            .map { withLotTurn(it, urgent) }
+        val routes = directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
+        // Off the caller's thread (the view model calls from Main): the tiles' protobuf is
+        // decoded here. Every route at once, so a tile host that does not answer costs one wait.
+        return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }
     }
 
     /**
@@ -1900,7 +1902,7 @@ class GoogleMapsDataSource @Inject constructor(
      *  (An on-device map-match for downloaded regions could plug in here next.) */
     override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route {
         val named = nameRoutePlain(route, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries)
-        return if (mode == TravelMode.DRIVE) withLotTurn(named, urgent = false) else named
+        return if (mode == TravelMode.DRIVE) io { withLotTurn(named, urgent = false) } else named
     }
 
     private suspend fun nameRoutePlain(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route = io {

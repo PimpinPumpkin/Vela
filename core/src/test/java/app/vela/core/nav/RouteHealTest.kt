@@ -45,6 +45,12 @@ class RouteHealTest {
         assertNull(RouteHeal.gains(route(traffic = false), route(namesShort = true)))
     }
 
+    @Test fun `names are taken only from a route that is Google's line`() {
+        assertNull("the open router's own route may run through what Google avoided", RouteHeal.gains(route(namesShort = true), route().copy(source = RouteSource.OSRM)))
+        assertEquals("names", RouteHeal.gains(route(namesShort = true), route().copy(source = RouteSource.GOOGLE_LINE_NAMED)))
+        assertEquals("steps still heal from any source, as before", "steps", RouteHeal.gains(route(abbreviated = true), route().copy(source = RouteSource.OSRM)))
+    }
+
     @Test fun `steps and traffic heal as before, and say which`() {
         assertEquals("steps", RouteHeal.gains(route(abbreviated = true), route()))
         assertEquals("traffic", RouteHeal.gains(route(traffic = false), route()))

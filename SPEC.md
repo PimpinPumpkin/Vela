@@ -1497,8 +1497,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   step carries the words, so the banner, the step list, the voice and the car say them, and
   `made` gains `lotTurn`. The tiles round the
   destination are asked for when the fetch starts (not in low data mode), and the built route
-  waits `LOT_WORD_WAIT_MS` (1.2 s; `LOT_WORD_WAIT_URGENT_MS` 0.3 s) for the answer. A route with
-  abbreviated steps or a provisional alternate is left alone.
+  waits `LOT_WORD_WAIT_MS` (1.2 s; `LOT_WORD_WAIT_URGENT_MS` 0.3 s) for the answer, on the IO
+  dispatcher (the tiles' protobuf is decoded there) and for every route of the answer at once. A
+  route with abbreviated steps or a provisional alternate is left alone.
 - `stopAhead`, `thenStop` and `intoLotThen` are in every `NavStrings` table, with a blank name
   read as "your stop".
 - Two turns within `CHAIN_M` (130 m) of each other along the road are said on one line
@@ -1634,8 +1635,11 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
 - Same course, better quality (`RouteHeal.gains`): the candidate replaces the current route
   silently. Full steps replace abbreviated ones, a named route replaces one short of names, and
   a traffic-carrying route replaces a trafficless one. None of the three is given up for
-  another, except that full steps short of a name still replace abbreviated ones. The note in
-  the trip says which was gained.
+  another, except that full steps short of a name still replace abbreviated ones. The names
+  gain takes only a candidate that is Google's line (`GOOGLE_HYBRID` or `GOOGLE_LINE_NAMED`): a
+  re-check that could not build the hybrid answers with the open router's own route, and the
+  same-course test (five samples) cannot see a short detour. The note in the trip says which
+  was gained.
 - Different course: offered when it has traffic and real steps, covers every remaining stop,
   saves more than `FASTER_THRESHOLD_S`, and its ETA is between 0.4 and 0.9 of the time left. A
   trafficless candidate is never offered and never calibrates, because free-flow always appears

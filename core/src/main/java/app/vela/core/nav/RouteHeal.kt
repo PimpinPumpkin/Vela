@@ -1,6 +1,7 @@
 package app.vela.core.nav
 
 import app.vela.core.model.Route
+import app.vela.core.model.RouteSource
 
 /**
  * When a drive's route is short of something a later answer can supply, and when a re-checked
@@ -20,7 +21,11 @@ object RouteHeal {
      */
     fun gains(current: Route, candidate: Route): String? {
         val steps = !current.hasRealSteps && candidate.hasRealSteps
-        val names = current.namesShort && !candidate.namesShort && candidate.hasRealSteps
+        // Names only from a route that is Google's line: a re-check that could not build the
+        // hybrid answers with the open router's own route, which runs through whatever Google
+        // went around, and the same-course test samples too few points to see a short detour.
+        val googleLine = candidate.source == RouteSource.GOOGLE_HYBRID || candidate.source == RouteSource.GOOGLE_LINE_NAMED
+        val names = current.namesShort && !candidate.namesShort && candidate.hasRealSteps && googleLine
         val traffic = !current.hasLiveTraffic && candidate.hasLiveTraffic
         // Abbreviated steps are a fraction of the turns: every turn with some of them bare is
         // still the better list, so names only count as lost against real steps.
