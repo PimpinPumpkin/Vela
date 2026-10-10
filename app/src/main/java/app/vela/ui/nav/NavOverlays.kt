@@ -1139,9 +1139,9 @@ fun NavBarTop(
                 Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(8.dp))
-            // With a stop still ahead the main figures are the stop's and a line under them names
-            // it. The whole trip is in the step list's stops row (one swipe up): a fourth line here
-            // would shrink the figures read at a glance.
+            // With a stop still ahead the main figures are the stop's, a line under them names it,
+            // and the whole trip's time and arrival follow on a line of their own. The stop's name
+            // needs its line to itself: on one line the two cut each other off.
             val leg = NavLegFigures.leg.value
             val shownSeconds = leg?.stop?.seconds ?: remainingSeconds
             val shownMeters = leg?.stop?.distanceM ?: remainingDistanceMeters
@@ -1190,6 +1190,11 @@ fun NavBarTop(
                         color = barDim,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                    FitText(
+                        stringResource(R.string.nav_bar_trip, formatDuration(leg.tripSeconds), formatArrivalClock(leg.tripSeconds).also { pausedTick }),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = barDim,
                     )
                 }
             }

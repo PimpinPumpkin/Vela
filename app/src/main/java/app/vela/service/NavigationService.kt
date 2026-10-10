@@ -159,6 +159,7 @@ class NavigationService : Service() {
             s.maneuverText, formatDistance(s.nav.distanceToNextManeuver), formatDuration(s.remainingDuration),
             formatDistance(s.remainingDistance), s.fasterRoute != null, s.fasterSavingSeconds.toInt() / 60,
             s.paused, s.nav.stepIndex, pct, System.currentTimeMillis() / 60_000,
+            s.nextStop?.let { formatDuration(it.seconds) + formatDistance(it.distanceM) + it.label }.orEmpty(),
         ).joinToString("|")
     }
 
@@ -183,13 +184,17 @@ class NavigationService : Service() {
         } else {
             // "12 min · 3.4 mi · Arrive 12:45" - the ETA clock is what a passenger glancing at
             // the shade actually wants, same line Google puts there.
+            // With a stop ahead the figures are the stop's, as on the app's own bar, and say so.
+            val toStop = s.nextStop
+            val seconds = toStop?.seconds ?: s.remainingDuration
             val eta = DateFormat.getTimeInstance(DateFormat.SHORT)
-                .format(Date(System.currentTimeMillis() + (s.remainingDuration * 1000).toLong()))
+                .format(Date(System.currentTimeMillis() + (seconds * 1000).toLong()))
             getString(
                 R.string.navservice_notif_text_remaining,
-                formatDuration(s.remainingDuration),
-                formatDistance(s.remainingDistance),
+                formatDuration(seconds),
+                formatDistance(toStop?.distanceM ?: s.remainingDistance),
             ) + " · " + getString(R.string.navservice_notif_eta, eta) +
+                (toStop?.let { " · " + getString(R.string.nav_bar_to_stop, it.label.ifBlank { getString(R.string.nav_bar_your_stop) }) } ?: "") +
                 when {
                     s.fasterRoute != null && s.fasterSavingSeconds > 0 ->
                         getString(

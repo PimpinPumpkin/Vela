@@ -382,6 +382,8 @@ class NavSession @Inject constructor(
             marksHeldOn = planRoute
             passedStops = 0
         }
+        // The bar stops naming the old next stop at once; the new one shows when its route lands.
+        _state.update { it.copy(nextStop = null) }
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
         note(reason)
         val gen = sessionGen
@@ -425,6 +427,7 @@ class NavSession @Inject constructor(
                     remainingDistance = r.distanceMeters,
                     remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
                     fasterRoute = null,
+                    nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
                 )
             }
         }
@@ -587,6 +590,14 @@ class NavSession @Inject constructor(
     private var skipHoldRoute: Route? = null
     private var skipNoted = false
 
+    /** The next-stop figures for a route the drive has just swapped to (a reroute, a stops edit,
+     *  a faster route, a healed one), measured from its start, so the bar is right before the
+     *  first fix on it instead of showing the old route's stop for a second. Null unless [route]
+     *  is the plan the marks were measured on. */
+    private fun seededNextStop(route: Route, tripSeconds: Double): NextStop? = synchronized(stopLock) {
+        if (route === planRoute) nextStop(route, stops, stopMarks, passedStops, seedNav(route, tripSeconds)) else null
+    }
+
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
      *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is passed
      *  silently once a later stop is ([NavEngine.stopsPassed]); it used to count as passed at once,
@@ -726,6 +737,7 @@ class NavSession @Inject constructor(
                 remainingDistance = faster.distanceMeters,
                 remainingDuration = faster.durationInTrafficSeconds ?: faster.durationSeconds,
                 fasterRoute = null,
+                nextStop = seededNextStop(faster, faster.durationInTrafficSeconds ?: faster.durationSeconds),
                 fasterSavingSeconds = 0.0,
             )
         }
@@ -853,6 +865,7 @@ class NavSession @Inject constructor(
                         remainingDistance = candidate.distanceMeters,
                         remainingDuration = candidateEta,
                         fasterRoute = null,
+                        nextStop = seededNextStop(candidate, candidateEta),
                     )
                 }
                 diag.record(
@@ -927,6 +940,7 @@ class NavSession @Inject constructor(
                 remainingDistance = r.distanceMeters,
                 remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
                 fasterRoute = null,
+                nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
             )
         }
     }
@@ -1118,6 +1132,7 @@ class NavSession @Inject constructor(
                     remainingDistance = r.distanceMeters,
                     remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
                     fasterRoute = null,
+                    nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
                 )
             }
         }
@@ -1279,6 +1294,10 @@ class NavSession @Inject constructor(
         const val STOP_NEAR_PIN_M = 250.0
         /** The parking-lot lookup's whole budget: a tile or two from the map's store or its host. */
         const val LOT_LOOKUP_TIMEOUT_MS = 8_000L
+
+        /** The seed state of a drive that has just taken [route]: at its start, [tripSeconds] to go. */
+        private fun seedNav(route: Route, tripSeconds: Double) =
+            NavState(remainingDistance = route.distanceMeters, remainingDuration = tripSeconds)
 
         /** The index in the stop list of the stop a drive at [traveledM] is heading for: the first
          *  stop not yet passed ([NavEngine.stopsPassed]) that is not a silent via, or -1 when there

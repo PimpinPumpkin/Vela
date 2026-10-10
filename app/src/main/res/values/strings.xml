@@ -346,6 +346,7 @@
     <string name="nav_edit_route">Edit route</string>
     <string name="nav_edit_route_hint">Add a stop along the way</string>
     <string name="nav_bar_to_stop">To %1$s</string>
+    <string name="nav_bar_trip">Trip %1$s · %2$s</string> <!-- format: whole trip's time left, then its arrival clock -->
     <string name="nav_bar_your_stop">your stop</string>
     <string name="nav_bar_stop_cd">%1$s and %2$s to %3$s, arriving at %4$s. Whole trip %5$s and %6$s, arriving at %7$s.</string>
     <string name="nav_stops_whole_trip">Whole trip: %1$s · %2$s · arrive %3$s</string>

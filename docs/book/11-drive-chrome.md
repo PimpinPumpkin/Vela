@@ -61,9 +61,9 @@ phone. With both wanted, the trip figures shrink to fit.
 A swipe or a tap on the grab bar opens the step list on the current step, with the driven steps
 grayed above it and a divider at each stop.
 
-With a stop ahead the figures are the stop's and a third line names it ("To Davis Food Co-op",
-cut short when long); the whole trip sits in the stops row at the top of the step list
-([chapter 4](04-navigation.md)).
+With a stop ahead the figures are the stop's, a third line names it ("To Davis Food Co-op",
+cut short when long) and a fourth has the whole trip ("Trip 12 min · 6:12 PM"); the stops row at
+the top of the step list has the trip in full ([chapter 4](04-navigation.md)).
 
 ### The buttons and the road name
 

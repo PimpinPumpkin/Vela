@@ -117,6 +117,17 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val estimate = ManeuverMapper.destinationEstimate(
             s.remainingDistance, s.remainingDuration, System.currentTimeMillis(), imperial,
         )
+        // With a stop ahead the estimate on screen is the stop's, as on the phone's bar, named
+        // where the host can show a line with it (car API 5).
+        val toStop = s.nextStop
+        val stopName = toStop?.label?.ifBlank { carContext.getString(app.vela.R.string.nav_bar_your_stop) }
+        val stopEstimate = toStop?.let { ManeuverMapper.destinationEstimate(it.distanceM, it.seconds, System.currentTimeMillis(), imperial) }
+        val shownEstimate = toStop?.let {
+            ManeuverMapper.destinationEstimate(
+                it.distanceM, it.seconds, System.currentTimeMillis(), imperial,
+                tripText = if (carContext.carAppApiLevel >= 5) carContext.getString(app.vela.R.string.nav_bar_to_stop, stopName) else null,
+            )
+        } ?: estimate
 
         // Feed the host's navigation DATA channel (a Trip), separate from the template's RoutingInfo.
         // Gearhead logged "No corresponding nav client source / Unable to send navigation status"
@@ -127,7 +138,8 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         // every navigation state, which can be several times a second.
         val shownStep = ManeuverMapper.carDistance(s.nav.distanceToNextManeuver, imperial)
         val tripKey = "${s.nav.stepIndex}|${shownStep.displayDistance}|${shownStep.displayUnit}|" +
-            "${(s.remainingDuration / 60).toInt()}|${(s.remainingDistance / 100).toInt()}"
+            "${(s.remainingDuration / 60).toInt()}|${(s.remainingDistance / 100).toInt()}|" +
+            "${toStop?.let { (it.seconds / 60).toInt() }}|${toStop?.let { (it.distanceM / 100).toInt() }}|${toStop?.label}"
         val nowMs = android.os.SystemClock.elapsedRealtime()
         if (navDeclared && next != null && tripKey != lastTripKey && nowMs - lastTripMs >= TRIP_MIN_GAP_MS) {
             lastTripKey = tripKey
@@ -140,6 +152,13 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                         ManeuverMapper.carStep(next),
                         ManeuverMapper.stepEstimate(s.nav.distanceToNextManeuver, secsToStep, System.currentTimeMillis(), imperial),
                     )
+                    // Destinations go in order of arrival: the next stop, then the trip's end.
+                    .apply {
+                        if (stopEstimate != null && stopName != null) addDestination(
+                            androidx.car.app.navigation.model.Destination.Builder().setName(stopName).build(),
+                            stopEstimate,
+                        )
+                    }
                     .addDestination(
                         androidx.car.app.navigation.model.Destination.Builder()
                             .setName(s.destinationLabel.ifBlank { "Destination" })
@@ -203,7 +222,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
         return NavigationTemplate.Builder()
             .setNavigationInfo(info)
-            .setDestinationTravelEstimate(estimate)
+            .setDestinationTravelEstimate(shownEstimate)
             .setActionStrip(strip.build())
             .setMapActionStrip(mapStrip)
             .build()

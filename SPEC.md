@@ -1258,8 +1258,11 @@ During a drive:
   reroute cooldown, and the new list is the plan at once, so a failed fetch keeps it.
   `MapViewModel.applyStops` calls it only when the list differs from
   `NavSession.remainingStops()`.
-- `NavSession.State.nextStop` (`NextStop`: label, distance, seconds) is published with every fix
-  and at `start`. The stop is the first one not passed and not silent (`nextStopIndex`); null when
+- `NavSession.State.nextStop` (`NextStop`: label, distance, seconds) is published with every fix,
+  at `start`, and with every route swap (`seededNextStop`: a reroute, a faster route, a healed
+  one, a stops edit), measured from the new route's start, so the figures never show the old
+  route's stop. A stop added or the stops edited mid-drive clear it at once; the new one shows
+  when its route lands. The stop is the first one not passed and not silent (`nextStopIndex`); null when
   there is none, when that stop has no mark, or when the engine's route is not `planRoute`. The
   distance is along the line to its mark. The time is the engine's remaining time less
   `NavEngine.secondsBeyond(route, mark)`, the same per-maneuver pro-rating and traffic ratio as
@@ -1268,11 +1271,15 @@ During a drive:
   there are no per-stop times to read.
 - With a `nextStop` the bottom bar (`NavBarTop`, also the step sheet's header) shows the stop's
   time, distance and arrival clock as its main figures and "To <stop>" under them, and the step
+  a line under that with the whole trip, "Trip <time> · <clock>", shrunk to fit. The stop's name
+  keeps a line to itself: on one line the two cut each other off at large text. The step
   sheet's `NavStopsRow` adds "Whole trip: <time> · <distance> · arrive <clock>". The bar's figures
   carry one screen-reader description with both. `NavController` mirrors the value into
   `NavLegFigures`, a holder the two composables read, because MapScreen takes no new parameter.
-  A fourth line in the bar would shrink the figures read at a glance, so the whole trip is one
-  swipe away rather than under them.
+- The ongoing notification and Android Auto show the same stop: the notification's line is the
+  stop's time, distance and arrival with "To <stop>" after them, and the car's travel estimate is
+  the stop's (named with `TravelEstimate.setTripText` from car API 5), its `Trip` listing the stop
+  and then the trip's end as destinations in order of arrival.
 
 Step sheet: `NavStopsRow` always leads it. With no stops ahead it reads "Edit route" and opens
 the stops editor. With stops it also offers "Remove next", which after a `VelaDialog` confirm

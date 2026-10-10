@@ -147,7 +147,9 @@ object ManeuverMapper {
     }
 
     /** Destination ETA estimate: remaining distance, remaining time, and arrival wall-clock. */
-    fun destinationEstimate(remainingMeters: Double, remainingSeconds: Double, nowEpochMillis: Long, imperial: Boolean): TravelEstimate {
+    /** [tripText] is a line the host shows with the estimate ("To Davis Food Co-op" while a stop
+     *  is ahead); it needs car API level 5, so the caller passes it only there. */
+    fun destinationEstimate(remainingMeters: Double, remainingSeconds: Double, nowEpochMillis: Long, imperial: Boolean, tripText: String? = null): TravelEstimate {
         // Clamp remaining ≥ 0 so a momentary NavEngine overshoot can't show a past arrival time.
         val remaining = remainingSeconds.coerceAtLeast(0.0)
         val arrivalMs = nowEpochMillis + (remaining * 1000).toLong()
@@ -155,6 +157,7 @@ object ManeuverMapper {
         val arrival = androidx.car.app.model.DateTimeWithZone.create(arrivalMs, zone)
         return TravelEstimate.Builder(carDistance(remainingMeters, imperial), arrival)
             .setRemainingTimeSeconds(remaining.toLong())
+            .apply { if (!tripText.isNullOrBlank()) setTripText(androidx.car.app.model.CarText.create(tripText)) }
             .build()
     }
 
