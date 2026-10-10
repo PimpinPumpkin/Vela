@@ -2010,6 +2010,11 @@ ends shows as dropped map frames (33 against 57 fps on a 117 km demo drive from 
   car at the archive's deepest zoom, decoded by `core/util/MvtLines`, nearest tagged line within
   20 m, twelve tiles kept, an empty tile asked again after 60 s. Mounted as an invisible layer,
   every tile the tilted view covered was requested.
+- The streamed archive carries `maxspeed:conditional`. `OsmMaxspeed.conditionalKmh` applies its
+  time rules at the phone's local time on every lookup: hour ranges, past midnight included,
+  optionally after weekdays. The last rule in force wins. Weather, weight, date ranges and a rule
+  with a quoted comment are never in force, so the plain `maxspeed` shows. The obf path reads
+  OsmAnd's plain limit and does not apply them.
 - Whether a downloaded region answers the limit is decided by its boundary (`limitsOnPhone`),
   not the engine's box. Dial `debug.vela.tune.streamLimits 1` reads the streamed limits over a
   downloaded region too.

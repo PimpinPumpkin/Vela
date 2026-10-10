@@ -1,5 +1,8 @@
 package app.vela.core.data
 
+import java.time.DayOfWeek
+import java.time.LocalDateTime
+
 /**
  * Parses an OSM `maxspeed` tag value into km/h - the "Speed B" online source reads these raw strings out
  * of the hosted speed-limit PMTiles overlay (built by `scripts/build-maxspeed-region.sh`), unlike the
@@ -12,6 +15,8 @@ package app.vela.core.data
  *    per-country default table we don't ship;
  *  - `signals` / `variable` / `unknown` and anything else without a leading number.
  * Same spirit as the offline path blanking on the ambiguous 150 km/h cap.
+ *
+ * `maxspeed:conditional` is read for its time rules only ([conditionalKmh]).
  */
 object OsmMaxspeed {
     private const val MPH_TO_KMH = 1.609344
@@ -36,4 +41,103 @@ object OsmMaxspeed {
      *  carriageway sense). Returns km/h or null. */
     fun fromTags(maxspeed: String?, forward: String? = null, backward: String? = null): Double? =
         parseKmh(maxspeed) ?: parseKmh(forward) ?: parseKmh(backward)
+
+    /** [fromTags] with a `maxspeed:conditional` applied at local time [at]: the conditional value
+     *  when one of its time rules holds, else the plain limit. A road with only a conditional limit
+     *  and no rule in force has no known limit. */
+    fun fromTags(maxspeed: String?, forward: String?, backward: String?, conditional: String?, at: LocalDateTime): Double? =
+        conditionalKmh(conditional, at) ?: fromTags(maxspeed, forward, backward)
+
+    /**
+     * The km/h a `maxspeed:conditional` value sets at local time [at], or null when no rule holds.
+     * Rules are `<value> @ <condition>` separated by `;`, and the last one that holds wins.
+     *
+     * Only time conditions are read: hour ranges ("19:00-06:00", past midnight included, several
+     * joined by commas), optionally after weekdays ("Mo-Fr", "Sa,Su"). Anything else is never in
+     * force: weather ("wet", "snow"), weight, date ranges, and a rule with a quoted comment, which
+     * the Netherlands uses for "100 at busy times", a limit the overhead signs set, not the clock.
+     * Skipping a rule shows the plain limit, which is what the sign at the roadside says.
+     */
+    fun conditionalKmh(raw: String?, at: LocalDateTime): Double? {
+        if (raw.isNullOrBlank()) return null
+        var result: Double? = null
+        for (rule in splitRules(raw)) {
+            val atSign = rule.indexOf('@')
+            if (atSign < 0) continue
+            val kmh = parseKmh(rule.substring(0, atSign)) ?: continue
+            var cond = rule.substring(atSign + 1).trim()
+            if (cond.startsWith("(") && cond.endsWith(")")) cond = cond.substring(1, cond.length - 1).trim()
+            if (timeHolds(cond, at)) result = kmh
+        }
+        return result
+    }
+
+    /** Split on `;` outside parentheses and quotes. */
+    private fun splitRules(raw: String): List<String> {
+        val out = ArrayList<String>()
+        var depth = 0
+        var quoted = false
+        val cur = StringBuilder()
+        for (c in raw) {
+            when {
+                c == '"' -> { quoted = !quoted; cur.append(c) }
+                quoted -> cur.append(c)
+                c == '(' -> { depth++; cur.append(c) }
+                c == ')' -> { depth--; cur.append(c) }
+                c == ';' && depth <= 0 -> { out += cur.toString().trim(); cur.clear() }
+                else -> cur.append(c)
+            }
+        }
+        if (cur.isNotBlank()) out += cur.toString().trim()
+        return out
+    }
+
+    private val DAYS = listOf("mo", "tu", "we", "th", "fr", "sa", "su")
+    private val DAY_PART = Regex("""^([A-Za-z]{2})(?:-([A-Za-z]{2}))?$""")
+    private val HOURS = Regex("""^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$""")
+
+    /** True when [cond] is "[days] hh:mm-hh:mm[,hh:mm-hh:mm…]" and [at] falls inside it. A range
+     *  past midnight belongs to the day it starts on. Any other condition is false. */
+    private fun timeHolds(cond: String, at: LocalDateTime): Boolean {
+        if (cond.isEmpty() || '"' in cond) return false
+        val firstDigit = cond.indexOfFirst { it.isDigit() }
+        if (firstDigit < 0) return false
+        val daysPart = cond.substring(0, firstDigit).trim()
+        val days: Set<DayOfWeek>? = if (daysPart.isEmpty()) null else parseDays(daysPart) ?: return false
+        val minute = at.hour * 60 + at.minute
+        val today = at.dayOfWeek
+        val yesterday = today.minus(1)
+        for (part in cond.substring(firstDigit).split(',')) {
+            val m = HOURS.matchEntire(part.trim()) ?: return false
+            val (h1, m1, h2, m2) = m.destructured
+            val start = h1.toInt() * 60 + m1.toInt()
+            val end = h2.toInt() * 60 + m2.toInt()
+            if (start > 24 * 60 || end > 24 * 60) return false
+            val holds = if (start <= end) {
+                minute in start until end && (days == null || today in days)
+            } else {
+                (minute >= start && (days == null || today in days)) ||
+                    (minute < end && (days == null || yesterday in days))
+            }
+            if (holds) return true
+        }
+        return false
+    }
+
+    /** "Mo-Fr", "Sa,Su", "Mo-We,Fr" to a set of days, or null when anything else is in it. */
+    private fun parseDays(s: String): Set<DayOfWeek>? {
+        val out = HashSet<DayOfWeek>()
+        for (part in s.split(',')) {
+            val m = DAY_PART.matchEntire(part.trim()) ?: return null
+            val a = DAYS.indexOf(m.groupValues[1].lowercase()).takeIf { it >= 0 } ?: return null
+            val b = if (m.groupValues[2].isEmpty()) a else DAYS.indexOf(m.groupValues[2].lowercase()).takeIf { it >= 0 } ?: return null
+            var i = a
+            while (true) {
+                out += DayOfWeek.of(i + 1)
+                if (i == b) break
+                i = (i + 1) % 7
+            }
+        }
+        return out
+    }
 }

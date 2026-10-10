@@ -444,6 +444,13 @@ carry a 45 onto the side street you turned onto. Where the region has no limit, 
 region, the badge reads the hosted tiles: the nearest tagged road within 20 m, from the one tile
 the car is in.
 
+The hosted tiles also carry timed limits (`maxspeed:conditional`). Most Dutch motorways are
+tagged `maxspeed=100` with `130 @ (19:00-06:00)`: 100 km/h by day, 130 in the evening and at
+night. The badge reads the rule against the phone's clock at each lookup, so it changes at 19:00
+on its own. Only clock rules count. "70 @ wet" and the Dutch "at busy times" rules are set by
+weather or the overhead signs, so the plain limit shows. A downloaded region's file does not
+apply timed limits.
+
 "Speeding alert" (Settings > Navigation, off by default) says "You're over the speed limit" once
 you have been more than 5 km/h over the badge's limit for 4 s (`holdMs`). The 5 km/h matches the
 point where the badge turns red. It can speak again after 8 s back under the limit (`rearmMs`),
