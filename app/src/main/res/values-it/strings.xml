@@ -144,7 +144,7 @@
     <string name="settings_diag_consent_title">Attivare la diagnostica?</string>
     <string name="settings_diag_consent_body">Vela conserverà un breve registro locale delle tue ricerche, dei percorsi e di eventuali errori. Non lascia mai il telefono finché non tocchi Esporta e scegli dove inviarlo. Disattivala in qualsiasi momento per cancellare il registro.</string>
     <string name="settings_about">Informazioni</string>
-    <string name="settings_about_hint">Vela è un client di mappe degoogled: riquadri aperti per la mappa di base, dati Google estratti per i POI, percorsi ed ETA con traffico, TextToSpeech AOSP per la voce. GPLv3. Nessun Play Services richiesto.</string>
+    <string name="settings_about_hint">Vela è un client di mappe degoogled: riquadri aperti per la mappa di base, dati Google estratti per i POI, percorsi ed ETA con traffico, una voce Piper che gira sul telefono. GPLv3. Nessun Play Services richiesto.</string>
     <string name="settings_support">Supporto</string>
     <string name="settings_support_hint">Vela è gratuita e senza pubblicità. Se ti è diventata utile, una donazione aiuta a portare avanti lo sviluppo, del tutto facoltativa.</string>
     <string name="settings_support_button">Sostieni Vela</string>

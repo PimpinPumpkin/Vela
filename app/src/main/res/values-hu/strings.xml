@@ -221,7 +221,7 @@
     <string name="settings_diag_consent_title">Bekapcsolod a diagnosztikát?</string>
     <string name="settings_diag_consent_body">A Vela egy rövid helyi naplót vezet a kereséseidről, útvonalaidról és a hibákról. Soha nem hagyja el a telefont, hacsak nem koppintasz az Exportálásra és választasz egy célt. Bármikor kikapcsolhatod a napló törléséhez.</string>
     <string name="settings_about">Névjegy</string>
-    <string name="settings_about_hint">A Vela egy degoogled térképkliens: nyílt csempék az alaptérképhez, lekapart Google-adat helyekhez, útvonaltervezéshez és forgalomfüggő érkezési időkhöz, AOSP TextToSpeech a hanghoz. GPLv3. Nincs szükség Play Services-re.</string>
+    <string name="settings_about_hint">A Vela egy degoogled térképkliens: nyílt csempék az alaptérképhez, lekapart Google-adat helyekhez, útvonaltervezéshez és forgalomfüggő érkezési időkhöz, a telefonon futó Piper hang. GPLv3. Nincs szükség Play Services-re.</string>
     <string name="settings_support">Támogatás</string>
     <string name="settings_support_hint">A Vela ingyenes és reklámmentes. Ha hasznosnak bizonyult, egy adomány segít fenntartani a fejlesztést. Teljesen opcionális.</string>
     <string name="settings_support_button">Vela támogatása</string>

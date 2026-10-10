@@ -144,7 +144,7 @@
     <string name="settings_diag_consent_title">Ativar o diagnóstico?</string>
     <string name="settings_diag_consent_body">O Vela vai manter um breve registo local das suas pesquisas, percursos e quaisquer erros. Nunca sai do telemóvel a menos que toque em Exportar e escolha para onde o enviar. Desligue quando quiser para apagar o registo.</string>
     <string name="settings_about">Acerca</string>
-    <string name="settings_about_hint">O Vela é um cliente de mapas sem Google: mosaicos abertos para o mapa base, dados da Google recolhidos para POIs, percursos e ETAs sensíveis ao trânsito, e o TextToSpeech do AOSP para a voz. GPLv3. Não requer os Serviços Play.</string>
+    <string name="settings_about_hint">O Vela é um cliente de mapas sem Google: mosaicos abertos para o mapa base, dados da Google recolhidos para POIs, percursos e ETAs sensíveis ao trânsito, e uma voz Piper que corre no telemóvel. GPLv3. Não requer os Serviços Play.</string>
     <string name="settings_support">Apoiar</string>
     <string name="settings_support_hint">O Vela é gratuito e sem anúncios. Se se tornou útil, um donativo ajuda a manter o desenvolvimento, totalmente opcional.</string>
     <string name="settings_support_button">Apoiar o Vela</string>

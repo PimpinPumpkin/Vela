@@ -125,7 +125,7 @@
     <string name="settings_diag_consent_title">Увімкнути діагностику?</string>
     <string name="settings_diag_consent_body">Vela вестиме короткий локальний журнал ваших пошуків, маршрутів і будь-яких помилок. Він ніколи не залишає телефон, доки ви не натиснете «Експорт» і не оберете, куди його надіслати. Вимкніть будь-коли, щоб стерти журнал.</string>
     <string name="settings_about">Про застосунок</string>
-    <string name="settings_about_hint">Vela, це клієнт карт без Google: відкриті плитки для базової карти, зібрані з Google дані про місця, маршрутизація та ETA з урахуванням трафіку, синтез мовлення AOSP TextToSpeech для голосу. GPLv3. Play Services не потрібні.</string>
+    <string name="settings_about_hint">Vela, це клієнт карт без Google: відкриті плитки для базової карти, зібрані з Google дані про місця, маршрутизація та ETA з урахуванням трафіку, голос Piper, що працює на телефоні. GPLv3. Play Services не потрібні.</string>
     <string name="settings_support">Підтримати</string>
     <string name="settings_support_hint">Vela безкоштовна й без реклами. Якщо вона стала корисною, пожертва допомагає продовжувати розробку, цілком за бажанням.</string>
     <string name="settings_support_button">Підтримати Vela</string>

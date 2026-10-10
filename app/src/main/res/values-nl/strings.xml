@@ -144,7 +144,7 @@
     <string name="settings_diag_consent_title">Diagnostiek inschakelen?</string>
     <string name="settings_diag_consent_body">Vela houdt een kort lokaal logboek bij van uw zoekopdrachten, routes en eventuele fouten. Het verlaat de telefoon nooit tenzij u op Exporteren tikt en kiest waar het naartoe gaat. Schakel het op elk moment uit om het logboek te wissen.</string>
     <string name="settings_about">Over</string>
-    <string name="settings_about_hint">Vela is een gedegoogelde kaartenclient: open tegels voor de basiskaart, gescrapet van Google voor POI\'s, routering en verkeersbewuste aankomsttijden, AOSP TextToSpeech voor spraak. GPLv3. Geen Play Services vereist.</string>
+    <string name="settings_about_hint">Vela is een gedegoogelde kaartenclient: open tegels voor de basiskaart, gescrapet van Google voor POI\'s, routering en verkeersbewuste aankomsttijden, een Piper-stem die op de telefoon draait. GPLv3. Geen Play Services vereist.</string>
     <string name="settings_support">Ondersteunen</string>
     <string name="settings_support_hint">Vela is gratis en reclamevrij. Als het nuttig is geworden, helpt een donatie de ontwikkeling voort te zetten, geheel optioneel.</string>
     <string name="settings_support_button">Vela steunen</string>

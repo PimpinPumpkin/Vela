@@ -144,7 +144,7 @@
     <string name="settings_diag_consent_title">Włączyć diagnostykę?</string>
     <string name="settings_diag_consent_body">Vela będzie prowadzić krótki lokalny dziennik Twoich wyszukiwań, tras i wszelkich błędów. Nigdy nie opuszcza telefonu, chyba że dotkniesz Eksportuj i wybierzesz miejsce docelowe. Wyłącz w dowolnej chwili, aby wyczyścić dziennik.</string>
     <string name="settings_about">Informacje</string>
-    <string name="settings_about_hint">Vela to odgooglowany klient map: otwarte kafelki dla mapy podkładowej, scrapowany Google dla POI, wyznaczanie tras i czasy przyjazdu uwzględniające ruch, synteza mowy AOSP TextToSpeech dla głosu. GPLv3. Nie wymaga Usług Play.</string>
+    <string name="settings_about_hint">Vela to odgooglowany klient map: otwarte kafelki dla mapy podkładowej, scrapowany Google dla POI, wyznaczanie tras i czasy przyjazdu uwzględniające ruch, głos Piper działający na telefonie. GPLv3. Nie wymaga Usług Play.</string>
     <string name="settings_support">Wsparcie</string>
     <string name="settings_support_hint">Vela jest darmowa i bez reklam. Jeśli okazała się przydatna, darowizna pomaga kontynuować rozwój, całkowicie dobrowolnie.</string>
     <string name="settings_support_button">Wesprzyj Vela</string>

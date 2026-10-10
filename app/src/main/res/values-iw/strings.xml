@@ -143,7 +143,7 @@
     <string name="settings_diag_consent_title">להפעיל אבחון?</string>
     <string name="settings_diag_consent_body">Vela תשמור יומן מקומי קצר של החיפושים, המסלולים וכל שגיאה. הוא לעולם לא עוזב את הטלפון אלא אם תקיש \"ייצא\" ותבחר לאן לשלוח. כבה בכל עת כדי למחוק את היומן.</string>
     <string name="settings_about">אודות</string>
-    <string name="settings_about_hint">Vela הוא לקוח מפות ללא Google: אריחים פתוחים למפת הבסיס, נתוני Google שנאספים למקומות, ניתוב וזמני הגעה מודעי-תנועה, ו-TextToSpeech של AOSP לקול. GPLv3. ללא צורך ב-Play Services.</string>
+    <string name="settings_about_hint">Vela הוא לקוח מפות ללא Google: אריחים פתוחים למפת הבסיס, נתוני Google שנאספים למקומות, ניתוב וזמני הגעה מודעי-תנועה, וקול Piper שרץ על הטלפון. GPLv3. ללא צורך ב-Play Services.</string>
     <string name="settings_support">תמיכה</string>
     <string name="settings_support_hint">Vela חינמי וללא פרסומות. אם הוא הפך שימושי, תרומה עוזרת לשמור על המשך הפיתוח. אופציונלי לחלוטין.</string>
     <string name="settings_support_button">תמוך ב-Vela</string>

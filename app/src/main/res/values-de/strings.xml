@@ -126,7 +126,7 @@
     <string name="settings_diag_consent_title">Diagnose aktivieren?</string>
     <string name="settings_diag_consent_body">Vela führt ein kurzes lokales Protokoll Ihrer Suchanfragen, Routen und etwaiger Fehler. Es verlässt das Telefon nie, es sei denn, Sie tippen auf „Exportieren“ und wählen ein Ziel. Zum Löschen des Protokolls jederzeit deaktivieren.</string>
     <string name="settings_about">Über</string>
-    <string name="settings_about_hint">Vela ist ein degoogelter Karten-Client: offene Kacheln für die Basiskarte, gescraptes Google für POIs, Routing und verkehrsabhängige Ankunftszeiten, AOSP TextToSpeech für die Stimme. GPLv3. Keine Play-Dienste erforderlich.</string>
+    <string name="settings_about_hint">Vela ist ein degoogelter Karten-Client: offene Kacheln für die Basiskarte, gescraptes Google für POIs, Routing und verkehrsabhängige Ankunftszeiten, eine Piper-Stimme, die auf dem Telefon läuft. GPLv3. Keine Play-Dienste erforderlich.</string>
     <string name="settings_support">Unterstützen</string>
     <string name="settings_support_hint">Vela ist kostenlos und werbefrei. Wenn es Ihnen nützlich geworden ist, hilft eine Spende, die Entwicklung am Laufen zu halten, völlig freiwillig.</string>
     <string name="settings_support_button">Vela unterstützen</string>

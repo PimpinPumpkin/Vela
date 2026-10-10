@@ -438,7 +438,7 @@
     <string name="settings_diag_consent_title">Activezi funcția de diagnosticare?</string>
     <string name="settings_diag_consent_body">Vela va păstra un jurnal local succint al căutărilor, traseelor și eventualelor erori. Acesta nu părăsește niciodată telefonul, cu excepția cazului în care apeși pe „Export” și alegi unde să-l trimiți. Poți dezactiva această funcție oricând pentru a șterge jurnalul.</string>
     <string name="settings_about">Despre</string>
-    <string name="settings_about_hint">Vela este un client de hărți fără servicii Google: folosește OpenTiles pentru harta de bază, preia date de la Google pentru puncte de interes (POI), oferă rute și estimări ale timpului de sosire (ETA) în funcție de trafic, iar pentru redarea vocală utilizează AOSP TextToSpeech. Licențiat sub GPLv3. Nu sunt necesare serviciile Play.</string>
+    <string name="settings_about_hint">Vela este un client de hărți fără servicii Google: folosește OpenTiles pentru harta de bază, preia date de la Google pentru puncte de interes (POI), oferă rute și estimări ale timpului de sosire (ETA) în funcție de trafic, iar vocea este o voce Piper care rulează pe telefon. Licențiat sub GPLv3. Nu sunt necesare serviciile Play.</string>
     <string name="settings_support">Sprijin</string>
     <string name="settings_support_hint">Vela este gratuită și nu conține reclame. Dacă ți s-a dovedit utilă, o donație ne ajută să continuăm dezvoltarea aplicației. Este o opțiune complet facultativă.</string>
     <string name="settings_support_button">Susține Vela</string>

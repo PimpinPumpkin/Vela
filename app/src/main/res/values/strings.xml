@@ -455,7 +455,7 @@
     <string name="settings_diag_consent_title">Turn on diagnostics?</string>
     <string name="settings_diag_consent_body">Vela will keep a short local log of your searches, routes and any errors. It never leaves the phone unless you tap Export and choose where to send it. Turn it off any time to wipe the log.</string>
     <string name="settings_about">About</string>
-    <string name="settings_about_hint">Vela is a degoogled maps client: open tiles for the basemap, scraped Google for POIs, routing and traffic-aware ETAs, AOSP TextToSpeech for voice. GPLv3. No Play Services required.</string>
+    <string name="settings_about_hint">Vela is a degoogled maps client: open tiles for the basemap, scraped Google for places, routing and traffic-aware ETAs, and a Piper voice that runs on the phone. GPLv3. No Play Services required.</string>
     <string name="settings_support">Support</string>
     <string name="settings_support_hint">Vela is free and ad-free. If it\'s become useful, a donation helps keep development going. Entirely optional.</string>
     <string name="settings_support_button">Support Vela</string>

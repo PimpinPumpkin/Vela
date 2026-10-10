@@ -157,7 +157,7 @@
     <string name="settings_diag_consent_title">要開啟診斷嗎？</string>
     <string name="settings_diag_consent_body">Vela 會在本機保留簡短記錄，內容包含你的搜尋、路線和任何錯誤。除非你點按「匯出」並選擇傳送對象，否則資料絕不會離開手機。隨時可以關閉以清除記錄。</string>
     <string name="settings_about">關於</string>
-    <string name="settings_about_hint">Vela 是去 Google 化的地圖用戶端：底圖使用開放圖磚，地點、路線規劃和路況預估時間擷取自 Google，語音使用 AOSP TextToSpeech。GPLv3 授權，不需要 Play 服務。</string>
+    <string name="settings_about_hint">Vela 是去 Google 化的地圖用戶端：底圖使用開放圖磚，地點、路線規劃和路況預估時間擷取自 Google，語音使用在手機上執行的 Piper 語音。GPLv3 授權，不需要 Play 服務。</string>
     <string name="settings_support">贊助</string>
     <string name="settings_support_hint">Vela 免費且無廣告。如果它對你有幫助，捐款能讓開發持續下去。完全自願。</string>
     <string name="settings_support_button">贊助 Vela</string>

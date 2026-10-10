@@ -126,7 +126,7 @@
     <string name="settings_diag_consent_title">Activer les diagnostics ?</string>
     <string name="settings_diag_consent_body">Vela conservera un court journal local de vos recherches, itinéraires et erreurs éventuelles. Il ne quitte jamais le téléphone tant que vous n\'appuyez pas sur Exporter et ne choisissez pas une destination. Désactivez-le à tout moment pour effacer le journal.</string>
     <string name="settings_about">À propos</string>
-    <string name="settings_about_hint">Vela est un client cartographique dégooglisé : tuiles ouvertes pour le fond de carte, extraction de Google pour les lieux, le routage et les estimations tenant compte du trafic, synthèse vocale AOSP TextToSpeech pour la voix. GPLv3. Ne nécessite pas les Play Services.</string>
+    <string name="settings_about_hint">Vela est un client cartographique dégooglisé : tuiles ouvertes pour le fond de carte, extraction de Google pour les lieux, le routage et les estimations tenant compte du trafic, une voix Piper qui tourne sur le téléphone. GPLv3. Ne nécessite pas les Play Services.</string>
     <string name="settings_support">Soutien</string>
     <string name="settings_support_hint">Vela est gratuit et sans publicité. S\'il vous est devenu utile, un don aide à poursuivre le développement, entièrement facultatif.</string>
     <string name="settings_support_button">Soutenir Vela</string>

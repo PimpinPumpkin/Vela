@@ -157,7 +157,7 @@
     <string name="settings_diag_consent_title">开启诊断？</string>
     <string name="settings_diag_consent_body">Vela 将在本地保留一份关于您的搜索、路线和错误的简短日志。除非您点按“导出”并选择发送位置，否则它绝不离开手机。可随时关闭以清除日志。</string>
     <string name="settings_about">关于</string>
-    <string name="settings_about_hint">Vela 是一款去谷歌化的地图客户端：底图来自开放图块，兴趣点、路线和路况预计时间来自对 Google 的抓取，语音使用 AOSP TextToSpeech。GPLv3 许可。无需 Play 服务。</string>
+    <string name="settings_about_hint">Vela 是一款去谷歌化的地图客户端：底图来自开放图块，兴趣点、路线和路况预计时间来自对 Google 的抓取，语音使用在手机上运行的 Piper 语音。GPLv3 许可。无需 Play 服务。</string>
     <string name="settings_support">支持</string>
     <string name="settings_support_hint">Vela 免费且无广告。如果它对您有用，捐助能帮助开发继续下去。完全自愿。</string>
     <string name="settings_support_button">支持 Vela</string>

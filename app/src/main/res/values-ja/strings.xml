@@ -157,7 +157,7 @@
     <string name="settings_diag_consent_title">診断をオンにしますか？</string>
     <string name="settings_diag_consent_body">Vela は検索、経路、エラーの短いログを端末内に保存します。「エクスポート」をタップして送信先を選ばない限り、端末の外に出ることはありません。いつでもオフにでき、オフにするとログは消去されます。</string>
     <string name="settings_about">このアプリについて</string>
-    <string name="settings_about_hint">Vela は脱Googleの地図クライアントです。ベースマップにはオープンな地図タイル、場所・経路・交通状況を反映した到着予測には Google から取得したデータ、音声には AOSP の TextToSpeech を使用しています。GPLv3。Play 開発者サービスは不要です。</string>
+    <string name="settings_about_hint">Vela は脱Googleの地図クライアントです。ベースマップにはオープンな地図タイル、場所・経路・交通状況を反映した到着予測には Google から取得したデータ、音声には端末上で動く Piper の音声を使用しています。GPLv3。Play 開発者サービスは不要です。</string>
     <string name="settings_support">支援</string>
     <string name="settings_support_hint">Vela は無料で広告もありません。役に立っていると感じたら、寄付が開発の継続に役立ちます。完全に任意です。</string>
     <string name="settings_support_button">Vela を支援</string>

@@ -126,7 +126,7 @@
     <string name="settings_diag_consent_title">Slå på diagnostik?</string>
     <string name="settings_diag_consent_body">Vela håller en kort lokal logg över dina sökningar, rutter och eventuella fel. Den lämnar aldrig telefonen om du inte trycker på Exportera och väljer var den ska skickas. Slå av den när som helst för att radera loggen.</string>
     <string name="settings_about">Om</string>
-    <string name="settings_about_hint">Vela är en avgooglad kartklient: öppna rutor för baskartan, skrapad Google för intressepunkter, ruttning och trafikmedvetna ankomsttider, AOSP TextToSpeech för röst. GPLv3. Inga Play Services krävs.</string>
+    <string name="settings_about_hint">Vela är en avgooglad kartklient: öppna rutor för baskartan, skrapad Google för intressepunkter, ruttning och trafikmedvetna ankomsttider, en Piper-röst som körs på telefonen. GPLv3. Inga Play Services krävs.</string>
     <string name="settings_support">Stöd</string>
     <string name="settings_support_hint">Vela är gratis och reklamfri. Om den blivit användbar hjälper en donation till att hålla utvecklingen igång, helt frivilligt.</string>
     <string name="settings_support_button">Stöd Vela</string>

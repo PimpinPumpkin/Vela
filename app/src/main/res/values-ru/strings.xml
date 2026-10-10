@@ -125,7 +125,7 @@
     <string name="settings_diag_consent_title">Включить диагностику?</string>
     <string name="settings_diag_consent_body">Vela будет вести короткий локальный журнал ваших поисков, маршрутов и любых ошибок. Он никогда не покидает телефон, пока вы не нажмёте «Экспорт» и не выберете, куда его отправить. Выключите в любой момент, чтобы стереть журнал.</string>
     <string name="settings_about">О приложении</string>
-    <string name="settings_about_hint">Vela, это дегуглённый клиент карт: открытые тайлы для основной карты, данные Google для мест, маршрутизация и ETA с учётом пробок, синтез речи AOSP TextToSpeech для голоса. GPLv3. Play Services не требуются.</string>
+    <string name="settings_about_hint">Vela, это дегуглённый клиент карт: открытые тайлы для основной карты, данные Google для мест, маршрутизация и ETA с учётом пробок, голос Piper, работающий на телефоне. GPLv3. Play Services не требуются.</string>
     <string name="settings_support">Поддержка</string>
     <string name="settings_support_hint">Vela бесплатна и без рекламы. Если она стала полезной, пожертвование поможет продолжать разработку, полностью по желанию.</string>
     <string name="settings_support_button">Поддержать Vela</string>

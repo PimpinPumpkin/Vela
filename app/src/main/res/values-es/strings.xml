@@ -126,7 +126,7 @@
     <string name="settings_diag_consent_title">¿Activar el diagnóstico?</string>
     <string name="settings_diag_consent_body">Vela guardará un breve registro local de tus búsquedas, rutas y cualquier error. Nunca sale del teléfono salvo que toques Exportar y elijas a dónde enviarlo. Desactívalo cuando quieras para borrar el registro.</string>
     <string name="settings_about">Acerca de</string>
-    <string name="settings_about_hint">Vela es un cliente de mapas sin Google: mosaicos abiertos para el mapa base, datos de Google extraídos para los puntos de interés, rutas y ETA con tráfico, y TextToSpeech de AOSP para la voz. GPLv3. No requiere Play Services.</string>
+    <string name="settings_about_hint">Vela es un cliente de mapas sin Google: mosaicos abiertos para el mapa base, datos de Google extraídos para los puntos de interés, rutas y ETA con tráfico, y una voz Piper que corre en el teléfono. GPLv3. No requiere Play Services.</string>
     <string name="settings_support">Apoyar</string>
     <string name="settings_support_hint">Vela es gratis y sin anuncios. Si te resulta útil, una donación ayuda a mantener el desarrollo en marcha, completamente opcional.</string>
     <string name="settings_support_button">Apoyar a Vela</string>
