@@ -1476,6 +1476,20 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   is the only source. One lookup per route and stop, in the background, within
   `LOT_LOOKUP_TIMEOUT_MS` (8 s); until it answers, or when the tiles cannot be read, the plain
   wording stands.
+- The end of a trip gets the same test against the destination, when the route is planned
+  (`ParkingLotTurn.wordDestination`, DRIVE only, from `GoogleMapsDataSource.directions` and
+  `nameRoute`). A trip into a lot ends with the turn off the street and often a turn or two
+  between the aisles, all bare. The candidates are `NavEngine.destinationLotTurns`: the lefts
+  and rights onto a road with no name and no number that run unbroken up to the arrival, at most
+  `LOT_DEST_TURNS` (3), none more than `LOT_DEST_BACK_M` (400 m) before the end, measured back
+  from the end. The first one whose way on the tiles show entering a lot is the turn off the
+  street: its `instruction` and `instructionNoRoad` become `NavStrings.intoLot`, "Turn left into
+  the parking lot"; its type and place stay, and the turns after it keep their plain words. The
+  step carries the words, so the banner, the step list, the voice and the car say them, and
+  `made` gains `lotTurn`. The tiles round the
+  destination are asked for when the fetch starts (not in low data mode), and the built route
+  waits `LOT_WORD_WAIT_MS` (1.2 s; `LOT_WORD_WAIT_URGENT_MS` 0.3 s) for the answer. A route with
+  abbreviated steps or a provisional alternate is left alone.
 - `stopAhead`, `thenStop` and `intoLotThen` are in every `NavStrings` table, with a blank name
   read as "your stop".
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork

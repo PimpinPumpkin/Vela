@@ -768,6 +768,43 @@ class GoogleMapsDataSource @Inject constructor(
         urgent: Boolean,
         departBearingDeg: Double?,
         budgetMs: Long?,
+    ): List<Route> {
+        if (mode != TravelMode.DRIVE) return directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
+        // The map's roads round the destination are asked for while the routes are fetched, so
+        // the word on the last turn (withLotTurn) is a read from memory by the time they are built.
+        if (!app.vela.core.data.LowDataMode.enabled) kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            runCatching { app.vela.core.data.naming.RoadNameTiles.roadsAlong(listOf(destination)) }
+        }
+        return directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
+            .map { withLotTurn(it, urgent) }
+    }
+
+    /**
+     * [route] with its last turn worded "into the parking lot" when the map shows it entering the
+     * destination's own lot (ParkingLotTurn.wordDestination). A route that cannot be driven as it
+     * is, or whose steps are Google's short ones, is left alone; so is one the map does not answer
+     * for inside the wait.
+     */
+    private suspend fun withLotTurn(route: Route, urgent: Boolean): Route {
+        if (!route.drivable || !route.hasRealSteps) return route
+        return kotlinx.coroutines.withTimeoutOrNull(if (urgent) LOT_WORD_WAIT_URGENT_MS else LOT_WORD_WAIT_MS) {
+            runCatching {
+                app.vela.core.nav.ParkingLotTurn.wordDestination(route) { left -> app.vela.core.i18n.NavStringsRegistry.current().intoLot(left) }
+            }.getOrNull()
+        } ?: route
+    }
+
+    private suspend fun directionsPlain(
+        origin: LatLng,
+        destination: LatLng,
+        mode: TravelMode,
+        waypoints: List<LatLng>,
+        avoidTolls: Boolean,
+        avoidHighways: Boolean,
+        avoidFerries: Boolean,
+        urgent: Boolean,
+        departBearingDeg: Double?,
+        budgetMs: Long?,
     ): List<Route> = io {
         // Mid-drive reroutes are URGENT: one shot per source, no divergence snap, no alternates
         // polish. The retry ladders below (3x OSRM + 3x Google with backoff) are right for a
@@ -1846,7 +1883,12 @@ class GoogleMapsDataSource @Inject constructor(
      *  through OSRM for real named turn-by-turn, guarded to reach the destination, and re-apply Google's
      *  live-traffic overlay. Failure keeps Google's own (abbreviated) steps so nav still works.
      *  (An on-device map-match for downloaded regions could plug in here next.) */
-    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route = io {
+    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route {
+        val named = nameRoutePlain(route, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries)
+        return if (mode == TravelMode.DRIVE) withLotTurn(named, urgent = false) else named
+    }
+
+    private suspend fun nameRoutePlain(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route = io {
         if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
         val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
         // The avoid flags ride along on the snap, but they add nothing on the public server:
@@ -2174,6 +2216,11 @@ class GoogleMapsDataSource @Inject constructor(
          *  the names are in hand if the match is late. The matcher answers a town stretch in 0.35
          *  to 1.2 s (replayed captured lines, 2026-10-09), so a healthy one costs no tile request. */
         const val TILE_HEDGE_MS = 1_000L
+        /** How long a built route waits for the map's word on whether its last turn enters the
+         *  destination's parking lot. The tiles are asked for when the fetch starts, so this is
+         *  normally no wait at all. */
+        const val LOT_WORD_WAIT_MS = 1_200L
+        const val LOT_WORD_WAIT_URGENT_MS = 300L
         const val TILE_HEDGE_URGENT_MS = 300L
         /** Longer than any deadline: the tiles are read only once the match has failed. */
         const val TILE_HEDGE_NEVER_MS = 60_000L

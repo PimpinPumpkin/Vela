@@ -325,6 +325,12 @@ LOT_THEN_M  = 150   // ...and calls it a turn into the parking lot only this clo
   and no street or alley, does the turn become "Turn left into the parking lot, then Davis Food
   Co-op is on your right". No router marks a parking aisle, and a road with no name is just as
   often a driveway or an unnamed lane, so anything less certain keeps the plain "Turn left".
+- The end of the trip gets the same test against the destination. A trip into a lot ends with
+  the turn off the street and often a turn or two between the aisles, all with no name. Vela
+  looks at up to three such turns in the last 400 m and words the first one whose way on enters
+  a lot: "Turn left into the parking lot". It is settled when the route is planned, so the step
+  itself reads that way on the banner, in the step list, in the voice and on the car. A turn
+  between the aisles after it stays a plain "Turn right", and the usual arrival lines follow.
 - Brief puts the stop on its turn's one line. Highway exits only stays quiet for the turn in town
   and says the stop's own line, as it says the destination's.
 

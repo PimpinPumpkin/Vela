@@ -14,6 +14,9 @@ import kotlin.math.hypot
  * OpenStreetMap's `service=parking_aisle` (OpenMapTiles `transportation`, `class=service`), so
  * the stretch the route takes past the turn is checked against them. Anything the data cannot
  * settle is a no, and the turn keeps its plain wording.
+ *
+ * The same holds for the turn into the destination's own lot at the end of a trip. That one is
+ * settled when the route is planned ([wordDestination]), so the step itself carries the words.
  */
 object ParkingLotTurn {
     /** The check starts this far past the turn, clear of the road the turn leaves. */
@@ -31,6 +34,32 @@ object ParkingLotTurn {
         if (pts.isEmpty()) return false
         val roads = RoadNameTiles.roadsAlong(pts) ?: return false
         return onLotAisles(pts, roads)
+    }
+
+    /**
+     * [route] with its turn into the destination's parking lot worded as one ("Turn left into the
+     * parking lot") when the map shows it: the first of the bare turns that close the trip
+     * ([NavEngine.destinationLotTurns]) whose way on runs into a lot. That is the turn off the
+     * street; a turn between the aisles after it keeps its plain words. The step keeps its type
+     * and place and only its words change, so the banner, the step list, the voice and the car
+     * all say it. [wording] gives the words for a left (true) or a right. Any other route comes
+     * back as it is.
+     */
+    suspend fun wordDestination(route: Route, wording: (left: Boolean) -> String): Route {
+        val turns = NavEngine.destinationLotTurns(route)
+        if (turns.isEmpty()) return route
+        val end = RouteProjection.cumulative(route.polyline).last()
+        for ((k, turnM, left) in turns) if (entersLot(route, turnM, end)) return reworded(route, k, wording(left))
+        return route
+    }
+
+    /** [route] with maneuver [k]'s text replaced by [text], and the trip file told (`lotTurn`). */
+    internal fun reworded(route: Route, k: Int, text: String): Route {
+        var i = 0
+        return route.copy(
+            legs = route.legs.map { leg -> leg.copy(maneuvers = leg.maneuvers.map { m -> if (i++ == k) m.copy(instruction = text, instructionNoRoad = text) else m }) },
+            made = listOf(route.made, "lotTurn").filter { it.isNotBlank() }.joinToString(";"),
+        )
     }
 
     /** Points every [STEP_M] along [route] from [FROM_M] past the turn, up to [SPAN_M] on or the stop. */

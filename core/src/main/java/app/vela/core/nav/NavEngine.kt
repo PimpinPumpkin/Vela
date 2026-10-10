@@ -595,6 +595,10 @@ object NavEngine {
     const val STOP_THEN_M = 300.0
     /** How far past a turn into a parking lot the stop may sit for the turn to say so. */
     const val LOT_THEN_M = 150.0
+    /** How far before the end of a trip its turn into the destination's lot may be, and how many
+     *  bare turns back from the arrival are looked at for it. */
+    const val LOT_DEST_BACK_M = 400.0
+    const val LOT_DEST_TURNS = 3
     /** A stop's pin this close to the route line is on the road: "ahead", not a side. */
     private const val SIDE_MIN_OFF_M = 8.0
     /** The line is read this far either side of the stop's mark for the side test. */
@@ -639,6 +643,37 @@ object NavEngine {
         val k = stopLegManeuver(route, man, atM)
         if (k < 0 || !lotTurnFits(route.maneuvers[k], atM - man[k])) return null
         return k to man[k]
+    }
+
+    /**
+     * The turns that close [route] and might be its way into the destination's own parking lot,
+     * for the map lookup that decides it ([ParkingLotTurn.wordDestination]), in the order driven:
+     * each one's index among the maneuvers, its meters along the line, and whether it is a left.
+     * A trip into a lot usually ends with the turn off the street and then a turn or two between
+     * the aisles, all of them bare, so the candidates are the lefts and rights onto a road with no
+     * name and no number that run unbroken up to the arrival: at most [LOT_DEST_TURNS] of them,
+     * none more than [LOT_DEST_BACK_M] before the end. Meters are measured back from the end of
+     * the line, where the steps' lengths have had no room to drift.
+     */
+    fun destinationLotTurns(route: Route): List<Triple<Int, Double, Boolean>> {
+        val ms = route.maneuvers
+        if (route.polyline.size < 2 || ms.size < 3 || ms.last().type != ManeuverType.ARRIVE) return emptyList()
+        val total = cumulative(route.polyline).last()
+        val out = ArrayList<Triple<Int, Double, Boolean>>()
+        var past = 0.0
+        var k = ms.lastIndex - 1
+        while (k > 0 && out.size < LOT_DEST_TURNS) {
+            past += ms[k].distanceMeters
+            if (past > LOT_DEST_BACK_M) break
+            val m = ms[k]
+            if (!quiet(m)) {
+                val left = turnLeftOf(m.type) ?: break
+                if (!m.road.isNullOrBlank() || !m.ref.isNullOrBlank()) break
+                out += Triple(k, (total - past).coerceAtLeast(0.0), left)
+            }
+            k--
+        }
+        return out.asReversed()
     }
 
     /**

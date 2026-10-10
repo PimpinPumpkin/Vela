@@ -225,9 +225,13 @@ object RoadNameTiles {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, List<RoadLine>>) = size > 16
     }
 
+    /** Roads [roadsAlong] answers with instead of reading tiles (tests). */
+    @Volatile internal var testRoads: List<RoadLine>? = null
+
     /** Every car road in the tiles around [poly] (a short stretch: at most 8 tiles), or null when
      *  the tiles could not be read. */
     suspend fun roadsAlong(poly: List<LatLng>): List<RoadLine>? {
+        testRoads?.let { return it }
         val f = fetch ?: return null
         val tiles = tilesAlong(poly)
         if (tiles.isEmpty() || tiles.size > 8) return null

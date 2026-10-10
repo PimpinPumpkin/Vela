@@ -23,6 +23,21 @@ class StopCueStringsTest {
         assertEquals("Turn left, then your stop will be ahead", en.thenStop("Turn left", " ", null))
         assertEquals("Turn left into the parking lot, then Davis Food Co-op is on your right", en.intoLotThen(true, "Davis Food Co-op", false))
         assertEquals("Turn right into the parking lot, then Davis Food Co-op is ahead", en.intoLotThen(false, "Davis Food Co-op", null))
+        assertEquals("Turn left into the parking lot", en.intoLot(true))
+        assertEquals("Turn right into the parking lot", en.intoLot(false))
+    }
+
+    @Test fun `every language words a turn into the destination's lot, a left apart from a right`() {
+        for (code in langs) {
+            val ns = NavStringsRegistry.forLanguage(code)
+            val l = ns.intoLot(true)
+            val r = ns.intoLot(false)
+            assertNotEquals("$code", l, r)
+            for (s in listOf(l, r)) {
+                assertTrue("$code: '$s'", s.isNotBlank() && s == s.trim() && !s.contains("  ") && !s.contains("null"))
+                assertFalse("$code: '$s' ends as a sentence, not a clause", s.endsWith(",") || s.endsWith("、") || s.endsWith("，"))
+            }
+        }
     }
 
     @Test fun `every language names the stop, keeps the instruction and tells the sides apart`() {
