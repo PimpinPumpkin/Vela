@@ -1476,23 +1476,25 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - The side is `NavEngine.stopSide`: where the stop's pin sits against the line's direction
   through its mark, read 25 m either way. It is null ("will be ahead") when the pin is within
   `SIDE_MIN_OFF_M` (8 m) of the line or the line bends more than 45 degrees through the mark.
-- When that maneuver is a left or right onto a road with no name and no number and the stop is at
-  most `LOT_THEN_M` (150 m) past it (`NavEngine.lotTurnCandidate`), `ParkingLotTurn.entersLot`
-  reads the map's z14 tiles along the route (`RoadNameTiles.roadsAlong`, the `transportation`
-  layer's `class` and `service`), every 8 m from 10 m past the turn for up to 60 m or to the
-  stop. Every sample's nearest car road within 12 m has to be a service road that is not an
-  alley, and one a `parking_aisle`. Then the line is `NavStrings.intoLotThen`, "Turn left into the
-  parking lot, then Davis Food Co-op is on your right". No router marks a parking aisle, so this
-  is the only source. One lookup per route and stop, in the background, within
-  `LOT_LOOKUP_TIMEOUT_MS` (8 s); until it answers, or when the tiles cannot be read, the plain
-  wording stands.
+- The turn into the stop's parking lot. A way into a lot ends with the turn off the street and
+  often a turn or two between the aisles, all bare. `NavEngine.lotTurnsBefore(route, mark)` lists
+  the lefts and rights onto a road with no name and no number that run unbroken up to the
+  stop's mark, at most `LOT_DEST_TURNS` (3), none more than `LOT_DEST_BACK_M` (400 m) before it,
+  earliest first. `NavSession.lotTurn` checks them in that order with `ParkingLotTurn.entersLot`,
+  which reads the map's z14 tiles along the route (`RoadNameTiles.roadsAlong`, the
+  `transportation` layer's `class` and `service`), every 8 m from 10 m past the turn for up to
+  60 m or to the stop. Every sample's nearest car road within 12 m has to be a service road that
+  is not an alley, and one a `parking_aisle`. The first turn that passes is the turn into the lot
+  (`StopAhead.lotTurn`): its lines read `NavStrings.intoLot`, "Turn left into the parking lot",
+  and when it is also the last turn before the stop, `NavStrings.intoLotThen`, "Turn left into
+  the parking lot, then Davis Food Co-op is on your right". No router marks a parking aisle, so
+  this is the only source. One lookup per route and stop, in the background, within
+  `LOT_LOOKUP_TIMEOUT_MS` (8 s) a turn; until it answers, or when the tiles cannot be read, the
+  plain wording stands.
 - The end of a trip gets the same test against the destination, when the route is planned
   (`ParkingLotTurn.wordDestination`, DRIVE only, from `GoogleMapsDataSource.directions` and
-  `nameRoute`). A trip into a lot ends with the turn off the street and often a turn or two
-  between the aisles, all bare. The candidates are `NavEngine.destinationLotTurns`: the lefts
-  and rights onto a road with no name and no number that run unbroken up to the arrival, at most
-  `LOT_DEST_TURNS` (3), none more than `LOT_DEST_BACK_M` (400 m) before the end, measured back
-  from the end. The first one whose way on the tiles show entering a lot is the turn off the
+  `nameRoute`). The candidates are `NavEngine.destinationLotTurns`, `lotTurnsBefore` to the end
+  of the line. The first one whose way on the tiles show entering a lot is the turn off the
   street: its `instruction` and `instructionNoRoad` become `NavStrings.intoLot`, "Turn left into
   the parking lot"; its type and place stay, and the turns after it keep their plain words. The
   step carries the words, so the banner, the step list, the voice and the car say them, and

@@ -33,10 +33,11 @@ data class NavState(
  * The next stop on a drive with stops, as [NavEngine.update] needs it to say the stop is coming
  * the way it says the destination is: [atM] is its mark along the route, [side] "left" or "right"
  * when its pin sits clearly to one side of the road there ([NavEngine.stopSide]), null for
- * "ahead". [intoLot] says the last turn before it enters a parking lot, read from the map's own
- * road data ([ParkingLotTurn]), so the turn can be said as "into the parking lot".
+ * "ahead". [lotTurn] is the index of the maneuver that turns into the stop's parking lot, read
+ * from the map's own road data ([ParkingLotTurn], [NavEngine.lotTurnsBefore]), so that turn can
+ * be said as "into the parking lot"; -1 when none does or the map has not answered yet.
  */
-data class StopAhead(val atM: Double, val label: String, val side: String? = null, val intoLot: Boolean = false)
+data class StopAhead(val atM: Double, val label: String, val side: String? = null, val lotTurn: Int = -1)
 
 /** Side-effects the engine asks the UI layer to perform. */
 sealed interface NavEvent {

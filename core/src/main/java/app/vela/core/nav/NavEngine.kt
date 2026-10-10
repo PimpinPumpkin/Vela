@@ -416,7 +416,11 @@ object NavEngine {
         // line, so a stop is named at most twice for its turn.
         val stopLeft = when (stop?.side) { "left" -> true; "right" -> false; else -> null }
         val thenStopHere = stop != null && !isArrive && !isDepart && idxCur == stopLegManeuver(route, manAlong, stop.atM)
-        val lotTurnLeft = if (thenStopHere && stop!!.intoLot && lotTurnFits(target, stop.atM - manAlong[idxCur])) turnLeftOf(target.type) else null
+        // The turn into the stop's parking lot (NavSession.lotTurn), which is the turn off the
+        // street and may sit a turn or two before the last one: its lines say so, and when it is
+        // also the last turn before the stop, the stop follows on the same line.
+        val lotTurnLeft = if (stop != null && !isArrive && !isDepart && idxCur == stop.lotTurn && target.road.isNullOrBlank() && target.ref.isNullOrBlank()) turnLeftOf(target.type) else null
+        val lotLine = lotTurnLeft?.let { nav().intoLot(it) }
         var stopCuedNow = false
         fun withStop(line: String): String {
             if (!thenStopHere) return line
@@ -453,7 +457,7 @@ object NavEngine {
                     isArrive -> nav().destinationAhead()
                     // An exit keeps its number and road: that is what the sign overhead says.
                     SpokenDetail.exitLike(target.type) -> nav().repeatShort(target.spokenInstruction())
-                    else -> nav().repeatShort(target.instructionNoRoad ?: target.spokenInstruction())
+                    else -> nav().repeatShort(lotLine ?: target.instructionNoRoad ?: target.spokenInstruction())
                 }
                 events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), withNext(withStop(line))))
                 if (!isArrive) events += NavEvent.Haptic(target.type, approaching = true)
@@ -485,13 +489,13 @@ object NavEngine {
                     // spokenSign drops the secondary sign destinations for SPEECH (the banner keeps
                     // the full sign) - speaking the whole sign took long enough that the next
                     // prompt interrupted it mid-sentence.
-                    firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(target.spokenInstruction()))
-                    firstForStep -> nav().spokenSign(target.spokenInstruction())
+                    firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(lotLine ?: target.spokenInstruction()))
+                    firstForStep -> nav().spokenSign(lotLine ?: target.spokenInstruction())
                     // The step's SECOND prompt drops the sign-destination tail ("toward X"):
                     // the far band already named it, and repeating the whole thing at every
                     // band read as "the same shit in declining feet counts" off an exit
                     // (real-drive report, 2026-07-17; Google shortens repeats the same way).
-                    else -> nav().repeatShort(target.spokenInstruction())
+                    else -> nav().repeatShort(lotLine ?: target.spokenInstruction())
                 }
                 // The landmark cue rides on the plain form only: a lane line already says where
                 // to be, and "pass the light, then use the left 2 lanes" has the order backward.
@@ -530,7 +534,7 @@ object NavEngine {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
-                    val turnText = if (spoken.isEmpty()) nav().spokenSign(target.spokenInstruction()) else nav().repeatShort(target.spokenInstruction())
+                    val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else nav().repeatShort(lotLine ?: target.spokenInstruction())
                     // The shorter modes said their one line on the approach; the buzz below stays.
                     if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(withNext(withStop(turnText)), interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
@@ -615,10 +619,8 @@ object NavEngine {
     /** How far past the last maneuver before a stop the stop may sit for that maneuver to say it
      *  ("..., then <stop> will be on your right"): "then" means soon. */
     const val STOP_THEN_M = 300.0
-    /** How far past a turn into a parking lot the stop may sit for the turn to say so. */
-    const val LOT_THEN_M = 150.0
-    /** How far before the end of a trip its turn into the destination's lot may be, and how many
-     *  bare turns back from the arrival are looked at for it. */
+    /** How far before a stop, or the end of a trip, its turn into the parking lot may be, and how
+     *  many bare turns back from there are looked at for it. */
     const val LOT_DEST_BACK_M = 400.0
     const val LOT_DEST_TURNS = 3
     /** A stop's pin this close to the route line is on the road: "ahead", not a side. */
@@ -663,51 +665,39 @@ object NavEngine {
         else -> null
     }
 
-    /** A turn that can be said as "into the parking lot": a left or right onto a road with no name
-     *  and no number, with the stop at most [LOT_THEN_M] past it. */
-    private fun lotTurnFits(m: Maneuver, stopPastM: Double): Boolean =
-        turnLeftOf(m.type) != null && m.road.isNullOrBlank() && m.ref.isNullOrBlank() && stopPastM in 0.0..LOT_THEN_M
-
-    /** The maneuver before the stop at [atM] that might turn into its parking lot, for the map
-     *  lookup that decides it ([ParkingLotTurn]): its index, and its along-route meters. Null
-     *  when the last turn before the stop cannot be one (a named road, not a turn, too far). */
-    fun lotTurnCandidate(route: Route, atM: Double): Pair<Int, Double>? {
-        if (route.polyline.size < 2 || route.maneuvers.isEmpty()) return null
-        val man = geomFor(route).manAlong
-        val k = stopLegManeuver(route, man, atM)
-        if (k < 0 || !lotTurnFits(route.maneuvers[k], atM - man[k])) return null
-        return k to man[k]
-    }
-
     /**
-     * The turns that close [route] and might be its way into the destination's own parking lot,
-     * for the map lookup that decides it ([ParkingLotTurn.wordDestination]), in the order driven:
-     * each one's index among the maneuvers, its meters along the line, and whether it is a left.
-     * A trip into a lot usually ends with the turn off the street and then a turn or two between
-     * the aisles, all of them bare, so the candidates are the lefts and rights onto a road with no
-     * name and no number that run unbroken up to the arrival: at most [LOT_DEST_TURNS] of them,
-     * none more than [LOT_DEST_BACK_M] before the end. Meters are measured back from the end of
-     * the line, where the steps' lengths have had no room to drift.
+     * The turns that close the way to [endM] along [route] (a stop's mark, or the end of the
+     * line) and might be its way into a parking lot, for the map lookup that decides it
+     * ([ParkingLotTurn]), in the order driven: each one's index among the maneuvers, its meters
+     * along the line, and whether it is a left. A way into a lot usually ends with the turn off
+     * the street and then a turn or two between the aisles, all of them bare, so the candidates
+     * are the lefts and rights onto a road with no name and no number that run unbroken up to
+     * [endM]: at most [LOT_DEST_TURNS] of them, none more than [LOT_DEST_BACK_M] before it. The
+     * first whose way on enters a lot is the turn off the street.
      */
-    fun destinationLotTurns(route: Route): List<Triple<Int, Double, Boolean>> {
+    fun lotTurnsBefore(route: Route, endM: Double): List<Triple<Int, Double, Boolean>> {
         val ms = route.maneuvers
-        if (route.polyline.size < 2 || ms.size < 3 || ms.last().type != ManeuverType.ARRIVE) return emptyList()
-        val total = cumulative(route.polyline).last()
+        if (route.polyline.size < 2 || ms.size < 3) return emptyList()
+        val man = geomFor(route).manAlong
+        var k = (ms.lastIndex - 1 downTo 1).firstOrNull { man[it] <= endM } ?: return emptyList()
         val out = ArrayList<Triple<Int, Double, Boolean>>()
-        var past = 0.0
-        var k = ms.lastIndex - 1
         while (k > 0 && out.size < LOT_DEST_TURNS) {
-            past += ms[k].distanceMeters
-            if (past > LOT_DEST_BACK_M) break
+            if (endM - man[k] > LOT_DEST_BACK_M) break
             val m = ms[k]
             if (!quiet(m)) {
                 val left = turnLeftOf(m.type) ?: break
                 if (!m.road.isNullOrBlank() || !m.ref.isNullOrBlank()) break
-                out += Triple(k, (total - past).coerceAtLeast(0.0), left)
+                out += Triple(k, man[k], left)
             }
             k--
         }
         return out.asReversed()
+    }
+
+    /** [lotTurnsBefore] the end of the line: the way into the destination's own lot. */
+    fun destinationLotTurns(route: Route): List<Triple<Int, Double, Boolean>> {
+        if (route.polyline.size < 2 || route.maneuvers.lastOrNull()?.type != ManeuverType.ARRIVE) return emptyList()
+        return lotTurnsBefore(route, geomFor(route).cum.last())
     }
 
     /**

@@ -566,23 +566,27 @@ class NavSession @Inject constructor(
         return StopAhead(mark, s.label, NavEngine.stopSide(route, s.location, mark), lotTurn(route, mark))
     }
 
-    /** One map lookup per route and stop: whether the turn before the stop enters a parking lot
-     *  ([ParkingLotTurn]). It runs in the background and answers no until it has looked; a turn
-     *  is approached long before its prompt, and the tiles are cached by the map anyway. */
-    private class LotLookup(val route: Route, val atM: Double) { @Volatile var intoLot = false }
+    /** One map lookup per route and stop: which of the bare turns before the stop enters its
+     *  parking lot ([NavEngine.lotTurnsBefore], [ParkingLotTurn]), checked in the order driven.
+     *  It runs in the background and answers -1 (none) until it has looked; a turn is approached
+     *  long before its prompt, and the tiles are cached by the map anyway. */
+    private class LotLookup(val route: Route, val atM: Double) { @Volatile var lotTurn = -1 }
     @Volatile private var lotLookup: LotLookup? = null
 
-    private fun lotTurn(route: Route, atM: Double): Boolean {
-        lotLookup?.let { if (it.route === route && it.atM == atM) return it.intoLot }
+    private fun lotTurn(route: Route, atM: Double): Int {
+        lotLookup?.let { if (it.route === route && it.atM == atM) return it.lotTurn }
         val look = LotLookup(route, atM)
         lotLookup = look
-        val (_, turnM) = NavEngine.lotTurnCandidate(route, atM) ?: return false
+        val turns = NavEngine.lotTurnsBefore(route, atM)
+        if (turns.isEmpty()) return -1
         scope.launch {
-            val yes = runCatching { kotlinx.coroutines.withTimeoutOrNull(LOT_LOOKUP_TIMEOUT_MS) { ParkingLotTurn.entersLot(route, turnM, atM) } }.getOrNull() == true
-            look.intoLot = yes
-            if (yes) note("next stop: the turn before it enters a parking lot")
+            for ((i, t) in turns.withIndex()) {
+                val (k, turnM, _) = t
+                val yes = runCatching { kotlinx.coroutines.withTimeoutOrNull(LOT_LOOKUP_TIMEOUT_MS) { ParkingLotTurn.entersLot(route, turnM, atM) } }.getOrNull() == true
+                if (yes) { look.lotTurn = k; note("next stop: turn ${i + 1} of ${turns.size} before it enters a parking lot"); break }
+            }
         }
-        return false
+        return -1
     }
 
     // The progress seen on the last fix, for the jump check above (guarded by stopLock).

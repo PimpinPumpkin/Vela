@@ -42,7 +42,8 @@ class NavEngineStopCueTest {
     private fun stopAt(r: Route, north: Double, east: Double = 30.0, intoLot: Boolean = false, label: String = "Davis Food Co-op"): StopAhead {
         val pin = pt(1500.0 + east, north)
         val mark = NavEngine.stopMarks(r, listOf(pin))[0]!!
-        return StopAhead(mark, label, NavEngine.stopSide(r, pin, mark), intoLot)
+        // The route's one turn (index 1) is the way into the lot when the test says so.
+        return StopAhead(mark, label, NavEngine.stopSide(r, pin, mark), if (intoLot) 1 else -1)
     }
 
     /** Drives the route at [mps] to 30 m short of its end; every line spoken on the way. */
@@ -108,9 +109,12 @@ class NavEngineStopCueTest {
         // A named road is never a parking lot, whatever the lookup said.
         val named = route()
         assertTrue(drive(named, stopAt(named, 80.0, intoLot = true)).none { "parking lot" in it })
-        // Past 150 m it is not "into the lot, then the stop" either.
+        // The turn into the lot is said as one however far past it the stop sits; the stop
+        // follows on the same line only within STOP_THEN_M.
         val far = route(road = null)
-        assertTrue(drive(far, stopAt(far, 250.0, intoLot = true)).none { "parking lot" in it })
+        val farSaid = drive(far, stopAt(far, NavEngine.STOP_THEN_M + 50.0, intoLot = true))
+        assertTrue("$farSaid", farSaid.any { it.endsWith("Turn left into the parking lot") })
+        assertTrue("$farSaid", farSaid.none { "parking lot, then" in it })
     }
 
     @Test fun `brief says the turn and the stop once`() {

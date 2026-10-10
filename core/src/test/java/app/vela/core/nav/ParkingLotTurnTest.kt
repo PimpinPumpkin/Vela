@@ -102,6 +102,14 @@ class ParkingLotTurnTest {
         return app.vela.core.model.Route(line, listOf(app.vela.core.model.RouteLeg(440.0, 50.0, null, ms)), 440.0, 50.0, null)
     }
 
+    @Test fun `the same turns are found before a stop's mark, and the first into a lot is the stop's lot turn`() {
+        // The stop sits 30 m along the aisle: its mark is 380 m along the line.
+        val trip = tripThroughLot()
+        val turns = NavEngine.lotTurnsBefore(trip, 380.0)
+        assertEquals(listOf(1, 2), turns.map { it.first })
+        assertTrue("a stop far past the turns has none", NavEngine.lotTurnsBefore(tripInto(NavEngine.LOT_DEST_BACK_M + 50.0), NavEngine.LOT_DEST_BACK_M + 340.0).isEmpty())
+    }
+
     @Test fun `the bare turns that close a trip are candidates in the order driven`() {
         val turns = NavEngine.destinationLotTurns(tripThroughLot())
         assertEquals(listOf(1, 2), turns.map { it.first })

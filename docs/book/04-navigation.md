@@ -314,8 +314,8 @@ route, and the voice says "You've reached <stop>".
 The voice also says a stop is coming, the way it says the destination is:
 
 ```
-STOP_THEN_M = 300   // the last turn before a stop names it when the stop is this close past it
-LOT_THEN_M  = 150   // ...and calls it a turn into the parking lot only this close
+STOP_THEN_M     = 300   // the last turn before a stop names it when the stop is this close past it
+LOT_DEST_BACK_M = 400   // the turn into a parking lot is looked for this far before a stop or the end
 ```
 
 - The last maneuver the voice speaks before the stop names it after itself, on its first line and
@@ -326,17 +326,18 @@ LOT_THEN_M  = 150   // ...and calls it a turn into the parking lot only this clo
 - The side is where the stop's pin sits against the road at the stop (`NavEngine.stopSide`). A
   pin within 8 m of the line, or a line that bends more than 45 degrees there (a corner), gives
   "will be ahead" instead of a side that could be wrong.
-- When that last turn is onto a road with no name, Vela reads the map's own tiles along the first
-  60 m past it (`ParkingLotTurn`). Only when they show a parking aisle, reached by service roads
-  and no street or alley, does the turn become "Turn left into the parking lot, then Davis Food
-  Co-op is on your right". No router marks a parking aisle, and a road with no name is just as
-  often a driveway or an unnamed lane, so anything less certain keeps the plain "Turn left".
-- The end of the trip gets the same test against the destination. A trip into a lot ends with
-  the turn off the street and often a turn or two between the aisles, all with no name. Vela
-  looks at up to three such turns in the last 400 m and words the first one whose way on enters
-  a lot: "Turn left into the parking lot". It is settled when the route is planned, so the step
-  itself reads that way on the banner, in the step list, in the voice and on the car. A turn
-  between the aisles after it stays a plain "Turn right", and the usual arrival lines follow.
+- A way into a lot ends with the turn off the street and often a turn or two between the
+  aisles, all with no name. Vela looks at up to three such turns in the last 400 m before the
+  stop and reads the map's own tiles along the first 60 m past each (`ParkingLotTurn`). The
+  first whose tiles show a parking aisle, reached by service roads and no street or alley, is
+  the turn into the lot: it says "Turn left into the parking lot", and when it is also the last
+  turn before the stop, "Turn left into the parking lot, then Davis Food Co-op is on your right".
+  No router marks a parking aisle, and a road with no name is just as often a driveway or an
+  unnamed lane, so anything less certain keeps the plain "Turn left".
+- The end of the trip gets the same test against the destination. It is settled when the route
+  is planned, so the step itself reads "Turn left into the parking lot" on the banner, in the
+  step list, in the voice and on the car. A turn between the aisles after it stays a plain
+  "Turn right", and the usual arrival lines follow.
 - Brief puts the stop on its turn's one line. Highway exits only stays quiet for the turn in town
   and says the stop's own line, as it says the destination's.
 
