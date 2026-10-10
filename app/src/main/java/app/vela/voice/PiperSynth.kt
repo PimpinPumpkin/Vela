@@ -101,8 +101,12 @@ class PiperSynth @Inject constructor(
         context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .getFloat("voice_volume", 1.0f).coerceIn(0.2f, 3.0f)
 
-    // The loudest sample each voice has rendered, by voice and speaker ([VoiceLevel.gain]).
-    private val voicePeaks = java.util.concurrent.ConcurrentHashMap<String, Float>()
+    // Each voice's average level, by voice and speaker ([VoiceLevel.Meter]), kept between sessions
+    // so a voice plays at the same loudness from its first line.
+    private val voiceLevels = java.util.concurrent.ConcurrentHashMap<String, VoiceLevel.Meter>()
+    private fun levelPrefs() = context.getSharedPreferences("vela_voice_level", android.content.Context.MODE_PRIVATE)
+    private fun levelFor(key: String): VoiceLevel.Meter =
+        voiceLevels.getOrPut(key) { VoiceLevel.Meter.decode(levelPrefs().getString(key, null)) }
 
     override fun warmUp() {
         // No `tts != null` short-circuit: ensureLoaded must be able to REBUILD when the selected voice
@@ -246,17 +250,16 @@ class PiperSynth @Inject constructor(
                 var player: java.util.concurrent.Future<Long>? = null
                 var firstAudioMs = -1L
                 var made = 0
-                // One gain for the whole line, from the loudest this voice has rendered so far (its
-                // first phrase when it has not spoken yet), so the level cannot pump between phrases.
+                // One gain for the whole line, from the voice's level so far (this line's first
+                // phrase when it has never spoken), so the level cannot pump between phrases.
                 val levelKey = "$loadedVoiceId|$sid"
+                val level = levelFor(levelKey)
                 var gain = Float.NaN
                 fun feed(chunk: FloatArray, rate: Int) {
                     if (chunk.isEmpty()) return
-                    val peak = VoiceLevel.peak(chunk)
-                    val known = voicePeaks[levelKey]
-                    if (known == null || peak > known) voicePeaks[levelKey] = peak
-                    if (gain.isNaN()) gain = VoiceLevel.gain(maxOf(known ?: 0f, peak), vol)
-                    VoiceLevel.apply(chunk, gain)
+                    synchronized(level) { level.add(chunk) }
+                    if (gain.isNaN() && level.rms > 0f) gain = VoiceLevel.gain(level.rms, vol)
+                    VoiceLevel.apply(chunk, if (gain.isNaN()) vol else gain)
                     made += chunk.size
                     queue.put(chunk)
                     if (player == null) {
@@ -311,6 +314,8 @@ class PiperSynth @Inject constructor(
                     if (myGen == generation) runCatching { at.pause() }
                 }
                 Log.i(TAG, "spoke ${"%.1f".format(made / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "streamed"}) in ${genMs}ms, gain ${"%.2f".format(gain)}")
+                // Derived from the voice itself, so it is not in the backup rules.
+                runCatching { levelPrefs().edit().putString(levelKey, synchronized(level) { level.encode() }).apply() }
             } catch (t: Throwable) {
                 Log.e(TAG, "speak failed: ${t.message}", t)
             } finally {

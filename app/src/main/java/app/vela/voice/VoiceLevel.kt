@@ -1,35 +1,67 @@
 package app.vela.voice
 
 import kotlin.math.abs
+import kotlin.math.sqrt
 import kotlin.math.tanh
 
 /**
  * How loud the Vela voice plays (Settings > Voice, "Guidance volume").
  *
- * The neural voices render well under full scale: Kokoro's default voice peaks near 0.29, so at
- * a gain of 1 it played about 10 dB under a voice that fills the range, and the old Louder and
- * Loudest settings (plain gains of 1.6 and 2.2) still left it under. The voice is now brought up
- * so its measured peak lands at [TARGET_PEAK], and the setting scales from there. What that
- * pushes past [KNEE] is rounded off by [limit] instead of being cut flat.
+ * The neural voices render well under full scale: Kokoro's default voice has an RMS near 0.055
+ * and peaks near 0.3, so at a gain of 1 it played about 10 dB under a voice that fills the range.
+ * Each voice is brought up so its average level lands at [TARGET_RMS], and the setting scales
+ * from there. What that pushes past [KNEE] is rounded off by [limit] instead of being cut flat.
+ *
+ * The level is the voice's long-run RMS ([Meter]), kept between sessions. A voice's loudest
+ * sample keeps rising for as long as it talks (0.23 on the first phrase, 0.42 a minute later on
+ * a Pixel 4a), and a gain set from that fell to nearly half over the first minute of a drive.
+ * The RMS of the same voice moved 3 percent between phrases.
  */
 internal object VoiceLevel {
-    /** Where the voice's own peak is brought to at the Normal setting. */
-    const val TARGET_PEAK = 0.85f
+    /** Where a voice's average level is brought to at the Normal setting. */
+    const val TARGET_RMS = 0.13f
 
-    /** The most the voice is ever raised to get there, so a near-silent render is not amplified into noise. */
+    /** The most a voice is ever raised to get there, so a near-silent render is not amplified into noise. */
     const val MAX_LIFT = 4f
 
     /** Below this a sample passes unchanged; above it the limiter bends it toward full scale. */
     const val KNEE = 0.8f
 
-    /** A measured peak under this is not speech worth leveling against. */
+    /** A chunk whose loudest sample is under this is a pause, not speech, and is not measured. */
     const val MIN_PEAK = 0.02f
 
-    /** The gain that brings a voice peaking at [voicePeak] to [TARGET_PEAK], times the user's
+    /** A voice's average level over everything it has said: the sum of squares and the count of
+     *  the samples in its speech chunks. Pauses are left out, or a line with long gaps would read
+     *  as a quiet voice. */
+    class Meter(var sumSq: Double = 0.0, var count: Long = 0L) {
+        fun add(chunk: FloatArray) {
+            if (peak(chunk) < MIN_PEAK) return
+            var s = 0.0
+            for (x in chunk) s += x * x
+            sumSq += s
+            count += chunk.size
+        }
+
+        /** 0 until something has been measured. */
+        val rms: Float get() = if (count > 0) sqrt(sumSq / count).toFloat() else 0f
+
+        fun encode(): String = "$sumSq|$count"
+
+        companion object {
+            fun decode(s: String?): Meter {
+                val p = s?.split('|') ?: return Meter()
+                val sum = p.getOrNull(0)?.toDoubleOrNull() ?: return Meter()
+                val n = p.getOrNull(1)?.toLongOrNull() ?: return Meter()
+                return if (sum.isFinite() && sum >= 0.0 && n > 0) Meter(sum, n) else Meter()
+            }
+        }
+    }
+
+    /** The gain that brings a voice whose level is [voiceRms] to [TARGET_RMS], times the user's
      *  [setting] (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest). Never lowers a voice that is
-     *  already loud: the lift alone is at least 1. */
-    fun gain(voicePeak: Float, setting: Float): Float {
-        val lift = if (voicePeak < MIN_PEAK || voicePeak.isNaN()) 1f else (TARGET_PEAK / voicePeak).coerceIn(1f, MAX_LIFT)
+     *  already loud: the lift alone is at least 1. An unmeasured voice gets the setting alone. */
+    fun gain(voiceRms: Float, setting: Float): Float {
+        val lift = if (voiceRms <= 0f || voiceRms.isNaN()) 1f else (TARGET_RMS / voiceRms).coerceIn(1f, MAX_LIFT)
         return lift * setting
     }
 

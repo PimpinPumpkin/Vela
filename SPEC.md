@@ -4392,11 +4392,14 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   a test.
 - `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
   leveled base (`VoiceLevel`). The voices render well under full scale: Kokoro's default voice
-  peaks at 0.29 and has an RMS of 0.058 on a Pixel 4a. Each line gets one gain,
-  `TARGET_PEAK` (0.85) over the loudest sample that voice and speaker have rendered, between 1
-  and `MAX_LIFT` (4), times the setting. Samples past `KNEE` (0.8) are bent toward full scale by
-  a tanh curve, so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at
-  1.0: Android can only attenuate.
+  has an RMS of 0.052 to 0.058 on a Pixel 4a. Each line gets one gain, `TARGET_RMS` (0.13) over
+  the voice's long-run RMS, between 1 and `MAX_LIFT` (4), times the setting. The RMS is summed
+  over every speech chunk the voice and speaker have rendered (`VoiceLevel.Meter`; a chunk
+  peaking under `MIN_PEAK`, 0.02, is a pause and is left out) and kept in the `vela_voice_level`
+  preferences, so the level is the same from the first line of a session. It is not set from
+  the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
+  gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
+  so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
