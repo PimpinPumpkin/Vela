@@ -505,7 +505,9 @@ class NavSession @Inject constructor(
         if (!applied) return
         // The stop just reached is said BEFORE this fix's turn lines: passing the mark and
         // coming within the next turn's announcing distance can land on one fix, and
-        // "In 300 feet, turn left" before "You've reached the co-op" had them backwards.
+        // "In 300 feet, turn left" before "You've reached the co-op" had them backwards. Not
+        // before a line that interrupts (the turn itself, the arrival): that flushes the queue,
+        // and the stop line would go unheard, so it follows such a line instead.
         // A jump past the next stop is a skip, not an arrival: hold the stops and reroute through
         // them (again each fix until a new route lands; the reroute gate paces the requests).
         // A SILENT stop is different. It is a point a saved route or a camera detour was built
@@ -529,9 +531,11 @@ class NavSession @Inject constructor(
         if (skipped) {
             if (!skipNoted) { note("progress jumped past a stop, not counting it: rerouting through the stops"); skipNoted = true }
             if (!replayMode) reroute(loc, bearingDeg) // replays play recorded swaps back instead
-        } else {
+        }
+        val interrupting = events.any { it is NavEvent.Speak && it.interrupt }
+        if (!skipped) {
             skipNoted = false
-            announceStopsPassed(route, next.traveledM, loc)
+            if (!interrupting) announceStopsPassed(route, next.traveledM, loc)
         }
         val spokeNow = events.any { it is NavEvent.Speak }
         events.forEach { ev ->
@@ -554,6 +558,7 @@ class NavSession @Inject constructor(
                 }
             }
         }
+        if (!skipped && interrupting) announceStopsPassed(route, next.traveledM, loc)
         if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
         maybeRecheck(loc, next)
     }

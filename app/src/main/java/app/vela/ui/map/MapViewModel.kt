@@ -1836,7 +1836,10 @@ class MapViewModel @Inject constructor(
     fun openShortcut(kind: ShortcutKind) {
         val sp = _state.value.let { if (kind == ShortcutKind.HOME) it.home else it.work } ?: return
         val label = appContext.getString(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
-        selectPlace(Place(id = sp.id, name = label, location = sp.location, address = sp.address))
+        // The contact path: the same pickers and stop branches, and no lookup. The plain path
+        // searched "Home <address>" to fill the sheet, which sends the address out and can bring
+        // back a business's phone and hours under the name Home.
+        selectContactPlace(Place(id = sp.id, name = label, location = sp.location, address = sp.address))
     }
 
     fun clearShortcut(kind: ShortcutKind) {
@@ -1882,6 +1885,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 saved = savedStore.saved(), lists = lists,
+                results = refreshedOpenList(it, lists) ?: it.results,
                 selected = it.selected?.let { s -> if (s.id == p.id) s.copy(name = trimmed) else s },
             )
         }
