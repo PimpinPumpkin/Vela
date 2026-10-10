@@ -2217,7 +2217,8 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   Alerts only the speeding, speed camera and plate camera alerts play `VoiceGuide.alertChime`,
   two short notes at 1046.5 Hz, instead of their spoken line (`NavController.alert`); every
   other chime and every prompt stays silent. Off is silent throughout. The car's own toggle sets
-  On or Off.
+  On or Off and leaves Alerts only (`CarVoice`), writing the same two prefs; the phone's state
+  follows the prefs through a listener, so the two never disagree.
 
 #### Street callouts
 
@@ -4747,7 +4748,8 @@ reuses it.
   shrink. With neither, the slot is a 54 dp spacer that keeps the figures centered against End.
 - With pause out of the bar, the stack has `NavHoldControls`: one 56 dp button for pause and
   mute. On a running drive the first tap slides mute out beside it for `OPEN_MS` (6 s) and a
-  second tap pauses. While paused, one tap resumes. A long press mutes. The slide-out is the key
+  second tap pauses. While paused, one tap resumes. A long press steps the voice (on, alerts only,
+  off). The slide-out is the key
   path to mute. The glyph shows pause or resume, the accent fill a held drive, a crossed speaker
   a muted one, a bell "Alerts only" (4.9). The speaker button steps On, Alerts only, Off.
 - The "Then" tab hangs off the turn card's lower left in the card's color and names the next

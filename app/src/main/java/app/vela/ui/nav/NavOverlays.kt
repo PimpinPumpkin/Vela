@@ -1458,7 +1458,7 @@ fun NavStopOffer(
  * phone's right edge for two things you touch rarely. Now there is one 56 dp button: on a running
  * drive the FIRST tap slides mute out beside it for [OPEN_MS] and a second tap on the same button
  * pauses (pausing on the first tap made holding the drive the only way to reach mute); while
- * paused, one tap resumes. A LONG PRESS mutes outright, for people who know where it is. The button carries both states - the glyph is
+ * paused, one tap resumes. A LONG PRESS steps the voice (on, alerts only, off), for people who know where it is. The button carries both states - the glyph is
  * pause or resume, the accent fill says the drive is held, and a muted drive wears a small crossed
  * speaker (a bell in "Alerts only") - because one control standing for two states has to show both.
  *

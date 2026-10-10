@@ -559,6 +559,16 @@ class MapViewModel @Inject constructor(
     // UK gas stations get their price from the Fuel Finder file (SPEC 5.8). Above init like nav.
     private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
 
+    // The voice mode written from outside this model (the car's on/off switch, CarVoice):
+    // followed here so the phone's state and the drive button agree with it. A strong reference,
+    // held above init: the prefs keep listeners weakly.
+    private val voicePrefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+        if (key == "spoken_directions" || key == "spoken_alerts_only") {
+            val muted = !p.getBoolean("spoken_directions", true)
+            val alerts = muted && p.getBoolean("spoken_alerts_only", false)
+            if (muted != _state.value.voiceMuted || alerts != _state.value.voiceAlertsOnly) setVoiceMode(muted, alerts)
+        }
+    }
 
     init {
         // The drive's opening line is synthesized while its route preview is up (settled for
@@ -772,6 +782,7 @@ class MapViewModel @Inject constructor(
             app.vela.ui.VoiceAlertsOnly.on.value = alerts
             _state.update { it.copy(voiceMuted = true, voiceAlertsOnly = alerts) }
         }
+        voicePrefs.registerOnSharedPreferenceChangeListener(voicePrefListener)
         val installedVoices = VelaPiper.installedVoiceIds(appContext)
         val activeVoice = VelaPiper.effectiveVoiceId(appContext)
         _state.update {

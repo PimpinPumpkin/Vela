@@ -23,8 +23,7 @@ class CarSettingsScreen(carContext: CarContext, private val deps: CarDeps) : Scr
         val list = ItemList.Builder()
             .addItem(
                 toggleRow(app.vela.R.string.car_setting_voice, !deps.voiceGuide.muted) { on ->
-                    deps.voiceGuide.muted = !on
-                    prefs.edit().putBoolean("spoken_directions", on).apply()
+                    app.vela.car.CarVoice.set(carContext, deps.voiceGuide, on)
                 },
             )
             .addItem(

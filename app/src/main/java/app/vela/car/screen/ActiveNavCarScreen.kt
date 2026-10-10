@@ -188,7 +188,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             val muted = deps.voiceGuide.muted
             strip.addAction(
                 carAction(if (muted) app.vela.R.drawable.ic_car_mute else app.vela.R.drawable.ic_car_unmute) {
-                    deps.voiceGuide.muted = !deps.voiceGuide.muted; invalidate()
+                    app.vela.car.CarVoice.set(carContext, deps.voiceGuide, on = deps.voiceGuide.muted); invalidate()
                 },
             )
         }

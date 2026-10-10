@@ -207,7 +207,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             Text(
                 stringResource(R.string.settings_voice_volume),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+                modifier = Modifier.settingsAnchor(stringResource(R.string.settings_voice_volume)).padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
             )
             val volPrefs = androidx.compose.ui.platform.LocalContext.current
                 .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)

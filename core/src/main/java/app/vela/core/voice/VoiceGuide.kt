@@ -149,16 +149,18 @@ class VoiceGuide @Inject constructor(
     var working: Boolean? = null
         private set
 
-    /** When true, all spoken guidance is suppressed (the in-nav mute button). */
+    /** When true, all spoken guidance is suppressed (the in-nav mute button). Muting cuts the
+     *  line being spoken and drops the queue. */
     @Volatile
     var muted = false
-
-    /** Muted for turns, with the speeding and camera alerts as a chime: "Alerts only" (issue 735). */
-    @Volatile var alertsOnly = false
         set(value) {
             field = value
             if (value) stop()
         }
+
+    /** Muted for turns, with the speeding and camera alerts as a chime: "Alerts only" (issue 735).
+     *  Only read with [muted] true. */
+    @Volatile var alertsOnly = false
 
     private val audioManager: AudioManager? = context.getSystemService()
     private var focusRequest: AudioFocusRequest? = null
