@@ -5654,6 +5654,10 @@ private fun SuggestionOverflow(
     onCreateWith: (String) -> Unit,
 ) {
     var showSave by remember { mutableStateOf(false) }
+    // Rename, for a row that is in a list (issue #736): the place sheet's menu has it too, but
+    // the list's own rows are where people look for it. Same store call as the sheet's.
+    val inList = place != null && lists.any { l -> l.places.any { it.matches(place.id, place.featureId) } }
+    var showRename by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { onOpenChange(true) }) {
             Icon(
@@ -5664,7 +5668,26 @@ private fun SuggestionOverflow(
         }
         VelaMenu(expanded = open, onDismissRequest = { onOpenChange(false) }) {
             if (place != null) item(stringResource(R.string.place_save_to_list)) { onOpenChange(false); showSave = true }
+            if (inList) item(stringResource(R.string.mapscreen_menu_rename)) { onOpenChange(false); showRename = true }
             if (removable) item(stringResource(R.string.mapscreen_remove_from_history)) { onOpenChange(false); onRemove() }
+        }
+    }
+    if (showRename && place != null) {
+        var draft by remember(place.id) { mutableStateOf(place.name) }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showRename = false },
+            title = stringResource(R.string.saved_rename_title),
+            confirmText = stringResource(R.string.saved_rename_action),
+            onConfirm = { if (draft.isNotBlank()) app.vela.ui.SavedActions.rename?.invoke(place, draft); showRename = false },
+            dismissText = stringResource(android.R.string.cancel),
+            onDismiss = { showRename = false },
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
+            )
         }
     }
     if (showSave && place != null) {
