@@ -2837,6 +2837,10 @@ when the feature ids match. Two requests at most.
   the keyless `/s?tbm=map&suggest=p` call biased to the viewport). A row without a location
   runs as a search. When it fails or is empty, or Google is off, the search endpoint and
   OpenStreetMap race answers.
+- A query that is only digits (a house number being typed) keeps Google's rows within
+  `SUGGEST_NEAR_M` (80 km) of the view when there are any (issue #746): the keyless
+  autocomplete mixes the same number on streets abroad into its rows (two of four from a view
+  over Paris, 2026-10-10), and a `gl` country code makes no difference to that.
 - Local suggestions (recent queries and places, saved and list places, opted-in contacts) are
   computed synchronously per keystroke and are all that shows offline. Contacts load into
   memory once. They dedupe against network rows by name plus coarse location, and by feature id.

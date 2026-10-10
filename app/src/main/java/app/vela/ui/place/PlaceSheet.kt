@@ -731,7 +731,7 @@ fun PlaceSheet(
             // image request, like a photo. Not with Google off, and not when the picture fails to
             // load; the pill at the end of the action row stands in then. Declared out here because
             // the pill reads it too.
-            var svFailed by remember(place.svPanoId) { mutableStateOf(false) }
+            var svFailed by remember(place.id) { mutableStateOf(false) } // per place: neighbors share a pano
             val svTile = place.svPanoId != null && !svFailed && onShowPhotos == null &&
                 app.vela.ui.LoadPhotos.on.value && !app.vela.ui.GoogleFree.on.value
             // Photo hero at the top (Google-style); tap one to open the full gallery.

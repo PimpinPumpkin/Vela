@@ -1331,7 +1331,13 @@ class MapViewModel @Inject constructor(
                 photonDeferred?.cancel()
                 if (_state.value.query.trim() == term) {
                     val houseNo = Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
-                    fun coveredByGoogle(p: Place) = houseNo != null && auto.places.any { g ->
+                    // A house number alone (issue #746): the keyless autocomplete mixes the same
+                    // number on streets abroad into its rows (two of four from a view over Paris),
+                    // so the rows near the view are kept when there are any.
+                    val autoPlaces = if (term.trim().all { it.isDigit() } && near != null) {
+                        auto.places.filter { it.location.distanceTo(near) <= SUGGEST_NEAR_M }.ifEmpty { auto.places }
+                    } else auto.places
+                    fun coveredByGoogle(p: Place) = houseNo != null && autoPlaces.any { g ->
                         g.location.distanceTo(p.location) < 120.0 &&
                             (g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
                     }
@@ -1343,8 +1349,8 @@ class MapViewModel @Inject constructor(
                     val localFids = localPlaces.mapNotNull { it.featureId }.toHashSet()
                     // Looking far away and nothing here starts with the typed name: the place you
                     // mean is probably near you (user 2026-09-22), so its rows lead.
-                    val home = homeSuggestions(term, near, auto.places)
-                    val deduped = (addrLead + home + auto.places.filterNot { a -> home.any { h -> h.featureId != null && h.featureId == a.featureId } }).filterNot {
+                    val home = homeSuggestions(term, near, autoPlaces)
+                    val deduped = (addrLead + home + autoPlaces.filterNot { a -> home.any { h -> h.featureId != null && h.featureId == a.featureId } }).filterNot {
                         nameLocKey(it) in localNameLoc || (it.featureId != null && it.featureId in localFids)
                     }
                     _state.update { it.copy(suggestions = deduped.take(8), querySuggestions = auto.queries.take(3)) }
@@ -7143,8 +7149,10 @@ class MapViewModel @Inject constructor(
         voice.muted = muted
         voice.alertsOnly = alerts
         app.vela.ui.VoiceAlertsOnly.on.value = alerts
-        settingsPrefs.edit().putBoolean("spoken_directions", !muted).putBoolean("spoken_alerts_only", alerts).apply()
+        // State before the prefs: the prefs listener runs inline on the main thread and compares
+        // the two, so the other order called this once more for nothing.
         _state.update { it.copy(voiceMuted = muted, voiceAlertsOnly = alerts) }
+        settingsPrefs.edit().putBoolean("spoken_directions", !muted).putBoolean("spoken_alerts_only", alerts).apply()
     }
 
     /** Settings -> Data & privacy: periodic in-drive traffic re-checks (they send the current
