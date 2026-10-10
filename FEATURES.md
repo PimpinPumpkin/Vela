@@ -179,7 +179,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Speed cameras" draws fixed speed cameras. "Warn me out loud" announces one ahead and shows a
   card.
 - "Speeding alert" says when you have been over the posted limit for a few seconds.
-- With spoken directions muted, the speeding and camera alerts chime instead of speaking.
+- Spoken directions have an "Alerts only" setting between on and off: the speeding and camera
+  alerts chime, nothing else is said. The speaker button during a drive steps through the three.
 - Plate camera data ships with the app, so it works offline.
 
 ## Offline

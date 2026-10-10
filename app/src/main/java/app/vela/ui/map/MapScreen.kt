@@ -1637,10 +1637,12 @@ fun MapScreen(
                         onClick = vm::toggleVoice,
                         modifier = Modifier.dpadHighlight(CircleShape),
                     ) {
+                        // The glyph is the state; the description is what a tap does next:
+                        // on, alerts only, off, on (issue 735).
                         Icon(
-                            if (state.voiceMuted) Sym.VolumeOff else Sym.VolumeUp,
+                            if (!state.voiceMuted) Sym.VolumeUp else if (state.voiceAlertsOnly) Sym.NotificationsActive else Sym.VolumeOff,
                             contentDescription = stringResource(
-                                if (state.voiceMuted) R.string.nav_unmute_voice else R.string.nav_mute_voice
+                                if (!state.voiceMuted) R.string.nav_voice_alerts_only else if (state.voiceAlertsOnly) R.string.nav_mute_voice else R.string.nav_unmute_voice
                             ),
                         )
                     }

@@ -2210,11 +2210,14 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   or both, by its two settings.
 - Speeding alert (off by default): after 4 s continuously over the limit, re-armed after 8 s
   back under, at most once per 45 s, with the badge's 5 km/h tolerance.
-- While the voice is muted (`VoiceGuide.muted`: Spoken directions off, or the drive's mute
-  button), the speeding, speed camera and plate camera alerts play `VoiceGuide.alertChime`, two
-  short notes at 1046.5 Hz, instead of their spoken line (`NavController.alert`). Every other
-  chime and every prompt stays silent while muted. A muted drive used to get no alert at all
-  (issue 735).
+- The voice has three modes (issue 735), one state shared by Settings > Voice > Spoken
+  directions and the drive's speaker button, which steps On, Alerts only, Off, On
+  (`MapViewModel.setVoiceMode`, prefs `spoken_directions` and `spoken_alerts_only`,
+  `VoiceGuide.muted` and `alertsOnly`, the holder `VoiceAlertsOnly` for the hold control). In
+  Alerts only the speeding, speed camera and plate camera alerts play `VoiceGuide.alertChime`,
+  two short notes at 1046.5 Hz, instead of their spoken line (`NavController.alert`); every
+  other chime and every prompt stays silent. Off is silent throughout. The car's own toggle sets
+  On or Off.
 
 #### Street callouts
 
@@ -4746,7 +4749,7 @@ reuses it.
   mute. On a running drive the first tap slides mute out beside it for `OPEN_MS` (6 s) and a
   second tap pauses. While paused, one tap resumes. A long press mutes. The slide-out is the key
   path to mute. The glyph shows pause or resume, the accent fill a held drive, a crossed speaker
-  a muted one. Muted, the speeding and camera alerts still chime (4.9).
+  a muted one, a bell "Alerts only" (4.9). The speaker button steps On, Alerts only, Off.
 - The "Then" tab hangs off the turn card's lower left in the card's color and names the next
   step. The card's lower-left corner is square while the tab shows, and the lower-right too when
   the tab is as wide as the card. Both widths are measured.

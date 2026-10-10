@@ -446,10 +446,11 @@ you have been more than 5 km/h over the badge's limit for 4 s (`holdMs`). The 5 
 point where the badge turns red. It can speak again after 8 s back under the limit (`rearmMs`),
 and never more often than every 45 s (`minGapMs`).
 
-With the voice muted, whether by the mute button or by turning spoken directions off, the
-speeding, speed camera and plate camera alerts play two short notes instead of speaking. They
-are the sound a driver who turned the turns off still wants; every other prompt and chime stays
-silent.
+The voice has three settings: on, alerts only, and off. The speaker button during a drive steps
+through them in that order, and Settings > Voice > Spoken directions holds the same choice. In
+"Alerts only" the speeding, speed camera and plate camera alerts play two short notes instead
+of speaking, and nothing else is said: the sound a driver who turned the turns off still wants.
+Off is silent throughout.
 
 ### The step list, the road name and the notification
 

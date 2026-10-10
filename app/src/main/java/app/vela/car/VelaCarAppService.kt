@@ -67,7 +67,12 @@ class VelaCarAppService : CarAppService() {
         if (voiceGuide.neural == null && app.vela.core.voice.VelaPiper.isReady(this)) voiceGuide.neural = piperSynth
         // "Spoken directions" is applied to VoiceGuide by the phone's view model too: without it a
         // car-only start spoke with the setting off, and the car's own toggle showed On.
-        if (!getSharedPreferences("vela_settings", MODE_PRIVATE).getBoolean("spoken_directions", true)) voiceGuide.muted = true
+        getSharedPreferences("vela_settings", MODE_PRIVATE).let { prefs ->
+            if (!prefs.getBoolean("spoken_directions", true)) {
+                voiceGuide.muted = true
+                voiceGuide.alertsOnly = prefs.getBoolean("spoken_alerts_only", false)
+            }
+        }
         // The downloaded place packs are opened by the phone's view model at start; a car session
         // with the phone UI never opened has to open them itself for offline car search.
         Thread { runCatching { poiPacks.registerPacks() } }.start()

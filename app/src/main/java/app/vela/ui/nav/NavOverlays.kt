@@ -1460,7 +1460,7 @@ fun NavStopOffer(
  * pauses (pausing on the first tap made holding the drive the only way to reach mute); while
  * paused, one tap resumes. A LONG PRESS mutes outright, for people who know where it is. The button carries both states - the glyph is
  * pause or resume, the accent fill says the drive is held, and a muted drive wears a small crossed
- * speaker - because one control standing for two states has to show both.
+ * speaker (a bell in "Alerts only") - because one control standing for two states has to show both.
  *
  * Long press is touch-only by nature; the slide-out is the key path to mute, which is what keeps
  * this D-pad legal.
@@ -1498,9 +1498,11 @@ fun NavHoldControls(
                 shadowElevation = 6.dp,
                 modifier = Modifier.padding(end = 8.dp),
             ) {
+                // The choice names the NEXT state: on, alerts only, off, on (issue 735).
+                val alertsOnly = app.vela.ui.VoiceAlertsOnly.on.value
                 HoldChoice(
-                    icon = if (muted) Sym.VolumeOff else Sym.VolumeUp,
-                    label = stringResource(if (muted) R.string.nav_unmute_voice else R.string.nav_mute_voice),
+                    icon = if (!muted) Sym.NotificationsActive else if (alertsOnly) Sym.VolumeOff else Sym.VolumeUp,
+                    label = stringResource(if (!muted) R.string.nav_voice_alerts_only else if (alertsOnly) R.string.nav_mute_voice else R.string.nav_unmute_voice),
                     filled = false,
                 ) { onMute(); open = false }
             }
@@ -1558,7 +1560,7 @@ fun NavHoldControls(
                             .size(18.dp),
                     ) {
                         Icon(
-                            Sym.VolumeOff,
+                            if (app.vela.ui.VoiceAlertsOnly.on.value) Sym.NotificationsActive else Sym.VolumeOff,
                             contentDescription = null,
                             modifier = Modifier.padding(3.dp),
                         )

@@ -1244,8 +1244,8 @@ internal class NavController(
         app.vela.car.CarBridge.toast(msg)
     }
 
-    /** A speeding, camera or Flock alert: spoken, or a chime while the voice is muted (issue 735).
-     *  Turn prompts stay muted; the alerts are the sound a muted drive still wants. */
+    /** A speeding, camera or Flock alert: spoken, or a chime in "Alerts only", or nothing with the
+     *  voice off (issue 735). The chime checks the mode itself. */
     private fun alert(msg: String) {
         if (voice.muted) voice.alertChime() else voice.speak(msg)
     }

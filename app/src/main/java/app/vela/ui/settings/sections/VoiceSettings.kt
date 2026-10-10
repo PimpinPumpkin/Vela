@@ -55,15 +55,28 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
     val context = LocalContext.current
     SettingsScaffold(stringResource(R.string.settings_voice), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
-        // The master switch: persisted, and the in-nav speaker button toggles the SAME state.
+        // The master choice: persisted, and the in-nav speaker button steps the SAME state (issue
+        // 735): on, alerts only (muted, with the speeding and camera alerts as a chime), off.
         SettingsGroup {
-        ToggleRow(
-            label = stringResource(R.string.settings_spoken_directions),
-            checked = !state.voiceMuted,
-            onCheckedChange = { vm.setSpokenDirections(it) },
-            // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
-            switchModifier = topRow,
+        Text(
+            stringResource(R.string.settings_spoken_directions),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.settingsAnchor(stringResource(R.string.settings_spoken_directions)).padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
         )
+        listOf(
+            Triple(false, false, stringResource(R.string.settings_voice_mode_on)),
+            Triple(true, true, stringResource(R.string.settings_voice_mode_alerts)),
+            Triple(true, false, stringResource(R.string.settings_voice_mode_off)),
+        ).forEachIndexed { i, (muted, alerts, label) ->
+            SelectableRow(
+                label = label,
+                selected = state.voiceMuted == muted && state.voiceAlertsOnly == alerts,
+                onClick = { vm.setVoiceMode(muted = muted, alertsOnly = alerts) },
+                // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
+                modifier = if (i == 0) topRow else Modifier,
+            )
+        }
+        Hint(stringResource(R.string.settings_voice_mode_hint))
         // Nested under the master switch, like the speed-camera warning under its layer: it has
         // nothing to say while nothing is being spoken. It stays in the settings search index all
         // the same, so a search lands on this page with the switch that reveals it in view.

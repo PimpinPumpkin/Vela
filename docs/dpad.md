@@ -103,7 +103,7 @@ in the area picker (`AreaPickOverlay`).
 | Sheet drag (place, results, classic directions) | OK on the handle steps or toggles the sheet |
 | Maneuver banner swipe | Left and right on the focused banner step through upcoming turns. OK returns to live guidance |
 | Drag the navigation bar up for the step list | OK on the handle above the figures. Also a list button when "Prefer buttons over swipes" is on or the device is D-pad-first |
-| Long press to mute (`NavHoldControls`) | The first OK slides mute out beside the button. A second OK on the button pauses |
+| Long press to mute (`NavHoldControls`) | The first OK slides the speaker choice out beside the button (it steps on, alerts only, off). A second OK on the button pauses |
 | Photo viewer swipe | Left and right |
 | Long press on a suggestion row | The trailing overflow button opens the same menu |
 | Drag to reorder stops (`StopsEditorSheet`) | Up and down buttons on each row in D-pad mode |

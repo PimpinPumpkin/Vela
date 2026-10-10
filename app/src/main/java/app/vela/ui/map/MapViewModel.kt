@@ -329,6 +329,7 @@ data class MapUiState(
     // true = north-up while still following the puck. Flipped by the in-nav compass button.
     val navNorthUp: Boolean = false,
     val voiceMuted: Boolean = false,
+    val voiceAlertsOnly: Boolean = false, // muted, with the speeding and camera alerts as a chime (issue 735)
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
     val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
@@ -766,7 +767,10 @@ class MapViewModel @Inject constructor(
         // button share the one pref, so a muted choice survives restarts.
         if (!voicePrefs.getBoolean("spoken_directions", true)) {
             voice.muted = true
-            _state.update { it.copy(voiceMuted = true) }
+            val alerts = voicePrefs.getBoolean("spoken_alerts_only", false)
+            voice.alertsOnly = alerts
+            app.vela.ui.VoiceAlertsOnly.on.value = alerts
+            _state.update { it.copy(voiceMuted = true, voiceAlertsOnly = alerts) }
         }
         val installedVoices = VelaPiper.installedVoiceIds(appContext)
         val activeVoice = VelaPiper.effectiveVoiceId(appContext)
@@ -7097,13 +7101,25 @@ class MapViewModel @Inject constructor(
         navSession.setPaused(!s.navPaused)
     }
 
-    fun toggleVoice() = setSpokenDirections(voice.muted)
+    /** The drive's speaker button: On, then Alerts only, then Off, then On again (issue 735). */
+    fun toggleVoice() = when {
+        !voice.muted -> setVoiceMode(muted = true, alertsOnly = true)
+        voice.alertsOnly -> setVoiceMode(muted = true, alertsOnly = false)
+        else -> setVoiceMode(muted = false, alertsOnly = false)
+    }
 
-    /** Turn spoken directions on/off (Settings toggle; the nav mute button shares this state). */
-    fun setSpokenDirections(on: Boolean) {
-        voice.muted = !on
-        settingsPrefs.edit().putBoolean("spoken_directions", on).apply()
-        _state.update { it.copy(voiceMuted = !on) }
+    /** Spoken directions on or off (the car's toggle). Off is the voice off entirely. */
+    fun setSpokenDirections(on: Boolean) = setVoiceMode(muted = !on, alertsOnly = false)
+
+    /** The voice's mode, persisted: on; alerts only (muted, with the speeding and camera alerts
+     *  as a chime); or off. Settings > Voice and the drive's speaker button share it. */
+    fun setVoiceMode(muted: Boolean, alertsOnly: Boolean) {
+        val alerts = muted && alertsOnly
+        voice.muted = muted
+        voice.alertsOnly = alerts
+        app.vela.ui.VoiceAlertsOnly.on.value = alerts
+        settingsPrefs.edit().putBoolean("spoken_directions", !muted).putBoolean("spoken_alerts_only", alerts).apply()
+        _state.update { it.copy(voiceMuted = muted, voiceAlertsOnly = alerts) }
     }
 
     /** Settings -> Data & privacy: periodic in-drive traffic re-checks (they send the current
