@@ -37,8 +37,17 @@ fun SettingsScreen(vm: MapViewModel, navController: androidx.navigation.NavHostC
     val state by vm.state.collectAsStateWithLifecycle()
     var cameFrom by rememberSaveable { mutableStateOf(SettingsSection.HUB) }
     val currentEntry by navController.currentBackStackEntryAsState()
+    // Opened from the search page (the gear in the search bar), the search field kept its focus
+    // and the keyboard stayed up over Settings. Leaving the map drops both.
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    var wasOnMap by androidx.compose.runtime.remember { mutableStateOf(true) }
     androidx.compose.runtime.LaunchedEffect(currentEntry) {
         val route = currentEntry?.destination?.route
+        if (route != null) {
+            if (wasOnMap && route != MAP_ROUTE) { focus.clearFocus(force = true); keyboard?.hide() }
+            wasOnMap = route == MAP_ROUTE
+        }
         if (route == MAP_ROUTE) cameFrom = SettingsSection.HUB
         else SettingsSection.entries.firstOrNull { it.route == route && it != SettingsSection.HUB }
             ?.let { cameFrom = it }
