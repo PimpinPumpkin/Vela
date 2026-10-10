@@ -23,7 +23,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Performance: what loads ahead of time, how the map is drawn.
 - Diagnostics: diagnostics export, saved trips, the location and driving simulators.
 - About: version, update channel and checks ([chapter 12](12-releases.md)), map data credits,
-  support.
+  support, the project on GitHub.
 
 Typing in the search field replaces the list with up to ten matching rows. Tapping one opens
 its page, scrolls to the row and tints it for a moment.

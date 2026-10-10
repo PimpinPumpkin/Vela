@@ -71,6 +71,27 @@ Onboarding.openDonate(context)
         }
 
         Spacer(Modifier.height(8.dp))
+        // The project itself (issue #739): people go back and forth between the app and GitHub.
+        SettingsGroup(title = stringResource(R.string.settings_project)) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+        Hint(stringResource(R.string.settings_project_hint))
+        Spacer(Modifier.height(4.dp))
+        FilledTonalButton(
+            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            onClick = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/PimpinPumpkin/Vela")),
+                    )
+                }
+            },
+        ) {
+            Text(stringResource(R.string.settings_project_github_button))
+        }
+        }
+        }
+
+        Spacer(Modifier.height(8.dp))
         // Where the map comes from (issue #302): the ODbL credit belongs in About as well as on
         // the map, and people asked where the streets come from when they differ from Google.
         SettingsGroup(title = stringResource(R.string.settings_map_data)) {
