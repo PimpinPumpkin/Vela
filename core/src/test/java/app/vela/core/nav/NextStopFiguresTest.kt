@@ -73,16 +73,23 @@ class NextStopFiguresTest {
         }
     }
 
-    @Test fun `a route with its own leg times gives the stop its legs' figure`() {
-        // The steps' pro-rating gives 60 s to the stop at the turn; the legs say the first
-        // kilometer takes 180 of the 360 s, the traffic sitting before the stop.
+    @Test fun `a route with its own leg times starts the stop on its leg's figure and still counts down to zero`() {
+        // The steps' pro-rating gives the first kilometer 120 of the 360 s; the legs say it takes
+        // 180, the traffic sitting before the stop. So the stop's time is the pro-rated one times
+        // 1.5: 180 at the start, 90 halfway, and nothing at the mark, where the trip's own
+        // remaining time (240) is exactly what lies beyond.
         val r = route().copy(legTimes = listOf(LegTime(1000.0, 100.0, 180.0), LegTime(1000.0, 200.0, 180.0)))
         val stops = listOf(stop(1000.0))
         val marks = NavEngine.stopMarks(r, stops.map { it.location })
+        assertEquals(1.5, NavEngine.legScale(r, marks[0]!!, 0.0), 0.01)
+        assertEquals(180.0, NavEngine.legSecondsBeyond(r, marks[0]!!)!!, 0.5)
+        assertEquals(180.0, NavEngine.legSecondsTo(r, marks[0]!!)!!, 0.5)
+        assertEquals(180.0, NavSession.nextStop(r, stops, marks, 0, at(r, 0.0))!!.seconds, 3.0)
         val nav = at(r, 500.0)
         assertEquals(300.0, nav.remainingDuration, 2.0)
-        assertEquals(120.0, NavSession.nextStop(r, stops, marks, 0, nav)!!.seconds, 2.0)
-        assertEquals(180.0, NavEngine.secondsBeyond(r, marks[0]!!), 0.5)
+        assertEquals(90.0, NavSession.nextStop(r, stops, marks, 0, nav)!!.seconds, 3.0)
+        // Just short of the mark (inside the arrival tolerance it counts as passed): seconds left.
+        assertTrue(NavSession.nextStop(r, stops, marks, 0, at(r, 960.0))!!.seconds < 15.0)
     }
 
     @Test fun `a stop that is no leg boundary falls back to the steps' pro-rating`() {
@@ -90,14 +97,17 @@ class NextStopFiguresTest {
         val stops = listOf(stop(1500.0))
         val marks = NavEngine.stopMarks(r, stops.map { it.location })
         assertNull(NavEngine.legSecondsBeyond(r, marks[0]!!))
+        assertEquals(1.0, NavEngine.legScale(r, marks[0]!!, 0.0), 0.0)
         assertEquals((50.0 + 100.0) * 1.2, NavSession.nextStop(r, stops, marks, 0, at(r, 500.0))!!.seconds, 2.0)
     }
 
     @Test fun `without traffic the legs' typical times are the figure`() {
-        val r = route(traffic = null).copy(legTimes = listOf(LegTime(1000.0, 100.0, null), LegTime(1000.0, 200.0, null)))
+        // Steps 100 + 200 s, no traffic; the legs say 150 + 150. The first stop starts on 150.
+        val r = route(traffic = null).copy(legTimes = listOf(LegTime(1000.0, 150.0, null), LegTime(1000.0, 150.0, null)))
         val stops = listOf(stop(1000.0))
         val marks = NavEngine.stopMarks(r, stops.map { it.location })
-        assertEquals(200.0, NavEngine.secondsBeyond(r, marks[0]!!), 0.5)
+        assertEquals(1.5, NavEngine.legScale(r, marks[0]!!, 0.0), 0.01)
+        assertEquals(150.0, NavSession.nextStop(r, stops, marks, 0, at(r, 0.0))!!.seconds, 3.0)
     }
 
     @Test fun `the live calibration scales the stop's time like the trip's`() {

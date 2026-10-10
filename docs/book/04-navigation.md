@@ -349,9 +349,10 @@ line with both. A reroute, a faster route, a stop added or the stops edited mid-
 the figures over to the new route at once. The stop's
 time is the trip's remaining time less the time past the stop's mark (`NavSession.nextStop`,
 `NavEngine.secondsBeyond`), so the two always add up. Google answers a trip through stops with a
-time per leg and the route keeps them (`Route.legTimes`), so the time past a stop is its own
-legs' figure, traffic where it sits; a route without them is worked out over the maneuvers' own
-legs and traffic ratio the way the trip's is. Past the last stop, or when the next stop has no
+time per leg and the route keeps them (`Route.legTimes`), so a stop starts on its own leg's
+figure, traffic where it sits, and counts down to zero at the stop with the trip's own reckoning;
+a route without them is worked out over the maneuvers' own legs and traffic ratio the way the
+trip's is. Past the last stop, or when the next stop has no
 mark on the route, the bar shows the whole trip again.
 
 - A stop added during the drive from the phone goes last. The stops editor, which is open

@@ -132,19 +132,22 @@ object NavEngine {
     const val LEG_MATCH_M = 250.0
     private const val LEG_MATCH_FRAC = 0.015
 
+    /** The lowest and highest a leg's own time may be, against the pro-rated time of the same
+     *  leg ([legScale]): past these the two disagree about the road, not the traffic. */
+    private const val LEG_SCALE_MIN = 0.25
+    private const val LEG_SCALE_MAX = 4.0
+
     /**
-     * Seconds of the trip past [atM] from the route's own leg times ([Route.legTimes]), when
-     * [atM] is a leg boundary (a stop the trip was asked through): the sum of the legs after it,
-     * each its live figure when the route has traffic, else its typical. The boundaries are the
-     * legs' distances stretched onto the line's own length, which a stop's mark is measured on.
-     * Null when the route carries no legs or no boundary lies within [LEG_MATCH_M] (or 1.5% of
-     * the line) of [atM], and [secondsBeyond] pro-rates the steps instead.
+     * The index of the leg ([Route.legTimes]) that ends at [atM], a stop the trip was asked
+     * through, or -1. The boundaries are the legs' distances stretched onto the line's own length,
+     * which a stop's mark is measured on; a boundary counts when it lies within [LEG_MATCH_M] (or
+     * 1.5% of the line) of [atM]. -1 when the route carries no legs.
      */
-    fun legSecondsBeyond(route: Route, atM: Double): Double? {
+    fun legEndingAt(route: Route, atM: Double): Int {
         val legs = route.legTimes
-        if (legs.size < 2 || route.polyline.size < 2) return null
+        if (legs.size < 2 || route.polyline.size < 2) return -1
         val sum = legs.sumOf { it.distanceMeters }
-        if (sum <= 0.0) return null
+        if (sum <= 0.0) return -1
         val total = geomFor(route).cum.last()
         val k = total / sum
         var cum = 0.0
@@ -155,22 +158,58 @@ object NavEngine {
             val off = kotlin.math.abs(cum - atM)
             if (off < bestOff) { bestOff = off; best = j }
         }
-        if (best < 0 || bestOff > maxOf(LEG_MATCH_M, total * LEG_MATCH_FRAC)) return null
-        val live = route.durationInTrafficSeconds != null
-        return legs.drop(best + 1).sumOf { if (live) it.trafficSeconds ?: it.typicalSeconds else it.typicalSeconds }
+        return if (best < 0 || bestOff > maxOf(LEG_MATCH_M, total * LEG_MATCH_FRAC)) -1 else best
+    }
+
+    /** A leg's own time: its live figure when the route has traffic, else its typical. */
+    private fun legSeconds(route: Route, leg: app.vela.core.model.LegTime): Double =
+        if (route.durationInTrafficSeconds != null) leg.trafficSeconds ?: leg.typicalSeconds else leg.typicalSeconds
+
+    /** Seconds of the trip past [atM] from the route's own leg times: the sum of the legs after
+     *  the one ending there ([legEndingAt]), or null. */
+    fun legSecondsBeyond(route: Route, atM: Double): Double? {
+        val j = legEndingAt(route, atM)
+        if (j < 0) return null
+        return route.legTimes.drop(j + 1).sumOf { legSeconds(route, it) }
+    }
+
+    /** Seconds from the route's start to the stop at [atM] from the route's own leg times: the
+     *  legs up to and including the one ending there, or null. The closing-time check's figure
+     *  at the start of a drive. */
+    fun legSecondsTo(route: Route, atM: Double): Double? {
+        val j = legEndingAt(route, atM)
+        if (j < 0) return null
+        return route.legTimes.take(j + 1).sumOf { legSeconds(route, it) }
     }
 
     /**
-     * Seconds of the trip still to drive past [atM] meters along [route]: the route's own leg
-     * times when [atM] is one of its stops ([legSecondsBeyond]), else reckoned the way
+     * How much longer the leg ending at [atM] takes by its own figure than by the steps'
+     * pro-rating: the leg's own seconds over [secondsBeyond] at [legStartM] less at [atM]. The
+     * engine's time to the mark (its remaining time less [secondsBeyond] at the mark) reaches zero
+     * at the mark and shrinks as the trip's does; times this it starts at the leg's own figure and
+     * still reaches zero, so a stop's countdown is Google's where the traffic sits unevenly over
+     * the legs, and never stalls or runs out early. 1.0 with no matching leg or a leg the steps
+     * give no time to, and never past [LEG_SCALE_MIN] or [LEG_SCALE_MAX].
+     */
+    fun legScale(route: Route, atM: Double, legStartM: Double): Double {
+        val j = legEndingAt(route, atM)
+        if (j < 0) return 1.0
+        val own = legSeconds(route, route.legTimes[j])
+        val prorated = secondsBeyond(route, legStartM) - secondsBeyond(route, atM)
+        if (own <= 0.0 || prorated <= 0.0) return 1.0
+        return (own / prorated).coerceIn(LEG_SCALE_MIN, LEG_SCALE_MAX)
+    }
+
+    /**
+     * Seconds of the trip still to drive past [atM] meters along [route], reckoned the way
      * [remainingDuration] reckons the whole trip: each maneuver's leg at its own pace, the leg
      * [atM] falls on pro-rated by how much of it lies beyond, scaled by the route's live-traffic
      * ratio; the route's average speed when the steps carry no usable durations. So the time to a
      * point on the route is the engine's remaining time less this, and the two always add up to
-     * the trip (the next-stop figures in [NavSession.nextStop]).
+     * the trip (the next-stop figures in [NavSession.nextStop], which then scale the time to a
+     * stop by its leg's own figure, [legScale]).
      */
     fun secondsBeyond(route: Route, atM: Double): Double {
-        legSecondsBeyond(route, atM)?.let { return it }
         val maneuvers = route.maneuvers
         if (route.polyline.size < 2 || maneuvers.isEmpty()) return 0.0
         val geom = geomFor(route)

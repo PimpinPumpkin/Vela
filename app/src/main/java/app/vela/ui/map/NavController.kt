@@ -301,16 +301,20 @@ internal class NavController(
         closingMessage(sel, route.durationInTrafficSeconds ?: route.durationSeconds)?.let { warnClosing(it) }
     }
 
-    /** Seconds from now to each of [stops] along [route]: the trip's time less the time past the
-     *  stop's mark ([app.vela.core.nav.NavEngine.secondsBeyond]: the route's own leg times when it
-     *  carries them, else the steps' pro-rating), the figure the bar shows for the stop. A stop the
-     *  line does not pass near ([app.vela.core.nav.NavEngine.stopMarks]) is skipped. */
+    /** Seconds from now to each of [stops] along [route]: the route's own leg times up to the
+     *  stop when it carries them ([app.vela.core.nav.NavEngine.legSecondsTo]), else the trip's
+     *  time less the steps' pro-rated time past the stop's mark
+     *  ([app.vela.core.nav.NavEngine.secondsBeyond]); the figure the bar starts the stop on. A
+     *  stop the line does not pass near ([app.vela.core.nav.NavEngine.stopMarks]) is skipped. */
     private fun stopArrivals(route: app.vela.core.model.Route, stops: List<Place>): List<Pair<Place, Double>> {
         if (stops.isEmpty() || route.polyline.size < 2) return emptyList()
         val total = route.durationInTrafficSeconds ?: route.durationSeconds
         val marks = app.vela.core.nav.NavEngine.stopMarks(route, stops.map { it.location })
         return stops.indices.mapNotNull { i ->
-            marks[i]?.let { m -> stops[i] to (total - app.vela.core.nav.NavEngine.secondsBeyond(route, m)).coerceIn(0.0, total.coerceAtLeast(0.0)) }
+            marks[i]?.let { m ->
+                val toStop = app.vela.core.nav.NavEngine.legSecondsTo(route, m) ?: (total - app.vela.core.nav.NavEngine.secondsBeyond(route, m))
+                stops[i] to toStop.coerceIn(0.0, total.coerceAtLeast(0.0))
+            }
         }
     }
 

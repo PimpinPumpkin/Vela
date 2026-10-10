@@ -1348,20 +1348,26 @@ class NavSession @Inject constructor(
          * The figures to the next stop for a drive at [nav] on [route] (the engine's own state, not
          * yet scaled), or null with no measurable stop ahead. The distance is along the route to the
          * stop's mark. The time is the engine's remaining time less what lies beyond the mark
-         * ([NavEngine.secondsBeyond]), so it is pro-rated over the maneuvers' legs exactly as the
-         * whole trip's is (every router returns a trip with stops as one leg, so there are no
-         * per-stop times to read), and it takes the live calibration [etaScale] the whole trip's
-         * published time carries. Neither figure can exceed the whole trip's.
+         * ([NavEngine.secondsBeyond]: pro-rated over the maneuvers' legs exactly as the whole
+         * trip's is, so it reaches zero at the mark), times the leg's own scale
+         * ([NavEngine.legScale]: a route that carries its legs' own times, as Google's answer to a
+         * trip through stops does, starts the countdown at that leg's figure instead of the trip's
+         * even share), and it takes the live calibration [etaScale] the whole trip's published time
+         * carries. Neither figure can exceed the whole trip's.
          */
         fun nextStop(route: Route, stops: List<NavStop>, marks: List<Double?>, passed: Int, nav: NavState, etaScale: Double = 1.0): NextStop? {
             val i = nextStopIndex(stops.map { it.silent }, marks, passed, nav.traveledM)
             if (i < 0) return null
             val mark = marks[i] ?: return null
             val tripS = nav.remainingDuration * etaScale
+            // The stop's leg starts at the stop before it that has a mark (a silent via is one
+            // too), or at the route's start.
+            val legStart = (0 until i).mapNotNull { marks[it] }.lastOrNull() ?: 0.0
+            val toMark = nav.remainingDuration - NavEngine.secondsBeyond(route, mark)
             return NextStop(
                 label = stops[i].label,
                 distanceM = (mark - nav.traveledM).coerceIn(0.0, nav.remainingDistance.coerceAtLeast(0.0)),
-                seconds = ((nav.remainingDuration - NavEngine.secondsBeyond(route, mark)) * etaScale).coerceIn(0.0, tripS.coerceAtLeast(0.0)),
+                seconds = (toMark * NavEngine.legScale(route, mark, legStart) * etaScale).coerceIn(0.0, tripS.coerceAtLeast(0.0)),
             )
         }
 

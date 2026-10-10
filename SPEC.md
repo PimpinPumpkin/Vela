@@ -1282,15 +1282,20 @@ During a drive:
   when its route lands. The stop is the first one not passed and not silent (`nextStopIndex`); null when
   there is none, when that stop has no mark, or when the engine's route is not `planRoute`. The
   distance is along the line to its mark. The time is the engine's remaining time less
-  `NavEngine.secondsBeyond(route, mark)`, times `etaScale`; so the stop's time and the time beyond
-  it add up to the trip, and neither figure can exceed the trip's. The time beyond the mark is
-  the route's own legs after it when it carries them (`Route.legTimes`: Google answers a trip
-  asked through stops with each leg's distance, typical and in-traffic time at `route[1][j][0]`,
-  read by `DirectionsParser` and kept through the hybrid and the traffic overlay; the on-device
-  chain keeps each leg's time), taken when a leg boundary lies within `NavEngine.LEG_MATCH_M`
-  (250 m, or 1.5% of the line) of the mark (`legSecondsBeyond`); otherwise the same per-maneuver
-  pro-rating and traffic ratio as the whole trip. The closing-time check's `stopArrivals` reads
-  the same figure. The trip file's `RD` line says `legs=N` when the route had them.
+  `NavEngine.secondsBeyond(route, mark)` (the same per-maneuver pro-rating and traffic ratio as
+  the whole trip, so it reaches zero at the mark), times the leg's own scale, times `etaScale`;
+  neither figure can exceed the trip's. The scale (`NavEngine.legScale`) is the leg's own time
+  over the pro-rated time of the same leg, when the route carries its legs' times
+  (`Route.legTimes`: Google answers a trip asked through stops with each leg's distance, typical
+  and in-traffic time at `route[1][j][0]`, read by `DirectionsParser` and kept through the hybrid
+  and the traffic overlay; the on-device chain keeps each leg's time) and a leg boundary lies
+  within `NavEngine.LEG_MATCH_M` (250 m, or 1.5% of the line) of the mark (`legEndingAt`); the
+  leg starts at the marked stop before, silent vias included, or at the route's start. So the
+  countdown starts on Google's figure for that leg, traffic where it sits, and still counts
+  down with the trip's own reckoning; a constant leg figure subtracted from the shrinking
+  remaining time did neither (review 2026-10-10). The scale is held to 0.25 to 4. The
+  closing-time check's `stopArrivals` reads the legs up to the stop (`legSecondsTo`), else the
+  pro-rating. The trip file's `RD` line says `legs=N` when the route had them.
 - With a `nextStop` the bottom bar (`NavBarTop`, also the step sheet's header) shows the stop's
   time, distance and arrival clock as its main figures and "To <stop>" under them, and the step
   a line under that with the whole trip, "Trip <time> · <clock>", shrunk to fit. The stop's name
