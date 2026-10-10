@@ -45,8 +45,14 @@ object OsmMaxspeed {
     /** [fromTags] with a `maxspeed:conditional` applied at local time [at]: the conditional value
      *  when one of its time rules holds, else the plain limit. A road with only a conditional limit
      *  and no rule in force has no known limit. */
-    fun fromTags(maxspeed: String?, forward: String?, backward: String?, conditional: String?, at: LocalDateTime): Double? =
-        conditionalKmh(conditional, at) ?: fromTags(maxspeed, forward, backward)
+    fun fromTags(maxspeed: String?, forward: String?, backward: String?, conditional: String?, at: LocalDateTime): Double? {
+        val rule = ruleInForce(conditional, at) ?: return fromTags(maxspeed, forward, backward)
+        // A rule in force whose value is not a number ("none @ (19:00-06:00)") means no known
+        // limit now: the plain limit is the one thing known not to apply.
+        return rule.kmh
+    }
+
+    private class Rule(val kmh: Double?)
 
     /**
      * The km/h a `maxspeed:conditional` value sets at local time [at], or null when no rule holds.
@@ -58,16 +64,18 @@ object OsmMaxspeed {
      * the Netherlands uses for "100 at busy times", a limit the overhead signs set, not the clock.
      * Skipping a rule shows the plain limit, which is what the sign at the roadside says.
      */
-    fun conditionalKmh(raw: String?, at: LocalDateTime): Double? {
+    fun conditionalKmh(raw: String?, at: LocalDateTime): Double? = ruleInForce(raw, at)?.kmh
+
+    /** The last rule of [raw] whose time condition holds at [at], or null when none does. */
+    private fun ruleInForce(raw: String?, at: LocalDateTime): Rule? {
         if (raw.isNullOrBlank()) return null
-        var result: Double? = null
+        var result: Rule? = null
         for (rule in splitRules(raw)) {
             val atSign = rule.indexOf('@')
             if (atSign < 0) continue
-            val kmh = parseKmh(rule.substring(0, atSign)) ?: continue
             var cond = rule.substring(atSign + 1).trim()
             if (cond.startsWith("(") && cond.endsWith(")")) cond = cond.substring(1, cond.length - 1).trim()
-            if (timeHolds(cond, at)) result = kmh
+            if (timeHolds(cond, at)) result = Rule(parseKmh(rule.substring(0, atSign)))
         }
         return result
     }
@@ -107,12 +115,20 @@ object OsmMaxspeed {
         val minute = at.hour * 60 + at.minute
         val today = at.dayOfWeek
         val yesterday = today.minus(1)
+        // Read the whole condition before testing any of it: a tail that cannot be read
+        // ("...,14:30-16:00; PH off; SH off") makes the rule one that is never in force, at every
+        // hour, not only when the clock is past its first range.
+        val ranges = ArrayList<IntArray>()
         for (part in cond.substring(firstDigit).split(',')) {
             val m = HOURS.matchEntire(part.trim()) ?: return false
             val (h1, m1, h2, m2) = m.destructured
+            if (m1.toInt() > 59 || m2.toInt() > 59) return false
             val start = h1.toInt() * 60 + m1.toInt()
             val end = h2.toInt() * 60 + m2.toInt()
             if (start > 24 * 60 || end > 24 * 60) return false
+            ranges += intArrayOf(start, end)
+        }
+        for ((start, end) in ranges) {
             val holds = if (start <= end) {
                 minute in start until end && (days == null || today in days)
             } else {

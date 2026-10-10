@@ -122,6 +122,23 @@ class OsmMaxspeedTest {
         assertEquals(45 * 1.609344, OsmMaxspeed.conditionalKmh("45 mph @ (20:00-06:00)", at(MON, 23))!!, 1e-6)
     }
 
+    // The common Australian school zone: the holiday exceptions cannot be read, so the rule is
+    // never in force, in the morning range as much as in the afternoon one.
+    @Test fun unreadableTailSkipsTheWholeRule() {
+        val c = "40 @ (Mo-Fr 08:00-09:30,14:30-16:00; PH off; SH off)"
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(MON, 8, 30)))
+        assertNull(OsmMaxspeed.conditionalKmh(c, at(MON, 15)))
+        assertEquals(60.0, OsmMaxspeed.fromTags("60", null, null, c, at(MON, 8, 30))!!, 1e-6)
+        assertNull(OsmMaxspeed.conditionalKmh("40 @ (Mo-Fr 00:00-07:00,18:00-24:00;Sa-Su 00:00-24:00)", at(MON, 6)))
+        assertNull(OsmMaxspeed.conditionalKmh("30 @ (07:75-09:00)", at(MON, 8, 30)))
+    }
+
+    // A timed rule without a number: the plain limit does not apply either, so nothing shows.
+    @Test fun noLimitByTheClockShowsNothing() {
+        assertNull(OsmMaxspeed.fromTags("120", null, null, "none @ (19:00-06:00)", at(MON, 22)))
+        assertEquals(120.0, OsmMaxspeed.fromTags("120", null, null, "none @ (19:00-06:00)", at(MON, 12))!!, 1e-6)
+    }
+
     @Test fun blankOrBrokenIsNull() {
         assertNull(OsmMaxspeed.conditionalKmh(null, at(MON, 12)))
         assertNull(OsmMaxspeed.conditionalKmh("", at(MON, 12)))
