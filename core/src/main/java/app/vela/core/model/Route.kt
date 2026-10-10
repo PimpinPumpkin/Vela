@@ -250,6 +250,11 @@ data class Route(
      *  words joined by `;`, counts and milliseconds only. Never a name, a place or a comma. Empty
      *  when the route was not stitched from more than one source. */
     val made: String = "",
+    /** The street names fell short: a stretch of the line went out with its turns read from its
+     *  bends alone, because the services that name it did not answer before the deadline. The
+     *  drive re-checks such a route on the fast interval and swaps in the same course once it
+     *  comes back named ([app.vela.core.nav.RouteHeal]). */
+    val namesShort: Boolean = false,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 

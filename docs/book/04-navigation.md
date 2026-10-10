@@ -194,8 +194,8 @@ and each source gets a share:
   past that, never past the deadline. A trip with stops chains its legs on the phone the same
   way.
 
-A route adopted with no traffic or with short steps is degraded. The recheck below replaces it
-once the sources recover.
+A route adopted with no traffic, with short steps, or with turns that went out without their
+street names is degraded. The recheck below replaces it once the sources recover.
 
 The heading is the fix's course at the start point. Without it, a reroute computed a few tens of
 meters down the wrong road often says to turn around. The open router and the on-phone router
@@ -240,7 +240,9 @@ while off route and while an offer is on screen. What happens next depends on th
   Without it the arrival time would carry the traffic measured at the last route fetch for the
   rest of the drive.
 - Same course, and the current route is degraded: the candidate replaces it silently when it is
-  better in steps or traffic and worse in neither.
+  better in steps, street names or traffic and worse in none (`RouteHeal`). A route whose names
+  missed the planning deadline is asked for again about every 20 seconds, six times, and gets
+  its names within the first answer that has them.
 - Another course: it is offered when it saves more than 90 seconds, has live traffic and full
   steps, passes every remaining stop, and takes between 40% and 90% of the time left. A
   candidate without traffic never counts, because free-flow time always looks faster. A

@@ -1278,6 +1278,8 @@ class GoogleMapsDataSource @Inject constructor(
                     "namingLate".takeIf { !namedInTime },
                     "urgent".takeIf { urgent },
                 ).joinToString(";"),
+                // A stretch that went out bare is asked for again during the drive (RouteHeal).
+                namesShort = !namedInTime || stretchSource[2] > 0,
             )
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +

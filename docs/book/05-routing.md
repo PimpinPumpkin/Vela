@@ -84,7 +84,9 @@ drive the matched path. It takes the open router's steps when the two paths agre
 
 All of this gets `HYBRID_WAIT_MS` (5.5 s). Past that, the route goes out on Google's line with
 bare turns on the stretches. The open router's own route never replaces a stretch, because it
-is the route through whatever Google went around.
+is the route through whatever Google went around. A route that goes out this way, or with any
+stretch bare, is marked short of names, and the drive asks for it again
+([chapter 4](04-navigation.md)).
 
 ### No wrong street names
 
@@ -134,8 +136,8 @@ If the pieces cannot be joined, the older via snap runs when Google's line stray
   Google's own short step lists (`GOOGLE_ABBREVIATED`).
 - Neither answers and no region covers the trip: no route.
 
-During a drive, the recheck swaps in full steps or traffic once the missing source answers
-([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
+During a drive, the recheck swaps in full steps, street names or traffic once the missing
+source answers ([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
 it, and the trip log records it.
 
 ### Alternates and the order of the list
@@ -351,8 +353,9 @@ way you drove". A replayed trip never offers it.
 - The open router and the matcher are community servers with no guarantee. When OSRM does not
   answer, a drive gets the on-phone route or Google's short steps. When Valhalla does not
   answer in time, stretches fall to tile names or bare turns, with no lanes or sign text. That
-  is more common on a reroute, where the stretches get 1.5 s. Self-hosting both would fix this
-  and would allow `exclude=`.
+  is more common on a reroute, where the stretches get 1.5 s. Bare turns last until the drive's
+  next recheck that comes back named, about 20 seconds. Self-hosting both would fix this and
+  would allow `exclude=`.
 - The open router's turn names go out unchecked when the road pieces under its line are late.
   On the 90 test routes the check removed 5 turn names and kept 457.
 - Trips with stops and picked alternates still use the via snap. On a trip with stops, Google's

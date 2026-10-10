@@ -107,6 +107,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - With a large display size or large text the turn card stays within a third of the screen, the
   arrow stays clear of the bottom bar, and the map zooms out to keep the road ahead in view.
 - Spoken directions with street names and lanes. "Say street names" off shortens them.
+- A route that starts without some of its street names, because the naming services were slow,
+  gets them during the drive, usually within 20 seconds.
 - "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits
   only (quiet in town; speaks for exits, forks and turns taken at speed).
 - A bottom bar with time left, distance and arrival time. Swipe it up for the step list. On a trip

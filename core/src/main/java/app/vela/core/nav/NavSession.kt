@@ -776,7 +776,7 @@ class NavSession @Inject constructor(
             degradedRouteRef = currentRoute
             degradedFastRechecks = 0
         }
-        val degraded = currentRoute != null && (!currentRoute.hasRealSteps || !currentRoute.hasLiveTraffic)
+        val degraded = currentRoute != null && RouteHeal.degraded(currentRoute)
         val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
         // Spread by +/-25%, redrawn after every recheck: an exact 120 s beat is a rhythm every
         // install shares (see Jitter).
@@ -824,8 +824,8 @@ class NavSession @Inject constructor(
             // route fetch for the entire drive (user 2026-07-14). The multiplicative form makes
             // the new scale independent of the old one (remaining already carries etaScale), and
             // the offer logic below then compares candidates against a LIVE baseline too.
-            val current = _state.value.route
-            val sameCourse = current != null && candidateEta > 0.0 &&
+            val current = _state.value.route ?: return@launch
+            val sameCourse = candidateEta > 0.0 &&
                 !app.vela.core.data.RouteGeometry.divergent(current, candidate, SAME_COURSE_M)
             if (sameCourse && remaining > 120.0 && trafficAware) {
                 etaScale = (etaScale * candidateEta / remaining).coerceIn(0.5, 2.5)
@@ -841,11 +841,12 @@ class NavSession @Inject constructor(
             // real-drive 2026-07-15): once a same-course candidate carries live traffic again,
             // adopt it so the ETA turns traffic-colored and honest instead of staying white for
             // the rest of the drive. Either upgrade qualifies; neither quality may downgrade.
-            val stepsUpgrade = !current!!.hasRealSteps && candidate.hasRealSteps
-            val trafficUpgrade = !current.hasLiveTraffic && candidate.hasLiveTraffic
-            val noDowngrade = (!current.hasRealSteps || candidate.hasRealSteps) &&
-                (!current.hasLiveTraffic || candidate.hasLiveTraffic)
-            if (sameCourse && candidate.drivable && (stepsUpgrade || trafficUpgrade) && noDowngrade) {
+            // The same for STREET NAMES: a route whose stretches were named from their bends
+            // alone (the naming services missed the deadline, most often on a reroute's short
+            // one) kept its bare "Turn left" for the rest of the drive, through every re-check
+            // that came back named. Any of the three qualifies; none may be taken away.
+            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate) else null
+            if (gains != null) {
                 lastSwapReason = "heal"
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
                 synchronized(stopLock) {
@@ -872,7 +873,7 @@ class NavSession @Inject constructor(
                     )
                 }
                 note(
-                    "recheck upgraded route (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
+                    "recheck upgraded route for $gains (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
                         "named turns ${current.namedTurns} of ${current.turns} -> ${candidate.namedTurns} of ${candidate.turns}, " +
                         "traffic ${current.hasLiveTraffic} -> ${candidate.hasLiveTraffic})",
                 )

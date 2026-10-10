@@ -941,7 +941,8 @@ The first source that answers:
 Tiles come second because, measured on 90 routes in six areas, they named 1.4% of named turns
 wrong. When the stretches are not done within `HYBRID_WAIT_MS` (5.5 s; `HYBRID_WAIT_URGENT_MS`
 1.5 s), the hybrid is rebuilt with bare turns on every stretch. The open router's own route is
-never substituted for a stretch.
+never substituted for a stretch. A hybrid built past the deadline, or with any stretch bare, is
+marked `namesShort`, and the drive's recheck asks again on the degraded interval.
 
 A match is accepted by `offLine`, which samples both paths every 30 m. A sample over
 `MATCH_OFF_M` (22 m) from the other path is a stray. Strays within 90 m of each other join and
@@ -1585,15 +1586,17 @@ MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time 
 
 A recheck fetches from the current position through the remaining stops. It does not run off
 route, in a replay, with an offer on screen, or with "Live traffic re-checks" off (pref
-`nav_live_rechecks`, `NavSession.liveRechecks`). A degraded route is one with abbreviated steps
-or no live traffic.
+`nav_live_rechecks`, `NavSession.liveRechecks`). A degraded route (`RouteHeal.degraded`) is one
+with abbreviated steps, no live traffic, or street names that fell short (`Route.namesShort`).
 
 - Same course, with traffic: the shown arrival time is recalibrated. `etaScale` is multiplied by
   candidate ETA over time left, clamped 0.5 to 2.5, applied where the state is published, and
   reset to 1.0 on every route swap.
-- Same course, better quality: the candidate replaces the current route silently. Full steps
-  replace abbreviated ones and a traffic-carrying route replaces a trafficless one, never the
-  reverse.
+- Same course, better quality (`RouteHeal.gains`): the candidate replaces the current route
+  silently. Full steps replace abbreviated ones, a named route replaces one short of names, and
+  a traffic-carrying route replaces a trafficless one. None of the three is given up for
+  another, except that full steps short of a name still replace abbreviated ones. The note in
+  the trip says which was gained.
 - Different course: offered when it has traffic and real steps, covers every remaining stop,
   saves more than `FASTER_THRESHOLD_S`, and its ETA is between 0.4 and 0.9 of the time left. A
   trafficless candidate is never offered and never calibrates, because free-flow always appears
