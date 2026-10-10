@@ -371,7 +371,7 @@ object RouteGeometry {
         return if (classes.isEmpty()) "" else "&exclude=" + classes.joinToString(",")
     }
 
-    private fun parseOsrmRoute(r: JsonObject): Route? {
+    internal fun parseOsrmRoute(r: JsonObject): Route? {
         val poly = r["geometry"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it, OSRM_PRECISION) }
             ?.takeIf { it.size >= 2 } ?: return null
         val dist = r["distance"]?.jsonPrimitive?.doubleOrNull ?: return null
@@ -399,9 +399,12 @@ object RouteGeometry {
                 (m.type == ManeuverType.ARRIVE && i != last)
             if (!spuriousVia) {
                 maneuvers += m
-            } else if (maneuvers.isNotEmpty() && m.distanceMeters > 0.0) {
+            } else if (maneuvers.isNotEmpty() && (m.distanceMeters > 0.0 || m.durationSeconds > 0.0)) {
+                // Its time too: the remaining-time figure is the sum of the steps ahead, and a
+                // via's DEPART carries the minutes from the stop to the next turn (a trip through
+                // one stop ran a fifth short, 2026-10-10).
                 val prev = maneuvers.removeAt(maneuvers.lastIndex)
-                maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
+                maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
         val consolidated = rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers))))
@@ -454,12 +457,14 @@ object RouteGeometry {
             if (m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT) {
                 var j = i + 1
                 var folded = m.distanceMeters
+                var foldedS = m.durationSeconds // the time too, or the remaining time runs short
                 while (j < list.size &&
                     (list[j].type == ManeuverType.FORK_LEFT || list[j].type == ManeuverType.FORK_RIGHT ||
                         list[j].type == ManeuverType.MERGE) &&
                     list[j - 1].distanceMeters < EXIT_COMPLEX_GAP_M
                 ) {
                     folded += list[j].distanceMeters
+                    foldedS += list[j].durationSeconds
                     j++
                 }
                 if (j > i + 1) {
@@ -473,6 +478,7 @@ object RouteGeometry {
                     val branch = list.subList(i + 1, j).lastOrNull { it.instruction.isNotBlank() }
                     out += m.copy(
                         distanceMeters = folded,
+                        durationSeconds = foldedS,
                         instruction = disambiguateDest(m.instruction, branch?.instruction),
                         // The nameless twin gets the same surgery, or with spoken street names
                         // off the voice would go back to announcing BOTH directions of the split

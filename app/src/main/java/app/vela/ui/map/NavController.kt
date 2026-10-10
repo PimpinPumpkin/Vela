@@ -301,17 +301,17 @@ internal class NavController(
         closingMessage(sel, route.durationInTrafficSeconds ?: route.durationSeconds)?.let { warnClosing(it) }
     }
 
-    /** Seconds from now to each of [stops] along [route]. Every router returns a trip with stops as
-     *  ONE leg (the per-leg times are not kept), so a stop's arrival is the trip's time scaled by
-     *  how far along the line the stop sits ([app.vela.core.nav.NavEngine.stopMarks]). A stop the
-     *  line does not pass near is skipped. The first cut summed per-leg times and never fired. */
+    /** Seconds from now to each of [stops] along [route]: the trip's time less the time past the
+     *  stop's mark ([app.vela.core.nav.NavEngine.secondsBeyond]: the route's own leg times when it
+     *  carries them, else the steps' pro-rating), the figure the bar shows for the stop. A stop the
+     *  line does not pass near ([app.vela.core.nav.NavEngine.stopMarks]) is skipped. */
     private fun stopArrivals(route: app.vela.core.model.Route, stops: List<Place>): List<Pair<Place, Double>> {
         if (stops.isEmpty() || route.polyline.size < 2) return emptyList()
         val total = route.durationInTrafficSeconds ?: route.durationSeconds
         val marks = app.vela.core.nav.NavEngine.stopMarks(route, stops.map { it.location })
-        val length = route.polyline.zipWithNext { x, y -> x.distanceTo(y) }.sum()
-        if (length <= 0.0) return emptyList()
-        return stops.indices.mapNotNull { i -> marks[i]?.let { m -> stops[i] to total * (m / length).coerceIn(0.0, 1.0) } }
+        return stops.indices.mapNotNull { i ->
+            marks[i]?.let { m -> stops[i] to (total - app.vela.core.nav.NavEngine.secondsBeyond(route, m)).coerceIn(0.0, total.coerceAtLeast(0.0)) }
+        }
     }
 
     /** A stop added during the drive (issue #606): once the replanned route is in, the stop's place

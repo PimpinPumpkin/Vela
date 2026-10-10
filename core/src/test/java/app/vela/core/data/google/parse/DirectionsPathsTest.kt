@@ -4,6 +4,7 @@ import app.vela.core.config.Calibration
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -23,6 +24,32 @@ class DirectionsPathsTest {
         append("]")
     }
     private fun root(s: String) = Json.parseToJsonElement("[[null,[[$s]]]]")
+
+    // A leg of a trip through stops: route[1][j][0] in the summary's shape.
+    private fun leg(distance: Double, typical: Double, traffic: Double?) = buildString {
+        append("[null,null,[$distance,\"x\"],[$typical,\"y\"],null,null,null,null,null,null,")
+        append(if (traffic != null) "[[$traffic,\"z\"]]" else "null")
+        append("]")
+    }
+    private fun rootWithLegs(s: String, legs: List<String>) =
+        Json.parseToJsonElement("[[null,[[$s,[${legs.joinToString(",") { "[$it]" }}]]]]]")
+
+    @Test fun `a trip through a stop keeps each leg's own figures`() {
+        val s = summary(trafficAt10 = true, trafficAt11 = false)
+        val r = DirectionsParser.parse(rootWithLegs(s, listOf(leg(400.0, 200.0, 300.0), leg(600.0, 400.0, 420.0)))).single()
+        assertEquals(2, r.legTimes.size)
+        assertEquals(400.0, r.legTimes[0].distanceMeters, 0.0)
+        assertEquals(300.0, r.legTimes[0].trafficSeconds!!, 0.0)
+        assertEquals(400.0, r.legTimes[1].typicalSeconds, 0.0)
+        assertEquals(1000.0, r.distanceMeters, 0.0)
+    }
+
+    @Test fun `a direct trip's one leg, and legs that do not tile the trip, are dropped`() {
+        val s = summary(trafficAt10 = true, trafficAt11 = false)
+        assertTrue(DirectionsParser.parse(rootWithLegs(s, listOf(leg(1000.0, 600.0, 720.0)))).single().legTimes.isEmpty())
+        assertTrue(DirectionsParser.parse(rootWithLegs(s, listOf(leg(400.0, 200.0, 300.0), leg(900.0, 400.0, 420.0)))).single().legTimes.isEmpty())
+        assertTrue(DirectionsParser.parse(root(s)).single().legTimes.isEmpty())
+    }
 
     @Test fun `compiled paths read the in-traffic time at its known index`() {
         val r = DirectionsParser.parse(root(summary(trafficAt10 = true, trafficAt11 = false))).single()

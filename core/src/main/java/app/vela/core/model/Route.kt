@@ -136,6 +136,14 @@ data class RouteLeg(
     val maneuvers: List<Maneuver>,
 )
 
+/** One leg of a trip through stops as the router timed it: its length, its typical time and its
+ *  live one (null without traffic). See [Route.legTimes]. */
+data class LegTime(
+    val distanceMeters: Double,
+    val typicalSeconds: Double,
+    val trafficSeconds: Double?,
+)
+
 /** One live-traffic congestion span along the route. [level] is Google's
  *  congestion grade (1 = moderate, 2 = heavy, 3+ = severe); free-flowing stretches
  *  are NOT listed (they're the gaps). [startMeters]..[startMeters]+[lengthMeters]
@@ -260,6 +268,13 @@ data class Route(
      *  drive re-checks such a route on the fast interval and swaps in the same course once it
      *  comes back named ([app.vela.core.nav.RouteHeal]). */
     val namesShort: Boolean = false,
+    /** The legs of a trip through stops, each with its own time, in trip order: Google answers a
+     *  waypointed request with one per leg (read by `DirectionsParser`), and the on-device chain
+     *  keeps each leg's. The steps stay in [legs] as one leg; this is only the figures, so the
+     *  time to a stop is its legs' own rather than a share of the trip's
+     *  (`NavEngine.legSecondsBeyond`). Empty for a direct trip and for a route whose router gave
+     *  no per-leg times. */
+    val legTimes: List<LegTime> = emptyList(),
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 

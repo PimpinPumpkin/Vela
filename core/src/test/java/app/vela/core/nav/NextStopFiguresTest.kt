@@ -1,6 +1,7 @@
 package app.vela.core.nav
 
 import app.vela.core.model.LatLng
+import app.vela.core.model.LegTime
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
@@ -70,6 +71,33 @@ class NextStopFiguresTest {
             val next = NavSession.nextStop(r, stops, marks, 0, nav)!!
             assertEquals("at $m", nav.remainingDuration, next.seconds + NavEngine.secondsBeyond(r, marks[0]!!), 0.5)
         }
+    }
+
+    @Test fun `a route with its own leg times gives the stop its legs' figure`() {
+        // The steps' pro-rating gives 60 s to the stop at the turn; the legs say the first
+        // kilometer takes 180 of the 360 s, the traffic sitting before the stop.
+        val r = route().copy(legTimes = listOf(LegTime(1000.0, 100.0, 180.0), LegTime(1000.0, 200.0, 180.0)))
+        val stops = listOf(stop(1000.0))
+        val marks = NavEngine.stopMarks(r, stops.map { it.location })
+        val nav = at(r, 500.0)
+        assertEquals(300.0, nav.remainingDuration, 2.0)
+        assertEquals(120.0, NavSession.nextStop(r, stops, marks, 0, nav)!!.seconds, 2.0)
+        assertEquals(180.0, NavEngine.secondsBeyond(r, marks[0]!!), 0.5)
+    }
+
+    @Test fun `a stop that is no leg boundary falls back to the steps' pro-rating`() {
+        val r = route().copy(legTimes = listOf(LegTime(1000.0, 100.0, 180.0), LegTime(1000.0, 200.0, 180.0)))
+        val stops = listOf(stop(1500.0))
+        val marks = NavEngine.stopMarks(r, stops.map { it.location })
+        assertNull(NavEngine.legSecondsBeyond(r, marks[0]!!))
+        assertEquals((50.0 + 100.0) * 1.2, NavSession.nextStop(r, stops, marks, 0, at(r, 500.0))!!.seconds, 2.0)
+    }
+
+    @Test fun `without traffic the legs' typical times are the figure`() {
+        val r = route(traffic = null).copy(legTimes = listOf(LegTime(1000.0, 100.0, null), LegTime(1000.0, 200.0, null)))
+        val stops = listOf(stop(1000.0))
+        val marks = NavEngine.stopMarks(r, stops.map { it.location })
+        assertEquals(200.0, NavEngine.secondsBeyond(r, marks[0]!!), 0.5)
     }
 
     @Test fun `the live calibration scales the stop's time like the trip's`() {

@@ -347,10 +347,12 @@ list's stops row has it in full: "Whole trip: 1 hr 5 min · 42 mi · arrive 3:40
 notification and Android Auto show the stop's figures too. A screen reader hears the bar as one
 line with both. A reroute, a faster route, a stop added or the stops edited mid-drive all carry
 the figures over to the new route at once. The stop's
-time is the trip's remaining time less the time past the stop's mark, worked out over the
-maneuvers' own legs and traffic ratio the way the trip's is (`NavSession.nextStop`,
-`NavEngine.secondsBeyond`), so the two always add up. Past the last stop, or when the next stop
-has no mark on the route, the bar shows the whole trip again.
+time is the trip's remaining time less the time past the stop's mark (`NavSession.nextStop`,
+`NavEngine.secondsBeyond`), so the two always add up. Google answers a trip through stops with a
+time per leg and the route keeps them (`Route.legTimes`), so the time past a stop is its own
+legs' figure, traffic where it sits; a route without them is worked out over the maneuvers' own
+legs and traffic ratio the way the trip's is. Past the last stop, or when the next stop has no
+mark on the route, the bar shows the whole trip again.
 
 - A stop added during the drive from the phone goes last. The stops editor, which is open
   during a drive, drags it into place. A stop added from the car's search goes next, because
@@ -395,8 +397,9 @@ to the car screen.
 - The closing time is read from the place's own status text. A place with none is never warned
   about.
 - The destination is checked only when the selected place is within 200 m of the route's end.
-- A route keeps no per-leg times, so a stop's arrival is the trip's time scaled by how far along
-  the line the stop sits (`stopArrivals`).
+- A stop's arrival is the trip's time less the time past its mark (`stopArrivals`), the same
+  figure the bar shows for the stop: the route's own leg times when it carries them, else the
+  steps' pro-rating.
 - A stop added during the drive is checked on the replanned route, which it waits up to 20
   seconds for.
 
@@ -507,9 +510,6 @@ switches reach the car screens too. Turn both off before a real drive.
   which slows detection of a wrong turn onto a parallel road. A fix with no speed arms the
   auto-resume and never fires it, so resume by hand there. Passing accuracy, course and a derived
   speed the way the phone's feed does would fix all three.
-- A stop's arrival time is an estimate by distance. The trip's time is spread evenly along the
-  line, so traffic that sits mostly before or after a stop skews it. That is good enough for a
-  one-hour warning window and not for minutes. Keeping per-leg times would fix it.
 - A stop's side is the side its pin is on. A pin set on the far side of a divided road, or behind
   the building, gives that side.
 - "Into the parking lot" needs the lot's aisles mapped in OpenStreetMap and present in the map's

@@ -236,6 +236,7 @@ class NavSession @Inject constructor(
             this.passedStops = 0
             this.planRoute = route
         }
+        logRouteFigures("start", route)
         voice.init(voiceEngine)
         lastRecheckMs = SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
@@ -611,7 +612,20 @@ class NavSession @Inject constructor(
      *  first fix on it instead of showing the old route's stop for a second. Null unless [route]
      *  is the plan the marks were measured on. */
     private fun seededNextStop(route: Route, tripSeconds: Double): NextStop? = synchronized(stopLock) {
+        logRouteFigures("swap", route)
         if (route === planRoute) nextStop(route, stops, stopMarks, passedStops, seedNav(route, tripSeconds)) else null
+    }
+
+    /** Counts and seconds only, for a test on a phone: the figures the bar shows come from these.
+     *  Every route the drive adopts is logged, at the start and at each swap. */
+    private fun logRouteFigures(reason: String, route: Route) = runCatching {
+        android.util.Log.i(
+            "VelaDirections",
+            "route $reason: ${route.source.name}, trip ${route.durationSeconds.toInt()}s typical, " +
+                "${route.durationInTrafficSeconds?.toInt()?.let { "${it}s" } ?: "no"} live, " +
+                "${route.maneuvers.size} steps summing ${route.maneuvers.sumOf { it.durationSeconds }.toInt()}s" +
+                (if (route.legTimes.size >= 2) ", legs " + route.legTimes.joinToString(" ") { "${it.typicalSeconds.toInt()}/${it.trafficSeconds?.toInt() ?: "-"}s ${it.distanceMeters.toInt()}m" } else ""),
+        )
     }
 
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in

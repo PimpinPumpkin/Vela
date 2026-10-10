@@ -1812,6 +1812,10 @@ class GoogleMapsDataSource @Inject constructor(
         )
         return calibrated.copy(
             durationInTrafficSeconds = calibrated.durationSeconds * factor,
+            // Google's per-leg times belong to its course too, stretched like its typical.
+            legTimes = if (sameCourse && g.legTimes.isNotEmpty()) g.legTimes.map {
+                it.copy(distanceMeters = it.distanceMeters * scale, typicalSeconds = it.typicalSeconds * scale, trafficSeconds = it.trafficSeconds?.times(scale))
+            } else route.legTimes,
             // Google's "usually X-Y" typical range belongs to its course; on a same-course route the
             // primary's durationSeconds IS Google's typical now, so the range applies to it too and
             // the depart-time chooser can show it (before, only provisional alternates had one).
@@ -1864,9 +1868,9 @@ class GoogleMapsDataSource @Inject constructor(
                     (m.type == app.vela.core.model.ManeuverType.DEPART && i != 0)
                 if (!boundary) {
                     maneuvers += m
-                } else if (maneuvers.isNotEmpty() && m.distanceMeters > 0.0) {
+                } else if (maneuvers.isNotEmpty() && (m.distanceMeters > 0.0 || m.durationSeconds > 0.0)) {
                     val prev = maneuvers.removeAt(maneuvers.lastIndex)
-                    maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
+                    maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
                 }
             }
         }
@@ -1878,7 +1882,8 @@ class GoogleMapsDataSource @Inject constructor(
             legs = listOf(app.vela.core.model.RouteLeg(dist, dur, null, maneuvers)),
             distanceMeters = dist,
             durationSeconds = dur,
-            durationInTrafficSeconds = null, // offline — no live traffic
+            durationInTrafficSeconds = null, // offline: no live traffic
+            legTimes = legs.map { app.vela.core.model.LegTime(it.distanceMeters, it.durationSeconds, null) },
             summary = legs.firstOrNull()?.summary,
             offline = true,
             source = legs.firstOrNull()?.source ?: RouteSource.UNKNOWN,

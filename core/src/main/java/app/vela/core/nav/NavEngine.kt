@@ -128,8 +128,41 @@ object NavEngine {
         return (approach + rest) * ratio
     }
 
+    /** A leg boundary ([Route.legTimes]) counts as [atM] within this, or 1.5% of the line. */
+    const val LEG_MATCH_M = 250.0
+    private const val LEG_MATCH_FRAC = 0.015
+
     /**
-     * Seconds of the trip still to drive past [atM] meters along [route], reckoned the way
+     * Seconds of the trip past [atM] from the route's own leg times ([Route.legTimes]), when
+     * [atM] is a leg boundary (a stop the trip was asked through): the sum of the legs after it,
+     * each its live figure when the route has traffic, else its typical. The boundaries are the
+     * legs' distances stretched onto the line's own length, which a stop's mark is measured on.
+     * Null when the route carries no legs or no boundary lies within [LEG_MATCH_M] (or 1.5% of
+     * the line) of [atM], and [secondsBeyond] pro-rates the steps instead.
+     */
+    fun legSecondsBeyond(route: Route, atM: Double): Double? {
+        val legs = route.legTimes
+        if (legs.size < 2 || route.polyline.size < 2) return null
+        val sum = legs.sumOf { it.distanceMeters }
+        if (sum <= 0.0) return null
+        val total = geomFor(route).cum.last()
+        val k = total / sum
+        var cum = 0.0
+        var best = -1
+        var bestOff = Double.MAX_VALUE
+        for (j in 0 until legs.lastIndex) {
+            cum += legs[j].distanceMeters * k
+            val off = kotlin.math.abs(cum - atM)
+            if (off < bestOff) { bestOff = off; best = j }
+        }
+        if (best < 0 || bestOff > maxOf(LEG_MATCH_M, total * LEG_MATCH_FRAC)) return null
+        val live = route.durationInTrafficSeconds != null
+        return legs.drop(best + 1).sumOf { if (live) it.trafficSeconds ?: it.typicalSeconds else it.typicalSeconds }
+    }
+
+    /**
+     * Seconds of the trip still to drive past [atM] meters along [route]: the route's own leg
+     * times when [atM] is one of its stops ([legSecondsBeyond]), else reckoned the way
      * [remainingDuration] reckons the whole trip: each maneuver's leg at its own pace, the leg
      * [atM] falls on pro-rated by how much of it lies beyond, scaled by the route's live-traffic
      * ratio; the route's average speed when the steps carry no usable durations. So the time to a
@@ -137,6 +170,7 @@ object NavEngine {
      * the trip (the next-stop figures in [NavSession.nextStop]).
      */
     fun secondsBeyond(route: Route, atM: Double): Double {
+        legSecondsBeyond(route, atM)?.let { return it }
         val maneuvers = route.maneuvers
         if (route.polyline.size < 2 || maneuvers.isEmpty()) return 0.0
         val geom = geomFor(route)

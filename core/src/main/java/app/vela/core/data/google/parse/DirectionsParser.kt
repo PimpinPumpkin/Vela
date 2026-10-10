@@ -9,6 +9,7 @@ import app.vela.core.data.google.int
 import app.vela.core.data.google.long
 import app.vela.core.data.google.str
 import app.vela.core.model.LatLng
+import app.vela.core.model.LegTime
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
@@ -30,6 +31,9 @@ import kotlinx.serialization.json.JsonPrimitive
  *     traffic s   `[10][0][0]`  live duration_in_traffic ("18 min") — the goal
  *     start pt    `[7][3][2]` = [.., .., lat, lng]
  *     end pt      `[7][3][3]`
+ *   legs          `r[1][j]`, one per leg of a trip asked through stops, each with its own summary
+ *                 at `[0]` in the route summary's shape (distance, typical, traffic at the same
+ *                 indices; calibrated 2026-10-10 on a one-stop Davis fixture).
  *   steps         emitted as `<step maneuver='TURN' meters='120'>Turn <turn side='LEFT'>left
  *                 </turn> onto <roadlist><road>Elm St</road></roadlist></step>` markup strings
  *                 scattered through the route subtree. The maneuver attr is GENERIC ('TURN',
@@ -44,6 +48,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * per-step polyline is the one remaining calibration item (CALIBRATE: geometry).
  */
 object DirectionsParser {
+    /** The legs' distances may differ from the trip's by this fraction and still be its legs. */
+    private const val LEG_TILE_SLACK = 0.03
+
     /** [key]'s remote path when the bundle carries one, else the compiled [fallback] indices. */
     private fun JsonElement?.atPath(paths: Map<String, List<Int>>, key: String, vararg fallback: Int): JsonElement? {
         val p = paths[key] ?: fallback.toList()
@@ -85,11 +92,20 @@ object DirectionsParser {
         // doubles back on itself.
         val polyline = googleGeometry?.takeIf { it.size >= 2 } ?: listOfNotNull(start, end)
         val maneuvers = placeManeuvers(collectSteps(route), polyline)
+        // The legs of a trip asked through stops, each timed on its own. Kept only when they tile
+        // the trip's distance; a direct trip's single leg says nothing the summary does not.
+        val legTimes = route.atPath(P, "legs", 1).arr()?.mapNotNull { leg ->
+            val s = leg.atPath(P, "legSummary", 0)
+            val d = s.atPath(P, "distance", 2, 0).dbl() ?: return@mapNotNull null
+            val t = s.atPath(P, "typical", 3, 0).dbl() ?: return@mapNotNull null
+            LegTime(d, t, s.atPath(P, "traffic", 10, 0, 0).dbl())
+        }.orEmpty().takeIf { it.size >= 2 && kotlin.math.abs(it.sumOf { l -> l.distanceMeters } - distance) <= distance * LEG_TILE_SLACK }.orEmpty()
 
         return Route(
             source = app.vela.core.model.RouteSource.GOOGLE_NAMED,
             polyline = polyline.ifEmpty { listOfNotNull(start, end) },
             legs = listOf(RouteLeg(distance, typicalDur, trafficDur, maneuvers)),
+            legTimes = legTimes,
             distanceMeters = distance,
             durationSeconds = typicalDur,
             durationInTrafficSeconds = trafficDur,

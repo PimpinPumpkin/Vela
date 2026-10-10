@@ -211,6 +211,8 @@ data class Calibration(
             "routes" to listOf(0, 1),
             "geometries" to listOf(0, 7),
             "summary" to listOf(0),
+            "legs" to listOf(1),
+            "legSummary" to listOf(0),
             "distance" to listOf(2, 0),
             "typical" to listOf(3, 0),
             "traffic" to listOf(10, 0, 0),

@@ -85,6 +85,8 @@ object TripLog {
             // How many of the turns say where they go, and how the steps were made: the totals
             // line survives a share's trim, the steps at either end do not.
             add("named=${route.namedTurns}of${route.turns}")
+            // A trip through stops whose router timed each leg: the stop figures were its own.
+            if (route.legTimes.size >= 2) add("legs=${route.legTimes.size}")
             route.made.split(';').filter { it.isNotBlank() }.forEach { add(it.replace(',', ' ').replace('\n', ' ')) }
         }.joinToString(";")
         append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason,$flags\n")

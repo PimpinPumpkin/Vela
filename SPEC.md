@@ -1281,10 +1281,15 @@ During a drive:
   when its route lands. The stop is the first one not passed and not silent (`nextStopIndex`); null when
   there is none, when that stop has no mark, or when the engine's route is not `planRoute`. The
   distance is along the line to its mark. The time is the engine's remaining time less
-  `NavEngine.secondsBeyond(route, mark)`, the same per-maneuver pro-rating and traffic ratio as
-  the whole trip, times `etaScale`; so the stop's time and the time beyond it add up to the trip,
-  and neither figure can exceed the trip's. Every router returns a trip with stops as one leg, so
-  there are no per-stop times to read.
+  `NavEngine.secondsBeyond(route, mark)`, times `etaScale`; so the stop's time and the time beyond
+  it add up to the trip, and neither figure can exceed the trip's. The time beyond the mark is
+  the route's own legs after it when it carries them (`Route.legTimes`: Google answers a trip
+  asked through stops with each leg's distance, typical and in-traffic time at `route[1][j][0]`,
+  read by `DirectionsParser` and kept through the hybrid and the traffic overlay; the on-device
+  chain keeps each leg's time), taken when a leg boundary lies within `NavEngine.LEG_MATCH_M`
+  (250 m, or 1.5% of the line) of the mark (`legSecondsBeyond`); otherwise the same per-maneuver
+  pro-rating and traffic ratio as the whole trip. The closing-time check's `stopArrivals` reads
+  the same figure. The trip file's `RD` line says `legs=N` when the route had them.
 - With a `nextStop` the bottom bar (`NavBarTop`, also the step sheet's header) shows the stop's
   time, distance and arrival clock as its main figures and "To <stop>" under them, and the step
   a line under that with the whole trip, "Trip <time> · <clock>", shrunk to fit. The stop's name
@@ -1530,8 +1535,10 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   in front for one or two. A lane prompt, the turn-now line and the arrival cue never take
   it. The signals come from the downloaded road features. Where no region is downloaded the
   public Overpass server is asked for the first route of a drive only. With the switch off
-  nothing is looked up. Logcat `VelaDirections` prints how many steps got a light, and how
-  many stops have been passed each time one is counted.
+  nothing is looked up. Logcat `VelaDirections` prints how many steps got a light, how many
+  stops have been passed each time one is counted, and every route the drive adopts (at the
+  start and each swap) with its typical and live time, the sum of its steps' times, and its leg
+  times when it has them: the figures the bar shows come from these.
 - Arrival fires within `ARRIVE_RADIUS_M` (25 m) along the route of the arrive maneuver, within
   `ARRIVE_PROX_M` (40 m) straight-line of it, or with under 50 m of route left while stopped and
   within 60 m straight-line. Those three run on the last step. On any step, a car stopped with
@@ -1540,7 +1547,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   into a lot never reaches the last step.
 - ETA sums the remaining step durations, the current leg pro-rated, times the route's traffic
   ratio, then times `etaScale`. It is never remaining distance over average speed, unless the
-  steps carry under 70% of the route's duration.
+  steps carry under 70% of the route's duration. So every fold of one step into another (a
+  via's boundary steps and an exit complex in `RouteGeometry`, the on-device chain's leg
+  joints, renames) keeps the folded step's time as well as its length; a via's DEPART carries
+  the minutes from the stop to the next turn, and dropping it ran a trip through one stop a
+  fifth short (2026-10-10).
 - Turn card shields (`roadSigns`, `ui/nav/NavOverlays.kt`): the exit tab, the maneuver's own ref
   and every route number in the instruction text, deduplicated by `routeKey` (letters and
   number; spaces, dashes and a trailing direction dropped), three at most. The card's "then" row
