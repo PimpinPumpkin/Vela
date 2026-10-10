@@ -185,6 +185,38 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                 ) { Text(stringResource(R.string.settings_voice_system_settings), maxLines = 1) }
             }
             Hint(stringResource(R.string.settings_voice_test_hint))
+            // Guidance volume (issue #245): tiers, not a slider - the useful range is small and
+            // discrete choices read instantly. Boost applies to the Vela voice's own audio;
+            // system voices can only be made softer (Android caps their volume param at 1.0).
+            // Beside Test voice, not under Advanced: a voice that is too quiet is the first thing
+            // someone comes here for, and the tiers sat below the fold in a collapsed section.
+            Spacer(Modifier.height(10.dp))
+            Text(
+                stringResource(R.string.settings_voice_volume),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            val volPrefs = androidx.compose.ui.platform.LocalContext.current
+                .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            var voiceVol by remember { mutableStateOf(volPrefs.getFloat("voice_volume", 1.0f)) }
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    0.6f to stringResource(R.string.settings_voice_volume_softer),
+                    1.0f to stringResource(R.string.settings_voice_volume_normal),
+                    1.6f to stringResource(R.string.settings_voice_volume_louder),
+                    2.2f to stringResource(R.string.settings_voice_volume_loudest),
+                ).forEach { (v, label) ->
+                    FilterChip(
+                        selected = voiceVol == v,
+                        onClick = { voiceVol = v; vm.setVoiceVolume(v) },
+                        label = { Text(label) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                }
+            }
+            Hint(stringResource(R.string.settings_voice_volume_hint))
             }
         }
 
@@ -242,36 +274,6 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                     FilledTonalButton(modifier = Modifier.dpadRowSibling(speedFocus, 1), onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
                 }
                 Hint(stringResource(R.string.settings_voice_speed_hint))
-                // Guidance volume (issue #245): tiers, not a slider - the useful range is small and
-                // discrete choices read instantly. Boost applies to the Vela voice's own audio;
-                // system voices can only be made softer (Android caps their volume param at 1.0).
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    stringResource(R.string.settings_voice_volume),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-                val volPrefs = androidx.compose.ui.platform.LocalContext.current
-                    .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-                var voiceVol by remember { mutableStateOf(volPrefs.getFloat("voice_volume", 1.0f)) }
-                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        0.6f to stringResource(R.string.settings_voice_volume_softer),
-                        1.0f to stringResource(R.string.settings_voice_volume_normal),
-                        1.6f to stringResource(R.string.settings_voice_volume_louder),
-                        2.2f to stringResource(R.string.settings_voice_volume_loudest),
-                    ).forEach { (v, label) ->
-                        FilterChip(
-                            selected = voiceVol == v,
-                            onClick = { voiceVol = v; vm.setVoiceVolume(v) },
-                            label = { Text(label) },
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                        )
-                    }
-                }
-                Hint(stringResource(R.string.settings_voice_volume_hint))
                 // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) - let the user audition +
                 // pick a variant. Hidden for single-speaker voices (lessac/hfc/…), where it's meaningless.
                 if (state.selectedEngine?.packageName?.startsWith("vela.") == true && vm.voiceSpeakerCount() > 1) {

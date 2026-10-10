@@ -116,7 +116,7 @@ rest of keypad operation.
 - A saved map view keeps its center and zoom. A map left turned or tilted opens north-up and
   flat.
 - The search finds only the row labels listed in `SEARCH_INDEX`, which is kept by hand. A row
-  inside a collapsed section, such as Guidance volume, is not listed.
+  inside a collapsed section, such as Voice speed, is not listed.
 - Android 13 and 14 show the back preview only with the system's predictive back developer
   option on.
 - When Settings is the first thing in a session to take focus, focus requests do nothing until
