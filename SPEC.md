@@ -1004,8 +1004,9 @@ Related corrections:
 - A turn that keeps the street the car is already on is said without the name, "Turn right":
   "onto X" says the street changes. The step keeps its `road`. The street the car is on, for
   this rule, is the one the driver was last told (`toldRoad`): a rename with no turn is silent
-  and tells nobody, and the first step of a stretch cut from mid-trip is never said
-  (`departSaid = false`). A long road that takes the cross street's name for its last block
+  and tells nobody, the first step of a stretch cut from mid-trip is never said
+  (`departSaid = false`), and a ramp or merge that says only its sign ("toward X") has not said
+  the road. A long road that takes the cross street's name for its last block
   therefore gets "Turn right onto X" at that corner. `HybridRoute.stitch` applies the same rule
   across the seam, where an open step named the road and a stretch step turns onto it. A slight
   bend that keeps the road's name stays a silent rename, told or not.
@@ -2046,7 +2047,8 @@ Measured and not worth doing:
   from Google's or whose length is off by a third keeps Google's line.
 - A piece left on Google's line is nudged onto the middle of the map's roads (`RoadCenter`),
   from the tiles the naming already read (`RoadNameTiles.roadsAlong(fetchMissing = false)`, up to
-  `DRAW_ROADS_MAX_TILES` 48; nothing is requested for it). The line is read every `STEP_M`
+  `DRAW_ROADS_MAX_TILES` 48; nothing is requested for it, and a tile not in hand is left out).
+  The tiles' bytes are kept for the last 96 tiles, two stretches' worth. The line is read every `STEP_M`
   (6 m). A point moves sideways onto the nearest car road within `MAX_OFF_M` (9 m) that runs
   within `ALIGN_DEG` (25) of the line's own heading. It stays where Google put it when no such
   road is there, or when roads on both sides are within `AMBIGUOUS_M` (3 m) of equally near. An
@@ -2252,7 +2254,9 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.
 - `RD` carries the route's provenance flags and source name, then `named=KofN` (how many of
-  its turns say a road, a number or a sign) and `Route.made`, how the steps were put together:
+  its lefts, rights and U-turns name a road or a number; ramps, exits, merges, forks and
+  roundabouts are not counted, since a sign names them) and `Route.made`, how the steps were put
+  together:
   the open route's source and step count, the stretches where Google's line left it and their
   meters, how many were matched, named from tiles or left bare, the naming time, `namingLate`
   when the deadline passed first, and `openNames=` for an open route whose names were checked.

@@ -36,8 +36,8 @@ object RoadNameTiles {
 
     /** The tiles' own bytes, most recent [RAW_TILES]: the street names and the roads are two
      *  layers of one tile, and whichever is read second must not ask for it again. About 30 KB a
-     *  tile. */
-    private const val RAW_TILES = 48
+     *  tile; twice [MAX_TILES], so two stretches read in one build both keep theirs. */
+    private const val RAW_TILES = 96
     private val raw = object : LinkedHashMap<Long, ByteArray>(64, 0.75f, true) {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, ByteArray>) = size > RAW_TILES
     }
@@ -250,8 +250,9 @@ object RoadNameTiles {
 
     /** Every car road in the tiles around [poly], or null when the tiles could not be read or
      *  there are more than [maxTiles] of them (8: a short stretch round a turn). With
-     *  [fetchMissing] false only tiles already in hand are used and nothing is requested; a
-     *  longer read ([maxTiles] over 16) is decoded for the call and not kept. */
+     *  [fetchMissing] false only tiles already in hand are used and nothing is requested: the
+     *  roads of the tiles in hand come back and the others are left out. A longer read
+     *  ([maxTiles] over 16) is decoded for the call and not kept. */
     suspend fun roadsAlong(poly: List<LatLng>, fetchMissing: Boolean = true, maxTiles: Int = 8): List<RoadLine>? {
         testRoads?.let { return it }
         if (fetch == null) return null
@@ -270,7 +271,8 @@ object RoadNameTiles {
                 }
             }.awaitAll()
         }
-        if (decoded.any { it == null }) return null
+        if (fetchMissing && decoded.any { it == null }) return null
+        if (decoded.all { it == null }) return null
         return decoded.filterNotNull().flatten()
     }
 

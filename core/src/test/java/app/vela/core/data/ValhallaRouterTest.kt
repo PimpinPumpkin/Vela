@@ -82,6 +82,25 @@ class ValhallaRouterTest {
         assertEquals("Turn right onto B Road", piece[2].instruction)
     }
 
+    // East on A Road, then B Road joined by a merge whose line says only its sign, then a right
+    // that stays on B Road.
+    private fun mergeTrip(): String {
+        val pts = listOf(LatLng(38.5450, -121.7430), LatLng(38.5450, -121.7407), LatLng(38.5442, -121.7407), LatLng(38.5442, -121.7430))
+        val shape = app.vela.core.data.google.PolylineCodec.encode(pts, 6).replace("\\", "\\\\").replace("\"", "\\\"")
+        return """{"trip":{"summary":{"length":0.49,"time":60.0},"legs":[{"shape":"$shape","maneuvers":[
+            {"type":1,"instruction":"Drive east on A Road.","street_names":["A Road"],"length":0.2,"time":20.0,"begin_shape_index":0,"end_shape_index":1},
+            {"type":25,"instruction":"Merge onto B Road.","street_names":["B Road"],"sign":{"exit_toward_elements":[{"text":"Sacramento"}]},"length":0.09,"time":12.0,"begin_shape_index":1,"end_shape_index":2},
+            {"type":10,"instruction":"Turn right to stay on B Road.","street_names":["B Road"],"length":0.2,"time":28.0,"begin_shape_index":2,"end_shape_index":3},
+            {"type":4,"instruction":"You have arrived.","length":0.0,"time":0.0,"begin_shape_index":3,"end_shape_index":3}]}]}}"""
+    }
+
+    @Test
+    fun `a merge that says only its sign has not told the road, so the turn after it names it`() {
+        val ms = ValhallaRouter.parse(mergeTrip(), null, departSaid = true).single().maneuvers
+        assertEquals("Merge toward Sacramento", ms[1].instruction)
+        assertEquals("Turn right onto B Road", ms[2].instruction)
+    }
+
     @Test
     fun `a slight bend that keeps the road stays a silent rename in a piece cut from mid-trip`() {
         // What the road is called on the map decides this, told or not: it is the road curving.

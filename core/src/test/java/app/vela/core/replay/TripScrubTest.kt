@@ -192,6 +192,8 @@ class TripScrubTest {
                         Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 100.0, 0.0),
                         Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Midpoint Road", poly[100], 100.0, 0.0, road = "Midpoint Road"),
                         Maneuver(ManeuverType.TURN_LEFT, "Turn left", poly[150], 100.0, 0.0),
+                        // A ramp is named by its sign and is not a plain turn: not counted.
+                        Maneuver(ManeuverType.RAMP_RIGHT, "Take the ramp toward Sacramento", poly[180], 50.0, 0.0),
                         Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
                     ),
                 ),
@@ -202,7 +204,7 @@ class TripScrubTest {
         assertEquals(2, route.turns)
         assertEquals(1, route.namedTurns)
         val rd = TripLog.encodeRoute(route, "start").split('\n').first { it.startsWith("RD,") }
-        assertTrue(rd, rd.endsWith("steps=4;named=1of2;stretches=1;bare=1;naming=5501ms;namingLate"))
+        assertTrue(rd, rd.endsWith("steps=5;named=1of2;stretches=1;bare=1;naming=5501ms;namingLate"))
         assertEquals("the flags stay one field", 6, rd.split(',').size)
     }
 

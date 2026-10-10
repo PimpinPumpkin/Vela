@@ -189,6 +189,11 @@ enum class RouteSource {
     UNKNOWN,
 }
 
+private val PLAIN_TURNS = setOf(
+    ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
+    ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.UTURN,
+)
+
 data class Route(
     val polyline: List<LatLng>,
     val legs: List<RouteLeg>,
@@ -258,14 +263,12 @@ data class Route(
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 
-    /** The turns of this route: every step but the start and the arrival. */
-    val turns: Int get() = maneuvers.count { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+    /** The plain turns of this route: lefts, rights and U-turns. Ramps, exits, merges, forks and
+     *  roundabouts are not counted: a sign names them, and no fallback produces them bare. */
+    val turns: Int get() = maneuvers.count { it.type in PLAIN_TURNS }
 
-    /** How many of [turns] say where they go: a road, a number, or the words on a sign. */
-    val namedTurns: Int get() = maneuvers.count {
-        it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE &&
-            (!it.road.isNullOrBlank() || !it.ref.isNullOrBlank() || (it.instructionNoRoad != null && it.instructionNoRoad != it.instruction))
-    }
+    /** How many of [turns] name a road or a number. */
+    val namedTurns: Int get() = maneuvers.count { it.type in PLAIN_TURNS && (!it.road.isNullOrBlank() || !it.ref.isNullOrBlank()) }
 
     /** Safe to hand to the nav session as is: not a provisional picker alternate whose steps are
      *  placeholders. The one question NavSession asks before adopting a candidate. */

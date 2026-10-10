@@ -650,9 +650,10 @@ object ValhallaRouter {
                 // street's name for its last block read "Turn right", bare, at that corner.
                 val told = road != null && road == toldRoad
                 val firstOfPiece = raw.isEmpty()
+                val text = RouteGeometry.osrmPhrase(type, mod, if (told && type == "turn") null else road, dest, exitNo, rbSaid)
                 raw += Maneuver(
                     type = RouteGeometry.osrmType(type, mod),
-                    instruction = RouteGeometry.osrmPhrase(type, mod, if (told && type == "turn") null else road, dest, exitNo, rbSaid),
+                    instruction = text,
                     instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, dest, exitNo, rbSaid),
                     ref = ref,
                     roundaboutExit = rbExit,
@@ -666,9 +667,10 @@ object ValhallaRouter {
                 if (road != null) {
                     prevRoad = road
                     // Not told by a rename with no turn, which the voice does not say, nor by
-                    // the first step of a piece cut from mid-trip, which is never said at all.
+                    // the first step of a piece cut from mid-trip, which is never said at all,
+                    // nor by a ramp or merge that says only its sign ("toward X").
                     val silent = type == "new name" || (type == "continue" && mod == "straight")
-                    if (!silent && (departSaid || !firstOfPiece)) toldRoad = road
+                    if (!silent && (departSaid || !firstOfPiece) && text.contains(road)) toldRoad = road
                 }
             }
         }

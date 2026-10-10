@@ -32,6 +32,16 @@ class RoadCenterTest {
         assertTrue(RoadCenter.nudgeCounted(line, listOf(street)).second > 380)
     }
 
+    @Test fun `a long straight diagonal road still pulls the line onto it`() {
+        // One 1.7 km segment at 45 degrees: its bounding box covers hundreds of grid cells.
+        val road = road(pt(-100.0, -100.0), pt(1100.0, 1100.0))
+        val d = 3.0 / Math.sqrt(2.0) // 3 m to the right of the road
+        val line = listOf(pt(0.0 + d, 0.0 - d), pt(1000.0 + d, 1000.0 - d))
+        val out = RoadCenter.nudge(line, listOf(road))
+        assertTrue(out.size > 100)
+        for (p in out) assertEquals("off the road's middle", 0.0, Math.abs(e(p) - n(p)) / Math.sqrt(2.0), 0.3)
+    }
+
     @Test fun `past the threshold the line stays where Google put it`() {
         val street = road(pt(-50.0, 0.0), pt(450.0, 0.0))
         val line = listOf(pt(0.0, -(RoadCenter.MAX_OFF_M + 3.0)), pt(400.0, -(RoadCenter.MAX_OFF_M + 3.0)))

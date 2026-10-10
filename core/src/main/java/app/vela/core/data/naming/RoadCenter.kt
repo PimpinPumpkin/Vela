@@ -52,12 +52,18 @@ object RoadCenter {
         class Seg(val ax: Double, val ay: Double, val bx: Double, val by: Double) { val brg = Math.toDegrees(atan2(bx - ax, by - ay)) }
         val grid = HashMap<Long, MutableList<Seg>>()
         fun key(gx: Int, gy: Int) = (gx.toLong() shl 32) xor (gy.toLong() and 0xffffffffL)
+        // Each segment goes into the cells it runs through, sampled every half cell along it:
+        // filling its bounding box put a long diagonal segment (a straight rural road) into
+        // hundreds of cells, or none at all past a cap.
         for (r in roads) for (i in 0 until r.points.size - 1) {
             val s = Seg(x(r.points[i]), y(r.points[i]), x(r.points[i + 1]), y(r.points[i + 1]))
-            val x0 = Math.floor(minOf(s.ax, s.bx) / CELL_M).toInt(); val x1 = Math.floor(maxOf(s.ax, s.bx) / CELL_M).toInt()
-            val y0 = Math.floor(minOf(s.ay, s.by) / CELL_M).toInt(); val y1 = Math.floor(maxOf(s.ay, s.by) / CELL_M).toInt()
-            if ((x1 - x0 + 1).toLong() * (y1 - y0 + 1) > 400) continue
-            for (gx in x0..x1) for (gy in y0..y1) grid.getOrPut(key(gx, gy)) { ArrayList() } += s
+            val steps = (hypot(s.bx - s.ax, s.by - s.ay) / (CELL_M / 2)).toInt().coerceAtLeast(1)
+            var last = Long.MIN_VALUE
+            for (k in 0..steps) {
+                val t = k.toDouble() / steps
+                val cell = key(Math.floor((s.ax + (s.bx - s.ax) * t) / CELL_M).toInt(), Math.floor((s.ay + (s.by - s.ay) * t) / CELL_M).toInt())
+                if (cell != last) { grid.getOrPut(cell) { ArrayList() } += s; last = cell }
+            }
         }
 
         // The line, every STEP_M, in meters.
