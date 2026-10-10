@@ -503,28 +503,9 @@ class NavSession @Inject constructor(
             }
         }
         if (!applied) return
-        val spokeNow = events.any { it is NavEvent.Speak }
-        events.forEach { ev ->
-            when (ev) {
-                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
-                NavEvent.Arrived -> {
-                    note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
-                    _state.update {
-                        it.copy(
-                            navigating = false,
-                            arrived = true,
-                            tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
-                        )
-                    }
-                }
-                NavEvent.RerouteNeeded -> {
-                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${bearingDeg?.toInt()}")
-                    reroute(loc, bearingDeg)
-                }
-            }
-        }
-        if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
+        // The stop just reached is said BEFORE this fix's turn lines: passing the mark and
+        // coming within the next turn's announcing distance can land on one fix, and
+        // "In 300 feet, turn left" before "You've reached the co-op" had them backwards.
         // A jump past the next stop is a skip, not an arrival: hold the stops and reroute through
         // them (again each fix until a new route lands; the reroute gate paces the requests).
         // A SILENT stop is different. It is a point a saved route or a camera detour was built
@@ -552,6 +533,28 @@ class NavSession @Inject constructor(
             skipNoted = false
             announceStopsPassed(route, next.traveledM, loc)
         }
+        val spokeNow = events.any { it is NavEvent.Speak }
+        events.forEach { ev ->
+            when (ev) {
+                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
+                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
+                NavEvent.Arrived -> {
+                    note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
+                    _state.update {
+                        it.copy(
+                            navigating = false,
+                            arrived = true,
+                            tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
+                        )
+                    }
+                }
+                NavEvent.RerouteNeeded -> {
+                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${bearingDeg?.toInt()}")
+                    reroute(loc, bearingDeg)
+                }
+            }
+        }
+        if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
         maybeRecheck(loc, next)
     }
 
