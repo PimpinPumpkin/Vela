@@ -2903,6 +2903,8 @@ when the feature ids match. Two requests at most.
   sheet's save menu, on a search-page row's own menu (`SuggestionOverflow`) and on an open
   list's selection bar for exactly one picked place (`BulkBar`, `renameListEntry`; issue #736,
   where the reporter looked for it), for a saved place and for a place in any list: it renames the saved record
+  (marked bare only when the Place is no listing, carries no feature id and the record already
+  reads as a point, so a starred listing renamed from a list row keeps its lookups)
   when there is one and the place's entry in every list (`PlaceListStore.rename`). The listing's
   name is taken only when it agrees with the saved one.
 - A location link's action is a setting (`LinkAction`, `link_action`): show the place

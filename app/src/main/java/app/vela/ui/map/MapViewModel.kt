@@ -1883,8 +1883,12 @@ class MapViewModel @Inject constructor(
     fun renamePlace(p: Place, name: String) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        if (savedStore.saved().any { it.id == p.id }) {
-            if (!p.isListing()) savedStore.setBare(p.id, true)
+        savedStore.saved().firstOrNull { it.id == p.id }?.let { rec ->
+            // A pin or an address keeps the new name as its name (bare: opening it never searches
+            // the name). A Place built from a list row carries no listing fields, so the record
+            // itself has to read as a point before it is marked one; a starred listing renamed
+            // from a list row used to become a bare point and lose its lookups (review 2026-10-10).
+            if (!p.isListing() && p.featureId == null && rec.isPoint) savedStore.setBare(p.id, true)
             savedStore.rename(p.id, trimmed)
         }
         val lists = listStore.rename(p.id, trimmed, p.featureId)
