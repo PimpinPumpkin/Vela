@@ -458,7 +458,9 @@ Two switches in Settings > Diagnostics make every nav screen testable at a desk:
 - "Simulate my location" pins the location dot to the map center at the moment it is turned on.
   Directions start from there and no GPS is read. Center the map on a fixture area (Davis) first.
 - "Simulate driving" (`demo_drive`) makes Start drive the planned route along a synthetic trace,
-  one fix a second, through the replay path a recorded trip uses. End stops it. Left to run, it
+  one fix a second, through the replay path a recorded trip uses. It drives the way a car would:
+  each step at the pace the route expects, slower through turns and bends, pulling away at the
+  start and braking at the end, so the voice has the time it has on a real drive. End stops it. Left to run, it
   stops on the arrival card as a real drive does.
 
 A simulated drive and a replayed trip never reroute or recheck (`NavSession.replayMode`). Both

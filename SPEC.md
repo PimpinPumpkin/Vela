@@ -2208,7 +2208,12 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   `TripLog.audit(csv)` is the one-call entry. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
   and `-DvelaSeg=<n>`, forwarded to the test JVM in `core/build.gradle.kts`.
 - Demo drive (pref `demo_drive`, off by default): `DemoTrace.fromRoute` turns a planned route
-  into one `ReplayFix` per second and runs it down the same hermetic path. It is presented as
+  into one `ReplayFix` per second and runs it down the same hermetic path. The drive keeps a
+  realistic pace: each step at its length over its time (4.5 to 38 m/s; the route's average or
+  13.4 m/s with no times), 13, 8, 5 or 3 m/s through a bend of 18, 40, 70 or 120 degrees
+  measured 12 m either side, pulling away at 1.8 m/s2 and braking at 2.2, from rest to rest. A
+  constant 72 km/h cut off half the spoken lines on 110 m town blocks; this pace cuts none
+  (`DemoTraceTest`). It is presented as
   real navigation: the replay controls are hidden and End cancels the demo job, whose `finally`
   resumes live GPS. A demo that reaches the end of its route stays on the arrival card, as a
   real drive does, and Done ends it through `stopNav`.

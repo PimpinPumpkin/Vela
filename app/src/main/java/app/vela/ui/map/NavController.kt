@@ -367,7 +367,7 @@ internal class NavController(
      *  recorded trace needs. Ends like a replay: live GPS resumes, the route/dot reset. */
     private fun startDemoDrive(route: app.vela.core.model.Route) {
         val dest = host.destination ?: route.polyline.lastOrNull() ?: return
-        val fixes = app.vela.core.location.DemoTrace.fromRoute(route.polyline)
+        val fixes = app.vela.core.location.DemoTrace.fromRoute(route)
         if (fixes.size < 2) { host.flashStatus(appContext.getString(R.string.mapvm_no_track_to_replay)); return }
         beginDriveTrace(route)
         replayJob?.cancel()
