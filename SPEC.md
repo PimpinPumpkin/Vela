@@ -2874,8 +2874,10 @@ when the feature ids match. Two requests at most.
   up tapped places on Google" off, an `overture:` entry opened from a list is not looked up.
 - Any other saved or recent place takes a listing's details only from one within 30 m, or
   within 250 m whose name agrees (`PlaceNames.agree`).
-- Rename (`SavedActions.rename`) is on the pinned rows and in the sheet's save menu. The
-  listing's name is taken only when it agrees with the saved one.
+- Rename (`SavedActions.rename`, `MapViewModel.renamePlace`) is on the pinned rows and in the
+  sheet's save menu, for a saved place and for a place in any list: it renames the saved record
+  when there is one and the place's entry in every list (`PlaceListStore.rename`). The listing's
+  name is taken only when it agrees with the saved one.
 - A location link's action is a setting (`LinkAction`, `link_action`): show the place
   (default), open the route chooser, or start navigation. Start also applies to directions
   links and passes the precise-location and notification gates.

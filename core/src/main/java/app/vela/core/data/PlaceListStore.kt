@@ -161,6 +161,15 @@ class PlaceListStore @Inject constructor(
         },
     )
 
+    /** The place's entry in every list, under [name]: a list entry can be renamed like a saved
+     *  place (issue 736). Returns the lists; nothing is written when no list holds the place. */
+    fun rename(placeId: String, name: String, featureId: String? = null): List<PlaceList> {
+        val trimmed = name.trim()
+        val lists = lists()
+        if (trimmed.isEmpty() || lists.none { l -> l.places.any { it.matches(placeId, featureId) } }) return lists
+        return write(lists.map { l -> l.copy(places = l.places.map { if (it.matches(placeId, featureId)) it.copy(name = trimmed) else it }) })
+    }
+
     /** Writes [listing] onto the entries kept from the label [heldId] at [at] ([linkListing]).
      *  Nothing is written when no list holds one: a saved custom map makes the write megabytes. */
     fun link(heldId: String, at: LatLng, listing: Place): List<PlaceList> {

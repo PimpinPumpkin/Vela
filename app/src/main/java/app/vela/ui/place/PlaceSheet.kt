@@ -883,7 +883,7 @@ fun PlaceSheet(
                             item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
                             if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
                             if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
-                            if (isSaved) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
+                            if (isSaved || inAnyList) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
                         }
                         item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
                         item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }

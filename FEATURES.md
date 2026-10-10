@@ -221,8 +221,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Saved places, lists and sharing
 
 - Save any place with the bookmark, and set Home and Work.
-- Lists with a name, color and icon or emoji, in your order. A saved place can carry a note, an icon
-  and your own name.
+- Lists with a name, color and icon or emoji, in your order. A saved place or a list entry can carry
+  a note, an icon and your own name (Rename, in its sheet's save menu).
 - Saved places show on the map in their list's color, and can be pinned to the search page.
 - Export saved places and lists to a file and import them. Import also reads GPX, KML and GeoJSON.
 - Select several places in a list or in Saved places (long press one, or the select button), then
