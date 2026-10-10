@@ -363,6 +363,7 @@ class NamingStudyTest {
                 val m = app.vela.core.data.ValhallaRouter.matchWithEdges(
                     http, piece, timeoutMs = 20_000,
                     startSlackM = if (s.fromM <= 0.0) 150.0 else 0.0, endSlackM = if (s.toM >= len - 1.0) 150.0 else 0.0,
+                    departSaid = s.fromM <= 0.0,
                 )
                 app.vela.core.data.ValhallaRouter.onMatchFail = null
                 if (m != null) { src[0]++; for (k in 0..2) names[k] += m.names[k]; m.off.forEach { untrusted += HybridRoute.Stretch(s.fromM + it.first, s.fromM + it.second) }; return@map s to m.route.maneuvers }
@@ -406,6 +407,7 @@ class NamingStudyTest {
         println("LINES audit: ${audit[0]} turns, ${audit[1]} agree, ${audit[2]} other way, ${audit[3]} no bend, ${audit[4]} bends unsaid | drive suspects $suspects (the open router's own routes: $baseline) | steps $steps, with lanes $lanes")
         notes.filterNot { " STRAIGHT " in it && "DRIVE" in it }.forEach { println("LINES $it") }
         app.vela.core.data.ValhallaRouter.onChanged = null
+
         changed.distinct().forEach { println("LINES CHANGED $it") }
     }
 

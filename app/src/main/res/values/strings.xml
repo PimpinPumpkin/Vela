@@ -252,6 +252,15 @@
     <string name="map_layers_places">Place icons: %1$s</string> <!-- format: %1$s is a source, "Vela data", "Google" or "Both" -->
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
+    <string name="settings_keep_north_up">Keep north up</string>
+    <string name="settings_keep_north_up_hint">The map never turns: two-finger rotation is off and drives stay north-up.</string>
+    <string name="settings_start_view">Where the map opens</string>
+    <string name="settings_start_view_here">Where I am</string>
+    <string name="settings_start_view_last">Where I left the map</string>
+    <string name="settings_start_view_place">A place I choose</string>
+    <string name="settings_start_view_use_current">Use the current map view</string>
+    <string name="settings_start_view_hint">Where the map is when you start Vela. A link from another app still opens on its own place.</string>
+    <string name="settings_start_view_saved">Vela will open on this view.</string>
     <string name="settings_speed_display">Show speed and speed limit</string>
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="mapvm_area_pack_big">Offline search here uses the place pack for all of %1$s. Get it from Settings > Offline maps.</string> <!-- format: %1$s country or state name -->
@@ -262,8 +271,6 @@
     <string name="settings_routing_update_available">Installed · places update available</string>
     <string name="settings_routing_size_installed_here">About %1$s once installed · covers your location</string> <!-- format -->
     <string name="settings_routing_size_installed">About %1$s once installed</string> <!-- format -->
-    <string name="settings_region_confirm_title">Download %1$s?</string> <!-- format -->
-    <string name="settings_region_confirm_body">%1$s takes about %2$s of storage once installed. For day-to-day use, saving just the area around you (top of this page) is far smaller.</string> <!-- format -->
     <string name="settings_storage_title">Storage</string>
     <string name="settings_storage_maps">Saved areas &amp; map cache</string>
     <string name="settings_storage_routing">Offline routing</string>
@@ -338,6 +345,11 @@
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
     <string name="nav_edit_route">Edit route</string>
     <string name="nav_edit_route_hint">Add a stop along the way</string>
+    <string name="nav_bar_to_stop">To %1$s</string>
+    <string name="nav_bar_trip">Trip %1$s · %2$s</string> <!-- format: whole trip's time left, then its arrival clock -->
+    <string name="nav_bar_your_stop">your stop</string>
+    <string name="nav_bar_stop_cd">%1$s and %2$s to %3$s, arriving at %4$s. Whole trip %5$s and %6$s, arriving at %7$s.</string>
+    <string name="nav_stops_whole_trip">Whole trip: %1$s · %2$s · arrive %3$s</string>
     <string name="nav_stops_remove_next">Remove next</string>
     <string name="nav_stops_remove_confirm">Remove %1$s from this drive?</string> <!-- format -->
     <string name="nav_stops_remove_action">Remove</string>
@@ -791,6 +803,11 @@
     <string name="settings_spoken_directions">Spoken directions</string>
     <string name="settings_spoken_road_names">Say street names</string>
     <string name="settings_spoken_road_names_hint">Off, turns are announced without the street name: \"Turn left\" instead of \"Turn left onto Maple Street\". The map and the step list still show it.</string>
+    <string name="settings_spoken_detail">How much the voice says</string>
+    <string name="settings_spoken_detail_full">Everything</string>
+    <string name="settings_spoken_detail_brief">Brief</string>
+    <string name="settings_spoken_detail_exits">Highway exits only</string>
+    <string name="settings_spoken_detail_hint">Brief says each turn once, without the street name. Highway exits only stays quiet in town and speaks for exits, forks and turns taken at speed.</string>
     <string name="mapvm_voice_lang_missing">Spoken directions need a %1$s voice. Get one in Settings → Voice</string>
     <!-- Shown when the language has no bundled Vela voice (e.g. Japanese) AND the phone has no
          system voice for it either, so we point at the phone's own voice settings instead. -->
@@ -1128,12 +1145,38 @@
     <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. The businesses on the map in covered regions are places data from the Overture Maps Foundation (sourced from Meta and Microsoft), available under the Community Data License Agreement, Permissive 2.0. Place details, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google. How the voice says some 3,500 place names comes from English Wikipedia and its contributors, under CC BY-SA 4.0.</string>
     <string name="settings_map_data_button">OpenStreetMap copyright</string>
     <string name="settings_map_data_overture_button">Overture Maps license</string>
+    <string name="settings_map_data_fuel_gb">UK fuel prices come from the UK government\'s Fuel Finder, republished by matthewgall/fuelfinder-archive on GitHub. Contains public sector information licensed under the Open Government Licence v3.0.</string>
+    <string name="settings_map_data_ogl_button">Open Government Licence</string>
+    <string name="place_fuel_updated_today">Updated today</string>
+    <string name="place_fuel_updated_yesterday">Updated yesterday</string>
+    <plurals name="place_fuel_updated_days">
+        <item quantity="one">Updated %d day ago</item>
+        <item quantity="other">Updated %d days ago</item>
+    </plurals>
     <string name="map_layers">Layers</string>
     <string name="settings_layers_button">Show layers button</string>
     <string name="settings_layers_button_hint">The button on the map that flips satellite, traffic, transit and terrain.</string>
     <plurals name="topcard_more_stops">
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
+    </plurals>
+    <string name="link_trip_finding">Finding the places in this trip</string>
+    <string name="link_trip_while_navigating">End navigation to open this trip</string>
+    <string name="link_trip_looking_cd">Looking it up</string>
+    <string name="link_trip_found_cd">Found</string>
+    <string name="link_trip_not_found_cd">Not found</string>
+    <string name="link_trip_stop_missing">Could not find %1$s. The route skips it.</string>
+    <string name="link_trip_start_missing">Could not find %1$s. The trip starts where you are.</string>
+    <string name="link_trip_search">Search for it</string>
+    <string name="link_trip_skip">Skip it</string>
+    <string name="link_trip_stop_title">Stop not found</string>
+    <string name="link_trip_start_title">Start not found</string>
+    <string name="link_trip_pick_start">Choose a start</string>
+    <string name="link_trip_start_here">Start where I am</string>
+    <string name="link_trip_fix">Fix</string>
+    <plurals name="link_trip_places_missing">
+        <item quantity="one">%1$d place not found</item>
+        <item quantity="other">%1$d places not found</item>
     </plurals>
     <string name="settings_places">Places</string>
     <string name="settings_privacy">Privacy</string>

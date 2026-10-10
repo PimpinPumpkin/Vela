@@ -856,10 +856,10 @@ class NavReplayTest {
         )
         val block = TripLog.encodeRoute(route, "faster")
         val rd = block.lines().first { it.startsWith("RD,") }
-        assertTrue(rd, rd.endsWith(",faster,provisional;abbreviated;steps=1"))
+        assertTrue(rd, rd.endsWith(",faster,provisional;abbreviated;steps=1;named=0of0"))
         val parsed = TripLog.parse("META,x,0,,,3217\n" + block + "38.5,-121.7,0,0,0\n")
         assertEquals("faster", parsed.segments.single().reason)
-        assertEquals("provisional;abbreviated;steps=1", parsed.segments.single().flags)
+        assertEquals("provisional;abbreviated;steps=1;named=0of0", parsed.segments.single().flags)
     }
 
     @Test

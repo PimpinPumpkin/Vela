@@ -498,6 +498,11 @@
     <string name="settings_spoken_directions">Hangos útvonalvezetés</string>
     <string name="settings_spoken_road_names">Utcanevek bemondása</string>
     <string name="settings_spoken_road_names_hint">Kikapcsolva a kanyarok utcanév nélkül hangzanak el: \"Fordulj balra\" a \"Fordulj balra a Fő utcára\" helyett. A térkép és a lépéslista továbbra is mutatja.</string>
+    <string name="settings_spoken_detail">Mennyit mondjon a hang</string>
+    <string name="settings_spoken_detail_full">Mindent</string>
+    <string name="settings_spoken_detail_brief">Röviden</string>
+    <string name="settings_spoken_detail_exits">Csak autópálya-lehajtók</string>
+    <string name="settings_spoken_detail_hint">A Röviden minden kanyart egyszer mond be, utcanév nélkül. A Csak autópálya-lehajtók városban csendben marad, és a lehajtókat, elágazásokat és a nagy sebességnél vett kanyarokat mondja be.</string>
     <string name="mapvm_voice_lang_missing">A hangos útvonalvezetéshez %1$s hang szükséges. Szerezz egyet a Beállítások → Hang menüben</string>
     <string name="mapvm_voice_lang_system">A(z) %1$s útvonalvezetés a telefonod hangját használja. Adj hozzá egyet a rendszer hangbeállításaiban.</string>
     <string name="mapvm_resume_waiting_gps">GPS várakozás a navigáció folytatásához…</string>
@@ -827,8 +832,6 @@
     <string name="settings_offline_places_with_downloads_hint">Egy régió letöltése a hozzá tartozó Vela-helyadatot is elhozza, így az üzletek jelzés nélkül is látszanak a térképen. Egy nagy államnál nagyjából fél gigabájt. Ki = a helyek csak online töltődnek be.</string>
     <string name="settings_routing_size_installed_here">Telepítve kb. %1$s · lefedi a helyzetedet</string>
     <string name="settings_routing_size_installed">Telepítve kb. %1$s</string>
-    <string name="settings_region_confirm_title">Letöltöd ezt: %1$s?</string>
-    <string name="settings_region_confirm_body">A(z) %1$s telepítve kb. %2$s tárhelyet foglal. Mindennapi használatra a körülötted lévő terület mentése (az oldal tetején) sokkal kisebb.</string>
     <string name="settings_storage_title">Tárhely</string>
     <string name="settings_storage_maps">Mentett területek és térkép-gyorsítótár</string>
     <string name="settings_storage_routing">Offline útvonaltervezés</string>

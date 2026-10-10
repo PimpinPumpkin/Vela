@@ -108,6 +108,9 @@ jobs:
           done
           echo "could not fetch a valid planetiler.jar" >&2
           exit 1
+      - name: Install osmium (a region cut from a parent extract)
+        if: startsWith(matrix.pbf_url, 'cut:')
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool jq
       - name: Bake ${{ matrix.id }}
         env:
           PLANETILER_XMX: 10g

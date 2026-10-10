@@ -87,6 +87,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // adb-only: `setprop debug.vela.tune.netLog 1` also opens the WebViews to Chrome's remote
         // inspector (adb forward to webview_devtools_remote_<pid>), for reading their real headers.
         if (app.vela.ui.AppTune.localOn("netLog")) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
+        // A test switch for the routes' fallbacks (ValhallaRouter.matchOff). adb only.
+        app.vela.core.data.ValhallaRouter.matchOff = app.vela.ui.AppTune.localOn("noMatch")
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())
@@ -120,8 +122,10 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.SatelliteLayer.init(this) // persisted satellite-imagery toggle
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
+        app.vela.ui.NorthLock.init(this) // Settings > Map "Keep north up"
         app.vela.ui.ParkingButton.init(this) // parking button shown with no spot saved (issue #626)
         app.vela.ui.LinkAction.init(this) // what a location link from another app does (discussion #640)
+        app.vela.ui.StartView.init(this) // where the map opens, and the view picked for it
         app.vela.ui.NavEndConfirm.init(this) // ask before ending a drive, off by default (issue #624)
         app.vela.ui.SpeedDisplay.init(this) // speed + limit badge on/off, phone and car (issue #625)
         app.vela.ui.Topography.init(this)
@@ -191,6 +195,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.MapPoiPrefs.init(this)
         // Mirrors into the :core flag NavEngine reads (issue #596).
         app.vela.ui.SpokenRoadNames.init(this)
+        app.vela.ui.SpokenDetail.init(this)
         app.vela.ui.RoutePicker.init(this)
         app.vela.ui.VoiceSearch.init(this)
         app.vela.ui.ContactsSearch.init(this) // contacts-in-search toggle (issue #243)

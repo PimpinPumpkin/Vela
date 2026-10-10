@@ -43,6 +43,7 @@ class VelaCarAppService : CarAppService() {
     @Inject lateinit var offlinePois: app.vela.core.data.OfflinePoiStore
     @Inject lateinit var offlineAddresses: app.vela.core.data.OfflineAddressStore
     @Inject lateinit var poiPacks: app.vela.offline.PoiPackStore
+    @Inject lateinit var http: okhttp3.OkHttpClient
 
     // Allow ANY Android Auto / AAOS host to connect. Vela is sideloaded (never on Play) and must
     // "just work" on whatever head unit / DHU a user plugs into — the
@@ -71,7 +72,7 @@ class VelaCarAppService : CarAppService() {
         // with the phone UI never opened has to open them itself for offline car search.
         Thread { runCatching { poiPacks.registerPacks() } }.start()
         return VelaCarSession(
-        CarDeps(navSession, locationProvider, mapDataSource, recentPlaces, savedPlaces, shortcuts, voiceGuide, routeEngine, offlinePois, offlineAddresses),
+        CarDeps(navSession, locationProvider, mapDataSource, recentPlaces, savedPlaces, shortcuts, voiceGuide, routeEngine, offlinePois, offlineAddresses, http),
         )
     }
 }

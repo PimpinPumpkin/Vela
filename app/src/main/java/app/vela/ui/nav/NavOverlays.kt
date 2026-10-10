@@ -14,6 +14,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -195,9 +196,33 @@ fun ManeuverBanner(
     // the 54dp glyph + full paddings buried the map on sub-500dp-tall displays, so the banner
     // shrinks its chrome there. Ordinary phones and tall head units never trip the gate.
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 500
+    // LARGE TEXT: in portrait the card and its "Then" tab stay within BANNER_MAX_FRACTION of the
+    // screen. Past it the card's text steps down, never below the default size, and tries one step
+    // back up at each new maneuver (never within one, so it cannot flip between two sizes).
+    val baseDensity = LocalDensity.current
+    val conf = LocalConfiguration.current
+    // In real px (the configuration's density): "Interface size" scales LocalDensity, not the screen.
+    val capPx = if (conf.screenHeightDp > conf.screenWidthDp) {
+        (conf.screenHeightDp * conf.densityDpi / 160f * BANNER_MAX_FRACTION).roundToInt()
+    } else Int.MAX_VALUE
+    val fitFloor = (1f / baseDensity.fontScale).coerceAtMost(1f)
+    val fit = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    LaunchedEffect(text, type, previewing, offRoute) {
+        if (fit.floatValue < 1f) fit.floatValue = (fit.floatValue / BANNER_FIT_STEP).coerceAtMost(1f)
+    }
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, baseDensity.fontScale * fit.floatValue),
+    ) {
     // Main card + detached "then" strip share the caller's slot, so measured
     // offsets below (compass, chips) stay right.
-    Column(modifier) {
+    Column(
+        modifier.onSizeChanged { s ->
+            if (s.height > capPx && fit.floatValue > fitFloor + 0.001f) {
+                val step = (capPx.toFloat() / s.height).coerceIn(BANNER_FIT_MIN_STEP, BANNER_FIT_STEP)
+                fit.floatValue = (fit.floatValue * step).coerceAtLeast(fitFloor)
+            }
+        },
+    ) {
     Card(
         Modifier
             .fillMaxWidth()
@@ -279,10 +304,17 @@ fun ManeuverBanner(
                 Column(Modifier.weight(1f)) {
                     val signs = if (rerouting) emptyList() else roadSigns(text, ref)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters),
-                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
+                        // One line that shrinks to fit beside the shield: wrapped at large text it
+                        // took two headline lines. Reset only when its length changes, not on
+                        // every distance tick.
+                        val distText = if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters)
+                        val distStyle = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium
+                        FitText(
+                            distText,
+                            style = distStyle.copy(fontWeight = FontWeight.Bold),
+                            color = LocalContentColor.current,
+                            modifier = Modifier.weight(1f),
+                            resetKey = distText.length,
                         )
                         // The road you're ON, as its stylized shield - persistent for the whole
                         // stretch, right-aligned on the distance row (user 2026-07-16: on the TOP
@@ -292,7 +324,7 @@ fun ManeuverBanner(
                         val cur = if (rerouting) null else currentRef?.trim()?.replace(WS_RUN, " ")
                             ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { it.label == c } }
                         if (cur != null) {
-                            Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.width(8.dp))
                             SignChip(Sign(isExit = false, label = cur), onBanner = true)
                         }
                     }
@@ -316,6 +348,8 @@ fun ManeuverBanner(
                             headline,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
+                            maxLines = BANNER_HEADLINE_LINES,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         if (headline.length < full.length) {
                             val rest = full.substring(headline.length).trim(':', ' ')
@@ -403,7 +437,17 @@ fun ManeuverBanner(
             }
         }
     }
+    }
 }
+
+/** The turn card's most height in portrait, as a fraction of the screen (large text). */
+private const val BANNER_MAX_FRACTION = 0.33f
+/** One step of the card's text toward fitting, and back up at a new maneuver. */
+private const val BANNER_FIT_STEP = 0.9f
+/** The largest single step down, for a card far over its height. */
+private const val BANNER_FIT_MIN_STEP = 0.7f
+/** The instruction's most lines before it is cut with an ellipsis. */
+private const val BANNER_HEADLINE_LINES = 3
 
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
@@ -502,8 +546,14 @@ internal fun SignChip(sign: Sign, onBanner: Boolean = false) {
  *  nav card's trip time against the big driving buttons and Interface-size scaling. Steps down
  *  8% per layout pass while overflowing, floored at 55% of the base size. */
 @Composable
-private fun FitText(text: String, style: androidx.compose.ui.text.TextStyle, color: Color, modifier: Modifier = Modifier) {
-    val scaleState = remember(text) { androidx.compose.runtime.mutableStateOf(1f) }
+private fun FitText(
+    text: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    resetKey: Any = text, // what starts the fit over at full size
+) {
+    val scaleState = remember(resetKey) { androidx.compose.runtime.mutableStateOf(1f) }
     val scale = scaleState.value
     Text(
         text,
@@ -1089,14 +1139,31 @@ fun NavBarTop(
                 Icon(Sym.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(8.dp))
+            // With a stop still ahead the main figures are the stop's, a line under them names it,
+            // and the whole trip's time and arrival follow on a line of their own. The stop's name
+            // needs its line to itself: on one line the two cut each other off.
+            val leg = NavLegFigures.leg.value
+            val shownSeconds = leg?.stop?.seconds ?: remainingSeconds
+            val shownMeters = leg?.stop?.distanceM ?: remainingDistanceMeters
+            val stopName = leg?.stop?.label?.takeIf { it.isNotBlank() } ?: stringResource(R.string.nav_bar_your_stop)
+            // A screen reader hears both, in words: the stop's figures, then the whole trip's.
+            val figuresCd = leg?.let {
+                stringResource(
+                    R.string.nav_bar_stop_cd,
+                    formatDuration(it.stop.seconds), formatDistance(it.stop.distanceM), stopName, formatArrivalClock(it.stop.seconds),
+                    formatDuration(it.tripSeconds), formatDistance(it.tripMeters), formatArrivalClock(it.tripSeconds),
+                )
+            }
             Column(
-                Modifier.weight(1f),
+                Modifier.weight(1f).then(
+                    if (figuresCd != null) Modifier.clearAndSetSemantics { contentDescription = figuresCd } else Modifier,
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Both lines SHRINK to fit rather than wrap or ellipsize: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
-                FitDuration(formatDuration(remainingSeconds), style = MaterialTheme.typography.headlineSmall, color = etaColor)
+                FitDuration(formatDuration(shownSeconds), style = MaterialTheme.typography.headlineSmall, color = etaColor)
                 // While PAUSED nothing updates the nav state, so nothing would recompose this and
                 // the arrival clock would sit frozen at whatever minute the stop began - the one
                 // figure that should keep moving while you stand still, because it is what the stop
@@ -1104,8 +1171,8 @@ fun NavBarTop(
                 var pausedTick by remember { mutableStateOf(0) }
                 LaunchedEffect(paused) { while (paused) { kotlinx.coroutines.delay(30_000); pausedTick++ } }
                 FitText(
-                    formatDistance(remainingDistanceMeters) +
-                        " · " + formatArrivalClock(remainingSeconds).also { pausedTick } +
+                    formatDistance(shownMeters) +
+                        " · " + formatArrivalClock(shownSeconds).also { pausedTick } +
                         when {
                             paused -> " · " + stringResource(R.string.nav_paused)
                             offRoute -> " · " + stringResource(R.string.nav_rerouting)
@@ -1115,6 +1182,21 @@ fun NavBarTop(
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (paused) MaterialTheme.colorScheme.primary else if (look.onDark) androidx.compose.ui.graphics.Color(0xFFDADCE0) else barDim,
                 )
+                // Which stop the figures above are for; a long name is cut, never the figures.
+                if (leg != null) {
+                    Text(
+                        stringResource(R.string.nav_bar_to_stop, stopName),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = barDim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    FitText(
+                        stringResource(R.string.nav_bar_trip, formatDuration(leg.tripSeconds), formatArrivalClock(leg.tripSeconds).also { pausedTick }),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = barDim,
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
             // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons, 26dp glyphs.

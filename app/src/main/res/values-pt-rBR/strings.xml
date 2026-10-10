@@ -426,6 +426,11 @@
     <string name="settings_spoken_directions">Instruções por voz</string>
     <string name="settings_spoken_road_names">Dizer os nomes das ruas</string>
     <string name="settings_spoken_road_names_hint">Desativado, as mudanças de direção são anunciadas sem o nome da rua: \"Vire à esquerda\" em vez de \"Vire à esquerda na Rua das Flores\". O mapa e a lista de etapas continuam mostrando o nome.</string>
+    <string name="settings_spoken_detail">Quanto a voz diz</string>
+    <string name="settings_spoken_detail_full">Tudo</string>
+    <string name="settings_spoken_detail_brief">Breve</string>
+    <string name="settings_spoken_detail_exits">Apenas saídas de rodovia</string>
+    <string name="settings_spoken_detail_hint">Breve anuncia cada curva uma só vez, sem o nome da rua. Apenas saídas de rodovia fica em silêncio na cidade e anuncia saídas, bifurcações e curvas feitas em alta velocidade.</string>
     <string name="mapvm_voice_lang_missing">As instruções por voz precisam de uma voz em %1$s. Adicione uma em Configurações → Voz</string>
     <string name="mapvm_no_track_to_replay">Essa viagem não tem traço para reproduzir</string>
     <string name="mapvm_replaying">Reproduzindo %1$s…</string>
@@ -803,8 +808,6 @@
     <string name="settings_offline_places_with_downloads_hint">O download de uma região traz também os dados de locais do Vela, para que os estabelecimentos apareçam no mapa sem rede. Cerca de meio gigabyte para um estado grande. Desativado = os locais só chegam on-line.</string>
     <string name="settings_routing_size_installed_here">Cerca de %1$s depois de instalado · abrange a sua localização</string>
     <string name="settings_routing_size_installed">Cerca de %1$s depois de instalado</string>
-    <string name="settings_region_confirm_title">Baixar %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s ocupa cerca de %2$s depois de instalado. Para o dia a dia, salvar apenas a área ao seu redor (no topo desta página) é muito menor.</string>
     <string name="settings_storage_title">Armazenamento</string>
     <string name="settings_storage_maps">Áreas salvas &amp; cache do mapa</string>
     <string name="settings_storage_routing">Rotas off-line</string>

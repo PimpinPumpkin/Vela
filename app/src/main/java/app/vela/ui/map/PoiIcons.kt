@@ -100,8 +100,8 @@ object PoiIcons {
      *  ("vela-resb-fuel-534"), a red category pin for everything else ("vela-res-shop").
      *  Bubble keys only need uniqueness - the drawn label is passed to [ensureResultIcon]. */
     fun resultIconKey(name: String?, category: String?, rating: Double?, fuelPrice: String? = null): String {
-        val group = groupFor(name, category)
         val price = fuelShort(fuelPrice)
+        val group = resultGroup(name, category, price)
         return when {
             group == "fuel" && price != null ->
                 "vela-resb-$group-" + price.filter(Char::isLetterOrDigit).lowercase()
@@ -114,13 +114,19 @@ object PoiIcons {
     /** The label a result's bubble should carry, or null for a plain pin: the rating ("4.5") or
      *  the short fuel price ("$5.34" from "$5.34/Regular"). */
     fun resultBubbleLabel(name: String?, category: String?, rating: Double?, fuelPrice: String?): String? {
-        val group = groupFor(name, category)
+        val group = resultGroup(name, category, fuelShort(fuelPrice))
         return when {
             group == "fuel" -> fuelShort(fuelPrice)
             group == "food" && rating != null -> String.format(java.util.Locale.getDefault(), "%.1f", rating)
             else -> null
         }
     }
+
+    /** A place with a fuel price is a gas station, whatever language its category is in: the
+     *  category words [groupFor] reads are English, and a UK price is filled from Google's own
+     *  station type (SPEC 5.8). */
+    private fun resultGroup(name: String?, category: String?, price: String?): String =
+        if (price != null) "fuel" else groupFor(name, category)
 
     /** "$5.34/Regular" → "$5.34" (the map bubble only has room for the number; the grade shows
      *  on the list row + place sheet). */

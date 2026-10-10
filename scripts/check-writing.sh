@@ -36,11 +36,11 @@ ADDED="$(git diff "$RANGE" -U0 -- '*.md' '*.kt' '*.xml' '*.sh' '*.yml' ':(exclud
 # French, not a British "utilise"), and the en-GB file exists to be British. Em dashes are still
 # checked in every file, translations included.
 ADDED_EN="$(git diff "$RANGE" -U0 -- '*.md' '*.kt' '*.xml' '*.sh' '*.yml' ':(exclude)scripts/check-writing.sh' ':(exclude)app/src/main/res/values-*/*' 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
-# The keyword lists that must carry BOTH spellings, and the en-GB strings file, are the exceptions
-# CLAUDE.md names; they are data, not prose, so a line that keeps both forms is left alone.
-if grep -inE "$BRITISH" <<<"$ADDED_EN" | grep -viE "values-en-rGB|centre\"|centre'|fitness_centre|arts_centre|neighbourhood|cancelled\(\)|isCancelled" >/dev/null 2>&1; then
+# The keyword lists that must carry BOTH spellings, the en-GB strings file and the Open Government
+# Licence's own name are the exceptions CLAUDE.md names; they are data, not prose.
+if grep -inE "$BRITISH" <<<"$ADDED_EN" | grep -viE "values-en-rGB|centre\"|centre'|fitness_centre|arts_centre|neighbourhood|cancelled\(\)|isCancelled|open.government.licence" >/dev/null 2>&1; then
   echo "FAIL: this change adds a British spelling:" >&2
-  grep -inE "$BRITISH" <<<"$ADDED_EN" | grep -viE "values-en-rGB|centre\"|centre'|fitness_centre|arts_centre|neighbourhood|cancelled\(\)|isCancelled" | head -5 >&2
+  grep -inE "$BRITISH" <<<"$ADDED_EN" | grep -viE "values-en-rGB|centre\"|centre'|fitness_centre|arts_centre|neighbourhood|cancelled\(\)|isCancelled|open.government.licence" | head -5 >&2
   FAIL=1
 fi
 if grep -n "—" <<<"$ADDED" >/dev/null 2>&1; then

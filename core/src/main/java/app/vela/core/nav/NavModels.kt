@@ -23,7 +23,21 @@ data class NavState(
     val rerouteBlocked: Boolean = false, // an off-route excursion latched INSIDE the destination zone —
                                          // the deferred reroute fires if it leaves the zone (edge-only
                                          // suppression was a permanent silent limbo)
+    val stopCuedAtM: Double = -1.0,    // the mark of the stop whose approach has been said ([StopAhead]),
+                                       // so it is said once; a new route starts a fresh NavState
+    val chainedStep: Int = -1,         // the step already said as the "then ..." of the turn before it
+                                       // (NavEngine.chainedNext): its own approach is not said again
 )
+
+/**
+ * The next stop on a drive with stops, as [NavEngine.update] needs it to say the stop is coming
+ * the way it says the destination is: [atM] is its mark along the route, [side] "left" or "right"
+ * when its pin sits clearly to one side of the road there ([NavEngine.stopSide]), null for
+ * "ahead". [lotTurn] is the index of the maneuver that turns into the stop's parking lot, read
+ * from the map's own road data ([ParkingLotTurn], [NavEngine.lotTurnsBefore]), so that turn can
+ * be said as "into the parking lot"; -1 when none does or the map has not answered yet.
+ */
+data class StopAhead(val atM: Double, val label: String, val side: String? = null, val lotTurn: Int = -1)
 
 /** Side-effects the engine asks the UI layer to perform. */
 sealed interface NavEvent {

@@ -158,6 +158,56 @@ class TripScrubTest {
         assertNull(TripScrub.scrub("META,x,0,,,\n"))
     }
 
+    @Test fun `notes from the trimmed ends are kept, with their own times`() {
+        // What the drive decided and what it ran on says nothing about a place, and the start of
+        // a drive is where its route is planned and named.
+        val csv = trip() +
+            "K,1756700000500,recheck: kept current route (named 1 of 12 turns)\n" +
+            "J,1756700001000,60,2,18\n" +
+            "K,1756700199500,arrived (trip 199s)\n"
+        val r = TripScrub.scrub(csv)!!
+        val events = TripLog.parse(r.csv).events
+        val first = events.first { it.text.startsWith("recheck: kept") }
+        assertTrue("a note from before the first surviving fix has a time before zero", first.t < 0)
+        assertTrue(events.any { it.tag == "J" && it.t < 0 })
+        val lastFix = TripLog.parsePoints(r.csv.split('\n')).last().t
+        assertTrue("and one from after the last", events.first { it.text.startsWith("arrived") }.t > lastFix)
+        assertTrue("no absolute wall-clock survives", !r.csv.contains("17567000"))
+    }
+
+    @Test fun `a spoken line from a trimmed end still goes`() {
+        val r = scrub()!!
+        assertTrue(!r.csv.contains("Sesame Street"))
+        assertTrue(!r.csv.contains("Arriving at"))
+    }
+
+    @Test fun `the totals line says how many turns are named and how the steps were made`() {
+        val poly = (0 until 200).map { LatLng(originLat, originLng + step * it) }
+        val route = Route(
+            poly,
+            listOf(
+                RouteLeg(
+                    5000.0, 300.0, null,
+                    listOf(
+                        Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 100.0, 0.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Midpoint Road", poly[100], 100.0, 0.0, road = "Midpoint Road"),
+                        Maneuver(ManeuverType.TURN_LEFT, "Turn left", poly[150], 100.0, 0.0),
+                        // A ramp is named by its sign and is not a plain turn: not counted.
+                        Maneuver(ManeuverType.RAMP_RIGHT, "Take the ramp toward Sacramento", poly[180], 50.0, 0.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+                    ),
+                ),
+            ),
+            5000.0, 300.0, null,
+            made = "stretches=1;bare=1;naming=5501ms;namingLate",
+        )
+        assertEquals(2, route.turns)
+        assertEquals(1, route.namedTurns)
+        val rd = TripLog.encodeRoute(route, "start").split('\n').first { it.startsWith("RD,") }
+        assertTrue(rd, rd.endsWith("steps=5;named=1of2;stretches=1;bare=1;naming=5501ms;namingLate"))
+        assertEquals("the flags stay one field", 6, rd.split(',').size)
+    }
+
     @Test fun `an unknown line kind is dropped rather than published`() {
         val csv = trip().replace("B,1756700100000,84\n", "B,1756700100000,84\nZZ,1756700100000,something new\n")
         val r = TripScrub.scrub(csv)!!

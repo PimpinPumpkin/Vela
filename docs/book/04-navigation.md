@@ -3,7 +3,8 @@
 ## What you see
 
 A banner with the next turn, an arrow that follows you, a bar with the time and distance left,
-and a voice. Around them:
+and a voice. On a trip with stops the bar's figures are for the next stop, named under them,
+with the whole trip on a line below. Around them:
 
 - Pause, in the bottom bar. While paused the route line turns lavender.
 - A faster-route offer that settles itself after ten seconds.
@@ -73,13 +74,23 @@ Each step gets at most a far and a near prompt, then the short turn-now line. At
 floors apply. A prompt speaks the real distance, so a turn 40 m into a short step is not
 announced as "in 400 meters".
 
+That is the Everything setting. "How much the voice says" in Settings, Voice has two shorter
+ones (`SpokenDetail`). Brief says each maneuver once, with no street name: "In 150 meters, turn
+left". An exit, fork or keep is said from the far distance and keeps its exit number, because
+that is what the sign overhead reads; a turn is said from the near distance; nothing is repeated
+at the turn. Highway exits only is Brief for exits, forks, keeps, U-turns and the arrival, and
+silence for the rest. The route carries no road class, so a turn off a fast road is told apart
+from a turn in town by speed: at 80 km/h (50 mph) or more it is spoken. Roundabouts and merges
+stay silent. The buzz at a turn stays in all three.
+
 The card moves to the next step when the car is at the turn: 2.5 s ahead at speed, and no more
 than 5 m ahead at a crawl. Waiting at a stop line before a turn, the card still shows that
 turn. The voice says "turn left" 25 m out either way.
 
 - The first prompt for a step leads with lane guidance when the step has lanes.
 - In English a later prompt for the same step drops the sign's "toward ..." tail.
-- A merge gets only the near prompt. The destination gets one near prompt.
+- A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
+  (see Stops below).
 - A continue or a straight-on is silent unless its lanes show a real fork.
 - The first instruction is spoken once by the drive's opener ("Starting navigation. Head east on
   ..."). The engine skips it.
@@ -95,6 +106,12 @@ text.
 Prompts duck other audio (`VoiceGuide`). Focus is held for `FOCUS_HOLD_MS = 1500` after a line
 so music does not come back up between two prompts, and a phone call that takes focus silences
 guidance. Vela's own voice synthesizes the next lines ahead of time (`NavEngine.upcomingPrompts`).
+
+Two turns within 130 m of each other are said on one line: "Turn right onto Elm Street, then
+turn left onto Oak Avenue", when the first is announced and again at the first turn. The second
+turn is then said only at the turn itself. Said apart, its approach line landed on top of the
+first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
+apart.
 
 Two wording rules live in the routers and are heard here:
 
@@ -183,8 +200,8 @@ and each source gets a share:
   past that, never past the deadline. A trip with stops chains its legs on the phone the same
   way.
 
-A route adopted with no traffic or with short steps is degraded. The recheck below replaces it
-once the sources recover.
+A route adopted with no traffic, with short steps, or with turns that went out without their
+street names is degraded. The recheck below replaces it once the sources recover.
 
 The heading is the fix's course at the start point. Without it, a reroute computed a few tens of
 meters down the wrong road often says to turn around. The open router and the on-phone router
@@ -229,7 +246,9 @@ while off route and while an offer is on screen. What happens next depends on th
   Without it the arrival time would carry the traffic measured at the last route fetch for the
   rest of the drive.
 - Same course, and the current route is degraded: the candidate replaces it silently when it is
-  better in steps or traffic and worse in neither.
+  better in steps, street names or traffic and worse in none (`RouteHeal`). A route whose names
+  missed the planning deadline is asked for again about every 20 seconds, six times, and gets
+  its names within the first answer that has them.
 - Another course: it is offered when it saves more than 90 seconds, has live traffic and full
   steps, passes every remaining stop, and takes between 40% and 90% of the time left. A
   candidate without traffic never counts, because free-flow time always looks faster. A
@@ -292,6 +311,50 @@ strip. The phone is usually in a cradle when the driver decides to pull in.
 A stop counts as passed when progress comes within `STOP_ARRIVE_TOL_M = 25` of its mark on the
 route, and the voice says "You've reached <stop>".
 
+The voice also says a stop is coming, the way it says the destination is:
+
+```
+STOP_THEN_M     = 300   // the last turn before a stop names it when the stop is this close past it
+LOT_DEST_BACK_M = 400   // the turn into a parking lot is looked for this far before a stop or the end
+```
+
+- The last maneuver the voice speaks before the stop names it after itself, on its first line and
+  again at the turn: "In 400 meters, turn left onto Covell Boulevard, then Davis Food Co-op will be
+  on your right". A stop farther past its turn, or with no spoken turn before it, gets its own line
+  at the near distance: "In 150 meters, Davis Food Co-op will be on your right". Either way it is
+  said once, and never while off route.
+- The side is where the stop's pin sits against the road at the stop (`NavEngine.stopSide`). A
+  pin within 8 m of the line, or a line that bends more than 45 degrees there (a corner), gives
+  "will be ahead" instead of a side that could be wrong.
+- A way into a lot ends with the turn off the street and often a turn or two between the
+  aisles, all with no name. Vela looks at up to three such turns in the last 400 m before the
+  stop and reads the map's own tiles along the first 60 m past each (`ParkingLotTurn`). The
+  first whose tiles show a parking aisle, reached by service roads and no street or alley, is
+  the turn into the lot: it says "Turn left into the parking lot", and when it is also the last
+  turn before the stop, "Turn left into the parking lot, then Davis Food Co-op is on your right".
+  No router marks a parking aisle, and a road with no name is just as often a driveway or an
+  unnamed lane, so anything less certain keeps the plain "Turn left".
+- The end of the trip gets the same test against the destination. It is settled when the route
+  is planned, so the step itself reads "Turn left into the parking lot" on the banner, in the
+  step list, in the voice and on the car. A turn between the aisles after it stays a plain
+  "Turn right", and the usual arrival lines follow.
+- Brief puts the stop on its turn's one line. Highway exits only stays quiet for the turn in town
+  and says the stop's own line, as it says the destination's.
+
+While a stop is ahead, the bottom bar's time, distance and arrival clock are for that stop, with
+"To <stop>" under them and the whole trip under that ("Trip 1 hr 5 min · 3:40 PM"). The step
+list's stops row has it in full: "Whole trip: 1 hr 5 min · 42 mi · arrive 3:40 PM". The
+notification and Android Auto show the stop's figures too. A screen reader hears the bar as one
+line with both. A reroute, a faster route, a stop added or the stops edited mid-drive all carry
+the figures over to the new route at once. The stop's
+time is the trip's remaining time less the time past the stop's mark, worked out over the
+maneuvers' own legs and traffic ratio the way the trip's is (`NavSession.nextStop`,
+`NavEngine.secondsBeyond`), so the two always add up. Past the last stop, or when the next stop
+has no mark on the route, the bar shows the whole trip again.
+
+- A stop added during the drive from the phone goes last. The stops editor, which is open
+  during a drive, drags it into place. A stop added from the car's search goes next, because
+  the car has no editor.
 - Every reroute and recheck routes through the stops still ahead.
 - A reroute that could not include them is adopted anyway and says so, because being guided
   beats being lost. The stops stay in the plan for the next attempt.
@@ -416,7 +479,10 @@ Two switches in Settings > Diagnostics make every nav screen testable at a desk:
 - "Simulate my location" pins the location dot to the map center at the moment it is turned on.
   Directions start from there and no GPS is read. Center the map on a fixture area (Davis) first.
 - "Simulate driving" (`demo_drive`) makes Start drive the planned route along a synthetic trace,
-  one fix a second, through the replay path a recorded trip uses. End stops it. Left to run, it
+  one fix a second, through the replay path a recorded trip uses. It drives the way a car would:
+  each step at the pace the route expects, slower through turns and bends, pulling away at the
+  start and braking at the end, so the voice has the time it has on a real drive. Add a stop or
+  edit the stops during it and the car follows the new route. End stops it. Left to run, it
   stops on the arrival card as a real drive does.
 
 A simulated drive and a replayed trip never reroute or recheck (`NavSession.replayMode`). Both
@@ -437,6 +503,10 @@ switches reach the car screens too. Turn both off before a real drive.
 - A stop's arrival time is an estimate by distance. The trip's time is spread evenly along the
   line, so traffic that sits mostly before or after a stop skews it. That is good enough for a
   one-hour warning window and not for minutes. Keeping per-leg times would fix it.
+- A stop's side is the side its pin is on. A pin set on the far side of a divided road, or behind
+  the building, gives that side.
+- "Into the parking lot" needs the lot's aisles mapped in OpenStreetMap and present in the map's
+  z14 tiles. Where they are not, the turn stays a plain "Turn left".
 - A reroute that cannot pass every remaining stop says it could not include your stops. The
   check counts the camera detour's silent points, so a drive with no visible stops can hear it.
 - A drive resumed after the app was killed has no stops, visible or silent. Only the destination

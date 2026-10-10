@@ -20,12 +20,31 @@ A change to behavior updates the docs it touches in the same commit:
 - `FEATURES.md`: one line per thing the app does.
 - `README.md`: only if what the app is, or what reaches Google, changed.
 - `ROADMAP.md`: open items only. When something ships or is proven dead, move its entry to
-  `docs/ROADMAP-HISTORY.md` with one or two lines on why.
+  `docs/ROADMAP-HISTORY.md` with one or two lines on why. Work that is built but has not been
+  seen on a phone or a drive stays listed in `ROADMAP.md` ("Built, not yet checked on a drive")
+  until it has.
 - This file: only for a new rule or trap.
 
 A new doc file is not published until it is in `PAGES` in `scripts/build-docs-site.py` and in
 the nav in `site/mkdocs.yml`. Run `python3 scripts/build-docs-site.py --strict` before pushing
 a docs change.
+
+### The repository explains itself
+
+Someone who opens this repository with no other context has to be able to tell what the app
+does, what is open, what was tried and dropped, and what is unverified. Nothing that matters
+lives only in a chat, a local branch or one machine.
+
+- Every branch with work on it is pushed to GitHub. A branch whose work has landed is deleted,
+  here and there. No local-only branches.
+- Two branches on GitHub are triggers and stay: a push to `old-android-smoke` runs the release
+  build on Android 8.0 and 9 emulators, and a push to `feed-probe` runs the review feed probe
+  from a clean machine (SPEC 15, Other workflows). They hold no commits of their own. Before
+  calling any branch, tag or release stale, read what uses it and say what it is.
+- A measurement, a decision and its reason go into `SPEC.md`, the book or the roadmap history
+  in the commit that acts on them. An idea that was tried and dropped gets its dead-end entry
+  with the numbers that killed it.
+- Review findings on a pull request are posted on the pull request.
 
 ### How the docs are written
 
@@ -61,7 +80,8 @@ before posting.
 Code, comments, docs, commits and the base strings are US English. Exceptions, all data:
 `values-en-rGB`; strings that must match a foreign source (OSM tag values such as
 `fitness_centre`, the MOTIS field `cancelled`), where a keyword list keeps both spellings;
-platform names (`isCancelled`); and GitHub's workflow function `cancelled()`. After a spelling
+platform names (`isCancelled`); GitHub's workflow function `cancelled()`; and the name of the
+Open Government Licence, which the UK fuel price credit must quote. After a spelling
 sweep, grep `.github/workflows` for `cancelled()` before pushing: `canceled()` does not parse
 and the workflow fails with zero jobs.
 
@@ -85,6 +105,9 @@ addresses and "checked on a drive to X" notes add up to where the developer live
   the corners: recents, labels and street names.
 - Recorded trips, diagnostics exports and adb dumps hold raw GPS. Never attach them to an
   issue or a commit. The in-app Share on a trip trims the ends (`core/replay/TripScrub`).
+- When reading someone's recorded trip, print road names as tags (R1, R2) and never a name or
+  a coordinate. A tool's output is a transcript too. The study harness prints instructions both
+  after a `|` and inside quotes; mask both.
 - A log line never carries a coordinate, typed text or a place name. A page probe logs
   `location.pathname.split('/@')[0]`: Google puts the session's location after `/@`.
 - `scripts/check-location.sh` runs in the pre-push hook against a private list at
@@ -139,7 +162,9 @@ screen silently stops recomposing.
 
 ## Releases
 
-- `canary` is the working branch. Pushing it replaces the one rolling `canary` release.
+- `canary` is the working branch. Pushing it replaces the one rolling `canary` release. The
+  release's tag is also named `canary`, so the bare name is ambiguous to git: push with
+  `git push origin HEAD:refs/heads/canary`, and name the local branch something else.
 - `main` builds and tests on push. A daily job (10:30 UTC) cuts a nightly prerelease
   `v0.5.<run>` when main has moved. Mondays 16:00 UTC the newest nightly is promoted to stable.
   Do not dispatch CI per merge.
@@ -161,7 +186,7 @@ screen silently stops recomposing.
 
 Every tag that does not start with `v0.` is file hosting: voices, speech models, the Cronet
 and sherpa builds, routing regions, place packs, the places and basemap archives, overlays,
-map fonts, road features, cameras, grid cells. Those files exist nowhere else.
+map fonts, road features, cameras, grid cells, UK fuel prices. Those files exist nowhere else.
 
 - Anything that deletes or edits releases selects by the tag pattern `v0.*`. Never by
   "prerelease" or age. A cleanup that did otherwise took four offline features down.
@@ -174,7 +199,9 @@ map fonts, road features, cameras, grid cells. Those files exist nowhere else.
 - The Actions token has 1,000 API requests an hour for the whole repository. GitHub calls in
   a workflow go through `scripts/gh-retry.sh`, and a bake leaves 200 for everything else.
 - Bakes have no schedules of their own. `bake-conductor.yml` starts one at a time from
-  `tools/bake-schedule.json`. A new bake is an entry there.
+  `tools/bake-schedule.json`. A new bake is an entry there. The exception is `fuel-gb.yml` (UK
+  fuel prices), which checks hourly on its own cron: it fetches one small file and spends no API
+  request while its source is unchanged.
 - Every OSM extract download goes through `scripts/fetch-pbf.sh`.
 - A manifest is derived from the files on its release (`scripts/repair-*-manifest.sh`), never
   from one run's own output. A pending job in a concurrency group is canceled when a newer
@@ -343,8 +370,11 @@ signed file the app fetches at launch (SPEC 11).
 - Never keep a `Layer` object from `style.layers` past the call that fetched it. Keep the id
   and the style, and look the layer up again on that same style: after a reload the old
   objects point into a style that is gone.
-- `setAllGesturesEnabled(true)` turns every gesture on, tilt included. Apply a gesture setting
-  after it.
+- `setAllGesturesEnabled(true)` turns every gesture on, tilt and rotation included. Apply a
+  gesture setting after it.
+- Three things move the camera to the fix in the first second of a launch: the first run of the
+  recenter branch, the first target fly, and the launch-center effect. A map that opens anywhere
+  else starts with all three marked done (`startFramed` in `VelaMapView`).
 
 ### Frame rate
 
@@ -388,6 +418,8 @@ signed file the app fetches at launch (SPEC 11).
 - A drag list keeps one modifier chain and varies the values. Changing the chain when the
   drag starts kills the gesture.
 - An `IconButton` is 48 dp at least, whatever `Modifier.size` says.
+- A `pointerInput(Unit)` block keeps the callback it started with. Read one that can change
+  through `rememberUpdatedState`, or a dialog that asks a second question runs the first answer.
 - Read light or dark with `isAppInDarkTheme()`, and for things drawn on the map
   `isMapDark()`. Never `isSystemInDarkTheme()`.
 - Read wallpaper colors with `wallpaperColorsInUse()`, not the switch.
@@ -402,6 +434,8 @@ signed file the app fetches at launch (SPEC 11).
 - Icons are `Sym` and `SymOutlined`, generated by `scripts/gen-symbols.py --rewrite`.
 - New map chrome goes inside the `!pipUi` gate and gets the landscape column treatment
   (`landscapeColumn`).
+- Drive chrome that can cover the arrow's column reports its edge to `NavChromeEdges`, or the
+  camera frames the arrow and the road ahead under it (SPEC 4.7, Framing).
 
 ### Android Auto
 
@@ -428,6 +462,14 @@ signed file the app fetches at launch (SPEC 11).
 - Check a bake wave by counting file dates on the release, not by the run's color.
 - A region is chosen by its real boundary (`RegionPolys`), not its bounding box. After adding
   a catalog row run `scripts/region-polys.py`.
+- A catalog `pbf_url` can be `cut:<parent id>:<polygon file>`, a region cut from another row's
+  extract (SPEC 7.2). Only `scripts/fetch-pbf.sh` reads it. Never download or take apart a
+  `pbf_url` anywhere else.
+- A US state offered in parts goes in `US_SPLIT_STATES` (`OfflineSettings.kt`). Without it the
+  parts list as a parent of their own beside the countries, and the old whole-state row stays
+  beside them.
+- A new part is listed in the app as soon as the routing manifest has it. Bake its place pack,
+  places, basemap, road features and cells first, or its download pulls the parent's archives.
 - A store of downloaded data takes its folder from `StorageLocation.root` on each access and
   adds it to `StorageLocation.FOLDERS`.
 - A new preference file or user data file is not backed up until it is in both
@@ -468,6 +510,8 @@ signed file the app fetches at launch (SPEC 11).
 - A fixed time of day for transit and opening hours: `setprop debug.vela.tune.demoClock 720`
   (minutes after midnight). Clear it afterward.
 - Any tuning dial: `setprop debug.vela.tune.<key> <n>`.
+- A route without the map matcher (tile names, the nudged line): `setprop debug.vela.tune.noMatch 1`,
+  then restart the app. `VelaDirections` logs how each stretch was named and the meters nudged.
 - Low-memory path: `setprop debug.vela.lowram true`.
 - A trip between two points without moving the simulated location: open
   `https://www.google.com/maps/dir/?api=1&origin=..&destination=..` as a view intent. Pass
@@ -479,7 +523,8 @@ signed file the app fetches at launch (SPEC 11).
   `[repeat] [cycles]` arguments play a zoom sweep out and back in one process. A held back
   swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
   zoom once a second (`VelaFps`), which is how to tell whether a pinch zoomed.
-- Log tags worth knowing: `VelaDirections`, `VelaSteps` and `VelaCapture` (set to DEBUG),
+- Log tags worth knowing: `VelaDirections`, `VelaSteps`, `VelaCapture` and `VelaSpeak` (set to
+  DEBUG; `VelaSpeak` prints every spoken line, names included, so only on a test phone),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
   `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`.
 - The Android Auto desktop head unit shows Vela's car screens but skips the car's install
@@ -489,6 +534,14 @@ signed file the app fetches at launch (SPEC 11).
 Checks to run before trusting a routing change: `core/nav/StepAudit`, then
 `NamingStudyTest.replayCapturedLines` (`-DvelaStudy=1`), then a few real trips on a phone with
 the step list read by hand. Probe tests that need a region file take `-DvelaObf=<folder>`.
+`RoadCenterTest.deskLine` (`-DvelaNudge=<file>`) nudges a captured line and writes it out for
+drawing.
+
+Reading a shared trip (`SPEC.md` 4.10 has the line kinds): each route block's `RD` line says
+what made the steps (`source=`, `named=KofN`, then `Route.made`), the `K` notes say what the
+drive decided, and `S` lines are what the voice said. To see how a route in it would be named
+now, save its `RP` line as the only `.txt` in a folder and run
+`NamingStudyTest.replayCapturedLines -DvelaStudy=1 -DvelaOne=1 -DvelaLines=<folder>`.
 
 ## Where things are written down
 

@@ -729,8 +729,6 @@
     <string name="settings_offline_places_with_downloads_hint">En regionnedladdning tar även med Velas platsdata för den, så att företagen på kartan syns utan täckning. Runt en halv gigabyte för en stor delstat. Av = platser strömmas bara när du är online.</string>
     <string name="settings_routing_size_installed_here">Cirka %1$s installerat · täcker din plats</string>
     <string name="settings_routing_size_installed">Cirka %1$s installerat</string>
-    <string name="settings_region_confirm_title">Hämta %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s tar cirka %2$s lagringsutrymme när det är installerat. För vardagsbruk är det mycket mindre att spara bara området runt dig (högst upp på den här sidan).</string>
     <string name="settings_storage_title">Lagring</string>
     <string name="settings_storage_maps">Sparade områden &amp; kartcache</string>
     <string name="settings_storage_routing">Offlineruttning</string>
@@ -1014,6 +1012,11 @@
     <string name="search_fill_cd">Lägg i sökfältet</string>
     <string name="settings_spoken_road_names">Säg gatunamn</string>
     <string name="settings_spoken_road_names_hint">Av = svängar meddelas utan gatunamnet: ”Sväng vänster” i stället för ”Sväng vänster in på Lönngatan”. Kartan och steglistan visar det fortfarande.</string>
+    <string name="settings_spoken_detail">Hur mycket rösten säger</string>
+    <string name="settings_spoken_detail_full">Allt</string>
+    <string name="settings_spoken_detail_brief">Kort</string>
+    <string name="settings_spoken_detail_exits">Endast motorvägsavfarter</string>
+    <string name="settings_spoken_detail_hint">Kort säger varje sväng en gång, utan gatunamn. Endast motorvägsavfarter är tyst i stan och säger avfarter, vägdelningar och svängar i hög fart.</string>
     <string name="mapvm_graphs_retired">Offlineruttningen har flyttat till ett mindre format. Hämta dina regioner igen under Inställningar, Offlinekartor.</string>
     <string name="navservice_notif_action_pause">Pausa</string>
     <string name="navservice_notif_action_resume">Återuppta</string>

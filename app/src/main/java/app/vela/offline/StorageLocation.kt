@@ -16,7 +16,7 @@ object StorageLocation {
     const val SD = "sd"
 
     /** The folders a move carries. MapLibre's own database moves through its own API. */
-    val FOLDERS = listOf("obf", "poipacks", "places", "basemap", "overlays", "glyphs", "cells")
+    val FOLDERS = listOf("obf", "poipacks", "places", "basemap", "overlays", "glyphs", "cells", "fuelgb")
 
     val mode = mutableStateOf(INTERNAL)
 

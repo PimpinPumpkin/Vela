@@ -3,8 +3,8 @@
 ## What you see
 
 Nothing, when it works. The offline map, the places on it, offline routing and search, speed
-limits, stop signs and the camera layer come from files this repository builds and hosts as GitHub
-release assets. They are rebuilt on a schedule. A phone picks up a new build by streaming it, by
+limits, stop signs, the camera layer and UK fuel prices come from files this repository builds and
+hosts as GitHub release assets. They are rebuilt on a schedule. A phone picks up a new build by streaming it, by
 patching a file it downloaded, or by offering Update on a region in Settings > Offline maps.
 
 While a downloaded region updates, the card shows one of three states:
@@ -30,6 +30,7 @@ exist nowhere else, so nothing may delete these releases ([chapter 12](12-releas
 | Road features (traffic lights, stop signs, crossings, speed humps, speed cameras) | OpenStreetMap | `road-features`, `road-features-manifest.json` | 30 days (`roads-a`, `roads-b`) | The file for the region you are in, again when `updatedAt` changes |
 | Grid cells, a region in 0.5 degree pieces | OpenStreetMap and the region's places archive | `cells-<region>`, with `cells-manifest.json` on `grid-cells` | 30 days (`cells-us`, `cells-a`, `cells-b`) | The whole cell when `rev` is newer |
 | Surveillance cameras | DeFlock's camera nodes in OpenStreetMap | `flock-cameras`, `flock-manifest.json` | Its own cron, Mondays 08:17 UTC | At app start when `version` is newer |
+| UK fuel prices | The UK government's Fuel Finder, through matthewgall/fuelfinder-archive | `fuel-gb`, `fuel-gb-manifest.json` | Its own cron, hourly at :23 (`fuel-gb.yml`), published when the source changed | When a UK gas station needs a price, checked again at most every 3 hours |
 | Buildings, where OSM has gaps | Microsoft building footprints (ODbL) | `building-overlays`, `building-overlay-manifest.json` | 90 days (`buildings-us`, `buildings-world`, `buildings-chunk`) | Streamed. A saved copy is never refreshed |
 | House numbers, where OSM has none | OpenAddresses | `address-overlays`, `address-overlay-manifest.json` | 90 days (`addresses`) | Streamed |
 | Speed limits without a routing download | OpenStreetMap `maxspeed` | `maxspeed-overlays`, `maxspeed-overlay-manifest.json` | 90 days (`maxspeed-a`, `maxspeed-b`) | Streamed |
@@ -51,15 +52,16 @@ Regions come from four files in `tools/` that share ids.
 
 | Catalog | Rows | Used by |
 | --- | --- | --- |
-| `routing-regions.json` | 458 | Everything baked from a Geofabrik extract (each row carries its `pbf_url`) |
-| `places-regions.json` | 448 | Places, with its own boxes |
+| `routing-regions.json` | 462 | Everything baked from a Geofabrik extract (each row carries its `pbf_url`) |
+| `places-regions.json` | 451 | Places, with its own boxes |
 | `overlay-regions.json` | 361, in groups `us`, `world`, `chunk` | Buildings |
 | `address-regions.json` | 52 | House numbers |
 
 The routing catalog has every country-level extract Geofabrik publishes, plus sub-areas for the
-countries Geofabrik divides (groups such as `germany-sub`). Eleven whole-country and whole-state
-rows carry `skip_obf: true`. Their sub-area rows cover them, so the routing, basemap and
-grid-cell bakes skip them and the places catalog leaves them out. A workflow matrix holds at most
+countries Geofabrik divides (groups such as `germany-sub`) and four parts of Texas that Vela
+cuts itself (`texas-sub`). Twelve whole-country and whole-state rows carry `skip_obf: true`.
+Their sub-area rows cover them, so the routing, basemap and grid-cell bakes skip them and the
+places catalog leaves them out. A workflow matrix holds at most
 256 jobs, so the catalog bakes in halves or sets.
 
 Each manifest URL has a Gradle override for local testing (`-PplacesManifestUrl` and the rest,
@@ -85,6 +87,11 @@ an hour with CI, and overlapping bakes failed the app releases and each other wi
 The conductor's run never fails. Its record is `state.json` on the `bake-conductor` release.
 A bake started by hand is fine; the conductor sees it running and waits. A new bake or cadence
 is an edit to the schedule file.
+
+Two small jobs keep crons of their own: the camera dataset weekly, and the UK fuel prices
+hourly, because that source changes twice a day. The fuel job reads the published manifest as a
+plain download and uploads nothing while the source is unchanged, so most hours spend no API
+request.
 
 ### The daily seventh of places
 
@@ -122,8 +129,8 @@ and a last job publishes the manifest. The rules that keep a bake from failing:
 
 - A rebake overwrites the same asset names. A new generation is forked only when a file format
   changes.
-- Every OSM extract is downloaded through `scripts/fetch-pbf.sh`, which survives a mirror that
-  redirects in a circle.
+- Every OSM extract comes through `scripts/fetch-pbf.sh`, which survives a mirror that
+  redirects in a circle and cuts a region out of a bigger extract (below).
 - Tools are pinned: planetiler 0.10.2 for the basemap; tippecanoe 2.79.0, go-pmtiles 1.31.2 and
   DuckDB 1.5.4 for places.
 - The places read of Overture is pruned on its `bbox` column. A filter on the geometry reads
@@ -133,6 +140,42 @@ and a last job publishes the manifest. The rules that keep a bake from failing:
 
 What a places archive carries is [chapter 1](01-places.md). The other bake rules are in
 [SPEC sections 5.2 and 7](../../SPEC.md).
+
+### A region Geofabrik does not publish
+
+Geofabrik divides some countries and one US state into sub-extracts and leaves the rest whole.
+A catalog row can instead be cut from another row's extract:
+
+```
+"pbf_url": "cut:<parent id>:tools/region-cuts/<id>.poly"
+```
+
+`fetch-pbf.sh` downloads the parent and runs `osmium extract` with the polygon. Every bake
+already takes its extract from that script, so a cut bakes like any other region, and its box
+in every manifest is the polygon's box. The catalog format and the osmium options are in
+[SPEC 7.2](../../SPEC.md).
+
+Four rules for drawing the polygons of a split:
+
+- The outer edge is the parent's own polygon. The parts then hold what the parent holds, and
+  no part's box reaches past the parent's.
+- Neighbors overlap by a few kilometers, so a trip near a seam routes inside one part.
+- Seams follow administrative lines, which keeps a town in one part.
+- The places bake reads a region's box, and the phone picks an installed places archive by
+  its box. A seam is therefore drawn to keep one part's box off another part's cities, or
+  that part's places archive carries them too.
+
+Texas is the first. Whole, it was a download of about 2.1 GB. Its four parts follow county
+lines and hold 31% (North Texas, around Dallas-Fort Worth), 26% (East Texas and the Gulf
+Coast, around Houston), 31% (Central and South Texas, around Austin and San Antonio) and 14%
+(West Texas and the Panhandle) of the state's OpenStreetMap nodes. They are not equal because
+no seam cuts a metro area. The whole-state files stay on the releases for the phones that have
+them and are no longer rebuilt for routing, the map and places. The boundaries and the
+measurements are in [SPEC 7.2](../../SPEC.md).
+
+A part is listed in the app once the routing manifest carries it, so its place pack, places,
+basemap, road features and grid cells are baked first. A part downloaded before its own places
+and basemap archives exist would pull the whole state's.
 
 ### How a manifest is published
 
@@ -147,15 +190,53 @@ entries win. Running it twice changes nothing, and the next run repairs a merge 
 The other workflows still replace rows by id in the old manifest, serialized by a concurrency
 group.
 
+### UK fuel prices
+
+Google's keyless search gives US gas stations a price and UK ones none. The UK government's
+Fuel Finder publishes every forecourt's prices, but its site refuses connections from outside the
+UK, GitHub's runners among them, and its API needs a personal key. `fuel-gb.yml` therefore tries
+the site, logs the refusal, and takes the copy matthewgall/fuelfinder-archive republishes on
+GitHub. `tools/build-fuel-gb.py` trims it to brand, position, four prices (E10, E5, standard and
+premium diesel) and the time of the newest report, about 150 KB gzipped for some 8,100
+forecourts, and drops placeholder prices outside 100 to 250 p. A source whose newest price is
+more than 3 days old, or that cannot be fetched, ends the run green with a warning and the
+published file stays. When the newest published price is over 36 hours old the run opens an
+issue on the repository, once, and the next fresh publish closes it: the archive is one
+person's project and the only source a GitHub runner can reach.
+
+The phone downloads the file the first time a UK gas station without a price shows up in
+results, on a place sheet or in the car's results, and checks the small manifest again at most
+every 3 hours. A Google place counts as a UK gas station by the type and country Google's reply
+carries, which read the same in every app language; an open-data place, which has neither, by its
+category and position. That position test leaves out the Republic of Ireland, which Fuel Finder
+does not cover, and keeps Northern Ireland, which it does, so a phone in Dublin never downloads
+the file.
+
+A gas station takes the nearest forecourt within 75 m. A forecourt of the place's own brand wins
+when it is at most 25 m farther, so a Tesco forecourt beside an Esso goes to the Tesco listing,
+while a supermarket shop on another brand's forecourt takes that forecourt. The text reads
+"172.9p/E10 · 199.9p/B7"; the map bubble shows the petrol price.
+
+Stations report a price only when it changes, so an old report is often still the price, and the
+place sheet says how old it is ("Updated 3 days ago"). A station whose newest report is more
+than 21 days old shows nothing, and a file whose newest report is more than 2 days old shows no
+prices at all, because then the archive has stopped. The rules and constants are in
+[SPEC section 5.8](../../SPEC.md).
+
 ### Which region a point is in
 
 A region is picked by the polygon its extract was cut with, because a bounding box also covers a
 neighbor's land. `scripts/region-polys.py` simplifies the `.poly` file Geofabrik publishes beside
-each extract to about 5 km and writes `app/src/main/assets/region_polys.json`.
+each extract to about 5 km and writes `app/src/main/assets/region_polys.json`. A cut region's
+polygon is the file in `tools/region-cuts/`, written as it is.
 `RegionPolys.covers` answers from it. For an id with no polygon (the building catalog, or a row
 added since the script last ran) the stores fall back to `RegionPolys.boxCovers`. Among covering
 regions the smallest box wins. `RegionPolysTest` fails when a catalog id has no polygon, so
 rerun the script after adding a row.
+
+A download is offered for the smallest covering region unless a larger covering one is already
+on the phone (`RegionPick`). Someone who downloaded a whole state before it was offered in
+parts keeps using it and is not asked to download a part.
 
 An extract that crosses the antimeridian reports a box from longitude -180 to 180, which read
 literally covers every point in its latitude band. A house-number overlay with such a box would
@@ -243,3 +324,6 @@ regions is [chapter 8](08-offline.md).
   takes the whole file.
 - A building overlay saved with an offline area and the world floor are never refreshed. The
   font zip is replaced only when an app update raises `GlyphPackStore.PACK_VERSION`.
+- UK fuel prices depend on one person's archive repository while the government's site refuses
+  GitHub's runners. If the archive stops, the runs warn, and two days later the app shows no UK
+  prices until it starts again.

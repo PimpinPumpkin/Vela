@@ -97,7 +97,8 @@ in flight marks the map dirty, and the next snapshot starts when the current one
 
 All screens share one renderer and switch its mode: browse (north up, centered on you, no route),
 preview (the chosen route framed in blue, the other listed routes in gray under it, a red dot
-at the destination) and nav (heading up, following, the line ahead lavender while paused). A renderer per screen freezes
+at the destination) and nav (heading up, or north up with the phone's "Keep north up" on,
+following, the line ahead lavender while paused). A renderer per screen freezes
 the map, because the host does not deliver the surface again to a new callback. The snapshotter
 is kept across screens while the surface size is unchanged, since a new one reloads the style and
 the map flashes.
@@ -184,6 +185,11 @@ buttons are icons, because the host draws a titled action as a text pill across 
 red and carries the primary flag. The host throws on a background color on any other action.
 
 Search along the route is two lists because the host refuses typing while the car moves.
+
+A gas station's price is a second text line on its row in search, nearby and search along the
+route: Google's in the US, the UK government's Fuel Finder in the UK ([chapter 2](02-data-and-rebakes.md)).
+The rows show at once; a UK list asks for the Fuel Finder file (downloading it the first time) and
+redraws with the prices, unless a newer search has replaced it.
 
 The alerts the phone speaks (a camera ahead, speeding, a destination that closes before you
 arrive) also show as a car toast, so a muted car still gets them.

@@ -40,6 +40,8 @@ object PlaceJson {
                 p.statusText?.let { put("statusText", it) }
                 p.featureId?.let { put("featureId", it) }
                 p.placeId?.let { put("placeId", it) }
+                p.placeType?.let { put("placeType", it) }
+                p.countryCode?.let { put("countryCode", it) }
                 p.distanceMeters?.let { put("distanceMeters", it) }
             }
         }
@@ -70,6 +72,8 @@ object PlaceJson {
                 statusText = s("statusText"),
                 featureId = s("featureId"),
                 placeId = s("placeId"),
+                placeType = s("placeType"),
+                countryCode = s("countryCode"),
                 distanceMeters = d("distanceMeters"),
             )
         }

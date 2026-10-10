@@ -25,7 +25,7 @@ Live traffic, real place data and turn-by-turn navigation, with no Google accoun
 > template. Nightlies and canary builds are newer still and less tested than the weekly stable.
 
 An open-source Google Maps alternative for Android: *what NewPipe is to
-YouTube, for Google Maps.* The map is open data. The basemap is open vector tiles, and
+YouTube, for Google Maps.* The map is open data. The basemap is open vector tiles (OpenStreetMap), and
 the places on it are **Vela data**: Overture Maps and AllThePlaces, positioned
 with OpenStreetMap, baked into tiles in this repo and streamed from its
 releases. Browsing around never asks Google anything. Search, tap a place or
@@ -324,7 +324,10 @@ Microsoft Building Footprints extracts and carry their licenses in the release
 notes of the hosting release. The places on the map are Overture Maps
 (CDLA-Permissive 2.0) and AllThePlaces data, positioned with OpenStreetMap. Closed
 places are weeded out with Foursquare OS Places (Apache 2.0), OpenStreetMap and
-Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds.
+Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds. UK fuel
+prices come from the UK government's Fuel Finder, through
+[matthewgall/fuelfinder-archive](https://github.com/matthewgall/fuelfinder-archive), and
+contain public sector information licensed under the Open Government Licence v3.0.
 Satellite imagery is Esri World Imagery, with Google imagery where Esri has none
 at close zoom.
 

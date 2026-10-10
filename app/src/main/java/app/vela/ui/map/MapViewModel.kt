@@ -1,6 +1,7 @@
 package app.vela.ui.map
 
 import app.vela.ui.place.isListing
+import app.vela.ui.place.LinkTrip
 import android.content.Context
 import app.vela.R
 import androidx.lifecycle.ViewModel
@@ -115,6 +116,11 @@ data class MapUiState(
     // Camera zoom requested by a deep link (geo:...?z=17); one-shot - any ordinary selection
     // (place tap, long-press, search) clears it back to the default framing zooms.
     val centerZoom: Double? = null,
+    // The map opened on a view that is not the phone's position (app.vela.ui.StartView), so it
+    // does not follow the fix. Cleared by the locate button, a drive, or the fix it waited for.
+    val startHold: Boolean = false,
+    // That view's zoom, for the map's creation only: cleared once the map has settled on it.
+    val startZoom: Double? = null,
     // The satellite imagery's capture year for the viewport (Esri metadata), shown in the attribution.
     val imageryYear: String? = null,
     // Deep satellite imagery for this area (issue #244): 0 = none known, 20..22 = Esri serves
@@ -549,6 +555,8 @@ class MapViewModel @Inject constructor(
         override fun onNavRoadLatin(map: Map<String, String>) = this@MapViewModel.onNavRoadLatin(map)
     }
     private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost)
+    // UK gas stations get their price from the Fuel Finder file (SPEC 5.8). Above init like nav.
+    private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
 
 
     init {
@@ -809,6 +817,7 @@ class MapViewModel @Inject constructor(
         // The streamed speed limit is read through the shared client, counted with the map's own requests.
         app.vela.data.StreamedSpeedLimit.http = http.newBuilder().addInterceptor(app.vela.diag.NetCount).addInterceptor(app.vela.offline.ReleaseRedirects).build()
         nav.bind()
+        ukFuel.bind()
         // Turning the transit lines on (or off) acts at once, not at the next pan.
         viewModelScope.launch {
             androidx.compose.runtime.snapshotFlow { app.vela.ui.TransitLayer.on.value }.collect {
@@ -864,6 +873,10 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(myLocation = sim, center = it.center ?: sim, myLocationStale = false, showPsdsTip = false, myAccuracyM = null) }
             return
         }
+        // Permission granted during the session (the locate button's ask, "Only this time"): that
+        // was a request to see where the phone is, so the first fix takes the camera whatever the
+        // start view.
+        if (!startHadPermission && _state.value.startHold) startAwaitsFix = true
         locationJob = viewModelScope.launch {
             launch {
                 delay(8_000)
@@ -1022,6 +1035,12 @@ class MapViewModel @Inject constructor(
                 // varies by hours across a country, so a theme that guesses from the clock alone is
                 // wrong for most of the world most of the year.
                 app.vela.ui.theme.AppTheme.rememberLocation(appContext, here.lat, here.lng)
+                // A start view that stood in for the phone's position gives way to the first fix,
+                // like the locate button, unless the map has been panned or put to use since.
+                val awaited = startAwaitsFix
+                val arrive = awaited && !userPannedSinceLaunch &&
+                    _state.value.let { s -> !s.navigating && s.selected == null && !s.directionsOpen && s.results.isEmpty() }
+                startAwaitsFix = false
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,
@@ -1033,7 +1052,10 @@ class MapViewModel @Inject constructor(
                         // Drives the map's accuracy halo: a coarse-permission or network fix reports
                         // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
                         myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
-                        showPsdsTip = false, center = it.center ?: here.takeUnless { userPannedSinceLaunch }, myLocationStale = false,
+                        showPsdsTip = false, myLocationStale = false,
+                        center = if (arrive) here else it.center ?: here.takeUnless { userPannedSinceLaunch },
+                        recenterTick = if (arrive) it.recenterTick + 1 else it.recenterTick,
+                        startHold = it.startHold && !awaited,
                     )
                 }
                 restartStaleTimer()
@@ -1193,6 +1215,46 @@ class MapViewModel @Inject constructor(
      *  (issue #362, and the same complaint on the 4a; 2026-09-13). */
     @Volatile private var userPannedSinceLaunch = false
     fun onUserPanned() { userPannedSinceLaunch = true }
+
+    // --- where the map opens (app.vela.ui.StartView) -------------------------------------------
+    private var startDecided = false
+    // An intent opened a place, a search or a route before the start view was decided.
+    @Volatile private var launchLink = false
+    // The start view stands in for the phone's position: the first fix takes the camera.
+    @Volatile private var startAwaitsFix = false
+    private var startHadPermission = true
+
+    /**
+     * Puts the map on its start view (Settings > Map, "Where the map opens"). The activity calls
+     * this once, after it has handled the launch intent and before the map is composed: the map
+     * is then created on that view, and a link that opened a place or a route keeps the camera,
+     * as does a drive already running (the activity reopened from its notification).
+     * It reads the permission and stored values only. It asks for nothing and fetches nothing.
+     */
+    fun openStartView() {
+        if (startDecided) return
+        startDecided = true
+        startHadPermission = locationProvider.hasPermission()
+        val s = _state.value
+        val start = app.vela.ui.startFor(
+            mode = app.vela.ui.StartView.mode.value,
+            taken = launchLink || s.navigating,
+            locationOn = locationProvider.canLocate(),
+            fix = s.myLocation,
+            last = app.vela.ui.StartView.last(appContext),
+            home = s.home?.let { LatLng(it.lat, it.lng) },
+            place = app.vela.ui.StartView.place.value,
+        ) ?: return
+        if (!start.hold) return // the last known fix, or nothing: what init already set up
+        startAwaitsFix = start.untilFix
+        _state.update { it.copy(center = start.center, startZoom = start.zoom ?: app.vela.ui.StartView.HOME_ZOOM, startHold = true) }
+        refreshBasemapArchive(start.center) // the offline map is picked for where the map opens
+        // A drive takes the camera, and the map follows the car again when it ends.
+        viewModelScope.launch {
+            _state.first { it.navigating || !it.startHold }
+            _state.update { it.copy(startHold = false) }
+        }
+    }
 
     /** As the user types, fetch live place suggestions (debounced) so the search
      *  page shows real matches — name + address — to tap, like Google's
@@ -1479,7 +1541,7 @@ class MapViewModel @Inject constructor(
      *  the user was hunting for a stop, not abandoning the drive. */
     fun clearSearch() {
         openDirectionsOnResult = false
-        linkMode = null; linkOrigin = null; linkStops = emptyList()
+        linkMode = null
         suggestJob?.cancel()
         val backToTrip = _state.value.alongRouteDest
         if (backToTrip != null) {
@@ -1752,9 +1814,14 @@ class MapViewModel @Inject constructor(
     }
 
     /** Open the place pinned to [kind] (like tapping a saved place). */
+    /** The Home or Work chip. A BARE place under the shortcut's own name, the way the typed
+     *  "home" opens it: selectSaved enriched it by searching its address, which dressed Home as
+     *  the business at that address, and a stop picked from the chip was named for that
+     *  business. As a stop, an origin or a destination it now reads "Home". */
     fun openShortcut(kind: ShortcutKind) {
         val sp = _state.value.let { if (kind == ShortcutKind.HOME) it.home else it.work } ?: return
-        selectSaved(sp)
+        val label = appContext.getString(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
+        selectPlace(Place(id = sp.id, name = label, location = sp.location, address = sp.address))
     }
 
     fun clearShortcut(kind: ShortcutKind) {
@@ -2694,7 +2761,7 @@ class MapViewModel @Inject constructor(
                     }
                 } else {
                     openDirectionsOnResult = false
-                    linkMode = null; linkOrigin = null; linkStops = emptyList()
+                    linkMode = null
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
                     // isn't showing up" report): try the on-device OSM index (it may hold a small local
                     // place Google misses), and if that's empty too, say "No results" plainly.
@@ -2827,6 +2894,7 @@ class MapViewModel @Inject constructor(
      *  place name - just searches. Share payloads are usually "Check out X! https://..." so the
      *  link is fished out of the prose first. */
     fun openSharedText(raw: String) {
+        if (raw.isNotBlank()) launchLink = true // read once, by openStartView
         val token = raw.trim().split(Regex("\\s+")).firstOrNull {
             MapLinkParser.isShareLink(it) || it.startsWith("http", ignoreCase = true) || it.startsWith("geo:", ignoreCase = true)
         }
@@ -2848,7 +2916,11 @@ class MapViewModel @Inject constructor(
     }
 
     fun openDeepLink(link: MapLink) {
-        linkMode = null; linkOrigin = null; linkStops = emptyList()
+        launchLink = true
+        linkMode = null
+        // A trip still being looked up from an earlier link gives way to this one.
+        linkTripJob?.cancel()
+        clearLinkTrip()
         // The user's choice for links (LinkAction): a plain location link can open directions,
         // and either kind can start the drive once its route lands (the one-tap Start path, so
         // the precise-location and notification gates still apply).
@@ -2903,12 +2975,10 @@ class MapViewModel @Inject constructor(
     }
 
     // A DIRECTIONS link from another app (issue #632: Telegram's Directions button, Google's Maps
-    // URLs, google.navigation:) opens the route chooser on its destination. The travel mode and a
-    // start other than "here" it names ride to the next routeToSelected as one-shots; the mode is
-    // not made sticky, since the link chose it, not the user.
+    // URLs, google.navigation:) opens the route chooser on its destination. The travel mode it
+    // names rides to the next routeToSelected as a one-shot; the mode is not made sticky, since
+    // the link chose it, not the user. A link with a start or stops is a trip (openTripLink).
     @Volatile private var linkMode: TravelMode? = null
-    @Volatile private var linkOrigin: MapLink? = null
-    @Volatile private var linkStops: List<MapLink> = emptyList()
 
     /** The trip of a link that carried points dragged onto its route: every point between start
      *  and end in travel order, the stops and the dragged ones, for the trip to [dest] (from
@@ -2922,15 +2992,17 @@ class MapViewModel @Inject constructor(
         val me = _state.value.myLocation
         linkMode = link.mode
         // A start at (or near) where the user is means "from here", which is the chooser's default.
-        linkOrigin = link.origin?.takeUnless { o ->
+        val start = link.origin?.takeUnless { o ->
             val la = o.lat; val ln = o.lng
             la != null && ln != null && me != null && me.distanceTo(LatLng(la, ln)) < LINK_ORIGIN_HERE_M
         }
         var places = 0; var dragged = 0
-        linkStops = link.stops.filter { if (it.via) dragged++ < LINK_VIAS_MAX else places++ < app.vela.core.nav.SavedRoutes.MAX_STOPS }
+        val stops = link.stops.filter { if (it.via) dragged++ < LINK_VIAS_MAX else places++ < app.vela.core.nav.SavedRoutes.MAX_STOPS }
         if (places > app.vela.core.nav.SavedRoutes.MAX_STOPS) flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
         diag.record("search", "directions link: dest ${if (link.lat != null) "point" else "name"}, " +
-            "start ${if (linkOrigin == null) "here" else "given"}, ${linkStops.count { !it.via }} stop(s), ${linkStops.count { it.via }} dragged point(s), mode ${link.mode ?: "sticky"}")
+            "start ${if (start == null) "here" else "given"}, ${stops.count { !it.via }} stop(s), ${stops.count { it.via }} dragged point(s), mode ${link.mode ?: "sticky"}")
+        // A trip, not just a place to go: every place of it is shown and looked up at once.
+        if (start != null || stops.isNotEmpty()) { openTripLink(link, start, stops); return }
         val la = link.lat; val ln = link.lng
         if (la != null && ln != null) {
             val pt = LatLng(la, ln)
@@ -2960,8 +3032,11 @@ class MapViewModel @Inject constructor(
         return Place(id = "pin:$la,$ln", name = name, location = LatLng(la, ln))
     }
 
-    /** One place of a directions link: a coordinate becomes a pin, a name is searched near the
-     *  destination and its first hit taken. Null when a name finds nothing. */
+    /** One place of a directions link: a name with its own coordinate is used as it is, a bare
+     *  coordinate becomes a pin with its address looked up, and a name or address is searched
+     *  near [near] and its first hit taken. An address the search does not carry is asked of
+     *  Google's autocomplete, which geocodes it, and with no connection the downloaded places and
+     *  addresses answer. Null when a name finds nothing. */
     private suspend fun linkPlace(o: MapLink, near: LatLng?): Place? {
         linkPin(o)?.let { return it }
         val la = o.lat; val ln = o.lng
@@ -2970,22 +3045,152 @@ class MapViewModel @Inject constructor(
             return runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
                 ?: Place(id = "pin:$la,$ln", name = appContext.getString(R.string.mapvm_dropped_pin), location = pt)
         }
-        val q = o.query ?: return null
-        return runCatching { dataSource.search(q, near, rankFrom = near).places.firstOrNull() }.getOrNull()
-            ?: run { showStatus(appContext.getString(R.string.intent_place_not_found, q)); null }
+        val q = o.query?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val bias = plausibleBias(near)
+        val hits = runCatching { dataSource.search(q, bias, rankFrom = bias).places }.getOrNull().orEmpty()
+        val address = app.vela.core.data.OfflineAddressStore.looksLikeAddress(q)
+        fun carries(p: Place) = app.vela.core.util.AddressQuery.matches(q, p.name, p.address)
+        if (address) {
+            hits.firstOrNull(::carries)?.let { return it }
+            runCatching { dataSource.suggest(q, bias).places.firstOrNull(::carries) }.getOrNull()?.let { return it }
+        }
+        return hits.firstOrNull() ?: runCatching { offlineSearch(q, bias).firstOrNull() }.getOrNull()
     }
 
-    /** The start and the stops a directions link named, looked up and applied in one reroute. */
-    private fun applyLinkTrip(o: MapLink?, stops: List<MapLink>) {
-        val dest = _state.value.selected?.location
-        viewModelScope.launch {
-            val start = o?.let { linkPlace(it, dest) }
-            val mids = stops.mapNotNull { linkPlace(it, dest) }
-            if (!_state.value.directionsOpen || (start == null && mids.isEmpty())) return@launch
-            _state.update {
-                it.copy(directionsOrigin = start ?: it.directionsOrigin, directionsWaypoints = mids, pickingOrigin = false, pickingDest = false, pickOnMap = null)
+    private var linkTripJob: Job? = null
+
+    /** [linkPlace] with a deadline, so a name nothing answers for cannot hold the whole trip: an
+     *  unfindable stop took 20 s on a Pixel 4a. The lookup runs unstructured, because a deadline
+     *  only interrupts at a suspension point and a blocked request would outlive it. */
+    private suspend fun linkPlaceWithin(o: MapLink, near: LatLng?): Place? {
+        val lookup = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).async { runCatching { linkPlace(o, near) }.getOrNull() }
+        return kotlinx.coroutines.withTimeoutOrNull(LINK_PLACE_TIMEOUT_MS) { lookup.await() }.also { if (it == null) lookup.cancel() }
+    }
+
+    /** Where each of the trip's stops sat among the link's stops, while the trip is still the
+     *  link's own. A stop found later ([findLinkStop]) goes back in at its place. */
+    private var linkStopSlots: List<Int> = emptyList()
+    /** The link stop being searched for, -1 when none. */
+    private var linkFindSlot = -1
+
+    init { LinkTrip.find = ::findLinkStop; LinkTrip.pickStart = ::beginPickOrigin }
+
+    /** "Search for it" on a stop the link named and nothing answered for: the stop search opens
+     *  on the link's own words, and the pick lands where the link had the stop ([addStop]). */
+    fun findLinkStop(slot: Int) {
+        val row = LinkTrip.view.value?.stops?.getOrNull(slot)?.takeIf { it.lookup == LinkTrip.Lookup.NOT_FOUND } ?: return
+        beginPickStop()
+        linkFindSlot = slot
+        onQueryChange(row.label)
+    }
+
+    /** The destination and stops a link's trip ended up with, so [route] can drop the card's
+     *  not-found note as soon as the trip is edited into something else. */
+    private var linkTripFor: Pair<LatLng, List<LatLng>>? = null
+
+    /** The endpoints card goes back to the trip as it is: no loading rows, no not-found note. */
+    private fun clearLinkTrip() {
+        app.vela.ui.place.LinkTrip.view.value = null
+        app.vela.ui.place.LinkTrip.asking.value = null
+        linkTripFor = null
+        linkStopSlots = emptyList()
+        linkFindSlot = -1
+    }
+
+    /**
+     * A directions link with a start or stops, a trip planned elsewhere (most often on a desktop).
+     * It used to open on the destination alone, searched like a typed "navigate to", and the start
+     * and stops were looked up one after another once that route was on screen, so the trip
+     * arrived in pieces seconds apart and looked like it had not worked. Now the chooser opens at
+     * once on the whole trip, every place shown by what the link calls it, each looking itself up
+     * (the destination first, so the rest are searched near it, then all the others together),
+     * and the trip is routed ONCE when every place has answered. A place that finds nothing stays
+     * on the card as not found, and the route goes on through the rest; with no destination there
+     * is no trip, and the status says which name found nothing.
+     */
+    private fun openTripLink(link: MapLink, start: MapLink?, all: List<MapLink>) {
+        linkMode = null // this trip sets its own mode; a later Directions must not inherit it
+        // A drive is under way: the trip's chooser would open under the nav bar and its card over
+        // the turn banner. It says so instead.
+        if (_state.value.navigating) { flashStatus(appContext.getString(R.string.link_trip_while_navigating)); return }
+        linkTripJob?.cancel(); routeJob?.cancel(); searchJob?.cancel(); suggestJob?.cancel()
+        openDirectionsOnResult = false
+        linkPlan = null
+        val mids = all.filter { !it.via }
+        LinkTrip.view.value = LinkTrip.View(start?.let { LinkTrip.Row(it.label) }, mids.map { LinkTrip.Row(it.label) }, LinkTrip.Row(link.label))
+        linkTripFor = null
+        val mode = link.mode ?: stickyTravelMode()
+        val (avTolls, avHighways, avFerries) = stickyAvoid()
+        _state.update {
+            it.copy(
+                selected = null, query = "", results = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
+                status = null, searching = false,
+                directionsOpen = true, directionsReversed = false, directionsOrigin = null, directionsWaypoints = emptyList(),
+                pickingOrigin = false, pickingDest = false, pickingStop = false, pickOnMap = null, alongRouteDest = null,
+                editingStops = false, showSteps = false, previewStepIndex = null,
+                routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = false, modeEtas = emptyMap(),
+                travelMode = mode, avoidTolls = avTolls, avoidHighways = avHighways, avoidFerries = avFerries,
+                routeTrafficRequested = false, openSavedRouteId = null,
+            )
+        }
+        syncRoutingAvoid()
+        syncRouteTraffic()
+        voice.neural?.warmUp() // the drive's opener should not wait on the voice loading
+        fun mark(update: (LinkTrip.View) -> LinkTrip.View) { LinkTrip.view.value = LinkTrip.view.value?.let(update) }
+        fun found(p: Place?) = if (p != null) LinkTrip.Lookup.FOUND else LinkTrip.Lookup.NOT_FOUND
+        linkTripJob = viewModelScope.launch {
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            val dest = linkPlaceWithin(link, _state.value.myLocation ?: _state.value.center)
+            mark { it.copy(destination = it.destination.copy(lookup = found(dest))) }
+            if (dest == null) {
+                clearLinkTrip()
+                _state.update { it.copy(directionsOpen = false) }
+                showStatus(appContext.getString(R.string.intent_place_not_found, link.label))
+                return@launch
             }
-            route(_state.value.travelMode)
+            val near = dest.location
+            val startJob = start?.let { o -> async { linkPlaceWithin(o, near).also { p -> mark { it.copy(origin = it.origin?.copy(lookup = found(p))) } } } }
+            val midJobs = mids.mapIndexed { i, o ->
+                async {
+                    linkPlaceWithin(o, near).also { p ->
+                        mark { v -> v.copy(stops = v.stops.mapIndexed { j, r -> if (j == i) r.copy(lookup = found(p)) else r }) }
+                    }
+                }
+            }
+            val startPlace = startJob?.await()
+            val midPlaces = midJobs.map { it.await() }
+            // Backed out while it looked: nothing to open.
+            if (!_state.value.directionsOpen || LinkTrip.view.value == null) return@launch
+            val stops = midPlaces.filterNotNull()
+            android.util.Log.i("VelaLink", "trip link: ${stops.size} of ${mids.size} stop(s) found, start ${if (start == null) "here" else if (startPlace != null) "found" else "not found"}, in ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+            val chosenMode = _state.value.travelMode // the mode tabs work while the places load
+            // The destination's sheet behind the chooser, as any directions has (Back returns to it).
+            selectPlace(dest)
+            _state.update {
+                it.copy(
+                    directionsOpen = true, directionsReversed = false, directionsOrigin = startPlace, directionsWaypoints = stops,
+                    travelMode = chosenMode, routeTrafficRequested = false, openSavedRouteId = null,
+                )
+            }
+            // Points dragged onto the route on a desktop ride along in travel order with the
+            // stops that were found, so the route goes the way it was drawn.
+            if (all.any { it.via }) {
+                var k = 0
+                val points = all.mapNotNull { m ->
+                    if (m.via) m.lat?.let { la -> m.lng?.let { ln -> LatLng(la, ln) } } else midPlaces.getOrNull(k++)?.location
+                }
+                linkPlan = LinkPlan(points, dest.location, startPlace?.location)
+            }
+            val v = LinkTrip.view.value
+            if (v == null || v.notFound.isEmpty()) clearLinkTrip()
+            else {
+                LinkTrip.view.value = v.copy(resolving = false)
+                linkTripFor = dest.location to stops.map { it.location }
+                linkStopSlots = midPlaces.withIndex().filter { it.value != null }.map { it.index }
+                // A place of the planned trip is missing: say so in a dialog, one place at a time.
+                LinkTrip.asking.value = v.nextMissing()
+            }
+            route(chosenMode)
         }
     }
 
@@ -4264,6 +4469,9 @@ class MapViewModel @Inject constructor(
      *  keep the place selected (so back peels one layer at a time). */
     fun clearRoute() {
         _state.update { it.copy(openSavedRouteId = null) }
+        // Backing out of a link's trip while its places load stops the lookups too.
+        linkTripJob?.cancel()
+        clearLinkTrip()
         autoStartOnRoute = false // backing out of directions cancels a pending auto-start (issue #272)
         destination = null
         routeJob?.cancel() // an in-flight directions fetch must not repopulate the route we're backing out of
@@ -5207,30 +5415,15 @@ class MapViewModel @Inject constructor(
         syncRoutingAvoid()
         val fromLink = linkMode.also { linkMode = null }
         val mode = fromLink ?: if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
-        // A link's own start and stops. When each came with its coordinate they are set before
-        // the first route request, so a planned trip is fetched once, as planned; a name has to
-        // be looked up first, and the trip is rerouted when it lands.
-        val linkStart = linkOrigin.also { linkOrigin = null }
-        val linkAll = linkStops.also { linkStops = emptyList() }
-        val linkMids = linkAll.filter { !it.via }
-        val pinStart = linkStart?.let { linkPin(it) }
-        val pinMids = linkMids.mapNotNull { linkPin(it) }
-        val linkPinned = (linkStart == null || pinStart != null) && pinMids.size == linkMids.size
+        // A fresh trip carries no link's dragged points or not-found note: a link's trip sets
+        // those itself (openTripLink) and never comes through here.
         linkPlan = null
-        if (linkPinned && (pinStart != null || pinMids.isNotEmpty())) {
-            _state.update { it.copy(directionsOrigin = pinStart, directionsWaypoints = pinMids) }
-        }
-        // Points dragged onto the route come with every place's coordinate, or not at all.
-        if (linkPinned && linkAll.any { it.via }) {
-            val points = linkAll.mapNotNull { m -> m.lat?.let { la -> m.lng?.let { ln -> LatLng(la, ln) } } }
-            if (points.size == linkAll.size) linkPlan = LinkPlan(points, sel.location, pinStart?.location)
-        }
+        clearLinkTrip()
         when {
             fromLink != null -> { _state.update { it.copy(travelMode = fromLink) }; route(fromLink) }
             mode != _state.value.travelMode -> setTravelMode(mode)
             else -> route(mode)
         }
-        if (!linkPinned) applyLinkTrip(linkStart, linkMids)
     }
 
     // ---- Parking spot ----------------------------------------------------------------
@@ -5798,6 +5991,7 @@ class MapViewModel @Inject constructor(
      *  [addStop]/[cancelPickStop] ends the mode. */
     fun beginPickStop() {
         stopPickFromEditor = false
+        linkFindSlot = -1 // an ordinary Add stop goes last; findLinkStop sets its place after this
         _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
     }
 
@@ -5914,8 +6108,8 @@ class MapViewModel @Inject constructor(
     /** A home-screen trip shortcut was tapped: open the route picker on that trip. */
     fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
         val anchor = points.last() ?: points.first() ?: return
+        launchLink = true
         linkMode = mode
-        linkOrigin = null; linkStops = emptyList()
         selectPlace(anchor)
         routeToSelected()
         // "Your location" to one place is what routeToSelected already set up; anything else (a
@@ -5927,6 +6121,7 @@ class MapViewModel @Inject constructor(
 
     fun cancelPickStop() {
         if (!_state.value.pickingStop) return
+        linkFindSlot = -1
         val editor = stopPickFromEditor
         stopPickFromEditor = false
         _state.update { it.copy(pickingStop = false, editingStops = editor || it.editingStops) }
@@ -5956,7 +6151,8 @@ class MapViewModel @Inject constructor(
         navTapDetourJob = viewModelScope.launch {
             // The candidate goes FIRST, which is where NavSession.addStop puts it: the figure has to
             // price the drive the button would actually build.
-            val stops = listOf(p.location) + nav.navRemainingStops().map { it.location }
+            // Last, where addStopDuringNav will put it.
+            val stops = nav.navRemainingStops().map { it.location } + p.location
             val route = withTimeoutOrNull(NAV_DETOUR_TIMEOUT_MS) {
                 runCatching {
                     dataSource.directions(
@@ -5979,7 +6175,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** The tapped place becomes the next stop (the confirm on the in-drive card). */
+    /** The tapped place joins the drive as a stop (the confirm on the in-drive card). */
     fun confirmNavTapStop() {
         val p = _state.value.navTapCandidate ?: return
         clearNavTapStop()
@@ -6000,6 +6196,10 @@ class MapViewModel @Inject constructor(
     fun addStop(p: Place) {
         val editor = stopPickFromEditor && _state.value.let { it.pickingStop || it.pickOnMap == MapPick.STOP }
         stopPickFromEditor = false
+        // A stop a link named, found by hand: it goes back where the link had it.
+        val slot = linkFindSlot.also { linkFindSlot = -1 }
+        val had = _state.value.directionsWaypoints
+        val at = if (slot >= 0 && linkStopSlots.size == had.size) LinkTrip.insertAt(linkStopSlots, slot) else had.size
         if (_state.value.directionsWaypoints.size >= app.vela.core.nav.SavedRoutes.MAX_STOPS) {
             _state.update { it.copy(pickingStop = false, pickOnMap = null, directionsOpen = true, results = emptyList(), query = "", editingStops = editor) }
             flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
@@ -6007,13 +6207,25 @@ class MapViewModel @Inject constructor(
         }
         _state.update {
             it.copy(
-                directionsWaypoints = it.directionsWaypoints + p, pickingStop = false, pickOnMap = null,
+                directionsWaypoints = it.directionsWaypoints.toMutableList().apply { add(at.coerceAtMost(size), p) }, pickingStop = false, pickOnMap = null,
                 // A stop pick always belongs to an open trip: return to the directions panel and
                 // drop the pick UI (query/results) so the route is what's on screen. Setting
                 // directionsOpen BEFORE route() also keeps its stillWanted() guard satisfied.
                 directionsOpen = true, results = emptyList(), query = "", resultsCollapsed = false,
                 editingStops = editor,
             )
+        }
+        // The card's note drops this stop; it stays for any other the link named and nothing found.
+        if (slot >= 0) LinkTrip.view.value?.let { v ->
+            val now = v.copy(stops = v.stops.mapIndexed { j, r -> if (j == slot) r.copy(lookup = LinkTrip.Lookup.FOUND) else r })
+            val dest = linkTripFor?.first
+            if (now.notFound.isEmpty() || dest == null) clearLinkTrip()
+            else {
+                LinkTrip.view.value = now
+                linkStopSlots = linkStopSlots.toMutableList().apply { add(at.coerceAtMost(size), slot) }
+                linkTripFor = dest to _state.value.directionsWaypoints.map { it.location }
+                LinkTrip.asking.value = now.nextMissing(after = slot) // on to the next missing place
+            }
         }
         route(_state.value.travelMode)
     }
@@ -6138,6 +6350,13 @@ class MapViewModel @Inject constructor(
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
+        // The not-found note of a link's trip stays only while the trip is still the one it opened.
+        linkTripFor?.let { (d, st) -> if (d != dest || st != stops) clearLinkTrip() }
+        // A start chosen by hand answers a start the link named and nothing found.
+        if (s.directionsOrigin != null) LinkTrip.view.value?.takeIf { it.missingStart != null }?.let { v ->
+            val now = v.copy(origin = v.origin?.copy(lookup = LinkTrip.Lookup.FOUND))
+            if (now.notFound.isEmpty()) clearLinkTrip() else LinkTrip.view.value = now
+        }
         // A link's dragged points apply while the trip is still the link's: the same end, the
         // same start when it gave one, and its stops in its order. Any edit lets go of them.
         val plan = linkPlan?.takeIf { lp ->
@@ -7590,7 +7809,7 @@ class MapViewModel @Inject constructor(
 
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
-    fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1) }
+    fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1, startHold = false) }
 
     /** Demo-drive simulates the route with no GPS, so the precise-location nav gate skips it. */
     fun demoDriveOn(): Boolean =
@@ -7608,7 +7827,7 @@ class MapViewModel @Inject constructor(
         // gray the pinned dot ~30 s in (same hole as the startLocation() sim branch).
         staleTimerJob?.cancel(); staleTimerJob = null
         _state.update {
-            it.copy(myLocation = here, center = here, recenterTick = it.recenterTick + 1, myLocationStale = false)
+            it.copy(myLocation = here, center = here, recenterTick = it.recenterTick + 1, myLocationStale = false, startHold = false)
         }
     }
 
@@ -7641,6 +7860,7 @@ class MapViewModel @Inject constructor(
 
     fun onViewport(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         viewport = doubleArrayOf(south, west, north, east, zoom)
+        if (_state.value.startZoom != null) _state.update { it.copy(startZoom = null) } // the map is on its start view
         refreshAreaPick()
         val center = LatLng((south + north) / 2, (west + east) / 2)
         // onViewport fires on EVERY camera idle (unlike onCameraIdle, which is gesture-gated and can
@@ -8189,7 +8409,7 @@ class MapViewModel @Inject constructor(
                 runCatching { overlayStore.installedIds().forEach { overlayStore.delete(it) } }
                 val keep = setOf("index.json", "revs.json", "dead.json")
                 runCatching { cellStore.clearIndex() }
-                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs", "cells")) {
+                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs", "cells", "fuelgb")) {
                     val base = if (folder in app.vela.offline.StorageLocation.FOLDERS) app.vela.offline.StorageLocation.root(appContext) else appContext.filesDir
                     java.io.File(base, folder).listFiles()?.forEach { f ->
                         if (f.name !in keep) runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
@@ -8320,8 +8540,10 @@ class MapViewModel @Inject constructor(
             runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
                 .also { rs -> if (rs.isNotEmpty()) _state.update { it.copy(routingRegions = rs) } }
         }
-        val region = regions.filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() } ?: return base
-        if (region.id in obfStore.installedIds()) return base.copy(region = region, regionInstalled = true)
+        // The specific region, or a bigger one already on the phone (a whole state beside its parts).
+        val pick = app.vela.offline.RegionPick.routing(regions, lat, lng, obfStore.installedIds()) ?: return base
+        val region = pick.region
+        if (pick.installed) return base.copy(region = region, regionInstalled = true)
         if (_state.value.poiPackRegions.isEmpty()) {
             val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
             _state.update { it.copy(poiPackRegions = packs) }
@@ -8475,11 +8697,11 @@ class MapViewModel @Inject constructor(
                     .also { rs -> _state.update { it.copy(routingRegions = rs) } }
             }
             // smallest covering box = the specific region for this area (boxes overlap at borders; a big
-            // neighbor like British Columbia shouldn't be grabbed for a the metro download)
-            val region = regions.filter { it.covers(lat, lng) }
-                .minByOrNull { it.boxArea() } ?: return@downloadLaunch
-            if (region.id in obfStore.installedIds() || _state.value.routingDownloadingId != null) return@downloadLaunch
-            downloadRoutingGraph(region) // shows its own progress + status
+            // neighbor like British Columbia shouldn't be grabbed for a the metro download), unless a
+            // bigger covering region is already installed
+            val pick = app.vela.offline.RegionPick.routing(regions, lat, lng, obfStore.installedIds()) ?: return@downloadLaunch
+            if (pick.installed || _state.value.routingDownloadingId != null) return@downloadLaunch
+            downloadRoutingGraph(pick.region) // shows its own progress + status
         }
         downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
         if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForArea(lat, lng) // and the places archive, so the map's businesses show offline
@@ -8546,10 +8768,12 @@ class MapViewModel @Inject constructor(
     /** The smallest basemap archive covering ([lat],[lng]), pulled with a viewport download. */
     private fun downloadBasemapForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
-            val region = basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
-                .filter { it.covers(lat, lng) }
-                .minByOrNull { it.area() } ?: return@downloadLaunch
-            if (region.id in basemapStore.installedIds()) return@downloadLaunch
+            val pick = app.vela.offline.RegionPick.archive(
+                basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL), lat, lng,
+                basemapStore.installedIds(), skip = setOf(app.vela.offline.BasemapTileStore.WORLD_ID),
+            ) ?: return@downloadLaunch
+            if (pick.installed) return@downloadLaunch
+            val region = pick.region
             if (basemapStore.download(region) { }) {
                 app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
                 ensureWorldBasemap()
@@ -8563,10 +8787,9 @@ class MapViewModel @Inject constructor(
     private fun downloadPlacesForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)
-            val region = regions.filter { it.covers(lat, lng) }
-                .minByOrNull { it.area() } ?: return@downloadLaunch
-            if (region.id in placesStore.installedIds()) return@downloadLaunch
-            placesStore.download(region) { }
+            val pick = app.vela.offline.RegionPick.archive(regions, lat, lng, placesStore.installedIds()) ?: return@downloadLaunch
+            if (pick.installed) return@downloadLaunch
+            placesStore.download(pick.region) { }
             refreshPlacesOverlays()
         }
     }
@@ -9422,9 +9645,10 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val regions = runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
             if (regions.isEmpty()) { routingOfferChecked = false; return@launch } // try again on a later idle
-            val region = regions.filter { it.covers(anchor.lat, anchor.lng) }
-                .minByOrNull { it.boxArea() } ?: run { markRoutingOfferDone(); return@launch }
-            if (region.id in obfStore.installedIds()) { markRoutingOfferDone(); return@launch }
+            val pick = app.vela.offline.RegionPick.routing(regions, anchor.lat, anchor.lng, obfStore.installedIds())
+                ?: run { markRoutingOfferDone(); return@launch }
+            if (pick.installed) { markRoutingOfferDone(); return@launch }
+            val region = pick.region
             if (_state.value.poiPackRegions.isEmpty()) {
                 val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
                 _state.update { it.copy(poiPackRegions = packs) }
@@ -9955,6 +10179,8 @@ class MapViewModel @Inject constructor(
         private const val LINK_ANCHOR_MAX_M = 50_000.0
         /** The most points dragged onto a link's route that are kept. */
         private const val LINK_VIAS_MAX = 12
+        /** How long one place of a link's trip may take to look up before it counts as not found. */
+        private const val LINK_PLACE_TIMEOUT_MS = 8_000L
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val KEY_SAVED_PIN_TIP = "saved_pin_tip_done"

@@ -629,14 +629,15 @@ class CarMapRenderer(
         val wantY = if (nav && follow) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
         val dx = (wantX - width / 2f).toDouble() * mpp   // the shown point right of center: target goes left
         val dy = (wantY - height / 2f).toDouble() * mpp  // the shown point below center: target goes ahead
-        val heading = if (nav && follow) bearing else 0.0
+        // Heading-up while following a drive, unless the phone's Settings > Map "Keep north up" is on.
+        val heading = if (nav && follow && !app.vela.ui.NorthLock.on.value) bearing else 0.0
         val anchor = if (nav && follow) (puck ?: here) else here
         val target = anchor.destinationPoint(dy, heading).destinationPoint(dx, heading - 90.0)
 
         val cam = CameraPosition.Builder()
             .target(MLLatLng(target.lat, target.lng))
             .zoom(zoom)
-            .bearing(if (nav && follow) bearing else 0.0)
+            .bearing(heading)
             .tilt(0.0)
             .build()
         runCatching {
@@ -802,7 +803,7 @@ class CarMapRenderer(
         val bmp = puckBitmap?.takeIf { puckBitmapPx == px } ?: android.graphics.Bitmap.createScaledBitmap(
             app.vela.ui.map.navPuckBitmap(scale = 1f), px, px, true,
         ).also { puckBitmap = it; puckBitmapPx = px }
-        val camBearing = if (navigating() && following && previewRoute == null) bearing else 0.0
+        val camBearing = if (navigating() && following && previewRoute == null && !app.vela.ui.NorthLock.on.value) bearing else 0.0
         canvas.save()
         canvas.rotate((bearing - camBearing).toFloat(), pt.x, pt.y)
         canvas.drawBitmap(bmp, pt.x - px / 2f, pt.y - px / 2f, dayBitmapPaint)

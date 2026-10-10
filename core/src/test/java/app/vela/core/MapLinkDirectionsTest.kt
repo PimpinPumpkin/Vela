@@ -127,6 +127,54 @@ class MapLinkDirectionsTest {
         assertEquals(38.3566, api.stops[1].lat!!, 1e-6)
     }
 
+    @Test fun `a path of addresses keeps every stop by the address it carries`() {
+        val l = MapLinkParser.parse(
+            "https://www.google.com/maps/dir/1451+W+Covell+Blvd,+Davis,+CA+95616/" +
+                "620+G+St,+Davis,+CA+95616/Woodland,+CA/Sacramento,+CA/@38.6,-121.6,10z",
+        )!!
+        assertTrue(l.directions)
+        assertEquals("1451 W Covell Blvd, Davis, CA 95616", l.origin!!.query)
+        assertEquals(listOf("620 G St, Davis, CA 95616", "Woodland, CA"), l.stops.map { it.query })
+        assertTrue(l.stops.none { it.via })
+        assertEquals("Sacramento, CA", l.query)
+        // Each place shows by what the link calls it until it has been looked up.
+        assertEquals(listOf("620 G St, Davis, CA 95616", "Woodland, CA"), l.stops.map { it.label })
+    }
+
+    @Test fun `a path with an empty start is a trip from here with its stops`() {
+        val l = MapLinkParser.parse("https://www.google.com/maps/dir//Davis,+CA/Woodland,+CA/Sacramento,+CA/")!!
+        assertNull(l.origin)
+        assertEquals(listOf("Davis, CA", "Woodland, CA"), l.stops.map { it.query })
+        assertEquals("Sacramento, CA", l.query)
+    }
+
+    @Test fun `Maps URLs waypoints split on a plain pipe, and a blank origin means here`() {
+        val l = MapLinkParser.parse(
+            "https://www.google.com/maps/dir/?api=1&origin=&destination=Sacramento,+CA" +
+                "&waypoints=Davis,+CA|1451+W+Covell+Blvd,+Davis,+CA+95616|38.5449,-121.7405&travelmode=driving",
+        )!!
+        assertNull(l.origin)
+        assertEquals(TravelMode.DRIVE, l.mode)
+        assertEquals("Sacramento, CA", l.query)
+        assertEquals(3, l.stops.size)
+        assertEquals("Davis, CA", l.stops[0].query)
+        assertEquals("1451 W Covell Blvd, Davis, CA 95616", l.stops[1].query)
+        assertNull(l.stops[2].query)
+        assertEquals(38.5449, l.stops[2].lat!!, 1e-6)
+        // A coordinate with no name shows as the coordinate.
+        assertEquals("38.54490, -121.74050", l.stops[2].label)
+    }
+
+    @Test fun `encoded Maps URLs waypoints keep their order and names`() {
+        val l = MapLinkParser.parse(
+            "https://www.google.com/maps/dir/?api=1&origin=Davis%2C%20CA&destination=Sacramento%2C%20CA" +
+                "&waypoints=620%20G%20St%2C%20Davis%7CWoodland%2C%20CA",
+        )!!
+        assertEquals("Davis, CA", l.origin!!.query)
+        assertEquals(listOf("620 G St, Davis", "Woodland, CA"), l.stops.map { it.query })
+        assertEquals("Sacramento, CA", l.query)
+    }
+
     @Test fun `a whole Maps address is a link, a sentence that mentions one is not`() {
         assertTrue(MapLinkParser.isMapsUrl("https://www.google.com/maps/dir/Sacramento/Davis/"))
         assertTrue(MapLinkParser.isMapsUrl("google.co.uk/maps/place/Big+Ben/@51.5007,-0.1246,17z"))

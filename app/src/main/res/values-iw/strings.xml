@@ -420,6 +420,11 @@
     <string name="settings_spoken_directions">הוראות מדוברות</string>
     <string name="settings_spoken_road_names">הכרז שמות רחובות</string>
     <string name="settings_spoken_road_names_hint">כשכבוי, הפניות מוכרזות בלי שם הרחוב: \"פנה שמאלה\" במקום \"פנה שמאלה לרחוב הרצל\". המפה ורשימת השלבים עדיין מציגות אותו.</string>
+    <string name="settings_spoken_detail">כמה הקול אומר</string>
+    <string name="settings_spoken_detail_full">הכול</string>
+    <string name="settings_spoken_detail_brief">בקצרה</string>
+    <string name="settings_spoken_detail_exits">רק יציאות מכביש מהיר</string>
+    <string name="settings_spoken_detail_hint">בקצרה מכריז על כל פנייה פעם אחת, בלי שם הרחוב. רק יציאות מכביש מהיר נשאר שקט בעיר ומכריז על יציאות, התפצלויות ופניות במהירות גבוהה.</string>
     <string name="mapvm_voice_lang_missing">הוראות מדוברות דורשות קול %1$s. השג אחד בהגדרות ← קול</string>
     <string name="mapvm_no_track_to_replay">לנסיעה הזו אין מסלול לשידור חוזר</string>
     <string name="mapvm_replaying">משדר %1$s…</string>
@@ -780,8 +785,6 @@
     <string name="settings_offline_places_with_downloads_hint">הורדה של אזור מביאה גם את נתוני המקומות של Vela עבורו, כך שהעסקים על המפה מוצגים גם ללא קליטה. בערך חצי ג\"ב למדינה גדולה. כבוי = מקומות נטענים רק כשיש חיבור.</string>
     <string name="settings_routing_size_installed_here">כ-%1$s לאחר ההתקנה · מכסה את המיקום שלך</string>
     <string name="settings_routing_size_installed">כ-%1$s לאחר ההתקנה</string>
-    <string name="settings_region_confirm_title">להוריד את %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s תופס כ-%2$s של אחסון לאחר ההתקנה. לשימוש יומיומי, שמירת האזור שסביבך (בראש העמוד הזה) קטנה בהרבה.</string>
     <string name="settings_storage_title">אחסון</string>
     <string name="settings_storage_maps">אזורים שמורים &amp; מטמון מפה</string>
     <string name="settings_storage_routing">ניתוב לא מקוון</string>

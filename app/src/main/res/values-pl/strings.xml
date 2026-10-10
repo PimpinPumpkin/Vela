@@ -430,6 +430,11 @@
     <string name="settings_spoken_directions">Wskazówki głosowe</string>
     <string name="settings_spoken_road_names">Wymawiaj nazwy ulic</string>
     <string name="settings_spoken_road_names_hint">Wyłączone: skręty są zapowiadane bez nazwy ulicy, \"Skręć w lewo\" zamiast \"Skręć w lewo w ulicę Klonową\". Mapa i lista etapów nadal ją pokazują.</string>
+    <string name="settings_spoken_detail">Ile mówi głos</string>
+    <string name="settings_spoken_detail_full">Wszystko</string>
+    <string name="settings_spoken_detail_brief">Krótko</string>
+    <string name="settings_spoken_detail_exits">Tylko zjazdy z autostrady</string>
+    <string name="settings_spoken_detail_hint">Krótko zapowiada każdy skręt raz, bez nazwy ulicy. Tylko zjazdy z autostrady milczy w mieście i zapowiada zjazdy, rozwidlenia oraz skręty przy dużej prędkości.</string>
     <string name="mapvm_voice_lang_missing">Wskazówki głosowe wymagają głosu %1$s, dodaj go w Ustawienia → Głos</string>
     <string name="mapvm_no_track_to_replay">Ta podróż nie ma zapisu do odtworzenia</string>
     <string name="mapvm_replaying">Odtwarzanie %1$s…</string>
@@ -814,8 +819,6 @@
     <string name="settings_offline_places_with_downloads_hint">Pobranie regionu przynosi też dane miejsc Veli dla niego, dzięki czemu firmy na mapie widać bez zasięgu. Około pół gigabajta dla dużego stanu. Wył. = miejsca wczytują się tylko online.</string>
     <string name="settings_routing_size_installed_here">Około %1$s po instalacji · obejmuje twoją lokalizację</string>
     <string name="settings_routing_size_installed">Około %1$s po instalacji</string>
-    <string name="settings_region_confirm_title">Pobrać %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s zajmuje po instalacji około %2$s pamięci. Do codziennego użytku zapisanie samego obszaru wokół ciebie (u góry tej strony) jest znacznie mniejsze.</string>
     <string name="settings_storage_title">Pamięć</string>
     <string name="settings_storage_maps">Zapisane obszary &amp; pamięć podręczna mapy</string>
     <string name="settings_storage_routing">Trasy offline</string>

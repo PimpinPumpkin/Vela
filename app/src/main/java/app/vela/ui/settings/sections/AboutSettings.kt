@@ -102,6 +102,22 @@ Onboarding.openDonate(context)
         ) {
             Text(stringResource(R.string.settings_map_data_overture_button))
         }
+        // UK fuel prices (SPEC 5.8): the Open Government Licence asks for its attribution line.
+        Spacer(Modifier.height(4.dp))
+        Hint(stringResource(R.string.settings_map_data_fuel_gb))
+        Spacer(Modifier.height(4.dp))
+        FilledTonalButton(
+            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            onClick = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/")),
+                    )
+                }
+            },
+        ) {
+            Text(stringResource(R.string.settings_map_data_ogl_button))
+        }
         }
         }
 

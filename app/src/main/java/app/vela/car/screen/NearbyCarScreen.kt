@@ -102,6 +102,8 @@ class NearbyCarScreen(
         } else if (address != null) {
             row.addText(address)
         }
+        // A gas station's price on its own line (SPEC 5.8).
+        p.fuelPrice?.let { row.addText(it) }
         return row
             .setBrowsable(true)
             .setOnClickListener { screenManager.push(RoutePreviewCarScreen(carContext, deps, p.name, p.location)) }
@@ -133,6 +135,9 @@ class NearbyCarScreen(
             results = sorted
             deps.mapRenderer(carContext).showResults(sorted.take(MAX_ROWS).map { it.location })
             invalidate()
+            // UK gas stations get their price once the Fuel Finder file is ready (SPEC 5.8).
+            val filled = app.vela.ui.map.UkFuelPrices.fill(carContext, deps.http, sorted)
+            if (filled !== sorted && results === sorted) { results = filled; invalidate() }
         }
     }
 

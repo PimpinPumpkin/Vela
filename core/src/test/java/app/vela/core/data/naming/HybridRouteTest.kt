@@ -120,6 +120,31 @@ class HybridRouteTest {
         assertEquals(0.0, out.maneuvers.last().distanceMeters, 0.0)
     }
 
+    @Test fun aTurnOntoTheRoadTheStepBeforeNamedDropsTheNameAcrossTheSeam() {
+        val s = HybridRoute.stretches(googleLine, openLine).single()
+        val len = s.toM - s.fromM
+        fun turn(type: ManeuverType, at: LatLng, dist: Double, road: String) =
+            Maneuver(type, "Turn onto $road", at, dist, dist / 10, road = road, instructionNoRoad = "Turn")
+        fun named(first: String) = listOf(
+            man(ManeuverType.DEPART, p(0.0, 0.0), 100.0),
+            turn(ManeuverType.TURN_RIGHT, p(0.01, 0.0), 260.0, first),
+            turn(ManeuverType.TURN_LEFT, p(0.01, 0.003), 1110.0, "Second St"),
+            turn(ManeuverType.TURN_LEFT, p(0.02, 0.003), 260.0, "Pine St"),
+            turn(ManeuverType.TURN_RIGHT, p(0.02, 0.0), len - 1730.0, "First St"),
+            man(ManeuverType.ARRIVE, p(0.021, 0.0), 0.0),
+        )
+        // The open route's own first step names First St to the driver.
+        val told = open.copy(legs = listOf(open.legs.single().let { l ->
+            l.copy(maneuvers = l.maneuvers.mapIndexed { i, m -> if (i == 0) m.copy(instruction = "Head out on First St", instructionNoRoad = "Start your route") else m })
+        }))
+        val same = HybridRoute.stitch(google, told, listOf(s to named("First St")))!!
+        assertEquals("the driver was just told First St", "Turn", same.maneuvers[1].instruction)
+        assertEquals("the road is still known for the banner", "First St", same.maneuvers[1].road)
+        val other = HybridRoute.stitch(google, told, listOf(s to named("Elm St")))!!
+        assertEquals("Turn onto Elm St", other.maneuvers[1].instruction)
+        assertEquals("inside one source the rule is that source's own", "Turn onto First St", same.maneuvers[4].instruction)
+    }
+
     @Test fun anOpenTurnInsideTheStretchIsDropped() {
         // The open router turns at 1.6 km, in the block Google went around: that turn is not Google's.
         val open2 = open.copy(

@@ -377,6 +377,9 @@ class VoiceGuide @Inject constructor(
 
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
         if (muted && !ignoreMute) return
+        // The line itself, only when a developer asks (adb shell setprop log.tag.VelaSpeak DEBUG):
+        // it names stops and streets, which no log carries otherwise.
+        runCatching { if (android.util.Log.isLoggable("VelaSpeak", android.util.Log.DEBUG)) android.util.Log.d("VelaSpeak", text) }
         runCatching { onSpoken?.invoke(text) }
         runCatching { onPromptAlert?.invoke() }
         if (!ready) {

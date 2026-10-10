@@ -68,6 +68,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Traffic layer; satellite past z19 | Google raster tiles, both off by default | Yes | No |
 | Traffic controls (lights, stops, crossings, humps) | Per-region road-features bake, Overpass only where no region exists | No | Yes |
 | Surveillance and speed cameras | Bundled and hosted DeFlock dataset; OSM speed cameras | No | Yes |
+| Fuel prices on gas stations | US: Google's search reply. UK: the government's Fuel Finder, trimmed and hosted on the `fuel-gb` release (5.8) | US: in the search. UK: no | UK: the last file downloaded |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
 | Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
@@ -90,7 +91,7 @@ Two Gradle modules.
 
 `:app` reads `:core`; `:core` cannot read `:app`. A setting that must act inside `:core` is
 written by `:app` into a plain flag there: `CategoryFilter.enabled`, `LowRamMode`,
-`LowDataMode`, `NoGoogle`, `RoutingPrefs`, `SpokenRoadNames`.
+`LowDataMode`, `NoGoogle`, `RoutingPrefs`, `SpokenRoadNames`, `SpokenDetail`.
 
 #### Use Vela without Google
 
@@ -216,13 +217,13 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
-  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `OfflinePlaces`, `Onboarding`,
+  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
-  `SpeedingAlert`, `SpokenRoadNames`, `Topography`, `Traffic`, `TransitLayer`,
-  `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
+  `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
+  `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
 - `MemoryPressure`, `PipMode` and `ConstrainedNetwork` hold runtime state, not a pref.
 - One view model. `MapViewModel` owns `MapUiState` and delegates navigation to `NavController`
   through `NavController.Host`. Nav code never reaches into the view model. Anything an
@@ -296,7 +297,9 @@ Results are at `root[64][i]`, and each entry's place node is `[1]`. The keys are
 | `website` | `[1][7][0]` | |
 | `phone` | `[1][178][0][0]` | |
 | `priceText` | `[1][4][2]` | a range such as "$10-20"; `SearchParser.priceLevelOf` derives the 1 to 4 level |
-| `fuelPrice` | `[1][88][0]` | |
+| `fuelPrice` | `[1][88][0]` | "$5.34/Regular" on US stations; on UK ones a label ("Diesel fuel") the digit gate rejects, and 5.8 fills the price |
+| `placeType` | `[1][88][1]` | `SearchResult.TYPE_<KIND>`, language-independent; null when the block is empty |
+| `countryCode` | `[1][88][2][1]` | two letters ("GB", "FR") |
 | `actionLabel`, `actionUrl` | `[1][75][0][0][5][0]`, `[1][75][0][0][5][1][2][0]` | the Book, Reserve or Order link |
 | `featureId` | `[1][10]` | `0xHIGH:0xLOW` |
 | `placeId` | `[1][78]` | |
@@ -820,7 +823,9 @@ the page fills it after load, and a small stub sits beside it.
 | Places > Wait for popular times | `DetailsRetry`, `details_retry`, on | off makes `placeTries()` 1 |
 | Privacy > Live traffic only when I tap | `RouteTrafficOnTap`, `route_traffic_on_tap`, off | clears `RoutingPrefs.googleTraffic` for each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not prefetched. The chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches |
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
+| Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
+| Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home` or `place` (4.7, Where the map opens) |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
 red, blue, white, green, yellow), a UFO, a pirate ship or a rubber duck (`drawUfoPuck`,
@@ -934,9 +939,19 @@ The first source that answers:
 3. `LineNamer` with no tile lines: bare turns from the line's bends.
 
 Tiles come second because, measured on 90 routes in six areas, they named 1.4% of named turns
-wrong. When the stretches are not done within `HYBRID_WAIT_MS` (5.5 s; `HYBRID_WAIT_URGENT_MS`
-1.5 s), the hybrid is rebuilt with bare turns on every stretch. The open router's own route is
-never substituted for a stretch.
+wrong. `StretchNamer` runs the three. (`debug.vela.tune.noMatch`, adb only and read at launch,
+turns the matcher off so the other two can be seen on a phone.) The tiles under a stretch are read beside its match:
+`TILE_HEDGE_MS` (1 s; `TILE_HEDGE_URGENT_MS` 0.3 s) into a match that has not answered, and at
+once when it fails. The matcher answers a town stretch in 0.35 to 1.2 s, so a healthy one costs
+no tile request. In low data mode the tiles are read only after the match fails.
+
+When the stretches are not done within `HYBRID_WAIT_MS` (5.5 s; `HYBRID_WAIT_URGENT_MS` 1.5 s),
+the hybrid is rebuilt from what each stretch has in hand (`StretchNamer.inHand`): its match if
+that finished, without lanes if those were late; else the tiles already read
+(`RoadNameTiles.linesAlong(fetchMissing = false)`, no request); else bare turns. A matched
+stretch keeps its road shape for the drawn line. The open router's own route is never
+substituted for a stretch. A hybrid built past the deadline, or with any stretch bare, is marked
+`namesShort`, and the drive's recheck asks again on the degraded interval.
 
 A match is accepted by `offLine`, which samples both paths every 30 m. A sample over
 `MATCH_OFF_M` (22 m) from the other path is a stray. Strays within 90 m of each other join and
@@ -986,9 +1001,15 @@ Related corrections:
   step within `UNSAID_NEAR_M` (50 m), and the street name `UNSAID_SIDE_M` (45 m) before differs
   from the one after, a turn is inserted and named by the same rule.
 - Roundabouts: the enter step takes the exit step's street. The ring's own name is never said.
-- A turn that keeps the street the car is already on (the matcher's road equals the previous
-  step's) is said without the name, "Turn right": "onto X" says the street changes. The step
-  keeps its `road`.
+- A turn that keeps the street the car is already on is said without the name, "Turn right":
+  "onto X" says the street changes. The step keeps its `road`. The street the car is on, for
+  this rule, is the one the driver was last told (`toldRoad`): a rename with no turn is silent
+  and tells nobody, the first step of a stretch cut from mid-trip is never said
+  (`departSaid = false`), and a ramp or merge that says only its sign ("toward X") has not said
+  the road. A long road that takes the cross street's name for its last block
+  therefore gets "Turn right onto X" at that corner. `HybridRoute.stitch` applies the same rule
+  across the seam, where an open step named the road and a stretch step turns onto it. A slight
+  bend that keeps the road's name stays a silent rename, told or not.
 - `ValhallaRouter.recheck` runs the check on another router's turns. The open route's steps are
   checked against `ValhallaRouter.edges` for its own line, requested when the open router
   answers and waited for `OPEN_NAMES_WAIT_MS` (1.5 s; `OPEN_NAMES_WAIT_URGENT_MS` 0.3 s). This
@@ -1253,13 +1274,38 @@ During a drive:
   reroute cooldown, and the new list is the plan at once, so a failed fetch keeps it.
   `MapViewModel.applyStops` calls it only when the list differs from
   `NavSession.remainingStops()`.
+- `NavSession.State.nextStop` (`NextStop`: label, distance, seconds) is published with every fix,
+  at `start`, and with every route swap (`seededNextStop`: a reroute, a faster route, a healed
+  one, a stops edit), measured from the new route's start, so the figures never show the old
+  route's stop. A stop added or the stops edited mid-drive clear it at once; the new one shows
+  when its route lands. The stop is the first one not passed and not silent (`nextStopIndex`); null when
+  there is none, when that stop has no mark, or when the engine's route is not `planRoute`. The
+  distance is along the line to its mark. The time is the engine's remaining time less
+  `NavEngine.secondsBeyond(route, mark)`, the same per-maneuver pro-rating and traffic ratio as
+  the whole trip, times `etaScale`; so the stop's time and the time beyond it add up to the trip,
+  and neither figure can exceed the trip's. Every router returns a trip with stops as one leg, so
+  there are no per-stop times to read.
+- With a `nextStop` the bottom bar (`NavBarTop`, also the step sheet's header) shows the stop's
+  time, distance and arrival clock as its main figures and "To <stop>" under them, and the step
+  a line under that with the whole trip, "Trip <time> · <clock>", shrunk to fit. The stop's name
+  keeps a line to itself: on one line the two cut each other off at large text. The step
+  sheet's `NavStopsRow` adds "Whole trip: <time> · <distance> · arrive <clock>". The bar's figures
+  carry one screen-reader description with both. `NavController` mirrors the value into
+  `NavLegFigures`, a holder the two composables read, because MapScreen takes no new parameter.
+- The ongoing notification and Android Auto show the same stop: the notification's line is the
+  stop's time, distance and arrival with "To <stop>" after them, and the car's travel estimate is
+  the stop's (named with `TravelEstimate.setTripText` from car API 5), its `Trip` listing the stop
+  and then the trip's end as destinations in order of arrival.
 
 Step sheet: `NavStopsRow` always leads it. With no stops ahead it reads "Edit route" and opens
 the stops editor. With stops it also offers "Remove next", which after a `VelaDialog` confirm
 calls `applyStops(stops.drop(1))`. Title and buttons share a line only when they fit, measured.
 The mid-drive editor's Add stop applies pending edits, closes, and opens the along-route search
-(`NavSearchChips`); a pick joins the drive through `addStopDuringNav`. The planning pick
-(`beginPickStop`) is not used during a drive, because the search page is never drawn then.
+(`NavSearchChips`); a pick joins the drive through `addStopDuringNav`, which puts it LAST among
+the stops still ahead (`NavSession.addStop(atEnd = true)`): the editor can drag it into place,
+and a stop that jumped the queue could not be undone without it. The tapped-place card's
+"adds N min" prices the drive with the place last too. The planning pick (`beginPickStop`) is
+not used during a drive, because the search page is never drawn then.
 
 Closing-soon warning (`NavController.maybeWarnClosingSoon`, at nav start): each stop ahead is
 checked at its own arrival, then the destination. Only the first place that closes within 60
@@ -1403,12 +1449,70 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Prompt distances scale with speed v: far `max(400 m, v × 35 s)`, near `max(150 m, v × 10 s)`,
   each rounded to 50 m, and turn-now `v × 2.5 s` clamped to 25 to 90 m. `spoken` stores band
   slots, so each prompt speaks the true distance.
+- "How much the voice says" (`SpokenDetail`, Settings, Voice) has three values. `FULL` is the
+  far, near and turn-now lines above. `BRIEF` says each maneuver once, in its short form with no
+  street name: a ramp, fork, keep or U-turn at the far distance and keeping its exit number, any
+  other maneuver at the near distance, and nothing at the turn. `EXITS` is `BRIEF` for ramps,
+  forks, keeps, U-turns and the arrival only; any other maneuver is spoken only at
+  `SpokenDetail.FAST_MPS` (22.2 m/s, 80 km/h) or more, and roundabouts and merges never. The buzz
+  at a turn is kept in every value, and `upcomingPrompts` prepares the same lines.
 - The step advances at `v × 2.5 s` clamped to `ADVANCE_MIN_M` (5 m) to 90 m, so at a crawl or a
   standstill the card and the road name stay on the turn in hand until the car is at it. The
   turn-now line is still said 25 m out, once (`TURN_NOW_SLOT` in `spoken`). Both used to happen
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
+  engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
+  the engine's route is `planRoute`. The last spoken maneuver before the stop
+  (`NavEngine.stopLegManeuver`, a silent continue passed over), when the stop is at most
+  `STOP_THEN_M` (300 m) past it, says it after itself on its first line and on its turn-now line:
+  `NavStrings.thenStop`, "Turn left onto Covell Boulevard, then Davis Food Co-op will be on your
+  right". That line takes no traffic-light lead. Otherwise the stop gets its own line at the near
+  distance, `NavStrings.stopAhead` in `inThen` ("In 150 meters, Davis Food Co-op will be on your
+  right"): once per stop (`NavState.stopCuedAtM`), never off route, never in a fix that already
+  speaks, never within 50 m. `BRIEF` puts the clause on the maneuver's one line; `EXITS` says the
+  stop's own line, as it says the arrival's.
+- The side is `NavEngine.stopSide`: where the stop's pin sits against the line's direction
+  through its mark, read 25 m either way. It is null ("will be ahead") when the pin is within
+  `SIDE_MIN_OFF_M` (8 m) of the line or the line bends more than 45 degrees through the mark.
+- The turn into the stop's parking lot. A way into a lot ends with the turn off the street and
+  often a turn or two between the aisles, all bare. `NavEngine.lotTurnsBefore(route, mark)` lists
+  the lefts and rights onto a road with no name and no number that run unbroken up to the
+  stop's mark, at most `LOT_DEST_TURNS` (3), none more than `LOT_DEST_BACK_M` (400 m) before it,
+  earliest first. `NavSession.lotTurn` checks them in that order with `ParkingLotTurn.entersLot`,
+  which reads the map's z14 tiles along the route (`RoadNameTiles.roadsAlong`, the
+  `transportation` layer's `class` and `service`), every 8 m from 10 m past the turn for up to
+  60 m or to the stop. Every sample's nearest car road within 12 m has to be a service road that
+  is not an alley, and one a `parking_aisle`. The first turn that passes is the turn into the lot
+  (`StopAhead.lotTurn`): its lines read `NavStrings.intoLot`, "Turn left into the parking lot",
+  and when it is also the last turn before the stop, `NavStrings.intoLotThen`, "Turn left into
+  the parking lot, then Davis Food Co-op is on your right". No router marks a parking aisle, so
+  this is the only source. One lookup per route and stop, in the background, within
+  `LOT_LOOKUP_TIMEOUT_MS` (8 s) a turn; until it answers, or when the tiles cannot be read, the
+  plain wording stands.
+- The end of a trip gets the same test against the destination, when the route is planned
+  (`ParkingLotTurn.wordDestination`, DRIVE only, from `GoogleMapsDataSource.directions` and
+  `nameRoute`). The candidates are `NavEngine.destinationLotTurns`, `lotTurnsBefore` to the end
+  of the line. The first one whose way on the tiles show entering a lot is the turn off the
+  street: its `instruction` and `instructionNoRoad` become `NavStrings.intoLot`, "Turn left into
+  the parking lot"; its type and place stay, and the turns after it keep their plain words. The
+  step carries the words, so the banner, the step list, the voice and the car say them, and
+  `made` gains `lotTurn`. The tiles round the
+  destination are asked for when the fetch starts (not in low data mode), and the built route
+  waits `LOT_WORD_WAIT_MS` (1.2 s; `LOT_WORD_WAIT_URGENT_MS` 0.3 s) for the answer, on the IO
+  dispatcher (the tiles' protobuf is decoded there) and for every route of the answer at once. A
+  route with abbreviated steps or a provisional alternate is left alone.
+- `stopAhead`, `thenStop` and `intoLotThen` are in every `NavStrings` table, with a blank name
+  read as "your stop".
+- Two turns within `CHAIN_M` (130 m) of each other along the road are said on one line
+  (`NavEngine.chainedNext`, `NavStrings.thenNext`): "Turn right onto Elm Street, then turn left
+  onto Oak Avenue", on the first turn's first line and on its line at the turn. The second
+  turn's approach lines are then not said (`NavState.chainedStep`); its line at the turn is. Not
+  on a line with lane guidance, a stop or a traffic-light lead, and never onto the arrival.
+  `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
+  turns apart, as before. The chained line is not among `upcomingPrompts`, so the voice renders
+  it when it is spoken.
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.
@@ -1441,6 +1545,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   and every route number in the instruction text, deduplicated by `routeKey` (letters and
   number; spaces, dashes and a trailing direction dropped), three at most. The card's "then" row
   skips a roundabout's own exit step and shows the maneuver after it at the summed distance.
+- Turn glyphs come from one table, `maneuverGlyph` (`ui/nav/ManeuverGlyph.kt`), for the turn
+  card, the step list, picture-in-picture, the notification and Android Auto (`NavGlyphs`).
+  Ramps, forks and keeps draw the slight-left or slight-right arrow: a glyph that also drew the
+  branch not taken read as a sign allowing either way. Merges keep the merge glyph and
+  roundabouts their ring.
 
 #### Rerouting
 
@@ -1520,15 +1629,20 @@ MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time 
 
 A recheck fetches from the current position through the remaining stops. It does not run off
 route, in a replay, with an offer on screen, or with "Live traffic re-checks" off (pref
-`nav_live_rechecks`, `NavSession.liveRechecks`). A degraded route is one with abbreviated steps
-or no live traffic.
+`nav_live_rechecks`, `NavSession.liveRechecks`). A degraded route (`RouteHeal.degraded`) is one
+with abbreviated steps, no live traffic, or street names that fell short (`Route.namesShort`).
 
 - Same course, with traffic: the shown arrival time is recalibrated. `etaScale` is multiplied by
   candidate ETA over time left, clamped 0.5 to 2.5, applied where the state is published, and
   reset to 1.0 on every route swap.
-- Same course, better quality: the candidate replaces the current route silently. Full steps
-  replace abbreviated ones and a traffic-carrying route replaces a trafficless one, never the
-  reverse.
+- Same course, better quality (`RouteHeal.gains`): the candidate replaces the current route
+  silently. Full steps replace abbreviated ones, a named route replaces one short of names, and
+  a traffic-carrying route replaces a trafficless one. None of the three is given up for
+  another, except that full steps short of a name still replace abbreviated ones. The names
+  gain takes only a candidate that is Google's line (`GOOGLE_HYBRID` or `GOOGLE_LINE_NAMED`): a
+  re-check that could not build the hybrid answers with the open router's own route, and the
+  same-course test (five samples) cannot see a short detour. The note in the trip says which
+  was gained.
 - Different course: offered when it has traffic and real steps, covers every remaining stop,
   saves more than `FASTER_THRESHOLD_S`, and its ETA is between 0.4 and 0.9 of the time left. A
   trafficless candidate is never offered and never calibrates, because free-flow always appears
@@ -1590,8 +1704,8 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
 - Bearing eases with a time constant from `CAM_BRG_TAU_STILL` (1.6 s) at small error to
   `CAM_BRG_TAU_TURN` (0.35 s) past `CAM_BRG_TURN_DEG` (25 degrees). Geometry noise is a few
   degrees and a turn is tens.
-- Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s. A pinch
-  sets an override that a pan or Re-center clears.
+- Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s, less the
+  framing's pull-back (below). A pinch sets an override that a pan or Re-center clears.
 - Tilt is 55 degrees heading-up (0 north-up, or the angle a two-finger tilt set), capped by
   `navTiltCap` at a zoom the user pinched to: the whole tilt from `NAV_TILT_FULL_ZOOM` (15) in,
   flat from `NAV_TILT_FLAT_ZOOM` (12.5) out, linear between. The cap is applied during the
@@ -1599,7 +1713,7 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   A view tilted 55 degrees at city-wide zoom reaches the horizon and loads the tiles for all
   of it. Pixel 4a, San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive:
   4,195 frames and 16 stalls over 250 ms (longest 943 ms) uncapped, 5,178 frames and none
-  (longest frame 148 ms) capped, 5,554 flat. The camera's own zoom stays at 15.8 or above, so
+  (longest frame 148 ms) capped, 5,554 flat. The camera's own zoom stays at 15.5 or above, so
   only a pinch meets the cap.
 - Cosmetic eases take `dtEase`, the frame time capped at `0.065 x replaySpeedup` s. Integration
   keeps the real time. Uncapped, one long frame moves an ease 45 to 70 percent of its error.
@@ -1625,9 +1739,46 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   15 once a pinch is under way (`TURN_START_PINCHING_DEG`, set in the scale listener). A turn
   of the browse map that rests within `BROWSE_TURN_KEEP_MIN_DEG` (12) of north goes back to
   north, checked at camera idle because the turn's fling runs on after the fingers lift.
-  While a drive follows the car a pinch does not turn the map.
+  While a drive follows the car a pinch does not turn the map. With "Keep north up" (`NorthLock`)
+  no gesture turns it, and every drive runs north-up and flat.
 - A parked drive slows the loop to `NAV_IDLE_TICK_MS` (120 ms). A moving detached camera keeps
   it at frame rate.
+
+#### Framing
+
+`ui/map/NavFraming` places the arrow and sets the zoom's pull-back from the map the drive's chrome
+leaves visible. At the default display and font size the frame is unchanged.
+
+- The arrow sits at a top padding of `DEFAULT_PAD` (0.45 of the map height, 72.5 percent down).
+  It rises until what hangs under its point clears the bottom chrome by `MARGIN_DP` (8 dp), and
+  never above `MIN_PUCK_FRAC` (55 percent). Under the point: `ARROW_BELOW_PX` (62 px, the arrow's
+  glyph), plus the road-name pill when it is pinned under the arrow.
+- North-up, the road ahead can run any way on screen, so the arrow takes the middle of the map
+  between the turn card's bottom and the bar's top, never lower than its heading-up place, and
+  the zoom is the speed's.
+- The bottom chrome is the bar's top edge, the road-name pill when it sits above the bar
+  (`BAR_PILL_GAP_DP`, 10 dp, over it), and the speed box once its right edge reaches the arrow's
+  column (`ARROW_HALF_PX`, 101 px, times the arrow size). At default size the box stays in the
+  corner and does not count.
+- The look-ahead ratio is the dp between the turn card's bottom and the arrow, over the same on the
+  same phone at its default density (`DisplayMetrics.DENSITY_DEVICE_STABLE`) with the card ending
+  `REF_TOP_DP` (230 dp) down, or `REF_MIN_AHEAD_FRAC` (a quarter) of the map on a short screen. At
+  or above `DEAD_RATIO` (0.8) the zoom is the speed's. At or below `FULL_RATIO` (0.6) it pulls
+  back `log2(ratio)` levels, ramping in between, at most `MAX_ZOOM_OUT` (1.5), and never takes the
+  camera's own zoom below `ZOOM_FLOOR` (15.5): lights and stop signs draw from z15.4. A lane strip
+  and a "Then" tab at default size stay above the dead ratio.
+- The edges are measured where they are drawn into `NavChromeEdges`: the turn card's bottom and
+  the speed box with `onGloballyPositioned`, the pill with `onSizeChanged` (the tallest at the
+  current density and font scale, since a long name shrinks its text). The bar's top is
+  `navBarTopPx`. Values stay while an element hides.
+- `NavFramer` (held by the ticker's `NavPuck`) takes a new frame only after the inputs move by
+  1 dp or more and then hold for `SETTLE_MS` (400 ms), so a bar being dragged or a card animating in
+  does not move the camera. The first frame is taken at once. The pad eases like the camera's
+  position and the zoom like its zoom.
+- In landscape (the chrome is a left column) and in picture-in-picture nothing covers the arrow's
+  column, and the frame is the default.
+- On a 1080 x 2340 px, 420 dpi fixture: card bottom at 250 dp, no change. At 546 dpi with the card
+  capped at a third of the screen (about 257 dp), the zoom pulls back about 0.8 levels.
 
 #### The puck overlay
 
@@ -1644,12 +1795,59 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   several frames at each end of a pinch on a Pixel 4a (San Francisco fixture).
 - The browse map uses the GeoJSON symbol.
 
+#### Where the map opens
+
+- `MapViewModel` seeds `center` and `myLocation` at construction with the simulated point, else
+  `LocationProvider.lastKnown()`: the newest last-known fix the system holds, else the fix Vela
+  last cached in `vela_location`. `VelaMapView` creates the map there at z15.5, and the first
+  camera pass and the launch-center effect fly to the fix. With no seed the map is MapLibre's
+  world view until the first fix.
+- `MainActivity.onCreate` handles the launch intent, then calls `openStartView()`, before the
+  map is composed.
+- `startFor` (`ui/StartView.kt`, pure, `StartViewTest`) picks the view from the setting
+  (`StartView.mode`, Settings > Map > "Where the map opens"), whether fixes can arrive
+  (`LocationProvider.canLocate()`: a permission granted and a provider on, or a simulated
+  position), the seed fix, the view the map was left on, Home and the picked view.
+- `here` ("Where I am", the default) with location on and a seed fix changes nothing: the map
+  opens on the fix and follows it. With location off, or with no fix yet, it opens on the view
+  the map was left on and waits there for the first fix. With no such view it opens on the seed
+  fix, else the world view.
+- `last` ("Where I left the map"), `home` ("Home", at `HOME_ZOOM` 15.5) and `place` ("A place I
+  choose") open on their view and hold it. A choice whose target is missing (Home removed,
+  nothing saved yet) opens like `here`, and Settings shows "Where I am" (`shownStartMode`). The
+  stored choice is kept, so a new Home brings it back.
+- A held view sets `center`, `startZoom` and `startHold` in `MapUiState`. `VelaMapView` creates
+  the map on `center` at `openZoom` and starts with its three launch moves marked done
+  (`startFramed`: the first run of the recenter branch, the first target fly and the
+  launch-center effect), so the first frame is the start view and nothing animates. `startZoom`
+  is cleared at the first settled viewport.
+- `MapSurface` passes `driveFollowing && !startHold`, so the free-drive follow does not pull a
+  held map to the fix. `recenter()` (the locate button), the start of a drive and "Simulate my
+  location" clear the hold.
+- A view that waits for the first fix gives way to it like a locate tap (`recenterTick`), unless
+  the map was panned or a place, results, directions or a drive are up. A permission granted
+  during the session (the locate button's ask) makes any held view wait this way.
+- An intent that opens a place, a search or a route (`openDeepLink`, `openSharedText`,
+  `openTripShortcut`) sets `launchLink` before the decision, and `startFor` returns nothing. A
+  launch from a link is the same in every mode. So is an activity reopened while a drive runs.
+- A view is `StartCamera`: the point at the middle of the screen and the zoom, noted by the
+  map's idle work as `StartView.live`. The viewport box is off-center on a tilted map and the
+  camera target is off-center under a sheet's padding. Bearing and tilt are not kept.
+- `MainActivity.onStop` writes `live` as `last_view` in `vela_location`, which backups leave
+  out, like the last known fix. The choice (`start_view`) and the picked view
+  (`start_view_loc`, "lat,lng,zoom") are in `vela_settings`. "Use the current map view" stores
+  `live` as the picked view and selects `place`.
+- The decision reads the permission state and stored values. It requests no permission and
+  sends nothing.
+
 #### Free-drive follow
 
 - The target is `FollowEstimator`, fed the raw accepted fix, with half of each residual spread
   over 0.9 s.
 - The bearing eases toward the GPS course with a speed-scaled look-ahead
-  (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow.
+  (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow. With "Keep
+  north up" the follow stays north-up at any speed, flat unless tilted by hand, and the beam still
+  prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
 - A two-finger tilt pauses the follow's camera writes and becomes its tilt target
@@ -1849,6 +2047,19 @@ Measured and not worth doing:
   the open route, that route's own line. Inside a stretch where they differ, the matched road
   shape (Valhalla, only when the match has no off-line part). A piece whose ends are over 25 m
   from Google's or whose length is off by a third keeps Google's line.
+- A piece left on Google's line is nudged onto the middle of the map's roads (`RoadCenter`),
+  from the tiles the naming already read (`RoadNameTiles.roadsAlong(fetchMissing = false)`, up to
+  `DRAW_ROADS_MAX_TILES` 48; nothing is requested for it, and a tile not in hand is left out).
+  The tiles' bytes are kept for the last 96 tiles, two stretches' worth. The line is read every `STEP_M`
+  (6 m). A point moves sideways onto the nearest car road within `MAX_OFF_M` (9 m) that runs
+  within `ALIGN_DEG` (25) of the line's own heading. It stays where Google put it when no such
+  road is there, or when roads on both sides are within `AMBIGUOUS_M` (3 m) of equally near. An
+  unmoved run under `BRIDGE_M` (40 m), a junction, takes the moves either side, and every move
+  is averaged over `SMOOTH_M` (18 m) each way so the line eases on and off a road. On a
+  captured 12 km town route, Google's line sat a median 0.8 m and at most 3.4 m off the road's
+  middle, 67% of it by more than half a meter, and the nudge added no more than 10 degrees of
+  bend in any 48 m. It runs once when the route is built, off the main thread (13 ms for that
+  route on a desktop JVM), never per frame. `made` gains `nudged=<meters>`.
 - MapScreen draws `roundBends(removeZigzags(straightenCircles(line)))` (`core/nav/RouteSmoothing`).
   Guidance keeps the router's line.
 - The arrow sits on the drawn line. Its heading, and so the camera's, comes from `puckLine`,
@@ -1937,7 +2148,7 @@ under the bridges.
   per approach, and at 30 m a wide four-way drew two lights.
 - Icon size runs from 0.98 at z15.5 to 1.95 at z19.
 - The browse map fetches them from z16 and draws them from `CONTROLS_BROWSE_SHOW_ZOOM` (z19).
-  Navigation draws from z15.4, just under the camera's 15.8 floor.
+  Navigation draws from z15.4, just under the camera's 15.5 floor (`NavFraming.ZOOM_FLOOR`).
 - A level crossing or hump within 25 m of a light or stop sign is drawn offset down and left
   (`CONTROL_NUDGE_PROP`). Camera badges nudge up and right.
 - OSM maps signals more consistently than stop signs (Delaware's bake: 2,331 signals, 2,144
@@ -2044,7 +2255,14 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - Trips are segmented. The start route and every mid-drive swap is its own `RP`/`RD`/`M` block,
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.
-- `RD` carries the route's provenance flags and source name.
+- `RD` carries the route's provenance flags and source name, then `named=KofN` (how many of
+  its lefts, rights and U-turns name a road or a number; ramps, exits, merges, forks and
+  roundabouts are not counted, since a sign names them) and `Route.made`, how the steps were put
+  together:
+  the open route's source and step count, the stretches where Google's line left it and their
+  meters, how many were matched, named from tiles or left bare, the naming time, `namingLate`
+  when the deadline passed first, and `openNames=` for an open route whose names were checked.
+  Counts and milliseconds only.
 - An `M` line's text may be followed by tab-separated fields: the road the turn enters, its
   ref, and the step's duration. A replay needs the first two for the callout and the shield.
   Remaining time is the sum of the step durations ahead; a file without them has the route's
@@ -2052,8 +2270,10 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - A `T` line after `RD` carries the congestion spans (`level:startMeters:lengthMeters;...`), so
   a replay paints the traffic the drive was shown.
 - Every nav decision is a `K` line written through `NavSession.onNote`, never with a
-  coordinate. An `eta:` note every 30 s records minutes and kilometers left, the step, the
-  traffic ratio, the number of congestion stretches and the route's source.
+  coordinate or a name: a stop reached is noted by count. A recheck's note gives the named
+  turns of the candidate against the current route's. An `eta:` note every 30 s records
+  minutes and kilometers left, the step, the traffic ratio, the number of congestion stretches
+  and the route's source.
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:
   a shared copy's route is trimmed and the offsets no longer fit.
@@ -2066,7 +2286,15 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   `TripLog.audit(csv)` is the one-call entry. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
   and `-DvelaSeg=<n>`, forwarded to the test JVM in `core/build.gradle.kts`.
 - Demo drive (pref `demo_drive`, off by default): `DemoTrace.fromRoute` turns a planned route
-  into one `ReplayFix` per second and runs it down the same hermetic path. It is presented as
+  into one `ReplayFix` per second and runs it down the same hermetic path. The drive keeps a
+  realistic pace: each step at its length over its time (4.5 to 38 m/s; the route's average or
+  13.4 m/s with no times), 13, 8, 5 or 3 m/s through a bend of 18, 40, 70 or 120 degrees
+  measured 12 m either side, pulling away at 1.8 m/s2 and braking at 2.2, from rest to rest. A
+  constant 72 km/h cut off half the spoken lines on 110 m town blocks; this pace cuts none
+  (`DemoTraceTest`). The car waits `START_HOLD_S` (3 s) before pulling away, while the opening
+  line is said. The demo drives the route the drive is on: when it changes to a new line that
+  starts within `DEMO_REPLAN_NEAR_M` (150 m) of the car (a stop added, the stops edited), the
+  trace is drawn again along it from the car's speed (`demoReplanned`). It is presented as
   real navigation: the replay controls are hidden and End cancels the demo job, whose `finally`
   resumes live GPS. A demo that reaches the end of its route stays on the arrival card, as a
   real drive does, and Done ends it through `stopNav`.
@@ -2657,8 +2885,29 @@ when the feature ids match. Two requests at most.
   coordinate in its `data=` blob (`MapLinkParser.dirPins`: a `1m<n>` field per place, with
   `1d<lng>` and `2d<lat>` among its `n` fields, and `3e<0-3>` for the mode). The pins are used
   only when the blob lists exactly the path's places; such a place is taken as named and
-  pinned, with no lookup (`linkPin`), and the trip is fetched once. A name with no pin is
-  searched near the destination and the trip rerouted (`applyLinkTrip`).
+  pinned, with no lookup (`linkPin`).
+- A link with stops, or with a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix, opens
+  as a trip (`openTripLink`). The chooser opens at once, and the endpoints card lists the start,
+  every stop and the destination by `MapLink.label` (the link's name or address, else its
+  coordinate), each with its own spinner, check or warning (`LinkTrip`, a holder the card reads
+  because MapScreen takes no new parameter). `linkPlace` looks the destination up near the user,
+  then the start and every stop together near the destination: a name with its own coordinate as
+  it is, a bare coordinate reverse-geocoded, a name or address by search, an address the search
+  does not carry by the autocomplete geocoder, and with no connection the downloaded places and
+  addresses. Each lookup has `LINK_PLACE_TIMEOUT_MS` (8 s) and then counts as not found
+  (`linkPlaceWithin`, on an unstructured scope so a blocked request is abandoned): a name nothing
+  answered for held the trip 20 s on a Pixel 4a. The trip is routed once, when every place has
+  answered. A stop that found nothing is left out of the route, and a start that found nothing
+  leaves the trip starting where you are. When the trip lands a dialog says so, one place at a
+  time (`LinkTrip.asking`, `nextMissing`: the stops in order, then the start). For a stop it
+  offers "Search for it", which opens the stop search on the link's words (`findLinkStop`) and
+  puts the pick back where the link had the stop (`LinkTrip.insertAt` over `linkStopSlots`), or
+  "Skip it". For the start it offers "Choose a start" or "Start where I am". The card keeps one
+  line, "1 place not found" with "Fix" to open the dialog again, until every place is answered
+  or the trip is edited (`linkTripFor`, checked in `route`). A destination that found nothing
+  closes the chooser
+  with "Could not find". Back cancels the lookups, and the mode tabs work during them. During a
+  drive a trip link only says "End navigation to open this trip".
 - A point dragged onto the route on a desktop sits in the blob inside the block of the place
   before it (`3m4`, `1m2`, `1d<lng>`, `2d<lat>`, `3s<id>`), and comes out as a stop marked
   `MapLink.via`, in travel order, at most `LINK_VIAS_MAX` (12). The view model keeps them as
@@ -2666,8 +2915,8 @@ when the feature ids match. Two requests at most.
   stamps the result's `detourPlan`, so a drive passes them as silent stops
   (`NavController.navStopsFor`). They hold while the trip is the link's (same end, same given
   start, same stops in order) and are dropped at the first edit.
-- The link's mode, its stops, and a start more than `LINK_ORIGIN_HERE_M` (150 m) from the fix,
-  apply once to the next `routeToSelected`. The mode is not made sticky.
+- The link's mode applies to its trip only (the next `routeToSelected` for a single
+  destination) and is not made sticky.
 - A link that names something at a point (`geo:lat,lng?q=Name`) searches the name near the
   point. When no result lies within `LINK_ANCHOR_MAX_M` (50 km) of it, the point itself opens
   under the link's name (`anchorLinkSearch`): the sender gave a position, and the one hit was a
@@ -2828,6 +3077,124 @@ them. They are not in the saved-places export.
   `SavedRoutes.droveOwnWay(trace, planned)` (at least `MIN_DRIVE_M`, 500 m, and a real stretch
   off the planned route) fills `drivenRouteOffer`, and the arrival card offers to save the
   trace. `debug.vela.tune.drivenOfferAlways` forces the offer.
+
+### 5.8 UK fuel prices
+
+Google's keyless search carries a price for US gas stations (`fuelPrice`, 3.2) and none for UK
+ones. For those Vela reads the UK government's Fuel Finder, which publishes every forecourt's
+prices under the Open Government Licence v3.0.
+
+#### The feed
+
+`.github/workflows/fuel-gb.yml` runs hourly at :23 on its own cron, outside the bake conductor
+(7.3).
+
+- It asks the gov.uk CSV first
+  (`https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv`)
+  with the bakes' user agent and logs the answer. The service returns CloudFront 403 to
+  connections from outside the UK, GitHub's runners included. The fallback is `data.csv` on
+  `main` of `matthewgall/fuelfinder-archive`, from raw.githubusercontent.com, which republishes
+  the same file about twice a day (09:05 and 15:05 UTC). Its own runner is self-hosted.
+- The alert: when the newest price in the published file is over `STALE_ALERT_H` (36) hours old,
+  the run opens one issue titled "UK fuel prices: the source has stopped updating", and the run
+  that next publishes fresh prices closes it. 36 hours is two missed archive updates, and the app
+  stops showing prices at 48. The run stays green, because a red hourly run would mail every
+  hour. A healthy hour with nothing new makes no API request for this.
+- The app reads Vela's trimmed file and not the archive's own: that one is 7.8 MB (1.3 MB
+  gzipped) against 147 KB, and a change to its columns would break every installed app, where
+  the bake script absorbs it. Both sit on GitHub, so reading it directly would be no more
+  reliable.
+- Nothing is uploaded when the source's sha256 equals the published manifest's `sourceSha256`.
+  That check reads the manifest as a release download, not through the API, so an unchanged hour
+  costs no API request. A publish is about seven.
+- `tools/build-fuel-gb.py` drops permanently closed forecourts, coordinates outside 49 to 61.5 N
+  and 9.5 W to 2.5 E, prices outside 100 to 250 p (the source has placeholders such as 299.9),
+  and forecourts left with no price or no report time. It writes `fuel-gb.csv.gz` (gzip with no
+  timestamp, so one source gives one file) and `fuel-gb-manifest.json`.
+- The file is CSV with the header `brand,lat,lng,e10,e5,b7s,b7p,updated`: coordinates to 5
+  decimals, prices in pence (blank when absent), and `updated` the newest price report among the
+  kept fuels in unix seconds. On the 2026-10-08 source it held 8,124 of 8,133 forecourts, 473 KB,
+  148 KB gzipped. E10 is on 97% of forecourts and standard diesel (B7S) on 99%.
+- The manifest holds `version`, `generated`, `source` (`gov.uk` or `archive`), `sourceUrl`,
+  `sourceSha256`, `stations`, `newestPrice`, `newestPriceEpoch`, `file`, `fileSha256` and
+  `fileBytes`.
+- A source that cannot be fetched or read, or whose newest price is more than 3 days old (exit
+  3), ends the run green with a `::warning::`, and the published file stays. A publish that fails
+  ends in a warning while the published manifest is under a day old and fails the run after that.
+- The `fuel-gb` release is created on the root commit when missing, like the `cells-<region>`
+  set (`CELLS_RELEASE_TARGET` in `scripts/bake-lib.sh`). The data file is replaced before the
+  manifest, through `scripts/gh-retry.sh`.
+
+#### On the phone
+
+`core/data/FuelGbStore` keeps the file in `fuelgb/` under `StorageLocation.root`.
+
+- Nothing is fetched until a gas station in the Fuel Finder area has no price (the rules are
+  under Matching).
+- At most every `CHECK_EVERY_MS` (3 h, the stamp file `checked`) it reads the manifest and
+  downloads the data file only when `fileSha256` differs from the stored manifest's. GitHub's
+  release downloads give no conditional request to lean on, so the manifest is the change test.
+  The download is checked for the gzip magic and the sha256, parsed, staged beside the target,
+  and swapped in with the old copy moved aside first. A failure is retried after
+  `RETRY_AFTER_MS` (15 min) and never replaces a good file.
+- The client is the shared one with no call timeout, a 60 s read timeout and `VelaConfig.VELA_UA`.
+- The forecourts are held in flat arrays with a 0.01 degree grid. A severe trim
+  (`MemoryPressure.isSevere`) drops them, and the next use reads the file again.
+- `ui/map/UkFuelPrices` watches `MapUiState.results` and `selected` by identity. Google results,
+  place-pack results, places-archive results and a tapped open-data place all pass through that
+  state, so the prices work with Google off. Results show at once and the prices land when the
+  file is ready.
+- The car's search, nearby and search-along-route rows add the price as a second text line, US
+  and UK alike (rows allow two). Their results are no shared state, so each screen calls
+  `UkFuelPrices.fill` (`FuelGb.fill`) after drawing them: it loads the store, and downloads the
+  file, only when a row is a UK gas station without a price, and the screen redraws only if its
+  results are still the ones it filled. The store is one per process, shared by the phone and the
+  car; `CarDeps.http` carries the shared client for a car-only session.
+
+#### Matching
+
+- A place is a gas station when Google's reply types it `SearchResult.TYPE_GAS_STATION`
+  (`Place.placeType`, path `placeType` = `[1][88][1]`), which is the same in every app language.
+  A place with no type (open data, the place packs, whose categories come out of the bakes in
+  English) falls back to the `fuel` group of `PoiIcons.groupFor`, less categories that say
+  "charg" (`UkFuelPrices.isFuelByCategory`).
+- A place is in the Fuel Finder area when Google's country for it is `GB` (`Place.countryCode`,
+  path `countryCode` = `[1][88][2][1]`). A place with no country is tested by `FuelGb.inUk`: the
+  box 49.8 to 60.9 N, 8.7 W to 1.8 E, less a coarse polygon of the island of Ireland, except a
+  coarse polygon of Northern Ireland (35 points, kept a little inside the border where the two
+  sides are close). Fuel Finder covers Northern Ireland (592 forecourts in the 2026-10-08 file,
+  every one inside the area) and not the Republic, whose border towns (Lifford, Muff, Omeath,
+  Pettigo, Clones, Dundalk) are outside it, so a Republic user never triggers the download. The
+  polygons only gate the download; a match still needs a forecourt within `MATCH_M`.
+- `FuelGb.pick` takes the forecourts within `MATCH_M` (75 m), nearest first. One whose brand
+  agrees with the place's name wins when it is at most `BRAND_SLACK_M` (25 m) farther than the
+  nearest. A brand agrees when one of its words, filler words dropped ("ltd", "petrol", "fuels",
+  "the"), is a word of the name, apostrophes removed ("Sainsbury's" against "SAINSBURYS").
+- Google's 20 results for a London petrol-station search all had a forecourt within 63 m, 18 of
+  the same brand. The other two were a supermarket shop on another brand's forecourt, where the
+  nearest forecourt is the right one.
+- `FuelGb.label` shows nothing for a forecourt whose newest report is older than `MAX_AGE_S`
+  (21 days). Stations report only when a price changes, so an old report is often still the
+  price: in the 2026-10-08 file a forecourt's newest report was within 1 day of the file's newest
+  for 15% of forecourts, 3 days for 31%, 7 days for 57%, 14 days for 87%, 21 days for 96% and 30
+  days for 99%. Otherwise the
+  text is "172.9p/E10 · 199.9p/B7": petrol first (E10, else E5), then standard diesel as B7.
+  These are the labels on UK pumps, so the text is not translated.
+- A file whose newest report is more than `FEED_MAX_AGE_S` (2 days) old fills nothing at all
+  (`FuelGb.fresh`): the archive has stopped, and every price in it is aging. Prices come back
+  with the next fresh file.
+- The report time goes in `Place.fuelPriceAt` (unix seconds). The place sheet's pump line adds
+  "Updated today", "Updated yesterday" or "Updated N days ago" after the prices, in local
+  calendar days (`FuelGb.daysAgo`). Google's US prices carry no time and show none.
+- The text goes in `Place.fuelPrice`, so it shows where Google's price shows: the result bubble
+  (`PoiIcons.fuelShort`, the text before the first '/', is the petrol price), the results row's
+  pump line, and the place sheet's pump line, first in the Overview body. That line sits below the
+  action pills, so a price that lands after the sheet opened moves nothing above them.
+- A result with a fuel price draws as a gas station's price bubble whatever language its
+  category is in (`PoiIcons.resultGroup`); the category words the map icons read are English.
+- The results camera fit keys on the markers without their prices (`markerFitKey`), so a late
+  price does not frame the results again.
+- A place is filled once. A newer file reaches the next search or tap.
 
 ---
 
@@ -3275,9 +3642,9 @@ Gate state is composable-scoped, because `getMapAsync` can register listeners tw
 The status says "ready" once, after the last piece, or "incomplete" when one failed. A places
 or basemap piece that never arrived shows as an update on the region's row (7.3).
 
-Saving an area with the whole-region box checked runs the same download for the smallest
-region covering the area's center and also pulls the smallest covering building overlay
-(`downloadRoutingForArea`). Address and maxspeed overlays are only streamed. Road features
+Saving an area with the whole-region box checked runs the same download for the region
+`RegionPick` names for the area's center (7.2) and also pulls the smallest covering building
+overlay (`downloadRoutingForArea`). Address and maxspeed overlays are only streamed. Road features
 download per region the first time the map or a route needs them (4.9).
 
 GraphHopper graphs are retired. `LegacyGraphs.purge` deletes `filesDir/graphs` at launch when it
@@ -3296,6 +3663,7 @@ exists and shows one status line asking the user to download those regions again
 | Address overlay | `address-overlays.yml`, `scripts/build-address-region.sh` | `address-overlays` | `address-overlay-manifest.json` | 90 days | streamed |
 | Maxspeed overlay | `maxspeed-overlays.yml`, `scripts/build-maxspeed-region.sh` | `maxspeed-overlays` | `maxspeed-overlay-manifest.json` | 90 days | streamed |
 | ALPR cameras | `flock-cameras.yml`, `scripts/build-flock-cameras.py` | `flock-cameras` | `flock-manifest.json` | Mondays 08:17 UTC | bundled asset, refreshed at launch |
+| UK fuel prices (5.8) | `fuel-gb.yml`, `tools/build-fuel-gb.py` | `fuel-gb` | `fuel-gb-manifest.json` | checked hourly, published when the source changed | `fuelgb/`, checked at most every 3 h when a UK gas station needs a price |
 | Glyphs | `scripts/build-map-fonts.sh` | `map-fonts`, asset `map-fonts.zip` | none | by hand | `glyphs/<stack>/<range>.pbf` |
 
 The glyph set is also unpacked to GitHub Pages (`/fonts`) for the online map. The releases
@@ -3360,7 +3728,7 @@ because the repository holds hundreds.
 ### 7.1a Where the files live
 
 `offline/StorageLocation` roots the folders in `StorageLocation.FOLDERS` (`obf`, `poipacks`,
-`places`, `basemap`, `overlays`, `glyphs`, `cells`) at `filesDir` or at the app's folder on a
+`places`, `basemap`, `overlays`, `glyphs`, `cells`, `fuelgb`) at `filesDir` or at the app's folder on a
 removable SD card (`getExternalFilesDirs`, no permission). Pref `offline_storage` is `internal`
 (default) or `sd`. The choice is in Settings > Offline maps and shows only when a card is
 mounted or the card is the chosen location.
@@ -3392,7 +3760,7 @@ card.
   cache in one SQLite file, and a delete alone frees no bytes. Clear map cache packs too.
 - "Delete all offline data" (`deleteAllOfflineData`, behind a confirm naming the total): every
   saved area, routing file, pack, places and basemap archive, building overlay, cell, the road
-  features, the glyph pack and any legacy graph folder. It then sweeps the store folders for
+  features, the UK fuel price file, the glyph pack and any legacy graph folder. It then sweeps the store folders for
   files no index reaches (keeping `index.json`, `revs.json`, `dead.json`), clears the browsing,
   place and Street View caches and packs the database. Voices and speech models stay.
 
@@ -3406,15 +3774,91 @@ places" counts `poipacks/` and `places/`.
 
 | File | Rows | Bakes |
 | --- | --- | --- |
-| `tools/routing-regions.json` | Every Geofabrik country-level extract, US states, Canadian provinces, and first-level sub-areas of the countries Geofabrik divides: `id`, `name`, `group`, `pbf_url`, optional `big`, `skip_obf` | obf, place packs, road features, basemap, maxspeed, grid cells |
+| `tools/routing-regions.json` | Every Geofabrik country-level extract, US states, Canadian provinces, first-level sub-areas of the countries Geofabrik divides, and regions Vela cuts itself: `id`, `name`, `group`, `pbf_url`, optional `big`, `skip_obf` | obf, place packs, road features, basemap, maxspeed, grid cells |
 | `tools/places-regions.json` | `id`, `name`, `bbox` (the OSM extract is matched by id in the routing catalog) | places |
 | `tools/overlay-regions.json` | Groups `us`, `world`, `chunk`; rows carry `qkprefix` where relevant | building overlays |
 | `tools/address-regions.json` | One row per OpenAddresses source | address overlays |
 
 A dispatch takes region ids, a list of groups, or `all-sub` (every `<country>-sub` group). A
 matrix holds at most 256 jobs, so catalog-wide bakes run as shards or group sets. `skip_obf`
-marks whole-country rows too large for the obf bake. Their sub-area rows cover them, and the
-obf and cells bakes skip them. After adding a catalog row, run `scripts/region-polys.py`.
+marks a whole country or state that its sub-area rows replace: eleven are too large for the obf
+bake, and Texas is offered in parts instead. The obf, basemap and cells bakes skip those rows.
+After adding a catalog row, run `scripts/region-polys.py`.
+
+#### A region cut from a bigger extract
+
+A row's `pbf_url` is a Geofabrik URL or a cut:
+
+```
+"pbf_url": "cut:<parent id>:<polygon file>"
+```
+
+The parent is another row of `tools/routing-regions.json` with a downloadable `pbf_url`; a cut
+of a cut is refused. The polygon is an osmium `.poly` file under `tools/region-cuts/`, named by
+its path from the repository root. Every other field is as on any row.
+
+`scripts/fetch-pbf.sh` makes the extract. It downloads the parent, runs
+`osmium extract -p <polygon> --strategy smart --set-bounds` and deletes the parent.
+`--strategy smart` keeps a way, a turn restriction's ways and a multipolygon that cross the
+edge whole. `--set-bounds` writes the polygon's box into the header, which the obf, pack, road
+feature, maxspeed and cell bakes publish as the region's `bbox` and
+`tools/build-basemap-region.sh` passes to planetiler as `--bounds`. The places bake reads its
+box from `tools/places-regions.json`, as for every region.
+
+- Every bake reaches the extract through `fetch-pbf.sh`, so a cut needs no change in a bake
+  script or a workflow's region selector. A download that bypasses the script fails on the
+  `cut:` scheme.
+- A job that bakes a cut needs osmium and jq. `basemap-tiles.yml` installs osmium for cut rows
+  only; the other bake workflows install it for every row.
+- `PBF_CACHE_DIR=<dir>` keeps the parent between cuts on one machine. `PBF_DATE=<YYMMDD>`
+  takes Geofabrik's dated extract in place of `-latest` (`places-churn.yml`).
+- `scripts/region-polys.py` reads a cut's polygon from the repository and writes it
+  unsimplified.
+- Neighboring cuts overlap, so a trip near a seam routes inside one part, and their outer edge
+  is the parent's own polygon, so the parts together hold what the parent holds and a region's
+  box claims no ground outside it.
+- A cut's places archive covers its whole box, like any region's: the bake reads Overture by
+  the box, and `PmtilesRegionStore.sourcesFor` picks an installed archive by its box. Only the
+  OpenStreetMap rows in it stop at the polygon.
+
+#### Texas in four parts
+
+Geofabrik publishes no Texas sub-extracts. The catalog cuts four (group `texas-sub`), and the
+whole-state row carries `skip_obf` and is left out of the places catalog, as California's is.
+
+| Row | Name | Holds | Counties | Nodes | Extract |
+| --- | --- | --- | --- | --- | --- |
+| `texas-north` | North Texas | Dallas-Fort Worth, Wichita Falls | 31 | 31% | 213 MB |
+| `texas-east` | East Texas and Gulf Coast | Houston, Beaumont, Tyler, College Station | 55 | 26% | 178 MB |
+| `texas-south` | Central and South Texas | Austin, San Antonio, Waco, Corpus Christi, Laredo, the Rio Grande Valley | 75 | 31% | 204 MB |
+| `texas-west` | West Texas and Panhandle | El Paso, Midland, Lubbock, Amarillo, Abilene | 93 | 14% | 85 MB |
+
+Measured on the Texas extract of 2026-10-08: 95.2 M nodes, 690 MB. The parts are not equal
+quarters because no seam cuts a metro area: the four core counties of Dallas-Fort Worth hold
+21% of the state's nodes and everything west of the 100th meridian 13%.
+
+- Every county is whole in one part. West ends at the 100th meridian, and at 99 W north of
+  31.6 N, which puts Abilene's counties in it. North ends near 31.8 N and 96 W. East begins at
+  the western lines of Freestone, Leon, Brazos, Grimes, Waller, Austin, Wharton and Matagorda
+  counties.
+- Each part reaches about 4.5 km past its seam, so the overlap bands are about 9 km wide.
+- The outer edge is Geofabrik's Texas polygon, which holds the open Gulf down to 25.7 N. There
+  the East and South seam runs due south from Matagorda Bay.
+- The places bake reads a part's box, as it does for every region, so the seams keep each box
+  off the other parts' cities: East's box ends east of Dallas and South's ends west of
+  Houston. On Overture release 2026-09-23.1 the four boxes hold 2.06 M places, the four
+  polygons 1.64 M, and the box of the whole state 2.42 M.
+- Merged back, the four extracts hold every relation of the whole extract, all but 15 of its
+  11.84 M ways and all but 160 of its 95.15 M nodes. What is missing lies on or outside the
+  edge of Geofabrik's polygon.
+- Baked for `texas-west` on a laptop: routing file 40 MB with the highway hierarchy (whole
+  Texas is 216 MB, and its latest bake has none), place pack 24 MB zipped (252 MB), places
+  99 MB (801 MB), road features 93 KB (1,093 KB), maxspeed 13 MB (66 MB).
+
+In Settings, `regionTree` lists a split state's parts under United States with the other
+states (`US_SPLIT_STATES`). The whole-state row is listed only where that file is installed,
+so it can be updated and deleted there. Everyone else is offered the parts alone, and
+Download all does not fetch the state twice.
 
 #### The routing file bake
 
@@ -3441,7 +3885,9 @@ degrees) never covers by itself: it is an extract crossing the antimeridian. Amo
 regions the smallest box wins.
 
 The polygon file is baked by `scripts/region-polys.py` from the Geofabrik `.poly` beside each
-extract, simplified to about 5 km, and loaded once at app start. Every region-for-a-point
+extract, simplified to about 5 km, and loaded once at app start. A cut region's polygon is its
+own file, unsimplified, because the overlap between two cuts is narrower than the
+simplification. Every region-for-a-point
 decision goes through these two functions: downloads for the view, the streaming unions, the
 routing offer, updates, the saved-area pack lookup, the road-features region and the Offline
 settings row.
@@ -3449,6 +3895,14 @@ settings row.
 A region download pulls the places or basemap archive with the region's id (`archivesFor`).
 Without one it pulls every archive whose box center lies inside the region, and without any of
 those the smallest archive covering the region's center.
+
+`RegionPick` decides which region a download is offered or started for: the smallest covering
+region, unless a larger covering region is installed, which then answers as already
+downloaded. A phone that holds a whole state is therefore not offered one of its parts. It
+serves the area picker's plan and its "too large" line (`areaDownloadPlan`), the region that
+comes with a saved area, the one-time routing offer, and the places and basemap archives of a
+saved area. The low-zoom world basemap covers every point and never counts as installed
+coverage.
 
 #### Places layer
 
@@ -3511,7 +3965,8 @@ limit on the phone.
 A manifest row's `rev` is an integer that only grows. The obf, basemap, places and cells bakes
 stamp the UTC bake date as `YYYYMMDD`. Place packs count up, one past the live manifest's rev
 for that region, which is the `fromRev` their deltas key on. A road-features file is
-downloaded again when the manifest's `updatedAt` differs from the stored stamp.
+downloaded again when the manifest's `updatedAt` differs from the stored stamp, and the UK fuel
+price file when the manifest's `fileSha256` differs from the stored manifest's (5.8).
 
 `MapViewModel.refreshRegionUpdates` lists each installed region's update kinds: `routing` (a
 newer rev than the installed one), `places` and `map` (a newer archive whose box center lies
@@ -3623,7 +4078,9 @@ spend it and fail other workflows with HTTP 403, so the bakes have no crons of t
 Its state is `state.json` on the `bake-conductor` release, and its run never fails. Cadences
 (`everyHours`): a seventh of the places catalog every 24 h (`slice` is the UTC weekday); place
 packs, road features, basemap and grid cells every 30 days; routing files, buildings, addresses
-and maxspeed every 90 days. ALPR cameras keep their own weekly cron.
+and maxspeed every 90 days. ALPR cameras keep their own weekly cron, and UK fuel prices their own
+hourly one (5.8): that job fetches one small file and spends no API request while its source is
+unchanged.
 
 The routing bake merges into `obf-manifest-staging.json` (`staging=true`), which the app never
 reads. `flip()` copies it over `obf-manifest.json` once all three routing jobs finished a clean
@@ -3634,10 +4091,11 @@ does not flip until each of those regions has been baked since (`heal()`: the re
 the release is newer than the cycle's last attempt, which one region dispatched by hand does).
 The record keeps the lost regions as `lost`.
 
-Every bake downloads its extract through `scripts/fetch-pbf.sh`: a plain download, then the
+Every bake gets its extract through `scripts/fetch-pbf.sh`: a plain download, then the
 redirects walked one hop at a time with a trailing slash dropped from a file name, then the
 newest `<region>-YYMMDD.osm.pbf` in the folder listing. This survives a mirror that redirects
-`-latest.osm.pbf` in a circle.
+`-latest.osm.pbf` in a circle. A `cut:` row's parent is downloaded the same way and the region
+cut out of it (7.2).
 
 ### 7.4 Download discipline
 
@@ -3659,7 +4117,7 @@ newest `<region>-YYMMDD.osm.pbf` in the folder listing. This survives a mirror t
   clears the queue.
 - Sizes shown are installed sizes: the manifest's `installedMb`, else the download size for an
   obf and the zip times 2.35 for a pack, plus the region's places and basemap archives
-  (`regionExtrasMb`). A region over `CONFIRM_MB` (1024) installed confirms first.
+  (`regionExtrasMb`). The row states that size, and Download starts at once.
 
 #### Offline detection
 
@@ -4027,8 +4485,17 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   `SpeechText.spokenClock` (English) spells out clock times, which otherwise read as a
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
-- `voice_volume` is a gain over the neural voice's float PCM, hard-clipped at full scale. The
-  system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
+- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
+  leveled base (`VoiceLevel`). The voices render well under full scale: the default Vela voice
+  (Piper `en_US-hfc_female-medium`) has a long-run RMS of about 0.053 on a Pixel 4a, a gain of
+  2.43 at Normal. Each line gets one gain, `TARGET_RMS` (0.13) over
+  the voice's long-run RMS, between 1 and `MAX_LIFT` (4), times the setting. The RMS is summed
+  over every speech chunk the voice and speaker have rendered (`VoiceLevel.Meter`; a chunk
+  peaking under `MIN_PEAK`, 0.02, is a pause and is left out) and kept in the `vela_voice_level`
+  preferences, so the level is the same from the first line of a session. It is not set from
+  the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
+  gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
+  so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
@@ -4138,6 +4605,10 @@ means a plain search, so the parser cannot make a query worse. Word tables cover
 language but Estonian, with English as a fallback in each.
 
 - A bare verb counts only before home or work or an explicit "from A to B".
+- The Home and Work chips (`openShortcut`) open the same bare place the typed intent does:
+  `Place(id, name = the chip's label, location, address)` through `selectPlace`, so a stop,
+  origin or destination picked from the chip is named "Home" or "Work". `selectSaved` is not
+  used for them: it enriches by searching the address and dressed Home as the business there.
 - A bare "X to Y" is a route only when X is not a question word or a verb.
 - `routeBetween` runs the whole phrase as a search first, so a place whose name contains "to"
   stays a place.
@@ -4264,11 +4735,23 @@ reuses it.
 - The "Then" tab hangs off the turn card's lower left in the card's color and names the next
   step. The card's lower-left corner is square while the tab shows, and the lower-right too when
   the tab is as wide as the card. Both widths are measured.
+- In portrait the turn card and its "Then" tab stay within `BANNER_MAX_FRACTION` (a third) of the
+  screen height. Past it the card's font scale steps down, by `BANNER_FIT_STEP` (0.9) or down to
+  `BANNER_FIT_MIN_STEP` (0.7) for a card far over, never below the default text size, and tries
+  one step back up at each new maneuver, never within one, so it cannot flip between two sizes.
+  The distance is one line that shrinks to fit beside the road's shield (`FitText`, started over
+  when its length changes, not on every tick). The instruction stops at `BANNER_HEADLINE_LINES`
+  (3) lines.
+- Route shields (`RouteShield`) grow with the font scale up to `SHIELD_MAX_SCALE` (1.6), badge and
+  number together, so a number fits its badge at any text size. A fixed badge with font-scaled
+  digits cut "113" to "11" at 2.0.
 - Away from the car (panned, pinched, previewing a step), `NavRecenterPill` takes the speed box's
   place and the road name hides.
 - The road name (`RoadLabel`, pref `road_label`) defaults to `PUCK`: a pill under the arrow,
-  clamped to the window. The other values are `BAR` (centered above the bar), `IN_BAR` (the bar's
-  handle row) and `OFF`.
+  clamped to the window, and kept right of the speed readout (`speedBoxRightPx` plus 8 dp)
+  whenever its top is above the readout's bottom: with large text the readout is wide and the
+  arrow low enough that a long name slid behind it. The other values are `BAR` (centered above
+  the bar), `IN_BAR` (the bar's handle row) and `OFF`.
 - What it says is `core/nav/roadLabelAt`, on the phone and in the car. `roadLabel(name, ref,
   heading)` picks the road's own name when it has one, and its number on an Interstate, on a
   named freeway (`isFreewayName`: the name ends in Freeway or Motorway, or starts with
@@ -4501,7 +4984,8 @@ the same `:core` singletons as the phone (`CarDeps`).
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
-  nearest results with a distance span, and a row previews a route. Each row carries a
+  nearest results with a distance span (a gas station's price on a second line, 5.8), and a row
+  previews a route. Each row carries a
   numbered pin (`CarMapRenderer.pinBitmap`), and `showResults` draws the same pins on the map
   and frames them with the car until the screen is left. A category row's marker is a
   `Row.IMAGE_TYPE_SMALL` image, because the host tints an icon to one color.
@@ -4522,7 +5006,8 @@ the same `:core` singletons as the phone (`CarDeps`).
   with "Continue on" the current road (`Maneuver.roadAt`) under a straight arrow and shows the
   turn as the next step. A
   search icon opens `AlongRouteCarScreen`: the quick categories as rows, a pick searches around
-  the car, and a result becomes the next stop through `NavSession.addStop`.
+  the car, and a result becomes the NEXT stop through `NavSession.addStop(atEnd = false)`: the
+  car has no stops editor to move it with.
 - The preview draws the selected route in blue over the other listed routes in gray
   (`showPreview(route, others)`), with a red dot at the destination. The drive draws the same
   dot, and the line ahead in the phone's paused lavender while the drive is paused.
@@ -4560,7 +5045,8 @@ The map:
   the roughly 1 Hz fixes with `FollowEstimator`, and eases the heading and the speed-tiered zoom
   (`ZOOM_EASE` 0.06 per `TICK_MS` 70 ms tick). The puck is the phone's puck bitmap rotated by
   heading minus camera bearing, framed at `PUCK_DOWN` (0.72) of the visible area's height while
-  following. Meters per pixel assume 512 px tiles.
+  following. The camera bearing is the heading while following a drive, and 0 (north-up) with the
+  phone's `NorthLock` on. Meters per pixel assume 512 px tiles.
 - A pan moves the center by the finger's travel in meters (`shiftCenter`). Reading the new center
   off the last snapshot's `latLngForPixel` adds the visible-area offset to every scroll event. A
   pinch keeps the point under the fingers in place. A fling decays exponentially (`FLING_TAU_S`
@@ -4814,7 +5300,8 @@ recomposition. Neither can be parallelized, so the rules send each less work.
 `PRIVACY.md` is the user-facing accounting and must agree with section 1.4. In the default
 configuration browsing the map does not contact Google. Search, opening a place, a driving route
 and transit directions do. Routes also reach FOSSGIS, transit boards Transitous, reverse
-geocoding Nominatim. With "Use Vela without Google" on, only the open services are asked.
+geocoding Nominatim. A UK gas station without a price makes the phone fetch the fuel price file
+from GitHub (5.8). With "Use Vela without Google" on, only the open services are asked.
 
 ### 14.1a State files
 
@@ -4870,7 +5357,12 @@ the geometry.
 - An endpoint appears in six places and all are handled: the fixes, the `META` destination, the
   `META` label, the maneuvers, the route polyline's start and the spoken lines.
 - Timestamps rebase to zero.
-- An `S`, `J`, `B` or `K` event survives only if a fix within `EVENT_NEAR_MS` (3 s) survived.
+- An `S` line survives only if a fix within `EVENT_NEAR_MS` (3 s) survived: it is the spoken
+  text and names the street.
+- `K`, `J` and `B` lines are kept for the whole drive, the trimmed ends included. They hold no
+  position, name or spoken text, and the start of a drive is where its route is planned and
+  named. One from before the first surviving fix has a negative time. They show how long the
+  drive spent inside a trimmed end, not where.
 - A route block whose polyline trims to nothing drops its `RD` and `M` lines.
 - A trip that trims to nothing is never sent raw. A batch share leaves it out and counts it.
 
@@ -5010,6 +5502,7 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
   placeholders. Anything else waits for a person. Off switch: repository variable
   `WEBLATE_AUTOMERGE=off`.
 - `security.yml` runs mobsfscan, exports an SBOM and reviews new dependencies on pull requests.
+  Like `ci.yml`, it skips a push that only touches the docs.
   `scorecard.yml` runs OpenSSF Scorecard. Neither gates a release. The SBOM export is tried three
   times and then ends in a warning: GitHub builds the file on request and can time out.
 - The canary publish step checks that `canary` still points at the commit it built. An overtaken
@@ -5021,6 +5514,19 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
   asset counts weekly into `docs/stats` (`scripts/download-stats.sh`). They are byproducts of
   hosting and they expire. `docs/stats/README.md` says how to read them.
 - `bake-conductor.yml` starts the data bakes (section 7.3).
+- `fuel-gb.yml` publishes the UK fuel prices hourly on its own cron (section 5.8), and opens an
+  issue when their source stops updating.
+- `old-android-smoke.yml` installs a release build on Android 8.0 (API 26, the minimum) and
+  Android 9 emulators and checks that it starts, loads Cronet, runs a search and opens a place
+  without a crash. It runs every Sunday, the day before the weekly promotion to stable, from the
+  Actions tab, and on a push to the branch `old-android-smoke`.
+- `review-feed-probe.yml` asks Google's review feed from a clean GitHub machine (a new address
+  and session, nothing of the maintainer's) and uploads the raw replies. It runs from the Actions
+  tab and on a push to the branch `feed-probe`.
+- Those two branches are triggers. They hold no work of their own, so they read as fully merged;
+  deleting one removes that way of starting its test and nothing else.
+- `quarterly-data-refresh.yml` dispatches the rebakes of the building, address and speed limit
+  overlays every quarter. Routing is not in it, and place packs have their own monthly cron.
 
 #### On a device
 

@@ -189,6 +189,11 @@ enum class RouteSource {
     UNKNOWN,
 }
 
+private val PLAIN_TURNS = setOf(
+    ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
+    ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.UTURN,
+)
+
 data class Route(
     val polyline: List<LatLng>,
     val legs: List<RouteLeg>,
@@ -246,8 +251,24 @@ data class Route(
      *  from OpenStreetMap and Google's smoother line sat off their center on every curve. Guidance
      *  keeps [polyline]. */
     val drawPolyline: List<LatLng>? = null,
+    /** How the steps were put together, for the trip file (the `RD` line's flags): `key=value`
+     *  words joined by `;`, counts and milliseconds only. Never a name, a place or a comma. Empty
+     *  when the route was not stitched from more than one source. */
+    val made: String = "",
+    /** The street names fell short: a stretch of the line went out with its turns read from its
+     *  bends alone, because the services that name it did not answer before the deadline. The
+     *  drive re-checks such a route on the fast interval and swaps in the same course once it
+     *  comes back named ([app.vela.core.nav.RouteHeal]). */
+    val namesShort: Boolean = false,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
+
+    /** The plain turns of this route: lefts, rights and U-turns. Ramps, exits, merges, forks and
+     *  roundabouts are not counted: a sign names them, and no fallback produces them bare. */
+    val turns: Int get() = maneuvers.count { it.type in PLAIN_TURNS }
+
+    /** How many of [turns] name a road or a number. */
+    val namedTurns: Int get() = maneuvers.count { it.type in PLAIN_TURNS && (!it.road.isNullOrBlank() || !it.ref.isNullOrBlank()) }
 
     /** Safe to hand to the nav session as is: not a provisional picker alternate whose steps are
      *  placeholders. The one question NavSession asks before adopting a candidate. */

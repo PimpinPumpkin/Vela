@@ -102,6 +102,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -210,7 +211,7 @@ private val SIDE_PANEL_WIDTH_MAX = 600.dp
 
 /** Gap in px between the puck glyph's center and the current-road pill below it (issue #288).
  *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
-private const val PUCK_LABEL_GAP_PX = 62
+private const val PUCK_LABEL_GAP_PX = NavFraming.ARROW_BELOW_PX
 
 /** How far the OpenStreetMap credit lifts to clear the free-drive speed box, which sits in the same
  *  bottom-left corner: the box's height plus its 16 dp margin and a couple of dp of air. */
@@ -1358,9 +1359,16 @@ fun MapScreen(
                                 // the bar, while the car was out on the map.
                                 val origin = coordinates?.positionInWindow() ?: Offset.Zero
                                 val maxX = (windowWidthPx - placeable.width - margin).coerceAtLeast(margin)
+                                val top = (at.y + PUCK_LABEL_GAP_PX).roundToInt()
+                                // Beside the speed readout, never under it: with large text the
+                                // readout is wide and the car low enough that a long name slid
+                                // behind it. The pill gives up being centered on the car there.
+                                val speedTop = NavChromeEdges.speedTopPx
+                                val besideSpeed = speedBoxRightPx.intValue > 0 && speedTop > 0 && top + placeable.height > speedTop
+                                val minX = if (besideSpeed) minOf(speedBoxRightPx.intValue + margin, maxX) else margin
                                 placeable.place(
-                                    (at.x - placeable.width / 2f).roundToInt().coerceIn(margin, maxX) - origin.x.roundToInt(),
-                                    (at.y + PUCK_LABEL_GAP_PX).roundToInt() - origin.y.roundToInt(),
+                                    (at.x - placeable.width / 2f).roundToInt().coerceIn(minX, maxX) - origin.x.roundToInt(),
+                                    top - origin.y.roundToInt(),
                                 )
                             }
                         },
@@ -4053,6 +4061,7 @@ private fun MapSurface(
         locationStale = state.myLocationStale,
         cameraTarget = state.center,
         cameraTargetZoom = state.centerZoom,
+        openZoom = state.startZoom,
         recenterTick = state.recenterTick,
         cameraBottomInsetPx = cameraBottomInset,
         cameraLeftInsetPx = cameraLeftInset,
@@ -4162,7 +4171,8 @@ private fun MapSurface(
         // Grabbing the map with a sheet up drops it down out of the way so the map is yours
         // to look at (Google does the same): the results sheet to its bar, the place sheet to
         // its minimized card. The bar / a drag brings them back.
-        driveFollowing = driveFollowing,
+        // A start view that is not the phone's position holds the map until the locate button.
+        driveFollowing = driveFollowing && !state.startHold,
         onMapTap = onMapTap,
         onUserPan = onUserPan,
         onScaleChanged = { metersPerPixelState.value = it },
@@ -4642,8 +4652,12 @@ private fun BoxScope.NavTurnBanner(
             .landscapeColumn(landscapeChrome, sidePanelWidthDp)
             .statusBarsPadding()
             .padding(start = if (landscapeChrome) NAV_LAND_EDGE_DP else 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
-            // Report the banner's bottom edge so the compass can drop just below it (any height).
-            .onGloballyPositioned { onBottomPx((it.positionInRoot().y + it.size.height).roundToInt()) },
+            // Report the banner's bottom edge so the compass can drop just below it (any height),
+            // and to the drive camera, which keeps the road ahead out from under it.
+            .onGloballyPositioned {
+                onBottomPx((it.positionInRoot().y + it.size.height).roundToInt())
+                NavChromeEdges.bannerBottomPx = (it.positionInWindow().y + it.size.height).roundToInt()
+            },
     )
 }
 
@@ -6043,6 +6057,11 @@ private fun ListsSheet(
     // D-pad-first initial focus (hard rule, docs/dpad.md): a raw Dialog must place focus
     // itself - land it on the New-list button so the menu opens usable with no wasted press.
     val listsAutoFocus = app.vela.ui.rememberDpadAutoFocus()
+    // Opened from the search page, the search field keeps its focus behind this dialog, and a
+    // focused field keeps the search page up over whatever is opened next. Every way out to the
+    // map drops that focus first, as a pick on the search page does. Read here, outside the
+    // dialog, this is the screen's focus manager rather than the dialog's.
+    val screenFocus = androidx.compose.ui.platform.LocalFocusManager.current
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
@@ -6056,7 +6075,7 @@ private fun ListsSheet(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    if (vm != null) TextButton(onClick = { vm.startDrawing(); onDismiss() }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
+                    if (vm != null) TextButton(onClick = { screenFocus.clearFocus(); vm.startDrawing(); onDismiss() }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
                         Icon(Sym.Draw, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.draw_action))
@@ -6081,7 +6100,7 @@ private fun ListsSheet(
                             Modifier
                                 .fillMaxWidth()
                                 .dpadHighlight(RoundedCornerShape(8.dp))
-                                .clickable { onOpenList(list.id) }
+                                .clickable { screenFocus.clearFocus(); onOpenList(list.id) }
                                 .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -6145,7 +6164,7 @@ private fun ListsSheet(
                                 icon = when (isPicked) { null -> Sym.Star; true -> Sym.CheckCircle; false -> SymOutlined.RadioButtonUnchecked },
                                 title = sp.name, sub = sp.address, pinned = sp.pinned,
                                 onOpen = {
-                                    if (pickedNow == null) { onDismiss(); vm.selectSaved(sp) }
+                                    if (pickedNow == null) { screenFocus.clearFocus(); onDismiss(); vm.selectSaved(sp) }
                                     else pickedSaved = if (sp.id in pickedNow) pickedNow - sp.id else pickedNow + sp.id
                                 },
                                 onPin = { vm.setSavedPlacePinned(sp.id, !sp.pinned) },
@@ -6163,7 +6182,7 @@ private fun ListsSheet(
                                     r.destLabel.takeIf { it.isNotBlank() },
                                 ).joinToString(" · ").ifBlank { null },
                                 pinned = r.pinned,
-                                onOpen = { onDismiss(); vm.openSavedRoute(r) },
+                                onOpen = { screenFocus.clearFocus(); onDismiss(); vm.openSavedRoute(r) },
                                 onPin = { vm.setSavedRoutePinned(r.id, !r.pinned) },
                             )
                         }
@@ -6657,6 +6676,10 @@ private fun RoadPillText(name: String) {
     val text = remember(name) { if (name.length > ROAD_PILL_SHORTEN_AT) app.vela.core.util.RoadNameShort.shorten(name) else name }
     val scale = remember(text) { androidx.compose.runtime.mutableFloatStateOf(1f) }
     val style = MaterialTheme.typography.titleMedium
+    // Its height (the tallest at this density and font scale) is what the drive camera leaves
+    // under the arrow for it.
+    val dens = LocalDensity.current
+    val pillKey = dens.density * 100f + dens.fontScale
     Text(
         text,
         style = style,
@@ -6667,7 +6690,9 @@ private fun RoadPillText(name: String) {
         softWrap = false,
         overflow = TextOverflow.Ellipsis,
         onTextLayout = { if (it.hasVisualOverflow && scale.floatValue > 0.8f) scale.floatValue = (scale.floatValue * 0.94f).coerceAtLeast(0.8f) },
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+        modifier = Modifier
+            .onSizeChanged { NavChromeEdges.pill(it.height, pillKey) }
+            .padding(horizontal = 14.dp, vertical = 6.dp),
     )
 }
 private const val ROAD_PILL_SHORTEN_AT = 16
@@ -6680,7 +6705,13 @@ private fun SpeedWidget(
     modifier: Modifier = Modifier,
 ) {
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { speedBoxRightPx.intValue = 0 } }
-    val modifier = modifier.onGloballyPositioned { c -> speedBoxRightPx.intValue = (c.positionInWindow().x + c.size.width).roundToInt() }
+    val modifier = modifier.onGloballyPositioned { c ->
+        val at = c.positionInWindow()
+        speedBoxRightPx.intValue = (at.x + c.size.width).roundToInt()
+        // The drive camera keeps the arrow above the box once large text widens it under the arrow.
+        NavChromeEdges.speedTopPx = at.y.roundToInt()
+        NavChromeEdges.speedRightPx = speedBoxRightPx.intValue
+    }
     val dark = isAppInDarkTheme()
     val amoled = isAppInAmoled()
     // Smooth the DISPLAYED speed (Google shows the fused estimate, not each raw doppler sample - the

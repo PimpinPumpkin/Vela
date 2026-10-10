@@ -38,6 +38,7 @@ type, address, and often phone and hours).
 | Reroutes while driving | The same as planning, with a short deadline; the phone's own data when there is no signal | Yes, your current position (as long as Google is on) | Yes |
 | Speed limits, traffic lights, stop signs, level crossings | OpenStreetMap, baked per region | Never | Yes |
 | Surveillance and speed cameras | OpenStreetMap and DeFlock, bundled or baked | Never | Yes |
+| Fuel prices on gas stations | US: Google, in the search reply. UK: the government's Fuel Finder data, from a file Vela hosts | US: as part of the search. UK: never | UK: the last file downloaded |
 | Transit departures | Transitous, an open GTFS service; the stop's Google page where Transitous has no coverage | Only for that fallback | The last board seen at a stop, marked with its time |
 | Transit directions | Google; Transitous' own planner when Google is off or has nothing | Yes, unless Google is off | No |
 | Satellite view (off by default) | Esri World Imagery; Google's imagery for close zoom where Esri has none | Only those close-ups | No |

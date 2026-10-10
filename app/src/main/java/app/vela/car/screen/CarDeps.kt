@@ -25,6 +25,8 @@ data class CarDeps(
     // search reads, so a car search with no signal still finds what the downloaded packs hold.
     val offlinePois: app.vela.core.data.OfflinePoiStore,
     val offlineAddresses: app.vela.core.data.OfflineAddressStore,
+    // The shared client, for the UK fuel price file the result rows read (UkFuelPrices.fill).
+    val http: okhttp3.OkHttpClient,
 ) {
     // ONE shared map renderer for the whole car session. Per-screen renderer instances DON'T work:
     // swapping the surface callback to a new instance doesn't re-deliver onSurfaceAvailable, so the

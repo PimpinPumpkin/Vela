@@ -227,6 +227,16 @@ class LocationProvider @Inject constructor(
             .apply()
     }
 
+    /** A location permission, precise or approximate, is granted. Reads the grant; asks for nothing. */
+    fun hasPermission(): Boolean = PERMISSIONS.any {
+        context.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    /** Fixes can arrive: a permission is granted and a provider is switched on, or a position is
+     *  being simulated. */
+    fun canLocate(): Boolean = pinned != null ||
+        (hasPermission() && PROVIDERS.any { p -> runCatching { lm?.isProviderEnabled(p) == true }.getOrDefault(false) })
+
     /** The system has a network location provider and it is on. Without one (GrapheneOS until
      *  its Network location is switched on, any phone with it off) only GPS answers, and indoors
      *  that can be never. */
@@ -236,6 +246,10 @@ class LocationProvider @Inject constructor(
     private companion object {
         // GPS first (accurate), NETWORK second (fast coarse seed).
         val PROVIDERS = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        val PERMISSIONS = listOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
         const val CACHE_EVERY_MS = 60_000L
         const val CACHE_MOVE_M = 100f
         const val KEY_LAT = "last_lat"

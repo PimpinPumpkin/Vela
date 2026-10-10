@@ -463,6 +463,18 @@ fun NavStopsRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            // With a stop ahead the bar's figures are that stop's; the whole trip is here.
+            NavLegFigures.leg.value?.let { leg ->
+                Text(
+                    stringResource(
+                        R.string.nav_stops_whole_trip,
+                        formatDuration(leg.tripSeconds), formatDistance(leg.tripMeters), app.vela.ui.formatArrivalClock(leg.tripSeconds),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ink,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
         }
     }
     val actions: @Composable () -> Unit = {
@@ -678,31 +690,29 @@ fun StepRow(
 private const val PASSED_ALPHA = 0.5f
 
 /**
- * A turn-arrow glyph for each maneuver type (Material "turn_*" symbols).
+ * A turn-arrow glyph for each maneuver type (Material "turn_*" symbols), picked through the shared
+ * [maneuverGlyph] table so the notification and Android Auto show the same picture. Ramps, forks
+ * and keeps get the slight arrow, which shows only the way to go.
  *
  * Roundabouts are the exception: they are DRAWN from the maneuver's own geometry, because no fixed
  * picture can be right about both the exit and the direction of travel (issue #259). This
  * type-only entry point can only produce the neutral form - callers holding the whole [Maneuver]
  * should use [maneuverIconFor] so the real exit angle is shown.
  */
-fun maneuverIcon(type: ManeuverType): ImageVector = when (type) {
-    ManeuverType.DEPART -> Sym.TripOrigin
-    ManeuverType.ARRIVE -> Sym.Flag
-    ManeuverType.TURN_LEFT -> Sym.TurnLeft
-    ManeuverType.TURN_RIGHT -> Sym.TurnRight
-    ManeuverType.SLIGHT_LEFT, ManeuverType.KEEP_LEFT -> Sym.TurnSlightLeft
-    ManeuverType.SLIGHT_RIGHT, ManeuverType.KEEP_RIGHT -> Sym.TurnSlightRight
-    ManeuverType.SHARP_LEFT -> Sym.TurnSharpLeft
-    ManeuverType.SHARP_RIGHT -> Sym.TurnSharpRight
-    ManeuverType.UTURN -> Sym.UTurnLeft
-    ManeuverType.MERGE -> Sym.Merge
-    ManeuverType.FORK_LEFT -> Sym.ForkLeft
-    ManeuverType.FORK_RIGHT -> Sym.ForkRight
-    ManeuverType.RAMP_LEFT -> Sym.RampLeft
-    ManeuverType.RAMP_RIGHT -> Sym.RampRight
-    ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT -> NEUTRAL_ROUNDABOUT
-    ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> Sym.Straight
-    ManeuverType.UNKNOWN -> Sym.ArrowForward
+fun maneuverIcon(type: ManeuverType): ImageVector = when (maneuverGlyph(type)) {
+    ManeuverGlyph.ORIGIN -> Sym.TripOrigin
+    ManeuverGlyph.FLAG -> Sym.Flag
+    ManeuverGlyph.LEFT -> Sym.TurnLeft
+    ManeuverGlyph.RIGHT -> Sym.TurnRight
+    ManeuverGlyph.SLIGHT_LEFT -> Sym.TurnSlightLeft
+    ManeuverGlyph.SLIGHT_RIGHT -> Sym.TurnSlightRight
+    ManeuverGlyph.SHARP_LEFT -> Sym.TurnSharpLeft
+    ManeuverGlyph.SHARP_RIGHT -> Sym.TurnSharpRight
+    ManeuverGlyph.UTURN -> Sym.UTurnLeft
+    ManeuverGlyph.MERGE -> Sym.Merge
+    ManeuverGlyph.ROUNDABOUT -> NEUTRAL_ROUNDABOUT
+    ManeuverGlyph.STRAIGHT -> Sym.Straight
+    ManeuverGlyph.UNKNOWN -> Sym.ArrowForward
 }
 
 /** The neutral roundabout glyph (ring + entry, no exit claimed), built once - it is the fallback

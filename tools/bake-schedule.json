@@ -5,7 +5,7 @@
   "jobs": [
     {"id": "places-slice", "workflow": "places-overlays.yml", "inputs": {"slice": "@slice7"}, "everyHours": 24, "retryInput": "only", "retryJoin": ","},
     {"id": "obf-us", "workflow": "obf-regions.yml", "inputs": {"group": "us", "staging": "true"}, "everyHours": 2160, "retryInput": "ids", "retryJoin": " "},
-    {"id": "obf-a", "workflow": "obf-regions.yml", "inputs": {"group": "africa,china-sub,oceania,germany-sub,canada,australia-sub,south-america,russia-sub,indonesia-sub,india-sub,brazil-sub,california-sub,north-america", "staging": "true"}, "everyHours": 2160, "retryInput": "ids", "retryJoin": " "},
+    {"id": "obf-a", "workflow": "obf-regions.yml", "inputs": {"group": "africa,china-sub,oceania,germany-sub,canada,australia-sub,south-america,russia-sub,indonesia-sub,india-sub,brazil-sub,california-sub,texas-sub,north-america", "staging": "true"}, "everyHours": 2160, "retryInput": "ids", "retryJoin": " "},
     {"id": "obf-b", "workflow": "obf-regions.yml", "inputs": {"group": "europe,asia,france-sub,spain-sub,poland-sub,czech-republic-sub,netherlands-sub,central-america,japan-sub,norway-sub,italy-sub,great-britain-sub", "staging": "true"}, "everyHours": 2160, "retryInput": "ids", "retryJoin": " "},
     {"id": "poi-a", "workflow": "poi-packs.yml", "inputs": {"group": "all", "shard": "a"}, "everyHours": 720, "retryInput": "ids"},
     {"id": "poi-b", "workflow": "poi-packs.yml", "inputs": {"group": "all", "shard": "b"}, "everyHours": 720, "retryInput": "ids"},
@@ -14,7 +14,7 @@
     {"id": "basemap-a", "workflow": "basemap-tiles.yml", "inputs": {"shard": "a"}, "everyHours": 720, "retryInput": "ids"},
     {"id": "basemap-b", "workflow": "basemap-tiles.yml", "inputs": {"shard": "b"}, "everyHours": 720, "retryInput": "ids"},
     {"id": "cells-us", "workflow": "grid-cells.yml", "inputs": {"group": "us"}, "everyHours": 720, "retryInput": "regions"},
-    {"id": "cells-a", "workflow": "grid-cells.yml", "inputs": {"group": "africa,china-sub,oceania,germany-sub,canada,australia-sub,south-america,russia-sub,indonesia-sub,india-sub,brazil-sub,california-sub,north-america"}, "everyHours": 720, "retryInput": "regions"},
+    {"id": "cells-a", "workflow": "grid-cells.yml", "inputs": {"group": "africa,china-sub,oceania,germany-sub,canada,australia-sub,south-america,russia-sub,indonesia-sub,india-sub,brazil-sub,california-sub,texas-sub,north-america"}, "everyHours": 720, "retryInput": "regions"},
     {"id": "cells-b", "workflow": "grid-cells.yml", "inputs": {"group": "europe,asia,france-sub,spain-sub,poland-sub,czech-republic-sub,netherlands-sub,central-america,japan-sub,norway-sub,italy-sub,great-britain-sub"}, "everyHours": 720, "retryInput": "regions"},
     {"id": "buildings-us", "workflow": "building-overlays.yml", "inputs": {"group": "us", "ids": ""}, "everyHours": 2160, "retryInput": "ids"},
     {"id": "buildings-world", "workflow": "building-overlays.yml", "inputs": {"group": "world", "ids": ""}, "everyHours": 2160, "retryInput": "ids"},

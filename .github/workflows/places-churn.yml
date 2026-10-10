@@ -71,10 +71,9 @@ jobs:
           PBF=$(jq -r --arg id "$ID" '.regions[] | select(.id == $id) | .pbf_url' tools/routing-regions.json)
           # Geofabrik keeps dated extracts beside -latest for about three months.
           WAS=$(date -u -d "$DAYS days ago" +%y%m%d)
-          OLDPBF="${PBF%-latest.osm.pbf}-$WAS.osm.pbf"
           echo "region $ID, overture $REL, osm $WAS vs latest"
-          curl -sfSL --retry 3 -o old.osm.pbf "$OLDPBF" || { echo "no dated extract at $OLDPBF"; exit 1; }
-          curl -sfSL --retry 3 -o new.osm.pbf "$PBF"
+          PBF_DATE="$WAS" bash scripts/fetch-pbf.sh "$PBF" old.osm.pbf || { echo "no extract dated $WAS for $ID"; exit 1; }
+          bash scripts/fetch-pbf.sh "$PBF" new.osm.pbf
           OSM_PBF=old.osm.pbf bash tools/build-places-region.sh "$ID" "$S" "$W" "$N" "$E" before.pmtiles "$REL" >/dev/null
           OSM_PBF=new.osm.pbf bash tools/build-places-region.sh "$ID" "$S" "$W" "$N" "$E" after.pmtiles "$REL" >/dev/null
           {

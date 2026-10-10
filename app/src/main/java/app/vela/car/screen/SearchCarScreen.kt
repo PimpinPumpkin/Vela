@@ -68,6 +68,9 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
                         Row.Builder()
                             .setTitle(p.name)
                             .apply { p.address?.let { addText(it) } }
+                            // A gas station's price on its own line (Google's in the US, the UK
+                            // government's Fuel Finder in the UK, SPEC 5.8).
+                            .apply { p.fuelPrice?.let { addText(it) } }
                             // NOT browsable — SearchTemplate rows are plain clickable results (browsable
                             // implies a drill-in sublist and isn't valid here). onClick pushes preview.
                             .setOnClickListener {
@@ -133,6 +136,16 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
             queries = foundQueries
             searching = false
             invalidate()
+            fillFuelPrices(found)
+        }
+    }
+
+    /** UK gas stations get their price once the Fuel Finder file is ready (SPEC 5.8); the rows
+     *  show first, and a newer search's rows are never overwritten. */
+    private fun fillFuelPrices(shown: List<Place>) {
+        lifecycleScope.launch {
+            val filled = app.vela.ui.map.UkFuelPrices.fill(carContext, deps.http, shown)
+            if (filled !== shown && results === shown) { results = filled; invalidate() }
         }
     }
 

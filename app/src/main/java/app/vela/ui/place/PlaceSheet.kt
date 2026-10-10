@@ -1204,6 +1204,32 @@ fun PlaceSheet(
                 },
             ) {
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
+            // Gas stations: the fuel price, bold, first in the body like Google's gas prices card
+            // ("$5.34/Regular" from Google, "172.9p/E10 · 199.9p/B7" in the UK). Below the action
+            // pills, so a price that lands after the sheet opened moves nothing above them. A UK
+            // price says how old its station's report is (SPEC 5.8); Google's carry no time.
+            place.fuelPrice?.let { fp ->
+                val age = place.fuelPriceAt?.let { at ->
+                    val days = app.vela.core.data.FuelGb.daysAgo(at, System.currentTimeMillis() / 1000, java.time.ZoneId.systemDefault())
+                    when (days) {
+                        0 -> stringResource(R.string.place_fuel_updated_today)
+                        1 -> stringResource(R.string.place_fuel_updated_yesterday)
+                        else -> pluralStringResource(R.plurals.place_fuel_updated_days, days, days)
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Sym.LocalGasStation, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ink)) { append(fp) }
+                            if (age != null) withStyle(SpanStyle(color = dim)) { append("  ·  $age") }
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
             place.fullAddress()?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
@@ -2069,6 +2095,35 @@ fun DirectionsPanel(
     }
 }
 
+/** The depart or arrive time last picked in [DepartTimeChooser], kept outside the composable so it
+ *  survives the sheet dropping its content. Held for one destination ([key]) and only while the
+ *  picked time is still ahead; "last available" (mode 3) has no time and is kept as it is. */
+internal object DepartPick {
+    class Pick(val mode: Int, val date: java.time.LocalDate, val time: java.time.LocalTime)
+
+    private var key: Any? = null
+    private var pick: Pick? = null
+    private var droppedOne = false
+
+    fun keep(forKey: Any?, mode: Int, date: java.time.LocalDate, time: java.time.LocalTime) {
+        key = forKey
+        pick = if (mode == 0) null else Pick(mode, date, time)
+        droppedOne = false
+    }
+
+    /** The pick for [forKey], or null. A pick for another destination, or one whose time has
+     *  passed, is dropped, and [dropped] then reports it once. */
+    fun restore(forKey: Any?, now: java.time.LocalDateTime = java.time.LocalDateTime.now()): Pick? {
+        val p = pick ?: return null
+        if (key == forKey && (p.mode == 3 || !p.date.atTime(p.time).isBefore(now))) return p
+        pick = null
+        droppedOne = true
+        return null
+    }
+
+    fun dropped(): Boolean = droppedOne.also { droppedOne = false }
+}
+
 /** "Leave now / Depart at / Arrive by" chooser. "Leave now" uses the live
  *  traffic-aware duration; a future "Depart at" / "Arrive by" uses Google's own
  *  *typical* best→worst spread (`Route.typicalRangeSeconds`, from summary[10][4])
@@ -2089,14 +2144,21 @@ internal fun DepartTimeChooser(
     val ink = if (isAppInDarkTheme()) InkDark else InkLight
     // Keyed to the destination so switching places resets the picked time. mode: 0 now, 1 depart at,
     // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
-    var mode by remember(route?.summary) { mutableStateOf(0) }
-    var date by remember(route?.summary) { mutableStateOf(java.time.LocalDate.now()) }
+    // The pick outlives this composable (DepartPick): the sheet drops its content when it is
+    // swiped down, and coming back used to show "Leave now" over results still for the picked time.
+    val pickKey = route?.summary
+    val kept = remember(pickKey) { DepartPick.restore(pickKey) }
+    var mode by remember(pickKey) { mutableStateOf(kept?.mode ?: 0) }
+    var date by remember(pickKey) { mutableStateOf(kept?.date ?: java.time.LocalDate.now()) }
     // Default to the next 5-minute mark: a to-the-second "now" made every chip tap a brand-new
     // epoch, and the old flow refetched for each one.
-    var time by remember(route?.summary) {
+    var time by remember(pickKey) {
         val n = java.time.LocalTime.now().withSecond(0).withNano(0)
-        mutableStateOf(n.plusMinutes(((5 - n.minute % 5) % 5).toLong()))
+        mutableStateOf(kept?.time ?: n.plusMinutes(((5 - n.minute % 5) % 5).toLong()))
     }
+    // A pick that was dropped (another destination, or its time has passed) is "Leave now" again,
+    // for whoever fetches by it too.
+    LaunchedEffect(pickKey) { if (kept == null && DepartPick.dropped()) onTimeSelected(0, null) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
@@ -2118,6 +2180,7 @@ internal fun DepartTimeChooser(
                 Toast.makeText(context, context.getString(R.string.place_time_past_toast), Toast.LENGTH_SHORT).show()
             }
         }
+        DepartPick.keep(pickKey, mode, date, time)
         onTimeSelected(mode, if (mode == 0) null else epoch())
     }
 

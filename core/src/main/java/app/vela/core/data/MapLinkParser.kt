@@ -20,6 +20,12 @@ data class MapLink(
     val via: Boolean = false,
 ) {
     val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null)
+
+    /** What the link calls this place, for showing it before it is looked up: its name or
+     *  address as the link spells it, else its coordinate. */
+    val label: String
+        get() = query?.trim()?.takeIf { it.isNotEmpty() }
+            ?: if (lat != null && lng != null) String.format(java.util.Locale.US, "%.5f, %.5f", lat, lng) else ""
 }
 
 /**

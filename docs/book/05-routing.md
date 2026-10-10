@@ -82,9 +82,17 @@ Valhalla returns no lane arrows. For a matched stretch, `laneDetail` asks the op
 drive the matched path. It takes the open router's steps when the two paths agree to within
 8 m, and otherwise borrows its lanes turn by turn.
 
+The tiles are not left until the match has failed. One second into a match that has not
+answered, the tiles under the stretch are read as well (0.3 s on a reroute), so the names are
+already there if the match is late. A matcher in good health answers a town stretch in 0.35 to
+1.2 s and costs no tile request.
+
 All of this gets `HYBRID_WAIT_MS` (5.5 s). Past that, the route goes out on Google's line with
-bare turns on the stretches. The open router's own route never replaces a stretch, because it
-is the route through whatever Google went around.
+what each stretch has by then: its match if that finished, else names from the tiles already
+read, else bare turns. One slow stretch does not cost the others their names. The open router's
+own route never replaces a stretch, because it is the route through whatever Google went
+around. A route that goes out past the deadline, or with any stretch bare, is marked short of
+names, and the drive asks for it again ([chapter 4](04-navigation.md)).
 
 ### No wrong street names
 
@@ -103,6 +111,9 @@ matched road pieces (`trace_attributes`) and checks every turn against them (`ch
   there, Vela adds the turn.
 - At a roundabout, Valhalla's enter step carries the ring's own name. Vela says the street you
   leave by.
+- A turn onto the street the driver was just told is said without the name. What counts is the
+  name the driver has heard, not the one on the map: a long road that takes the cross street's
+  name for its last block still gets "Turn right onto X" at that corner.
 
 If the road pieces do not come back, matched turns go out without street names. The open
 router's turn names get the same check against the pieces under its own line. That request
@@ -119,6 +130,16 @@ result is tagged `GOOGLE_HYBRID`.
 The line drawn on the map is OpenStreetMap geometry where there is some, so it sits on the
 roads the map draws. Guidance runs on Google's line.
 
+A stretch with no matched shape would be drawn on Google's own line, which runs in the driving
+lane: a meter or two to one side of the street's middle, enough to hang off a street drawn
+from OpenStreetMap. `RoadCenter` nudges it over. Each point of the line, read every 6 m, moves
+sideways onto the nearest road within 9 m that runs the line's way. Past 9 m, or between two
+roads about equally near, the point stays where Google put it: there the map and the line
+disagree about more than a lane, and Google's line is the one that knows where the route goes.
+The moves are averaged over 18 m each way, so the line eases onto a road and off it. The roads
+come from the tiles the naming already read, so nothing is fetched for it, and it runs once
+when the route is built, never while drawing.
+
 `StepAudit` checks every hybrid and logs one line: each left or right must sit where the line
 bends that way, and each sharp corner must have a step.
 
@@ -134,8 +155,8 @@ If the pieces cannot be joined, the older via snap runs when Google's line stray
   Google's own short step lists (`GOOGLE_ABBREVIATED`).
 - Neither answers and no region covers the trip: no route.
 
-During a drive, the recheck swaps in full steps or traffic once the missing source answers
-([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
+During a drive, the recheck swaps in full steps, street names or traffic once the missing
+source answers ([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
 it, and the trip log records it.
 
 ### Alternates and the order of the list
@@ -350,9 +371,13 @@ way you drove". A replayed trip never offers it.
 
 - The open router and the matcher are community servers with no guarantee. When OSRM does not
   answer, a drive gets the on-phone route or Google's short steps. When Valhalla does not
-  answer in time, stretches fall to tile names or bare turns, with no lanes or sign text. That
-  is more common on a reroute, where the stretches get 1.5 s. Self-hosting both would fix this
-  and would allow `exclude=`.
+  answer in time, stretches fall to tile names, with no lanes or sign text, and to bare turns
+  only when the tiles did not load either. That is more common on a reroute, where the
+  stretches get 1.5 s. Bare turns last until the drive's next recheck that comes back named,
+  about 20 seconds. Self-hosting both would fix this and would allow `exclude=`.
+- A road that leaves a junction and then curves away is called a turn when the map draws an
+  angle at the junction's node. Telling it from a real turn by the shape of Google's line was
+  tried and dropped (roadmap history, dead ends).
 - The open router's turn names go out unchecked when the road pieces under its line are late.
   On the 90 test routes the check removed 5 turn names and kept 457.
 - Trips with stops and picked alternates still use the via snap. On a trip with stops, Google's

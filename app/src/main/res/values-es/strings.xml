@@ -729,8 +729,6 @@
     <string name="settings_offline_places_with_downloads_hint">Al descargar una región también se traen los datos de lugares de Vela, para que los negocios aparezcan en el mapa sin señal. Alrededor de medio gigabyte para un estado grande. Desactivado = los lugares solo se cargan con conexión.</string>
     <string name="settings_routing_size_installed_here">Unos %1$s una vez instalada · cubre tu ubicación</string>
     <string name="settings_routing_size_installed">Unos %1$s una vez instalada</string>
-    <string name="settings_region_confirm_title">¿Descargar %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s ocupa unos %2$s de almacenamiento una vez instalada. Para el día a día, guardar solo la zona en la que estás (arriba en esta página) ocupa mucho menos.</string>
     <string name="settings_storage_title">Almacenamiento</string>
     <string name="settings_storage_maps">Zonas guardadas y caché del mapa</string>
     <string name="settings_storage_routing">Rutas sin conexión</string>
@@ -1001,6 +999,11 @@
     <string name="search_fill_cd">Poner en el cuadro de búsqueda</string>
     <string name="settings_spoken_road_names">Decir los nombres de las calles</string>
     <string name="settings_spoken_road_names_hint">Si está desactivado, los giros se anuncian sin el nombre de la calle: «Gira a la izquierda» en vez de «Gira a la izquierda por la calle Mayor». El mapa y la lista de pasos lo siguen mostrando.</string>
+    <string name="settings_spoken_detail">Cuánto dice la voz</string>
+    <string name="settings_spoken_detail_full">Todo</string>
+    <string name="settings_spoken_detail_brief">Breve</string>
+    <string name="settings_spoken_detail_exits">Solo salidas de autopista</string>
+    <string name="settings_spoken_detail_hint">Breve anuncia cada giro una sola vez, sin el nombre de la calle. Solo salidas de autopista guarda silencio en ciudad y avisa de salidas, bifurcaciones y giros a alta velocidad.</string>
     <string name="mapvm_graphs_retired">Las rutas sin conexión usan ahora un formato más pequeño. Vuelve a descargar tus regiones en Ajustes, Mapas sin conexión.</string>
     <string name="navservice_notif_action_pause">Pausar</string>
     <string name="navservice_notif_action_resume">Reanudar</string>

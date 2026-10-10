@@ -69,7 +69,14 @@ class NavSession @Inject constructor(
         val destinationAddress: String = "",
         val tripDistanceMeters: Double = 0.0,
         val tripElapsedSeconds: Double = 0.0,
+        /** The figures to the next stop, while one is ahead and measurable on this route; null on
+         *  a drive with no stops left. The bottom bar shows these as its main figures. */
+        val nextStop: NextStop? = null,
     )
+
+    /** Distance and time to the next stop ([NavSession.nextStop]), the time carrying the same
+     *  live-traffic calibration as the whole trip's. */
+    data class NextStop(val label: String, val distanceM: Double, val seconds: Double)
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -235,23 +242,25 @@ class NavSession @Inject constructor(
         // Google's markup gives "Head toward F St"; add the cardinal so guidance
         // says "Head east on F St" like Google's own voice.
         val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.instruction.orEmpty(), route.polyline)
+        // Seed the first turn's approach distance so the banner doesn't read "0 ft" (with
+        // every distance gate momentarily open) until the first fix: the DEPART maneuver's
+        // after-distance IS the distance to the first real turn.
+        val seedNav = NavState(
+            distanceToNextManeuver = route.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+            // Seed the trip totals so the ETA card reads the full route time/distance BEFORE the
+            // first fix. The engine overwrites these per-fix, but until then a 0 here rendered
+            // "<1 min / 10 ft" (worst while "Searching for GPS" holds off the first fix).
+            remainingDistance = route.distanceMeters,
+            remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
+        )
         // The opener ([openerFor]) is the first thing the voice says on every drive, so it honors
         // the spoken-street-names switch too (issue #596). The BANNER keeps `first`: the switch is
         // about what is read aloud, never about what is shown.
         _state.value = State(
             navigating = true,
             route = route,
-            // Seed the first turn's approach distance so the banner doesn't read "0 ft" (with
-            // every distance gate momentarily open) until the first fix — the DEPART maneuver's
-            // after-distance IS the distance to the first real turn.
-            nav = NavState(
-                distanceToNextManeuver = route.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
-                // Seed the trip totals so the ETA card reads the full route time/distance BEFORE the
-                // first fix — the engine overwrites these per-fix, but until then a 0 here rendered
-                // "<1 min / 10 ft" (worst while "Searching for GPS" holds off the first fix).
-                remainingDistance = route.distanceMeters,
-                remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
-            ),
+            nav = seedNav,
+            nextStop = synchronized(stopLock) { nextStop(route, this.stops, stopMarks, passedStops, seedNav) },
             maneuverText = first,
             remainingDistance = route.distanceMeters,
             remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
@@ -334,11 +343,15 @@ class NavSession @Inject constructor(
      *  any in-flight deviation reroute (the user's plan supersedes it). The stop joins the plan
      *  IMMEDIATELY (marks null until the new route lands), so even a failed fetch keeps it -
      *  the next reroute/recheck routes through it once the network recovers. */
-    fun addStop(stop: NavStop, loc: LatLng) {
+    /** Add [stop] to the drive: after the stops still ahead with [atEnd] (the phone, where the
+     *  stops editor can drag it into place), else before them as the next stop (the car, which
+     *  has no editor). */
+    fun addStop(stop: NavStop, loc: LatLng, atEnd: Boolean) {
         // VISIBLE stops only: setStops puts the silent detour vias back itself (withSilentVias), so
         // passing them here routed through every detour point twice.
         val remaining = synchronized(stopLock) { stops.drop(passedStops).filter { !it.silent } }
-        setStops(listOf(stop) + remaining, loc, "add stop mid-nav → ${stop.label}", "stop-added")
+        // The count, not the label: the note goes into the trip file.
+        setStops(if (atEnd) remaining + stop else listOf(stop) + remaining, loc, "add stop mid-nav, ${if (atEnd) "last" else "next"} of ${remaining.size + 1}", "stop-added")
     }
 
     /** [visible] (an edited stop list from the UI, which never sees silent stops) with the silent
@@ -373,6 +386,8 @@ class NavSession @Inject constructor(
             marksHeldOn = planRoute
             passedStops = 0
         }
+        // The bar stops naming the old next stop at once; the new one shows when its route lands.
+        _state.update { it.copy(nextStop = null) }
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
         note(reason)
         val gen = sessionGen
@@ -416,6 +431,7 @@ class NavSession @Inject constructor(
                     remainingDistance = r.distanceMeters,
                     remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
                     fasterRoute = null,
+                    nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
                 )
             }
         }
@@ -456,8 +472,15 @@ class NavSession @Inject constructor(
         // tighter than driving because the path is narrow. See NavEngine.offRouteCorridor.
         val offRoute = NavEngine.offRouteCorridor(mode, accuracyM)
         val farOff = NavEngine.farOffDistance(mode, offRoute)
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, bearingDeg)
+        // The stop the drive is heading for, so the engine can say it is coming. Only while the
+        // marks were measured on this very route (planRoute).
+        val stopAhead = synchronized(stopLock) { if (route === planRoute) stopAheadFor(route, nav.traveledM) else null }
+        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, bearingDeg, stopAhead)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
+        // The figures to the next stop, measured on this fix's progress. Only while the marks were
+        // measured on this very route (planRoute): against another route they mean nothing.
+        val scale = etaScale
+        val toStop = synchronized(stopLock) { if (route === planRoute) nextStop(route, stops, stopMarks, passedStops, next, scale) else null }
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while
         // this update was computing on the OLD route — writing `next` (old-route traveledM /
         // stepIndex) onto the fresh route corrupted progress and could false-arrive right after
@@ -469,38 +492,20 @@ class NavSession @Inject constructor(
                 // The live-traffic ETA calibration (etaScale, set by the recheck) applies to the
                 // PUBLISHED remaining time only - the engine's own value stays pristine (it never
                 // reads it back; it recomputes from the route's step durations each fix).
-                val scaledNav = if (etaScale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * etaScale)
+                val scaledNav = if (scale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * scale)
                 it.copy(
                     nav = scaledNav,
                     maneuverText = maneuver?.instruction.orEmpty(),
                     remainingDistance = next.remainingDistance,
                     remainingDuration = scaledNav.remainingDuration,
+                    nextStop = toStop,
                 )
             }
         }
         if (!applied) return
-        val spokeNow = events.any { it is NavEvent.Speak }
-        events.forEach { ev ->
-            when (ev) {
-                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
-                NavEvent.Arrived -> {
-                    note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
-                    _state.update {
-                        it.copy(
-                            navigating = false,
-                            arrived = true,
-                            tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
-                        )
-                    }
-                }
-                NavEvent.RerouteNeeded -> {
-                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${bearingDeg?.toInt()}")
-                    reroute(loc, bearingDeg)
-                }
-            }
-        }
-        if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
+        // The stop just reached is said BEFORE this fix's turn lines: passing the mark and
+        // coming within the next turn's announcing distance can land on one fix, and
+        // "In 300 feet, turn left" before "You've reached the co-op" had them backwards.
         // A jump past the next stop is a skip, not an arrival: hold the stops and reroute through
         // them (again each fix until a new route lands; the reroute gate paces the requests).
         // A SILENT stop is different. It is a point a saved route or a camera detour was built
@@ -528,7 +533,63 @@ class NavSession @Inject constructor(
             skipNoted = false
             announceStopsPassed(route, next.traveledM, loc)
         }
+        val spokeNow = events.any { it is NavEvent.Speak }
+        events.forEach { ev ->
+            when (ev) {
+                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
+                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
+                NavEvent.Arrived -> {
+                    note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
+                    _state.update {
+                        it.copy(
+                            navigating = false,
+                            arrived = true,
+                            tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
+                        )
+                    }
+                }
+                NavEvent.RerouteNeeded -> {
+                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${bearingDeg?.toInt()}")
+                    reroute(loc, bearingDeg)
+                }
+            }
+        }
+        if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
         maybeRecheck(loc, next)
+    }
+
+    /** The next stop as the engine needs it for its approach cue: its mark, its name, which side
+     *  of the road it is on ([NavEngine.stopSide]) and whether the turn before it enters its
+     *  parking lot. Called under [stopLock] with [route] === [planRoute]. */
+    private fun stopAheadFor(route: Route, traveledM: Double): StopAhead? {
+        val i = nextStopIndex(stops.map { it.silent }, stopMarks, passedStops, traveledM)
+        if (i < 0) return null
+        val mark = stopMarks[i] ?: return null
+        val s = stops[i]
+        return StopAhead(mark, s.label, NavEngine.stopSide(route, s.location, mark), lotTurn(route, mark))
+    }
+
+    /** One map lookup per route and stop: which of the bare turns before the stop enters its
+     *  parking lot ([NavEngine.lotTurnsBefore], [ParkingLotTurn]), checked in the order driven.
+     *  It runs in the background and answers -1 (none) until it has looked; a turn is approached
+     *  long before its prompt, and the tiles are cached by the map anyway. */
+    private class LotLookup(val route: Route, val atM: Double) { @Volatile var lotTurn = -1 }
+    @Volatile private var lotLookup: LotLookup? = null
+
+    private fun lotTurn(route: Route, atM: Double): Int {
+        lotLookup?.let { if (it.route === route && it.atM == atM) return it.lotTurn }
+        val look = LotLookup(route, atM)
+        lotLookup = look
+        val turns = NavEngine.lotTurnsBefore(route, atM)
+        if (turns.isEmpty()) return -1
+        scope.launch {
+            for ((i, t) in turns.withIndex()) {
+                val (k, turnM, _) = t
+                val yes = runCatching { kotlinx.coroutines.withTimeoutOrNull(LOT_LOOKUP_TIMEOUT_MS) { ParkingLotTurn.entersLot(route, turnM, atM) } }.getOrNull() == true
+                if (yes) { look.lotTurn = k; note("next stop: turn ${i + 1} of ${turns.size} before it enters a parking lot"); break }
+            }
+        }
+        return -1
     }
 
     // The progress seen on the last fix, for the jump check above (guarded by stopLock).
@@ -540,6 +601,14 @@ class NavSession @Inject constructor(
     private var skipHoldRoute: Route? = null
     private var skipNoted = false
 
+    /** The next-stop figures for a route the drive has just swapped to (a reroute, a stops edit,
+     *  a faster route, a healed one), measured from its start, so the bar is right before the
+     *  first fix on it instead of showing the old route's stop for a second. Null unless [route]
+     *  is the plan the marks were measured on. */
+    private fun seededNextStop(route: Route, tripSeconds: Double): NextStop? = synchronized(stopLock) {
+        if (route === planRoute) nextStop(route, stops, stopMarks, passedStops, seedNav(route, tripSeconds)) else null
+    }
+
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
      *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is passed
      *  silently once a later stop is ([NavEngine.stopsPassed]); it used to count as passed at once,
@@ -548,6 +617,8 @@ class NavSession @Inject constructor(
      *  the stale frame instead of comparing old progress to new marks (which would fire every cue at once). */
     private fun announceStopsPassed(route: Route, traveledM: Double, loc: LatLng) {
         val toSpeak = mutableListOf<String>()
+        var passedNow = 0
+        var stopCount = 0
         synchronized(stopLock) {
             if (route !== planRoute) return
             val byMarks = NavEngine.stopsPassed(stopMarks, stops.size, passedStops, traveledM, STOP_ARRIVE_TOL_M)
@@ -567,11 +638,12 @@ class NavSession @Inject constructor(
             // Counts only, for a test on a phone: no name, no place.
             if (passed != passedStops) runCatching { android.util.Log.i("VelaDirections", "stops: $passed of ${stops.size} passed") }
             passedStops = passed
+            passedNow = passed
+            stopCount = stops.size
         }
-        toSpeak.forEach { label ->
-            voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label))
-            note("reached stop: ${label.ifBlank { "(unnamed)" }}")
-        }
+        toSpeak.forEach { label -> voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label)) }
+        // The count, never the stop's name: a note goes into the trip file and out with a share.
+        if (toSpeak.isNotEmpty()) note("reached a stop: $passedNow of $stopCount passed")
     }
 
     /** Every nav decision the session makes, for the diag ring AND the trip file (`K` lines,
@@ -679,6 +751,7 @@ class NavSession @Inject constructor(
                 remainingDistance = faster.distanceMeters,
                 remainingDuration = faster.durationInTrafficSeconds ?: faster.durationSeconds,
                 fasterRoute = null,
+                nextStop = seededNextStop(faster, faster.durationInTrafficSeconds ?: faster.durationSeconds),
                 fasterSavingSeconds = 0.0,
             )
         }
@@ -714,7 +787,7 @@ class NavSession @Inject constructor(
             degradedRouteRef = currentRoute
             degradedFastRechecks = 0
         }
-        val degraded = currentRoute != null && (!currentRoute.hasRealSteps || !currentRoute.hasLiveTraffic)
+        val degraded = currentRoute != null && RouteHeal.degraded(currentRoute)
         val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
         // Spread by +/-25%, redrawn after every recheck: an exact 120 s beat is a rhythm every
         // install shares (see Jitter).
@@ -762,8 +835,8 @@ class NavSession @Inject constructor(
             // route fetch for the entire drive (user 2026-07-14). The multiplicative form makes
             // the new scale independent of the old one (remaining already carries etaScale), and
             // the offer logic below then compares candidates against a LIVE baseline too.
-            val current = _state.value.route
-            val sameCourse = current != null && candidateEta > 0.0 &&
+            val current = _state.value.route ?: return@launch
+            val sameCourse = candidateEta > 0.0 &&
                 !app.vela.core.data.RouteGeometry.divergent(current, candidate, SAME_COURSE_M)
             if (sameCourse && remaining > 120.0 && trafficAware) {
                 etaScale = (etaScale * candidateEta / remaining).coerceIn(0.5, 2.5)
@@ -779,11 +852,12 @@ class NavSession @Inject constructor(
             // real-drive 2026-07-15): once a same-course candidate carries live traffic again,
             // adopt it so the ETA turns traffic-colored and honest instead of staying white for
             // the rest of the drive. Either upgrade qualifies; neither quality may downgrade.
-            val stepsUpgrade = !current!!.hasRealSteps && candidate.hasRealSteps
-            val trafficUpgrade = !current.hasLiveTraffic && candidate.hasLiveTraffic
-            val noDowngrade = (!current.hasRealSteps || candidate.hasRealSteps) &&
-                (!current.hasLiveTraffic || candidate.hasLiveTraffic)
-            if (sameCourse && candidate.drivable && (stepsUpgrade || trafficUpgrade) && noDowngrade) {
+            // The same for STREET NAMES: a route whose stretches were named from their bends
+            // alone (the naming services missed the deadline, most often on a reroute's short
+            // one) kept its bare "Turn left" for the rest of the drive, through every re-check
+            // that came back named. Any of the three qualifies; none may be taken away.
+            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate) else null
+            if (gains != null) {
                 lastSwapReason = "heal"
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
                 synchronized(stopLock) {
@@ -806,11 +880,12 @@ class NavSession @Inject constructor(
                         remainingDistance = candidate.distanceMeters,
                         remainingDuration = candidateEta,
                         fasterRoute = null,
+                        nextStop = seededNextStop(candidate, candidateEta),
                     )
                 }
-                diag.record(
-                    "nav",
-                    "recheck upgraded route (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
+                note(
+                    "recheck upgraded route for $gains (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
+                        "named turns ${current.namedTurns} of ${current.turns} -> ${candidate.namedTurns} of ${candidate.turns}, " +
                         "traffic ${current.hasLiveTraffic} -> ${candidate.hasLiveTraffic})",
                 )
                 return@launch
@@ -836,7 +911,8 @@ class NavSession @Inject constructor(
             } else {
                 note(
                     "recheck: kept current route (candidate saves ${saving.toInt()} s, traffic=$trafficAware, " +
-                        "abbreviated=${candidate.abbreviatedSteps}, plausible=$plausible, sameCourse=$sameCourse)",
+                        "abbreviated=${candidate.abbreviatedSteps}, plausible=$plausible, sameCourse=$sameCourse, " +
+                        "named ${candidate.namedTurns} of ${candidate.turns} turns against ${current.namedTurns} of ${current.turns})",
                 )
             }
         }
@@ -880,6 +956,7 @@ class NavSession @Inject constructor(
                 remainingDistance = r.distanceMeters,
                 remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
                 fasterRoute = null,
+                nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
             )
         }
     }
@@ -1071,6 +1148,7 @@ class NavSession @Inject constructor(
                     remainingDistance = r.distanceMeters,
                     remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
                     fasterRoute = null,
+                    nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
                 )
             }
         }
@@ -1230,6 +1308,43 @@ class NavSession @Inject constructor(
         const val STOP_SKIP_SPEED_MPS = 70.0
         /** An unmarked stop is reached within this of its pin. */
         const val STOP_NEAR_PIN_M = 250.0
+        /** The parking-lot lookup's whole budget: a tile or two from the map's store or its host. */
+        const val LOT_LOOKUP_TIMEOUT_MS = 8_000L
+
+        /** The seed state of a drive that has just taken [route]: at its start, [tripSeconds] to go. */
+        private fun seedNav(route: Route, tripSeconds: Double) =
+            NavState(remainingDistance = route.distanceMeters, remainingDuration = tripSeconds)
+
+        /** The index in the stop list of the stop a drive at [traveledM] is heading for: the first
+         *  stop not yet passed ([NavEngine.stopsPassed]) that is not a silent via, or -1 when there
+         *  is none or it has no mark on this route (it cannot be measured, so the bar keeps the
+         *  whole trip rather than give a later stop's figures under the wrong name). */
+        fun nextStopIndex(silent: List<Boolean>, marks: List<Double?>, passed: Int, traveledM: Double): Int {
+            var i = NavEngine.stopsPassed(marks, silent.size, passed, traveledM, STOP_ARRIVE_TOL_M)
+            while (i < silent.size && silent[i]) i++
+            return if (i < silent.size && marks.getOrNull(i) != null) i else -1
+        }
+
+        /**
+         * The figures to the next stop for a drive at [nav] on [route] (the engine's own state, not
+         * yet scaled), or null with no measurable stop ahead. The distance is along the route to the
+         * stop's mark. The time is the engine's remaining time less what lies beyond the mark
+         * ([NavEngine.secondsBeyond]), so it is pro-rated over the maneuvers' legs exactly as the
+         * whole trip's is (every router returns a trip with stops as one leg, so there are no
+         * per-stop times to read), and it takes the live calibration [etaScale] the whole trip's
+         * published time carries. Neither figure can exceed the whole trip's.
+         */
+        fun nextStop(route: Route, stops: List<NavStop>, marks: List<Double?>, passed: Int, nav: NavState, etaScale: Double = 1.0): NextStop? {
+            val i = nextStopIndex(stops.map { it.silent }, marks, passed, nav.traveledM)
+            if (i < 0) return null
+            val mark = marks[i] ?: return null
+            val tripS = nav.remainingDuration * etaScale
+            return NextStop(
+                label = stops[i].label,
+                distanceM = (mark - nav.traveledM).coerceIn(0.0, nav.remainingDistance.coerceAtLeast(0.0)),
+                seconds = ((nav.remainingDuration - NavEngine.secondsBeyond(route, mark)) * etaScale).coerceIn(0.0, tripS.coerceAtLeast(0.0)),
+            )
+        }
 
         /** Primary + secondary display lines for a destination, robust to partial data. Offline
          *  routing often has no business name — just "123 Main St" from the offline geocoder, a

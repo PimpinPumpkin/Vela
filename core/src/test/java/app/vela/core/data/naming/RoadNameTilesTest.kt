@@ -38,6 +38,42 @@ class RoadNameTilesTest {
         assertTrue(lines.any { !it.bridge })
     }
 
+    @Test fun aRoutePastItsDeadlineReadsOnlyTheTilesInHand() = kotlinx.coroutines.runBlocking {
+        val before = RoadNameTiles.fetch
+        var fetched = 0
+        try {
+            RoadNameTiles.clearCache()
+            RoadNameTiles.fetch = { _, _, _ -> fetched++; fixture() }
+            // 3rd Street well inside tile 2651/6288, so the line touches that tile alone.
+            val line = listOf(LatLng(38.5449, -121.7400), LatLng(38.5449, -121.7390))
+            assertEquals(null, RoadNameTiles.linesAlong(line, fetchMissing = false))
+            assertEquals("nothing is requested", 0, fetched)
+            assertTrue(RoadNameTiles.linesAlong(line)!!.isNotEmpty())
+            assertEquals(1, fetched)
+            assertTrue(RoadNameTiles.linesAlong(line, fetchMissing = false)!!.isNotEmpty())
+            assertEquals("and the tile read before is used", 1, fetched)
+        } finally {
+            RoadNameTiles.fetch = before
+            RoadNameTiles.clearCache()
+        }
+    }
+
+    @Test fun theRoadsInHandComeBackWhenATileIsMissing() = kotlinx.coroutines.runBlocking {
+        val before = RoadNameTiles.fetch
+        try {
+            RoadNameTiles.clearCache()
+            RoadNameTiles.fetch = { _, x, _ -> if (x == 2651) fixture() else null }
+            val inside = listOf(LatLng(38.5449, -121.7400), LatLng(38.5449, -121.7390))
+            assertTrue(RoadNameTiles.roadsAlong(inside)!!.isNotEmpty())
+            val across = listOf(LatLng(38.5449, -121.7320), LatLng(38.5449, -121.7250)) // tiles 2651 and 2652
+            assertEquals("a tile that cannot be fetched is a failed read", null, RoadNameTiles.roadsAlong(across))
+            assertTrue("from what is in hand, the roads of the tile read before", RoadNameTiles.roadsAlong(across, fetchMissing = false)!!.isNotEmpty())
+        } finally {
+            RoadNameTiles.fetch = before
+            RoadNameTiles.clearCache()
+        }
+    }
+
     @Test fun aLineCrossingATileEdgeAsksForBothTiles() {
         // West to east across the x = 2651/2652 boundary at z14 (lng -121.7285).
         val tiles = RoadNameTiles.tilesAlong(listOf(LatLng(38.5449, -121.7320), LatLng(38.5449, -121.7250)))

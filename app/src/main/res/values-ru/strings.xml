@@ -737,8 +737,6 @@
     <string name="settings_offline_places_with_downloads_hint">Вместе с регионом загружаются и данные Vela о местах, чтобы организации были видны на карте без связи. Около половины гигабайта для крупного региона. Выкл. = места подгружаются только онлайн.</string>
     <string name="settings_routing_size_installed_here">Около %1$s после установки · покрывает ваше местоположение</string>
     <string name="settings_routing_size_installed">Около %1$s после установки</string>
-    <string name="settings_region_confirm_title">Загрузить %1$s?</string>
-    <string name="settings_region_confirm_body">%1$s займёт около %2$s в памяти после установки. Для повседневных поездок достаточно сохранить область вокруг вас (вверху этой страницы), это гораздо меньше.</string>
     <string name="settings_storage_title">Хранилище</string>
     <string name="settings_storage_maps">Сохранённые области и кэш карты</string>
     <string name="settings_storage_routing">Офлайн-маршрутизация</string>
@@ -1026,6 +1024,11 @@
     <string name="search_fill_cd">Вставить в строку поиска</string>
     <string name="settings_spoken_road_names">Называть улицы</string>
     <string name="settings_spoken_road_names_hint">Если выключено, повороты объявляются без названия улицы: «Поверните налево» вместо «Поверните налево на Кленовую улицу». На карте и в списке шагов название остаётся.</string>
+    <string name="settings_spoken_detail">Сколько говорит голос</string>
+    <string name="settings_spoken_detail_full">Всё</string>
+    <string name="settings_spoken_detail_brief">Кратко</string>
+    <string name="settings_spoken_detail_exits">Только съезды с шоссе</string>
+    <string name="settings_spoken_detail_hint">«Кратко» объявляет каждый поворот один раз, без названия улицы. «Только съезды с шоссе» молчит в городе и объявляет съезды, развилки и повороты на высокой скорости.</string>
     <string name="mapvm_graphs_retired">Офлайн-маршрутизация перешла на более компактный формат. Загрузите регионы заново в Настройках, в разделе офлайн-карт.</string>
     <string name="navservice_notif_action_pause">Пауза</string>
     <string name="navservice_notif_action_resume">Продолжить</string>

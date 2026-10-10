@@ -14,6 +14,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Tap a place, a house number or a building to open it. Long-press to drop a pin.
 - Tilt the map for 3D buildings. "Tilt with two fingers" and "3D buildings" turn those off.
 - Pinch and turn in one gesture. A small turn goes back to north when you let go.
+- "Keep north up" stops the map turning: no two-finger rotation, and the map stays north-up while
+  you drive, with or without a route, on the phone and in Android Auto.
 - A layers button for satellite, live traffic, transit lines and terrain shading. "Show layers
   button" hides it.
 - "Highlight transit lines" draws subway, tram and train lines in their own colors. Lines for
@@ -25,6 +27,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Driving with no route, the map turns heading-up and shows your speed and the limit.
 - Names in the app language where the data has them, or romanized.
 - A compass, a scale bar and a locate button. "Prefer buttons over swipes" adds zoom buttons.
+- "Where the map opens" starts the map where you are, where you left it, at Home or on a view
+  you pick.
 
 ## Places
 
@@ -40,10 +44,14 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Share sends a Google Maps link, a geo: pin, coordinates or the address, or opens another map app.
 - A Google Maps directions link opens as the trip it describes, with its start, its stops, the
   points you dragged the route through and its travel mode. Paste one from a desktop browser into
-  the search box, or tap it in any app.
+  the search box, or tap it in any app. Every place shows at once while it is looked up, and the
+  route comes once; a place that cannot be found is named on the card.
 - "People also search for" and "Also at this location" rows open related places.
 - A tapped map place opens at once with open data and names its source while Google's listing loads.
-- Closed places are marked permanently or temporarily closed. Gas stations show their fuel price.
+- Closed places are marked permanently or temporarily closed. Gas stations show their fuel price:
+  Google's in the US, the UK government's Fuel Finder prices (E10 and diesel) in the UK and
+  Northern Ireland, in any app language and with Google on or off. The place page says how old a
+  UK station's last report is.
 - Street View in the app: look around, walk between panoramas, view older captures.
 - "Show reviews" and "Load photos" turn those off. "Load reviews only when I tap" and "Load photos
   only when I tap" defer them.
@@ -82,7 +90,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Google-style route picker" (the default) shows one route at a time. Off, a classic panel lists
   them all.
 - Add stops by search, on the map or by long-press, and drag to reorder. A stop added from the
-  "Stops" sheet comes back to it, so you can drag it into place and add the next.
+  "Stops" sheet comes back to it, so you can drag it into place and add the next. A stop added
+  during a drive goes last; open the sheet to move it.
 - Avoid tolls, highways, ferries or cameras. Set Leave now, Depart at or Arrive by.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.
@@ -96,12 +105,24 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - A turn banner with arrow, distance, road name, highway shields, exit numbers and lanes. Swipe it
   to look ahead.
+- With a large display size or large text the turn card stays within a third of the screen, the
+  arrow stays clear of the bottom bar, and the map zooms out to keep the road ahead in view.
 - Spoken directions with street names and lanes. "Say street names" off shortens them.
-- A bottom bar with time left, distance and arrival time. Swipe it up for the step list.
+- Two turns a block apart are said together: "Turn right onto Elm Street, then turn left onto Oak
+  Avenue".
+- A route that starts without some of its street names, because the naming services were slow,
+  gets them during the drive, usually within 20 seconds.
+- "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits
+  only (quiet in town; speaks for exits, forks and turns taken at speed).
+- A bottom bar with time left, distance and arrival time. Swipe it up for the step list. On a trip
+  with stops the figures are for the next stop, named under them, with the whole trip on a line
+  below. The notification and Android Auto show the next stop too.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray.
+- The route line is drawn down the middle of the map's roads, where Google's own line would sit a
+  lane to one side.
 - Your speed and the posted limit. "Show speed and speed limit" hides them.
 - "Road ahead bar" is a strip with the traffic, lights, stop signs, crossings and cameras still
   ahead.
@@ -112,7 +133,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Pause holds the drive with no rerouting, voice or offers. "Pause button on the navigation bar"
   moves it.
 - An overview button fits the rest of the route, and Re-center returns to the drive.
-- The compass switches heading-up and north-up. "Start drives north-up" sets the default.
+- The compass switches heading-up and north-up. "Start drives north-up" sets the default, and
+  "Keep north up" holds every drive north-up.
 - "Navigation icon" is an arrow, a car, a UFO, a pirate ship or a rubber duck, with "Arrow size" and
   "Arrow colors".
 - "Vibrate on turns", "Keep screen on while navigating" and "Ask before ending navigation".
@@ -121,7 +143,11 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Turn card in the mini map" sets the mini map's layout.
 - If the app is closed mid-drive, the next launch offers to resume.
 - In a tunnel Vela keeps estimating your position.
-- Stops and arrival are announced, with the trip's time and distance at the end.
+- A stop is announced as it comes up ("then Davis Food Co-op will be on your right", "turn left into
+  the parking lot" where the map shows one) and when you reach it. Arrival is announced with the
+  trip's time and distance.
+- The turn off the street at the end of a trip reads "Turn left into the parking lot" when the
+  map shows it entering the destination's lot, where it used to be a bare "Turn left".
 - "Tap places while driving (experiment)" offers a tapped place as a stop, with the time it adds.
 - During a drive the only places on the map are gas stations. "Simplify the map in turns" hides more
   while turning.
@@ -157,7 +183,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Offline
 
 - "Download an area" frames part of the map and saves its map, places, addresses and routing.
-- "Entire states & countries" is a catalog of whole regions to download.
+- "Entire states & countries" is a catalog of whole regions to download. Large countries come
+  in parts, and so do California (two) and Texas (four).
 - With no signal the map draws, places open, and search finds names, categories and typed addresses.
   A name is found with or without its accents: "cafe" finds "Café".
 - Offline routes cover driving, walking and cycling, with spoken turns, speed limits and avoid
@@ -177,7 +204,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Spoken directions use a neural voice that runs on the phone. The Vela voice downloads once.
 - The "Voice library" has about 40 Piper voices. Any text-to-speech voice on the phone works too.
 - "Spoken directions" is the on and off switch, the same as mute in a drive.
-- "Guidance volume", "Voice speed" and "Test voice".
+- "Guidance volume", "Voice speed" and "Test voice". The Vela voice is leveled to a standard
+  loudness, and the volume setting scales from there.
 - The voice follows the directions language. Vela offers a download when a language has no
   voice, and a voice of another language says so on its row.
 - English voices say about 3,500 place names the local way. Street names in another script are read
@@ -247,7 +275,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   guide](docs/ANDROID-AUTO.md).
 - The home list has Home, Work, recent and saved places, then nearby gas, charging, food, coffee and
   parking. Nearby results are numbered on the list and on the map.
-- Search from the car, preview up to three routes, and start the drive.
+- Search from the car, preview up to three routes, and start the drive. Gas stations in car
+  results show their fuel price.
 - The drive screen has the map, a turn card with lanes, the arrival estimate, your speed and the
   limit.
 - Buttons for mute, pause, search along the route and end, plus recenter, zoom and overview.
@@ -282,7 +311,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - "Save my trips (for replay)" records drives on the phone, off by default. Replay, rename or delete
   them. "Select trips", or a long press on one, picks several to share or delete together.
-- Sharing a trip first trims the points near its start, its end, Home and Work.
+- Sharing a trip first trims the points near its start, its end, Home and Work. The notes on what
+  the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you
   choose.
 - "Redact places in exports" hides searches, destinations and place names.

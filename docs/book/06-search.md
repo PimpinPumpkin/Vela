@@ -121,6 +121,10 @@ default and asks for the contacts permission when turned on. Contacts with a pos
 loaded into memory once (`ContactAddresses`), because a provider query per keystroke stutters. A
 contact row shows the person's photo and the address book's label for the address.
 
+The Home and Work chips open a bare place under the chip's own name, with the saved point and
+address and nothing of a business that sits there (`openShortcut`, the same as typing "home").
+Picked as a stop, an origin or a destination, it reads "Home".
+
 Picking a contact (`openContactAddress`) geocodes the address and opens it under the person's
 name, the way Home and Work open. Online it asks Google search and takes, among the top three
 hits, one with no rating and no category, so the house wins over a shop at the same address.
@@ -383,10 +387,23 @@ a search and takes the top hit. The link's travel mode applies to that trip only
 A link with more than two places opens as a trip with stops, up to ten. That covers a trip
 planned in Google Maps on a desktop: copy the address bar, and either open the link on the
 phone (from a calendar event, a note, a message) or paste it into Vela's search box. The
-desktop link carries each place's coordinate, so nothing is looked up by name and the trip is
-the one that was planned, in its order. Points dragged onto the route on the desktop come
-along too: the route passes through them and a drive treats them as silent stops, never
-announced or listed. Editing the stops lets go of them.
+desktop link usually carries each place's coordinate, so those places are not looked up by name
+and the trip is the one that was planned, in its order. Points dragged onto the route on the
+desktop come along too: the route passes through them and a drive treats them as silent stops,
+never announced or listed. Editing the stops lets go of them.
+
+A trip link opens all at once. The route chooser comes up straight away with the start, every
+stop and the destination listed by the name or address the link carries, each with a spinner
+that turns into a check. The destination is looked up first, near you, and then every other
+place together, near the destination. Only when all of them have answered is the trip routed,
+once. A lookup that has not answered in 8 seconds counts as not found, so one bad name cannot
+hold the trip. A stop that finds nothing is left out of the route, and a dialog says which one
+("Could not find Woodland, CA. The route skips it.") with "Search for it" and "Skip it". Search
+opens the stop search on the link's own words, and the place you pick goes back into the trip
+where the link had it. Several missing places are asked about one at a time, a start that finds
+nothing last ("Choose a start" or "Start where I am"). The card keeps one line, "1 place not
+found", with "Fix" to open the dialog again. A destination that finds nothing has no trip to show, so
+the chooser closes and the status says which name failed.
 
 A plain location link (a `geo:` link, a shared place) shows the place. Settings > Navigation >
 "Links from other apps" changes that. "Open directions" sends location links to the route

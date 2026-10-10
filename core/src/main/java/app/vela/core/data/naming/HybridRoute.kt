@@ -67,7 +67,6 @@ object HybridRoute {
     private const val TRIP_END_M = 400.0
     /** Two maneuvers this close together are the same junction; the open router's is kept. */
     private const val MERGE_M = 30.0
-
     /** Meters along Google's line, padded. */
     data class Stretch(val fromM: Double, val toM: Double)
 
@@ -355,8 +354,18 @@ object HybridRoute {
                 renames = x.man.renames.filter { it.atMeters < len },
             )
         }
+        // Across the seam between the two sources, the rule each applies inside its own steps: a
+        // plain turn onto the road the step before has just named is said without the name
+        // ("onto X" twice reads as two streets called X).
+        val said = out.mapIndexed { k, m ->
+            val prev = out.getOrNull(k - 1)
+            if (prev != null && kept[k].fromOpen != kept[k - 1].fromOpen && m.type in HARD_TURNS &&
+                !m.road.isNullOrBlank() && m.road.equals(prev.road, ignoreCase = true) && prev.renames.isEmpty() &&
+                m.instructionNoRoad != null && prev.instructionNoRoad != null && prev.instruction != prev.instructionNoRoad
+            ) m.copy(instruction = m.instructionNoRoad) else m
+        }
         return google.copy(
-            legs = listOf(RouteLeg(google.distanceMeters, google.durationSeconds, google.durationInTrafficSeconds, RouteGeometry.foldSameRoadMerges(out))),
+            legs = listOf(RouteLeg(google.distanceMeters, google.durationSeconds, google.durationInTrafficSeconds, RouteGeometry.foldSameRoadMerges(said))),
             provisional = false,
             abbreviatedSteps = false,
             source = RouteSource.GOOGLE_HYBRID,
@@ -370,8 +379,13 @@ object HybridRoute {
      * matched road shape from [shapes] when it has one, else Google's line. A piece that does not
      * line up (its ends more than [DRAW_JOIN_M] from Google's, or a length off by more than a
      * third) keeps Google's line, so the result can never take a different way than Google's.
+     * A piece left on Google's line goes through [nudge] when one is given ([RoadCenter]: moved
+     * onto the middle of the map's roads where one is close enough).
      */
-    fun drawLine(google: List<LatLng>, open: List<LatLng>, stretches: List<Stretch>, shapes: Map<Stretch, List<LatLng>>): List<LatLng>? {
+    fun drawLine(
+        google: List<LatLng>, open: List<LatLng>, stretches: List<Stretch>, shapes: Map<Stretch, List<LatLng>>,
+        nudge: ((List<LatLng>) -> List<LatLng>)? = null,
+    ): List<LatLng>? {
         if (google.size < 2 || open.size < 2) return null
         val gCum = cumulative(google)
         val total = gCum.last()
@@ -389,7 +403,7 @@ object HybridRoute {
             val pa = pointAt(google, gCum, a); val pb = pointAt(google, gCum, b)
             val oa = alongNear(open, oCum, pa, maxOf(0.0, oAt - 30.0), minOf(oTotal, oAt + (b - a) + 400.0), DRAW_JOIN_M)
             val ob = oa?.let { alongNear(open, oCum, pb, it, minOf(oTotal, it + (b - a) * 1.5 + 100.0), DRAW_JOIN_M) }
-            if (oa == null || ob == null || ob <= oa || kotlin.math.abs((ob - oa) - (b - a)) > (b - a) / 3.0 + 10.0) { add(gPiece); return }
+            if (oa == null || ob == null || ob <= oa || kotlin.math.abs((ob - oa) - (b - a)) > (b - a) / 3.0 + 10.0) { add(nudge?.invoke(gPiece) ?: gPiece); return }
             add(slice(open, oa, ob))
             oAt = ob
         }
@@ -401,7 +415,7 @@ object HybridRoute {
             if (shape != null && shape.size >= 2 &&
                 shape.first().distanceTo(gPiece.first()) <= DRAW_JOIN_M && shape.last().distanceTo(gPiece.last()) <= DRAW_JOIN_M &&
                 kotlin.math.abs(cumulative(shape).last() - len) <= len / 3.0 + 10.0
-            ) add(shape) else add(shape?.let { splice(gPiece, it) } ?: gPiece)
+            ) add(shape) else add(shape?.let { splice(gPiece, it) } ?: nudge?.invoke(gPiece) ?: gPiece)
             // The open route rejoins somewhere past the stretch: find it from there.
             alongNear(open, oCum, gPiece.last(), oAt, oTotal, OFF_M * 2)?.let { oAt = it }
             at = s.toM
