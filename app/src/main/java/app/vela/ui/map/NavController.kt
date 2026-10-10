@@ -1209,7 +1209,7 @@ internal class NavController(
             if (routeFlockGroups[i].count > 1) R.string.nav_flock_cameras_ahead else R.string.nav_flock_camera_ahead,
         )
         if (app.vela.ui.FlockNavAlert.card.value) host.flashStatus(msg, 6000L)
-        if (app.vela.ui.FlockNavAlert.voice.value) voice.speak(msg)
+        if (app.vela.ui.FlockNavAlert.voice.value) alert(msg)
         app.vela.car.CarBridge.toast(msg)
     }
 
@@ -1222,7 +1222,7 @@ internal class NavController(
         val limit = st.speedLimitKmh ?: st.speedLimitOverlayKmh
         val speedKmh = st.mySpeed?.let { it.toDouble() * 3.6 }
         if (!speeding.update(speedKmh, limit, android.os.SystemClock.elapsedRealtime())) return
-        voice.speak(appContext.getString(R.string.nav_speeding_alert))
+        alert(appContext.getString(R.string.nav_speeding_alert))
         app.vela.car.CarBridge.toast(appContext.getString(R.string.nav_speeding_alert))
         tripStore.note("K", "speeding alert: ${speedKmh?.toInt()} km/h, limit ${limit?.toInt()}")
     }
@@ -1240,8 +1240,14 @@ internal class NavController(
         // The card as well as the voice (issue #696): a muted drive got nothing, and the map icon
         // is small at speed.
         host.flashStatus(msg, 6000L)
-        voice.speak(msg)
+        alert(msg)
         app.vela.car.CarBridge.toast(msg)
+    }
+
+    /** A speeding, camera or Flock alert: spoken, or a chime while the voice is muted (issue 735).
+     *  Turn prompts stay muted; the alerts are the sound a muted drive still wants. */
+    private fun alert(msg: String) {
+        if (voice.muted) voice.alertChime() else voice.speak(msg)
     }
 
     private fun refreshNavRouteControls(route: app.vela.core.model.Route, liveFetch: Boolean = true) {

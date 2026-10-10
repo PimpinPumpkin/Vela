@@ -446,6 +446,11 @@ you have been more than 5 km/h over the badge's limit for 4 s (`holdMs`). The 5 
 point where the badge turns red. It can speak again after 8 s back under the limit (`rearmMs`),
 and never more often than every 45 s (`minGapMs`).
 
+With the voice muted, whether by the mute button or by turning spoken directions off, the
+speeding, speed camera and plate camera alerts play two short notes instead of speaking. They
+are the sound a driver who turned the turns off still wants; every other prompt and chime stays
+silent.
+
 ### The step list, the road name and the notification
 
 The step list opens on the step you are on. Steps already driven sit above it, grayed. A divider

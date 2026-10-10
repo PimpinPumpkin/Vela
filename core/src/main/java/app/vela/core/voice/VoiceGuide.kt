@@ -81,9 +81,17 @@ class VoiceGuide @Inject constructor(
     /** A list's own sound as a drive passes one of its places (PassAlerts). Muted with the voice. */
     fun placeTone(notes: List<Pair<Double, Int>>) = chime(notes)
 
+    /** The sound a speeding, speed camera or Flock alert makes while the voice is MUTED: two short
+     *  high notes. A muted drive used to get no alert at all, and the alerts are what a driver
+     *  who turns the turns off still wants (issue 735). With the voice on, the alerts speak. */
+    fun alertChime() {
+        runCatching { android.util.Log.i("VelaDirections", "alert chime (voice muted)") }
+        chime(listOf(1046.5 to 110, 1046.5 to 110), ignoreMute = true)
+    }
+
     /** Plays [notes] (hertz to milliseconds, 30 ms apart) on the navigation-guidance stream. */
-    private fun chime(notes: List<Pair<Double, Int>>) {
-        if (muted) return
+    private fun chime(notes: List<Pair<Double, Int>>, ignoreMute: Boolean = false) {
+        if (muted && !ignoreMute) return
         Thread {
             runCatching {
                 val sr = 22050
