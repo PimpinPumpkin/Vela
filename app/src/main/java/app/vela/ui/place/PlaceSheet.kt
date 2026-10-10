@@ -726,6 +726,14 @@ fun PlaceSheet(
                     .clickable(enabled = minimizedState.value && !singleDetent) { minimizedState.value = false }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
+            // Google's own Street View preview of the place, first in the photo strip where Google
+            // puts its own (issue #724): the search reply names the pano and the yaw, so this is one
+            // image request, like a photo. Not with Google off, and not when the picture fails to
+            // load; the pill at the end of the action row stands in then. Declared out here because
+            // the pill reads it too.
+            var svFailed by remember(place.svPanoId) { mutableStateOf(false) }
+            val svTile = place.svPanoId != null && !svFailed && onShowPhotos == null &&
+                app.vela.ui.LoadPhotos.on.value && !app.vela.ui.GoogleFree.on.value
             // Photo hero at the top (Google-style); tap one to open the full gallery.
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
@@ -755,7 +763,7 @@ fun PlaceSheet(
                     Text(stringResource(R.string.place_show_photos))
                 }
             } else if (app.vela.ui.LoadPhotos.on.value &&
-                (place.photoUrls.isNotEmpty() || ((photosLoading || photosExpected) && !transitNoShimmer))
+                (place.photoUrls.isNotEmpty() || svTile || ((photosLoading || photosExpected) && !transitNoShimmer))
             ) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
@@ -764,6 +772,11 @@ fun PlaceSheet(
                     Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    if (svTile) {
+                        item(key = "streetview") {
+                            StreetViewTile(place.svPanoId!!, place.svYawDeg, dim, onClick = onStreetView) { svFailed = true }
+                        }
+                    }
                     items(shown, key = { it }) { i ->
                         AsyncImage(
                             model = place.photoUrls[i],
@@ -1126,8 +1139,9 @@ fun PlaceSheet(
                 // surface now, not a hand-off to Google's app. A tap loads the nearest pano; no
                 // coverage shows a brief "no Street View here" toast.
                 // Hidden without Google: the imagery is Google's, and a pill that always answers
-                // "no Street View here" is worse than no pill.
-                if (!app.vela.ui.GoogleFree.on.value) {
+                // "no Street View here" is worse than no pill. Hidden too while the preview tile
+                // heads the photo strip: that is the way in then, and the row stays shorter.
+                if (!app.vela.ui.GoogleFree.on.value && !svTile) {
                     ActionPill(Sym.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
                 }
             }
@@ -5032,4 +5046,54 @@ private fun Modifier.bleed(start: androidx.compose.ui.unit.Dp, end: androidx.com
     val w = c.maxWidth + s + end.roundToPx()
     val p = m.measure(c.copy(minWidth = w, maxWidth = w))
     layout(c.maxWidth, p.height) { p.place(-s, 0) }
+}
+
+/** The picture Google's own page shows for a place: its Street View pick, by pano id and yaw. */
+internal fun streetViewThumbUrl(panoId: String, yawDeg: Double?): String =
+    "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=$panoId&cb_client=maps_sv.tactile.gps" +
+        "&w=408&h=240&yaw=${yawDeg ?: 0.0}&pitch=0&thumbfov=100"
+
+/** Google's Street View preview as the photo strip's first tile (issue #724): the picture with a
+ *  Street View label along its bottom edge; a tap opens the viewer. [onFailed] when the picture
+ *  does not load, so the strip drops the tile and the action row shows its pill instead. */
+@Composable
+private fun StreetViewTile(panoId: String, yawDeg: Double?, dim: Color, onClick: () -> Unit, onFailed: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // The thumbnail answers 403 to a bare image load and 200 to one that carries the calibrated
+    // Chrome user agent (no referer needed; checked 2026-10-10), so the request sends it.
+    val request = remember(panoId, yawDeg) {
+        coil.request.ImageRequest.Builder(context)
+            .data(streetViewThumbUrl(panoId, yawDeg))
+            .addHeader("User-Agent", app.vela.core.config.CalibrationStore.latest.userAgent)
+            .build()
+    }
+    Box(
+        Modifier
+            .size(width = 152.dp, height = 110.dp)
+            .clip(shape)
+            .background(dim.copy(alpha = 0.2f))
+            .dpadHighlight(shape)
+            .clickable(onClick = onClick),
+    ) {
+        AsyncImage(
+            model = request,
+            contentDescription = stringResource(R.string.place_street_view),
+            contentScale = ContentScale.Crop,
+            onError = { onFailed() },
+            modifier = Modifier.matchParentSize(),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(6.dp)
+                .background(Color(0xB3000000), CircleShape)
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        ) {
+            Icon(Sym.Streetview, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(R.string.place_street_view), style = MaterialTheme.typography.labelSmall, color = Color.White)
+        }
+    }
 }

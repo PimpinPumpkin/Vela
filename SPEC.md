@@ -5120,7 +5120,8 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
   the pano node, not at the root.
 - Tiles come from `streetviewpixels-pa.googleapis.com/v1/tile`. The `/v1/thumbnail` path answers
   only with the full parameter set Google's own pages send (`cb_client`, size, yaw, pitch, field
-  of view). Bare, it returns 403.
+  of view) and a browser `User-Agent` (the calibrated one; no referer is needed, checked
+  2026-10-10). Bare, or from an image loader's default agent, it returns 403.
 
 #### Rendering
 
@@ -5166,13 +5167,17 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
   whenever the offline guess was wrong. With neither, an offline phone is told the spot was not
   viewed before. The cache is cleared by its own button, by "Clear history" and by "Delete all
   offline data", and is read off the main thread.
-- A preview floats on the map for an open place whose search reply names a pano
-  (`StreetViewThumb` in `MapFloaters`): above the card's left corner in portrait, beside the
-  panel in landscape. It is one `/v1/thumbnail` request with the reply's pano id and yaw. It
-  follows the photo settings, and it is not drawn with Google off, offline, when the picture
-  fails to load, or while the place sheet itself is off screen (`SheetEdge.shown`, set by the
-  sheet's own position reports and cleared when it leaves: the search page keeps the place
-  selected).
+- Google's own preview of an open place whose search reply names a pano is the first tile of
+  the place sheet's photo strip (`StreetViewTile` in `PlaceSheet`, issue #724), where Google
+  puts its own, with a Street View label; a tap opens the viewer, and the Street View pill is
+  left off the action row while the tile shows. It is one `/v1/thumbnail` request with the
+  reply's pano id and yaw (`streetViewThumbUrl`), sent with the calibrated user agent. Google
+  names a pano for some results only (one of twenty cafes in a Davis reply), so most places
+  keep the pill, which looks the nearest pano up on tap. It follows the photo settings ("Load photos"
+  on, not "only when I tap"), and it is not drawn with Google off or when the picture fails to
+  load, when the pill is back. The strip shows for the tile alone when a place has no photos.
+  Until 2026-10-10 the preview floated above the card's left corner and only while the card
+  was low enough to leave map above it, which is exactly when nobody was looking for it.
 
 ### 10.8 Content gating
 

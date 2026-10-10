@@ -54,7 +54,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   Google's in the US, the UK government's Fuel Finder prices (E10 and diesel) in the UK and
   Northern Ireland, in any app language and with Google on or off. The place page says how old a
   UK station's last report is.
-- Street View in the app: look around, walk between panoramas, view older captures.
+- Street View in the app: look around, walk between panoramas, view older captures. A business
+  with imagery opens with Google's own preview first in its photo strip.
 - "Show reviews" and "Load photos" turn those off. "Load reviews only when I tap" and "Load photos
   only when I tap" defer them.
 - "Wait for popular times" and "Load all photos and reviews" trade more Google requests for fuller

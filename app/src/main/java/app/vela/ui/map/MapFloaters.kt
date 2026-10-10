@@ -42,68 +42,12 @@ import app.vela.ui.dpadHighlight
 import app.vela.ui.icons.Sym
 
 /** Small things that float over the map and decide for themselves when to show. One call from
- *  MapScreen, which has no room for more (see the size notes there). */
+ *  MapScreen, which has no room for more (see the size notes there). The Street View preview
+ *  that floated above the place card until 2026-10-10 is the first tile of the place sheet's
+ *  photo strip now (`StreetViewTile`, issue #724). */
 @Composable
-internal fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel, sheet: SheetEdge) {
+internal fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel) {
     if (state.replaying && !state.demoDriving) ReplayControls(state, vm)
-    // Only beside its sheet: with the search page up the place stays selected and the sheet is gone.
-    if (sheet.shown.value) StreetViewThumb(state, vm, sheet.top)
-}
-
-/** Google's own Street View preview of the open place, above the place card's left corner (beside
- *  the panel in landscape); a tap opens the viewer. The search reply names the view (pano id and
- *  heading), so this is the image request and nothing else, and it follows the photo settings. */
-@Composable
-private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetTop: State<Int>) {
-    val place = state.selected ?: return
-    val pano = place.svPanoId ?: return
-    if (state.navigating || state.directionsOpen || state.transitNav != null || state.streetView != null || state.streetViewLoading) return
-    if (!app.vela.ui.LoadPhotos.on.value || app.vela.ui.PhotosOnTap.on.value || app.vela.ui.GoogleFree.on.value || state.offline) return
-    val cfg = LocalConfiguration.current
-    val landscape = cfg.screenWidthDp > cfg.screenHeightDp
-    val windowH = LocalView.current.height
-    // Portrait: only while the card leaves map above it to float on.
-    val room by remember(windowH) { derivedStateOf { sheetTop.value > windowH * 0.35f } }
-    if (!landscape && !room) return
-    val url = remember(pano, place.svYawDeg) {
-        "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=$pano&cb_client=maps_sv.tactile.gps" +
-            "&w=408&h=240&yaw=${place.svYawDeg ?: 0.0}&pitch=0&thumbfov=100"
-    }
-    // No picture (no signal, or Google refused it): no box either. The Street View button on the
-    // card is still the way in.
-    var failed by remember(url) { mutableStateOf(false) }
-    if (failed) return
-    val shape = RoundedCornerShape(12.dp)
-    val panel = sidePanelWidth()
-    Surface(
-        shape = shape,
-        border = BorderStroke(2.dp, Color.White),
-        shadowElevation = 4.dp,
-        modifier = (
-            if (landscape) Modifier.align(Alignment.BottomStart)
-                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
-                .navigationBarsPadding().padding(start = panel + 12.dp, bottom = 44.dp) // clear of the map credit
-            else Modifier.align(Alignment.TopStart).padding(start = 12.dp)
-                .offset { IntOffset(0, sheetTop.value - 64.dp.roundToPx() - 12.dp.roundToPx()) }
-            )
-            .size(width = 96.dp, height = 64.dp)
-            .dpadHighlight(shape)
-            .clickable { vm.openStreetView(place) },
-    ) {
-        Box {
-            coil.compose.AsyncImage(
-                model = url,
-                contentDescription = stringResource(R.string.place_street_view),
-                contentScale = ContentScale.Crop,
-                onError = { failed = true },
-                modifier = Modifier.clip(shape).background(Color(0xFF3C4043)),
-            )
-            Icon(
-                Sym.Streetview, contentDescription = null, tint = Color.White,
-                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(18.dp).background(Color(0x99000000), CircleShape).padding(2.dp),
-            )
-        }
-    }
 }
 
 /** Drive chrome that comes back after the step list closes pops in (a short scale and fade)

@@ -2402,7 +2402,7 @@ fun MapScreen(
         // user an explicit way out (its tap stops the replay and resumes live GPS). A DEMO drive
         // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
         // it (stopNav cancels the demo), so don't show the replay pill over the nav chrome.
-        MapFloaters(state, vm, sheetEdge)
+        MapFloaters(state, vm)
         // Search along the route: Google's page (the whole screen in portrait, the left column
         // over a dimmed map in landscape). Drawn last, so it covers the banner, bar and buttons.
         if (state.navigating && navSearchOpen && state.results.isEmpty()) {
