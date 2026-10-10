@@ -3,6 +3,7 @@ package app.vela.offline
 import android.content.Context
 import app.vela.core.VelaConfig
 import app.vela.core.data.naming.RoadNameTiles
+import app.vela.ui.MemoryPressure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -30,6 +31,8 @@ object RoadNameTileSource {
     fun install(context: Context) {
         val app = context.applicationContext
         RoadNameTiles.fetch = { z, x, y -> fetch(app, z, x, y) }
+        // The tiles kept for the next route (names, roads and their bytes) go when memory is short.
+        MemoryPressure.register { level -> if (MemoryPressure.isSevere(level)) RoadNameTiles.clearCache() }
     }
 
     private suspend fun fetch(context: Context, z: Int, x: Int, y: Int): ByteArray? = withContext(Dispatchers.IO) {

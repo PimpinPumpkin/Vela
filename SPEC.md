@@ -939,7 +939,8 @@ The first source that answers:
 3. `LineNamer` with no tile lines: bare turns from the line's bends.
 
 Tiles come second because, measured on 90 routes in six areas, they named 1.4% of named turns
-wrong. `StretchNamer` runs the three. The tiles under a stretch are read beside its match:
+wrong. `StretchNamer` runs the three. (`debug.vela.tune.noMatch`, adb only and read at launch,
+turns the matcher off so the other two can be seen on a phone.) The tiles under a stretch are read beside its match:
 `TILE_HEDGE_MS` (1 s; `TILE_HEDGE_URGENT_MS` 0.3 s) into a match that has not answered, and at
 once when it fails. The matcher answers a town stretch in 0.35 to 1.2 s, so a healthy one costs
 no tile request. In low data mode the tiles are read only after the match fails.
@@ -2023,6 +2024,18 @@ Measured and not worth doing:
   the open route, that route's own line. Inside a stretch where they differ, the matched road
   shape (Valhalla, only when the match has no off-line part). A piece whose ends are over 25 m
   from Google's or whose length is off by a third keeps Google's line.
+- A piece left on Google's line is nudged onto the middle of the map's roads (`RoadCenter`),
+  from the tiles the naming already read (`RoadNameTiles.roadsAlong(fetchMissing = false)`, up to
+  `DRAW_ROADS_MAX_TILES` 48; nothing is requested for it). The line is read every `STEP_M`
+  (6 m). A point moves sideways onto the nearest car road within `MAX_OFF_M` (9 m) that runs
+  within `ALIGN_DEG` (25) of the line's own heading. It stays where Google put it when no such
+  road is there, or when roads on both sides are within `AMBIGUOUS_M` (3 m) of equally near. An
+  unmoved run under `BRIDGE_M` (40 m), a junction, takes the moves either side, and every move
+  is averaged over `SMOOTH_M` (18 m) each way so the line eases on and off a road. On a
+  captured 12 km town route, Google's line sat a median 0.8 m and at most 3.4 m off the road's
+  middle, 67% of it by more than half a meter, and the nudge added no more than 10 degrees of
+  bend in any 48 m. It runs once when the route is built, off the main thread (13 ms for that
+  route on a desktop JVM), never per frame. `made` gains `nudged=<meters>`.
 - MapScreen draws `roundBends(removeZigzags(straightenCircles(line)))` (`core/nav/RouteSmoothing`).
   Guidance keeps the router's line.
 - The arrow sits on the drawn line. Its heading, and so the camera's, comes from `puckLine`,

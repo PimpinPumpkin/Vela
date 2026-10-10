@@ -34,15 +34,36 @@ object RoadNameTiles {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, List<NamedLine>>) = size > 96
     }
 
-    /** Forget every tile read so far (tests). */
-    internal fun clearCache() { synchronized(cache) { cache.clear() } }
+    /** The tiles' own bytes, most recent [RAW_TILES]: the street names and the roads are two
+     *  layers of one tile, and whichever is read second must not ask for it again. About 30 KB a
+     *  tile. */
+    private const val RAW_TILES = 48
+    private val raw = object : LinkedHashMap<Long, ByteArray>(64, 0.75f, true) {
+        override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, ByteArray>) = size > RAW_TILES
+    }
+
+    /** Tile x/y at [ZOOM], from the bytes in hand, else fetched when [fetchMissing]. */
+    private suspend fun bytes(x: Int, y: Int, fetchMissing: Boolean): ByteArray? {
+        val key = (x.toLong() shl 32) or y.toLong()
+        synchronized(raw) { raw[key] }?.let { return it }
+        if (!fetchMissing) return null
+        val f = fetch ?: return null
+        return runCatching { f(ZOOM, x, y) }.getOrNull()?.also { synchronized(raw) { raw[key] = it } }
+    }
+
+    /** Forget every tile read so far (tests, and when memory is short). */
+    fun clearCache() {
+        synchronized(cache) { cache.clear() }
+        synchronized(roadCache) { roadCache.clear() }
+        synchronized(raw) { raw.clear() }
+    }
 
     /** Every named line in the tiles [poly] passes through (plus a ~60 m margin), or null when the
      *  tiles could not be read or the line crosses more than [MAX_TILES] of them. With [fetchMissing]
      *  false only tiles already read are used and nothing is requested: for a route past its
      *  deadline, which takes the names that are in hand. */
     suspend fun linesAlong(poly: List<LatLng>, fetchMissing: Boolean = true): List<NamedLine>? {
-        val f = fetch ?: return null
+        if (fetch == null) return null
         val tiles = tilesAlong(poly)
         if (tiles.isEmpty() || tiles.size > MAX_TILES) return null
         val decoded = coroutineScope {
@@ -50,8 +71,7 @@ object RoadNameTiles {
                 async {
                     val key = (x.toLong() shl 32) or y.toLong()
                     synchronized(cache) { cache[key] }?.let { return@async it }
-                    if (!fetchMissing) return@async null
-                    val bytes = runCatching { f(ZOOM, x, y) }.getOrNull() ?: return@async null
+                    val bytes = bytes(x, y, fetchMissing) ?: return@async null
                     val lines = runCatching { decode(bytes, ZOOM, x, y) }.getOrNull() ?: return@async null
                     synchronized(cache) { cache[key] = lines }
                     lines
@@ -228,21 +248,24 @@ object RoadNameTiles {
     /** Roads [roadsAlong] answers with instead of reading tiles (tests). */
     @Volatile internal var testRoads: List<RoadLine>? = null
 
-    /** Every car road in the tiles around [poly] (a short stretch: at most 8 tiles), or null when
-     *  the tiles could not be read. */
-    suspend fun roadsAlong(poly: List<LatLng>): List<RoadLine>? {
+    /** Every car road in the tiles around [poly], or null when the tiles could not be read or
+     *  there are more than [maxTiles] of them (8: a short stretch round a turn). With
+     *  [fetchMissing] false only tiles already in hand are used and nothing is requested; a
+     *  longer read ([maxTiles] over 16) is decoded for the call and not kept. */
+    suspend fun roadsAlong(poly: List<LatLng>, fetchMissing: Boolean = true, maxTiles: Int = 8): List<RoadLine>? {
         testRoads?.let { return it }
-        val f = fetch ?: return null
+        if (fetch == null) return null
         val tiles = tilesAlong(poly)
-        if (tiles.isEmpty() || tiles.size > 8) return null
+        if (tiles.isEmpty() || tiles.size > maxTiles) return null
+        val keep = maxTiles <= 16
         val decoded = coroutineScope {
             tiles.map { (x, y) ->
                 async {
                     val key = (x.toLong() shl 32) or y.toLong()
                     synchronized(roadCache) { roadCache[key] }?.let { return@async it }
-                    val bytes = runCatching { f(ZOOM, x, y) }.getOrNull() ?: return@async null
+                    val bytes = bytes(x, y, fetchMissing) ?: return@async null
                     val roads = runCatching { decodeRoads(bytes, ZOOM, x, y) }.getOrNull() ?: return@async null
-                    synchronized(roadCache) { roadCache[key] = roads }
+                    if (keep) synchronized(roadCache) { roadCache[key] = roads }
                     roads
                 }
             }.awaitAll()

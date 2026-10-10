@@ -158,6 +158,10 @@ object ValhallaRouter {
     fun match(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000): Route? =
         matchWithEdges(http, shape, costing, timeoutMs)?.route
 
+    /** A test switch only adb can set (`debug.vela.tune.noMatch`, read at launch): no stretch is
+     *  matched, so what a route does without the matcher can be seen on a phone. */
+    @Volatile var matchOff = false
+
     /** A match and the edges its turn names were checked against (null = none came back). */
     class Match(val route: Route, val edges: List<Edge>?, val names: IntArray, val off: List<Pair<Double, Double>> = emptyList())
 

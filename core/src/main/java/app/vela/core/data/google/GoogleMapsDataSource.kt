@@ -1239,11 +1239,12 @@ class GoogleMapsDataSource @Inject constructor(
             // names; and what a stretch has when the deadline passes is kept, so one slow stretch
             // does not strip the others, and a matched stretch keeps its road shape for the line.
             val matches = java.util.concurrent.ConcurrentHashMap<app.vela.core.data.naming.HybridRoute.Stretch, app.vela.core.data.ValhallaRouter.Match>()
+            val nudgedM = java.util.concurrent.atomic.AtomicInteger(0) // meters of the drawn line moved onto the roads' middle
             fun pieceOf(st: app.vela.core.data.naming.HybridRoute.Stretch) = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
             val namer = app.vela.core.data.naming.StretchNamer(
                 match = { st ->
                     val (startSlack, endSlack) = app.vela.core.data.naming.HybridRoute.tripEndSlack(st, gLineM, MATCH_TRIP_END_SLACK_M)
-                    val m = if (st.toM - st.fromM <= MATCH_MAX_M)
+                    val m = if (st.toM - st.fromM <= MATCH_MAX_M && !app.vela.core.data.ValhallaRouter.matchOff)
                         app.vela.core.data.ValhallaRouter.matchWithEdges(
                             http, pieceOf(st), timeoutMs = if (urgent) 1_200 else 2_500,
                             startSlackM = startSlack, endSlackM = endSlack,
@@ -1316,8 +1317,19 @@ class GoogleMapsDataSource @Inject constructor(
                     ?.let { app.vela.core.data.ValhallaRouter.recheck(open.first(), it, keepUnplaced = true, tally = tally) }
                 if (openChecked != null) runCatching { android.util.Log.i("VelaDirections", "open names (hybrid): kept ${tally[0]} renamed ${tally[1]} bare ${tally[2]} unplaced ${tally[3]}") }
                 val openUsed = openChecked ?: open.first()
+                // THE DRAWN LINE ON THE ROADS' MIDDLE: a stretch with no matched shape would be
+                // drawn on Google's own line, which runs in the driving lane and hangs off a
+                // street drawn from OpenStreetMap. Its points are moved onto the map's roads
+                // where one is within RoadCenter.MAX_OFF_M, from the tiles the naming already
+                // read (nothing is requested for this), and left alone past that.
+                val unshaped = hybridStretches.filter { matchedShapes[it] == null }
+                val roads = unshaped.flatMap { app.vela.core.data.naming.RoadNameTiles.roadsAlong(pieceOf(it), fetchMissing = false, maxTiles = DRAW_ROADS_MAX_TILES).orEmpty() }
+                nudgedM.set(0)
+                val nudge: ((List<LatLng>) -> List<LatLng>)? = if (roads.isEmpty()) null else { piece ->
+                    app.vela.core.data.naming.RoadCenter.nudgeCounted(piece, roads).let { (line, movedM) -> nudgedM.addAndGet(movedM); line }
+                }
                 app.vela.core.data.naming.HybridRoute.stitch(gTop!!, openUsed, named.map { it.first to it.second!! }, untrusted.toList())
-                    ?.let { r -> r.copy(drawPolyline = app.vela.core.data.naming.HybridRoute.drawLine(gTop.polyline, openUsed.polyline, hybridStretches, matchedShapes)) }
+                    ?.let { r -> r.copy(drawPolyline = app.vela.core.data.naming.HybridRoute.drawLine(gTop.polyline, openUsed.polyline, hybridStretches, matchedShapes, nudge)) }
             }
             // Anything the matching or the stitch throws costs the hybrid, never the route: the
             // paths below it still answer. (A cancellation is the deadline or the caller, and passes.)
@@ -1351,6 +1363,7 @@ class GoogleMapsDataSource @Inject constructor(
                     "stretchM=${hybridStretches.sumOf { it.toM - it.fromM }.toInt()}",
                     "matched=${stretchSource[0]}", "tiled=${stretchSource[1]}", "bare=${stretchSource[2]}", "lanes=${stretchSource[3]}",
                     "naming=${System.currentTimeMillis() - tHybrid}ms",
+                    "nudged=${nudgedM.get()}m".takeIf { nudgedM.get() > 0 },
                     "namingLate".takeIf { !namedInTime },
                     "urgent".takeIf { urgent },
                 ).joinToString(";"),
@@ -1360,7 +1373,7 @@ class GoogleMapsDataSource @Inject constructor(
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gLineM.toInt()} m (Google states ${gTop?.distanceMeters?.toInt()} m), " +
-                    (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size}); stretches matched ${stretchSource[0]} (${stretchSource[3]} with lane detail), from tiles ${stretchSource[1]}, bare ${stretchSource[2]}; their turn names kept ${stretchNames[0]} renamed ${stretchNames[1]} dropped ${stretchNames[2]}, no edges for ${stretchNames[3]}, off the line in ${untrusted.size} place(s)" else "NOT placed, older path") +
+                    (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size}); stretches matched ${stretchSource[0]} (${stretchSource[3]} with lane detail), from tiles ${stretchSource[1]}, bare ${stretchSource[2]}; their turn names kept ${stretchNames[0]} renamed ${stretchNames[1]} dropped ${stretchNames[2]}, no edges for ${stretchNames[3]}, off the line in ${untrusted.size} place(s), ${nudgedM.get()} m drawn on the roads' middle" else "NOT placed, older path") +
                     " in ${System.currentTimeMillis() - tHybrid} ms")
                 // Do the steps describe Google's line? Counts only (StepAudit).
                 if (hybrid != null) {
@@ -2220,6 +2233,9 @@ class GoogleMapsDataSource @Inject constructor(
          *  destination's parking lot. The tiles are asked for when the fetch starts, so this is
          *  normally no wait at all. */
         const val LOT_WORD_WAIT_MS = 1_200L
+        /** The most tiles whose roads are read to draw a stretch on the roads' middle (the same
+         *  bound the street names have). */
+        const val DRAW_ROADS_MAX_TILES = 48
         const val LOT_WORD_WAIT_URGENT_MS = 300L
         const val TILE_HEDGE_URGENT_MS = 300L
         /** Longer than any deadline: the tiles are read only once the match has failed. */

@@ -486,6 +486,8 @@ signed file the app fetches at launch (SPEC 11).
 - A fixed time of day for transit and opening hours: `setprop debug.vela.tune.demoClock 720`
   (minutes after midnight). Clear it afterward.
 - Any tuning dial: `setprop debug.vela.tune.<key> <n>`.
+- A route without the map matcher (tile names, the nudged line): `setprop debug.vela.tune.noMatch 1`,
+  then restart the app. `VelaDirections` logs how each stretch was named and the meters nudged.
 - Low-memory path: `setprop debug.vela.lowram true`.
 - A trip between two points without moving the simulated location: open
   `https://www.google.com/maps/dir/?api=1&origin=..&destination=..` as a view intent. Pass
@@ -507,6 +509,8 @@ signed file the app fetches at launch (SPEC 11).
 Checks to run before trusting a routing change: `core/nav/StepAudit`, then
 `NamingStudyTest.replayCapturedLines` (`-DvelaStudy=1`), then a few real trips on a phone with
 the step list read by hand. Probe tests that need a region file take `-DvelaObf=<folder>`.
+`RoadCenterTest.deskLine` (`-DvelaNudge=<file>`) nudges a captured line and writes it out for
+drawing.
 
 ## Where things are written down
 

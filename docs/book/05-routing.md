@@ -127,6 +127,16 @@ result is tagged `GOOGLE_HYBRID`.
 The line drawn on the map is OpenStreetMap geometry where there is some, so it sits on the
 roads the map draws. Guidance runs on Google's line.
 
+A stretch with no matched shape would be drawn on Google's own line, which runs in the driving
+lane: a meter or two to one side of the street's middle, enough to hang off a street drawn
+from OpenStreetMap. `RoadCenter` nudges it over. Each point of the line, read every 6 m, moves
+sideways onto the nearest road within 9 m that runs the line's way. Past 9 m, or between two
+roads about equally near, the point stays where Google put it: there the map and the line
+disagree about more than a lane, and Google's line is the one that knows where the route goes.
+The moves are averaged over 18 m each way, so the line eases onto a road and off it. The roads
+come from the tiles the naming already read, so nothing is fetched for it, and it runs once
+when the route is built, never while drawing.
+
 `StepAudit` checks every hybrid and logs one line: each left or right must sit where the line
 bends that way, and each sharp corner must have a step.
 
