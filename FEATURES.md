@@ -17,7 +17,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Keep north up" stops the map turning: no two-finger rotation, and the map stays north-up while
   you drive, with or without a route, on the phone and in Android Auto.
 - A layers button for satellite, live traffic, transit lines and terrain shading. "Show layers
-  button" hides it.
+  button" hides it. The live traffic overlay shows while browsing; during a drive the route line
+  carries the traffic and the overlay is hidden.
 - "Highlight transit lines" draws subway, tram and train lines in their own colors. Lines for
   places you have looked at are kept on the phone, so they show at once and with no signal.
 - Traffic lights, stop signs, railway crossings and speed humps show at close zoom.

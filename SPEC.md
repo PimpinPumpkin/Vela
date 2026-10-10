@@ -3559,8 +3559,12 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
 - The traffic raster (`vela-traffic`, opacity 0.6) sits above `building-3d`, else `building`, else
   below the first symbol layer, so footprints do not paint over the congestion colors. With
   satellite on it sits above the imagery.
-- It carries a 900 ms `raster-fade-duration`. Google's tiles expire during a drive, and at the
-  default 300 ms a replaced tile reads as the whole layer flickering.
+- It carries a 900 ms `raster-fade-duration`. Google's tiles expire while the map is open, and
+  at the default 300 ms a replaced tile reads as the whole layer flickering.
+- It is not drawn during a drive (`navMode`), whatever the setting: the route line carries the
+  traffic, and in the tilted drive view the raster's tiles load at a different zoom for every
+  distance from the camera and expire as the car moves, so the colored bands along a highway
+  grew, shrank and blinked (issue 733). It comes back when the drive ends.
 - Satellite base imagery (Esri) caps at z19 and MapLibre stretches past it. From z17
   (`SAT_DEEP_PROBE_ZOOM`) `refreshSatDeep` probes Esri's availability index at the view center, 20
   then 21 then 22, stopping at the first missing level. `ensureSatelliteDeep` adds one raster

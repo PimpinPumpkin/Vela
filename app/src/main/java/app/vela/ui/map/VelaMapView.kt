@@ -5160,8 +5160,12 @@ fun VelaMapView(
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
-                // The traffic raster is Google's tile server; off entirely without Google.
-                ensureTraffic(style, trafficOn && !app.vela.ui.GoogleFree.on.value)
+                // The traffic raster is Google's tile server; off entirely without Google, and
+                // not during a drive: the route line carries the traffic, and in the tilted
+                // drive view the raster's tiles load at a different zoom for every distance and
+                // expire as you go, so the colored bands along a highway grew, shrank and
+                // blinked (issue 733).
+                ensureTraffic(style, trafficOn && !navMode && !app.vela.ui.GoogleFree.on.value)
                 ensureTransit(style, transitOn, accentMetro, accentTrains)
                 ensureTopography(style, topographyOn)
             }
@@ -5181,7 +5185,7 @@ fun VelaMapView(
                     lastEnsureKey[0] = ensureKey
                     ensureNavRoadLabels(it, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                     ensureSatellite(it, satelliteOn)
-                    ensureTraffic(it, trafficOn)
+                    ensureTraffic(it, trafficOn && !navMode && !app.vela.ui.GoogleFree.on.value)
                     ensureTransit(it, transitOn, accentMetro, accentTrains)
                     ensureTopography(it, topographyOn)
                 }
