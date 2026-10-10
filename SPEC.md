@@ -3082,6 +3082,15 @@ prices under the Open Government Licence v3.0.
   connections from outside the UK, GitHub's runners included. The fallback is `data.csv` on
   `main` of `matthewgall/fuelfinder-archive`, from raw.githubusercontent.com, which republishes
   the same file about twice a day (09:05 and 15:05 UTC). Its own runner is self-hosted.
+- The alert: when the newest price in the published file is over `STALE_ALERT_H` (36) hours old,
+  the run opens one issue titled "UK fuel prices: the source has stopped updating", and the run
+  that next publishes fresh prices closes it. 36 hours is two missed archive updates, and the app
+  stops showing prices at 48. The run stays green, because a red hourly run would mail every
+  hour. A healthy hour with nothing new makes no API request for this.
+- The app reads Vela's trimmed file and not the archive's own: that one is 7.8 MB (1.3 MB
+  gzipped) against 147 KB, and a change to its columns would break every installed app, where
+  the bake script absorbs it. Both sit on GitHub, so reading it directly would be no more
+  reliable.
 - Nothing is uploaded when the source's sha256 equals the published manifest's `sourceSha256`.
   That check reads the manifest as a release download, not through the API, so an unchanged hour
   costs no API request. A publish is about seven.
@@ -5472,6 +5481,7 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
   placeholders. Anything else waits for a person. Off switch: repository variable
   `WEBLATE_AUTOMERGE=off`.
 - `security.yml` runs mobsfscan, exports an SBOM and reviews new dependencies on pull requests.
+  Like `ci.yml`, it skips a push that only touches the docs.
   `scorecard.yml` runs OpenSSF Scorecard. Neither gates a release. The SBOM export is tried three
   times and then ends in a warning: GitHub builds the file on request and can time out.
 - The canary publish step checks that `canary` still points at the commit it built. An overtaken
@@ -5483,7 +5493,19 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
   asset counts weekly into `docs/stats` (`scripts/download-stats.sh`). They are byproducts of
   hosting and they expire. `docs/stats/README.md` says how to read them.
 - `bake-conductor.yml` starts the data bakes (section 7.3).
-- `fuel-gb.yml` publishes the UK fuel prices hourly on its own cron (section 5.8).
+- `fuel-gb.yml` publishes the UK fuel prices hourly on its own cron (section 5.8), and opens an
+  issue when their source stops updating.
+- `old-android-smoke.yml` installs a release build on Android 8.0 (API 26, the minimum) and
+  Android 9 emulators and checks that it starts, loads Cronet, runs a search and opens a place
+  without a crash. It runs every Sunday, the day before the weekly promotion to stable, from the
+  Actions tab, and on a push to the branch `old-android-smoke`.
+- `review-feed-probe.yml` asks Google's review feed from a clean GitHub machine (a new address
+  and session, nothing of the maintainer's) and uploads the raw replies. It runs from the Actions
+  tab and on a push to the branch `feed-probe`.
+- Those two branches are triggers. They hold no work of their own, so they read as fully merged;
+  deleting one removes that way of starting its test and nothing else.
+- `quarterly-data-refresh.yml` dispatches the rebakes of the building, address and speed limit
+  overlays every quarter. Routing is not in it, and place packs have their own monthly cron.
 
 #### On a device
 

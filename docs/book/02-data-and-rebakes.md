@@ -200,7 +200,9 @@ GitHub. `tools/build-fuel-gb.py` trims it to brand, position, four prices (E10, 
 premium diesel) and the time of the newest report, about 150 KB gzipped for some 8,100
 forecourts, and drops placeholder prices outside 100 to 250 p. A source whose newest price is
 more than 3 days old, or that cannot be fetched, ends the run green with a warning and the
-published file stays.
+published file stays. When the newest published price is over 36 hours old the run opens an
+issue on the repository, once, and the next fresh publish closes it: the archive is one
+person's project and the only source a GitHub runner can reach.
 
 The phone downloads the file the first time a UK gas station without a price shows up in
 results, on a place sheet or in the car's results, and checks the small manifest again at most

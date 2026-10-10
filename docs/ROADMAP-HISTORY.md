@@ -48,6 +48,7 @@ says so.
 - UK gas stations show their prices, from the government's Fuel Finder data through a public
   archive of it, refreshed hourly (`fuel-gb.yml`). Prices older than two days are not shown. A
   priced station shows its bubble in every app language, and Android Auto results show prices.
+  The job opens an issue when the newest price is over 36 hours old.
 - Texas downloads in four parts. A catalog region can be cut out of a bigger extract
   (`cut:<parent id>:<polygon file>`), and a phone that has the whole region is not offered a
   part of it.

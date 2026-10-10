@@ -13,6 +13,15 @@ name: Security checks
 on:
   push:
     branches: [ main, canary ]
+    # A push that only touches the docs has no source to scan: the same list ci.yml skips.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'fdroid/metadata/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'site/**'
   pull_request:
     branches: [ main ]
   schedule:

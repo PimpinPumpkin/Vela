@@ -37,6 +37,10 @@ lives only in a chat, a local branch or one machine.
 
 - Every branch with work on it is pushed to GitHub. A branch whose work has landed is deleted,
   here and there. No local-only branches.
+- Two branches on GitHub are triggers and stay: a push to `old-android-smoke` runs the release
+  build on Android 8.0 and 9 emulators, and a push to `feed-probe` runs the review feed probe
+  from a clean machine (SPEC 15, Other workflows). They hold no commits of their own. Before
+  calling any branch, tag or release stale, read what uses it and say what it is.
 - A measurement, a decision and its reason go into `SPEC.md`, the book or the roadmap history
   in the commit that acts on them. An idea that was tried and dropped gets its dead-end entry
   with the numbers that killed it.

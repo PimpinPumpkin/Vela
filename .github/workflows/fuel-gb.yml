@@ -8,6 +8,12 @@
 # with HTTP 403; the matthewgall/fuelfinder-archive copy is the fallback. A source that cannot be
 # fetched or read, or whose newest price is over 3 days old, ends the run green with a warning
 # and leaves the published file in place. `fuel-gb` is an infra release: never delete it.
+#
+# THE ALERT. The archive is one person's project and the only source a GitHub runner can reach.
+# When the newest price in the published file is over STALE_ALERT_H (36) hours old, the run opens
+# one issue on this repository; the run that next publishes fresh prices closes it. The archive
+# updates at about 09:05 and 15:05 UTC, so 36 hours is two missed updates, and the app stops
+# showing prices at 48. The run itself stays green: a red hourly run would mail every hour.
 name: UK fuel prices
 
 on:
@@ -17,6 +23,7 @@ on:
 
 permissions:
   contents: write # the fuel-gb release
+  issues: write   # the stale-source alert
 
 concurrency:
   group: fuel-gb
@@ -48,14 +55,40 @@ jobs:
           REL="https://github.com/$REPO/releases/download/fuel-gb"
           mkdir -p work out
 
+          STALE_ALERT_H=36
+          ALERT_TITLE="UK fuel prices: the source has stopped updating"
           summary() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
-          warn_end() { echo "::warning::$1"; summary "$1"; exit 0; }
+          open_alert() { gh_retry gh issue list --repo "$REPO" --state open --search "\"$ALERT_TITLE\" in:title" --json number --jq '.[0].number // empty' 2>/dev/null || true; }
+          # $1: the newest price in what is published now, in unix seconds. $2: "fresh" when this
+          # run has just published. A healthy hour with nothing new makes no API request here.
+          alert() {
+            local epoch="${1:-}" age_h n
+            [[ "$epoch" =~ ^[0-9]+$ ]] || return 0
+            age_h=$(( ( $(date -u +%s) - epoch ) / 3600 ))
+            if [ "$age_h" -ge "$STALE_ALERT_H" ]; then
+              echo "::warning::The newest published UK fuel price is $age_h hours old."
+              n="$(open_alert)"
+              if [ -z "$n" ]; then
+                gh_retry gh issue create --repo "$REPO" --title "$ALERT_TITLE" --body "The newest price in the published UK fuel file (the \`fuel-gb\` release) is $age_h hours old. The app stops showing UK prices when it is 48 hours old.
+
+          The file is built by \`fuel-gb.yml\` from $ARCHIVE, which normally updates at about 09:05 and 15:05 UTC. The government's own file answers only connections from inside the UK, so the archive is the one source a GitHub runner can reach.
+
+          To check: whether that repository is still being updated, and what the last runs of the UK fuel prices workflow logged. This issue is closed by the run that next publishes fresh prices." >/dev/null || true
+              fi
+            elif [ "${2:-}" = fresh ]; then
+              n="$(open_alert)"
+              if [ -n "$n" ]; then gh_retry gh issue close "$n" --repo "$REPO" --comment "Fresh prices were published." >/dev/null || true; fi
+            fi
+            return 0
+          }
+          warn_end() { echo "::warning::$1"; summary "$1"; alert "${pub_epoch:-}"; exit 0; }
           is_fuel_csv() { [[ "$(head -1 "$1" 2>/dev/null)" == *forecourts.location.latitude* ]]; }
 
           # The published manifest (a plain download, not an API request).
           published="$(curl -fsSL -m 60 "$REL/fuel-gb-manifest.json" 2>/dev/null || true)"
           pub_sha="$(jq -r '.sourceSha256 // empty' <<<"$published" 2>/dev/null || true)"
           pub_gen="$(jq -r '.generated // empty' <<<"$published" 2>/dev/null || true)"
+          pub_epoch="$(jq -r '.newestPriceEpoch // empty' <<<"$published" 2>/dev/null || true)"
 
           src=""; src_url=""
           gov_code="$(curl -sS -L -m 120 -A "$UA" -o work/gov.csv -w '%{http_code}' "$GOV" 2>/dev/null)" || true
@@ -75,6 +108,7 @@ jobs:
           if [ -n "$pub_sha" ] && [ "$pub_sha" = "$sha" ]; then
             echo "Source ($src) unchanged since the published file ($pub_gen)."
             summary "Source ($src) unchanged since the published file ($pub_gen). Nothing uploaded."
+            alert "$pub_epoch"
             exit 0
           fi
 
@@ -111,3 +145,4 @@ jobs:
           newest="$(jq -r .newestPrice out/fuel-gb-manifest.json)"
           bytes="$(jq -r .fileBytes out/fuel-gb-manifest.json)"
           summary "Published $stations forecourts from $src, newest price $newest, $bytes bytes."
+          alert "$(jq -r '.newestPriceEpoch // empty' out/fuel-gb-manifest.json)" fresh

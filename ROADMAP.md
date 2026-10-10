@@ -219,9 +219,9 @@ Found reading everything since 0.4.1912 and not fixed yet.
   when the name is long.
 - The stop editor during a drive. "Add stop" makes the pick the next stop and closes the editor;
   putting it last takes a drag. Picking Home as a stop shows the business at that address.
-- UK fuel prices. Nothing warns when the archive they come from stops updating (the job ends
-  green with a warning). The price file is not part of a region download, so offline it is
-  whatever the phone last fetched, and it stops showing after two days.
+- UK fuel prices. The price file is not part of a region download, so offline it is whatever
+  the phone last fetched, and it stops showing after two days. If the archive it comes from
+  ends, the fallback would be the retailers' own price feeds.
 - One settings panel for everything drawn on the map. The switches for what the map draws are
   spread over several settings pages.
 - The four Texas parts need their place pack, places, basemap, road features and cells baked
@@ -411,6 +411,25 @@ traffic and replaces it where coverage is good.
   free ARM box (4 cores, 24 GB, 200 GB disk) fits North America plus Europe. It would be the
   first server Vela runs, so `PRIVACY.md` changes the day it ships and request logging stays
   off. A free tier can be reclaimed, and someone has to update the tiles.
+
+## Not planned
+
+Asked for, possible, and not being built. Each says what it would take.
+
+- An arrival time fitted to the driver's own pace (under the limit, or 5 or 10 over). Vela's
+  times are Google's: one figure for the route and colored congestion stretches, with no speed
+  per road, and Vela knows the limit only of the road the car is on. A driver's pace matters
+  only where traffic is free, so a flat percentage is wrong in traffic, and the two-minute
+  re-check pulls the time back to Google's. It becomes possible when Vela computes its own
+  route times (Less to Google, routes computed on the phone).
+- Android 7. The minimum is Android 8.0 (`minSdk` 26). No library is in the way: of the 85 in
+  the build the highest minimum is Android 7.0 (`androidx.webkit`), Cronet needs 6.0 and
+  sherpa-onnx 5.0. The app's own code is: `java.time` in 14 files (it needs the build's
+  back-port switched on), notification channels, the foreground service start, picture in
+  picture, pinned shortcuts, audio focus and vibration calls with no version check, and a
+  launcher icon that exists only in the Android 8 form. After that come a lint pass at the lower
+  minimum, an Android 7 emulator in the smoke test, and a look at how Google's pages render in a
+  WebView that old.
 
 ## Not going to happen
 
