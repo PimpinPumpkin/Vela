@@ -7209,11 +7209,14 @@ private fun listBulkOf(state: MapUiState, vm: MapViewModel): ListBulk? {
     val listId = state.openListId ?: return null
     if (state.pendingImport != null) return null
     return remember(listId, state.lists) {
+        val list = state.lists.firstOrNull { it.id == listId }
         ListBulk(
             targets = state.lists.filter { it.id != listId }.map { it.id to it.name },
             onRemove = { ids -> vm.removePlacesFromList(listId, ids) },
             onMove = { ids, to -> vm.movePlacesToList(listId, ids, to) },
             onCreateList = { name -> vm.createList(name) },
+            nameOf = { id -> list?.places?.firstOrNull { it.id == id }?.name },
+            onRename = { id, name -> vm.renameListEntry(listId, id, name) },
         )
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.R
@@ -42,6 +43,10 @@ class ListBulk(
     val onMove: (ids: Set<String>, toListId: String) -> Unit,
     /** Makes a list by this name and returns its id, for "New list…". */
     val onCreateList: (String) -> String,
+    /** The name a picked id shows, for the Rename dialog; null when the bar offers no Rename. */
+    val nameOf: ((String) -> String?)? = null,
+    /** Renames one picked place (issue #736: the selection bar is where people look for it). */
+    val onRename: ((id: String, name: String) -> Unit)? = null,
 )
 
 /**
@@ -63,6 +68,8 @@ internal fun BulkBar(
     var moving by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    val renameOne = bulk.onRename != null && picked.size == 1
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Text(
             pluralStringResource(R.plurals.bulk_selected, picked.size, picked.size),
@@ -87,11 +94,40 @@ internal fun BulkBar(
                 item(stringResource(R.string.bulk_new_list), Sym.Add) { moving = false; naming = true }
             }
         }
+        // Rename, for exactly one picked place: the bar is where people look for it (issue #736).
+        if (bulk.onRename != null) {
+            IconButton(onClick = { renaming = true }, enabled = renameOne, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                Icon(Sym.Edit, contentDescription = stringResource(R.string.mapscreen_menu_rename), tint = if (renameOne) ink else ink.copy(alpha = 0.35f))
+            }
+        }
         IconButton(onClick = { removing = true }, enabled = picked.isNotEmpty(), modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
             Icon(Sym.Delete, contentDescription = stringResource(R.string.bulk_remove), tint = if (picked.isNotEmpty()) MaterialTheme.colorScheme.error else ink.copy(alpha = 0.35f))
         }
         IconButton(onClick = { onChange(null) }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
             Icon(Sym.Close, contentDescription = stringResource(R.string.bulk_done), tint = ink)
+        }
+    }
+    if (renaming && renameOne) {
+        val id = picked.first()
+        var draft by remember(id) { mutableStateOf(bulk.nameOf?.invoke(id).orEmpty()) }
+        VelaDialog(
+            onDismissRequest = { renaming = false },
+            title = stringResource(R.string.saved_rename_title),
+            confirmText = stringResource(R.string.saved_rename_action),
+            onConfirm = {
+                val n = draft.trim()
+                if (n.isNotEmpty()) { bulk.onRename?.invoke(id, n); onChange(null) }
+                renaming = false
+            },
+            dismissText = stringResource(R.string.list_cancel),
+            onDismiss = { renaming = false },
+        ) {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
+            )
         }
     }
     if (removing) {

@@ -1889,6 +1889,9 @@ class MapViewModel @Inject constructor(
                 selected = it.selected?.let { s -> if (s.id == p.id) s.copy(name = trimmed) else s },
             )
         }
+        // The search page's own rows (a snapshot per keystroke) show the new name at once too.
+        val q = _state.value.query.trim()
+        if (q.length >= 2 && _state.value.localSuggestions.isNotEmpty()) _state.update { it.copy(localSuggestions = localMatches(q)) }
     }
 
     /** Rename a saved place (issue #434). The open sheet follows if it is showing that place. */
@@ -5569,6 +5572,13 @@ class MapViewModel @Inject constructor(
     }
 
     // Several places at once.
+
+    /** Rename one entry of a list from its selection bar (issue #736): the same rename as the
+     *  sheet's, so a saved record and the entry in every other list follow. */
+    fun renameListEntry(listId: String, placeId: String, name: String) {
+        val entry = _state.value.lists.firstOrNull { it.id == listId }?.places?.firstOrNull { it.id == placeId } ?: return
+        renamePlace(entry.toPlace(), name)
+    }
 
     fun removePlacesFromList(listId: String, ids: Set<String>) {
         val lists = listStore.removePlaces(listId, ids)
