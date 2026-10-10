@@ -1001,9 +1001,14 @@ Related corrections:
   step within `UNSAID_NEAR_M` (50 m), and the street name `UNSAID_SIDE_M` (45 m) before differs
   from the one after, a turn is inserted and named by the same rule.
 - Roundabouts: the enter step takes the exit step's street. The ring's own name is never said.
-- A turn that keeps the street the car is already on (the matcher's road equals the previous
-  step's) is said without the name, "Turn right": "onto X" says the street changes. The step
-  keeps its `road`.
+- A turn that keeps the street the car is already on is said without the name, "Turn right":
+  "onto X" says the street changes. The step keeps its `road`. The street the car is on, for
+  this rule, is the one the driver was last told (`toldRoad`): a rename with no turn is silent
+  and tells nobody, and the first step of a stretch cut from mid-trip is never said
+  (`departSaid = false`). A long road that takes the cross street's name for its last block
+  therefore gets "Turn right onto X" at that corner. `HybridRoute.stitch` applies the same rule
+  across the seam, where an open step named the road and a stretch step turns onto it. A slight
+  bend that keeps the road's name stays a silent rename, told or not.
 - `ValhallaRouter.recheck` runs the check on another router's turns. The open route's steps are
   checked against `ValhallaRouter.edges` for its own line, requested when the open router
   answers and waited for `OPEN_NAMES_WAIT_MS` (1.5 s; `OPEN_NAMES_WAIT_URGENT_MS` 0.3 s). This

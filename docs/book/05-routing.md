@@ -111,6 +111,9 @@ matched road pieces (`trace_attributes`) and checks every turn against them (`ch
   there, Vela adds the turn.
 - At a roundabout, Valhalla's enter step carries the ring's own name. Vela says the street you
   leave by.
+- A turn onto the street the driver was just told is said without the name. What counts is the
+  name the driver has heard, not the one on the map: a long road that takes the cross street's
+  name for its last block still gets "Turn right onto X" at that corner.
 
 If the road pieces do not come back, matched turns go out without street names. The open
 router's turn names get the same check against the pieces under its own line. That request

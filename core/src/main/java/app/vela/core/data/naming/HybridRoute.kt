@@ -67,7 +67,6 @@ object HybridRoute {
     private const val TRIP_END_M = 400.0
     /** Two maneuvers this close together are the same junction; the open router's is kept. */
     private const val MERGE_M = 30.0
-
     /** Meters along Google's line, padded. */
     data class Stretch(val fromM: Double, val toM: Double)
 
@@ -355,8 +354,18 @@ object HybridRoute {
                 renames = x.man.renames.filter { it.atMeters < len },
             )
         }
+        // Across the seam between the two sources, the rule each applies inside its own steps: a
+        // plain turn onto the road the step before has just named is said without the name
+        // ("onto X" twice reads as two streets called X).
+        val said = out.mapIndexed { k, m ->
+            val prev = out.getOrNull(k - 1)
+            if (prev != null && kept[k].fromOpen != kept[k - 1].fromOpen && m.type in HARD_TURNS &&
+                !m.road.isNullOrBlank() && m.road.equals(prev.road, ignoreCase = true) && prev.renames.isEmpty() &&
+                m.instructionNoRoad != null && prev.instructionNoRoad != null && prev.instruction != prev.instructionNoRoad
+            ) m.copy(instruction = m.instructionNoRoad) else m
+        }
         return google.copy(
-            legs = listOf(RouteLeg(google.distanceMeters, google.durationSeconds, google.durationInTrafficSeconds, RouteGeometry.foldSameRoadMerges(out))),
+            legs = listOf(RouteLeg(google.distanceMeters, google.durationSeconds, google.durationInTrafficSeconds, RouteGeometry.foldSameRoadMerges(said))),
             provisional = false,
             abbreviatedSteps = false,
             source = RouteSource.GOOGLE_HYBRID,

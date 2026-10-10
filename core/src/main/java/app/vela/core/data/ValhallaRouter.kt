@@ -279,7 +279,7 @@ object ValhallaRouter {
 
     fun matchWithEdges(
         http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000,
-        startSlackM: Double = 0.0, endSlackM: Double = 0.0,
+        startSlackM: Double = 0.0, endSlackM: Double = 0.0, departSaid: Boolean = true,
     ): Match? {
         if (shape.size < 2) return null
         val body = buildJsonObject {
@@ -302,7 +302,7 @@ object ValhallaRouter {
         }.onFailure { onMatchFail?.invoke("no reply: ${it.javaClass.simpleName}") }.getOrNull() ?: return null
         val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
         val check = NameCheck(edges)
-        val matched = runCatching { parse(text, check).firstOrNull() }.getOrNull() ?: run { onMatchFail?.invoke("unreadable reply"); return null }
+        val matched = runCatching { parse(text, check, departSaid).firstOrNull() }.getOrNull() ?: run { onMatchFail?.invoke("unreadable reply"); return null }
         // A match that leaves the line for a short way in the middle (the other side of a big
         // junction, a slip road) is still the match for the rest: throwing it away left 8 km of a
         // captured trip with bare turns over 90 m of disagreement. It is kept, and the caller is
@@ -563,15 +563,19 @@ object ValhallaRouter {
     /** The main trip first, then any alternates. Public for the parser test. */
     fun parse(text: String): List<Route> = parse(text, null)
 
-    /** [check] set = a map match: turn names are checked against the matched edges. */
-    internal fun parse(text: String, check: NameCheck?): List<Route> {
+    /**
+     * [check] set = a map match: turn names are checked against the matched edges. [departSaid]
+     * false = the path is a piece cut from the middle of a trip, so its own first step ("Drive
+     * east on X") is never said to the driver and does not count as having named the road.
+     */
+    internal fun parse(text: String, check: NameCheck?, departSaid: Boolean = true): List<Route> {
         val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return emptyList()
-        val main = root["trip"]?.jsonObject?.let { parseTrip(it, check) } ?: return emptyList()
+        val main = root["trip"]?.jsonObject?.let { parseTrip(it, check, departSaid) } ?: return emptyList()
         val alts = root["alternates"]?.jsonArray?.mapNotNull { it.jsonObject["trip"]?.jsonObject?.let { t -> parseTrip(t) } }.orEmpty()
         return listOf(main) + alts
     }
 
-    private fun parseTrip(trip: JsonObject, check: NameCheck? = null): Route? {
+    private fun parseTrip(trip: JsonObject, check: NameCheck? = null, departSaid: Boolean = true): Route? {
         val legs = trip["legs"]?.jsonArray?.map { it.jsonObject } ?: return null
         if (legs.isEmpty()) return null
         val polyline = ArrayList<LatLng>()
@@ -591,7 +595,8 @@ object ValhallaRouter {
                 )
             }
             val geoms = RouteGeometry.roundaboutGeoms(steps)
-            var prevRoad: String? = null
+            var prevRoad: String? = null // the road the path is on, by the map
+            var toldRoad: String? = null // the last road a spoken step named to the driver
             mans.forEachIndexed { i, m ->
                 val vType = m["type"]?.jsonPrimitive?.intOrNull ?: 0
                 // The street AT the turn. When the road changes its name along the step, Valhalla puts
@@ -640,11 +645,14 @@ object ValhallaRouter {
                 val side = if (type == "arrive") mod else null
                 // A turn that keeps the road the car is on is said without the name: "onto X"
                 // tells the driver the street changes, and a street that bends at three
-                // junctions read as three new streets of the same name.
-                val said = if (sameRoad && type == "turn") null else road
+                // junctions read as three new streets of the same name. The road the car is on,
+                // for this, is the one the driver was last TOLD: a long road that takes the cross
+                // street's name for its last block read "Turn right", bare, at that corner.
+                val told = road != null && road == toldRoad
+                val firstOfPiece = raw.isEmpty()
                 raw += Maneuver(
                     type = RouteGeometry.osrmType(type, mod),
-                    instruction = RouteGeometry.osrmPhrase(type, mod, said, dest, exitNo, rbSaid),
+                    instruction = RouteGeometry.osrmPhrase(type, mod, if (told && type == "turn") null else road, dest, exitNo, rbSaid),
                     instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, dest, exitNo, rbSaid),
                     ref = ref,
                     roundaboutExit = rbExit,
@@ -655,7 +663,13 @@ object ValhallaRouter {
                     road = road,
                     roundabout = geoms.getOrNull(i),
                 )
-                if (road != null) prevRoad = road
+                if (road != null) {
+                    prevRoad = road
+                    // Not told by a rename with no turn, which the voice does not say, nor by
+                    // the first step of a piece cut from mid-trip, which is never said at all.
+                    val silent = type == "new name" || (type == "continue" && mod == "straight")
+                    if (!silent && (departSaid || !firstOfPiece)) toldRoad = road
+                }
             }
         }
         if (polyline.size < 2) return null

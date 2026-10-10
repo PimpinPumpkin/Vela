@@ -1248,6 +1248,8 @@ class GoogleMapsDataSource @Inject constructor(
                         app.vela.core.data.ValhallaRouter.matchWithEdges(
                             http, pieceOf(st), timeoutMs = if (urgent) 1_200 else 2_500,
                             startSlackM = startSlack, endSlackM = endSlack,
+                            // Only a stretch that starts the trip has its first step said.
+                            departSaid = st.fromM <= 0.0,
                         ) else null
                     m?.let {
                         matches[st] = it

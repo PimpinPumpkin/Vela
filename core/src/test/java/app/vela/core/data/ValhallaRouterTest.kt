@@ -1,5 +1,6 @@
 package app.vela.core.data
 
+import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -55,6 +56,37 @@ class ValhallaRouterTest {
         assertEquals("turn" to "slight left", ValhallaRouter.osrmGrammar(16, "Elm Street", sameRoad = false))
         assertEquals("roundabout" to null, ValhallaRouter.osrmGrammar(26, null, false))
         assertEquals("arrive" to "left", ValhallaRouter.osrmGrammar(6, null, false))
+    }
+
+    // East 200 m on A Road, right (south) 90 m still on A Road, right (west) onto B Road.
+    private fun cornerTrip(secondType: Int): String {
+        val pts = listOf(LatLng(38.5450, -121.7430), LatLng(38.5450, -121.7407), LatLng(38.5442, -121.7407), LatLng(38.5442, -121.7430))
+        val shape = app.vela.core.data.google.PolylineCodec.encode(pts, 6).replace("\\", "\\\\").replace("\"", "\\\"")
+        return """{"trip":{"summary":{"length":0.49,"time":60.0},"legs":[{"shape":"$shape","maneuvers":[
+            {"type":1,"instruction":"Drive east on A Road.","street_names":["A Road"],"length":0.2,"time":20.0,"begin_shape_index":0,"end_shape_index":1},
+            {"type":$secondType,"instruction":"Turn right to stay on A Road.","street_names":["A Road"],"length":0.09,"time":12.0,"begin_shape_index":1,"end_shape_index":2},
+            {"type":10,"instruction":"Turn right onto B Road.","street_names":["B Road"],"length":0.2,"time":28.0,"begin_shape_index":2,"end_shape_index":3},
+            {"type":4,"instruction":"You have arrived.","length":0.0,"time":0.0,"begin_shape_index":3,"end_shape_index":3}]}]}}"""
+    }
+
+    @Test
+    fun `a turn that keeps the road drops the name only when the driver was told it`() {
+        // The whole trip: "Head out on A Road" was said, so the corner on A Road is a bare turn.
+        val whole = ValhallaRouter.parse(cornerTrip(10), null, departSaid = true).single().maneuvers
+        assertEquals("Turn right", whole[1].instruction)
+        assertEquals("A Road", whole[1].road)
+        assertEquals("Turn right onto B Road", whole[2].instruction)
+        // A piece cut from mid-trip: its own first step is never said, so nobody has named A Road.
+        val piece = ValhallaRouter.parse(cornerTrip(10), null, departSaid = false).single().maneuvers
+        assertEquals("Turn right onto A Road", piece[1].instruction)
+        assertEquals("Turn right onto B Road", piece[2].instruction)
+    }
+
+    @Test
+    fun `a slight bend that keeps the road stays a silent rename in a piece cut from mid-trip`() {
+        // What the road is called on the map decides this, told or not: it is the road curving.
+        val piece = ValhallaRouter.parse(cornerTrip(9), null, departSaid = false).single().maneuvers
+        assertTrue(piece.none { it.type == ManeuverType.SLIGHT_RIGHT })
     }
 
     @Test
