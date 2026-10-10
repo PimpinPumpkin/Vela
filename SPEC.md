@@ -4486,8 +4486,9 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
 - `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
-  leveled base (`VoiceLevel`). The voices render well under full scale: Kokoro's default voice
-  has an RMS of 0.052 to 0.058 on a Pixel 4a. Each line gets one gain, `TARGET_RMS` (0.13) over
+  leveled base (`VoiceLevel`). The voices render well under full scale: the default Vela voice
+  (Piper `en_US-hfc_female-medium`) has a long-run RMS of about 0.053 on a Pixel 4a, a gain of
+  2.43 at Normal. Each line gets one gain, `TARGET_RMS` (0.13) over
   the voice's long-run RMS, between 1 and `MAX_LIFT` (4), times the setting. The RMS is summed
   over every speech chunk the voice and speaker have rendered (`VoiceLevel.Meter`; a chunk
   peaking under `MIN_PEAK`, 0.02, is a pause and is left out) and kept in the `vela_voice_level`
