@@ -4569,9 +4569,10 @@ A road name can be in a different script than the guidance language.
   pref `map_names`, issue #738): for a Latin-script UI `coalesce(name:en, name:latin, name)`
   (`english_latin`, the default), `coalesce(name:en, name)` (`english_local`, what Google shows),
   `name` (`local`), or the local name followed by the English one where OpenStreetMap has a
-  different one (`local_english`: on one line for a road, since a label along a line cannot
-  break, and on two lines with the English a step smaller for a place, by a `format`
-  expression); the local `name` for any other UI. The basemap's `name:latin` is
+  different one (`local_english`: on one line for a road and for Liberty's line-placed water
+  labels (`LINE_PLACED_LABEL_LAYERS`), since a label along a line cannot break, and on two lines
+  with the English a step smaller for a point label, by a `format` expression); the local
+  `name` for any other UI, in every mode. The basemap's `name:latin` is
   OpenMapTiles' machine romanization where OpenStreetMap has no English name: readable for
   Cyrillic or Greek, a vowel-less skeleton for Hebrew. The mode rides `styleKey`, so a change
   reloads the style. Nav bubbles filter on the canonical `name` and display the chosen form.

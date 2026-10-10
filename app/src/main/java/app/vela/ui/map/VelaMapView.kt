@@ -6993,13 +6993,7 @@ private fun roadLabelTextField(): Expression {
     return when {
         mode == app.vela.ui.MapNames.LOCAL || !uiWantsLatinLabels() -> Expression.get("name")
         mode == app.vela.ui.MapNames.ENGLISH_LOCAL -> Expression.coalesce(Expression.get("name:en"), Expression.get("name"))
-        // Both on one line: a label along a line cannot break, so this is Liberty's own pairing
-        // of the two scripts, local first.
-        mode == app.vela.ui.MapNames.LOCAL_ENGLISH -> Expression.switchCase(
-            hasOtherEnglishName(),
-            Expression.concat(Expression.get("name"), Expression.literal("  "), Expression.get("name:en")),
-            Expression.get("name"),
-        )
+        mode == app.vela.ui.MapNames.LOCAL_ENGLISH -> localAndEnglish(line = true)
         else -> Expression.coalesce(Expression.get("name:en"), Expression.get("name:latin"), Expression.get("name"))
     }
 }
@@ -7007,6 +7001,20 @@ private fun roadLabelTextField(): Expression {
 /** The feature carries an English name that is not simply its local one. */
 private fun hasOtherEnglishName(): Expression =
     Expression.all(Expression.has("name:en"), Expression.neq(Expression.get("name:en"), Expression.get("name")))
+
+/** The local name, then the English one where it differs (issue #738): on two lines with the
+ *  English a step smaller for a point label, on one line for a label placed along a [line], which
+ *  cannot break (Liberty's own pairing of the two scripts, local first). */
+private fun localAndEnglish(line: Boolean): Expression = Expression.switchCase(
+    hasOtherEnglishName(),
+    if (line) Expression.concat(Expression.get("name"), Expression.literal("  "), Expression.get("name:en"))
+    else Expression.format(
+        Expression.formatEntry(Expression.get("name")),
+        Expression.formatEntry(Expression.literal("\n")),
+        Expression.formatEntry(Expression.get("name:en"), Expression.FormatOption.formatFontScale(0.85)),
+    ),
+    Expression.get("name"),
+)
 
 /** The OpenMapTiles name fields for the UI language, most specific first.
  *
@@ -7038,34 +7046,21 @@ private fun isTraditionalChinese(locale: java.util.Locale): Boolean =
  *  name, in the reader's own language. The UI language wins where the tiles carry it; a Latin-script
  *  reader then falls back through the English name (both spellings OpenMapTiles and Liberty use) and
  *  the romanized one, and everyone lands on the local `name` when nothing else is there. */
-private fun placeLabelTextField(): Expression {
+private fun placeLabelTextField(line: Boolean = false): Expression {
     val mode = app.vela.ui.MapNames.mode.value
     if (mode == app.vela.ui.MapNames.LOCAL) return Expression.get("name")
-    // Local over English on two lines, the English a step smaller, where the two differ.
-    if (mode == app.vela.ui.MapNames.LOCAL_ENGLISH) {
-        return Expression.switchCase(
-            hasOtherEnglishName(),
-            Expression.format(
-                Expression.formatEntry(Expression.get("name")),
-                Expression.formatEntry(Expression.literal("\n")),
-                Expression.formatEntry(Expression.get("name:en"), Expression.FormatOption.formatFontScale(0.85)),
-            ),
-            Expression.get("name"),
-        )
-    }
     val own = uiLangTagFields()
-    val rest = if (uiWantsLatinLabels()) {
-        listOfNotNull(
-            Expression.get("name:en"),
-            Expression.get("name_en"),
-            // The romanized name only when asked for (issue #738, the same choice as the roads).
-            if (mode == app.vela.ui.MapNames.ENGLISH_LATIN) Expression.get("name:latin") else null,
-            Expression.get("name"),
-        )
-    } else {
-        // No transliteration for a reader of another script: their own tag, then the local name.
-        listOf(Expression.get("name"))
-    }
+    // No transliteration for a reader of another script: their own tag, then the local name,
+    // whatever the mode (the roads keep the same rule).
+    if (!uiWantsLatinLabels()) return Expression.coalesce(*(own + listOf(Expression.get("name"))).toTypedArray())
+    if (mode == app.vela.ui.MapNames.LOCAL_ENGLISH) return localAndEnglish(line)
+    val rest = listOfNotNull(
+        Expression.get("name:en"),
+        Expression.get("name_en"),
+        // The romanized name only when asked for (issue #738, the same choice as the roads).
+        if (mode == app.vela.ui.MapNames.ENGLISH_LATIN) Expression.get("name:latin") else null,
+        Expression.get("name"),
+    )
     return Expression.coalesce(*(own + rest).toTypedArray())
 }
 
@@ -7080,10 +7075,15 @@ private val PLACE_LABEL_LAYERS = listOf(
     "water_name_point_label", "water_name_line_label", "waterway_line_label",
 )
 
+/** The labels of [PLACE_LABEL_LAYERS] that Liberty places along a line: a line break in their
+ *  text is ignored, so they take the one-line form of a two-script name. */
+private val LINE_PLACED_LABEL_LAYERS = setOf("water_name_line_label", "waterway_line_label")
+
 private fun applyPlaceLabelLanguage(style: StyleLayers) {
-    val field = placeLabelTextField()
+    val point = placeLabelTextField(line = false)
+    val line = placeLabelTextField(line = true)
     PLACE_LABEL_LAYERS.forEach { id ->
-        runCatching { style.getLayer(id)?.setProperties(PropertyFactory.textField(field)) }
+        runCatching { style.getLayer(id)?.setProperties(PropertyFactory.textField(if (id in LINE_PLACED_LABEL_LAYERS) line else point)) }
     }
 }
 
