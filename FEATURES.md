@@ -283,10 +283,15 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Search from the car, preview up to three routes, and start the drive. Gas stations in car
   results show their fuel price.
 - The drive screen has the map, a turn card with lanes, the arrival estimate, your speed and the
-  limit.
+  limit. The map turns with the car, tilts and zooms out with speed.
+- With no route the map does the same once you move, and a Drive button puts the list away for a
+  map-only view with the speed badge.
+- The car map has the phone's parking lot, plaza, field and trail fills, and shows the traffic
+  layer when it is on.
 - Buttons for mute, pause, search along the route and end, plus recenter, zoom and overview.
 - Camera, speeding and closing-soon alerts appear as car toasts.
-- The car's settings cover spoken directions and avoiding tolls, highways and ferries.
+- The car's settings cover spoken directions, avoiding tolls, highways and ferries, and the
+  traffic layer.
 - The phone and the car share one drive. A trip started on either shows on both.
 - A car with an instrument-cluster display gets the turns there.
 - A car that runs Android itself can show Vela in its map panel.

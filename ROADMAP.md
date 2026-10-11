@@ -107,9 +107,6 @@ or a URL for a WebView is open. Nav state and input are the same for both.
 Bigger pieces, each on its own branch and draft pull request against `canary`, tested one at a
 time on a phone before it lands (2026-10-11).
 
-- Android Auto map parity (#749, branch `aa-map`, this pull request): heading-up free drive on the car map, a
-  drive mode without a route, tilt while navigating, zoom by speed checked, traffic on the car
-  map, the palette matched to the phone's. Tested on the desktop head unit.
 - More map looks (#750, branch `map-styles`): OpenFreeMap's Bright, Positron, Fiord and Dark
   styles beside Liberty, on the same tiles; Vela's label, house-number and places passes are
   keyed on Liberty's layer ids and get a mapping per style.
@@ -203,6 +200,10 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The car map's heading-up, tilted follow with no route, drive mode, the zoom by speed, the
+  traffic raster and the phone's extra fills (#749, pull request #763). Seen on the Desktop Head
+  Unit with a simulated drive and a mock trace with no route; the tilt at highway speed and the
+  traffic raster's effect on snapshot time in a moving car are not.
 - A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
 - UK fuel prices on a phone in the UK.
 

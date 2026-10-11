@@ -44,6 +44,12 @@ class CarSettingsScreen(carContext: CarContext, private val deps: CarDeps) : Scr
                     prefs.edit().putBoolean("avoid_ferries", on).apply()
                 },
             )
+            // The phone's Traffic layer: Google's traffic raster on the car map with no route.
+            .addItem(
+                toggleRow(app.vela.R.string.car_setting_traffic, app.vela.ui.Traffic.on.value) { on ->
+                    app.vela.ui.Traffic.set(carContext, on)
+                },
+            )
 
         return ListTemplate.Builder()
             .setTitle(carContext.getString(app.vela.R.string.car_settings))

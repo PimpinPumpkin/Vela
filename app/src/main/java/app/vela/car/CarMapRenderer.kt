@@ -45,15 +45,16 @@ import kotlin.math.roundToInt
  * Bitmap), with the route + puck overlaid. Not 60 fps (a snapshot is ~100–300 ms), but for a nav
  * map that follows position it's a genuine moving map.
  *
- * Two modes, driven by [NavSession.navigating]:
- *  - **Nav** — heading-up, camera looks AHEAD of the puck (puck sits in the lower third so you see
- *    the road you're driving into), zoom tightens as you slow, the route line is drawn colored by
- *    live traffic, and a current-speed badge shows.
- *  - **Browse** — north-up, centered on you, NO route (so a finished trip's line doesn't linger).
+ * Following, the camera is heading-up and tilted ([CarFraming.NAV_TILT_DEG]) with the arrow low
+ * in the view, zoomed by speed, during a drive and once the car is moving with no route (the
+ * phone's free-drive follow); north-up, flat and centered while parked with no route, with the
+ * phone's "Keep north up" on, and after a pan. The route line is colored by live traffic during a
+ * drive; Google's traffic raster shows with no route when the phone's Traffic layer is on.
  *
  * Vela's own palette goes on the snapshotter's style ([applyTheme], the phone's applyMapTheme), dark at
  * night by the host's day/night signal; the old darkening color filter only covers a frame drawn
- * before the palette is applied.
+ * before the palette is applied. The phone's runtime layers (the plaza and parking fills, the
+ * traffic raster) are written into the style JSON first ([CarStyle]).
  */
 class CarMapRenderer(
     private val carContext: CarContext,
@@ -76,8 +77,8 @@ class CarMapRenderer(
     private var rendering = false
     private var dirty = false
 
-    // Camera / motion state. `puck`/`bearing` are the DISPLAYED (smoothed) values the draw + camera
-    // code reads; `targetPuck`/`targetBearing` are the latest GPS truth. A steady ticker glides the
+    // Camera / motion state. `puck`/`heading` are the DISPLAYED (smoothed) values the draw + camera
+    // code reads; `targetPuck`/`targetHeading` are the latest GPS truth. A steady ticker glides the
     // displayed values toward the targets between the ~1 Hz fixes, so the map no longer lurches once
     // a second (the "constantly moving around / choppy" report) — it dead-reckons like a real nav map.
     @Volatile private var puck: LatLng? = null
@@ -87,9 +88,23 @@ class CarMapRenderer(
     private var center: LatLng? = null
     private var zoom = 16.5
     private var showingWorld = false // the no-location placeholder view is up
-    private var bearing = 0.0
-    private var targetBearing = 0.0
+    // The arrow's heading (the GPS course, or the route's direction), always; the camera's bearing
+    // is a separate eased value, so a north-up view still turns the arrow and the switch to
+    // heading-up rotates the map in instead of snapping it.
+    private var heading = 0.0
+    private var targetHeading = 0.0
+    private var camBearing = 0.0
+    private var tilt = 0.0
     private var following = true // pan turns this off in browse
+    // The phone's free-drive latch: once the smoothed speed passes DRIVE_LATCH_MPS with a course
+    // known, the view is heading-up with no route and stays so at a red light; it lets go when the
+    // follow ends (a pan, a zoom button, the overview).
+    private var driving = false
+    private var driveSpeed = 0.0
+    private var lastFix: LatLng? = null
+    private var lastFixMs = 0L
+    // The drive-mode screen (no route) shows the speed badge like the drive screen does.
+    @Volatile private var driveScreen = false
     private var tickerJob: Job? = null
     // The host's VISIBLE area of the surface (the templates cover the rest with cards); the puck is
     // framed inside it, not inside the raw surface (user 2026-09-21: the arrow hung off the edge).
@@ -150,8 +165,14 @@ class CarMapRenderer(
         const val WORLD_ZOOM = 1.5
         const val TICK_MS = 70L      // render-loop cadence (snapshots gate the real fps below this)
         const val BEARING_EASE = 0.22
-        const val ZOOM_EASE = 0.06    // per tick, so a speed tier change glides over a second or so
-        const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area while following in nav
+        const val CAM_BEARING_EASE = 0.3 // the camera onto the arrow's heading, and back to north
+        const val ZOOM_EASE = 0.06    // per tick, so a speed change glides over a second or so
+        const val TILT_EASE = 0.05    // per tick: the tilt comes in over about two seconds
+        const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area in a heading-up view
+        const val DRIVE_LATCH_MPS = 2.5 // the phone's free-drive latch speed, on the smoothed speed
+        const val DRIVE_SPEED_TAU_S = 1.0 // the smoothing behind it
+        const val FIX_SPEED_MAX_MPS = 70.0 // a speed made from two fixes past this is a jump, not motion
+        const val FIX_COURSE_MIN_M = 3.0   // a course made from two fixes needs this much travel
         const val ATTRIBUTION = "\u00a9 OpenStreetMap" // the phone's map_osm_attribution, verbatim
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
@@ -161,6 +182,16 @@ class CarMapRenderer(
 
     private fun navigating() = navSession.state.value.navigating
 
+    private var courseKnown = false
+
+    /** Whether the following view turns with the car: during a drive, or moving with no route,
+     *  unless the phone's Settings > Map "Keep north up" is on. */
+    private fun headingUp(): Boolean =
+        following && previewRoute == null && !overview && !app.vela.ui.NorthLock.on.value && (navigating() || driving)
+
+    /** The drive-mode screen is up: no route, the map alone, the speed badge drawn. */
+    fun setDriveScreen(on: Boolean) { driveScreen = on; requestRender() }
+
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
         flingVx = 0.0; flingVy = 0.0
@@ -169,6 +200,7 @@ class CarMapRenderer(
         resultPins = emptyList()
         overview = false
         following = true
+        if (driveSpeed > DRIVE_LATCH_MPS && courseKnown) driving = true // already moving: heading-up at once
         requestRender()
     }
 
@@ -300,9 +332,29 @@ class CarMapRenderer(
                 // Map-match to the route while navigating so the puck rides the road (Google/Waze do
                 // this); off-route/far falls back to the raw fix.
                 val here = if (navigating()) snapToRoute(raw) ?: raw else raw
-                speedMps = if (loc.hasSpeed()) loc.speed.toDouble() else 0.0
-                val course = if (loc.hasBearing() && speedMps > STOPPED_MPS) loc.bearing.toDouble() else routeHeading(here)
-                estimator.onFix(here.lat, here.lng, speedMps, course, android.os.SystemClock.elapsedRealtime())
+                // A fix without a speed (a provider that does not report one) read as parked, so
+                // the following zoom stayed at its closest: the speed then comes from the distance
+                // since the last fix.
+                val nowMs = android.os.SystemClock.elapsedRealtime()
+                val dtFix = if (lastFixMs == 0L) 0.0 else (nowMs - lastFixMs) / 1000.0
+                val prev = lastFix?.takeIf { dtFix in 0.2..5.0 }
+                val movedM = prev?.let { raw.distanceTo(it) } ?: 0.0
+                speedMps = when {
+                    loc.hasSpeed() -> loc.speed.toDouble()
+                    prev != null -> (movedM / dtFix).coerceIn(0.0, FIX_SPEED_MAX_MPS)
+                    else -> 0.0
+                }
+                // The same for a fix without a bearing: the direction from the last fix, once it
+                // has moved far enough for that to mean something.
+                val fixCourse: Double? = when {
+                    loc.hasBearing() -> loc.bearing.toDouble()
+                    prev != null && movedM >= FIX_COURSE_MIN_M -> prev.bearingTo(raw)
+                    else -> null
+                }
+                lastFix = raw; lastFixMs = nowMs
+                driveSpeed += (speedMps - driveSpeed) * (1.0 - exp(-(if (dtFix > 0.0) dtFix else 1.0) / DRIVE_SPEED_TAU_S))
+                val course = if (fixCourse != null && speedMps > STOPPED_MPS) fixCourse else routeHeading(here)
+                estimator.onFix(here.lat, here.lng, speedMps, course, nowMs)
                 targetPuck = here
                 if (puck == null) {
                     puck = here // first fix: snap into place, don't glide in from null
@@ -317,27 +369,29 @@ class CarMapRenderer(
                 // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
                 // The graph LocationIndex snap runs OFF the main thread (this collector is on
                 // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
-                speedLimitKmh = if (navigating() && app.vela.ui.SpeedDisplay.on.value) // hidden: no lookup either
+                speedLimitKmh = if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) // hidden: no lookup either
                     withContext(Dispatchers.Default) { runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng) }.getOrNull() }
                 else null
+                // The arrow's heading (the ticker eases toward this, so it never snap-rotates):
+                //  1. Moving with a TRUSTWORTHY GPS course → the actual travel direction (what the
+                //     phone nav uses; correct even when off-route). A stationary or low-confidence
+                //     bearing is noise (bAcc seen at 134° while parked); that spun the map, so it's
+                //     rejected via the speed + bearing-accuracy gate.
+                //  2. Else the route SEGMENT bearing (stable road direction; a nearest-vertex search
+                //     flickered between adjacent points and swung the view even while driving).
+                //  3. Else hold the last heading, never chase noise. With no route the arrow
+                //     keeps its course through a stop, and a north-up view still turns it.
+                val trustCourse = speedMps > STOPPED_MPS && fixCourse != null &&
+                    (!loc.hasBearingAccuracy() || loc.bearingAccuracyDegrees <= 45f)
+                if (trustCourse) { targetHeading = fixCourse!!; courseKnown = true }
+                else routeHeading(here)?.let { targetHeading = it; courseKnown = true }
                 if ((previewRoute != null || resultPins.isNotEmpty()) && !navigating()) { requestRender(); return@collect } // a preview or the results own the camera
                 // Auto-recenter a few seconds after the user pans (Google-style: pan to look around, then snap back).
                 if (!following && !overview && android.os.SystemClock.uptimeMillis() - lastPanMs > RECENTER_MS) following = true
-                if (following) {
-                    // Heading source (the ticker eases toward this, so it never snap-rotates):
-                    //  1. Moving with a TRUSTWORTHY GPS course → the actual travel direction (what the
-                    //     phone nav uses; correct even when off-route). A stationary or low-confidence
-                    //     bearing is noise (bAcc seen at 134° while parked) — that spun the map, so it's
-                    //     rejected via the speed + bearing-accuracy gate.
-                    //  2. Else the route SEGMENT bearing (stable road direction; a nearest-vertex search
-                    //     flickered between adjacent points and swung the view even while driving).
-                    //  3. Else hold the last heading — never chase noise.
-                    targetBearing = if (navigating()) {
-                        val trustCourse = speedMps > STOPPED_MPS && loc.hasBearing() &&
-                            (!loc.hasBearingAccuracy() || loc.bearingAccuracyDegrees <= 45f)
-                        if (trustCourse) loc.bearing.toDouble() else routeHeading(here) ?: targetBearing
-                    } else 0.0 // browse = north-up
-                }
+                // The free-drive latch rides the follow: released with it, set again on the next
+                // fix at driving speed.
+                if (!following) driving = false
+                else if (!driving && driveSpeed > DRIVE_LATCH_MPS && courseKnown) driving = true
                 // Render once per fix too (not only from the ticker): draw() reads LIVE state, so a
                 // route swap / reroute / faster-route adoption, per-span traffic recolor, the speed
                 // badge, and the auto-recenter flip must repaint even when the puck is momentarily
@@ -367,8 +421,17 @@ class CarMapRenderer(
                     val nlat = estimator.lat; val nlng = estimator.lng
                     if (abs(nlat - p.lat) > 1e-7 || abs(nlng - p.lng) > 1e-7) { puck = LatLng(nlat, nlng); moved = true }
                 }
-                val db = shortestAngleDelta(bearing, targetBearing)
-                if (abs(db) > 0.2) { bearing = normalizeAngle(bearing + db * BEARING_EASE); moved = true }
+                val db = shortestAngleDelta(heading, targetHeading)
+                if (abs(db) > 0.2) { heading = normalizeAngle(heading + db * BEARING_EASE); moved = true }
+                // The camera turns onto the arrow's heading, or back to north, and once there it
+                // follows the heading exactly, so a turn is not eased twice.
+                val camTarget = if (headingUp()) heading else 0.0
+                val dc = shortestAngleDelta(camBearing, camTarget)
+                if (abs(dc) > 0.3) { camBearing = normalizeAngle(camBearing + dc * CAM_BEARING_EASE); moved = true }
+                else if (dc != 0.0) { camBearing = camTarget; moved = true }
+                val tiltTarget = if (headingUp()) CarFraming.NAV_TILT_DEG else 0.0
+                if (abs(tiltTarget - tilt) > 0.05) { tilt += (tiltTarget - tilt) * TILT_EASE; moved = true }
+                else if (tilt != tiltTarget) { tilt = tiltTarget; moved = true }
                 if (abs(zoomTarget - zoom) > 0.004) { zoom += (zoomTarget - zoom) * ZOOM_EASE; moved = true }
                 if (stepFling(dt)) moved = true
                 if (following && previewRoute == null) puck?.let { center = it }
@@ -439,9 +502,12 @@ class CarMapRenderer(
         // of its own), else the plain URL. Without this the car screen kept Noto after the
         // phone flipped to Roboto.
         val effectiveStyle = app.vela.ui.map.MapFonts.effective(MapStyle.LIBERTY.uri)
+        // The phone's runtime layers (the plaza and parking fills, the traffic raster) go into
+        // the JSON, since the snapshotter cannot add a layer once loaded. Until the patched style
+        // exists the plain URL loads, without them.
         val patchedJson = if (effectiveStyle.startsWith("file://")) {
             runCatching { java.io.File(effectiveStyle.removePrefix("file://")).readText() }
-                .getOrNull()?.takeIf { it.isNotBlank() }
+                .getOrNull()?.takeIf { it.isNotBlank() }?.let { CarStyle.inject(it, app.vela.ui.map.TRAFFIC_TILES) }
         } else null
         // The layer ids of the style being loaded, for the palette's blanket passes: the patched
         // JSON when there is one, else the bundled Liberty asset (the same layer ids as the live
@@ -456,6 +522,7 @@ class CarMapRenderer(
             .withPixelRatio(1.0f)
             .withLogo(false)
         themed = false
+        trafficShown = null; fuelOnlyShown = null
         snapshotter = runCatching { QuietSnapshotter(carContext, opts) }.getOrNull()?.also { s2 ->
             // Vela's own palette on the car map (the same applyMapTheme the phone runs): until
             // 2026-09-21 the car drew stock Liberty under a darkening color filter, which read as
@@ -570,16 +637,7 @@ class CarMapRenderer(
     }
 
     /** Zoom that tightens as you slow (more detail at junctions) and widens at speed. */
-    private fun navZoom(): Double {
-        val kmh = speedMps * 3.6
-        return when {
-            kmh < 15 -> 17.5
-            kmh < 40 -> 17.0
-            kmh < 70 -> 16.3
-            kmh < 100 -> 15.7
-            else -> 15.2
-        }
-    }
+    private fun navZoom(): Double = CarFraming.navZoom(speedMps * 3.6)
 
     private var styleLayerIds: List<String> = emptyList()
 
@@ -616,29 +674,33 @@ class CarMapRenderer(
         val nav = navigating()
         if (nav && overview) navSession.state.value.route?.let { r -> frameRoute(remainingRoute(r)); zoomTarget = zoom }
         val follow = following // false while the user has panned (until auto-recenter)
-        zoomTarget = if (nav && follow) navZoom() else zoom
+        // Zoom by speed whenever the view follows a moving car: a drive, or driving with no route.
+        zoomTarget = if (follow && !overview && previewRoute == null && (nav || driving)) navZoom() else zoom
+        if (themed) applyOverlays(snap, nav)
         // FRAME INSIDE THE VISIBLE AREA. The camera target lands at the bitmap's center, but the host
         // covers part of the surface with its cards, so the point the driver should see (the puck,
-        // low in the view while following in nav; the center otherwise) is placed at a pixel inside
+        // low in the view while heading-up; the center otherwise) is placed at a pixel inside
         // the visible rect and the target is moved by that pixel offset, rotated into the map's
         // heading. Meters per pixel use MapLibre's 512 px tiles (78271.517 at z0), not the 256 px
-        // constant that put the puck twice as far down as intended, off the bottom edge.
+        // constant that put the puck twice as far down as intended, off the bottom edge. Tilted,
+        // the ground nearer the camera draws larger, which CarFraming.targetOffset accounts for.
         val vis = framingArea()
         val mpp = metersPerPixel(here.lat)
+        val up = headingUp()
         val wantX = vis.exactCenterX()
-        val wantY = if (nav && follow) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
-        val dx = (wantX - width / 2f).toDouble() * mpp   // the shown point right of center: target goes left
-        val dy = (wantY - height / 2f).toDouble() * mpp  // the shown point below center: target goes ahead
-        // Heading-up while following a drive, unless the phone's Settings > Map "Keep north up" is on.
-        val heading = if (nav && follow && !app.vela.ui.NorthLock.on.value) bearing else 0.0
-        val anchor = if (nav && follow) (puck ?: here) else here
-        val target = anchor.destinationPoint(dy, heading).destinationPoint(dx, heading - 90.0)
+        val wantY = if (up) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
+        val (aheadPx, leftPx) = CarFraming.targetOffset(
+            (wantY - height / 2f).toDouble(), (wantX - width / 2f).toDouble(), tilt, height.toDouble(),
+        )
+        val bearingUsed = camBearing // eased onto the heading, or back to north, by the ticker
+        val anchor = if (follow && (nav || driving) && previewRoute == null) (puck ?: here) else here
+        val target = anchor.destinationPoint(aheadPx * mpp, bearingUsed).destinationPoint(leftPx * mpp, bearingUsed - 90.0)
 
         val cam = CameraPosition.Builder()
             .target(MLLatLng(target.lat, target.lng))
             .zoom(zoom)
-            .bearing(heading)
-            .tilt(0.0)
+            .bearing(bearingUsed)
+            .tilt(tilt)
             .build()
         runCatching {
             snap.setSize(width, height)
@@ -656,15 +718,40 @@ class CarMapRenderer(
                     return@start
                 }
                 lastSnapshot = result
-                draw(result)
+                draw(result, bearingUsed)
                 if (dirty) { dirty = false; requestRender() }
             }, { rendering = false })
         }.onFailure { rendering = false }
     }
 
+    private var trafficShown: Boolean? = null
+    private var fuelOnlyShown: Boolean? = null
+
+    /** The style's switchable layers, set when their state changes: Google's traffic raster with
+     *  no route when the phone's Traffic layer is on (and Google is allowed), as the phone shows
+     *  it; and the basemap's place icons cut to fuel during a drive, as on the phone. */
+    private fun applyOverlays(s: MapSnapshotter, nav: Boolean) {
+        val traffic = app.vela.ui.Traffic.on.value && !app.vela.ui.GoogleFree.on.value && !nav
+        if (traffic != trafficShown) {
+            trafficShown = traffic
+            runCatching {
+                s.getLayer(CarStyle.TRAFFIC_LAYER)?.setProperties(
+                    org.maplibre.android.style.layers.PropertyFactory.visibility(
+                        if (traffic) org.maplibre.android.style.layers.Property.VISIBLE else org.maplibre.android.style.layers.Property.NONE,
+                    ),
+                )
+            }
+        }
+        if (nav != fuelOnlyShown) {
+            fuelOnlyShown = nav
+            runCatching { app.vela.ui.map.applyPoiTierFilters(app.vela.ui.map.SnapshotterHost(s, styleLayerIds), fuelOnly = nav) }
+        }
+    }
+
     private var lockFailed = false
 
-    private fun draw(snap: MapSnapshot) {
+    /** Draws [snap], rendered with the camera bearing [camUsed], and the overlays on it. */
+    private fun draw(snap: MapSnapshot, camUsed: Double) {
         val s = surface ?: return
         if (!s.isValid || width <= 0 || height <= 0) return
         val bmp = runCatching { snap.bitmap }.getOrNull()
@@ -688,7 +775,6 @@ class CarMapRenderer(
             if (navigating()) {
                 runCatching { drawRoute(canvas, snap, sx, sy) }
                 runCatching { drawCorridor(canvas, snap, sx, sy) }
-                if (app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) } // Settings > Navigation (issue #625)
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
                 for (other in previewOthers) {
@@ -698,7 +784,10 @@ class CarMapRenderer(
                 runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
             }
             if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
-            runCatching { drawPuck(canvas, snap, sx, sy) } // puck always drawn
+            runCatching { drawPuck(canvas, snap, sx, sy, camUsed) } // puck always drawn
+            // The speed badge on the drive screen and in drive mode, unless Settings > Navigation
+            // "Show speed and speed limit" is off (issue #625).
+            if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
             runCatching { drawAttribution(canvas) }
         } finally {
             runCatching { s.unlockCanvasAndPost(canvas) }
@@ -787,7 +876,7 @@ class CarMapRenderer(
         canvas.drawText(ATTRIBUTION, vis.left + 8f, vis.bottom - 8f, attributionPaint)
     }
 
-    private fun drawPuck(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
+    private fun drawPuck(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float, camUsed: Double) {
         val here = puck ?: return
         val pt = project(snap, here, sx, sy) ?: return
         // Sized to the SCREEN, not a fixed pixel count: a fixed 22 px radius was a fifth of the
@@ -803,9 +892,10 @@ class CarMapRenderer(
         val bmp = puckBitmap?.takeIf { puckBitmapPx == px } ?: android.graphics.Bitmap.createScaledBitmap(
             app.vela.ui.map.navPuckBitmap(scale = 1f), px, px, true,
         ).also { puckBitmap = it; puckBitmapPx = px }
-        val camBearing = if (navigating() && following && previewRoute == null && !app.vela.ui.NorthLock.on.value) bearing else 0.0
+        // Turned by the heading against the bearing the snapshot was rendered with: straight up
+        // in a heading-up view, by the course in a north-up one.
         canvas.save()
-        canvas.rotate((bearing - camBearing).toFloat(), pt.x, pt.y)
+        canvas.rotate((heading - camUsed).toFloat(), pt.x, pt.y)
         canvas.drawBitmap(bmp, pt.x - px / 2f, pt.y - px / 2f, dayBitmapPaint)
         canvas.restore()
     }
@@ -914,7 +1004,6 @@ class CarMapRenderer(
         center = c
         val span = Math.max(maxLat - minLat, (maxLng - minLng) * cos(Math.toRadians(c.lat))).coerceAtLeast(0.0015)
         zoom = (ln(360.0 / (span * 1.7)) / ln(2.0)).coerceIn(3.0, 16.0)
-        bearing = 0.0
     }
 
     /** Heading = the bearing of the route SEGMENT the puck is on, not the bearing to the nearest
