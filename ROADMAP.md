@@ -110,7 +110,7 @@ time on a phone before it lands (2026-10-11).
 - Android Auto map parity (#749, branch `aa-map`): heading-up free drive on the car map, a
   drive mode without a route, tilt while navigating, zoom by speed checked, traffic on the car
   map, the palette matched to the phone's. Tested on the desktop head unit.
-- More map looks (#750, branch `map-styles`): OpenFreeMap's Bright, Positron, Fiord and Dark
+- More map looks (#750, branch `map-styles`, this pull request): OpenFreeMap's Bright, Positron, Fiord and Dark
   styles beside Liberty, on the same tiles; Vela's label, house-number and places passes are
   keyed on Liberty's layer ids and get a mapping per style.
 - Swipe actions on lists and history (#748, branch `lists-swipe`): swipe to edit or delete with
