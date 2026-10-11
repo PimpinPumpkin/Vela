@@ -21,6 +21,10 @@ sealed interface ImportResult {
 
     /** The file could not be opened or read at all. */
     data object Unreadable : ImportResult
+
+    /** A Google Takeout list CSV became (or refreshed) the list [name]: [added] places in it,
+     *  [missed] rows whose place could not be found. */
+    data class ListAdded(val name: String, val added: Int, val missed: Int) : ImportResult
 }
 
 /**
@@ -48,6 +52,7 @@ object ImportFormats {
             head.contains("<kml") || head.contains("<Placemark") -> "KML"
             head.trimStart().startsWith("<?xml") || head.contains("<gpx") -> "GPX"
             head.contains("\"bookmarks\"") || head.contains("\"organicmaps\"") -> "Organic Maps"
+            TakeoutCsv.isTakeoutCsv(head) -> "Google Takeout list"
             else -> null
         }
     }

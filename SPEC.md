@@ -3099,6 +3099,19 @@ the shared 12 s timeout cuts it off.
   dropped. The picker keeps `*/*` last, because Android reports `.gpx` as an octet stream.
   `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable. Never wrap the
   launcher in a bare `runCatching`: with no documents provider the button then does nothing.
+- Google Takeout's Saved folder holds one CSV per list (`Title,Note,URL,Comment`, older
+  exports `Tags`) with no coordinates (`core/data/TakeoutCsv`). Either Import button takes one
+  (`isTakeoutCsv`: a header with Title and URL) and `MapViewModel.importTakeoutCsv` makes a list
+  named after the file, through `importTarget` with source `takeout:<name>`, so the same file
+  again refreshes the list. A row's link is read on the phone: a `/maps/search/<lat>,<lng>` pin
+  is kept as it is; a `/maps/place/<Name>/data=...!1s0x<cell>:0x<id>` listing carries only its
+  feature id, so the title is searched and the hit whose feature id's second half
+  (`TakeoutCsv.featureKey`, which an old `?cid=<decimal>` link carries too) matches is taken;
+  failing that, the one hit named like the title, and none when several are (a chain's
+  branches). A row that finds nothing is counted and left out, never guessed at. Note and Comment become the place's note. With "Use Vela
+  without Google" on, only pin rows import. The status card shows `settings_takeout_progress`
+  every five rows. `ImportResult.ListAdded` carries the name, the count and the misses. Rows
+  are capped at `MAX_ROWS` (2,000). The Takeout zip itself is not read; pick the CSV inside it.
 - Trip shortcuts: the route card's menu pins the trip as a launcher shortcut. Its intent
   (action `app.vela.action.OPEN_TRIP`) carries names, latitudes and longitudes as parallel
   arrays (NaN means "your location") and the mode. Nothing is stored in the app.

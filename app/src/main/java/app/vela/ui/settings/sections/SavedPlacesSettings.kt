@@ -129,6 +129,8 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
 // (NB a literal wildcard mime in a KDoc block closes the comment early - see PoiPackStore.)
 private val IMPORT_MIME = arrayOf(
     "application/json",
+    "text/csv",
+    "text/comma-separated-values",
     "application/gpx+xml",
     "application/vnd.google-earth.kml+xml",
     "application/xml",
@@ -171,6 +173,11 @@ private fun toastImport(
         is app.vela.core.data.ImportResult.WrongFormat ->
             result.format?.let { context.getString(R.string.settings_import_wrong_format_named, it) }
                 ?: context.getString(R.string.settings_import_wrong_format)
+        is app.vela.core.data.ImportResult.ListAdded -> when {
+            result.added == 0 -> context.getString(R.string.settings_takeout_imported_none, result.name)
+            result.missed == 0 -> context.getString(R.string.settings_takeout_imported, result.added, result.name)
+            else -> context.getString(R.string.settings_takeout_imported_missed, result.added, result.name, result.missed)
+        }
     }
     android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
 }

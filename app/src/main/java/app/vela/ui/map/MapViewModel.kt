@@ -7370,10 +7370,11 @@ class MapViewModel @Inject constructor(
     }
 
     /** Import lists from a picked file [uri]; returns how many lists were newly added. */
-    fun importListsFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
+    suspend fun importListsFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
         val json = runCatching {
             appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         }.getOrNull() ?: return app.vela.core.data.ImportResult.Unreadable
+        if (app.vela.core.data.TakeoutCsv.isTakeoutCsv(json)) return importTakeoutCsv(json, listNameFor(uri))
         val res = listStore.importMerge(json)
         if (res is app.vela.core.data.ImportResult.Added) _state.update { it.copy(lists = listStore.lists()) }
         return res
@@ -7381,13 +7382,77 @@ class MapViewModel @Inject constructor(
 
     /** Import saved places from a picked file [uri]. Reports WHICH outcome happened so the UI can
      *  tell "that is another app's file" from "you already have all of these" (issue #287). */
-    fun importSavedFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
+    suspend fun importSavedFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
         val json = runCatching {
             appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         }.getOrNull() ?: return app.vela.core.data.ImportResult.Unreadable
+        // A Takeout list CSV picked here goes where it belongs, a list (issue #761).
+        if (app.vela.core.data.TakeoutCsv.isTakeoutCsv(json)) return importTakeoutCsv(json, listNameFor(uri))
         val res = savedStore.importMerge(json)
         if (res is app.vela.core.data.ImportResult.Added) _state.update { it.copy(saved = savedStore.saved()) }
         return res
+    }
+
+    /** The picked file's name without its extension: Takeout names each CSV after its list. */
+    private fun listNameFor(uri: android.net.Uri): String {
+        val display = runCatching {
+            appContext.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull() ?: uri.lastPathSegment
+        return display?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotBlank() } ?: appContext.getString(R.string.settings_takeout_list_default)
+    }
+
+    /**
+     * One of Google Takeout's per-list CSVs (issue #761) as a list named [name]. A row with a pin
+     * link is kept as it is. A listing row carries only a feature id, so its title is searched
+     * and the hit whose feature id matches is taken; with no feature id to match, a hit named
+     * like the title. Rows that find nothing are counted, never guessed at. The list is made or
+     * refreshed the way a shared list's save is (`importTarget`), so importing the same file
+     * again replaces its places and keeps its name, icon and color.
+     */
+    private suspend fun importTakeoutCsv(text: String, name: String): app.vela.core.data.ImportResult {
+        val rows = app.vela.core.data.TakeoutCsv.parse(text)
+        if (rows.isEmpty()) return app.vela.core.data.ImportResult.WrongFormat("Google Takeout list")
+        val googleOff = app.vela.ui.GoogleFree.on.value
+        val places = ArrayList<app.vela.core.model.ListPlace>()
+        var missed = 0
+        rows.forEachIndexed { i, row ->
+            if (i % 5 == 0) flashStatus(appContext.getString(R.string.settings_takeout_progress, i + 1, rows.size), 60_000L)
+            val link = app.vela.core.data.TakeoutCsv.readLink(row.url)
+            val title = row.title.ifBlank { link?.name ?: "" }
+            val note = listOfNotNull(row.note, row.comment).joinToString("\n").ifBlank { null }
+            val la = link?.lat
+            val ln = link?.lng
+            val place: app.vela.core.model.ListPlace? = when {
+                link != null && la != null && ln != null -> app.vela.core.model.ListPlace(
+                    id = "imp:%.5f,%.5f".format(java.util.Locale.US, la, ln),
+                    name = title.ifBlank { "%.4f, %.4f".format(java.util.Locale.US, la, ln) }.take(120),
+                    lat = la, lng = ln, note = note, featureId = link.featureId,
+                )
+                title.isBlank() || googleOff -> null
+                else -> withContext(Dispatchers.IO) {
+                    // Biased where the user is, as a typed search is; a specific name is found
+                    // anywhere, and the feature id decides.
+                    val hits = runCatching { dataSource.search(title, near = _state.value.myLocation ?: _state.value.center) }.getOrNull()?.places.orEmpty()
+                    val key = link?.featureKey
+                    // The feature id first. Failing that, the one hit named like the title: with
+                    // several (a chain's branches) there is no telling which, so none is taken.
+                    val byName = hits.filter { it.name.equals(title, ignoreCase = true) }
+                    val hit = key?.let { k -> hits.firstOrNull { app.vela.core.data.TakeoutCsv.featureKey(it.featureId) == k } }
+                        ?: byName.singleOrNull()
+                    hit?.let { app.vela.core.model.ListPlace.of(it).copy(note = note) }
+                }
+            }
+            if (place != null) places += place else missed++
+        }
+        flashStatus("", 1L)
+        if (places.isEmpty()) return app.vela.core.data.ImportResult.ListAdded(name, 0, missed)
+        val (existing, listId) = app.vela.core.data.importTarget(listStore.lists(), name, "takeout:$name")
+        val list = existing?.copy(places = places)
+            ?: app.vela.core.model.PlaceList(id = listId, name = name, icon = "bookmark", places = places)
+        val lists = if (existing != null) listStore.update(list) else listStore.create(list)
+        _state.update { it.copy(lists = lists) }
+        return app.vela.core.data.ImportResult.ListAdded(name, places.size, missed)
     }
 
     /**
