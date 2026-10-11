@@ -113,8 +113,11 @@ time on a phone before it lands (2026-10-11).
 - More map looks (#750, branch `map-styles`): OpenFreeMap's Bright, Positron, Fiord and Dark
   styles beside Liberty, on the same tiles; Vela's label, house-number and places passes are
   keyed on Liberty's layer ids and get a mapping per style.
-- Swipe actions on lists and history (#748, branch `lists-swipe`, this pull request): swipe to edit or delete with
-  haptics, a reorder handle, the lists sheet's contrast in the dark theme, simpler rows.
+- Swipe actions on lists and history (#748, branch `lists-swipe`, pull request #765): swipe a
+  list to edit or delete and a recent row to remove it, with a haptic tick; a drag handle in
+  place of the arrows and the pencil; long press to select several lists; the sheet on a
+  raised tone in the dark theme; Draw and New as icons; Clear recents as a button by the
+  heading. Built; checked on a Pixel 4a by touch. Not checked: the keypad paths.
 - Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
   Piper `ro_RO-mihai` voice in the library.
 - Google Takeout list CSVs (#761, branch `takeout-csv`): the per-list CSVs carry a title and a

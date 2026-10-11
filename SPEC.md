@@ -3026,6 +3026,23 @@ the shared 12 s timeout cuts it off.
   the category, which would make the sheet a business listing.
 - Not carried: the base map style and videos.
 
+#### The lists sheet
+
+- `ListsSheet` is a dialog on `surfaceContainerHigh`, so it stands off the dark background. Its
+  title row holds Draw and New as icons; while lists are selected (a long press on a row) it
+  holds the count, a trash that asks `lists_delete_count` before deleting, and a close.
+- Each list row is a `SwipeActionRow` (`ui/map/SwipeRow.kt`, material3 `SwipeToDismissBox`):
+  end to start deletes (a list with places asks first, an empty one goes at once), start to end
+  opens the editor. The row ticks (`tickHaptic`: `CONFIRM` on API 30 and up, `CLOCK_TICK` below)
+  as the swipe crosses its threshold and when it acts, then settles back; the row leaves when the
+  store drops it.
+- A `ReorderHandle` at the end of the row replaces the up and down arrows and the pencil: a drag
+  moves the list one place per row height, with a tick per move (`onMoveList`); on a keypad Up and
+  Down on the focused handle move it and OK opens the editor. With one list the handle is a
+  pencil.
+- On the search page a recent query or place row is a `SwipeActionRow` that removes it from
+  history; Clear recents is a `FilledTonalButton` beside the Recent heading.
+
 #### Drawing
 
 - The lists dialog's Draw button sets `MapUiState.drawing` (`DrawState`). Every map tap and
