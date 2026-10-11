@@ -1,7 +1,7 @@
 package app.vela.ui.map
 
 import android.content.Context
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import app.vela.BuildConfig
 import app.vela.core.data.tiles.MapStyle
 import kotlinx.coroutines.CoroutineScope
@@ -23,51 +23,65 @@ import java.util.concurrent.TimeUnit
  * `glyphs` URL. (Recipe: scripts/build-map-fonts.sh -> the `map-fonts` release ->
  * fdroid-repo.yml unpacks it into the Pages site.)
  *
- * At launch this fetches the LIVE Liberty style JSON - so tile paths keep
+ * At launch this fetches the LIVE style JSON of the chosen look - so tile paths keep
  * auto-following OpenFreeMap's snapshot rotation, the exact property the old
  * bundled-asset attempt lost - patches `glyphs`, and caches the result; the map
- * loads the cache as `file://` on later launches (no restyle flash). Guards, in
- * order of what actually goes wrong:
+ * loads the cache as `file://` on later launches (no restyle flash). Every
+ * OpenFreeMap look ([MapStyle]) uses the same Noto stacks, so the same patch fits
+ * each, and each look keeps its own cache file. Guards, in order of what actually
+ * goes wrong:
  *  - the font host is PROBED (range 0-255) before the patched style is used or
  *    kept; an unreachable host EVICTS the cache, because a style whose glyph URLs
- *    fail renders a map with no labels at all - falling back to the plain Liberty
+ *    fail renders a map with no labels at all - falling back to the plain style
  *    URL (Noto) is invisible by comparison;
  *  - a style fetch failure keeps the last-good cache, but only for
  *    [STALE_EVICT_MS]: a cached style pins a tile snapshot, and OpenFreeMap
  *    eventually retires old snapshots (the blank-basemap failure the bundled
  *    asset hit) - past the window the plain URL wins again;
- *  - only [MapStyle.LIBERTY] is ever patched; MapTiler and offline REGION
+ *  - only OpenFreeMap looks are ever patched; MapTiler and offline REGION
  *    DEFINITIONS (OfflineMaps) keep the plain URL on purpose - a definition
  *    outlives any file path, and its download caching Noto glyph URLs is the
  *    offline fallback. Offline label coverage for the patched style rides the
  *    ambient cache (browsing an area warms the ranges it uses).
  */
 object MapFonts {
-    private val patched = mutableStateOf<String?>(null)
+    /** Style key to the `file://` path of its patched cache, for the looks that have one. */
+    private val patched = mutableStateMapOf<String, String>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private const val STALE_EVICT_MS = 7L * 24 * 3600 * 1000
-    private const val CACHE_NAME = "liberty-roboto.json"
 
-    /** The style the map should load: the patched Liberty when ready, else [base] untouched. */
-    fun effective(base: String): String =
-        if (base == MapStyle.LIBERTY.uri) patched.value ?: base else base
-
-    fun init(context: Context) {
-        val f = cacheFile(context)
-        if (f.isFile && f.length() > 0) patched.value = "file://${f.absolutePath}"
-        scope.launch { runCatching { refresh(context) } }
+    /** The style the map should load: the patched copy of an OpenFreeMap look when ready, else
+     *  [base] untouched. */
+    fun effective(base: String): String {
+        val look = MapStyle.byUri(base) ?: return base
+        return patched[look.key] ?: base
     }
 
-    private fun cacheFile(context: Context) =
-        File(File(context.filesDir, "style").apply { mkdirs() }, CACHE_NAME)
+    fun init(context: Context) {
+        for (look in MapStyle.entries) {
+            val f = cacheFile(context, look)
+            if (f.isFile && f.length() > 0) patched[look.key] = "file://${f.absolutePath}"
+        }
+        ensure(context, app.vela.ui.MapLook.style.value)
+    }
 
-    private fun evict(f: File) {
-        patched.value = null
+    /** Refreshes [look]'s patched style in the background: at launch for the chosen look, and
+     *  when the user picks another one. */
+    fun ensure(context: Context, look: MapStyle) {
+        scope.launch { runCatching { refresh(context, look) } }
+    }
+
+    /** Liberty keeps the file name it has had since the patch began, so an update finds it. */
+    private fun cacheFile(context: Context, look: MapStyle) =
+        File(File(context.filesDir, "style").apply { mkdirs() }, if (look == MapStyle.LIBERTY) "liberty-roboto.json" else "${look.key}-roboto.json")
+
+    private fun evict(look: MapStyle, f: File) {
+        patched.remove(look.key)
         f.delete()
     }
 
-    private fun refresh(context: Context) {
-        val f = cacheFile(context)
+    private fun refresh(context: Context, look: MapStyle) {
+        val f = cacheFile(context, look)
         val http = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
@@ -92,19 +106,19 @@ object MapFonts {
             }
         }.getOrDefault(false)
         if (!fontsOk) {
-            evict(f)
+            evict(look, f)
             return
         }
 
         val live = runCatching {
-            http.newCall(Request.Builder().url(MapStyle.LIBERTY.uri).build()).execute().use { r ->
+            http.newCall(Request.Builder().url(look.uri).build()).execute().use { r ->
                 if (r.isSuccessful) r.body?.string() else null
             }
         }.getOrNull()
         if (live == null) {
             // Keep the last-good patch while it's fresh; a week offline and the plain
             // live URL (which can't pin a dead tile snapshot) takes over.
-            if (f.isFile && System.currentTimeMillis() - f.lastModified() > STALE_EVICT_MS) evict(f)
+            if (f.isFile && System.currentTimeMillis() - f.lastModified() > STALE_EVICT_MS) evict(look, f)
             return
         }
 
@@ -115,8 +129,8 @@ object MapFonts {
             f.setLastModified(System.currentTimeMillis())
             return
         }
-        val tmp = File(f.parentFile, "$CACHE_NAME.tmp")
+        val tmp = File(f.parentFile, "${f.name}.tmp")
         tmp.writeText(patchedJson)
-        if (tmp.renameTo(f)) patched.value = "file://${f.absolutePath}"
+        if (tmp.renameTo(f)) patched[look.key] = "file://${f.absolutePath}"
     }
 }

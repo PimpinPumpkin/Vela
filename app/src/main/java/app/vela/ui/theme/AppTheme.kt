@@ -156,6 +156,9 @@ fun isAppInDarkTheme(): Boolean {
  *  map's own mode, then whatever the app is. */
 @Composable
 fun isMapDark(): Boolean {
+    // A look Vela does not paint is as dark as it comes: Vela's layers over it follow the look.
+    val look = app.vela.ui.MapLook.style.value
+    if (!look.painted) return look.darkLook
     if (AppTheme.navigating.value && AppTheme.navDayNight.value) return AppTheme.night.value
     return when (AppTheme.mapMode.value) {
         MapThemeMode.LIGHT -> false
@@ -166,7 +169,7 @@ fun isMapDark(): Boolean {
 
 /** The map's true-black palette: only while the map follows an AMOLED app theme. */
 @Composable
-fun isMapAmoled(): Boolean = AppTheme.mapMode.value == MapThemeMode.FOLLOW && isAppInAmoled()
+fun isMapAmoled(): Boolean = app.vela.ui.MapLook.style.value.painted && AppTheme.mapMode.value == MapThemeMode.FOLLOW && isAppInAmoled()
 
 /** True when the app is resolved to true-black AMOLED theme right now. */
 @Composable

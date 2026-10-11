@@ -3957,10 +3957,10 @@ private fun MapSurface(
         val variant = if (mapDark) "streets-v2-dark" else "streets-v2"
         "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
     } else {
-        // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
-        // ready (reactive - flips once the first refresh lands). Offline REGION
-        // DEFINITIONS deliberately keep state.styleUri (see MapFonts).
-        MapFonts.effective(state.styleUri)
+        // The chosen look (Settings > Appearance > Map look), swapped for its cached
+        // Roboto-glyph patch when MapFonts has it ready (reactive - flips once the first
+        // refresh lands). Offline REGION DEFINITIONS deliberately keep the plain URL (see MapFonts).
+        MapFonts.effective(app.vela.ui.MapLook.style.value.uri)
     }
     // Roads already DRIVEN (entered by maneuvers up to the current step) + ref variants: the nav
     // label bubbles must never call out the road being driven (Google labels only streets you

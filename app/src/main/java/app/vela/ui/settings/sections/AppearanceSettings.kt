@@ -206,6 +206,38 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
+        // Map look: the Vela look on Liberty, or one of OpenFreeMap's other styles as served
+        // (issue #750). The color sets below apply to the Vela look only.
+        SettingsGroup(title = stringResource(R.string.settings_map_look)) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val looks = app.vela.core.data.tiles.MapStyle.entries
+                    val lookFocus = remember { List(looks.size) { FocusRequester() } }
+                    looks.forEachIndexed { i, look ->
+                        val label = when (look) {
+                            app.vela.core.data.tiles.MapStyle.LIBERTY -> R.string.settings_map_look_liberty
+                            app.vela.core.data.tiles.MapStyle.BRIGHT -> R.string.settings_map_look_bright
+                            app.vela.core.data.tiles.MapStyle.POSITRON -> R.string.settings_map_look_positron
+                            app.vela.core.data.tiles.MapStyle.FIORD -> R.string.settings_map_look_fiord
+                            app.vela.core.data.tiles.MapStyle.DARK -> R.string.settings_map_look_dark
+                        }
+                        FilterChip(
+                            selected = app.vela.ui.MapLook.style.value == look,
+                            onClick = { app.vela.ui.MapLook.set(context, look) },
+                            label = { Text(stringResource(label)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            modifier = Modifier
+                                .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                                .dpadRowSibling(lookFocus, i),
+                        )
+                    }
+                }
+                Hint(stringResource(R.string.settings_map_look_hint))
+            }
+        }
+
+        if (app.vela.ui.MapLook.style.value.painted) {
+        Spacer(Modifier.height(8.dp))
         // Map color sets: Modern = the Google-app-sampled palette (default), Classic = the
         // archived pre-sample look (white roads, yellow motorways, true greens). The fleet
         // default is remote-pushable via calibration.json; an explicit pick here wins.
@@ -230,6 +262,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 }
                 Hint(stringResource(R.string.settings_map_colors_hint))
             }
+        }
         }
 
         // Material You (issue #15): tint the app's buttons, chips and accents from the

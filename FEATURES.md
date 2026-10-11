@@ -264,7 +264,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - Themes are follow the system, Light, Dark, "AMOLED black" and "Day and night". "Day and night
   while navigating" applies it to drives only.
-- "Map" sets the map light or dark apart from the app. "Map colors" is Modern or Classic.
+- "Map" sets the map light or dark apart from the app. "Map look" picks the basemap style: the
+  Vela look on OpenFreeMap Liberty, or OpenFreeMap's Bright, Positron, Fiord or Dark as served,
+  on the same tiles. "Map colors" is Modern or Classic, for the Vela look.
 - "Material You colors" tints buttons and accents from your wallpaper. With "AMOLED black" the
   backgrounds stay black.
 - "Font" is Google Sans Flex, the system font or your own font file. "Interface size" scales the

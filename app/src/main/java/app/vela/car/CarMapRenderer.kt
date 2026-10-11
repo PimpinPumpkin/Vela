@@ -275,11 +275,16 @@ class CarMapRenderer(
      *  "System" choice defers to the car's own day/night. A driver who set Vela to dark got a
      *  light car map because the head unit said day (user 2026-09-22); Google's app follows the
      *  car, but Vela has a theme setting and the car is one more screen it applies to. */
-    private fun isNight(): Boolean = when (app.vela.ui.theme.AppTheme.mode.value) {
-        app.vela.ui.theme.ThemeMode.LIGHT -> false
-        app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
-        app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
-        else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+    private fun isNight(): Boolean {
+        // A look Vela does not paint is as dark as it comes.
+        val look = app.vela.ui.MapLook.style.value
+        if (!look.painted) return look.darkLook
+        return when (app.vela.ui.theme.AppTheme.mode.value) {
+            app.vela.ui.theme.ThemeMode.LIGHT -> false
+            app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
+            app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
+            else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+        }
     }
 
     fun start() {
@@ -438,7 +443,8 @@ class CarMapRenderer(
         // cache is ready (read + handed over as JSON - the snapshotter has no file:// branch
         // of its own), else the plain URL. Without this the car screen kept Noto after the
         // phone flipped to Roboto.
-        val effectiveStyle = app.vela.ui.map.MapFonts.effective(MapStyle.LIBERTY.uri)
+        val look = app.vela.ui.MapLook.style.value
+        val effectiveStyle = app.vela.ui.map.MapFonts.effective(look.uri)
         val patchedJson = if (effectiveStyle.startsWith("file://")) {
             runCatching { java.io.File(effectiveStyle.removePrefix("file://")).readText() }
                 .getOrNull()?.takeIf { it.isNotBlank() }
@@ -452,7 +458,7 @@ class CarMapRenderer(
             (0 until layers.length()).map { layers.getJSONObject(it).getString("id") }
         }.getOrDefault(emptyList())
         val opts = MapSnapshotter.Options(width, height)
-            .let { if (patchedJson != null) it.withStyleJson(patchedJson) else it.withStyle(MapStyle.LIBERTY.uri) }
+            .let { if (patchedJson != null) it.withStyleJson(patchedJson) else it.withStyle(look.uri) }
             .withPixelRatio(1.0f)
             .withLogo(false)
         themed = false
@@ -592,11 +598,12 @@ class CarMapRenderer(
         val t0 = android.os.SystemClock.elapsedRealtime()
         val host = app.vela.ui.map.SnapshotterHost(s, styleLayerIds)
         val ok = runCatching {
-            app.vela.ui.map.applyMapTheme(
+            // The Vela look takes the palette; another OpenFreeMap look keeps its own, as on the phone.
+            if (app.vela.ui.MapLook.style.value.painted) app.vela.ui.map.applyMapTheme(
                 host,
                 dark = night,
                 amoled = night && app.vela.ui.theme.AppTheme.mode.value == app.vela.ui.theme.ThemeMode.AMOLED,
-            )
+            ) else app.vela.ui.map.applyLookTheme(host, dark = night)
         }
         ok.onFailure { android.util.Log.w("VelaCar", "theme failed (dark=$night, ${styleLayerIds.size} ids): $it") }
         ok.onSuccess { android.util.Log.i("VelaCar", "theme applied dark=$night layers=${host.layers.size} in ${android.os.SystemClock.elapsedRealtime() - t0} ms") }

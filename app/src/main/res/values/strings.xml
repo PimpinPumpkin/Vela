@@ -1136,6 +1136,13 @@
     <string name="notif_ask_skip">Skip</string>
     <string name="place_time_past_toast">That time has passed. Set to now.</string>
     <string name="settings_ui_scale">Interface size</string>
+    <string name="settings_map_look">Map look</string>
+    <string name="settings_map_look_liberty">Vela</string>
+    <string name="settings_map_look_bright">Bright</string>
+    <string name="settings_map_look_positron">Positron</string>
+    <string name="settings_map_look_fiord">Fiord</string>
+    <string name="settings_map_look_dark">Dark</string>
+    <string name="settings_map_look_hint">Vela is OpenFreeMap\'s Liberty style with Vela\'s own colors, icons and road widths. The others are OpenFreeMap\'s Bright, Positron, Fiord and Dark as they come, on the same tiles. Fiord and Dark are dark looks whatever the theme.</string>
     <string name="settings_map_colors">Map colors</string>
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Classic</string>
