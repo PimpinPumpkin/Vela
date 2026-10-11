@@ -115,7 +115,7 @@ time on a phone before it lands (2026-10-11).
   keyed on Liberty's layer ids and get a mapping per style.
 - Swipe actions on lists and history (#748, branch `lists-swipe`): swipe to edit or delete with
   haptics, a reorder handle, the lists sheet's contrast in the dark theme, simpler rows.
-- Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
+- Romanian spoken guidance (#759, branch `romanian-voice`, this pull request): the spoken phrase table, and the
   Piper `ro_RO-mihai` voice in the library.
 - Google Takeout list CSVs (#761, branch `takeout-csv`): the per-list CSVs carry a title and a
   Google link per row and no coordinates, so each row is one lookup; imported as a list each.
