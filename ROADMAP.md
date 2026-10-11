@@ -113,7 +113,7 @@ time on a phone before it lands (2026-10-11).
 - More map looks (#750, branch `map-styles`): OpenFreeMap's Bright, Positron, Fiord and Dark
   styles beside Liberty, on the same tiles; Vela's label, house-number and places passes are
   keyed on Liberty's layer ids and get a mapping per style.
-- Swipe actions on lists and history (#748, branch `lists-swipe`): swipe to edit or delete with
+- Swipe actions on lists and history (#748, branch `lists-swipe`, this pull request): swipe to edit or delete with
   haptics, a reorder handle, the lists sheet's contrast in the dark theme, simpler rows.
 - Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
   Piper `ro_RO-mihai` voice in the library.
