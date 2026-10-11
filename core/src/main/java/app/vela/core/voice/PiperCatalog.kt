@@ -53,7 +53,7 @@ object PiperCatalog {
     private val LANGUAGE_LABELS: Map<String, String> = mapOf(
         "en" to "English", "fr" to "Français", "de" to "Deutsch", "es" to "Español",
         "it" to "Italiano", "pt" to "Português", "nl" to "Nederlands", "ru" to "Русский",
-        "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська", "hu" to "Magyar",
+        "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська", "hu" to "Magyar", "ro" to "Română",
         "zh" to "中文", "ja" to "日本語",
     )
 
@@ -117,6 +117,8 @@ object PiperCatalog {
         PiperVoice("uk_UA-ukrainian_tts-medium", "Ukrainian TTS", VoiceGender.MULTI, VoiceQuality.MEDIUM, 80, 3, "Три українські голоси", recommended = true),
         // ── Magyar ──
         PiperVoice("hu_HU-anna-medium", "Anna", VoiceGender.FEMALE, VoiceQuality.MEDIUM, 63, 1, "Tiszta, érthető magyar női hang", recommended = true),
+        // ── Română ── (issue #759; the one Romanian voice Piper has)
+        PiperVoice("ro_RO-mihai-medium", "Mihai", VoiceGender.MALE, VoiceQuality.MEDIUM, 67, 1, "Voce masculină românească, clară", recommended = true),
         // ── 中文 ── (one Mandarin voice serves Simplified and Traditional locales — a Piper voice
         // is a per-LANGUAGE model, and langCode "zh" pairs it with both zh and zh-TW nav text.
         // No Japanese Piper voice exists; ja spoken guidance uses the system-TTS fallback.)

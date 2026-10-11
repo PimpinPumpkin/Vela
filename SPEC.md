@@ -4635,8 +4635,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 18 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
-from Weblate and English spoken guidance.
+The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
+spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
 `AppLocale` holds the language (empty means follow the system) and is applied in both
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it

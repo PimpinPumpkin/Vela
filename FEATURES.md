@@ -215,7 +215,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   voice, and a voice of another language says so on its row.
 - English voices say about 3,500 place names the local way. Street names in another script are read
   romanized.
-- 18 languages, including Chinese, Japanese and right-to-left Hebrew. Estonian is partly translated.
+- 19 languages, including Chinese, Japanese and right-to-left Hebrew. Romanian and Estonian are
+  partly translated; Romanian has spoken directions and a voice.
 - "Follow system language", or pick one for Vela alone.
 - "Directions language": turns shown and spoken in another language than the menus, such as
   English menus with Dutch directions. "Same as app language" by default.
