@@ -750,7 +750,9 @@
     <string name="welcome_get_started">Get started</string>
     <string name="welcome_continue">Continue</string>
     <string name="welcome_cameras_title">Plate cameras</string>
-    <string name="welcome_cameras_intro">Flock and other license plate readers show on the map. Vela can also:</string>
+    <string name="welcome_cameras_intro">This badge marks a Flock or other license plate reader on the map. Vela can also:</string>
+    <string name="camera_badge_plate">License plate camera marker</string>
+    <string name="camera_badge_speed">Speed camera marker</string>
     <string name="welcome_cameras_avoid">Route around them</string>
     <string name="welcome_cameras_warn">Warn me as I get close</string>
     <string name="welcome_google_customize">Choose what Google is used for</string>
