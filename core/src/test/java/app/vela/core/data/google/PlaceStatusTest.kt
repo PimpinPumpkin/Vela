@@ -32,6 +32,11 @@ class PlaceStatusTest {
         assertEquals(false, SearchParser.parseOpenNow("Închis", "ro"))
         assertEquals(false, SearchParser.parseOpenNow("Închis temporar", "ro"))
         assertEquals(false, SearchParser.parseOpenNow("Se deschide la 08:00", "ro"))
+        // The forms Google served on a phone in Romanian (2026-10-11).
+        assertEquals(false, SearchParser.parseOpenNow("Închis ⋅ Deschide lun. la 09", "ro"))
+        assertEquals(false, SearchParser.parseOpenNow("Deschide lun. la 09", "ro"))
+        assertEquals(true, SearchParser.parseOpenNow("Deschis nonstop", "ro"))
+        assertEquals(true, SearchParser.parseOpenNow("Închide curând ⋅ 23", "ro"))
         assertEquals(true, SearchParser.parseOpenNow("Deschis", "ro"))
         assertEquals(true, SearchParser.parseOpenNow("Se închide la 22:00", "ro"))
         assertEquals(true, SearchParser.isTemporarilyClosed("Închis temporar"))
