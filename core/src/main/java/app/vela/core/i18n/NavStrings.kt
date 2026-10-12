@@ -2255,6 +2255,170 @@ object HuNavStrings : NavStrings {
     }
 }
 
+/**
+ * Romanian (issue #759). The polite imperative Google uses ("Virați la dreapta pe Strada X"),
+ * "În 200 de metri" (a number from 20 up takes "de" before its noun), roundabout exits as feminine
+ * ordinals ("a doua ieșire"), sign destinations with "spre". Road names pass through untouched.
+ */
+object RoNavStrings : NavStrings {
+    override val locale: Locale = Locale("ro", "RO")
+
+    override fun passLights(count: Int): String = if (count <= 1) "Treceți de semafor" else "Treceți de $count semafoare"
+
+    private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "la stânga"
+        "right" -> "la dreapta"
+        "slight left" -> "ușor la stânga"
+        "slight right" -> "ușor la dreapta"
+        "sharp left" -> "brusc la stânga"
+        "sharp right" -> "brusc la dreapta"
+        "straight" -> "înainte"
+        else -> ""
+    }
+
+    /** "prima", "a doua", "a treia" ... for "ieșire" (feminine). */
+    private fun roOrdinal(n: Int): String = when (n) {
+        1 -> "prima"
+        2 -> "a doua"
+        3 -> "a treia"
+        4 -> "a patra"
+        5 -> "a cincea"
+        6 -> "a șasea"
+        7 -> "a șaptea"
+        8 -> "a opta"
+        9 -> "a noua"
+        10 -> "a zecea"
+        else -> "a $n-a"
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) " pe $road" else ""
+        val toward = when {
+            dest != null -> " spre $dest"
+            road != null -> " pe $road"
+            else -> ""
+        }
+        val m = modWord(mod)
+        val uturn = (mod ?: "").trim().lowercase() == "uturn"
+        return when (type) {
+            "depart" -> if (road != null) "Porniți pe $road" else "Începeți traseul"
+            "arrive" -> "Ați ajuns la destinație"
+            "turn", "end of road" -> if (uturn) "Întoarceți-vă$onto" else ("Virați $m").trim() + onto
+            "continue", "new name" -> if (m.isNotBlank() && m != "înainte") ("Virați $m").trim() + onto else "Continuați$onto"
+            "merge" -> "Încadrați-vă$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Luați rampa din dreapta$toward"
+                mod?.contains("left") == true -> "Luați rampa din stânga$toward"
+                else -> "Luați rampa$toward"
+            }
+            "off ramp" -> if (exitNo != null) "Luați ieșirea $exitNo$toward" else "Luați ieșirea$toward"
+            "fork" -> when {
+                mod?.contains("left") == true -> "Țineți stânga$toward"
+                mod?.contains("right") == true -> "Țineți dreapta$toward"
+                else -> "Continuați$toward"
+            }
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> when {
+                rbExit == null -> "Intrați în sensul giratoriu$onto"
+                mod == "straight" -> "La sensul giratoriu, mergeți înainte$onto, ${roOrdinal(rbExit)} ieșire"
+                else -> "La sensul giratoriu, luați ${roOrdinal(rbExit)} ieșire$onto"
+            }
+            "roundabout turn" -> ("La sensul giratoriu, virați $m").trim() + onto
+            "uturn" -> "Întoarceți-vă$onto"
+            else -> if (uturn) "Întoarceți-vă$onto" else if (m.isNotBlank()) ("Virați $m").trim() + onto else "Continuați$onto"
+        }
+    }
+
+    /** Romanian puts "de" between a number of 20 or more and its noun ("200 de metri", "15 metri"),
+     *  except a number whose last two digits are 1 to 19 ("110 metri", "1.015 metri"). */
+    private fun de(n: Double): String {
+        if (n < 20.0) return ""
+        val whole = n.toLong()
+        val isWhole = n == whole.toDouble()
+        return if (isWhole && (whole % 100) in 1..19) "" else "de "
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) {
+            val n = if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50
+            "$n ${de(n.toDouble())}picioare"
+        } else when ((meters / 402.336).roundToInt().coerceAtLeast(1)) {
+            1 -> "un sfert de milă"
+            2 -> "o jumătate de milă"
+            3 -> "trei sferturi de milă"
+            else -> {
+                val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+                if (miles == 1.0) "o milă" else "${roNum(miles)} ${de(miles)}mile"
+            }
+        }
+    } else {
+        if (meters < 950) {
+            val n = (meters / 10).roundToInt() * 10
+            "$n ${de(n.toDouble())}metri"
+        } else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "un kilometru" else "${roNum(km)} ${de(km)}kilometri"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "În $distancePhrase, $instruction"
+
+    override fun arrived(): String = "Ați ajuns la destinație"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Destinația este pe stânga" else "Destinația este pe dreapta"
+
+    override fun startNav(firstInstruction: String): String = "Începe navigarea. $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "Ați ajuns la $label" else "Ați ajuns la oprire"
+
+    private fun roSide(left: Boolean?) = when (left) { true -> "pe stânga"; false -> "pe dreapta"; null -> "în față" }
+
+    override fun stopAhead(label: String, left: Boolean?): String = "${label.ifBlank { "Oprirea" }} va fi ${roSide(left)}"
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction, apoi " + stopAhead(label.ifBlank { "oprirea" }, left)
+
+    override fun intoLot(turnLeft: Boolean): String = "Virați ${if (turnLeft) "la stânga" else "la dreapta"} în parcare"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction, apoi " + next.replaceFirstChar { it.lowercase() }
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String =
+        "Virați ${if (turnLeft) "la stânga" else "la dreapta"} în parcare, apoi ${label.ifBlank { "oprirea" }} este ${roSide(left)}"
+
+    override fun fasterRoute(firstInstruction: String): String = "Trecem pe traseul mai rapid. $firstInstruction"
+    override fun rerouting(): String = "Se recalculează traseul"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Este disponibil un traseu mai rapid, cu aproximativ un minut mai scurt"
+        else "Este disponibil un traseu mai rapid, cu aproximativ $minutes ${de(minutes.toDouble())}minute mai scurt"
+    override fun stopsNotIncluded(): String = "Nu am putut include opririle în acest traseu. Voi încerca în continuare."
+    override fun leftYourRoute(): String = "Ați părăsit traseul. Mergem pe drumul cel mai rapid."
+    override fun destinationAhead(): String = "Destinația va fi în față"
+
+    override fun voiceTest(): String = "Ghidarea vocală este activată. În 400 de metri, virați la dreapta."
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "din stânga"; LaneSide.RIGHT -> "din dreapta"; LaneSide.CENTER -> "din mijloc" }
+        return if (count > 1) "Folosiți cele $count benzi $sideWord" else "Folosiți banda $sideWord"
+    }
+
+    // " spre " is the sign marker phrase() emits, so the secondary destinations after a colon and
+    // the whole sign tail can be dropped the way English does.
+    override fun spokenSign(instruction: String): String {
+        val t = instruction.indexOf(" spre ")
+        if (t < 0) return instruction
+        val colon = instruction.indexOf(':', startIndex = t)
+        return if (colon > 0) instruction.substring(0, colon) else instruction
+    }
+
+    override fun repeatShort(instruction: String): String = instruction.substringBefore(" spre ")
+
+    private fun roNum(x: Double): String {
+        val s = x.toString().replace('.', ',')
+        return if (s.endsWith(",0")) s.dropLast(2) else s
+    }
+}
+
 object NavStringsRegistry {
     @Volatile
     private var active: NavStrings = EnNavStrings
@@ -2286,6 +2450,7 @@ object NavStringsRegistry {
         "sv" -> SvNavStrings
         "uk" -> UkNavStrings
         "hu" -> HuNavStrings
+        "ro" -> RoNavStrings
         "zh" -> ZhNavStrings
         "zh-tw" -> ZhTwNavStrings
         "ja" -> JaNavStrings

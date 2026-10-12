@@ -107,11 +107,31 @@ or a URL for a WebView is open. Nav state and input are the same for both.
 Bigger pieces, each on its own branch and draft pull request against `canary`, tested one at a
 time on a phone before it lands (2026-10-11).
 
-- More map looks (#750, branch `map-styles`): OpenFreeMap's Bright, Positron, Fiord and Dark
-  styles beside Liberty, on the same tiles; Vela's label, house-number and places passes are
-  keyed on Liberty's layer ids and get a mapping per style.
-- Swipe actions on lists and history (#748, branch `lists-swipe`): swipe to edit or delete with
-  haptics, a reorder handle, the lists sheet's contrast in the dark theme, simpler rows.
+- Android Auto map parity (#749, branch `aa-map`): heading-up free drive on the car map, a
+  drive mode without a route, tilt while navigating, zoom by speed checked, traffic on the car
+  map, the palette matched to the phone's. Tested on the desktop head unit.
+- More map looks (#750, branch `map-styles`, pull request #764): Settings > Appearance > Map
+  look picks OpenFreeMap's Bright, Positron, Fiord or Dark beside the Vela look on Liberty, on
+  the same tiles. The label language and Vela's own layers run on every look; the palettes, road
+  widths, icons and extra fills stay with the Vela look. Built; checked on a Pixel 4a online in
+  each look, and offline over an installed region in Dark and Fiord, where a look with no cached
+  style drew stock Liberty under the look's colors: fixed, the Liberty asset is now painted as
+  the Vela look in the look's light or dark, and the cache survives having no network. The
+  car map was seen in the Dark look on the Desktop Head Unit, the same look as the phone, and
+  back on the Vela look after. Not checked: the offline fallback and the no-network guard
+  after the fix, seen only for Dark and Fiord online then offline over one region. With #763 beside this, `CarStyle.inject` puts the car's twin fills into the patched style only for the Vela look.
+- Swipe actions on lists and history (#748, branch `lists-swipe`, pull request #765): swipe a
+  list to edit or delete and a recent row to remove it, with a haptic tick; a drag handle in
+  place of the arrows and the pencil; long press to select several lists; the sheet on a
+  raised tone in the dark theme; Draw and New as icons; Clear recents as a button by the
+  heading. Built; checked on a Pixel 4a by touch and by keypad: Right from a row to its handle
+  and Left back, Down from a row to the next row, Up and Down on the handle moving the list, OK
+  on it opening the editor, a held OK on a row starting selection, the trash asking before it
+  deletes, and focus from New or from below the rows landing on a row. Not checked: a physical
+  keypad (the checks injected keys over adb), and the sheet with one list, where a pencil stands
+  in for the handle. Open: the overflow button on a recent search row cannot be reached by key,
+  since it sits inside the focused row as on every `SuggestionRow`, so a recent row has no key
+  path to Remove from history.
 - Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
   Piper `ro_RO-mihai` voice in the library.
 - Google Takeout list CSVs (#761, branch `takeout-csv`): the per-list CSVs carry a title and a
@@ -200,6 +220,9 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The approach prompt that is not said twice three seconds apart on a short step, and the first
+  line of a short step that drops its sign tail so the line at the turn does not cut it. From a
+  2026-10-11 trace; unit-tested, not yet heard on a drive.
 - The car map's heading-up, tilted follow with no route, drive mode, the zoom by speed, the
   traffic raster and the phone's extra fills (#749, pull request #763). Seen on the Desktop Head
   Unit with a simulated drive and with a mock trace at 100 km/h and no route: heading-up, tilt

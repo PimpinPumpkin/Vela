@@ -43,6 +43,13 @@ class CarStyleTest {
         assertEquals(once, CarStyle.inject(once, "https://t/{z}/{x}/{y}.png"))
     }
 
+    @Test fun `another look gets the traffic raster and no twins`() {
+        val out = CarStyle.inject(style, "https://t/{z}/{x}/{y}.png", twins = false)
+        val ids = ids(out)
+        assertEquals(listOf("park", "landcover_wetland", "road_area_pattern", "road_minor", "building", CarStyle.TRAFFIC_LAYER, "poi_r1"), ids)
+        assertEquals(out, CarStyle.inject(out, "https://t/{z}/{x}/{y}.png", twins = false))
+    }
+
     @Test fun `a style with no vector source is left alone`() {
         val raster = """{"version":8,"sources":{"sat":{"type":"raster","tiles":["https://s/{z}/{x}/{y}.jpg"]}},"layers":[{"id":"sat","type":"raster","source":"sat"}]}"""
         assertEquals(raster, CarStyle.inject(raster, "https://t/{z}/{x}/{y}.png"))

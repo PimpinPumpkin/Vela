@@ -58,7 +58,7 @@ class SpokenRoadNamesTest {
         // A null road is not a new case for these tables: unnamed roads are everywhere, so each one
         // already had to phrase a turn without one. This is what makes the switch a null argument
         // rather than fifteen new templates.
-        for (tag in listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "iw", "ja", "zh")) {
+        for (tag in listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "iw", "ja", "zh")) {
             NavStringsRegistry.setLocale(Locale.forLanguageTag(tag))
             val s = NavStringsRegistry.current()
             val named = s.phrase("turn", "left", "Maple Street", null, null, null)

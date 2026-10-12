@@ -143,7 +143,7 @@ class NavStringsTest {
     }
 
     @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
-        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he")
+        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "he")
         for (code in langs) {
             val ns = NavStringsRegistry.forLanguage(code)
             assertEquals("$code should map to its own NavStrings", code, ns.locale.language)
@@ -181,6 +181,7 @@ class NavStringsTest {
             // Hebrew directional adverbs; the noun "ימין" ends in a FINAL nun (ן), which is NOT a
             // substring of the emitted "ימינה" (medial נ) — so match the emitted forms themselves.
             "sv" to ("vänster" to "höger"), "uk" to ("лів" to "прав"), "he" to ("שמאלה" to "ימינה"),
+            "ro" to ("stânga" to "dreapta"),
         )
         for ((code, words) in sideWords) {
             val ns = NavStringsRegistry.forLanguage(code)
@@ -195,6 +196,32 @@ class NavStringsTest {
 
     /** Ukrainian fractional distances take the GENITIVE SINGULAR ("1,2 кілометра"), not the
      *  nominative plural the old 3-form ukPlural returned ("кілометри") — RU/PL had this right. */
+    /** Romanian: "de" between a number of 20 or more and its noun, feminine ordinals for the
+     *  roundabout exits, and the sign tail after "spre" dropped on a repeat (issue #759). */
+    @Test fun `romanian counts and ordinals`() {
+        val ro = NavStringsRegistry.forLanguage("ro")
+        assertEquals(RoNavStrings, ro)
+        assertEquals("200 de metri", ro.spokenDistance(200.0, imperial = false))
+        assertEquals("10 metri", ro.spokenDistance(12.0, imperial = false))
+        assertEquals("un kilometru", ro.spokenDistance(1000.0, imperial = false))
+        assertEquals("1,5 kilometri", ro.spokenDistance(1500.0, imperial = false))
+        assertEquals("20 de kilometri", ro.spokenDistance(20000.0, imperial = false))
+        // A number whose last two digits are 1 to 19 takes no "de".
+        assertEquals("110 metri", ro.spokenDistance(110.0, imperial = false))
+        assertEquals("120 de metri", ro.spokenDistance(120.0, imperial = false))
+        assertEquals("300 de metri", ro.spokenDistance(300.0, imperial = false))
+        assertEquals("În 200 de metri, Virați la dreapta", ro.inThen(ro.spokenDistance(200.0, false), ro.phrase("turn", "right", null, null, null, null)))
+        assertEquals("Virați la stânga pe Strada Mare", ro.phrase("turn", "left", "Strada Mare", null, null, null))
+        assertEquals("La sensul giratoriu, luați a doua ieșire pe Calea Victoriei", ro.phrase("roundabout", null, "Calea Victoriei", null, null, 2))
+        assertEquals("La sensul giratoriu, luați prima ieșire", ro.phrase("roundabout", null, null, null, null, 1))
+        assertEquals("Luați ieșirea 12 spre Centru", ro.phrase("off ramp", null, null, "Centru", "12", null))
+        assertEquals("Luați ieșirea 12", ro.repeatShort(ro.phrase("off ramp", null, null, "Centru", "12", null)))
+        assertEquals("Folosiți cele 2 benzi din dreapta", ro.useLanes(app.vela.core.model.LaneSide.RIGHT, 2))
+        assertEquals("Folosiți banda din stânga", ro.useLanes(app.vela.core.model.LaneSide.LEFT, 1))
+        assertEquals("Ați ajuns la destinație", ro.arrived())
+        assertEquals("Întoarceți-vă pe Strada Mare", ro.phrase("turn", "uturn", "Strada Mare", null, null, null))
+    }
+
     @Test fun `ukrainian fractional km uses genitive singular`() {
         val uk = NavStringsRegistry.forLanguage("uk")
         assertTrue(uk.spokenDistance(1200.0, imperial = false).contains("кілометра"))

@@ -60,7 +60,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             // Off the main thread: a large GPX or KML is read and regex-parsed in full.
             if (uri != null) scope.launch {
                 val res = withContext(Dispatchers.IO) { vm.importSavedFromUri(uri) }
-                toastImport(context, res, places = true)
+                toastImport(context, vm, res, places = true)
             }
         }
         SettingsGroup {
@@ -92,7 +92,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         ) { uri ->
             if (uri != null) scope.launch {
                 val res = withContext(Dispatchers.IO) { vm.importListsFromUri(uri) }
-                toastImport(context, res, places = false)
+                toastImport(context, vm, res, places = false)
             }
         }
         SettingsGroup(title = stringResource(R.string.mapscreen_section_lists)) {
@@ -129,6 +129,8 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
 // (NB a literal wildcard mime in a KDoc block closes the comment early - see PoiPackStore.)
 private val IMPORT_MIME = arrayOf(
     "application/json",
+    "text/csv",
+    "text/comma-separated-values",
     "application/gpx+xml",
     "application/vnd.google-earth.kml+xml",
     "application/xml",
@@ -159,6 +161,7 @@ private fun launchImport(context: android.content.Context, launch: () -> Unit) {
 /** One message per real outcome, instead of "nothing to import" for all of them. */
 private fun toastImport(
     context: android.content.Context,
+    vm: MapViewModel,
     result: app.vela.core.data.ImportResult,
     places: Boolean,
 ) {
@@ -171,6 +174,8 @@ private fun toastImport(
         is app.vela.core.data.ImportResult.WrongFormat ->
             result.format?.let { context.getString(R.string.settings_import_wrong_format_named, it) }
                 ?: context.getString(R.string.settings_import_wrong_format)
+        is app.vela.core.data.ImportResult.ListAdded -> vm.takeoutOutcome(result)
+        app.vela.core.data.ImportResult.Busy -> context.getString(R.string.settings_takeout_busy)
     }
     android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
 }

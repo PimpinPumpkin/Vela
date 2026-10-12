@@ -68,8 +68,17 @@ class QueryIntentTest {
     private fun p(s: String, l: String) = QueryIntents.parse(s, l)
 
     @Test fun `every app language has a command vocabulary`() {
-        val app = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "ja", "he")
+        val app = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "he")
         assertEquals(emptySet<String>(), app - QueryIntents.supportedLanguages)
+    }
+
+    @Test fun `romanian`() {
+        assertEquals(QueryIntent.Home, p("du-mă acasă", "ro"))
+        assertEquals(QueryIntent.Work, p("navighează la serviciu", "ro"))
+        assertEquals(QueryIntent.Search("farmacie"), p("unde este cea mai apropiată farmacie", "ro"))
+        assertEquals(QueryIntent.Search("cafenea"), p("cafenea în apropiere", "ro"))
+        assertEquals(QueryIntent.Eta, p("când ajung", "ro"))
+        assertEquals(QueryIntent.Route("cluj", "sibiu"), p("de la Cluj până la Sibiu", "ro"))
     }
 
     @Test fun `russian ukrainian polish swedish hungarian`() {

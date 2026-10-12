@@ -24,8 +24,9 @@ internal object CarStyle {
 
     /** [json] with the car layers in it. The JSON is returned untouched when the style has no
      *  `openmaptiles` source or lacks an anchor layer; the twins then stay absent as they would
-     *  on a style without those layers on the phone. */
-    fun inject(json: String, trafficTiles: String): String {
+     *  on a style without those layers on the phone. With [twins] false (a look Vela does not
+     *  paint, where nothing would color them) only the traffic raster goes in. */
+    fun inject(json: String, trafficTiles: String, twins: Boolean = true): String {
         val style = runCatching { JSONObject(json) }.getOrNull() ?: return json
         val sources = style.optJSONObject("sources") ?: return json
         val src = when {
@@ -34,7 +35,7 @@ internal object CarStyle {
         }
         val layers = style.optJSONArray("layers") ?: return json
         val ids = (0 until layers.length()).map { layers.getJSONObject(it).optString("id") }
-        if ("vela-plaza" in ids) return json
+        if ("vela-plaza" in ids || (!twins && TRAFFIC_LAYER in ids)) return json
         val out = mutableListOf<JSONObject>()
         for (i in 0 until layers.length()) out += layers.getJSONObject(i)
 
@@ -58,20 +59,20 @@ internal object CarStyle {
 
         // Liberty's patterned fills (a fern hatch, dots) are hidden and flat twins take their
         // place, the same two the phone hides.
-        if ("landcover_wetland" in ids) {
+        if (twins && "landcover_wetland" in ids) {
             hide("landcover_wetland")
             above("landcover_wetland", layer("vela-wetland", "fill", "landcover", JSONArray(listOf("==", JSONArray(listOf("get", "class")), "wetland")), 12, null, null))
         }
-        if ("road_area_pattern" in ids) {
+        if (twins && "road_area_pattern" in ids) {
             hide("road_area_pattern")
             above("road_area_pattern", layer("vela-plaza", "fill", "transportation", POLYGON, null, null, null))
         }
-        if ("park" in ids) {
+        if (twins && "park" in ids) {
             // The phone's order: the pitch twin first, then the commercial twin under it.
             above("park", layer("vela-pitch", "fill", "landuse", classIn("pitch", "playground", "track", "stadium"), 13, null, null))
             above("park", layer("vela-commercial", "fill", "landuse", classIn("commercial", "retail"), 12, null, null))
         }
-        if ("road_minor" in ids) {
+        if (twins && "road_minor" in ids) {
             val lineLayout = JSONObject().put("line-cap", "round")
             val linePaint = JSONObject().put("line-width", PATH_WIDTH)
             val isPath = JSONArray(listOf("==", JSONArray(listOf("get", "class")), "path"))

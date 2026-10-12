@@ -1477,6 +1477,13 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
+  `MIN_PACE_MPS` (5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
+  its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.
+- The turn-now line interrupts whatever is playing. A first prompt that could not end before the
+  car reaches the turn-now point (`SPEECH_CPS` 13 letters a second plus `SPEECH_LEAD_S` 0.6 s)
+  keeps its lane clause and drops the sign tail, as a repeat does: a 78-letter ramp line said
+  107 m before the ramp at 15 m/s lost its "toward" half to the line at the turn.
 - The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
   engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
   the engine's route is `planRoute`. The last spoken maneuver before the stop
@@ -3026,6 +3033,32 @@ the shared 12 s timeout cuts it off.
   the category, which would make the sheet a business listing.
 - Not carried: the base map style and videos.
 
+#### The lists sheet
+
+- `ListsSheet` is a dialog on `surfaceContainerHigh`, so it stands off the dark background. Its
+  title row holds Draw and New as icons; while lists are selected (a long press on a row, or OK
+  held on it) it holds the count, a trash that asks `lists_delete_count` before deleting, and a
+  close.
+- Each list row is a `SwipeActionRow` (`ui/map/SwipeRow.kt`, material3 `SwipeToDismissBox`):
+  end to start deletes (a list with places asks first, an empty one goes at once), start to end
+  opens the editor. The row ticks (`tickHaptic`: `CONFIRM` on API 30 and up, `CLOCK_TICK` below)
+  as the swipe crosses its threshold and when it acts, then settles back; the row leaves when the
+  store drops it.
+- A `ReorderHandle` at the end of the row replaces the up and down arrows and the pencil: a drag
+  moves the list one place per row height, with a tick per move (`onMoveList`); on a keypad Up and
+  Down on the focused handle move it and OK opens the editor. With one list the handle is a
+  pencil.
+- The handle is a focus sibling of the row's clickable part, not a child of it: focus search
+  only looks among siblings, so Right from the row reaches the handle and Left returns. The two
+  sit in a `focusGroup` whose `enter` lands every focus move from outside the row on the row
+  (`FocusRequester`), never on the handle, where Down would move the list. A held OK on the row
+  starts selecting through `dpadLongClick` (`ui/DpadFocus.kt`): `combinedClickable` only clicks on
+  a key, so the modifier takes OK and Enter itself and runs the long click on the first key repeat
+  the platform flags as the long press (`KeyEvent.isLongPress`), or the click on a release before
+  it.
+- On the search page a recent query or place row is a `SwipeActionRow` that removes it from
+  history; Clear recents is a `FilledTonalButton` beside the Recent heading.
+
 #### Drawing
 
 - The lists dialog's Draw button sets `MapUiState.drawing` (`DrawState`). Every map tap and
@@ -3099,6 +3132,31 @@ the shared 12 s timeout cuts it off.
   dropped. The picker keeps `*/*` last, because Android reports `.gpx` as an octet stream.
   `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable. Never wrap the
   launcher in a bare `runCatching`: with no documents provider the button then does nothing.
+- Google Takeout's Saved folder holds one CSV per list (`Title,Note,URL,Comment`, older
+  exports `Tags`) with no coordinates (`core/data/TakeoutCsv`). Either Import button takes one
+  (`isTakeoutCsv`: a header with Title and URL) and `MapViewModel.importTakeoutCsv` makes a list
+  named after the file, through `importTarget` with source `takeout:<name>`, so the same file
+  again refreshes the list. A row's link is read on the phone: a `/maps/search/<lat>,<lng>` pin
+  is kept as it is; a `/maps/place/<Name>/data=...!1s0x<cell>:0x<id>` listing carries only its
+  feature id, so the title is searched and the hit whose feature id's second half
+  (`TakeoutCsv.featureKey`, which an old `?cid=<decimal>` link carries too) matches is taken.
+  The id's first half is an S2 cell (`Link.cellCenter`, `core/util/S2Cell`), roughly where the
+  place is, within a hundred meters for a leaf cell, so a keyed row's search is biased there,
+  which is what finds one branch of a chain in a list made on a trip; a keyed row missed there
+  gets one unbiased search (`near = null`), matched on the key alone. A row with no feature id
+  is searched where the user is and takes the one hit named like the title, none when several
+  are (a chain's branches); with a feature id present the name is never trusted, a same-name
+  hit with another id is another place. The choice is `TakeoutCsv.pick`. A row that finds
+  nothing is counted and left out, never guessed at. Note and Comment become the
+  place's note. With "Use Vela without Google" on, only pin rows import and the listing rows
+  are counted as `needGoogle`, not as misses. The lookups run in `viewModelScope`
+  (`importTakeoutCsv` starts them with `async` and awaits), one import at a time
+  (`ImportResult.Busy` for a second), so leaving Settings neither loses nor cancels them; the
+  outcome (`MapViewModel.takeoutOutcome`) goes to the status card as well as to the caller's
+  toast. Listing rows are looked up `TAKEOUT_LOOKUP_GAP_MS` (400 ms) apart; a pin row waits for
+  nothing. The status card shows `settings_takeout_progress` every five rows.
+  `ImportResult.ListAdded` carries the name, the count, the misses and the `needGoogle` count.
+  Rows are capped at `MAX_ROWS` (2,000). The Takeout zip itself is not read; pick the CSV inside it.
 - Trip shortcuts: the route card's menu pins the trip as a launcher shortcut. Its intent
   (action `app.vela.action.OPEN_TRIP`) carries names, latitudes and longitudes as parallel
   arrays (NaN means "your location") and the mode. Nothing is stored in the app.
@@ -3260,10 +3318,25 @@ The engine is MapLibre Native Android 13.6.1, artifact `android-sdk-opengl`. The
 
 ### 6.1 Basemap and fonts
 
-The basemap is OpenFreeMap Liberty (`MapStyle.LIBERTY`), loaded from its live URL so tile paths
-follow OpenFreeMap's current snapshot. Vela's zoom reads about one level lower than Google's for
-the same visible area (512-pixel tiles). Compare against Google by visible area, never by zoom
-number.
+The basemap is an OpenFreeMap style loaded from its live URL so tile paths follow OpenFreeMap's
+current snapshot. Vela's zoom reads about one level lower than Google's for the same visible area
+(512-pixel tiles). Compare against Google by visible area, never by zoom number.
+
+Settings > Appearance > Map look (`MapLook.style`, pref `map_look`, default `liberty`) picks the
+style (`MapStyle`): Liberty is the Vela look, and Bright, Positron, Fiord and Dark load as
+OpenFreeMap serves them. All five share the `openmaptiles` source, the glyph server and the
+sprite, so the offline basemap, the font patch and `basemapSrc` work on each. `MapStyle.painted`
+is true for Liberty only: the palettes, `widenStreets`, the road edges, `PoiIcons.applyToLiberty`,
+the twin fills of `ensureLayers` and the Map colors setting belong to it. Another look gets
+`applyLookTheme`: the label language on `PLACE_LABEL_LAYERS` and `ROAD_LABEL_LAYERS` (Liberty's
+ids, which Bright and Positron share, plus Fiord's and Dark's `place_*`, `water_name` and
+`highway_name_other`), and the per-theme colors of Vela's own layers (`applyVelaLayerColors`).
+Vela's own layers (places, route, markers, house numbers, shields, transit, traffic, satellite)
+are added on every look; a twin's missing anchor leaves that twin out. `isMapDark()` is
+`MapStyle.darkLook` on an unpainted look (Fiord and Dark are dark whatever the theme, Bright and
+Positron light) and `isMapAmoled()` is false. The car map follows the look. The place icon tiers
+(`poi_r1`, `poi_r7`, `poi_r20`) exist on Bright, so its vegetation and fuel-only filters apply;
+Positron, Fiord and Dark draw no basemap places.
 
 Map labels draw in Google Sans Flex layered over Roboto and Noto, composited per glyph by
 `scripts/build-map-fonts.sh`: Flex where it has the glyph (Latin, extended Latin, Vietnamese),
@@ -3273,17 +3346,24 @@ Roboto for Cyrillic and Greek, Noto for every other script. The folders keep the
 
 `ui/map/MapFonts` builds the style the map loads:
 
-- At launch it uses the cached patched style (`files/style/liberty-roboto.json`) if there is one,
-  then refreshes it: probe the font host, fetch the live Liberty JSON, point `glyphs` at the font
-  host, write the cache.
-- A font host that fails the probe evicts the cache, and the map loads plain Liberty in Noto. A
+- At launch it uses the cached patched style of each look that has one (`files/style/liberty-roboto.json`,
+  `<key>-roboto.json` for the others), then refreshes the chosen look's: probe the font host,
+  fetch the live style JSON, point `glyphs` at the font host, write the cache. Picking a look
+  refreshes that look's (`MapFonts.ensure`).
+- With no validated network (`ConnectivityManager`, INTERNET and VALIDATED) the refresh does
+  nothing and the cache stays: it is what an installed offline basemap loads.
+- A font host that fails the probe evicts the cache, and the map loads the plain style in Noto. A
   style whose glyph URLs fail draws no labels at all.
 - A failed style fetch keeps the last cache for at most 7 days (`STALE_EVICT_MS`). A cached style
   pins a tile snapshot, and OpenFreeMap retires old snapshots.
-- Only Liberty is patched.
+- Only OpenFreeMap looks are patched.
 
-Under an installed offline basemap the style is built from JSON: the patched cache, else the
-bundled `assets/styles/liberty-roboto.json`. `withLocalBasemap` points its layers at the local
+Under an installed offline basemap the style is built from JSON (`MapFonts.offlineStyle`): the
+chosen look's patched cache, else the bundled `assets/styles/liberty-roboto.json`. The asset is
+painted as the Vela look whatever the look, in the look's light or dark (`isMapDark()`), so a look
+with no cached style is the Vela look offline and never stock Liberty under another look's colors.
+The Liberty-only passes (`applyMapTheme`, the twins of `ensureLayers`) follow the style that
+loaded, not `MapLook.style` alone. `withLocalBasemap` points its layers at the local
 archive, maps the asset's Roboto stacks to the Noto names (`GlyphPackStore.stackName`), and serves
 glyphs and the sprite from `file://`. `GlyphPackStore` unzips the `map-fonts` release into
 `glyphs/` under `StorageLocation.root` (about 200 MB) and copies the bundled sprite to
@@ -4635,8 +4715,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 18 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
-from Weblate and English spoken guidance.
+The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
+spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
 `AppLocale` holds the language (empty means follow the system) and is applied in both
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
@@ -5124,7 +5205,7 @@ The map:
   style light at `LIGHT_INTENSITY` (0.25, the phone's `B3D_LIGHT`), and Google's traffic raster
   (`vela-traffic-src`, the phone's `TRAFFIC_TILES`, `raster-opacity` 0.6, no fade) above the
   topmost building layer with visibility `none`. The ids are the phone's, so the palette functions
-  color them. The twins' filters and anchors are kept the same as `ensureLayers` by hand. While
+  color them. On a look Vela does not paint only the raster goes in (`twins = look.painted`). The twins' filters and anchors are kept the same as `ensureLayers` by hand. While
   the patched style does not exist yet the plain URL loads, without them; the next render after
   the file appears rebuilds the snapshotter on it (`reloadIfPatched`), so the Traffic switch and
   the fills do not wait for the next connection.
@@ -5350,7 +5431,11 @@ Regressing one of these blocks a release.
   Google is used for" under Continue opens `GoogleUsesSection` as a first-run page, with the
   same switches as Settings > Privacy. The same page asks about plate cameras (`CameraChoices`):
   "Route around them" sets `FlockRouteAlert`, "Warn me as I get close" sets the card and the
-  spoken warning of `FlockNavAlert`. Both start off and are written on Continue.
+  spoken warning of `FlockNavAlert`. Both start off and are written on Continue. The card
+  starts with the plate camera badge as the map draws it (`PlateCameraBadge`, the map's own
+  `alprCameraBitmap`), and Settings > Navigation shows the plate and speed camera badges
+  before their rows (`ToggleRow`'s `leading` slot), so the badge is explained where it is
+  turned on and never drawn a second way.
 - Settings > Privacy lists every switch that decides what Google is asked
   (`GoogleUsesSection`, shown while Google is on): the place source, what a place page loads,
   and what a route and a drive ask. Each row is a shared composable in
