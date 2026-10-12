@@ -1749,7 +1749,9 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   `CAM_BRG_TAU_TURN` (0.35 s) past `CAM_BRG_TURN_DEG` (25 degrees). Geometry noise is a few
   degrees and a turn is tens.
 - Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s, less the
-  framing's pull-back (below). A pinch sets an override that a pan or Re-center clears.
+  framing's pull-back (below). A pinch sets an override that a pan or Re-center clears. With
+  "Zoom to the next turn" on (Settings > Navigation, off by default) the zoom is the lesser of
+  that and the zoom that frames the next maneuver (Framing, below).
 - Tilt is 55 degrees heading-up (0 north-up, or the angle a two-finger tilt set), capped by
   `navTiltCap` at a zoom the user pinched to: the whole tilt from `NAV_TILT_FULL_ZOOM` (15) in,
   flat from `NAV_TILT_FLAT_ZOOM` (12.5) out, linear between. The cap is applied during the
@@ -1757,8 +1759,9 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   A view tilted 55 degrees at city-wide zoom reaches the horizon and loads the tiles for all
   of it. Pixel 4a, San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive:
   4,195 frames and 16 stalls over 250 ms (longest 943 ms) uncapped, 5,178 frames and none
-  (longest frame 148 ms) capped, 5,554 flat. The camera's own zoom stays at 15.5 or above, so
-  only a pinch meets the cap.
+  (longest frame 148 ms) capped, 5,554 flat. Without Zoom to the next turn the camera's own
+  zoom stays at 15.5 or above, so only a pinch meets the cap; with it the zoom to a far turn
+  meets it too (`NavFraming.tiltAt`).
 - Cosmetic eases take `dtEase`, the frame time capped at `0.065 x replaySpeedup` s. Integration
   keeps the real time. Uncapped, one long frame moves an ease 45 to 70 percent of its error.
 - A two-finger move is a pan only after `TWO_FINGER_PAN_DP` (44 dp) of travel with no tilt or
@@ -1823,6 +1826,41 @@ leaves visible. At the default display and font size the frame is unchanged.
   column, and the frame is the default.
 - On a 1080 x 2340 px, 420 dpi fixture: card bottom at 250 dp, no change. At 546 dpi with the card
   capped at a third of the screen (about 257 dp), the zoom pulls back about 0.8 levels.
+
+Zoom to the next turn (`ZoomToTurn`, Settings > Navigation, off by default; issue #781):
+
+- Heading-up, the zoom is the lesser of the speed's (its pull-back and `ZOOM_FLOOR` included)
+  and the zoom at which the next maneuver's point lands `TURN_MARGIN_DP` (24 dp) under the top
+  chrome's edge: the turn card's bottom as the framer adopted it, the top of the map in
+  landscape, in picture-in-picture and with no card. Never below `ZOOM_TURN_MIN` (12). The zoom
+  eases like the speed zoom (0.5 s), so a passed turn eases out to the next one and a near one
+  eases in to the speed's. North-up, and under a pinch, the zoom is what it was.
+- The point is `NavTurnTarget`, written by `NavController` as the step changes: the step's
+  maneuver, past any CONTINUE or STRAIGHT step, which asks nothing of the driver; the arrival
+  counts. No drive, or no maneuver left, leaves the speed's zoom.
+- `NavFraming.turnZoom`: the straight-line meters from the drawn arrow to the point, taken as
+  straight ahead, against the ground the rows between the arrow and the edge cover. Flat, a row
+  is a ground dp. Tilted `p`, a row `u` dp above the arrow reaches `d cos p tan(p + atan(u / d))
+  - d sin p` ground dp at the center's scale, `d` being the camera distance `0.5 height / tan(FOV
+  / 2)` (the mirror of `CarFraming.targetOffset`). Meters per dp at the center are
+  `40,075,016.686 cos(lat) / (512 x 2^zoom)`. A turn off to the side lands lower than the edge,
+  never higher. A turn farther than fits at z12 sits off the top until it is near enough.
+- Below `NAV_TILT_FULL_ZOOM` the camera lies flatter (`navTiltCap`, applied to the camera's own
+  zoom as to a pinch), a flatter camera reaches less ground per row, and
+  `turnZoomFlattening` bisects the zoom against the tilt it will have there (twelve halvings).
+- At z12 the basemap draws motorways through minor roads and the route line. Street names
+  (the road-name pass runs from z14.6), lights and stop signs (z15.4) do not draw that far out,
+  which the option accepts. Lower would load a region's tiles at each step and show nothing a
+  drive needs.
+- The camera stays heading-up. The arrow's turn on screen keeps its meaning and a turn to the
+  side is in view already; the camera is not turned toward it.
+- The pre-engage camera (the car not yet on the line, a reroute) takes the same zoom, so a
+  reroute does not zoom in and back out.
+- On the fixture with the card at 230 dp and latitude 38.5: 392 dp above the arrow reach 1,177
+  ground dp at 55 degrees. The speed zoom at 30 m/s (z15.8) frames a turn 1,263 m ahead and
+  takes over inside that; z17 frames 550 m. A turn 1 km ahead frames at z16.1, 2 km at z15.1,
+  3 km at z13.1 with the camera at 13.5 degrees, 5 km at z12.2 flat, and the floor frames
+  5,863 m (`ZoomToTurnTest`).
 
 #### The puck overlay
 
@@ -2198,6 +2236,7 @@ under the bridges.
 - Icon size runs from 0.98 at z15.5 to 1.95 at z19.
 - The browse map fetches them from z16 and draws them from `CONTROLS_BROWSE_SHOW_ZOOM` (z19).
   Navigation draws from z15.4, just under the camera's 15.5 floor (`NavFraming.ZOOM_FLOOR`).
+  With Zoom to the next turn the camera goes as far out as z12, where they do not draw.
 - A level crossing or hump within 25 m of a light or stop sign is drawn offset down and left
   (`CONTROL_NUDGE_PROP`). Camera badges nudge up and right.
 - OSM maps signals more consistently than stop signs (Delaware's bake: 2,331 signals, 2,144

@@ -230,6 +230,17 @@ nothing changes. With a large display size or large text:
   400 ms and moved a dp or more, so dragging the bar or a card animating in does not move the
   camera.
 
+"Zoom to the next turn" (Settings > Navigation, off by default) is for long stretches between
+turns. Heading-up, the camera zooms out until the next turn sits 24 dp under the turn card, or
+under the top of the map when nothing covers it, and the speed zoom takes over once the turn is
+near enough for it. It never goes below z12: there the map still draws motorways through minor
+roads and the route, and a turn farther than that sits off the top until it is nearer. Street
+names, lights and stop signs do not draw that far out. Below z15 the camera lies flatter, the
+way it does for a pinch, and the zoom allows for that. The map stays heading-up; the camera is
+not turned toward the turn. On a 1080 x 2340 px, 420 dpi phone the speed zoom at 30 m/s frames
+a turn 1.26 km ahead, a turn 3 km ahead frames at about z13 with the camera at 13 degrees, and
+z12 frames one 5.9 km ahead, flat. The numbers are in SPEC 4.7, Framing.
+
 Start cuts to the car: the camera jumps to the nav zoom, flat, and tilts in with
 `NAV_START_TILT_TAU_S = 3` s. A flight down from the route overview loads a set of tiles at every
 zoom it crosses. On a Pixel 4a, seconds 2 to 4 after Start ran 6 to 20 fps flying and 29 to 59

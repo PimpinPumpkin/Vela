@@ -1410,6 +1410,8 @@
     <string name="place_updates_all">Show all %1$d updates</string> <!-- format -->
     <string name="settings_nav_north_up">Start drives north-up</string>
     <string name="settings_nav_north_up_hint">The map stays flat with north at the top while you drive. Tap the compass during a drive to switch.</string>
+    <string name="settings_zoom_to_turn">Zoom to the next turn</string>
+    <string name="settings_zoom_to_turn_hint">The map zooms out until the next turn sits just under the turn card, and back in as you near it. Made for long stretches between turns; street names and traffic lights do not show that far out.</string>
     <string name="settings_puck_shape">Navigation icon</string>
     <string name="settings_puck_shape_arrow">Arrow</string>
     <string name="settings_puck_shape_car">Car</string>

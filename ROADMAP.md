@@ -307,6 +307,10 @@ off the list when it has been.
   Not seen: Home and Work set from a plain address after the change.
 - A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
 - UK fuel prices on a phone in the UK.
+- "Zoom to the next turn" (#781): the zoom that frames the next maneuver under the turn card,
+  unit-tested on the 1080 x 2340 fixture. Not seen on a phone: the ease from a passed turn out
+  to the next, the flattening below z15 on a real road, a reroute with it on, and whether 24 dp
+  under the card is the right margin for the street callout.
 
 ### Open from the October 2026 audit
 

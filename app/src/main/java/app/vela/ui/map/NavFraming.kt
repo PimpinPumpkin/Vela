@@ -1,8 +1,15 @@
 package app.vela.ui.map
 
+import app.vela.core.model.distanceTo
 import kotlin.math.abs
+import kotlin.math.atan
+import kotlin.math.cos
+import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.tan
 
 /**
  * Where the drive camera puts the arrow and how far its speed zoom pulls back, from the part of
@@ -57,6 +64,21 @@ internal object NavFraming {
     /** A change in the measured chrome is adopted once it has held this long, so a bar being
      *  dragged or a card animating in does not walk the camera. */
     const val SETTLE_MS = 400L
+
+    /** "Zoom to the next turn" (issue #781) never takes the camera below this. At z12 the basemap
+     *  still draws motorways through minor roads and the route line; street names, lights and
+     *  stop signs do not draw, which the option accepts. A turn farther than fits at z12 sits off
+     *  the top until it is near enough. */
+    const val ZOOM_TURN_MIN = 12.0
+
+    /** The next turn is framed this far under the top chrome's edge: room for the blue street
+     *  callout drawn past the corner. */
+    const val TURN_MARGIN_DP = 24.0
+
+    /** MapLibre's world at z0 is 512 px wide; the equator in meters. Zoom, latitude and meters
+     *  per dp relate through these two. */
+    const val WORLD_PX_Z0 = 512.0
+    const val EARTH_CIRCUMFERENCE_M = 40_075_016.686
 
     class Frame(val pad: Double, val zoomOffset: Double)
 
@@ -132,6 +154,105 @@ internal object NavFraming {
     /** What hangs under the arrow's point: its own glyph, and the road-name pill when that is pinned under it. */
     fun belowPuck(pillUnderArrow: Boolean, pillHeightPx: Double): Double =
         ARROW_BELOW_PX + if (pillUnderArrow) pillHeightPx else 0.0
+
+    /** Meters in one dp of map at the camera's center, at [zoom] and latitude [latDeg]. */
+    fun metersPerDp(zoom: Double, latDeg: Double): Double =
+        EARTH_CIRCUMFERENCE_M * cos(Math.toRadians(latDeg)) / (WORLD_PX_Z0 * 2.0.pow(zoom))
+
+    /**
+     * Ground dp, at the center's scale, from the arrow to the screen row [upDp] above it, on a map
+     * [heightDp] tall tilted [tiltDeg]. Flat, that is [upDp] itself. Tilted, the ground beyond the
+     * arrow is drawn smaller, so a screen row reaches farther. The mirror of
+     * `CarFraming.targetOffset`, for a row above the center: a point g beyond the center sits
+     * `atan((d sin p + g) / (d cos p)) - p` above the view axis, shown at `tan(angle) d` pixels,
+     * solved for g. Infinite at the horizon and past it.
+     */
+    fun groundAhead(upDp: Double, tiltDeg: Double, heightDp: Double): Double {
+        if (tiltDeg <= 0.0 || heightDp <= 0.0) return upDp
+        val p = Math.toRadians(tiltDeg)
+        val d = cameraDistanceDp(heightDp)
+        val a = p + atan(upDp / d)
+        if (a >= Math.PI / 2 - 1e-6) return Double.POSITIVE_INFINITY
+        return d * cos(p) * tan(a) - d * sin(p)
+    }
+
+    /** The screen row above the arrow that a ground point [aheadDp] beyond it lands on: the
+     *  forward projection of [groundAhead], for checking it. */
+    fun screenUp(aheadDp: Double, tiltDeg: Double, heightDp: Double): Double {
+        if (tiltDeg <= 0.0) return aheadDp
+        val p = Math.toRadians(tiltDeg)
+        val d = cameraDistanceDp(heightDp)
+        return d * tan(atan((d * sin(p) + aheadDp) / (d * cos(p))) - p)
+    }
+
+    /** The camera's distance to the point it looks at, in dp of a map [heightDp] tall. */
+    fun cameraDistanceDp(heightDp: Double): Double = 0.5 * heightDp / tan(app.vela.car.CarFraming.FOV_RAD / 2.0)
+
+    /**
+     * The zoom at which a point [groundM] meters from the arrow, taken as straight ahead, lands
+     * [upDp] above the arrow's row, with the camera tilted [tiltDeg] over a map [heightDp] tall
+     * at latitude [latDeg]. A turn off to the side lands lower than that row, never higher. NaN
+     * when there is nothing to frame (no distance, no room above the arrow). Not floored.
+     */
+    fun turnZoom(groundM: Double, upDp: Double, heightDp: Double, tiltDeg: Double, latDeg: Double): Double {
+        if (groundM <= 0.0 || upDp <= 0.0 || heightDp <= 0.0) return Double.NaN
+        val g = groundAhead(upDp, tiltDeg, heightDp)
+        if (!g.isFinite() || g <= 0.0) return Double.NaN
+        return log2(EARTH_CIRCUMFERENCE_M * cos(Math.toRadians(latDeg)) * g / (WORLD_PX_Z0 * groundM))
+    }
+
+    /** The tilt the drive camera takes at [zoom] when it wants [wantedDeg]: flatter below
+     *  `NAV_TILT_FULL_ZOOM` (`navTiltCap`), whether a pinch or the zoom to the next turn took it there. */
+    fun tiltAt(zoom: Double, wantedDeg: Double): Double = min(wantedDeg, navTiltCap(zoom))
+
+    /**
+     * [turnZoom] with the tilt the camera will have at the answer ([tiltAt]): below z15 the
+     * camera lies flatter, a flatter camera reaches less ground per row, and the zoom has to go
+     * out further still. The fixed point is bisected between the flat answer and the one at the
+     * wanted tilt; twelve halvings leave less than 0.001 of a level.
+     */
+    fun turnZoomFlattening(groundM: Double, upDp: Double, heightDp: Double, tiltWantedDeg: Double, latDeg: Double): Double {
+        val atWanted = turnZoom(groundM, upDp, heightDp, tiltWantedDeg, latDeg)
+        if (atWanted.isNaN() || tiltAt(atWanted, tiltWantedDeg) >= tiltWantedDeg - 1e-9) return atWanted
+        var lo = turnZoom(groundM, upDp, heightDp, 0.0, latDeg)
+        var hi = atWanted
+        repeat(12) {
+            val mid = (lo + hi) / 2
+            if (turnZoom(groundM, upDp, heightDp, tiltAt(mid, tiltWantedDeg), latDeg) > mid) lo = mid else hi = mid
+        }
+        return (lo + hi) / 2
+    }
+
+    /** The drive zoom with "Zoom to the next turn" on: never closer than the speed's [speedZoom]
+     *  (its pull-back and floor included), never below [ZOOM_TURN_MIN]. No turn to frame (NaN)
+     *  leaves the speed's. */
+    fun withTurn(speedZoom: Double, turnZoom: Double): Double =
+        if (turnZoom.isNaN()) speedZoom else min(speedZoom, max(turnZoom, ZOOM_TURN_MIN))
+}
+
+/**
+ * The point of the next maneuver the drive camera zooms out to (NavFraming, "Zoom to the next
+ * turn"), written by `NavController` as the step changes and read per frame by the drive ticker.
+ * Null while no drive is on or the route has no maneuver ahead. A continue or straight step asks
+ * nothing of the driver (NavEngine says nothing for it), so the point is the first step past
+ * those; the arrival counts as a turn.
+ */
+internal object NavTurnTarget {
+    @JvmField var point: app.vela.core.model.LatLng? = null
+    private var route: app.vela.core.model.Route? = null
+    private var step = -1
+
+    fun update(route: app.vela.core.model.Route?, stepIndex: Int) {
+        if (route === this.route && stepIndex == step) return
+        this.route = route
+        step = stepIndex
+        point = route?.let { r ->
+            var i = stepIndex
+            while (i < r.maneuvers.size && (r.maneuvers[i].type == app.vela.core.model.ManeuverType.CONTINUE ||
+                r.maneuvers[i].type == app.vela.core.model.ManeuverType.STRAIGHT)) i++
+            r.maneuvers.getOrNull(i)?.location
+        }
+    }
 }
 
 /**
@@ -172,6 +293,10 @@ internal class NavFramer {
     var pad = NavFraming.DEFAULT_PAD
         private set
     var zoomOffset = 0.0
+        private set
+
+    /** The top chrome's bottom edge the frame was taken with, px; 0 when nothing covers the arrow's column. */
+    var chromeTopPx = 0.0
         private set
 
     // [map height dp, density x 100, default density x 100, top dp, bottom dp, below-puck dp, north-up x 100]
@@ -215,7 +340,25 @@ internal class NavFramer {
         val changed = abs(f.pad - pad) > 1e-6 || abs(f.zoomOffset - zoomOffset) > 1e-6
         pad = f.pad
         zoomOffset = f.zoomOffset
+        chromeTopPx = topPx.coerceAtLeast(0f).toDouble()
         return changed
+    }
+
+    /**
+     * The zoom that puts the next maneuver ([NavTurnTarget]) [NavFraming.TURN_MARGIN_DP] under the
+     * top chrome this frame was taken with (the top of the map when nothing is there), seen from
+     * the arrow at [from] with the camera wanting [tiltDeg]. NaN with no maneuver ahead or no
+     * room. Per frame, no allocation; the floor and the speed zoom are applied by
+     * [NavFraming.withTurn].
+     */
+    fun turnZoom(context: android.content.Context, mapHeightPx: Int, from: app.vela.core.model.LatLng, tiltDeg: Double): Double {
+        val target = NavTurnTarget.point ?: return Double.NaN
+        val d = context.resources.displayMetrics.density
+        if (d <= 0f || mapHeightPx <= 0) return Double.NaN
+        val groundM = from.distanceTo(target)
+        val arrowY = mapHeightPx * (1 + pad) / 2
+        val upDp = (arrowY - chromeTopPx) / d - NavFraming.TURN_MARGIN_DP
+        return NavFraming.turnZoomFlattening(groundM, upDp, mapHeightPx / d.toDouble(), tiltDeg, from.lat)
     }
 
     /** Reads the measured chrome and calls [update]. In landscape (the chrome is a left column) and

@@ -195,7 +195,9 @@ private fun bearingOffNorth(bearing: Double): Double {
  * tilted 55 degrees at city-wide zoom reaches to the horizon and loads the tiles for all of it:
  * on a Pixel 4a in San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive drew
  * 4,195 frames tilted (16 stalls over 250 ms, the longest 943 ms) and 5,728 flat (2 stalls).
- * The camera's own zoom never goes below 15.5 (NavFraming.ZOOM_FLOOR), so only a pinch meets this.
+ * Without "Zoom to the next turn" the camera's own zoom never goes below 15.5
+ * (NavFraming.ZOOM_FLOOR), so only a pinch meets this; with it, the zoom to a far turn meets it
+ * too (NavFraming.tiltAt).
  */
 internal fun navTiltCap(zoom: Double, full: Double = 55.0): Double =
     full * ((zoom - NAV_TILT_FLAT_ZOOM) / (NAV_TILT_FULL_ZOOM - NAV_TILT_FLAT_ZOOM)).coerceIn(0.0, 1.0)
@@ -3342,8 +3344,22 @@ fun VelaMapView(
                     // measured chrome moved a dp or more and held still.
                     navPuck.framer.track(android.os.SystemClock.uptimeMillis(), context, cam.width.toInt(), cam.height.toInt(), navBarTopHolder.value, navNorthUpHolder.value)
                     val navPad = navPuck.framer.pad
-                    val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                        else NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
+                    // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
+                    val tiltWanted = when {
+                        navNorthUpHolder.value -> 0.0
+                        !navUserTilt[0].isNaN() -> navUserTilt[0]
+                        else -> 55.0
+                    }
+                    val speedZoom = NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
+                    // ZOOM TO THE NEXT TURN (issue #781, SPEC 4.7 Framing): heading-up, the zoom
+                    // pulls out until the next maneuver sits under the turn card, never closer than
+                    // the speed's and never below ZOOM_TURN_MIN. The same ease as the speed zoom.
+                    val tgtZoom = when {
+                        !navUserZoom[0].isNaN() -> navUserZoom[0]
+                        app.vela.ui.ZoomToTurn.on.value && !navNorthUpHolder.value ->
+                            NavFraming.withTurn(speedZoom, navPuck.framer.turnZoom(context, cam.height.toInt(), pt, tiltWanted))
+                        else -> speedZoom
+                    }
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
                         val cp = cam.cameraPosition
                         camState[0] = cp.target?.latitude ?: pt.lat
@@ -3434,14 +3450,8 @@ fun VelaMapView(
                         android.os.SystemClock.uptimeMillis(),
                     ) { applyOpenPlacesHidden(it) }
                     camState[3] += (tgtZoom - camState[3]) * kZoom
-                    // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
-                    val tiltWanted = when {
-                        navNorthUpHolder.value -> 0.0
-                        !navUserTilt[0].isNaN() -> navUserTilt[0]
-                        else -> 55.0
-                    }
-                    // Zoomed out by hand, the camera lies flatter (navTiltCap).
-                    val tiltTgt = if (navUserZoom[0].isNaN()) tiltWanted else minOf(tiltWanted, navTiltCap(navUserZoom[0]))
+                    // Zoomed out by hand or to a far turn, the camera lies flatter (navTiltCap).
+                    val tiltTgt = NavFraming.tiltAt(tgtZoom, tiltWanted)
                     // The drive's opening tilt eases in slowly after the start cut; everything else
                     // (the compass toggle, a shove) keeps the bearing's constant.
                     val tiltTau = if (navStartTilting[0]) NAV_START_TILT_TAU_S.toFloat() else 0.55f
@@ -5360,8 +5370,16 @@ fun VelaMapView(
                         lastNavBearing = brg
                         val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)
                         navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
-                        val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                            else NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
+                        val speedZoom = NavFraming.zoom(18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8), navPuck.framer.zoomOffset) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
+                        // The same zoom to the next turn as the ticker's, so a reroute does not
+                        // zoom in while the car is off the line and back out when it is on the new one.
+                        val zoom = when {
+                            !navUserZoom[0].isNaN() -> navUserZoom[0]
+                            app.vela.ui.ZoomToTurn.on.value && !navNorthUpOn ->
+                                NavFraming.withTurn(speedZoom, navPuck.framer.turnZoom(context, map.height.toInt(), loc, 55.0))
+                            else -> speedZoom
+                        }
+                        val preTilt = NavFraming.tiltAt(zoom, 55.0) // flatter when that zoom is far out
                         val now = android.os.SystemClock.uptimeMillis()
                         if (navStartCutMs[0] == 0L) {
                             // Google's start: cut straight to the car at street zoom, flat, then
@@ -5393,8 +5411,8 @@ fun VelaMapView(
                                     .zoom(zoom)
                                     // Still tilting in from the cut: the same ease the ticker runs.
                                     .tilt(if (navNorthUpOn) 0.0 else if (navStartTilting[0])
-                                        55.0 * (1.0 - kotlin.math.exp(-(now - navStartCutMs[0]) / 1000.0 / NAV_START_TILT_TAU_S))
-                                        else 55.0)
+                                        preTilt * (1.0 - kotlin.math.exp(-(now - navStartCutMs[0]) / 1000.0 / NAV_START_TILT_TAU_S))
+                                        else preTilt)
                                     .bearing(if (navNorthUpOn) 0.0 else brg.toDouble())
                                     .padding(0.0, map.height * navPuck.framer.pad, 0.0, 0.0)
                                     .build(),

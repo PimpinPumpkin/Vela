@@ -94,6 +94,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.NavNorthUp.set(context, it) },
             hint = stringResource(R.string.settings_nav_north_up_hint),
         )
+        // Zoom to the next turn (issue #781): heading-up only, the camera pulls out until the next
+        // maneuver sits under the turn card (NavFraming, SPEC 4.7).
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_zoom_to_turn),
+            checked = app.vela.ui.ZoomToTurn.on.value,
+            onCheckedChange = { app.vela.ui.ZoomToTurn.set(context, it) },
+            hint = stringResource(R.string.settings_zoom_to_turn_hint),
+        )
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_route_trail),

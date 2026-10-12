@@ -166,6 +166,9 @@ internal class NavController(
                 // Mirror the drive into the theme holder: the "day and night while navigating"
                 // setting (issue #262) is the one theme input that is not a preference.
                 app.vela.ui.theme.AppTheme.navigating.value = ns.navigating
+                // The next maneuver's point for the drive camera's zoom to the next turn (SPEC 4.7,
+                // Framing). Change-gated on the route and the step inside.
+                NavTurnTarget.update(if (ns.navigating) nsRoute else null, ns.nav.stepIndex)
                 // The next stop's figures for the bottom bar, beside the whole trip's.
                 val toStop = ns.nextStop
                 app.vela.ui.nav.NavLegFigures.leg.value =
