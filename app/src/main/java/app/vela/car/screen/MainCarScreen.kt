@@ -37,6 +37,7 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
         // collector on transitions — the shared renderer lives for the session (VelaCarSession stops it).
         val renderer = deps.mapRenderer(carContext)
         renderer.follow()
+        renderer.setDriveScreen(false)
         carContext.getCarService(AppManager::class.java).setSurfaceCallback(renderer)
         renderer.start()
     }
@@ -96,6 +97,8 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
             .setActionStrip(
                 ActionStrip.Builder()
                     .addAction(search)
+                    // Drive mode: the map alone, the list put away (issue #749).
+                    .addAction(mapAction(app.vela.R.drawable.ic_car_drive) { screenManager.push(DriveCarScreen(carContext, deps)) })
                     .addAction(mapAction(app.vela.R.drawable.ic_car_saved) { screenManager.push(SavedCarScreen(carContext, deps)) })
                     .addAction(mapAction(app.vela.R.drawable.ic_car_settings) { screenManager.push(CarSettingsScreen(carContext, deps)) })
                     .build(),

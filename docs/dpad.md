@@ -107,6 +107,9 @@ in the area picker (`AreaPickOverlay`).
 | Photo viewer swipe | Left and right |
 | Long press on a suggestion row | The trailing overflow button opens the same menu |
 | Drag to reorder stops (`StopsEditorSheet`) | Up and down buttons on each row in D-pad mode |
+| Swipe a list row to delete or edit, drag its handle to reorder (`ListsSheet`) | Right from the row reaches its handle and Left returns. On the handle, Up and Down move the list and OK opens the editor, which has Delete. Down from the row goes to the next row |
+| Long press a list row to select several | Hold OK on the row. While selecting, OK on a row toggles it; the trash and the close button sit in the title row |
+| Swipe a recent search row to remove it | The trailing overflow button has Remove from history, but a key cannot reach it from the row yet (ROADMAP.md) |
 | Street View drag | OK engages look-around: arrows turn the view, plus and minus zoom, OK moves to the nearest link ahead |
 | Long press on the parking button (`ParkingControl`) | OK on the button. With no spot saved and a history to open, it asks: Save parking spot, or Parking history. With a spot saved, the menu has Earlier spots |
 

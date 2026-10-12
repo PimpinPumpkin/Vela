@@ -827,7 +827,7 @@ the page fills it after load, and a small stub sits beside it.
 | Places > Wait for popular times | `DetailsRetry`, `details_retry`, on | off makes `placeTries()` 1 |
 | Privacy > Live traffic only when I tap | `RouteTrafficOnTap`, `route_traffic_on_tap`, off | clears `RoutingPrefs.googleTraffic` for each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not prefetched. The chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches |
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
-| Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up while following |
+| Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home` or `place` (4.7, Where the map opens) |
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
@@ -1477,6 +1477,13 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
+  `MIN_PACE_MPS` (5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
+  its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.
+- The turn-now line interrupts whatever is playing. A first prompt that could not end before the
+  car reaches the turn-now point (`SPEECH_CPS` 13 letters a second plus `SPEECH_LEAD_S` 0.6 s)
+  keeps its lane clause and drops the sign tail, as a repeat does: a 78-letter ramp line said
+  107 m before the ramp at 15 m/s lost its "toward" half to the line at the turn.
 - The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
   engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
   the engine's route is `planRoute`. The last spoken maneuver before the stop
@@ -3026,6 +3033,32 @@ the shared 12 s timeout cuts it off.
   the category, which would make the sheet a business listing.
 - Not carried: the base map style and videos.
 
+#### The lists sheet
+
+- `ListsSheet` is a dialog on `surfaceContainerHigh`, so it stands off the dark background. Its
+  title row holds Draw and New as icons; while lists are selected (a long press on a row, or OK
+  held on it) it holds the count, a trash that asks `lists_delete_count` before deleting, and a
+  close.
+- Each list row is a `SwipeActionRow` (`ui/map/SwipeRow.kt`, material3 `SwipeToDismissBox`):
+  end to start deletes (a list with places asks first, an empty one goes at once), start to end
+  opens the editor. The row ticks (`tickHaptic`: `CONFIRM` on API 30 and up, `CLOCK_TICK` below)
+  as the swipe crosses its threshold and when it acts, then settles back; the row leaves when the
+  store drops it.
+- A `ReorderHandle` at the end of the row replaces the up and down arrows and the pencil: a drag
+  moves the list one place per row height, with a tick per move (`onMoveList`); on a keypad Up and
+  Down on the focused handle move it and OK opens the editor. With one list the handle is a
+  pencil.
+- The handle is a focus sibling of the row's clickable part, not a child of it: focus search
+  only looks among siblings, so Right from the row reaches the handle and Left returns. The two
+  sit in a `focusGroup` whose `enter` lands every focus move from outside the row on the row
+  (`FocusRequester`), never on the handle, where Down would move the list. A held OK on the row
+  starts selecting through `dpadLongClick` (`ui/DpadFocus.kt`): `combinedClickable` only clicks on
+  a key, so the modifier takes OK and Enter itself and runs the long click on the first key repeat
+  the platform flags as the long press (`KeyEvent.isLongPress`), or the click on a release before
+  it.
+- On the search page a recent query or place row is a `SwipeActionRow` that removes it from
+  history; Clear recents is a `FilledTonalButton` beside the Recent heading.
+
 #### Drawing
 
 - The lists dialog's Draw button sets `MapUiState.drawing` (`DrawState`). Every map tap and
@@ -3099,6 +3132,31 @@ the shared 12 s timeout cuts it off.
   dropped. The picker keeps `*/*` last, because Android reports `.gpx` as an octet stream.
   `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable. Never wrap the
   launcher in a bare `runCatching`: with no documents provider the button then does nothing.
+- Google Takeout's Saved folder holds one CSV per list (`Title,Note,URL,Comment`, older
+  exports `Tags`) with no coordinates (`core/data/TakeoutCsv`). Either Import button takes one
+  (`isTakeoutCsv`: a header with Title and URL) and `MapViewModel.importTakeoutCsv` makes a list
+  named after the file, through `importTarget` with source `takeout:<name>`, so the same file
+  again refreshes the list. A row's link is read on the phone: a `/maps/search/<lat>,<lng>` pin
+  is kept as it is; a `/maps/place/<Name>/data=...!1s0x<cell>:0x<id>` listing carries only its
+  feature id, so the title is searched and the hit whose feature id's second half
+  (`TakeoutCsv.featureKey`, which an old `?cid=<decimal>` link carries too) matches is taken.
+  The id's first half is an S2 cell (`Link.cellCenter`, `core/util/S2Cell`), roughly where the
+  place is, within a hundred meters for a leaf cell, so a keyed row's search is biased there,
+  which is what finds one branch of a chain in a list made on a trip; a keyed row missed there
+  gets one unbiased search (`near = null`), matched on the key alone. A row with no feature id
+  is searched where the user is and takes the one hit named like the title, none when several
+  are (a chain's branches); with a feature id present the name is never trusted, a same-name
+  hit with another id is another place. The choice is `TakeoutCsv.pick`. A row that finds
+  nothing is counted and left out, never guessed at. Note and Comment become the
+  place's note. With "Use Vela without Google" on, only pin rows import and the listing rows
+  are counted as `needGoogle`, not as misses. The lookups run in `viewModelScope`
+  (`importTakeoutCsv` starts them with `async` and awaits), one import at a time
+  (`ImportResult.Busy` for a second), so leaving Settings neither loses nor cancels them; the
+  outcome (`MapViewModel.takeoutOutcome`) goes to the status card as well as to the caller's
+  toast. Listing rows are looked up `TAKEOUT_LOOKUP_GAP_MS` (400 ms) apart; a pin row waits for
+  nothing. The status card shows `settings_takeout_progress` every five rows.
+  `ImportResult.ListAdded` carries the name, the count, the misses and the `needGoogle` count.
+  Rows are capped at `MAX_ROWS` (2,000). The Takeout zip itself is not read; pick the CSV inside it.
 - Trip shortcuts: the route card's menu pins the trip as a launcher shortcut. Its intent
   (action `app.vela.action.OPEN_TRIP`) carries names, latitudes and longitudes as parallel
   arrays (NaN means "your location") and the mode. Nothing is stored in the app.
@@ -3260,10 +3318,25 @@ The engine is MapLibre Native Android 13.6.1, artifact `android-sdk-opengl`. The
 
 ### 6.1 Basemap and fonts
 
-The basemap is OpenFreeMap Liberty (`MapStyle.LIBERTY`), loaded from its live URL so tile paths
-follow OpenFreeMap's current snapshot. Vela's zoom reads about one level lower than Google's for
-the same visible area (512-pixel tiles). Compare against Google by visible area, never by zoom
-number.
+The basemap is an OpenFreeMap style loaded from its live URL so tile paths follow OpenFreeMap's
+current snapshot. Vela's zoom reads about one level lower than Google's for the same visible area
+(512-pixel tiles). Compare against Google by visible area, never by zoom number.
+
+Settings > Appearance > Map look (`MapLook.style`, pref `map_look`, default `liberty`) picks the
+style (`MapStyle`): Liberty is the Vela look, and Bright, Positron, Fiord and Dark load as
+OpenFreeMap serves them. All five share the `openmaptiles` source, the glyph server and the
+sprite, so the offline basemap, the font patch and `basemapSrc` work on each. `MapStyle.painted`
+is true for Liberty only: the palettes, `widenStreets`, the road edges, `PoiIcons.applyToLiberty`,
+the twin fills of `ensureLayers` and the Map colors setting belong to it. Another look gets
+`applyLookTheme`: the label language on `PLACE_LABEL_LAYERS` and `ROAD_LABEL_LAYERS` (Liberty's
+ids, which Bright and Positron share, plus Fiord's and Dark's `place_*`, `water_name` and
+`highway_name_other`), and the per-theme colors of Vela's own layers (`applyVelaLayerColors`).
+Vela's own layers (places, route, markers, house numbers, shields, transit, traffic, satellite)
+are added on every look; a twin's missing anchor leaves that twin out. `isMapDark()` is
+`MapStyle.darkLook` on an unpainted look (Fiord and Dark are dark whatever the theme, Bright and
+Positron light) and `isMapAmoled()` is false. The car map follows the look. The place icon tiers
+(`poi_r1`, `poi_r7`, `poi_r20`) exist on Bright, so its vegetation and fuel-only filters apply;
+Positron, Fiord and Dark draw no basemap places.
 
 Map labels draw in Google Sans Flex layered over Roboto and Noto, composited per glyph by
 `scripts/build-map-fonts.sh`: Flex where it has the glyph (Latin, extended Latin, Vietnamese),
@@ -3273,17 +3346,24 @@ Roboto for Cyrillic and Greek, Noto for every other script. The folders keep the
 
 `ui/map/MapFonts` builds the style the map loads:
 
-- At launch it uses the cached patched style (`files/style/liberty-roboto.json`) if there is one,
-  then refreshes it: probe the font host, fetch the live Liberty JSON, point `glyphs` at the font
-  host, write the cache.
-- A font host that fails the probe evicts the cache, and the map loads plain Liberty in Noto. A
+- At launch it uses the cached patched style of each look that has one (`files/style/liberty-roboto.json`,
+  `<key>-roboto.json` for the others), then refreshes the chosen look's: probe the font host,
+  fetch the live style JSON, point `glyphs` at the font host, write the cache. Picking a look
+  refreshes that look's (`MapFonts.ensure`).
+- With no validated network (`ConnectivityManager`, INTERNET and VALIDATED) the refresh does
+  nothing and the cache stays: it is what an installed offline basemap loads.
+- A font host that fails the probe evicts the cache, and the map loads the plain style in Noto. A
   style whose glyph URLs fail draws no labels at all.
 - A failed style fetch keeps the last cache for at most 7 days (`STALE_EVICT_MS`). A cached style
   pins a tile snapshot, and OpenFreeMap retires old snapshots.
-- Only Liberty is patched.
+- Only OpenFreeMap looks are patched.
 
-Under an installed offline basemap the style is built from JSON: the patched cache, else the
-bundled `assets/styles/liberty-roboto.json`. `withLocalBasemap` points its layers at the local
+Under an installed offline basemap the style is built from JSON (`MapFonts.offlineStyle`): the
+chosen look's patched cache, else the bundled `assets/styles/liberty-roboto.json`. The asset is
+painted as the Vela look whatever the look, in the look's light or dark (`isMapDark()`), so a look
+with no cached style is the Vela look offline and never stock Liberty under another look's colors.
+The Liberty-only passes (`applyMapTheme`, the twins of `ensureLayers`) follow the style that
+loaded, not `MapLook.style` alone. `withLocalBasemap` points its layers at the local
 archive, maps the asset's Roboto stacks to the Noto names (`GlyphPackStore.stackName`), and serves
 glyphs and the sprite from `file://`. `GlyphPackStore` unzips the `map-fonts` release into
 `glyphs/` under `StorageLocation.root` (about 200 MB) and copies the bundled sprite to
@@ -4635,8 +4715,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 18 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
-from Weblate and English spoken guidance.
+The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
+spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
 `AppLocale` holds the language (empty means follow the system) and is applied in both
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
@@ -5056,11 +5137,11 @@ the same `:core` singletons as the phone (`CarDeps`).
   screen when the car connects during a drive.
 - Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen`
   (`SearchTemplate`) to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to
-  `ActiveNavCarScreen` (`NavigationTemplate`). The landing strip also opens `SavedCarScreen`
-  (Home, Work and every saved place, capped at the host's list limit) and `CarSettingsScreen`
-  (spoken directions and the tolls, highways and ferries avoids, written to the phone's
-  `vela_settings` prefs and `RoutingPrefs`). The route preview passes the `RoutingPrefs` avoids
-  to `directions`.
+  `ActiveNavCarScreen` (`NavigationTemplate`). The landing strip also opens `DriveCarScreen`
+  (drive mode, below), `SavedCarScreen` (Home, Work and every saved place, capped at the host's
+  list limit) and `CarSettingsScreen` (spoken directions, the tolls, highways and ferries avoids,
+  and the Traffic layer, written to the phone's `vela_settings` prefs, `RoutingPrefs` and
+  `Traffic`). The route preview passes the `RoutingPrefs` avoids to `directions`.
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
@@ -5117,16 +5198,55 @@ The map:
   (`applyMapTheme(SnapshotterHost(...), dark, amoled)`). The palette is applied from the first
   snapshot callback, because the style observer never fires for a style handed over as JSON, and
   that first frame is discarded. It is re-applied when the car's day/night changes.
+- The snapshotter cannot add a layer or a source, so the layers the phone's `ensureLayers` adds
+  to Liberty at runtime are written into the patched style's JSON before it loads (`CarStyle.inject`):
+  the flat `vela-wetland` and `vela-plaza` twins over the hidden patterned originals, `vela-pitch`
+  and `vela-commercial` above `park`, `vela-trails` and `vela-bikeroutes` below `road_minor`, the
+  style light at `LIGHT_INTENSITY` (0.25, the phone's `B3D_LIGHT`), and Google's traffic raster
+  (`vela-traffic-src`, the phone's `TRAFFIC_TILES`, `raster-opacity` 0.6, no fade) above the
+  topmost building layer with visibility `none`. The ids are the phone's, so the palette functions
+  color them. On a look Vela does not paint only the raster goes in (`twins = look.painted`). The twins' filters and anchors are kept the same as `ensureLayers` by hand. While
+  the patched style does not exist yet the plain URL loads, without them; the next render after
+  the file appears rebuilds the snapshotter on it (`reloadIfPatched`), so the Traffic switch and
+  the fills do not wait for the next connection.
+- `applyOverlays` runs before each themed render: the traffic layer is visible with no route when
+  the phone's Traffic layer is on and "Use Vela without Google" is off, as on the phone, and the
+  basemap place icon tiers take the phone's `applyPoiTierFilters` (vegetation out; fuel only during
+  a drive). Each is set again only when its state changes.
+- Each snapshot's time, zoom, tilt, traffic state and speed are logged under `VelaCar` at debug
+  level (`setprop log.tag.VelaCar DEBUG` on the phone), the measure of what a raster or a tilt
+  costs per frame.
 - `QuietSnapshotter` drops the library's overlay, and the renderer draws its own single
   OpenStreetMap credit. The credit and the speed badge stay inside the host's stable area, or the
   visible area when the host reports no usable stable area.
-- During a drive the renderer takes GPS fixes, the simulated position and a demo drive's or
-  replay's fixes, snaps the puck to the route, glides it between
-  the roughly 1 Hz fixes with `FollowEstimator`, and eases the heading and the speed-tiered zoom
-  (`ZOOM_EASE` 0.06 per `TICK_MS` 70 ms tick). The puck is the phone's puck bitmap rotated by
-  heading minus camera bearing, framed at `PUCK_DOWN` (0.72) of the visible area's height while
-  following. The camera bearing is the heading while following a drive, and 0 (north-up) with the
-  phone's `NorthLock` on. Meters per pixel assume 512 px tiles.
+- The renderer takes GPS fixes, the simulated position and a demo drive's or replay's fixes,
+  snaps the puck to the route during a drive, glides it between the roughly 1 Hz fixes with
+  `FollowEstimator`, and eases the heading (`BEARING_EASE` 0.22 per `TICK_MS` 70 ms tick), the
+  camera bearing (`CAM_BEARING_EASE` 0.3, then equal to the heading), the tilt (`TILT_EASE` 0.05)
+  and the zoom (`ZOOM_EASE` 0.06). A fix with no speed takes the distance since the last fix over
+  the time between them (0.2 to 5 s apart), capped at `FIX_SPEED_MAX_MPS` (70): read as parked,
+  it held the zoom at its closest. A fix with no bearing takes the direction from the last fix
+  once it has moved `FIX_COURSE_MIN_M` (3 m).
+- The arrow's heading is the GPS course above `STOPPED_MPS` (1 m/s) with a bearing accuracy of
+  45 degrees or better, else the bearing of the route segment it is on, else the last heading. It
+  is kept in every view, so a north-up map still turns the arrow.
+- The view is heading-up (`headingUp`) while following with no preview and no overview, the
+  phone's `NorthLock` off, and either a drive or the free-drive latch: the smoothed speed
+  (`DRIVE_SPEED_TAU_S` 1 s) past `DRIVE_LATCH_MPS` (2.5) with a course known. The latch holds
+  through a stop and lets go when the follow ends (a pan, a zoom button, the overview); recenter
+  sets it again at once when the car is already moving. Heading-up, the camera bearing is the
+  heading, the tilt is `CarFraming.NAV_TILT_DEG` (55) and the arrow sits at `PUCK_DOWN` (0.72) of
+  the visible area's height. Otherwise the view is north-up, flat and centered on the arrow.
+- Zoom follows speed whenever the view follows a moving car, drive or not: `CarFraming.navZoom`,
+  `ZOOM_NEAR` (17.2) at rest to `ZOOM_FAR` (15.0) at `ZOOM_FAR_KMH` (110) and above, a straight
+  line between. Otherwise the zoom is the user's.
+- The camera target is moved so the arrow lands on the wanted pixel: `CarFraming.targetOffset`
+  gives the ground offset in pixels at the center's scale, the flat screen offset at tilt 0, and
+  under tilt the solution of MapLibre's perspective (camera distance `0.5 * height / tan(FOV / 2)`,
+  `FOV_RAD` 0.6435), where the ground nearer the camera draws larger. Meters per pixel assume 512
+  px tiles.
+- The arrow is the phone's puck bitmap rotated by its heading minus the bearing the snapshot was
+  rendered with.
 - A pan moves the center by the finger's travel in meters (`shiftCenter`). Reading the new center
   off the last snapshot's `latLngForPixel` adds the visible-area offset to every scroll event. A
   pinch keeps the point under the fingers in place. A fling decays exponentially (`FLING_TAU_S`
@@ -5134,6 +5254,13 @@ The map:
   recenter, zoom, overview and route preview. The map recenters `RECENTER_MS` (6 s) after a pan.
 - From z13.5 the renderer draws the `CarBridge` lights, stop signs and speed cameras as dots,
   plus the plate cameras along the route from the bundled set.
+- The speed badge and the limit sign draw during a drive and on the drive-mode screen
+  (`setDriveScreen`), with `SpeedDisplay` on.
+
+Drive mode (`DriveCarScreen`, a `NavigationTemplate` with no navigation info): the map alone, no
+route and no list, opened from the landing strip's Drive action. Its strip holds search, saved
+places and a list action that pops back to the landing screen; the map strip is recenter and
+zoom. A drive started anywhere replaces it with the drive screen through `VelaCarSession`.
 
 ### 10.7 Street View
 
@@ -5327,7 +5454,11 @@ Regressing one of these blocks a release.
   Google is used for" under Continue opens `GoogleUsesSection` as a first-run page, with the
   same switches as Settings > Privacy. The same page asks about plate cameras (`CameraChoices`):
   "Route around them" sets `FlockRouteAlert`, "Warn me as I get close" sets the card and the
-  spoken warning of `FlockNavAlert`. Both start off and are written on Continue.
+  spoken warning of `FlockNavAlert`. Both start off and are written on Continue. The card
+  starts with the plate camera badge as the map draws it (`PlateCameraBadge`, the map's own
+  `alprCameraBitmap`), and Settings > Navigation shows the plate and speed camera badges
+  before their rows (`ToggleRow`'s `leading` slot), so the badge is explained where it is
+  turned on and never drawn a second way.
 - Settings > Privacy lists every switch that decides what Google is asked
   (`GoogleUsesSection`, shown while Google is on): the place source, what a place page loads,
   and what a route and a drive ask. Each row is a shared composable in

@@ -215,7 +215,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   voice, and a voice of another language says so on its row.
 - English voices say about 3,500 place names the local way. Street names in another script are read
   romanized.
-- 18 languages, including Chinese, Japanese and right-to-left Hebrew. Estonian is partly translated.
+- 19 languages, including Chinese, Japanese and right-to-left Hebrew. Romanian and Estonian are
+  partly translated; Romanian has spoken directions and a voice.
 - "Follow system language", or pick one for Vela alone.
 - "Directions language": turns shown and spoken in another language than the menus, such as
   English menus with Dutch directions. "Same as app language" by default.
@@ -224,10 +225,15 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Saved places, lists and sharing
 
 - Save any place with the bookmark, and set Home and Work.
+- In the lists sheet, swipe a list toward the end to delete it or toward the start to edit it,
+  drag its handle to reorder, and long press to select several. Swipes tick. A recent search row
+  swipes away the same way, and Clear recents is a button beside the heading.
 - Lists with a name, color and icon or emoji, in your order. A saved place or a list entry can carry
   a note, an icon and your own name (Rename, in its sheet's save menu).
 - Saved places show on the map in their list's color, and can be pinned to the search page.
-- Export saved places and lists to a file and import them. Import also reads GPX, KML and GeoJSON.
+- Export saved places and lists to a file and import them. Import also reads GPX, KML and GeoJSON,
+  and a list from Google Takeout's Saved folder (one CSV per list) becomes a list of the same name,
+  each place looked up by its Google id.
 - Select several places in a list or in Saved places (long press one, or the select button), then
   remove them or move them to another list or a new one.
 - A list can have a sound. Driving past one of its places plays it and shows the place on a card.
@@ -244,7 +250,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - No account, no ads, no analytics and no Vela server.
 - The first run asks whether to use Google, and can open the list of what Google is used for.
-  The same page asks whether to route around plate cameras and warn near them.
+  The same page asks whether to route around plate cameras and warn near them, and shows the
+  badge the map uses for them; the camera settings show their badges too.
 - Settings > Privacy has every switch that decides what Google is asked, in one list.
 - "Use Vela without Google" stops every request to Google. Reviews, photos, live traffic and Street
   View go away.
@@ -264,7 +271,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - Themes are follow the system, Light, Dark, "AMOLED black" and "Day and night". "Day and night
   while navigating" applies it to drives only.
-- "Map" sets the map light or dark apart from the app. "Map colors" is Modern or Classic.
+- "Map" sets the map light or dark apart from the app. "Map look" picks the basemap style: the
+  Vela look on OpenFreeMap Liberty, or OpenFreeMap's Bright, Positron, Fiord or Dark as served,
+  on the same tiles. "Map colors" is Modern or Classic, for the Vela look.
 - "Material You colors" tints buttons and accents from your wallpaper. With "AMOLED black" the
   backgrounds stay black.
 - "Font" is Google Sans Flex, the system font or your own font file. "Interface size" scales the
@@ -283,10 +292,15 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Search from the car, preview up to three routes, and start the drive. Gas stations in car
   results show their fuel price.
 - The drive screen has the map, a turn card with lanes, the arrival estimate, your speed and the
-  limit.
+  limit. The map turns with the car, tilts and zooms out with speed.
+- With no route the map does the same once you move, and a Drive button puts the list away for a
+  map-only view with the speed badge.
+- The car map has the phone's parking lot, plaza, field and trail fills, and shows the traffic
+  layer when it is on.
 - Buttons for mute, pause, search along the route and end, plus recenter, zoom and overview.
 - Camera, speeding and closing-soon alerts appear as car toasts.
-- The car's settings cover spoken directions and avoiding tolls, highways and ferries.
+- The car's settings cover spoken directions, avoiding tolls, highways and ferries, and the
+  traffic layer.
 - The phone and the car share one drive. A trip started on either shows on both.
 - A car with an instrument-cluster display gets the turns there.
 - A car that runs Android itself can show Vela in its map panel.

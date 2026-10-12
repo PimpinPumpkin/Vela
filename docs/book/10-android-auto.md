@@ -12,6 +12,12 @@ arrival estimate, and a row of round buttons for mute, pause, search along the r
 second row on the map recenters, zooms and shows the rest of the route. Your speed sits in the
 bottom corner, with the posted limit beside it when Vela knows it.
 
+With no route, the map behaves as the phone's does: parked, it is north up and centered on you;
+once you move it turns with the car, tilts and zooms out with speed. The Drive button on the
+landing screen puts the list away and leaves the map alone, with search and your saved places a
+tap away and the speed badge in the corner. The traffic layer from the phone's map shows here when
+it is on, and the car's settings have a switch for it.
+
 Whether Vela is listed depends on how it was installed. Android Auto refuses an app that Google
 Play does not own, and Vela is not on Play. [The install gate](#the-install-gate) says what is
 known. [docs/ANDROID-AUTO.md](../ANDROID-AUTO.md) is the user guide.
@@ -86,22 +92,31 @@ its own layers on top:
 - The route, gray behind the arrow and blue ahead, with Google's congestion spans in amber, red
   and dark red.
 - Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5.
-- The speed badge and the limit sign while navigating, unless Settings > Navigation "Show speed
-  and speed limit" is off.
+- The speed badge and the limit sign while navigating and in drive mode, unless Settings >
+  Navigation "Show speed and speed limit" is off.
 - One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which
   prints every tile source's attribution and stays when the logo is turned off.
+
+The style itself carries what the phone adds to Liberty at runtime. The snapshotter can set a
+layer's properties but cannot add one, so `CarStyle` writes the phone's extra layers into the
+patched style's JSON before it loads: the flat fills for pedestrian areas and parking lots (the
+`vela-plaza` twin of Liberty's dotted pattern), wetlands, sports fields, commercial blocks, park
+trails and bike paths, the style light, and Google's traffic raster, hidden until wanted. They
+carry the phone's layer ids, so the palette colors them the same way. The traffic raster is shown
+with no route when the phone's Traffic layer is on, as on the phone, and the place icon tiers take
+the phone's filters (no vegetation icons; fuel only during a drive). Until the patched style exists
+on a fresh install, the plain style URL loads without any of this.
 
 A snapshot takes roughly 100 to 300 ms, so the car map moves in eased steps. The render loop ticks
 every `TICK_MS` (70 ms) and asks for one snapshot at a time. A request that arrives while one is
 in flight marks the map dirty, and the next snapshot starts when the current one lands.
 
-All screens share one renderer and switch its mode: browse (north up, centered on you, no route),
-preview (the chosen route framed in blue, the other listed routes in gray under it, a red dot
-at the destination) and nav (heading up, or north up with the phone's "Keep north up" on,
-following, the line ahead lavender while paused). A renderer per screen freezes
-the map, because the host does not deliver the surface again to a new callback. The snapshotter
-is kept across screens while the surface size is unchanged, since a new one reloads the style and
-the map flashes.
+All screens share one renderer and switch its mode: following (the landing screen, drive mode
+and the drive), preview (the chosen route framed in blue, the other listed routes in gray under
+it, a red dot at the destination) and results (numbered pins framed with the car). A renderer per
+screen freezes the map, because the host does not deliver the surface again to a new callback. The
+snapshotter is kept across screens while the surface size is unchanged, since a new one reloads
+the style and the map flashes.
 
 On a screen change the host hands over a new `Surface` object for the same buffer queue. The
 queue takes one CPU connection, and the old object holds it until it is released, so the renderer
@@ -111,11 +126,24 @@ on the new one fails to lock and the map stands still until a collection happens
 ### Framing and following
 
 The templates cover part of the surface. The host reports the visible area, which is uncovered
-now, and the stable area, which is never covered. The arrow is framed in the visible area. While
-following in nav it sits `PUCK_DOWN` (0.72) of the way down, so more road shows ahead. The speed
-badge and the credit go in the stable area, because on a tall screen the map buttons stack over a
-corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at zoom 0).
-The 256 px figure doubles the offset and drops the arrow off the bottom edge.
+now, and the stable area, which is never covered. The arrow is framed in the visible area. The
+speed badge and the credit go in the stable area, because on a tall screen the map buttons stack
+over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at
+zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.
+
+The view is heading-up when it follows a moving car: during a drive, and with no route once the
+smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known, the phone's free-drive
+latch. The latch holds through a red light and lets go when the follow ends. Heading-up, the
+camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow `PUCK_DOWN` (0.72)
+of the way down, so more road shows ahead. Parked with no route, after a pan, and with the phone's
+"Keep north up" on, the view is north up, flat and centered on the arrow, which still turns with
+the car. The camera's bearing and tilt ease in, so the switch rotates the map rather than
+snapping it.
+
+Under tilt the ground nearer the camera is drawn larger, so the flat offset would put the arrow
+too low. `CarFraming.targetOffset` solves MapLibre's perspective for the ground offset that lands
+the arrow on the wanted row, from the camera's distance to its target (half the height over the
+tangent of half the field of view, 36.87 degrees).
 
 The arrow is the phone's puck bitmap, an eighth of the screen's short side times the Arrow size
 setting. It rides the phone's between-fix estimator (`FollowEstimator`) and snaps to the route
@@ -124,12 +152,15 @@ than `STOPPED_MPS` (1 m/s) and the bearing accuracy is 45 degrees or better. Oth
 bearing of the route segment you are on, or failing that the last heading. The bearing to the
 nearest route point flickers on a parked car's GPS jitter and swings the view.
 
-Nav zoom runs in five steps from 17.5 below 15 km/h to 15.2 at 100 km/h and up, eased between
-steps. A pan, a pinch or a zoom button stops following until `RECENTER_MS` (6 s) has passed or you
-press recenter. A pan moves the center by the finger's travel in ground meters. Reading the new
-center off the last snapshot adds the framing offset to every scroll event. A pinch zooms about
-the fingers, and a fling glides to a stop. The overview button frames the remaining route north
-up and holds it until you press it again or recenter.
+Zoom follows speed whenever the view follows a moving car, from 17.2 at rest to 15.0 at 110 km/h
+and up, on a straight line, eased. A fix that reports no speed takes the distance since the last
+fix over the time between them, because a fix read as parked held the zoom at its closest, and
+one with no bearing takes the direction from the last fix once it has moved a few meters. A pan,
+a pinch or a zoom button stops following until `RECENTER_MS` (6 s) has passed or you press
+recenter. A pan moves the center by the finger's travel in ground meters. Reading the new center
+off the last snapshot adds the framing offset to every scroll event. A pinch zooms about the
+fingers, and a fling glides to a stop. The overview button frames the remaining route north up and
+holds it until you press it again or recenter.
 
 [SPEC section 10.6](../../SPEC.md) lists the rest of the car constants.
 
@@ -156,10 +187,11 @@ dark with the car.
 
 | Screen | Template | What it holds |
 | --- | --- | --- |
-| `MainCarScreen` | `PlaceListNavigationTemplate` | The landing list: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby". Buttons for Search, Saved and Settings. |
+| `MainCarScreen` | `PlaceListNavigationTemplate` | The landing list: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby". Buttons for Search, Drive, Saved and Settings. |
+| `DriveCarScreen` | `NavigationTemplate` | Drive mode: the map alone, no route, with search, saved places and a list button back to the landing screen. |
 | `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, each with a numbered pin on its row and the same pin on the map, which frames them with the car. Opened with no category, it lists the phone's quick categories. |
 | `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
-| `CarSettingsScreen` | `ListTemplate` | Spoken directions and the three avoids, written to the preferences the phone uses. |
+| `CarSettingsScreen` | `ListTemplate` | Spoken directions, the three avoids and the Traffic layer, written to the preferences the phone uses. |
 | `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
 | `RoutePreviewCarScreen` | `RoutePreviewNavigationTemplate` | Up to three driving routes with live-traffic times, and Go. |
 | `ActiveNavCarScreen` | `NavigationTemplate` | The drive. |

@@ -175,9 +175,11 @@ import java.util.Locale
 // D-pad-only operation (docs/dpad.md) — kept as one import block so upstream merges stay clean.
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -188,6 +190,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadLongClick
 import app.vela.ui.dpadFieldEscape
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.theme.isAppInDarkTheme
@@ -3957,10 +3960,10 @@ private fun MapSurface(
         val variant = if (mapDark) "streets-v2-dark" else "streets-v2"
         "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
     } else {
-        // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
-        // ready (reactive - flips once the first refresh lands). Offline REGION
-        // DEFINITIONS deliberately keep state.styleUri (see MapFonts).
-        MapFonts.effective(state.styleUri)
+        // The chosen look (Settings > Appearance > Map look), swapped for its cached
+        // Roboto-glyph patch when MapFonts has it ready (reactive - flips once the first
+        // refresh lands). Offline REGION DEFINITIONS deliberately keep the plain URL (see MapFonts).
+        MapFonts.effective(app.vela.ui.MapLook.style.value.uri)
     }
     // Roads already DRIVEN (entered by maneuvers up to the current step) + ref variants: the nav
     // label bubbles must never call out the road being driven (Google labels only streets you
@@ -5088,7 +5091,14 @@ private fun SearchEntryContent(
         // searches by time rather than bucketing them; the icon tells them apart (pin for a
         // place you opened, clock for a query you typed).
         if (recentPlaces.isNotEmpty() || recents.isNotEmpty()) {
-            SectionLabel(stringResource(R.string.mapscreen_section_recent))
+            // Clear recents sits beside the heading as a filled pill, where it reads as a
+            // button (issue #748); it used to trail the list as plain text.
+            Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { SectionLabel(stringResource(R.string.mapscreen_section_recent)) }
+                androidx.compose.material3.FilledTonalButton(onClick = onClearRecents, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 4.dp), modifier = Modifier.dpadHighlight(CircleShape)) {
+                    Text(stringResource(R.string.mapscreen_clear_recents), style = MaterialTheme.typography.labelLarge)
+                }
+            }
             val merged: List<Any> = (recentPlaces + recents).sortedByDescending { entry ->
                 when (entry) {
                     is RecentPlace -> entry.at
@@ -5106,58 +5116,61 @@ private fun SearchEntryContent(
                         // menu on a plain tap too, so removal works even where long-press doesn't.)
                         var menuOpen by remember(entry.place.id) { mutableStateOf(false) }
                         val p = entry.place.toPlace()
-                        SuggestionRow(
-                            icon = Sym.Place,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            label = entry.place.name,
-                            sublabel = entry.place.address,
-                            onClick = { onPickRecentPlace(entry.place) },
-                            onFill = { onFillQuery(entry.place.name) },
-                            onLongClick = { menuOpen = true },
-                            trailing = {
-                                SuggestionOverflow(
-                                    open = menuOpen,
-                                    onOpenChange = { menuOpen = it },
-                                    place = p,
-                                    removable = true,
-                                    lists = lists,
-                                    onRemove = { onRemoveRecentPlace(entry.place.id) },
-                                    onAddToList = { id -> onAddToList(p, id) },
-                                    onRemoveFromList = { id -> onRemoveFromList(p, id) },
-                                    onCreateWith = { name -> onCreateListWith(p, name) },
-                                )
-                            },
-                        )
+                        // A swipe toward the end drops it from history (issue #748); the ⋮ stays
+                        // as the key path.
+                        SwipeActionRow(onDelete = { onRemoveRecentPlace(entry.place.id) }, deleteLabel = stringResource(R.string.recent_remove)) {
+                            SuggestionRow(
+                                icon = Sym.Place,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                label = entry.place.name,
+                                sublabel = entry.place.address,
+                                onClick = { onPickRecentPlace(entry.place) },
+                                onFill = { onFillQuery(entry.place.name) },
+                                onLongClick = { menuOpen = true },
+                                trailing = {
+                                    SuggestionOverflow(
+                                        open = menuOpen,
+                                        onOpenChange = { menuOpen = it },
+                                        place = p,
+                                        removable = true,
+                                        lists = lists,
+                                        onRemove = { onRemoveRecentPlace(entry.place.id) },
+                                        onAddToList = { id -> onAddToList(p, id) },
+                                        onRemoveFromList = { id -> onRemoveFromList(p, id) },
+                                        onCreateWith = { name -> onCreateListWith(p, name) },
+                                    )
+                                },
+                            )
+                        }
                     }
                     is RecentQuery -> {
                         var menuOpen by remember(entry.query) { mutableStateOf(false) }
-                        SuggestionRow(
-                            icon = Sym.History,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            label = entry.query,
-                            onClick = { onPickRecent(entry.query) },
-                            onFill = { onFillQuery(entry.query) },
-                            onLongClick = { menuOpen = true },
-                            trailing = {
-                                SuggestionOverflow(
-                                    open = menuOpen,
-                                    onOpenChange = { menuOpen = it },
-                                    place = null, // a typed query, not a place: only "remove from history"
-                                    removable = true,
-                                    lists = lists,
-                                    onRemove = { onRemoveRecent(entry.query) },
-                                    onAddToList = {},
-                                    onRemoveFromList = {},
-                                    onCreateWith = {},
-                                )
-                            },
-                        )
+                        SwipeActionRow(onDelete = { onRemoveRecent(entry.query) }, deleteLabel = stringResource(R.string.recent_remove)) {
+                            SuggestionRow(
+                                icon = Sym.History,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                label = entry.query,
+                                onClick = { onPickRecent(entry.query) },
+                                onFill = { onFillQuery(entry.query) },
+                                onLongClick = { menuOpen = true },
+                                trailing = {
+                                    SuggestionOverflow(
+                                        open = menuOpen,
+                                        onOpenChange = { menuOpen = it },
+                                        place = null, // a typed query, not a place: only "remove from history"
+                                        removable = true,
+                                        lists = lists,
+                                        onRemove = { onRemoveRecent(entry.query) },
+                                        onAddToList = {},
+                                        onRemoveFromList = {},
+                                        onCreateWith = {},
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
                 Divider()
-            }
-            TextButton(onClick = onClearRecents, modifier = Modifier.padding(start = 8.dp)) {
-                Text(stringResource(R.string.mapscreen_clear_recents))
             }
         }
         if (saved.isEmpty() && recents.isEmpty() && recentPlaces.isEmpty()) {
@@ -6067,6 +6080,7 @@ private fun FasterRouteCard(
 
 /** Manage-lists dialog (Your lists): create, rename, restyle or delete a list;
  *  tapping one opens its places. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun ListsSheet(
     lists: List<app.vela.core.model.PlaceList>,
@@ -6091,28 +6105,49 @@ private fun ListsSheet(
     // map drops that focus first, as a pick on the search page does. Read here, outside the
     // dialog, this is the screen's focus manager rather than the dialog's.
     val screenFocus = androidx.compose.ui.platform.LocalFocusManager.current
+    // Lists picked by a long press, for deleting several at once (issue #748); null while not
+    // selecting. A list about to be deleted on its own waits in deletingList for the question.
+    var pickedLists by remember { mutableStateOf<Set<String>?>(null) }
+    var deletingList by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
+    var deletingPicked by remember { mutableStateOf(false) }
+    var rowHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+        // The dialog's own tone, a step above the background, so the sheet reads as a sheet in
+        // the dark theme (issue #748) the way VelaDialog does.
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
             Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
                 Row(
                     Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        stringResource(R.string.mapscreen_section_lists),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (vm != null) TextButton(onClick = { screenFocus.clearFocus(); vm.startDrawing(); onDismiss() }, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
-                        Icon(Sym.Draw, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.draw_action))
-                    }
-                    TextButton(onClick = { creating = true }, modifier = Modifier.focusRequester(listsAutoFocus).dpadHighlight(RoundedCornerShape(20.dp))) {
-                        Icon(Sym.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.mapscreen_new_list))
+                    val pickedNowLists = pickedLists
+                    if (pickedNowLists != null) {
+                        Text(
+                            androidx.compose.ui.res.pluralStringResource(R.plurals.bulk_selected, pickedNowLists.size, pickedNowLists.size),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { deletingPicked = true }, enabled = pickedNowLists.isNotEmpty(), modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                            Icon(SymOutlined.Delete, contentDescription = stringResource(R.string.list_delete), tint = if (pickedNowLists.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = { pickedLists = null }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                            Icon(Sym.Close, contentDescription = stringResource(R.string.bulk_done), tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    } else {
+                        Text(
+                            stringResource(R.string.mapscreen_section_lists),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Icons alone: the words crowded the title (issue #748).
+                        if (vm != null) IconButton(onClick = { screenFocus.clearFocus(); vm.startDrawing(); onDismiss() }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                            Icon(SymOutlined.Draw, contentDescription = stringResource(R.string.draw_action), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                        }
+                        IconButton(onClick = { creating = true }, modifier = Modifier.focusRequester(listsAutoFocus).size(40.dp).dpadHighlight(CircleShape)) {
+                            Icon(Sym.Add, contentDescription = stringResource(R.string.mapscreen_new_list), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(22.dp))
+                        }
                     }
                 }
                 if (lists.isEmpty()) {
@@ -6125,36 +6160,73 @@ private fun ListsSheet(
                 }
                 LazyColumn(Modifier.heightIn(max = 420.dp)) {
                     itemsIndexed(lists, key = { _, l -> l.id }) { index, list ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .dpadHighlight(RoundedCornerShape(8.dp))
-                                .clickable { screenFocus.clearFocus(); onOpenList(list.id) }
-                                .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        val pickedNowLists = pickedLists
+                        val pickedList = pickedNowLists?.contains(list.id)
+                        // Swipe toward the end to delete, toward the start to edit (issue #748); a
+                        // long press or a held OK starts selecting. The handle at the end reorders
+                        // by drag, and on a keypad Up and Down on it move the list and OK opens the
+                        // editor.
+                        val openRow = {
+                            if (pickedNowLists == null) { screenFocus.clearFocus(); onOpenList(list.id) }
+                            else pickedLists = if (list.id in pickedNowLists) pickedNowLists - list.id else pickedNowLists + list.id
+                        }
+                        val selectRow = { pickedLists = (pickedNowLists ?: emptySet()) + list.id }
+                        val rowFocus = remember { FocusRequester() }
+                        SwipeActionRow(
+                            onDelete = { if (list.places.isEmpty()) onDeleteList(list.id) else deletingList = list },
+                            deleteLabel = stringResource(R.string.list_delete),
+                            onEdit = { editing = list },
+                            editLabel = stringResource(R.string.list_edit),
                         ) {
-                            ListIconBadge(list.icon, Color(list.color), 22.dp)
-                            Spacer(Modifier.width(16.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                                Text(
-                                    androidx.compose.ui.res.pluralStringResource(R.plurals.lists_place_count, list.places.size, list.places.size),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            // Custom order (issue #343): nudge up/down, D-pad reachable, no drag
-                            // needed. The store's array order is the display order everywhere.
-                            if (lists.size > 1) {
-                                IconButton(onClick = { onMoveList(list.id, -1) }, enabled = index > 0, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
-                                    Icon(Sym.KeyboardArrowUp, contentDescription = stringResource(R.string.list_move_up), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                            // The handle is the row's focus sibling, not its child: focus search
+                            // never enters a focused node's own children. Focus arriving from
+                            // outside the row lands on the row, never the handle, where Down would
+                            // move the list instead of walking the rows.
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .onSizeChanged { rowHeightPx = it.height.toFloat() }
+                                    .focusProperties { enter = { rowFocus } }
+                                    .focusGroup()
+                                    .padding(end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    Modifier
+                                        .weight(1f)
+                                        .focusRequester(rowFocus)
+                                        .dpadHighlight(RoundedCornerShape(8.dp))
+                                        .dpadLongClick(onClick = openRow, onLongClick = selectRow)
+                                        .combinedClickable(onClick = openRow, onLongClick = selectRow)
+                                        .padding(start = 20.dp, top = 12.dp, bottom = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    when (pickedList) {
+                                        null -> ListIconBadge(list.icon, Color(list.color), 22.dp)
+                                        true -> Icon(Sym.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                                        false -> Icon(SymOutlined.RadioButtonUnchecked, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                                    }
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(
+                                            androidx.compose.ui.res.pluralStringResource(R.plurals.lists_place_count, list.places.size, list.places.size),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
-                                IconButton(onClick = { onMoveList(list.id, 1) }, enabled = index < lists.size - 1, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
-                                    Icon(Sym.KeyboardArrowDown, contentDescription = stringResource(R.string.list_move_down), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                // Custom order (issue #343): the store's array order is the display
+                                // order everywhere. The handle moves one row per row height dragged.
+                                if (lists.size > 1 && pickedNowLists == null) ReorderHandle(
+                                    onMove = { d -> if ((d < 0 && index > 0) || (d > 0 && index < lists.size - 1)) onMoveList(list.id, d) },
+                                    onActivate = { editing = list },
+                                    rowHeightPx = rowHeightPx,
+                                    contentDescription = stringResource(R.string.list_reorder),
+                                ) else if (pickedNowLists == null) IconButton(onClick = { editing = list }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                                    Icon(SymOutlined.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
-                            }
-                            IconButton(onClick = { editing = list }, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
-                                Icon(Sym.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             }
                         }
                         Divider()
@@ -6243,6 +6315,30 @@ private fun ListsSheet(
             onDismiss = { editing = null },
             onPreviewSound = { sound, n -> vm?.playListSound(sound, n) },
         )
+    }
+    // A swiped list with places in it asks first; an empty one goes at once.
+    deletingList?.let { list ->
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { deletingList = null },
+            title = stringResource(R.string.list_delete_title, list.name),
+            confirmText = stringResource(R.string.list_delete),
+            onConfirm = { onDeleteList(list.id); deletingList = null },
+            dismissText = stringResource(R.string.list_cancel),
+            onDismiss = { deletingList = null },
+        ) {
+            Text(androidx.compose.ui.res.pluralStringResource(R.plurals.lists_place_count, list.places.size, list.places.size), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+    if (deletingPicked) {
+        val ids = pickedLists.orEmpty()
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { deletingPicked = false },
+            title = androidx.compose.ui.res.pluralStringResource(R.plurals.lists_delete_count, ids.size, ids.size),
+            confirmText = stringResource(R.string.list_delete),
+            onConfirm = { ids.forEach(onDeleteList); pickedLists = null; deletingPicked = false },
+            dismissText = stringResource(R.string.list_cancel),
+            onDismiss = { deletingPicked = false },
+        ) {}
     }
 }
 

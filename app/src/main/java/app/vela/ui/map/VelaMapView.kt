@@ -470,7 +470,7 @@ private const val TRANSIT_SUBWAY = "#12B5A5" // subway / light rail / tram — t
 // on www.google.com (the same host we already scrape). The trimmed `pb` (no map
 // version epoch, so it doesn't rot): `!2straffic` = the traffic layer, `!1e2` =
 // overlay. Standard XYZ tile coords (`!1i{z}!2i{x}!3i{y}`).
-private const val TRAFFIC_TILES =
+internal const val TRAFFIC_TILES =
     "https://www.google.com/maps/vt/pb=!1m4!1m3!1i{z}!2i{x}!3i{y}!2m9!1e2!2straffic!3i999999" +
         "!4m2!1sincidents!2s1!4m2!1sincidents_text!2s1!3m8!2sen!3sus!5e1105!12m4!1e68!2m2!1sset!2sRoadmap!4e0!5m1!1e0"
 
@@ -5091,14 +5091,21 @@ fun VelaMapView(
             // An installed offline basemap wins over every style source: the remote Liberty URL
             // cannot load with no signal, and the swap needs the JSON in hand anyway. The MapFonts
             // patch (Roboto glyphs) is used when it exists, else the bundled Liberty asset.
-            val offlineJson = basemapArchive?.let {
-                val patched = MapFonts.effective(app.vela.core.data.tiles.MapStyle.LIBERTY.uri)
+            val look = app.vela.ui.MapLook.style.value
+            val offline = basemapArchive?.let {
+                // The chosen look's patched cache; a look never cached yet falls back to the
+                // bundled Liberty asset, the one style that is always on the phone.
+                val patched = MapFonts.effective(look.uri)
                 val fromPatch = if (patched.startsWith("file://")) runCatching { java.io.File(patched.removePrefix("file://")).readText() }.getOrNull() else null
-                fromPatch?.takeIf { j -> j.isNotBlank() }
-                    ?: runCatching { context.assets.open("styles/liberty-roboto.json").bufferedReader().use { r -> r.readText() } }.getOrNull()
+                MapFonts.offlineStyle(look, fromPatch) {
+                    runCatching { context.assets.open("styles/liberty-roboto.json").bufferedReader().use { r -> r.readText() } }.getOrNull()
+                }
             }
-            val builder = if (offlineJson != null) {
-                Style.Builder().fromJson(withLocalBasemap(context, offlineJson, basemapArchive))
+            // The Liberty-only passes follow the style that loads, not the look alone: offline,
+            // the Liberty asset stands in for a look with no cache and is painted as the Vela look.
+            val painted = offline?.painted ?: look.painted
+            val builder = if (offline != null) {
+                Style.Builder().fromJson(withLocalBasemap(context, offline.json, basemapArchive))
             } else if (styleUri.startsWith("asset://")) {
                 // Bundled style JSON (Liberty re-pointed at Roboto glyphs). Its
                 // tile/sprite/glyph URLs are absolute, so it still loads keyless.
@@ -5111,7 +5118,7 @@ fun VelaMapView(
                 // handling; a vanished/empty file falls back to the plain URL.
                 val f = java.io.File(styleUri.removePrefix("file://"))
                 val json = runCatching { f.readText() }.getOrNull()
-                if (json.isNullOrBlank()) Style.Builder().fromUri(app.vela.core.data.tiles.MapStyle.LIBERTY.uri)
+                if (json.isNullOrBlank()) Style.Builder().fromUri(look.uri)
                 else Style.Builder().fromJson(withLocalBasemap(context, json, basemapArchive))
             } else {
                 Style.Builder().fromUri(styleUri)
@@ -5136,7 +5143,7 @@ fun VelaMapView(
                         }
                     }.onFailure { android.util.Log.w("VelaBasemap", "re-attach failed", it) }
                 }
-                ensureLayers(style)
+                ensureLayers(style, painted)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastOsmPoiVis = null; lastPreviewTransitHidden = null
                 lastPoiFuelOnly = null
@@ -5167,7 +5174,13 @@ fun VelaMapView(
                 splitReset[0] = true
                 PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
-                if (applyKeylessTheme) applyMapTheme(StyleHost(style), darkTheme, amoled) else tuneMapTiler(style, darkTheme)
+                // The Vela look takes the palette; another OpenFreeMap look keeps its own and
+                // takes only the look-independent passes.
+                when {
+                    !applyKeylessTheme -> tuneMapTiler(style, darkTheme)
+                    painted -> applyMapTheme(StyleHost(style), darkTheme, amoled)
+                    else -> applyLookTheme(StyleHost(style), darkTheme)
+                }
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(context, style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
@@ -5631,7 +5644,9 @@ fun VelaMapView(
     }
 }
 
-private fun ensureLayers(style: Style) {
+/** [painted] is whether the style that loaded is painted as the Vela look (the look, or the
+ *  Liberty asset standing in for one offline). */
+private fun ensureLayers(style: Style, painted: Boolean) {
     // Kill the style light: MapLibre lights fill-extrusion faces toward white (default
     // intensity 0.5), so at z16+ the building-3d tops rendered ~40% brighter than the
     // palette (#1c3b69 became #2e5590) while Google keeps buildings the SAME color at
@@ -5646,9 +5661,14 @@ private fun ensureLayers(style: Style) {
     // fill-pattern to an empty literal does NOT clear it on device (both themes tried - the
     // repeating icons kept rendering). So the patterned originals are hidden outright and
     // clean flat twins take their place; applyLight/applyDark color the twins.
-    style.getLayer("landcover_wetland")?.setProperties(PropertyFactory.visibility(Property.NONE))
-    style.getLayer("road_area_pattern")?.setProperties(PropertyFactory.visibility(Property.NONE))
-    if (style.getLayer("vela-wetland") == null && style.getLayer("landcover_wetland") != null) {
+    // The twins belong to the Vela look: the palette functions color them, and on another look
+    // nothing would, so they would draw black.
+    val twins = painted
+    if (twins) {
+        style.getLayer("landcover_wetland")?.setProperties(PropertyFactory.visibility(Property.NONE))
+        style.getLayer("road_area_pattern")?.setProperties(PropertyFactory.visibility(Property.NONE))
+    }
+    if (twins && style.getLayer("vela-wetland") == null && style.getLayer("landcover_wetland") != null) {
         val wet = FillLayer("vela-wetland", basemapSrc(style) ?: "openmaptiles").withSourceLayer("landcover")
             .withFilter(Expression.eq(Expression.get("class"), "wetland"))
         wet.minZoom = 12f
@@ -5668,7 +5688,7 @@ private fun ensureLayers(style: Style) {
     // Sports fields (pitch/playground/track/stadium) get their own accent fill - the Google
     // app tints them a touch lighter than the surrounding park (dark #0d4956 vs #0d3847,
     // sampled on the P9 side-by-side 2026-07-11). Drawn above the vegetation fills.
-    if (style.getLayer("vela-pitch") == null && style.getLayer("park") != null) {
+    if (twins && style.getLayer("vela-pitch") == null && style.getLayer("park") != null) {
         val pitch = FillLayer("vela-pitch", basemapSrc(style) ?: "openmaptiles").withSourceLayer("landuse")
             .withFilter(
                 Expression.match(
@@ -5683,7 +5703,7 @@ private fun ensureLayers(style: Style) {
     // Commercial/retail blocks: the Google APP tints them cream in light mode (sampled
     // #fdf9ef on the P9, 2026-07-11) - Liberty ships no layer for those classes at all,
     // so this twin draws them; dark mode paints it the other-landuse navy (no change).
-    if (style.getLayer("vela-commercial") == null && style.getLayer("park") != null) {
+    if (twins && style.getLayer("vela-commercial") == null && style.getLayer("park") != null) {
         val comm = FillLayer("vela-commercial", basemapSrc(style) ?: "openmaptiles").withSourceLayer("landuse")
             .withFilter(
                 Expression.match(
@@ -5699,7 +5719,7 @@ private fun ensureLayers(style: Style) {
     // June "weird walking tracks" clutter); this twin keeps ONLY the deliberate FOOT trail
     // network - subclass path/bridleway - and skips footway/steps/pedestrian. Dedicated bike
     // paths (subclass cycleway) get their OWN teal layer below (Google's bike-route accent).
-    if (style.getLayer("vela-trails") == null && style.getLayer("road_minor") != null) {
+    if (twins && style.getLayer("vela-trails") == null && style.getLayer("road_minor") != null) {
         val pathWidth = Expression.interpolate(
             Expression.exponential(1.4f), Expression.zoom(),
             Expression.stop(14f, 0.7f), Expression.stop(16f, 1.6f), Expression.stop(19f, 4f),
@@ -6614,7 +6634,11 @@ private const val NAV_XLABEL_MIN_CLEAR_M = 26.0 // below this the bubble would s
  *  stations - the one POI class worth glancing at mid-drive (user 2026-07-17); everything else
  *  is clutter over the route. applyData flips the filter with navMode (identity-gated by
  *  lastPoiFuelOnly); ensureLayers seeds the browse form on every style load. */
-private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
+private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) = applyPoiTierFilters(StyleHost(style), fuelOnly)
+
+/** The basemap's place icon tiers: vegetation left out, and only fuel during a drive. Takes the
+ *  style through [StyleLayers] so the car map runs the same filters. */
+internal fun applyPoiTierFilters(style: StyleLayers, fuelOnly: Boolean) {
     val isPoint = Expression.match(
         Expression.geometryType(), Expression.literal(false),
         Expression.stop("Point", true), Expression.stop("MultiPoint", true),
@@ -7093,11 +7117,29 @@ private val PLACE_LABEL_LAYERS = listOf(
     "poi_r1", "poi_r7", "poi_r20", "poi_transit",
     // Seas, oceans, lakes and rivers (issue #619): Liberty labels them name:latin like places.
     "water_name_point_label", "water_name_line_label", "waterway_line_label",
+    // The same layers under the ids OpenFreeMap's Fiord and Dark looks use (Bright and
+    // Positron share Liberty's).
+    "place_continent", "place_country_major", "place_country_minor", "place_country_other", "place_state",
+    "place_city_large", "place_city", "place_town", "place_village", "place_suburb", "place_other", "water_name",
 )
 
 /** The labels of [PLACE_LABEL_LAYERS] that Liberty places along a line: a line break in their
  *  text is ignored, so they take the one-line form of a two-script name. */
-private val LINE_PLACED_LABEL_LAYERS = setOf("water_name_line_label", "waterway_line_label")
+private val LINE_PLACED_LABEL_LAYERS = setOf("water_name_line_label", "waterway_line_label", "water_name")
+
+/** The road name layers, under Liberty's ids and under Fiord's and Dark's. */
+private val ROAD_LABEL_LAYERS = listOf("highway-name-path", "highway-name-minor", "highway-name-major", "highway_name_other")
+
+/** What an OpenFreeMap look other than Liberty gets: the label language (names on the map, the
+ *  romanized road names) and the colors of Vela's own layers per theme. No palette, road widths,
+ *  icons or twin fills: the look stays the style's own. */
+internal fun applyLookTheme(style: StyleLayers, dark: Boolean) {
+    applyPlaceLabelLanguage(style)
+    ROAD_LABEL_LAYERS.forEach { id ->
+        runCatching { style.getLayer(id)?.setProperties(PropertyFactory.textField(roadLabelTextField())) }
+    }
+    applyVelaLayerColors(style, dark, amoled = false)
+}
 
 private fun applyPlaceLabelLanguage(style: StyleLayers) {
     val point = placeLabelTextField(line = false)
@@ -8439,26 +8481,9 @@ private fun applyRoadEdges(style: StyleLayers, dark: Boolean) {
     }
 }
 
-internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = false) {
-    val basemapSource = basemapSrc(style) ?: return
-    // Two compiled color sets, picked in Settings -> Appearance (MapColors): "modern" is the
-    // Google-app pixel-sampled palette, "classic" the archived pre-sample look (SPEC 6.2md).
-    val classic = app.vela.ui.MapColors.classic()
-    when {
-        amoled -> applyAmoled(style)
-        dark && classic -> applyClassicDark(style)
-        dark -> applyDark(style)
-        classic -> applyClassicLight(style)
-        else -> applyLight(style)
-    }
-    widenStreets(style)
-    if (!classic && !amoled) applyRoadEdges(style, dark)
-    // Country and city names in the reader's language (issue #598). Here rather than in the four
-    // palette functions: the text does not change with the colors, and a language change recreates
-    // the activity, which reloads the style and runs this again.
-    applyPlaceLabelLanguage(style)
-    PoiIcons.applyToLiberty(style, dark || amoled)
-    // Ambient Google-POI labels match the ICON's category color, Google-style — saturated in light,
+/** The per-theme colors of Vela's own symbol and dot layers, on every look. */
+private fun applyVelaLayerColors(style: StyleLayers, dark: Boolean, amoled: Boolean) {
+    // Ambient Google-POI labels match the ICON's category color, Google-style: saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark || amoled)),
@@ -8491,6 +8516,28 @@ internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = 
     (style.getLayer(AMBIENT_DOT_LAYER) as? CircleLayer)?.setProperties(
         PropertyFactory.circleStrokeColor(if (dark) "#162640" else "#f8f7f7"),
     )
+}
+
+internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = false) {
+    val basemapSource = basemapSrc(style) ?: return
+    // Two compiled color sets, picked in Settings -> Appearance (MapColors): "modern" is the
+    // Google-app pixel-sampled palette, "classic" the archived pre-sample look (SPEC 6.2md).
+    val classic = app.vela.ui.MapColors.classic()
+    when {
+        amoled -> applyAmoled(style)
+        dark && classic -> applyClassicDark(style)
+        dark -> applyDark(style)
+        classic -> applyClassicLight(style)
+        else -> applyLight(style)
+    }
+    widenStreets(style)
+    if (!classic && !amoled) applyRoadEdges(style, dark)
+    // Country and city names in the reader's language (issue #598). Here rather than in the four
+    // palette functions: the text does not change with the colors, and a language change recreates
+    // the activity, which reloads the style and runs this again.
+    applyPlaceLabelLanguage(style)
+    PoiIcons.applyToLiberty(style, dark || amoled)
+    applyVelaLayerColors(style, dark, amoled)
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
     // park outlines, and the railroad cross-tie hatching (the solid rail line stays). All
     // read as weird stray dashes.
@@ -10553,7 +10600,7 @@ private fun alprConeBitmap(): Bitmap {
     return bmp
 }
 
-private fun alprCameraBitmap(): Bitmap {
+internal fun alprCameraBitmap(): Bitmap {
     val s = 46
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
@@ -10576,7 +10623,7 @@ private fun alprCameraBitmap(): Bitmap {
 
 /** Fixed speed-camera badge: the ALPR badge's rounded square in enforcement AMBER, with a simple
  *  radar-box glyph (camera facing the road head-on) so the two camera layers read apart at a glance. */
-private fun speedCamBitmap(): Bitmap {
+internal fun speedCamBitmap(): Bitmap {
     val s = 46
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)

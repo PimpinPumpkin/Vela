@@ -4,7 +4,8 @@
 
 Settings opens over the map as a list of twelve pages with a search field above it.
 
-- Appearance: theme, font, interface size, map colors, units, clock, language, directions
+- Appearance: theme, font, interface size, map look (the Vela look on Liberty, or OpenFreeMap's
+  Bright, Positron, Fiord or Dark as served), map colors, units, clock, language, directions
   language, Page transitions.
 - Map: traffic, transit lines, terrain, tilt, "Keep north up", 3D buildings, map buttons, house
   numbers, names on the map (English then romanized, English then local, local only, or local

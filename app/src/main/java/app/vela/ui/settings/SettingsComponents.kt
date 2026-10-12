@@ -217,11 +217,16 @@ internal fun ToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     hint: String? = null,
     switchModifier: Modifier = Modifier,
+    /** A marker the row stands for, drawn before the label: the map badge a camera setting turns on. */
+    leading: (@Composable () -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().settingsAnchor(label).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (leading != null) {
+            androidx.compose.foundation.layout.Box(Modifier.padding(end = 12.dp)) { leading() }
+        }
         androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
             if (hint != null) {

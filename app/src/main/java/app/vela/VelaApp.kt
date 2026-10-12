@@ -215,6 +215,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.VoiceSearch.init(this)
         app.vela.ui.ContactsSearch.init(this) // contacts-in-search toggle (issue #243)
         app.vela.diag.NavTrace.init(this) // opt-in nav smoothness trace (issue #251)
+        app.vela.ui.MapLook.init(this) // which OpenFreeMap look the basemap loads (issue #750); before MapFonts
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)
         Onboarding.init(this)
         app.vela.ui.WhatsNew.init(this)
