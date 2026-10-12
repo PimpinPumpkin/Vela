@@ -72,7 +72,11 @@ PASSED_SLACK_M = 75    // a maneuver this far behind was passed in a gap: advanc
 Each step gets at most a far and a near prompt, then the short turn-now line. At 30 m/s (about
 67 mph) the far prompt comes 1,050 m out and the near one 300 m out. In town the 400 m and 150 m
 floors apply. A prompt speaks the real distance, so a turn 40 m into a short step is not
-announced as "in 400 meters".
+announced as "in 400 meters". A band the car would reach within 8 s of a prompt counts as said
+by it, so entering a step 170 m before its turn does not give "in 170 meters" and then "in 150
+meters" three seconds apart. The turn-now line interrupts whatever is playing, so a first prompt
+that could not end before it (13 letters a second, plus 0.6 s to start) keeps its lane clause and
+drops the sign's "toward" tail, the way a repeat does.
 
 That is the Everything setting. "How much the voice says" in Settings, Voice has two shorter
 ones (`SpokenDetail`). Brief says each maneuver once, with no street name: "In 150 meters, turn

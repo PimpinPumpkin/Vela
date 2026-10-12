@@ -197,7 +197,7 @@ repository are published as a searchable site at
   signed file the app checks at launch. When Google shifts a field, a fix reaches
   every install in minutes with no app update. [`SPEC.md`](SPEC.md) sections 3
   and 11 describe it.
-- **The rest.** 18 languages, light and dark themes, optional wallpaper colors,
+- **The rest.** 19 languages, light and dark themes, optional wallpaper colors,
   full operation by D-pad on keypad phones, a built-in updater with stable,
   nightly and canary channels, and Android Auto screens (a car accepts a
   sideloaded app only in some setups; see [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md)).

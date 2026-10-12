@@ -1477,6 +1477,13 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
+  `MIN_PACE_MPS` (5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
+  its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.
+- The turn-now line interrupts whatever is playing. A first prompt that could not end before the
+  car reaches the turn-now point (`SPEECH_CPS` 13 letters a second plus `SPEECH_LEAD_S` 0.6 s)
+  keeps its lane clause and drops the sign tail, as a repeat does: a 78-letter ramp line said
+  107 m before the ramp at 15 m/s lost its "toward" half to the line at the turn.
 - The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
   engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
   the engine's route is `planRoute`. The last spoken maneuver before the stop
@@ -4660,8 +4667,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 18 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
-from Weblate and English spoken guidance.
+The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
+spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
 `AppLocale` holds the language (empty means follow the system) and is applied in both
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
