@@ -184,6 +184,12 @@ screen silently stops recomposing.
 - A pull request is presented for review in this order: what it does, what was tested and on
   what, what was not tested, the edge cases and known gaps, then the verdict and where the risk
   sits. The diff is re-read before presenting.
+- Ready means every check the rigs here can run has been run: the phone, the Desktop Head
+  Unit, the mock location provider, the simulated drive, the unit tests. What is left on the
+  not-tested list is what needs a real car, another country or another person. An untested
+  item that could change the verdict makes the verdict not ready, and the review says what
+  would make it ready. A verdict that moves when the list is questioned was wrong when it was
+  written.
 
 ### The other releases are the download backend
 
