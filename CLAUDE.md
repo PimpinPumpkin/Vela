@@ -181,6 +181,9 @@ screen silently stops recomposing.
 - Never name a release `v0.5.0` by hand. The updater reads the run number out of the tag.
 - Contributor pull requests are read in full and tested before they land, and are taken by
   cherry-pick with the author kept.
+- A pull request is presented for review in this order: what it does, what was tested and on
+  what, what was not tested, the edge cases and known gaps, then the verdict and where the risk
+  sits. The diff is re-read before presenting.
 
 ### The other releases are the download backend
 
