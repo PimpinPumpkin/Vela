@@ -215,6 +215,19 @@ object QueryIntents {
         notFrom = emptyList(),
         goBare = listOf("vigyél", "menjünk", "navigálj", "navigáció", "útvonal", "irány", "menj", "el akarok menni", "el kell mennem"),
     )
+    private val RO = Words(
+        go = listOf("du-mă la", "du-mă spre", "du-mă către", "du mă la", "condu-mă la", "condu-mă spre", "navighează la", "navighează spre", "navighează către", "navigare la", "navigare spre", "navigare către", "mergi la", "mergem la", "hai la", "traseu la", "traseu spre", "traseu către", "rută la", "rută spre", "rută către", "cel mai rapid drum la", "cel mai rapid drum spre", "cel mai rapid traseu la", "cel mai rapid traseu spre", "cum ajung la", "cum ajung spre", "vreau să ajung la", "vreau să merg la", "trebuie să ajung la", "direcții spre", "direcții către", "direcții la"),
+        home = listOf("acasă", "acasa", "la mine acasă", "casa mea", "casă"),
+        work = listOf("la serviciu", "serviciu", "la muncă", "muncă", "la lucru", "lucru", "la birou", "birou", "la job", "job"),
+        nearPrefix = listOf("unde este cea mai apropiată", "unde este cel mai apropiat", "unde e cea mai apropiată", "unde e cel mai apropiat", "unde este", "unde e", "unde găsesc", "unde pot găsi", "găsește-mi", "găsește", "caută-mi", "caută", "arată-mi", "arată", "cea mai apropiată", "cel mai apropiat", "cele mai apropiate", "cei mai apropiați"),
+        nearSuffix = listOf("în apropiere", "in apropiere", "lângă mine", "langa mine", "aproape de mine", "prin apropiere", "pe aici", "în zonă", "in zona"),
+        eta = listOf("când ajung", "cand ajung", "când ajungem", "când o să ajung", "cât mai durează", "cat mai durează", "cât mai e", "cât mai este", "cât mai avem", "cât timp mai e", "ora sosirii", "ora de sosire", "la ce oră ajung", "eta", "mai e mult", "mai e mult până ajung"),
+        from = listOf("de la", "din"),
+        to = listOf("până la", "pana la", "către", "catre", "spre", "la"),
+        please = listOf("te rog", "vă rog", "va rog", "acum"),
+        notFrom = emptyList(),
+        goBare = listOf("du-mă", "du mă", "condu-mă", "navighează", "navigare", "mergi", "mergem", "hai", "vreau să ajung", "vreau să merg", "trebuie să ajung"),
+    )
     private val HE = Words(
         go = listOf("קח אותי ל", "קח אותי אל", "תיקח אותי ל", "תקח אותי ל", "סע ל", "סע אל", "לך ל", "נווט ל", "נווט אל", "נווט", "ניווט ל", "ניווט אל", "מסלול ל", "מסלול אל", "דרך ל", "איך מגיעים ל", "איך להגיע ל", "אני רוצה להגיע ל", "אני רוצה לנסוע ל", "אני צריך להגיע ל", "אני צריכה להגיע ל", "תוביל אותי ל", "הדרך המהירה ל", "המסלול המהיר ל"),
         home = listOf("הביתה", "הבית", "הבית שלי", "בית", "לבית"),
@@ -263,7 +276,7 @@ object QueryIntents {
 
     private val TABLES = mapOf(
         "en" to EN, "fr" to FR, "de" to DE, "es" to ES, "it" to IT, "pt" to PT, "nl" to NL,
-        "ru" to RU, "uk" to UK, "pl" to PL, "sv" to SV, "hu" to HU, "he" to HE, "iw" to HE,
+        "ru" to RU, "uk" to UK, "pl" to PL, "sv" to SV, "hu" to HU, "ro" to RO, "he" to HE, "iw" to HE,
         "zh" to ZH, "ja" to JA,
     )
 

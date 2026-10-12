@@ -213,6 +213,9 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The approach prompt that is not said twice three seconds apart on a short step, and the first
+  line of a short step that drops its sign tail so the line at the turn does not cut it. From a
+  2026-10-11 trace; unit-tested, not yet heard on a drive.
 - A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
 - UK fuel prices on a phone in the UK.
 

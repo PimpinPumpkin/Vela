@@ -28,6 +28,20 @@ class PlaceStatusTest {
         assertEquals(true, SearchParser.parseOpenNow("營業中 ⋅ 營業至22:00", "zh"))
     }
 
+    @Test fun `romanian - the opens-later and closes-later forms land on the right side`() {
+        assertEquals(false, SearchParser.parseOpenNow("Închis", "ro"))
+        assertEquals(false, SearchParser.parseOpenNow("Închis temporar", "ro"))
+        assertEquals(false, SearchParser.parseOpenNow("Se deschide la 08:00", "ro"))
+        // The forms Google served on a phone in Romanian (2026-10-11).
+        assertEquals(false, SearchParser.parseOpenNow("Închis ⋅ Deschide lun. la 09", "ro"))
+        assertEquals(false, SearchParser.parseOpenNow("Deschide lun. la 09", "ro"))
+        assertEquals(true, SearchParser.parseOpenNow("Deschis nonstop", "ro"))
+        assertEquals(true, SearchParser.parseOpenNow("Închide curând ⋅ 23", "ro"))
+        assertEquals(true, SearchParser.parseOpenNow("Deschis", "ro"))
+        assertEquals(true, SearchParser.parseOpenNow("Se închide la 22:00", "ro"))
+        assertEquals(true, SearchParser.isTemporarilyClosed("Închis temporar"))
+    }
+
     @Test fun `japanese - closed words win first`() {
         assertEquals(false, SearchParser.parseOpenNow("営業時間外 ⋅ 営業開始: 9:00", "ja"))
         assertEquals(false, SearchParser.parseOpenNow("臨時休業", "ja"))
@@ -134,7 +148,7 @@ class PlaceStatusTest {
      *  the UI can't color open/closed. It MUST equal the shipped keyword-table languages (Hebrew
      *  is keyed under both "iw" and "he"). */
     @Test fun `STATUS_LANGS covers exactly the shipped status-table languages`() {
-        val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "ja", "iw", "he")
+        val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "iw", "he")
         assertEquals(expected, SearchParser.STATUS_LANGS)
     }
 

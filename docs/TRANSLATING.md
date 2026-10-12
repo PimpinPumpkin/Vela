@@ -1,6 +1,6 @@
 # Languages and translating
 
-Vela's interface is offered in 18 languages. Translations are done by the community on
+Vela's interface is offered in 19 languages. Translations are done by the community on
 Weblate:
 
 **<https://hosted.weblate.org/engage/vela-maps/>**
@@ -25,6 +25,7 @@ are separate systems, so support differs by language.
 | Swedish | `sv` | yes | yes | yes | yes |
 | Ukrainian | `uk` | yes | yes | yes | yes |
 | Hungarian | `hu` | yes | yes | yes | yes |
+| Romanian | `ro` | in progress | yes | yes | yes |
 | Estonian | `et` | in progress | English | system voice | yes |
 | Chinese (Simplified) | `zh` | yes | yes | yes (Mandarin) | yes |
 | Chinese (Traditional) | `zh-TW` | yes | yes | yes (the Mandarin voice) | yes |

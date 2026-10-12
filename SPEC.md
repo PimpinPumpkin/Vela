@@ -1477,6 +1477,13 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
+  `MIN_PACE_MPS` (5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
+  its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.
+- The turn-now line interrupts whatever is playing. A first prompt that could not end before the
+  car reaches the turn-now point (`SPEECH_CPS` 13 letters a second plus `SPEECH_LEAD_S` 0.6 s)
+  keeps its lane clause and drops the sign tail, as a repeat does: a 78-letter ramp line said
+  107 m before the ramp at 15 m/s lost its "toward" half to the line at the turn.
 - The next stop is said coming the way the destination is. `NavSession.stopAheadFor` hands the
   engine a `StopAhead` (mark, name, side, lot flag) for the stop `nextStopIndex` picks, only while
   the engine's route is `planRoute`. The last spoken maneuver before the stop
@@ -3125,6 +3132,31 @@ the shared 12 s timeout cuts it off.
   dropped. The picker keeps `*/*` last, because Android reports `.gpx` as an octet stream.
   `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable. Never wrap the
   launcher in a bare `runCatching`: with no documents provider the button then does nothing.
+- Google Takeout's Saved folder holds one CSV per list (`Title,Note,URL,Comment`, older
+  exports `Tags`) with no coordinates (`core/data/TakeoutCsv`). Either Import button takes one
+  (`isTakeoutCsv`: a header with Title and URL) and `MapViewModel.importTakeoutCsv` makes a list
+  named after the file, through `importTarget` with source `takeout:<name>`, so the same file
+  again refreshes the list. A row's link is read on the phone: a `/maps/search/<lat>,<lng>` pin
+  is kept as it is; a `/maps/place/<Name>/data=...!1s0x<cell>:0x<id>` listing carries only its
+  feature id, so the title is searched and the hit whose feature id's second half
+  (`TakeoutCsv.featureKey`, which an old `?cid=<decimal>` link carries too) matches is taken.
+  The id's first half is an S2 cell (`Link.cellCenter`, `core/util/S2Cell`), roughly where the
+  place is, within a hundred meters for a leaf cell, so a keyed row's search is biased there,
+  which is what finds one branch of a chain in a list made on a trip; a keyed row missed there
+  gets one unbiased search (`near = null`), matched on the key alone. A row with no feature id
+  is searched where the user is and takes the one hit named like the title, none when several
+  are (a chain's branches); with a feature id present the name is never trusted, a same-name
+  hit with another id is another place. The choice is `TakeoutCsv.pick`. A row that finds
+  nothing is counted and left out, never guessed at. Note and Comment become the
+  place's note. With "Use Vela without Google" on, only pin rows import and the listing rows
+  are counted as `needGoogle`, not as misses. The lookups run in `viewModelScope`
+  (`importTakeoutCsv` starts them with `async` and awaits), one import at a time
+  (`ImportResult.Busy` for a second), so leaving Settings neither loses nor cancels them; the
+  outcome (`MapViewModel.takeoutOutcome`) goes to the status card as well as to the caller's
+  toast. Listing rows are looked up `TAKEOUT_LOOKUP_GAP_MS` (400 ms) apart; a pin row waits for
+  nothing. The status card shows `settings_takeout_progress` every five rows.
+  `ImportResult.ListAdded` carries the name, the count, the misses and the `needGoogle` count.
+  Rows are capped at `MAX_ROWS` (2,000). The Takeout zip itself is not read; pick the CSV inside it.
 - Trip shortcuts: the route card's menu pins the trip as a launcher shortcut. Its intent
   (action `app.vela.action.OPEN_TRIP`) carries names, latitudes and longitudes as parallel
   arrays (NaN means "your location") and the mode. Nothing is stored in the app.
@@ -4661,8 +4693,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 18 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
-from Weblate and English spoken guidance.
+The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
+spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
 `AppLocale` holds the language (empty means follow the system) and is applied in both
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
@@ -5330,7 +5363,11 @@ Regressing one of these blocks a release.
   Google is used for" under Continue opens `GoogleUsesSection` as a first-run page, with the
   same switches as Settings > Privacy. The same page asks about plate cameras (`CameraChoices`):
   "Route around them" sets `FlockRouteAlert`, "Warn me as I get close" sets the card and the
-  spoken warning of `FlockNavAlert`. Both start off and are written on Continue.
+  spoken warning of `FlockNavAlert`. Both start off and are written on Continue. The card
+  starts with the plate camera badge as the map draws it (`PlateCameraBadge`, the map's own
+  `alprCameraBitmap`), and Settings > Navigation shows the plate and speed camera badges
+  before their rows (`ToggleRow`'s `leading` slot), so the badge is explained where it is
+  turned on and never drawn a second way.
 - Settings > Privacy lists every switch that decides what Google is asked
   (`GoogleUsesSection`, shown while Google is on): the place source, what a place page loads,
   and what a route and a drive ask. Each row is a shared composable in

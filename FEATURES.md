@@ -215,7 +215,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   voice, and a voice of another language says so on its row.
 - English voices say about 3,500 place names the local way. Street names in another script are read
   romanized.
-- 18 languages, including Chinese, Japanese and right-to-left Hebrew. Estonian is partly translated.
+- 19 languages, including Chinese, Japanese and right-to-left Hebrew. Romanian and Estonian are
+  partly translated; Romanian has spoken directions and a voice.
 - "Follow system language", or pick one for Vela alone.
 - "Directions language": turns shown and spoken in another language than the menus, such as
   English menus with Dutch directions. "Same as app language" by default.
@@ -230,7 +231,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Lists with a name, color and icon or emoji, in your order. A saved place or a list entry can carry
   a note, an icon and your own name (Rename, in its sheet's save menu).
 - Saved places show on the map in their list's color, and can be pinned to the search page.
-- Export saved places and lists to a file and import them. Import also reads GPX, KML and GeoJSON.
+- Export saved places and lists to a file and import them. Import also reads GPX, KML and GeoJSON,
+  and a list from Google Takeout's Saved folder (one CSV per list) becomes a list of the same name,
+  each place looked up by its Google id.
 - Select several places in a list or in Saved places (long press one, or the select button), then
   remove them or move them to another list or a new one.
 - A list can have a sound. Driving past one of its places plays it and shows the place on a card.
@@ -247,7 +250,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - No account, no ads, no analytics and no Vela server.
 - The first run asks whether to use Google, and can open the list of what Google is used for.
-  The same page asks whether to route around plate cameras and warn near them.
+  The same page asks whether to route around plate cameras and warn near them, and shows the
+  badge the map uses for them; the camera settings show their badges too.
 - Settings > Privacy has every switch that decides what Google is asked, in one list.
 - "Use Vela without Google" stops every request to Google. Reviews, photos, live traffic and Street
   View go away.

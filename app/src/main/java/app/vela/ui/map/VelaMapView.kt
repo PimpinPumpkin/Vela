@@ -10553,7 +10553,7 @@ private fun alprConeBitmap(): Bitmap {
     return bmp
 }
 
-private fun alprCameraBitmap(): Bitmap {
+internal fun alprCameraBitmap(): Bitmap {
     val s = 46
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
@@ -10576,7 +10576,7 @@ private fun alprCameraBitmap(): Bitmap {
 
 /** Fixed speed-camera badge: the ALPR badge's rounded square in enforcement AMBER, with a simple
  *  radar-box glyph (camera facing the road head-on) so the two camera layers read apart at a glance. */
-private fun speedCamBitmap(): Bitmap {
+internal fun speedCamBitmap(): Bitmap {
     val s = 46
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)

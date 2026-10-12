@@ -31,6 +31,13 @@ object NavEngine {
     private const val ADVANCE_MIN_M = 5.0
     /** In [NavState.spoken]: the turn-now line of the step has been said (0 and 1 are the bands). */
     const val TURN_NOW_SLOT = 2
+    /** A band the car reaches within this many seconds of a prompt is taken as said by it. */
+    private const val BAND_MERGE_S = 8.0
+    /** The voice's pace in letters a second and the lead before its first sound: how long a line takes. */
+    private const val SPEECH_CPS = 13.0
+    private const val SPEECH_LEAD_S = 0.6
+    /** The pace the two estimates above assume at a crawl, so a standstill divides by something. */
+    private const val MIN_PACE_MPS = 5.0
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
     private const val END_PARK_ALONG_M = 60.0 // stopped this close to the end along the route, with turns still unsaid, is arrived
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
@@ -481,6 +488,9 @@ object NavEngine {
         // byte-identical, the T is what moves the open-road prompt earlier (~+0.2 mi at 70 mph).
         val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
         val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
+        // The line at the turn, ~2.5 s before it (the fixed 25 m fired ≤1 s before a 75 mph gore
+        // point). Needed by the approach prompts too, which must end before it cuts in.
+        val turnNowM = (v * 2.5).coerceIn(ARRIVE_RADIUS_M, 90.0)
         val detail = SpokenDetail.mode
 
         // The next stop is said after the last maneuver before it ("Turn left onto Covell
@@ -574,24 +584,37 @@ object NavEngine {
                 // to be, and "pass the light, then use the left 2 lanes" has the order backward.
                 // A line that names the stop after it takes no light cue either: two "then"s.
                 // Nor one that names the turn after it.
-                val said = when {
-                    firstForStep && thenStopHere -> withStop(instruction)
-                    isArrive || (firstForStep && lane != null) -> instruction
-                    firstForStep && nextIdx >= 0 -> withNext(instruction)
-                    else -> lightLead(target, dtn, instruction)
+                fun wrap(instr: String) = when {
+                    firstForStep && thenStopHere -> withStop(instr)
+                    isArrive || (firstForStep && lane != null) -> instr
+                    firstForStep && nextIdx >= 0 -> withNext(instr)
+                    else -> lightLead(target, dtn, instr)
                 }
-                events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), said))
+                val distancePhrase = spokenDistance(sayM, imperial)
+                var line = nav().inThen(distancePhrase, wrap(instruction))
+                val pace = v.coerceAtLeast(MIN_PACE_MPS)
+                // Entering a short step at speed, the whole line was still playing when the line
+                // at the turn cut in (it interrupts), and the sign's tail was what got cut. When
+                // the car reaches the turn-now point before the line could end, the first prompt
+                // keeps its lanes and drops the tail, as a repeat does.
+                if (firstForStep && !isArrive && (dtn - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
+                    val short = nav().repeatShort(lotLine ?: target.spokenInstruction())
+                    line = nav().inThen(distancePhrase, wrap(if (lane != null) nav().useLanesToDo(lane.side, lane.count, short) else short))
+                }
+                events += NavEvent.Speak(line)
+                // A band the car reaches within BAND_MERGE_S of this line is said by it: entering
+                // a step 170 m from its turn said the line, and the 150 m band said it again
+                // three seconds later.
+                spoken = spoken + bands.withIndex().filter { (slot, d) -> slot !in spoken && d < sayM && (sayM - d) / pace < BAND_MERGE_S }.map { it.index }
                 // A light "get ready" tick once the NEAR band is reached, so bikers/walkers feel
                 // the turn coming without looking or hearing.
                 if (due.last().index == 1 && !isArrive) events += NavEvent.Haptic(target.type, approaching = true)
             }
         }
 
-        // Turn-now / step advance, also speed-scaled (~2.5 s before the maneuver; the fixed 25 m
-        // fired ≤1 s before a 75 mph gore point). Final ARRIVAL adds proximity fallbacks: OSRM
-        // snaps the destination to the road, and parking 30-50 m short/off used to never arrive —
-        // then "Rerouting" fired in the parking lot.
-        val turnNowM = (v * 2.5).coerceIn(ARRIVE_RADIUS_M, 90.0)
+        // Turn-now / step advance, also speed-scaled (turnNowM above). Final ARRIVAL adds
+        // proximity fallbacks: OSRM snaps the destination to the road, and parking 30-50 m
+        // short/off used to never arrive, and then "Rerouting" fired in the parking lot.
         // THE STEP MOVES ON WHEN THE CAR IS AT THE TURN, which at low speed is later than the
         // voice says it. Both used to happen 25 m out, so a car waiting at a stop line 20 m short
         // of its left turn was shown the turn after it, 0.9 miles on, and the road name under the
