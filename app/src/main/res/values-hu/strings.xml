@@ -935,8 +935,6 @@
     <string name="place_transit_train">Vonat</string>
     <string name="place_transit_tram">Villamos</string>
     <string name="settings_parking_history_empty">Még nincs mentett parkolóhely. Koppints a térképen a P gombra, hogy elmentsd, hol parkoltál.</string>
-    <string name="list_move_up">Lista mozgatása felfelé</string>
-    <string name="list_move_down">Lista mozgatása lefelé</string>
     <string name="voice_capture_examples_title">Amit mondhatsz</string>
     <string name="voice_capture_example_home">„Vigyél haza” vagy „vigyél a munkahelyemre”</string>
     <string name="voice_capture_example_go">„Menj a Fő utca 12-be”</string>
