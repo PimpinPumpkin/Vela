@@ -119,6 +119,10 @@ time on a phone before it lands (2026-10-11).
   table, the Mihai Piper voice in the library, Romanian in the language pickers, the open and
   closed, review page, transit and voice command words. Built; the phrases were written by the
   maintainer's assistant and need a native reviewer; the voice was heard on a Pixel 4a demo drive.
+  After it lands: the live settings file pushes the transit word lists and a pushed list replaces
+  the compiled one, so `stație`, `gară` and `autogară` go into `transitCategoryWords` and
+  `benzinărie` and `încărcare` into `transitExcludeWords` in `calibration.json`, signed. The
+  status words need no push; no status table is live.
 - Google Takeout list CSVs (#761, branch `takeout-csv`): the per-list CSVs carry a title and a
   Google link per row and no coordinates, so each row is one lookup; imported as a list each.
 

@@ -2328,8 +2328,14 @@ object RoNavStrings : NavStrings {
         }
     }
 
-    /** Romanian puts "de" between a number of 20 or more and its noun: "200 de metri", "15 metri". */
-    private fun de(n: Double): String = if (n >= 20.0) "de " else ""
+    /** Romanian puts "de" between a number of 20 or more and its noun ("200 de metri", "15 metri"),
+     *  except a number whose last two digits are 1 to 19 ("110 metri", "1.015 metri"). */
+    private fun de(n: Double): String {
+        if (n < 20.0) return ""
+        val whole = n.toLong()
+        val isWhole = n == whole.toDouble()
+        return if (isWhole && (whole % 100) in 1..19) "" else "de "
+    }
 
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084

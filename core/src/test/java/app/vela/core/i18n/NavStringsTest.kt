@@ -206,6 +206,10 @@ class NavStringsTest {
         assertEquals("un kilometru", ro.spokenDistance(1000.0, imperial = false))
         assertEquals("1,5 kilometri", ro.spokenDistance(1500.0, imperial = false))
         assertEquals("20 de kilometri", ro.spokenDistance(20000.0, imperial = false))
+        // A number whose last two digits are 1 to 19 takes no "de".
+        assertEquals("110 metri", ro.spokenDistance(110.0, imperial = false))
+        assertEquals("120 de metri", ro.spokenDistance(120.0, imperial = false))
+        assertEquals("300 de metri", ro.spokenDistance(300.0, imperial = false))
         assertEquals("În 200 de metri, Virați la dreapta", ro.inThen(ro.spokenDistance(200.0, false), ro.phrase("turn", "right", null, null, null, null)))
         assertEquals("Virați la stânga pe Strada Mare", ro.phrase("turn", "left", "Strada Mare", null, null, null))
         assertEquals("La sensul giratoriu, luați a doua ieșire pe Calea Victoriei", ro.phrase("roundabout", null, "Calea Victoriei", null, null, 2))
