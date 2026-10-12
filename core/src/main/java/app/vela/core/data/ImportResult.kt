@@ -23,8 +23,12 @@ sealed interface ImportResult {
     data object Unreadable : ImportResult
 
     /** A Google Takeout list CSV became (or refreshed) the list [name]: [added] places in it,
-     *  [missed] rows whose place could not be found. */
-    data class ListAdded(val name: String, val added: Int, val missed: Int) : ImportResult
+     *  [missed] rows whose place could not be found, [needGoogle] listing rows left unlooked-up
+     *  because Google is off. */
+    data class ListAdded(val name: String, val added: Int, val missed: Int, val needGoogle: Int) : ImportResult
+
+    /** A Takeout list is still being looked up; those imports run one at a time. */
+    data object Busy : ImportResult
 }
 
 /**

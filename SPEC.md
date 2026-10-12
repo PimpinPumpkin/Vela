@@ -3108,10 +3108,19 @@ the shared 12 s timeout cuts it off.
   feature id, so the title is searched and the hit whose feature id's second half
   (`TakeoutCsv.featureKey`, which an old `?cid=<decimal>` link carries too) matches is taken;
   failing that, the one hit named like the title, and none when several are (a chain's
-  branches). A row that finds nothing is counted and left out, never guessed at. Note and Comment become the place's note. With "Use Vela
-  without Google" on, only pin rows import. The status card shows `settings_takeout_progress`
-  every five rows. `ImportResult.ListAdded` carries the name, the count and the misses. Rows
-  are capped at `MAX_ROWS` (2,000). The Takeout zip itself is not read; pick the CSV inside it.
+  branches). The choice is `TakeoutCsv.pick`. A keyed row the biased search misses gets one
+  unbiased search (`near = null`, a list made on a trip is far from the phone), matched on the
+  key alone; a name-only row stays biased, since the bias is what tells branches apart. A row
+  that finds nothing is counted and left out, never guessed at. Note and Comment become the
+  place's note. With "Use Vela without Google" on, only pin rows import and the listing rows
+  are counted as `needGoogle`, not as misses. The lookups run in `viewModelScope`
+  (`importTakeoutCsv` starts them with `async` and awaits), one import at a time
+  (`ImportResult.Busy` for a second), so leaving Settings neither loses nor cancels them; the
+  outcome (`MapViewModel.takeoutOutcome`) goes to the status card as well as to the caller's
+  toast. Listing rows are looked up `TAKEOUT_LOOKUP_GAP_MS` (400 ms) apart; a pin row waits for
+  nothing. The status card shows `settings_takeout_progress` every five rows.
+  `ImportResult.ListAdded` carries the name, the count, the misses and the `needGoogle` count.
+  Rows are capped at `MAX_ROWS` (2,000). The Takeout zip itself is not read; pick the CSV inside it.
 - Trip shortcuts: the route card's menu pins the trip as a launcher shortcut. Its intent
   (action `app.vela.action.OPEN_TRIP`) carries names, latitudes and longitudes as parallel
   arrays (NaN means "your location") and the mode. Nothing is stored in the app.

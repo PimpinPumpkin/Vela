@@ -1065,9 +1065,12 @@
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
     <string name="settings_takeout_list_default">Imported list</string>
     <string name="settings_takeout_progress">Looking up place %1$d of %2$d</string> <!-- format -->
-    <string name="settings_takeout_imported">Imported %1$d place(s) into %2$s</string> <!-- format -->
+    <string name="settings_takeout_imported">Imported %1$d place(s) into %2$s.</string> <!-- format -->
     <string name="settings_takeout_imported_missed">Imported %1$d place(s) into %2$s. %3$d could not be found.</string> <!-- format -->
     <string name="settings_takeout_imported_none">No place in that list could be found, so %1$s was not made.</string> <!-- format -->
+    <string name="settings_takeout_need_google">%1$d place(s) need Google to be looked up.</string> <!-- format -->
+    <string name="settings_takeout_need_google_none">%1$d place(s) need Google to be looked up, so %2$s was not made.</string> <!-- format -->
+    <string name="settings_takeout_busy">A list is still being imported, so wait for it to finish first.</string>
     <string name="settings_places_imported">Imported %1$d place(s)</string> <!-- format -->
     <string name="settings_no_lists">No lists to export yet</string>
     <string name="mapvm_export_lists_subject">Vela lists (%1$d)</string>

@@ -1,5 +1,6 @@
 package app.vela.core.data
 
+import app.vela.core.model.Place
 import java.math.BigInteger
 import java.net.URLDecoder
 
@@ -13,7 +14,7 @@ import java.net.URLDecoder
  *  - `maps.google.com/?cid=<decimal>` in older exports: the feature id's second half in decimal.
  *
  * This reads the file and each row's link. Looking a listing up is the caller's: a search by
- * title whose hit is matched on [featureKey], the stable half of the feature id.
+ * title, whose hit [pick] chooses on [featureKey], the stable half of the feature id.
  */
 object TakeoutCsv {
     data class Row(val title: String, val note: String?, val url: String, val comment: String?)
@@ -84,6 +85,20 @@ object TakeoutCsv {
     /** The matching half of a place's feature id (`0x<cell>:0x<id>`), or null. */
     fun featureKey(featureId: String?): String? =
         featureId?.substringAfter(':', "")?.removePrefix("0x")?.lowercase()?.takeIf { it.isNotEmpty() }
+
+    /** The hit among [hits] whose feature id carries [key]. */
+    fun byKey(hits: List<Place>, key: String?): Place? =
+        key?.let { k -> hits.firstOrNull { featureKey(it.featureId) == k } }
+
+    /**
+     * The hit a listing row takes. The one carrying [key], from [near] (the search biased where the
+     * user is) or [wide] (the unbiased retry for a list made far away); failing that, the one hit in
+     * [near] named like [title]. Several named so (a chain's branches) or none give none: a row is
+     * never guessed at. A name is never matched in [wide], since the bias is what tells branches apart.
+     */
+    fun pick(near: List<Place>, wide: List<Place>, key: String?, title: String): Place? =
+        byKey(near, key) ?: byKey(wide, key)
+            ?: near.filter { it.name.equals(title, ignoreCase = true) }.singleOrNull()
 
     private val FID = Regex("""!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)""")
     private val PIN = Regex("""!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)""")

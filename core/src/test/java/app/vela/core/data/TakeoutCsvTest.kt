@@ -1,5 +1,7 @@
 package app.vela.core.data
 
+import app.vela.core.model.LatLng
+import app.vela.core.model.Place
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -54,5 +56,20 @@ class TakeoutCsvTest {
         assertEquals(38.5451, l.lat!!, 1e-9)
         assertEquals(-121.7398, l.lng!!, 1e-9)
         assertEquals("2", l.featureKey)
+    }
+
+    private fun place(name: String, key: String) =
+        Place(id = "$name:$key", name = name, location = LatLng(38.5, -121.7), featureId = "0x1:0x$key")
+
+    @Test fun `a listing row takes the hit by feature id, else the one hit by name`() {
+        val coop = place("Davis Food Co-op", "aa")
+        val mikuni = place("Mikuni", "bb")
+        val mikuni2 = place("Mikuni", "cc")
+        val near = listOf(coop, mikuni, mikuni2)
+        assertEquals(mikuni, TakeoutCsv.pick(near, emptyList(), "bb", "Davis Food Co-op"))
+        assertEquals(coop, TakeoutCsv.pick(near, emptyList(), null, "davis food co-op"))
+        assertNull(TakeoutCsv.pick(near, emptyList(), null, "Mikuni"))
+        assertEquals(mikuni2, TakeoutCsv.pick(emptyList(), near, "cc", "Mikuni"))
+        assertNull(TakeoutCsv.pick(emptyList(), listOf(coop), "zz", "Davis Food Co-op"))
     }
 }
