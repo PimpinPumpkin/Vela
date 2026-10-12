@@ -267,7 +267,12 @@ private fun CameraChoices(avoid: Boolean, warn: Boolean, onAvoid: (Boolean) -> U
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 6.dp)) {
-            Text(stringResource(R.string.welcome_cameras_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            // The badge itself, so a new user knows the purple square when it appears on the map.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PlateCameraBadge()
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.welcome_cameras_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
             Spacer(Modifier.height(2.dp))
             Text(
                 stringResource(R.string.welcome_cameras_intro),
