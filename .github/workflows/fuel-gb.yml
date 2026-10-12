@@ -49,7 +49,7 @@ jobs:
           source scripts/bake-lib.sh # CELLS_RELEASE_TARGET, the root commit data releases sit on
           source scripts/gh-retry.sh
           export GH_RETRY_TRIES=3
-          UA="VelaMaps-bake (https://github.com/PimpinPumpkin/Vela)"
+          UA="VelaMaps-bake (${{ github.server_url }}/${{ github.repository }})"
           GOV="https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
           ARCHIVE="https://raw.githubusercontent.com/matthewgall/fuelfinder-archive/main/data.csv"
           REL="https://github.com/$REPO/releases/download/fuel-gb"

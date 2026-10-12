@@ -50,13 +50,18 @@ jobs:
       - name: Fetch the runtimes CI fetches
         run: |
           mkdir -p core/libs app/libs
+          # This repository's fixed-tag releases first, the upstream ones when a fork has none.
           for f in osmand-java.jar osmand-shared-jvm.jar gnu-trove-osmand.jar kxml2-vela.jar; do
-            curl -fSL -o "core/libs/$f" "https://github.com/PimpinPumpkin/Vela/releases/download/obf-runtime/$f"
+            curl -fSL -o "core/libs/$f" "https://github.com/${{ github.repository }}/releases/download/obf-runtime/$f" \
+            || curl -fSL -o "core/libs/$f" "https://github.com/PimpinPumpkin/Vela/releases/download/obf-runtime/$f"
           done
           curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            "https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar" \
+          || curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
             "https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
           v=$(sed -n 's/^vela.cronetVersion=//p' gradle.properties)
-          curl -fSL -o "app/libs/cronet-$v.aar" "https://github.com/PimpinPumpkin/Vela/releases/download/cronet-runtime/cronet-$v.aar" \
+          curl -fSL -o "app/libs/cronet-$v.aar" "https://github.com/${{ github.repository }}/releases/download/cronet-runtime/cronet-$v.aar" \
+            || curl -fSL -o "app/libs/cronet-$v.aar" "https://github.com/PimpinPumpkin/Vela/releases/download/cronet-runtime/cronet-$v.aar" \
             || bash scripts/build-cronet-aar.sh "$v" app/libs
 
       - name: Build the per-chip release APKs
