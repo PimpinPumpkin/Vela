@@ -45,7 +45,7 @@ object Onboarding {
     val showVoicePrompt = mutableStateOf(false)
 
     // Forks: point this at your own funding page.
-    const val DONATE_URL = "https://buymeacoffee.com/PimpinPumpkin"
+    val DONATE_URL: String get() = app.vela.core.config.VelaLinks.donate()
 
     /**
      * Open the funding page in a browser. Shows a toast ONLY when nothing can handle the link (no

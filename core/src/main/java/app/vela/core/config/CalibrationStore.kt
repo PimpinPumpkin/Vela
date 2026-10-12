@@ -45,7 +45,7 @@ class CalibrationStore @Inject constructor(
     private val sigFile = File(context.filesDir, "calibration.json.sig")
 
     @Volatile
-    private var active: Calibration = (loadCached() ?: Calibration.DEFAULT).also { latest = it }
+    private var active: Calibration = (loadCached() ?: Calibration.DEFAULT).also { latest = it; VelaLinks.overrides = it.links }
 
     @Volatile
     private var refreshed = false
@@ -58,8 +58,20 @@ class CalibrationStore @Inject constructor(
         refreshed = true
         withContext(Dispatchers.IO) {
             runCatching {
-                val body = fetch(REMOTE_URL) ?: return@runCatching
-                val sig = fetch(SIG_URL) ?: return@runCatching
+                // The file is asked for where the last bundle said it lives (a moved repository
+                // announces its new place through the old one first); when that does not answer,
+                // where this build was compiled to look.
+                val pushed = VelaLinks.calibration()
+                val compiledUrl = VelaLinks.default(VelaLinks.CALIBRATION)
+                val at = listOf(pushed, compiledUrl).distinct()
+                var body: String? = null
+                var sig: String? = null
+                for (url in at) {
+                    body = fetch(url) ?: continue
+                    sig = fetch("$url.sig") ?: continue
+                    break
+                }
+                if (body == null || sig == null) return@runCatching
                 // Reject anything we didn't sign — this is what makes pushing CODE safe.
                 if (!verifySignature(body.toByteArray(Charsets.UTF_8), sig)) return@runCatching
                 val remote = parseBundle(body) ?: return@runCatching
@@ -70,6 +82,7 @@ class CalibrationStore @Inject constructor(
                     }
                     active = remote
                     latest = remote
+                    VelaLinks.overrides = remote.links
                 }
             }
         }
@@ -102,7 +115,7 @@ class CalibrationStore @Inject constructor(
     private fun isAllowed(c: Calibration): Boolean {
         val hosts = listOf(c.searchEndpoint, c.directionsEndpoint, c.reviewsEndpoint, c.photosEndpoint, c.sessionWarmUrl, c.suggestEndpoint)
             .map { runCatching { URI(it).host }.getOrNull() }
-        return hosts.all { it != null && it in ALLOWED_HOSTS }
+        return hosts.all { it != null && it in ALLOWED_HOSTS } && VelaLinks.acceptable(c.links)
     }
 
     companion object {
@@ -218,6 +231,7 @@ class CalibrationStore @Inject constructor(
                 suggestPaths = Calibration.DEFAULT_SUGGEST_PATHS + remoteSuggestPaths,
                 reviewWords = strMap("reviewWords"),
                 reviewSelectors = strMap("reviewSelectors"),
+                links = strMap("links") ?: emptyMap(),
             )
         }.getOrNull()
 
@@ -229,8 +243,6 @@ class CalibrationStore @Inject constructor(
         var latest: Calibration = Calibration.DEFAULT
             private set
 
-        private const val REMOTE_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json"
-        private const val SIG_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json.sig"
         private val ALLOWED_HOSTS = setOf("www.google.com", "google.com")
 
         // EC P-256 public key (SPKI, base64) — the private half lives only in

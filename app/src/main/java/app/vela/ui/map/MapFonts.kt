@@ -72,7 +72,7 @@ object MapFonts {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .build()
-        val fontsBase = BuildConfig.MAP_FONTS_URL.trimEnd('/')
+        val fontsBase = app.vela.core.config.VelaLinks.mapFonts().trimEnd('/')
 
         // A host that can't serve glyphs must never be in the style the map renders.
         val probeUrl = "$fontsBase/Noto%20Sans%20Regular/0-255.pbf"

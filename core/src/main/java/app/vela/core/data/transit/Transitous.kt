@@ -43,7 +43,7 @@ object Transitous {
     const val BASE = "https://api.transitous.org"
     // Single-sourced: Transitous is community infrastructure under fair use, so its contact string
     // must not drift from the app's real version the way the Overpass/Nominatim copies had.
-    private const val UA = app.vela.core.VelaConfig.VELA_UA
+    private val UA: String get() = app.vela.core.VelaConfig.VELA_UA
     private val json = Json { ignoreUnknownKeys = true }
 
     // --- wire DTOs (only the fields Vela reads) --------------------------------------------------

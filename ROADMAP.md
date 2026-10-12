@@ -203,6 +203,9 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The project's links from one place (`VelaLinks`) with a signed `links` push to move them
+  (SPEC 11.4). Unit-tested; no bundle with `links` has been pushed yet, so a move has not been
+  rehearsed.
 - A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
 - UK fuel prices on a phone in the UK.
 

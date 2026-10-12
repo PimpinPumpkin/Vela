@@ -65,6 +65,22 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // A build's own data links (a local test server, -PobfManifestUrl= and the like), before
+        // anything fetches. Blank means the compiled default in VelaLinks.
+        app.vela.core.config.VelaLinks.compiled = mapOf(
+            app.vela.core.config.VelaLinks.OBF_MANIFEST to BuildConfig.OBF_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.OVERLAY_MANIFEST to BuildConfig.OVERLAY_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.MAXSPEED_MANIFEST to BuildConfig.MAXSPEED_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.ADDRESS_MANIFEST to BuildConfig.ADDRESS_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.PLACES_MANIFEST to BuildConfig.PLACES_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.CELLS_MANIFEST to BuildConfig.CELLS_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.BASEMAP_MANIFEST to BuildConfig.BASEMAP_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.WORLD_BASEMAP to BuildConfig.WORLD_BASEMAP_URL,
+            app.vela.core.config.VelaLinks.POI_PACK_MANIFEST to BuildConfig.POI_PACK_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.FLOCK_MANIFEST to BuildConfig.FLOCK_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.ROAD_FEATURES_MANIFEST to BuildConfig.ROAD_FEATURES_MANIFEST_URL,
+            app.vela.core.config.VelaLinks.MAP_FONTS to BuildConfig.MAP_FONTS_URL,
+        ).filterValues { it.isNotBlank() }
         // Device memory class first: the Coil cap and the eager-warm decisions read it.
         app.vela.ui.MemoryPressure.init(this)
         app.vela.ui.SpeechPreload.init(this) // after MemoryPressure: its default reads the RAM tier
@@ -150,7 +166,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
             // fall back to their boxes, which is what they always were.
             app.vela.offline.RegionPolys.ensureLoaded(this@VelaApp)
             app.vela.data.FlockCameras.ensureLoaded(this@VelaApp)
-            app.vela.data.FlockCameras.refresh(this@VelaApp, app.vela.BuildConfig.FLOCK_MANIFEST_URL)
+            app.vela.data.FlockCameras.refresh(this@VelaApp, app.vela.core.config.VelaLinks.flockManifest())
         }
         app.vela.ui.SimLocation.onChange = {
             locationProvider.pinned = it

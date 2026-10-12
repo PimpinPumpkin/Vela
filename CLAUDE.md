@@ -238,6 +238,9 @@ signed file the app fetches at launch (SPEC 11).
 - A new field in `Calibration` also needs reading in `CalibrationStore.parseBundle`. Grep for
   the field name there. Fields have been added and never parsed.
 - A new Google request goes into calibration the day it ships.
+- Every link to the project itself (repository, releases, site, this file) comes from
+  `VelaLinks` (SPEC 11.4), never a literal, so a moved repository or a renamed account is a
+  signed `links` push and a defaults edit, not a hunt through the code.
 - Before pushing a change, run the health probe against it:
   `./gradlew :core:testDebugUnitTest --tests '*GoogleHealthProbeTest' -DvelaLive=true`.
 - Read the live file before saying a dial is off. Compiled defaults and fleet values differ.

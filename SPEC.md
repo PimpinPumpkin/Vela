@@ -5281,6 +5281,24 @@ Locally: `./gradlew :core:testDebugUnitTest --tests '*GoogleHealthProbeTest' -Dv
 
 ---
 
+### 11.4 The project's own links
+
+Every address the app has of its own project is in `core/config/VelaLinks`: the repository,
+its API, the download releases, the raw files on main, the site and the donate page, and the
+files derived from them (the settings file, each data manifest, the world basemap, the map
+fonts, the speech models, the UK fuel file, the painted roads). Nothing else in the code holds
+one of these as a literal. A signed bundle's `links` object replaces any of them by name:
+pushing `releases` alone moves every file under it, pushing one key moves that one. Only https
+links under known names are accepted; anything else rejects the bundle. A build's own link
+(`-PobfManifestUrl=` for a local server) wins over the default and loses to a pushed one.
+
+The settings file is asked for where the last bundle said it lives, then where the build was
+compiled to look. Moving the project: push a bundle whose `links` name the new places while
+the old ones still answer; each app keeps that bundle and applies it at the next launch, so it
+asks the new places from then on, the settings file included; then change the defaults in
+`VelaLinks` for the next release. The browser identity for the project's own requests
+(`VelaConfig.VELA_UA`) carries the repository link and follows it.
+
 ## 12. Degoogled constraints
 
 Regressing one of these blocks a release.

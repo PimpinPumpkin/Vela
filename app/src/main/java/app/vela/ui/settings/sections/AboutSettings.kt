@@ -81,7 +81,7 @@ Onboarding.openDonate(context)
             onClick = {
                 runCatching {
                     context.startActivity(
-                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/PimpinPumpkin/Vela")),
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(app.vela.core.config.VelaLinks.repo())),
                     )
                 }
             },

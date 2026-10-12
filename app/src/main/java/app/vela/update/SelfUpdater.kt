@@ -102,7 +102,7 @@ class SelfUpdater @Inject constructor(
             // The rolling canary release: the tag is always "canary", so the version comes from
             // the versionName/versionCode lines CI writes into the release notes each push.
             fun canaryInfo(): UpdateInfo? = runCatching {
-                val o = JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/canary"))
+                val o = JSONObject(getJson(app.vela.core.config.VelaLinks.api("/releases/tags/canary")))
                 val body = o.optString("body")
                 val code = Regex("""versionCode:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull()?.let(::legacyCode) ?: return null
                 val name = Regex("""versionName:\s*(\S+)""").find(body)?.groupValues?.get(1) ?: "canary"
@@ -119,12 +119,12 @@ class SelfUpdater @Inject constructor(
             // Fetched once per check, and only by the paths that need it.
             val appTags: List<Pair<Int, String>> by lazy {
                 runCatching {
-                    val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/git/matching-refs/tags/v0."))
+                    val arr = JSONArray(getJson(app.vela.core.config.VelaLinks.api("/git/matching-refs/tags/v0.")))
                     appReleaseTags((0 until arr.length()).map { arr.getJSONObject(it).optString("ref") })
                 }.getOrDefault(emptyList())
             }
             fun releaseForTag(tag: String): JSONObject? = runCatching {
-                JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/$tag"))
+                JSONObject(getJson(app.vela.core.config.VelaLinks.api("/releases/tags/$tag")))
             }.getOrNull()
             fun nightlyInfo(): UpdateInfo? {
                 // The newest app tag that has a published, non-draft release (a nightly, or a stable
@@ -139,7 +139,7 @@ class SelfUpdater @Inject constructor(
             val candidate = when (channel) {
                 CHANNEL_CANARY -> listOfNotNull(canaryInfo(), nightlyInfo()).maxByOrNull { it.versionCode }
                 CHANNEL_NIGHTLY -> nightlyInfo()
-                else -> releaseToInfo(JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")))
+                else -> releaseToInfo(JSONObject(getJson(app.vela.core.config.VelaLinks.api("/releases/latest"))))
             }
             val picked = candidate?.takeIf { it.versionCode > currentVersionCode } ?: run { logCheck(null); return@runCatching null }
             // Every release between the one installed and the one offered, newest first (issue

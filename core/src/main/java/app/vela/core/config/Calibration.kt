@@ -138,6 +138,10 @@ data class Calibration(
     // app release.
     val reviewWords: Map<String, String>? = null,
     val reviewSelectors: Map<String, String>? = null,
+    // The project's own addresses (repository, releases, site, this file), by the names
+    // `VelaLinks` knows, so a renamed account or a moved repository reaches installed apps
+    // through the signed channel. Https only; an unknown name or another scheme rejects the bundle.
+    val links: Map<String, String> = emptyMap(),
     // The browser identity the keyless scrape presents (2026-09-14). Chrome ships a stable release
     // every ~4 weeks, so a compiled constant is stale by construction - the shipped UA was Chrome
     // 124 (April 2024) well into 2026. Stale is a CORRECTNESS risk before a fingerprinting one:

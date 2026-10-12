@@ -49,5 +49,5 @@ object VelaConfig {
      * the opposite of what earns headroom there. Google-facing requests are the ONLY place the
      * browser UA belongs.
      */
-    const val VELA_UA = "VelaMaps/0.4 (+https://github.com/PimpinPumpkin/Vela)"
+    val VELA_UA: String get() = "VelaMaps/0.4 (+${app.vela.core.config.VelaLinks.repo()})"
 }

@@ -32,7 +32,7 @@ import org.maplibre.geojson.Point
 internal object PaintedRoadsLayer {
     private const val SRC = "vela-paint-src"
     private const val BAKED_SRC = "vela-paint-baked"
-    const val BAKED_URL = "pmtiles://https://github.com/PimpinPumpkin/Vela/releases/download/painted-roads/painted-california.pmtiles?v=3"
+    val BAKED_URL: String get() = "pmtiles://" + app.vela.core.config.VelaLinks.paintedRoads()
     private val IDS = listOf("median", "surface", "crosswalk", "stop", "bike", "lane", "center", "arrow").map { "vela-paint-$it" }
     const val MIN_ZOOM = 16.5f
     private const val M_PER_DP_Z0 = 59960.0
