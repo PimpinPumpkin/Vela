@@ -76,17 +76,25 @@ Onboarding.openDonate(context)
         androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
         Hint(stringResource(R.string.settings_project_hint))
         Spacer(Modifier.height(4.dp))
-        FilledTonalButton(
-            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-            onClick = {
-                runCatching {
-                    context.startActivity(
-                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(app.vela.core.config.VelaLinks.repo())),
-                    )
-                }
-            },
-        ) {
-            Text(stringResource(R.string.settings_project_github_button))
+        // Two doors, each its own link, so either host can move without the other going dark.
+        val projFocus = remember { List(2) { FocusRequester() } }
+        fun open(url: String) = runCatching {
+            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        }
+        Row {
+            DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape) {
+                FilledTonalButton(
+                    modifier = Modifier.dpadRowSibling(projFocus, 0),
+                    onClick = { open(app.vela.core.config.VelaLinks.site()) },
+                ) { Text(stringResource(R.string.settings_project_site_button)) }
+            }
+            Spacer(Modifier.width(8.dp))
+            DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape) {
+                FilledTonalButton(
+                    modifier = Modifier.dpadRowSibling(projFocus, 1),
+                    onClick = { open(app.vela.core.config.VelaLinks.repo()) },
+                ) { Text(stringResource(R.string.settings_project_github_button)) }
+            }
         }
         }
         }
