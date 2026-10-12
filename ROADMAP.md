@@ -116,10 +116,12 @@ time on a phone before it lands (2026-10-11).
   widths, icons and extra fills stay with the Vela look. Built; checked on a Pixel 4a online in
   each look, and offline over an installed region in Dark and Fiord, where a look with no cached
   style drew stock Liberty under the look's colors: fixed, the Liberty asset is now painted as
-  the Vela look in the look's light or dark, and the cache survives having no network. Not
-  checked: the car map on a non-Vela look on the Desktop Head Unit. Once #763 lands beside
-  this, `CarStyle.inject` (the car's twin fills in the patched style JSON) must be gated on
-  `look.painted`.
+  the Vela look in the look's light or dark, and the cache survives having no network. The
+  car map was seen in the Dark look on the Desktop Head Unit, the same look as the phone, and
+  back on the Vela look after. Not checked: the offline fallback and the no-network guard
+  after the fix, seen only for Dark and Fiord online then offline over one region. Once #763
+  lands beside this, `CarStyle.inject` (the car's twin fills in the patched style JSON) must
+  be gated on `look.painted`.
 - Swipe actions on lists and history (#748, branch `lists-swipe`): swipe to edit or delete with
   haptics, a reorder handle, the lists sheet's contrast in the dark theme, simpler rows.
 - Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
