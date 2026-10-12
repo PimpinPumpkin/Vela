@@ -67,16 +67,18 @@ chosen label travels with the destination entry, and the row built with that lab
 
 ### Where the map opens
 
-Settings > Map > "Where the map opens" has four choices: "Where I am" (the default), "Where I
-left the map", "Home" and "A place I choose". Home is listed only while a Home is saved. "Use
-the current map view" saves the middle of the map and its zoom, as the map sits under Settings,
-and picks "A place I choose".
+Settings > Map > "Where the map opens" has five choices: "Where I am" (the default), "Where I
+left the map", "Home", "A place I choose" and "Driving mode". Home is listed only while a Home
+is saved. "Use the current map view" saves the middle of the map and its zoom, as the map sits
+under Settings, and picks "A place I choose".
 
 "Where I am" opens on the last known position and follows the phone. With location off or
-denied it opens where the map was left, and moves to the first fix if one arrives. The other
-three open on their view and stay there until the locate button is tapped or a drive starts. A
-link from another app, a shared place and a pinned trip open on their own place whatever the
-choice.
+denied it opens where the map was left, and moves to the first fix if one arrives. "Where I
+left the map", "Home" and "A place I choose" open on their view and stay there until the locate
+button is tapped or a drive starts. "Driving mode" opens as "Where I am" does, in the drive's
+layout with no route ([chapter 11](11-drive-chrome.md#driving-mode)), for a mounted phone or
+tablet. A link from another app, a shared place and a pinned trip open on their own place
+whatever the choice.
 
 The view the map was left on is saved when Vela leaves the screen. It is kept with the last
 known position, outside Android backup. The choice and the picked view are in `vela_settings`.

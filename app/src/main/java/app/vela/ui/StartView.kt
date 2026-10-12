@@ -28,19 +28,28 @@ data class StartCamera(val center: LatLng, val zoom: Double) {
 /**
  * Where the map opens. A null [center] is the map's own world view and a null [zoom] the usual
  * street zoom. [hold] keeps the map there instead of following the phone's position until the
- * locate button is tapped, or, with [untilFix], until the first fix arrives.
+ * locate button is tapped, or, with [untilFix], until the first fix arrives. [drive] opens the
+ * map in driving mode ([DrivingMode], issue #727).
  */
-data class Start(val center: LatLng?, val zoom: Double? = null, val hold: Boolean = false, val untilFix: Boolean = false)
+data class Start(
+    val center: LatLng?,
+    val zoom: Double? = null,
+    val hold: Boolean = false,
+    val untilFix: Boolean = false,
+    val drive: Boolean = false,
+)
 
 /**
  * The view the map starts on (Settings > Map, "Where the map opens"), for people who keep
- * location off and do not want the map to open on a stale position.
+ * location off and do not want the map to open on a stale position, and for a mounted phone or
+ * tablet that should open ready to drive.
  *
  * - [HERE] (default): the phone's position. Without one it stands in with the view the map was
  *   left on and moves to the first fix.
  * - [LAST]: the view the map was left on.
  * - [HOME]: the saved Home.
  * - [PLACE]: a view the user picked.
+ * - [DRIVE]: [HERE], in driving mode.
  *
  * The choice and the picked view are settings (`vela_settings`, backed up). The view the map was
  * left on sits beside the last known position in `vela_location`, which no backup carries.
@@ -50,6 +59,7 @@ object StartView {
     const val LAST = "last"
     const val HOME = "home"
     const val PLACE = "place"
+    const val DRIVE = "drive"
 
     /** Home opens at the street zoom a start on a fix uses. */
     const val HOME_ZOOM = 15.5
@@ -107,13 +117,15 @@ fun shownStartMode(mode: String, homeSet: Boolean, placeSet: Boolean): String = 
     StartView.LAST -> StartView.LAST
     StartView.HOME -> if (homeSet) StartView.HOME else StartView.HERE
     StartView.PLACE -> if (placeSet) StartView.PLACE else StartView.HERE
+    StartView.DRIVE -> StartView.DRIVE
     else -> StartView.HERE
 }
 
 /**
  * Where the map opens for [mode]. Null when [taken] says the camera already belongs to something:
  * an intent that opened its own place or route (a link from another app, a shared place, a pinned
- * trip), or a drive that is running.
+ * trip), or a drive that is running. A launch from a link opens as it always has, in driving mode
+ * too.
  *
  * [locationOn] is whether fixes can arrive (permission granted, a provider switched on) and
  * [fix] the last known position, which may be old. [last] is the view the map was left on,
@@ -121,7 +133,7 @@ fun shownStartMode(mode: String, homeSet: Boolean, placeSet: Boolean): String = 
  *
  * A choice whose target is missing (Home removed, nothing saved yet) falls back to "Where I am".
  * That opens on [fix] and follows it. With location off, or with no fix yet, it opens on [last]
- * and waits there for the first fix.
+ * and waits there for the first fix. "Driving mode" is "Where I am" with [Start.drive] set.
  */
 fun startFor(
     mode: String,
@@ -141,6 +153,7 @@ fun startFor(
     }
     if (picked != null) return Start(picked.center, picked.zoom, hold = true)
     val standIn = last?.let { Start(it.center, it.zoom, hold = true, untilFix = true) }
-    return if (locationOn) fix?.let { Start(it) } ?: standIn ?: Start(null)
+    val here = if (locationOn) fix?.let { Start(it) } ?: standIn ?: Start(null)
     else standIn ?: Start(fix)
+    return if (mode == StartView.DRIVE) here.copy(drive = true) else here
 }

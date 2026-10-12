@@ -2,6 +2,7 @@ package app.vela.ui
 
 import app.vela.core.model.LatLng
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -77,9 +78,31 @@ class StartViewTest {
     }
 
     @Test fun `a launch intent or a running drive keeps the camera in every mode`() {
-        for (mode in listOf(StartView.HERE, StartView.LAST, StartView.HOME, StartView.PLACE)) {
+        for (mode in listOf(StartView.HERE, StartView.LAST, StartView.HOME, StartView.PLACE, StartView.DRIVE)) {
             assertNull(open(mode = mode, taken = true))
             assertNull(open(mode = mode, taken = true, locationOn = false, fix = null))
+        }
+    }
+
+    @Test fun `driving mode opens like where I am with the mode on`() {
+        assertEquals(Start(davis, drive = true), open(mode = StartView.DRIVE))
+        assertEquals(Start(davis, drive = true), open(mode = StartView.DRIVE, last = null, home = null, place = null))
+        // Location off, or no fix yet: the stand-in view waits for the first fix, in the mode.
+        assertEquals(
+            Start(left.center, left.zoom, hold = true, untilFix = true, drive = true),
+            open(mode = StartView.DRIVE, locationOn = false),
+        )
+        assertEquals(Start(left.center, left.zoom, hold = true, untilFix = true, drive = true), open(mode = StartView.DRIVE, fix = null))
+        assertEquals(Start(davis, drive = true), open(mode = StartView.DRIVE, locationOn = false, last = null))
+        assertEquals(Start(null, drive = true), open(mode = StartView.DRIVE, fix = null, last = null))
+        // Home and the picked view are not read: driving mode is where you are.
+        assertEquals(open(mode = StartView.DRIVE), open(mode = StartView.DRIVE, home = null, place = null))
+    }
+
+    @Test fun `every other choice leaves driving mode off`() {
+        for (mode in listOf(StartView.HERE, StartView.LAST, StartView.HOME, StartView.PLACE, "elsewhere")) {
+            assertFalse(open(mode = mode)!!.drive)
+            assertFalse(open(mode = mode, locationOn = false, fix = null)!!.drive)
         }
     }
 
@@ -89,6 +112,8 @@ class StartViewTest {
         assertEquals(StartView.PLACE, shownStartMode(StartView.PLACE, homeSet = false, placeSet = true))
         assertEquals(StartView.HERE, shownStartMode(StartView.PLACE, homeSet = true, placeSet = false))
         assertEquals(StartView.LAST, shownStartMode(StartView.LAST, homeSet = false, placeSet = false))
+        // Driving mode has no target to lose.
+        assertEquals(StartView.DRIVE, shownStartMode(StartView.DRIVE, homeSet = false, placeSet = false))
         assertEquals(StartView.HERE, shownStartMode("elsewhere", homeSet = true, placeSet = true))
     }
 

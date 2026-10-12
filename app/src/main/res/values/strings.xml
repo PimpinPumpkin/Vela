@@ -259,7 +259,10 @@
     <string name="settings_start_view_last">Where I left the map</string>
     <string name="settings_start_view_place">A place I choose</string>
     <string name="settings_start_view_use_current">Use the current map view</string>
-    <string name="settings_start_view_hint">Where the map is when you start Vela. A link from another app still opens on its own place.</string>
+    <string name="settings_start_view_drive">Driving mode</string>
+    <string name="settings_start_view_hint">Where the map is when you start Vela. Driving mode is the map alone in the drive\'s layout, for a mounted phone or tablet. A link from another app still opens on its own place.</string>
+    <string name="driving_mode">Driving mode</string>
+    <string name="driving_mode_leave">Leave driving mode</string>
     <string name="settings_start_view_saved">Vela will open on this view.</string>
     <string name="settings_speed_display">Show speed and speed limit</string>
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>

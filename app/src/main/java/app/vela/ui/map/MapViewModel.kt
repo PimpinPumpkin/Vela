@@ -1102,6 +1102,8 @@ class MapViewModel @Inject constructor(
                     nav.lastNavFedMs = nowMs
                     nav.recordDriveFix(here)
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
+                    // Driving mode with no route: the speeding alert runs from the fixes (issue #727).
+                    if (app.vela.ui.DrivingMode.on.value && !_state.value.navigating) nav.drivingModeFix()
                     if (_state.value.navStarved) _state.update { it.copy(navStarved = false) }
                 } else if (_state.value.navigating && nowMs - nav.lastNavFedMs > NAV_STARVED_MS && !_state.value.navStarved) {
                     _state.update { it.copy(navStarved = true) }
@@ -1264,6 +1266,8 @@ class MapViewModel @Inject constructor(
             home = s.home?.let { LatLng(it.lat, it.lng) },
             place = app.vela.ui.StartView.place.value,
         ) ?: return
+        // "Driving mode": the map opens in the drive's layout with no route (issue #727).
+        if (start.drive) app.vela.ui.DrivingMode.on.value = true
         if (!start.hold) return // the last known fix, or nothing: what init already set up
         startAwaitsFix = start.untilFix
         _state.update { it.copy(center = start.center, startZoom = start.zoom ?: app.vela.ui.StartView.HOME_ZOOM, startHold = true) }
@@ -8026,6 +8030,20 @@ class MapViewModel @Inject constructor(
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
     fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1, startHold = false) }
+
+    /** Driving mode from the map's layers menu (issue #727): the mode on, the map following the
+     *  fix again, as a locate tap leaves it. The free-drive follow turns heading-up once you move. */
+    fun enterDrivingMode() {
+        app.vela.ui.DrivingMode.on.value = true
+        app.vela.ui.FollowMe.on.value = true
+        if (_state.value.myLocation != null) recenter()
+    }
+
+    /** The mode's X: back to the plain map. The next drive or mode starts with a fresh speeding hold. */
+    fun leaveDrivingMode() {
+        app.vela.ui.DrivingMode.on.value = false
+        nav.drivingModeLeft()
+    }
 
     /** Demo-drive simulates the route with no GPS, so the precise-location nav gate skips it. */
     fun demoDriveOn(): Boolean =

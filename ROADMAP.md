@@ -283,6 +283,11 @@ off the list when it has been.
 - The project's links from one place (`VelaLinks`) with a signed `links` push to move them
   (SPEC 11.4). Unit-tested; no bundle with `links` has been pushed yet, so a move has not been
   rehearsed.
+- Driving mode on the phone (#727): the drive's bar with an X, the locate and voice buttons, the
+  speed box from the first fix, the search bar alone, the speeding alert from the fixes, and
+  "Where the map opens" > "Driving mode". Unit-tested (`StartViewTest`, `SearchGatesTest`) and
+  compiled; not seen on a phone, a drive, in landscape, on a tablet, with location off, with the
+  screen turning off, or with Android Auto connected.
 - The map looks (#764): the offline fallback and the no-network guard were seen once, for Dark
   and Fiord online then offline over one region.
 - The lists sheet (#765): a physical keypad, and the sheet with one list, where a pencil stands
@@ -369,9 +374,11 @@ Found reading everything since 0.4.1912 and not fixed yet.
 - Live vehicle positions on the map (#757): Transitous serves GTFS-Realtime positions where an
   agency publishes them, a minority; drawn with an age label where they exist and nothing
   elsewhere. Not started.
-- A driving mode to start in (#727): the map opened in the drive's layout with no destination,
-  big buttons, the speed badge and alerts on. Not started. The pieces exist in the drive
-  screen; the work is a mode without a route and a setting to open in it.
+- Camera alerts in driving mode (#727): the speed camera and plate camera alerts are projected
+  onto a route (`refreshRouteSpeedCams`, `refreshRouteFlock`), so the mode without a route has
+  none. Not started. The work is a look-ahead from the fix stream: the cameras within a cone
+  ahead of the course, from the baked road features and the bundled plate cameras, with
+  `CameraAlerts.due` timing and an announced set keyed by camera, not by index.
 
 ## Big bets
 

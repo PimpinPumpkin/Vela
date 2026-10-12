@@ -835,7 +835,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
-| Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home` or `place` (4.7, Where the map opens) |
+| Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
@@ -1860,6 +1860,8 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   choose") open on their view and hold it. A choice whose target is missing (Home removed,
   nothing saved yet) opens like `here`, and Settings shows "Where I am" (`shownStartMode`). The
   stored choice is kept, so a new Home brings it back.
+- `drive` ("Driving mode") decides the camera as `here` does and sets `Start.drive`, which turns
+  driving mode on (4.7, Driving mode).
 - A held view sets `center`, `startZoom` and `startHold` in `MapUiState`. `VelaMapView` creates
   the map on `center` at `openZoom` and starts with its three launch moves marked done
   (`startFramed`: the first run of the recenter branch, the first target fly and the
@@ -1900,6 +1902,46 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   flat and clears it, as does starting a drive. A tilt ending under `BROWSE_TILT_KEEP_MIN_DEG`
   (8) is a pinch's wobble and is dropped. The idle test compares against the active tilt target.
 - A hand rotation releases the follow.
+
+#### Driving mode
+
+The map in the drive's layout with no route (issue #727), for a mounted phone, a tablet or a head
+unit without Android Auto. `DrivingMode.on` (`ui/DrivingMode.kt`) is memory only.
+
+- On: the free-drive follow as above (heading-up and tilted once moving, the fly-in to street
+  zoom), the search bar alone at the top (`CategoryChips` draws nothing), the layers button
+  hidden, and `DrivingChrome` (`ui/nav/DrivingChrome.kt`, composed from `MapFloaters`): the
+  drive's bar in `navBarLook()` colors with an X (`leaveDrivingMode`) where End sits, the mode's
+  name and the time of day, a 56 dp locate button and `NavVoiceButton` in the drive's right-edge
+  column, and the map credit above the bar. Landscape puts the bar in the left column
+  (`landscapeColumn`, `DRIVING_LAND_EDGE_DP` 8 dp) and the buttons at the bottom edge.
+- The speed box (`NavCorner`) shows from the first fix, standing still too, above the bar in
+  portrait (the bar's measured height, `DrivingBar.heightPx`, plus 16 dp) and right of it
+  in landscape (`DrivingBar.rightPx` plus 10 dp), under "Show speed and speed limit".
+- `SearchGates.drivingChrome` says when the chrome draws: the mode on, nothing owning the
+  screen (no drive, search page, place, results, directions, steps, pick, replay, arrival,
+  Street View, area pick, drawing or resume prompt). `fabChromeOk` is false while it draws, so
+  the locate and parking buttons, the scale bar and the browse credit yield. The gate is
+  published as `SearchGates.drivingChromeLive` for `DrivingChrome` and `NavCorner`, which get no
+  parameter from `MapScreen`.
+- The browse follow flag is `FollowMe.on` (a holder, formerly a `MapScreen` local), so the mode's
+  locate button re-arms it as the browse locate button does; with no permission the tap asks.
+- A place or a route picked from search runs as usual: the chrome hides behind the sheet, the
+  route picker and the drive, and the mode is still on when they close, so a drive that ends
+  returns to it. The X is the only way out; Back behaves as on the bare map.
+- The screen stays on under "Keep screen on while navigating", as in a drive.
+- "Day and night while navigating" counts the mode as navigating (`isAppInDarkTheme`,
+  `isMapDark`).
+- Alerts: the speeding alert runs from each guidance-quality fix (`NavController.drivingModeFix`,
+  after `updateSpeedLimit`), with `SpeedingAlerts` reset when the mode is left. The speed camera
+  and plate camera alerts are projected onto a route (`refreshRouteSpeedCams`,
+  `refreshRouteFlock`) and do not run in the mode.
+- Settings > Map > "Where the map opens" > "Driving mode" (`StartView.DRIVE`): `startFor`
+  decides the camera as "Where I am" does and sets `Start.drive`, which `openStartView` turns
+  into the mode before the map is composed. A launch from a link keeps its place in every mode.
+  The layers menu's "Driving mode" item (`enterDrivingMode`) is the way in from the map; with
+  the layers button hidden, the setting is the way in.
+- Android Auto is untouched: the car's own drive screen (10.1) is the same idea on the car.
 
 #### Compatibility rendering
 
@@ -4874,8 +4916,9 @@ reuses it.
   as gestures and detach the follow camera.
 - `MapScreen` takes no new call or parameter. It is at the JVM method-size limit ("Method too
   large" in the debug compile) and at ART's verifier limit, which fails on the phone. New
-  floating pieces go in `MapFloaters` (the replay controls, the Street View preview) or
-  `NavCorner` (the speed box and Re-center), each of which decides for itself when to draw.
+  floating pieces go in `MapFloaters` (the replay controls, the Street View preview, driving
+  mode's chrome) or `NavCorner` (the speed box and Re-center), each of which decides for itself
+  when to draw.
 
 - UI font: Settings > Appearance > Font offers Google Sans Flex (the default; SIL OFL 1.1, in
   `res/font`, license in `assets/licenses`), the system font (pref `ui_font_system`), or a

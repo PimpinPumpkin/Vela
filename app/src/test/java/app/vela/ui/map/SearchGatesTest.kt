@@ -50,9 +50,26 @@ class SearchGatesTest {
     }
 
     @Test fun `bare map and fab chrome`() {
-        val bare = SearchGates.of(MapUiState(), false, false)
-        assertTrue(bare.bareMap); assertTrue(bare.fabChromeOk)
-        assertFalse(SearchGates.of(MapUiState(navigating = true), false, false).fabChromeOk)
-        assertFalse(SearchGates.of(MapUiState(selected = place), false, false).bareMap)
+        val bare = SearchGates.of(MapUiState(), false, false, driving = false)
+        assertTrue(bare.bareMap); assertTrue(bare.fabChromeOk); assertFalse(bare.drivingChrome)
+        assertFalse(SearchGates.of(MapUiState(navigating = true), false, false, driving = false).fabChromeOk)
+        assertFalse(SearchGates.of(MapUiState(selected = place), false, false, driving = false).bareMap)
+    }
+
+    @Test fun `driving mode takes the bottom edge from the browse buttons on the bare map only`() {
+        val bare = SearchGates.of(MapUiState(), false, false, driving = true)
+        assertTrue(bare.drivingChrome); assertFalse(bare.fabChromeOk)
+        assertTrue(SearchGates.drivingChromeLive.value)
+        // A drive, the search page, a place, a list, a pick and a replay put the mode's chrome away,
+        // and the browse buttons come back where they would on the plain map.
+        assertFalse(SearchGates.of(MapUiState(navigating = true), false, false, driving = true).drivingChrome)
+        assertFalse(SearchGates.of(MapUiState(), true, false, driving = true).drivingChrome)
+        assertFalse(SearchGates.drivingChromeLive.value)
+        val withPlace = SearchGates.of(MapUiState(selected = place), false, false, driving = true)
+        assertFalse(withPlace.drivingChrome); assertTrue(withPlace.fabChromeOk)
+        assertFalse(SearchGates.of(MapUiState(results = results), false, false, driving = true).drivingChrome)
+        assertFalse(SearchGates.of(MapUiState(pickOnMap = MapPick.DEST), false, false, driving = true).drivingChrome)
+        assertFalse(SearchGates.of(MapUiState(replaying = true), false, false, driving = true).drivingChrome)
+        assertFalse(SearchGates.of(MapUiState(arrived = true), false, false, driving = true).drivingChrome)
     }
 }

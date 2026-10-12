@@ -307,6 +307,33 @@ A tap only offers the place, as a card above the bar and a red "+" pin on the ma
 - The card dismisses itself after 10 seconds, 25 on a phone driven by keys.
 - Within `NAV_STOP_MATCH_M = 60` m of a stop still ahead, the card also offers "Remove stop".
 
+### Driving mode
+
+The drive's layout with no route, for a phone on a mount, a tablet or a head unit that has no
+Android Auto. The layers menu has a "Driving mode" item, and Settings > Map > "Where the map
+opens" > "Driving mode" starts Vela in it ([chapter 13](13-settings.md)).
+
+- The map is the browse map's own follow, which turns heading-up and tilts once you move
+  ([SPEC 4.7, Free-drive follow](../../SPEC.md)). The location dot stays the dot: the arrow is
+  drawn on a route.
+- The bar is the drive's bar with an X where End sits, the mode's name and the time of day.
+  The X is the only way out; Back works as it does on the plain map.
+- The right-edge column has a locate button and the voice button with its three choices. The
+  speed box sits above the bar from the first fix, standing still too, and the map credit sits
+  between them. The search bar stays at the top with nothing under it; the category chips, the
+  layers button, the parking button and the scale bar are gone.
+- Landscape puts the bar in the left column, with the speed box beside it, and the buttons at
+  the bottom edge, as a drive does.
+- A search runs as usual. A place, its route picker and the drive cover the mode's chrome, and
+  the mode is still on when they close, so a drive that ends returns to it.
+- The screen stays on under "Keep screen on while navigating", and "Day and night while
+  navigating" counts the mode as a drive.
+- The speeding alert runs from the fixes. The speed camera and plate camera alerts need a route
+  and do not run here.
+
+`DrivingChrome` (`ui/nav/DrivingChrome.kt`) is composed from `MapFloaters`; `SearchGates`
+decides when it draws and puts the browse buttons away while it does.
+
 ## Limits
 
 - Callouts name only streets whose tiles have loaded. A tile that lands after the retries, about

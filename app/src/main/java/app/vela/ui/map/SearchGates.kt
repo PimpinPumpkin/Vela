@@ -27,9 +27,22 @@ internal data class SearchGates(
     val fabChromeOk: Boolean,
     /** No place selected and no search open: the plain map with its chips. */
     val bareMap: Boolean,
+    /** Driving mode's bar and buttons draw (issue #727): the mode is on and nothing else owns the
+     *  screen. The locate and parking buttons, the scale bar and the credit yield to them. */
+    val drivingChrome: Boolean,
 ) {
     companion object {
-        fun of(s: MapUiState, searchExpanded: Boolean, searchFocused: Boolean): SearchGates {
+        /** [drivingChrome] as a state: `DrivingChrome` is composed from `MapFloaters`, which has
+         *  no way to the screen's focus facts short of a new parameter on `MapScreen`. Written by
+         *  [of] on every pass; a same-value write invalidates nothing. */
+        val drivingChromeLive = androidx.compose.runtime.mutableStateOf(false)
+
+        fun of(
+            s: MapUiState,
+            searchExpanded: Boolean,
+            searchFocused: Boolean,
+            driving: Boolean = app.vela.ui.DrivingMode.on.value,
+        ): SearchGates {
             val picking = s.pickingOrigin || s.pickingDest || s.pickingStop
             // Tied to LIVE focus as well as the armed flag: a focused field always shows its overlay
             // (re-tapping a focused field fires no focus change, so the flag alone could strand it).
@@ -37,6 +50,13 @@ internal data class SearchGates(
             val pickingResults = picking && s.results.isNotEmpty() && !searchFocused && s.query.isNotBlank()
             val resultsOwn = s.results.isNotEmpty() && (s.selected == null || pickingResults) && (!searchOpen || pickingResults)
             val streetViewUp = s.streetView != null || s.streetViewLoading
+            val bottomFree = !s.navigating && !searchOpen && s.resumeNavLabel == null && !s.areaPicking && s.drawing == null &&
+                !s.directionsOpen && !s.showSteps && s.transitNav == null && !streetViewUp
+            // The mode's chrome wants the whole bottom edge, so a place, a list, a pick and a replay
+            // all put it away; it is back the moment they close.
+            val drivingChrome = driving && bottomFree && s.selected == null && s.results.isEmpty() && s.pickOnMap == null &&
+                !s.replaying && !s.arrived && s.pendingImport == null
+            drivingChromeLive.value = drivingChrome
             return SearchGates(
                 searchOpen = searchOpen,
                 pickingResults = pickingResults,
@@ -46,9 +66,9 @@ internal data class SearchGates(
                     searchOpen || s.selected != null || s.directionsOpen || s.showSteps || s.arrived ||
                         (s.results.isNotEmpty() && !s.resultsCollapsed && s.selected == null)
                     ),
-                fabChromeOk = !s.navigating && !searchOpen && s.resumeNavLabel == null && !s.areaPicking && s.drawing == null &&
-                    !s.directionsOpen && !s.showSteps && s.transitNav == null && !streetViewUp,
+                fabChromeOk = bottomFree && !drivingChrome,
                 bareMap = s.selected == null && !searchOpen,
+                drivingChrome = drivingChrome,
             )
         }
     }

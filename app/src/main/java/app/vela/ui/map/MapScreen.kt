@@ -508,7 +508,8 @@ fun MapScreen(
     // default so an open, unobstructed map glides to your fix; a user pan drops it and the locate
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
-    var followMe by remember { mutableStateOf(true) }
+    // A holder, so driving mode's locate button can re-arm it (issue #727).
+    var followMe by app.vela.ui.FollowMe.on
     var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
     // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
@@ -2613,8 +2614,9 @@ fun MapScreen(
             // the search bar and never reaches this corner at ANY detent.
             // Not over the route chooser either (issue #405): the endpoints card owns that corner
             // and a map-style button beside a route list is noise.
+            // Not in driving mode either (issue #727): the mode's X is the way back to this button.
             if (app.vela.ui.LayersButton.on.value && !searchOpen && !state.directionsOpen && !state.areaPicking &&
-                !state.navigating && !state.replaying &&
+                !state.navigating && !state.replaying && !app.vela.ui.DrivingMode.on.value &&
                 (!resultsShown || landscapeChrome) &&
                 clearOfPlaceSheet
             ) {
@@ -2684,6 +2686,12 @@ fun MapScreen(
                         }
                         toggleItem(stringResource(R.string.settings_google_free), app.vela.ui.GoogleFree.on.value) {
                             app.vela.ui.GoogleFree.set(ctx, it)
+                        }
+                        // Driving mode (issue #727): the map alone in the drive's layout, from the
+                        // map's own menu. Its bar's X comes back here.
+                        item(stringResource(R.string.driving_mode), Sym.DirectionsCar) {
+                            layersOpen = false
+                            vm.enterDrivingMode()
                         }
                     }
                 }
@@ -2949,15 +2957,21 @@ private fun BoxScope.NavCorner(
     chromeLift: androidx.compose.ui.unit.Dp,
     onRecenter: () -> Unit,
 ) {
+    // Driving mode's bar (issue #727) takes the drive bar's place: the box sits above it in
+    // portrait and beside it in landscape, and shows from the first fix, standing still too.
+    val drivingBar = SearchGates.drivingChromeLive.value
     // Landscape drive: both sit in line with the bottom bar, just to its right.
-    val beside = state.navigating && landscapeChrome
-    val besideStart = with(LocalDensity.current) { navBarRightPx.intValue.toDp() } + 10.dp
+    val beside = (state.navigating || drivingBar) && landscapeChrome
+    val barRightPx = if (state.navigating) navBarRightPx.intValue else app.vela.ui.nav.DrivingBar.rightPx.intValue
+    val besideStart = with(LocalDensity.current) { barRightPx.toDp() } + 10.dp
+    val drivingClearance = with(LocalDensity.current) { app.vela.ui.nav.DrivingBar.heightPx.intValue.toDp() } + 16.dp
     if (navAway) app.vela.ui.nav.NavRecenterPill(
         onClick = onRecenter,
         modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
             .padding(start = if (landscapeChrome) besideStart else 16.dp, bottom = if (landscapeChrome) 16.dp else navBarClearance),
     )
-    if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
+    val drivingBox = drivingBar && state.myLocation != null
+    if (!navAway && app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree || drivingBox)) {
         SpeedWidget(
             speedMps = state.mySpeed,
             limitKmh = postedLimitKmh,
@@ -2970,7 +2984,7 @@ private fun BoxScope.NavCorner(
                 // scale bar yields the spot while the box is there.
                 .padding(
                     start = if (beside) besideStart else 16.dp,
-                    bottom = if (beside) 16.dp else if (state.navigating) navBarClearance else 16.dp + chromeLift,
+                    bottom = if (beside) 16.dp else if (state.navigating) navBarClearance else if (drivingBar) drivingClearance else 16.dp + chromeLift,
                 )
                 .popIn(),
         )
@@ -4742,6 +4756,8 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
 
 @Composable
 private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+    // Driving mode keeps the search bar alone at the top (issue #727).
+    if (app.vela.ui.DrivingMode.on.value) return
     // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
     // search (works in any locale), the label is what the user sees, so the chips localize without
     // changing what's searched.
@@ -6935,7 +6951,7 @@ private fun ScaleBarReader(
  * under it (review 2026-09-12). Portrait is untouched. The caller keeps its own `.align`.
  */
 @Composable
-private fun Modifier.landscapeColumn(landscape: Boolean, widthDp: androidx.compose.ui.unit.Dp): Modifier =
+internal fun Modifier.landscapeColumn(landscape: Boolean, widthDp: androidx.compose.ui.unit.Dp): Modifier =
     if (!landscape) this
     else this.widthIn(max = widthDp).windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
 

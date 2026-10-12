@@ -11,6 +11,9 @@ says so.
 
 ### October 2026
 
+- Driving mode on the phone (#727): the map alone in the drive's layout with no route, with the
+  speed box, the voice button, a locate button and the search bar, from the layers menu or as the
+  view Vela starts in. Built; the camera alerts without a route stay open in the roadmap.
 - An address set as Home or Work keeps its street on the chip, and one set earlier is mended at
   start. The address result's street is its name, which the label replaces.
 - On the car the road ahead runs straight up from the arrow, and the arrow points along the road

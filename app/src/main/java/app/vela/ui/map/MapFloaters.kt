@@ -40,11 +40,14 @@ import androidx.compose.ui.unit.dp
 import app.vela.R
 import app.vela.ui.dpadHighlight
 import app.vela.ui.icons.Sym
+import app.vela.ui.nav.DrivingChrome
 
 /** Small things that float over the map and decide for themselves when to show. One call from
  *  MapScreen, which has no room for more (see the size notes there). */
 @Composable
 internal fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel, sheet: SheetEdge) {
+    // Driving mode's bar and buttons (issue #727); it draws only while the gates let it.
+    DrivingChrome(state, vm)
     if (state.replaying && !state.demoDriving) ReplayControls(state, vm)
     // Only beside its sheet: with the search page up the place stays selected and the sheet is gone.
     if (sheet.shown.value) StreetViewThumb(state, vm, sheet.top)

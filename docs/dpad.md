@@ -239,6 +239,7 @@ adb:
 | Step list | The first step, or the current step during a drive | Back |
 | Transit route detail (`RouteDetailSheet`) | The back arrow | Back |
 | Navigation | The map stays primary. The banner, bar handle and buttons are focus stops | Back asks to end the drive |
+| Driving mode (`DrivingChrome`) | As the bare map. The bar's X, the locate and voice buttons and the credit are focus stops | Back, as on the bare map; OK on the X leaves the mode |
 | Search along the route (`NavSearchChips`) | The close button | Back |
 | Photo viewer | The viewer | Back |
 | Full-screen reviews | The back arrow, then the page once it loads | Back |

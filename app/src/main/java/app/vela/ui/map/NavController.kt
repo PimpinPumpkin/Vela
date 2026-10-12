@@ -1237,6 +1237,17 @@ internal class NavController(
         app.vela.car.CarBridge.toast(msg)
     }
 
+    /** A GPS fix in driving mode with no drive running (issue #727): the speeding alert runs from
+     *  the fix stream, as it runs per nav tick during a drive. The speed camera and plate camera
+     *  alerts are projected onto a route and have nothing to run from here. */
+    fun drivingModeFix() {
+        if (navSession.state.value.navigating) return
+        maybeWarnSpeeding()
+    }
+
+    /** Driving mode was left: the next drive or mode starts with a fresh hold. */
+    fun drivingModeLeft() = speeding.reset()
+
     /** Say so when you have been over the posted limit for a few seconds (issue #404, opt-in).
      *  The limit is the one the speed badge shows: the offline graph's maxspeed, else the online
      *  overlay under the puck. Timing (hold, re-arm, minimum gap) lives in :core [SpeedingAlerts]. */

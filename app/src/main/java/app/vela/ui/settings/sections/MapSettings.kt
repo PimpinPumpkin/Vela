@@ -218,5 +218,11 @@ private fun StartViewRows(homeSet: Boolean) {
             onClick = useCurrent,
         ) { Text(stringResource(R.string.settings_start_view_use_current)) }
     }
+    // Driving mode (issue #727): "Where I am" in the drive's layout, for a mounted phone or tablet.
+    SelectableRow(
+        label = stringResource(R.string.settings_start_view_drive),
+        selected = shown == StartView.DRIVE,
+        onClick = { StartView.set(context, StartView.DRIVE) },
+    )
     Hint(stringResource(R.string.settings_start_view_hint))
 }
