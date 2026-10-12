@@ -5130,6 +5130,9 @@ The map:
   the phone's Traffic layer is on and "Use Vela without Google" is off, as on the phone, and the
   basemap place icon tiers take the phone's `applyPoiTierFilters` (vegetation out; fuel only during
   a drive). Each is set again only when its state changes.
+- Each snapshot's time, zoom, tilt, traffic state and speed are logged under `VelaCar` at debug
+  level (`setprop log.tag.VelaCar DEBUG` on the phone), the measure of what a raster or a tilt
+  costs per frame.
 - `QuietSnapshotter` drops the library's overlay, and the renderer draws its own single
   OpenStreetMap credit. The credit and the speed badge stay inside the host's stable area, or the
   visible area when the host reports no usable stable area.

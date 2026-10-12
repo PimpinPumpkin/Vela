@@ -702,11 +702,20 @@ class CarMapRenderer(
             .bearing(bearingUsed)
             .tilt(tilt)
             .build()
+        val startedMs = android.os.SystemClock.elapsedRealtime()
         runCatching {
             snap.setSize(width, height)
             snap.setCameraPosition(cam)
             snap.start({ result ->
                 rendering = false
+                // Frame cost per snapshot, for a tile or raster that slows the map: `setprop
+                // log.tag.VelaCar DEBUG` on the phone turns it on.
+                if (android.util.Log.isLoggable("VelaCar", android.util.Log.DEBUG)) {
+                    android.util.Log.d(
+                        "VelaCar",
+                        "snapshot ${android.os.SystemClock.elapsedRealtime() - startedMs} ms zoom=${"%.1f".format(java.util.Locale.US, zoom)} tilt=${tilt.toInt()} traffic=${trafficShown == true} speed=${(speedMps * 3.6).toInt()}",
+                    )
+                }
                 // THE STYLE OBSERVER NEVER FIRED IN PRACTICE (Gearslip preview, 2026-09-22: no
                 // theme line in the log, the map drawn as stock Liberty under the old darkening
                 // filter): a style handed over as JSON finishes parsing before setObserver runs.
