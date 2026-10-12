@@ -663,7 +663,6 @@
     <string name="mapvm_voice_lang_system">Le indicazioni in %1$s usano la voce del telefono. Aggiungine una nelle impostazioni voce di sistema.</string>
     <string name="settings_topography">Ombreggiatura del terreno</string>
     <string name="settings_topography_hint">Ombreggia colline e montagne sulla mappa. Disattivata per impostazione predefinita.</string>
-    <string name="map_satellite_toggle">Vista satellite</string>
     <string name="map_layers">Livelli</string>
     <string name="settings_layers_button">Mostra pulsante livelli</string>
     <string name="settings_layers_button_hint">Il pulsante della mappa per satellite, traffico, trasporti e terreno.</string>
@@ -1144,7 +1143,6 @@
     <string name="nav_end_confirm_keep">Continua</string>
     <string name="settings_parking_button">Pulsante parcheggio</string>
     <string name="settings_parking_button_hint">Il pulsante P sulla mappa che salva dove hai parcheggiato. Disattivato: compare solo quando c\'è un parcheggio salvato.</string>
-    <string name="map_layers_places">Icone luoghi: %1$s</string>
     <string name="settings_two_finger_tilt">Inclina con due dita</string>
     <string name="settings_two_finger_tilt_hint">Trascina due dita su o giù per inclinare la mappa in 3D. Disattivato: il pizzico serve solo per lo zoom.</string>
     <string name="settings_speed_display">Mostra velocità e limite di velocità</string>

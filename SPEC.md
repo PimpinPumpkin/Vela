@@ -2416,7 +2416,7 @@ bar.
 ### 5.1 Sources
 
 Settings > Places > "Place icons on the map" (`MapPoiPrefs.placesSource`, pref
-`map_places_source`), also in the map's Layers menu.
+`map_places_source`), also a tile row in the map's layers panel (10.2, Browse map).
 
 | Value | Label | Draws | Google while browsing |
 | --- | --- | --- | --- |
@@ -4874,8 +4874,9 @@ reuses it.
   as gestures and detach the follow camera.
 - `MapScreen` takes no new call or parameter. It is at the JVM method-size limit ("Method too
   large" in the debug compile) and at ART's verifier limit, which fails on the phone. New
-  floating pieces go in `MapFloaters` (the replay controls, the Street View preview) or
-  `NavCorner` (the speed box and Re-center), each of which decides for itself when to draw.
+  floating pieces go in `MapFloaters` (the replay controls, the Street View preview), `NavCorner`
+  (the speed box and Re-center) or `LayersCorner` (the layers button and its panel), each of
+  which decides for itself when to draw.
 
 - UI font: Settings > Appearance > Font offers Google Sans Flex (the default; SIL OFL 1.1, in
   `res/font`, license in `assets/licenses`), the system font (pref `ui_font_system`), or a
@@ -4897,6 +4898,20 @@ reuses it.
   `mapButtonRing`: a gray circle (`#3C4043`) with a white glyph and a faint ring in the dark
   themes, white with a gray ring in light, `primaryContainer` and no ring under wallpaper colors.
   The locate glyph is blue. A saved parking spot tints the glyph, not the button.
+- The layers button (`LayersCorner`, `ui/map/LayersPanel.kt`) opens a `VelaMenu` of picture
+  tiles, four to a row, with a label under each. Three groups: Map type has the five looks
+  (`MapStyle`, the same pick as Settings > Appearance > Map look) and Satellite; Map details has
+  traffic, transit lines, terrain and 3D buildings; Place icons has Vela data, Google and Both
+  (`MapPoiPrefs.placesSource`). The "Use Vela without Google" switch stays a row under them. Every
+  tile flips the holder Settings flips (`MapLook`, `SatelliteLayer`, `Traffic`, `TransitLayer`,
+  `Topography`, `Buildings3d`, `GoogleFree`). The chosen or on tile has a 2.5 dp `primary` ring on
+  its picture and a `primary` label. Map type is one choice: picking a look while satellite is on
+  turns satellite off, and the satellite tile toggles. A look's picture is drawn in Compose from
+  that look's own land, water, park, building and road colors (the Vela look's follow the map
+  theme: light, dark or AMOLED); satellite is a drawn green and gray patch; a detail tile is the
+  app's glyph for it on a disc that fills `primary` while on. The button takes `primary` while
+  satellite, traffic, transit or terrain is on. The gate that shows the button stays in
+  `MapScreen`.
 - `VelaProgressBar` (`ui/VelaProgress.kt`) is the only progress bar: rounded ends, null progress
   means indeterminate. `VelaProgressBarOf` takes the value as a lambda, so an animating bar is
   read in the draw phase.

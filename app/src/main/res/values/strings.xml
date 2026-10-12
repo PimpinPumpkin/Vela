@@ -249,7 +249,6 @@
     <string name="nav_end_confirm_keep">Keep going</string>
     <string name="settings_parking_button">Parking button</string>
     <string name="settings_parking_button_hint">The P button on the map that saves where you parked. Off: it shows only while a spot is saved.</string>
-    <string name="map_layers_places">Place icons: %1$s</string> <!-- format: %1$s is a source, "Vela data", "Google" or "Both" -->
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_keep_north_up">Keep north up</string>
@@ -1180,7 +1179,6 @@
     <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens. The two differ most in dark mode right now.</string>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
-    <string name="map_satellite_toggle">Satellite view</string>
     <string name="map_satellite_attribution" translatable="false">Esri, Maxar, Earthstar Geographics</string>
     <string name="map_satellite_attribution_google" translatable="false">Google</string>
     <string name="map_osm_attribution" translatable="false">© OpenStreetMap</string>
@@ -1197,6 +1195,13 @@
         <item quantity="other">Updated %d days ago</item>
     </plurals>
     <string name="map_layers">Layers</string>
+    <string name="map_layers_type">Map type</string>
+    <string name="map_layers_details">Map details</string>
+    <string name="map_layers_places_title">Place icons</string>
+    <string name="map_layers_satellite">Satellite</string>
+    <string name="map_layers_traffic">Traffic</string>
+    <string name="map_layers_transit">Transit lines</string>
+    <string name="map_layers_terrain">Terrain</string>
     <string name="settings_layers_button">Show layers button</string>
     <string name="settings_layers_button_hint">The button on the map that flips satellite, traffic, transit and terrain.</string>
     <plurals name="topcard_more_stops">

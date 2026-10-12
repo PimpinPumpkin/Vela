@@ -591,7 +591,6 @@
     <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
     <string name="settings_topography">Geländeschattierung</string>
     <string name="settings_topography_hint">Schattiert Hügel und Berge auf der Karte. Standardmäßig aus.</string>
-    <string name="map_satellite_toggle">Satellitenansicht</string>
     <string name="map_layers">Ebenen</string>
     <string name="settings_layers_button">Ebenen-Schaltfläche anzeigen</string>
     <string name="settings_layers_button_hint">Die Karten-Schaltfläche für Satellit, Verkehr, Nahverkehr und Gelände.</string>
@@ -1144,7 +1143,6 @@
     <string name="nav_end_confirm_keep">Weiterfahren</string>
     <string name="settings_parking_button">Parkplatz-Taste</string>
     <string name="settings_parking_button_hint">Die P-Taste auf der Karte, die speichert, wo Sie geparkt haben. Aus: Sie erscheint nur, solange ein Parkplatz gespeichert ist.</string>
-    <string name="map_layers_places">Orte: %1$s</string>
     <string name="settings_two_finger_tilt">Mit zwei Fingern neigen</string>
     <string name="settings_two_finger_tilt_hint">Mit zwei Fingern nach oben oder unten ziehen, um die Karte in 3D zu neigen. Aus: Zwei Finger zoomen nur.</string>
     <string name="settings_speed_display">Geschwindigkeit und Tempolimit anzeigen</string>

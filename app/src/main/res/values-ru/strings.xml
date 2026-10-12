@@ -597,7 +597,6 @@
     <string name="mapvm_voice_lang_system">Указания для языка %1$s используют голос телефона. Добавьте его в системных настройках голоса.</string>
     <string name="settings_topography">Затенение рельефа</string>
     <string name="settings_topography_hint">Затеняет холмы и горы на карте. По умолчанию выключено.</string>
-    <string name="map_satellite_toggle">Спутниковый вид</string>
     <string name="map_layers">Слои</string>
     <string name="settings_layers_button">Показывать кнопку слоёв</string>
     <string name="settings_layers_button_hint">Кнопка на карте для спутника, пробок, транспорта и рельефа.</string>
@@ -1177,7 +1176,6 @@
     <string name="nav_end_confirm_keep">Продолжить</string>
     <string name="settings_parking_button">Кнопка парковки</string>
     <string name="settings_parking_button_hint">Кнопка P на карте, которая сохраняет место парковки. Выкл.: она видна, только пока место сохранено.</string>
-    <string name="map_layers_places">Места: %1$s</string>
     <string name="settings_two_finger_tilt">Наклон двумя пальцами</string>
     <string name="settings_two_finger_tilt_hint">Проведите двумя пальцами вверх или вниз, чтобы наклонить карту в 3D. Выкл.: щипок только меняет масштаб.</string>
     <string name="settings_speed_display">Показывать скорость и ограничение скорости</string>

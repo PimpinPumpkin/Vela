@@ -591,7 +591,6 @@
     <string name="mapvm_voice_lang_system">Las indicaciones en %1$s usan la voz de tu teléfono. Añade una en los ajustes de voz del sistema.</string>
     <string name="settings_topography">Sombreado del terreno</string>
     <string name="settings_topography_hint">Sombrea colinas y montañas en el mapa. Desactivado por defecto.</string>
-    <string name="map_satellite_toggle">Vista satélite</string>
     <string name="map_layers">Capas</string>
     <string name="settings_layers_button">Mostrar botón de capas</string>
     <string name="settings_layers_button_hint">El botón del mapa para satélite, tráfico, transporte y terreno.</string>
@@ -1144,7 +1143,6 @@
     <string name="nav_end_confirm_keep">Seguir</string>
     <string name="settings_parking_button">Botón de aparcamiento</string>
     <string name="settings_parking_button_hint">El botón P del mapa que guarda dónde aparcaste. Desactivado: solo aparece mientras haya un sitio guardado.</string>
-    <string name="map_layers_places">Lugares: %1$s</string>
     <string name="settings_two_finger_tilt">Inclinar con dos dedos</string>
     <string name="settings_two_finger_tilt_hint">Arrastra dos dedos hacia arriba o abajo para inclinar el mapa en 3D. Desactivado: el pellizco solo hace zoom.</string>
     <string name="settings_speed_display">Mostrar velocidad y límite de velocidad</string>

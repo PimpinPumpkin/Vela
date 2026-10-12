@@ -663,7 +663,6 @@
     <string name="mapvm_voice_lang_system">Aanwijzingen in het %1$s gebruiken de stem van je telefoon. Voeg er een toe in je systeemstem-instellingen.</string>
     <string name="settings_topography">Terreinschaduw</string>
     <string name="settings_topography_hint">Arceert heuvels en bergen op de kaart. Standaard uit.</string>
-    <string name="map_satellite_toggle">Satellietweergave</string>
     <string name="map_layers">Lagen</string>
     <string name="settings_layers_button">Lagenknop tonen</string>
     <string name="settings_layers_button_hint">De kaartknop voor satelliet, verkeer, ov en terrein.</string>
@@ -1144,7 +1143,6 @@
     <string name="nav_end_confirm_keep">Doorrijden</string>
     <string name="settings_parking_button">Parkeerknop</string>
     <string name="settings_parking_button_hint">De P-knop op de kaart die opslaat waar je hebt geparkeerd. Uit: hij verschijnt alleen zolang er een plek is opgeslagen.</string>
-    <string name="map_layers_places">Plaatsen: %1$s</string>
     <string name="settings_two_finger_tilt">Kantelen met twee vingers</string>
     <string name="settings_two_finger_tilt_hint">Sleep met twee vingers omhoog of omlaag om de kaart in 3D te kantelen. Uit: knijpen zoomt alleen.</string>
     <string name="settings_speed_display">Snelheid en snelheidslimiet tonen</string>

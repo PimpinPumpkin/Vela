@@ -673,7 +673,6 @@
     <string name="mapvm_voice_lang_system">Wskazówki dla języka %1$s używają głosu telefonu. Dodaj go w systemowych ustawieniach głosu.</string>
     <string name="settings_topography">Cieniowanie terenu</string>
     <string name="settings_topography_hint">Cieniuje wzgórza i góry na mapie. Domyślnie wyłączone.</string>
-    <string name="map_satellite_toggle">Widok satelitarny</string>
     <string name="map_layers">Warstwy</string>
     <string name="settings_layers_button">Pokaż przycisk warstw</string>
     <string name="settings_layers_button_hint">Przycisk mapy do przełączania satelity, ruchu, transportu i terenu.</string>
@@ -1164,7 +1163,6 @@
     <string name="nav_end_confirm_keep">Jedź dalej</string>
     <string name="settings_parking_button">Przycisk parkowania</string>
     <string name="settings_parking_button_hint">Przycisk P na mapie, który zapisuje miejsce parkowania. Wyłączone: widać go tylko, gdy miejsce jest zapisane.</string>
-    <string name="map_layers_places">Miejsca: %1$s</string>
     <string name="settings_two_finger_tilt">Pochylanie dwoma palcami</string>
     <string name="settings_two_finger_tilt_hint">Przeciągnij dwoma palcami w górę lub w dół, aby pochylić mapę do widoku 3D. Wyłączone: uszczypnięcie zawsze tylko zmienia powiększenie.</string>
     <string name="settings_speed_display">Pokazuj prędkość i ograniczenie prędkości</string>

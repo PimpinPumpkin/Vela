@@ -755,7 +755,6 @@
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Klasszikus</string>
     <string name="settings_map_colors_hint">A Modern a Google app jelenlegi palettáját követi. A Klasszikus a Vela korábbi kinézete: fehér utak, sárga autópályák, valódi zöldek. A kettő sötét módban különbözik leginkább jelenleg.</string>
-    <string name="map_satellite_toggle">Műholdas nézet</string>
     <string name="map_layers">Rétegek</string>
     <string name="settings_layers_button">Rétegek gomb megjelenítése</string>
     <string name="settings_layers_button_hint">A térképen lévő gomb, ami vált a műholdas, forgalmi, tömegközlekedési és domborzati nézet között.</string>
@@ -1113,7 +1112,6 @@
     <string name="nav_end_confirm_keep">Tovább</string>
     <string name="settings_parking_button">Parkolás gomb</string>
     <string name="settings_parking_button_hint">A térképen lévő P gomb, amely elmenti, hol parkoltál. Kikapcsolva: csak akkor látszik, amíg van mentett hely.</string>
-    <string name="map_layers_places">Helyek: %1$s</string>
     <string name="settings_two_finger_tilt">Döntés két ujjal</string>
     <string name="settings_two_finger_tilt_hint">Húzd két ujjal fel vagy le a térkép 3D-s megdöntéséhez. Kikapcsolva: a csippentés csak nagyít.</string>
     <string name="settings_speed_display">Sebesség és sebességhatár megjelenítése</string>

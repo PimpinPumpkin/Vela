@@ -648,7 +648,6 @@
     <string name="settings_topography">地形の陰影</string>
     <string name="settings_topography_hint">地図上の丘や山に陰影を付けます。既定ではオフです。</string>
     <string name="settings_version_copied">バージョンをコピーしました</string>
-    <string name="map_satellite_toggle">航空写真</string>
     <string name="map_layers">レイヤ</string>
     <string name="settings_layers_button">レイヤボタンを表示</string>
     <string name="settings_layers_button_hint">航空写真・交通状況・路線・地形を切り替える地図上のボタン。</string>
@@ -1198,7 +1197,6 @@
     <string name="nav_end_confirm_keep">続ける</string>
     <string name="settings_parking_button">駐車ボタン</string>
     <string name="settings_parking_button_hint">駐車位置を保存する地図上の P ボタンです。オフにすると、駐車位置を保存している間だけ表示されます。</string>
-    <string name="map_layers_places">場所: %1$s</string>
     <string name="settings_two_finger_tilt">2 本指で傾ける</string>
     <string name="settings_two_finger_tilt_hint">2 本指で上下にドラッグすると地図を 3D に傾けられます。オフにすると、ピンチ操作はズームだけになります。</string>
     <string name="settings_speed_display">速度と制限速度を表示</string>

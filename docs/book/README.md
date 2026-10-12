@@ -31,7 +31,8 @@ Every chapter has the same four parts:
 
 ## Not written yet
 
-- The map itself: label sizes, day and night styles, 3D buildings, frame rate.
+- The map itself: label sizes, day and night styles, 3D buildings, frame rate, the layers panel
+  (its tiles are in SPEC 10.2, Browse map).
 - The route chooser: the two pickers, alternates, the camera and toll badges.
 - Voices and listening: Vela voices, speech engines, voice commands.
 - Keypad phones and the D-pad. For now, see [docs/dpad.md](../dpad.md).

@@ -188,7 +188,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadLongClick
 import app.vela.ui.dpadFieldEscape
@@ -509,7 +508,6 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
-    var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
     // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
     // like a pan would. Without this, follow was only SUSPENDED while the place sheet owned the
@@ -2618,75 +2616,9 @@ fun MapScreen(
                 (!resultsShown || landscapeChrome) &&
                 clearOfPlaceSheet
             ) {
-                val ctx = androidx.compose.ui.platform.LocalContext.current
-                val anyLayerOn = app.vela.ui.SatelliteLayer.on.value || Traffic.on.value ||
-                    app.vela.ui.TransitLayer.on.value || app.vela.ui.Topography.on.value
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .statusBarsPadding()
-                        // One-line landscape chrome: the chips sit beside the bar, so the
-                        // button rises a whole row (matches the compass margin in VelaMapView).
-                        .padding(top = if (landscapeChrome) 74.dp else 128.dp, end = 14.dp),
-                ) {
-                    Surface(
-                        color = mapButtonColor(darkTheme),
-                        shape = CircleShape,
-                        border = mapButtonRing(darkTheme),
-                        shadowElevation = 3.dp,
-                        modifier = Modifier.size(42.dp),
-                    ) {
-                        IconButton(onClick = { layersOpen = true }) {
-                            Icon(
-                                SymOutlined.Layers,
-                                contentDescription = stringResource(R.string.map_layers),
-                                tint = if (anyLayerOn) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(2.dp),
-                            )
-                        }
-                    }
-                    // The layers panel, Google-style: SATELLITE swaps the base look, the rest are
-                    // overlays. Same holders Settings flips, so the two stay in sync. VelaMenu, not
-                    // a bare DropdownMenu - the D-pad rule (docs/dpad.md): a Popup can't be
-                    // pre-focused, so key-first devices get the auto-focusing chooser dialog.
-                    app.vela.ui.VelaMenu(
-                        expanded = layersOpen,
-                        onDismissRequest = { layersOpen = false },
-                    ) {
-                        toggleItem(stringResource(R.string.map_satellite_toggle), app.vela.ui.SatelliteLayer.on.value) {
-                            app.vela.ui.SatelliteLayer.set(ctx, it)
-                            vm.onSatelliteToggled()
-                        }
-                        toggleItem(stringResource(R.string.settings_live_traffic), Traffic.on.value) {
-                            Traffic.set(ctx, it)
-                        }
-                        toggleItem(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) {
-                            app.vela.ui.TransitLayer.set(ctx, it)
-                        }
-                        toggleItem(stringResource(R.string.settings_topography), app.vela.ui.Topography.on.value) {
-                            app.vela.ui.Topography.set(ctx, it)
-                        }
-                        // Where the map's places come from, and the Google-free switch, one tap from
-                        // the map (issue #626): the same holders Settings > Places and Privacy flip.
-                        // The places choice only changes the map's pins; search still asks Google
-                        // unless Google-free is on, which is why that switch sits here too.
-                        listOf(
-                            app.vela.ui.MapPoiPrefs.SOURCE_OPEN to R.string.settings_places_source_open,
-                            app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE to R.string.settings_places_source_google,
-                            app.vela.ui.MapPoiPrefs.SOURCE_BOTH to R.string.settings_places_source_both,
-                        ).forEach { (id, label) ->
-                            val picked = app.vela.ui.MapPoiPrefs.placesSource.value == id
-                            item(
-                                stringResource(R.string.map_layers_places, stringResource(label)),
-                                if (picked) Sym.RadioButtonChecked else Sym.RadioButtonUnchecked,
-                            ) { app.vela.ui.MapPoiPrefs.setPlacesSource(ctx, id) }
-                        }
-                        toggleItem(stringResource(R.string.settings_google_free), app.vela.ui.GoogleFree.on.value) {
-                            app.vela.ui.GoogleFree.set(ctx, it)
-                        }
-                    }
-                }
+                // The button and its tile panel (LayersPanel.kt); the gate above is the one thing
+                // MapScreen keeps.
+                LayersCorner(vm, landscapeChrome, darkTheme)
             }
 
         // --- transient surfaces --------------------------------------------
@@ -2980,7 +2912,7 @@ private fun BoxScope.NavCorner(
 /** The buttons that float over the browse map (locate, parking, layers): one surface for all,
  *  and the wallpaper's colors when that setting is on (Settings > Appearance), like the drive's. */
 @Composable
-private fun mapButtonColor(dark: Boolean) =
+internal fun mapButtonColor(dark: Boolean) =
     if (app.vela.ui.theme.wallpaperColorsInUse()) MaterialTheme.colorScheme.primaryContainer
     // True black: the near-black the search bar and chips sit on, with the ring doing the work
     // of setting the button off (issue #769); the gray read as a different theme.
@@ -3012,7 +2944,7 @@ private fun LocateGlyph(dark: Boolean) {
 /** A faint edge on those buttons: the fill sets them off the map, this only keeps the circle
  *  crisp over a pale road or a white label. None with wallpaper colors. */
 @Composable
-private fun mapButtonRing(dark: Boolean): BorderStroke? =
+internal fun mapButtonRing(dark: Boolean): BorderStroke? =
     if (app.vela.ui.theme.wallpaperColorsInUse()) null
     else BorderStroke(1.dp, if (dark) Color.White.copy(alpha = if (isAppInAmoled()) 0.22f else 0.14f) else Color(0xFFDADCE0))
 

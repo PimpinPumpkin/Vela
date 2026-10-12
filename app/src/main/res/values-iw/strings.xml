@@ -642,7 +642,6 @@
     <string name="settings_topography">הצללת שטח</string>
     <string name="settings_topography_hint">מוסיף הצללה לגבעות ולהרים במפה. כבוי כברירת מחדל.</string>
     <string name="settings_version_copied">הגרסה הועתקה</string>
-    <string name="map_satellite_toggle">תצוגת לוויין</string>
     <string name="map_layers">שכבות</string>
     <string name="settings_layers_button">הצגת כפתור השכבות</string>
     <string name="settings_layers_button_hint">כפתור המפה למעבר בין לוויין, תנועה, תחבורה ותבליט.</string>
@@ -1126,7 +1125,6 @@
     <string name="nav_end_confirm_keep">המשך</string>
     <string name="settings_parking_button">כפתור חניה</string>
     <string name="settings_parking_button_hint">כפתור ה-P במפה ששומר איפה חנית. כבוי: הוא מוצג רק כשיש מיקום חניה שמור.</string>
-    <string name="map_layers_places">סמלי מקומות: %1$s</string>
     <string name="settings_two_finger_tilt">הטיה בשתי אצבעות</string>
     <string name="settings_two_finger_tilt_hint">גרור שתי אצבעות למעלה או למטה כדי להטות את המפה לתלת-ממד. כבוי: צביטה רק משנה את הזום.</string>
     <string name="settings_speed_display">הצג מהירות ומגבלת מהירות</string>

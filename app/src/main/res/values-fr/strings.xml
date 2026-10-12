@@ -591,7 +591,6 @@
     <string name="mapvm_voice_lang_system">Les instructions en %1$s utilisent la voix de votre téléphone. Ajoutez-en une dans les paramètres vocaux du système.</string>
     <string name="settings_topography">Ombrage du relief</string>
     <string name="settings_topography_hint">Ombre les collines et les montagnes sur la carte. Désactivé par défaut.</string>
-    <string name="map_satellite_toggle">Vue satellite</string>
     <string name="map_layers">Calques</string>
     <string name="settings_layers_button">Afficher le bouton calques</string>
     <string name="settings_layers_button_hint">Le bouton de la carte pour satellite, trafic, transports et relief.</string>
@@ -1149,7 +1148,6 @@
     <string name="nav_end_confirm_keep">Continuer</string>
     <string name="settings_parking_button">Bouton de parking</string>
     <string name="settings_parking_button_hint">Le bouton P sur la carte qui enregistre où vous êtes garé. Désactivé : il n\'apparaît que lorsqu\'une place est enregistrée.</string>
-    <string name="map_layers_places">Lieux : %1$s</string>
     <string name="settings_two_finger_tilt">Incliner avec deux doigts</string>
     <string name="settings_two_finger_tilt_hint">Faites glisser deux doigts vers le haut ou le bas pour incliner la carte en 3D. Désactivé : le pincement ne fait que zoomer.</string>
     <string name="settings_speed_display">Afficher la vitesse et la limitation</string>

@@ -591,7 +591,6 @@
     <string name="mapvm_voice_lang_system">Vägbeskrivningar på %1$s använder telefonens röst. Lägg till en i systemets röstinställningar.</string>
     <string name="settings_topography">Terrängskuggning</string>
     <string name="settings_topography_hint">Skuggar kullar och berg på kartan. Av som standard.</string>
-    <string name="map_satellite_toggle">Satellitvy</string>
     <string name="map_layers">Lager</string>
     <string name="settings_layers_button">Visa lagerknappen</string>
     <string name="settings_layers_button_hint">Kartknappen för satellit, trafik, kollektivtrafik och terräng.</string>
@@ -1157,7 +1156,6 @@
     <string name="nav_end_confirm_keep">Fortsätt</string>
     <string name="settings_parking_button">Parkeringsknapp</string>
     <string name="settings_parking_button_hint">P-knappen på kartan som sparar var du parkerade. Av: den visas bara medan en plats är sparad.</string>
-    <string name="map_layers_places">Platser: %1$s</string>
     <string name="settings_two_finger_tilt">Luta med två fingrar</string>
     <string name="settings_two_finger_tilt_hint">Dra två fingrar uppåt eller nedåt för att luta kartan till 3D. Av: en nypning zoomar bara.</string>
     <string name="settings_speed_display">Visa hastighet och hastighetsgräns</string>

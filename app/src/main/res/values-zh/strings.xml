@@ -648,7 +648,6 @@
     <string name="settings_topography">地形阴影</string>
     <string name="settings_topography_hint">在地图上为丘陵和山脉添加阴影。默认关闭。</string>
     <string name="settings_version_copied">已复制版本号</string>
-    <string name="map_satellite_toggle">卫星视图</string>
     <string name="map_layers">图层</string>
     <string name="settings_layers_button">显示图层按钮</string>
     <string name="settings_layers_button_hint">地图上用于切换卫星、路况、公交和地形的按钮。</string>
@@ -1217,7 +1216,6 @@
     <string name="nav_end_confirm_keep">继续导航</string>
     <string name="settings_parking_button">停车按钮</string>
     <string name="settings_parking_button_hint">地图上用于保存停车位置的 P 按钮。关闭后，仅在已保存停车位置时显示。</string>
-    <string name="map_layers_places">地点：%1$s</string>
     <string name="settings_two_finger_tilt">双指倾斜</string>
     <string name="settings_two_finger_tilt_hint">双指向上或向下拖动，可将地图倾斜为 3D 视角。关闭后，双指捏合只会缩放。</string>
     <string name="settings_speed_display">显示车速和限速</string>

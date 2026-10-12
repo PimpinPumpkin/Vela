@@ -249,6 +249,7 @@ adb:
 | The first run's "What Google is used for" list | The Back button, as on a Settings page | Back, to the choice page |
 | `VelaDialog` | The dismiss button. Arrows reach confirm | Back |
 | `VelaMenu` | The first item | Back |
+| Layers panel (`LayersPanel`) | The first map type tile. Arrows move across the tile rows and down to the switch row, OK picks or toggles and keeps the panel open | Back |
 | Time and date picker (`PickerDialog`), Your lists (`ListsSheet`), voice capture (`VoiceCaptureDialog`) | Their OK, New list and Done buttons | Back |
 | List editor (`ListEditorDialog`) | The name field. Down reaches the icons, the colors and the buttons | Back |
 | Place icon (`PlaceIconDialog`), parking history (`ParkingHistorySheet`) | Cancel, and the newest spot | Back |

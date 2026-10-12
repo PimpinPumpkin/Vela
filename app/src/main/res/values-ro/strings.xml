@@ -245,7 +245,6 @@
     <string name="nav_end_confirm_keep">Continuă</string>
     <string name="settings_parking_button">Buton de parcare</string>
     <string name="settings_parking_button_hint">Butonul P de pe hartă care salvează locul unde ai parcat. Dezactivat: se afișează doar cât timp un loc este salvat.</string>
-    <string name="map_layers_places">Pictograme de locație: %1$s</string>
     <string name="settings_two_finger_tilt">Înclinare cu două degete</string>
     <string name="settings_two_finger_tilt_hint">Trage două degete în sus sau în jos pentru a înclina harta în 3D. Dezactivat: Ciupirea degetelor modifică doar nivelul de zoom.</string>
     <string name="settings_speed_display">Afișează viteza și limita de viteză</string>
