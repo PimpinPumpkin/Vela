@@ -2,7 +2,8 @@ package app.vela.core.config
 
 /**
  * Every address the app has of its own project: the repository, its API, the download
- * releases, the raw files on main, the site, the donate page. Compiled defaults live here and
+ * releases, the raw files on main, the website, the GitHub Pages address that serves the map
+ * fonts, the donate page. Compiled defaults live here and
  * nowhere else; a signed `calibration.json` can replace any of them through its `links` object,
  * so a renamed account, a moved repository or a new site reaches installed apps without a
  * release. A build can point a data file at a local server (`-PobfManifestUrl=` and the like),
@@ -22,6 +23,7 @@ object VelaLinks {
     const val RELEASES = "releases"
     const val RAW = "raw"
     const val SITE = "site"
+    const val PAGES = "pages"
     const val DONATE = "donate"
     const val PRIVACY = "privacy"
     const val CALIBRATION = "calibration"
@@ -47,7 +49,11 @@ object VelaLinks {
         API to "https://api.github.com/repos/PimpinPumpkin/Vela",
         RELEASES to "https://github.com/PimpinPumpkin/Vela/releases/download",
         RAW to "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main",
-        SITE to "https://pimpinpumpkin.github.io/Vela",
+        SITE to "https://velamaps.org",
+        // The GitHub Pages address: the map fonts, the F-Droid repository and the docs. It is not
+        // the website and must not become a redirect to it; installed apps and F-Droid clients
+        // point here.
+        PAGES to "https://pimpinpumpkin.github.io/Vela",
         DONATE to "https://buymeacoffee.com/PimpinPumpkin",
     )
 
@@ -66,7 +72,7 @@ object VelaLinks {
         POI_PACK_MANIFEST to (RELEASES to "/poi-packs/poi-pack-manifest.json"),
         FLOCK_MANIFEST to (RELEASES to "/flock-cameras/flock-manifest.json"),
         ROAD_FEATURES_MANIFEST to (RELEASES to "/road-features/road-features-manifest.json"),
-        MAP_FONTS to (SITE to "/fonts"),
+        MAP_FONTS to (PAGES to "/fonts"),
         MAP_FONTS_PACK to (RELEASES to "/map-fonts/map-fonts.zip"),
         ASR_MODELS to (RELEASES to "/asr-models"),
         FUEL_GB to (RELEASES to "/fuel-gb/"),
@@ -102,6 +108,7 @@ object VelaLinks {
     fun release(tag: String, file: String): String = "${get(RELEASES)}/$tag/$file"
     fun raw(path: String): String = get(RAW) + path
     fun site(): String = get(SITE)
+    fun pages(): String = get(PAGES)
     fun donate(): String = get(DONATE)
     fun privacy(): String = get(PRIVACY)
     fun calibration(): String = get(CALIBRATION)

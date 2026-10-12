@@ -5284,9 +5284,12 @@ Locally: `./gradlew :core:testDebugUnitTest --tests '*GoogleHealthProbeTest' -Dv
 ### 11.4 The project's own links
 
 Every address the app has of its own project is in `core/config/VelaLinks`: the repository,
-its API, the download releases, the raw files on main, the site and the donate page, and the
-files derived from them (the settings file, each data manifest, the world basemap, the map
-fonts, the speech models, the UK fuel file, the painted roads). Nothing else in the code holds
+its API, the download releases, the raw files on main, the website (`site`, velamaps.org), the
+GitHub Pages address (`pages`, where the map fonts, the F-Droid repository and the docs live)
+and the donate page, and the files derived from them (the settings file, each data manifest,
+the world basemap, the map fonts, the speech models, the UK fuel file, the painted roads).
+The website and the Pages address are separate keys on purpose: the site can move without
+touching what installed apps fetch. Nothing else in the code holds
 one of these as a literal. A signed bundle's `links` object replaces any of them by name:
 pushing `releases` alone moves every file under it, pushing one key moves that one. Only https
 links under known names are accepted; anything else rejects the bundle. A build's own link
