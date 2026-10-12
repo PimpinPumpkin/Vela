@@ -71,5 +71,7 @@ class TakeoutCsvTest {
         assertNull(TakeoutCsv.pick(near, emptyList(), null, "Mikuni"))
         assertEquals(mikuni2, TakeoutCsv.pick(emptyList(), near, "cc", "Mikuni"))
         assertNull(TakeoutCsv.pick(emptyList(), listOf(coop), "zz", "Davis Food Co-op"))
+        // A feature id that matches nothing vetoes the name: a same-name hit is another place.
+        assertNull(TakeoutCsv.pick(listOf(coop), emptyList(), "zz", "Davis Food Co-op"))
     }
 }

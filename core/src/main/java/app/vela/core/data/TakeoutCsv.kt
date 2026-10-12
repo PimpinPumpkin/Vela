@@ -92,13 +92,16 @@ object TakeoutCsv {
 
     /**
      * The hit a listing row takes. The one carrying [key], from [near] (the search biased where the
-     * user is) or [wide] (the unbiased retry for a list made far away); failing that, the one hit in
+     * user is) or [wide] (the unbiased retry for a list made far away); with no key, the one hit in
      * [near] named like [title]. Several named so (a chain's branches) or none give none: a row is
      * never guessed at. A name is never matched in [wide], since the bias is what tells branches apart.
      */
-    fun pick(near: List<Place>, wide: List<Place>, key: String?, title: String): Place? =
-        byKey(near, key) ?: byKey(wide, key)
-            ?: near.filter { it.name.equals(title, ignoreCase = true) }.singleOrNull()
+    fun pick(near: List<Place>, wide: List<Place>, key: String?, title: String): Place? {
+        // A row that carries a feature id names one place; a same-name hit with another id is a
+        // different place, so the name is only trusted when there is no id to check.
+        if (key != null) return byKey(near, key) ?: byKey(wide, key)
+        return near.filter { it.name.equals(title, ignoreCase = true) }.singleOrNull()
+    }
 
     private val FID = Regex("""!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)""")
     private val PIN = Regex("""!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)""")
