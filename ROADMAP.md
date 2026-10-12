@@ -120,10 +120,13 @@ time on a phone before it lands (2026-10-11).
 - Google Takeout list CSVs (#761, branch `takeout-csv`, pull request #767): a per-list CSV
   (title and Google link per row, no coordinates) imports as a list of the file's name; a pin
   row is kept, a listing row is searched by title and matched on its feature id, a miss is
-  counted. Built; checked on a Pixel 4a with a hand-made file. Not checked: a real Takeout
-  export, where the titles and link forms may differ from the documented ones; a list made far
-  from the phone, which gets the unbiased retry, not yet checked; the import carrying on after
-  Settings is left, and its outcome on the status card, not yet checked on a phone.
+  counted; a listing's feature id carries an S2 cell, so its search is biased where the place
+  is. Built; checked on a Pixel 4a with a hand-made file and with a five-row list of real
+  Florence links imported from the US: a museum by id, one branch of a chain by id, a pin, and
+  two bad rows counted as misses; importing the same file again refreshed the list in place.
+  Not checked: a real Takeout export, where the titles and link forms may differ from the
+  documented ones; the import carrying on after Settings is left, and its outcome on the status
+  card, not yet checked on a phone.
 
 ## Next up
 

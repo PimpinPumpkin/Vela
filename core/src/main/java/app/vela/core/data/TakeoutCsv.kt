@@ -23,6 +23,14 @@ object TakeoutCsv {
      *  hex without `0x`, the part a `cid` link carries too. */
     data class Link(val name: String?, val lat: Double?, val lng: Double?, val featureId: String?, val featureKey: String?) {
         val hasPoint: Boolean get() = lat != null && lng != null
+
+        /** Roughly where the place is, from the feature id's first half, an S2 cell: within a
+         *  hundred meters for a leaf cell. Null for a link without a feature id. */
+        fun cellCenter(): app.vela.core.model.LatLng? {
+            val hex = featureId?.substringBefore(':')?.removePrefix("0x")?.takeIf { it.isNotEmpty() } ?: return null
+            val id = runCatching { java.lang.Long.parseUnsignedLong(hex, 16) }.getOrNull() ?: return null
+            return app.vela.core.util.S2Cell.center(id)
+        }
     }
 
     /** Sanity bound for one file. */

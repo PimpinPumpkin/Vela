@@ -7456,7 +7456,10 @@ class MapViewModel @Inject constructor(
                 else -> {
                     val key = link?.featureKey
                     if (lookups++ > 0) delay(TAKEOUT_LOOKUP_GAP_MS)
-                    val hits = runCatching { dataSource.search(title, near = near) }.getOrNull()?.places.orEmpty()
+                    // A feature id's first half is an S2 cell, so a listing row says roughly
+                    // where its place is: the search is biased there, which is what finds one
+                    // branch of a chain in a list made on a trip.
+                    val hits = runCatching { dataSource.search(title, near = link?.cellCenter() ?: near) }.getOrNull()?.places.orEmpty()
                     // A list made on a trip is far from here: a keyed row the biased search missed
                     // gets one unbiased search, matched on the key alone.
                     val wide = if (key != null && app.vela.core.data.TakeoutCsv.byKey(hits, key) == null) {

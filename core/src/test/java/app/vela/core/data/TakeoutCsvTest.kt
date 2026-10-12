@@ -35,6 +35,10 @@ class TakeoutCsvTest {
         assertEquals("0x8085299a7b6c6f0b:0x9ab2c3d4e5f60718", l.featureId)
         assertEquals("9ab2c3d4e5f60718", l.featureKey)
         assertEquals("9ab2c3d4e5f60718", TakeoutCsv.featureKey("0x8085299A7B6C6F0B:0x9AB2C3D4E5F60718"))
+        // The feature id's first half is an S2 cell: the listing says roughly where it is.
+        val cell = l.cellCenter()!!
+        assertEquals(38.55, cell.lat, 0.05)
+        assertEquals(-121.73, cell.lng, 0.05)
         assertNull(TakeoutCsv.featureKey(null))
     }
 
