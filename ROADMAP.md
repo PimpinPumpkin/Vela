@@ -439,6 +439,49 @@ traffic and replaces it where coverage is good.
   first server Vela runs, so `PRIVACY.md` changes the day it ships and request logging stays
   off. A free tier can be reclaimed, and someone has to update the tiles.
 
+### If GitHub goes away
+
+GitHub is the right home today: free unlimited Actions for a public repository, releases that
+served 74 TB of region files at no cost, the Obtainium and F-Droid audience, and a record of
+keeping projects that toe a line. It is also one account that can be closed. What that would
+break, measured 2026-10-11, worst first.
+
+- Installed apps. Builds before `VelaLinks` carry `api.github.com` and
+  `raw.githubusercontent.com` as literals. Builds with it fetch the settings file from GitHub
+  first and GitHub second, so no signed `links` push can reach them either. The updater reads
+  GitHub's release JSON; Forgejo's has the same fields, GitLab's does not.
+- The data releases: 56,470 files, 369 GB, about 18 TB served a month. No git host replaces
+  that (GitLab's free storage is 10 GB). An object store with free egress (Cloudflare R2, about
+  six dollars a month at this size) does. Every manifest embeds absolute `github.com` asset
+  URLs, so a move is a manifest rewrite or an app-side rebase onto the `releases` link. The
+  93 GB basemap and 82 GB building bakes need big-disk runners to regenerate.
+- The channels that pin a URL: Obtainium points at the repository, F-Droid clients at the
+  Pages address. The F-Droid key is local, so the fingerprint survives; every user would add
+  the new address by hand. The APK is 116 MB, over Cloudflare Pages' 25 MB file limit, so a
+  mirror of the F-Droid repository lives on R2, not Pages.
+- CI: 29 workflows, hourly to weekly crons, at least 55 runner hours a month, ten secrets (all
+  regenerable or kept locally), the `gh` CLI in 41 scripts and workflows, artifact, Pages,
+  CodeQL and Scorecard actions. GitLab's free tier is 400 minutes a month. Forgejo Actions runs
+  the same YAML nearly unchanged on a self-hosted runner; GitLab means rewriting it.
+- Fonts on Pages fail softly: the app probes the host and falls back to OpenFreeMap's Noto
+  glyphs. The website is on velamaps.org already; the docs would redirect there.
+- Issues, pull requests, discussions, every `#123` in commits and docs, the Weblate project,
+  issue triage, download stats and the dashboard. Forgejo's importer keeps issue numbers.
+
+Not touched: the three signing keys (local only), velamaps.org, OpenFreeMap, the Piper voices
+(another account's releases), the donation page.
+
+Insurance, cheapest first, none built:
+
+1. A second settings-file address off GitHub (velamaps.org), published by the same workflow
+   as the site, so a closed account becomes one signed `links` push.
+2. The F-Droid repository mirrored on R2 behind a velamaps.org address, listed in the index as
+   a mirror so clients fail over by themselves, and in the README.
+3. Manifest asset URLs rebased app-side onto the `releases` link, so a storage move is a push,
+   not a rebake.
+4. A weekly export of issues and pull requests to R2.
+5. A GitLab pull mirror of the git history.
+
 ## Not planned
 
 Asked for, possible, and not being built. Each says what it would take.
