@@ -1,6 +1,8 @@
 package app.vela.ui.map
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.compose.runtime.mutableStateMapOf
 import app.vela.BuildConfig
 import app.vela.core.data.tiles.MapStyle
@@ -30,6 +32,8 @@ import java.util.concurrent.TimeUnit
  * OpenFreeMap look ([MapStyle]) uses the same Noto stacks, so the same patch fits
  * each, and each look keeps its own cache file. Guards, in order of what actually
  * goes wrong:
+ *  - with no validated network the refresh does nothing: the cache is what an
+ *    installed offline basemap loads, and the probe below could only fail;
  *  - the font host is PROBED (range 0-255) before the patched style is used or
  *    kept; an unreachable host EVICTS the cache, because a style whose glyph URLs
  *    fail renders a map with no labels at all - falling back to the plain style
@@ -57,6 +61,18 @@ object MapFonts {
         return patched[look.key] ?: base
     }
 
+    /** The style JSON an installed offline basemap loads, and whether the map paints it as the
+     *  Vela look. */
+    class OfflineStyle(val json: String, val painted: Boolean)
+
+    /** [cached] is [look]'s patched cache. A look with none loads [asset], the bundled Liberty,
+     *  painted as the Vela look: stock Liberty under another look's colors is neither. */
+    fun offlineStyle(look: MapStyle, cached: String?, asset: () -> String?): OfflineStyle? {
+        if (!cached.isNullOrBlank()) return OfflineStyle(cached, look.painted)
+        val json = asset()?.takeIf { it.isNotBlank() } ?: return null
+        return OfflineStyle(json, painted = true)
+    }
+
     fun init(context: Context) {
         for (look in MapStyle.entries) {
             val f = cacheFile(context, look)
@@ -80,7 +96,19 @@ object MapFonts {
         f.delete()
     }
 
+    /** What Android says about the default network: one that has reached the internet. A missing
+     *  service counts as online so the probe decides, as it did before this check. */
+    private fun online(context: Context): Boolean = runCatching {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }.getOrDefault(true)
+
     private fun refresh(context: Context, look: MapStyle) {
+        // No network: the probe can only fail, and the cache it would evict is what the offline
+        // basemap loads. The eviction below is for a live network with a dead font host.
+        if (!online(context)) return
         val f = cacheFile(context, look)
         val http = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)

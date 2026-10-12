@@ -5091,16 +5091,21 @@ fun VelaMapView(
             // An installed offline basemap wins over every style source: the remote Liberty URL
             // cannot load with no signal, and the swap needs the JSON in hand anyway. The MapFonts
             // patch (Roboto glyphs) is used when it exists, else the bundled Liberty asset.
-            val offlineJson = basemapArchive?.let {
+            val look = app.vela.ui.MapLook.style.value
+            val offline = basemapArchive?.let {
                 // The chosen look's patched cache; a look never cached yet falls back to the
                 // bundled Liberty asset, the one style that is always on the phone.
-                val patched = MapFonts.effective(app.vela.ui.MapLook.style.value.uri)
+                val patched = MapFonts.effective(look.uri)
                 val fromPatch = if (patched.startsWith("file://")) runCatching { java.io.File(patched.removePrefix("file://")).readText() }.getOrNull() else null
-                fromPatch?.takeIf { j -> j.isNotBlank() }
-                    ?: runCatching { context.assets.open("styles/liberty-roboto.json").bufferedReader().use { r -> r.readText() } }.getOrNull()
+                MapFonts.offlineStyle(look, fromPatch) {
+                    runCatching { context.assets.open("styles/liberty-roboto.json").bufferedReader().use { r -> r.readText() } }.getOrNull()
+                }
             }
-            val builder = if (offlineJson != null) {
-                Style.Builder().fromJson(withLocalBasemap(context, offlineJson, basemapArchive))
+            // The Liberty-only passes follow the style that loads, not the look alone: offline,
+            // the Liberty asset stands in for a look with no cache and is painted as the Vela look.
+            val painted = offline?.painted ?: look.painted
+            val builder = if (offline != null) {
+                Style.Builder().fromJson(withLocalBasemap(context, offline.json, basemapArchive))
             } else if (styleUri.startsWith("asset://")) {
                 // Bundled style JSON (Liberty re-pointed at Roboto glyphs). Its
                 // tile/sprite/glyph URLs are absolute, so it still loads keyless.
@@ -5113,7 +5118,7 @@ fun VelaMapView(
                 // handling; a vanished/empty file falls back to the plain URL.
                 val f = java.io.File(styleUri.removePrefix("file://"))
                 val json = runCatching { f.readText() }.getOrNull()
-                if (json.isNullOrBlank()) Style.Builder().fromUri(app.vela.ui.MapLook.style.value.uri)
+                if (json.isNullOrBlank()) Style.Builder().fromUri(look.uri)
                 else Style.Builder().fromJson(withLocalBasemap(context, json, basemapArchive))
             } else {
                 Style.Builder().fromUri(styleUri)
@@ -5138,7 +5143,7 @@ fun VelaMapView(
                         }
                     }.onFailure { android.util.Log.w("VelaBasemap", "re-attach failed", it) }
                 }
-                ensureLayers(style)
+                ensureLayers(style, painted)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastOsmPoiVis = null; lastPreviewTransitHidden = null
                 lastPoiFuelOnly = null
@@ -5173,7 +5178,7 @@ fun VelaMapView(
                 // takes only the look-independent passes.
                 when {
                     !applyKeylessTheme -> tuneMapTiler(style, darkTheme)
-                    app.vela.ui.MapLook.style.value.painted -> applyMapTheme(StyleHost(style), darkTheme, amoled)
+                    painted -> applyMapTheme(StyleHost(style), darkTheme, amoled)
                     else -> applyLookTheme(StyleHost(style), darkTheme)
                 }
                 if (satelliteOn) applySatelliteLabels(style)
@@ -5639,7 +5644,9 @@ fun VelaMapView(
     }
 }
 
-private fun ensureLayers(style: Style) {
+/** [painted] is whether the style that loaded is painted as the Vela look (the look, or the
+ *  Liberty asset standing in for one offline). */
+private fun ensureLayers(style: Style, painted: Boolean) {
     // Kill the style light: MapLibre lights fill-extrusion faces toward white (default
     // intensity 0.5), so at z16+ the building-3d tops rendered ~40% brighter than the
     // palette (#1c3b69 became #2e5590) while Google keeps buildings the SAME color at
@@ -5656,7 +5663,7 @@ private fun ensureLayers(style: Style) {
     // clean flat twins take their place; applyLight/applyDark color the twins.
     // The twins belong to the Vela look: the palette functions color them, and on another look
     // nothing would, so they would draw black.
-    val twins = app.vela.ui.MapLook.style.value.painted
+    val twins = painted
     if (twins) {
         style.getLayer("landcover_wetland")?.setProperties(PropertyFactory.visibility(Property.NONE))
         style.getLayer("road_area_pattern")?.setProperties(PropertyFactory.visibility(Property.NONE))

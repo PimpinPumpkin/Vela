@@ -3292,14 +3292,20 @@ Roboto for Cyrillic and Greek, Noto for every other script. The folders keep the
   `<key>-roboto.json` for the others), then refreshes the chosen look's: probe the font host,
   fetch the live style JSON, point `glyphs` at the font host, write the cache. Picking a look
   refreshes that look's (`MapFonts.ensure`).
+- With no validated network (`ConnectivityManager`, INTERNET and VALIDATED) the refresh does
+  nothing and the cache stays: it is what an installed offline basemap loads.
 - A font host that fails the probe evicts the cache, and the map loads the plain style in Noto. A
   style whose glyph URLs fail draws no labels at all.
 - A failed style fetch keeps the last cache for at most 7 days (`STALE_EVICT_MS`). A cached style
   pins a tile snapshot, and OpenFreeMap retires old snapshots.
 - Only OpenFreeMap looks are patched.
 
-Under an installed offline basemap the style is built from JSON: the chosen look's patched cache,
-else the bundled `assets/styles/liberty-roboto.json` (a look never cached yet is Liberty offline). `withLocalBasemap` points its layers at the local
+Under an installed offline basemap the style is built from JSON (`MapFonts.offlineStyle`): the
+chosen look's patched cache, else the bundled `assets/styles/liberty-roboto.json`. The asset is
+painted as the Vela look whatever the look, in the look's light or dark (`isMapDark()`), so a look
+with no cached style is the Vela look offline and never stock Liberty under another look's colors.
+The Liberty-only passes (`applyMapTheme`, the twins of `ensureLayers`) follow the style that
+loaded, not `MapLook.style` alone. `withLocalBasemap` points its layers at the local
 archive, maps the asset's Roboto stacks to the Noto names (`GlyphPackStore.stackName`), and serves
 glyphs and the sprite from `file://`. `GlyphPackStore` unzips the `map-fonts` release into
 `glyphs/` under `StorageLocation.root` (about 200 MB) and copies the bundled sprite to
