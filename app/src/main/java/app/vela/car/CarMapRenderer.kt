@@ -509,6 +509,7 @@ class CarMapRenderer(
             runCatching { java.io.File(effectiveStyle.removePrefix("file://")).readText() }
                 .getOrNull()?.takeIf { it.isNotBlank() }?.let { CarStyle.inject(it, app.vela.ui.map.TRAFFIC_TILES) }
         } else null
+        loadedPlain = patchedJson == null
         // The layer ids of the style being loaded, for the palette's blanket passes: the patched
         // JSON when there is one, else the bundled Liberty asset (the same layer ids as the live
         // style; it is the phone's offline fallback for the same reason).
@@ -667,6 +668,7 @@ class CarMapRenderer(
         val here = center
         if (snap == null || here == null) return
         if (rendering) { dirty = true; return }
+        if (reloadIfPatched()) return // the rebuilt snapshotter renders on its own
         rendering = true
         // The car flipped day/night since the palette went on: re-theme before this frame.
         if (themed && themedNight != isNight()) applyTheme(snap)
@@ -735,6 +737,23 @@ class CarMapRenderer(
 
     private var trafficShown: Boolean? = null
     private var fuelOnlyShown: Boolean? = null
+    // The style loaded from the plain URL, without the car layers, because the patched file did
+    // not exist yet (a first launch, or the font host down). Once it exists the style is built
+    // again, so the Traffic switch and the fills do not stay dead until the next connection.
+    private var loadedPlain = false
+
+    private fun patchedStyleReady(): Boolean = app.vela.ui.map.MapFonts.effective(MapStyle.LIBERTY.uri).startsWith("file://")
+
+    /** Rebuilds the snapshotter on the patched style when it has appeared since the plain one loaded. */
+    private fun reloadIfPatched(): Boolean {
+        if (!loadedPlain || !patchedStyleReady() || surface == null) return false
+        runCatching { snapshotter?.cancel() }
+        snapshotter = null
+        snapWidth = 0; snapHeight = 0
+        rendering = false; dirty = false
+        surface?.let { onSurfaceAvailable(SurfaceContainer(it, width, height, carContext.resources.displayMetrics.densityDpi)) }
+        return true
+    }
 
     /** The style's switchable layers, set when their state changes: Google's traffic raster with
      *  no route when the phone's Traffic layer is on (and Google is allowed), as the phone shows

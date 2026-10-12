@@ -202,8 +202,12 @@ off the list when it has been.
   Desktop Head Unit.
 - The car map's heading-up, tilted follow with no route, drive mode, the zoom by speed, the
   traffic raster and the phone's extra fills (#749, pull request #763). Seen on the Desktop Head
-  Unit with a simulated drive and a mock trace with no route; the tilt at highway speed and the
-  traffic raster's effect on snapshot time in a moving car are not.
+  Unit with a simulated drive and with a mock trace at 100 km/h and no route: heading-up, tilt
+  55, zoom 15.2 to 15.7. Snapshot time at that speed, median and 90th percentile: 37 and 51 ms
+  with the traffic raster off, 40 and 65 ms with it on, five frames over 300 ms in 80 s against
+  two; the raster is not what slows the car map. Not seen: a real car or head unit, and the
+  rebuild of the car style when the patched file appears after a plain load, which needs a
+  first launch with the car already connected.
 - A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
 - UK fuel prices on a phone in the UK.
 

@@ -5125,7 +5125,9 @@ The map:
   (`vela-traffic-src`, the phone's `TRAFFIC_TILES`, `raster-opacity` 0.6, no fade) above the
   topmost building layer with visibility `none`. The ids are the phone's, so the palette functions
   color them. The twins' filters and anchors are kept the same as `ensureLayers` by hand. While
-  the patched style does not exist yet the plain URL loads, without them.
+  the patched style does not exist yet the plain URL loads, without them; the next render after
+  the file appears rebuilds the snapshotter on it (`reloadIfPatched`), so the Traffic switch and
+  the fills do not wait for the next connection.
 - `applyOverlays` runs before each themed render: the traffic layer is visible with no route when
   the phone's Traffic layer is on and "Use Vela without Google" is off, as on the phone, and the
   basemap place icon tiers take the phone's `applyPoiTierFilters` (vegetation out; fuel only during
