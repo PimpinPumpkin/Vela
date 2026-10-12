@@ -175,9 +175,11 @@ import java.util.Locale
 // D-pad-only operation (docs/dpad.md) — kept as one import block so upstream merges stay clean.
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -188,6 +190,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadLongClick
 import app.vela.ui.dpadFieldEscape
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.theme.isAppInDarkTheme
@@ -6077,7 +6080,7 @@ private fun FasterRouteCard(
 
 /** Manage-lists dialog (Your lists): create, rename, restyle or delete a list;
  *  tapping one opens its places. */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun ListsSheet(
     lists: List<app.vela.core.model.PlaceList>,
@@ -6160,43 +6163,59 @@ private fun ListsSheet(
                         val pickedNowLists = pickedLists
                         val pickedList = pickedNowLists?.contains(list.id)
                         // Swipe toward the end to delete, toward the start to edit (issue #748); a
-                        // long press starts selecting. The handle at the end reorders by drag, and
-                        // on a keypad Up and Down on it move the list and OK opens the editor.
+                        // long press or a held OK starts selecting. The handle at the end reorders
+                        // by drag, and on a keypad Up and Down on it move the list and OK opens the
+                        // editor.
+                        val openRow = {
+                            if (pickedNowLists == null) { screenFocus.clearFocus(); onOpenList(list.id) }
+                            else pickedLists = if (list.id in pickedNowLists) pickedNowLists - list.id else pickedNowLists + list.id
+                        }
+                        val selectRow = { pickedLists = (pickedNowLists ?: emptySet()) + list.id }
+                        val rowFocus = remember { FocusRequester() }
                         SwipeActionRow(
                             onDelete = { if (list.places.isEmpty()) onDeleteList(list.id) else deletingList = list },
                             deleteLabel = stringResource(R.string.list_delete),
                             onEdit = { editing = list },
                             editLabel = stringResource(R.string.list_edit),
                         ) {
+                            // The handle is the row's focus sibling, not its child: focus search
+                            // never enters a focused node's own children. Focus arriving from
+                            // outside the row lands on the row, never the handle, where Down would
+                            // move the list instead of walking the rows.
                             Row(
                                 Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                    .dpadHighlight(RoundedCornerShape(8.dp))
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (pickedNowLists == null) { screenFocus.clearFocus(); onOpenList(list.id) }
-                                            else pickedLists = if (list.id in pickedNowLists) pickedNowLists - list.id else pickedNowLists + list.id
-                                        },
-                                        onLongClick = { pickedLists = (pickedNowLists ?: emptySet()) + list.id },
-                                    )
                                     .onSizeChanged { rowHeightPx = it.height.toFloat() }
-                                    .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                                    .focusProperties { enter = { rowFocus } }
+                                    .focusGroup()
+                                    .padding(end = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                when (pickedList) {
-                                    null -> ListIconBadge(list.icon, Color(list.color), 22.dp)
-                                    true -> Icon(Sym.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                    false -> Icon(SymOutlined.RadioButtonUnchecked, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                                }
-                                Spacer(Modifier.width(16.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(
-                                        androidx.compose.ui.res.pluralStringResource(R.plurals.lists_place_count, list.places.size, list.places.size),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                Row(
+                                    Modifier
+                                        .weight(1f)
+                                        .focusRequester(rowFocus)
+                                        .dpadHighlight(RoundedCornerShape(8.dp))
+                                        .dpadLongClick(onClick = openRow, onLongClick = selectRow)
+                                        .combinedClickable(onClick = openRow, onLongClick = selectRow)
+                                        .padding(start = 20.dp, top = 12.dp, bottom = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    when (pickedList) {
+                                        null -> ListIconBadge(list.icon, Color(list.color), 22.dp)
+                                        true -> Icon(Sym.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                                        false -> Icon(SymOutlined.RadioButtonUnchecked, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                                    }
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(
+                                            androidx.compose.ui.res.pluralStringResource(R.plurals.lists_place_count, list.places.size, list.places.size),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                                 // Custom order (issue #343): the store's array order is the display
                                 // order everywhere. The handle moves one row per row height dragged.

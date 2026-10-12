@@ -3029,8 +3029,9 @@ the shared 12 s timeout cuts it off.
 #### The lists sheet
 
 - `ListsSheet` is a dialog on `surfaceContainerHigh`, so it stands off the dark background. Its
-  title row holds Draw and New as icons; while lists are selected (a long press on a row) it
-  holds the count, a trash that asks `lists_delete_count` before deleting, and a close.
+  title row holds Draw and New as icons; while lists are selected (a long press on a row, or OK
+  held on it) it holds the count, a trash that asks `lists_delete_count` before deleting, and a
+  close.
 - Each list row is a `SwipeActionRow` (`ui/map/SwipeRow.kt`, material3 `SwipeToDismissBox`):
   end to start deletes (a list with places asks first, an empty one goes at once), start to end
   opens the editor. The row ticks (`tickHaptic`: `CONFIRM` on API 30 and up, `CLOCK_TICK` below)
@@ -3040,6 +3041,14 @@ the shared 12 s timeout cuts it off.
   moves the list one place per row height, with a tick per move (`onMoveList`); on a keypad Up and
   Down on the focused handle move it and OK opens the editor. With one list the handle is a
   pencil.
+- The handle is a focus sibling of the row's clickable part, not a child of it: focus search
+  only looks among siblings, so Right from the row reaches the handle and Left returns. The two
+  sit in a `focusGroup` whose `enter` lands every focus move from outside the row on the row
+  (`FocusRequester`), never on the handle, where Down would move the list. A held OK on the row
+  starts selecting through `dpadLongClick` (`ui/DpadFocus.kt`): `combinedClickable` only clicks on
+  a key, so the modifier takes OK and Enter itself and runs the long click on the first key repeat
+  the platform flags as the long press (`KeyEvent.isLongPress`), or the click on a release before
+  it.
 - On the search page a recent query or place row is a `SwipeActionRow` that removes it from
   history; Clear recents is a `FilledTonalButton` beside the Recent heading.
 

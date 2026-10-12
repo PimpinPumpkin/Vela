@@ -117,7 +117,14 @@ time on a phone before it lands (2026-10-11).
   list to edit or delete and a recent row to remove it, with a haptic tick; a drag handle in
   place of the arrows and the pencil; long press to select several lists; the sheet on a
   raised tone in the dark theme; Draw and New as icons; Clear recents as a button by the
-  heading. Built; checked on a Pixel 4a by touch. Not checked: the keypad paths.
+  heading. Built; checked on a Pixel 4a by touch and by keypad: Right from a row to its handle
+  and Left back, Down from a row to the next row, Up and Down on the handle moving the list, OK
+  on it opening the editor, a held OK on a row starting selection, the trash asking before it
+  deletes, and focus from New or from below the rows landing on a row. Not checked: a physical
+  keypad (the checks injected keys over adb), and the sheet with one list, where a pencil stands
+  in for the handle. Open: the overflow button on a recent search row cannot be reached by key,
+  since it sits inside the focused row as on every `SuggestionRow`, so a recent row has no key
+  path to Remove from history.
 - Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
   Piper `ro_RO-mihai` voice in the library.
 - Google Takeout list CSVs (#761, branch `takeout-csv`): the per-list CSVs carry a title and a
