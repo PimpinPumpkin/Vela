@@ -221,7 +221,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
   `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
-  `PipTurnCard`, `PreferButtons`, `PuckStyle`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
+  `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
   `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
@@ -2855,8 +2855,17 @@ when the feature ids match. Two requests at most.
   places. The search box keeps the user's words and the reworded search is not added to the
   recents. Off asks the plain search again. A saved or imported list, an offline search and
   Google off keep the local filter only.
-- One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
-  in-nav search. Every query must be one the offline store expands.
+- One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
+  in-nav search and the car's lists. Every query must be one the offline store expands.
+  `catalog()` is every chip in the default order, `arranged()` the catalog in the user's order
+  and `all()` what the rows show, the arranged list less the chips switched off
+  (`QuickChipsPref`, keys `quick_chips_order` and `quick_chips_hidden` in `vela_settings`). A
+  chip is keyed by its English query, never its position; the fuel chip's key is `Gas station`
+  whatever region word its query uses. The order rule is `QuickChipOrder.arrange`: the saved
+  keys first, in their order, then every other chip in its default place; a saved key with no
+  chip is skipped, and a chip that returns (Bars after "Hide adult categories" goes off) takes
+  the end. `homeNameHits` tests a typed query against the catalog, so a chip switched off is
+  still a category when typed.
 - The camera frames the first `SEARCH_FIT_LEAD` (12) results; an open list or custom map is
   framed whole. Pins are median-centered, and outliers past 4 times the median spread (minimum
   40 km) are dropped. The fit consumes `lastCameraTarget`, or the recenter branch re-fires on
@@ -4903,7 +4912,10 @@ reuses it.
 - The replay controls have a grab bar and drag up and down the screen.
 
 `CategoryChipsPref` (Settings > Map): the chip row, one "Categories" chip that opens them in a
-`VelaMenu`, or none. Decided inside `CategoryChips`.
+`VelaMenu`, or none. Decided inside `CategoryChips`. The row shows `QuickCategories.all()` in
+the user's order and ends with a More chip (`MoreCategoriesChip`), a `VelaMenu` of every chip in
+the catalog, the ones switched off included; a pick runs that search. The one-button menu lists
+`all()` only.
 
 #### Drive chrome
 
@@ -5091,6 +5103,12 @@ one destination per `SettingsSection`. `SettingsHub` holds the category rows and
 - Back from a spoke returns to the hub, then the map. Opening Voice from Offline replaces the
   spoke. The voice-library shortcut puts the hub under Voice. The host is composed after the map,
   so its back handling wins while Settings is open.
+- `QUICK_CHIPS` (Settings > Search > Quick search buttons) is the one page under another: it is
+  pushed on top of Search with no `popUpTo`, has no hub row, and Back returns to Search. Each
+  row is a chip in `QuickCategories.arranged()` with a switch (`QuickChipsPref.setShown`) and a
+  `ReorderHandle` (`QuickCategories.move`, one row per row height dragged; focused, Up and Down
+  move it and OK flips the switch). Rows are keyed on the chip so a moved row keeps focus.
+  "Reset to default" clears both keys and is dimmed while nothing is customized.
 - The search is a static `SEARCH_INDEX` of label resource to section. A match opens the spoke
   and scrolls to the row (`Modifier.settingsAnchor(label)` plus `LocalSettingsHighlight`). A new
   row label goes in the index. A group whose rows can be empty still renders, with an empty-state

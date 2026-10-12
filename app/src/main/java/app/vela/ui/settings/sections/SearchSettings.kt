@@ -46,7 +46,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 /** Search sub-screen: the voice-search toggle, the on-device ASR engine picker, the provider picker. */
 @Composable
-internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
+internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onOpenQuickChips: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     SettingsScaffold(stringResource(R.string.settings_search), onBack) { topRow ->
@@ -87,6 +87,8 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             },
             hint = stringResource(R.string.settings_contacts_search_hint),
         )
+        GroupDivider()
+        QuickChipsRow(onOpenQuickChips)
         }
 
         // What the mic and the search bar understand as commands (discussion #365), in the app

@@ -372,6 +372,10 @@ Found reading everything since 0.4.1912 and not fixed yet.
 - A driving mode to start in (#727): the map opened in the drive's layout with no destination,
   big buttons, the speed badge and alerts on. Not started. The pieces exist in the drive
   screen; the work is a mode without a route and a setting to open in it.
+- Quick search buttons of the user's own (#779): a typed query saved as a chip beside the built-in
+  ones. Not started. The order and hidden set are keyed by the chip's query, so a custom chip
+  would fit the same store; the open questions are the icon and what the offline store expands
+  for a word it does not know.
 
 ## Big bets
 

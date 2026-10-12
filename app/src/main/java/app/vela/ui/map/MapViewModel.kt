@@ -2156,7 +2156,8 @@ class MapViewModel @Inject constructor(
         if (near == null || me.distanceTo(near) < 50_000.0) return emptyList()
         val query = q.trim()
         if (query.length < 4 || app.vela.core.data.OfflineAddressStore.looksLikeAddress(query)) return emptyList()
-        if (app.vela.ui.QuickCategories.all().any { it.query.equals(query, ignoreCase = true) }) return emptyList()
+        // The whole catalog: a chip switched off the rows is still a category when typed.
+        if (app.vela.ui.QuickCategories.catalog().any { it.query.equals(query, ignoreCase = true) }) return emptyList()
         fun named(p: Place) = app.vela.core.util.PlaceNames.match(p.name, query).let {
             it == app.vela.core.util.PlaceNames.Match.EXACT || it == app.vela.core.util.PlaceNames.Match.VARIANT
         }

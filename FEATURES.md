@@ -75,6 +75,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A name search lists the chain's other branches. "Find other locations automatically" turns that
   off.
 - "Category shortcuts" such as restaurants, gas and EV charging, as a row, one button, or hidden.
+- "Quick search buttons" picks which shortcuts show and in what order, on the map, on a route and
+  in the car. A More chip at the end of the row opens every one, the switched-off ones included.
 - Commands, typed or spoken, such as "take me home", "nearest pharmacy" and "what's my ETA".
 - Voice search on the phone with three recognition engines, or through a voice app. "Voice search
   mic" hides it.

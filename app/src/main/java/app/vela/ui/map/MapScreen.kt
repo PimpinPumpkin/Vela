@@ -4744,7 +4744,8 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
 private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
     // search (works in any locale), the label is what the user sees, so the chips localize without
-    // changing what's searched.
+    // changing what's searched. The list is in the user's order, less the chips switched off
+    // (Settings > Search > Quick search buttons, issue #779).
     val categories = app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }
     // Settings > Map "Category shortcuts" (issue #654): the row, one chip with a menu, or nothing.
     when (app.vela.ui.CategoryChipsPref.mode.value) {
@@ -4794,6 +4795,8 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
                 ),
             )
         }
+        // Every chip, hidden ones included, behind one More (issue #779).
+        MoreCategoriesChip(onPick)
     }
 }
 

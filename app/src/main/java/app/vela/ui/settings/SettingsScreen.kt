@@ -25,6 +25,7 @@ import app.vela.ui.settings.sections.MapSettingsScreen
 import app.vela.ui.settings.sections.NavigationSettingsScreen
 import app.vela.ui.settings.sections.OfflineSettingsScreen
 import app.vela.ui.settings.sections.PlacesSettingsScreen
+import app.vela.ui.settings.sections.QuickChipsSettingsScreen
 import app.vela.ui.settings.sections.SavedPlacesSettingsScreen
 import app.vela.ui.settings.sections.SearchSettingsScreen
 import app.vela.ui.settings.sections.VoiceSettingsScreen
@@ -104,7 +105,14 @@ fun SettingsScreen(vm: MapViewModel, navController: androidx.navigation.NavHostC
                         SettingsSection.PLACES -> PlacesSettingsScreen(onBack = toHub)
                         SettingsSection.NAVIGATION -> NavigationSettingsScreen(vm, onBack = toHub)
                         SettingsSection.VOICE -> VoiceSettingsScreen(vm, onBack = toHub, openLibrary = openVoiceLibrary)
-                        SettingsSection.SEARCH -> SearchSettingsScreen(vm, onBack = toHub)
+                        // Quick search buttons is a page under Search: pushed on top of it, so Back
+                        // returns to Search, the one stack deeper than map, hub, page.
+                        SettingsSection.SEARCH -> SearchSettingsScreen(
+                            vm,
+                            onBack = toHub,
+                            onOpenQuickChips = { navController.navigate(SettingsSection.QUICK_CHIPS.route) { launchSingleTop = true } },
+                        )
+                        SettingsSection.QUICK_CHIPS -> QuickChipsSettingsScreen(onBack = { navController.popBackStack() })
                         SettingsSection.OFFLINE -> OfflineSettingsScreen(vm, onBack = toHub, onCloseSettings = close, onOpenVoice = { open(SettingsSection.VOICE, null) })
                         SettingsSection.SAVED_PLACES -> SavedPlacesSettingsScreen(vm, onBack = toHub, onCloseSettings = close)
                         SettingsSection.PRIVACY -> PrivacySettingsScreen(vm, onBack = toHub)

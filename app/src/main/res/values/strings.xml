@@ -1235,7 +1235,7 @@
     <string name="settings_hub_map_sub">Traffic, transit, layers, 3D buildings</string>
     <string name="settings_hub_navigation_sub">Guidance, cameras, live rechecks</string>
     <string name="settings_hub_voice_sub">Spoken directions and voices</string>
-    <string name="settings_hub_search_sub">Voice search and speech models</string>
+    <string name="settings_hub_search_sub">Voice search, speech models and quick search buttons</string>
     <string name="settings_hub_offline_sub">Offline maps, routing, places</string>
     <string name="settings_hub_saved_sub">Your lists, export, parking history</string>
     <string name="settings_hub_privacy_sub">What Google receives, clearing history</string>
@@ -1282,10 +1282,15 @@
     <string name="settings_route_trail">Road behind you</string>
     <string name="cat_menu">Categories</string>
     <string name="settings_category_chips">Category shortcuts</string>
-    <string name="settings_category_chips_hint">The Restaurants, Coffee, Gas… shortcuts under the search bar. One button folds them into a menu.</string>
+    <string name="settings_category_chips_hint">The Restaurants, Coffee, Gas… shortcuts under the search bar. One button folds them into a menu. Which ones show, and in what order, is under Search.</string>
     <string name="settings_category_chips_row">Row</string>
     <string name="settings_category_chips_button">One button</string>
     <string name="settings_category_chips_hidden">Hidden</string>
+    <string name="settings_quick_chips">Quick search buttons</string>
+    <string name="settings_quick_chips_sub">Which ones show, and in what order</string>
+    <string name="settings_quick_chips_hint">The Restaurants, Coffee, Gas… buttons under the search bar, on a route and in the car. Switch one off to take it off the rows, or drag the handle to change the order. A button that is off still works as a typed search.</string>
+    <string name="settings_quick_chips_reset">Reset to default</string>
+    <string name="cat_more">More</string>
     <string name="settings_map_names">Names on the map</string>
     <string name="settings_map_names_english_local">English where known, else the local name</string>
     <string name="settings_map_names_english_latin">English where known, else romanized</string>

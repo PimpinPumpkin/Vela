@@ -14,7 +14,8 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Navigation: route picker, road-ahead bar, arrow, speed limit, zoom keys, cameras
   ([chapter 3](03-cameras.md)), traffic rechecks.
 - Voice: spoken directions, street names, the voice library, speed and volume.
-- Search: voice search, on-device speech engines, contact search.
+- Search: voice search, on-device speech engines, contact search, and Quick search buttons,
+  a page of its own under Search for which category chips show and in what order.
 - Saved places: export and import of places and lists, saved routes, parking history.
 - Offline maps: area and region downloads, automatic updates, storage
   ([chapter 8](08-offline.md)).
@@ -56,7 +57,8 @@ different paths.
 
 Opening a page pops back to the hub first, so the stack is never deeper than map, hub, page.
 Voice opened from Offline maps replaces Offline, and the map's no-voice notice pushes the hub
-before Voice. Back from Voice reaches the hub either way.
+before Voice. Back from Voice reaches the hub either way. The one exception is Quick search
+buttons, which is pushed on top of Search, so Back from it returns to Search.
 
 ### Search
 
