@@ -53,6 +53,7 @@ internal fun CameraSettingsGroup() {
             checked = app.vela.ui.Flock.on.value,
             onCheckedChange = { app.vela.ui.Flock.set(context, it) },
             hint = stringResource(R.string.settings_flock_hint),
+            leading = { app.vela.ui.PlateCameraBadge() },
         )
         GroupDivider()
         ToggleRow(
@@ -60,6 +61,7 @@ internal fun CameraSettingsGroup() {
             checked = app.vela.ui.SpeedCams.on.value,
             onCheckedChange = { app.vela.ui.SpeedCams.set(context, it) },
             hint = stringResource(R.string.settings_speed_cams_hint),
+            leading = { app.vela.ui.SpeedCameraBadge() },
         )
         // The spoken warning is nested: it only means anything once the cameras are being tracked,
         // and it is its own opt-in because being spoken to is a different ask from seeing a marker
