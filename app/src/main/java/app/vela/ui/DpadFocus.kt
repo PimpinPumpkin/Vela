@@ -425,6 +425,36 @@ fun Modifier.dpadClickable(
 }
 
 /**
+ * The key path for a row whose touch long press means something. OK or Enter held past the
+ * long-press timeout runs [onLongClick] once, on the first repeat the platform flags as the long
+ * press; released before that it runs [onClick]. Pair with `combinedClickable`, which keeps the
+ * touch paths: on a key it only ever clicks (foundation 1.7), and it leaves the repeat unconsumed,
+ * which the root turns into a focus move into the row's children.
+ */
+fun Modifier.dpadLongClick(onClick: () -> Unit, onLongClick: () -> Unit): Modifier = composed {
+    val click = androidx.compose.runtime.rememberUpdatedState(onClick)
+    val long = androidx.compose.runtime.rememberUpdatedState(onLongClick)
+    val held = remember { BooleanArray(1) }
+    onPreviewKeyEvent { ev ->
+        if (ev.key != Key.DirectionCenter && ev.key != Key.Enter && ev.key != Key.NumPadEnter) return@onPreviewKeyEvent false
+        when (ev.type) {
+            KeyEventType.KeyDown -> {
+                val n = ev.nativeKeyEvent
+                if (n.repeatCount == 0) held[0] = false
+                else if (n.isLongPress && !held[0]) { held[0] = true; long.value() }
+                true
+            }
+            KeyEventType.KeyUp -> {
+                if (!held[0]) click.value()
+                held[0] = false
+                true
+            }
+            else -> false
+        }
+    }
+}
+
+/**
  * Wraps a control in a focus ring that HUGS IT, instead of the inflated box Material would give it.
  *
  * Material applies `minimumInteractiveComponentSize()` INSIDE buttons and chips, padding their

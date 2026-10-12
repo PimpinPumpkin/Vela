@@ -3377,7 +3377,8 @@ class MapViewModel @Inject constructor(
             // The gaps issue #71 exposed (a Hebrew-locale stop's category is "תחנת אוטובוס" and
             // nothing here matched): Hebrew stems + the app languages that were missing entirely.
             """תחנ|אוטובוס|רכבת|מסוף|רציף|""" + // he: stop/station stem, bus, rail, terminal, platform
-            """arrêt|parada|paragem|hållplats|przystanek|dworzec|зупинка|станція|megálló|állomás|pályaudvar""",
+            """arrêt|parada|paragem|hållplats|przystanek|dworzec|зупинка|станція|megálló|állomás|pályaudvar|""" +
+            """stație|statie|gară|autogară""", // ro
         RegexOption.IGNORE_CASE,
     )
 
@@ -3389,7 +3390,7 @@ class MapViewModel @Inject constructor(
     private val NON_TRANSIT_CAT_COMPILED = Regex(
         """gas|fuel|petrol|filling|gasolin|benzin|essence|carburant|paliw|бензин|заправ|азс|tank|""" +
             """station-service|servicio|serviço|servizio|加油|ガソリン|주유|דלק|""" +
-            """charging|laadstation|ladestation|recharge|recarga|ricarica|зарядн|טעינה|充电|充電|""" +
+            """charging|laadstation|ladestation|recharge|recarga|ricarica|зарядн|טעינה|充电|充電|benzinărie|benzinarie|încărcare|incarcare|""" +
             """fire|police|power|pumping|weigh|radio|television|\btv\b|pompiers|bomberos|feuerwehr""",
         RegexOption.IGNORE_CASE,
     )
@@ -7370,10 +7371,11 @@ class MapViewModel @Inject constructor(
     }
 
     /** Import lists from a picked file [uri]; returns how many lists were newly added. */
-    fun importListsFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
+    suspend fun importListsFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
         val json = runCatching {
             appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         }.getOrNull() ?: return app.vela.core.data.ImportResult.Unreadable
+        if (app.vela.core.data.TakeoutCsv.isTakeoutCsv(json)) return importTakeoutCsv(json, listNameFor(uri))
         val res = listStore.importMerge(json)
         if (res is app.vela.core.data.ImportResult.Added) _state.update { it.copy(lists = listStore.lists()) }
         return res
@@ -7381,13 +7383,119 @@ class MapViewModel @Inject constructor(
 
     /** Import saved places from a picked file [uri]. Reports WHICH outcome happened so the UI can
      *  tell "that is another app's file" from "you already have all of these" (issue #287). */
-    fun importSavedFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
+    suspend fun importSavedFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
         val json = runCatching {
             appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         }.getOrNull() ?: return app.vela.core.data.ImportResult.Unreadable
+        // A Takeout list CSV picked here goes where it belongs, a list (issue #761).
+        if (app.vela.core.data.TakeoutCsv.isTakeoutCsv(json)) return importTakeoutCsv(json, listNameFor(uri))
         val res = savedStore.importMerge(json)
         if (res is app.vela.core.data.ImportResult.Added) _state.update { it.copy(saved = savedStore.saved()) }
         return res
+    }
+
+    /** The picked file's name without its extension: Takeout names each CSV after its list. */
+    private fun listNameFor(uri: android.net.Uri): String {
+        val display = runCatching {
+            appContext.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull() ?: uri.lastPathSegment
+        return display?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotBlank() } ?: appContext.getString(R.string.settings_takeout_list_default)
+    }
+
+    /** The Takeout import in flight. It runs in [viewModelScope], so leaving Settings does not lose it. */
+    private var takeoutImport: kotlinx.coroutines.Deferred<app.vela.core.data.ImportResult.ListAdded>? = null
+    private val takeoutLock = Any()
+
+    /**
+     * One of Google Takeout's per-list CSVs (issue #761) as a list named [name]. A row with a pin
+     * link is kept as it is. A listing row carries only a feature id, so its title is searched
+     * and the hit whose feature id matches is taken; with no feature id to match, a hit named
+     * like the title. Rows that find nothing are counted, never guessed at. The list is made or
+     * refreshed the way a shared list's save is (`importTarget`), so importing the same file
+     * again replaces its places and keeps its name, icon and color.
+     *
+     * The lookups take minutes on a long list, so they run in [viewModelScope], one import at a
+     * time: a caller that leaves the screen neither loses nor cancels them, and the outcome goes to
+     * the status card as well as to the caller. Listing rows are looked up [TAKEOUT_LOOKUP_GAP_MS]
+     * apart, so a long list does not read as a bot; a pin row waits for nothing.
+     */
+    private suspend fun importTakeoutCsv(text: String, name: String): app.vela.core.data.ImportResult {
+        val rows = app.vela.core.data.TakeoutCsv.parse(text)
+        if (rows.isEmpty()) return app.vela.core.data.ImportResult.WrongFormat("Google Takeout list")
+        val job = synchronized(takeoutLock) {
+            takeoutImport?.takeIf { it.isActive }?.let { return app.vela.core.data.ImportResult.Busy }
+            viewModelScope.async(Dispatchers.IO) { importTakeoutRows(rows, name) }.also { takeoutImport = it }
+        }
+        return job.await()
+    }
+
+    private suspend fun importTakeoutRows(rows: List<app.vela.core.data.TakeoutCsv.Row>, name: String): app.vela.core.data.ImportResult.ListAdded {
+        val googleOff = app.vela.ui.GoogleFree.on.value
+        // Biased where the user is, as a typed search is; a specific name is found anywhere, and
+        // the feature id decides.
+        val near = _state.value.myLocation ?: _state.value.center
+        val places = ArrayList<app.vela.core.model.ListPlace>()
+        var missed = 0
+        var needGoogle = 0
+        var lookups = 0
+        rows.forEachIndexed { i, row ->
+            if (i % 5 == 0) flashStatus(appContext.getString(R.string.settings_takeout_progress, i + 1, rows.size), 60_000L)
+            val link = app.vela.core.data.TakeoutCsv.readLink(row.url)
+            val title = row.title.ifBlank { link?.name ?: "" }
+            val note = listOfNotNull(row.note, row.comment).joinToString("\n").ifBlank { null }
+            val la = link?.lat
+            val ln = link?.lng
+            when {
+                link != null && la != null && ln != null -> places += app.vela.core.model.ListPlace(
+                    id = "imp:%.5f,%.5f".format(java.util.Locale.US, la, ln),
+                    name = title.ifBlank { "%.4f, %.4f".format(java.util.Locale.US, la, ln) }.take(120),
+                    lat = la, lng = ln, note = note, featureId = link.featureId,
+                )
+                title.isBlank() -> missed++
+                googleOff -> needGoogle++
+                else -> {
+                    val key = link?.featureKey
+                    if (lookups++ > 0) delay(TAKEOUT_LOOKUP_GAP_MS)
+                    // A feature id's first half is an S2 cell, so a listing row says roughly
+                    // where its place is: the search is biased there, which is what finds one
+                    // branch of a chain in a list made on a trip.
+                    val hits = runCatching { dataSource.search(title, near = link?.cellCenter() ?: near) }.getOrNull()?.places.orEmpty()
+                    // A list made on a trip is far from here: a keyed row the biased search missed
+                    // gets one unbiased search, matched on the key alone.
+                    val wide = if (key != null && app.vela.core.data.TakeoutCsv.byKey(hits, key) == null) {
+                        lookups++
+                        delay(TAKEOUT_LOOKUP_GAP_MS)
+                        runCatching { dataSource.search(title, near = null) }.getOrNull()?.places.orEmpty()
+                    } else emptyList()
+                    val hit = app.vela.core.data.TakeoutCsv.pick(hits, wide, key, title)
+                    if (hit != null) places += app.vela.core.model.ListPlace.of(hit).copy(note = note) else missed++
+                }
+            }
+        }
+        if (places.isNotEmpty()) {
+            val (existing, listId) = app.vela.core.data.importTarget(listStore.lists(), name, "takeout:$name")
+            val list = existing?.copy(places = places)
+                ?: app.vela.core.model.PlaceList(id = listId, name = name, icon = "bookmark", places = places)
+            val lists = if (existing != null) listStore.update(list) else listStore.create(list)
+            _state.update { it.copy(lists = lists) }
+        }
+        val result = app.vela.core.data.ImportResult.ListAdded(name, places.size, missed, needGoogle)
+        flashStatus(takeoutOutcome(result), 6_000L)
+        return result
+    }
+
+    /** What a finished Takeout import says, on the status card and in the toast. */
+    fun takeoutOutcome(r: app.vela.core.data.ImportResult.ListAdded): String {
+        if (r.added == 0 && r.missed == 0 && r.needGoogle > 0) {
+            return appContext.getString(R.string.settings_takeout_need_google_none, r.needGoogle, r.name)
+        }
+        val made = when {
+            r.added == 0 -> appContext.getString(R.string.settings_takeout_imported_none, r.name)
+            r.missed == 0 -> appContext.getString(R.string.settings_takeout_imported, r.added, r.name)
+            else -> appContext.getString(R.string.settings_takeout_imported_missed, r.added, r.name, r.missed)
+        }
+        return if (r.needGoogle > 0) made + " " + appContext.getString(R.string.settings_takeout_need_google, r.needGoogle) else made
     }
 
     /**
@@ -10207,6 +10315,9 @@ class MapViewModel @Inject constructor(
         /** How long an informational heads-up card stays before dismissing itself. */
         const val CLOSED_OPEN_PLACES_CAP = 2000
         const val STATUS_AUTO_MS = 10_000L
+        /** Gap between two Google lookups of a Takeout import: a list of hundreds searched back to
+         *  back reads as a bot. */
+        const val TAKEOUT_LOOKUP_GAP_MS = 400L
         /** A tapped offline globe probes Vela's own config host (no Google contact). */
         const val CONNECTIVITY_PROBE_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json"
 

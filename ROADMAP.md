@@ -122,8 +122,18 @@ time on a phone before it lands (2026-10-11).
   after the fix, seen only for Dark and Fiord online then offline over one region. Once #763
   lands beside this, `CarStyle.inject` (the car's twin fills in the patched style JSON) must
   be gated on `look.painted`.
-- Swipe actions on lists and history (#748, branch `lists-swipe`): swipe to edit or delete with
-  haptics, a reorder handle, the lists sheet's contrast in the dark theme, simpler rows.
+- Swipe actions on lists and history (#748, branch `lists-swipe`, pull request #765): swipe a
+  list to edit or delete and a recent row to remove it, with a haptic tick; a drag handle in
+  place of the arrows and the pencil; long press to select several lists; the sheet on a
+  raised tone in the dark theme; Draw and New as icons; Clear recents as a button by the
+  heading. Built; checked on a Pixel 4a by touch and by keypad: Right from a row to its handle
+  and Left back, Down from a row to the next row, Up and Down on the handle moving the list, OK
+  on it opening the editor, a held OK on a row starting selection, the trash asking before it
+  deletes, and focus from New or from below the rows landing on a row. Not checked: a physical
+  keypad (the checks injected keys over adb), and the sheet with one list, where a pencil stands
+  in for the handle. Open: the overflow button on a recent search row cannot be reached by key,
+  since it sits inside the focused row as on every `SuggestionRow`, so a recent row has no key
+  path to Remove from history.
 - Romanian spoken guidance (#759, branch `romanian-voice`): the spoken phrase table, and the
   Piper `ro_RO-mihai` voice in the library.
 - Google Takeout list CSVs (#761, branch `takeout-csv`): the per-list CSVs carry a title and a
@@ -212,6 +222,9 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The approach prompt that is not said twice three seconds apart on a short step, and the first
+  line of a short step that drops its sign tail so the line at the turn does not cut it. From a
+  2026-10-11 trace; unit-tested, not yet heard on a drive.
 - A reroute after a wrong turn on a trip with stops. The simulated drive cannot leave its route.
 - UK fuel prices on a phone in the UK.
 
