@@ -7,6 +7,8 @@ import androidx.car.app.model.ItemList
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.car.app.model.SearchTemplate
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.vela.core.model.Place
 import kotlinx.coroutines.CancellationException
@@ -27,7 +29,12 @@ import app.vela.data.ContactAddresses
  *  head unit): three result pages plus the nearby pass per letter, and cancelling the coroutine
  *  never aborted the HTTP calls, so a typed word queued a dozen requests behind OkHttp's
  *  per-host limit and the spinner waited for the whole backlog. */
-class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Screen(carContext) {
+class SearchCarScreen(
+    carContext: CarContext,
+    private val deps: CarDeps,
+    /** A query to search at once, from a NAVIGATE intent's place name; null opens an empty box. */
+    private val initialQuery: String? = null,
+) : Screen(carContext) {
 
     private var results: List<Place> = emptyList()
     /** Bare query rows from the autocomplete ("Starbucks"): picking one runs the full search. */
@@ -39,6 +46,16 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
     private var searching = false
     private var searchJob: Job? = null
 
+    init {
+        // Searched once the screen exists, so the first invalidate reaches the host.
+        initialQuery?.let { query ->
+            searching = true
+            lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onCreate(owner: LifecycleOwner) = runSearch(query, submit = true)
+            })
+        }
+    }
+
     override fun onGetTemplate(): Template {
         val callback = object : SearchTemplate.SearchCallback {
             override fun onSearchTextChanged(searchText: String) = runSearch(searchText, submit = false)
@@ -46,7 +63,8 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
         }
         val builder = SearchTemplate.Builder(callback)
             .setHeaderAction(Action.BACK)
-            .setShowKeyboardByDefault(true)
+            .setShowKeyboardByDefault(initialQuery == null)
+        initialQuery?.let { builder.setInitialSearchText(it) }
         if (searching) {
             builder.setLoading(true)
         } else {

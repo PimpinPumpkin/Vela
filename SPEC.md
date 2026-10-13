@@ -5161,7 +5161,8 @@ the same `:core` singletons as the phone (`CarDeps`).
   template. Its content comes from `updateTrip()`.
 - `VelaCarSession` runs its own AOSP location feed into the shared `NavSession` (GPS fixes at 50
   m accuracy or better, or the simulated position), so navigation runs with the phone UI closed. It handles
-  `androidx.car.app.action.NAVIGATE` geo intents by opening the route preview. A drive started
+  `androidx.car.app.action.NAVIGATE` geo intents: coordinates open the route preview, and a
+  free-text `q=` opens `SearchCarScreen` on that query, submitted, over the landing list. A drive started
   from the car speaks with the Piper voice when it is installed and chosen (the service attaches
   the synth).
 - `VelaCarSession` is the one place that pushes `ActiveNavCarScreen`: it watches

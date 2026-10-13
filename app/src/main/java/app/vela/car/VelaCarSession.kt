@@ -9,6 +9,7 @@ import androidx.car.app.CarToast
 import androidx.car.app.Session
 import app.vela.car.screen.ActiveNavCarScreen
 import app.vela.car.screen.RoutePreviewCarScreen
+import app.vela.car.screen.SearchCarScreen
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import app.vela.car.screen.CarDeps
@@ -93,6 +94,11 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
             return RoutePreviewCarScreen(carContext, deps, name, dest)
         }
         val home = MainCarScreen(carContext, deps)
+        // A place name ("navigate to Starbucks") opens the search on it, with the landing screen under it.
+        parseNavQuery(intent)?.let { query ->
+            carContext.getCarService(ScreenManager::class.java).push(home)
+            return SearchCarScreen(carContext, deps, query)
+        }
         // Connected in the middle of a drive: the drive screen, with the landing screen under it.
         val nav = deps.navSession.state.value
         if (nav.navigating && !nav.arrived) {
@@ -112,9 +118,12 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
 
     /** A navigation intent delivered while the app is already running (the host reuses the session). */
     override fun onNewIntent(intent: Intent) {
-        val (dest, name) = parseNavDest(intent) ?: return
-        carContext.getCarService(ScreenManager::class.java)
-            .push(RoutePreviewCarScreen(carContext, deps, name, dest))
+        val screens = carContext.getCarService(ScreenManager::class.java)
+        parseNavDest(intent)?.let { (dest, name) ->
+            screens.push(RoutePreviewCarScreen(carContext, deps, name, dest))
+            return
+        }
+        parseNavQuery(intent)?.let { screens.push(SearchCarScreen(carContext, deps, it)) }
     }
 
     /** Parse an `androidx.car.app.action.NAVIGATE` intent's `geo:` URI into a destination. Handles
@@ -138,5 +147,14 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
             }
         }
         return null
+    }
+
+    /** The free-text `q=` of a NAVIGATE intent (`geo:0,0?q=Starbucks`), which [parseNavDest]
+     *  leaves alone; null when there is none. The search runs near the car, like a typed one. */
+    private fun parseNavQuery(intent: Intent): String? {
+        if (intent.action != CarContext.ACTION_NAVIGATE) return null
+        if (parseNavDest(intent) != null) return null
+        val ssp = intent.data?.schemeSpecificPart ?: return null
+        return ssp.substringAfter("q=", "").substringBefore('&').replace('+', ' ').trim().takeIf { it.isNotEmpty() }
     }
 }

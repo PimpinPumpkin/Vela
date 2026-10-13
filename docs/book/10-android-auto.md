@@ -53,7 +53,9 @@ the `androidx.car.app.category.NAVIGATION` and `FEATURE_CLUSTER` categories,
 `automotive_app_desc.xml` with `<uses name="template"/>`, the `NAVIGATION_TEMPLATES` and
 `ACCESS_SURFACE` permissions, and `minCarApiLevel` 1, the oldest car API. A second intent filter
 takes `androidx.car.app.action.NAVIGATE` with a `geo:` URI. A URI with coordinates opens on a
-route preview to them. A free-text query opens the landing list.
+route preview to them. A free-text query (`geo:0,0?q=Starbucks`) opens the car search with the
+query filled in and its results loading, the way a submitted search does. The landing list sits
+under it.
 
 A templated app hands the host a template (a list, a search box, a navigation screen). The host
 draws it in the car's style and enforces its limits, such as six rows in a place list. The app
