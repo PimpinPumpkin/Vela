@@ -374,7 +374,8 @@ the reply returns `SearchResult.focus`, the list ends in a "Show other locations
 Each entry of `[1][203][0]` is `[name, dow (1 = Mon .. 7 = Sun), [Y,M,D], ranges, flag, flag,
 special?]`. The list is the next seven days by date, so holiday hours are already in it.
 `ranges` is `[[text, [[openH],[closeH]]], ...]`, with several entries on a split-shift day, and
-`special[1]` is a holiday label. `readHours` joins the ranges and appends the label;
+`special[1]` is a holiday label. `readHours` joins the ranges and appends the label,
+collapsing a label that repeats itself across a separator to one;
 `OpeningHours` strips the label before it parses the times. Google's live status string stays
 primary, because only it reflects an owner's one-off closure.
 
