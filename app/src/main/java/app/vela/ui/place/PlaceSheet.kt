@@ -4625,7 +4625,7 @@ private fun upcomingHoliday(hours: List<String>, today: java.time.LocalDate): Ho
     return hours.mapNotNull { line ->
         val dot = line.lastIndexOf(" · ")
         if (dot < 0) return@mapNotNull null
-        val label = line.substring(dot + 3).trim().ifBlank { return@mapNotNull null }
+        val label = dedupeHolidayLabel(line.substring(dot + 3).trim()).ifBlank { return@mapNotNull null }
         val head = line.substring(0, dot)
         val colon = head.indexOf(':')
         if (colon < 0) return@mapNotNull null
@@ -4639,6 +4639,14 @@ private fun upcomingHoliday(hours: List<String>, today: java.time.LocalDate): Ho
         }
         HolidayHours(label, whenLabel, hrs, daysAway)
     }.minByOrNull { it.daysAway }
+}
+
+/** Collapse a holiday label repeated against itself ("Thanksgiving/Thanksgiving", live 2026-10-11);
+ *  identical slash/middot-separated parts (case/space-insensitive) become one, the rest untouched. */
+private fun dedupeHolidayLabel(label: String): String {
+    val parts = label.split('/', '·', '•', '|').map { it.trim() }.filter { it.isNotEmpty() }
+    if (parts.size >= 2 && parts.all { it.equals(parts[0], ignoreCase = true) }) return parts[0]
+    return label.trim()
 }
 
 /** In-store departments (pharmacy, fuel, liquor, delivery windows): one collapsible row per
