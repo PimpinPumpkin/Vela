@@ -4,21 +4,19 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 
 /**
- * Whether live police reports and speed traps from Waze are drawn on the map.
- * Same reactive-holder shape as [SpeedCams]; OFF by default - opt-in layer.
+ * Legacy holder for police reports toggle, synced with [WazeAlertsPrefs].
  */
 object WazePolice {
     val on = mutableStateOf(false)
 
     fun init(context: Context) {
-        on.value = prefs(context).getBoolean(KEY, false)
+        WazeAlertsPrefs.init(context)
     }
 
     fun set(context: Context, value: Boolean) {
-        on.value = value
-        prefs(context).edit().putBoolean(KEY, value).apply()
+        if (value && !WazeAlertsPrefs.masterOn.value) {
+            WazeAlertsPrefs.setMaster(context, true)
+        }
+        WazeAlertsPrefs.setPolice(context, value)
     }
-
-    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
-    private const val KEY = "waze_police_on"
 }

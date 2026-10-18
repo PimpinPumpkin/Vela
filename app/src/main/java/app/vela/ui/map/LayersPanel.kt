@@ -178,7 +178,7 @@ private fun LayersPanel(vm: MapViewModel, onClose: () -> Unit) {
                 Tile(stringResource(R.string.settings_buildings_3d), Buildings3d.on.value, { Buildings3d.set(ctx, !Buildings3d.on.value) }) {
                     GlyphDisc(Sym.Apartment, it)
                 },
-                Tile(stringResource(R.string.map_waze_police_toggle), app.vela.ui.WazePolice.on.value, { app.vela.ui.WazePolice.set(ctx, !app.vela.ui.WazePolice.on.value) }) {
+                Tile(stringResource(R.string.map_waze_alerts_toggle), app.vela.ui.WazeAlertsPrefs.masterOn.value, { app.vela.ui.WazeAlertsPrefs.setMaster(ctx, !app.vela.ui.WazeAlertsPrefs.masterOn.value) }) {
                     GlyphDisc(Sym.Shield, it)
                 },
             ),

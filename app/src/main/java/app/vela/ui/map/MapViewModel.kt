@@ -9548,11 +9548,11 @@ class MapViewModel @Inject constructor(
     private var wazePoliceFetchRealtime: Long = 0L
     private var wazePoliceJob: Job? = null
 
-    /** Re-fetch (or clear) the Waze police layer when its toggle flips. */
+    /** Re-fetch (or clear) the Waze police/alerts layer when its toggle flips. */
     fun refreshWazePoliceNow() {
         wazePoliceBox = null
         wazePoliceFetchRealtime = 0L
-        if (app.vela.ui.WazePolice.on.value) {
+        if (app.vela.ui.WazeAlertsPrefs.masterOn.value) {
             webWazePolice.warmUp()
         }
         lastFlockViewport?.let { refreshWazePolice(it[0], it[1], it[2], it[3], it[4]) }
@@ -9561,11 +9561,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Live crowdsourced police reports and speed traps from Waze GeoRSS API. Opt-in layer,
+    /** Live crowdsourced alerts from Waze GeoRSS API. Opt-in layer,
      *  gated to z >= 7.0 so wide overviews aren't capped by Waze's 200 alert limit, padded area-cached,
      *  300 ms debounce, failure never cached so next viewport retries. */
     private fun refreshWazePolice(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
-        if (!app.vela.ui.WazePolice.on.value || zoom < app.vela.core.data.WazePoliceAlerts.MIN_ZOOM) {
+        if (!app.vela.ui.WazeAlertsPrefs.masterOn.value || zoom < app.vela.core.data.WazePoliceAlerts.MIN_ZOOM) {
             wazePoliceBox = null
             wazePoliceFetchRealtime = 0L
             wazePoliceJob?.cancel()
@@ -9590,12 +9590,12 @@ class MapViewModel @Inject constructor(
                 }.getOrNull()
             }
             if (res == null) {
-                diag.record("wazepolice", "police fetch failed at z${"%.1f".format(zoom)}", "box [$s,$w,$n,$e]")
+                diag.record("wazepolice", "alerts fetch failed at z${"%.1f".format(zoom)}", "box [$s,$w,$n,$e]")
                 return@launch
             }
             wazePoliceFetchRealtime = android.os.SystemClock.elapsedRealtime()
             wazePoliceBox = doubleArrayOf(s, w, n, e)
-            diag.record("wazepolice", "showing ${res.size} police report(s) at z${"%.1f".format(zoom)}", "waze georss")
+            diag.record("wazepolice", "showing ${res.size} waze alert(s) at z${"%.1f".format(zoom)}", "waze georss")
             val nowMs = System.currentTimeMillis()
             _state.update { st ->
                 val outside = st.wazePolice.filter {
@@ -9613,9 +9613,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** A tapped crowdsourced police report from Waze: opens a compact sheet showing
+    fun onPoliceAlertTap(alert: app.vela.core.data.WazePoliceAlert) = onWazeAlertTap(alert)
+
+    /** A tapped crowdsourced alert from Waze: opens a compact sheet showing
      *  subtype, how long ago it was reported, user confirmation count, and location. */
-    fun onPoliceAlertTap(alert: app.vela.core.data.WazePoliceAlert) {
+    fun onWazeAlertTap(alert: app.vela.core.data.WazePoliceAlert) {
         val nowMs = System.currentTimeMillis()
         val ageMin = if (alert.pubMillis > 0L) ((nowMs - alert.pubMillis).coerceAtLeast(0L) / 60_000L).toInt() else 0
         val ageStr = when {
@@ -9629,11 +9631,40 @@ class MapViewModel @Inject constructor(
             count <= 0 -> appContext.getString(R.string.police_users_reported_one)
             else -> appContext.getString(R.string.police_users_reported_many, count + 1)
         }
-        val title = when (alert.subtype?.uppercase()) {
-            "POLICE_HIDING", "POLICE_HIDDEN" -> appContext.getString(R.string.police_title_hidden)
-            "POLICE_WITH_MOBILE_CAMERA", "POLICE_CAMERA", "SPEED_TRAP" -> appContext.getString(R.string.police_title_camera)
-            "POLICE_ON_OTHER_SIDE" -> appContext.getString(R.string.police_title_other_side)
-            else -> appContext.getString(R.string.police_title)
+        val cat = alert.category()
+        val sub = alert.subtype?.uppercase(java.util.Locale.US) ?: ""
+        val title = when (cat) {
+            app.vela.core.data.WazeAlertCategory.POLICE -> when {
+                "HIDING" in sub || "HIDDEN" in sub -> appContext.getString(R.string.police_title_hidden)
+                "CAMERA" in sub || "SPEED_TRAP" in sub -> appContext.getString(R.string.police_title_camera)
+                "OTHER_SIDE" in sub -> appContext.getString(R.string.police_title_other_side)
+                else -> appContext.getString(R.string.police_title)
+            }
+            app.vela.core.data.WazeAlertCategory.ACCIDENT -> when {
+                "MAJOR" in sub -> appContext.getString(R.string.accident_title_major)
+                "MINOR" in sub -> appContext.getString(R.string.accident_title_minor)
+                else -> appContext.getString(R.string.accident_title)
+            }
+            app.vela.core.data.WazeAlertCategory.HAZARD -> when {
+                "POTHOLE" in sub -> appContext.getString(R.string.hazard_title_pothole)
+                "OBJECT" in sub -> appContext.getString(R.string.hazard_title_object)
+                "SHOULDER" in sub -> appContext.getString(R.string.hazard_title_shoulder)
+                "WEATHER" in sub || "FOG" in sub || "ICE" in sub || "RAIN" in sub || "FLOOD" in sub || "SNOW" in sub ->
+                    appContext.getString(R.string.hazard_title_weather)
+                "CONSTRUCTION" in sub || "WORKS" in sub -> appContext.getString(R.string.hazard_title_construction)
+                else -> appContext.getString(R.string.hazard_title)
+            }
+            app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.closure_title)
+            app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.jam_title)
+            else -> appContext.getString(R.string.hazard_title)
+        }
+        val categoryStr = when (cat) {
+            app.vela.core.data.WazeAlertCategory.POLICE -> appContext.getString(R.string.police_category)
+            app.vela.core.data.WazeAlertCategory.ACCIDENT -> appContext.getString(R.string.accident_category)
+            app.vela.core.data.WazeAlertCategory.HAZARD -> appContext.getString(R.string.hazard_category)
+            app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.closure_category)
+            app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.jam_category)
+            else -> appContext.getString(R.string.hazard_category)
         }
 
         if (_state.value.navigating) {
@@ -9653,10 +9684,10 @@ class MapViewModel @Inject constructor(
         }
 
         val place = Place(
-            id = "police:${alert.id}",
+            id = "waze:${cat.name.lowercase(java.util.Locale.US)}:${alert.id}",
             name = title,
             location = alert.loc,
-            category = appContext.getString(R.string.police_category),
+            category = categoryStr,
             address = locStr,
             statusText = "$ageStr · $reportsStr",
             savedNote = note,
@@ -9686,7 +9717,7 @@ class MapViewModel @Inject constructor(
      */
     fun refreshPoliceOnRoute(routes: List<Route>) {
         policeRouteJob?.cancel()
-        if (!app.vela.ui.WazePolice.on.value || routes.isEmpty()) {
+        if (!app.vela.ui.WazeAlertsPrefs.masterOn.value || routes.isEmpty()) {
             if (_state.value.policeOnRoute.isNotEmpty()) _state.update { it.copy(policeOnRoute = emptyList()) }
             return
         }

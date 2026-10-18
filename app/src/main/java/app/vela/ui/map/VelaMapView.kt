@@ -337,9 +337,13 @@ private const val HUMP_IMG = "vela-hump" // speed hump/bump/table/cushion (same 
 private const val SPEEDCAM_SRC = "vela-speedcam-src" // fixed radar cameras (OSM), opt-in layer
 private const val SPEEDCAM_LAYER = "vela-speedcam"
 private const val SPEEDCAM_IMG = "vela-speedcam-badge"
-private const val WAZE_POLICE_SRC = "vela-waze-police-src" // live police reports from Waze
+private const val WAZE_POLICE_SRC = "vela-waze-police-src" // live police & incident reports from Waze
 private const val WAZE_POLICE_LAYER = "vela-waze-police"
 private const val WAZE_POLICE_IMG = "vela-waze-police-badge"
+private const val WAZE_ACCIDENT_IMG = "vela-waze-accident-badge"
+private const val WAZE_HAZARD_IMG = "vela-waze-hazard-badge"
+private const val WAZE_CLOSURE_IMG = "vela-waze-closure-badge"
+private const val WAZE_JAM_IMG = "vela-waze-jam-badge"
 private const val WAZE_POLICE_INDEX_PROP = "vela-police-idx"
 private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
 private const val FLOCK_LAYER = "vela-flock"
@@ -6555,8 +6559,12 @@ PropertyFactory.iconPadding(2f),
         }
     }
 
-    // Live crowdsourced police reports from Waze: opt-in layer, iconic Waze policeman badge.
+    // Live crowdsourced reports from Waze: opt-in layer, iconic Waze category badges.
     style.addImage(WAZE_POLICE_IMG, policeBadgeBitmap())
+    style.addImage(WAZE_ACCIDENT_IMG, accidentBadgeBitmap())
+    style.addImage(WAZE_HAZARD_IMG, hazardBadgeBitmap())
+    style.addImage(WAZE_CLOSURE_IMG, closureBadgeBitmap())
+    style.addImage(WAZE_JAM_IMG, jamBadgeBitmap())
     if (style.getSource(WAZE_POLICE_SRC) == null) {
         style.addSource(GeoJsonSource(WAZE_POLICE_SRC, GeoJsonOptions().withMaxZoom(16)))
         val policeSize = Expression.interpolate(
@@ -6571,7 +6579,7 @@ PropertyFactory.iconPadding(2f),
         val policeLayer = SymbolLayer(WAZE_POLICE_LAYER, WAZE_POLICE_SRC).apply {
             setMinZoom(6f)
             setProperties(
-                PropertyFactory.iconImage(WAZE_POLICE_IMG),
+                PropertyFactory.iconImage(Expression.coalesce(Expression.get("icon"), Expression.literal(WAZE_POLICE_IMG))),
                 PropertyFactory.iconSize(policeSize),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
@@ -10330,11 +10338,13 @@ private fun applyData(
         lastAppliedSpeedCams = speedCameras
     }
 
-    // Live crowdsourced police reports from Waze -> icon features. Empty clears the source.
+    // Live crowdsourced reports from Waze -> icon features. Empty clears the source.
     if (wazePolice != lastAppliedWazePolice) {
         val features = wazePolice.mapIndexed { idx, it ->
             Feature.fromGeometry(Point.fromLngLat(it.loc.lng, it.loc.lat)).apply {
                 addNumberProperty(WAZE_POLICE_INDEX_PROP, idx)
+                addStringProperty("icon", it.category().iconId)
+                addStringProperty("type", it.type)
             }
         }
         style.getSourceAs<GeoJsonSource>(WAZE_POLICE_SRC)?.setGeoJson(
@@ -11170,6 +11180,135 @@ internal fun policeBadgeBitmap(): Bitmap {
     paint.color = 0xFF141416.toInt()
     val visorRect = android.graphics.RectF(cx - 18f, cy - 12f, cx + 18f, cy - 1f)
     c.drawArc(visorRect, 0f, 180f, true, paint)
+
+    return bmp
+}
+
+/** Accident badge: vivid coral/red circle with impact collision starburst. */
+internal fun accidentBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFE53935.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    val burstPath = android.graphics.Path().apply {
+        val points = 8
+        val rOut = 18f
+        val rInn = 9f
+        for (i in 0 until points * 2) {
+            val radius = if (i % 2 == 0) rOut else rInn
+            val angle = i * Math.PI / points
+            val x = (cx + radius * Math.cos(angle)).toFloat()
+            val y = (cy + radius * Math.sin(angle)).toFloat()
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+    c.drawPath(burstPath, paint)
+
+    paint.color = 0xFF212121.toInt()
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 3f
+    c.drawLine(cx - 8f, cy, cx + 8f, cy, paint)
+    c.drawLine(cx, cy - 8f, cx, cy + 8f, paint)
+
+    return bmp
+}
+
+/** Hazard / Weather badge: vivid amber/orange circle with white warning triangle and exclamation. */
+internal fun hazardBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFFF9800.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    paint.style = Paint.Style.FILL
+    val triPath = android.graphics.Path().apply {
+        moveTo(cx, cy - 18f)
+        lineTo(cx + 19f, cy + 15f)
+        lineTo(cx - 19f, cy + 15f)
+        close()
+    }
+    c.drawPath(triPath, paint)
+
+    paint.color = 0xFF212121.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 2.5f, cy - 8f, cx + 2.5f, cy + 5f), 2f, 2f, paint)
+    c.drawCircle(cx, cy + 10f, 2.5f, paint)
+
+    return bmp
+}
+
+/** Road closure badge: vivid crimson circle with white horizontal bar (no-entry sign). */
+internal fun closureBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFD32F2F.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 18f, cy - 4.5f, cx + 18f, cy + 4.5f), 2f, 2f, paint)
+
+    return bmp
+}
+
+/** Traffic jam badge: dark orange circle with dual car silhouette. */
+internal fun jamBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFE65100.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 7f, cy - 14f, cx + 7f, cy - 2f), 3f, 3f, paint)
+    c.drawRoundRect(android.graphics.RectF(cx - 10f, cy + 2f, cx + 10f, cy + 16f), 3f, 3f, paint)
+
+    paint.color = 0xFF212121.toInt()
+    c.drawCircle(cx - 4f, cy - 8f, 1.5f, paint)
+    c.drawCircle(cx + 4f, cy - 8f, 1.5f, paint)
+    c.drawCircle(cx - 6f, cy + 9f, 2f, paint)
+    c.drawCircle(cx + 6f, cy + 9f, 2f, paint)
 
     return bmp
 }

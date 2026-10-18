@@ -76,18 +76,18 @@ internal fun CameraSettingsGroup() {
         }
         GroupDivider()
         ToggleRow(
-            label = stringResource(R.string.settings_waze_police),
-            checked = app.vela.ui.WazePolice.on.value,
-            onCheckedChange = { app.vela.ui.WazePolice.set(context, it) },
-            hint = stringResource(R.string.settings_waze_police_hint),
+            label = stringResource(R.string.settings_waze_alerts_title),
+            checked = app.vela.ui.WazeAlertsPrefs.masterOn.value,
+            onCheckedChange = { app.vela.ui.WazeAlertsPrefs.setMaster(context, it) },
+            hint = stringResource(R.string.settings_waze_alerts_subtitle),
             leading = { app.vela.ui.PoliceBadge() },
         )
-        if (app.vela.ui.WazePolice.on.value) {
+        if (app.vela.ui.WazeAlertsPrefs.masterOn.value) {
             ToggleRow(
-                label = stringResource(R.string.settings_waze_police_warn),
-                checked = app.vela.ui.WazePoliceWarn.on.value,
-                onCheckedChange = { app.vela.ui.WazePoliceWarn.set(context, it) },
-                hint = stringResource(R.string.settings_waze_police_warn_hint),
+                label = stringResource(R.string.settings_waze_police),
+                checked = app.vela.ui.WazeAlertsPrefs.policeOn.value,
+                onCheckedChange = { app.vela.ui.WazeAlertsPrefs.setPolice(context, it) },
+                hint = stringResource(R.string.settings_waze_police_hint),
             )
         }
         GroupDivider()

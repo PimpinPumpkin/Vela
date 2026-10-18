@@ -325,7 +325,12 @@ fun PlaceSheet(
     val dim = if (dark) DimDark else DimLight
     // The saved parking spot's own sheet: car glyph beside the name, a Clear action pill.
     val isParking = place.id.startsWith("parking:")
-    val isPolice = place.id.startsWith("police:")
+    val isWazeAlert = place.id.startsWith("police:") || place.id.startsWith("waze:")
+    val isPolice = place.id.startsWith("police:") || place.id.startsWith("waze:police:")
+    val isAccident = place.id.startsWith("waze:accident:")
+    val isHazard = place.id.startsWith("waze:hazard:")
+    val isClosure = place.id.startsWith("waze:road_closed:") || place.id.startsWith("waze:closure:")
+    val isJam = place.id.startsWith("waze:jam:")
     // Match by feature id too — the volatile place id can change between visits for a
     // multi-listing chain, which hid the "Edit note"/"Saved" affordances (see ListPlace.matches).
     val containingLists = lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
@@ -373,7 +378,7 @@ fun PlaceSheet(
     // fixed height, so a drag can't shrink it and hide the actions (user 2026-07-10). All three
     // detents equal that height, so every detent computation resolves to it and the drag can't
     // resize the sheet.
-    val singleDetent = isParking || isPolice
+    val singleDetent = isParking || isWazeAlert
     // Transit stops expand FULL-SCREEN like any other place (the short-lived peek cap from earlier
     // today blocked maximizing a stop entirely - reported independently by the user and issue #71's
     // reporter within hours; with real multi-route boards the full detent has plenty to show).
@@ -827,8 +832,15 @@ fun PlaceSheet(
                         modifier = Modifier.size(26.dp).padding(end = 2.dp),
                     )
                     Spacer(Modifier.width(6.dp))
-                } else if (isPolice) {
-                    app.vela.ui.PoliceBadge(modifier = Modifier.size(26.dp))
+                } else if (isWazeAlert) {
+                    when {
+                        isPolice -> app.vela.ui.PoliceBadge(modifier = Modifier.size(26.dp))
+                        isAccident -> app.vela.ui.AccidentBadge(modifier = Modifier.size(26.dp))
+                        isHazard -> app.vela.ui.HazardBadge(modifier = Modifier.size(26.dp))
+                        isClosure -> app.vela.ui.ClosureBadge(modifier = Modifier.size(26.dp))
+                        isJam -> app.vela.ui.JamBadge(modifier = Modifier.size(26.dp))
+                        else -> app.vela.ui.HazardBadge(modifier = Modifier.size(26.dp))
+                    }
                     Spacer(Modifier.width(6.dp))
                 }
                 // A very long name (CJK businesses especially) clips at 2 lines, so a TAP toggles the
@@ -887,7 +899,7 @@ fun PlaceSheet(
                         if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_edit)) { saveMenu = false; app.vela.ui.ShapeActions.edit?.invoke() }
                         if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_delete)) { saveMenu = false; app.vela.ui.ShapeActions.delete?.invoke() }
                         item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
-                        if (!isParking && !isPolice) {
+                        if (!isParking && !isWazeAlert) {
                             item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
                             if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
                             if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
@@ -1123,7 +1135,7 @@ fun PlaceSheet(
                 // affordances in the header menu.
                 // Filled for a place in any list too. On one, the pill opens the list chooser, where
                 // the ticks are: a quick-save toggle would change nothing the pill shows (issue #792).
-                if (!isParking && !isPolice) {
+                if (!isParking && !isWazeAlert) {
                     val savePillClick: () -> Unit = if (inAnyList) ({ showListChooser = true }) else onToggleSave
                     ActionPill(
                         if (marked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
@@ -1131,6 +1143,7 @@ fun PlaceSheet(
                         onClick = savePillClick,
                     )
                 }
+
                 if (!app.vela.ui.HideExternalLinks.on.value) {
                     place.website?.let { site ->
                         ActionPill(Sym.Language, stringResource(R.string.place_website)) {
@@ -1272,9 +1285,9 @@ fun PlaceSheet(
             // list Google itself throws away on export, kept front and center here.
             place.savedNote?.let { note ->
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Top) {
-                    Icon(if (isPolice) Sym.Info else Sym.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(if (isWazeAlert) Sym.Info else Sym.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(note, style = MaterialTheme.typography.bodyMedium, fontStyle = if (isPolice) FontStyle.Normal else FontStyle.Italic, color = ink)
+                    Text(note, style = MaterialTheme.typography.bodyMedium, fontStyle = if (isWazeAlert) FontStyle.Normal else FontStyle.Italic, color = ink)
                 }
             }
 
@@ -1294,7 +1307,7 @@ fun PlaceSheet(
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving && !isParking && !isPolice) {
+            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving && !isParking && !isWazeAlert) {
                 // Not while the listing is still being looked up: the map's data lacking hours
                 // says nothing about Google's, which usually has them.
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))

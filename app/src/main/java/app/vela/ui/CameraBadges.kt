@@ -35,3 +35,32 @@ fun PoliceBadge(modifier: Modifier = Modifier) {
     Image(bmp, contentDescription = stringResource(R.string.camera_badge_police), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
 }
 
+/** The Waze accident alert badge. */
+@Composable
+fun AccidentBadge(modifier: Modifier = Modifier) {
+    val bmp = remember { app.vela.ui.map.accidentBadgeBitmap().asImageBitmap() }
+    Image(bmp, contentDescription = stringResource(R.string.waze_badge_accident), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
+}
+
+/** The Waze road hazard & weather alert badge. */
+@Composable
+fun HazardBadge(modifier: Modifier = Modifier) {
+    val bmp = remember { app.vela.ui.map.hazardBadgeBitmap().asImageBitmap() }
+    Image(bmp, contentDescription = stringResource(R.string.waze_badge_hazard), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
+}
+
+/** The Waze road closure badge. */
+@Composable
+fun ClosureBadge(modifier: Modifier = Modifier) {
+    val bmp = remember { app.vela.ui.map.closureBadgeBitmap().asImageBitmap() }
+    Image(bmp, contentDescription = stringResource(R.string.waze_badge_closure), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
+}
+
+/** The Waze traffic jam badge. */
+@Composable
+fun JamBadge(modifier: Modifier = Modifier) {
+    val bmp = remember { app.vela.ui.map.jamBadgeBitmap().asImageBitmap() }
+    Image(bmp, contentDescription = stringResource(R.string.waze_badge_jam), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
+}
+
+

@@ -29,6 +29,7 @@ import app.vela.ui.settings.sections.QuickChipsSettingsScreen
 import app.vela.ui.settings.sections.SavedPlacesSettingsScreen
 import app.vela.ui.settings.sections.SearchSettingsScreen
 import app.vela.ui.settings.sections.VoiceSettingsScreen
+import app.vela.ui.settings.sections.WazeAlertsSettingsScreen
 
 // A page preview must not steal keypad focus from the page the user is leaving.
 internal val LocalSettingsPageActive = androidx.compose.runtime.compositionLocalOf { true }
@@ -119,6 +120,7 @@ fun SettingsScreen(vm: MapViewModel, navController: androidx.navigation.NavHostC
                         SettingsSection.PERFORMANCE -> PerformanceSettingsScreen(onBack = toHub)
                         SettingsSection.DIAGNOSTICS -> DiagnosticsSettingsScreen(vm, onBack = toHub, onCloseSettings = close)
                         SettingsSection.ABOUT -> AboutSettingsScreen(vm, onBack = toHub)
+                        SettingsSection.WAZE_ALERTS -> WazeAlertsSettingsScreen(onBack = toHub)
                     }
                 }
             }

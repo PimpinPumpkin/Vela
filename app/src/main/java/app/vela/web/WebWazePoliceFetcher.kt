@@ -55,9 +55,9 @@ class WebWazePoliceFetcher @Inject constructor(
         }
     }
 
-    /** Pre-warm the Waze web session if the police layer is enabled. */
+    /** Pre-warm the Waze web session if Waze alerts are enabled. */
     fun warmUp() {
-        if (app.vela.ui.GoogleFree.on.value || !app.vela.ui.WazePolice.on.value) return
+        if (app.vela.ui.GoogleFree.on.value || !app.vela.ui.WazeAlertsPrefs.masterOn.value) return
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             val wv = webView
             if (wv == null) {
@@ -169,17 +169,19 @@ class WebWazePoliceFetcher @Inject constructor(
         east: Double,
     ): List<WazePoliceAlert>? = mutex.withLock {
         if (app.vela.ui.GoogleFree.on.value) return null
+        val allowed = app.vela.ui.WazeAlertsPrefs.enabledCategories()
+        if (allowed.isEmpty()) return emptyList()
 
         val now = android.os.SystemClock.elapsedRealtime()
         val nowMs = System.currentTimeMillis()
         val cBox = cachedBox
         if (cBox != null && now - lastFetchRealtime < 30_000L) {
             if (south >= cBox[0] && west >= cBox[1] && north <= cBox[2] && east <= cBox[3]) {
-                return cachedAlerts.filter { !it.isExpired(nowMs) }
+                return cachedAlerts.filter { !it.isExpired(nowMs) && it.category() in allowed }
             }
         }
-        if (now - lastFetchRealtime < 5_000L) {
-            return cachedAlerts.filter { !it.isExpired(nowMs) }.ifEmpty { null }
+        if (now - lastFetchRealtime < 8_000L) {
+            return cachedAlerts.filter { !it.isExpired(nowMs) && it.category() in allowed }.ifEmpty { null }
         }
 
         // Fast path: check local development/companion bridge before touching WebView
@@ -196,8 +198,8 @@ class WebWazePoliceFetcher @Inject constructor(
                 .filter { !it.isExpired(nowMs) }
                 .take(600)
             cachedBox = doubleArrayOf(south, west, north, east)
-            android.util.Log.i("VelaWazePolice", "fetched ${bridgeAlerts.size} police alert(s) via bridge")
-            return cachedAlerts
+            android.util.Log.i("VelaWazePolice", "fetched ${bridgeAlerts.size} alert(s) via bridge")
+            return cachedAlerts.filter { it.category() in allowed }
         }
 
         val midLat = (south + north) / 2.0
@@ -314,14 +316,15 @@ class WebWazePoliceFetcher @Inject constructor(
             pending.remove(id)
         }
 
-        lastFetchRealtime = now
+        val finishTime = android.os.SystemClock.elapsedRealtime()
+        lastFetchRealtime = finishTime
         if (raw.isNullOrBlank()) {
             android.util.Log.w("VelaWazePolice", "fetch returned empty/null (backing off 30s)")
-            lastFetchRealtime = now + 20_000L
+            lastFetchRealtime = finishTime + 20_000L
             cachedAlerts.ifEmpty { null }
         } else {
             val alerts = WazePoliceAlerts.parseAlerts(raw)
-            android.util.Log.i("VelaWazePolice", "fetched ${alerts.size} police alert(s) via web engine")
+            android.util.Log.i("VelaWazePolice", "fetched ${alerts.size} alert(s) via web engine")
             val nowMs = System.currentTimeMillis()
             val outside = cachedAlerts.filter {
                 (it.loc.lat < south || it.loc.lat > north || it.loc.lng < west || it.loc.lng > east) && !it.isExpired(nowMs)
@@ -331,7 +334,7 @@ class WebWazePoliceFetcher @Inject constructor(
                 .filter { !it.isExpired(nowMs) }
                 .take(600)
             cachedBox = doubleArrayOf(south, west, north, east)
-            cachedAlerts
+            cachedAlerts.filter { it.category() in allowed }
         }
     }
 }

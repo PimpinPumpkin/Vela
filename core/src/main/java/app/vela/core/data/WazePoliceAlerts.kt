@@ -12,16 +12,41 @@ import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+enum class WazeAlertCategory(val rawType: String, val iconId: String) {
+    POLICE("POLICE", "vela-waze-police-badge"),
+    ACCIDENT("ACCIDENT", "vela-waze-accident-badge"),
+    HAZARD("HAZARD", "vela-waze-hazard-badge"),
+    ROAD_CLOSED("ROAD_CLOSED", "vela-waze-closure-badge"),
+    JAM("JAM", "vela-waze-jam-badge"),
+    OTHER("OTHER", "vela-waze-hazard-badge");
+
+    companion object {
+        fun fromType(raw: String?): WazeAlertCategory {
+            if (raw == null) return OTHER
+            val u = raw.uppercase(Locale.US)
+            return when {
+                u.contains("POLICE") -> POLICE
+                u.contains("ACCIDENT") -> ACCIDENT
+                u.contains("HAZARD") || u.contains("WEATHER") || u.contains("CONSTRUCTION") -> HAZARD
+                u.contains("ROAD_CLOSED") || u.contains("CLOSURE") -> ROAD_CLOSED
+                u.contains("JAM") || u.contains("TRAFFIC") -> JAM
+                else -> OTHER
+            }
+        }
+    }
+}
+
 /**
- * An active police report from Waze's live map GeoRSS feed.
+ * An active crowdsourced alert (police, accident, hazard, closure, jam) from Waze's live map GeoRSS feed.
  *
- * [subtype] indicates visible unit, speed trap, hidden officer, etc. (e.g. "POLICE_VISIBLE", "POLICE_HIDING").
+ * [subtype] indicates specific alert detail (e.g. "POLICE_VISIBLE", "ACCIDENT_MAJOR", "HAZARD_ON_ROAD_POTHOLE").
  * [nThumbsUp] counts driver confirmations. [reliability] / [confidence] are Waze community scores.
  */
 @Serializable
 data class WazePoliceAlert(
     val id: String,
     val loc: LatLng,
+    val type: String = "POLICE",
     val subtype: String? = null,
     val street: String? = null,
     val city: String? = null,
@@ -30,8 +55,11 @@ data class WazePoliceAlert(
     val nThumbsUp: Int = 0,
     val pubMillis: Long = 0L,
 ) {
+    fun category(): WazeAlertCategory = WazeAlertCategory.fromType(type)
     fun isExpired(nowMs: Long = System.currentTimeMillis()): Boolean = WazePoliceAlerts.isExpired(this, nowMs)
 }
+
+typealias WazeAlert = WazePoliceAlert
 
 @Serializable
 private data class WazeGeoRssResponse(
@@ -142,39 +170,53 @@ object WazePoliceAlerts {
 
     /**
      * An alert is expired when its age exceeds its retention window:
-     * - Unconfirmed reports (nThumbsUp == 0): 25 minutes
-     * - Confirmed reports (nThumbsUp > 0): 40 minutes
+     * - Police: 25 min (unconfirmed) / 40 min (confirmed)
+     * - Accident: 40 min (unconfirmed) / 60 min (confirmed)
+     * - Hazard / Weather: 45 min (unconfirmed) / 90 min (confirmed)
+     * - Road Closed: 90 min (unconfirmed) / 180 min (confirmed)
+     * - Jam: 20 min (unconfirmed) / 35 min (confirmed)
      */
     fun isExpired(alert: WazePoliceAlert, nowMs: Long = System.currentTimeMillis()): Boolean {
         if (alert.pubMillis <= 0L) return false
         val age = nowMs - alert.pubMillis
         if (age < 0L) return false
-        val maxAgeMs = if (alert.nThumbsUp > 0) 40 * 60 * 1000L else 25 * 60 * 1000L
+        val isConfirmed = alert.nThumbsUp > 0
+        val maxAgeMs = when (alert.category()) {
+            WazeAlertCategory.POLICE -> if (isConfirmed) 40 * 60 * 1000L else 25 * 60 * 1000L
+            WazeAlertCategory.ACCIDENT -> if (isConfirmed) 60 * 60 * 1000L else 40 * 60 * 1000L
+            WazeAlertCategory.HAZARD -> if (isConfirmed) 90 * 60 * 1000L else 45 * 60 * 1000L
+            WazeAlertCategory.ROAD_CLOSED -> if (isConfirmed) 180 * 60 * 1000L else 90 * 60 * 1000L
+            WazeAlertCategory.JAM -> if (isConfirmed) 35 * 60 * 1000L else 20 * 60 * 1000L
+            WazeAlertCategory.OTHER -> if (isConfirmed) 60 * 60 * 1000L else 30 * 60 * 1000L
+        }
         return age > maxAgeMs
     }
 
     /**
-     * Parse raw JSON response into a list of [WazePoliceAlert], filtering strictly for "type": "POLICE".
+     * Parse raw JSON response into a list of [WazePoliceAlert].
+     * Can filter by [allowedCategories]; if null, accepts all categories.
      * Safely returns emptyList() if response is non-JSON or HTML error page.
      */
-    fun parseAlerts(jsonText: String): List<WazePoliceAlert> {
+    fun parseAlerts(
+        jsonText: String,
+        allowedCategories: Set<WazeAlertCategory>? = null,
+    ): List<WazePoliceAlert> {
         val trimmed = jsonText.trim()
         if (!trimmed.startsWith("{")) return emptyList()
         val parsed = runCatching { json.decodeFromString<WazeGeoRssResponse>(trimmed) }.getOrNull() ?: return emptyList()
         val now = System.currentTimeMillis()
-        val thirtyMinMs = 30 * 60 * 1000L
         return parsed.alerts.mapNotNull { a ->
-            if (!a.type.equals("POLICE", ignoreCase = true)) return@mapNotNull null
-            if (a.nThumbsUp == 0 && a.pubMillis > 0 && now - a.pubMillis > thirtyMinMs) {
-                return@mapNotNull null
-            }
+            val rawType = a.type ?: return@mapNotNull null
+            val cat = WazeAlertCategory.fromType(rawType)
+            if (allowedCategories != null && cat !in allowedCategories) return@mapNotNull null
             val lat = a.location?.y ?: a.latitude ?: return@mapNotNull null
             val lng = a.location?.x ?: a.longitude ?: return@mapNotNull null
             val alertId = a.id ?: a.uuid ?: String.format(Locale.US, "%.5f,%.5f", lat, lng)
             val pub = if (a.pubMillis > 0L) a.pubMillis else now
-            WazePoliceAlert(
+            val alert = WazePoliceAlert(
                 id = alertId,
                 loc = LatLng(lat, lng),
+                type = rawType,
                 subtype = a.subtype,
                 street = a.street,
                 city = a.city,
@@ -183,6 +225,8 @@ object WazePoliceAlerts {
                 nThumbsUp = a.nThumbsUp,
                 pubMillis = pub,
             )
+            if (alert.isExpired(now)) return@mapNotNull null
+            alert
         }
     }
 

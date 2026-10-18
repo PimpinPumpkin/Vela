@@ -24,6 +24,8 @@ class WazePoliceAlertsTest {
 
     @Test
     fun `parseAlerts filters for police and extracts location correctly`() {
+        val now = System.currentTimeMillis()
+        val recentPub = now - 5 * 60 * 1000L
         val sampleJson = """
         {
           "alerts": [
@@ -37,7 +39,7 @@ class WazePoliceAlertsTest {
               "reliability": 7,
               "confidence": 1,
               "nThumbsUp": 5,
-              "pubMillis": 1729000000000
+              "pubMillis": $recentPub
             },
             {
               "id": "alert-102",
@@ -64,12 +66,14 @@ class WazePoliceAlertsTest {
         }
         """.trimIndent()
 
-        val alerts = WazePoliceAlerts.parseAlerts(sampleJson)
+        val policeOnly = WazePoliceAlerts.parseAlerts(sampleJson, allowedCategories = setOf(WazeAlertCategory.POLICE))
 
-        assertEquals(2, alerts.size)
+        assertEquals(2, policeOnly.size)
 
-        val first = alerts[0]
+        val first = policeOnly[0]
         assertEquals("alert-101", first.id)
+        assertEquals("POLICE", first.type)
+        assertEquals(WazeAlertCategory.POLICE, first.category())
         assertEquals("POLICE_VISIBLE", first.subtype)
         assertEquals("I-80 W", first.street)
         assertEquals("Davis, CA", first.city)
@@ -77,15 +81,20 @@ class WazePoliceAlertsTest {
         assertEquals(-121.7405, first.loc.lng, 1e-4)
         assertEquals(7, first.reliability)
         assertEquals(5, first.nThumbsUp)
-        assertEquals(1729000000000L, first.pubMillis)
+        assertEquals(recentPub, first.pubMillis)
 
-        val second = alerts[1]
+        val second = policeOnly[1]
         assertEquals("uuid-103", second.id)
         assertEquals("POLICE_HIDING", second.subtype)
         assertEquals("Russell Blvd", second.street)
         assertEquals(38.5420, second.loc.lat, 1e-4)
         assertEquals(-121.7620, second.loc.lng, 1e-4)
         assertEquals(2, second.nThumbsUp)
+
+        // All categories: includes accident as well
+        val allAlerts = WazePoliceAlerts.parseAlerts(sampleJson)
+        assertEquals(3, allAlerts.size)
+        assertTrue(allAlerts.any { it.category() == WazeAlertCategory.ACCIDENT && it.id == "alert-102" })
     }
 
     @Test
