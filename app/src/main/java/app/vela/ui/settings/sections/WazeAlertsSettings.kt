@@ -29,7 +29,10 @@ import app.vela.ui.settings.ToggleRow
  * - Action to launch official Waze app for reporting
  */
 @Composable
-internal fun WazeAlertsSettingsScreen(onBack: () -> Unit) {
+internal fun WazeAlertsSettingsScreen(
+    onBack: () -> Unit,
+    onOpenAlertDistances: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     SettingsScaffold(stringResource(R.string.settings_waze_alerts_title), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
@@ -117,6 +120,13 @@ internal fun WazeAlertsSettingsScreen(onBack: () -> Unit) {
                         onCheckedChange = { WazeAlertsPrefs.setHazardsWarn(context, it) },
                         hint = stringResource(R.string.settings_waze_warn_hazards_hint),
                     )
+                }
+            }
+
+            if (onOpenAlertDistances != null) {
+                Spacer(Modifier.height(8.dp))
+                SettingsGroup(title = stringResource(R.string.settings_alert_distance_title)) {
+                    AlertDistanceNavigationRow(onOpen = onOpenAlertDistances)
                 }
             }
         }

@@ -50,7 +50,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
  *  history moved to Saved places and the demo modes to Diagnostics (2026-09-17). */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
+internal fun NavigationSettingsScreen(
+    vm: MapViewModel,
+    onBack: () -> Unit,
+    onOpenAlertDistances: () -> Unit = {},
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
     SettingsScaffold(stringResource(R.string.settings_navigation), onBack) { topRow ->
@@ -429,7 +433,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         Hint(stringResource(R.string.settings_link_action_hint))
         Spacer(Modifier.height(8.dp))
-        CameraSettingsGroup()
+        CameraSettingsGroup(onOpenAlertDistances = onOpenAlertDistances)
         Spacer(Modifier.height(8.dp))
         SettingsGroup(title = stringResource(R.string.settings_road_alerts_group)) {
             ToggleRow(
