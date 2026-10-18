@@ -27,3 +27,11 @@ fun SpeedCameraBadge(modifier: Modifier = Modifier) {
     val bmp = remember { speedCamBitmap().asImageBitmap() }
     Image(bmp, contentDescription = stringResource(R.string.camera_badge_speed), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
 }
+
+/** The Waze police report badge, the same way. */
+@Composable
+fun PoliceBadge(modifier: Modifier = Modifier) {
+    val bmp = remember { app.vela.ui.map.policeBadgeBitmap().asImageBitmap() }
+    Image(bmp, contentDescription = stringResource(R.string.camera_badge_police), modifier = modifier.size(28.dp), filterQuality = FilterQuality.High)
+}
+

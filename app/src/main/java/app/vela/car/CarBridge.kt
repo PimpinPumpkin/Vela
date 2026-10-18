@@ -21,6 +21,8 @@ object CarBridge {
     val controls = MutableStateFlow<List<TrafficControl>>(emptyList())
     /** Fixed speed cameras along the driven route. */
     val speedCameras = MutableStateFlow<List<LatLng>>(emptyList())
+    /** Waze police reports along the driven route. */
+    val wazePolice = MutableStateFlow<List<LatLng>>(emptyList())
 
-    fun clear() { controls.value = emptyList(); speedCameras.value = emptyList() }
+    fun clear() { controls.value = emptyList(); speedCameras.value = emptyList(); wazePolice.value = emptyList() }
 }

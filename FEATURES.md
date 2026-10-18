@@ -204,6 +204,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   and bridge alerts chime, nothing else is said. The speaker button during a drive opens the three.
 - "Bridge openings" in the Netherlands says when a movable bridge on your route is open, or due
   to open as you reach it. From NDW's open road data. On by default.
+- "Police reports" draws live police alerts from Waze. "Warn me out loud" announces police reported
+  ahead while navigating. Off by default.
 - Plate camera data ships with the app, so it works offline.
 
 ## Offline

@@ -135,6 +135,28 @@
     <string name="nav_flock_camera_ahead">License plate camera ahead</string>
     <string name="nav_flock_cameras_ahead">License plate cameras ahead</string>
     <string name="settings_speed_cams_hint">Shows fixed radar and speed cameras mapped in OpenStreetMap. Fixed installations only; coverage follows the map, strongest in Europe. Off by default.</string>
+    <string name="settings_waze_police">Police reports</string>
+    <string name="settings_waze_police_hint">Live police presence and speed traps reported by drivers on Waze. Off by default.</string>
+    <string name="settings_waze_police_warn">Warn me out loud</string>
+    <string name="settings_waze_police_warn_hint">Says \"Police reported ahead\" as you approach one while navigating. Follows your spoken-directions setting. Off by default.</string>
+    <string name="nav_police_ahead">Police reported ahead</string>
+    <string name="camera_badge_police">Police report marker</string>
+    <string name="map_waze_police_toggle">Police reports</string>
+    <string name="police_title">Police</string>
+    <string name="police_title_hidden">Police (Hidden)</string>
+    <string name="police_title_camera">Police (Speed Trap)</string>
+    <string name="police_title_other_side">Police (Other Side)</string>
+    <string name="police_category">Waze police report</string>
+    <string name="police_users_reported_one">Reported by 1 user</string>
+    <string name="police_users_reported_many">Reported by %d users</string>
+    <string name="police_confirmations_one">1 confirmation</string>
+    <string name="police_confirmations_many">%d confirmations</string>
+    <string name="police_unconfirmed">Unconfirmed</string>
+    <string name="police_just_now">Just now</string>
+    <string name="police_min_ago">%d min ago</string>
+    <string name="police_hours_ago">%d hr ago</string>
+    <string name="police_note_confirmed">Reported %1$s on Waze. Confirmed by %2$d other driver(s).</string>
+    <string name="police_note_unconfirmed">Reported %1$s on Waze. First report from a driver.</string>
     <string name="exp_chooser_fastest">Fastest route now</string>
     <string name="exp_chooser_slower">%1$s slower than the fastest route</string>
     <string name="exp_chooser_via">via %1$s</string>
@@ -157,6 +179,10 @@
     <plurals name="dir_cameras_on_route">
         <item quantity="one">%1$d camera on this route</item>
         <item quantity="other">%1$d cameras on this route</item>
+    </plurals>
+    <plurals name="dir_police_on_route">
+        <item quantity="one">%1$d police report on this route</item>
+        <item quantity="other">%1$d police reports on this route</item>
     </plurals>
 
     <string name="settings_read_all_reviews">“Read all reviews” button</string>

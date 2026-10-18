@@ -1092,6 +1092,7 @@ fun MapScreen(
     // cameras wouldn't appear until the next pan). Clears the layer when turned off.
     LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
     LaunchedEffect(app.vela.ui.SpeedCams.on.value) { vm.refreshSpeedCamsNow() }
+    LaunchedEffect(app.vela.ui.WazePolice.on.value) { vm.refreshWazePoliceNow() }
     Box(Modifier.fillMaxSize()) {
         MapSurface(
             state = state,
@@ -2036,6 +2037,7 @@ fun MapScreen(
                     routes = state.routes,
                     activeRoute = state.activeRoute,
                     flockOnRoute = state.flockOnRoute,
+                    policeOnRoute = state.policeOnRoute,
                     modeEtas = state.modeEtas,
                     onModeSelected = vm::setTravelMode,
                     avoidTolls = state.avoidTolls,
@@ -4246,6 +4248,8 @@ private fun MapSurface(
         trafficControls = state.trafficControls,
         flockCameras = state.flockCameras,
         speedCameras = state.speedCameras,
+        wazePolice = state.wazePolice,
+        onPoliceAlertTap = vm::onPoliceAlertTap,
         // Hide the tapped stop's own badge while it is selected - the red selected-place pin
         // drops at the same coordinate and the two bus glyphs stacked read as a glitch
         // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
@@ -4294,6 +4298,7 @@ private fun BoxScope.ClassicDirectionsHost(
         routes = state.routes,
         activeRoute = state.activeRoute,
         flockOnRoute = state.flockOnRoute,
+        policeOnRoute = state.policeOnRoute,
         transit = state.transit,
         transitLoading = state.transitLoading,
         modeEtas = state.modeEtas,

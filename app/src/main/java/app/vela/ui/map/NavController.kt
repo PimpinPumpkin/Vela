@@ -48,6 +48,7 @@ internal class NavController(
     private val diag: app.vela.core.diag.DiagLog,
     private val http: okhttp3.OkHttpClient,
     private val host: Host,
+    private val webWazePolice: app.vela.web.WebWazePoliceFetcher? = null,
 ) {
     /** What the nav code needs from the view model. */
     interface Host {
@@ -150,6 +151,7 @@ internal class NavController(
                     if (!vs.replaying || vs.demoDriving) {
                         refreshNavRouteControls(nsRoute)
                         refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
+                        refreshRouteWazePolice(nsRoute) // Waze police reports along route
                         refreshRouteFlock(nsRoute) // plate-camera card / voice alerts
                         refreshRouteBridges(nsRoute) // bridge openings in the Netherlands (NDW)
                     }
@@ -158,6 +160,7 @@ internal class NavController(
                     lastRecordedRoute = null
                     clearNavRouteControls()
                     routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
+                    routePoliceMeters = emptyList(); routePoliceKey = null; spokenPolice = emptySet()
                     app.vela.car.CarBridge.clear()
                     clearRouteFlock()
                     clearRouteBridges()
@@ -177,7 +180,7 @@ internal class NavController(
                     if (ns.navigating && toStop != null) app.vela.ui.nav.NavLegFigures.Leg(toStop, ns.nav.remainingDistance, ns.nav.remainingDuration) else null
                 // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
                 // a scan of a short list; the projection was done once when the route landed.
-                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding(); maybeWarnBridge(ns) }
+                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnPolice(ns); maybeWarnFlock(ns); maybeWarnSpeeding(); maybeWarnBridge(ns) }
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -248,6 +251,14 @@ internal class NavController(
                     val r = navSession.state.value.route ?: return@collect
                     if (on) routeCamKey = null // force the fetch even for the same route
                     refreshRouteSpeedCams(r)
+                }
+        }
+        scope.launch {
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.WazePolice.on.value }
+                .collect { on ->
+                    val r = navSession.state.value.route ?: return@collect
+                    if (on) routePoliceKey = null
+                    refreshRouteWazePolice(r)
                 }
         }
         // Same for the plate-camera alerts: turning either one on mid-drive projects the current
@@ -617,7 +628,7 @@ internal class NavController(
                 // still shows the route), so the explicit end is where it clears - Ending a
                 // drive used to leave the blue line drawn on the bare map (user 2026-07-14).
                 activeRoute = null, routes = emptyList(), directionsOpen = false,
-                directionsWaypoints = emptyList(), flockOnRoute = emptyList(),
+                directionsWaypoints = emptyList(), flockOnRoute = emptyList(), policeOnRoute = emptyList(),
                 // The next drive starts a fresh dictionary: an obf route brings its roads' Latin
                 // aliases with it and the nav tiles add the rest as they load (issue #184).
                 roadNameLatin = emptyMap(),
@@ -1049,11 +1060,11 @@ internal class NavController(
             }
             return
         }
-        // Keyed on the route's endpoints + length and on the IDENTITY of the two mark lists (a
+        // Keyed on the route's endpoints + length and on the IDENTITY of the mark lists (a
         // replaced set with the same count used to keep stale marks; review 2026-09-12).
         val key = "${route.polyline.first()}|${route.polyline.last()}|${route.distanceMeters.toInt()}|" +
             "${System.identityHashCode(_state.value.trafficControls)}|${System.identityHashCode(_state.value.flockCameras)}|" +
-            "${System.identityHashCode(_state.value.speedCameras)}"
+            "${System.identityHashCode(_state.value.speedCameras)}|${System.identityHashCode(_state.value.wazePolice)}"
         if (key != routeBarKey) {
             routeBarKey = key
             val poly = route.polyline
@@ -1061,6 +1072,7 @@ internal class NavController(
             val controls = _state.value.trafficControls
             val cams = _state.value.flockCameras
             val speedCams = _state.value.speedCameras
+            val policeAlerts = _state.value.wazePolice
             scope.launch(Dispatchers.Default) {
                 val marks = buildList {
                     for (c in controls) {
@@ -1087,6 +1099,10 @@ internal class NavController(
                         if (!app.vela.core.nav.CameraFacing.onRoute(poly, c.loc, facing, 40.0)) continue
                         val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
                         add(app.vela.core.nav.RouteBar.Mark.CAMERA to m)
+                    }
+                    for (p in policeAlerts) {
+                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, p.loc, 60.0) ?: continue
+                        add(app.vela.core.nav.RouteBar.Mark.POLICE to m)
                     }
                 }
                 withContext(Dispatchers.Main) {
@@ -1169,6 +1185,65 @@ internal class NavController(
                 app.vela.car.CarBridge.speedCameras.value = cams.map { it.loc }
                 diag.record("speedcam", "${meters.size} camera(s) on route", "corridor")
                 android.util.Log.i("VelaSpeedCam", "${meters.size} camera(s) on route in ${routeCamMeters.size} spot(s)")
+            }
+        }
+    }
+
+    private var routePoliceKey: String? = null
+    private var routePoliceMeters: List<Double> = emptyList()
+    private var spokenPolice: Set<Int> = emptySet()
+    private var routePoliceJob: kotlinx.coroutines.Job? = null
+
+    /** One corridor fetch of Waze police reports per driven route, projected onto it for spoken alerts. */
+    private fun refreshRouteWazePolice(route: app.vela.core.model.Route) {
+        if (!app.vela.ui.WazePolice.on.value) {
+            routePoliceKey = null; routePoliceMeters = emptyList(); spokenPolice = emptySet()
+            return
+        }
+        val poly = route.polyline
+        if (poly.size < 2) return
+        val f = poly.first(); val l = poly.last()
+        val key = String.format(
+            java.util.Locale.US, "%.4f,%.4f|%.4f,%.4f|%d",
+            f.lat, f.lng, l.lat, l.lng, (route.distanceMeters / 500).toInt(),
+        )
+        if (key == routePoliceKey) return
+        routePoliceKey = key
+        spokenPolice = emptySet()
+        routePoliceMeters = emptyList()
+        routePoliceJob?.cancel()
+        routePoliceJob = scope.launch {
+            val alerts = withContext(Dispatchers.IO) {
+                runCatching {
+                    val degPad = (250.0 / 111_000.0) * 1.5
+                    val s = poly.minOf { it.lat } - degPad
+                    val n = poly.maxOf { it.lat } + degPad
+                    val w = poly.minOf { it.lng } - degPad
+                    val e = poly.maxOf { it.lng } + degPad
+                    webWazePolice?.fetchAlerts(s, w, n, e) ?: app.vela.core.data.WazePoliceAlerts.fetchAlongCorridor(http, poly)
+                }.getOrNull()
+            } ?: run {
+                android.util.Log.i("VelaWazePolice", "route corridor police fetch FAILED")
+                return@launch
+            }
+            val meters = withContext(Dispatchers.Default) {
+                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                alerts.mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.loc) }.sorted()
+            }
+            if (routePoliceKey == key) {
+                routePoliceMeters = app.vela.core.nav.CameraAlerts.group(meters).map { it.atM }
+                app.vela.car.CarBridge.wazePolice.value = alerts.map { it.loc }
+                val nowMs = System.currentTimeMillis()
+                _state.update { s ->
+                    val combined = (s.wazePolice + alerts)
+                        .distinctBy { it.id }
+                        .filter { !it.isExpired(nowMs) }
+                        .take(600)
+                    s.copy(wazePolice = combined)
+                }
+                updateRouteBar(navSession.state.value)
+                diag.record("wazepolice", "${meters.size} police alert(s) on route", "corridor")
+                android.util.Log.i("VelaWazePolice", "${meters.size} police alert(s) on route in ${routePoliceMeters.size} spot(s)")
             }
         }
     }
@@ -1368,6 +1443,21 @@ internal class NavController(
         val msg = appContext.getString(R.string.nav_speed_camera_ahead)
         // The card as well as the voice (issue #696): a muted drive got nothing, and the map icon
         // is small at speed.
+        host.flashStatus(msg, 6000L)
+        alert(msg)
+        app.vela.car.CarBridge.toast(msg)
+    }
+
+    /** Announce a reported police presence coming up on the route, once each. */
+    private fun maybeWarnPolice(ns: app.vela.core.nav.NavSession.State) {
+        if (routePoliceMeters.isEmpty()) return
+        if (!app.vela.ui.WazePolice.on.value || !app.vela.ui.WazePoliceWarn.on.value) return
+        val i = app.vela.core.nav.CameraAlerts.due(
+            routePoliceMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenPolice,
+        ) ?: return
+        spokenPolice = spokenPolice + i
+        android.util.Log.i("VelaWazePolice", "warning ${i + 1} of ${routePoliceMeters.size}")
+        val msg = appContext.getString(R.string.nav_police_ahead)
         host.flashStatus(msg, 6000L)
         alert(msg)
         app.vela.car.CarBridge.toast(msg)
