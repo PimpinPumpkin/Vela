@@ -163,10 +163,11 @@ repository are published as a searchable site at
   detour is small. Two more switches give a card or a spoken "License plate
   camera ahead" as you approach one. The dataset lives on the phone and updates
   weekly.
-- **Police reports and speed cameras.** Fixed speed cameras from OpenStreetMap,
-  and live police reports from Waze drawn on the map with spoken heads-up
-  ("Police reported ahead") during navigation. Off by default in Settings →
-  Road alerts or the map layers menu.
+- **Road alerts and speed cameras.** Fixed speed cameras from OpenStreetMap,
+  surveillance cameras (Flock ALPR), and live crowdsourced alerts from Waze
+  (police, accidents, road hazards, closures, jams) with spoken heads-up warnings.
+  Customizable warning trigger distances in meters (dynamic speed-scaled,
+  200–1500 m, or custom). Off by default in Settings → Road alerts.
 - **Vela Voice.** Spoken directions from a neural voice that runs on the phone,
   and a mic that transcribes your search on the phone too. Nothing you say goes
   to a speech service.

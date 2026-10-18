@@ -458,4 +458,5 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_waze_hazards to SettingsSection.WAZE_ALERTS,
     R.string.settings_waze_closures to SettingsSection.WAZE_ALERTS,
     R.string.settings_waze_jams to SettingsSection.WAZE_ALERTS,
+    R.string.settings_alert_distance_title to SettingsSection.ALERT_DISTANCES,
 )

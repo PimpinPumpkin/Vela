@@ -110,11 +110,16 @@ a stops edit keeps them.
 
 ### The warnings
 
-The card and both voices share `CameraAlerts.due`. The lead distance is speed times
+The card and both voices share `CameraAlerts.due`. The default lead distance is speed times
 `LEAD_SECONDS` (12), clamped to `MIN_LEAD_M` (150) and `MAX_LEAD_M` (600), because 200 m is
 ample in town and two seconds on a freeway. Nothing fires below `MOVING_FLOOR_MPS` (2.0). An
 alert fires once per route, never for a camera behind you, and the nearest wins when two are
 due.
+
+"Alert trigger distances" under Settings allows overriding the dynamic calculation with fixed
+lead distances in meters (200 m, 300 m, 500 m, 750 m, 1000 m, 1500 m, or custom meters 50–3000 m),
+both as a global default and overridden per alert category (speed cameras, plate cameras, police,
+accidents, road hazards, closures, jams).
 
 Plate cameras are projected onto each driven route once, from memory, and heads within 40 m
 along it become one alert in the plural. The projection is keyed on the route's ends and length,

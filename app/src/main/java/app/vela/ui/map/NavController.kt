@@ -1316,6 +1316,7 @@ internal class NavController(
         if (routeFlockMeters.isEmpty() || !app.vela.ui.FlockNavAlert.any) return
         val i = app.vela.core.nav.CameraAlerts.due(
             routeFlockMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), alertedFlock,
+            customLeadM = app.vela.ui.AlertDistancePrefs.flockLeadM(),
         ) ?: return
         alertedFlock = alertedFlock + i
         val msg = appContext.getString(
@@ -1344,7 +1345,10 @@ internal class NavController(
         }
         if (from == null) return
         val since = from.distanceTo(here)
-        if (wantCams) app.vela.core.nav.CameraAlerts.dueKeyed(driveCams, since, speed, driveAnnouncedCams)?.let { key ->
+        if (wantCams) app.vela.core.nav.CameraAlerts.dueKeyed(
+            driveCams, since, speed, driveAnnouncedCams,
+            customLeadM = app.vela.ui.AlertDistancePrefs.speedCamLeadM(),
+        )?.let { key ->
             driveAnnouncedCams = driveAnnouncedCams + key
             android.util.Log.i("VelaSpeedCam", "driving mode: camera ahead")
             val msg = appContext.getString(R.string.nav_speed_camera_ahead)
@@ -1352,7 +1356,10 @@ internal class NavController(
             alert(msg)
             app.vela.car.CarBridge.toast(msg)
         }
-        if (wantFlock) app.vela.core.nav.CameraAlerts.dueKeyed(driveFlock, since, speed, driveAnnouncedFlock)?.let { key ->
+        if (wantFlock) app.vela.core.nav.CameraAlerts.dueKeyed(
+            driveFlock, since, speed, driveAnnouncedFlock,
+            customLeadM = app.vela.ui.AlertDistancePrefs.flockLeadM(),
+        )?.let { key ->
             driveAnnouncedFlock = driveAnnouncedFlock + key
             val msg = appContext.getString(
                 if ((driveFlockCount[key] ?: 1) > 1) R.string.nav_flock_cameras_ahead else R.string.nav_flock_camera_ahead,
@@ -1446,6 +1453,7 @@ internal class NavController(
         if (!app.vela.ui.SpeedCams.on.value || !app.vela.ui.SpeedCamWarn.on.value) return
         val i = app.vela.core.nav.CameraAlerts.due(
             routeCamMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenCams,
+            customLeadM = app.vela.ui.AlertDistancePrefs.speedCamLeadM(),
         ) ?: return
         spokenCams = spokenCams + i
         android.util.Log.i("VelaSpeedCam", "warning ${i + 1} of ${routeCamMeters.size}")
@@ -1463,6 +1471,10 @@ internal class NavController(
         if (!app.vela.ui.WazeAlertsPrefs.masterOn.value) return
         val i = app.vela.core.nav.CameraAlerts.due(
             routePoliceMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenPolice,
+            leadMAt = { idx ->
+                val alert = routeWazeAlertsList.getOrNull(idx)
+                app.vela.ui.AlertDistancePrefs.wazeAlertLeadM(alert)
+            },
         ) ?: return
         spokenPolice = spokenPolice + i
         val alert = routeWazeAlertsList.getOrNull(i)
@@ -1472,13 +1484,19 @@ internal class NavController(
             app.vela.core.data.WazeAlertCategory.ACCIDENT -> app.vela.ui.WazeAlertsPrefs.accidentsWarnOn.value
             app.vela.core.data.WazeAlertCategory.HAZARD -> app.vela.ui.WazeAlertsPrefs.hazardsWarnOn.value
             app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> true
+            app.vela.core.data.WazeAlertCategory.JAM -> app.vela.ui.WazeAlertsPrefs.jamsOn.value
             else -> false
         }
         if (!shouldWarn) return
+        val sub = alert?.subtype?.uppercase(java.util.Locale.US) ?: ""
         val msg = when (cat) {
             app.vela.core.data.WazeAlertCategory.ACCIDENT -> appContext.getString(R.string.nav_accident_ahead)
-            app.vela.core.data.WazeAlertCategory.HAZARD -> appContext.getString(R.string.nav_hazard_ahead)
+            app.vela.core.data.WazeAlertCategory.HAZARD -> when {
+                "CONSTRUCTION" in sub || "WORKS" in sub -> appContext.getString(R.string.nav_construction_ahead)
+                else -> appContext.getString(R.string.nav_hazard_ahead)
+            }
             app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.nav_closure_ahead)
+            app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.nav_jam_ahead)
             else -> appContext.getString(R.string.nav_police_ahead)
         }
         android.util.Log.i("VelaWazePolice", "warning $cat ${i + 1} of ${routePoliceMeters.size}")

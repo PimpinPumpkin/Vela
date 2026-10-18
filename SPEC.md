@@ -68,7 +68,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Traffic layer; satellite past z19 | Google raster tiles, both off by default | Yes | No |
 | Traffic controls (lights, stops, crossings, humps) | Per-region road-features bake, Overpass only where no region exists | No | Yes |
 | Surveillance and speed cameras | Bundled and hosted DeFlock dataset; OSM speed cameras | No | Yes |
-| Police reports | Waze live map alerts (`georss`), off by default | No | No |
+| Road alerts (police, accidents, hazards, closures, jams) | Waze live map alerts (`georss`), off by default | No | No |
 | Fuel prices on gas stations | US: Google's search reply. UK: the government's Fuel Finder, trimmed and hosted on the `fuel-gb` release (5.8) | US: in the search. UK: no | UK: the last file downloaded |
 | Bridge openings (Netherlands) | NDW open data, `planningsfeed_brugopeningen` | No | No |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
@@ -2434,11 +2434,14 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   is ignored: the feed keeps some that were never closed. The alert is the card for 6 s, the voice
   (a chime in Alerts only, like the camera alerts) and a car toast. A recorded-trip replay asks
   nothing.
-- Police reports (`WazePoliceAlerts`, off by default, pref `waze_police_on`): viewport queries target
+- Crowdsourced road alerts (`WazePoliceAlerts`, off by default, pref `waze_alerts_master`): viewport queries target
   `https://www.waze.com/live-map/api/georss` with bounding box coordinates and regional `env` (`il`, `na`, `row`).
-  Alerts filter strictly for `type == "POLICE"`. A zoom floor of z11.0 avoids Waze's ~200 alert response cap.
-  During an active drive, `fetchAlongCorridor` queries along the polyline (80 m corridor). Spoken warnings
-  (`WazePoliceWarn`, pref `waze_police_warn`) trigger "Police reported ahead" once per report when within 600 m lead.
+  Alerts cover police, accidents, road hazards, closures, and traffic jams. A zoom floor of z11.0 avoids Waze's ~200 alert response cap.
+  During an active drive, `fetchAlongCorridor` queries along the polyline corridor. Spoken warnings trigger once per report.
+- Alert trigger distances (`AlertDistancePrefs`): navigation alert timing defaults to speed times 12 s
+  clamped to 150–600 m ("Dynamic"), or a user-selected fixed lead in meters (200, 300, 500, 750, 1000, 1500 m,
+  or custom 50–3000 m), with per-alert overrides for speed cameras, plate cameras, police, accidents, hazards,
+  closures and traffic jams.
 
 #### Street callouts
 

@@ -45,7 +45,7 @@ import app.vela.ui.settings.ToggleRow
 /** Surveillance and speed cameras: the map markers and every alert about them, one group
  *  (moved from Map to Navigation, 2026-09-17: they are driving alerts first). */
 @Composable
-internal fun CameraSettingsGroup() {
+internal fun CameraSettingsGroup(onOpenAlertDistances: (() -> Unit)? = null) {
     val context = LocalContext.current
     SettingsGroup(title = stringResource(R.string.settings_cameras_group)) {
         ToggleRow(
@@ -122,6 +122,10 @@ internal fun CameraSettingsGroup() {
             onCheckedChange = { app.vela.ui.FlockNavAlert.setVoice(context, it) },
             hint = stringResource(R.string.settings_flock_nav_voice_hint),
         )
+        if (onOpenAlertDistances != null) {
+            GroupDivider()
+            AlertDistanceNavigationRow(onOpen = onOpenAlertDistances)
+        }
     }
 }
 
