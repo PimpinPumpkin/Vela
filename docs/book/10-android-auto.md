@@ -307,6 +307,10 @@ session's place list is not allowed on that display and crashes the app there.
 - The time left is colored by traffic with the route line's thresholds: red when the live time
   runs more than 40% over the typical time, yellow over 15%, green below. A route without live
   traffic leaves it the host's default color.
+- A step's text is its short form (`NavStrings.cue`): "Exit 72B toward CA 113 N" in place of
+  "Take exit 72B toward CA 113 North: Woodland". The host cuts the turn card to two lines and the
+  "then" strip to one, and the arrow already shows the side, so the words lead with the exit
+  number and the sign. The cluster gets the same text.
 - Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to
   kilometers at 1,000 m. Zero is allowed so the host can say "now".
 

@@ -599,6 +599,9 @@ off the list when it has been.
   Navigation: on the Desktop Head Unit the car's settings list shows all six rows, the two
   switches follow each other, and a demo drive's ramp step in Davis drew its lane strip with the
   switch on and none with it off. Not yet in a car, where Zoom to the next turn meets it.
+- Short turn text on Android Auto and the phone's "Then" tab (#851, `NavStrings.cue`). Needs a
+  freeway drive with the car screen: the turn card and the "then" strip should show the exit
+  number and the route without being cut off.
 - Side streets' stop signs left off a drive (#805): the bake's road for a sign from drivable ways
   and the most minor road at a junction, and the 10 m limit for a sign with no road. Needs a
   rebaked region driven down a main street, and one drive with no region (the Overpass path).
@@ -930,6 +933,9 @@ Found reading everything since 0.4.1912 and not fixed yet.
   along a border. The asset lists every state, so `scripts/check-location.sh` would exclude it
   like `region_polys.json`. On hold.
 
+- Short turn text (`NavStrings.cue`) in the other languages. English has its own; the rest show
+  the spoken form, the full sentence without the secondary sign destinations. Each language
+  needs its ramp and exit heads, checked by someone who reads it.
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
   link (65% under `hl=ja`), so open icons draw beside their Google twin. Options: run the

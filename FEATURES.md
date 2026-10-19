@@ -154,6 +154,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A turn banner with arrow, distance, road name, highway shields, exit numbers and lanes. Swipe it
   to look ahead. The road you turn onto is the card's largest line, readable at a glance. Street
   words are abbreviated on screen ("Court St", "W Covell Blvd"); the voice says them in full.
+- Short turn text where there is little room: Android Auto's turn card and next-step strip and the
+  phone's "Then" tab say "Exit 72B toward CA 113 N". English for now.
 - With a large display size or large text the turn card stays within a third of the screen, the
   arrow stays clear of the bottom bar, and the map zooms out to keep the road ahead in view.
 - "Zoom to the next turn" zooms the map out until the next turn sits just under the turn card,

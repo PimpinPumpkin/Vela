@@ -64,6 +64,10 @@ destinations need the language's "toward" marker (`TurnCardText`, `NavStrings.si
 which English and Romanian have. Other languages, the first and last steps, and a step neither
 rule fits keep the distance row and the sentence.
 
+The "Then" tab names the next step in its short form (`NavStrings.cue`), as Android Auto does:
+"Ramp toward I 80 E" for "Take the ramp on the right toward I 80 East: Sacramento". The arrow
+beside it shows the side.
+
 A ramp, a fork or a keep shows the slight-left or slight-right arrow, the way you go and nothing
 else. A picture with both branches looked like a road sign offering either one. The step list,
 the mini map, the notification and Android Auto take their glyphs from the same table

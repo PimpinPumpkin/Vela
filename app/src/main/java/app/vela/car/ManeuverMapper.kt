@@ -78,12 +78,15 @@ object ManeuverMapper {
     /** "may not be allowed", in the car's language; set when the car session starts. */
     @Volatile var bannedNote: String = ""
 
-    /** A car [Step] for the current maneuver: the spoken cue + the road name being entered, its
-     *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). [lanes] false
-     *  leaves the lane diagram off: the phone shows it only within [app.vela.ui.nav.LANE_SHOW_M]. */
+    /** A car [Step] for the current maneuver: the short on-screen cue (`NavStrings.cue`, issue
+     *  #851) with its street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837),
+     *  and the road name being entered. The host gives the cue two lines on the turn card and one
+     *  on the "then" strip. [lanes] false leaves the lane diagram off: the phone shows it only
+     *  within [app.vela.ui.nav.LANE_SHOW_M]. */
     fun carStep(m: VelaManeuver, lanes: Boolean = true): Step {
         val short = app.vela.core.util.RoadNameShort
-        val said = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        val said = short.inText(app.vela.core.i18n.NavStringsRegistry.current().cue(m.instruction), m.road)
+            .ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
         // A turn OpenStreetMap bans that Google's route keeps (TurnBans) says so on the car too.
         val cue: CharSequence = if (m.mayBeBanned && bannedNote.isNotBlank()) "$said ($bannedNote)" else said
         return Step.Builder(cue)
