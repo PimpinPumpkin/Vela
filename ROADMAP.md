@@ -402,6 +402,9 @@ off the list when it has been.
   a drive started during the run.
 - The transit guidance pane's last card ends with Done (#811): seen on a 4a, a four-leg bus trip stepped to its end, the card's Back and Done, and Done back on the map.
 - An expanded transit route stays expanded across a swipe of the sheet (#812, `TransitExpanded`): seen on a 4a, a bus itinerary expanded, the sheet dropped to its card by its handle and raised again with the legs still open.
+- The transit guidance pane scrolls its legs, and Back and Next keep their height (#853). Not
+  seen on a phone: a current walk leg with its steps open, a ride leg with its stops open, the
+  list back at the top on each step, large fonts, landscape, and D-pad focus through the list.
 - One Share on the route picker (#814): seen on a 4a, Start and Add stops below, Route options, Share and Close in the header.
 - Saved routes named from a named start (#815): seen on a 4a, a trip from a named start saved under both names by default, and the list row with the start and the end under it; a route from the phone's own position still reads Route to the end.
 - Drawings and custom maps above the satellite imagery (#816): seen on a 4a, a three-point line
