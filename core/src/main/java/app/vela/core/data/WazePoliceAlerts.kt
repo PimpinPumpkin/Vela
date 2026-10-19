@@ -25,7 +25,7 @@ enum class WazeAlertCategory(val rawType: String, val iconId: String) {
             if (raw == null) return OTHER
             val u = raw.uppercase(Locale.US)
             return when {
-                u.contains("POLICE") -> POLICE
+                u.contains("POLICE") || u.contains("CAMERA") || u.contains("SPEED_CAM") -> POLICE
                 u.contains("ACCIDENT") -> ACCIDENT
                 u.contains("HAZARD") || u.contains("WEATHER") || u.contains("CONSTRUCTION") -> HAZARD
                 u.contains("ROAD_CLOSED") || u.contains("CLOSURE") -> ROAD_CLOSED

@@ -9510,7 +9510,7 @@ class MapViewModel @Inject constructor(
      *  minus the bundled dataset: opt-in, sparse-landmark zoom floor, padded area cache, 350 ms
      *  settle, failure never cached so the next viewport retries. */
     private fun refreshSpeedCams(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
-        if (!app.vela.ui.SpeedCams.on.value || zoom < FLOCK_MIN_ZOOM) {
+        if (!app.vela.ui.SpeedCams.on.value || zoom < SPEEDCAM_MIN_ZOOM) {
             speedCamBox = null
             speedCamJob?.cancel()
             if (_state.value.speedCameras.isNotEmpty()) _state.update { it.copy(speedCameras = emptyList()) }
@@ -9636,7 +9636,7 @@ class MapViewModel @Inject constructor(
         val title = when (cat) {
             app.vela.core.data.WazeAlertCategory.POLICE -> when {
                 "HIDING" in sub || "HIDDEN" in sub -> appContext.getString(R.string.police_title_hidden)
-                "CAMERA" in sub || "SPEED_TRAP" in sub -> appContext.getString(R.string.police_title_camera)
+                "CAMERA" in sub || "SPEED" in sub || "CAMERA" in alert.type.uppercase(java.util.Locale.US) -> appContext.getString(R.string.police_title_camera)
                 "OTHER_SIDE" in sub -> appContext.getString(R.string.police_title_other_side)
                 else -> appContext.getString(R.string.police_title)
             }
@@ -10820,6 +10820,7 @@ class MapViewModel @Inject constructor(
         // exists now: the BUNDLED on-device dataset answers fetchInBox with no network and the Overpass
         // fallback stream-parses, so z11 is back (alltechdev re-proved it in the vela-dpad fork, #131).
         const val FLOCK_MIN_ZOOM = 11.0
+        const val SPEEDCAM_MIN_ZOOM = 8.0
         val CIVIC_GROUPS = setOf("park", "edu", "civic") // the "not really a business" ambient tier
         const val SUGGEST_NEAR_M = 80_000.0 // ~a metro radius: suggestions inside it rank first
         /** The automatic region patch pass: a minute after start, at most once in 20 hours. */

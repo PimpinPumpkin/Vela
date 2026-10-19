@@ -9,14 +9,14 @@ import app.vela.core.data.WazeAlertCategory
  * Supports granular toggles for individual alert categories and spoken warnings.
  */
 object WazeAlertsPrefs {
-    val masterOn = mutableStateOf(false)
+    val masterOn = mutableStateOf(true)
 
     // Category toggles
     val policeOn = mutableStateOf(true)
     val accidentsOn = mutableStateOf(true)
     val hazardsOn = mutableStateOf(true)
     val closuresOn = mutableStateOf(true)
-    val jamsOn = mutableStateOf(false)
+    val jamsOn = mutableStateOf(true)
 
     // Spoken navigation warnings
     val policeWarnOn = mutableStateOf(false)
@@ -25,13 +25,13 @@ object WazeAlertsPrefs {
 
     fun init(context: Context) {
         val p = prefs(context)
-        val legacyPolice = p.getBoolean(KEY_LEGACY_POLICE, false)
+        val legacyPolice = p.getBoolean(KEY_LEGACY_POLICE, true)
         masterOn.value = p.getBoolean(KEY_MASTER, legacyPolice)
         policeOn.value = p.getBoolean(KEY_POLICE, true)
         accidentsOn.value = p.getBoolean(KEY_ACCIDENTS, true)
         hazardsOn.value = p.getBoolean(KEY_HAZARDS, true)
         closuresOn.value = p.getBoolean(KEY_CLOSURES, true)
-        jamsOn.value = p.getBoolean(KEY_JAMS, false)
+        jamsOn.value = p.getBoolean(KEY_JAMS, true)
 
         val legacyPoliceWarn = p.getBoolean(KEY_LEGACY_POLICE_WARN, false)
         policeWarnOn.value = p.getBoolean(KEY_POLICE_WARN, legacyPoliceWarn)

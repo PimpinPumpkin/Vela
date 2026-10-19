@@ -6535,13 +6535,14 @@ PropertyFactory.iconPadding(2f),
         style.addSource(GeoJsonSource(SPEEDCAM_SRC, GeoJsonOptions().withMaxZoom(16)))
         val camSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
-            Expression.stop(11f, 0.55f),
-            Expression.stop(14f, 0.7f),
-            Expression.stop(17f, 1.0f),
-            Expression.stop(19f, 1.35f),
+            Expression.stop(8f, 0.65f),
+            Expression.stop(11f, 0.85f),
+            Expression.stop(14f, 1.0f),
+            Expression.stop(17f, 1.25f),
+            Expression.stop(19f, 1.50f),
         )
         val camLayer = SymbolLayer(SPEEDCAM_LAYER, SPEEDCAM_SRC).apply {
-            setMinZoom(11f)
+            setMinZoom(8f)
             setProperties(
                 PropertyFactory.iconImage(SPEEDCAM_IMG),
                 PropertyFactory.iconSize(camSize),
@@ -10282,7 +10283,7 @@ private fun applyData(
     // The browse/route floor applies to the CLUSTERED flock layer (the low-zoom face of that
     // feature; detail layers stay pinned at FLOCK_DETAIL_ZOOM) and to the speed-camera layer.
     style.getLayer(FLOCK_CLUSTER_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
-    style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+    style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 8.0f else 6.0f)
     style.getLayer(WAZE_POLICE_LAYER)?.setMinZoom(if (route.isEmpty()) 7.0f else 6.0f)
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's

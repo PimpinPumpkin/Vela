@@ -49,7 +49,7 @@ object OverpassSpeedCameras {
         val box = "($south,$west,$north,$east)"
         // `out body`, never `out tags` - `out tags` omits a node's lat/lon (the empty-layer trap
         // the ALPR fetcher hit).
-        val query = "[out:json][timeout:25];node[\"highway\"=\"speed_camera\"]$box;out body $limit;"
+        val query = "[out:json][timeout:25];(node[\"highway\"=\"speed_camera\"]$box;node[\"enforcement\"~\"speed|traffic_signals\"]$box;node[\"traffic_enforcement\"~\"speed|red_light\"]$box;);out body $limit;"
         return OverpassEndpoints.run(slow(http), query) { body ->
             val parsed = json.decodeFromStream<SpeedCamResp>(body.byteStream())
             parsed.elements.mapNotNull { n ->

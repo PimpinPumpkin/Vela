@@ -50,8 +50,33 @@ class WebWazePoliceFetcher @Inject constructor(
         }
 
         @JavascriptInterface
+        fun onHttpError(code: Int) {
+            if (code == 403) {
+                android.util.Log.w("VelaWazePolice", "HTTP 403 detected - auto-healing WebView session")
+                resetSession()
+            }
+        }
+
+        @JavascriptInterface
         fun log(msg: String) {
             android.util.Log.i("VelaWazePolice", "JS: $msg")
+        }
+    }
+
+    /** Wipe cookies and reload Waze live map to clear flagged/stale session on HTTP 403. */
+    fun resetSession() {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            pageReady = false
+            readyDeferred = CompletableDeferred()
+            cachedAlerts = emptyList()
+            cachedBox = null
+            lastFetchRealtime = 0L
+            runCatching {
+                android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                android.webkit.WebStorage.getInstance().deleteAllData()
+                webView?.clearCache(true)
+                webView?.loadUrl("https://www.waze.com/live-map/")
+            }
         }
     }
 
@@ -221,7 +246,7 @@ class WebWazePoliceFetcher @Inject constructor(
 
         val url = String.format(
             Locale.US,
-            "https://www.waze.com/live-map/api/georss?top=%.5f&bottom=%.5f&left=%.5f&right=%.5f&env=%s&types=alerts,traffic,users",
+            "https://www.waze.com/live-map/api/georss?top=%.5f&bottom=%.5f&left=%.5f&right=%.5f&env=%s&types=alerts,traffic",
             north, south, west, east, env,
         )
 
@@ -290,6 +315,9 @@ class WebWazePoliceFetcher @Inject constructor(
                 })
                 .then(function(r) {
                     log('HTTP ' + r.status);
+                    if (r.status === 403) {
+                        try { window.VelaBridge.onHttpError(403); } catch(e) {}
+                    }
                     return r.text().then(function(t) {
                         if (!r.ok) {
                             log('HTTP ' + r.status + ' body=' + t.substring(0, 150));
