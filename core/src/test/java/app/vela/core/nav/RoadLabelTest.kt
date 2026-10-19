@@ -133,4 +133,13 @@ class RoadLabelTest {
         )
         assertNull(signedHeading(mans, 1, "I 80"))
     }
+
+    @Test fun `a sign part shortens the compass word on a route number only`() {
+        assertEquals("US 50 W", signRef("US 50 West"))
+        assertEquals("I-5 N", signRef("I-5 North"))
+        assertEquals("CA 113 N", signRef(" CA 113 North"))
+        assertEquals("Sacramento North", signRef("Sacramento North"))
+        assertEquals("I 80", signRef("I 80"))
+        assertEquals("Downtown", signRef("Downtown"))
+    }
 }

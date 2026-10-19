@@ -243,4 +243,43 @@ class NavStringsTest {
         assertEquals("Treceți de semafor, apoi virați la stânga", RoNavStrings.lightThen(RoNavStrings.passLights(1), "Virați la stânga"))
         assertEquals("Menj el a közlekedési lámpa mellett, majd fordulj balra", HuNavStrings.lightThen(HuNavStrings.passLights(1), "Fordulj balra"))
     }
+
+    @Test fun `the short cue leads with the exit and the sign`() {
+        val en = EnNavStrings
+        assertEquals("Ramp toward I 80 E", en.cue("Take the ramp on the right toward I 80 East: Sacramento"))
+        assertEquals("Ramp toward CA 113 N", en.cue("Take the ramp on the left toward CA 113 North"))
+        assertEquals("Ramp toward Davis", en.cue("Take the ramp toward Davis"))
+        assertEquals("Ramp onto I 80", en.cue("Take the ramp on the right onto I 80"))
+        assertEquals("Exit 72B toward CA 113 N", en.cue("Take exit 72B toward CA 113 North: Woodland"))
+        assertEquals("Exit toward I 5", en.cue("Take the exit toward I 5"))
+        assertEquals("Keep left toward I 80 W, CA 99 N", en.cue("Keep left toward I 80 West, CA 99 North"))
+        assertEquals("Merge toward US 50 E", en.cue("Merge toward US 50 East"))
+        // Google's English text uses the same heads.
+        assertEquals("Exit 72B toward CA-113 N/Woodland", en.cue("Take exit 72B toward CA-113 N/Woodland"))
+    }
+
+    @Test fun `the short cue leaves other steps and place names alone`() {
+        val en = EnNavStrings
+        assertEquals("Turn left onto W Covell Blvd", en.cue("Turn left onto W Covell Blvd"))
+        assertEquals("At the roundabout, take the 2nd exit onto Elm St", en.cue("At the roundabout, take the 2nd exit onto Elm St"))
+        assertEquals("Arrive at your destination", en.cue("Arrive at your destination"))
+        assertEquals("Continue", en.cue("Continue"))
+        assertEquals("Ramp toward Sacramento North", en.cue("Take the ramp toward Sacramento North"))
+        // A language without its own heads gets the spoken form.
+        assertEquals("Nehmen Sie die Ausfahrt 15 Richtung Sacramento", DeNavStrings.cue("Nehmen Sie die Ausfahrt 15 Richtung Sacramento"))
+    }
+
+    @Test fun `every english ramp, exit and fork phrase has a short cue`() {
+        val en = EnNavStrings
+        for (mod in listOf(null, "right", "slight right", "left", "slight left")) {
+            for (type in listOf("on ramp", "ramp")) {
+                assertEquals("Ramp toward I 80 E", en.cue(en.phrase(type, mod, null, "I 80 East: Sacramento", null, null)))
+                assertEquals("Ramp onto I 80", en.cue(en.phrase(type, mod, "I 80", null, null, null)))
+            }
+        }
+        assertEquals("Exit 72B toward CA 113 N", en.cue(en.phrase("off ramp", null, null, "CA 113 North: Woodland", "72B", null)))
+        assertEquals("Exit toward I 5", en.cue(en.phrase("off ramp", null, null, "I 5", null, null)))
+        assertEquals("Keep right toward I 80 E", en.cue(en.phrase("fork", "right", null, "I 80 East", null, null)))
+        assertEquals("Merge toward US 50 W", en.cue(en.phrase("merge", null, null, "US 50 West", null, null)))
+    }
 }

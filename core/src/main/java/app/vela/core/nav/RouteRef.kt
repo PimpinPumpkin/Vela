@@ -107,6 +107,13 @@ fun roadLabel(name: String?, ref: String?, heading: String? = null): String? {
     return if (restatesRef(n, r)) numbered(r, h ?: CARDINALS[n.substringAfterLast(' ').lowercase()]) else n
 }
 
+/** One part of a guide sign with its compass word as a letter: "US 50 West" -> "US 50 W". A
+ *  place name stays whole, even one that ends in a compass word ("Sacramento North"). */
+fun signRef(part: String): String {
+    val (route, letter) = splitHeading(part.trim())
+    return if (route != null && letter != null) "$route $letter" else part
+}
+
 /** "I 80 East" as the route "I 80" and the letter "E"; anything else unchanged, with no letter. */
 private fun splitHeading(ref: String?): Pair<String?, String?> {
     if (ref == null) return null to null

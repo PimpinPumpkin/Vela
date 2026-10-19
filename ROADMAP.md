@@ -269,6 +269,9 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- Short turn text on Android Auto and the phone's "Then" tab (#851, `NavStrings.cue`). Needs a
+  freeway drive with the car screen: the turn card and the "then" strip should show the exit
+  number and the route without being cut off.
 - Side streets' stop signs left off a drive (#805): the bake's road for a sign from drivable ways
   and the most minor road at a junction, and the 10 m limit for a sign with no road. Needs a
   rebaked region driven down a main street, and one drive with no region (the Overpass path).
@@ -468,6 +471,9 @@ Found reading everything since 0.4.1912 and not fixed yet.
 
 ## On the radar
 
+- Short turn text (`NavStrings.cue`) in the other languages. English has its own; the rest show
+  the spoken form, the full sentence without the secondary sign destinations. Each language
+  needs its ramp and exit heads, checked by someone who reads it.
 - One APK per chip type. Built and off (`update/ApkChoice`, SPEC 15). Once a build with
   `ApkChoice` has been the stable for about three weeks, set the repository variable
   `ABI_SPLITS` to `true`, point the README install button at

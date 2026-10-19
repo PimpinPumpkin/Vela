@@ -432,9 +432,10 @@ fun ManeuverBanner(
                         modifier = Modifier.size(24.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                    // Vela says what the next step is; Google's tab shows the arrow alone. Two lines,
-                    // so a long street name wraps instead of running off the tab (issue #799).
-                    Text(nextText, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // Vela says what the next step is; Google's tab shows the arrow alone. The short
+                    // form ("Exit 72B toward CA 113 N"), in two lines so a long street name wraps
+                    // instead of running off the tab (issue #799).
+                    Text(app.vela.core.i18n.NavStringsRegistry.current().cue(nextText), style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

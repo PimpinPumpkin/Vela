@@ -74,9 +74,10 @@ object ManeuverMapper {
 
     private const val GLYPH_PX = 128
 
-    /** A car [Step] for the current maneuver: the spoken cue + the road name being entered. */
+    /** A car [Step] for the current maneuver: the short on-screen cue + the road name being
+     *  entered. The host gives the cue two lines on the turn card and one on the "then" strip. */
     fun carStep(m: VelaManeuver): Step {
-        val cue: CharSequence = m.instruction.ifBlank { m.road?.takeIf { it.isNotBlank() } ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        val cue: CharSequence = app.vela.core.i18n.NavStringsRegistry.current().cue(m.instruction).ifBlank { m.road?.takeIf { it.isNotBlank() } ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
         return Step.Builder(cue)
             .setManeuver(carManeuver(m))
             .apply { (m.road ?: m.ref)?.takeIf { it.isNotBlank() }?.let { setRoad(it as CharSequence) } }

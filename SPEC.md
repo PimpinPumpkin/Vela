@@ -4856,6 +4856,13 @@ Guidance text comes from per-language `NavStrings` tables in `:core/i18n`, switc
 `NavStringsRegistry`. Both routers feed them: `RouteGeometry.osrmPhrase` and
 `OfflinePhrases.phrase` map maneuvers onto the OSRM `(type, mod)` pair.
 
+`NavStrings.cue` is the short on-screen form for the car's turn card, its "then" strip and the
+phone's "Then" tab, where the arrow already shows the side. English drops the secondary sign
+destinations (`spokenSign`), writes "Take the ramp ..." as "Ramp", "Take exit 72B" as
+"Exit 72B" and "Take the exit" as "Exit", and shortens the compass word after a route number in
+the sign (`signRef`): "Take exit 72B toward CA 113 North: Woodland" is "Exit 72B toward CA 113 N".
+Other heads keep their words. A language without its own `cue` gets `spokenSign`.
+
 Speech defaults to an in-process neural voice: the bundled sherpa-onnx runtime with a downloaded
 Piper model (`PiperSynth` behind the `:core` `NeuralSynth` seam). About 40 catalog voices install
 to `filesDir/piper/<id>/`; the installed set is derived from the filesystem, so a partial
@@ -5201,7 +5208,7 @@ the catalog, the ones switched off included; a pick runs that search. The one-bu
   slide-out is the key path to the voice. The glyph shows pause or resume, the accent fill a held
   drive, a crossed speaker a muted one, a bell "Alerts only" (4.9).
 - The "Then" tab hangs off the turn card's lower left in the card's color and names the next
-  step. The card's lower-left corner is square while the tab shows, and the lower-right too when
+  step in its short form (`NavStrings.cue`, 9.1), in up to two lines. The card's lower-left corner is square while the tab shows, and the lower-right too when
   the tab is as wide as the card. Both widths are measured.
 - In portrait the turn card and its "Then" tab stay within `BANNER_MAX_FRACTION` (a third) of the
   screen height. Past it the card's font scale steps down, by `BANNER_FIT_STEP` (0.9) or down to
@@ -5483,7 +5490,9 @@ the same `:core` singletons as the phone (`CarDeps`).
   changes, and at most once a second (`TRIP_MIN_GAP_MS`). The host drops faster updates.
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`, `Step` and `Trip`, sets the phone's
   glyph as the icon (`NavGlyphs.bitmap`), and reads the roundabout direction and exit number
-  from the route's geometry.
+  from the route's geometry. A step's cue is the short form (`NavStrings.cue`, 9.1) on the turn
+  card, the "then" strip and the cluster: the host cuts the cue to two lines and one, so the full
+  sentence lost the sign.
 - On the drive screen a paused drive shows a `MessageInfo` ("Paused") in place of the turn card,
   and the strip has Pause/Resume. A turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card
   with "Continue on" the current road (`Maneuver.roadAt`) under a straight arrow and shows the

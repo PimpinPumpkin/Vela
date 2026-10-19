@@ -259,6 +259,10 @@ session's place list is not allowed on that display and crashes the app there.
   the car API throws on a roundabout with none.
 - Past `CONTINUE_FAR_M` (1,500 m) the card reads "Continue on" and the road you are on, with a
   straight arrow, and the turn is the "then" step. Closer in, the turn leads.
+- A step's text is its short form (`NavStrings.cue`): "Exit 72B toward CA 113 N" in place of
+  "Take exit 72B toward CA 113 North: Woodland". The host cuts the turn card to two lines and the
+  "then" strip to one, and the arrow already shows the side, so the words lead with the exit
+  number and the sign. The cluster gets the same text.
 - Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
   lanes.
 - Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to

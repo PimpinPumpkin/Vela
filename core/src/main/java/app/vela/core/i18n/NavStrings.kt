@@ -53,6 +53,12 @@ interface NavStrings {
      *  with its own destination marker, same English-first pattern as [passLights]). */
     fun repeatShort(instruction: String): String = instruction
 
+    /** The on-screen SHORT form for places with one or two lines (the car's turn card and "then"
+     *  strip, the phone's Then tab): the arrow already says which side, so the words lead with the
+     *  exit number and the sign ("Take exit 72B toward CA 113 North: Woodland" -> "Exit 72B toward
+     *  CA 113 N"). Default = [spokenSign]; a language overrides with its own phrase heads. */
+    fun cue(instruction: String): String = spokenSign(instruction)
+
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
@@ -261,6 +267,24 @@ object EnNavStrings : NavStrings {
     // marker is exactly what osrmPhrase/ghPhrase emit for EN ramp/exit/fork steps.
     override fun repeatShort(instruction: String): String = instruction.substringBefore(" toward ")
 
+    // "Take the ramp on the right toward I 80 East: Sacramento" -> "Ramp toward I 80 E". Only the
+    // ramp and exit heads phrase() writes are shortened; Google's English ("Take exit 72B toward
+    // CA-113 N", "Take the ramp onto I-80 E") uses the same heads. Any other head ("Keep right",
+    // "Merge", "Turn left") stays, with only the compass words on route numbers shortened.
+    override fun cue(instruction: String): String {
+        val text = spokenSign(instruction)
+        val at = listOf(text.indexOf(" toward "), text.indexOf(" onto ")).filter { it > 0 }.minOrNull() ?: return text
+        val head = text.substring(0, at)
+        val word = if (text.startsWith(" toward ", at)) "toward" else "onto"
+        val sign = text.substring(at + word.length + 2).split(", ").joinToString(", ") { app.vela.core.nav.signRef(it) }
+        val short = when {
+            head == "Take the exit" -> "Exit"
+            head == "Take the ramp" || head == "Take the ramp on the right" || head == "Take the ramp on the left" -> "Ramp"
+            else -> EN_EXIT_HEAD.matchEntire(head)?.let { "Exit " + it.groupValues[1] } ?: head
+        }
+        return "$short $word $sign"
+    }
+
     override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         val lanes = if (count > 1) "the $sideWord $count lanes" else "the $sideWord lane"
@@ -312,6 +336,9 @@ object EnNavStrings : NavStrings {
         return s
     }
 }
+
+/** "Take exit 72B", the numbered-exit head [EnNavStrings.cue] shortens to "Exit 72B". */
+private val EN_EXIT_HEAD = Regex("""Take exit (\S+)""")
 
 /** Whole-word road-abbreviation → spoken form, applied only by [EnNavStrings.expandForSpeech]. Road-type
  *  suffixes are case-insensitive; the directionals are uppercase (as they appear in road names) and come
