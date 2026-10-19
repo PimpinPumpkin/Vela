@@ -86,7 +86,7 @@ object OverpassSpeedCameras {
         }
         val coords = pts.joinToString(",") { String.format(java.util.Locale.US, "%.5f,%.5f", it.lat, it.lng) }
         val around = "(around:$radiusM,$coords)"
-        val query = "[out:json][timeout:25];node[\"highway\"=\"speed_camera\"]$around;out body $limit;"
+        val query = "[out:json][timeout:25];(node[\"highway\"=\"speed_camera\"]$around;node[\"enforcement\"~\"speed|traffic_signals\"]$around;node[\"traffic_enforcement\"~\"speed|red_light\"]$around;);out body $limit;"
         return OverpassEndpoints.run(slow(http), query) { body ->
             json.decodeFromStream<SpeedCamResp>(body.byteStream()).elements.mapNotNull { n ->
                 val lat = n.lat ?: return@mapNotNull null

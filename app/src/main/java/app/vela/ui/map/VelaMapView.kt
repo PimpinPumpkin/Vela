@@ -10344,7 +10344,8 @@ private fun applyData(
         val features = wazePolice.mapIndexed { idx, it ->
             Feature.fromGeometry(Point.fromLngLat(it.loc.lng, it.loc.lat)).apply {
                 addNumberProperty(WAZE_POLICE_INDEX_PROP, idx)
-                addStringProperty("icon", it.category().iconId)
+                val icon = if (it.isCamera()) SPEEDCAM_IMG else it.category().iconId
+                addStringProperty("icon", icon)
                 addStringProperty("type", it.type)
             }
         }

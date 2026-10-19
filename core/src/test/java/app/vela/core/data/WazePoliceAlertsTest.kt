@@ -168,4 +168,52 @@ class WazePoliceAlertsTest {
         org.junit.Assert.assertFalse(confirmedFresh.isExpired(now))
         assertTrue(confirmedStale.isExpired(now))
     }
+
+    @Test
+    fun `parseAlerts extracts jams array correctly`() {
+        val now = System.currentTimeMillis()
+        val json = """
+        {
+          "alerts": [],
+          "jams": [
+            {
+              "uuid": "jam-1",
+              "street": "Siggrou",
+              "city": "Athens",
+              "level": 3,
+              "line": [
+                { "x": 23.71, "y": 37.95 },
+                { "x": 23.72, "y": 37.96 }
+              ],
+              "pubMillis": ${now - 60_000L}
+            }
+          ]
+        }
+        """.trimIndent()
+
+        val parsed = WazePoliceAlerts.parseAlerts(json)
+        assertEquals(1, parsed.size)
+        val jam = parsed[0]
+        assertEquals("jam-1", jam.id)
+        assertEquals("JAM", jam.type)
+        assertEquals(WazeAlertCategory.JAM, jam.category())
+        assertEquals("JAM_LEVEL_3", jam.subtype)
+        assertEquals("Siggrou", jam.street)
+        assertEquals(37.96, jam.loc.lat, 1e-4)
+        assertEquals(23.72, jam.loc.lng, 1e-4)
+    }
+
+    @Test
+    fun `isCamera identifies camera and speed cam alerts`() {
+        val camAlert = WazePoliceAlert(id = "c1", loc = LatLng(0.0, 0.0), type = "CAMERA", subtype = "CAMERA_SPEED")
+        val redLightAlert = WazePoliceAlert(id = "c2", loc = LatLng(0.0, 0.0), type = "CAMERA", subtype = "CAMERA_RED_LIGHT")
+        val speedCamAlert = WazePoliceAlert(id = "c3", loc = LatLng(0.0, 0.0), type = "SPEED_CAM")
+        val policeAlert = WazePoliceAlert(id = "p1", loc = LatLng(0.0, 0.0), type = "POLICE", subtype = "POLICE_VISIBLE")
+
+        assertTrue(camAlert.isCamera())
+        assertTrue(redLightAlert.isCamera())
+        assertTrue(speedCamAlert.isCamera())
+        org.junit.Assert.assertFalse(policeAlert.isCamera())
+    }
 }
+

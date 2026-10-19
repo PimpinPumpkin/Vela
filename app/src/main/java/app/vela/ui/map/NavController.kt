@@ -1479,24 +1479,27 @@ internal class NavController(
         spokenPolice = spokenPolice + i
         val alert = routeWazeAlertsList.getOrNull(i)
         val cat = alert?.category() ?: app.vela.core.data.WazeAlertCategory.POLICE
-        val shouldWarn = when (cat) {
-            app.vela.core.data.WazeAlertCategory.POLICE -> app.vela.ui.WazeAlertsPrefs.policeWarnOn.value
-            app.vela.core.data.WazeAlertCategory.ACCIDENT -> app.vela.ui.WazeAlertsPrefs.accidentsWarnOn.value
-            app.vela.core.data.WazeAlertCategory.HAZARD -> app.vela.ui.WazeAlertsPrefs.hazardsWarnOn.value
-            app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> true
-            app.vela.core.data.WazeAlertCategory.JAM -> app.vela.ui.WazeAlertsPrefs.jamsOn.value
+        val isCam = alert?.isCamera() == true || alert?.subtype?.uppercase(java.util.Locale.US)?.contains("SPEED") == true
+        val shouldWarn = when {
+            isCam -> app.vela.ui.SpeedCamWarn.on.value || app.vela.ui.WazeAlertsPrefs.policeWarnOn.value
+            cat == app.vela.core.data.WazeAlertCategory.POLICE -> app.vela.ui.WazeAlertsPrefs.policeWarnOn.value
+            cat == app.vela.core.data.WazeAlertCategory.ACCIDENT -> app.vela.ui.WazeAlertsPrefs.accidentsWarnOn.value
+            cat == app.vela.core.data.WazeAlertCategory.HAZARD -> app.vela.ui.WazeAlertsPrefs.hazardsWarnOn.value
+            cat == app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> true
+            cat == app.vela.core.data.WazeAlertCategory.JAM -> app.vela.ui.WazeAlertsPrefs.jamsOn.value
             else -> false
         }
         if (!shouldWarn) return
         val sub = alert?.subtype?.uppercase(java.util.Locale.US) ?: ""
-        val msg = when (cat) {
-            app.vela.core.data.WazeAlertCategory.ACCIDENT -> appContext.getString(R.string.nav_accident_ahead)
-            app.vela.core.data.WazeAlertCategory.HAZARD -> when {
+        val msg = when {
+            isCam -> appContext.getString(R.string.nav_speed_camera_ahead)
+            cat == app.vela.core.data.WazeAlertCategory.ACCIDENT -> appContext.getString(R.string.nav_accident_ahead)
+            cat == app.vela.core.data.WazeAlertCategory.HAZARD -> when {
                 "CONSTRUCTION" in sub || "WORKS" in sub -> appContext.getString(R.string.nav_construction_ahead)
                 else -> appContext.getString(R.string.nav_hazard_ahead)
             }
-            app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.nav_closure_ahead)
-            app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.nav_jam_ahead)
+            cat == app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.nav_closure_ahead)
+            cat == app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.nav_jam_ahead)
             else -> appContext.getString(R.string.nav_police_ahead)
         }
         android.util.Log.i("VelaWazePolice", "warning $cat ${i + 1} of ${routePoliceMeters.size}")

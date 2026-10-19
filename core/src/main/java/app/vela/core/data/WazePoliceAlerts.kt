@@ -56,6 +56,11 @@ data class WazePoliceAlert(
     val pubMillis: Long = 0L,
 ) {
     fun category(): WazeAlertCategory = WazeAlertCategory.fromType(type)
+    fun isCamera(): Boolean {
+        val t = type.uppercase(Locale.US)
+        val s = subtype?.uppercase(Locale.US) ?: ""
+        return "CAMERA" in t || "SPEED_CAM" in t || "CAMERA" in s
+    }
     fun isExpired(nowMs: Long = System.currentTimeMillis()): Boolean = WazePoliceAlerts.isExpired(this, nowMs)
 }
 
@@ -64,6 +69,21 @@ typealias WazeAlert = WazePoliceAlert
 @Serializable
 private data class WazeGeoRssResponse(
     val alerts: List<WazeRawAlert> = emptyList(),
+    val jams: List<WazeRawJam> = emptyList(),
+)
+
+@Serializable
+private data class WazeRawJam(
+    val id: String? = null,
+    val uuid: String? = null,
+    val street: String? = null,
+    val city: String? = null,
+    val line: List<WazePoint> = emptyList(),
+    val level: Int = 0,
+    val length: Int = 0,
+    val speedKMH: Double = 0.0,
+    val pubMillis: Long = 0L,
+    val updateMillis: Long = 0L,
 )
 
 @Serializable
@@ -205,7 +225,7 @@ object WazePoliceAlerts {
         if (!trimmed.startsWith("{")) return emptyList()
         val parsed = runCatching { json.decodeFromString<WazeGeoRssResponse>(trimmed) }.getOrNull() ?: return emptyList()
         val now = System.currentTimeMillis()
-        return parsed.alerts.mapNotNull { a ->
+        val alertList = parsed.alerts.mapNotNull { a ->
             val rawType = a.type ?: return@mapNotNull null
             val cat = WazeAlertCategory.fromType(rawType)
             if (allowedCategories != null && cat !in allowedCategories) return@mapNotNull null
@@ -228,6 +248,35 @@ object WazePoliceAlerts {
             if (alert.isExpired(now)) return@mapNotNull null
             alert
         }
+
+        val jamList = if (allowedCategories == null || WazeAlertCategory.JAM in allowedCategories) {
+            parsed.jams.mapNotNull { j ->
+                val pt = j.line.getOrNull(j.line.size / 2) ?: j.line.firstOrNull() ?: return@mapNotNull null
+                val lat = pt.y ?: return@mapNotNull null
+                val lng = pt.x ?: return@mapNotNull null
+                val jamId = j.uuid ?: j.id ?: String.format(Locale.US, "jam_%.5f,%.5f", lat, lng)
+                val pub = when {
+                    j.pubMillis > 0L -> j.pubMillis
+                    j.updateMillis > 0L -> j.updateMillis
+                    else -> now
+                }
+                val alert = WazePoliceAlert(
+                    id = jamId,
+                    loc = LatLng(lat, lng),
+                    type = "JAM",
+                    subtype = if (j.level > 0) "JAM_LEVEL_${j.level}" else null,
+                    street = j.street,
+                    city = j.city,
+                    reliability = j.level,
+                    confidence = j.level,
+                    pubMillis = pub,
+                )
+                if (alert.isExpired(now)) return@mapNotNull null
+                alert
+            }
+        } else emptyList()
+
+        return alertList + jamList
     }
 
     /**
