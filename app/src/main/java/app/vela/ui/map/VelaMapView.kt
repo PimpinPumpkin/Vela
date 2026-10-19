@@ -2039,8 +2039,11 @@ fun VelaMapView(
         openHiddenIds = hiddenOpenPlaceIds
         styleRef?.let { runCatching { applyOpenPlacesHidden(it) } }
     }
-    LaunchedEffect(placesOverlays, styleRef, darkTheme, poiIconScale, poiLabelScale) {
+    // Settings > Places > Place names: every icon and name step below moves out by this many zooms.
+    val namesSooner = app.vela.ui.MapPoiPrefs.namesSooner.intValue
+    LaunchedEffect(placesOverlays, styleRef, darkTheme, poiIconScale, poiLabelScale, namesSooner) {
         val style = styleRef ?: return@LaunchedEffect
+        fun z(at: Float) = at - namesSooner
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
         // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
         openHiddenIds = hiddenOpenPlaceIds
@@ -2215,13 +2218,13 @@ fun VelaMapView(
                             Expression.step(
                                 Expression.zoom(),
                                 icon,
-                                Expression.stop(13f, topOr("crank", 2, 6.0, icon)),
-                                Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
+                                Expression.stop(z(13f), topOr("crank", 2, 6.0, icon)),
+                                Expression.stop(z(15f), topOr("rank", 1, 5.0, icon)),
                                 // Prominence escapes tightened 2026-09-16 (4.0 -> 5.0 at z16, 3.0 -> 4.5 at
                                 // z17): a Manhattan 400 m cell holds 3,000+ places and any shop with a
                                 // website scores about 4, so the old escape drew hundreds per block.
-                                Expression.stop(16f, topOr("rank", rankZ16, promZ16, icon)),
-                                Expression.stop(17f, topOr("rank", rankZ17, promZ17, icon)),
+                                Expression.stop(z(16f), topOr("rank", rankZ16, promZ16, icon)),
+                                Expression.stop(z(17f), topOr("rank", rankZ17, promZ17, icon)),
                                 // FULL-FAT ICON BUDGET at street zoom (user 2026-09-16: "have a
                                 // limit to the full fat POIs period if too many are on screen...
                                 // minimizing to little circle dots is an alternative if we are too
@@ -2231,11 +2234,11 @@ fun VelaMapView(
                                 // from 19.5. A place below the cut still draws as a dot (the dots
                                 // tier is unfiltered from z17), which is the "see more later when
                                 // we zoom in" behavior rather than a place disappearing.
-                                Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
-                                Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
-                                Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
+                                Expression.stop(z(17.5f), unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
+                                Expression.stop(z(18.5f), unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
+                                Expression.stop(z(19.5f), unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
                                 // Right on top of a building its offices get their pins too.
-                                Expression.stop(GENERIC_ICON_ZOOM, blockBudget(iconCapMax, 4.5, icon)),
+                                Expression.stop(z(GENERIC_ICON_ZOOM), blockBudget(iconCapMax, 4.5, icon)),
                             ),
                         ),
                         // Scaled like every other icon layer. Without this the open places layer
@@ -2266,10 +2269,10 @@ fun VelaMapView(
                             Expression.step(
                                 Expression.zoom(),
                                 name,
-                                Expression.stop(13f, topOr("crank", 2, 6.0, name)),
-                                Expression.stop(15f, topOr("rank", 1, 5.0, name)),
-                                Expression.stop(16f, topOr("rank", rankZ16, promZ16, name)),
-                                Expression.stop(17f, topOr("rank", rankZ17, promZ17, name)),
+                                Expression.stop(z(13f), topOr("crank", 2, 6.0, name)),
+                                Expression.stop(z(15f), topOr("rank", 1, 5.0, name)),
+                                Expression.stop(z(16f), topOr("rank", rankZ16, promZ16, name)),
+                                Expression.stop(z(17f), topOr("rank", rankZ17, promZ17, name)),
                                 // Labels stay THINNED at max zoom (2026-09-16). Icons come in for
                                 // everything from 17.5 (the stop below), but labeling every one of
                                 // them is what costs: each label is glyph layout plus a collision
@@ -2282,10 +2285,10 @@ fun VelaMapView(
                                 // A label only where its ICON draws (the same budget and generic
                                 // rule), then the label cap on top: a name floating with no icon
                                 // read as broken (Midtown, 2026-09-16).
-                                Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name))))),
-                                Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
-                                Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
-                                Expression.stop(GENERIC_ICON_ZOOM, blockBudget(iconCapMax, 4.5, name)),
+                                Expression.stop(z(17.5f), unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name))))),
+                                Expression.stop(z(18.5f), unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(z(19.5f), unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(z(GENERIC_ICON_ZOOM), blockBudget(iconCapMax, 4.5, name)),
                             ),
                         ),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -2603,6 +2606,11 @@ fun VelaMapView(
     // (re)load and whenever the Settings value changes. Low-density screens (car head units)
     // render the fixed-px bitmaps physically huge - a 0.7x here is the fix that doesn't touch
     // phones (their default stays 1.0).
+    // The ambient layer is made once per style with the setting it had then; a change re-sets its names.
+    LaunchedEffect(styleRef, namesSooner) {
+        val st = styleRef ?: return@LaunchedEffect
+        runCatching { st.getLayer(AMBIENT_LAYER)?.setProperties(PropertyFactory.textField(ambientLabelField(namesSooner))) }
+    }
     LaunchedEffect(styleRef, poiIconScale, poiLabelScale) {
         val st = styleRef ?: return@LaunchedEffect
         val sc = poiIconScale
@@ -6223,37 +6231,7 @@ private fun ensureLayers(style: Style, painted: Boolean) {
                 // dense areas - every label is collision work with four candidate anchors, and an
                 // EMPTY textField skips label placement entirely (a textOpacity of 0 would still
                 // place and collide it, paying the cost invisibly).
-                PropertyFactory.textField(
-                    Expression.step(
-                        Expression.zoom(),
-                        // below z15.5: only true landmarks (malls, big-box, the 1000-review anchors)
-                        Expression.switchCase(
-                            Expression.gte(Expression.get("prominence"), Expression.literal(6.0)),
-                            Expression.get("name"),
-                            Expression.literal(""),
-                        ),
-                        // z15.5+: established places join
-                        Expression.stop(
-                            15.5f,
-                            Expression.switchCase(
-                                Expression.gte(Expression.get("prominence"), Expression.literal(5.0)),
-                                Expression.get("name"),
-                                Expression.literal(""),
-                            ),
-                        ),
-                        // z16.5+ (street level): any real business; 0-review junk stays a bare dot
-                        Expression.stop(
-                            16.5f,
-                            Expression.switchCase(
-                                Expression.gte(Expression.get("prominence"), Expression.literal(3.0)),
-                                Expression.get("name"),
-                                Expression.literal(""),
-                            ),
-                        ),
-                        // z17.5+ (single-lot zoom): everything visible gets its name
-                        Expression.stop(17.5f, Expression.get("name")),
-                    ),
-                ),
+                PropertyFactory.textField(ambientLabelField(app.vela.ui.MapPoiPrefs.namesSooner.intValue)),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(
                     Expression.interpolate(
@@ -8611,6 +8589,27 @@ private const val GENERIC_HIDE_RANK = 120.0
 private const val GENERIC_REVEAL_ZOOM = 19.5f
 private const val GENERIC_ICON_ZOOM = 20.3f
 private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
+
+/** The Google ambient layer's names by zoom x prominence, every step moved out by [sooner] zooms
+ *  (Settings > Places > Place names). */
+private fun ambientLabelField(sooner: Int): Expression {
+    fun from(prom: Double) = Expression.switchCase(
+        Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
+        Expression.get("name"),
+        Expression.literal(""),
+    )
+    return Expression.step(
+        Expression.zoom(),
+        // below z15.5: only true landmarks (malls, big-box, the 1000-review anchors)
+        from(6.0),
+        // z15.5+: established places join
+        Expression.stop(15.5f - sooner, from(5.0)),
+        // z16.5+ (street level): any real business; 0-review junk stays a bare dot
+        Expression.stop(16.5f - sooner, from(3.0)),
+        // z17.5+ (single-lot zoom): everything visible gets its name
+        Expression.stop(17.5f - sooner, Expression.get("name")),
+    )
+}
 
 private fun widenStreets(style: StyleLayers) {
     val scale = roadWidthScale()

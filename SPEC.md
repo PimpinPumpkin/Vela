@@ -2820,6 +2820,10 @@ Density is decided by rank, not by collision. The named numbers are calibration 
   or a landmark gets a name: a label is glyph layout plus a collision pass over four anchors.
 - Everything below the cut draws as a category-colored dot. Dots thin by opacity steps, because
   a filter cannot read zoom: none below z15, `rank` <= 6 at z15, <= 15 at z16, all from z17.
+- Settings > Places > "Place names" (`MapPoiPrefs.namesSooner`, pref `map_poi_names_sooner`:
+  Default 0, More 1, Most 2) moves every icon and label step in this table, and the ambient
+  label steps (5.4), out by that many zooms. The dot steps and the overlap zooms stay. The tiles
+  cap what can draw: a z15 tile holds only places baked for z15 (5.2, Ranks and minzoom).
 - Icon overlap is allowed from z18 on the open layer and z17 on the ambient layer. Below those,
   Google's extras lose collision to the open icons.
 - Route preview: the basemap tiers, the open layer, transit icons, stop badges and saved pins
@@ -2840,6 +2844,8 @@ sinks.
 
 - The on-screen set is capped by zoom, `ambientCapMin` (45) at z14 to `ambientCapMax` (140) at
   z17.5.
+- Labels (`ambientLabelField`): prominence >= 6.0 below z15.5, >= 5.0 from z15.5, >= 3.0 from
+  z16.5, every place from z17.5. "Place names" moves these steps out (5.3).
 - The collision sort key is `(10 - prominence) * 1000 + i`, never the list index: the streamed
   pool re-ranks as terms land, and an index key reshuffles placement on every partial upload.
 - Sticky ranking (`AmbientStability`): a settled view is painted several times with different

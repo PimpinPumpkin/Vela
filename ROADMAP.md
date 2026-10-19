@@ -430,6 +430,9 @@ off the list when it has been.
   route at 20 px in the phone's blue (user 2026-10-15, after Google's car screen side by side):
   seen on the desktop head unit at 1280 by 720 in a demo drive. Not seen: a real unit, or the
   landing and preview screens, which keep their zoom buttons.
+- Place names More and Most (#852, `MapPoiPrefs.namesSooner`): not seen on a phone. Check names
+  arriving a zoom or two sooner on Vela data, Google and Both, and frame rate with Most in a
+  dense city on a release build (`scripts/map-fps.sh`).
 
 ### Open from the October 2026 audit
 

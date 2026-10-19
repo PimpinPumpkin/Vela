@@ -234,6 +234,11 @@ z18.5, and a place in the default or health group must be in the top `openGeneri
 of its block or reach `openGenericMinProminence` (4.0), else it is a dot until
 `GENERIC_ICON_ZOOM` (20.3). This keeps a tower's office tenants from each taking a pin.
 
+Settings > Places > "Place names" moves every icon and label step above out by one zoom
+(More) or two (Most), and the Google layer's label steps below with them. The dots keep
+their steps. The tiles still bound it: a place baked for z16 is not in a z15 tile, so Most
+at z15 can only name what that tile holds.
+
 Dots: none below z15, `rank <= 6` at z15, `rank <= 15` at z16, all from z17. From z17 one kind
 is not drawn at all until `GENERIC_REVEAL_ZOOM` (19.5): a generic place as above that ranks
 past `openGenericHideRank` (120) in its 400 m cell. That clears the office dots from a dense
@@ -272,7 +277,8 @@ tier, so in another language the order is by reviews alone and each place scores
 lower.
 
 Labels are tiered. Below z15.5 only prominence 6.0 or more is named, from z15.5 it takes 5.0,
-from z16.5 it takes 3.0, and from z17.5 everything is named. An unnamed symbol skips label
+from z16.5 it takes 3.0, and from z17.5 everything is named. "Place names" moves these steps
+out by one or two zooms, as on the Vela data layer. An unnamed symbol skips label
 placement, which is most of the layer's cost. The layer keeps the top of the ranking, up to
 `ambientCapMin` (45) places at z14 and `ambientCapMax` (140) at z17.5.
 

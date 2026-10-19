@@ -188,6 +188,34 @@ internal fun PlacesOnMapGroup() {
             }
             Hint(stringResource(R.string.settings_poi_icon_size_hint))
         }
+        GroupDivider()
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                stringResource(R.string.settings_place_names),
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                modifier = Modifier.settingsAnchor(stringResource(R.string.settings_place_names)).padding(top = 4.dp),
+            )
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                val namesFocus = remember { List(3) { FocusRequester() } }
+                listOf(
+                    R.string.settings_poi_size_default to 0,
+                    R.string.settings_place_names_more to 1,
+                    R.string.settings_place_names_most to app.vela.ui.MapPoiPrefs.NAMES_SOONER_MAX,
+                ).forEachIndexed { i, (label, value) ->
+                    FilterChip(
+                        selected = app.vela.ui.MapPoiPrefs.namesSooner.intValue == value,
+                        onClick = { app.vela.ui.MapPoiPrefs.setNamesSooner(context, value) },
+                        label = { Text(stringResource(label)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                            .dpadRowSibling(namesFocus, i),
+                    )
+                }
+            }
+            Hint(stringResource(R.string.settings_place_names_hint))
+        }
         }
 }
 

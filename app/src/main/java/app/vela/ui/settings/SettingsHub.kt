@@ -333,6 +333,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_show_civic to SettingsSection.PLACES,
     R.string.settings_show_transit_stops to SettingsSection.PLACES,
     R.string.settings_poi_icon_size to SettingsSection.PLACES,
+    R.string.settings_place_names to SettingsSection.PLACES,
     R.string.settings_transit_stops_bus to SettingsSection.PLACES,
     R.string.settings_transit_stops_metro to SettingsSection.PLACES,
     R.string.settings_transit_stops_train to SettingsSection.PLACES,

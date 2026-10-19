@@ -2,6 +2,7 @@ package app.vela.ui
 
 import android.content.Context
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 
 /**
@@ -19,12 +20,16 @@ import androidx.compose.runtime.mutableStateOf
  *   business" tier; off = the ambient layer shows businesses only.
  * - [iconScale]: multiplies the POI icon/label sizes on the map. Exists for low-density screens
  *   (a 1024x600 car head unit renders the fixed-px bitmaps physically huge); phones stay at 1.0.
+ * - [namesSooner]: how many zoom levels earlier place icons and names come in (0, 1 or 2).
  */
 object MapPoiPrefs {
     val showPois = mutableStateOf(true)
     val showTransit = mutableStateOf(true)
     val showCivic = mutableStateOf(true)
     val iconScale = mutableFloatStateOf(1.0f)
+    /** Zoom levels by which every place layer's icon and name steps move out (issue #852). 0 is the
+     *  default ladder; [NAMES_SOONER_MAX] draws at z15 what the default draws at z17. */
+    val namesSooner = mutableIntStateOf(0)
     /** Where the businesses on the browse map come from, one of [SOURCE_OPEN] (the Overture places
      *  layer where a region file covers the view, Google only on tap, works offline), [SOURCE_GOOGLE]
      *  (the ambient fan-out on every pan, nothing offline) or [SOURCE_BOTH] (the open layer draws the
@@ -59,6 +64,7 @@ object MapPoiPrefs {
         showTransit.value = p.getBoolean(KEY_TRANSIT, true)
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
+        namesSooner.intValue = p.getInt(KEY_NAMES_SOONER, 0).coerceIn(0, NAMES_SOONER_MAX)
         explicitSource = p.getString(KEY_PLACES_SOURCE, null)
         placesSource.value = explicitSource ?: remoteDefault
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
@@ -129,16 +135,23 @@ object MapPoiPrefs {
         prefs(context).edit().putFloat(KEY_SCALE, value).apply()
     }
 
+    fun setNamesSooner(context: Context, value: Int) {
+        namesSooner.intValue = value.coerceIn(0, NAMES_SOONER_MAX)
+        prefs(context).edit().putInt(KEY_NAMES_SOONER, namesSooner.intValue).apply()
+    }
+
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_POIS = "map_show_pois"
     private const val KEY_TRANSIT = "map_show_transit_stops"
     private const val KEY_CIVIC = "map_show_civic_pois"
     private const val KEY_SCALE = "map_poi_icon_scale"
+    private const val KEY_NAMES_SOONER = "map_poi_names_sooner"
     private const val KEY_PLACES_SOURCE = "map_places_source"
     private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
     private const val KEY_LOOKUP_TAPPED = "map_places_google_lookup"
     private const val KEY_NAV_TAP_PLACES = "map_places_nav_tap"
     private const val KEY_NAV_TAP_FORCED_POIS = "map_places_nav_tap_forced_pois"
+    const val NAMES_SOONER_MAX = 2
     const val SOURCE_OPEN = "open"
     const val SOURCE_GOOGLE = "google"
     const val SOURCE_BOTH = "both"
