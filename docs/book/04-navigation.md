@@ -519,7 +519,8 @@ Two switches in Settings > Diagnostics make every nav screen testable at a desk:
   each step at the pace the route expects, slower through turns and bends, pulling away at the
   start and braking at the end, so the voice has the time it has on a real drive. Add a stop or
   edit the stops during it and the car follows the new route. End stops it. Left to run, it
-  stops on the arrival card as a real drive does.
+  stops on the arrival card as a real drive does. With a start picked in the chooser, the
+  simulated drive begins there; a real drive re-plans from where the car is first.
 
 A simulated drive and a replayed trip never reroute or recheck (`NavSession.replayMode`). Both
 switches reach the car screens too. Turn both off before a real drive.

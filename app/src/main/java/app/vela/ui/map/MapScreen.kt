@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -273,6 +274,50 @@ internal fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
     // 0.56 of the width: with the cutout's margin taken off, that is the 47% Google's panel covers.
     return (w * 0.56f).dp.coerceIn(SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX)
 
+}
+
+/**
+ * The OpenStreetMap credit in the map's bottom-left corner (issue #302), [start] and [bottom] in
+ * from it. The basemap is OSM data and the ODbL asks for a visible credit wherever the map is
+ * shown, so it stays up in every map state, browse and nav alike. The short form is deliberate:
+ * the OSMF attribution guidelines accept "\u00a9 OpenStreetMap contributors" and "\u00a9 OpenStreetMap"
+ * alike, and require that the credit make the ODbL findable, which the tap-through to
+ * openstreetmap.org/copyright does. Do not shorten it further. MapLibre's own button is off (it
+ * covered the scale bar and read as a control).
+ *
+ * It fades out while the speaker's three voice choices are slid open: that row runs across the
+ * same strip and was drawn under the credit (issue #840). The row closes on its own in seconds.
+ * Its own composable because MapScreen is at the verifier's limit.
+ */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.OsmCredit(
+    darkTheme: Boolean,
+    start: androidx.compose.ui.unit.Dp,
+    bottom: androidx.compose.ui.unit.Dp,
+    movingFree: Boolean,
+) {
+    val context = LocalContext.current
+    val shown by androidx.compose.animation.core.animateFloatAsState(
+        if (app.vela.ui.nav.VoiceSlideOutOpen.value) 0f else 1f,
+        label = "osmCredit",
+    )
+    Text(
+        stringResource(R.string.map_osm_attribution),
+        style = MaterialTheme.typography.labelSmall,
+        color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .navigationBarsPadding()
+            .padding(start = start, bottom = bottom + speedBoxLift(movingFree))
+            .alpha(shown)
+            .dpadHighlight(RoundedCornerShape(6.dp))
+            .clickable {
+                runCatching {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.openstreetmap.org/copyright")))
+                }
+            }
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+    )
 }
 
 @Composable
@@ -2455,9 +2500,8 @@ fun MapScreen(
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,
             // so it no longer earns a spot on the map.)
-            // Scale bar, bottom-left just past the attribution ⓘ. Hidden only while ACTUALLY
-            // free-driving (moving, speed box on screen) - `!driveFollowing` alone hid it on the
-            // whole browse map, since follow is armed by default (regression, 0.4.542..wave).
+            // Scale bar (below, ScaleBarReader): bottom-left over the credit, raised over the
+            // free-drive speed box while that shows (speedBoxLift).
             // Required Esri attribution while the imagery is on - bottom center, clear of the
             // scale bar and FABs, the year centered on its own line under the credit.
             if (app.vela.ui.SatelliteLayer.on.value) {
@@ -2503,51 +2547,20 @@ fun MapScreen(
             // down level with the locate FAB, user 2026-07-14) - the follow gate alone missed a
             // moving-but-panned map, where both used to want the same spot.
             // The landscape panel owns the bottom-left corner - the bar would draw on top of it.
-            // OpenStreetMap attribution (issue #302): the basemap is OSM data and the ODbL asks
-            // for a visible credit wherever the map is shown, so this stays up in every map
-            // state, browse and nav alike. The short form is deliberate: the OSMF attribution
-            // guidelines accept "© OpenStreetMap contributors" and "© OpenStreetMap" alike, and
-            // require that the credit make the ODbL findable - which the tap-through to
-            // openstreetmap.org/copyright below does. Do not shorten it further.
-            // MapLibre's own ⓘ button is off (it covered the
-            // scale bar and read as a control). Bottom-left under the scale bar, lifted over
-            // the nav bar and the minimized results bar, into the map strip in landscape.
-            // Tapping it opens the OSM copyright page. Satellite keeps its own centered credit.
+            // OpenStreetMap attribution (issue #302, [OsmCredit] has the rules): bottom-left under
+            // the scale bar, lifted over the nav bar and the minimized results bar, into the map
+            // strip in landscape. Satellite keeps its own centered credit.
             run {
-                val osmUri = "https://www.openstreetmap.org/copyright"
                 val navLift = if (state.navigating) with(LocalDensity.current) { navBarHeightPx.toDp() } + 6.dp else 0.dp
-                // The free-drive speed box takes the same low corner, and the credit was touching
-                // it (user 2026-09-18). The scale bar already yields the spot; this has to as
-                // well, and it may not simply hide, because the ODbL wants the credit visible in
-                // every map state. SPEED_BOX_LIFT_DP clears the box's own height and margin.
-                val speedLift = if (!state.navigating && movingFree) SPEED_BOX_LIFT_DP else 0.dp
-                Text(
-                    stringResource(R.string.map_osm_attribution),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .navigationBarsPadding()
-                        .padding(start = if (sidePanelUp) sidePanelWidthDp + 8.dp else 8.dp, bottom = 2.dp + chromeLift + navLift + speedLift)
-                        .dpadHighlight(RoundedCornerShape(6.dp))
-                        .clickable {
-                            runCatching {
-                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(osmUri)))
-                            }
-                        }
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                OsmCredit(
+                    darkTheme,
+                    start = if (sidePanelUp) sidePanelWidthDp + 8.dp else 8.dp,
+                    bottom = 2.dp + chromeLift + navLift,
+                    movingFree = movingFree,
                 )
             }
-            if (!(driveFollowing && speedOverlayArmed) && !movingFree && !sidePanelUp) {
-                ScaleBarReader(
-                    state = metersPerPixelState,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .navigationBarsPadding()
-                        // 30 dp, not 16: the OSM credit owns the strip under the bar now.
-                        .padding(start = 46.dp, bottom = 30.dp + chromeLift),
-                )
-            }
+            // Never hidden for the speed box: it rides above it with the credit (issue #848).
+            if (!sidePanelUp) ScaleBarReader(metersPerPixelState, movingFree, chromeLift)
         }
             // Outside the FAB-chrome block on purpose: the Your-lists button in the search bar is
             // reachable while the search overlay is open, and that block is not composed then,
@@ -3667,7 +3680,7 @@ private fun ResultPlaceCard(
             }
         }
                     // Google-style service checks ("✓ Dine-in · ✓ Takeout · ✓ Delivery")
-                    // under the hours, from the About fetch. Same source as the sheet's chips.
+                    // under the hours, from the About fetch.
                     val checks = remember(place.id, place.about) { app.vela.ui.place.attributeHighlights(place.about).take(3) }
                     if (checks.isNotEmpty()) {
                         // One line, cut with an ellipsis: three long ones ran off the card.
@@ -4563,7 +4576,9 @@ private fun BoxScope.NavTurnBanner(
         else app.vela.core.voice.SpokenScript.forDisplay(s, navUiLang, state.roadNameLatin)
     ManeuverBanner(
         offRoute = state.nav.offRoute,
-        text = navRomanize(if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText),
+        // The road inside the text is abbreviated the way the pill does it (issue #837); the
+        // voice keeps the full words from `maneuverText`.
+        text = navRomanize(app.vela.core.util.RoadNameShort.inText(if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText, shown?.road)),
         // The headline distance is the APPROACH to the shown maneuver. A maneuver's own
         // distanceMeters is the travel AFTER it (Route.kt convention) — showing it here
         // put the leg-after on the previewed step's headline ("3.1 mi — Turn right onto
@@ -4579,7 +4594,7 @@ private fun BoxScope.NavTurnBanner(
         ref = shown?.ref,
         laneHint = shown?.laneHint,
         lanes = shown?.lanes.orEmpty(),
-        nextText = next?.instruction?.let { navRomanize(it) },
+        nextText = next?.instruction?.let { navRomanize(app.vela.core.util.RoadNameShort.inText(it, next.road)) },
         nextType = next?.type,
         nextRoundabout = next?.roundabout,
         nextRef = next?.ref,
@@ -5076,9 +5091,12 @@ private fun SearchEntryContent(
                         // A swipe toward the start drops it from history (issue #748); the ⋮ stays
                         // as the key path.
                         // Toward the end opens the row's menu, where Add to list is (issue #772).
+                        // Painted in the page's own color: the theme's surface is gray on the
+                        // AMOLED theme and white on the light one, and the rows read as cards.
                         SwipeActionRow(
                             onDelete = { onRemoveRecentPlace(entry.place.id) }, deleteLabel = stringResource(R.string.recent_remove),
                             onEdit = { menuOpen = true }, editLabel = stringResource(R.string.place_save_to_list), editIcon = SymOutlined.BookmarkBorder,
+                            background = MaterialTheme.colorScheme.background,
                         ) {
                             SuggestionRow(
                                 icon = Sym.Place,
@@ -5106,7 +5124,7 @@ private fun SearchEntryContent(
                     }
                     is RecentQuery -> {
                         var menuOpen by remember(entry.query) { mutableStateOf(false) }
-                        SwipeActionRow(onDelete = { onRemoveRecent(entry.query) }, deleteLabel = stringResource(R.string.recent_remove)) {
+                        SwipeActionRow(onDelete = { onRemoveRecent(entry.query) }, deleteLabel = stringResource(R.string.recent_remove), background = MaterialTheme.colorScheme.background) {
                             SuggestionRow(
                                 icon = Sym.History,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -6771,11 +6789,11 @@ private val navBarRightPx = androidx.compose.runtime.mutableIntStateOf(0)
 /** The top of the nav button column, in window px: the compass sits on it, as the column's first button. */
 internal val navFabTopPx = androidx.compose.runtime.mutableIntStateOf(0)
 
-/** The road name in the floating pill: street words shortened once the name is long, the text
- *  shrunk to 80 percent before it is cut with an ellipsis. */
+/** The road name in the floating pill: street words shortened as a sign does it (issue #837),
+ *  the text shrunk to 80 percent before it is cut with an ellipsis. */
 @Composable
 private fun RoadPillText(name: String) {
-    val text = remember(name) { if (name.length > ROAD_PILL_SHORTEN_AT) app.vela.core.util.RoadNameShort.shorten(name) else name }
+    val text = remember(name) { app.vela.core.util.RoadNameShort.shorten(name) }
     val scale = remember(text) { androidx.compose.runtime.mutableFloatStateOf(1f) }
     val style = MaterialTheme.typography.titleMedium
     // Its height (the tallest at this density and font scale) is what the drive camera leaves
@@ -6797,7 +6815,6 @@ private fun RoadPillText(name: String) {
             .padding(horizontal = 14.dp, vertical = 6.dp),
     )
 }
-private const val ROAD_PILL_SHORTEN_AT = 16
 
 @Composable
 private fun SpeedWidget(
@@ -6894,16 +6911,36 @@ private fun SpeedWidget(
 }
 
 /** Reads scale-bar state from an isolated [MutableState] so per-frame scale changes
- *  recompose only the scale bar, not the entire [MapScreen]. */
+ *  recompose only the scale bar, not the entire [MapScreen]. Bottom-left, 30 dp up (the OSM
+ *  credit owns the strip under it), and above the free-drive speed box while that is drawn
+ *  ([speedBoxLift]). */
 @Composable
-private fun ScaleBarReader(
+private fun androidx.compose.foundation.layout.BoxScope.ScaleBarReader(
     state: MutableState<Double>,
-    modifier: Modifier = Modifier,
+    movingFree: Boolean,
+    chromeLift: androidx.compose.ui.unit.Dp,
 ) {
     // Drawn on the map, so it follows the MAP's theme (Settings > Appearance > Map), read here
     // rather than in MapScreen, which has no bytecode to spare (see PipNavOverlay).
-    ScaleBar(metersPerPixel = state.value, dark = app.vela.ui.theme.isMapDark(), modifier = modifier)
+    ScaleBar(
+        metersPerPixel = state.value,
+        dark = app.vela.ui.theme.isMapDark(),
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .navigationBarsPadding()
+            .padding(start = 46.dp, bottom = 30.dp + chromeLift + speedBoxLift(movingFree)),
+    )
 }
+
+/**
+ * How far the map credit and the scale bar rise to clear the free-drive speed box, which takes
+ * their low corner while it is drawn: [SPEED_BOX_LIFT_DP] while the box shows (moving without a
+ * route, Show speed on), else nothing. The scale used to hide instead, and for two minutes after
+ * any motion while the map followed the dot, whether the box was on or off, which left an
+ * empty corner (issue #848). The credit may never hide: the ODbL wants it in every map state.
+ */
+private fun speedBoxLift(movingFree: Boolean): androidx.compose.ui.unit.Dp =
+    if (movingFree && app.vela.ui.SpeedDisplay.on.value) SPEED_BOX_LIFT_DP else 0.dp
 
 /**
  * Route and nav chrome in landscape is a LEFT column (issue #297): width-capped to the side panel

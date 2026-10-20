@@ -35,6 +35,8 @@ class DiagExporter @Inject constructor(
             append("{\"app\":\"Vela\",\"schema\":1,\"exportedAt\":").append(System.currentTimeMillis())
             append(",\"version\":").append(quote("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"))
             append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} — ${Build.MANUFACTURER} ${Build.MODEL}"))
+            // Touchscreen, keypad-first and the D-pad devices behind it (SettingsDump.input).
+            append(",\"input\":").append(quote(SettingsDump.input(context)))
             append(",\"note\":").append(quote(DiagScrub.note(redact)))
             // Requests to Google per day and purpose (counts only, no URLs), Settings > Privacy.
             append(",\"googleRequests\":").append(GoogleUsageStore.exportJson())

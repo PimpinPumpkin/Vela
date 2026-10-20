@@ -234,10 +234,18 @@ class OfflineAddressStore @Inject constructor(
     fun geocode(query: String, near: LatLng?, limit: Int = 20): List<Place> {
         val m = HOUSE_STREET.find(query.trim())
         val houseNo = m?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
-        val streetPart = (m?.groupValues?.get(2) ?: query).trim()
-        val words = normalizeStreet(streetPart).split(' ').filter { it.length >= 2 }
-        if (words.isEmpty()) return emptyList()
+        val streetPart = (m?.groupValues?.get(2) ?: query).substringBefore(',').trim()
+        // Every word has to be in the street's name, so a town or a half-typed last word matched
+        // nothing. The words are tried as typed, then with the last ones dropped (streetWordTries).
+        for (words in streetWordTries(streetPart)) {
+            val hits = geocodeWords(houseNo, words, streetPart, near, limit)
+            if (hits.isNotEmpty()) return hits
+        }
+        return emptyList()
+    }
 
+    /** [geocode]'s four layers for one set of street [words]. */
+    private fun geocodeWords(houseNo: String?, words: List<String>, streetPart: String, near: LatLng?, limit: Int): List<Place> {
         // (1) exact house number on the street.
         if (houseNo != null) {
             val exact = run(houseNo, words, near, limit)
@@ -299,16 +307,19 @@ class OfflineAddressStore @Inject constructor(
     // int. Matching street names first (a ~60k-row scan) keeps a whole-state query fast — the big
     // tables are then hit through their sid/hn indexes, never LIKE-scanned.
 
-    /** sids (+ display name) of pack street names matching all [words]. */
-    private fun packSids(pack: SQLiteDatabase, words: List<String>): Map<Int, String> {
+    /** sids (+ display name) of pack street names matching all [words]. A sid is a 63-bit hash of
+     *  the normalized name (scripts/poipack_build.py `stable_sid`, since 2026-07-07), so it is
+     *  read as a Long: read as an Int it was cut to its low 32 bits, matched no address or
+     *  centerline row, and every forward lookup in a downloaded region came back empty. */
+    private fun packSids(pack: SQLiteDatabase, words: List<String>): Map<Long, String> {
         val clauses = words.map { "street_norm LIKE ?" }
         val args = words.map { "%$it%" }
-        val out = LinkedHashMap<Int, String>()
+        val out = LinkedHashMap<Long, String>()
         runCatching {
             pack.rawQuery(
                 "SELECT sid,street FROM streetname WHERE ${clauses.joinToString(" AND ")} LIMIT 200",
                 args.toTypedArray(),
-            ).use { c -> while (c.moveToNext()) out[c.getInt(0)] = c.getString(1) }
+            ).use { c -> while (c.moveToNext()) out[c.getLong(0)] = c.getString(1) }
         }
         return out
     }
@@ -326,7 +337,7 @@ class OfflineAddressStore @Inject constructor(
             }
             pack.rawQuery(sql, if (houseNo != null) arrayOf(houseNo) else null).use { c ->
                 while (c.moveToNext()) {
-                    rows.add(AddrRow(c.getString(0), sids[c.getInt(1)], c.getString(2), c.getDouble(3), c.getDouble(4)))
+                    rows.add(AddrRow(c.getString(0), sids[c.getLong(1)], c.getString(2), c.getDouble(3), c.getDouble(4)))
                 }
             }
         }
@@ -343,7 +354,7 @@ class OfflineAddressStore @Inject constructor(
                 null,
             ).use { c ->
                 while (c.moveToNext()) {
-                    rows.add(StreetPt(sids[c.getInt(0)] ?: return@use, c.getDouble(1), c.getDouble(2)))
+                    rows.add(StreetPt(sids[c.getLong(0)] ?: return@use, c.getDouble(1), c.getDouble(2)))
                 }
             }
         }
@@ -459,6 +470,35 @@ class OfflineAddressStore @Inject constructor(
         private const val REV_BOX_DEG = 0.0016 // ~180 m lat/lng box for the reverse-geocode nearest scan
         private const val REV_ADDR_M = 60.0    // accept a mapped house this close as the POI's address
         private const val REV_STREET_M = 150.0 // else fall back to a street name this close
+
+        /**
+         * The street words [geocode] tries for [streetPart] (the text after the house number and
+         * before any comma), in order: all of them, then with the last word dropped, and so on,
+         * while a word that is neither a direction nor a street type is left. "Covell Bl" tries
+         * "covell bl", then "covell"; "Main Street Davis CA" ends at "main"; "North Street" is
+         * tried as typed and no shorter, since "north" alone names no street. Words under two
+         * letters are dropped, as before.
+         */
+        internal fun streetWordTries(streetPart: String): List<List<String>> {
+            val words = normalizeStreet(streetPart.substringBefore(',')).split(' ').filter { it.length >= 2 }
+            if (words.isEmpty()) return emptyList()
+            // The words as typed always go first: "North Street" is a street.
+            val out = arrayListOf(words)
+            var n = words.size - 1
+            while (n > 0) {
+                val w = words.subList(0, n)
+                if (w.none { it !in DIRECTION_WORDS && it !in FULL_STREET_TYPES }) break
+                out += w.toList()
+                n--
+            }
+            return out
+        }
+
+        private val DIRECTION_WORDS = setOf("north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest")
+        private val FULL_STREET_TYPES = setOf(
+            "street", "avenue", "boulevard", "drive", "road", "lane", "court", "place", "square",
+            "terrace", "circle", "highway", "parkway", "trail", "way", "loop", "route",
+        )
 
         // A query is address-like if it starts with a house number or names a street type. Used to decide
         // whether to run the geocoder alongside the POI search (so "coffee" doesn't hit the address table).

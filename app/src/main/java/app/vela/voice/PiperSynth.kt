@@ -379,7 +379,7 @@ class PiperSynth @Inject constructor(
         // stand by, and a sink waking from standby (a Bluetooth head unit above all) dropped the
         // first syllables when the words were written the instant the stream started. The lead-in
         // plays while the sink wakes, so the words begin once it is listening.
-        val lead = FloatArray(sampleRate * LEAD_IN_MS / 1000)
+        val lead = FloatArray((sampleRate * app.vela.core.voice.SpeechLeadIn.ms(context) / 1000).toInt())
         at.write(lead, 0, lead.size, AudioTrack.WRITE_BLOCKING); written += lead.size
         while (true) {
             if (aborted()) { runCatching { at.pause(); at.flush() }; return written }
@@ -523,7 +523,5 @@ class PiperSynth @Inject constructor(
         const val INTER_PROMPT_GAP_MS = 350L
         /** Silence fed to the stream while the next phrase is still rendering. */
         const val STARVE_MS = 60
-        /** Silence written before a line's first word, see [play]. */
-        const val LEAD_IN_MS = 300
     }
 }

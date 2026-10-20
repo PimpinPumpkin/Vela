@@ -158,7 +158,7 @@ nearest route point flickers on a parked car's GPS jitter and swings the view.
 Zoom follows speed whenever the view follows a moving car, from 17.2 at rest to 15.0 at 110 km/h
 and up, on a straight line, eased. With the phone's "Zoom to the next turn" on, a drive also zooms
 out until the next maneuver sits 40 px under the top of the visible area, no farther than the
-phone's floor, turns the camera toward it up to 45 degrees as the phone does (chapter 11), and
+phone's floor, turns the camera toward it up to 90 degrees as the phone does (chapter 11), and
 lies flatter that far out. A fix that reports no speed takes the distance since the last
 fix over the time between them, because a fix read as parked held the zoom at its closest, and
 one with no bearing takes the direction from the last fix once it has moved a few meters. A pan,
@@ -217,8 +217,9 @@ The route preview passes the avoid settings to the directions call and waits up 
 first fix. The template refuses a list without a Go action, so an empty result shows a plain
 message. Go names a provisional route first, the way the phone does.
 
-The drive's button row holds four actions, the template's cap: mute, pause or resume, search along
-the route, and end. A faster-route offer that saves a minute or more takes the mute slot. The
+The drive's button row holds two actions, the voice and end. The voice button steps on, alerts
+only and off, as the phone's speaker button does, and its glyph is the mode: a speaker, a bell, a
+crossed-out speaker. A faster-route offer that saves a minute or more takes the voice slot. The
 buttons are icons, because the host draws a titled action as a text pill across the map. End is
 red and carries the primary flag. The host throws on a background color on any other action.
 
@@ -258,7 +259,9 @@ session's place list is not allowed on that display and crashes the app there.
   counter-clockwise otherwise. The exit number comes from the router, with a floor of 1 because
   the car API throws on a roundabout with none.
 - Past `CONTINUE_FAR_M` (1,500 m) the card reads "Continue on" and the road you are on, with a
-  straight arrow, and the turn is the "then" step. Closer in, the turn leads.
+  straight arrow, and the turn is the "then" step. Closer in, the turn leads. Road names on the
+  card are abbreviated as on the phone's pill ("Russell Rd NE"); "Road numbers first" applies here
+  too.
 - Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
   lanes.
 - Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to

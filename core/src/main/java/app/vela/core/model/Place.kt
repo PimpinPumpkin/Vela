@@ -133,11 +133,15 @@ data class PlaceDetails(
     /** The business's own posts ("From the owner" updates), newest first. */
     val updates: List<PlaceUpdate> = emptyList(),
     val featuredReview: String? = null,
+    /** The Street View the place's own search reply names (pano id, heading), when the first
+     *  reply had none: the thumbnail above the card reads it (`Place.svPanoId`). */
+    val svPanoId: String? = null,
+    val svYawDeg: Double? = null,
 ) {
     val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null &&
         rating == null && reviewCount == null && hours.isEmpty() && address == null && phone == null &&
         website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
-        about.isEmpty() && featuredReview == null && updates.isEmpty()
+        about.isEmpty() && featuredReview == null && updates.isEmpty() && svPanoId == null
 }
 
 /** One business post: its text, when it was posted, an optional link and photo. */

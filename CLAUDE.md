@@ -281,7 +281,7 @@ signed file the app fetches at launch (SPEC 11).
   Android UI types stay out of `:core`.
 - `core/data/MapDataSource` is the one seam. `GoogleMapsDataSource` implements it.
 - `:app` cannot be read from `:core`. A setting that must act inside `:core` is mirrored into
-  a flag there (`NoGoogle`, `LowRamMode`, `LowDataMode`, `CategoryFilter`, `RoutingPrefs`).
+  a flag there (`NoGoogle`, `LowRamMode`, `LowDataMode`, `CategoryFilter`, `RoutingPrefs`, `RoadNumbers`).
 - Settings are process-wide holders (`ui/AppTheme`, `ui/Units`, `ui/PlaceContent.kt` and the
   like), started in `VelaApp`. A holder that is not started there reads its default on every
   launch.

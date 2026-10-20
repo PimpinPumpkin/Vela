@@ -386,6 +386,11 @@ reads four shapes: `maps?saddr=..&daddr=..` (the last of several places is the d
 a search and takes the top hit. The link's travel mode applies to that trip only. A start within
 150 m of you, "Current Location" or a blank start means from here.
 
+A Street View link opens Vela's own Street View at that spot, on the panorama the link names
+when it names one, facing the way the link looks. Google's web map, its documented
+`map_action=pano` link and the old `layer=c` link are all read. With Google off it opens as a
+pin.
+
 A link with more than two places opens as a trip with stops, up to ten. That covers a trip
 planned in Google Maps on a desktop: copy the address bar, and either open the link on the
 phone (from a calendar event, a note, a message) or paste it into Vela's search box. The

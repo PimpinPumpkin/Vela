@@ -95,4 +95,20 @@ class TakeoutCsvTest {
         // A feature id that matches nothing vetoes the name: a same-name hit is another place.
         assertNull(TakeoutCsv.pick(listOf(coop), emptyList(), "zz", "Davis Food Co-op"))
     }
+
+    private fun lp(id: String, fid: String? = null) = app.vela.core.model.ListPlace(id = id, name = id, lat = 38.54, lng = -121.74, featureId = fid)
+
+    @Test fun `a running import keeps the earlier places it has not found again`() {
+        val before = listOf(lp("a", "0x1:0xaa"), lp("b", "0x1:0xbb"), lp("imp:pin"), lp("c", "0x1:0xcc"))
+        val found = listOf(lp("b2", "0x2:0xBB"), lp("imp:pin"))
+        val saved = TakeoutCsv.partial(found, before)
+        assertEquals(listOf("b2", "imp:pin", "a", "c"), saved.map { it.id })
+        assertEquals(found, TakeoutCsv.partial(found, emptyList()))
+    }
+
+    @Test fun `earlier places are keyed by the stable half of their feature id`() {
+        val known = TakeoutCsv.keyed(listOf(lp("a", "0x1:0xAA"), lp("imp:pin")))
+        assertEquals(setOf("aa"), known.keys)
+        assertEquals("a", known.getValue(TakeoutCsv.featureKey("0x9:0xaa")!!).id)
+    }
 }

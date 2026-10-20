@@ -753,7 +753,7 @@ object RouteGeometry {
         val ref = s["ref"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val dest = s["destinations"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val exits = s["exits"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-        val road = name ?: ref
+        val road = app.vela.core.nav.instructionRoad(name, ref)
         // Per-lane turn guidance for the Google-style diagram: the maneuver's own intersection
         // (intersections[0]) carries the approach lanes — each lane's allowed arrows + whether it
         // serves this turn (`valid`). Absent on most steps (only turns/exits with mapped lanes).

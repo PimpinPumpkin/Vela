@@ -1621,6 +1621,9 @@ private fun VoiceSlideOut(
     onVoice: (muted: Boolean, alertsOnly: Boolean) -> Unit,
     close: () -> Unit,
 ) {
+    // The map credit fades while this row is out: the row runs across its strip (issue #840).
+    androidx.compose.runtime.SideEffect { VoiceSlideOutOpen.value = open }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { VoiceSlideOutOpen.value = false } }
     androidx.compose.animation.AnimatedVisibility(
         visible = open,
         enter = androidx.compose.animation.expandHorizontally(expandFrom = Alignment.End) +
@@ -1656,6 +1659,11 @@ private fun VoiceSlideOut(
         }
     }
 }
+
+/** Whether the speaker's three voice choices are slid out: the map's OpenStreetMap credit
+ *  (`OsmCredit` in MapScreen.kt during a drive, DrivingChrome's in driving mode) fades while they
+ *  are, since they run across its strip (#840). */
+internal val VoiceSlideOutOpen = androidx.compose.runtime.mutableStateOf(false)
 
 /** One voice choice in the slide-out: the glyph over its name, filled when it is the current mode. */
 @Composable

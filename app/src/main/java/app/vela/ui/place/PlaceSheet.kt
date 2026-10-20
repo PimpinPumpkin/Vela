@@ -882,34 +882,7 @@ fun PlaceSheet(
                             )
                         },
                 )
-                // Save + Share as compact header actions (preferred look). The name has weight(1f) and
-                // wraps to 2 lines if long, so these stay put without shoving it off.
-                // The STAR is the whole save/pin menu now (quick save, lists, note, home/work) —
-                // four circled buttons crowded the header, and the overflow's items were all
-                // save-family anyway (user 2026-07-10). D-pad-first via VelaMenu (docs/dpad.md).
-                Box {
-                    HeaderCircleButton(
-                        icon = if (marked) Sym.Bookmark else Sym.BookmarkBorder,
-                        contentDescription = if (marked) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
-                        tint = if (marked) MaterialTheme.colorScheme.primary else dim,
-                        bg = dim,
-                    ) { saveMenu = true }
-                    VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
-                        // A drawn or imported line/area: it can be deleted from its list here.
-                        if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_edit)) { saveMenu = false; app.vela.ui.ShapeActions.edit?.invoke() }
-                        if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_delete)) { saveMenu = false; app.vela.ui.ShapeActions.delete?.invoke() }
-                        item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
-                        if (!isParking && !isWazeAlert) {
-                            item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
-                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
-                            if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
-                            if (isSaved || inAnyList) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
-                        }
-                        item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
-                        item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
-                    }
-                }
-                ShareIconButton(place, dim)
+                // Only the X up here: Save and Share are pills in the action row (issue #830).
                 HeaderCircleButton(Sym.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
             }
 
@@ -1098,10 +1071,10 @@ fun PlaceSheet(
             }
             }
             }
-            // Quick-action pills FIRST — a highlighted Directions + short Call / Website, right under
-            // the identity block so Directions is reachable WITHOUT scrolling (Google's order). Save/
-            // Share live in the header; the actual phone number / website domain are tappable detail
-            // rows lower down (below the hours), out of the way of the primary action.
+            // Quick-action pills FIRST: a highlighted Directions, then Start, Call, Save, Share and
+            // Website, right under the identity block so Directions is reachable WITHOUT scrolling
+            // (Google's order). The actual phone number / website domain are tappable detail rows
+            // lower down (below the hours), out of the way of the primary action.
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1131,19 +1104,34 @@ fun PlaceSheet(
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 }
-                // Save sits in the action row Google-style (outlined pill), alongside the save/read
-                // affordances in the header menu.
-                // Filled for a place in any list too. On one, the pill opens the list chooser, where
-                // the ticks are: a quick-save toggle would change nothing the pill shows (issue #792).
-                if (!isParking && !isWazeAlert) {
-                    val savePillClick: () -> Unit = if (inAnyList) ({ showListChooser = true }) else onToggleSave
-                    ActionPill(
-                        if (marked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                        stringResource(if (marked) R.string.place_saved else R.string.place_save),
-                        onClick = savePillClick,
-                    )
+                // Save and Share are pills here and nowhere else, Google's layout (issue #830,
+                // after #814 did the same for the route picker). Save opens the save menu: the
+                // quick save, the lists, the note, the icon, the name, Home and Work; a drawn shape
+                // adds edit and delete. Filled for a place in any list too. D-pad-first via
+                // VelaMenu (docs/dpad.md).
+                if (!isWazeAlert) {
+                    Box {
+                        ActionPill(
+                            if (marked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            stringResource(if (marked) R.string.place_saved else R.string.place_save),
+                        ) { saveMenu = true }
+                        VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
+                            // A drawn or imported line/area: it can be deleted from its list here.
+                            if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_edit)) { saveMenu = false; app.vela.ui.ShapeActions.edit?.invoke() }
+                            if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_delete)) { saveMenu = false; app.vela.ui.ShapeActions.delete?.invoke() }
+                            item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
+                            if (!isParking) {
+                                item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
+                                if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
+                                if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
+                                if (isSaved || inAnyList) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
+                            }
+                            item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
+                            item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
+                        }
+                    }
                 }
-
+                SharePill(place)
                 if (!app.vela.ui.HideExternalLinks.on.value) {
                     place.website?.let { site ->
                         ActionPill(Sym.Language, stringResource(R.string.place_website)) {
@@ -1382,34 +1370,10 @@ fun PlaceSheet(
                 }
             }
 
-            // Attribute highlights (Google-style chips) — the most useful items from About
-            // (service options, offerings, accessibility…), surfaced on the overview for
-            // quick scanning instead of being buried in the tab. Filled by the detail fetch.
-            val highlights = remember(place.about) { attributeHighlights(place.about).distinctBy { it.lowercase().trim() }.take(5) }
-            if (highlights.isNotEmpty()) {
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    highlights.forEach { h ->
-                        Text(
-                            h,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = ink,
-                            maxLines = 1,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(dim.copy(alpha = 0.12f))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                        )
-                    }
-                }
-            }
-
             // Popular times sit BELOW the action buttons (Google's order). Lazily
             // filled by the WebView detail fetch, so it pops in a beat after open.
             place.popularTimes?.let {
-                Spacer(Modifier.height(10.dp)) // clear air between the attribute chips and the chart
+                Spacer(Modifier.height(10.dp)) // clear air between the rows above and the chart
                 PopularTimesSection(it, ink, dim)
             }
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
@@ -2553,12 +2517,16 @@ fun TransitNavSheet(
             if (remaining.isNotEmpty()) {
                 Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
                 Spacer(Modifier.height(6.dp))
+                // The list takes all the room above the buttons and scrolls inside it. It used to
+                // share that room with a spacer, and a short list left the buttons floating on the
+                // one card whose list was short (issue #831).
                 Column(
-                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
+            } else {
+                Spacer(Modifier.weight(1f))
             }
-            Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_back))
@@ -3856,7 +3824,9 @@ private fun PlaceTabs(
                 "Overview" -> {
                     overview()
                     if ("Reviews" in tabs && place.rating != null) {
-                        ReviewSummaryCard(place, ink, dim, onOpen = { onSelect("Reviews") })
+                        // Its Show reviews is the tap the reviews wait for (ReviewsOnTap), so the
+                        // tab opens loading them instead of asking a second time (issue #845).
+                        ReviewSummaryCard(place, ink, dim, onOpen = { onShowReviews?.invoke(); onSelect("Reviews") })
                     }
                     // The newest post only; the Updates tab has them all (Google's layout).
                     if (place.updates.isNotEmpty()) {
@@ -4438,10 +4408,10 @@ private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = f
     }
 }
 
-/** Share action: opens a small menu — a Google Maps link, a keyless geo: pin
+/** The Share pill: opens a small menu with a Google Maps link, a keyless geo: pin
  *  (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
 @Composable
-private fun ShareIconButton(place: Place, tint: Color) {
+private fun SharePill(place: Place) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     val lat = place.location.lat
@@ -4521,7 +4491,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
     }
 
     Box {
-        HeaderCircleButton(Sym.Share, stringResource(R.string.place_share), tint, tint) { open = true }
+        ActionPill(Sym.Share, stringResource(R.string.place_share)) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_open_web)) { openWeb() }
             item(stringResource(R.string.place_open_other_app)) { openInOtherApp() }
@@ -4623,8 +4593,10 @@ private fun hourLabel(h: Int): String = when {
     else -> "${h - 12}p"
 }
 
-/** The handful of attribute items worth showing as overview chips — the categories users
- *  scan for first, a few items each, deduped and capped. (Full set stays in the About tab.) */
+/** The handful of attribute items worth a line on the place card under the hours (the
+ *  categories users scan for first), deduped and capped. The sheet shows no such row: its
+ *  overview carries the About sections in full, and a chip row above them showed the same
+ *  items twice (issue #832). */
 internal fun attributeHighlights(about: List<AboutSection>): List<String> {
     if (about.isEmpty()) return emptyList()
     val priority = listOf(
@@ -4657,7 +4629,8 @@ private fun upcomingHoliday(hours: List<String>, today: java.time.LocalDate): Ho
     return hours.mapNotNull { line ->
         val dot = line.lastIndexOf(" · ")
         if (dot < 0) return@mapNotNull null
-        val label = line.substring(dot + 3).trim().ifBlank { return@mapNotNull null }
+        // The parser collapses a repeated label; this catches hours kept from before it did (#838).
+        val label = app.vela.core.data.google.parse.SearchParser.dedupeHolidayLabel(line.substring(dot + 3).trim()).ifBlank { return@mapNotNull null }
         val head = line.substring(0, dot)
         val colon = head.indexOf(':')
         if (colon < 0) return@mapNotNull null

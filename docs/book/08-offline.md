@@ -196,6 +196,14 @@ and [chapter 6](06-search.md) has the matching and ranking rules:
 - For text that looks like an address, `OfflineAddressStore.geocode`, in four layers: the
   exact house number on the street, a position interpolated between the nearest mapped
   numbers, any mapped house on the street, then the nearest point on the street's centerline.
+  Every street word has to be in the street's name, so the words are tried as typed and then
+  with the last ones dropped (`streetWordTries`), and anything after a comma is left out. A
+  town, a state, a ZIP or a half-typed last word ("Covell Bl") still finds the street.
+- A pack's street id (`sid`) is a 63-bit hash of the normalized name, so the app reads it as a
+  Long. Read as an Int from 2026-07-07 to 2026-10-18, it was cut to its low 32 bits, matched
+  no address or centerline row, and every typed address in a downloaded region found nothing;
+  the list was then the places whose text matched, often bus stops named after nearby corners.
+  The reverse lookup joins the tables in SQL and was never affected.
 
 A pack is one SQLite file per region. Street names are stored once and the millions of
 address and centerline rows point at them by number, so a whole-state pack answers as fast as

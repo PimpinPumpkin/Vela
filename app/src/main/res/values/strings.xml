@@ -530,6 +530,8 @@
     <string name="settings_trip_share_first">First remaining point: %1$s, %2$s. Check it is not somewhere that identifies you.</string>
     <string name="settings_trip_share_trimmed">Share trimmed</string>
     <string name="settings_trip_share_full">Share full trace</string>
+    <string name="settings_trip_save_phone">Save to phone</string>
+    <string name="settings_trip_saved">Saved the full trace</string>
     <string name="settings_trip_scrub_short">This drive is shorter than the trim distance, so there is no middle left to share. Try a smaller one.</string>
     <string name="settings_trip_delete">Delete trip</string>
     <string name="settings_trip_delete_selected">Delete (%1$d)</string>
@@ -1549,6 +1551,8 @@
     <string name="settings_zoom_to_turn_floor_region">Region</string>
     <string name="settings_zoom_to_turn_floor_far">Far</string>
     <string name="settings_zoom_to_turn_floor_hint">How far out the map may zoom to keep the next turn on screen. Each step reaches about four times as far; the far ones trade street names for the stretch ahead.</string>
+    <string name="settings_road_numbers">Road numbers first</string>
+    <string name="settings_road_numbers_hint">A road with a route number goes by the number, not a name such as Pearl Harbor Memorial Expressway. Under the arrow, on the car screen and in the directions of the next route.</string>
     <string name="settings_puck_shape">Navigation icon</string>
     <string name="settings_puck_shape_arrow">Arrow</string>
     <string name="settings_puck_shape_car">Car</string>

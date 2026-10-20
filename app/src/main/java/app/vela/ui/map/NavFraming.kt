@@ -239,8 +239,11 @@ internal object NavFraming {
             ?: app.vela.ui.AppTune.local("turnZoomMin")
             ?: app.vela.core.config.CalibrationStore.latest.tune("turnZoomMin", ZOOM_TURN_MIN)
 
-    /** The camera turns toward the maneuver it frames by at most this, off the heading (#781). */
-    const val TURN_YAW_MAX_DEG = 45.0
+    /** The camera turns toward the maneuver it frames by at most this, off the heading (#781): a
+     *  turn anywhere ahead of the car can be brought to the top of the frame. A cap of 45 left a
+     *  turn farther round than that off the side of the screen on a curving road; past 90 the
+     *  maneuver is behind the car and the frame would show the road driven, not the road ahead. */
+    const val TURN_YAW_MAX_DEG = 90.0
 
     /** The yaw comes in over this many zoom levels of the turn's zoom under the speed's: none
      *  while the speed zoom governs (the turn is near), all of it a level out. */

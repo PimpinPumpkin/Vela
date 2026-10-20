@@ -122,6 +122,22 @@ object TakeoutCsv {
         return near.filter { it.name.equals(title, ignoreCase = true) }.singleOrNull()
     }
 
+    /** A list's earlier places by [featureKey], for a listing row that can skip its lookup: a
+     *  re-import of the same file, or one Android stopped part way (issue #761). */
+    fun keyed(previous: List<app.vela.core.model.ListPlace>): Map<String, app.vela.core.model.ListPlace> =
+        previous.mapNotNull { p -> featureKey(p.featureId)?.let { it to p } }.toMap()
+
+    /**
+     * What an import still running saves: [found] in file order, then every place of the list's
+     * [previous] import not found again yet, so an import stopped part way never shrinks the list
+     * and holds no place twice. The finished import saves [found] alone.
+     */
+    fun partial(found: List<app.vela.core.model.ListPlace>, previous: List<app.vela.core.model.ListPlace>): List<app.vela.core.model.ListPlace> {
+        val ids = found.mapTo(HashSet()) { it.id }
+        val keys = found.mapNotNullTo(HashSet()) { featureKey(it.featureId) }
+        return found + previous.filter { p -> p.id !in ids && featureKey(p.featureId).let { it == null || it !in keys } }
+    }
+
     private val FID = Regex("""!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)""")
     private val PIN = Regex("""!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)""")
     private val AT = Regex("""@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)""")

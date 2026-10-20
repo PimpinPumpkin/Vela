@@ -85,12 +85,28 @@ internal fun isFreewayName(name: String): Boolean {
 }
 
 /**
+ * Settings > Navigation > Road numbers first (issue #836). On, a road that has a route number goes
+ * by the number everywhere it is named: the pill under the arrow, the car's "Continue on", and
+ * the turn directions built after the switch moved. Off, [roadLabel]'s own rule decides. Set by
+ * the app's holder of the same name; a `:core` flag because `:core` never reaches up into the app.
+ */
+object RoadNumbers {
+    @Volatile var preferred: Boolean = false
+}
+
+/** The road a turn direction names ("Turn right onto X"): the name, or the number where there is
+ *  no name; the number wherever there is one with [RoadNumbers] on. */
+fun instructionRoad(name: String?, ref: String?): String? =
+    if (RoadNumbers.preferred && !ref.isNullOrBlank()) roadLabel(name, ref) else name ?: ref
+
+/**
  * What to call the road being driven, from its [name] and its route number [ref]. The name when
  * the road has one of its own: that is what its street signs say, and what Google's road label
  * shows on a numbered road through a town. The number on an Interstate or a named freeway, which
  * are signed by number, and where the name only says the number again. A number is followed by
  * [heading], the compass letter a sign gave for this stretch ([signedHeading]), or by the one
- * the name itself ends in ("US Highway 50 East"). A name is never given a letter.
+ * the name itself ends in ("US Highway 50 East"). A name is never given a letter. With
+ * [RoadNumbers] on, the number whenever there is one.
  */
 fun roadLabel(name: String?, ref: String?, heading: String? = null): String? {
     val n = name?.trim()?.takeIf { it.isNotEmpty() }
@@ -103,7 +119,7 @@ fun roadLabel(name: String?, ref: String?, heading: String? = null): String? {
     val (route, own) = splitHeading(given)
     val r = route ?: return n
     val h = own ?: heading
-    if (n == null || n == given || parseRouteRef(r).type == ShieldType.INTERSTATE || isFreewayName(n)) return numbered(r, h)
+    if (n == null || n == given || RoadNumbers.preferred || parseRouteRef(r).type == ShieldType.INTERSTATE || isFreewayName(n)) return numbered(r, h)
     return if (restatesRef(n, r)) numbered(r, h ?: CARDINALS[n.substringAfterLast(' ').lowercase()]) else n
 }
 

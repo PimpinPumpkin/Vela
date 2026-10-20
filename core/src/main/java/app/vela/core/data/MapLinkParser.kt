@@ -21,8 +21,14 @@ data class MapLink(
     /** A place link's `!1s0x<cell>:0x<id>`, what a short share link's target carries instead of a
      *  coordinate. Its first half is an S2 cell near the place ([MapLinkParser.featureCell]). */
     val featureId: String? = null,
+    /** A Street View link (issue #847): open the panorama at [lat], [lng], not a pin there. */
+    val streetView: Boolean = false,
+    /** The direction a Street View link looks, in degrees from north, when it says. */
+    val heading: Double? = null,
+    /** The panorama a Street View link names, when it names one. */
+    val panoId: String? = null,
 ) {
-    val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null)
+    val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null) || (streetView && panoId != null)
 
     /** What the link calls this place, for showing it before it is looked up: its name or
      *  address as the link spells it, else its coordinate. */
@@ -45,6 +51,10 @@ data class MapLink(
  *      &origin=A&travelmode=walking`, `google.com/maps/dir/A/B/@...`, `google.navigation:q=B&mode=w`.
  *      A link with more than two places (`/dir/A/B/C/D`, `daddr=B+to:C`, `waypoints=B|C`) keeps
  *      the ones between as [MapLink.stops].
+ *  - Street View (issue #847), each opening the panorama with [MapLink.streetView]:
+ *      `google.com/maps/@38.5,-121.7,3a,75y,90h,90t/data=!3m6!1e1!3m4!1s<pano>!2e0`,
+ *      `google.com/maps/@?api=1&map_action=pano&viewpoint=38.5,-121.7&heading=90&pano=<pano>`,
+ *      `maps.google.com/maps?layer=c&cbll=38.5,-121.7&cbp=12,90,0,0,0&panoid=<pano>`.
  *
  * Pure Kotlin (no `android.net.Uri`) so it's unit-testable in `:core`.
  */
@@ -94,7 +104,7 @@ object MapLinkParser {
         val link = when {
             raw.startsWith("google.navigation:", ignoreCase = true) -> parseNavigation(raw)
             raw.startsWith("geo:", ignoreCase = true) -> parseGeo(raw)
-            "/maps" in raw || "maps.google" in raw || "maps.app.goo.gl" in raw -> parseDirections(raw) ?: parseMaps(raw)
+            "/maps" in raw || "maps.google" in raw || "maps.app.goo.gl" in raw -> parseStreetView(raw) ?: parseDirections(raw) ?: parseMaps(raw)
             else -> null
         }
         return link?.takeIf { it.hasTarget }
@@ -264,6 +274,40 @@ object MapLinkParser {
         }
         return MapLink(lat = lat, lng = lng, zoom = zoom)
     }
+
+    /** The three shapes of a Street View link (see the class doc), or null for any other link. */
+    internal fun parseStreetView(raw: String): MapLink? {
+        // The web map's own: the @ segment's "3a" marks the photo view, "<n>h" its heading.
+        AT_PANO.find(raw)?.let { m ->
+            val heading = AT_HEADING.find(raw)?.groupValues?.get(1)?.toDoubleOrNull()
+            val pano = DATA_PANO.find(raw)?.groupValues?.get(1)
+            return MapLink(lat = m.groupValues[1].toDoubleOrNull(), lng = m.groupValues[2].toDoubleOrNull(), streetView = true, heading = heading, panoId = pano)
+        }
+        // The documented Maps URL: map_action=pano with a viewpoint, or a pano id alone.
+        if (queryParam(raw, "map_action")?.equals("pano", ignoreCase = true) == true) {
+            val at = queryParam(raw, "viewpoint")?.let { COORD.find(decode(it)) }
+            val pano = queryParam(raw, "pano")?.takeIf { it.isNotBlank() }
+            if (at == null && pano == null) return null
+            return MapLink(
+                lat = at?.groupValues?.get(1)?.toDoubleOrNull(), lng = at?.groupValues?.get(2)?.toDoubleOrNull(),
+                streetView = true, heading = queryParam(raw, "heading")?.toDoubleOrNull(), panoId = pano,
+            )
+        }
+        // The old one: layer=c with cbll=<lat>,<lng> and cbp=<n>,<heading>,...
+        if (queryParam(raw, "layer") == "c") {
+            val at = queryParam(raw, "cbll")?.let { COORD.find(decode(it)) } ?: return null
+            val heading = queryParam(raw, "cbp")?.let { decode(it).split(',').getOrNull(1)?.trim()?.toDoubleOrNull() }
+            return MapLink(
+                lat = at.groupValues[1].toDoubleOrNull(), lng = at.groupValues[2].toDoubleOrNull(),
+                streetView = true, heading = heading, panoId = queryParam(raw, "panoid")?.takeIf { it.isNotBlank() },
+            )
+        }
+        return null
+    }
+
+    private val AT_PANO = Regex("""@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+),3a,""")
+    private val AT_HEADING = Regex("""@-?\d{1,3}\.\d+,-?\d{1,3}\.\d+,3a,[^/]*?,(\d+(?:\.\d+)?)h""")
+    private val DATA_PANO = Regex("""!1s([A-Za-z0-9_-]{16,})!2e0""")
 
     private fun parseMaps(raw: String): MapLink {
         // A place link's `data=...!3d<lat>!4d<lng>` is the PLACE's own coordinate; the `@lat,lng`

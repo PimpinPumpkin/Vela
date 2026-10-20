@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -35,6 +38,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.vela.R
@@ -55,13 +60,18 @@ internal fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel, sheet: Sh
 
 /** Google's own Street View preview of the open place, above the place card's left corner (beside
  *  the panel in landscape); a tap opens the viewer. The search reply names the view (pano id and
- *  heading), so this is the image request and nothing else, and it follows the photo settings. */
+ *  heading), so this is the image request and nothing else, and it follows the photo settings.
+ *  When no picture loads by itself (no pano named, photos off or on tap, or the picture failed),
+ *  the same window shows the Street View figure and "360°" instead, asking for the tap, which
+ *  makes the lookup the card's Street View button makes (user 2026-10-18). Nothing is requested
+ *  until then. */
 @Composable
 private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetTop: State<Int>) {
     val place = state.selected ?: return
-    val pano = place.svPanoId ?: return
+    if (place.id.startsWith("shape:")) return // a drawn line or area has no one place to stand
     if (state.navigating || state.directionsOpen || state.transitNav != null || state.streetView != null || state.streetViewLoading) return
-    if (!app.vela.ui.LoadPhotos.on.value || app.vela.ui.PhotosOnTap.on.value || app.vela.ui.GoogleFree.on.value || state.offline) return
+    if (app.vela.ui.GoogleFree.on.value || state.offline) return
+    val pano = place.svPanoId?.takeIf { app.vela.ui.LoadPhotos.on.value && !app.vela.ui.PhotosOnTap.on.value }
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     val windowH = LocalView.current.height
@@ -69,16 +79,17 @@ private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetT
     val room by remember(windowH) { derivedStateOf { sheetTop.value > windowH * 0.35f } }
     if (!landscape && !room) return
     val url = remember(pano, place.svYawDeg) {
-        "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=$pano&cb_client=maps_sv.tactile.gps" +
-            "&w=408&h=240&yaw=${place.svYawDeg ?: 0.0}&pitch=0&thumbfov=100"
+        pano?.let {
+            "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=$it&cb_client=maps_sv.tactile.gps" +
+                "&w=408&h=240&yaw=${place.svYawDeg ?: 0.0}&pitch=0&thumbfov=100"
+        }
     }
-    // No picture (no signal, or Google refused it): no box either. The Street View button on the
-    // card is still the way in.
+    // No picture (Google refused it): the window stays, as the tap-to-open kind.
     // Per place, not per picture: two neighbors can share a pano, and the first one's refusal
-    // must not hide the second's box.
+    // must not turn the second's picture off.
     var failed by remember(place.id) { mutableStateOf(false) }
-    if (failed) return
     val shape = RoundedCornerShape(12.dp)
+    val label = stringResource(R.string.place_street_view)
     val panel = sidePanelWidth()
     Surface(
         shape = shape,
@@ -93,20 +104,29 @@ private fun BoxScope.StreetViewThumb(state: MapUiState, vm: MapViewModel, sheetT
             )
             .size(width = 96.dp, height = 64.dp)
             .dpadHighlight(shape)
-            .clickable { vm.openStreetView(place) },
+            .clickable(onClickLabel = label) { vm.openStreetView(place) },
     ) {
-        Box {
-            coil.compose.AsyncImage(
-                model = url,
-                contentDescription = stringResource(R.string.place_street_view),
-                contentScale = ContentScale.Crop,
-                onError = { failed = true },
-                modifier = Modifier.clip(shape).background(Color(0xFF3C4043)),
-            )
-            Icon(
-                Sym.Streetview, contentDescription = null, tint = Color.White,
-                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(18.dp).background(Color(0x99000000), CircleShape).padding(2.dp),
-            )
+        Box(Modifier.clip(shape).background(Color(0xFF3C4043))) {
+            if (url != null && !failed) {
+                coil.compose.AsyncImage(
+                    model = url,
+                    contentDescription = label,
+                    contentScale = ContentScale.Crop,
+                    onError = { failed = true },
+                )
+                Icon(
+                    Sym.Streetview, contentDescription = null, tint = Color.White,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(18.dp).background(Color(0x99000000), CircleShape).padding(2.dp),
+                )
+            } else {
+                Column(
+                    Modifier.align(Alignment.Center).semantics { contentDescription = label },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(Sym.Streetview, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+                    Text("360\u00b0", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                }
+            }
         }
     }
 }

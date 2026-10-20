@@ -74,12 +74,14 @@ object ManeuverMapper {
 
     private const val GLYPH_PX = 128
 
-    /** A car [Step] for the current maneuver: the spoken cue + the road name being entered. */
+    /** A car [Step] for the current maneuver: the spoken cue + the road name being entered, its
+     *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). */
     fun carStep(m: VelaManeuver): Step {
-        val cue: CharSequence = m.instruction.ifBlank { m.road?.takeIf { it.isNotBlank() } ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        val short = app.vela.core.util.RoadNameShort
+        val cue: CharSequence = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
         return Step.Builder(cue)
             .setManeuver(carManeuver(m))
-            .apply { (m.road ?: m.ref)?.takeIf { it.isNotBlank() }?.let { setRoad(it as CharSequence) } }
+            .apply { (m.road?.let(short::shorten) ?: m.ref)?.takeIf { it.isNotBlank() }?.let { setRoad(it as CharSequence) } }
             // Lane guidance (Google's arrow diagram) — both the Lane metadata and a rendered image.
             .apply {
                 runCatching {

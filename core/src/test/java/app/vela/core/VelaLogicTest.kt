@@ -1063,6 +1063,27 @@ class SearchParserHoursTest {
         assertEquals(emptyList<String>(), SearchParser.readHours(json("[[1,2,3],[4,5,6]]")))
     }
 
+    @Test // a live listing returned day[6][1] with the label repeated and joined by "/"
+    fun readHoursDedupesRepeatedHolidayLabel() {
+        val days = json(
+            """
+            [
+              ["Sunday",7,[2026,10,11],[["8 AM–7 PM",[[8],[19]]]],0,1],
+              ["Monday",1,[2026,10,12],[["7 AM–7 PM",[[7],[19]]]],0,1,["Thanksgiving/Thanksgiving might affect these hours","Thanksgiving/Thanksgiving",2]]
+            ]
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf("Sunday: 8 AM–7 PM", "Monday: 7 AM–7 PM · Thanksgiving"),
+            SearchParser.readHours(days),
+        )
+        // Case/space-insensitive repeats collapse; distinct multi-labels pass through.
+        assertEquals("Thanksgiving", SearchParser.dedupeHolidayLabel("Thanksgiving/Thanksgiving"))
+        assertEquals("thanksgiving", SearchParser.dedupeHolidayLabel("thanksgiving /  Thanksgiving "))
+        assertEquals("Christmas / Boxing Day", SearchParser.dedupeHolidayLabel("Christmas / Boxing Day"))
+        assertEquals("4th of July", SearchParser.dedupeHolidayLabel("4th of July"))
+    }
+
     /** Some places' formatted address is prefixed with the business name; the sheet already shows the
      *  name on its own line, so the parser strips a clean name prefix (only at a real word boundary). */
     @Test

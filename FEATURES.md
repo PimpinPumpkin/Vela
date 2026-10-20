@@ -62,7 +62,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   Google's in the US, the UK government's Fuel Finder prices (E10 and diesel) in the UK and
   Northern Ireland, in any app language and with Google on or off. The place page says how old a
   UK station's last report is.
-- Street View in the app: look around, walk between panoramas, view older captures.
+- Street View in the app: look around, walk between panoramas, view older captures. A window
+  above the place card shows the view, or a 360° button to open it when there is no picture.
 - "Show reviews" and "Load photos" turn those off. "Load reviews only when I tap" and "Load photos
   only when I tap" defer them.
 - "Wait for popular times" and "Load all photos and reviews" trade more Google requests for fuller
@@ -91,7 +92,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Search your contacts" suggests a contact's saved addresses. Off by default.
 - With a route planned or a drive running, search looks along the route.
 - Map links from other apps open in Vela. "Links from other apps" picks the place, directions or
-  navigation.
+  navigation. A Street View link opens straight into Street View.
 - Offline, search covers downloaded regions. With Google off, it uses open data.
 
 ## Routes
@@ -118,7 +119,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Navigation
 
 - A turn banner with arrow, distance, road name, highway shields, exit numbers and lanes. Swipe it
-  to look ahead.
+  to look ahead. Street words are abbreviated on screen ("Court St", "NE 8th St"); the voice says
+  them in full.
 - With a large display size or large text the turn card stays within a third of the screen, the
   arrow stays clear of the bottom bar, and the map zooms out to keep the road ahead in view.
 - "Zoom to the next turn" zooms the map out until the next turn sits just under the turn card,
@@ -127,7 +129,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   "Zoom out as far as" sets how far out it may go: a town, a region or far.
 - Spoken directions with street names and lanes. "Say street names" off shortens them.
 - Two turns a block apart are said together: "Turn right onto Elm Street, then turn left onto Oak
-  Avenue".
+  Avenue". When there is little time before the second turn, the street names are left out so
+  the line is not cut off.
 - A route that starts without some of its street names, because the naming services were slow,
   gets them during the drive, usually within 20 seconds.
 - "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits
@@ -150,6 +153,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   under Navigation.
 - "Current road name" goes above the bottom bar, under the arrow, inside the bar, or off. A
   freeway shows its number, with the compass direction when the signs give one ("I 80 E").
+- "Road numbers first" puts the number on every road that has one, on the road name, the car
+  screen and the directions of the next route, instead of a dedication name no sign shows.
 - Street-name callouts where cross streets meet your route, with your turn and exit highlighted.
 - The number of the road you are on, as a shield on the route line about every mile.
 - Pause holds the drive with no rerouting, voice or offers. "Pause button on the navigation bar"
@@ -215,7 +220,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Download an area" frames part of the map and saves its map, places, addresses and routing.
 - "Entire states & countries" is a catalog of whole regions to download. Large countries come
   in parts, and so do California (two) and Texas (four).
-- With no signal the map draws, places open, and search finds names, categories and typed addresses.
+- With no signal the map draws, places open, and search finds names, categories and typed addresses,
+  also with the town added or the last word half typed.
   A name is found with or without its accents: "cafe" finds "Café".
 - Offline routes cover driving, walking and cycling, with spoken turns, speed limits and avoid
   options, and are labeled offline.
@@ -250,7 +256,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 ## Saved places, lists and sharing
 
-- Save any place with the bookmark, and set Home and Work.
+- Save any place with the Save pill, which also sets Home and Work; Share sits beside it.
 - In the lists sheet, swipe a list toward the start to delete it or toward the end to edit it,
   drag its handle to reorder, and long press to select several. Swipes tick. A recent search row
   swipes away the same way, and Clear recents is a button beside the heading.
@@ -330,8 +336,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   map-only view with the speed badge.
 - The car map has the phone's parking lot, plaza, field and trail fills, and shows the traffic
   layer when it is on.
-- Buttons for mute and end over the map, plus recenter and overview; pause, zoom and the search
-  along the route stay on the phone.
+- Buttons for the voice and end over the map, plus recenter and overview; pause, zoom and the
+  search along the route stay on the phone. The voice button steps on, alerts only and off, like
+  the phone's.
+- Traffic lights and stop signs on the car map are the phone's glyphs, sized to the screen.
 - Camera, speeding and closing-soon alerts appear as car toasts.
 - The car's settings cover spoken directions, avoiding tolls, highways and ferries, and the
   traffic layer.
@@ -368,6 +376,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you
   choose.
+- A recorded trip can be saved to the phone as its full trace, in a folder you pick, besides
+  shared trimmed or whole.
 - "Redact places in exports" hides searches, destinations and place names.
 - After a crash, "Export crash report" shares the saved report.
 - "Simulate driving (demo)" and "Simulate my location (demo)" run the app without real GPS, on the

@@ -542,15 +542,38 @@ private fun TripShareDialog(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            // Still reachable, but it is the reach: this is the file that names your front door.
-            TextButton(onClick = {
-                val intent = vm.exportTripIntent(meta)
-                if (intent != null) runCatching { context.startActivity(intent) }
-                else android.widget.Toast.makeText(
-                    context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
-                ).show()
-                onClose()
-            }) { Text(stringResource(R.string.settings_trip_share_full)) }
+            // Saving keeps the full trace on this phone, in a folder the user picks through the
+            // system's own save dialog: nothing leaves the phone, so nothing is trimmed. It is how
+            // a trip gets onto a computer over USB without going through another app.
+            val saveScope = rememberCoroutineScope()
+            val saver = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv"),
+            ) { uri ->
+                if (uri == null) return@rememberLauncherForActivityResult
+                saveScope.launch {
+                    val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.saveTripTo(meta, uri) }
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(if (ok) R.string.settings_trip_saved else R.string.settings_trip_read_error),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                    onClose()
+                }
+            }
+            Row {
+                TextButton(onClick = { runCatching { saver.launch(vm.tripFullFileName(meta)) } }) {
+                    Text(stringResource(R.string.settings_trip_save_phone))
+                }
+                // Still reachable, but it is the reach: this is the file that names your front door.
+                TextButton(onClick = {
+                    val intent = vm.exportTripIntent(meta)
+                    if (intent != null) runCatching { context.startActivity(intent) }
+                    else android.widget.Toast.makeText(
+                        context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                    onClose()
+                }) { Text(stringResource(R.string.settings_trip_share_full)) }
+            }
         }
     }
 }

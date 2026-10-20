@@ -21,8 +21,9 @@ import kotlin.math.roundToInt
 
 /** The active-guidance car screen: renders [NavSession] state into a [NavigationTemplate]
  *  (route map surface + next-maneuver card + destination ETA). Voice already speaks from NavSession.
- *  The action strip is icon-only: mute/unmute (its slot goes to a titled "Faster -N min" offer when
- *  one is pending), pause/resume, along-route search, and a red end button that stops the session. */
+ *  The action strip is icon-only: the voice button, which steps on, alerts only and off (its slot
+ *  goes to a titled "Faster -N min" offer when one is pending), and a red end button that stops
+ *  the session. */
 class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
     Screen(carContext), DefaultLifecycleObserver {
 
@@ -109,7 +110,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val then = s.route?.maneuvers?.getOrNull(s.nav.stepIndex + 1) // "then …" junction preview
 
         // The road you are on: the leg's road, following its silent renames (the phone's pill rule).
-        val currentRoad = s.route?.maneuvers?.let { app.vela.core.nav.roadLabelAt(it, s.nav.stepIndex, s.nav.distanceToNextManeuver) }
+        val currentRoad = s.route?.maneuvers?.let { app.vela.core.nav.roadLabelAt(it, s.nav.stepIndex, s.nav.distanceToNextManeuver) }?.let(app.vela.core.util.RoadNameShort::shorten)
         val continueCue = currentRoad?.let { carContext.getString(app.vela.R.string.car_continue_on, it) }
         val info: androidx.car.app.navigation.model.NavigationTemplate.NavigationInfo =
             if (s.paused) androidx.car.app.navigation.model.MessageInfo.Builder(carContext.getString(app.vela.R.string.car_paused)).build()
@@ -185,11 +186,15 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             // ICONS, NOT TITLES (a real head unit, 2026-09-22): a titled action is drawn as a text
             // pill ("Mute", "Pause", "End" across the top of the map); every template nav app and
             // Google's own car UI use round icon buttons, and the icon says what the text said.
-            val muted = deps.voiceGuide.muted
+            // The glyph is the mode, and a tap steps On, Alerts only, Off as the phone's does (#842).
+            val voice = deps.voiceGuide
+            val glyph = when {
+                !voice.muted -> app.vela.R.drawable.ic_car_unmute
+                voice.alertsOnly -> app.vela.R.drawable.ic_car_alerts
+                else -> app.vela.R.drawable.ic_car_mute
+            }
             strip.addAction(
-                carAction(if (muted) app.vela.R.drawable.ic_car_mute else app.vela.R.drawable.ic_car_unmute) {
-                    app.vela.car.CarVoice.set(carContext, deps.voiceGuide, on = deps.voiceGuide.muted); invalidate()
-                },
+                carAction(glyph) { app.vela.car.CarVoice.step(carContext, voice); invalidate() },
             )
         }
         // Two buttons up here (user 2026-10-15, after a side-by-side with Google's car screen):

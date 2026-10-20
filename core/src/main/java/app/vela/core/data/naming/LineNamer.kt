@@ -170,7 +170,7 @@ object LineNamer {
             .map { RoadRename(it.first - a, it.second.name, it.second.ref) }
         val first = runName.firstOrNull { it != null }
         out += Maneuver(
-            ManeuverType.DEPART, RouteGeometry.osrmPhrase("depart", null, first?.name, null, null, null), s[0].pt,
+            ManeuverType.DEPART, RouteGeometry.osrmPhrase("depart", null, app.vela.core.nav.instructionRoad(first?.name, first?.ref), null, null, null), s[0].pt,
             ends[0] - starts[0], share(starts[0], ends[0]), road = first?.name, ref = first?.ref,
             renames = renamesIn(starts[0], ends[0]),
             instructionNoRoad = RouteGeometry.osrmPhrase("depart", null, null, null, null, null),
@@ -180,7 +180,7 @@ object LineNamer {
             val run = runName.getOrNull((e.i + w).coerceAtMost(s.lastIndex)) ?: if (e.osrm == "on ramp" || e.osrm == "fork") runAround(e.i, 1) else null
             out += Maneuver(
                 e.type,
-                RouteGeometry.osrmPhrase(e.osrm, e.mod, e.road, null, null, null),
+                RouteGeometry.osrmPhrase(e.osrm, e.mod, app.vela.core.nav.instructionRoad(e.road, run?.ref), null, null, null),
                 s[e.i].pt, b - a, share(a, b), road = e.road, ref = run?.ref,
                 renames = renamesIn(a, b),
                 instructionNoRoad = RouteGeometry.osrmPhrase(e.osrm, e.mod, null, null, null, null),

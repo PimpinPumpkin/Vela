@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -196,8 +197,13 @@ internal fun BoxScope.DrivingChrome(state: MapUiState, vm: MapViewModel) {
 
     // The map credit, which the browse map's button block draws and which yields to this chrome:
     // the ODbL wants it in every map state. Above the bar's middle: the speed box has the left
-    // corner, and the two sat on each other there.
+    // corner, and the two sat on each other there. It fades while the voice choices are slid out
+    // across it (issue #840), as the drive's own credit does.
     val osmUri = "https://www.openstreetmap.org/copyright"
+    val creditShown by androidx.compose.animation.core.animateFloatAsState(
+        if (VoiceSlideOutOpen.value) 0f else 1f,
+        label = "drivingCredit",
+    )
     Text(
         stringResource(R.string.map_osm_attribution),
         style = MaterialTheme.typography.labelSmall,
@@ -206,6 +212,7 @@ internal fun BoxScope.DrivingChrome(state: MapUiState, vm: MapViewModel) {
             .align(if (landscape) Alignment.BottomEnd else Alignment.BottomCenter)
             .navigationBarsPadding()
             .padding(end = if (landscape) NAV_FAB_EDGE_DP + 56.dp + 12.dp else 0.dp, bottom = if (landscape) 2.dp else 2.dp + with(density) { DrivingBar.heightPx.intValue.toDp() } + 6.dp)
+            .alpha(creditShown)
             .dpadHighlight(RoundedCornerShape(6.dp))
             .clickable {
                 runCatching {

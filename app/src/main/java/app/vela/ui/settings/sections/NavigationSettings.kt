@@ -143,6 +143,15 @@ internal fun NavigationSettingsScreen(
                 Hint(stringResource(R.string.settings_zoom_to_turn_floor_hint))
             }
         }
+        // Road numbers first (issue #836): a numbered road goes by its number on the pill, the car
+        // screen and the directions, instead of a dedication name no sign shows.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_road_numbers),
+            checked = app.vela.ui.RoadNumbers.on.value,
+            onCheckedChange = { app.vela.ui.RoadNumbers.set(context, it) },
+            hint = stringResource(R.string.settings_road_numbers_hint),
+        )
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_route_trail),

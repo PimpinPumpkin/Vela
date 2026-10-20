@@ -273,7 +273,7 @@ data class MapUiState(
     // survives the browse. A result pick adds a STOP to the trip (Google-style) instead of opening
     // the place's own sheet, and closing the results returns to the directions panel.
     val alongRouteDest: Place? = null,
-    val pickOnMap: MapPick? = null,          // "Choose on map" crosshair mode is active for this endpoint
+    val pickOnMap: MapPick? = null,          // "Choose on map" crosshair mode is active for this endpoint, as shown (swapped trips flip it)
     val areaPicking: Boolean = false,        // the offline area picker's frame is over the map (issue #609)
     val areaPick: MapViewModel.AreaPlan? = null, // its live estimate for the framed area
     val travelMode: TravelMode = TravelMode.DRIVE,
@@ -2488,7 +2488,10 @@ class MapViewModel @Inject constructor(
         caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }.getOrDefault(true)
 
-    private fun isOnline(): Boolean = app.vela.core.net.NetHealth.recentlyOnline() || systemOnline()
+    /** Test dial `debug.vela.tune.offline 1` (adb only) answers no, so the offline search and
+     *  geocoder can be run on a phone that is online, without touching its network settings. */
+    private fun isOnline(): Boolean = !app.vela.ui.AppTune.localOn("offline") &&
+        (app.vela.core.net.NetHealth.recentlyOnline() || systemOnline())
 
     /** What Android says about the network, nothing else. */
     private fun systemOnline(): Boolean = runCatching {
@@ -2689,6 +2692,8 @@ class MapViewModel @Inject constructor(
                             .map { p -> if (p.address.isNullOrBlank()) p.copy(address = a.address ?: a.name) else p }
                     }
                     val merged = (if (addrs.isNotEmpty()) atAddr + addrs + pois else pois + addrs).distinctBy { it.id }
+                    // Counts only, never the query: which source answered an offline search.
+                    android.util.Log.i("VelaOffline", "search: ${pois.size} places, ${addrs.size} addresses, ${atAddr.size} at the address")
                     val have = merged.isNotEmpty() ||
                         runCatching { offlinePoiStore.count() > 0 || addressStore.count() > 0 || addressStore.streetCount() > 0 }.getOrDefault(false)
                     merged to have
@@ -3028,6 +3033,7 @@ class MapViewModel @Inject constructor(
         // A trip still being looked up from an earlier link gives way to this one.
         linkTripJob?.cancel()
         clearLinkTrip()
+        if (link.streetView && openStreetViewLink(link)) return
         // The user's choice for links (LinkAction): a plain location link can open directions,
         // and either kind can start the drive once its route lands (the one-tap Start path, so
         // the precise-location and notification gates still apply).
@@ -3063,6 +3069,26 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(center = near, centerZoom = link.zoom) }
             }
         }
+    }
+
+    /**
+     * A Street View link (issue #847): the map moves to its point and the in-app viewer opens on
+     * the panorama it names, or on the nearest one, facing the link's heading. False when Street
+     * View is not offered (Google turned off) or the link has neither a point nor a panorama, so
+     * the caller opens it as a plain point instead.
+     */
+    private fun openStreetViewLink(link: MapLink): Boolean {
+        if (app.vela.ui.GoogleFree.on.value) return false
+        val at = link.lat?.let { la -> link.lng?.let { ln -> LatLng(la, ln) } }
+        val pano = link.panoId
+        if (at == null && pano == null) return false
+        diag.record("search", "link: street view${if (pano != null) " by pano" else ""}")
+        if (at != null) _state.update { it.copy(center = at, centerZoom = 18.0) }
+        val heading = link.heading?.let { ((it % 360.0) + 360.0) % 360.0 }
+        loadStreetView(faceHeading = heading, panoIdHint = pano, nearLocation = at) {
+            pano?.let { dataSource.streetViewByPano(it) } ?: at?.let { dataSource.streetView(it) }
+        }
+        return true
     }
 
     /** A place link carries the place's feature id: once the search by its name lands, the hit whose
@@ -3778,15 +3804,16 @@ class MapViewModel @Inject constructor(
             return
         }
         loadStreetView(faceToward = place.location, nearLocation = place.location) {
-            // Prefer a pano on the place's OWN street (a mid-block geocode can otherwise snap to the
-            // alley pano behind the building). For a business the street is in `address`; for a plain
-            // address result it's the `name` ("2005 5th Ave") and `address` is just the locality - so
-            // take whichever actually parses to a street.
-            val street = listOfNotNull(place.address, place.name)
-                .firstOrNull { app.vela.core.data.google.StreetViewParser.streetOf(it) != null }
-            dataSource.streetView(place.location, preferStreet = street)
+            dataSource.streetView(place.location, preferStreet = svStreet(place))
         }
     }
+
+    /** The street a place's panorama should stand on, so a mid-block geocode does not snap to the
+     *  alley pano behind the building. For a business the street is in `address`; for a plain
+     *  address result it is the `name` ("2005 5th Ave") and `address` is just the locality, so
+     *  whichever actually parses to a street. */
+    private fun svStreet(place: Place): String? = listOfNotNull(place.address, place.name)
+        .firstOrNull { app.vela.core.data.google.StreetViewParser.streetOf(it) != null }
 
     /** Walk to a neighboring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
      *  nearest-location lookup snapped to a different-year capture (green May imagery under a
@@ -4017,7 +4044,7 @@ class MapViewModel @Inject constructor(
         // businesses have no owner description, so this hidden page loaded on nearly every tap.
         // The search reply already carries both when Google has them.
         val complete = p.popularTimes != null && p.reviewCount != null && !p.address.isNullOrBlank() && p.hours.size >= 2
-        if (complete) return
+        if (complete) { thumbPano(p); return }
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
             // The details page is a search for "name address" run inside a warmed Google page. Sent
@@ -4064,6 +4091,29 @@ class MapViewModel @Inject constructor(
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             if (d != null) mergeDetails(p, d)
             _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
+            thumbPano(p)
+        }
+    }
+
+    /**
+     * The Street View thumbnail above the card, for a listing neither of whose search replies
+     * named a panorama (some businesses had a thumbnail and some none, 2026-10-18): the nearest
+     * panorama on the place's street, the lookup the Street View button makes, faced at the
+     * place. Only for a Google listing, which Google was already asked about by name, so its
+     * point tells Google nothing new; never for a tapped building or a dropped pin. Follows the
+     * thumbnail's own gates (photos on, not on tap, Google on, online).
+     */
+    private fun thumbPano(p: Place) {
+        val sel = _state.value.selected ?: return
+        if (sel.id != p.id || sel.svPanoId != null || !sel.isListing() || sel.featureId?.contains(':') != true) return
+        if (!app.vela.ui.LoadPhotos.on.value || app.vela.ui.PhotosOnTap.on.value || googleOff()) return
+        viewModelScope.launch {
+            val pano = runCatching { dataSource.streetView(sel.location, preferStreet = svStreet(sel)) }.getOrNull() ?: return@launch
+            val yaw = LatLng(pano.lat, pano.lng).bearingTo(sel.location)
+            _state.update { st ->
+                val s = st.selected
+                if (s?.id != p.id || s.svPanoId != null) st else st.copy(selected = s.copy(svPanoId = pano.panoId, svYawDeg = yaw))
+            }
         }
     }
 
@@ -4090,6 +4140,9 @@ class MapViewModel @Inject constructor(
                     about = sel.about.ifEmpty { d.about },
                     featuredReview = sel.featuredReview ?: d.featuredReview,
                     updates = sel.updates.ifEmpty { d.updates },
+                    // The pano and its heading travel together, so the yaw is never another view's.
+                    svPanoId = sel.svPanoId ?: d.svPanoId,
+                    svYawDeg = if (sel.svPanoId != null) sel.svYawDeg else d.svYawDeg,
                 ),
             )
         }
@@ -5346,11 +5399,7 @@ class MapViewModel @Inject constructor(
             viewModelScope.launch {
                 val place = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
                     ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location)
-                when (pick) {
-                    MapPick.ORIGIN -> setDirectionsOrigin(place)
-                    MapPick.STOP -> addStop(place)
-                MapPick.DEST -> setDirectionsDestination(place)
-                }
+                applyMapPick(pick, place)
             }
             return
         }
@@ -6109,7 +6158,25 @@ class MapViewModel @Inject constructor(
         route(_state.value.travelMode)
     }
 
-    fun chooseDestOnMap() = _state.update { it.copy(pickingDest = false, pickOnMap = MapPick.DEST) }
+    fun chooseDestOnMap() = _state.update { it.copy(pickingDest = false, pickOnMap = shownPick(MapPick.DEST, it)) }
+
+    /** [pickOnMap] holds the end as the user sees it, which a swapped trip turns around: there the
+     *  row labeled End edits [MapUiState.directionsOrigin], and its crosshair asked for "the starting
+     *  point" (issue #839). [role] is the end being edited; the answer is the one on screen. The
+     *  same flip takes a shown end back to the one to set ([applyMapPick]). */
+    private fun shownPick(role: MapPick, s: MapUiState = _state.value): MapPick = when {
+        !s.directionsReversed -> role
+        role == MapPick.ORIGIN -> MapPick.DEST
+        role == MapPick.DEST -> MapPick.ORIGIN
+        else -> role
+    }
+
+    /** Set the end the crosshair was showing, [shown], to [place]. */
+    private fun applyMapPick(shown: MapPick, place: Place) = when (shownPick(shown)) {
+        MapPick.ORIGIN -> setDirectionsOrigin(place)
+        MapPick.STOP -> addStop(place)
+        MapPick.DEST -> setDirectionsDestination(place)
+    }
 
     /** Set a custom directions origin (a place other than your live location) and
      *  re-route. Clears with [clearRoute]. */
@@ -6120,7 +6187,7 @@ class MapViewModel @Inject constructor(
 
     /** "Choose on map" for an endpoint — leave the search overlay, show a center crosshair over the
      *  live map, and set that endpoint from wherever the map is centered (or a long-press) on confirm. */
-    fun chooseOriginOnMap() = _state.update { it.copy(pickingOrigin = false, pickingDest = false, pickOnMap = MapPick.ORIGIN) }
+    fun chooseOriginOnMap() = _state.update { it.copy(pickingOrigin = false, pickingDest = false, pickOnMap = shownPick(MapPick.ORIGIN, it)) }
     fun chooseStopOnMap() = _state.update { it.copy(pickingStop = false, pickOnMap = MapPick.STOP) }
     fun cancelChooseOnMap() = _state.update { it.copy(pickOnMap = null) }
 
@@ -6132,11 +6199,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val place = runCatching { dataSource.reverseGeocode(at) }.getOrNull()
                 ?: Place(id = "pin:${at.lat},${at.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = at)
-            when (target) {
-                MapPick.ORIGIN -> setDirectionsOrigin(place)
-                MapPick.STOP -> addStop(place)
-                MapPick.DEST -> setDirectionsDestination(place)
-            }
+            applyMapPick(target, place)
         }
     }
 
@@ -7204,12 +7267,14 @@ class MapViewModel @Inject constructor(
      *  by deciding you are off route and re-planning from your position a few seconds later - which
      *  reads as the app throwing your trip away for an older one. Re-plan from your position first,
      *  keeping the destination and the stops, and start on that. Near the chosen start (you really
-     *  are there), nothing changes. */
+     *  are there), nothing changes. A simulated drive has no position of its own to start from: it
+     *  drives the planned line from the chosen start (issue #835). */
     fun startNav() {
         val s = _state.value
         val start = if (s.directionsReversed) null else s.directionsOrigin
         val me = s.myLocation
-        if (start != null && me != null && me.distanceTo(start.location) > START_FROM_ME_M) {
+        val demo = settingsPrefs.getBoolean("demo_drive", false)
+        if (!demo && start != null && me != null && me.distanceTo(start.location) > START_FROM_ME_M) {
             autoStartOnRoute = true
             _state.update { it.copy(directionsOrigin = null) }
             showStatus(appContext.getString(R.string.mapvm_start_from_here))
@@ -7581,6 +7646,19 @@ class MapViewModel @Inject constructor(
         var missed = 0
         var needGoogle = 0
         var lookups = 0
+        // Saved as it goes, so an import Android stops part way keeps what it found, and the
+        // same file imported again skips the rows it already matched (issue #761).
+        val (existing, listId) = app.vela.core.data.importTarget(listStore.lists(), name, "takeout:$name")
+        val previous = existing?.places.orEmpty()
+        val known = app.vela.core.data.TakeoutCsv.keyed(previous)
+        // Read again at every save, so a rename or a new icon made while it runs is kept.
+        fun save(all: List<app.vela.core.model.ListPlace>) {
+            val current = listStore.lists().firstOrNull { it.id == listId }
+            val list = current?.copy(places = all) ?: app.vela.core.model.PlaceList(id = listId, name = name, icon = "bookmark", places = all)
+            val lists = if (current != null) listStore.update(list) else listStore.create(list)
+            _state.update { it.copy(lists = lists) }
+        }
+        var nextSave = TAKEOUT_SAVE_EVERY
         rows.forEachIndexed { i, row ->
             if (i % 5 == 0) withContext(Dispatchers.Main) { flashStatus(appContext.getString(R.string.settings_takeout_progress, i + 1, rows.size), 60_000L) }
             val link = app.vela.core.data.TakeoutCsv.readLink(row.url)
@@ -7588,12 +7666,14 @@ class MapViewModel @Inject constructor(
             val note = listOfNotNull(row.note, row.comment).joinToString("\n").ifBlank { null }
             val la = link?.lat
             val ln = link?.lng
+            val reuse = link?.featureKey?.let { known[it] }
             when {
                 link != null && la != null && ln != null -> places += app.vela.core.model.ListPlace(
                     id = "imp:%.5f,%.5f".format(java.util.Locale.US, la, ln),
                     name = title.ifBlank { "%.4f, %.4f".format(java.util.Locale.US, la, ln) }.take(120),
                     lat = la, lng = ln, note = note, featureId = link.featureId,
                 )
+                reuse != null -> places += reuse.copy(note = note)
                 title.isBlank() -> missed++
                 googleOff -> needGoogle++
                 else -> {
@@ -7614,14 +7694,12 @@ class MapViewModel @Inject constructor(
                     if (hit != null) places += app.vela.core.model.ListPlace.of(hit).copy(note = note) else missed++
                 }
             }
+            if (lookups >= nextSave && places.isNotEmpty()) {
+                save(app.vela.core.data.TakeoutCsv.partial(places, previous))
+                nextSave = lookups + TAKEOUT_SAVE_EVERY
+            }
         }
-        if (places.isNotEmpty()) {
-            val (existing, listId) = app.vela.core.data.importTarget(listStore.lists(), name, "takeout:$name")
-            val list = existing?.copy(places = places)
-                ?: app.vela.core.model.PlaceList(id = listId, name = name, icon = "bookmark", places = places)
-            val lists = if (existing != null) listStore.update(list) else listStore.create(list)
-            _state.update { it.copy(lists = lists) }
-        }
+        if (places.isNotEmpty()) save(places)
         val result = app.vela.core.data.ImportResult.ListAdded(name, places.size, missed, needGoogle)
         withContext(Dispatchers.Main) { flashStatus(takeoutOutcome(result), 6_000L) }
         return result
@@ -7695,11 +7773,24 @@ class MapViewModel @Inject constructor(
         }.getOrNull()
     }
 
+    /** The file name a trip's full trace is shared and saved under. */
+    fun tripFullFileName(meta: app.vela.replay.TripMeta): String = "vela-trip-${tripStamp(meta.startedAt)}-full.csv"
+
+    /** Write a trip's full trace into [uri], a file the user picked with the system's save
+     *  dialog (Downloads, say): the phone keeps it, nothing is sent anywhere. False when the
+     *  trip cannot be read or the file cannot be written. Call off the main thread. */
+    fun saveTripTo(meta: app.vela.replay.TripMeta, uri: android.net.Uri): Boolean {
+        val csv = tripStore.rawCsv(meta.id) ?: return false
+        return runCatching {
+            appContext.contentResolver.openOutputStream(uri, "wt")?.use { it.write(csv.toByteArray()) } != null
+        }.getOrDefault(false)
+    }
+
     fun exportTripIntent(meta: app.vela.replay.TripMeta): android.content.Intent? {
         val csv = tripStore.rawCsv(meta.id) ?: return null
         return runCatching {
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
-            val file = java.io.File(dir, "vela-trip-${tripStamp(meta.startedAt)}-full.csv")
+            val file = java.io.File(dir, tripFullFileName(meta))
             file.writeText(csv)
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 appContext, "${appContext.packageName}.fileprovider", file,
@@ -10750,6 +10841,8 @@ class MapViewModel @Inject constructor(
         /** Gap between two Google lookups of a Takeout import: a list of hundreds searched back to
          *  back reads as a bot. */
         const val TAKEOUT_LOOKUP_GAP_MS = 400L
+        /** A running Takeout import saves its list after this many lookups (issue #761). */
+        const val TAKEOUT_SAVE_EVERY = 25
         /** A tapped offline globe probes Vela's own config host (no Google contact). */
         // The connectivity probe heads the signed settings file (VelaLinks.calibration()).
 

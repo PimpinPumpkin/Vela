@@ -223,6 +223,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.MapPoiPrefs.init(this)
         // Mirrors into the :core flag NavEngine reads (issue #596).
         app.vela.ui.SpokenRoadNames.init(this)
+        app.vela.ui.RoadNumbers.init(this) // numbered roads go by their number (issue #836), off by default
         app.vela.ui.SpokenDetail.init(this)
         app.vela.ui.RoutePicker.init(this)
         app.vela.ui.VoiceSearch.init(this)

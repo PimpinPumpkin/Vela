@@ -33,8 +33,9 @@ Set 2026-10-07.
    the prebuilt voice runtime (sherpa-onnx) or the prebuilt Cronet. The work is a build
    flavor that compiles or leaves out each of them, and reproducible output. Not started.
 
-Traffic incidents from official feeds (issue #688) are out of this list. They belong in a
-sister project beside Vela Almanac, which Vela would read as data.
+Traffic incidents from official feeds (issue #688; Germany's Autobahn API, Mobilithek and the
+Hamburg traffic feed in issue #833) are out of this list. They belong in a sister project beside
+Vela Almanac, which Vela would read as data.
 
 ## Less to Google
 
@@ -357,9 +358,15 @@ off the list when it has been.
   drive through town, the arrow along the route up to the turn. Not yet seen: a real stop at a
   light with a poor fix, on the phone or the head unit; a demo drive cannot make a wide fix.
 - Streamed overlays read by Vela instead of MapLibre (#827): the address, building and places
-  overlays of a region that is not downloaded come through `StreamedPmtiles`. Not yet seen on a
-  phone: house numbers back in a state with an address overlay, footprints in a suburb OSM has
-  not drawn, the open places layer with no region downloaded.
+  overlays of a region that is not downloaded come through `StreamedPmtiles`. Seen on a 4a
+  (2026-10-18): a Davis block at z18.6 drawing the overlay's house numbers, with its tiles asked
+  of `pmtiles.vela.invalid`. Not seen: footprints in a suburb OSM has not drawn, the open places
+  layer with no region downloaded.
+- Compass words after a route number cut to their letter on screen (#837 follow-up): "toward
+  US 169 North" on the card and the car's step reads "toward US 169 N" (`RoadNameShort
+  .routeCardinals`, `RoadNameShortTest`). Seen on a 4a in a simulated drive: "Take the ramp on
+  the right toward I 80 W". Not seen on the car.
+- The debug export's `input` line (#744): not seen; written for the head unit's report.
 - One list exported on its own (#822): a share button in the list editor's title row, seen on
   a 4a: it opens the share sheet with `vela-list-<name>.json`, and Delete, Cancel and Save keep
   their row. A file of that shape picked under Saved places > Your lists > Import came back as
@@ -430,6 +437,72 @@ off the list when it has been.
   route at 20 px in the phone's blue (user 2026-10-15, after Google's car screen side by side):
   seen on the desktop head unit at 1280 by 720 in a demo drive. Not seen: a real unit, or the
   landing and preview screens, which keep their zoom buttons.
+- The camera's turn toward the next turn capped at 90 degrees instead of 45 (#781, a tester
+  found turns dragged off the side of the screen on curving roads): unit-tested
+  (`TurnYawTest`). Not seen: a drive where the next turn lies more than 45 degrees off the
+  heading with the yaw in full.
+- One accessibility list on a place page instead of two (#832): the chip row above the rating
+  card is gone, the About sections below carry the attributes. Seen on a 4a: a grocery's page,
+  its four accessibility items once, under About.
+- A simulated drive from a chosen start (#835): Start drives the planned line from the start
+  picked in the chooser; a real drive still re-plans from the car when the chosen start is
+  farther than 150 m away. Seen on a 4a: a drive from a grocery 500 m from the dot began in its
+  parking lot, on the 3.1 mi route the chooser showed.
+- Road numbers first (#836, Settings > Navigation, off by default): a numbered road goes by its
+  number on the pill, the car's Continue on line and the directions of the next route. Unit-tested (`RoadLabelTest`). Seen on a 4a: with the switch on, a simulated drive's card read
+  "Turn left onto CR E6" for West Covell Boulevard with the number's chip beside it; off, a
+  boulevard with a number reads by name.
+- One Save and one Share on a place page (#830): both are pills in the action row and the
+  header keeps only the X, as Google lays it out; the Save pill opens the menu the header's
+  bookmark had (quick save, lists, note, icon, name, Home, Work). Seen on a 4a: a grocery's
+  page with the X alone up top, Directions, Start, Call, Save, Share, Website and Street View
+  in the row, the Save menu (Save, Save to list, Set as Home, Set as Work) and the Share menu
+  off their pills.
+- Street words abbreviated everywhere on screen (#837): the pill for every name, the turn card
+  and its "then" line, the car's step and Continue on; the voice keeps the full words. Unit-tested (`RoadNameShortTest`). Seen on a 4a in a simulated drive: "Turn left onto G St" on the
+  then line and "G St" on the pill.
+- The car's speaker button stepping on, alerts only and off (#842): seen on the desktop head
+  unit at 1280 by 720 in a simulated drive, the glyph going speaker, bell, crossed speaker and
+  back to speaker. Not seen: the phone's own button following a change made in the car, or a
+  real head unit.
+- The phone's light and stop sign glyphs on the car map (#844): `CarControlGlyphTest` for the
+  size; seen on the desktop head unit at 1280 by 720, the traffic lights through a downtown at
+  about road width. Not seen: a stop sign on the car map, the 800 by 480 profile, or a real
+  head unit.
+- The rating card's Show reviews loading the reviews when they wait for a tap (#845): seen on a
+  4a with "Load reviews only when I tap" on, one tap opening the Reviews tab with the reviews
+  loading. Not seen: a place whose Reviews tab is already open when the card is tapped.
+- Street View links opening the viewer (#847): `MapLinkParserTest` for the three link shapes;
+  seen on a 4a, a web map Street View link handed to Vela opening the viewer on that block. Not
+  seen: the `map_action=pano` and `layer=c` links on a phone, a link with a pano id, or the
+  kav app itself.
+- A pair of close turns said in a line that ends before the second turn's own (user,
+  2026-10-17): `NavEngineChainTest`. Not seen or heard: a real drive, or a trip export of the
+  reported one, so whether the cut was this or the second turn's queued approach line is open.
+- Offline address search (user, 2026-10-17): the pack's street ids read as 64-bit, and the
+  word lists (`OfflineStreetWordsTest`). Seen on a 4a with `debug.vela.tune.offline 1` against
+  the Northern California pack: a Davis address typed plain, with its town after a comma, with
+  town and ZIP and no comma, and half typed ("Covell Bl") all led with the address and the
+  store on it; before the id fix all four found no address. Not seen: a phone with its network
+  really off, or the user's own area.
+- The Street View thumbnail for every Google listing (user, 2026-10-18): seen on a 4a, the
+  Davis Food Co-op, which had none, now shows one; four other businesses kept theirs. Not
+  seen: a listing whose nearest pano is across a wide road or behind the building.
+- Save to phone for a recorded trip (user, 2026-10-18): seen on a 4a, the system save dialog
+  opening in Download with the trip's file name, and the full trace (15.9 KB, every line kind)
+  landing there for `adb pull`. Not seen: GrapheneOS's own picker on the P9.
+- The Street View window as a 360° button when there is no picture (user, 2026-10-18): seen on
+  a 4a on a saved point, the figure over "360°", and a tap opening the viewer on that block.
+- The scale bar riding over the free-drive speed box instead of hiding (#848): seen on a 4a at
+  rest, the bar through a restart and three pans. Not seen: a phone moving without a route,
+  with Show speed on (the bar and credit raised) or off (both in place).
+- A 700 ms lead-in on Bluetooth outputs (#802, 300 ms still clipped some lines for one
+  reporter): not seen or heard; there is no Bluetooth output on the test rig. Which output the
+  reporter uses is unconfirmed.
+- A Google Takeout list import saved as it goes (#761: a 600-row list was lost when Android
+  stopped the app part way): seen on a 4a, a 63-row test list killed at row 36 kept the 12
+  places found before its first save. Not seen: a real Takeout file imported again, which should
+  take the rows it already matched with no lookup.
 
 ### Open from the October 2026 audit
 
@@ -531,6 +604,11 @@ Found reading everything since 0.4.1912 and not fixed yet.
   and the like at z17 and up. The tiles carry waste baskets, drinking water, toilets, shelters,
   playgrounds, pitches and bicycle parking, so those are a layer with icons of our own; benches,
   hydrants, fountains, single trees and retaining walls wait for our own tiles. Not started.
+- Fuel and chargers along a route (#834): a count and the longest gap between `amenity=fuel`
+  or `amenity=charging_station` places near the line, on the route chooser, so two routes
+  through sparse country can be compared before one is taken. The places come from the
+  downloaded place pack or the open places tiles, so it works offline; the gap is measured
+  along the line. Not started.
 
 ## Big bets
 

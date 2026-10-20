@@ -72,6 +72,8 @@ object PopularTimesParser {
             about = matched?.about.orEmpty(),
             featuredReview = matched?.featuredReview,
             updates = matched?.updates.orEmpty(),
+            svPanoId = matched?.svPanoId,
+            svYawDeg = matched?.svYawDeg,
         )
         return if (details.isEmpty) null else details
     }

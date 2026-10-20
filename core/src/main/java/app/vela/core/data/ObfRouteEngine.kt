@@ -362,7 +362,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                 val ref = runCatching { obj.getRef(null, false, forward) }.getOrNull()
                     ?.takeIf { it.isNotBlank() }?.split(';', ',')?.first()?.trim()?.takeIf { it.isNotEmpty() }
                 val dest = runCatching { obj.getDestinationName(null, false, forward) }.getOrNull()?.takeIf { it.isNotBlank() }
-                val road = name ?: ref
+                val road = app.vela.core.nav.instructionRoad(name, ref)
                 val type = if (isFirst) ManeuverType.DEPART else spokenType(turn!!)
                 val rbExit = turn?.takeIf { it.isRoundAbout }?.exitOut?.takeIf { it > 0 }
                 val at = LatLng(

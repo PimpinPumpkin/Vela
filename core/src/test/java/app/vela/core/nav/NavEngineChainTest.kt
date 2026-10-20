@@ -62,6 +62,18 @@ class NavEngineChainTest {
         assertEquals("$said", "Turn right onto Elm Street, then turn left onto Oak Avenue", atTurn)
     }
 
+    @Test fun `a pair too tight for the whole line drops the first street, then the second`() {
+        // 14 m/s, 60 m apart: 4.3 s before the second turn's own line, the whole pair needs 5.1.
+        val mid = drive(route(60.0), 60.0, mps = 14.0).first { it.startsWith("Turn right") }
+        assertEquals("Turn right, then turn left onto Oak Avenue", mid)
+        // 16 m/s, 60 m apart: 3.75 s, so both streets go.
+        val short = drive(route(60.0), 60.0, mps = 16.0)
+        assertEquals("$short", "Turn right, then turn left", short.first { it.startsWith("Turn right") })
+        // The second turn still gets its own line at the turn, and no approach line in between.
+        assertEquals("$short", "Turn left onto Oak Avenue", short.last { "Oak Avenue" in it })
+        assertTrue("$short", short.none { it.startsWith("In ") && "Oak Avenue" in it && "Elm Street" !in it })
+    }
+
     @Test fun `the second turn is not announced again on its approach, only at the turn`() {
         val said = drive(route(80.0), 80.0)
         val oak = said.filter { "Oak Avenue" in it }

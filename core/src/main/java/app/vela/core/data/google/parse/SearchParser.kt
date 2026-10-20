@@ -539,9 +539,18 @@ object SearchParser {
             // ("4th of July") — surface it after a " · " (OpeningHours strips it before parsing the times).
             val hrs = day.at(3).arr()?.mapNotNull { it.at(0).str()?.ifBlank { null } }
                 ?.joinToString(", ")?.ifBlank { null } ?: return@mapNotNull null
-            val note = day.at(6, 1).str()?.ifBlank { null }
+            val note = day.at(6, 1).str()?.ifBlank { null }?.let { dedupeHolidayLabel(it) }?.ifBlank { null }
             if (note != null) "$name: $hrs · $note" else "$name: $hrs"
         }
+    }
+
+    /** Google sometimes ships a holiday label with itself repeated ("Thanksgiving/Thanksgiving",
+     *  a live listing returned the label repeated). Collapse slash/middot-separated repeats that are
+     *  identical case/space-insensitively; distinct multi-labels pass through untouched. */
+    fun dedupeHolidayLabel(note: String): String {
+        val parts = note.split('/', '·', '•', '|').map { it.trim() }.filter { it.isNotEmpty() }
+        if (parts.size >= 2 && parts.all { it.equals(parts[0], ignoreCase = true) }) return parts[0]
+        return note.trim()
     }
 
     /** Fallback: the largest array whose first entry has a name + coordinate. */

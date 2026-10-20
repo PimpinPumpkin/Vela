@@ -90,7 +90,11 @@ hides and a Re-center pill takes the speed box's place. It shows the road's own 
 has one, as the street signs do: "W Covell Blvd", with the route number on the turn card's chip.
 An Interstate, a named freeway ("Capital City Freeway" reads "US 50"), or a road whose name is
 only its number in words, shows the number. An expressway or a parkway keeps its name, because
-many are known by nothing else.
+many are known by nothing else; "Road numbers first" under Navigation puts the number on every
+road that has one, for the dedication names ("Pearl Harbor Memorial Expressway") no sign shows,
+and the directions of the next route say the number too. Street words are abbreviated the way a
+sign does it, on the pill, on the turn card and its "then" line and on the car screen; the voice
+says them in full.
 
 A number gets a compass letter when the signs on the way onto the road gave one: "I 80 E" after
 a ramp signed "I 80 East". The letter comes only from sign text in the route steps. A turn onto
@@ -253,7 +257,7 @@ still draws motorways through minor roads and the route, and a turn farther than
 the top until it is nearer. Street names, lights and stop signs do not draw that far out. Below
 z15 the camera lies flatter, the way it does for a pinch, and the zoom allows for that, as it
 allows for the pitch MapLibre holds the camera under (52.6 degrees on a Pixel 4a, less on a
-denser screen). A turn off to the side pulls the camera toward it, up to 45 degrees off the
+denser screen). A turn off to the side pulls the camera toward it, up to 90 degrees off the
 heading, once the framing has taken the zoom a level out, and the camera turns back as the turn
 nears, so the arrow points off vertical by that much on the way and straight up through the turn.
 On a 1080 x 2340 px, 420 dpi phone the speed zoom at 30 m/s frames a turn 1.02 km ahead, a turn

@@ -427,7 +427,7 @@
     <string name="settings_spoken_directions">Wskazówki głosowe</string>
     <string name="settings_spoken_road_names">Wymawiaj nazwy ulic</string>
     <string name="settings_spoken_road_names_hint">Wyłączone: skręty są zapowiadane bez nazwy ulicy, \"Skręć w lewo\" zamiast \"Skręć w lewo w ulicę Klonową\". Mapa i lista etapów nadal ją pokazują.</string>
-    <string name="settings_spoken_detail">Ile mówi głos</string>
+    <string name="settings_spoken_detail">Jak wiele mówi głos</string>
     <string name="settings_spoken_detail_full">Wszystko</string>
     <string name="settings_spoken_detail_brief">Krótko</string>
     <string name="settings_spoken_detail_exits">Tylko zjazdy z autostrady</string>
@@ -648,9 +648,9 @@
     <string name="place_time_past_toast">Ten czas już minął. Ustawiono na teraz.</string>
     <string name="settings_ui_scale">Rozmiar interfejsu</string>
     <string name="settings_map_colors">Kolory mapy</string>
-    <string name="settings_map_colors_modern">Nowoczesne</string>
-    <string name="settings_map_colors_classic">Klasyczne</string>
-    <string name="settings_map_colors_hint">Styl „Modern” odpowiada aktualnej palecie kolorystycznej aplikacji Google. „Classic” to wcześniejszy wygląd mapy Vela: białe drogi, żółte autostrady i wyraziste odcienie zieleni. „Contrast” to mapa w wersji nocnej – z ciepłymi barwami ulic na tle w kolorze łupka przypominająca widok z górskiego szczytu; w ciągu dnia prezentuje się natomiast tak samo jak styl „Modern”.</string>
+    <string name="settings_map_colors_modern">Nowoczesny</string>
+    <string name="settings_map_colors_classic">Klasyczny</string>
+    <string name="settings_map_colors_hint">Styl „Nowoczesny” odpowiada aktualnej palecie kolorystycznej aplikacji Google. „Klasyczny” to wcześniejszy wygląd mapy Vela: białe drogi, żółte autostrady i wyraziste odcienie zieleni. „Kontrast” to mapa w wersji nocnej – z ciepłymi barwami ulic na tle w kolorze łupka przypominająca widok z górskiego szczytu; w ciągu dnia prezentuje się natomiast tak samo jak styl „Nowoczesny”.</string>
     <string name="map_parking_find">Znajdź mój samochód</string>
     <string name="map_parking_move_here">Przenieś parking tutaj</string>
     <string name="map_parking_earlier">Wcześniejsze miejsca</string>
@@ -1154,7 +1154,7 @@
         <item quantity="other">%1$d fragmentu ma nowszą wersję</item>
     </plurals>
     <string name="settings_confirm_end_nav">Pytaj przed zakończeniem nawigacji</string>
-    <string name="settings_confirm_end_nav_hint">Podczas jazdy system zawsze najpierw pyta o potwierdzenie. Gdy ta funkcja jest włączona, czerwony symbol X również wymaga potwierdzenia.</string>
+    <string name="settings_confirm_end_nav_hint">Podczas jazdy system zawsze najpierw pyta o potwierdzenie. Gdy ta funkcja jest włączona czerwony symbol X również wymaga potwierdzenia.</string>
     <string name="nav_end_confirm_title">Zakończyć nawigację?</string>
     <string name="nav_end_confirm_body">Trasa i jej przystanki zostaną usunięte.</string>
     <string name="nav_end_confirm_end">Zakończ</string>

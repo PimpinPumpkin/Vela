@@ -507,9 +507,9 @@ class VoiceGuide @Inject constructor(
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume.coerceAtMost(1.0f))
         }
         // A lead-in of silence before the words (issue #802): an output waking from standby, a
-        // Bluetooth head unit above all, dropped the first syllables. The neural voice does the
-        // same in its player (PiperSynth.LEAD_IN_MS).
-        engine.playSilentUtterance(LEAD_IN_MS, mode, "$LEAD_ID${text.hashCode()}")
+        // Bluetooth head unit above all, dropped the first syllables. Longer on Bluetooth
+        // ([SpeechLeadIn]); the neural voice does the same in its player.
+        engine.playSilentUtterance(SpeechLeadIn.ms(context), mode, "$LEAD_ID${text.hashCode()}")
         val result = engine.speak(forSpeech(SpokenScript.forVoice(text, t, roadNameLatin)), TextToSpeech.QUEUE_ADD, params, "vela-${text.hashCode()}")
         if (result == TextToSpeech.ERROR) {
             // The utterance was never enqueued, so NONE of the onDone/onStop/onError callbacks that
@@ -598,8 +598,6 @@ class VoiceGuide @Inject constructor(
         const val FOCUS_HOLD_MS = 1500L
         // Lead between a FRESH focus grant and the first sample, so a pausing player has stopped.
         const val FOCUS_LEAD_MS = 350L
-        /** Silence queued before a line on the phone's engine, see [speakViaSystemNow]. */
-        const val LEAD_IN_MS = 300L
         const val LEAD_ID = "vela-lead-"
         private fun isLead(utteranceId: String?) = utteranceId?.startsWith(LEAD_ID) == true
     }

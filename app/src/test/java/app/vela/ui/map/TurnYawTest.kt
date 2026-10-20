@@ -18,11 +18,12 @@ class TurnYawTest {
         assertEquals(-30.0, NavFraming.turnYaw(0.0, 330.0, 16.0, 15.0), 1e-9)
     }
 
-    @Test fun `no more than 45 degrees either way`() {
-        assertEquals(45.0, NavFraming.turnYaw(0.0, 120.0, 16.0, 14.0), 1e-9)
-        assertEquals(-45.0, NavFraming.turnYaw(90.0, 0.0, 16.0, 14.0), 1e-9)
+    @Test fun `no more than 90 degrees either way`() {
+        assertEquals(80.0, NavFraming.turnYaw(0.0, 80.0, 16.0, 14.0), 1e-9)
+        assertEquals(90.0, NavFraming.turnYaw(0.0, 120.0, 16.0, 14.0), 1e-9)
+        assertEquals(-90.0, NavFraming.turnYaw(90.0, 0.0, 16.0, 14.0), 1e-9)
         // A maneuver behind the car: the shorter way around, clamped.
-        assertEquals(-45.0, NavFraming.turnYaw(10.0, 200.0, 16.0, 14.0), 1e-9)
+        assertEquals(-90.0, NavFraming.turnYaw(10.0, 200.0, 16.0, 14.0), 1e-9)
     }
 
     @Test fun `the yaw fades in over the last zoom level and is zero near the turn`() {

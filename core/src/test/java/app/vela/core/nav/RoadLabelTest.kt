@@ -44,6 +44,22 @@ class RoadLabelTest {
         assertEquals("Freeway", roadLabel("Freeway", "US 50"))
     }
 
+    @Test fun `road numbers first puts the number on every numbered road`() {
+        RoadNumbers.preferred = true
+        try {
+            assertEquals("CA 113", roadLabel("Richards Boulevard", "CA 113"))
+            assertEquals("US 50 E", roadLabel("Lincoln Highway", "US 50", "E"))
+            assertEquals("Lawrence Expressway", roadLabel("Lawrence Expressway", null))
+            assertEquals("CA 113", instructionRoad("Richards Boulevard", "CA 113"))
+            assertEquals("Richards Boulevard", instructionRoad("Richards Boulevard", null))
+        } finally {
+            RoadNumbers.preferred = false
+        }
+        assertEquals("Richards Boulevard", roadLabel("Richards Boulevard", "CA 113"))
+        assertEquals("Richards Boulevard", instructionRoad("Richards Boulevard", "CA 113"))
+        assertEquals("CA 113", instructionRoad(null, "CA 113"))
+    }
+
     @Test fun `a number takes the sign's compass letter, a name never does`() {
         assertEquals("I 80 E", roadLabel(null, "I 80", "E"))
         assertEquals("US 50 E", roadLabel("Capital City Freeway", "US 50", "E"))

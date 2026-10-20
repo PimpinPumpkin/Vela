@@ -113,4 +113,37 @@ class MapLinkParserTest {
         assertNull(MapLinkParser.featureCell(null))
         assertNull(MapLinkParser.parse("https://www.google.com/maps/place/Davis+Ace+Hardware/@38.5449,-121.7405,17z")!!.featureId)
     }
+
+    @Test fun `a Street View link from the web map opens the panorama, facing its way`() {
+        val l = MapLinkParser.parse("https://www.google.com/maps/@38.5449,-121.7405,3a,75y,90.5h,90t/data=!3m6!1e1!3m4!1sAbCdEfGhIjKlMnOpQrStUv!2e0!7i16384!8i8192?entry=ttu")!!
+        assertTrue(l.streetView)
+        assertEquals(38.5449, l.lat!!, 1e-6)
+        assertEquals(-121.7405, l.lng!!, 1e-6)
+        assertEquals(90.5, l.heading!!, 1e-6)
+        assertEquals("AbCdEfGhIjKlMnOpQrStUv", l.panoId)
+        // The same place's map view is no Street View.
+        assertEquals(false, MapLinkParser.parse("https://www.google.com/maps/@38.5449,-121.7405,17z")!!.streetView)
+    }
+
+    @Test fun `the documented pano action and the old layer=c link open it too`() {
+        val a = MapLinkParser.parse("https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=38.5449%2C-121.7405&heading=-45&pitch=10&fov=80")!!
+        assertTrue(a.streetView)
+        assertEquals(38.5449, a.lat!!, 1e-6)
+        assertEquals(-45.0, a.heading!!, 1e-6)
+        assertNull(a.panoId)
+        val p = MapLinkParser.parse("https://www.google.com/maps/@?api=1&map_action=pano&pano=AbCdEfGhIjKlMnOpQrStUv")!!
+        assertTrue(p.streetView)
+        assertEquals("AbCdEfGhIjKlMnOpQrStUv", p.panoId)
+        assertNull(p.lat)
+        val c = MapLinkParser.parse("http://maps.google.com/maps?q=&layer=c&cbll=38.5449,-121.7405&cbp=12,210,0,0,0")!!
+        assertTrue(c.streetView)
+        assertEquals(-121.7405, c.lng!!, 1e-6)
+        assertEquals(210.0, c.heading!!, 1e-6)
+    }
+
+    @Test fun `a directions link is never taken for Street View`() {
+        val d = MapLinkParser.parse("https://www.google.com/maps/dir/?api=1&destination=38.5449,-121.7405")!!
+        assertEquals(false, d.streetView)
+        assertTrue(d.directions)
+    }
 }

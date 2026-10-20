@@ -530,6 +530,29 @@ object NavEngine {
             if (both != line) chainedNow = true
             return both
         }
+        // The line at the turn, with the next turn on it when the two are chained. That next turn
+        // says its own line at ITS turn-now point, interrupting, so the pair has to be over by the
+        // time the car gets there. Nothing checked that, and taken briskly a pair 60 m apart has
+        // about 4 s for a line that needs 5 (a drive on 2026-10-17 had a line cut at two close
+        // turns; whether by this or by the second turn's queued approach line is unconfirmed).
+        // When the whole pair will not fit, the first turn drops its street name, then the second does;
+        // the shortest form is said even when it will not quite fit, since it still says what
+        // comes next. A first turn with no form without its street is said alone.
+        fun turnNowLine(plain: String): String {
+            val full = withNext(plain)
+            if (full == plain) return full
+            val pace = v.coerceAtLeast(MIN_PACE_MPS)
+            val toNextNow = dtn + (manAlong[nextIdx] - manAlong[idxCur]) - turnNowM
+            fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
+            if (fits(full)) return full
+            val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
+            val next = maneuvers[nextIdx]
+            val nextNamed = nav().repeatShort(next.spokenInstruction())
+            // An exit keeps its sign: "take exit 12" without it says too little.
+            val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
+            val named = nav().thenNext(bare, nextNamed)
+            return if (fits(named)) named else nav().thenNext(bare, nextBare)
+        }
         if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
             // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
             val fromFar = !isArrive && (SpokenDetail.exitLike(target.type) || v >= SpokenDetail.FAST_MPS)
@@ -635,7 +658,7 @@ object NavEngine {
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
                     val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else nav().repeatShort(lotLine ?: target.spokenInstruction())
                     // The shorter modes said their one line on the approach; the buzz below stays.
-                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(withNext(withStop(turnText)), interrupt = true)
+                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(turnNowLine(withStop(turnText)), interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 spoken = spoken + TURN_NOW_SLOT

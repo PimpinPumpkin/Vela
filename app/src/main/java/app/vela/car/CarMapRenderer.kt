@@ -182,6 +182,26 @@ class CarMapRenderer(
         const val FIX_SPEED_MAX_MPS = 70.0 // a speed made from two fixes past this is a jump, not motion
         const val FIX_COURSE_MIN_M = 3.0   // a course made from two fixes needs this much travel
         const val ATTRIBUTION = "\u00a9 OpenStreetMap" // the phone's map_osm_attribution, verbatim
+
+        /** A traffic light is drawn this many times as tall as a stop sign, its glyph's own
+         *  proportions (`trafficLightBitmap` is 30 x 60, `stopSignBitmap` 46 x 46). */
+        const val LIGHT_TALL = 1.4f
+
+        /**
+         * A stop sign's size on a car screen whose short side is [shortSidePx], at [zoom]: a
+         * twentieth of the short side, so wider than the 20 px route line on the 720 px and
+         * 480 px profiles, scaled with zoom the way the phone scales them (`controlsSize`: about
+         * 0.7 at 14, 1 at 15.5, 1.3 at 17) and kept between 16 and 56 px.
+         */
+        fun controlGlyphPx(shortSidePx: Int, zoom: Double): Float {
+            val k = when {
+                zoom <= 14.0 -> 0.7
+                zoom >= 17.0 -> 1.3
+                zoom <= 15.5 -> 0.7 + (zoom - 14.0) / 1.5 * 0.3
+                else -> 1.0 + (zoom - 15.5) / 1.5 * 0.3
+            }
+            return (shortSidePx / 20f * k.toFloat()).coerceIn(16f, 56f)
+        }
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
         const val FLING_TAU_S = 0.35  // a fling's speed falls to a third in this long
@@ -1100,8 +1120,14 @@ class CarMapRenderer(
 
     // Corridor furniture the phone's nav map draws, from the same data (CarBridge): lights, stop
     // signs, speed cameras, plus the plate cameras along the route straight off the bundled set.
+    // Lights and stop signs are the phone's own glyphs (issue #844: dots the size of a pinhead
+    // were lost on a car screen); the rest stay dots.
     private val glyphFill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glyphRing = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 1.5f }
+    private val glyphBlit = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val lightGlyph by lazy { app.vela.ui.map.trafficLightBitmap() }
+    private val stopGlyph by lazy { app.vela.ui.map.stopSignBitmap() }
+    private val glyphRect = android.graphics.RectF()
     private var flockRouteKey: Int = 0
     private var flockAlong: List<LatLng> = emptyList()
     private fun drawCorridor(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
@@ -1113,13 +1139,20 @@ class CarMapRenderer(
             canvas.drawCircle(pt.x, pt.y, r, glyphFill)
             canvas.drawCircle(pt.x, pt.y, r, glyphRing)
         }
+        val signPx = controlGlyphPx(minOf(width, height), zoom)
+        fun glyph(at: LatLng, bmp: android.graphics.Bitmap, h: Float) {
+            val pt = project(snap, at, sx, sy) ?: return
+            val w = h * bmp.width / bmp.height
+            glyphRect.set(pt.x - w / 2f, pt.y - h / 2f, pt.x + w / 2f, pt.y + h / 2f)
+            canvas.drawBitmap(bmp, null, glyphRect, glyphBlit)
+        }
         app.vela.car.CarBridge.controls.value.forEach { c ->
-            dot(c.loc, when (c.kind) {
-                app.vela.core.data.TrafficControl.Kind.SIGNAL -> Color.parseColor("#F9C74F")
-                app.vela.core.data.TrafficControl.Kind.STOP -> Color.parseColor("#D93838")
-                app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING -> Color.parseColor("#37474F")
-                app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> Color.parseColor("#E8923D")
-            })
+            when (c.kind) {
+                app.vela.core.data.TrafficControl.Kind.SIGNAL -> glyph(c.loc, lightGlyph, signPx * LIGHT_TALL)
+                app.vela.core.data.TrafficControl.Kind.STOP -> glyph(c.loc, stopGlyph, signPx)
+                app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING -> dot(c.loc, Color.parseColor("#37474F"))
+                app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> dot(c.loc, Color.parseColor("#E8923D"))
+            }
         }
         app.vela.car.CarBridge.speedCameras.value.forEach { dot(it, Color.parseColor("#FB8C00")) }
         app.vela.car.CarBridge.wazePolice.value.forEach { dot(it, Color.parseColor("#1976D2")) }

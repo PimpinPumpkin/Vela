@@ -24,6 +24,24 @@ object SettingsDump {
      * GrapheneOS its network location, SUPL, PSDS and geocoder choices, which it keeps in
      * `Settings.Global` under these keys (absent on other phones). Words, never a position.
      */
+    /**
+     * How Vela reads the device's input, for a report where taps do nothing (issue #744, a head
+     * unit whose hardware buttons may register as a D-pad): whether it has a touchscreen, whether
+     * Vela treats it as keypad-first (`isDpadFirstDevice`), and the physical input devices that
+     * report a D-pad, by their driver names. Words, never a position.
+     */
+    fun input(context: Context): String = runCatching {
+        val touch = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
+        val pads = ArrayList<String>()
+        for (id in android.view.InputDevice.getDeviceIds()) {
+            val d = android.view.InputDevice.getDevice(id) ?: continue
+            val virtual = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) d.isVirtual else id < 0
+            if (!virtual && (d.sources and android.view.InputDevice.SOURCE_DPAD) == android.view.InputDevice.SOURCE_DPAD) pads += d.name
+        }
+        "touchscreen=${if (touch) "yes" else "no"} keypadFirst=${if (app.vela.ui.isDpadFirstDevice(context)) "yes" else "no"} dpadDevices=" +
+            (pads.joinToString(";").ifEmpty { "none" })
+    }.getOrDefault("unknown")
+
     fun location(context: Context): String = runCatching {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
         val on = lm.allProviders.filter { p -> runCatching { lm.isProviderEnabled(p) }.getOrDefault(false) }
