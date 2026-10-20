@@ -516,6 +516,9 @@ off the list when it has been.
 - A roundabout's exit step says nothing after its entry (a real drive through two roundabouts
   had each said twice and two lines cut off inside the ring): an engine test, which repeats
   that drive's lines with the rule off, and the replay audit of the drive. Not heard on a drive.
+- One turn split in two by a mapped turn lane is said as one turn (a real drive heard two
+  slight rights for one right at a divided corner): a unit test, the drive's own route (folded),
+  and the 39 stored lines (three other folds, each a turn lane on the map). Not heard on a drive.
 
 ### Open from the October 2026 audit
 

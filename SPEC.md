@@ -1195,6 +1195,21 @@ within `RAMP_TURN_MAX_M` (600 m) by a merge onto a named road, is the turn onto 
 on-ramp. It takes the language's ramp phrase toward the merge's ref or name ("Take the ramp on
 the left toward I 80"). Type, arrow and lanes are unchanged.
 
+`RouteGeometry.foldTurnLanes`, all three routers, last. A turn lane mapped as its own way
+splits one turn in two: an unnamed slight turn where the lane leaves the road, then the turn
+onto the street the same way ("Turn slight right, then turn slight right onto" a street, for one
+right turn at a divided corner). The pair becomes one TURN_LEFT or TURN_RIGHT at the first
+step's place, onto the second step's road, with both lengths and times, the first step's lanes
+and lights, and the second's renames moved by the first's length. Only when the first step runs
+at most `TURN_LANE_MAX_M` (120 m) and bends the line at most `TURN_LANE_PEEL_DEG` (45) degrees
+(the 30 m before it against the lane), and the line turns `TURN_LANE_MIN_DEG` (60) to
+`TURN_LANE_MAX_DEG` (135) degrees across both. On the 39 stored Google lines it folds three
+pairs, each a turn lane on the map: a 29 m connector off a dual carriageway, a left-turn lane
+mapped beside a one-way street, and a dual carriageway's approach to a junction
+(`NamingStudyTest.turnLanesOnCapturedLines`, and `replayCapturedLines` lists them). Every folded
+turn agrees with the line in `StepAudit`, and the simulated drives flag nothing new.
+`TurnLaneFoldTest`.
+
 #### Checking a trip
 
 Every hybrid logs its stretch sources and `steps vs line: N turns, N agree, ...` under
