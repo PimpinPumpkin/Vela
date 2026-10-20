@@ -128,7 +128,8 @@ object RouteGeometry {
             m.copy(location = pointAlong(polyline, frac))
         }
         val legs = route.legs.mapIndexed { i, leg -> if (i == 0) leg.copy(maneuvers = placed) else leg }
-        return route.copy(polyline = polyline, legs = legs)
+        // Limit spans are meters along the old line; the drive samples the new one instead.
+        return route.copy(polyline = polyline, legs = legs, limitSpans = emptyList())
     }
 
     private fun pointAlong(poly: List<LatLng>, frac: Double): LatLng {

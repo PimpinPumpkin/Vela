@@ -74,6 +74,8 @@ internal class NavController(
         fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double, outlierStreak: IntArray): LatLng
         fun gateMeasuredSpeed(raw: Float, dt: Double): Float?
         fun onNavRoadLatin(map: Map<String, String>)
+        /** A blocking posted-limit lookup (km/h or null) for points near [near], the badge's sources. */
+        suspend fun roadLimitLookup(near: LatLng): (LatLng) -> Double?
     }
 
     private val settingsPrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
@@ -162,6 +164,8 @@ internal class NavController(
                     clearRouteFlock()
                     clearRouteBridges()
                     speeding.reset()
+                    clearLimitDrops()
+                    announcedDropPoints = emptyList()
                 }
                 // Mirror the drive into the theme holder: the "day and night while navigating"
                 // setting (issue #262) is the one theme input that is not a preference.
@@ -177,7 +181,7 @@ internal class NavController(
                     if (ns.navigating && toStop != null) app.vela.ui.nav.NavLegFigures.Leg(toStop, ns.nav.remainingDistance, ns.nav.remainingDuration) else null
                 // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
                 // a scan of a short list; the projection was done once when the route landed.
-                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding(); maybeWarnBridge(ns) }
+                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding(); maybeWarnBridge(ns); maybeWarnLimitDrop(ns) }
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -1094,14 +1098,19 @@ internal class NavController(
                     if (routeBarKey == key) {
                         routeBarMarks = marks
                         routeBarTotalM = cum.last()
-                        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, marks, totalM = routeBarTotalM)) }
+                        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, marks, totalM = routeBarTotalM, limitDrops = barLimitDrops(route))) }
                     }
                 }
             }
             return
         }
-        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, routeBarMarks, totalM = routeBarTotalM)) }
+        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, routeBarMarks, totalM = routeBarTotalM, limitDrops = barLimitDrops(route))) }
     }
+
+    /** The limit drops for the bar: already in meters along the route, so they need no projection
+     *  and are read every tick. Only while they belong to [route]'s line. */
+    private fun barLimitDrops(route: Route): List<app.vela.core.nav.LimitDrops.Drop> =
+        if (route.polyline === limitPoly) limitDrops else emptyList()
 
     /** Show or hide the route bar (pref `route_bar`). */
     fun setRouteBar(on: Boolean) {
@@ -1356,6 +1365,115 @@ internal class NavController(
         tripStore.note("K", "speeding alert: ${speedKmh?.toInt()} km/h, limit ${limit?.toInt()}")
     }
 
+    // Speed limit drops on the CURRENT route (issue #857): the limits read along it so far, the
+    // drops found in them, and the ones already announced. Keyed on the polyline's identity, the
+    // line traveledM is measured along. A route that carries its own limits (the obf router) is
+    // read whole; any other is sampled a chunk at a time ahead of the car.
+    private var limitPoly: List<LatLng>? = null
+    private var limitCum = DoubleArray(0)
+    private var limitTurnsM: List<Double>? = null
+    private var limitSpans: List<app.vela.core.model.LimitSpan> = emptyList()
+    private var limitScannedToM = 0.0
+    private var limitThresholdKmh = Double.NaN
+    private var limitDrops: List<app.vela.core.nav.LimitDrops.Drop> = emptyList()
+    private var announcedDrops: Set<Long> = emptySet()
+    // Where announced drops sit, for the whole drive: a reroute or a heal onto the same road is a
+    // new polyline, and the same drop must not be said twice.
+    private var announcedDropPoints: List<LatLng> = emptyList()
+    private var limitScanJob: Job? = null
+
+    private fun clearLimitDrops() {
+        if (limitPoly == null && limitScanJob == null) return
+        limitScanJob?.cancel(); limitScanJob = null
+        limitPoly = null; limitCum = DoubleArray(0); limitTurnsM = null
+        limitSpans = emptyList(); limitScannedToM = 0.0; limitThresholdKmh = Double.NaN
+        limitDrops = emptyList(); announcedDrops = emptySet()
+    }
+
+    /** Warn once before each sharp drop in the posted limit ahead (issue #857, opt-in). Where the
+     *  drops are and when one is due live in :core [app.vela.core.nav.LimitDrops]. */
+    private fun maybeWarnLimitDrop(ns: NavSession.State) {
+        val route = ns.route
+        val vs = _state.value
+        // Never in a recorded-trip replay: the samples are live lookups.
+        if (!app.vela.ui.LimitDropAlert.on.value || route == null || route.polyline.size < 2 || (vs.replaying && !vs.demoDriving)) {
+            clearLimitDrops()
+            return
+        }
+        if (route.polyline !== limitPoly) {
+            clearLimitDrops()
+            limitPoly = route.polyline
+            limitCum = app.vela.core.nav.RouteProjection.cumulative(route.polyline)
+            val total = limitCum.last()
+            val own = route.limitSpans
+            // The router's own spans, when they are measured on this line.
+            if (own.isNotEmpty() && own.maxOf { it.startMeters + it.lengthMeters } <= total + 50.0) {
+                limitSpans = own
+                limitScannedToM = total
+            }
+        }
+        val threshold = app.vela.ui.LimitDropAlert.thresholdKmh()
+        if (threshold != limitThresholdKmh) {
+            limitThresholdKmh = threshold
+            limitDrops = app.vela.core.nav.LimitDrops.find(limitSpans, threshold)
+        }
+        val traveled = ns.nav.traveledM
+        if (limitScanJob?.isActive != true && limitScannedToM < limitCum.last() &&
+            traveled + LIMIT_SCAN_AHEAD_M > limitScannedToM
+        ) {
+            scanLimitsAhead(route, traveled)
+        }
+        val speedMps = (vs.mySpeed ?: 0f).toDouble()
+        val drop = app.vela.core.nav.LimitDrops.due(limitDrops, traveled, speedMps, announcedDrops) ?: return
+        announcedDrops = announcedDrops + drop.key
+        val at = app.vela.core.nav.RouteProjection.pointAt(route.polyline, limitCum, drop.atM)
+        if (announcedDropPoints.any { it.distanceTo(at) < LIMIT_SAME_DROP_M }) return
+        announcedDropPoints = announcedDropPoints + at
+        val note = "limit drop: ${drop.fromKmh.toInt()} to ${drop.toKmh.toInt()} km/h, ${(drop.atM - traveled).toInt()} m ahead at ${(speedMps * 3.6).toInt()} km/h"
+        if (app.vela.core.nav.LimitDrops.alreadySlow(drop, speedMps * 3.6)) {
+            tripStore.note("K", "$note, not said: already slow")
+            return
+        }
+        val (n, unit) = app.vela.ui.formatSpeedLimit(drop.toKmh)
+        val card = appContext.getString(R.string.nav_limit_drop_card, n, unit)
+        host.flashStatus(card, 6000L)
+        if (app.vela.ui.LimitDropAlert.voice.value) {
+            alert(appContext.getString(if (app.vela.ui.Units.imperial.value) R.string.nav_limit_drop_spoken_mph else R.string.nav_limit_drop_spoken_kmh, n))
+        }
+        app.vela.car.CarBridge.toast(card)
+        tripStore.note("K", note)
+    }
+
+    /** Read the limits along the next [LIMIT_SCAN_CHUNK_M] of [route] past what is read, off the
+     *  main thread, and refresh the drops when they land on the same line. */
+    private fun scanLimitsAhead(route: Route, traveledM: Double) {
+        val poly = route.polyline
+        val cum = limitCum
+        val from = maxOf(limitScannedToM, traveledM)
+        val to = minOf(cum.last(), from + LIMIT_SCAN_CHUNK_M)
+        val known = limitTurnsM
+        limitScanJob = scope.launch(Dispatchers.IO) {
+            val turns = known ?: route.maneuvers
+                .mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.location) }
+            val lookup = runCatching { host.roadLimitLookup(app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)) }.getOrNull()
+            val job = coroutineContext[Job]
+            val spans = if (lookup == null) emptyList() else runCatching {
+                app.vela.core.nav.LimitDrops.sample(poly, cum, from, to, turns) { p ->
+                    // A route swap cancels the job; the lookups left answer nothing.
+                    if (job?.isActive == false) null else lookup(p)
+                }
+            }.getOrDefault(emptyList())
+            withContext(Dispatchers.Main) {
+                if (limitPoly !== poly) return@withContext
+                limitTurnsM = turns
+                limitSpans = limitSpans + spans
+                limitScannedToM = to
+                limitDrops = app.vela.core.nav.LimitDrops.find(limitSpans, limitThresholdKmh)
+                android.util.Log.d("VelaLimitDrop", "read ${from.toInt()}-${to.toInt()} m: ${spans.size} spans, ${limitDrops.size} drops")
+            }
+        }
+    }
+
     /** Announce the camera coming up, once each. Timing lives in :core [CameraAlerts]. */
     private fun maybeWarnCamera(ns: app.vela.core.nav.NavSession.State) {
         if (routeCamMeters.isEmpty()) return
@@ -1565,3 +1683,11 @@ private const val DRIVE_AHEAD_M = 1200.0
 private const val DRIVE_CORRIDOR_M = 60.0
 private const val DRIVE_SCAN_MS = 4000L
 private const val DRIVE_SCAN_M = 150.0
+
+/** The speed limit drop warning's read ahead (issue #857): a new chunk is read once the car is
+ *  within [LIMIT_SCAN_AHEAD_M] of the end of what is read, which covers the 1 km lead and the
+ *  150 m a lower limit must hold. A drop within [LIMIT_SAME_DROP_M] of one already said on this
+ *  drive is the same drop on a new line. */
+private const val LIMIT_SCAN_AHEAD_M = 1500.0
+private const val LIMIT_SCAN_CHUNK_M = 2000.0
+private const val LIMIT_SAME_DROP_M = 100.0

@@ -161,7 +161,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
                   AlongRouteFilter, DemoTrace
   nav/            NavEngine (pure), NavSession, NavReplay, RouteProjection, RouteBar,
                   CameraAlerts, CameraFacing, CameraDetour, DetourEstimate, SpeedingAlerts,
-                  ExitLabel
+                  LimitDrops, ExitLabel
   voice/          VoiceGuide, NeuralSynth, SpokenScript, SpeechText
   feedback/       Haptics
   config/         Calibration, CalibrationStore, BundleSignature, JsSandbox, JsTransforms
@@ -224,7 +224,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `Buildings3d`, `CategoryChipsPref`, `ContactsSearch`, `DetailsRetry`, `DynamicColor`,
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
-  `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
+  `LayersButton`, `LimitDropAlert`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
   `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
@@ -2429,12 +2429,32 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   or both, by its two settings.
 - Speeding alert (off by default): after 4 s continuously over the limit, re-armed after 8 s
   back under, at most once per 45 s, with the badge's 5 km/h tolerance.
+- Speed limit drop warning (`LimitDropAlert`, off by default, issue #857), during routed
+  navigation only:
+  - Limits along the route are `Route.limitSpans`, meters along the polyline with km/h. The obf
+    router fills them from each segment's `maxspeed` in the driven direction, with the badge's
+    rules (untagged, `none` and 150 km/h or more are unknown); `chainOnDevice` shifts each leg's.
+    Every other route has none, and the drive samples it ahead of the car: every
+    `SAMPLE_STEP_M` (25 m), skipping points within `TURN_SKIP_M` (30 m) of a maneuver, through the
+    badge's sources (`MapViewModel.roadLimitLookup`: the downloaded region where it holds the
+    roads, else the streamed archives). A chunk of `LIMIT_SCAN_CHUNK_M` (2 km) is read once the car
+    is within `LIMIT_SCAN_AHEAD_M` (1.5 km) of the end of what is read.
+  - `LimitDrops.find` leaves out spans shorter than `MIN_HOLD_M` (150 m), bridges gaps up to
+    `GAP_BRIDGE_M` (300 m) with the limit before them, and measures a drop from the highest limit in
+    the `REF_WINDOW_M` (500 m) before it since the last drop. A drop counts at 20, 30 or 40 km/h, or
+    10, 20 or 25 mph less 1 km/h for the rounding of mph tags (default 30 km/h, 20 mph).
+  - `LimitDrops.due`: lead `LEAD_SECONDS` 36, floored at 300 m and capped at 1,000 m, silent below
+    `MOVING_FLOOR_MPS`, once per drop, never for one behind. A drop within 100 m of one already
+    announced on the drive is not said again after a reroute. A driver already within 5 km/h of
+    the new limit gets nothing. The warning is the card for 6 s, the voice when "Say it out loud"
+    is on (a chime in Alerts only), a car toast, and a `K` note in the trip file. A recorded-trip
+    replay reads nothing.
 - The voice has three modes (issue 735), one state shared by Settings > Voice > Spoken
   directions and the drive's speaker button, which opens the three with the current one filled
   and steps On, Alerts only, Off, On on a long press
   (`MapViewModel.setVoiceMode`, prefs `spoken_directions` and `spoken_alerts_only`,
   `VoiceGuide.muted` and `alertsOnly`, the holder `VoiceAlertsOnly` for the hold control). In
-  Alerts only the speeding, speed camera, plate camera and bridge alerts play `VoiceGuide.alertChime`,
+  Alerts only the speeding, speed limit drop, speed camera, plate camera and bridge alerts play `VoiceGuide.alertChime`,
   two short notes at 1046.5 Hz, instead of their spoken line (`NavController.alert`); every
   other chime and every prompt stays silent. Off is silent throughout. The car's speaker button
   steps the same three in the same order (`CarVoice.step`, issue #842) and shows the mode as
@@ -5299,7 +5319,9 @@ the catalog, the ones switched off included; a pick runs that search. The one-bu
   `RouteBar.WINDOW_M` (5,000 m): scaled to a long trip, nearby marks collapse into one pixel.
   Congestion is painted on the track by level; a light and a stop sign are the map's own
   bitmaps (`trafficLightBitmap`, `stopSignBitmap`) on the track, `MINI` (16 dp) tall; cameras,
-  crossings and humps are `BADGE` (26 dp) discs beside it with their glyphs (issue #828).
+  crossings and humps are `BADGE` (26 dp) discs beside it with their glyphs (issue #828). A
+  speed limit drop (`Mark.LIMIT_DROP`, the top merge priority) is the new limit's sign at badge
+  size: a red-ring disc in km/h, a black-edged rectangle in mph, the number sized in dp.
 - Search along the route is a page (`NavSearchChips`): the whole screen in portrait, the left
   column over a dimmed map in landscape, where a tap on the dimmed part closes it. It has a
   search field, `QuickCategories.forDrive()` as tiles three to a row with fuel and charging

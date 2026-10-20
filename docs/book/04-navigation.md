@@ -464,10 +464,32 @@ you have been more than 5 km/h over the badge's limit for 4 s (`holdMs`). The 5 
 point where the badge turns red. It can speak again after 8 s back under the limit (`rearmMs`),
 and never more often than every 45 s (`minGapMs`).
 
+"Warn before the speed limit drops" (Settings > Navigation, off by default) shows a card when
+the posted limit on the route ahead drops by at least 20, 30 or 40 km/h (10, 20 or 25 mph; 30
+km/h or 20 mph unless changed). "Say it out loud" also speaks it: "Speed limit drops to 50
+kilometers per hour ahead". The road-ahead bar shows the new limit's sign where the drop is. The
+warning comes 36 s ahead at the current speed, at least 300 m and at most 1 km: about 1 km at
+100 km/h and 500 m at 50 km/h. It is given once per drop, and not at all to a driver already
+within 5 km/h of the new limit.
+
+The limits along the route come from the route itself when the phone computed it from a
+downloaded region: OsmAnd's segments carry their `maxspeed`, read in the direction driven. Every
+other route is sampled ahead of the car every 25 m, 2 km at a time, through the same sources as
+the badge. Three rules keep the warning from inventing drops (`core/nav/LimitDrops`):
+
+- No sample is taken within 30 m of a turn, where the nearest-road lookup often lands on the
+  street being left or joined.
+- A limit has to hold for 150 m to count, which drops a cross street read at a junction.
+- An untagged gap of up to 300 m keeps the limit before it, as the badge does. A longer gap starts
+  over, so an untagged road is never a drop.
+
+A drop is measured from the highest limit in the 500 m before it, so a limit that steps from 100
+to 70 to 50 over a few hundred meters is one drop of 50.
+
 The voice has three settings: on, alerts only, and off. The speaker button during a drive opens
 the three with the current one filled, and Settings > Voice > Spoken directions holds the same
 choice. In
-"Alerts only" the speeding, speed camera, plate camera and bridge alerts play two short notes instead
+"Alerts only" the speeding, speed limit drop, speed camera, plate camera and bridge alerts play two short notes instead
 of speaking, and nothing else is said: the sound a driver who turned the turns off still wants.
 Off is silent throughout. The car's own switch is on or off and leaves "Alerts only"; the phone's
 setting follows whatever the car chose.

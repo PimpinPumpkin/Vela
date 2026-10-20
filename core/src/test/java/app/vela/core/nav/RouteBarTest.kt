@@ -85,6 +85,16 @@ class RouteBarTest {
         assertEquals(RouteBar.Mark.CAMERA, m.pins[0].kind)
     }
 
+    @Test fun `a speed limit drop carries its new limit and wins a merge`() {
+        val marks = listOf(RouteBar.Mark.CAMERA to 5_020.0, RouteBar.Mark.SIGNAL to 7_000.0)
+        val drops = listOf(LimitDrops.Drop(5_000.0, 100.0, 50.0))
+        val m = RouteBar.build(route(10_000.0), traveledM = 0.0, markMeters = marks, windowM = 20_000.0, limitDrops = drops)
+        assertEquals(2, m.pins.size)
+        assertEquals(RouteBar.Mark.LIMIT_DROP, m.pins[0].kind)
+        assertEquals(50.0, m.pins[0].limitKmh!!, 0.0)
+        assertNull(m.pins[1].limitKmh)
+    }
+
     @Test fun `the bar stands down near the destination`() {
         val m = RouteBar.build(route(10_000.0, listOf(TrafficSpan(2, 9_950.0, 50.0))), traveledM = 9_800.0, windowM = 20_000.0)
         assertTrue("a 200 m sliver is noise, the banner covers that stretch", m.isEmpty)

@@ -1349,6 +1349,14 @@
     <string name="settings_speeding_alert">Speeding alert</string>
     <string name="settings_speeding_alert_hint">Says \"You\'re over the speed limit\" once you have been over the posted limit for a few seconds, and again after you slow down and creep back over it. Only where a posted limit is known, the one the speed badge shows. Off unless you turn it on.</string>
     <string name="nav_speeding_alert">You\'re over the speed limit</string>
+    <string name="settings_limit_drop_alert">Warn before the speed limit drops</string>
+    <string name="settings_limit_drop_alert_hint">Shows a card when the posted limit on your route drops sharply ahead, up to a kilometer (about half a mile) before it at highway speed, and puts the new limit on the road ahead bar. Once per drop, and not when you are already at the new limit. Only where posted limits are known. Off unless you turn it on.</string>
+    <string name="settings_limit_drop_min">Warn for a drop of at least</string>
+    <string name="settings_limit_drop_voice">Say it out loud</string>
+    <string name="settings_limit_drop_voice_hint">Also says the new limit through the navigation voice. Off shows the card only.</string>
+    <string name="nav_limit_drop_card">Speed limit %1$d %2$s ahead</string> <!-- format: %1$d is the new limit, %2$s its unit (km/h or mph) -->
+    <string name="nav_limit_drop_spoken_kmh">Speed limit drops to %1$d kilometers per hour ahead</string> <!-- format: %1$d is the new limit; spoken, so the unit is written out -->
+    <string name="nav_limit_drop_spoken_mph">Speed limit drops to %1$d miles per hour ahead</string> <!-- format: %1$d is the new limit; spoken, so the unit is written out -->
     <string name="settings_softkeys">Hardware softkeys</string>
     <string name="settings_softkeys_hint">Zoom the map with the phone\'s two soft keys. Keypad phones only.</string>
     <string name="settings_softkeys_calibrate">Calibrate soft keys</string>

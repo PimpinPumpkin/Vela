@@ -257,6 +257,9 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The speed limit drop warning (#857): the card, the voice, the road-ahead bar's sign, the obf
+  route's own limits and the sampled limits on an online route. A trip's notes show it as
+  `limit drop:` lines.
 - Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
   needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
   `bare=1`, then `recheck upgraded route for names`.

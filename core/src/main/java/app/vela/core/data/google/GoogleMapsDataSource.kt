@@ -1877,6 +1877,13 @@ class GoogleMapsDataSource @Inject constructor(
         if (polyline.size < 2 || maneuvers.size < 2) return null
         val dist = legs.sumOf { it.distanceMeters }
         val dur = legs.sumOf { it.durationSeconds }
+        // Each leg's limits, moved along by the line length of the legs before it.
+        var legStartM = 0.0
+        val limitSpans = legs.flatMap { leg ->
+            val at = legStartM
+            legStartM += app.vela.core.nav.RouteProjection.cumulative(leg.polyline).lastOrNull() ?: 0.0
+            leg.limitSpans.map { it.copy(startMeters = it.startMeters + at) }
+        }
         return Route(
             polyline = polyline,
             legs = listOf(app.vela.core.model.RouteLeg(dist, dur, null, maneuvers)),
@@ -1887,6 +1894,7 @@ class GoogleMapsDataSource @Inject constructor(
             summary = legs.firstOrNull()?.summary,
             offline = true,
             source = legs.firstOrNull()?.source ?: RouteSource.UNKNOWN,
+            limitSpans = limitSpans,
         )
     }
 
