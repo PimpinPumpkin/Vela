@@ -16,6 +16,8 @@ Settings > Navigation > Cameras has the switches. All but the first are off by d
   cameras builds routes on the streets beside the cameras.
 - Plate camera heads-up shows a card. Say when a plate camera is ahead says "License plate
   camera ahead", or "cameras" for a group.
+- Police reports: blue badges for live police alerts from Waze. Under it, Warn me out loud
+  announces "Police reported ahead" while navigating.
 
 A route that leads for its count says "Passes 2 fewer cameras than the fastest route", and the
 alternates pane tags the route with the fewest. The Cameras chip in the route pickers' Avoid row
@@ -40,6 +42,10 @@ has loaded, Overpass answers (`OverpassAlprCameras`), with a 120 m corridor for 
 Speed cameras are OSM `highway=speed_camera` nodes in the per-region `road-features` file,
 rebaked every 30 days. The phone downloads its region's file once and answers from memory
 (`RoadFeatures`). Overpass is asked only where no region exists.
+
+Police reports come from Waze's live map alerts API (`/live-map/api/georss`), filtering strictly
+for active police reports in the view or along the route corridor. Because Waze caps responses at
+around 200 alerts per query, the layer is enabled from zoom 11.
 
 Plate camera counts and alerts make no request. Each try of the side-street pass is a full
 directions request to the open router and to Google, so it is off by default and capped at six
@@ -104,11 +110,16 @@ a stops edit keeps them.
 
 ### The warnings
 
-The card and both voices share `CameraAlerts.due`. The lead distance is speed times
+The card and both voices share `CameraAlerts.due`. The default lead distance is speed times
 `LEAD_SECONDS` (12), clamped to `MIN_LEAD_M` (150) and `MAX_LEAD_M` (600), because 200 m is
 ample in town and two seconds on a freeway. Nothing fires below `MOVING_FLOOR_MPS` (2.0). An
 alert fires once per route, never for a camera behind you, and the nearest wins when two are
 due.
+
+"Alert trigger distances" under Settings allows overriding the dynamic calculation with fixed
+lead distances in meters (200 m, 300 m, 500 m, 750 m, 1000 m, 1500 m, or custom meters 50–3000 m),
+both as a global default and overridden per alert category (speed cameras, plate cameras, police,
+accidents, road hazards, closures, jams).
 
 Plate cameras are projected onto each driven route once, from memory, and heads within 40 m
 along it become one alert in the plural. The projection is keyed on the route's ends and length,
@@ -141,7 +152,8 @@ camera within 40 m. [SPEC section 4.9](../../SPEC.md) has the remaining threshol
 ## Limits
 
 - Coverage is what volunteers have mapped. A removed camera stays until someone edits OSM. Speed
-  cameras are fixed installations only, since no keyless source has mobile traps.
+  cameras are fixed installations from OSM; live police traps and patrols come from Waze's
+  community alerts.
 - A camera with no direction tag counts on every pass, which over-counts. A node tagged with
   several directions keeps only the first (`norm_direction` in the bake script).
 - Neither Google's directions nor OSRM accepts an area to avoid, so the avoid rule picks among
