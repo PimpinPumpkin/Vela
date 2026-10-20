@@ -1579,6 +1579,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.
+- A roundabout's exit step right after its entry is silent too (`NavEngine.ringExit`): both
+  carry the same words, so it spoke the roundabout twice, its line at the exit cut the entry's
+  off inside the ring, and as the entry's "then" it named the same roundabout again. The chain,
+  the stop leg and the prepared prompts pass over it (`NavEngine.quiet`). An exit step after
+  anything but its entry (a route that starts in the ring) still speaks. The drive camera still
+  frames the exit (`NavTurnTarget`).
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
 - Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, off by default,
   English only). With it on, `NavController.lightCues` looks up the signals along each route

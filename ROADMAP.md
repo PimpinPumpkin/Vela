@@ -513,6 +513,9 @@ off the list when it has been.
   stopped the app part way): seen on a 4a, a 63-row test list killed at row 36 kept the 12
   places found before its first save. Not seen: a real Takeout file imported again, which should
   take the rows it already matched with no lookup.
+- A roundabout's exit step says nothing after its entry (a real drive through two roundabouts
+  had each said twice and two lines cut off inside the ring): an engine test, which repeats
+  that drive's lines with the rule off, and the replay audit of the drive. Not heard on a drive.
 
 ### Open from the October 2026 audit
 
