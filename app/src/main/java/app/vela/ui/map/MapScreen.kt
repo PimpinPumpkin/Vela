@@ -1092,7 +1092,14 @@ fun MapScreen(
     // cameras wouldn't appear until the next pan). Clears the layer when turned off.
     LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
     LaunchedEffect(app.vela.ui.SpeedCams.on.value) { vm.refreshSpeedCamsNow() }
-    LaunchedEffect(app.vela.ui.WazePolice.on.value) { vm.refreshWazePoliceNow() }
+    LaunchedEffect(
+        app.vela.ui.WazeAlertsPrefs.masterOn.value,
+        app.vela.ui.WazeAlertsPrefs.policeOn.value,
+        app.vela.ui.WazeAlertsPrefs.accidentsOn.value,
+        app.vela.ui.WazeAlertsPrefs.hazardsOn.value,
+        app.vela.ui.WazeAlertsPrefs.closuresOn.value,
+        app.vela.ui.WazeAlertsPrefs.jamsOn.value,
+    ) { vm.refreshWazePoliceNow() }
     Box(Modifier.fillMaxSize()) {
         MapSurface(
             state = state,

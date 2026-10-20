@@ -1510,6 +1510,7 @@ internal class NavController(
             isCam -> appContext.getString(R.string.nav_speed_camera_ahead)
             cat == app.vela.core.data.WazeAlertCategory.ACCIDENT -> appContext.getString(R.string.nav_accident_ahead)
             cat == app.vela.core.data.WazeAlertCategory.HAZARD -> when {
+                alert?.isPothole() == true -> appContext.getString(R.string.nav_pothole_ahead)
                 "CONSTRUCTION" in sub || "WORKS" in sub -> appContext.getString(R.string.nav_construction_ahead)
                 else -> appContext.getString(R.string.nav_hazard_ahead)
             }

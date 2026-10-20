@@ -80,6 +80,13 @@ class WebWazePoliceFetcher @Inject constructor(
         }
     }
 
+    /** Invalidate alert cache so toggle flips or manual refresh force a fresh query. */
+    fun invalidateCache() {
+        cachedAlerts = emptyList()
+        cachedBox = null
+        lastFetchRealtime = 0L
+    }
+
     /** Pre-warm the Waze web session if Waze alerts are enabled. */
     fun warmUp() {
         if (app.vela.ui.GoogleFree.on.value || !app.vela.ui.WazeAlertsPrefs.masterOn.value) return
@@ -366,8 +373,8 @@ class WebWazePoliceFetcher @Inject constructor(
             lastFetchRealtime = finishTime + 20_000L
             cachedAlerts.ifEmpty { null }
         } else {
-            // Fix 1: pass allowedCategories to parseAlerts to filter once at parse time.
-            val alerts = WazePoliceAlerts.parseAlerts(raw, allowed)
+            // Parse all categories into cache so enabling a category in settings reuses viewport data.
+            val alerts = WazePoliceAlerts.parseAlerts(raw)
             android.util.Log.i("VelaWazePolice", "fetched ${alerts.size} alert(s) via web engine")
             val nowMs = System.currentTimeMillis()
             val outside = cachedAlerts.filter {
@@ -378,7 +385,7 @@ class WebWazePoliceFetcher @Inject constructor(
                 .filter { !it.isExpired(nowMs) }
                 .take(600)
             cachedBox = doubleArrayOf(south, west, north, east)
-            cachedAlerts
+            cachedAlerts.filter { !it.isExpired(nowMs) && it.category() in allowed }
         }
     }
 }

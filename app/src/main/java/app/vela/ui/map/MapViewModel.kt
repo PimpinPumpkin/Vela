@@ -9552,6 +9552,7 @@ class MapViewModel @Inject constructor(
     fun refreshWazePoliceNow() {
         wazePoliceBox = null
         wazePoliceFetchRealtime = 0L
+        webWazePolice.invalidateCache()
         if (app.vela.ui.WazeAlertsPrefs.masterOn.value) {
             webWazePolice.warmUp()
         }
@@ -9646,7 +9647,7 @@ class MapViewModel @Inject constructor(
                 else -> appContext.getString(R.string.accident_title)
             }
             app.vela.core.data.WazeAlertCategory.HAZARD -> when {
-                "POTHOLE" in sub -> appContext.getString(R.string.hazard_title_pothole)
+                alert.isPothole() || "POTHOLE" in sub -> appContext.getString(R.string.hazard_title_pothole)
                 "OBJECT" in sub -> appContext.getString(R.string.hazard_title_object)
                 "SHOULDER" in sub -> appContext.getString(R.string.hazard_title_shoulder)
                 "WEATHER" in sub || "FOG" in sub || "ICE" in sub || "RAIN" in sub || "FLOOD" in sub || "SNOW" in sub ->

@@ -215,5 +215,16 @@ class WazePoliceAlertsTest {
         assertTrue(speedCamAlert.isCamera())
         org.junit.Assert.assertFalse(policeAlert.isCamera())
     }
+
+    @Test
+    fun `isPothole identifies POT_HOLE and POTHOLE subtypes`() {
+        val wazeStandard = WazePoliceAlert(id = "1", loc = LatLng(0.0, 0.0), type = "HAZARD", subtype = "HAZARD_ON_ROAD_POT_HOLE")
+        val altPothole = WazePoliceAlert(id = "2", loc = LatLng(0.0, 0.0), type = "HAZARD", subtype = "HAZARD_ON_ROAD_POTHOLE")
+        val genericHazard = WazePoliceAlert(id = "3", loc = LatLng(0.0, 0.0), type = "HAZARD", subtype = "HAZARD_ON_ROAD_CAR_STOPPED")
+
+        assertTrue(wazeStandard.isPothole())
+        assertTrue(altPothole.isPothole())
+        org.junit.Assert.assertFalse(genericHazard.isPothole())
+    }
 }
 

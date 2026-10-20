@@ -164,7 +164,7 @@ object AlertDistancePrefs {
             }
             WazeAlertCategory.HAZARD -> when {
                 "CONSTRUCTION" in sub || "WORKS" in sub -> hazardConstructionMeters.intValue
-                "POTHOLE" in sub || "OBJECT" in sub -> hazardPotholeMeters.intValue
+                "POTHOLE" in sub || "POT_HOLE" in sub || "OBJECT" in sub -> hazardPotholeMeters.intValue
                 "SHOULDER" in sub -> hazardShoulderMeters.intValue
                 "WEATHER" in sub || "FOG" in sub || "ICE" in sub || "RAIN" in sub || "FLOOD" in sub || "SNOW" in sub ->
                     hazardWeatherMeters.intValue

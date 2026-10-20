@@ -66,6 +66,10 @@ data class WazePoliceAlert(
 ) {
     fun category(): WazeAlertCategory = WazeAlertCategory.fromType(type)
     fun isCamera(): Boolean = WazeAlertCategory.isCamera(type, subtype)
+    fun isPothole(): Boolean {
+        val s = subtype?.uppercase(Locale.US) ?: return false
+        return "POT_HOLE" in s || "POTHOLE" in s
+    }
     fun isExpired(nowMs: Long = System.currentTimeMillis()): Boolean = WazePoliceAlerts.isExpired(this, nowMs)
 }
 

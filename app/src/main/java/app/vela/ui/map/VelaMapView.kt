@@ -342,6 +342,7 @@ private const val WAZE_POLICE_LAYER = "vela-waze-police"
 private const val WAZE_POLICE_IMG = "vela-waze-police-badge"
 private const val WAZE_ACCIDENT_IMG = "vela-waze-accident-badge"
 private const val WAZE_HAZARD_IMG = "vela-waze-hazard-badge"
+private const val WAZE_POTHOLE_IMG = "vela-waze-pothole-badge"
 private const val WAZE_CLOSURE_IMG = "vela-waze-closure-badge"
 private const val WAZE_JAM_IMG = "vela-waze-jam-badge"
 private const val WAZE_POLICE_INDEX_PROP = "vela-police-idx"
@@ -6564,6 +6565,7 @@ PropertyFactory.iconPadding(2f),
     style.addImage(WAZE_POLICE_IMG, policeBadgeBitmap())
     style.addImage(WAZE_ACCIDENT_IMG, accidentBadgeBitmap())
     style.addImage(WAZE_HAZARD_IMG, hazardBadgeBitmap())
+    style.addImage(WAZE_POTHOLE_IMG, potholeBadgeBitmap())
     style.addImage(WAZE_CLOSURE_IMG, closureBadgeBitmap())
     style.addImage(WAZE_JAM_IMG, jamBadgeBitmap())
     if (style.getSource(WAZE_POLICE_SRC) == null) {
@@ -10344,7 +10346,11 @@ private fun applyData(
         val features = wazePolice.mapIndexed { idx, it ->
             Feature.fromGeometry(Point.fromLngLat(it.loc.lng, it.loc.lat)).apply {
                 addNumberProperty(WAZE_POLICE_INDEX_PROP, idx)
-                val icon = if (it.isCamera()) SPEEDCAM_IMG else it.category().iconId
+                val icon = when {
+                    it.isCamera() -> SPEEDCAM_IMG
+                    it.isPothole() -> WAZE_POTHOLE_IMG
+                    else -> it.category().iconId
+                }
                 addStringProperty("icon", icon)
                 addStringProperty("type", it.type)
             }
@@ -11258,6 +11264,56 @@ internal fun hazardBadgeBitmap(): Bitmap {
     paint.color = 0xFF212121.toInt()
     c.drawRoundRect(android.graphics.RectF(cx - 2.5f, cy - 8f, cx + 2.5f, cy + 5f), 2f, 2f, paint)
     c.drawCircle(cx, cy + 10f, 2.5f, paint)
+
+    return bmp
+}
+
+/** Pothole badge: vivid amber/orange circle with road crater glyph and exclamation. */
+internal fun potholeBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // Outer white halo
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    // Inner deep amber disc
+    val rIn = r - 3.5f
+    paint.color = 0xFFFF8F00.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    // Exclamation mark above the road dip
+    paint.color = 0xFFFFFFFF.toInt()
+    paint.style = Paint.Style.FILL
+    c.drawRoundRect(android.graphics.RectF(cx - 2.5f, cy - 18f, cx + 2.5f, cy - 4f), 2f, 2f, paint)
+    c.drawCircle(cx, cy + 1f, 2.5f, paint)
+
+    // Road surface line with a dip/crater in the middle
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 4f
+    paint.strokeCap = Paint.Cap.ROUND
+    val roadPath = android.graphics.Path().apply {
+        moveTo(cx - 20f, cy + 9f)
+        lineTo(cx - 10f, cy + 9f)
+        cubicTo(cx - 6f, cy + 19f, cx + 6f, cy + 19f, cx + 10f, cy + 9f)
+        lineTo(cx + 20f, cy + 9f)
+    }
+    c.drawPath(roadPath, paint)
+
+    // Dark asphalt crater fill inside the dip
+    paint.style = Paint.Style.FILL
+    paint.color = 0xFF212121.toInt()
+    val craterFill = android.graphics.Path().apply {
+        moveTo(cx - 10f, cy + 9f)
+        cubicTo(cx - 6f, cy + 19f, cx + 6f, cy + 19f, cx + 10f, cy + 9f)
+        close()
+    }
+    c.drawPath(craterFill, paint)
 
     return bmp
 }
