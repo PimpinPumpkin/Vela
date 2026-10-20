@@ -1194,8 +1194,11 @@ internal class NavController(
     private var spokenPolice: Set<Int> = emptySet()
     private var routePoliceJob: kotlinx.coroutines.Job? = null
     private var routeWazeAlertsList: List<app.vela.core.data.WazePoliceAlert> = emptyList()
+    // Fix 3: track last corridor fetch time for periodic refresh.
+    private var routePoliceLastFetchMs: Long = 0L
+    private val ROUTE_POLICE_REFRESH_MS = 5 * 60 * 1000L
 
-    /** One corridor fetch of Waze reports per driven route, projected onto it for spoken alerts. */
+    /** Corridor fetch of Waze reports per driven route, refreshed every 5 min to pick up new/expired alerts. */
     private fun refreshRouteWazePolice(route: app.vela.core.model.Route) {
         if (!app.vela.ui.WazeAlertsPrefs.masterOn.value) {
             routePoliceKey = null; routePoliceMeters = emptyList(); spokenPolice = emptySet(); routeWazeAlertsList = emptyList()
@@ -1213,47 +1216,59 @@ internal class NavController(
         spokenPolice = emptySet()
         routePoliceMeters = emptyList()
         routeWazeAlertsList = emptyList()
+        routePoliceLastFetchMs = 0L
         routePoliceJob?.cancel()
         routePoliceJob = scope.launch {
-            val alerts = withContext(Dispatchers.IO) {
-                runCatching {
-                    val degPad = (250.0 / 111_000.0) * 1.5
-                    val s = poly.minOf { it.lat } - degPad
-                    val n = poly.maxOf { it.lat } + degPad
-                    val w = poly.minOf { it.lng } - degPad
-                    val e = poly.maxOf { it.lng } + degPad
-                    webWazePolice?.fetchAlerts(s, w, n, e) ?: app.vela.core.data.WazePoliceAlerts.fetchAlongCorridor(http, poly)
-                }.getOrNull()
-            } ?: run {
-                android.util.Log.i("VelaWazePolice", "route corridor waze fetch FAILED")
-                return@launch
-            }
-            val projected = withContext(Dispatchers.Default) {
-                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
-                alerts.mapNotNull { a ->
-                    app.vela.core.nav.RouteProjection.alongMeters(poly, cum, a.loc)?.let { m -> m to a }
-                }.sortedBy { it.first }
-            }
-            if (routePoliceKey == key) {
-                val meters = projected.map { it.first }
-                val grouped = app.vela.core.nav.CameraAlerts.group(meters)
-                routePoliceMeters = grouped.map { it.atM }
-                routeWazeAlertsList = grouped.mapNotNull { g ->
-                    projected.minByOrNull { kotlin.math.abs(it.first - g.atM) }?.second
-                }
-                app.vela.car.CarBridge.wazePolice.value = alerts.map { it.loc }
+            while (routePoliceKey == key) {
                 val nowMs = System.currentTimeMillis()
-                _state.update { s ->
-                    val combined = (s.wazePolice + alerts)
-                        .distinctBy { it.id }
-                        .filter { !it.isExpired(nowMs) }
-                        .take(600)
-                    s.copy(wazePolice = combined)
+                if (nowMs - routePoliceLastFetchMs >= ROUTE_POLICE_REFRESH_MS) {
+                    fetchAndProjectRoutePolice(key, poly)
                 }
-                updateRouteBar(navSession.state.value)
-                diag.record("wazepolice", "${meters.size} waze alert(s) on route", "corridor")
-                android.util.Log.i("VelaWazePolice", "${meters.size} waze alert(s) on route in ${routePoliceMeters.size} spot(s)")
+                kotlinx.coroutines.delay(60_000L) // check every minute, fetch every 5
             }
+        }
+    }
+
+    private suspend fun fetchAndProjectRoutePolice(key: String, poly: List<app.vela.core.model.LatLng>) {
+        val alerts = withContext(Dispatchers.IO) {
+            runCatching {
+                val degPad = (250.0 / 111_000.0) * 1.5
+                val s = poly.minOf { it.lat } - degPad
+                val n = poly.maxOf { it.lat } + degPad
+                val w = poly.minOf { it.lng } - degPad
+                val e = poly.maxOf { it.lng } + degPad
+                webWazePolice?.fetchAlerts(s, w, n, e) ?: app.vela.core.data.WazePoliceAlerts.fetchAlongCorridor(http, poly)
+            }.getOrNull()
+        } ?: run {
+            android.util.Log.i("VelaWazePolice", "route corridor waze fetch FAILED")
+            return
+        }
+        routePoliceLastFetchMs = System.currentTimeMillis()
+        val projected = withContext(Dispatchers.Default) {
+            val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+            alerts.mapNotNull { a ->
+                app.vela.core.nav.RouteProjection.alongMeters(poly, cum, a.loc)?.let { m -> m to a }
+            }.sortedBy { it.first }
+        }
+        if (routePoliceKey == key) {
+            val meters = projected.map { it.first }
+            val grouped = app.vela.core.nav.CameraAlerts.group(meters)
+            routePoliceMeters = grouped.map { it.atM }
+            routeWazeAlertsList = grouped.mapNotNull { g ->
+                projected.minByOrNull { kotlin.math.abs(it.first - g.atM) }?.second
+            }
+            app.vela.car.CarBridge.wazePolice.value = alerts.map { it.loc }
+            val nowMs = System.currentTimeMillis()
+            _state.update { s ->
+                val combined = (s.wazePolice + alerts)
+                    .distinctBy { it.id }
+                    .filter { !it.isExpired(nowMs) }
+                    .take(600)
+                s.copy(wazePolice = combined)
+            }
+            updateRouteBar(navSession.state.value)
+            diag.record("wazepolice", "${meters.size} waze alert(s) on route", "corridor")
+            android.util.Log.i("VelaWazePolice", "${meters.size} waze alert(s) on route in ${routePoliceMeters.size} spot(s)")
         }
     }
 
@@ -1485,8 +1500,8 @@ internal class NavController(
             cat == app.vela.core.data.WazeAlertCategory.POLICE -> app.vela.ui.WazeAlertsPrefs.policeWarnOn.value
             cat == app.vela.core.data.WazeAlertCategory.ACCIDENT -> app.vela.ui.WazeAlertsPrefs.accidentsWarnOn.value
             cat == app.vela.core.data.WazeAlertCategory.HAZARD -> app.vela.ui.WazeAlertsPrefs.hazardsWarnOn.value
-            cat == app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> true
-            cat == app.vela.core.data.WazeAlertCategory.JAM -> app.vela.ui.WazeAlertsPrefs.jamsOn.value
+            cat == app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> app.vela.ui.WazeAlertsPrefs.closuresWarnOn.value
+            cat == app.vela.core.data.WazeAlertCategory.JAM -> app.vela.ui.WazeAlertsPrefs.jamsWarnOn.value
             else -> false
         }
         if (!shouldWarn) return

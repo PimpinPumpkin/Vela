@@ -200,8 +200,12 @@ class WebWazePoliceFetcher @Inject constructor(
         val now = android.os.SystemClock.elapsedRealtime()
         val nowMs = System.currentTimeMillis()
         val cBox = cachedBox
+        // Fix 2: tolerate 10% shrink so minor pans don't trigger a full re-fetch.
         if (cBox != null && now - lastFetchRealtime < 30_000L) {
-            if (south >= cBox[0] && west >= cBox[1] && north <= cBox[2] && east <= cBox[3]) {
+            val latTol = (cBox[2] - cBox[0]) * 0.1
+            val lngTol = (cBox[3] - cBox[1]) * 0.1
+            if (south >= cBox[0] - latTol && west >= cBox[1] - lngTol &&
+                north <= cBox[2] + latTol && east <= cBox[3] + lngTol) {
                 return cachedAlerts.filter { !it.isExpired(nowMs) && it.category() in allowed }
             }
         }
@@ -224,6 +228,7 @@ class WebWazePoliceFetcher @Inject constructor(
                 .take(600)
             cachedBox = doubleArrayOf(south, west, north, east)
             android.util.Log.i("VelaWazePolice", "fetched ${bridgeAlerts.size} alert(s) via bridge")
+            // Fix 1: filtering already applied inside parseAlerts (via tryBridge -> parseAlerts)
             return cachedAlerts.filter { it.category() in allowed }
         }
 
@@ -256,8 +261,14 @@ class WebWazePoliceFetcher @Inject constructor(
                     try { window.VelaBridge.log(m); } catch(e) {}
                     try { console.info('[VelaWaze] ' + m); } catch(e) {}
                 }
+                // Fix 6: reuse cached token within the same Waze session to skip polling loop.
                 function getToken() {
                     return new Promise(function(resolve) {
+                        if (window._velaToken) {
+                            log('reusing cached token, len=' + window._velaToken.length);
+                            resolve(window._velaToken);
+                            return;
+                        }
                         var tries = 0;
                         function poll() {
                             var g = window.grecaptcha;
@@ -268,6 +279,9 @@ class WebWazePoliceFetcher @Inject constructor(
                                         runner.execute('6Lf4WdUqAAAAAEUYUvzyLYIkO3PoFAqi8ZHGiDLW', { action: 'api' })
                                             .then(function(t) {
                                                 log('token obtained, len=' + (t ? t.length : 0));
+                                                window._velaToken = t;
+                                                // Tokens expire after ~2 min; clear early to force refresh.
+                                                setTimeout(function() { window._velaToken = null; }, 90000);
                                                 resolve(t);
                                             })
                                             .catch(function(err) {
@@ -316,6 +330,7 @@ class WebWazePoliceFetcher @Inject constructor(
                 .then(function(r) {
                     log('HTTP ' + r.status);
                     if (r.status === 403) {
+                        window._velaToken = null;
                         try { window.VelaBridge.onHttpError(403); } catch(e) {}
                     }
                     return r.text().then(function(t) {
@@ -351,7 +366,8 @@ class WebWazePoliceFetcher @Inject constructor(
             lastFetchRealtime = finishTime + 20_000L
             cachedAlerts.ifEmpty { null }
         } else {
-            val alerts = WazePoliceAlerts.parseAlerts(raw)
+            // Fix 1: pass allowedCategories to parseAlerts to filter once at parse time.
+            val alerts = WazePoliceAlerts.parseAlerts(raw, allowed)
             android.util.Log.i("VelaWazePolice", "fetched ${alerts.size} alert(s) via web engine")
             val nowMs = System.currentTimeMillis()
             val outside = cachedAlerts.filter {
@@ -362,7 +378,7 @@ class WebWazePoliceFetcher @Inject constructor(
                 .filter { !it.isExpired(nowMs) }
                 .take(600)
             cachedBox = doubleArrayOf(south, west, north, east)
-            cachedAlerts.filter { it.category() in allowed }
+            cachedAlerts
         }
     }
 }

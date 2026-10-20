@@ -22,6 +22,8 @@ object WazeAlertsPrefs {
     val policeWarnOn = mutableStateOf(false)
     val accidentsWarnOn = mutableStateOf(false)
     val hazardsWarnOn = mutableStateOf(false)
+    val closuresWarnOn = mutableStateOf(true)  // default on: closure on your route is always relevant
+    val jamsWarnOn = mutableStateOf(false)
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -37,6 +39,8 @@ object WazeAlertsPrefs {
         policeWarnOn.value = p.getBoolean(KEY_POLICE_WARN, legacyPoliceWarn)
         accidentsWarnOn.value = p.getBoolean(KEY_ACCIDENTS_WARN, false)
         hazardsWarnOn.value = p.getBoolean(KEY_HAZARDS_WARN, false)
+        closuresWarnOn.value = p.getBoolean(KEY_CLOSURES_WARN, true)
+        jamsWarnOn.value = p.getBoolean(KEY_JAMS_WARN, false)
 
         // Sync legacy objects
         syncLegacy(context)
@@ -90,6 +94,16 @@ object WazeAlertsPrefs {
         prefs(context).edit().putBoolean(KEY_HAZARDS_WARN, value).apply()
     }
 
+    fun setClosuresWarn(context: Context, value: Boolean) {
+        closuresWarnOn.value = value
+        prefs(context).edit().putBoolean(KEY_CLOSURES_WARN, value).apply()
+    }
+
+    fun setJamsWarn(context: Context, value: Boolean) {
+        jamsWarnOn.value = value
+        prefs(context).edit().putBoolean(KEY_JAMS_WARN, value).apply()
+    }
+
     fun enabledCategories(): Set<WazeAlertCategory> {
         if (!masterOn.value) return emptySet()
         val set = mutableSetOf<WazeAlertCategory>()
@@ -124,6 +138,8 @@ object WazeAlertsPrefs {
     private const val KEY_POLICE_WARN = "waze_alerts_police_warn_on"
     private const val KEY_ACCIDENTS_WARN = "waze_alerts_accidents_warn_on"
     private const val KEY_HAZARDS_WARN = "waze_alerts_hazards_warn_on"
+    private const val KEY_CLOSURES_WARN = "waze_alerts_closures_warn_on"
+    private const val KEY_JAMS_WARN = "waze_alerts_jams_warn_on"
 
     private const val KEY_LEGACY_POLICE = "waze_police_on"
     private const val KEY_LEGACY_POLICE_WARN = "waze_police_warn_on"

@@ -121,6 +121,24 @@ internal fun WazeAlertsSettingsScreen(
                         hint = stringResource(R.string.settings_waze_warn_hazards_hint),
                     )
                 }
+                if (WazeAlertsPrefs.closuresOn.value) {
+                    if (WazeAlertsPrefs.policeOn.value || WazeAlertsPrefs.accidentsOn.value || WazeAlertsPrefs.hazardsOn.value) GroupDivider()
+                    ToggleRow(
+                        label = stringResource(R.string.settings_waze_warn_closures),
+                        checked = WazeAlertsPrefs.closuresWarnOn.value,
+                        onCheckedChange = { WazeAlertsPrefs.setClosuresWarn(context, it) },
+                        hint = stringResource(R.string.settings_waze_warn_closures_hint),
+                    )
+                }
+                if (WazeAlertsPrefs.jamsOn.value) {
+                    if (WazeAlertsPrefs.policeOn.value || WazeAlertsPrefs.accidentsOn.value || WazeAlertsPrefs.hazardsOn.value || WazeAlertsPrefs.closuresOn.value) GroupDivider()
+                    ToggleRow(
+                        label = stringResource(R.string.settings_waze_warn_jams),
+                        checked = WazeAlertsPrefs.jamsWarnOn.value,
+                        onCheckedChange = { WazeAlertsPrefs.setJamsWarn(context, it) },
+                        hint = stringResource(R.string.settings_waze_warn_jams_hint),
+                    )
+                }
             }
 
             if (onOpenAlertDistances != null) {

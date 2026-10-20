@@ -21,17 +21,26 @@ enum class WazeAlertCategory(val rawType: String, val iconId: String) {
     OTHER("OTHER", "vela-waze-hazard-badge");
 
     companion object {
+        private val CAMERA_TOKENS = arrayOf("CAMERA", "SPEED_CAM")
+
         fun fromType(raw: String?): WazeAlertCategory {
             if (raw == null) return OTHER
             val u = raw.uppercase(Locale.US)
             return when {
-                u.contains("POLICE") || u.contains("CAMERA") || u.contains("SPEED_CAM") -> POLICE
+                u.contains("POLICE") || CAMERA_TOKENS.any { u.contains(it) } -> POLICE
                 u.contains("ACCIDENT") -> ACCIDENT
                 u.contains("HAZARD") || u.contains("WEATHER") || u.contains("CONSTRUCTION") -> HAZARD
                 u.contains("ROAD_CLOSED") || u.contains("CLOSURE") -> ROAD_CLOSED
                 u.contains("JAM") || u.contains("TRAFFIC") -> JAM
                 else -> OTHER
             }
+        }
+
+        /** True when [raw] type or subtype denotes a fixed or reported camera (not a police trap). */
+        fun isCamera(type: String, subtype: String?): Boolean {
+            val t = type.uppercase(Locale.US)
+            val s = subtype?.uppercase(Locale.US) ?: ""
+            return CAMERA_TOKENS.any { it in t || it in s }
         }
     }
 }
@@ -56,11 +65,7 @@ data class WazePoliceAlert(
     val pubMillis: Long = 0L,
 ) {
     fun category(): WazeAlertCategory = WazeAlertCategory.fromType(type)
-    fun isCamera(): Boolean {
-        val t = type.uppercase(Locale.US)
-        val s = subtype?.uppercase(Locale.US) ?: ""
-        return "CAMERA" in t || "SPEED_CAM" in t || "CAMERA" in s
-    }
+    fun isCamera(): Boolean = WazeAlertCategory.isCamera(type, subtype)
     fun isExpired(nowMs: Long = System.currentTimeMillis()): Boolean = WazePoliceAlerts.isExpired(this, nowMs)
 }
 

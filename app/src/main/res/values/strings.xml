@@ -157,6 +157,10 @@
     <string name="settings_waze_warn_accidents_hint">Says \"Accident reported ahead\" during navigation.</string>
     <string name="settings_waze_warn_hazards">Warn me of road hazards</string>
     <string name="settings_waze_warn_hazards_hint">Says \"Road hazard reported ahead\" during navigation.</string>
+    <string name="settings_waze_warn_closures">Warn me of road closures</string>
+    <string name="settings_waze_warn_closures_hint">Says \"Road closure reported ahead\" during navigation.</string>
+    <string name="settings_waze_warn_jams">Warn me of traffic jams</string>
+    <string name="settings_waze_warn_jams_hint">Says \"Traffic jam ahead\" during navigation.</string>
     <string name="settings_alert_distance_title">Alert trigger distances</string>
     <string name="settings_alert_distance_subtitle">Distance in meters when warnings trigger</string>
     <string name="settings_alert_distance_intro">Configure how far ahead (in meters) navigation alerts trigger. Choose a default distance or customize per alert category.</string>
