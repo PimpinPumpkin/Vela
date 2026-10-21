@@ -11,12 +11,13 @@ import app.vela.core.vehicle.VehicleSupport
  * Nothing here probes aggressively or caches: it reads the display list and the service presence
  * at the moment it is asked, plus the live state the controllers already hold.
  *
- * What Vela does not implement is reported as such, not hidden: the SOME/IP windshield HUD has its
- * maneuver mapping but no sender yet, and there is no ADB cluster fallback. See SPEC 10.9.
+ * What Vela does not implement is reported as such, not hidden: there is no ADB cluster fallback.
+ * See SPEC 10.9.
  */
 object VehicleCapabilities {
     @Volatile var clusterController: ClusterMapController? = null
     @Volatile var fceHud: FceClusterHud? = null
+    @Volatile var someIpHud: SomeIpHud? = null
 
     data class Line(val label: String, val state: VehicleSupport, val detail: String? = null)
 
@@ -32,8 +33,8 @@ object VehicleCapabilities {
                 cluster?.let { "route=${it.route}, target=${targets.firstOrNull() ?: "none"}" } ?: "targets=${targets.size}",
             ),
             Line("FCE cluster HUD", fce?.support ?: if (FceCarPropertyTransport.available()) VehicleSupport.AVAILABLE else VehicleSupport.NOT_PRESENT),
+            Line("Windshield HUD (SOME/IP)", someIpHud?.support ?: if (SomeIpHudTransport.available(context)) VehicleSupport.AVAILABLE else VehicleSupport.NOT_PRESENT),
             Line("Steering voice key", if (wheelOn) VehicleSupport.ACTIVE else VehicleSupport.AVAILABLE, if (wheelOn) "accessibility service enabled" else "enable in Android Settings"),
-            Line("SOME/IP windshield HUD", VehicleSupport.NOT_IN_THIS_BUILD, "maneuver mapping only, no sender"),
             Line("ADB cluster fallback", VehicleSupport.NOT_IN_THIS_BUILD, "public display only"),
         )
     }

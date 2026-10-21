@@ -232,7 +232,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
   `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
   `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`,
-  `ClusterMapPref` and `FceClusterHudPref` (the BYD cluster integrations, 10.9).
+  `ClusterMapPref`, `FceClusterHudPref` and `SomeIpHudPref` (the BYD cluster integrations, 10.9).
 - `MemoryPressure`, `PipMode` and `ConstrainedNetwork` hold runtime state, not a pref.
 - One view model. `MapViewModel` owns `MapUiState` and delegates navigation to `NavController`
   through `NavController.Host`. Nav code never reaches into the view model. Anything an
@@ -5845,15 +5845,33 @@ because the cluster formats kilometers itself. The service is absent on benches 
 properties' meaning is from one vehicle's observed behavior, so the feature is opt-in and reported
 as confirmed on one car only.
 
-The SOME/IP windshield HUD maneuver ids: `SomeIpHudArrows` (`:core`). A BYD windshield HUD reads a
-maneuver id in field 28 of the road-info frame it gets over the head unit's SOME/IP gateway. Two
-renderers read two vocabularies: the BYD map app's (left 1, right 2, slight 3 and 5, sharp 7 and 8,
-U-turn 9 and 10, straight 11, roundabout enter 13 or 14 clockwise, exit 24 or 23, destination 48)
-and a third-party native-arrow set (sharp folded to 1 and 2, U-turn 7 and 8, and 99 for any
-maneuver with no glyph of its own). The table is here and tested so a sender can be added without
-guessing ids. Vela has no SOME/IP gateway sender in this build, so this capability reads
-NOT_IN_THIS_BUILD. The two tables share no turn code with the FCE glyphs, which a test pins, so the
-transports cannot corrupt one another.
+The SOME/IP windshield HUD: `SomeIpHudFrame` and `SomeIpHudArrows` (`:core`), `SomeIpHudTransport`
+and `SomeIpHud` (`:app`). A BYD head unit's windshield glass reads a road-info frame published over
+the gateway `com.ts.car.someip.service`, an exported, permission-free Binder service. Vela binds it
+and fires the frame: no ADB, no permission. The frame is the proven minimal one, an inner
+HudRoadInfoNotifyStruct wrapped as outer field 1, with field 2 counter, field 6 layout (1 guiding,
+255 clear), field 7 empty lane picture, field 8 the maneuver arrow as a transparent PNG (Vela's own
+glyph), field 9 distance floored at 11 m, field 10 the road (<= 200 chars), field 16 NavigatingStatus
+(2 guiding, 1 idle), field 26 the ETA "HH:mm", and field 28 the maneuver id. `SomeIpHudFrame` is a
+small protobuf writer so the bytes are byte-exact and unit-tested.
+
+The maneuver id reads two vocabularies: the BYD map app's (left 1, right 2, slight 3 and 5, sharp 7
+and 8, U-turn 9 and 10, straight 11, roundabout enter 13 or 14 clockwise, exit 24 or 23, destination
+48) and a third-party native-arrow set (sharp folded to 1 and 2, U-turn 7 and 8, and 99 for any
+maneuver with no glyph of its own). Vela sends the native-arrow set, which is what the proven
+picture-in-field-8 senders use; the picture in field 8 carries the real arrow either way. The table
+shares no turn code with the FCE glyphs, which a test pins, so the two transports cannot corrupt one
+another.
+
+The transport does a TYPED bind: the intent type is Vela's own package, which the gateway requires.
+A typeless bind NPE-crashes the gateway process, and the factory AR-HUD it hosts, on unbind. The
+session is a typed bind, then register a callback (a minimal Binder stub that
+answers the gateway's callbacks), then start the service (`0x000B010A00010000`, accepted on return
+code 0 or 13) before the first fire, then fire the frame on topic `0x0004010A00018001` (accepted on
+0; re-offer and retry once on 11), re-fired on a 1 second keepalive so the glass does not blank, one
+blank frame to clear, and stop on teardown. Every transaction runs on one background thread, because
+a wedged gateway can block a transact and must never reach the main thread. Off unless the head unit
+has the gateway and the user turned it on.
 
 #### The steering-wheel voice key
 
@@ -5890,11 +5908,13 @@ display list (the `vehicle` field). No analytics, no telemetry, no backend, no v
 and no position: capability names and display names only.
 
 Reported NOT_IN_THIS_BUILD rather than hidden, because the piece is understood but Vela does not
-act on it: the SOME/IP sender (above) and the ADB cluster fallback.
+act on it: the ADB cluster fallback.
 
-The three controllers start in `VelaApp` on a process-long scope and follow the shared `NavSession`.
-The settings holders are `ClusterMapPref` and `FceClusterHudPref` (2.3); the wheel key filter's
-state is read from the system, not stored. Every user string is in `res/values/strings.xml`.
+The four controllers (cluster map, FCE cluster HUD, SOME/IP windshield HUD, and the capability
+read) start in `VelaApp` on a process-long scope and follow the shared `NavSession`; the
+steering-wheel filter is its own accessibility service. The settings holders are `ClusterMapPref`,
+`FceClusterHudPref` and `SomeIpHudPref` (2.3); the wheel key filter's state is read from the system,
+not stored. Every user string is in `res/values/strings.xml`.
 
 ---
 

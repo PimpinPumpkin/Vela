@@ -352,6 +352,8 @@ yet.
   while you drive, showing the same route as the phone.
 - On a BYD cluster that has its own built-in turn view, Vela can fill it with the turn arrow and
   distance instead.
+- On a BYD windshield head-up display, Vela can show the turn arrow, distance, road and arrival
+  time while you drive.
 - The steering wheel's voice button can repeat the current spoken direction during a drive, once
   you enable Vela's key access in Android Settings.
 - Settings > Diagnostics shows what the car offers and why anything is unavailable.

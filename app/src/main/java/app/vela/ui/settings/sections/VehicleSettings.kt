@@ -24,6 +24,7 @@ import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.ToggleRow
 import app.vela.vehicle.FceCarPropertyTransport
+import app.vela.vehicle.SomeIpHudTransport
 import app.vela.vehicle.SteeringWheelService
 import app.vela.vehicle.VehicleCapabilities
 
@@ -82,6 +83,20 @@ internal fun VehicleSettingsGroup() {
         )
         if (app.vela.ui.FceClusterHudPref.on.value && !FceCarPropertyTransport.available()) {
             Hint(stringResource(R.string.settings_cluster_hud_absent))
+        }
+        GroupDivider()
+        // The windshield HUD (road-info frames to the glass).
+        ToggleRow(
+            label = stringResource(R.string.settings_windshield_hud),
+            checked = app.vela.ui.SomeIpHudPref.on.value,
+            onCheckedChange = {
+                app.vela.ui.SomeIpHudPref.set(context, it)
+                VehicleCapabilities.someIpHud?.onSettingChanged()
+            },
+            hint = stringResource(R.string.settings_windshield_hud_hint),
+        )
+        if (app.vela.ui.SomeIpHudPref.on.value && !SomeIpHudTransport.available(context)) {
+            Hint(stringResource(R.string.settings_windshield_hud_absent))
         }
         GroupDivider()
         // The steering-wheel voice key. An app cannot turn its own accessibility service on, so the

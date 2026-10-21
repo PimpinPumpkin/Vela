@@ -278,6 +278,9 @@
     <string name="settings_cluster_hud">Turn arrows on the cluster</string>
     <string name="settings_cluster_hud_hint">Send the turn arrow and distance to the cluster\'s built-in navigation view on a car that supports it. Independent of the map above.</string>
     <string name="settings_cluster_hud_absent">This head unit does not offer the cluster navigation service.</string>
+    <string name="settings_windshield_hud">Windshield head-up display</string>
+    <string name="settings_windshield_hud_hint">Send the turn arrow, distance, road and arrival time to the car\'s windshield display while you drive, on a car that has one.</string>
+    <string name="settings_windshield_hud_absent">This head unit does not offer the windshield display service.</string>
     <string name="settings_wheel_voice">Steering wheel voice button</string>
     <string name="settings_wheel_voice_hint">Press the voice button on the wheel during a drive to hear the current direction again. Needs Vela\'s key access, which you turn on in Android Settings.</string>
     <string name="settings_wheel_voice_enabled">On: Vela reads the wheel\'s voice button during a drive.</string>

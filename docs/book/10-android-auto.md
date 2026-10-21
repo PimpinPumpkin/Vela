@@ -368,6 +368,12 @@ the view state, the arrow and the distance. It needs a head unit that offers tha
 nothing on one that does not. The arrow uses the cluster's own icon set, which is not the icon set
 the windshield HUD uses; the two are kept apart so neither can draw the other's arrow.
 
+The **windshield head-up display** shows the turn arrow, distance, road and arrival time on the
+car's windshield glass. The arrow is Vela's own, sent as a small picture; the distance, road and
+time ride alongside it, refreshed about once a second so the glass does not blank. It uses the car's
+own display service with no ADB and no extra permission, and does nothing on a car that has no such
+display. It is separate from the cluster paths above.
+
 The **steering-wheel voice button** repeats the current spoken direction when you press it during a
 drive. The car sends wheel buttons to an app through Android's accessibility key filtering, so this
 is an accessibility service you enable in Android Settings (Vela explains why and reads nothing on
@@ -397,11 +403,11 @@ why something is unavailable. The debug export carries the same states and no ve
   better.
 - Vela sends the cluster the current step and the destination. What a car's cluster or head-up
   display does with them is up to the car.
-- The BYD cluster map, cluster turn arrows and steering-wheel voice button have been built and
-  run on a bench, never on a car. The cluster displays are listed on both DiLink benches and the
-  services probe correctly, but no render on a cluster panel and no wheel press has been seen.
-- There is no ADB cluster fallback: a car with no public cluster display keeps the map on the
-  phone. The SOME/IP windshield HUD has its arrow table but no sender yet.
+- The BYD cluster map, cluster turn arrows, windshield HUD and steering-wheel voice button have
+  been built and run on a bench, never on a car. The cluster displays are listed and the services
+  probe correctly on both DiLink benches, but no render on a cluster or windshield panel and no
+  wheel press has been seen.
+- There is no ADB cluster fallback: a car with no public cluster display keeps the map on the phone.
 - Android Auto's guidance stream is 16 kHz mono, so every navigation voice sounds duller in the
   car than on the phone, Google's included. A head unit set to play prompts over the phone-call
   link makes it 8 kHz. No setting in Vela changes either.

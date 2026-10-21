@@ -202,9 +202,10 @@ the feature off.
 ## BYD car integrations (optional, off by default)
 
 On a BYD head unit, Vela can draw its map on the instrument cluster, fill a cluster's built-in
-turn view, and act on the steering wheel's voice button. None is on until you turn it on, and
-none sends anything anywhere: they draw on the car's own displays and talk to the car's own
-software on the same device. There is no server and no account, as everywhere else in Vela.
+turn view, show the turn on the windshield display, and act on the steering wheel's voice button.
+None is on until you turn it on, and none sends anything anywhere: they draw on the car's own
+displays and talk to the car's own software on the same device, over on-device channels, with no
+network. There is no server and no account, as everywhere else in Vela.
 
 The steering-wheel voice button needs an accessibility service, which Android requires you to
 enable yourself in Settings. Vela uses it only to read the wheel's voice button while you are

@@ -242,13 +242,17 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // display or a HAL on a phone or an unsupported head unit.
         app.vela.ui.ClusterMapPref.init(this)
         app.vela.ui.FceClusterHudPref.init(this)
+        app.vela.ui.SomeIpHudPref.init(this)
         app.vela.ui.TopActivity.register(this)
         val cluster = app.vela.vehicle.ClusterMapController(this, navSession, locationProvider)
         val fceHud = app.vela.vehicle.FceClusterHud(this, navSession)
+        val someIpHud = app.vela.vehicle.SomeIpHud(this, navSession)
         app.vela.vehicle.VehicleCapabilities.clusterController = cluster
         app.vela.vehicle.VehicleCapabilities.fceHud = fceHud
+        app.vela.vehicle.VehicleCapabilities.someIpHud = someIpHud
         cluster.start(vehicleScope)
         fceHud.start(vehicleScope)
+        someIpHud.start(vehicleScope)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.
         CrashCatcher.install(this) { diag.snapshot() }

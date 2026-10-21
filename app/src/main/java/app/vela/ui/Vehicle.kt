@@ -35,6 +35,23 @@ object ClusterMapPref {
     private const val KEY_DISPLAY = "cluster_map_display"
 }
 
+/** The windshield HUD (road-info frames to the glass over the SOME/IP gateway). */
+object SomeIpHudPref {
+    val on = mutableStateOf(false)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, false)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "someip_hud_on"
+}
+
 /** The FCE cluster HUD (vendor vehicle properties on head units that have the FCE HAL). */
 object FceClusterHudPref {
     val on = mutableStateOf(false)

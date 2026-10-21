@@ -59,6 +59,10 @@
         <intent>
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
+        <!-- The BYD SOME/IP gateway, so the optional windshield HUD can resolve and bind it on
+             Android 11+ (SPEC 10.9). Absent on a phone or a non-BYD head unit, where the feature
+             stays off. -->
+        <package android:name="com.ts.car.someip.service" />
     </queries>
 
     <application
