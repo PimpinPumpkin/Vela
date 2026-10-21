@@ -440,6 +440,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         CameraSettingsGroup()
         Spacer(Modifier.height(8.dp))
+        VehicleSettingsGroup()
         SettingsGroup(title = stringResource(R.string.settings_road_alerts_group)) {
             ToggleRow(
                 label = stringResource(R.string.settings_bridge_openings),
