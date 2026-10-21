@@ -270,6 +270,20 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The BYD instrument-cluster map (SPEC 10.9). A `Presentation` on the cluster's public display
+  showing the same `CarMapRenderer` map as Android Auto. The DiLink 5.0 and 5.1 benches both list
+  the cluster displays and the selection and teardown run, but nothing has been seen on a cluster
+  panel. Needs a car, parked, with the cluster's navigation view on.
+- The BYD cluster turn arrows over the FCE vehicle HAL (SPEC 10.9). The property writes, the glyph
+  table and the state transitions are unit-tested, and the service is correctly absent on both
+  benches, so the write path has never run against a real HAL. Needs a car that has the service.
+- The BYD windshield HUD over the SOME/IP gateway (SPEC 10.9). The road-info frame is a byte-exact
+  unit-tested protobuf, and the bind/start/fire/keepalive transport is in place. The gateway is
+  present on both benches, but no frame has been fired at a real windshield renderer, so the render
+  (and the field-7/8 bytes-vs-repeated-int question per car) is unverified. Needs a car with the glass.
+- The BYD steering-wheel voice button repeating the current direction (SPEC 10.9). The key router
+  is unit-tested; no wheel press has reached the filter. Needs a car, and the accessibility
+  service enabled, with a drive on. `adb shell input keyevent` does not exercise the filter.
 - Side streets' stop signs left off a drive (#805): the bake's road for a sign from drivable ways
   and the most minor road at a junction, and the 10 m limit for a sign with no road. Needs a
   rebaked region driven down a main street, and one drive with no region (the Overpass path).
