@@ -7,6 +7,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - An open vector map from OpenStreetMap with buildings, house numbers, borders, highway shields and
   exit numbers.
+- Roads draw near their real width up close, and residential streets are thinner than main roads
+  at every zoom.
 - "Place icons on the map" draws businesses and landmarks from Vela data (open data, the default),
   Google, or Both.
 - "Show places", "Parks, schools and civic places", "Transit stops" and "Place icon size" control

@@ -8490,87 +8490,10 @@ private fun ensureShapeDraft(style: Style, draft: app.vela.core.model.MapShape?,
 private fun firstSymbolLayerId(style: Style): String? =
     style.layers.firstOrNull { it is SymbolLayer }?.id
 
-/**
- * Residential streets, wider and named earlier (user 2026-09-18).
- *
- * The style Vela renders is OpenFreeMap's Liberty, where a minor road is invisible below z13.5,
- * 2.5 px at z14, and its NAME does not place until z15. Beside Google at the same visible area the
- * town reads as a sketch: the grid is there but thin, and you have to zoom another step to find out
- * what any of it is called. Remember that our zoom number reads about one lower than Google's for
- * the same extent (512 px tiles), so "z14 here" is their z15.
- *
- * Two levers, both needed. Wider lines make the grid legible sooner; the label minzoom is what
- * actually puts names on it, since a symbol layer draws nothing above its own floor however fat the
- * line underneath is. Paths keep their higher floor: a trail name at town zoom is clutter.
- *
- * This costs frames - every label is glyph layout plus a collision pass over four anchors - so it
- * is the kind of change to check with `scripts/map-fps.sh` if a dense city starts feeling worse.
- */
-/**
- * ROADS AT THEIR REAL WIDTH (user 2026-10-03, "Google's streets are so much fatter"). Liberty grows a
- * road's line 1.2x per zoom level while the map itself doubles, so the closer you zoom the thinner
- * every street gets next to the buildings beside it. Measured on a 4a against Google Maps at the same
- * visible area in a downtown grid: Google's streets about 45 px across at a scale where a block is
- * about 400 px, near the street's true width; Liberty's minor road a third of that.
- *
- * Each class gets a real-world width ([ROAD_WIDTH_M]) drawn at whichever is wider, that or Liberty's
- * own line (so the overview zooms are unchanged), capped at [ROAD_WIDTH_CAP_DP]. Meters become dp
- * at 40 degrees latitude (MapLibre's 512 px tiles: 78271.517 x cos(lat) / 2^z meters per dp); a
- * style expression cannot read the latitude, and 40 is the middle of where most people live. A
- * casing keeps Liberty's border (casing minus fill) around the wider fill. Roads, bridges and tunnels
- * of a class share one curve, so a bridge never pinches the road it carries. The minor street name
- * floor stays at 13.5 (2026-09-18). `roadWidthScale` (calibration dial or `debug.vela.tune`) scales
- * the real widths; 0 puts Liberty's back.
- */
-private val ROAD_BASE = mapOf(
-    // Liberty's own curves (exponential 1.2), fill then casing. "minor" is "street" on bridges.
-    // Minor: the 2026-09-18 curve (visible from z12.5, fatter through the town zooms), not Liberty's.
-    "minor" to (floatArrayOf(12.5f, 0f, 13f, 1.6f, 14f, 4f, 16f, 9f, 20f, 18f) to floatArrayOf(12f, 0.8f, 13f, 2.4f, 14f, 6f, 16f, 11.5f, 20f, 20f)),
-    "service_track" to (floatArrayOf(15.5f, 0f, 16f, 2f, 20f, 7.5f) to floatArrayOf(15f, 1f, 16f, 4f, 20f, 11f)),
-    "link" to (floatArrayOf(12.5f, 0f, 13f, 1.5f, 14f, 2.5f, 20f, 11.5f) to floatArrayOf(12f, 1f, 13f, 3f, 14f, 4f, 20f, 15f)),
-    "motorway_link" to (floatArrayOf(12.5f, 0f, 13f, 1.5f, 14f, 2.5f, 20f, 11.5f) to floatArrayOf(12f, 1f, 13f, 3f, 14f, 4f, 20f, 15f)),
-    "secondary_tertiary" to (floatArrayOf(6.5f, 0f, 8f, 0.5f, 20f, 13f) to floatArrayOf(8f, 1.5f, 20f, 17f)),
-    "trunk_primary" to (floatArrayOf(5f, 0f, 7f, 1f, 20f, 18f) to floatArrayOf(5f, 0.4f, 6f, 0.7f, 7f, 1.75f, 20f, 22f)),
-    "motorway" to (floatArrayOf(5f, 0f, 7f, 1f, 20f, 18f) to floatArrayOf(5f, 0.4f, 6f, 0.7f, 7f, 1.75f, 20f, 22f)),
-)
-/** Typical carriageway width per class, meters. */
-private val ROAD_WIDTH_M = mapOf(
-    "minor" to 10.0, "service_track" to 3.5, "link" to 8.0, "motorway_link" to 8.0,
-    "secondary_tertiary" to 13.0, "trunk_primary" to 17.0, "motorway" to 22.0,
-)
-/** One carriageway of a divided road (OMT `oneway` set), meters. Minor and service roads keep their
- *  width: a one-way street there is a whole street, not half a road. */
-private val ROAD_ONEWAY_WIDTH_M = mapOf(
-    "link" to 6.0, "motorway_link" to 6.0,
-    "secondary_tertiary" to 9.0, "trunk_primary" to 11.0, "motorway" to 13.0,
-)
-private val ROAD_WIDTH_CAP_DP = mapOf(
-    "minor" to 34.0, "service_track" to 14.0, "link" to 28.0, "motorway_link" to 28.0,
-    "secondary_tertiary" to 42.0, "trunk_primary" to 52.0, "motorway" to 62.0,
-)
-
 /** Street-name spacing along a line (Liberty leaves MapLibre's 250): at 250 most blocks of a town
  *  grid carried no name at street zoom while Google names every street; 140 names each block's street
  *  once or twice without repeating it down the screen (4a, 2026-10-03). */
 private const val ROAD_NAME_SPACING_PX = 140.0
-
-private fun expInterp(stops: FloatArray, z: Double, base: Double = 1.2): Double {
-    if (z <= stops[0]) return stops[1].toDouble()
-    var i = 0
-    while (i + 2 < stops.size) {
-        val z0 = stops[i].toDouble(); val v0 = stops[i + 1].toDouble()
-        val z1 = stops[i + 2].toDouble(); val v1 = stops[i + 3].toDouble()
-        if (z <= z1) {
-            val t = (Math.pow(base, z - z0) - 1) / (Math.pow(base, z1 - z0) - 1)
-            return v0 + (v1 - v0) * t
-        }
-        i += 2
-    }
-    return stops[stops.size - 1].toDouble()
-}
-
-/** Meters per dp at zoom 0 and 40 degrees latitude (MapLibre's 512 px tiles), see [widenStreets]. */
-private val M_PER_DP_Z0 = 78271.517 * Math.cos(Math.toRadians(40.0))
 
 private fun roadWidthScale(): Double = (app.vela.ui.AppTune.local("roadWidthScale")
     ?: app.vela.core.config.CalibrationStore.latest.tune("roadWidthScale", 1.0)).coerceIn(0.0, 3.0)
@@ -8580,7 +8503,7 @@ private fun roadWidthScale(): Double = (app.vela.ui.AppTune.local("roadWidthScal
 private fun realWidthCurve(base: FloatArray, realM: Double, capDp: Double, minus: (Double) -> Double = { 0.0 }): Expression {
     val m = realM * roadWidthScale()
     val stops = (10..40).map { it / 2.0 }.map { z ->
-        val w = maxOf(expInterp(base, z, 1.5), if (m > 0) minOf(capDp, m / (M_PER_DP_Z0 / Math.pow(2.0, z))) else 0.0)
+        val w = maxOf(RoadWidths.expInterp(base, z, 1.5), if (m > 0) minOf(capDp, RoadWidths.dp(m, z)) else 0.0)
         Expression.stop(z.toFloat(), (w - minus(z)).coerceAtLeast(0.0).toFloat())
     }.toTypedArray()
     return Expression.interpolate(Expression.linear(), Expression.zoom(), *stops)
@@ -8612,28 +8535,26 @@ private const val GENERIC_REVEAL_ZOOM = 19.5f
 private const val GENERIC_ICON_ZOOM = 20.3f
 private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
 
+/**
+ * Road line widths from [RoadWidths], on every palette. Roads, bridges and tunnels of a class share
+ * one curve, so a bridge never pinches the road it carries. `roadWidthScale` (calibration dial or
+ * `debug.vela.tune`) scales the real widths; 0 leaves the base curves.
+ *
+ * Minor street names place from z13.5 (Liberty's floor is 15): a symbol layer draws nothing below
+ * its own minzoom however wide the line is. Paths keep their higher floor. Our zoom number reads
+ * about one lower than Google's for the same extent (512 px tiles).
+ */
 private fun widenStreets(style: StyleLayers) {
     val scale = roadWidthScale()
     val edges = roadEdgesOn() && !app.vela.ui.MapColors.classic()
-    fun edgeFloor(z: Double): Double = if (!edges) 0.0 else ((z - 13.5) / 2.5).coerceIn(0.0, 1.0) * ROAD_EDGE_DP * 2
     val oneway = Expression.neq(Expression.coalesce(Expression.get("oneway"), Expression.literal(0)), Expression.literal(0))
     runCatching {
-        for ((cls, curves) in ROAD_BASE) {
-            val (fillBase, casingBase) = curves
-            val twoWayM = ROAD_WIDTH_M.getValue(cls) * scale
-            val oneWayM = (ROAD_ONEWAY_WIDTH_M[cls] ?: ROAD_WIDTH_M.getValue(cls)) * scale
-            val cap = ROAD_WIDTH_CAP_DP.getValue(cls)
+        for (cls in RoadWidths.BASE.keys) {
+            val twoWayM = RoadWidths.WIDTH_M.getValue(cls) * scale
+            val oneWayM = (RoadWidths.ONEWAY_WIDTH_M[cls] ?: RoadWidths.WIDTH_M.getValue(cls)) * scale
             val zs = (10..40).map { it / 2.0 } // z5 .. z20 every half level
-            fun fillAt(z: Double, realM: Double): Double {
-                val lib = expInterp(fillBase, z)
-                if (lib <= 0.0 || realM <= 0.0) return lib
-                return maxOf(lib, minOf(cap, realM / (M_PER_DP_Z0 / Math.pow(2.0, z))))
-            }
-            fun casingAt(z: Double, realM: Double): Double {
-                // Both edges together, never under the edge floor once the road edges are drawn.
-                val border = maxOf((expInterp(casingBase, z) - expInterp(fillBase, z)).coerceAtLeast(0.0), edgeFloor(z))
-                return if (expInterp(fillBase, z) <= 0.0) expInterp(casingBase, z) else fillAt(z, realM) + border
-            }
+            fun fillAt(z: Double, realM: Double) = RoadWidths.fill(cls, z, realM)
+            fun casingAt(z: Double, realM: Double) = RoadWidths.casing(cls, z, realM, edges)
             // A one-way piece of a major class is usually one carriageway of a divided road, which
             // OSM draws as two ways: each at the whole road's width made a blob twice the road with
             // the route along one side of it (2026-10-03).
@@ -8673,8 +8594,6 @@ private val EDGE_STREET = listOf("road_trunk_primary_casing", "bridge_trunk_prim
 private val EDGE_SERVICE = listOf("road_service_track_casing", "bridge_service_track_casing")
 
 private fun roadEdgesOn() = (app.vela.ui.AppTune.local("roadEdge") ?: app.vela.core.config.CalibrationStore.latest.tune("roadEdge", 1.0)) > 0.0
-/** Each edge's width from street zoom in, dp (Google's: 2 to 3 px on a 2.75x screen). */
-private const val ROAD_EDGE_DP = 1.0
 
 private fun applyRoadEdges(style: StyleLayers, dark: Boolean) {
     if (!roadEdgesOn()) return
