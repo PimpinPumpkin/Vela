@@ -1494,4 +1494,8 @@
     <string name="settings_zoom_to_turn_floor_far">Departe</string>
     <string name="settings_zoom_to_turn_floor_hint">Cât de mult se poate mări harta pentru a menține următoarea cotitură pe ecran. Fiecare pas acoperă o distanță de aproximativ patru ori mai mare; la cele mai îndepărtate, numele străzilor sunt înlocuite cu denumirea tronsonului următor.</string>
     <string name="route_save_default_from">%1$s la %2$s</string>
+    <string name="settings_trip_save_phone">Salvează pe telefon</string>
+    <string name="settings_trip_saved">Am salvat înregistrarea completă</string>
+    <string name="settings_road_numbers">Mai întâi numerele drumurilor</string>
+    <string name="settings_road_numbers_hint">O șosea cu un număr de traseu este identificată prin acest număr, nu printr-un nume, cum ar fi „Autostrada Memorială Pearl Harbor”. Sub săgeată, pe ecranul mașinii și în indicațiile pentru următorul traseu.</string>
 </resources>
