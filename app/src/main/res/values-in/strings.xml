@@ -1,3 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="cat_restaurants">Restoran</string>
+    <string name="cat_coffee">Kafe</string>
+    <string name="cat_gas">SPBU</string>
+    <string name="cat_ev">SPKLU</string>
+    <string name="cat_groceries">Supermarket</string>
+    <string name="cat_hotels">Hotel</string>
+    <string name="cat_pharmacy">Apotek</string>
+    <string name="cat_atms">ATM</string>
+    <string name="cat_parks">Parkir</string>
+    <string name="cat_things_to_do">Rekomendasi aktivitas</string>
+    <string name="cat_bars">Bar</string>
+    <string name="cat_parking">Parkir</string>
+    <string name="cat_hospitals">Rumah sakit</string>
+    <string name="cat_banks">Bank</string>
+    <string name="cat_post_offices">Kantor pos</string>
+    <string name="cat_campgrounds">Perkemahan</string>
+    <string name="settings_title">Setelan</string>
+    <string name="settings_search_hint">Cari setelan</string>
+    <string name="settings_search_none">Hasil tidak ditemukan</string>
+    <string name="settings_back">Kembali</string>
+    <string name="settings_appearance">Tampilan</string>
+    <string name="settings_follow_system">Ikuti sistem</string>
+    <string name="settings_theme_light">Terang</string>
+    <string name="settings_theme_dark">Gelap</string>
+    <string name="settings_app_name_title">Nama aplikasi</string>
+    <string name="settings_app_name_generic">Sebut saja \"Maps\"</string>
+    <string name="settings_appearance_hint">Hanya berlaku untuk Vela.</string>
+    <string name="settings_app_name_generic_hint">Menampilkan ikon peluncur sebagai Maps biasa (bukan Vela Maps), untuk tampilan standar. Anda mungkin perlu menambahkan kembali pintasan layar utama setelah mengubahnya.</string>
+    <string name="settings_dynamic_color">Warna Material You</string>
+    <string name="settings_dynamic_color_hint">Mewarnai tombol dan aksen berdasarkan wallpaper Anda. Tampilan peta tetap netral.</string>
+    <string name="settings_map_style">Gaya peta</string>
+    <string name="settings_map_style_hint">OpenFreeMap bekerja tanpa kunci API apa pun.</string>
+    <string name="settings_units">Satuan</string>
+    <string name="settings_clock">Jam</string>
+    <string name="settings_clock_system">Sama dengan perangkat</string>
+    <string name="settings_clock_12">12-jam (4:35 PM)</string>
+    <string name="settings_clock_24">24-jam (16:35)</string>
+    <string name="settings_units_imperial">Imperial (mil, kaki)</string>
+    <string name="settings_units_metric">Metrik (kilometer, meter)</string>
+    <string name="settings_language">Bahasa</string>
+    <string name="settings_follow_system_language">Ikuti bahasa sistem</string>
+    <string name="settings_language_hint">Mengubah bahasa aplikasi dan panduan suara navigasi. Dapatkan suara yang sesuai di pustaka Suara.</string>
+    <string name="settings_directions_language">Bahasa panduan navigasi</string>
 </resources>
