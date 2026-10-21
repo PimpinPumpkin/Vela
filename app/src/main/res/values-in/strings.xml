@@ -43,4 +43,25 @@
     <string name="settings_follow_system_language">Ikuti bahasa sistem</string>
     <string name="settings_language_hint">Mengubah bahasa aplikasi dan panduan suara navigasi. Dapatkan suara yang sesuai di pustaka Suara.</string>
     <string name="settings_directions_language">Bahasa panduan navigasi</string>
+    <string name="settings_directions_same_as_app">Mengikuti bahasa aplikasi</string>
+    <string name="settings_directions_language_hint">Bahasa untuk petunjuk belokan pada layar dan suara. Dapatkan suara yang sesuai di pustaka Suara.</string>
+    <string name="settings_search">Cari</string>
+    <string name="settings_voice_search_toggle">Mikrofon pencarian suara</string>
+    <string name="settings_voice_search_hint">Menampilkan mikrofon di kolom pencarian untuk melakukan pencarian suara.</string>
+    <string name="settings_contacts_search">Cari kontak Anda</string>
+    <string name="settings_contacts_search_hint">Mengetik nama kontak akan menyarankan alamat tersimpan beserta foto dan labelnya dari buku alamat. Kontak Anda tetap di perangkat ini; memilih kontak akan mencari alamat tersebut seperti pencarian biasa dan menampilkannya dengan nama kontak.</string>
+    <string name="suggestion_contact_badge">Kontak</string>
+    <string name="search_voice_cd">Pencarian suara</string>
+    <string name="search_voice_prompt">Berbicara untuk mencari</string>
+    <string name="settings_voice">Suara</string>
+    <string name="settings_voice_fallback_name">suara</string>
+    <string name="settings_voice_downloading">Mengunduh %1$s… %2$d%%</string>
+    <string name="settings_voice_none_hint">Belum ada suara. Buka Pustaka suara di bawah untuk mengunduh suara perangkat yang natural (tanpa akun, berfungsi secara real-time meskipun di ponsel model lama). Mesin TTS sistem yang Anda instal juga akan muncul di sini untuk dipilih.</string>
+    <string name="settings_voice_test">Putar suara percobaan</string>
+    <string name="settings_voice_system_settings">Setelan suara sistem</string>
+    <string name="settings_voice_test_hint">Ketuk Putar suara percobaan untuk mendengarkannya. Suara Vela direkomendasikan; Anda dapat menggantinya ke mesin teks-ke-suara (TTS) lain yang terinstal.</string>
+    <string name="settings_voice_library">Pustaka suara</string>
+    <string name="settings_voice_advanced">Opsi suara lanjutan</string>
+    <string name="settings_voice_try_label">Coba suara pada teks apa pun</string>
+    <string name="settings_voice_nav_sample_text">Dalam seperempat mil, belok kanan ke Jalan Utama, lalu tujuan Anda berada di sebelah kiri.</string>
 </resources>
