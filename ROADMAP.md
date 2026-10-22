@@ -522,6 +522,8 @@ off the list when it has been.
   behind the car): a unit test of the two rules. Not driven.
 - A recheck's heal no longer starts the reroute cooldown (it held a needed reroute 8 s): code
   only. Not driven.
+- One APK per chip type, on since 2026-10-22 (`ABI_SPLITS`, #680): not seen yet, a release
+  with the five files updated through Obtainium, the F-Droid repo and the in-app updater.
 - A reroute's naming snap starts the way the car points and skips vias on Google's own start
   (an unpinned one went round a block): a unit test of the vias. Not driven.
 
@@ -562,11 +564,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
 
 ## On the radar
 
-- One APK per chip type. Built and off (`update/ApkChoice`, SPEC 15). Once a build with
-  `ApkChoice` has been the stable for about three weeks, set the repository variable
-  `ABI_SPLITS` to `true`, point the README install button at
-  `releases/latest/download/vela-maps-arm64.apk`, and say in the release notes which file to
-  take. An ARM phone then downloads 74 MB instead of 108.
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
   link (65% under `hl=ja`), so open icons draw beside their Google twin. Options: run the

@@ -6173,7 +6173,8 @@ and in `location-guard.yml`.
 
 #### One APK per chip type
 
-With the repository variable `ABI_SPLITS` `true`, CI builds with `-PabiSplits` and a release
+`ABI_SPLITS` is `true` since 2026-10-22 (issue #680). With the repository variable `ABI_SPLITS`
+`true`, CI builds with `-PabiSplits` and a release
 carries `<prefix>-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and `<prefix>-all.apk`
 (prefix `vela-maps` or `vela-maps-canary`, `scripts/stage-apks.sh`). Without it, one APK.
 
@@ -6181,6 +6182,9 @@ carries `<prefix>-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and `<pref
   the all-in-one APK to a chip APK of the same build is an upgrade.
 - The all-in-one name sorts first: GitHub lists assets by name and updaters older than
   `update/ApkChoice` take the first `.apk`.
+- Obtainium picks the chip file itself from 1.6.16 (September 2026), which reads `arm64` and
+  `armv7` as the Android chip names; an older Obtainium shows every file, the all-in-one first.
+  Its x86 match also takes `x86_64` names, so a 32-bit x86 phone may be offered the x86_64 file.
 - The single APK leaves out Cronet's x86 libraries (108.4 MB). A per-chip build keeps them:
   arm64 74.3 MB, armv7 35.4, x86 41.2, x86_64 41.5, all-in-one 121.9.
 
