@@ -4942,6 +4942,22 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   `maxTransfers`: the public instance answers nothing with `maxTransfers=0`. A bus without a
   path takes the road route through its stops when that is at most 1.8 times their
   straight-line chain.
+- Guidance in a pocket (issue #880): `startTransitNav` starts `service/TransitGuideService`, a
+  location foreground service that keeps the fixes and the voice going with the screen off, and
+  `MapViewModel.publishTransitNotice` writes its card into `TransitGuide.notice` at every leg
+  change and fix (a state flow, so unchanged content is not re-posted). The card uses the
+  drive's silent channel (`NavigationService.ensureNavChannels`), id 44, with End: a ride reads
+  `transit_nav_take` and `transit_nav_towards` over `transit_nav_get_off` and
+  `transit_notice_stops_left`; a walk reads `transit_nav_walk` over the next ride's boarding stop
+  or "To your destination". `TransitProgress.stopsLeft` counts the stops after the one nearest
+  the phone among boarding, intermediate and alighting stops (the leg's `numStops` with no
+  position or list). `TransitProgress.nextIsYours` is one stop left, or within `ALERT_M` (600 m)
+  of the alighting stop when the leg lists fewer than three stops; it posts a heads-up on the
+  turn channel (id 45, 30 s) once per leg and the voice says it once (`transitAlertedLeg`).
+  Arrival removes the ongoing card and posts a dismissable one (id 46); `TransitGuide.end`
+  (Done, End, closing the card) stops the service and clears it. Posting the arrival over the
+  detached ongoing card lost the race on a 4a, hence the separate id. A refused start leaves
+  guidance in the app as before.
 
 ---
 

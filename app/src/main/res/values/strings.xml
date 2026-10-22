@@ -918,6 +918,13 @@
     <string name="transit_nav_from">from %1$s</string> <!-- format -->
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
+    <string name="transit_notice_next_is_yours">Get off at the next stop: %1$s</string> <!-- format -->
+    <string name="transit_notice_to">To %1$s</string> <!-- format -->
+    <string name="transit_notice_to_destination">To your destination</string>
+    <plurals name="transit_notice_stops_left">
+        <item quantity="one">%d stop left</item>
+        <item quantity="other">%d stops left</item>
+    </plurals>
     <string name="place_last_available">Last available</string>
     <string name="place_transit_prefer">Prefer</string>
     <string name="transit_min_late">%1$d min late</string>

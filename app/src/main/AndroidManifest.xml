@@ -209,6 +209,13 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Transit guidance with the phone in a pocket (issue #880): the leg in hand in the shade,
+             a heads-up at the stop before yours, and the fixes that advance the legs. -->
+        <service
+            android:name=".service.TransitGuideService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <!-- Refcounted keeper that holds the process foreground-important while any long
              download (voice model, region graph, place pack, update APK) is in flight, so
              backgrounding or swiping the app away no longer kills it (issue #212). -->

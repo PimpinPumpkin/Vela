@@ -231,6 +231,17 @@ that end (`TRANSIT_ARM_M`), then advances within 40 m (`TRANSIT_ARRIVE_M`). Armi
 transfer hub, where two leg ends are close together, from running through several legs at once.
 Unlike a drive ([chapter 4](04-navigation.md)) there is no off-route detection and no rerouting.
 
+Guidance runs a foreground service of its own, `TransitGuideService` (issue #880), so it keeps
+its fixes and its voice with the screen off. Its notification, on the drive's silent channel,
+carries the leg in hand: a ride as "Take 42A towards ..." over "Get off at ... · 4 stops left",
+a walk as "Walk 9 min" over the stop it leads to, with an End button. The stops left are counted
+from the stop nearest the phone along the leg's stop list (`TransitProgress.stopsLeft`). At the
+stop before the rider's (or within `ALERT_M`, 600 m, of it when the leg has no stop list) a
+heads-up says "Get off at the next stop" once per leg and the voice says it too
+(`TransitProgress.nextIsYours`). On arrival the ongoing card gives way to a dismissable "You have
+arrived", which Done in the app clears. The view model writes the card (`TransitGuide.notice`);
+a start the system refuses leaves guidance working in the app, as before.
+
 ### Offline copies
 
 - `TransitStopCache` keeps the stops of the 24 most recent areas (`MAX_AREAS`), overwritten by

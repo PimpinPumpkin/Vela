@@ -1091,6 +1091,7 @@ class MapViewModel @Inject constructor(
                 restartStaleTimer()
                 // Advance transit step-by-step guidance when we reach the current leg's end (no-op off transit).
                 maybeAdvanceTransitNav(here)
+                if (_state.value.transitNav != null) publishTransitNotice(here)
                 // Save the fix to the active trip (no-op unless one is recording).
                 tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits)
                 passAlert(here, speed?.toDouble(), nowMs)
@@ -7198,6 +7199,11 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(transitNav = TransitNavState(itin, 0), directionsOpen = false, selected = null) }
         startLocation()
         itin.steps.firstOrNull()?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+        // The notification that carries the trip with the phone in a pocket (issue #880).
+        transitAlertedLeg = -1
+        app.vela.service.TransitGuide.onEnd = { endTransitNav() }
+        publishTransitNotice(_state.value.myLocation)
+        app.vela.service.TransitGuide.start(appContext)
     }
 
     fun advanceTransitNav() {
@@ -7206,20 +7212,71 @@ class MapViewModel @Inject constructor(
         if (tn.isLastStep) {
             _state.update { it.copy(transitNav = tn.copy(arrived = true)) }
             voice.speak(appContext.getString(R.string.transit_nav_arrived), interrupt = true)
+            publishTransitNotice(_state.value.myLocation)
             return
         }
         val ni = tn.stepIndex + 1
         _state.update { it.copy(transitNav = tn.copy(stepIndex = ni)) }
         tn.itinerary.steps.getOrNull(ni)?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+        publishTransitNotice(_state.value.myLocation)
     }
 
     fun backTransitNav() {
         val tn = _state.value.transitNav ?: return
         transitLegArmed = false
         _state.update { it.copy(transitNav = tn.copy(stepIndex = (tn.stepIndex - 1).coerceAtLeast(0), arrived = false)) }
+        publishTransitNotice(_state.value.myLocation)
     }
 
-    fun endTransitNav() = _state.update { it.copy(transitNav = null) }
+    fun endTransitNav() {
+        _state.update { it.copy(transitNav = null) }
+        app.vela.service.TransitGuide.end(appContext)
+    }
+
+    /** The leg [transitAlertedLeg] said "get off at the next stop" for, -1 for none yet. */
+    private var transitAlertedLeg = -1
+
+    /**
+     * The transit guidance notification for the leg in hand at [here] (issue #880): a ride shows
+     * its line and where to get off with the stops left, a walk where it goes, and the stop before
+     * the rider's raises a heads-up and says it once. Unchanged content is not re-posted (the
+     * holder is a state flow).
+     */
+    private fun publishTransitNotice(here: LatLng?) {
+        val tn = _state.value.transitNav ?: run { app.vela.service.TransitGuide.notice.value = null; return }
+        if (tn.arrived) {
+            app.vela.service.TransitGuide.notice.value =
+                app.vela.service.TransitGuide.Notice(appContext.getString(R.string.transit_nav_arrived), "", arrived = true)
+            return
+        }
+        val step = tn.step ?: return
+        val notice = if (step.line != null) {
+            val title = buildString {
+                append(appContext.getString(R.string.transit_nav_take, step.line?.name.orEmpty()))
+                step.headsign?.let { append(" ").append(appContext.getString(R.string.transit_nav_towards, it)) }
+            }
+            val left = app.vela.core.nav.TransitProgress.stopsLeft(step, here)
+            val text = listOfNotNull(
+                step.alightStop?.name?.let { appContext.getString(R.string.transit_nav_get_off, it) },
+                left?.takeIf { it > 0 }?.let { appContext.resources.getQuantityString(R.plurals.transit_notice_stops_left, it, it) },
+            ).joinToString(" · ")
+            val yours = app.vela.core.nav.TransitProgress.nextIsYours(step, here)
+            val alert = if (yours) step.alightStop?.name?.let { appContext.getString(R.string.transit_notice_next_is_yours, it) } else null
+            app.vela.service.TransitGuide.Notice(title, text, alert, alertKey = alert?.let { "leg${tn.stepIndex}" })
+        } else {
+            val next = tn.itinerary.steps.getOrNull(tn.stepIndex + 1)
+            app.vela.service.TransitGuide.Notice(
+                appContext.getString(R.string.transit_nav_walk, step.durationText.orEmpty()).trim(),
+                next?.boardStop?.name?.let { appContext.getString(R.string.transit_notice_to, it) }
+                    ?: appContext.getString(R.string.transit_notice_to_destination),
+            )
+        }
+        app.vela.service.TransitGuide.notice.value = notice
+        if (notice.alert != null && transitAlertedLeg != tn.stepIndex) {
+            transitAlertedLeg = tn.stepIndex
+            voice.speak(notice.alert, interrupt = false)
+        }
+    }
 
     /** Auto-advance transit guidance when GPS reaches the current leg's end (board/alight stop or the
      *  leg's walk destination). Latched: the leg must first be ARMED by being >TRANSIT_ARM_M from its

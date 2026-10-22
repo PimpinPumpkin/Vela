@@ -189,7 +189,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   or less walking.
 - Expand a trip for each leg's stops, times, alerts and fare, drawn on the map along its real track.
 - A walk leg expands to turn-by-turn walking directions.
-- Start a trip for a leg-by-leg guide that speaks each leg and moves on at its end.
+- Start a trip for a leg-by-leg guide that speaks each leg and moves on at its end. It keeps going
+  in a pocket, with the leg and the stops left in a notification and a heads-up at the stop before
+  yours.
 - Tap a stop on the map for its departure board, with a countdown, a Live mark and each run's stop
   list.
 - Offline, a stop shows the last board you saw there.
