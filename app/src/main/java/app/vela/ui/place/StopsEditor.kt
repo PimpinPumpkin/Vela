@@ -47,6 +47,7 @@ import app.vela.R
 import app.vela.core.model.Place
 import app.vela.ui.SheetPalette
 import app.vela.ui.dpadHighlight
+import app.vela.ui.map.coversMap
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.theme.isAppInDarkTheme
 
@@ -88,7 +89,7 @@ fun StopsEditorSheet(
     }
 
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
@@ -276,7 +277,7 @@ fun TripEditorSheet(
         order = list
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),

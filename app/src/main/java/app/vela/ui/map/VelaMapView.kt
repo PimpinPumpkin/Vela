@@ -4861,7 +4861,7 @@ fun VelaMapView(
                 dpadHolder.value?.let { c ->
                     c.mapView = mv
                     c.map = map
-                    app.vela.ui.ZoomKeys.zoomBy = { c.zoomBy(it) } // the assigned zoom keys (issue #694)
+                    app.vela.ui.MapKeys.controller = c // the map keys (issue #694)
                     c.onTap = { handleTap(it) }
                     c.onLongPress = { pt -> longPress.value(LatLng(pt.latitude, pt.longitude)) }
                     c.markPan = {
@@ -4871,6 +4871,11 @@ fun VelaMapView(
                             navUserZoom[0] = Double.NaN
                             zoomOverride.value(false)
                         }
+                    }
+                    // A key turn reports what a finger turn does (the rotate listener above).
+                    c.markRotate = {
+                        if (!navModeHolder.value) userPan.value()
+                        turnEnded[0] = !navModeHolder.value
                     }
                     c.markZoom = { z ->
                         if (navModeHolder.value) {

@@ -63,13 +63,15 @@ All in `app/src/main/java/app/vela/ui/DpadFocus.kt`.
 ### The map
 
 `app/src/main/java/app/vela/ui/map/MapDpadController.kt` is the key-to-camera seam: `panBy`,
-`zoomBy`, `selectAtCenter` and `longPressAtCenter`. `VelaMapView` wires its callbacks to the tap
-lambda, the long-press path, the `gestureMove` flag and the navigation zoom override, so a key
-pan detaches the follow camera and arms "Search this area" as a finger pan does.
+`zoomBy`, `rotateBy`, `selectAtCenter`, `longPressAtCenter`, `tapAt` and `longPressAt`.
+`VelaMapView` wires its callbacks to the tap lambda, the long-press path, the `gestureMove` flag,
+the navigation zoom override and the rotate listener's flags, so a key pan detaches the follow
+camera and arms "Search this area" as a finger pan does, and a key turn springs back to north as
+a finger turn does.
 
-`MapScreen` puts a 140 dp focusable target at the center of the screen. Focused, it shows a pill
-reading "OK: move the map" and the arrows keep moving focus. OK engages it, which draws a
-crosshair and a ring at the screen edge:
+`MapDpadTarget`, drawn from `MapScreen`, puts a 140 dp focusable target at the center of the
+screen. Focused, it shows a pill reading "OK: move the map" and the arrows keep moving focus. OK
+engages it, which draws a crosshair and a ring at the screen edge:
 
 | Key | While engaged |
 | --- | --- |
@@ -85,16 +87,35 @@ results sheet, and stays during a drive and over a minimized results bar. Choose
 mounted and, on a D-pad-first device, focuses and engages it at once. `ChooseOnMapOverlay` draws
 the pin and banner there in place of the pill and crosshair.
 
-Settings > Navigation > "Zoom in key" and "Zoom out key" give zoom to two keys of the user's
-choice, such as 2 and 5 on a keypad (`ui/ZoomKeys.kt`). They zoom one level from anywhere on
-the map, engaged or not, and rest while a Settings page is open. `MainActivity.dispatchKeyEvent`
-offers a key that types only after nothing else took it, so the same key still types in a text
-field, and offers a key that does not type (volume, camera) first. The arrows, OK and Back
-cannot be assigned.
-
 A plus and minus pill sits in the bottom-right stack above the parking button, in D-pad mode or
 with Settings > Navigation > "Prefer buttons over swipes" on. It shows only on the bare map and
 in the area picker (`AreaPickOverlay`).
+
+### Map keys
+
+Settings > Navigation has a row per map key (`ui/MapKeys.kt`): zoom in and out, pan up, down,
+left and right, rotate counterclockwise and clockwise, and select. Each takes any one key, and
+"Use the keypad layout" sets them all at once:
+
+| Key | Action |
+| --- | --- |
+| 1, 3 | Zoom out, zoom in, one level |
+| 2, 8, 4, 6 | Pan up, down, left, right by 22% of the view, repeating while held |
+| 7, 9 | Rotate counterclockwise, clockwise by 15 degrees, repeating while held |
+| 5 | Tap whatever is under the crosshair |
+| 5 held 500 ms | Long press at the crosshair: drop a pin, or set the Choose on map point |
+
+They work from anywhere on the map, engaged or not, and rest while a Settings page is open.
+`MainActivity.dispatchKeyEvent` offers a key that types only after nothing else took it, so the
+same key still types in a text field, and offers a key that does not type (volume, camera)
+first. The arrows, OK and Back cannot be assigned. Select works like a finger: in Choose on map
+a tap is a tap, and the hold sets the point.
+
+While a select key is set, a crosshair marks the point it taps: the middle of the part of the map
+no panel covers (`MapCover`). A sheet or panel that covers the map reports its bounds with
+`Modifier.coversMap()` on its outermost element, and the search page reports the whole map with
+`CoversWholeMap()`. With nothing of the map visible the crosshair hides and select does nothing.
+New map chrome that covers the map reports, or the crosshair draws over it.
 
 ### Key paths for gestures
 
@@ -259,6 +280,9 @@ adb:
 ### Known limitations
 
 - Photo pinch zoom and map tilt have no key path.
+- On a touch phone with a keyboard, a typing key pressed while nothing has focus goes to the
+  search field, which Android focuses first. Digit map keys work on a D-pad-first device, where
+  the search field stays disarmed until OK.
 - With key input the soft keyboard stays hidden, so typing needs hardware keys.
 - The key scrolling of the full-screen reviews page has not been checked against a loaded page.
 

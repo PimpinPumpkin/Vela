@@ -1291,7 +1291,15 @@
     <string name="settings_zoom_key_in">Zoom in key</string>
     <string name="settings_zoom_key_out">Zoom out key</string>
     <string name="settings_zoom_key_none">Not set</string>
-    <string name="settings_zoom_keys_hint">Two keys that zoom the map from anywhere on it, such as 2 and 5 on a keypad. In a text field they still type.</string>
+    <string name="settings_map_key_pan_up">Pan up key</string>
+    <string name="settings_map_key_pan_down">Pan down key</string>
+    <string name="settings_map_key_pan_left">Pan left key</string>
+    <string name="settings_map_key_pan_right">Pan right key</string>
+    <string name="settings_map_key_rotate_ccw">Rotate counterclockwise key</string>
+    <string name="settings_map_key_rotate_cw">Rotate clockwise key</string>
+    <string name="settings_map_key_select">Select key</string>
+    <string name="settings_map_keys_keypad">Use the keypad layout</string>
+    <string name="settings_map_keys_hint">Keys that work the map from anywhere on it. The keypad layout: 1 zooms out, 3 zooms in, 2 pans up, 8 pans down, 4 pans left, 6 pans right, 7 rotates counterclockwise, 9 rotates clockwise, and 5 selects what is under the crosshair in the middle of the map. Hold 5 to drop a pin. In a text field the keys still type.</string>
     <string name="settings_zoom_key_press">Press the key to use. The arrows, OK and Back are taken.</string>
     <string name="settings_zoom_key_clear">Clear</string>
     <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a gesture: zoom in and out buttons on the map, and the step list button on the navigation bar. Always on for phones without a touch screen.</string>

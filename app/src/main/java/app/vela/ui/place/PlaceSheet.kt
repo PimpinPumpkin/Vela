@@ -35,6 +35,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import app.vela.ui.map.coversMap
 import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -644,6 +645,7 @@ fun PlaceSheet(
     }
     Card(
         modifier
+            .coversMap() // docs/dpad.md, map keys
             .fillMaxWidth()
             .layout { measurable, constraints ->
                 // Layout-phase read (see the note above): recompose-free height animation.
@@ -1727,7 +1729,7 @@ fun DirectionsPanel(
         collapsed.value = true
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
@@ -2457,7 +2459,7 @@ fun TransitNavSheet(
     // hid the map entirely and the guidance read as a text list ("it just tells you the
     // instructions"). Same top-aligned-pane grammar as Street View's half-screen viewer.
     Surface(
-        modifier.fillMaxWidth().fillMaxHeight(0.48f),
+        modifier.coversMap().fillMaxWidth().fillMaxHeight(0.48f),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         shadowElevation = 4.dp,
         color = if (dark) SheetDark else SheetLight,
@@ -3003,7 +3005,7 @@ fun RouteDetailSheet(
             step?.alightStop?.let { a -> if (mid.none { it.name == a.name } && step.boardStop?.name != a.name) add(a) }
         }
     }
-    Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight) {
+    Surface(Modifier.fillMaxSize().coversMap(), color = if (dark) SheetDark else SheetLight) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             // Header: back + the route pill + headsign.
             Row(

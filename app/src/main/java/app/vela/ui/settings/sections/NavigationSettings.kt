@@ -172,7 +172,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             hint = stringResource(R.string.settings_prefer_buttons_hint),
         )
         GroupDivider()
-        ZoomKeyRows()
+        MapKeyRows()
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_pip_turn_card),
