@@ -98,6 +98,9 @@ turn. The voice says "turn left" 25 m out either way.
 - In English a later prompt for the same step drops the sign's "toward ..." tail.
 - A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
   (see Stops below).
+- The destination is said with its side, "Your destination is on the right", from the router or,
+  when the router gives none, from where the destination's pin sits against the end of the line.
+  A pin on the line itself gives no side, and the arrival is "You have arrived".
 - A continue or a straight-on is silent unless its lanes show a real fork.
 - A roundabout is said at its entry, with the exit to take. Its own exit step right after the
   entry says nothing and is never the "then" of a chained line.

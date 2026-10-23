@@ -1627,6 +1627,13 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   `END_PARK_ALONG_M` (60 m) or less of route left and within `ARRIVE_PROX_M` of the end has
   arrived: the step does not move on at a standstill, so a car parked short of a last turn
   into a lot never reaches the last step.
+- The arrival line is "Your destination is on the left/right" when the arrive step has a side,
+  else "You have arrived". OSRM and Valhalla put a side on their arrive step; the on-phone router
+  and a route named from Google's line do not, so `NavEngine.withArrivalSide` gives one where a
+  route enters the session (`NavSession.start`, and `driveable` for every reroute, recheck and
+  stops replan): the destination pin against the line's last `SIDE_SPAN_M` (25 m), as `stopSide`
+  reads a stop, and the step's words say it. A pin within `SIDE_MIN_OFF_M` (8 m) of the line, or
+  an arrive step that has a side, is left as it was.
 - ETA sums the remaining step durations, the current leg pro-rated, times the route's traffic
   ratio, then times `etaScale`. It is never remaining distance over average speed, unless the
   steps carry under 70% of the route's duration. So every fold of one step into another (a

@@ -853,6 +853,25 @@ object NavEngine {
      * honestly: the pin is on the line (under [SIDE_MIN_OFF_M]), or the line bends more than
      * [SIDE_MAX_BEND_DEG] through the mark (a corner, a turn into the lot at the stop itself).
      */
+    /**
+     * [route] with a side on its arrival when the router left it out. Only OSRM and Valhalla put
+     * one on their arrive step; the on-phone router and routes named from Google's line ended in a
+     * bare arrival, so "Your destination is on the right" came on some drives and "You have
+     * arrived" on others. The side is the destination pin [dest] against the line's last
+     * [SIDE_SPAN_M], as [stopSide] reads a stop, and the step's words say it too. A route with a
+     * side, or a pin on the line, comes back as it was.
+     */
+    fun withArrivalSide(route: Route, dest: LatLng?): Route {
+        val last = route.maneuvers.lastOrNull() ?: return route
+        if (dest == null || last.type != ManeuverType.ARRIVE || last.side != null || route.legs.isEmpty()) return route
+        val total = geomFor(route).cum.lastOrNull() ?: return route
+        val side = stopSide(route, dest, total) ?: return route
+        val text = app.vela.core.data.RouteGeometry.osrmPhrase("arrive", side, null, null, null, null)
+        val arrive = last.copy(side = side, instruction = text, instructionNoRoad = text)
+        val leg = route.legs.last()
+        return route.copy(legs = route.legs.dropLast(1) + leg.copy(maneuvers = leg.maneuvers.dropLast(1) + arrive))
+    }
+
     fun stopSide(route: Route, stop: LatLng, atM: Double): String? {
         val poly = route.polyline
         if (poly.size < 2) return null

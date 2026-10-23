@@ -524,6 +524,8 @@ off the list when it has been.
   only. Not driven.
 - One APK per chip type, on since 2026-10-22 (`ABI_SPLITS`, #680): not seen yet, a release
   with the five files updated through Obtainium, the F-Droid repo and the in-app updater.
+- The destination's side when the router gives none (a drive got "You have arrived" instead of
+  the side): unit tests. Not heard on a drive.
 - Transit guidance in a pocket (#880): seen on a 4a with a simulated position, the card for a
   walk, a 42A ride with its stops left, the arrival card, End from the shade and Done. Not seen: a
   real ride with the screen off, the heads-up at the stop before yours (unit tests only).

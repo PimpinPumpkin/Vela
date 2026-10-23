@@ -220,6 +220,8 @@ class NavSession @Inject constructor(
         mode: TravelMode = TravelMode.DRIVE,
         destinationAddress: String = "",
     ) {
+        // The arrival says its side whichever router made the route (NavEngine.withArrivalSide).
+        @Suppress("NAME_SHADOWING") val route = NavEngine.withArrivalSide(route, destination)
         this.destination = destination
         this.mode = mode
         plannedWayName = null
@@ -1228,7 +1230,11 @@ class NavSession @Inject constructor(
      * faster-route fence rejects; when the reply also carries a full-stepped open-router route,
      * that one is better guidance than Google's guessed steps, even a little slower.
      */
-    private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng, nameWithinMs: Long? = null, departBearingDeg: Double? = null): Route? {
+    /** [driveableRaw], with the arrival's side filled in from the destination pin ([NavEngine.withArrivalSide]). */
+    private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng, nameWithinMs: Long? = null, departBearingDeg: Double? = null): Route? =
+        driveableRaw(routes, from, dest, nameWithinMs, departBearingDeg)?.let { NavEngine.withArrivalSide(it, destination ?: dest) }
+
+    private suspend fun driveableRaw(routes: List<Route>, from: LatLng, dest: LatLng, nameWithinMs: Long? = null, departBearingDeg: Double? = null): Route? {
         val top = routes.firstOrNull() ?: return null
         if (top.drivable) return top
         suspend fun name(): Route? = runCatching { dataSource.nameRoute(top, from, dest, mode, RoutingPrefs.avoidTolls, RoutingPrefs.avoidHighways, RoutingPrefs.avoidFerries, departBearingDeg) }.getOrNull()
