@@ -1505,4 +1505,8 @@
     <string name="settings_zoom_to_turn">Zur nächsten Kurve zoomen</string>
     <string name="settings_road_numbers">Zuerst die Straßennummern</string>
     <string name="settings_road_numbers_hint">Eine Straße mit einer Routennummer wird anhand der Nummer bezeichnet, nicht anhand eines Namens wie beispielsweise „Pearl Harbor Memorial Expressway“. Unter dem Pfeil, auf dem Bildschirm im Auto und in der Wegbeschreibung zur nächsten Route.</string>
+    <string name="settings_trip_saved">Komplette Route speichern</string>
+    <string name="welcome_cameras_title">Kennzeichenkamera</string>
+    <string name="mapvm_export_list_chooser">Liste exportieren</string>
+    <string name="settings_zoom_to_turn_floor_far">weit</string>
 </resources>
