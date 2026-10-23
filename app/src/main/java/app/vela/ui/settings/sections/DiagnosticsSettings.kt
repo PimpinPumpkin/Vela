@@ -188,6 +188,12 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         )
         // Naming on save only makes sense while trips are being recorded, so it hides with the
         // switch above rather than sitting there inert.
+        ToggleRow(
+            label = stringResource(R.string.settings_trip_auto_clear),
+            checked = state.tripAutoClear,
+            onCheckedChange = { on -> vm.setTripAutoClear(on); if (on) reloadTrips() },
+            hint = stringResource(R.string.settings_trip_auto_clear_hint),
+        )
         if (state.tripRecordingEnabled) {
             ToggleRow(
                 label = stringResource(R.string.settings_name_trips),

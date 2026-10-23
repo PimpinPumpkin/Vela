@@ -368,8 +368,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 ## Recorded trips and diagnostics
 
-- "Save my trips (for replay)" records drives on the phone, off by default. Replay, rename or delete
-  them. "Select trips", or a long press on one, picks several to share or delete together.
+- "Save my trips (for replay)" records drives on the phone. A new install turns it on from its
+  first screens, with "Delete drives after 30 days" on too; older installs keep their setting.
+  Replay, rename or delete them. "Select trips", or a long press on one, picks several to share
+  or delete together.
 - Sharing a trip first trims the points near its start, its end, Home and Work. The notes on what
   the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you

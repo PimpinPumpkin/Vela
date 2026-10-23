@@ -74,6 +74,8 @@ internal class NavController(
         fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double, outlierStreak: IntArray): LatLng
         fun gateMeasuredSpeed(raw: Float, dt: Double): Float?
         fun onNavRoadLatin(map: Map<String, String>)
+        /** Drop saved drives past their days, when that setting is on. */
+        fun pruneOldTrips()
     }
 
     private val settingsPrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
@@ -580,6 +582,7 @@ internal class NavController(
         // Record this trip's GPS trace for later replay, if the user opted in. Read
         // the pref directly so it works even before Settings has been opened.
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
+            host.pruneOldTrips()
             tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
             tripStore.saveRoute(route, "start") // save the blue line + maneuvers so a replay drives THIS route
         }

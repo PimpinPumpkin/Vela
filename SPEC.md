@@ -5973,6 +5973,16 @@ Regressing one of these blocks a release.
   `alprCameraBitmap`), and Settings > Navigation shows the plate and speed camera badges
   before their rows (`ToggleRow`'s `leading` slot), so the badge is explained where it is
   turned on and never drawn a second way.
+- The same page asks about saved drives (`TripChoices`): "Save my drives on this phone" writes
+  `trip_recording_on` and "Delete drives after 30 days" writes `trip_auto_clear`
+  (`MapViewModel.TRIP_AUTO_CLEAR`), both on, written on Continue; the second shows only while
+  the first is on. Installs from before it keep `trip_recording_on` as it was and read
+  `trip_auto_clear` as off, so no saved drive is deleted on update. With it on,
+  `TripStore.pruneExpired` deletes drives whose file was last written more than
+  `TripRetention.KEEP_DAYS` (30) days ago, never the one recording, at launch
+  (`MapViewModel.pruneOldTrips`, which opens the prefs itself: it runs from the constructor
+  before `settingsPrefs` is assigned, and reading that field there crashed every launch on a
+  test build) and at each drive's start; turning it on under Settings > Diagnostics prunes at once.
 - Settings > Privacy lists every switch that decides what Google is asked
   (`GoogleUsesSection`, shown while Google is on): the place source, what a place page loads,
   and what a route and a drive ask. Each row is a shared composable in

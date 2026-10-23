@@ -918,6 +918,12 @@
     <string name="transit_nav_from">from %1$s</string> <!-- format -->
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
+    <string name="welcome_trips_title">Your drives</string>
+    <string name="welcome_trips_intro">Kept on this phone so you can replay a drive or attach one to a bug report. Nothing leaves the phone unless you share it.</string>
+    <string name="welcome_trips_save">Save my drives on this phone</string>
+    <string name="welcome_trips_clear">Delete drives after 30 days</string>
+    <string name="settings_trip_auto_clear">Delete drives after 30 days</string>
+    <string name="settings_trip_auto_clear_hint">Saved drives older than 30 days are deleted on their own.</string>
     <string name="transit_notice_next_is_yours">Get off at the next stop: %1$s</string> <!-- format -->
     <string name="transit_notice_to">To %1$s</string> <!-- format -->
     <string name="transit_notice_to_destination">To your destination</string>

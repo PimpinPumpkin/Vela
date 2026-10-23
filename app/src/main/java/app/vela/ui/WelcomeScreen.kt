@@ -73,11 +73,16 @@ fun WelcomeScreen(vm: app.vela.ui.map.MapViewModel, onGetStarted: () -> Unit) {
     // "Choose what Google is used for" does not lose them.
     var avoidCameras by rememberSaveable { mutableStateOf(FlockRouteAlert.on.value) }
     var warnCameras by rememberSaveable { mutableStateOf(FlockNavAlert.any) }
+    // Saved drives, on for a new install, with the old ones clearing themselves.
+    var saveTrips by rememberSaveable { mutableStateOf(true) }
+    var clearTrips by rememberSaveable { mutableStateOf(true) }
     fun finish(useGoogle: Boolean) {
         GoogleFree.set(context, !useGoogle)
         FlockRouteAlert.set(context, avoidCameras)
         FlockNavAlert.setCard(context, warnCameras)
         FlockNavAlert.setVoice(context, warnCameras)
+        vm.setTripRecording(saveTrips)
+        vm.setTripAutoClear(clearTrips)
         onGetStarted()
     }
     when (step) {
@@ -89,6 +94,10 @@ fun WelcomeScreen(vm: app.vela.ui.map.MapViewModel, onGetStarted: () -> Unit) {
                 warnCameras = warnCameras,
                 onAvoidCameras = { avoidCameras = it },
                 onWarnCameras = { warnCameras = it },
+                saveTrips = saveTrips,
+                clearTrips = clearTrips,
+                onSaveTrips = { saveTrips = it },
+                onClearTrips = { clearTrips = it },
                 onContinue = ::finish,
                 onCustomize = { step = 2 },
             )
@@ -188,6 +197,10 @@ private fun GoogleChoice(
     warnCameras: Boolean,
     onAvoidCameras: (Boolean) -> Unit,
     onWarnCameras: (Boolean) -> Unit,
+    saveTrips: Boolean,
+    clearTrips: Boolean,
+    onSaveTrips: (Boolean) -> Unit,
+    onClearTrips: (Boolean) -> Unit,
     onContinue: (useGoogle: Boolean) -> Unit,
     onCustomize: () -> Unit,
 ) {
@@ -237,6 +250,8 @@ private fun GoogleChoice(
             )
             Spacer(Modifier.height(20.dp)) // wider than between the two answers above: this is another question
             CameraChoices(avoidCameras, warnCameras, onAvoidCameras, onWarnCameras)
+            Spacer(Modifier.height(12.dp))
+            TripChoices(saveTrips, clearTrips, onSaveTrips, onClearTrips)
             Spacer(Modifier.height(24.dp))
             WelcomeButton(stringResource(R.string.welcome_continue)) { onContinue(useGoogle) }
             // Only with Google on: with it off there is nothing left to choose.
@@ -286,7 +301,36 @@ private fun CameraChoices(avoid: Boolean, warn: Boolean, onAvoid: (Boolean) -> U
     }
 }
 
-/** One switch line of [CameraChoices]: the whole line is the one focus stop. */
+/**
+ * The third first-run question: saved drives. Kept on the phone (Settings > Diagnostics, "Save my
+ * trips"), so a drive can be replayed or attached to a bug report; nothing is sent. Both switches
+ * start on, and the second deletes drives past `TripRetention.KEEP_DAYS`. Without saving there is
+ * nothing to clear, so the second follows the first.
+ */
+@Composable
+private fun TripChoices(save: Boolean, clear: Boolean, onSave: (Boolean) -> Unit, onClear: (Boolean) -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 6.dp)) {
+            Text(stringResource(R.string.welcome_trips_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                stringResource(R.string.welcome_trips_intro),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            CameraSwitch(stringResource(R.string.welcome_trips_save), save, onSave)
+            if (save) CameraSwitch(stringResource(R.string.welcome_trips_clear), clear, onClear)
+        }
+    }
+}
+
+/** One switch line of [CameraChoices] and [TripChoices]: the whole line is the one focus stop. */
 @Composable
 private fun CameraSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     val shape = RoundedCornerShape(12.dp)

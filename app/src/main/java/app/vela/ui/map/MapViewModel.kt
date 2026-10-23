@@ -333,6 +333,7 @@ data class MapUiState(
     val voiceAlertsOnly: Boolean = false, // muted, with the speeding and camera alerts as a chime (issue 735)
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
+    val tripAutoClear: Boolean = false, // delete saved drives after TripRetention.KEEP_DAYS
     val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
     // A drive just finished and the user asked to be prompted for its name; the prompt shows on
     // the map so it is answered while the drive is fresh, not found later in Settings.
@@ -543,6 +544,7 @@ class MapViewModel @Inject constructor(
         override fun restartStaleTimer() = this@MapViewModel.restartStaleTimer()
         override fun flashStatus(msg: String, millis: Long) = this@MapViewModel.flashStatus(msg, millis)
         override fun showStatus(msg: String, voiceAction: Boolean) = this@MapViewModel.showStatus(msg, voiceAction)
+        override fun pruneOldTrips() = this@MapViewModel.pruneOldTrips()
         override fun updateSpeedLimit(here: LatLng) = this@MapViewModel.updateSpeedLimit(here)
         override fun passAlert(here: LatLng, speedMps: Double?) =
             this@MapViewModel.passAlert(here, speedMps, android.os.SystemClock.elapsedRealtime())
@@ -840,6 +842,7 @@ class MapViewModel @Inject constructor(
         app.vela.data.StreamedSpeedLimit.http = http.newBuilder().addInterceptor(app.vela.diag.NetCount).addInterceptor(app.vela.offline.ReleaseRedirects).build()
         nav.bind()
         ukFuel.bind()
+        pruneOldTrips() // saved drives past their days, when that setting is on
         // Turning the transit lines on (or off) acts at once, not at the next pan.
         viewModelScope.launch {
             androidx.compose.runtime.snapshotFlow { app.vela.ui.TransitLayer.on.value }.collect {
@@ -7504,6 +7507,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false),
+                tripAutoClear = settingsPrefs.getBoolean(TRIP_AUTO_CLEAR, false),
                 nameTripsOnSave = settingsPrefs.getBoolean("trip_name_on_save", false),
             )
         }
@@ -7513,6 +7517,25 @@ class MapViewModel @Inject constructor(
     fun setTripRecording(on: Boolean) {
         settingsPrefs.edit().putBoolean("trip_recording_on", on).apply()
         _state.update { it.copy(tripRecordingEnabled = on) }
+    }
+
+    /** "Delete drives after 30 days" (the first-run card, Settings > Diagnostics). Turning it on
+     *  clears the old drives at once; after that at every launch and every drive's start. */
+    fun setTripAutoClear(on: Boolean) {
+        settingsPrefs.edit().putBoolean(TRIP_AUTO_CLEAR, on).apply()
+        _state.update { it.copy(tripAutoClear = on) }
+        if (on) pruneOldTrips()
+    }
+
+    /** Drops the saved drives past their days when the setting is on (off the main thread). Called
+     *  from the constructor too, before [settingsPrefs] is assigned, so it opens the file itself. */
+    fun pruneOldTrips() {
+        val prefs = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(TRIP_AUTO_CLEAR, false)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val n = tripStore.pruneExpired()
+            if (n > 0) android.util.Log.i("VelaTrips", "deleted $n drive(s) past ${app.vela.core.replay.TripRetention.KEEP_DAYS} days")
+        }
     }
 
     fun recordedTrips(): List<app.vela.replay.TripMeta> = tripStore.list()
@@ -10711,6 +10734,7 @@ class MapViewModel @Inject constructor(
         /** How long one place of a link's trip may take to look up before it counts as not found. */
         private const val LINK_PLACE_TIMEOUT_MS = 8_000L
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
+        const val TRIP_AUTO_CLEAR = "trip_auto_clear"
         const val KEY_DISMISSED = "dismissed"
         const val KEY_SAVED_PIN_TIP = "saved_pin_tip_done"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close

@@ -524,6 +524,9 @@ off the list when it has been.
   only. Not driven.
 - One APK per chip type, on since 2026-10-22 (`ABI_SPLITS`, #680): not seen yet, a release
   with the five files updated through Obtainium, the F-Droid repo and the in-app updater.
+- Saved drives on from the first screens, deleted after 30 days (`trip_auto_clear`): seen on a
+  4a with a fresh dev copy, the card with both switches on and both set after Continue. Not seen:
+  a drive actually deleted at 30 days (unit test of the rule only).
 - The destination's side when the router gives none (a drive got "You have arrived" instead of
   the side): unit tests. Not heard on a drive.
 - Transit guidance in a pocket (#880): seen on a 4a with a simulated position, the card for a

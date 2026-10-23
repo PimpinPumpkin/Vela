@@ -214,12 +214,17 @@ and hand it to a developer.
   places in exports" goes further for a report you mean to post publicly: coordinates round to
   about 10 km, and searches, destinations, links and place names become `[redacted]`.
 
-## Trip recording (off by default)
+## Trip recording
 
-Settings > "Save my trips" is a second switch and more revealing than diagnostics.
+Settings > "Save my trips" is a second switch and more revealing than diagnostics. A new
+install asks on its first screens, with "Save my drives on this phone" and "Delete drives after
+30 days" both on; installs from before October 23, 2026 keep the setting they had, and their
+drives are not deleted until they turn the second switch on under Settings > Diagnostics.
 
 - When on, Vela records the GPS trace of each drive to a file on your phone, so a trip can be
-  replayed later to test turn-by-turn.
+  replayed later to test turn-by-turn, or attached to a bug report.
+- With "Delete drives after 30 days" on, a drive is deleted 30 days after it ended, checked at
+  every launch and every drive's start.
 - This is your exact movement, the most sensitive thing the app stores. Vela never uploads it.
   A trace leaves the phone only when you tap Share on a trip and choose where to send it.
 - **Share trims the private ends first, and that is the default button.** "Share trimmed"
