@@ -1143,7 +1143,7 @@
         <item quantity="other">%1$d sezioni hanno una versione più recente</item>
     </plurals>
     <string name="settings_confirm_end_nav">Chiedi prima di terminare la navigazione</string>
-    <string name="settings_confirm_end_nav_hint">Durante un tragitto, il sistema chiede sempre prima di procedere. Quando questa funzione è attiva, anche la \"X\" rossa richiede una conferma.</string>
+    <string name="settings_confirm_end_nav_hint">Durante un tragitto, il sistema chiede sempre prima di procedere. Quando questa funzione è attiva, anche la \"X\" rossa richiede una conferma</string>
     <string name="nav_end_confirm_title">Terminare la navigazione?</string>
     <string name="nav_end_confirm_body">Il percorso e le sue tappe verranno cancellati.</string>
     <string name="nav_end_confirm_end">Termina</string>
@@ -1527,4 +1527,8 @@
         <item quantity="many">Per %1$d luoghi è necessaria una ricerca su Google.</item>
         <item quantity="other">Per %1$d luoghi è necessaria una ricerca su Google.</item>
     </plurals>
+    <string name="settings_trip_save_phone">Salva sul telefono</string>
+    <string name="settings_trip_saved">Ho salvato la traccia completa</string>
+    <string name="settings_road_numbers">Prima i numeri delle strade</string>
+    <string name="settings_road_numbers_hint">Una strada dotata di un numero di percorso viene identificata tramite tale numero, anziché mediante un nome come, ad esempio, \"Pearl Harbor Memorial Expressway\". L\'indicazione appare sotto la freccia, sullo schermo dell\'auto e nelle istruzioni per il tratto di percorso successivo.</string>
 </resources>
