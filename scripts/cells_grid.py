@@ -47,7 +47,14 @@ def clip(ring, x0, y0, x1, y1):
         if not pts:
             break
         pts = cut(pts, inside, meet)
-    return pts if len(pts) >= 3 else None
+    if len(pts) < 3:
+        return None
+    # Edge/corner touches can leave repeated or collinear vertices. Translate
+    # the shoelace sum to a vertex to preserve small positive intersections.
+    x, y = pts[0]
+    area2 = math.fsum((a[0] - x) * (b[1] - y) - (b[0] - x) * (a[1] - y)
+                      for a, b in zip(pts, pts[1:] + pts[:1]))
+    return pts if area2 != 0 else None
 
 
 def main():
