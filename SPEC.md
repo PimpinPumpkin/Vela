@@ -1718,7 +1718,10 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
   is that close without traffic, else the best route, turn-around and all. The open router's
   time is first put on Google's clock (its length at the best route's average speed, factor
-  held to 0.5 to 3), because its own free-flow time runs fast.
+  held to 0.5 to 3), because its own free-flow time runs fast. The open router's route taken
+  that way keeps the set-aside best route's clock and traffic (`applyTraffic` with `speedCal`,
+  spans carried where the roads are shared), as a trip through stops does when Google's detour
+  is not taken. Without them its ETA stayed short until the recheck's heal.
 - A driving reroute's first turn must be one the car can still make. A turn, sharp turn, U-turn
   or roundabout entry (`NavSession.firstTurnAheadM`) under `REACH_S` seconds away at the newest
   trusted fix's speed, and never under `REACH_MIN_M`, is out of reach (`turnOutOfReach`, only at

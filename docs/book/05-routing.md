@@ -269,7 +269,9 @@ missed turn says "make a U-turn", and so does the next one. A planning fetch sen
 Setting a route aside has a price limit (`RouteGeometry.forwardChoice`). A forward Google route
 is taken only when it is within 3 minutes, or 8 percent, of the best one. With none, the open
 router's own route is used when it is that close to the best route's time without traffic: it
-was asked with the heading and usually goes round the block. When going on costs more than that
+was asked with the heading and usually goes round the block. It runs on the set-aside route's
+clock and traffic, so its arrival time is Google's from the first answer instead of the open
+router's fast one until the next recheck. When going on costs more than that
 either way, the best route stands and the car is told to turn around. Without the limit a
 forward alternate 20 minutes longer was taken over the best route.
 

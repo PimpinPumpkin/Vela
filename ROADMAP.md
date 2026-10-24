@@ -538,6 +538,9 @@ off the list when it has been.
   is past it (a start against the route got a side-street U-turn 1 m ahead at 10 m/s): unit
   tests, and the rule over every route swap in four recent traces fires on that one only. Not
   driven.
+- The open router's reroute taken because Google's routes started against the car keeps
+  Google's clock and traffic (the ETA read 9 minutes until a heal 35 s later made it 12): code
+  only, through the helper trips with stops use. Not driven.
 
 ### Open from the October 2026 audit
 

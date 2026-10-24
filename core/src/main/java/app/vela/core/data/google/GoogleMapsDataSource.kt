@@ -1147,7 +1147,7 @@ class GoogleMapsDataSource @Inject constructor(
                     "directions",
                     "reroute: $against of ${googleAll.size} google route(s) start against the car's heading, " +
                         when {
-                            chosen.isEmpty() -> "set aside for the open router's"
+                            chosen.isEmpty() -> "set aside for the open router's, on google's clock"
                             RouteGeometry.startsAgainst(chosen.first().polyline, departBearingDeg) -> "kept: going on costs too much"
                             else -> "set aside"
                         },
@@ -1155,6 +1155,10 @@ class GoogleMapsDataSource @Inject constructor(
                 chosen
             } else googleAll
             val gTop = google.firstOrNull()
+            // Every Google route set aside: the open router's route still takes Google's clock and
+            // traffic, as a trip through stops does when Google's detour is not taken. On its own
+            // clock it runs fast, and the ETA stayed short until the recheck healed it.
+            val setAside = if (gTop == null) googleAll.minByOrNull { it.durationInTrafficSeconds ?: it.durationSeconds } else null
             val open = openRaw
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
@@ -1512,7 +1516,9 @@ class GoogleMapsDataSource @Inject constructor(
                     // routes were computed with no avoid at all (it cannot exclude), so they are
                     // not offered, the same rule as the snapped branch. Before this they were, and
                     // with Google having honored the avoid, without the "may still use" note.
-                    else (if (avoidWanted && gTop != null) open.take(1) else open).map { applyTraffic(it, gTop, freeFlowCal) }
+                    else (if (avoidWanted && gTop != null) open.take(1) else open).map {
+                        if (setAside != null) applyTraffic(it, setAside, freeFlowCal = speedCal(it, setAside)) else applyTraffic(it, gTop, freeFlowCal)
+                    }
                 // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
                 // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
