@@ -34,7 +34,7 @@ class RoadNameShortTest {
         assertEquals("Merge onto I-44 W", RoadNameShort.inText("Merge onto I-44 Westbound", null))
         assertEquals("Take exit 18 toward CA 113 S", RoadNameShort.inText("Take exit 18 toward CA 113 South", null))
         // A direction in a place's name, or with no route number before it, stays.
-        assertEquals("Keep left toward North Bend", RoadNameShort.inText("Keep left toward North Bend", null))
+        assertEquals("Keep left toward North Highlands", RoadNameShort.inText("Keep left toward North Highlands", null))
         assertEquals("Turn right onto W Covell Blvd", RoadNameShort.inText("Turn right onto West Covell Boulevard", "West Covell Boulevard"))
     }
 

@@ -43,7 +43,7 @@ object RoadNameShort {
      *  first word is kept; the text is unchanged when the road is not in it (a romanized name, a
      *  number used instead). A compass word after a route number is cut to its letter wherever it
      *  stands, a sign's destination included ("toward US 169 North" is "toward US 169 N", as the
-     *  sign reads; issue #837). A direction in a town's name ("toward North Bend") stays. */
+     *  sign reads; issue #837). A direction in a town's name ("toward North Highlands") stays. */
     fun inText(text: String, road: String?): String {
         val t = routeCardinals(text)
         if (road.isNullOrBlank()) return t
