@@ -4629,8 +4629,12 @@ a region a frame touches. The bake is 7.6.1 to 7.6.4, the app side 7.6.5.
 #### 7.6.1 Grid
 
 Cells are the tiles of one global grid at `STEP` degrees (`cells_grid.py`, 0.5 by default),
-each clipped to the region's header box (clamped by `clamp-bbox.py`). A tile with no part of
-the region's polygon in it is not a cell, and a cell with no road and no pack row is dropped.
+each clipped to the region's header box (clamped by `clamp-bbox.py`). With region polygons,
+only intersections with nonzero area count as cells or become GeoJSON cutlines. Edge and
+corner touches are omitted before the `MAX_CELLS` check; multipart cutlines retain only
+parts with nonzero area. The area check accepts either ring winding, open or closed rings,
+and small positive intersections without an area cutoff. Without region polygons, cells use
+the box alone. A cell with no road and no pack row is dropped.
 
 The key is the tile's SW corner, fixed width: `[ns]DD.D[ew]DDD.D`, for example `n38.5w075.5`.
 The cell id is `<region>.<key>` (`delaware.n38.5w075.5`); region ids hold no dot, so the first
