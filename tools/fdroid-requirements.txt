@@ -17,7 +17,7 @@ dataset==2.0.0
 defusedxml==0.7.1
 executing==2.2.1
 gitdb==4.0.12
-GitPython==3.2.0
+GitPython==3.2.1
 invoke==3.0.3
 ipython==9.17.1
 ipython-pygments-lexers==1.1.1
