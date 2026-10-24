@@ -534,6 +534,10 @@ off the list when it has been.
   real ride with the screen off, the heads-up at the stop before yours (unit tests only).
 - A reroute's naming snap starts the way the car points and skips vias on Google's own start
   (an unpinned one went round a block): a unit test of the vias. Not driven.
+- A reroute whose first turn is too close to make at the car's speed is asked again once the car
+  is past it (a start against the route got a side-street U-turn 1 m ahead at 10 m/s): unit
+  tests, and the rule over every route swap in four recent traces fires on that one only. Not
+  driven.
 
 ### Open from the October 2026 audit
 

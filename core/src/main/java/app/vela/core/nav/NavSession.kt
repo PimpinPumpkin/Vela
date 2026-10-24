@@ -5,6 +5,7 @@ import app.vela.core.data.MapDataSource
 import app.vela.core.data.RoutingPrefs
 import app.vela.core.feedback.Haptics
 import app.vela.core.model.LatLng
+import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
 import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
@@ -103,6 +104,7 @@ class NavSession @Inject constructor(
     /** The last fix that was the phone's own position and good enough to fetch from, and when. */
     @Volatile private var lastTrustedFix: LatLng? = null
     @Volatile private var lastTrustedFixMs = 0L
+    @Volatile private var lastTrustedSpeedMps = 0.0
     /** Consecutive paused fixes that are moving AND back on the route (see [maybeAutoResume]). */
     private var backOnRouteHits = 0
     /** Auto-resume is ARMED only once the stop has actually happened - a fix that is stationary or
@@ -458,7 +460,7 @@ class NavSession @Inject constructor(
         lastLoc = loc
         lastBearing = departCourse(bearingDeg, speedMps, accuracyM)
         val trusted = fromFix && (accuracyM == null || accuracyM <= RECHECK_MAX_ACC_M)
-        if (trusted) { lastTrustedFix = loc; lastTrustedFixMs = SystemClock.elapsedRealtime() }
+        if (trusted) { lastTrustedFix = loc; lastTrustedFixMs = SystemClock.elapsedRealtime(); lastTrustedSpeedMps = speedMps ?: 0.0 }
         if (s.paused) {
             // Whatever is driven during the hold was driven: the first fix after it is not a jump.
             synchronized(stopLock) { progressRoute = null }
@@ -1107,30 +1109,58 @@ class NavSession @Inject constructor(
             // drive. That is the "Re-routing" spinner that never exits and only a restart clears
             // (reported on a real drive; the same trap the avoid path hit, see
             // AVOID_ONDEVICE_TIMEOUT_MS). The orphan finishes into the void and is discarded.
-            val fetch = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+            fun ask(from: LatLng, heading: Double?, budgetMs: Long) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                 runCatching {
                     dataSource.directions(
-                        loc, dest, mode, remainingStops.map { it.location },
+                        from, dest, mode, remainingStops.map { it.location },
                         avoidTolls = RoutingPrefs.avoidTolls,
                         avoidHighways = RoutingPrefs.avoidHighways,
                         avoidFerries = RoutingPrefs.avoidFerries,
                         urgent = attempt.urgent,
                         // Pin the departure to where the car is pointing, so the answer is "given
                         // that you are going this way, what now" instead of "turn around".
-                        departBearingDeg = headingDeg,
+                        departBearingDeg = heading,
                         // The fetch's own share of the deadline (issue #557): the open router, Google
                         // and the downloaded region each get a slice instead of the first eating it all.
-                        budgetMs = attempt.budgetMs,
+                        budgetMs = budgetMs,
                     )
                 }
                     .getOrNull()?.let { routes ->
                         val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_NAME_SLACK_MS
-                        driveable(routes, loc, dest, nameWithinMs = left.coerceAtLeast(0L), departBearingDeg = headingDeg)
+                        driveable(routes, from, dest, nameWithinMs = left.coerceAtLeast(0L), departBearingDeg = heading)
                     }?.takeIf { it.reaches(dest) }
             }
-            val r = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
-            val timedOut = r == null && !fetch.isCompleted
-            if (r == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
+            val fetch = ask(loc, headingDeg, attempt.budgetMs)
+            var landed = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
+            val timedOut = landed == null && !fetch.isCompleted
+            if (landed == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
+            // A first turn the car can no longer make is asked again once the car is past it. The
+            // open router, pinned to the heading, sends a car that has to turn round into the
+            // nearest side street, often a few meters ahead. Adopted, that turn is spoken after the
+            // car has passed it, the arrow turns down a street the car is not on, and the next
+            // reroute waits out the cooldown. Asked again at once, from the same fix, the answer
+            // is the same turn. A failed second ask keeps the first answer.
+            fun trustedNow() = lastTrustedFix?.takeIf { SystemClock.elapsedRealtime() - lastTrustedFixMs <= TRUSTED_FIX_MAX_AGE_MS }
+            var lateAsks = 0
+            while (mode == TravelMode.DRIVE && lateAsks < LATE_TURN_ASKS) {
+                val got = landed ?: break
+                val car = trustedNow() ?: break
+                val speed = lastTrustedSpeedMps
+                val ahead = firstTurnAheadM(got, car) ?: break
+                if (!turnOutOfReach(ahead, speed)) break
+                val waitMs = lateTurnWaitMs(ahead, speed)
+                val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_FINISH_RESERVE_MS - waitMs
+                if (left < LATE_TURN_MIN_LEFT_MS) break
+                lateAsks++
+                note("reroute: its first turn is ${ahead.toInt()} m ahead at ${speed.toInt()} m/s, asking again past it")
+                kotlinx.coroutines.delay(waitMs)
+                if (gen != sessionGen) return@launch
+                val from = trustedNow() ?: break
+                val again = ask(from, lastBearing ?: headingDeg, left)
+                landed = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); got }
+                if (landed === got) break
+            }
+            val r = landed
             val tookMs = SystemClock.elapsedRealtime() - now
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
             // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
@@ -1291,6 +1321,45 @@ class NavSession @Inject constructor(
         /** May this fix start a recheck: the phone's own position, good enough ([RECHECK_MAX_ACC_M]),
          *  and not already counted as off the line. */
         fun recheckFrom(trustedFix: Boolean, offRouteHits: Int): Boolean = trustedFix && offRouteHits == 0
+
+        /** The steps a driver slows down for. A slight bend, a fork or a ramp is taken at speed. */
+        private val SLOW_TURNS = setOf(
+            ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT,
+            ManeuverType.UTURN, ManeuverType.ROUNDABOUT,
+        )
+
+        /** Meters along [route] from [car] to its first step of [SLOW_TURNS]: 0 when the car is level
+         *  with it or past it, null when the car is not on the line or there is no such step. A step
+         *  sits where the engine puts it, at the sum of the step lengths before it. */
+        fun firstTurnAheadM(route: Route, car: LatLng): Double? {
+            val line = route.polyline
+            if (line.size < 2) return null
+            val cum = RouteProjection.cumulative(line)
+            val (along, perp) = NavEngine.projectAlong(line, cum, car, 0.0, CAR_ON_CANDIDATE_ALONG_M)
+            if (perp > CAR_ON_CANDIDATE_M) return null
+            var at = 0.0
+            route.maneuvers.forEachIndexed { i, m ->
+                if (i > 0 && m.type in SLOW_TURNS) return (at - along).coerceAtLeast(0.0)
+                at += m.distanceMeters
+            }
+            return null
+        }
+
+        /** True when a fresh reroute's first turn is too close for a driving car to make: under
+         *  [REACH_S] seconds away at its speed, and never under [REACH_MIN_M]. The first line is
+         *  said after "Rerouting", a second or more after the route lands. */
+        fun turnOutOfReach(aheadM: Double?, speedMps: Double): Boolean =
+            aheadM != null && speedMps >= NavEngine.HEADING_MIN_MPS && aheadM < maxOf(REACH_MIN_M, speedMps * REACH_S)
+
+        /** How long until a car at [speedMps] is [LATE_TURN_PAST_M] past a turn [aheadM] ahead. */
+        fun lateTurnWaitMs(aheadM: Double, speedMps: Double): Long =
+            ((aheadM + LATE_TURN_PAST_M) / speedMps.coerceAtLeast(NavEngine.HEADING_MIN_MPS) * 1000.0).toLong()
+        const val REACH_S = 5.0
+        const val REACH_MIN_M = 25.0
+        const val LATE_TURN_PAST_M = 10.0
+        /** At most this many more asks for one reroute, each leaving this much of its deadline. */
+        const val LATE_TURN_ASKS = 2
+        const val LATE_TURN_MIN_LEFT_MS = 1_500L
 
         /** Whether [car] is on [line] near its start: a route a recheck brings back has to begin
          *  where the car is, not where a dead-reckoned or held position put it. */

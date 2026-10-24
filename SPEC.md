@@ -1672,6 +1672,11 @@ PHONE_FIRST_ONDEVICE_WAIT_MS 4_000   how long past that the on-device search may
 LADDER_OSRM_TRY_MS           8_000   one escalated OSRM try
 LADDER_OSRM_SHARE             0.55   share of an escalated budget OSRM may spend
 LADDER_SNAP_RESERVE_MS       6_000   an escalated fetch stops waiting for Google this early
+REACH_S                        5.0   a driving reroute's first turn must be this many seconds away
+REACH_MIN_M                     25   and never closer than this
+LATE_TURN_PAST_M                10   an ask again waits until the car is this far past that turn
+LATE_TURN_ASKS                   2   asks again for one reroute when its first turn is out of reach
+LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its wait
 ```
 
 - `NavSession.rerouteGate` allows one fetch at a time and enforces the cooldown. A job older
@@ -1714,6 +1719,17 @@ LADDER_SNAP_RESERVE_MS       6_000   an escalated fetch stops waiting for Google
   is that close without traffic, else the best route, turn-around and all. The open router's
   time is first put on Google's clock (its length at the best route's average speed, factor
   held to 0.5 to 3), because its own free-flow time runs fast.
+- A driving reroute's first turn must be one the car can still make. A turn, sharp turn, U-turn
+  or roundabout entry (`NavSession.firstTurnAheadM`) under `REACH_S` seconds away at the newest
+  trusted fix's speed, and never under `REACH_MIN_M`, is out of reach (`turnOutOfReach`, only at
+  `HEADING_MIN_MPS` and up). The first line is said after "Rerouting", a second or more after
+  the route lands. The fetch then waits until the car is `LATE_TURN_PAST_M` past that turn at
+  its speed (`lateTurnWaitMs`, under 7 s) and asks again from the newest trusted fix and its
+  course, up to `LATE_TURN_ASKS` times while `LATE_TURN_MIN_LEFT_MS` of the deadline minus the
+  finish reserve is left after the wait. Asked at once from the same fix, the answer is the same
+  turn. A failed ask keeps the answer in hand. Pinned to the heading, the open router sends a car
+  that has to turn round into the nearest side street, which can be a meter ahead when the route
+  lands.
 - A reroute that lands after the driver is back on the original route is discarded
   (`route === fromRoute && onRouteStreak >= BACK_ON_COURSE_HITS`). One grazing fix is not enough.
 - A provisional route is never driven raw. `NavSession.driveable` names a provisional top

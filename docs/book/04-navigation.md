@@ -229,6 +229,13 @@ set aside when the open router answered, unless going on would cost minutes more
 around (book 5). A stopped car has no fresh course and sends none.
 Planning sends none.
 
+The pinned heading has a side effect: a car that has to turn round is sent into the nearest side
+street, which can be a car length ahead when the answer lands. A driving reroute whose first turn
+is less than 5 seconds away at the car's speed, and never less than 25 m, is not driven
+(`NavSession.turnOutOfReach`). The fetch waits until the car is 10 m past that turn and asks
+again from there, at most twice. Asked again at once, from the same fix, the answer is the same
+turn. If an ask fails, the answer in hand is driven.
+
 The answer is checked before it is driven (`NavSession.driveable`). It must end within
 `REACH_TOLERANCE_M = 500` of the destination. A provisional Google alternate is named first, and
 a route with only Google's short steps loses to a full-stepped one from the same reply. A
