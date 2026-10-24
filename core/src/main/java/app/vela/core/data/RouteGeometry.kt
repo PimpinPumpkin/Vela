@@ -525,9 +525,9 @@ object RouteGeometry {
 
     /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
      *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
-     *  its OWN spoken prompt seconds apart ("Take exit 15" … "Keep right" … "Merge onto I-90") — the reported
+     *  its OWN spoken prompt seconds apart ("Take exit 18" … "Keep right" … "Merge onto I-80"), the reported
      *  "it told me related instructions over and over." Google says it once. Fold a ramp's IMMEDIATELY-
-     *  following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 15
+     *  following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 18
      *  toward …"), SUM the distances so the step lengths still tile the polyline (NavEngine locates each
      *  maneuver by a prefix-sum of step distances), and drop the redundant follow-ups. It stops at the first
      *  real turn / next ramp / continue / arrive, and at a > [EXIT_COMPLEX_GAP_M] gap, so a genuine later

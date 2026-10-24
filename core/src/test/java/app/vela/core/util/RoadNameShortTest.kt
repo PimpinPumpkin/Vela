@@ -8,7 +8,7 @@ class RoadNameShortTest {
         assertEquals("Covell Blvd", RoadNameShort.shorten("Covell Boulevard"))
         assertEquals("W Covell Blvd", RoadNameShort.shorten("West Covell Boulevard"))
         assertEquals("Russell Rd NE", RoadNameShort.shorten("Russell Road Northeast"))
-        assertEquals("NE 8th St", RoadNameShort.shorten("Northeast 8th Street"))
+        assertEquals("E 8th St", RoadNameShort.shorten("East 8th Street"))
     }
 
     @Test fun theNameItselfIsKept() {
