@@ -84,7 +84,7 @@
     <string name="settings_live_traffic">即時路況圖層</string>
     <string name="settings_live_traffic_hint">瀏覽地圖時依壅塞程度為道路上色。導航時路線本來就會依交通狀況顯示顏色。</string>
     <string name="settings_transit_layer">突顯大眾運輸路線</string>
-    <string name="settings_transit_layer_hint">在地圖上繪出火車和捷運路線。</string>
+    <string name="settings_transit_layer_hint">在地圖上繪出火車和捷運路線。若開放式大眾運輸資料中已標示顏色，則每條路線將以對應的顏色呈現。</string>
     <string name="settings_read_all_reviews">「閱讀所有評論」按鈕</string>
     <string name="settings_read_all_reviews_hint">新增「閱讀所有評論」按鈕，在應用程式內開啟 Google 的完整評論頁面，包含每一篇評論。關閉時只顯示 Vela 自己的評論清單。</string>
     <string name="settings_buildings_3d">3D 建築物</string>
@@ -761,7 +761,7 @@
     <string name="suggestion_contact_badge">聯絡人</string>
     <string name="settings_speed_cams">測速照相</string>
     <string name="settings_speed_cam_warn">用語音提醒我</string>
-    <string name="settings_speed_cam_warn_hint">導航時接近測速照相會唸出「前方有測速照相」，約提前十二秒提醒。會依照你的語音指引設定。部分國家限制行車中提示測速照相，因此預設關閉，需自行開啟。</string>
+    <string name="settings_speed_cam_warn_hint">導航時接近測速照相會唸出「前方有測速照相」，並顯示一張卡片，約提前十二秒提醒。會依照你的語音指引設定。部分國家限制行車中提示測速照相，因此預設關閉，需自行開啟。</string>
     <string name="nav_speed_camera_ahead">前方有測速照相</string>
     <string name="settings_speed_cams_hint">顯示 OpenStreetMap 中標示的固定式雷達與測速照相。僅限固定式裝置；涵蓋範圍取決於地圖資料，以歐洲最完整。預設關閉。</string>
     <string name="settings_building_overlay">補上缺少的建築物</string>
@@ -1025,7 +1025,7 @@
     <string name="settings_google_session_now">立即開始新的工作階段</string>
     <string name="settings_google_session_done">已開始新的 Google 工作階段</string>
     <string name="settings_google_free">不透過 Google 使用 Vela</string>
-    <string name="settings_google_free_hint">不會傳送任何內容給 Google。搜尋使用 OpenStreetMap 和你下載的區域，地圖上的地點來自 Vela 自己的資料，路線則來自開放路線規劃服務，沒有即時路況。你將無法使用評論、相片、營業時間、即時抵達時間、街景服務、大眾運輸路線和衛星近照；已下載的區域仍能完全離線使用。</string>
+    <string name="settings_google_free_hint">不會傳送任何內容給 Google。搜尋使用 OpenStreetMap 和你下載的區域，地圖上的地點來自 Vela 自己的資料，路線則來自開放路線規劃服務，沒有即時路況。你將無法使用評論、相片、Google 營業時間、即時抵達時間、街景服務和衛星近照；大眾運輸路線指引來自 Open Planner。已下載的區域在離線狀態下仍可完全正常運作。</string>
     <string name="settings_diag_redact_trips_hint">從診斷匯出中隱藏搜尋、目的地、連結和地點名稱，並將座標取整到約 10 公里。時間、次數和錯誤會保留。分享行程時預設使用最大的修剪距離。</string>
     <string name="settings_trip_more">這筆行程的更多選項</string>
     <string name="settings_trip_batch_title">分享選取的行程</string>
@@ -1378,4 +1378,30 @@
     <string name="trip_shortcut_unsupported">這個主畫面不支援釘選捷徑</string>
     <string name="trip_shortcut_themed">配合主題圖示</string>
     <string name="settings_places_source_note">無論選哪一項，搜尋或點按地點時，仍會向 Google 取得營業時間、評論和相片。</string>
+    <string name="settings_directions_language">指示語言</string>
+    <string name="settings_directions_same_as_app">與應用程式語言相同</string>
+    <string name="settings_directions_language_hint">顯示並朗讀的語言為。請從語音庫中選擇相應的語音。</string>
+    <string name="settings_region_updated_on">已更新 %1$s</string>
+    <string name="settings_keep_north_up">保持北方朝上</string>
+    <string name="settings_keep_north_up_hint">地圖永遠不會旋轉：雙指旋轉功能已關閉，且行車路線始終以北為上。</string>
+    <string name="settings_start_view">地圖開啟的位置</string>
+    <string name="settings_start_view_here">我現在的位置</string>
+    <string name="settings_start_view_place">我選擇的地方</string>
+    <string name="settings_start_view_use_current">使用當前的地圖視圖</string>
+    <string name="settings_start_view_drive">駕駛模式</string>
+    <string name="driving_mode">駕駛模式</string>
+    <string name="driving_mode_leave">離開行車模式</string>
+    <string name="settings_start_view_saved">Vela 將在此視圖中開啟。</string>
+    <string name="settings_car_speed">車載螢幕上顯示的車速</string>
+    <string name="settings_car_speed_hint">關閉時，車載螢幕僅顯示規定限速；車輛本身配有車速表。</string>
+    <string name="settings_update_all_regions">更新全部 (%1$d)</string>
+    <string name="nav_bar_to_stop">到 %1$s</string>
+    <string name="nav_bar_your_stop">您的站點</string>
+    <string name="nav_bar_stop_cd">%1$s 和 %2$s 到 %3$s，抵達 %4$s。全程 %5$s 和 %6$s，抵達 %7$s。</string>
+    <string name="nav_stops_whole_trip">全程：%1$s · %2$s · 抵達 %3$s</string>
+    <string name="settings_trip_save_phone">儲存至手機</string>
+    <string name="settings_voice_row_other_language">語音指引將以 %1$s 語音播報。若要聆聽此語音，請將語音指引語言設定為 %2$s。</string>
+    <string name="mapscreen_location_tip_title">還沒有地點嗎？</string>
+    <string name="mapscreen_location_tip_body">僅靠 GPS 通常無法在室內取得定位。在 GrapheneOS 上，請前往「設定」&gt;「位置」&gt;「位置服務」，開啟「網路定位」。</string>
+    <string name="mapscreen_location_tip_settings">位置設定</string>
 </resources>
