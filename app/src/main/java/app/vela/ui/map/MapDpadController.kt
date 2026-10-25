@@ -34,46 +34,32 @@ class MapDpadController {
     /** Reports a key-driven turn of the map, as a finger turn reports itself (MapKeys). */
     internal var markRotate: (() -> Unit)? = null
 
-    /** Pan by a fraction of the view size (e.g. 0.18f of the width per D-pad press). The step is
-     *  taken from where the camera's target is drawn, which is off the view's middle while a
-     *  sheet or panel pads the map: stepping from the middle added that offset to every press. */
+    /** Pan the camera by a fraction of the view size, using touch's native screen-space movement.
+     *  Map content moves opposite the requested camera direction, including with tilt or padding. */
     fun panBy(fracX: Float, fracY: Float) {
         val m = map ?: return
         val v = mapView ?: return
         if (v.width <= 0 || v.height <= 0) return
-        val from = m.projection.toScreenLocation(m.cameraPosition.target ?: return)
-        val target = m.projection.fromScreenLocation(
-            PointF(from.x + v.width * fracX, from.y + v.height * fracY),
-        )
         markPan?.invoke()
-        m.easeCamera(CameraUpdateFactory.newLatLng(target), 150)
+        m.scrollBy(-v.width * fracX, -v.height * fracY, 150L)
     }
 
     fun zoomBy(delta: Double) {
         val m = map ?: return
-        markZoom?.invoke(m.cameraPosition.zoom + delta)
-        m.easeCamera(CameraUpdateFactory.zoomBy(delta), 200)
+        val cp = m.cameraPosition
+        val point = m.projection.toScreenLocation(cp.target ?: return)
+        val zoom = cp.zoom + delta
+        markZoom?.invoke(zoom)
+        m.setZoom(zoom, point, 200L)
     }
 
-    /** [zoomBy] around a point given in window pixels, which stays where it is on screen.
-     *  `CameraUpdateFactory.zoomBy(amount, point)` moves that point to the middle instead. */
+    /** [zoomBy] around a point given in window pixels, using touch's native focal zoom. */
     fun zoomAt(delta: Double, windowX: Float, windowY: Float) {
         val m = map ?: return
         val p = viewPoint(windowX, windowY) ?: return zoomBy(delta)
-        val cp = m.cameraPosition
-        val target = cp.target ?: return zoomBy(delta)
-        markZoom?.invoke(cp.zoom + delta)
-        // The map scales by s about the target's screen point c. For p to stay put, the new target
-        // is p - (p - c) / s, in today's projection.
-        val c = m.projection.toScreenLocation(target)
-        val s = Math.pow(2.0, delta).toFloat()
-        val next = m.projection.fromScreenLocation(PointF(p.x - (p.x - c.x) / s, p.y - (p.y - c.y) / s))
-        m.easeCamera(
-            CameraUpdateFactory.newCameraPosition(
-                org.maplibre.android.camera.CameraPosition.Builder(cp).target(next).zoom(cp.zoom + delta).build(),
-            ),
-            200,
-        )
+        val zoom = m.cameraPosition.zoom + delta
+        markZoom?.invoke(zoom)
+        m.setZoom(zoom, p, 200L)
     }
 
     /** Turns the map on screen by [clockwiseDeg]; the camera's bearing moves the other way. With a
