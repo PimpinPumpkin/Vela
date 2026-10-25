@@ -1501,7 +1501,7 @@
     <string name="settings_zoom_to_turn_floor_region">Region</string>
     <string name="settings_zoom_to_turn_floor_hint">Wie weit die Karte vergrößert werden kann, damit die nächste Abbiegung auf dem Bildschirm bleibt. Mit jedem Schritt wird die Ansicht etwa viermal so weit vergrößert; bei den weiter entfernten Ansichten werden die Straßennamen durch die Bezeichnung des vorangehenden Abschnitts ersetzt.</string>
     <string name="route_save_default_from">%1$s bis %2$s</string>
-    <string name="settings_trip_save_phone">Auf dem Handy speichern</string>
+    <string name="settings_trip_save_phone">Auf dem Smartphone speichern</string>
     <string name="settings_zoom_to_turn">Zur nächsten Kurve zoomen</string>
     <string name="settings_road_numbers">Zuerst die Straßennummern</string>
     <string name="settings_road_numbers_hint">Eine Straße mit einer Routennummer wird anhand der Nummer bezeichnet, nicht anhand eines Namens wie beispielsweise „Pearl Harbor Memorial Expressway“. Unter dem Pfeil, auf dem Bildschirm im Auto und in der Wegbeschreibung zur nächsten Route.</string>
