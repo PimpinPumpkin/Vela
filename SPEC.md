@@ -5410,8 +5410,8 @@ The whole UI works with a five-key D-pad and no touchscreen.
 - `MainActivity.dispatchKeyEvent` hands a map key to `MapDpadController` while the map is
   showing. A printing key is offered after `super`, so a text field keeps it. A non-printing key
   is offered before. The arrows, OK, Enter, Back, Home, Menu and Power cannot be assigned.
-- Zoom moves one level on the key's first down. Pan moves 22% of the view and rotate turns the
-  map `ROTATE_DEG` (15 degrees) on every down, so a held key repeats. A turn reports itself as a
+- Zoom moves one level, pan moves 22% of the view and rotate turns the map `ROTATE_DEG`
+  (15 degrees) on every down, so all three repeat while held. A turn reports itself as a
   finger turn does, so one that ends within 12 degrees of north springs back to it; 15 degrees is
   above that. Rotate does nothing under North lock.
 - Zoom and rotate keep the spot under the crosshair where it is (`MapDpadController.zoomAt`,

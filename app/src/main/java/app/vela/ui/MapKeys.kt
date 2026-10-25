@@ -84,8 +84,8 @@ object MapKeys {
     fun assignable(keyCode: Int): Boolean = keyCode !in RESERVED && keyCode != KeyEvent.KEYCODE_UNKNOWN
 
     /**
-     * Acts on a key set to an action. Zoom acts on the key's first down; pan and rotate on every
-     * down, so a held key keeps moving the map; select taps on the key's up, or long-presses once
+     * Acts on a key set to an action. Zoom, pan and rotate act on every down, so a held key keeps
+     * moving the map; select taps on the key's up, or long-presses once
      * it has been held [LONG_PRESS_MS]. True when the event was a set key and the map is showing.
      */
     fun handle(event: KeyEvent): Boolean {
@@ -93,12 +93,11 @@ object MapKeys {
         if (!mapShowing) return false
         val c = controller ?: return false
         val down = event.action == KeyEvent.ACTION_DOWN
-        val first = down && event.repeatCount == 0
         // Zoom and rotate turn about the crosshair, so the spot under it stays under it.
         val at = MapCover.center()
         when (action) {
-            Action.ZOOM_IN -> if (first) zoom(c, 1.0, at)
-            Action.ZOOM_OUT -> if (first) zoom(c, -1.0, at)
+            Action.ZOOM_IN -> if (down) zoom(c, 1.0, at)
+            Action.ZOOM_OUT -> if (down) zoom(c, -1.0, at)
             Action.PAN_UP -> if (down) c.panBy(0f, -PAN)
             Action.PAN_DOWN -> if (down) c.panBy(0f, PAN)
             Action.PAN_LEFT -> if (down) c.panBy(-PAN, 0f)

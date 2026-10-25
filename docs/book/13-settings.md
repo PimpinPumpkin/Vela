@@ -37,6 +37,9 @@ finger. Settings > Appearance > Page transitions turns the motion off and leaves
 On a keypad phone every page opens with its Back button focused, and returning to the list
 focuses the row you came from.
 
+Assigned map keys repeat zoom, pan and rotation while held
+([SPEC 10.3](../../SPEC.md#103-d-pad-operation)).
+
 ## Where the data comes from
 
 Nothing here uses the network. Most settings are stored in the `vela_settings` preference file,

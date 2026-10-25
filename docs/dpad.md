@@ -106,7 +106,7 @@ left and right, rotate counterclockwise and clockwise, and select. Each takes an
 
 | Key | Action |
 | --- | --- |
-| 1, 3 | Zoom out, zoom in, one level |
+| 1, 3 | Zoom out, zoom in, one level, repeating while held |
 | 2, 8, 4, 6 | Pan up, down, left, right by 22% of the view, repeating while held |
 | 7, 9 | Rotate counterclockwise, clockwise by 15 degrees, repeating while held |
 | 5 | Tap whatever is under the crosshair |
