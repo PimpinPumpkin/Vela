@@ -85,9 +85,20 @@ object TransitParser {
             // trip[13] = [seconds, "10 min", seconds]: how often the service runs, present only
             // where the lines have a headway (checked on London, New York and SF trips).
             frequencyText = trip.at(13, 1).str()?.takeIf { (trip.at(13, 0).long() ?: 0L) in 60L..10_800L },
-            lines = mergeAlternativeLines(parseLines(t.at(14)), steps.mapNotNull { it.line?.name }),
+            lines = previewLines(parseLines(t.at(14)), steps),
             steps = steps,
         )
+    }
+
+    /** Keep complete alternative badges, otherwise show each actual ride in journey order.
+     *  Summary badges can omit rides or de-duplicate a line ridden again after a transfer. */
+    private fun previewLines(lines: List<TransitLine>, steps: List<TransitStep>): List<TransitLine> {
+        val rides = steps.mapNotNull { it.line }
+        if (rides.isEmpty()) return lines
+        val merged = mergeAlternativeLines(lines, rides.map { it.name })
+        return if (merged.size == rides.size && merged.indices.all { i ->
+            merged[i].name == rides[i].name || rides[i].name in merged[i].name.split(" / ")
+        }) merged else rides
     }
 
     /** Reconcile the summary badges against the REAL ride legs (issue #234): a direct connection
