@@ -87,26 +87,11 @@ class MapDpadController {
         val cp = m.cameraPosition
         val bearing = (cp.bearing - clockwiseDeg).mod(360.0)
         val p = if (windowX != null && windowY != null) viewPoint(windowX, windowY) else null
-        val target = cp.target
-        if (p == null || target == null) {
+        if (p == null) {
             m.easeCamera(CameraUpdateFactory.bearingTo(bearing), 150)
             return
         }
-        // The map turns about the target's screen point c. For p to stay put, the new target is the
-        // point that lands on c once the turn is done: p - R(-angle)(p - c), in today's projection.
-        val c = m.projection.toScreenLocation(target)
-        val a = Math.toRadians(clockwiseDeg)
-        val cos = kotlin.math.cos(a).toFloat()
-        val sin = kotlin.math.sin(a).toFloat()
-        val dx = p.x - c.x
-        val dy = p.y - c.y
-        val next = m.projection.fromScreenLocation(PointF(p.x - (dx * cos + dy * sin), p.y - (-dx * sin + dy * cos)))
-        m.easeCamera(
-            CameraUpdateFactory.newCameraPosition(
-                org.maplibre.android.camera.CameraPosition.Builder(cp).target(next).bearing(bearing).build(),
-            ),
-            150,
-        )
+        m.setFocalBearing(bearing, p.x, p.y, 150L)
     }
 
     /** A "tap" at the crosshair (view center). Returns true if something was hit. */

@@ -69,6 +69,12 @@ the navigation zoom override and the rotate listener's flags, so a key pan detac
 camera and arms "Search this area" as a finger pan does, and a key turn springs back to north as
 a finger turn does.
 
+Rotation uses MapLibre's native focal-bearing operation at the crosshair, as touch rotation does
+at the fingers' focal point. The renderer keeps that ground point fixed with tilt and camera
+padding too; rotating a screen-space offset by hand does not. Zoom at the crosshair still
+calculates its target from the current projection, and pan projects a screen-space step from
+the camera target. Those share touch's navigation-state callbacks, not its gesture geometry.
+
 `MapDpadTarget`, drawn from `MapScreen`, puts a 140 dp focusable target at the center of the
 screen. Focused, it shows a pill reading "OK: move the map" and the arrows keep moving focus. OK
 engages it, which draws a crosshair and a ring at the screen edge:

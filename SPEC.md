@@ -5418,6 +5418,9 @@ The whole UI works with a five-key D-pad and no touchscreen.
   `rotateBy` with a point); with nothing visible they work about the camera's target. Pan steps
   from the screen point the camera's target is drawn at, which a sheet's map padding moves off
   the view's middle. The D-pad arrows share it.
+  Rotation uses MapLibre's native focal-bearing transform, as touch does, so tilt and padding
+  do not move the ground point under the crosshair. Zoom and pan still calculate targets from
+  the current projection rather than using touch's native zoom and move transforms.
 - Select taps the middle of the visible map on the key's up and long-presses there once the key
   has been held 500 ms, through the same tap and long-press paths as a finger. While a select key
   is set, `MapKeysCrosshair` (in `MapFloaters`) draws a crosshair at that point, except in Choose
