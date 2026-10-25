@@ -5421,7 +5421,9 @@ The whole UI works with a five-key D-pad and no touchscreen.
 - Select taps the middle of the visible map on the key's up and long-presses there once the key
   has been held 500 ms, through the same tap and long-press paths as a finger. While a select key
   is set, `MapKeysCrosshair` (in `MapFloaters`) draws a crosshair at that point, except in Choose
-  on map, which has its own pin.
+  on map, which has its own pin. During a drive the crosshair shows only once the camera has left
+  the car (`navCameraDetached` or a previewed step); while it follows, the select key does nothing.
+  A key pan detaches it, as a finger pan does.
 - The visible map is what the panels leave uncovered (`MapCover`, `core/util/VisibleArea`). Every
   panel or sheet that covers part of the map reports its bounds with `Modifier.coversMap()` on its
   outermost element; the search page reports the whole map with `CoversWholeMap()`. Each panel is

@@ -115,6 +115,10 @@ object MapKeys {
     }
 
     private fun select(event: KeyEvent, c: MapDpadController) {
+        if (!MapCover.selectLive) {
+            selectHeld = false
+            return
+        }
         when {
             event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 -> selectHeld = false
             event.action == KeyEvent.ACTION_DOWN -> if (!selectHeld && event.eventTime - event.downTime >= LONG_PRESS_MS) {

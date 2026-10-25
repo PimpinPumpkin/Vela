@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -22,19 +23,24 @@ import kotlin.math.roundToInt
  * The select key's crosshair (docs/dpad.md, Map keys): drawn while a select key is set, at the
  * point the key taps, the middle of the visible map ([MapCover.center]). It also reports the
  * map's own bounds to [MapCover], so the key has nothing to tap while this is not composed.
- * Hidden in Choose on map, which draws its own pin there, and while nothing of the map is visible.
+ * Hidden in Choose on map, which draws its own pin there, while nothing of the map is visible, and
+ * during a drive while the camera follows the car, when the select key does nothing either.
  */
 @Composable
 internal fun BoxScope.MapKeysCrosshair(state: MapUiState) {
     if (MapKeys.code(MapKeys.Action.SELECT) == 0) return
-    DisposableEffect(Unit) { onDispose { MapCover.map.value = null } }
+    DisposableEffect(Unit) { onDispose { MapCover.map.value = null; MapCover.selectLive = true } }
     Box(
         Modifier.matchParentSize().onGloballyPositioned {
             val b = MapCover.bounds(it)
             if (!b.contentEquals(MapCover.map.value)) MapCover.map.value = b
         },
     )
-    if (state.pickOnMap != null) return
+    // During a drive the crosshair shows only once the camera has left the car (a key pan detaches
+    // it), so it never sits on the road ahead; select rests with it.
+    val following = state.navigating && !state.navCameraDetached && state.previewStepIndex == null
+    SideEffect { MapCover.selectLive = !following }
+    if (state.pickOnMap != null || following) return
     // Read here, not in the placement below: the bounds arrive after the first placement, and a
     // placement read alone was not run again when they did, which left the mark in the corner.
     val m = MapCover.map.value

@@ -111,11 +111,12 @@ same key still types in a text field, and offers a key that does not type (volum
 first. The arrows, OK and Back cannot be assigned. Select works like a finger: in Choose on map
 a tap is a tap, and the hold sets the point.
 
-While a select key is set, a crosshair marks the point it taps: the middle of the part of the map
-no panel covers (`MapCover`). A sheet or panel that covers the map reports its bounds with
-`Modifier.coversMap()` on its outermost element, and the search page reports the whole map with
-`CoversWholeMap()`. With nothing of the map visible the crosshair hides and select does nothing.
-New map chrome that covers the map reports, or the crosshair draws over it.
+While a select key is set, a crosshair marks the point it taps. During a drive it shows, and select
+works, only once the camera has left the car; a pan key detaches it. The point is the middle of the
+part of the map no panel covers (`MapCover`). A sheet or panel that covers the map reports its
+bounds with `Modifier.coversMap()` on its outermost element, and the search page reports the whole
+map with `CoversWholeMap()`. With nothing of the map visible the crosshair hides and select does
+nothing. New map chrome that covers the map reports, or the crosshair draws over it.
 
 ### Key paths for gestures
 

@@ -29,6 +29,10 @@ internal object MapCover {
     /** The map's own bounds in window pixels, set by the crosshair's layer ([MapKeysCrosshair]). */
     val map = mutableStateOf<FloatArray?>(null)
 
+    /** False while a drive's camera follows the car: no crosshair, and the select key does nothing.
+     *  Set by [MapKeysCrosshair]. */
+    @Volatile var selectLive = true
+
     /** The middle of the visible map in window pixels, or null when nothing of it is visible.
      *  Reads snapshot state: read it in a layout or draw phase. */
     fun center(): Pair<Float, Float>? = centerIn(map.value)
