@@ -2610,11 +2610,12 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
             }
         }
         if (t.lines.isNotEmpty()) {
-            Row(
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                t.lines.take(4).forEachIndexed { i, line ->
+                t.lines.forEachIndexed { i, line ->
                     if (i > 0) Icon(
                         Sym.ChevronRight,
                         contentDescription = null,
