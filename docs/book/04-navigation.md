@@ -100,7 +100,9 @@ turn. The voice says "turn left" 25 m out either way.
   (see Stops below).
 - The destination is said with its side, "Your destination is on the right", from the router or,
   when the router gives none, from where the destination's pin sits against the end of the line.
-  A pin on the line itself gives no side, and the arrival is "You have arrived".
+  Its approach prompt says the same side ("Your destination will be on the right"). A pin on the
+  line itself gives no side: the approach says "will be ahead" and the arrival is "You have
+  arrived".
 - A continue or a straight-on is silent unless its lanes show a real fork.
 - A roundabout is said at its entry, with the exit to take. Its own exit step right after the
   entry says nothing and is never the "then" of a chained line.

@@ -528,7 +528,9 @@ off the list when it has been.
   4a with a fresh dev copy, the card with both switches on and both set after Continue. Not seen:
   a drive actually deleted at 30 days (unit test of the rule only).
 - The destination's side when the router gives none (a drive got "You have arrived" instead of
-  the side): unit tests. Not heard on a drive.
+  the side), and the approach prompt saying that side instead of "ahead" (a drive heard "will be
+  ahead", then "is on the right"): unit tests. Not heard on a drive. The 17 other languages'
+  approach lines are built from their own stop lines and have not been checked by a speaker.
 - Transit guidance in a pocket (#880): seen on a 4a with a simulated position, the card for a
   walk, a 42A ride with its stops left, the arrival card, End from the shade and Done. Not seen: a
   real ride with the screen off, the heads-up at the stop before yours (unit tests only).

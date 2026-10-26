@@ -117,6 +117,11 @@ interface NavStrings {
     /** Approach cue for the FINAL destination, framed by [inThen] ("In 400 meters, <this>"). */
     fun destinationAhead(): String = "Your destination will be ahead"
 
+    /** The same cue when the destination's side is known: EN "Your destination will be on the
+     *  right". A null [left] is [destinationAhead]. The arrival then says [destinationSide], so
+     *  the two agree. */
+    fun destinationWillBe(left: Boolean?): String
+
     /** A spoken lane recommendation — EN "Use the right 2 lanes" / "Use the left lane". */
     fun useLanes(side: LaneSide, count: Int): String
 
@@ -214,6 +219,7 @@ object EnNavStrings : NavStrings {
     override fun arrived(): String = "You have arrived;"
 
     override fun destinationSide(left: Boolean): String = if (left) "Your destination is on the left" else "Your destination is on the right"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "Your destination will be on the left" else "Your destination will be on the right" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
 
@@ -412,6 +418,7 @@ object FrNavStrings : NavStrings {
     override fun arrived(): String = "Vous êtes arrivé"
 
     override fun destinationSide(left: Boolean): String = if (left) "Votre destination est à gauche" else "Votre destination est à droite"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "Votre destination sera sur votre gauche" else "Votre destination sera sur votre droite" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Démarrage de la navigation. $firstInstruction"
 
@@ -521,6 +528,7 @@ object DeNavStrings : NavStrings {
     override fun arrived(): String = "Sie haben Ihr Ziel erreicht"
 
     override fun destinationSide(left: Boolean): String = if (left) "Ihr Ziel befindet sich links" else "Ihr Ziel befindet sich rechts"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Ihr Ziel liegt ${deStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Navigation wird gestartet. $firstInstruction"
 
@@ -653,6 +661,7 @@ object EsNavStrings : NavStrings {
     override fun arrived(): String = "Ha llegado"
 
     override fun destinationSide(left: Boolean): String = if (left) "Su destino está a la izquierda" else "Su destino está a la derecha"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Su destino estará ${esStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Iniciando la navegación. $firstInstruction"
 
@@ -768,6 +777,7 @@ object ItNavStrings : NavStrings {
     override fun arrived(): String = "Sei arrivato"
 
     override fun destinationSide(left: Boolean): String = if (left) "La tua destinazione è a sinistra" else "La tua destinazione è a destra"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "La tua destinazione sarà ${itStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Avvio della navigazione. $firstInstruction"
 
@@ -879,6 +889,7 @@ object PtPtNavStrings : NavStrings {
     override fun arrived(): String = "Você chegou"
 
     override fun destinationSide(left: Boolean): String = if (left) "O seu destino fica à esquerda" else "O seu destino fica à direita"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "O seu destino estará ${ptStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "A iniciar a navegação. $firstInstruction"
 
@@ -985,6 +996,7 @@ object PtBrNavStrings : NavStrings {
     override fun arrived(): String = "Você chegou"
 
     override fun destinationSide(left: Boolean): String = if (left) "Seu destino está à esquerda" else "Seu destino está à direita"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Seu destino estará ${ptStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Iniciando a navegação. $firstInstruction"
 
@@ -1124,6 +1136,7 @@ object NlNavStrings : NavStrings {
     override fun arrived(): String = "U bent aangekomen"
 
     override fun destinationSide(left: Boolean): String = if (left) "Uw bestemming is aan de linkerkant" else "Uw bestemming is aan de rechterkant"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Uw bestemming ligt ${nlStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Navigatie wordt gestart. $firstInstruction"
 
@@ -1228,6 +1241,7 @@ object RuNavStrings : NavStrings {
     override fun arrived(): String = "Вы на месте"
 
     override fun destinationSide(left: Boolean): String = if (left) "Пункт назначения слева" else "Пункт назначения справа"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Пункт назначения будет ${ruStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Начинаю навигацию. $firstInstruction"
 
@@ -1414,6 +1428,7 @@ object PlNavStrings : NavStrings {
     override fun arrived(): String = "Dotarłeś do celu"
 
     override fun destinationSide(left: Boolean): String = if (left) "Cel znajduje się po lewej stronie" else "Cel znajduje się po prawej stronie"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Cel podróży będzie ${plStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Rozpoczynam nawigację. $firstInstruction"
 
@@ -1563,6 +1578,7 @@ object SvNavStrings : NavStrings {
     override fun arrived(): String = "Du är framme"
 
     override fun destinationSide(left: Boolean): String = if (left) "Din destination är till vänster" else "Din destination är till höger"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Din destination ligger ${svStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Startar navigeringen. $firstInstruction"
 
@@ -1675,6 +1691,7 @@ object UkNavStrings : NavStrings {
     override fun arrived(): String = "Ви прибули"
 
     override fun destinationSide(left: Boolean): String = if (left) "Пункт призначення ліворуч" else "Пункт призначення праворуч"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Пункт призначення буде ${ukStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Починаємо навігацію. $firstInstruction"
 
@@ -1815,6 +1832,7 @@ object ZhNavStrings : NavStrings {
     override fun arrived(): String = "您已到达目的地"
 
     override fun destinationSide(left: Boolean): String = if (left) "目的地在左侧" else "目的地在右侧"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "目的地在左侧" else "目的地在右侧" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "开始导航。$firstInstruction"
 
@@ -1932,6 +1950,7 @@ object ZhTwNavStrings : NavStrings {
     override fun arrived(): String = "您已到達目的地"
 
     override fun destinationSide(left: Boolean): String = if (left) "目的地在左側" else "目的地在右側"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "目的地在左側" else "目的地在右側" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "開始導航。$firstInstruction"
 
@@ -2043,6 +2062,7 @@ object JaNavStrings : NavStrings {
     override fun arrived(): String = "目的地に到着しました"
 
     override fun destinationSide(left: Boolean): String = if (left) "目的地は左側です" else "目的地は右側です"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "目的地は左側です" else "目的地は右側です" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "ナビを開始します。$firstInstruction"
 
@@ -2160,6 +2180,7 @@ object HeNavStrings : NavStrings {
     override fun arrived(): String = "הגעת"
 
     override fun destinationSide(left: Boolean): String = if (left) "היעד שלך מצד שמאל" else "היעד שלך מצד ימין"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "היעד שלך יהיה מצד שמאל" else "היעד שלך יהיה מצד ימין" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "מתחיל ניווט. $firstInstruction"
 
@@ -2323,6 +2344,7 @@ object HuNavStrings : NavStrings {
     override fun arrived(): String = "Megérkeztél"
 
     override fun destinationSide(left: Boolean): String = if (left) "Az úti célod a bal oldalon lesz" else "Az úti célod a jobb oldalon lesz"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Az úti célod ${huStopSide(it)} lesz" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Navigáció indítása. $firstInstruction"
 
@@ -2478,6 +2500,7 @@ object RoNavStrings : NavStrings {
     override fun arrived(): String = "Ați ajuns la destinație"
 
     override fun destinationSide(left: Boolean): String = if (left) "Destinația este pe stânga" else "Destinația este pe dreapta"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Destinația va fi ${roSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Începe navigarea. $firstInstruction"
 

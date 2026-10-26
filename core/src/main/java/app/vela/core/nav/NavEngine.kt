@@ -512,6 +512,8 @@ object NavEngine {
         // when the map says that turn enters one. Only on the step's first line and its turn-now
         // line, so a stop is named at most twice for its turn.
         val stopLeft = when (stop?.side) { "left" -> true; "right" -> false; else -> null }
+        // The destination's side, said on the approach as at the arrival.
+        val arriveLeft = when (target.side) { "left" -> true; "right" -> false; else -> null }
         val thenStopHere = stop != null && !isArrive && !isDepart && idxCur == stopLegManeuver(route, manAlong, stop.atM)
         // The turn into the stop's parking lot (NavSession.lotTurn), which is the turn off the
         // street and may sit a turn or two before the last one: its lines say so, and when it is
@@ -574,7 +576,7 @@ object NavEngine {
                 spoken = setOf(0, 1)
                 val sayM = (if (dtn >= band * 0.85) band else round10(dtn)).coerceAtLeast(10.0)
                 val line = when {
-                    isArrive -> nav().destinationAhead()
+                    isArrive -> nav().destinationWillBe(arriveLeft)
                     // An exit keeps its number and road: that is what the sign overhead says.
                     SpokenDetail.exitLike(target.type) -> nav().repeatShort(target.spokenInstruction())
                     else -> nav().repeatShort(lotLine ?: target.instructionNoRoad ?: target.spokenInstruction())
@@ -605,7 +607,7 @@ object NavEngine {
                 // back-to-back. One prompt per update, larger bands silently consumed.
                 val sayM = (if (dtn >= band * 0.85) band else round10(dtn)).coerceAtLeast(10.0)
                 val instruction = when {
-                    isArrive -> nav().destinationAhead()
+                    isArrive -> nav().destinationWillBe(arriveLeft)
                     // spokenSign drops the secondary sign destinations for SPEECH (the banner keeps
                     // the full sign) - speaking the whole sign took long enough that the next
                     // prompt interrupted it mid-sentence.

@@ -8,6 +8,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.util.Locale
@@ -29,6 +30,29 @@ class ArrivalSideTest {
             Maneuver(ManeuverType.ARRIVE, "You have arrived", poly.last(), 0.0, 0.0, side = side),
         )
         return Route(poly, listOf(RouteLeg(400.0, 40.0, null, ms)), 400.0, 40.0, null)
+    }
+
+    /** Every spoken line driving the route east at 10 m/s to the end. */
+    private fun said(r: Route): List<String> {
+        var st = NavState()
+        val out = ArrayList<String>()
+        for (m in generateSequence(0.0) { it + 10.0 }.takeWhile { it <= 400.0 }) {
+            val (s, ev) = NavEngine.update(r, st, pt(m, 0.0), speedMps = 10.0, bearingDeg = 90.0)
+            st = s
+            ev.filterIsInstance<NavEvent.Speak>().forEach { out += it.text }
+            if (st.arrived) break
+        }
+        return out
+    }
+
+    @Test fun `the approach says the side the arrival says`() {
+        val right = said(NavEngine.withArrivalSide(route(), pt(395.0, -25.0)))
+        assertTrue(right.toString(), right.any { it.endsWith("Your destination will be on the right") })
+        assertTrue(right.toString(), right.none { "ahead" in it })
+        assertEquals("Your destination is on the right", right.last())
+        // No side known: the approach stays "ahead" and the arrival is the plain line.
+        val none = said(route())
+        assertTrue(none.toString(), none.any { it.endsWith("Your destination will be ahead") })
     }
 
     @Test fun `a pin north of an eastbound end is on the left`() {
