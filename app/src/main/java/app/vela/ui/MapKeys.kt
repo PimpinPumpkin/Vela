@@ -41,7 +41,7 @@ object MapKeys {
         Action.ZOOM_OUT to KeyEvent.KEYCODE_1, Action.ZOOM_IN to KeyEvent.KEYCODE_3,
         Action.PAN_UP to KeyEvent.KEYCODE_2, Action.PAN_DOWN to KeyEvent.KEYCODE_8,
         Action.PAN_LEFT to KeyEvent.KEYCODE_4, Action.PAN_RIGHT to KeyEvent.KEYCODE_6,
-        Action.ROTATE_LEFT to KeyEvent.KEYCODE_7, Action.ROTATE_RIGHT to KeyEvent.KEYCODE_9,
+        Action.ROTATE_RIGHT to KeyEvent.KEYCODE_7, Action.ROTATE_LEFT to KeyEvent.KEYCODE_9,
         Action.SELECT to KeyEvent.KEYCODE_5,
     )
 

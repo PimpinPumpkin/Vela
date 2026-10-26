@@ -5406,7 +5406,7 @@ The whole UI works with a five-key D-pad and no touchscreen.
   `map_key_pan_down`, `map_key_pan_left`, `map_key_pan_right`, `map_key_rotate_ccw`,
   `map_key_rotate_cw` and `map_key_select`. Giving a key to one action takes it from any other.
   "Use the keypad layout" sets 1 zoom out, 3 zoom in, 2 pan up, 8 pan down, 4 pan left, 6 pan
-  right, 7 rotate counterclockwise, 9 rotate clockwise and 5 select.
+  right, 7 rotate clockwise, 9 rotate counterclockwise and 5 select.
 - `MainActivity.dispatchKeyEvent` hands a map key to `MapDpadController` while the map is
   showing. A printing key is offered after `super`, so a text field keeps it. A non-printing key
   is offered before. The arrows, OK, Enter, Back, Home, Menu and Power cannot be assigned.

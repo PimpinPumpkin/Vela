@@ -108,7 +108,7 @@ left and right, rotate counterclockwise and clockwise, and select. Each takes an
 | --- | --- |
 | 1, 3 | Zoom out, zoom in, one level, repeating while held |
 | 2, 8, 4, 6 | Pan up, down, left, right by 22% of the view, repeating while held |
-| 7, 9 | Rotate counterclockwise, clockwise by 15 degrees, repeating while held |
+| 7, 9 | Rotate clockwise, counterclockwise by 15 degrees, repeating while held |
 | 5 | Tap whatever is under the crosshair |
 | 5 held 500 ms | Long press at the crosshair: drop a pin, or set the Choose on map point |
 
