@@ -94,7 +94,9 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Vela">
@@ -166,16 +168,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
-                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
-                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
-                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
-                 the category on the launcher filter alone the start came back "not resolved"). -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.APP_MAPS" />
-            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -192,11 +184,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
-                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
-                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
-                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
-                 the category on the launcher filter alone the start came back "not resolved"). -->
+        </activity-alias>
+
+
+        <!-- Dedicated AAOS map-panel entry (issue #683 follow-up).
+             Car home embeds MAIN+DEFAULT+APP_MAPS via TaskView/ActivityView.
+             Kept off the LAUNCHER aliases so Home uses the panel entry, not the app icon task,
+             and the "call it just Maps" rename still leaves a maps-panel component enabled.
+             MainActivity is singleTask + resizeableActivity + allowEmbedded (AOSP
+             car-maps-placeholder shape) so the host can keep Vela inside the pane. -->
+        <activity-alias
+            android:name=".MapsPanel"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="true">
+            <!-- Android Automotive: may stay on screen while the car moves. -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.DEFAULT" />
