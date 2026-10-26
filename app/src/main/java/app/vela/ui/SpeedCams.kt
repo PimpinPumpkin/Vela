@@ -11,10 +11,10 @@ import androidx.compose.runtime.mutableStateOf
  * has no region.
  */
 object SpeedCams {
-    val on = mutableStateOf(false)
+    val on = mutableStateOf(true)
 
     fun init(context: Context) {
-        on.value = prefs(context).getBoolean(KEY, false)
+        on.value = prefs(context).getBoolean(KEY, true)
     }
 
     fun set(context: Context, value: Boolean) {

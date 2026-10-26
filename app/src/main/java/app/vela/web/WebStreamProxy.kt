@@ -89,9 +89,18 @@ class WebStreamProxy(private val engine: CronetEngine, private val cookies: okht
         }
         if ("sec-ch-ua" !in have) {
             val cal = app.vela.core.config.CalibrationStore.latest
-            b.addHeader("Sec-CH-UA", cal.secChUa)
-            b.addHeader("Sec-CH-UA-Mobile", "?0")
-            b.addHeader("Sec-CH-UA-Platform", "\"Windows\"")
+            val ua = req.requestHeaders.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value.orEmpty()
+            val isMobile = ua.contains("Android", ignoreCase = true) || ua.contains("Mobile", ignoreCase = true)
+            if (isMobile) {
+                val major = app.vela.core.data.google.BrowserHeaders.chromeMajor(ua)?.toIntOrNull() ?: 130
+                b.addHeader("Sec-CH-UA", app.vela.core.data.google.BrowserHeaders.secChUaFor(major))
+                b.addHeader("Sec-CH-UA-Mobile", "?1")
+                b.addHeader("Sec-CH-UA-Platform", "\"Android\"")
+            } else {
+                b.addHeader("Sec-CH-UA", cal.secChUa)
+                b.addHeader("Sec-CH-UA-Mobile", "?0")
+                b.addHeader("Sec-CH-UA-Platform", "\"Windows\"")
+            }
         }
         // Chrome loads stylesheets first and images last (u=0 / u=3 in its Priority header).
         if (!req.isForMainFrame) when {

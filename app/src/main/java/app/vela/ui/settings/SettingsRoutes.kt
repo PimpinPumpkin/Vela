@@ -9,7 +9,7 @@ internal const val MAP_ROUTE = "main/map"
  *  one page under another (Search), so it has no hub row and Back returns to Search. */
 internal enum class SettingsSection {
     HUB, APPEARANCE, MAP, PLACES, NAVIGATION, VOICE, SEARCH, OFFLINE, SAVED_PLACES,
-    PRIVACY, PERFORMANCE, DIAGNOSTICS, ABOUT, QUICK_CHIPS;
+    PRIVACY, PERFORMANCE, DIAGNOSTICS, ABOUT, QUICK_CHIPS, WAZE_ALERTS, ALERT_DISTANCES;
 
     val route: String get() = "settings/${name.lowercase(Locale.ROOT)}"
 }

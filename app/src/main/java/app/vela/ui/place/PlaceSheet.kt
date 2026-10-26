@@ -325,6 +325,12 @@ fun PlaceSheet(
     val dim = if (dark) DimDark else DimLight
     // The saved parking spot's own sheet: car glyph beside the name, a Clear action pill.
     val isParking = place.id.startsWith("parking:")
+    val isWazeAlert = place.id.startsWith("police:") || place.id.startsWith("waze:")
+    val isPolice = place.id.startsWith("police:") || place.id.startsWith("waze:police:")
+    val isAccident = place.id.startsWith("waze:accident:")
+    val isHazard = place.id.startsWith("waze:hazard:")
+    val isClosure = place.id.startsWith("waze:road_closed:") || place.id.startsWith("waze:closure:")
+    val isJam = place.id.startsWith("waze:jam:")
     // Match by feature id too — the volatile place id can change between visits for a
     // multi-listing chain, which hid the "Edit note"/"Saved" affordances (see ListPlace.matches).
     val containingLists = lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
@@ -372,7 +378,7 @@ fun PlaceSheet(
     // fixed height, so a drag can't shrink it and hide the actions (user 2026-07-10). All three
     // detents equal that height, so every detent computation resolves to it and the drag can't
     // resize the sheet.
-    val singleDetent = isParking
+    val singleDetent = isParking || isWazeAlert
     // Transit stops expand FULL-SCREEN like any other place (the short-lived peek cap from earlier
     // today blocked maximizing a stop entirely - reported independently by the user and issue #71's
     // reporter within hours; with real multi-route boards the full detent has plenty to show).
@@ -826,6 +832,16 @@ fun PlaceSheet(
                         modifier = Modifier.size(26.dp).padding(end = 2.dp),
                     )
                     Spacer(Modifier.width(6.dp))
+                } else if (isWazeAlert) {
+                    when {
+                        isPolice -> app.vela.ui.PoliceBadge(modifier = Modifier.size(26.dp))
+                        isAccident -> app.vela.ui.AccidentBadge(modifier = Modifier.size(26.dp))
+                        isHazard -> app.vela.ui.HazardBadge(modifier = Modifier.size(26.dp))
+                        isClosure -> app.vela.ui.ClosureBadge(modifier = Modifier.size(26.dp))
+                        isJam -> app.vela.ui.JamBadge(modifier = Modifier.size(26.dp))
+                        else -> app.vela.ui.HazardBadge(modifier = Modifier.size(26.dp))
+                    }
+                    Spacer(Modifier.width(6.dp))
                 }
                 // A very long name (CJK businesses especially) clips at 2 lines, so a TAP toggles the
                 // full name and a LONG-PRESS copies it (issue #169). D-pad: the name is a focus stop
@@ -1093,24 +1109,26 @@ fun PlaceSheet(
                 // quick save, the lists, the note, the icon, the name, Home and Work; a drawn shape
                 // adds edit and delete. Filled for a place in any list too. D-pad-first via
                 // VelaMenu (docs/dpad.md).
-                Box {
-                    ActionPill(
-                        if (marked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                        stringResource(if (marked) R.string.place_saved else R.string.place_save),
-                    ) { saveMenu = true }
-                    VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
-                        // A drawn or imported line/area: it can be deleted from its list here.
-                        if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_edit)) { saveMenu = false; app.vela.ui.ShapeActions.edit?.invoke() }
-                        if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_delete)) { saveMenu = false; app.vela.ui.ShapeActions.delete?.invoke() }
-                        item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
-                        if (!isParking) {
-                            item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
-                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
-                            if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
-                            if (isSaved || inAnyList) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
+                if (!isWazeAlert) {
+                    Box {
+                        ActionPill(
+                            if (marked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            stringResource(if (marked) R.string.place_saved else R.string.place_save),
+                        ) { saveMenu = true }
+                        VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
+                            // A drawn or imported line/area: it can be deleted from its list here.
+                            if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_edit)) { saveMenu = false; app.vela.ui.ShapeActions.edit?.invoke() }
+                            if (place.id.startsWith("shape:")) item(stringResource(R.string.draw_delete)) { saveMenu = false; app.vela.ui.ShapeActions.delete?.invoke() }
+                            item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
+                            if (!isParking) {
+                                item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
+                                if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
+                                if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
+                                if (isSaved || inAnyList) item(stringResource(R.string.mapscreen_menu_rename)) { saveMenu = false; showSavedRename = true }
+                            }
+                            item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
+                            item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
                         }
-                        item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
-                        item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
                     }
                 }
                 SharePill(place)
@@ -1255,9 +1273,9 @@ fun PlaceSheet(
             // list Google itself throws away on export, kept front and center here.
             place.savedNote?.let { note ->
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Sym.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(if (isWazeAlert) Sym.Info else Sym.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(note, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink)
+                    Text(note, style = MaterialTheme.typography.bodyMedium, fontStyle = if (isWazeAlert) FontStyle.Normal else FontStyle.Italic, color = ink)
                 }
             }
 
@@ -1277,7 +1295,7 @@ fun PlaceSheet(
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving) {
+            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving && !isParking && !isWazeAlert) {
                 // Not while the listing is still being looked up: the map's data lacking hours
                 // says nothing about Google's, which usually has them.
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
@@ -1598,6 +1616,7 @@ fun DirectionsPanel(
     routes: List<Route>,
     activeRoute: Route?,
     flockOnRoute: List<Int> = emptyList(),
+    policeOnRoute: List<Int> = emptyList(),
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
     modeEtas: Map<TravelMode, String> = emptyMap(),
@@ -1984,7 +2003,7 @@ fun DirectionsPanel(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routes.forEachIndexed { i, r ->
                             val selected = r === activeRoute || (activeRoute == null && i == 0)
-                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == fastestIdx, dark = dark, ink = ink, dim = dim, flockCount = flockOnRoute.getOrElse(i) { 0 }) { onSelectRoute(i) }
+                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == fastestIdx, dark = dark, ink = ink, dim = dim, flockCount = flockOnRoute.getOrElse(i) { 0 }, policeCount = policeOnRoute.getOrElse(i) { 0 }) { onSelectRoute(i) }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -2299,7 +2318,7 @@ private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: 
  *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
  *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
-private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, flockCount: Int = 0, onClick: () -> Unit) {
+private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, flockCount: Int = 0, policeCount: Int = 0, onClick: () -> Unit) {
     val etaSeconds = r.durationInTrafficSeconds ?: r.durationSeconds
     val eta = formatDuration(etaSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
@@ -2374,6 +2393,18 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                         pluralStringResource(R.plurals.dir_cameras_on_route, flockCount, flockCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = SheetPalette.TrafficAmber,
+                    )
+                }
+            }
+            if (policeCount > 0) {
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    app.vela.ui.PoliceBadge(modifier = Modifier.size(14.dp))
+                    Text(
+                        pluralStringResource(R.plurals.dir_police_on_route, policeCount, policeCount),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF1877F2),
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             }
@@ -5016,7 +5047,8 @@ private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: 
 /** A business or landmark listing rather than a bare address or dropped pin: an address has no
  *  category, rating or reviews, so it gets no Reviews tab and no popular-times space. */
 internal fun Place.isListing(): Boolean =
-    !category.isNullOrBlank() || rating != null || reviewCount != null || featuredReview != null
+    !id.startsWith("police:") && !id.startsWith("parking:") && !id.startsWith("shape:") &&
+    (!category.isNullOrBlank() || rating != null || reviewCount != null || featuredReview != null)
 
 /** Lay a child out wider than its parent's padding allows, by [start] and [end], so a row can run
  *  edge to edge inside a padded column. */

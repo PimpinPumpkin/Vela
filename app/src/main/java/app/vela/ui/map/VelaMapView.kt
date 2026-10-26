@@ -337,6 +337,15 @@ private const val HUMP_IMG = "vela-hump" // speed hump/bump/table/cushion (same 
 private const val SPEEDCAM_SRC = "vela-speedcam-src" // fixed radar cameras (OSM), opt-in layer
 private const val SPEEDCAM_LAYER = "vela-speedcam"
 private const val SPEEDCAM_IMG = "vela-speedcam-badge"
+private const val WAZE_POLICE_SRC = "vela-waze-police-src" // live police & incident reports from Waze
+private const val WAZE_POLICE_LAYER = "vela-waze-police"
+private const val WAZE_POLICE_IMG = "vela-waze-police-badge"
+private const val WAZE_ACCIDENT_IMG = "vela-waze-accident-badge"
+private const val WAZE_HAZARD_IMG = "vela-waze-hazard-badge"
+private const val WAZE_POTHOLE_IMG = "vela-waze-pothole-badge"
+private const val WAZE_CLOSURE_IMG = "vela-waze-closure-badge"
+private const val WAZE_JAM_IMG = "vela-waze-jam-badge"
+private const val WAZE_POLICE_INDEX_PROP = "vela-police-idx"
 private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
 private const val FLOCK_LAYER = "vela-flock"
 // Below street zoom the per-head nodes of one install merge to a single badge (Flock corners
@@ -393,7 +402,7 @@ private const val OVERVIEW_REFIT_MS = 4_000
 private val OVERVIEW_HIDE_PREFIXES = listOf(
     "vela-places", "vela-ambient", "poi_", "vela-addr-", "vela-housenumber",
     "highway-name-minor", "highway-name-path", "road_one_way_arrow", "label_other", "label_village",
-    "vela-controls", "vela-flock", "vela-speedcam", "vela-transit-stops", "vela-nav-",
+    "vela-controls", "vela-flock", "vela-speedcam", "vela-waze-police", "vela-transit-stops", "vela-nav-",
     "building-3d", "vela-ovl-",
 )
 // The veil over a camera cut: how opaque it starts and how long it takes to fade off.
@@ -537,6 +546,7 @@ private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastFlockControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
 private var lastAppliedSpeedCams: List<app.vela.core.data.SpeedCamera>? = null
+private var lastAppliedWazePolice: List<app.vela.core.data.WazePoliceAlert>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
 
 /** One saved place drawn on the browse map (issue #171): its list's icon key + color. */
@@ -940,6 +950,8 @@ fun VelaMapView(
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
     flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
     speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (issue #229)
+    wazePolice: List<app.vela.core.data.WazePoliceAlert> = emptyList(), // live police reports from Waze
+    onPoliceAlertTap: (app.vela.core.data.WazePoliceAlert) -> Unit = {}, // a tapped police report, opens report info sheet
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     navBarTopPx: Float = 0f, // the nav bar's top edge in window px (0 = unknown); passed street bubbles fade out above it
@@ -1024,6 +1036,8 @@ fun VelaMapView(
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val transitStopTap = rememberUpdatedState(onTransitStopTap)
     val transitStopsNow = rememberUpdatedState(transitStops)
+    val policeAlertTap = rememberUpdatedState(onPoliceAlertTap)
+    val wazePoliceNow = rememberUpdatedState(wazePolice)
     val parkingTap = rememberUpdatedState(onParkingTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
@@ -1427,8 +1441,8 @@ fun VelaMapView(
     // loaded tiles only); the geometry math runs off it. An empty QUERY (tiles not loaded yet)
     // leaves the previous filter alone; an empty CROSSER set legitimately hides the tier.
     val labelExcludeHolder = rememberUpdatedState(navLabelExclude)
-    val navFurniture = remember(trafficControls, flockCameras, speedCameras) {
-        trafficControls.map { it.loc } + flockCameras.map { it.loc } + speedCameras.map { it.loc }
+    val navFurniture = remember(trafficControls, flockCameras, speedCameras, wazePolice) {
+        trafficControls.map { it.loc } + flockCameras.map { it.loc } + speedCameras.map { it.loc } + wazePolice.map { it.loc }
     }
     val navFurnitureHolder = rememberUpdatedState(navFurniture)
     val upcomingRoadsHolder = rememberUpdatedState(navUpcomingRoads)
@@ -4073,6 +4087,7 @@ fun VelaMapView(
                     // with a stop beside it opened the departures board however dead-on the tap was.
                     // The same lesson the ambient dots taught, applied to the third layer.
                     val gtfsStop = feats.filter { it.hasProperty(TRANSIT_STOP_INDEX_PROP) }.minByOrNull(::screenDist2)
+                    val policeHit = feats.filter { it.hasProperty(WAZE_POLICE_INDEX_PROP) }.minByOrNull(::screenDist2)
                     // Ambient Google POIs and NAMED basemap POIs are the same kind of thing at street
                     // zoom - two interleaved layers of businesses - so they compete by DISTANCE, not by
                     // class: the old absolute priority let an ambient DOT (a few px wide, all but
@@ -4091,7 +4106,7 @@ fun VelaMapView(
                     // actually DRAWN there, icons only; when something is, nothing else can win.
                     val tapStyle = map.style
                     val bizIconLayers = if (tapStyle == null) emptyList() else (
-                        listOf(AMBIENT_LAYER) +
+                        listOf(AMBIENT_LAYER, WAZE_POLICE_LAYER) +
                             tapStyle.layers.map { l -> l.id }.filter { id -> id.startsWith("vela-places-") && !id.startsWith("vela-places-dots-") } +
                             OSM_POI_LAYERS
                         ).filter { id -> tapStyle.getLayer(id) != null }
@@ -4125,11 +4140,18 @@ fun VelaMapView(
                         .filter {
                             it.geometry() is Point && nameOf(it) != null &&
                                 !it.hasProperty(AMBIENT_INDEX_PROP) && !it.hasProperty(MARKER_INDEX_PROP) &&
-                                !it.hasProperty(TRANSIT_STOP_INDEX_PROP)
+                                !it.hasProperty(TRANSIT_STOP_INDEX_PROP) && !it.hasProperty(WAZE_POLICE_INDEX_PROP)
                         }
                         .minByOrNull(::screenDist2)
-                    // The stop wins only when it really is the icon under the finger.
+                    // The stop or police alert wins only when it really is the icon under the finger.
                     val business = listOfNotNull(amb, hit).minByOrNull(::screenDist2)
+                    val policeDist2 = policeHit?.let(::screenDist2) ?: Double.MAX_VALUE
+                    val stopDist2 = gtfsStop?.let(::screenDist2) ?: Double.MAX_VALUE
+                    val bizDist2 = business?.let(::screenDist2) ?: Double.MAX_VALUE
+                    if (policeHit != null && policeDist2 <= stopDist2 && policeDist2 <= bizDist2) {
+                        wazePoliceNow.value.getOrNull(policeHit.getNumberProperty(WAZE_POLICE_INDEX_PROP).toInt())
+                            ?.let { alert -> policeAlertTap.value(alert); return@handleTap true }
+                    }
                     if (gtfsStop != null && (business == null || screenDist2(gtfsStop) < screenDist2(business))) {
                         transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
                             ?.let { st -> transitStopTap.value(st); return@handleTap true }
@@ -5247,6 +5269,7 @@ fun VelaMapView(
                 lastAppliedControls = null
                 lastAppliedFlock = null
                 lastAppliedSpeedCams = null
+                lastAppliedWazePolice = null
                 lastAppliedTransitStops = null
                 lastTransitBusHidden = null
                 origPoiTransitFilter = null
@@ -5275,7 +5298,7 @@ fun VelaMapView(
                 }
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(context, style)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, wazePolice, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                 // The traffic raster is Google's tile server; off entirely without Google, and
@@ -5289,7 +5312,7 @@ fun VelaMapView(
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, wazePolice, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 // AUDIT FIX 3e (2026-07-15): the ensure* helpers are idempotent but each call
                 // probes the style over JNI (getLayer/getSource) - per recomposition, that's
                 // four probe sets during every camera flight for nothing. They only need to run
@@ -6513,13 +6536,14 @@ PropertyFactory.iconPadding(2f),
         style.addSource(GeoJsonSource(SPEEDCAM_SRC, GeoJsonOptions().withMaxZoom(16)))
         val camSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
-            Expression.stop(11f, 0.55f),
-            Expression.stop(14f, 0.7f),
-            Expression.stop(17f, 1.0f),
-            Expression.stop(19f, 1.35f),
+            Expression.stop(8f, 0.65f),
+            Expression.stop(11f, 0.85f),
+            Expression.stop(14f, 1.0f),
+            Expression.stop(17f, 1.25f),
+            Expression.stop(19f, 1.50f),
         )
         val camLayer = SymbolLayer(SPEEDCAM_LAYER, SPEEDCAM_SRC).apply {
-            setMinZoom(11f)
+            setMinZoom(8f)
             setProperties(
                 PropertyFactory.iconImage(SPEEDCAM_IMG),
                 PropertyFactory.iconSize(camSize),
@@ -6534,6 +6558,44 @@ PropertyFactory.iconPadding(2f),
             topBubble != null -> style.addLayerAbove(camLayer, topBubble) // same rule as the Flock badges
             style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(camLayer, AMBIENT_LAYER)
             else -> style.addLayer(camLayer)
+        }
+    }
+
+    // Live crowdsourced reports from Waze: opt-in layer, iconic Waze category badges.
+    style.addImage(WAZE_POLICE_IMG, policeBadgeBitmap())
+    style.addImage(WAZE_ACCIDENT_IMG, accidentBadgeBitmap())
+    style.addImage(WAZE_HAZARD_IMG, hazardBadgeBitmap())
+    style.addImage(WAZE_POTHOLE_IMG, potholeBadgeBitmap())
+    style.addImage(WAZE_CLOSURE_IMG, closureBadgeBitmap())
+    style.addImage(WAZE_JAM_IMG, jamBadgeBitmap())
+    if (style.getSource(WAZE_POLICE_SRC) == null) {
+        style.addSource(GeoJsonSource(WAZE_POLICE_SRC, GeoJsonOptions().withMaxZoom(16)))
+        val policeSize = Expression.interpolate(
+            Expression.linear(), Expression.zoom(),
+            Expression.stop(6f, 0.75f),
+            Expression.stop(8f, 0.90f),
+            Expression.stop(10f, 1.05f),
+            Expression.stop(13f, 1.25f),
+            Expression.stop(16f, 1.45f),
+            Expression.stop(19f, 1.70f),
+        )
+        val policeLayer = SymbolLayer(WAZE_POLICE_LAYER, WAZE_POLICE_SRC).apply {
+            setMinZoom(6f)
+            setProperties(
+                PropertyFactory.iconImage(Expression.coalesce(Expression.get("icon"), Expression.literal(WAZE_POLICE_IMG))),
+                PropertyFactory.iconSize(policeSize),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconPadding(2f),
+            )
+        }
+        val topBubble = topNavBubbleLayer(style)
+        when {
+            style.getLayer(SPEEDCAM_LAYER) != null -> style.addLayerAbove(policeLayer, SPEEDCAM_LAYER)
+            style.getLayer(FLOCK_LAYER) != null -> style.addLayerAbove(policeLayer, FLOCK_LAYER)
+            topBubble != null -> style.addLayerAbove(policeLayer, topBubble)
+            style.getLayer(AMBIENT_LAYER) != null -> style.addLayerAbove(policeLayer, AMBIENT_LAYER)
+            else -> style.addLayer(policeLayer)
         }
     }
 
@@ -6693,7 +6755,7 @@ private fun ensureTopography(style: Style, on: Boolean) {
  *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
 private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
 /** Camera badges the nav street bubbles must never cover (see topNavBubbleLayer). */
-private val CAMERA_BADGE_LAYERS = setOf(FLOCK_LAYER, FLOCK_CLUSTER_LAYER, SPEEDCAM_LAYER)
+private val CAMERA_BADGE_LAYERS = setOf(FLOCK_LAYER, FLOCK_CLUSTER_LAYER, SPEEDCAM_LAYER, WAZE_POLICE_LAYER)
 
 /** The highest nav street-bubble layer on the map, or null; camera badges are added above it. */
 private fun topNavBubbleLayer(style: Style): String? =
@@ -9816,6 +9878,7 @@ private fun applyData(
     trafficControls: List<app.vela.core.data.TrafficControl>,
     flockCameras: List<app.vela.core.data.AlprCamera>,
     speedCameras: List<app.vela.core.data.SpeedCamera>,
+    wazePolice: List<app.vela.core.data.WazePoliceAlert>,
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop>,
     me: LatLng?,
     bearing: Float?,
@@ -10222,7 +10285,8 @@ private fun applyData(
     // The browse/route floor applies to the CLUSTERED flock layer (the low-zoom face of that
     // feature; detail layers stay pinned at FLOCK_DETAIL_ZOOM) and to the speed-camera layer.
     style.getLayer(FLOCK_CLUSTER_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
-    style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+    style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 8.0f else 6.0f)
+    style.getLayer(WAZE_POLICE_LAYER)?.setMinZoom(if (route.isEmpty()) 7.0f else 6.0f)
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
     // off or zoomed out, which clears the source. Two uploads per change, both built from the same
@@ -10275,6 +10339,26 @@ private fun applyData(
             ),
         )
         lastAppliedSpeedCams = speedCameras
+    }
+
+    // Live crowdsourced reports from Waze -> icon features. Empty clears the source.
+    if (wazePolice != lastAppliedWazePolice) {
+        val features = wazePolice.mapIndexed { idx, it ->
+            Feature.fromGeometry(Point.fromLngLat(it.loc.lng, it.loc.lat)).apply {
+                addNumberProperty(WAZE_POLICE_INDEX_PROP, idx)
+                val icon = when {
+                    it.isCamera() -> SPEEDCAM_IMG
+                    it.isPothole() -> WAZE_POTHOLE_IMG
+                    else -> it.category().iconId
+                }
+                addStringProperty("icon", icon)
+                addStringProperty("type", it.type)
+            }
+        }
+        style.getSourceAs<GeoJsonSource>(WAZE_POLICE_SRC)?.setGeoJson(
+            FeatureCollection.fromFeatures(features),
+        )
+        lastAppliedWazePolice = wazePolice
     }
 
     // Canonical GTFS stops (Transitous). Feature index -> the VM's stop list for the tap handler.
@@ -10993,4 +11077,296 @@ private fun navCompassBitmap(density: Float): Bitmap {
     tri(r - len, 0xFFEA4335.toInt()); tri(r + len, 0xFFFFFFFF.toInt())
     c.drawCircle(r, r, px * 0.035f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF101214.toInt() })
     return b
+}
+
+/** Live Waze police report badge: iconic Waze-style policeman with peaked cap, gold badge,
+ *  aviator sunglasses, uniform collar, and vivid blue circular rim for unmistakable visibility. */
+internal fun policeBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // 1. White border / rim
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    // 2. Vivid Waze royal blue circular badge
+    val rIn = r - 3.5f
+    paint.color = 0xFF1877F2.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    // 3. Dark Navy Uniform shoulders
+    paint.color = 0xFF0D326E.toInt()
+    val uniformRect = android.graphics.RectF(cx - 24f, cy + 6f, cx + 24f, cy + 38f)
+    c.drawArc(uniformRect, 180f, 180f, true, paint)
+
+    // White shirt collar & tie
+    paint.color = 0xFFFFFFFF.toInt()
+    val collarPath = android.graphics.Path().apply {
+        moveTo(cx, cy + 12f)
+        lineTo(cx - 5f, cy + 26f)
+        lineTo(cx + 5f, cy + 26f)
+        close()
+    }
+    c.drawPath(collarPath, paint)
+
+    paint.color = 0xFF141414.toInt()
+    val tiePath = android.graphics.Path().apply {
+        moveTo(cx, cy + 16f)
+        lineTo(cx - 2.5f, cy + 26f)
+        lineTo(cx + 2.5f, cy + 26f)
+        close()
+    }
+    c.drawPath(tiePath, paint)
+
+    // 4. Head & Face
+    paint.color = 0xFFFFDBAC.toInt() // warm skin tone
+    val faceRect = android.graphics.RectF(cx - 15f, cy - 12f, cx + 15f, cy + 18f)
+    c.drawOval(faceRect, paint)
+
+    // Friendly smile
+    paint.color = 0xFFB4643C.toInt()
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 1.8f
+    paint.strokeCap = Paint.Cap.ROUND
+    val smileRect = android.graphics.RectF(cx - 6f, cy + 7f, cx + 6f, cy + 14f)
+    c.drawArc(smileRect, 20f, 140f, false, paint)
+
+    // Nose
+    paint.style = Paint.Style.FILL
+    paint.color = 0xFFEBAF82.toInt()
+    c.drawOval(android.graphics.RectF(cx - 2.5f, cy + 4f, cx + 2.5f, cy + 8f), paint)
+
+    // 5. Aviator Sunglasses
+    paint.color = 0xFF19191C.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 14f, cy - 4f, cx - 1.5f, cy + 6f), 3.5f, 3.5f, paint)
+    c.drawRoundRect(android.graphics.RectF(cx + 1.5f, cy - 4f, cx + 14f, cy + 6f), 3.5f, 3.5f, paint)
+    c.drawRect(android.graphics.RectF(cx - 2f, cy - 3f, cx + 2f, cy - 1f), paint) // bridge
+
+    // Sunglasses glints
+    paint.color = 0xA0FFFFFF.toInt()
+    paint.strokeWidth = 1.2f
+    c.drawLine(cx - 11f, cy - 1f, cx - 7f, cy - 1f, paint)
+    c.drawLine(cx + 4.5f, cy - 1f, cx + 8.5f, cy - 1f, paint)
+    paint.style = Paint.Style.FILL
+
+    // 6. Police Peaked Cap
+    // Crown
+    paint.color = 0xFF0D326E.toInt()
+    val hatPath = android.graphics.Path().apply {
+        moveTo(cx - 20f, cy - 13f)
+        lineTo(cx - 16f, cy - 24f)
+        lineTo(cx, cy - 28f)
+        lineTo(cx + 16f, cy - 24f)
+        lineTo(cx + 20f, cy - 13f)
+        close()
+    }
+    c.drawPath(hatPath, paint)
+
+    // Hat band
+    paint.color = 0xFF081E4B.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 19f, cy - 15f, cx + 19f, cy - 8f), 2f, 2f, paint)
+
+    // Gold badge on cap
+    paint.color = 0xFFFFD700.toInt()
+    val badgePath = android.graphics.Path().apply {
+        moveTo(cx, cy - 23f)
+        lineTo(cx - 4f, cy - 15f)
+        lineTo(cx + 4f, cy - 15f)
+        close()
+    }
+    c.drawPath(badgePath, paint)
+    paint.color = 0xFFFFC107.toInt()
+    c.drawOval(android.graphics.RectF(cx - 2.5f, cy - 19f, cx + 2.5f, cy - 14f), paint)
+
+    // Black visor / brim
+    paint.color = 0xFF141416.toInt()
+    val visorRect = android.graphics.RectF(cx - 18f, cy - 12f, cx + 18f, cy - 1f)
+    c.drawArc(visorRect, 0f, 180f, true, paint)
+
+    return bmp
+}
+
+/** Accident badge: vivid coral/red circle with impact collision starburst. */
+internal fun accidentBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFE53935.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    val burstPath = android.graphics.Path().apply {
+        val points = 8
+        val rOut = 18f
+        val rInn = 9f
+        for (i in 0 until points * 2) {
+            val radius = if (i % 2 == 0) rOut else rInn
+            val angle = i * Math.PI / points
+            val x = (cx + radius * Math.cos(angle)).toFloat()
+            val y = (cy + radius * Math.sin(angle)).toFloat()
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+    c.drawPath(burstPath, paint)
+
+    paint.color = 0xFF212121.toInt()
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 3f
+    c.drawLine(cx - 8f, cy, cx + 8f, cy, paint)
+    c.drawLine(cx, cy - 8f, cx, cy + 8f, paint)
+
+    return bmp
+}
+
+/** Hazard / Weather badge: vivid amber/orange circle with white warning triangle and exclamation. */
+internal fun hazardBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFFF9800.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    paint.style = Paint.Style.FILL
+    val triPath = android.graphics.Path().apply {
+        moveTo(cx, cy - 18f)
+        lineTo(cx + 19f, cy + 15f)
+        lineTo(cx - 19f, cy + 15f)
+        close()
+    }
+    c.drawPath(triPath, paint)
+
+    paint.color = 0xFF212121.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 2.5f, cy - 8f, cx + 2.5f, cy + 5f), 2f, 2f, paint)
+    c.drawCircle(cx, cy + 10f, 2.5f, paint)
+
+    return bmp
+}
+
+/** Pothole badge: vivid amber/orange circle with road crater glyph and exclamation. */
+internal fun potholeBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // Outer white halo
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    // Inner deep amber disc
+    val rIn = r - 3.5f
+    paint.color = 0xFFFF8F00.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    // Exclamation mark above the road dip
+    paint.color = 0xFFFFFFFF.toInt()
+    paint.style = Paint.Style.FILL
+    c.drawRoundRect(android.graphics.RectF(cx - 2.5f, cy - 18f, cx + 2.5f, cy - 4f), 2f, 2f, paint)
+    c.drawCircle(cx, cy + 1f, 2.5f, paint)
+
+    // Road surface line with a dip/crater in the middle
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 4f
+    paint.strokeCap = Paint.Cap.ROUND
+    val roadPath = android.graphics.Path().apply {
+        moveTo(cx - 20f, cy + 9f)
+        lineTo(cx - 10f, cy + 9f)
+        cubicTo(cx - 6f, cy + 19f, cx + 6f, cy + 19f, cx + 10f, cy + 9f)
+        lineTo(cx + 20f, cy + 9f)
+    }
+    c.drawPath(roadPath, paint)
+
+    // Dark asphalt crater fill inside the dip
+    paint.style = Paint.Style.FILL
+    paint.color = 0xFF212121.toInt()
+    val craterFill = android.graphics.Path().apply {
+        moveTo(cx - 10f, cy + 9f)
+        cubicTo(cx - 6f, cy + 19f, cx + 6f, cy + 19f, cx + 10f, cy + 9f)
+        close()
+    }
+    c.drawPath(craterFill, paint)
+
+    return bmp
+}
+
+/** Road closure badge: vivid crimson circle with white horizontal bar (no-entry sign). */
+internal fun closureBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFD32F2F.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 18f, cy - 4.5f, cx + 18f, cy + 4.5f), 2f, 2f, paint)
+
+    return bmp
+}
+
+/** Traffic jam badge: dark orange circle with dual car silhouette. */
+internal fun jamBadgeBitmap(): Bitmap {
+    val s = 72
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val r = s / 2f - 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawCircle(cx, cy, r, paint)
+
+    val rIn = r - 3.5f
+    paint.color = 0xFFE65100.toInt()
+    c.drawCircle(cx, cy, rIn, paint)
+
+    paint.color = 0xFFFFFFFF.toInt()
+    c.drawRoundRect(android.graphics.RectF(cx - 7f, cy - 14f, cx + 7f, cy - 2f), 3f, 3f, paint)
+    c.drawRoundRect(android.graphics.RectF(cx - 10f, cy + 2f, cx + 10f, cy + 16f), 3f, 3f, paint)
+
+    paint.color = 0xFF212121.toInt()
+    c.drawCircle(cx - 4f, cy - 8f, 1.5f, paint)
+    c.drawCircle(cx + 4f, cy - 8f, 1.5f, paint)
+    c.drawCircle(cx - 6f, cy + 9f, 2f, paint)
+    c.drawCircle(cx + 6f, cy + 9f, 2f, paint)
+
+    return bmp
 }

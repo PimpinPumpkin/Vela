@@ -209,6 +209,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   and bridge alerts chime, nothing else is said. The speaker button during a drive opens the three.
 - "Bridge openings" in the Netherlands says when a movable bridge on your route is open, or due
   to open as you reach it. From NDW's open road data. On by default.
+- "Waze crowd alerts" draws live police, accident, road hazard, closure and traffic jam reports from
+  Waze, with category filters and spoken navigation warnings. Off by default.
+- "Alert trigger distances" configures warning trigger distances in meters (dynamic speed-scaled,
+  200–1500 m, or custom) globally and per alert category (cameras, police, accidents, hazards, closures, jams).
 - Plate camera data ships with the app, so it works offline.
 
 ## Offline

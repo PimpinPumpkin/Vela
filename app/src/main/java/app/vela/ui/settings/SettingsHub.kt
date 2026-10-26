@@ -93,6 +93,7 @@ internal fun SettingsHub(
             SettingsSection.PERFORMANCE to stringResource(R.string.settings_performance),
             SettingsSection.DIAGNOSTICS to stringResource(R.string.settings_diagnostics),
             SettingsSection.ABOUT to stringResource(R.string.settings_about),
+            SettingsSection.WAZE_ALERTS to stringResource(R.string.settings_waze_alerts_title),
         )
         if (searchQuery.isNotBlank()) {
             val matches = SEARCH_INDEX.map { (res, section) -> stringResource(res) to section }
@@ -164,6 +165,13 @@ internal fun SettingsHub(
             subtitle = stringResource(R.string.settings_hub_navigation_sub),
             modifier = rowModifier(SettingsSection.NAVIGATION, first = false),
             onClick = { onOpen(SettingsSection.NAVIGATION, null) },
+        )
+        HubRow(
+            icon = SymOutlined.Shield,
+            title = stringResource(R.string.settings_waze_alerts_title),
+            subtitle = stringResource(R.string.settings_waze_alerts_subtitle),
+            modifier = rowModifier(SettingsSection.WAZE_ALERTS, first = false),
+            onClick = { onOpen(SettingsSection.WAZE_ALERTS, null) },
         )
         HubRow(
             icon = SymOutlined.VolumeUp,
@@ -444,4 +452,12 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_update_auto to SettingsSection.ABOUT,
     R.string.settings_update_channel to SettingsSection.ABOUT,
     R.string.settings_update_check_now to SettingsSection.ABOUT,
+    // Waze Alerts
+    R.string.settings_waze_alerts_title to SettingsSection.WAZE_ALERTS,
+    R.string.settings_waze_police to SettingsSection.WAZE_ALERTS,
+    R.string.settings_waze_accidents to SettingsSection.WAZE_ALERTS,
+    R.string.settings_waze_hazards to SettingsSection.WAZE_ALERTS,
+    R.string.settings_waze_closures to SettingsSection.WAZE_ALERTS,
+    R.string.settings_waze_jams to SettingsSection.WAZE_ALERTS,
+    R.string.settings_alert_distance_title to SettingsSection.ALERT_DISTANCES,
 )

@@ -234,6 +234,8 @@ data class MapUiState(
     // ALPR/Flock cameras counted near each route option (index-aligned with `routes`), for the route
     // picker's opt-in "passes N cameras" badge. Empty when the alert is off or not yet computed.
     val flockOnRoute: List<Int> = emptyList(),
+    // Crowdsourced police reports counted along each route option for the route picker indicator.
+    val policeOnRoute: List<Int> = emptyList(),
     // Drive nav, "tap places while driving": the place a tap offered as a stop, waiting for the
     // confirm. Never acts on the first tap - a stray touch must not change the drive.
     val navTapCandidate: Place? = null,
@@ -254,6 +256,7 @@ data class MapUiState(
     val routeBar: app.vela.core.nav.RouteBar.Model? = null,
     val routeBarEnabled: Boolean = false,
     val speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (OSM), opt-in layer
+    val wazePolice: List<app.vela.core.data.WazePoliceAlert> = emptyList(), // live police reports (Waze), opt-in layer
     val transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops (Transitous), high zoom
     // Rail track around the view with each line's own color (Transitous map/routes), while
     // "Highlight transit lines" is on; empty where the service has none or the view is too wide.
@@ -485,6 +488,7 @@ class MapViewModel @Inject constructor(
     private val webReviews: WebReviewsFetcher,
     private val webDirections: WebDirectionsFetcher,
     private val webStopDepartures: app.vela.web.WebStopDeparturesFetcher,
+    private val webWazePolice: app.vela.web.WebWazePoliceFetcher,
     private val diag: app.vela.core.diag.DiagLog,
     private val diagExporter: app.vela.diag.DiagExporter,
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
@@ -556,7 +560,7 @@ class MapViewModel @Inject constructor(
         override fun gateMeasuredSpeed(raw: Float, dt: Double): Float? = this@MapViewModel.gateMeasuredSpeed(raw, dt)
         override fun onNavRoadLatin(map: Map<String, String>) = this@MapViewModel.onNavRoadLatin(map)
     }
-    private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost)
+    private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost, webWazePolice)
     // UK gas stations get their price from the Fuel Finder file (SPEC 5.8). Above init like nav.
     private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
 
@@ -6600,6 +6604,7 @@ class MapViewModel @Inject constructor(
                         routes = routes,
                         activeRoute = routes.firstOrNull(),
                         flockOnRoute = emptyList(), // recomputed below when the alert's on
+                        policeOnRoute = emptyList(),
                         transit = emptyList(), transitLoading = false,
                         status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
@@ -6610,7 +6615,10 @@ class MapViewModel @Inject constructor(
                 shownDuration(routes)?.let { publishModeEta(etaKey, mode, formatDuration(it)) }
                 prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
                 val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
-                if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch, origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
+                if (routes.isNotEmpty()) {
+                    refreshFlockOnRoute(routes, flockEpoch, origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
+                    refreshPoliceOnRoute(routes)
+                }
                 // Warm the region's road-features file while the chooser is up: its first parse
                 // (176k features, 1.5 s on a 4a) used to land in the drive's first seconds beside
                 // the tile workers and the voice (Perfetto 2026-09-28).
@@ -6892,6 +6900,7 @@ class MapViewModel @Inject constructor(
                         it.copy(
                             routes = order.map { i -> cur[i] },
                             flockOnRoute = order.map { i -> counts[i] },
+                            policeOnRoute = if (it.policeOnRoute.size == cur.size) order.map { i -> it.policeOnRoute[i] } else it.policeOnRoute,
                         )
                     }
                     selectRoute(0)
@@ -6931,6 +6940,7 @@ class MapViewModel @Inject constructor(
                         if (pick != null && routesEpoch == epoch) {
                             val (kept, n) = results[pick - 1]
                             _state.update { it.copy(routes = listOf(kept) + it.routes, flockOnRoute = listOf(n) + it.flockOnRoute) }
+                            refreshPoliceOnRoute(_state.value.routes)
                             selectRoute(0)
                         }
                     }
@@ -8308,6 +8318,7 @@ class MapViewModel @Inject constructor(
         lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
         refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
         refreshSpeedCams(south, west, north, east, zoom) // + fixed radar cameras when that layer is on
+        refreshWazePolice(south, west, north, east, zoom) // + Waze police reports when that layer is on
         refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
         refreshTransitLines(south, west, north, east, zoom) // + rail lines in their own colors, when that layer is on
         refreshImageryYear(south, west, north, east) // + the capture year for the satellite attribution
@@ -9590,7 +9601,7 @@ class MapViewModel @Inject constructor(
      *  minus the bundled dataset: opt-in, sparse-landmark zoom floor, padded area cache, 350 ms
      *  settle, failure never cached so the next viewport retries. */
     private fun refreshSpeedCams(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
-        if (!app.vela.ui.SpeedCams.on.value || zoom < FLOCK_MIN_ZOOM) {
+        if (!app.vela.ui.SpeedCams.on.value || zoom < SPEEDCAM_MIN_ZOOM) {
             speedCamBox = null
             speedCamJob?.cancel()
             if (_state.value.speedCameras.isNotEmpty()) _state.update { it.copy(speedCameras = emptyList()) }
@@ -9621,6 +9632,233 @@ class MapViewModel @Inject constructor(
             speedCamBox = doubleArrayOf(s, w, n, e)
             diag.record("speedcam", "showing ${res.size} camera(s) at z${"%.1f".format(zoom)}", if (cover == RoadCover.LOADED) "baked" else "overpass")
             _state.update { it.copy(speedCameras = res.take(600)) }
+        }
+    }
+
+    private var wazePoliceBox: DoubleArray? = null
+    private var wazePoliceFetchRealtime: Long = 0L
+    private var wazePoliceJob: Job? = null
+
+    /** Re-fetch (or clear) the Waze police/alerts layer when its toggle flips. */
+    fun refreshWazePoliceNow() {
+        wazePoliceBox = null
+        wazePoliceFetchRealtime = 0L
+        webWazePolice.invalidateCache()
+        if (app.vela.ui.WazeAlertsPrefs.masterOn.value) {
+            webWazePolice.warmUp()
+        }
+        lastFlockViewport?.let { refreshWazePolice(it[0], it[1], it[2], it[3], it[4]) }
+        if (_state.value.routes.isNotEmpty()) {
+            refreshPoliceOnRoute(_state.value.routes)
+        }
+    }
+
+    /** Live crowdsourced alerts from Waze GeoRSS API. Opt-in layer,
+     *  gated to z >= 7.0 so wide overviews aren't capped by Waze's 200 alert limit, padded area-cached,
+     *  300 ms debounce, failure never cached so next viewport retries. */
+    private fun refreshWazePolice(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        if (!app.vela.ui.WazeAlertsPrefs.masterOn.value || zoom < app.vela.core.data.WazePoliceAlerts.MIN_ZOOM) {
+            wazePoliceBox = null
+            wazePoliceFetchRealtime = 0L
+            wazePoliceJob?.cancel()
+            if (_state.value.wazePolice.isNotEmpty()) _state.update { it.copy(wazePolice = emptyList()) }
+            return
+        }
+        val nowRealtime = android.os.SystemClock.elapsedRealtime()
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        wazePoliceBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            if (nowRealtime - wazePoliceFetchRealtime < 60_000L &&
+                cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        wazePoliceJob?.cancel()
+        wazePoliceJob = viewModelScope.launch {
+            delay(300)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            val res = withContext(Dispatchers.IO) {
+                runCatching {
+                    webWazePolice.fetchAlerts(s, w, n, e) ?: app.vela.core.data.WazePoliceAlerts.fetchInBox(http, s, w, n, e)
+                }.getOrNull()
+            }
+            if (res == null) {
+                diag.record("wazepolice", "alerts fetch failed at z${"%.1f".format(zoom)}", "box [$s,$w,$n,$e]")
+                return@launch
+            }
+            wazePoliceFetchRealtime = android.os.SystemClock.elapsedRealtime()
+            wazePoliceBox = doubleArrayOf(s, w, n, e)
+            diag.record("wazepolice", "showing ${res.size} waze alert(s) at z${"%.1f".format(zoom)}", "waze georss")
+            val nowMs = System.currentTimeMillis()
+            _state.update { st ->
+                val outside = st.wazePolice.filter {
+                    (it.loc.lat < s || it.loc.lat > n || it.loc.lng < w || it.loc.lng > e) && !it.isExpired(nowMs)
+                }
+                val combined = (outside + res)
+                    .distinctBy { it.id }
+                    .filter { !it.isExpired(nowMs) }
+                    .take(600)
+                st.copy(wazePolice = combined)
+            }
+            if (_state.value.routes.isNotEmpty()) {
+                refreshPoliceOnRoute(_state.value.routes)
+            }
+        }
+    }
+
+    fun onPoliceAlertTap(alert: app.vela.core.data.WazePoliceAlert) = onWazeAlertTap(alert)
+
+    /** A tapped crowdsourced alert from Waze: opens a compact sheet showing
+     *  subtype, how long ago it was reported, user confirmation count, and location. */
+    fun onWazeAlertTap(alert: app.vela.core.data.WazePoliceAlert) {
+        val nowMs = System.currentTimeMillis()
+        val ageMin = if (alert.pubMillis > 0L) ((nowMs - alert.pubMillis).coerceAtLeast(0L) / 60_000L).toInt() else 0
+        val ageStr = when {
+            alert.pubMillis <= 0L -> appContext.getString(R.string.police_just_now)
+            ageMin < 1 -> appContext.getString(R.string.police_just_now)
+            ageMin < 60 -> appContext.getString(R.string.police_min_ago, ageMin)
+            else -> appContext.getString(R.string.police_hours_ago, ageMin / 60)
+        }
+        val count = alert.nThumbsUp
+        val reportsStr = when {
+            count <= 0 -> appContext.getString(R.string.police_users_reported_one)
+            else -> appContext.getString(R.string.police_users_reported_many, count + 1)
+        }
+        val cat = alert.category()
+        val sub = alert.subtype?.uppercase(java.util.Locale.US) ?: ""
+        val title = when (cat) {
+            app.vela.core.data.WazeAlertCategory.POLICE -> when {
+                "HIDING" in sub || "HIDDEN" in sub -> appContext.getString(R.string.police_title_hidden)
+                "CAMERA" in sub || "SPEED" in sub || "CAMERA" in alert.type.uppercase(java.util.Locale.US) -> appContext.getString(R.string.police_title_camera)
+                "OTHER_SIDE" in sub -> appContext.getString(R.string.police_title_other_side)
+                else -> appContext.getString(R.string.police_title)
+            }
+            app.vela.core.data.WazeAlertCategory.ACCIDENT -> when {
+                "MAJOR" in sub -> appContext.getString(R.string.accident_title_major)
+                "MINOR" in sub -> appContext.getString(R.string.accident_title_minor)
+                else -> appContext.getString(R.string.accident_title)
+            }
+            app.vela.core.data.WazeAlertCategory.HAZARD -> when {
+                alert.isPothole() || "POTHOLE" in sub -> appContext.getString(R.string.hazard_title_pothole)
+                "OBJECT" in sub -> appContext.getString(R.string.hazard_title_object)
+                "SHOULDER" in sub -> appContext.getString(R.string.hazard_title_shoulder)
+                "WEATHER" in sub || "FOG" in sub || "ICE" in sub || "RAIN" in sub || "FLOOD" in sub || "SNOW" in sub ->
+                    appContext.getString(R.string.hazard_title_weather)
+                "CONSTRUCTION" in sub || "WORKS" in sub -> appContext.getString(R.string.hazard_title_construction)
+                else -> appContext.getString(R.string.hazard_title)
+            }
+            app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.closure_title)
+            app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.jam_title)
+            else -> appContext.getString(R.string.hazard_title)
+        }
+        val categoryStr = when (cat) {
+            app.vela.core.data.WazeAlertCategory.POLICE -> appContext.getString(R.string.police_category)
+            app.vela.core.data.WazeAlertCategory.ACCIDENT -> appContext.getString(R.string.accident_category)
+            app.vela.core.data.WazeAlertCategory.HAZARD -> appContext.getString(R.string.hazard_category)
+            app.vela.core.data.WazeAlertCategory.ROAD_CLOSED -> appContext.getString(R.string.closure_category)
+            app.vela.core.data.WazeAlertCategory.JAM -> appContext.getString(R.string.jam_category)
+            else -> appContext.getString(R.string.hazard_category)
+        }
+
+        if (_state.value.navigating) {
+            val summary = "$title · $ageStr · $reportsStr"
+            android.widget.Toast.makeText(appContext, summary, android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        reviewsJob?.cancel()
+        routeJob?.cancel()
+        val locStr = listOfNotNull(alert.street?.takeIf { it.isNotBlank() }, alert.city?.takeIf { it.isNotBlank() })
+            .joinToString(", ").ifBlank { null }
+        val note = if (count > 0) {
+            appContext.getString(R.string.police_note_confirmed, ageStr, count)
+        } else {
+            appContext.getString(R.string.police_note_unconfirmed, ageStr)
+        }
+
+        val place = Place(
+            id = "waze:${cat.name.lowercase(java.util.Locale.US)}:${alert.id}",
+            name = title,
+            location = alert.loc,
+            category = categoryStr,
+            address = locStr,
+            statusText = "$ageStr · $reportsStr",
+            savedNote = note,
+        )
+
+        _state.update {
+            it.copy(
+                selected = place,
+                placesHere = emptyList(),
+                reviews = emptyList(),
+                reviewsLoading = false,
+                reviewsFound = 0,
+                photosLoading = false,
+                loadingDetails = false,
+                stopDepartures = null,
+                stopDeparturesLoading = false,
+                stopDeparturesFor = null,
+                center = alert.loc,
+            )
+        }
+    }
+
+    private var policeRouteJob: Job? = null
+
+    /**
+     * Count police alerts along each candidate route for display in the route chooser.
+     */
+    fun refreshPoliceOnRoute(routes: List<Route>) {
+        policeRouteJob?.cancel()
+        if (!app.vela.ui.WazeAlertsPrefs.masterOn.value || routes.isEmpty()) {
+            if (_state.value.policeOnRoute.isNotEmpty()) _state.update { it.copy(policeOnRoute = emptyList()) }
+            return
+        }
+        policeRouteJob = viewModelScope.launch {
+            val polylines = routes.map { it.polyline }.filter { it.size >= 2 }
+            if (polylines.isEmpty()) return@launch
+
+            // Fetch along route bounding box if needed
+            val degPad = 0.02
+            val allLats = polylines.flatten().map { it.lat }
+            val allLngs = polylines.flatten().map { it.lng }
+            val s = allLats.minOrNull()!! - degPad
+            val n = allLats.maxOrNull()!! + degPad
+            val w = allLngs.minOrNull()!! - degPad
+            val e = allLngs.maxOrNull()!! + degPad
+
+            val res = withContext(Dispatchers.IO) {
+                runCatching {
+                    webWazePolice.fetchAlerts(s, w, n, e) ?: app.vela.core.data.WazePoliceAlerts.fetchInBox(http, s, w, n, e)
+                }.getOrNull()
+            }
+            if (!res.isNullOrEmpty()) {
+                val nowMs = System.currentTimeMillis()
+                _state.update { st ->
+                    val outside = st.wazePolice.filter {
+                        (it.loc.lat < s || it.loc.lat > n || it.loc.lng < w || it.loc.lng > e) && !it.isExpired(nowMs)
+                    }
+                    val combined = (outside + res)
+                        .distinctBy { it.id }
+                        .filter { !it.isExpired(nowMs) }
+                        .take(600)
+                    st.copy(wazePolice = combined)
+                }
+            }
+
+            val currentAlerts = _state.value.wazePolice
+            val counts = withContext(Dispatchers.Default) {
+                routes.map { r ->
+                    val poly = r.polyline
+                    if (poly.size < 2) 0
+                    else {
+                        val cum = app.vela.core.nav.RouteBar.cumulative(poly)
+                        currentAlerts.count { alert ->
+                            app.vela.core.nav.RouteBar.alongMeters(poly, cum, alert.loc, 60.0) != null
+                        }
+                    }
+                }
+            }
+            _state.update { it.copy(policeOnRoute = counts) }
         }
     }
 
@@ -10676,6 +10914,7 @@ class MapViewModel @Inject constructor(
         // exists now: the BUNDLED on-device dataset answers fetchInBox with no network and the Overpass
         // fallback stream-parses, so z11 is back (alltechdev re-proved it in the vela-dpad fork, #131).
         const val FLOCK_MIN_ZOOM = 11.0
+        const val SPEEDCAM_MIN_ZOOM = 8.0
         val CIVIC_GROUPS = setOf("park", "edu", "civic") // the "not really a business" ambient tier
         const val SUGGEST_NEAR_M = 80_000.0 // ~a metro radius: suggestions inside it rank first
         /** The automatic region patch pass: a minute after start, at most once in 20 hours. */
