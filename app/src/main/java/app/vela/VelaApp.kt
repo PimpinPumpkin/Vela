@@ -25,6 +25,13 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
     // Built here, before anything below asks for a link: the store applies the cached bundle's
     // pushed links as it is made, and the fonts and camera fetches at start read them.
     @Inject lateinit var calibrationStore: app.vela.core.config.CalibrationStore
+    @Inject lateinit var navSession: app.vela.core.nav.NavSession
+
+    // A long-lived scope for the BYD vehicle outputs (SPEC 10.9): they follow the shared
+    // navigation session for the life of the process and act only while a drive is on.
+    private val vehicleScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
+    )
 
     /** Coil with a HARD memory-cache cap. The default budget is ~25% of the app's heap CLASS,
      *  and largeHeap makes that class huge - on a 512 MB large heap Coil happily retains up to
@@ -229,6 +236,23 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)
         Onboarding.init(this)
         app.vela.ui.WhatsNew.init(this)
+        // BYD vehicle integrations (SPEC 10.9), all off by default. The cluster map and the
+        // FCE HUD follow the shared navigation session; the steering-wheel key filter is a separate
+        // accessibility service the user enables in Android Settings. Nothing here touches a car
+        // display or a HAL on a phone or an unsupported head unit.
+        app.vela.ui.ClusterMapPref.init(this)
+        app.vela.ui.FceClusterHudPref.init(this)
+        app.vela.ui.SomeIpHudPref.init(this)
+        app.vela.ui.TopActivity.register(this)
+        val cluster = app.vela.vehicle.ClusterMapController(this, navSession, locationProvider)
+        val fceHud = app.vela.vehicle.FceClusterHud(this, navSession)
+        val someIpHud = app.vela.vehicle.SomeIpHud(this, navSession)
+        app.vela.vehicle.VehicleCapabilities.clusterController = cluster
+        app.vela.vehicle.VehicleCapabilities.fceHud = fceHud
+        app.vela.vehicle.VehicleCapabilities.someIpHud = someIpHud
+        cluster.start(vehicleScope)
+        fceHud.start(vehicleScope)
+        someIpHud.start(vehicleScope)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.
         CrashCatcher.install(this) { diag.snapshot() }

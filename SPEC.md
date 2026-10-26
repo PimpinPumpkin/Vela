@@ -231,7 +231,8 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `RoadNumbers`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
   `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
-  `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
+  `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`,
+  `ClusterMapPref`, `FceClusterHudPref` and `SomeIpHudPref` (the BYD cluster integrations, 10.9).
 - `MemoryPressure`, `PipMode` and `ConstrainedNetwork` hold runtime state, not a pref.
 - One view model. `MapViewModel` owns `MapUiState` and delegates navigation to `NavController`
   through `NavController.Host`. Nav code never reaches into the view model. Anything an
@@ -5781,6 +5782,139 @@ lists. It also drops the bars chip from the quick categories, which the filter w
 the book/order action. The Street View pill opens the in-app viewer, so that switch leaves it
 alone. It is hidden only when Google is off. A new review, photo or external-link surface goes
 behind the matching holder.
+
+### 10.9 BYD instrument cluster and vehicle keys
+
+Three optional integrations for a BYD head unit (DiLink), all off by default, each independent,
+none needed for ordinary navigation. The Android adapters are in `:app` `vehicle/`, the pure
+mappings and policies in `:core` `vehicle/`. Each probes for its own prerequisite and reports a
+`VehicleSupport` state; the absence of all three changes nothing on a phone, on GrapheneOS or on
+another car. None has been checked on a vehicle. What is written here is what the code does, and
+what each piece has been seen to do on a bench.
+
+#### The cluster map
+
+`ClusterMapController` and `ClusterMapPresentation` (`:app`), `ClusterTargets` and `clusterRoute`
+(`:core`). A BYD head unit exposes its instrument cluster's projection area as public presentation
+displays owned by the container service (`com.byd.containerservice` on DiLink 5.0,
+`com.xdja.containerservice` on 5.1), each 1920 by 720, `FLAG_PRESENTATION`, touch NONE. Vela draws
+on one with the public `Presentation` API: no ADB, no `SYSTEM_ALERT_WINDOW`, no signature. Benches
+.165 (5.0) and .39 (5.1) list these displays; a render on a panel is not vehicle-checked.
+
+The display names offered, in order: `shared_fission_bg_XDJAScreenProjection_1` (the idle right
+card), then `_0` (often under the stock map), then DiLink 4.0's `fission_bg_xdjaVirtualSurface`.
+Only these exact names: an aspect ratio does not make a display a cluster, and a passenger screen
+or a mirror is never offered. `ClusterTargets.pick` returns the user's chosen name only while it is
+present and never falls through to another display, because a name vanishes for a moment when the
+cluster mode changes. The adb-only test hook `debug.vela.tune.clusterAnyDisplay` offers any
+presentation display, for an emulator.
+
+The map is the same `CarMapRenderer` Android Auto uses (10.6), reading the one `NavSession`, so the
+cluster, the phone and Android Auto show one route, maneuver and distance. The renderer takes a
+plain `Context` so it can host a surface of Vela's own; its speed badge is off on the cluster,
+which has its own. It renders only while a drive is on and is torn down when the drive ends or the
+display goes away (a `DisplayManager.DisplayListener`). The Presentation is hosted from the top
+Activity (`TopActivity`), because a Presentation built from the application context can be refused
+a window token. The cluster shows this display only while its own navigation view is on, which the
+app cannot switch; the driver turns that on.
+
+Routing precedence (`clusterRoute`): the public display first, always. There is no ADB fallback in
+this build (no `AdbClusterRouter`), so a head unit with no public cluster display keeps phone-only
+navigation and the capability reads NOT_PRESENT. A Presentation refused on a display that exists
+reads ACCESS_DENIED and never silently falls back.
+
+#### The windshield HUD transports
+
+Two independent maneuver-icon tables, each tested, neither derived from the other.
+
+The FCE cluster HUD: `FceCarPropertyTransport` and `FceClusterHud` (`:app`); `FceProperties`,
+`FceIcons`, `FceClusterOutput` and `clusterNavOutput` (`:core`). Some BYD head units run a vehicle
+HAL, `fce_misc_service_hal_property`, interface `com.fce.misc.proxy.hardware.property.ICarProperty`,
+whose cluster navigation view takes integer vehicle properties the stock app leaves empty. Vela
+writes them: `setProperty` is transaction 5, and the parcel is the interface token, a non-null
+marker, the property id, area 0, status 0, timestamp 0, the value class `java.lang.Integer`, then
+the value. The service does not check the caller, so there is no root or ADB. The properties are
+NAVI_STATUS `0x214000a5` (2 navigating, 1 cruise, 0 closed), ICON `0x21400099`, ICON_SET_2
+`0x2140009a` (held at 0), and DISTANCE `0x21400098` in meters (a 17-bit signal, max 131071). Status
+2 opens the view before the first glyph; only a changed value is written again; the stock end
+sequence (blank, cruise, closed) runs on stop. The glyph table is the cluster's own, right-hand
+traffic: straight 16, slight right 17, slight left 18, right 20, left 19, sharp left 21, sharp
+right 22, U-turn left 23, U-turn right 24, roundabout exits 1 to 10 the consecutive codes 42 to 51
+else enter 53, destination 3, none 0. The distance is rounded to 10 m under 1 km and 100 m above,
+because the cluster formats kilometers itself. The service is absent on benches .165 and .39; the
+properties' meaning is from one vehicle's observed behavior, so the feature is opt-in and reported
+as confirmed on one car only.
+
+The SOME/IP windshield HUD: `SomeIpHudFrame` and `SomeIpHudArrows` (`:core`), `SomeIpHudTransport`
+and `SomeIpHud` (`:app`). A BYD head unit's windshield glass reads a road-info frame published over
+the gateway `com.ts.car.someip.service`, an exported, permission-free Binder service. Vela binds it
+and fires the frame: no ADB, no permission. The frame is the proven minimal one, an inner
+HudRoadInfoNotifyStruct wrapped as outer field 1, with field 2 counter, field 6 layout (1 guiding,
+255 clear), field 7 empty lane picture, field 8 the maneuver arrow as a transparent PNG (Vela's own
+glyph), field 9 distance floored at 11 m, field 10 the road (<= 200 chars), field 16 NavigatingStatus
+(2 guiding, 1 idle), field 26 the ETA "HH:mm", and field 28 the maneuver id. `SomeIpHudFrame` is a
+small protobuf writer so the bytes are byte-exact and unit-tested.
+
+The maneuver id reads two vocabularies: the BYD map app's (left 1, right 2, slight 3 and 5, sharp 7
+and 8, U-turn 9 and 10, straight 11, roundabout enter 13 or 14 clockwise, exit 24 or 23, destination
+48) and a third-party native-arrow set (sharp folded to 1 and 2, U-turn 7 and 8, and 99 for any
+maneuver with no glyph of its own). Vela sends the native-arrow set, which is what the proven
+picture-in-field-8 senders use; the picture in field 8 carries the real arrow either way. The table
+shares no turn code with the FCE glyphs, which a test pins, so the two transports cannot corrupt one
+another.
+
+The transport does a TYPED bind: the intent type is Vela's own package, which the gateway requires.
+A typeless bind NPE-crashes the gateway process, and the factory AR-HUD it hosts, on unbind. The
+session is a typed bind, then register a callback (a minimal Binder stub that
+answers the gateway's callbacks), then start the service (`0x000B010A00010000`, accepted on return
+code 0 or 13) before the first fire, then fire the frame on topic `0x0004010A00018001` (accepted on
+0; re-offer and retry once on 11), re-fired on a 1 second keepalive so the glass does not blank, one
+blank frame to clear, and stop on teardown. Every transaction runs on one background thread, because
+a wedged gateway can block a transact and must never reach the main thread. Off unless the head unit
+has the gateway and the user turned it on.
+
+#### The steering-wheel voice key
+
+`SteeringWheelService` (`:app`, an accessibility key filter), `WheelKeys` and `WheelKeyRouter`
+(`:core`). A BYD head unit delivers wheel buttons to an app through its own accessibility key
+filter, before the stock handler. Vela's service requests key filtering
+(`flagRequestFilterKeyEvents`, `canRequestFilterKeyEvents`), reads no screen content
+(`canRetrieveWindowContent` false, the only event type `typeWindowStateChanged`), and is off until
+the user turns it on in Android Settings. While off, every other feature works and no key is
+touched.
+
+It takes only the voice keys (304, its long code 312, and the companion codes 327 and 328 some
+cars send), and only while Vela is guiding. The press repeats the current spoken instruction
+(`NavSession.repeatInstruction`, which speaks through a mute because the press asked for it).
+Keycodes vary by model and firmware, so these are the codes seen on some cars, not a promise for
+every one. A press is owned whole or not at all: the down, repeated downs, a folded long code, a
+late long code within 350 ms of the release, and the companion code all go the same way as the
+first down, so the car never gets a release without its press. A press that started before the
+drive, and any voice key with no drive on, passes to the car. A press with no release for 3 s is
+dropped. Every other key (home, back, call, media, the custom star keys) always passes.
+
+Vela makes no call, so it does not answer or end one and does not listen for the Bluetooth hang-up
+broadcast `com.byd.btcall.action.CLOSE_BLUETOOTHSETTING`; the car's own phone app keeps handling
+calls. `WheelKeys` records the call and media codes as passed so the intent is explicit.
+
+#### Capability model and diagnostics
+
+`VehicleSupport` (`:core`) separates ACTIVE, AVAILABLE, NOT_PRESENT, ACCESS_DENIED, UNAVAILABLE,
+FAILED, UNKNOWN and NOT_IN_THIS_BUILD. `VehicleCapabilities` (`:app`) reads each state at the moment
+it is asked, from the live display list, the service presence and the controllers' own state; it
+caches nothing and probes nothing aggressively. Settings > Diagnostics shows one line per capability
+(the "Cluster and wheel status" group), and the debug export carries the same states plus the
+display list (the `vehicle` field). No analytics, no telemetry, no backend, no vehicle identifier
+and no position: capability names and display names only.
+
+Reported NOT_IN_THIS_BUILD rather than hidden, because the piece is understood but Vela does not
+act on it: the ADB cluster fallback.
+
+The four controllers (cluster map, FCE cluster HUD, SOME/IP windshield HUD, and the capability
+read) start in `VelaApp` on a process-long scope and follow the shared `NavSession`; the
+steering-wheel filter is its own accessibility service. The settings holders are `ClusterMapPref`,
+`FceClusterHudPref` and `SomeIpHudPref` (2.3); the wheel key filter's state is read from the system,
+not stored. Every user string is in `res/values/strings.xml`.
 
 ---
 

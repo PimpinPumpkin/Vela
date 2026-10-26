@@ -345,6 +345,45 @@ unit's cluster. Version 2.0 of the head unit has no cluster display, so it never
 Gearslip, a separate project, has a "Car preview" debug mode that renders the same screens on the
 phone. It says nothing about the gate either.
 
+## On a BYD head unit
+
+A BYD car (DiLink) is Android, and the ownership gate above keeps a sideloaded Vela out of Android
+Auto there as anywhere else. So Vela runs as the ordinary app on the main screen, and three
+optional pieces reach the rest of the car. All three are off until you turn them on, each works on
+its own, and a car that offers none of them runs Vela exactly as a phone does. None has been
+checked on a real car yet. [SPEC section 10.9](../../SPEC.md) has the constants and the states.
+
+The **cluster map** draws Vela's real navigation map on the driver's instrument cluster while you
+drive. The cluster's projection area is an ordinary second display the car publishes, so Vela uses
+the standard Android `Presentation`, with no ADB and no special permission. The map is the same one
+the Android Auto code renders, reading the same navigation session, so the cluster, the phone and
+Android Auto all show one route, one turn and one distance. Turn it on under Settings > Navigation >
+Instrument cluster and pick the display; the cluster shows it only while the car's own navigation
+view is on, which you switch on the car. When no drive is running, or the display goes away, the
+map comes down and the stock cluster returns.
+
+The **cluster turn arrows** are a separate path for a car whose cluster has a built-in navigation
+view that the stock app leaves empty. Vela fills it by writing the car's own navigation properties:
+the view state, the arrow and the distance. It needs a head unit that offers that service and does
+nothing on one that does not. The arrow uses the cluster's own icon set, which is not the icon set
+the windshield HUD uses; the two are kept apart so neither can draw the other's arrow.
+
+The **windshield head-up display** shows the turn arrow, distance, road and arrival time on the
+car's windshield glass. The arrow is Vela's own, sent as a small picture; the distance, road and
+time ride alongside it, refreshed about once a second so the glass does not blank. It uses the car's
+own display service with no ADB and no extra permission, and does nothing on a car that has no such
+display. It is separate from the cluster paths above.
+
+The **steering-wheel voice button** repeats the current spoken direction when you press it during a
+drive. The car sends wheel buttons to an app through Android's accessibility key filtering, so this
+is an accessibility service you enable in Android Settings (Vela explains why and reads nothing on
+screen). It takes only the voice button, and only while navigating; every other wheel button, and
+the voice button at any other time, goes to the car untouched, so track skip, calls and the car's
+own voice assistant keep working.
+
+Settings > Diagnostics shows a line for each of the three, so you can see what this car offers and
+why something is unavailable. The debug export carries the same states and no vehicle data.
+
 ## Limits
 
 - On a head unit that runs the ownership check, a plain sideload of Vela is not listed.
@@ -364,6 +403,11 @@ phone. It says nothing about the gate either.
   better.
 - Vela sends the cluster the current step and the destination. What a car's cluster or head-up
   display does with them is up to the car.
+- The BYD cluster map, cluster turn arrows, windshield HUD and steering-wheel voice button have
+  been built and run on a bench, never on a car. The cluster displays are listed and the services
+  probe correctly on both DiLink benches, but no render on a cluster or windshield panel and no
+  wheel press has been seen.
+- There is no ADB cluster fallback: a car with no public cluster display keeps the map on the phone.
 - Android Auto's guidance stream is 16 kHz mono, so every navigation voice sounds duller in the
   car than on the phone, Google's included. A head unit set to play prompts over the phone-call
   link makes it 8 kHz. No setting in Vela changes either.
