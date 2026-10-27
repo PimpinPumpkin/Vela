@@ -463,7 +463,7 @@
     <string name="mapscreen_resume_nav">לחדש ניווט אל %1$s?</string>
     <string name="mapscreen_resume">חדש</string>
     <string name="mapscreen_your_destination">היעד שלך</string>
-    <string name="mapvm_resume_waiting_gps">ממתין ל-GPS כדי לחדש ניווט…</string>
+    <string name="mapvm_resume_waiting_gps">בהמתנה ל־GPS לצורך חידוש הניווט…</string>
     <string name="mapvm_resume_failed">לא ניתן לחדש ניווט</string>
     <string name="update_available_title">Vela %1$s זמין</string>
     <string name="update_downloading">מוריד… %1$d%%</string>
@@ -475,7 +475,7 @@
     <string name="update_car_save">שמור את הקובץ</string>
     <string name="update_car_anyway">עדכן בכל זאת</string>
     <string name="settings_update_auto">בדוק עדכונים בהפעלה</string>
-    <string name="settings_update_auto_hint">בודק ב־GitHub בערך פעם ביום ומציע גרסאות חדשות יותר. אפשר לכבות אם משתמשים ביישום מעדכן.</string>
+    <string name="settings_update_auto_hint">בודק ב־GitHub בערך פעם ביום ומציע גרסאות חדשות יותר. אפשר לכבות אם מעדכנים דרך יישום אחר.</string>
     <string name="settings_update_check_now">בדוק עדכונים</string>
     <string name="settings_update_checking">בודק…</string>
     <string name="settings_update_none">נעשה שימוש בגרסה העדכנית.</string>
@@ -563,7 +563,7 @@
     <string name="map_list_saved">\"%1$s\" נשמרה לרשימות שלך</string>
     <string name="settings_update_nightly">כלול גרסאות nightly</string>
     <string name="settings_update_nightly_hint">עדכן ל-nightly החדש ביותר (טרום-שחרור) במקום רק לגרסאות יציבות. גרסאות nightly טריות יותר אך פחות נבדקו.</string>
-    <string name="settings_lists_export_hint">גבה את הרשימות שלך לקובץ, או שחזר אותן במכשיר אחר.</string>
+    <string name="settings_lists_export_hint">יצירת קובץ גיבוי של הרשימות שלך, או שחזור שלהן במכשיר אחר. הייבוא גם לוקח רשימה מהתיקייה השמורה שהתקבלה מ־Google Takeout (קובץ CSV אחד לכל רשימה) – יתבצע חיפוש של כל מקום ברשימה, ולכן נחוץ חיבור לרשת.</string>
     <string name="settings_lists_imported">יובאו %1$d רשימות</string>
     <string name="settings_places_imported">יובאו %1$d מקומות</string>
     <string name="settings_no_lists">אין עדיין רשימות לייצוא</string>
@@ -638,7 +638,7 @@
     <string name="settings_full_place_load">טען את כל התמונות והביקורות</string>
     <string name="settings_full_place_load_hint">כשכבוי, מקום טוען את התמונות הראשונות ואת עמוד הביקורות הראשון, ו\"תמונות נוספות\" או \"כל הביקורות\" מביאים את השאר. כשדלוק, כל מקום שאתה פותח עובר על כל גלריית התמונות שלו ועד 50 ביקורות, מה שאיטי יותר ושולח ל-Google הרבה יותר בקשות.</string>
     <string name="settings_speech_preload">טען חיפוש קולי בהפעלה</string>
-    <string name="settings_speech_preload_hint">טוען את מודל החיפוש הקולי כש-Vela נפתח, כך שהמיקרופון מקשיב מיד. הוא תופס כ-300 מ\"ב עד שעוברות שתי דקות שקטות. כשכבוי, הוא נטען כשאתה מקיש על תיבת החיפוש. דלוק כברירת מחדל בטלפונים עם כ-8 ג\"ב זיכרון או יותר.</string>
+    <string name="settings_speech_preload_hint">טעינת מודל החיפוש הקולי בעת פתיחת Vela, כך שהמיקרופון מקשיב מיד. היא תופסת כ־300 מ״ב עד שעוברות שתי דקות שקטות. כשאפשרות זו כבויה, המודל נטען בעת הקשה על תיבת החיפוש. מופעלת כברירת מחדל בטלפונים עם כ־8 ג״ב זיכרון או יותר.</string>
     <string name="settings_google_free_links">פתח קישורי Google Maps משותפים</string>
     <string name="settings_google_free_links_hint">קישור Google Maps מקוצר (maps.app.goo.gl) לא מגלה לאן הוא מוביל. כשזה דלוק, Vela שואל פעם אחת את מקצר הקישורים של Google, בלי עוגיות, ופותח את המקום עם המקורות הפתוחים. קישורי google.com/maps מלאים נפתחים בלי לשאול. רשימות משותפות עדיין דורשות Google.</string>
     <string name="mapscreen_system_voices">קולות מערכת</string>
@@ -661,7 +661,7 @@
     <string name="settings_experiments">ניסויים</string>
     <string name="settings_hub_places_sub">מקור המקומות, מה מוצג, דפי מקום</string>
     <string name="settings_hub_appearance_sub">ערכת נושא, סגנון מפה, יחידות, שפה</string>
-    <string name="settings_hub_map_sub">תנועה, תחבורה ציבורית, שכבות, מבנים בתלת-ממד</string>
+    <string name="settings_hub_map_sub">תנועה, תחבורה ציבורית, שכבות, מבנים תלת־ממדיים</string>
     <string name="settings_hub_navigation_sub">הנחיה, מצלמות, בדיקות חיות</string>
     <string name="settings_hub_voice_sub">הוראות מדוברות וקולות</string>
     <string name="settings_hub_search_sub">חיפוש קולי ומודלים של דיבור</string>
@@ -792,7 +792,7 @@
     <string name="settings_clear_map_cache_hint">משחרר את האריחים שהמפה שמרה במטמון בזמן עיון. אזורים שמורים נשמרים.</string>
     <string name="settings_map_cache_cleared">מטמון המפה נוקה</string>
     <string name="settings_delete_offline_all">מחק את כל הנתונים הלא מקוונים</string>
-    <string name="settings_delete_offline_all_hint">מסיר כל אזור שמור, כל אזור שהורד (ניתוב, מקומות, מפה), את שכבות הבניינים והכתובות ואת מטמון העיון, ומכווץ את מסד הנתונים של המפה. הקולות נשמרים. השתמש בזה אם נתוני האחסון למעלה לא תואמים את מה שאתה רואה ברשימות.</string>
+    <string name="settings_delete_offline_all_hint">אפשרות זו מסירה כל אזור שמור, כל אזור שהורד (מסלולים, מקומות, מפה), את שכבות הבניינים והכתובות ואת מטמון הגלישה, ומכווץ את מסד הנתונים של המפה. הקולות נשמרים. יש להשתמש באפשרות זו אם תובנות האחסון למעלה לא תואמות למה שניתן לראות ברשימות.</string>
     <string name="settings_delete_offline_all_title">למחוק את כל הנתונים הלא מקוונים?</string>
     <string name="settings_delete_offline_all_body">כ-%1$s של מפות, ניתוב ומקומות שהורדו יוסרו. מקומות שמורים, נסיעות וקולות נשמרים.</string>
     <string name="mapvm_offline_all_deleted">הנתונים הלא מקוונים נמחקו</string>
@@ -816,7 +816,7 @@
     <string name="settings_places_source_both">שניהם</string>
     <string name="settings_places_source_open_hint">הסמלים מגיעים מהנתונים של Vela. גלילה במפה אף פעם לא יוצרת קשר עם Google, והיא עובדת גם כשאין חיבור לרשת.</string>
     <string name="settings_places_source_google_hint">הסמלים מגיעים מ־Google. כל גלילה במפה שולחת את מיקומך במפה ל־Google, ושום דבר לא עובד כשאין חיבור לרשת.</string>
-    <string name="settings_places_source_both_hint">הסמלים של Vela, ובנוסף מה שיש ל-Google מעבר לכך כשתפסיק לגלול.</string>
+    <string name="settings_places_source_both_hint">הסמלים של Vela, יחד עם כל מה שיש ל־Google להציע בנוסף לאחר עצירה על מיקום במפה.</string>
     <string name="settings_places_source_more">מידע נוסף</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_places_lookup">בדוק ב-Google מקומות שהקשת עליהם</string>
@@ -964,7 +964,7 @@
     <string name="voice_cmd_eta">זמן הגעה, בזמן נסיעה</string>
     <string name="voice_cmd_hint">הפקודות עובדות בדיבור או בהקלדה בשורת החיפוש, בשפת היישום או באנגלית. כל דבר אחר מופעל כחיפוש רגיל.</string>
     <string name="settings_map_data">נתוני מפה</string>
-    <string name="settings_map_data_hint">המפה, הרחובות, התוויות ומספרי הבתים שלה הם נתוני OpenStreetMap, הזמינים תחת Open Database License, ומוגשים כאריחים וקטוריים על ידי OpenFreeMap. העסקים על המפה באזורים המכוסים הם נתוני מקומות של Overture Maps Foundation (ממקורות Meta ו-Microsoft), הזמינים תחת Community Data License Agreement, Permissive 2.0. פרטי מקומות, ביקורות, ניתוב ותנועה מגיעים מ-Google. תצלומי לוויין הם מ-Esri ומ-Google.</string>
+    <string name="settings_map_data_hint">המפה, הרחובות, התוויות ומספרי הבתים שלה הם נתוני OpenStreetMap, הזמינים תחת Open Database License, ומוגשים כאריחים וקטוריים על ידי OpenFreeMap. העסקים על המפה באזורים המכוסים הם נתוני מקומות של Overture Maps Foundation (ממקורות Meta ו-Microsoft), הזמינים תחת Community Data License Agreement, Permissive 2.0. פרטי מקומות, ביקורות, ניתוב ותנועה מגיעים מ-Google. תצלומי לוויין הם מ-Esri ומ-Google. אופן ההגייה של 3,500 שמות מקומות באנגלית מגיע מוויקיפדיה האנגלית ותורמיה, תחת רישיון CC-BY-SA 4.0.</string>
     <string name="settings_map_data_button">זכויות היוצרים של OpenStreetMap</string>
     <string name="settings_map_data_overture_button">רישיון Overture Maps</string>
     <string name="settings_theme_auto">יום ולילה</string>
@@ -1078,7 +1078,7 @@
     <string name="google_usage_kind_photos">תמונות</string>
     <string name="google_usage_kind_reviews">ביקורות</string>
     <string name="google_usage_kind_images">תצלומים</string>
-    <string name="google_usage_kind_directions">הוראות הגעה ותנועה</string>
+    <string name="google_usage_kind_directions">הוראות הגעה ותחבורה</string>
     <string name="google_usage_kind_suggestions">הצעות חיפוש</string>
     <string name="google_usage_kind_streetview">Street View</string>
     <string name="google_usage_kind_session">התחלת הפעלה</string>
@@ -1097,7 +1097,7 @@
     <string name="settings_storage_no_space">אין שם מספיק מקום: הנתונים הלא מקוונים דורשים כ-%1$d מ\"ב.</string>
     <string name="settings_storage_moved">הנתונים הלא מקוונים הועברו.</string>
     <string name="settings_storage_failed">ההעברה לא הושלמה; הנתונים הלא מקוונים נשארו במקומם.</string>
-    <string name="settings_maps_links_on">קישורים ל-Google Maps נפתחים ב-Vela.</string>
+    <string name="settings_maps_links_on">קישורי Google Maps נפתחים ב-Vela.</string>
     <string name="settings_maps_links_partial">חלק מקישורי Google Maps נפתחים ב-Vela. הוסף את השאר תחת \"פתיחה כברירת מחדל\" כדי שכל סוגי הקישורים ייפתחו בו.</string>
     <string name="settings_maps_links_off">Android פותח קישורי Google Maps בדפדפן. כדי לפתוח אותם ב-Vela, הפעל את \"פתיחת קישורים נתמכים\" והוסף את הקישורים תחת \"פתיחה כברירת מחדל\".</string>
     <string name="settings_maps_links_open">הגדרות \"פתיחה כברירת מחדל\"</string>
@@ -1384,4 +1384,7 @@
     </plurals>
     <string name="settings_zoom_key_none">לא הוגדר</string>
     <string name="settings_zoom_key_clear">ניקוי</string>
+    <string name="welcome_google_on_gives">ביקורות, תמונות, תנועה בזמן אמת ו־Street View.</string>
+    <string name="car_setting_traffic">תחבורה</string>
+    <string name="settings_google_uses_traffic">תחבורה ומסלולים</string>
 </resources>
