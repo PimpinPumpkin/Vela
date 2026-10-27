@@ -348,7 +348,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Every screen works with a D-pad and an OK key, and every control shows a focus ring.
 - On the map, arrows pan, OK opens what is under the crosshair, holding OK drops a pin, and buttons
   zoom.
-- "Zoom in key" and "Zoom out key" give zoom to any two keys, such as 2 and 5 on a keypad.
+- Map keys zoom, pan, rotate and select from anywhere on the map, one key each. "Use the keypad
+  layout" puts them on 1 to 9, with 5 selecting what is under a crosshair in the middle of the map.
+  Zoom, pan and rotation repeat while their key is held.
 - Each gesture has a key path, including the step list, the banner's look-ahead and Street View.
 - [docs/dpad.md](docs/dpad.md) has the details.
 

@@ -11,7 +11,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
   numbers, names on the map (English then romanized, English then local, local only, or local
   and English), where the map opens.
 - Places: "Place icons on the map", which places the map draws, what a place page loads.
-- Navigation: route picker, road-ahead bar, arrow, speed limit, road numbers first, zoom keys,
+- Navigation: route picker, road-ahead bar, arrow, speed limit, road numbers first, map keys,
   cameras ([chapter 3](03-cameras.md)), traffic rechecks.
 - Voice: spoken directions, street names, the voice library, speed and volume.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,
@@ -36,6 +36,9 @@ finger. Settings > Appearance > Page transitions turns the motion off and leaves
 
 On a keypad phone every page opens with its Back button focused, and returning to the list
 focuses the row you came from.
+
+Assigned map keys repeat zoom, pan and rotation while held
+([SPEC 10.3](../../SPEC.md#103-d-pad-operation)).
 
 ## Where the data comes from
 

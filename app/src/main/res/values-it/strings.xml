@@ -1357,7 +1357,6 @@
     <string name="settings_zoom_key_in">Tasto di zoom in</string>
     <string name="settings_zoom_key_out">Tasto di zoom out</string>
     <string name="settings_zoom_key_none">Non impostato</string>
-    <string name="settings_zoom_keys_hint">Due tasti che consentono di ingrandire o ridurre la mappa da qualsiasi punto della stessa, come i tasti 2 e 5 di un tastierino numerico. Se utilizzati all\'interno di un campo di testo, continuano a digitare i caratteri corrispondenti.</string>
     <string name="settings_zoom_key_press">Premi il tasto da usare. Le freccette, OK e indietro sono già utilizzati.</string>
     <string name="settings_zoom_key_clear">Pulisci</string>
     <string name="nav_left_your_route">Lasciato “%1$s”. Percorro la strada più veloce.</string>

@@ -5168,8 +5168,9 @@ reuses it.
 - `MapScreen` takes no new call or parameter. It is at the JVM method-size limit ("Method too
   large" in the debug compile) and at ART's verifier limit, which fails on the phone. New
   floating pieces go in `MapFloaters` (the replay controls, the Street View preview, driving
-  mode's chrome), `NavCorner` (the speed box and Re-center) or `LayersCorner` (the layers button
-  and its panel), each of which decides for itself when to draw.
+  mode's chrome, the map keys' crosshair), `NavCorner` (the speed box and Re-center) or
+  `LayersCorner` (the layers button and its panel), each of which decides for itself when to
+  draw.
 
 - UI font: Settings > Appearance > Font offers Google Sans Flex (the default; SIL OFL 1.1, in
   `res/font`, license in `assets/licenses`), the system font (pref `ui_font_system`), or a
@@ -5400,11 +5401,40 @@ The whole UI works with a five-key D-pad and no touchscreen.
   narrow screen reports `MIN_WIDTH_DP` (360 dp) of width. At 360 dp and above it does nothing.
 - `adb shell input text` and `keyevent` flip the live input mode to Keyboard, which disables the
   unarmed search field. That is the test tool's effect.
-- Zoom keys (`ui/ZoomKeys`, prefs `zoom_key_in` and `zoom_key_out`, 0 for none): two key codes
-  set in Settings > Navigation by pressing the key. `MainActivity.dispatchKeyEvent` zooms one
-  level on the key's first down while the map is showing. A printing key is offered after
-  `super`, so a text field keeps it. A non-printing key is offered before. The arrows, OK,
-  Enter, Back, Home, Menu and Power cannot be assigned.
+- Map keys (`ui/MapKeys`): one key code per action, 0 for none, set in Settings > Navigation by
+  pressing the key. The prefs are `zoom_key_in`, `zoom_key_out`, `map_key_pan_up`,
+  `map_key_pan_down`, `map_key_pan_left`, `map_key_pan_right`, `map_key_rotate_ccw`,
+  `map_key_rotate_cw` and `map_key_select`. Giving a key to one action takes it from any other.
+  "Use the keypad layout" sets 1 zoom out, 3 zoom in, 2 pan up, 8 pan down, 4 pan left, 6 pan
+  right, 7 rotate clockwise, 9 rotate counterclockwise and 5 select.
+- `MainActivity.dispatchKeyEvent` hands a map key to `MapDpadController` while the map is
+  showing. A printing key is offered after `super`, so a text field keeps it. A non-printing key
+  is offered before. The arrows, OK, Enter, Back, Home, Menu and Power cannot be assigned.
+- Zoom moves one level, pan moves 22% of the view and rotate turns the map `ROTATE_DEG`
+  (15 degrees) on every down, so all three repeat while held. A turn reports itself as a
+  finger turn does, so one that ends within 12 degrees of north springs back to it; 15 degrees is
+  above that. Rotate does nothing under North lock.
+- Zoom and rotate keep the spot under the crosshair where it is (`MapDpadController.zoomAt`,
+  `rotateBy` with a point); with nothing visible they work about the camera's target. Zoom and
+  rotation use MapLibre's native focal transforms, as touch does, so tilt and padding do not
+  move the ground point under the crosshair. Pan uses native screen-space movement, with map
+  content moving opposite the requested camera direction. The D-pad arrows share this pan
+  path, and the on-screen zoom buttons share the camera-target zoom path.
+- Select taps the middle of the visible map on the key's up and long-presses there once the key
+  has been held 500 ms, through the same tap and long-press paths as a finger. While a select key
+  is set, `MapKeysCrosshair` (in `MapFloaters`) draws a crosshair at that point, except in Choose
+  on map, which has its own pin. During a drive the crosshair shows only once the camera has left
+  the car (`navCameraDetached` or a previewed step); while it follows, the select key does nothing.
+  A key pan detaches it, as a finger pan does.
+- The visible map is what the panels leave uncovered (`MapCover`, `core/util/VisibleArea`). Every
+  panel or sheet that covers part of the map reports its bounds with `Modifier.coversMap()` on its
+  outermost element; the search page reports the whole map with `CoversWholeMap()`. Each panel is
+  cut away from one side, and the largest rectangle any choice of sides leaves is the visible map,
+  so a card stacked on a landscape side panel keeps the full-height column beside both. When
+  nothing is left, the crosshair hides and select does nothing. The search bar reports, and counts only
+  while another panel covers the map too, so on the bare map the crosshair stays in the middle of
+  the screen with the D-pad map target's. The chips, map buttons and floating pills do not report. A panel that does not report is invisible here: the
+  crosshair draws over it.
 
 Per-surface audits and the contributor procedure are in `docs/dpad.md`. The regression suite is
 `dpad_test_suite/` (`run_all.sh`, `audit_static.sh`, `audit_dynamic.sh`). CI runs
