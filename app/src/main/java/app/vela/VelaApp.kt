@@ -150,6 +150,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.SpeedCams.init(this) // same init-or-it-reads-false trap as Flock
         app.vela.ui.SpeedCamWarn.init(this) // spoken camera warning (issue #229), off by default
         app.vela.ui.SpeedingAlert.init(this) // spoken over-the-limit alert (issue #404), off by default
+        app.vela.ui.LimitDropAlert.init(this) // warning before the limit ahead drops (issue #857), off by default
         app.vela.ui.BridgeAlert.init(this) // bridge openings on the route in the Netherlands, on by default
         app.vela.ui.BikeSafe.init(this) // bike routes prefer lanes and quiet streets (issue #401), on by default
         // The chooser's sticky avoid toggles, for the nav session's own fetches from the first

@@ -363,6 +363,41 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.SpeedingAlert.set(context, it) },
             hint = stringResource(R.string.settings_speeding_alert_hint),
         )
+        // Warning before the posted limit ahead drops sharply (issue #857): off by default, with
+        // the size of drop and the voice nested under it. The logic is in :core LimitDrops.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_limit_drop_alert),
+            checked = app.vela.ui.LimitDropAlert.on.value,
+            onCheckedChange = { app.vela.ui.LimitDropAlert.set(context, it) },
+            hint = stringResource(R.string.settings_limit_drop_alert_hint),
+        )
+        if (app.vela.ui.LimitDropAlert.on.value) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(stringResource(R.string.settings_limit_drop_min), style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+                    val dropFocus = remember { List(app.vela.ui.LimitDropAlert.KMH.size) { FocusRequester() } }
+                    val values = if (app.vela.ui.Units.imperial.value) app.vela.ui.LimitDropAlert.MPH else app.vela.ui.LimitDropAlert.KMH
+                    val unit = if (app.vela.ui.Units.imperial.value) "mph" else "km/h"
+                    values.forEachIndexed { i, v ->
+                        FilterChip(
+                            selected = app.vela.ui.LimitDropAlert.level.intValue == i,
+                            onClick = { app.vela.ui.LimitDropAlert.setLevel(context, i) },
+                            label = { Text("$v $unit") },
+                            shape = CircleShape,
+                            modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(dropFocus, i),
+                        )
+                    }
+                }
+            }
+            ToggleRow(
+                label = stringResource(R.string.settings_limit_drop_voice),
+                checked = app.vela.ui.LimitDropAlert.voice.value,
+                onCheckedChange = { app.vela.ui.LimitDropAlert.setVoice(context, it) },
+                hint = stringResource(R.string.settings_limit_drop_voice_hint),
+            )
+        }
         }
 
         SettingsGroup {

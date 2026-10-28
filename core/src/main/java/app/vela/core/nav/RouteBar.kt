@@ -21,14 +21,15 @@ object RouteBar {
     /** What a mark on the bar represents. The kinds are exactly the ones Vela already draws on the
      *  map, so the bar can never claim knowledge the map does not have. */
     /** [priority]: which member of a merged cluster is drawn (higher wins); badges beat dots. */
-    enum class Mark(val priority: Int) { SIGNAL(0), STOP(1), SPEED_HUMP(2), RAIL_CROSSING(3), CAMERA(4) }
+    enum class Mark(val priority: Int) { SIGNAL(0), STOP(1), SPEED_HUMP(2), RAIL_CROSSING(3), CAMERA(4), LIMIT_DROP(5) }
 
     /** A congestion band, as a fraction of the REMAINING trip: 0 = where you are, 1 = destination.
      *  [level] is Google's grade (1 moderate, 2 heavy, 3+ severe). */
     data class Band(val level: Int, val from: Double, val to: Double)
 
-    /** One mark placed on the bar, again as a fraction of the remaining trip. */
-    data class Pin(val kind: Mark, val at: Double)
+    /** One mark placed on the bar, again as a fraction of the remaining trip. [limitKmh] is the
+     *  new limit a [Mark.LIMIT_DROP] shows, null for every other kind. */
+    data class Pin(val kind: Mark, val at: Double, val limitKmh: Double? = null)
 
     data class Model(
         val bands: List<Band>,
@@ -79,6 +80,7 @@ object RouteBar {
      * [markMeters] is each mark's own distance along the route (from [alongMeters]); anything
      * already behind you, or past the destination, is dropped rather than clamped to an end - a
      * pin pinned at your own position reads as "right here" and would be a lie.
+     * [limitDrops] are the speed limit drops ahead ([LimitDrops.find]), already in route meters.
      */
     fun build(
         route: Route,
@@ -86,6 +88,7 @@ object RouteBar {
         markMeters: List<Pair<Mark, Double>> = emptyList(),
         windowM: Double = WINDOW_M,
         totalM: Double? = null,
+        limitDrops: List<LimitDrops.Drop> = emptyList(),
     ): Model {
         // The polyline's own length when the caller has it: traveledM and the marks are both
         // measured along the polyline, while Route.distanceMeters is the router's figure, and a
@@ -111,10 +114,11 @@ object RouteBar {
             }
             .filter { it.to > it.from }
 
-        val pins = markMeters
-            .filter { (_, m) -> m > done && m <= end }
+        val pins = (markMeters.map { (kind, m) -> Triple<Mark, Double, Double?>(kind, m, null) } +
+            limitDrops.map { Triple<Mark, Double, Double?>(Mark.LIMIT_DROP, it.atM, it.toKmh) })
+            .filter { (_, m, _) -> m > done && m <= end }
             .sortedBy { it.second }
-            .fold(mutableListOf<Pair<Mark, Double>>()) { acc, item ->
+            .fold(mutableListOf<Triple<Mark, Double, Double?>>()) { acc, item ->
                 // Collapse a cluster to ONE member: the point is "something is coming up here",
                 // and two glyphs a pixel apart carry no more information than one. The kept
                 // member is the one that says the most: a camera or a crossing (a badge) over a
@@ -124,7 +128,7 @@ object RouteBar {
                 else if (item.first.priority > acc.last().first.priority) acc[acc.lastIndex] = item
                 acc
             }
-            .map { (kind, m) -> Pin(kind, frac(m)) }
+            .map { (kind, m, kmh) -> Pin(kind, frac(m), kmh) }
 
         return Model(bands, pins, span, reaches)
     }

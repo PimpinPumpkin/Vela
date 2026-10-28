@@ -555,6 +555,7 @@ class MapViewModel @Inject constructor(
             this@MapViewModel.sanePosition(here, prev, lastSpeed, dt, outlierStreak)
         override fun gateMeasuredSpeed(raw: Float, dt: Double): Float? = this@MapViewModel.gateMeasuredSpeed(raw, dt)
         override fun onNavRoadLatin(map: Map<String, String>) = this@MapViewModel.onNavRoadLatin(map)
+        override suspend fun roadLimitLookup(near: LatLng): (LatLng) -> Double? = this@MapViewModel.roadLimitLookup(near)
     }
     private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost)
     // UK gas stations get their price from the Fuel Finder file (SPEC 5.8). Above init like nav.
@@ -9398,6 +9399,18 @@ class MapViewModel @Inject constructor(
         if (st.cellsInstalled.any { p.lat in it.s..it.n && p.lng in it.w..it.e }) return true
         if (st.routingRegions.isEmpty()) return runCatching { routeEngine.covers(p, p, TravelMode.DRIVE) }.getOrDefault(false)
         return st.routingRegions.any { it.id in st.routingInstalledIds && it.covers(p.lat, p.lng) }
+    }
+
+    /** A blocking posted-limit lookup for points on the route ahead (the speed limit drop warning),
+     *  with the badge's choice of source at each point: the downloaded region where it holds the
+     *  roads, else the streamed archives covering [near]. Call the result off the main thread. */
+    private suspend fun roadLimitLookup(near: LatLng): (LatLng) -> Double? {
+        val uris = runCatching { maxspeedStore.sourcesFor(near, app.vela.core.config.VelaLinks.maxspeedManifest()) }.getOrDefault(emptyList())
+        return { p ->
+            if (limitsOnPhone(p)) runCatching { routeEngine.currentRoadLimit(p.lat, p.lng) }.getOrNull()
+            else if (uris.isEmpty()) null
+            else runCatching { app.vela.data.StreamedSpeedLimit.limitAt(uris, p.lat, p.lng) }.getOrNull()
+        }
     }
 
     private fun refreshMaxspeedOverlay(center: LatLng? = mapCenter ?: _state.value.myLocation) {

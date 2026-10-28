@@ -3,6 +3,7 @@ package app.vela.ui.nav
 import app.vela.ui.icons.Sym
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.core.nav.RouteBar
 import app.vela.ui.formatDistance
@@ -87,6 +90,32 @@ fun RouteBarStrip(model: RouteBar.Model, modifier: Modifier = Modifier) {
                             bitmap = stopImage, contentDescription = null,
                             modifier = Modifier.size(MINI.dp).span(p.at, p.at, kind = ROLE_DOT),
                         )
+                        // A speed limit drop (issue #857) is the new limit's sign, drawn like the
+                        // speed badge: a red-ring disc in km/h, a black-edged rectangle in mph.
+                        RouteBar.Mark.LIMIT_DROP -> {
+                            val imperial = app.vela.ui.Units.imperial.value
+                            val shape = if (imperial) RoundedCornerShape(4.dp) else CircleShape
+                            Box(
+                                Modifier
+                                    .size(BADGE.dp)
+                                    .shadow(2.dp, shape)
+                                    .clip(shape)
+                                    .background(Color.White)
+                                    .border(if (imperial) 2.dp else 3.dp, if (imperial) Color.Black else pinColor(p.kind), shape)
+                                    .span(p.at, p.at, kind = ROLE_BADGE),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    app.vela.ui.formatSpeedLimit(p.limitKmh ?: 0.0).first.toString(),
+                                    color = Color.Black,
+                                    // Sized in dp so a large font setting cannot push three digits out of the sign.
+                                    fontSize = with(LocalDensity.current) { 10.dp.toSp() },
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            }
+                        }
                         else -> Box(
                             Modifier
                                 .size(BADGE.dp)
@@ -187,6 +216,7 @@ private fun pinColor(kind: RouteBar.Mark): Color = when (kind) {
     RouteBar.Mark.SPEED_HUMP -> Color(0xFFFFA000)
     RouteBar.Mark.STOP -> Color(0xFFD32F2F)
     RouteBar.Mark.SIGNAL -> Color(0xFF388E3C)
+    RouteBar.Mark.LIMIT_DROP -> Color(0xFFD32F2F)    // the limit sign's red ring
 }
 
 private fun Modifier.span(from: Double, to: Double, kind: Int) = this.then(RouteBarSpan(from, to, kind))
