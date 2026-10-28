@@ -199,6 +199,23 @@ The search bar's mic turns speech into a query one of two ways:
 With neither available, the mic offers to download Vela's own model. Settings > Search turns
 the feature off.
 
+## BYD car integrations (optional, off by default)
+
+On a BYD head unit, Vela can draw its map on the instrument cluster, fill a cluster's built-in
+turn view, and act on the steering wheel's voice button. None is on until you turn it on, and
+none sends anything anywhere: they draw on the car's own displays and talk to the car's own
+software on the same device. There is no server and no account, as everywhere else in Vela.
+
+The steering-wheel voice button needs an accessibility service, which Android requires you to
+enable yourself in Settings. Vela uses it only to read the wheel's voice button while you are
+navigating, so it can repeat the current direction. It reads nothing on the screen (the service
+is declared with `canRetrieveWindowContent` false) and takes no other key. Vela does not handle
+phone calls, so it does not touch the wheel's call keys or any call signal.
+
+Settings > Diagnostics shows which of these the car offers and whether each is on. The debug
+export, if you make one, records those states and the car's display names; it carries no vehicle
+identifier and no location.
+
 ## Diagnostics (off by default)
 
 Settings > Diagnostics > "Share diagnostics" keeps a short local log of what the app did:

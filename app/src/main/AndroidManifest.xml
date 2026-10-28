@@ -244,6 +244,24 @@
                 <data android:scheme="geo" />
             </intent-filter>
         </service>
+
+        <!-- Optional BYD steering-wheel voice key (SPEC 10.9). A filtering accessibility service,
+             off until the user enables it in Android Settings, that repeats the current spoken
+             instruction when the wheel's voice button is pressed during a drive. It reads no screen
+             content (canRetrieveWindowContent=false). Guarded by BIND_ACCESSIBILITY_SERVICE. -->
+        <service
+            android:name=".vehicle.SteeringWheelService"
+            android:exported="false"
+            android:label="@string/steering_wheel_a11y_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/steering_wheel_accessibility_config" />
+        </service>
+
         <!-- Marks Vela as optimized for constrained satellite data (issue #235): carriers that
              gate satellite cell service to approved apps (Rogers, AT&T, KDDI) allow its traffic.
              Everything heavy is already optional/deferrable, so the label is honest. -->

@@ -46,12 +46,14 @@ object NavReplay {
         val firstAnnounceAheadM: Double?, // true along-route distance to the turn when first announced (null = never)
         val worstCardErrorM: Double,     // worst |card distance − real distance| while it was the target
         val nearestApproachM: Double,    // closest the track actually came to the turn (along-route)
+        val ringExit: Boolean = false,   // a roundabout's exit right after its entry (NavEngine.ringExit)
     ) {
         // CONTINUE is voice-silent BY DESIGN (same-road straight-on, see NavEngine's
         // redundantContinue) — exempt it like DEPART or every intentional silence on a real
-        // trip log would be reported as "‼ SILENT (never announced)" noise.
+        // trip log would be reported as "‼ SILENT (never announced)" noise. A roundabout's exit
+        // after its entry is silent by design too.
         private val isTurn: Boolean get() =
-            type != ManeuverType.ARRIVE && type != ManeuverType.DEPART && type != ManeuverType.CONTINUE
+            type != ManeuverType.ARRIVE && type != ManeuverType.DEPART && type != ManeuverType.CONTINUE && !ringExit
 
         /** Heuristics for "this maneuver's guidance and the blue line disagree" — the things that
          *  made the real-world drive wrong. Tuned to flag the field bugs without crying wolf on a
@@ -177,6 +179,7 @@ object NavReplay {
                 firstAnnounceAheadM = firstAhead[i],
                 worstCardErrorM = worstErr[i],
                 nearestApproachM = nearest[i].takeIf { it != Double.MAX_VALUE } ?: 0.0,
+                ringExit = NavEngine.ringExit(maneuvers, i),
             )
         }
         return Report(cards, diffs)

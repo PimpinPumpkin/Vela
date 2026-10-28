@@ -407,7 +407,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val consolidated = rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers))))
+        val consolidated = foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers)))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -439,6 +439,89 @@ object RouteGeometry {
     }
 
     private const val RAMP_TURN_MAX_M = 600.0
+
+    /**
+     * A turn split in two by a turn lane mapped as its own way: a short unnamed slight turn where
+     * the lane peels off the road, then the turn onto the street, the same way. A real drive heard
+     * "Turn slight right, then turn slight right onto" a street for one right turn at a divided
+     * corner, four times on the way in. The pair becomes one turn at the first step's place, where
+     * the lane is taken, onto the second step's road, worded "Turn left" or "Turn right" by how far
+     * the line turns across both. Only when the first step bends the line [TURN_LANE_PEEL_DEG] or
+     * less and runs at most [TURN_LANE_MAX_M], and the line turns [TURN_LANE_MIN_DEG] to
+     * [TURN_LANE_MAX_DEG] across the two, so two real turns a block apart stay two. [poly] is the
+     * line the steps tile.
+     */
+    internal fun foldTurnLanes(poly: List<LatLng>, list: List<Maneuver>): List<Maneuver> {
+        if (poly.size < 2 || list.size < 3) return list
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val along = DoubleArray(list.size)
+        for (i in 1 until list.size) along[i] = along[i - 1] + list[i - 1].distanceMeters
+        val out = ArrayList<Maneuver>(list.size)
+        var i = 0
+        while (i < list.size) {
+            val one = list.getOrNull(i + 1)?.let { turnLane(poly, cum, list[i], along[i], it, along[i + 1]) }
+            if (one != null) { out += one; i += 2 } else { out += list[i]; i++ }
+        }
+        return out
+    }
+
+    private fun turnLane(poly: List<LatLng>, cum: DoubleArray, a: Maneuver, atA: Double, b: Maneuver, atB: Double): Maneuver? {
+        val right = when (a.type) {
+            ManeuverType.SLIGHT_RIGHT -> true
+            ManeuverType.SLIGHT_LEFT -> false
+            else -> return null
+        }
+        val sameSide = if (right) b.type in RIGHT_TURNS else b.type in LEFT_TURNS
+        val road = b.road ?: b.ref
+        if (!sameSide || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
+        if (a.distanceMeters > TURN_LANE_MAX_M || atA < TURN_LANE_LOOK_M || atB + TURN_LANE_LOOK_M > cum.last()) return null
+        fun heading(from: Double, to: Double): Double {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)
+            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, to)
+            return Math.toDegrees(kotlin.math.atan2((q.lng - p.lng) * kotlin.math.cos(Math.toRadians(p.lat)), q.lat - p.lat))
+        }
+        fun turn(h1: Double, h2: Double) = ((h2 - h1 + 540.0) % 360.0) - 180.0
+        val before = heading(atA - TURN_LANE_LOOK_M, atA - 3.0)
+        val lane = heading(atA + 3.0, maxOf(atA + 6.0, atB - 3.0))
+        val after = heading(atB + 3.0, atB + TURN_LANE_LOOK_M)
+        val sign = if (right) 1.0 else -1.0
+        val peel = turn(before, lane) * sign
+        val whole = turn(before, after) * sign
+        val fold = peel <= TURN_LANE_PEEL_DEG && peel >= -TURN_LANE_PEEL_DEG / 2 && whole >= TURN_LANE_MIN_DEG && whole <= TURN_LANE_MAX_DEG
+        onTurnLane?.invoke(a, b, peel, whole, fold)
+        if (!fold) return null
+        val mod = if (right) "right" else "left"
+        return b.copy(
+            type = if (right) ManeuverType.TURN_RIGHT else ManeuverType.TURN_LEFT,
+            instruction = osrmPhrase("turn", mod, road, null, null, null),
+            instructionNoRoad = osrmPhrase("turn", mod, null, null, null, null),
+            location = a.location,
+            distanceMeters = a.distanceMeters + b.distanceMeters,
+            // The time too, or the remaining time runs short.
+            durationSeconds = a.durationSeconds + b.durationSeconds,
+            lanes = a.lanes.ifEmpty { b.lanes },
+            laneHint = a.laneHint ?: b.laneHint,
+            renames = a.renames + b.renames.map { it.copy(atMeters = it.atMeters + a.distanceMeters) },
+            lightsBeforeM = a.lightsBeforeM,
+        )
+    }
+
+    private val RIGHT_TURNS = setOf(ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT)
+    private val LEFT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT)
+
+    /** Desk studies only (NamingStudyTest): every pair [foldTurnLanes] measures, with the lane's
+     *  bend, the turn across both, and whether it folded. */
+    @Volatile internal var onTurnLane: ((first: Maneuver, second: Maneuver, peelDeg: Double, wholeDeg: Double, folded: Boolean) -> Unit)? = null
+
+    /** The lane before the turn is at most this long. */
+    const val TURN_LANE_MAX_M = 120.0
+    /** The lane leaves the road at no more than this angle (degrees). */
+    const val TURN_LANE_PEEL_DEG = 45.0
+    /** Across both steps the line turns at least this far, and at most [TURN_LANE_MAX_DEG]. */
+    const val TURN_LANE_MIN_DEG = 60.0
+    const val TURN_LANE_MAX_DEG = 135.0
+    /** The headings are read over this much line before the first step and after the second. */
+    private const val TURN_LANE_LOOK_M = 30.0
 
     /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
      *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
