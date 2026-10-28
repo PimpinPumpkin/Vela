@@ -103,6 +103,9 @@ turn. The voice says "turn left" 25 m out either way.
   Its approach prompt says the same side ("Your destination will be on the right"). A pin on the
   line itself gives no side: the approach says "will be ahead" and the arrival is "You have
   arrived".
+- A fork on an exit ramp is its own step, said like any fork. One close to the exit rides on the
+  exit's line: "Take the exit toward ..., then keep left". The merge at the ramp's end is folded
+  into the step before it.
 - A continue or a straight-on is silent unless its lanes show a real fork.
 - A roundabout is said at its entry, with the exit to take. Its own exit step right after the
   entry says nothing and is never the "then" of a chained line.

@@ -38,7 +38,7 @@ class StepFoldTimesTest {
         assertEquals("the steps' times add up to the trip's", 400.0, r.maneuvers.sumOf { it.durationSeconds }, 0.01)
     }
 
-    @Test fun `an exit complex folded into its ramp keeps the folded steps' time`() {
+    @Test fun `a merge folded into an exit's fork keeps the folded steps' time`() {
         val ms = listOf(
             Maneuver(ManeuverType.DEPART, "Head east", east(0.0), 1000.0, 60.0),
             Maneuver(ManeuverType.RAMP_RIGHT, "Take exit 15", east(1000.0), 200.0, 20.0),
@@ -47,8 +47,9 @@ class StepFoldTimesTest {
             Maneuver(ManeuverType.ARRIVE, "Arrive", east(4350.0), 0.0, 0.0),
         )
         val out = RouteGeometry.consolidateExits(ms)
-        assertEquals(3, out.size)
-        assertEquals(3350.0, out[1].distanceMeters, 0.01)
-        assertEquals(185.0, out[1].durationSeconds, 0.01)
+        assertEquals(4, out.size)
+        assertEquals(200.0, out[1].distanceMeters, 0.01)
+        assertEquals(3150.0, out[2].distanceMeters, 0.01)
+        assertEquals(165.0, out[2].durationSeconds, 0.01)
     }
 }

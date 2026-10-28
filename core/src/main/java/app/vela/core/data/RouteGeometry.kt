@@ -523,65 +523,69 @@ object RouteGeometry {
     /** The headings are read over this much line before the first step and after the second. */
     private const val TURN_LANE_LOOK_M = 30.0
 
-    /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
-     *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
-     *  its OWN spoken prompt seconds apart ("Take exit 18" … "Keep right" … "Merge onto I-80"), the reported
-     *  "it told me related instructions over and over." Google says it once. Fold a ramp's IMMEDIATELY-
-     *  following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 18
-     *  toward …"), SUM the distances so the step lengths still tile the polyline (NavEngine locates each
-     *  maneuver by a prefix-sum of step distances), and drop the redundant follow-ups. It stops at the first
-     *  real turn / next ramp / continue / arrive, and at a > [EXIT_COMPLEX_GAP_M] gap, so a genuine later
-     *  decision (a fork to a different highway a km on) is never swallowed. */
+    /** Fold the MERGE steps of an EXIT / interchange complex into the step before them. OSRM splits
+     *  leaving a highway into a ramp step plus trailing fork/merge steps. A merge is no decision, so a
+     *  ramp's or a fork's IMMEDIATELY-following, SHORT-gapped merges are folded into it: its instruction
+     *  is kept and the distances and times SUMMED, so the step lengths still tile the polyline (NavEngine
+     *  locates each maneuver by a prefix-sum of step distances). A fork on the ramp is where the ramp
+     *  splits and is kept as its own step ("Keep left toward ..."): folded, the exit was said and the
+     *  split never was. One close to the ramp rides on the ramp's line ("Take exit 18, then keep left",
+     *  NavEngine.chainedNext). The complex stops at the first real turn / next ramp / continue / arrive,
+     *  and at a > [EXIT_COMPLEX_GAP_M] gap. */
     internal fun consolidateExits(list: List<Maneuver>): List<Maneuver> {
         val out = mutableListOf<Maneuver>()
+        val isFork = { m: Maneuver -> m.type == ManeuverType.FORK_LEFT || m.type == ManeuverType.FORK_RIGHT }
         var i = 0
+        var inComplex = false
         while (i < list.size) {
             val m = list[i]
-            if (m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT) {
-                var j = i + 1
-                var folded = m.distanceMeters
-                var foldedS = m.durationSeconds // the time too, or the remaining time runs short
-                while (j < list.size &&
-                    (list[j].type == ManeuverType.FORK_LEFT || list[j].type == ManeuverType.FORK_RIGHT ||
-                        list[j].type == ManeuverType.MERGE) &&
-                    list[j - 1].distanceMeters < EXIT_COMPLEX_GAP_M
-                ) {
-                    folded += list[j].distanceMeters
-                    foldedS += list[j].durationSeconds
-                    j++
-                }
-                if (j > i + 1) {
-                    // The shared ramp's sign often lists BOTH directions of the target highway
-                    // ("99 North, 99 South" - one onramp splitting later); the folded FORK is the
-                    // branch actually taken, so its instruction disambiguates. Keep the ramp's
-                    // phrasing/arrow but drop the not-taken direction from its destination list,
-                    // and adopt the fork's lane diagram when the ramp has none (that split is
-                    // where the lane choice matters). Voice + shield chips both read from the
-                    // instruction, so both stop announcing the wrong direction (user 2026-07-16).
-                    val branch = list.subList(i + 1, j).lastOrNull { it.instruction.isNotBlank() }
-                    out += m.copy(
-                        distanceMeters = folded,
-                        durationSeconds = foldedS,
-                        instruction = disambiguateDest(m.instruction, branch?.instruction),
-                        // The nameless twin gets the same surgery, or with spoken street names
-                        // off the voice would go back to announcing BOTH directions of the split
-                        // - the exact bug disambiguateDest exists to fix (issue #596).
-                        instructionNoRoad = m.instructionNoRoad?.let { disambiguateDest(it, branch?.instruction) },
-                        lanes = m.lanes.ifEmpty { branch?.lanes.orEmpty() },
-                        laneHint = m.laneHint ?: branch?.laneHint,
-                        // The road ENTERED by the fold is the branch's (the ramp itself is
-                        // nameless/ref-less) - without this, passing a folded on-ramp left the
-                        // "current road" with no ref and the bottom bar's persistent highway
-                        // shield never appeared on the freeway it exists for (device 2026-07-17).
-                        road = m.road ?: branch?.road,
-                        ref = m.ref ?: branch?.ref,
-                    )
-                    i = j
-                    continue
-                }
+            val isRamp = m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT
+            if (!isRamp && !(inComplex && isFork(m))) {
+                inComplex = false
+                out += m
+                i++
+                continue
             }
-            out += m
-            i++
+            var j = i + 1
+            var folded = m.distanceMeters
+            var foldedS = m.durationSeconds // the time too, or the remaining time runs short
+            while (j < list.size && list[j].type == ManeuverType.MERGE && list[j - 1].distanceMeters < EXIT_COMPLEX_GAP_M) {
+                folded += list[j].distanceMeters
+                foldedS += list[j].durationSeconds
+                j++
+            }
+            val merged = list.subList(i + 1, j).lastOrNull { it.instruction.isNotBlank() }
+            // The shared ramp's sign often lists BOTH directions of the target highway ("99 North,
+            // 99 South" - one onramp splitting later). The fork just after it is the branch actually
+            // taken, so its instruction disambiguates: the ramp's line drops the not-taken direction
+            // (voice + shield chips both read it, user 2026-07-16).
+            val branch = if (!isRamp) null else run {
+                var k = i + 1
+                var found: Maneuver? = null
+                while (k < list.size && (isFork(list[k]) || list[k].type == ManeuverType.MERGE) && list[k - 1].distanceMeters < EXIT_COMPLEX_GAP_M) {
+                    if (list[k].instruction.isNotBlank()) found = list[k]
+                    k++
+                }
+                found
+            }
+            val hint = branch ?: merged
+            out += m.copy(
+                distanceMeters = folded,
+                durationSeconds = foldedS,
+                instruction = disambiguateDest(m.instruction, hint?.instruction),
+                // The nameless twin gets the same surgery, or with spoken street names off the
+                // voice would go back to announcing BOTH directions of the split (issue #596).
+                instructionNoRoad = m.instructionNoRoad?.let { disambiguateDest(it, hint?.instruction) },
+                lanes = m.lanes.ifEmpty { merged?.lanes.orEmpty() },
+                laneHint = m.laneHint ?: merged?.laneHint,
+                // The road ENTERED by a folded merge is the merge's (a ramp is nameless/ref-less):
+                // without it the bottom bar's highway shield never appeared on the freeway past a
+                // folded on-ramp (device 2026-07-17).
+                road = m.road ?: merged?.road,
+                ref = m.ref ?: merged?.ref,
+            )
+            inComplex = folded < EXIT_COMPLEX_GAP_M
+            i = j
         }
         return out
     }

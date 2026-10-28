@@ -1180,6 +1180,13 @@ refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
 
 #### Step fixes on every router's output
 
+- `RouteGeometry.consolidateExits` (OSRM and Valhalla) folds the merges right after a ramp, or
+  after a fork on it, into that step when each gap is under `EXIT_COMPLEX_GAP_M` (500 m). The step
+  keeps its line and takes their length, time, road and ref. A fork on the ramp stays its own
+  step: folded into the ramp, the exit was said and the split never was. A ramp sign listing
+  both directions drops the one the fork after it does not take. A fork within `CHAIN_M` (130 m)
+  of the exit is said on the exit's line ("Take the exit toward ..., then keep left").
+  `ExitForkTest`.
 - `RouteGeometry.foldSameRoadMerges` folds a merge onto the road the driver is already on into
   the step before, which takes its length, road and ref. "Already on" means the road or ref the
   earlier steps entered is the merge's, or the step before pointed toward it and has run more

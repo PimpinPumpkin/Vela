@@ -257,6 +257,8 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A fork on an exit ramp kept as its own step instead of folded into the exit: unit-tested with
+  a fork 60 m and 300 m past the exit. Not heard on a drive.
 - Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
   needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
   `bare=1`, then `recheck upgraded route for names`.
