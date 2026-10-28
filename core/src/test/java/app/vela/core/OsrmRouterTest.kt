@@ -224,6 +224,18 @@ class OsrmRouterTest {
         assertEquals("CA 99", out[1].ref)
     }
 
+    @Test fun aBareExitTakesTheRoadItLeadsTo() {
+        val bare = RouteGeometry.osrmPhrase("off ramp", "slight right", null, null, null, null)
+        val ramp = app.vela.core.model.Maneuver(ManeuverType.RAMP_RIGHT, bare, LatLng(0.0, 0.0), 400.0, 0.0, instructionNoRoad = bare)
+        val fork = app.vela.core.model.Maneuver(ManeuverType.FORK_LEFT, "Keep slight left toward CA 99", LatLng(0.0, 0.0), 2000.0, 0.0, road = "Golden State Highway", ref = "CA 99")
+        val out = RouteGeometry.consolidateExits(listOf(ramp, fork, man(ManeuverType.ARRIVE, 0.0)))
+        assertEquals("Take the ramp toward CA 99", out[0].instruction)
+        assertEquals("Take the ramp toward CA 99", out[0].instructionNoRoad)
+        // A signed exit keeps its own words.
+        val signed = ramp.copy(instruction = "Take exit 12 toward Downtown", instructionNoRoad = null)
+        assertEquals("Take exit 12 toward Downtown", RouteGeometry.consolidateExits(listOf(signed, fork, man(ManeuverType.ARRIVE, 0.0)))[0].instruction)
+    }
+
     @Test fun disambiguateDestIsConservative() {
         // No branch / no direction in the branch / single-part ramp text → untouched.
         assertEquals("Take the ramp toward CA-99 West, CA-99 East",

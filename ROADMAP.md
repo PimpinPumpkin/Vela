@@ -259,6 +259,10 @@ off the list when it has been.
 
 - A fork on an exit ramp kept as its own step instead of folded into the exit: unit-tested with
   a fork 60 m and 300 m past the exit. Not heard on a drive.
+- A bare exit worded "Take the ramp toward" the road after it, and a next step due at once said
+  with the turn ("Take the ramp, then keep slight left"): unit-tested, and a recorded drive
+  replayed through the voice went from 30 lines to 27 with none a second apart. Not heard on a
+  drive; the replay re-folds the recorded steps rather than a fresh route.
 - Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
   needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
   `bare=1`, then `recheck upgraded route for names`.

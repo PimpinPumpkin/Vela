@@ -26,6 +26,7 @@ data class NavState(
     val stopCuedAtM: Double = -1.0,    // the mark of the stop whose approach has been said ([StopAhead]),
                                        // so it is said once; a new route starts a fresh NavState
     val chainedStep: Int = -1,         // the step already said as the "then ..." of the turn before it
+    val chainedBands: Set<Int> = setOf(0, 1), // the approach bands of [chainedStep] that "then" said
                                        // (NavEngine.chainedNext): its own approach is not said again
 )
 

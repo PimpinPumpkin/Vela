@@ -569,13 +569,18 @@ object RouteGeometry {
                 found
             }
             val hint = branch ?: merged
+            // A bare "Take the exit" (no number, no sign) is a ramp with nothing to say where it
+            // goes: the road it leads to sat on the fork or merge after it, said once the car was
+            // already on the ramp. It becomes "Take the ramp toward" that road.
+            val bareTo = if (isRamp && isBareExit(m.instruction)) hint?.let { it.ref?.takeIf(String::isNotBlank) ?: it.road?.takeIf(String::isNotBlank) } else null
+            val rampLine = bareTo?.let { osrmPhrase("on ramp", null, null, it, null, null) }
             out += m.copy(
                 distanceMeters = folded,
                 durationSeconds = foldedS,
-                instruction = disambiguateDest(m.instruction, hint?.instruction),
+                instruction = rampLine ?: disambiguateDest(m.instruction, hint?.instruction),
                 // The nameless twin gets the same surgery, or with spoken street names off the
                 // voice would go back to announcing BOTH directions of the split (issue #596).
-                instructionNoRoad = m.instructionNoRoad?.let { disambiguateDest(it, hint?.instruction) },
+                instructionNoRoad = rampLine ?: m.instructionNoRoad?.let { disambiguateDest(it, hint?.instruction) },
                 lanes = m.lanes.ifEmpty { merged?.lanes.orEmpty() },
                 laneHint = m.laneHint ?: merged?.laneHint,
                 // The road ENTERED by a folded merge is the merge's (a ramp is nameless/ref-less):
@@ -589,6 +594,10 @@ object RouteGeometry {
         }
         return out
     }
+
+    /** The language's exit phrase with no number and no sign ("Take the exit"). */
+    private fun isBareExit(instruction: String): Boolean =
+        listOf(null, "right", "left", "slight right", "slight left").any { instruction == osrmPhrase("off ramp", it, null, null, null, null) }
 
     // Cardinal tokens as signed on US-style destinations ("99 North", "I-80 E").
     private val DIR_TOKEN = Regex("""\b(North|South|East|West|N|S|E|W)\b""", RegexOption.IGNORE_CASE)

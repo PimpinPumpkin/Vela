@@ -82,7 +82,7 @@ class NavEngineChainTest {
     }
 
     @Test fun `turns far enough apart are said one at a time, as before`() {
-        val gap = NavEngine.CHAIN_M + 170.0
+        val gap = NavEngine.THEN_SOON_M + 50.0
         val said = drive(route(gap), gap)
         assertTrue("$said", said.none { "then turn left" in it })
         assertTrue("the second turn gets its own approach: $said", said.any { it.startsWith("In ") && "Oak Avenue" in it })

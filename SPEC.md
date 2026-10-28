@@ -1185,8 +1185,10 @@ refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
   keeps its line and takes their length, time, road and ref. A fork on the ramp stays its own
   step: folded into the ramp, the exit was said and the split never was. A ramp sign listing
   both directions drops the one the fork after it does not take. A fork within `CHAIN_M` (130 m)
-  of the exit is said on the exit's line ("Take the exit toward ..., then keep left").
-  `ExitForkTest`.
+  of the exit is said on the exit's line ("Take the exit toward ..., then keep left"). A bare
+  exit (the language's off-ramp phrase with no number or sign, `isBareExit`) followed in the
+  complex by a fork or merge with a ref or road becomes "Take the ramp toward" that ref or road,
+  both forms. `ExitForkTest`, `OsrmRouterTest.aBareExitTakesTheRoadItLeadsTo`.
 - `RouteGeometry.foldSameRoadMerges` folds a merge onto the road the driver is already on into
   the step before, which takes its length, road and ref. "Already on" means the road or ref the
   earlier steps entered is the merge's, or the step before pointed toward it and has run more
@@ -1594,6 +1596,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
   turns apart, as before. The chained line is not among `upcomingPrompts`, so the voice renders
   it when it is spoken.
+- A next step past `CHAIN_M` but within `THEN_SOON_M` (500 m), whose first approach line would
+  fire as the first turn is made (the far band plus `BAND_MERGE_S` of travel, `dueNext`), rides
+  on the first turn's line at the turn only: "Take the ramp, then keep slight left". Its bands
+  the car reaches within `BAND_MERGE_S` of the turn count as said (`NavState.chainedBands`); a
+  later one is still said. Not onto a merge, a roundabout or a step with lane guidance, and
+  never from a roundabout.
 - The chained line at the first turn has to end before the second turn's own line, which
   interrupts (`turnNowLine`): the time to the second turn's turn-now point at the current pace
   against `SPEECH_CPS` (13 letters a second) plus `SPEECH_LEAD_S` (0.6 s). When the whole line

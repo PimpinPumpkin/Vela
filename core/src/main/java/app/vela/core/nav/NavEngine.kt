@@ -461,7 +461,7 @@ object NavEngine {
         val isArrive = target.type == ManeuverType.ARRIVE
         // This turn was already said as the "then ..." of the one before it, a block back: its
         // approach lines are taken as said. Its line at the turn itself still comes.
-        if (state.chainedStep == idxCur && spoken.isEmpty()) spoken = setOf(0, 1)
+        if (state.chainedStep == idxCur && spoken.isEmpty()) spoken = state.chainedBands
         // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken as a
         // PREFACE on the first prompt that fires for the step, Google-style ("use the right 2
         // lanes to take exit 172 toward Sacramento"), so the lanes come BEFORE the maneuver.
@@ -532,15 +532,27 @@ object NavEngine {
         // onto Oak Avenue". Said apart, the second turn's approach landed on top of the first
         // turn's own line or was cut by it. Never on a line that already carries a stop.
         val nextIdx = if (isArrive || isDepart || thenStopHere) -1 else chainedNext(maneuvers, manAlong, idxCur)
+        // FURTHER ON, BUT DUE AT ONCE. A next step past CHAIN_M whose first prompt would fire as
+        // soon as this turn is made rides on the line at this turn only: "Take the ramp, then keep
+        // left". Said apart, "Take the exit" and "In a quarter mile, keep slight left" came a
+        // second apart. Its bands the car reaches within BAND_MERGE_S of here count as said; a
+        // later one is still said. Not for a step with lanes, whose first line carries them.
+        val laterIdx = if (nextIdx >= 0 || isArrive || isDepart || thenStopHere) -1 else dueNext(maneuvers, manAlong, idxCur, farM + v.coerceAtLeast(MIN_PACE_MPS) * BAND_MERGE_S)
+        val laterBands = if (laterIdx < 0) emptySet() else {
+            val gap = manAlong[laterIdx] - manAlong[idxCur]
+            val pace = v.coerceAtLeast(MIN_PACE_MPS)
+            listOf(farM, nearM).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
+        }
         var chainedNow = false
-        fun withNext(line: String): String {
-            if (nextIdx < 0) return line
+        var chainedIdx = -1
+        fun withNext(line: String, idx: Int = nextIdx): String {
+            if (idx < 0) return line
             // In the shorter settings the second turn loses its street name too, as its own line would.
-            val next = maneuvers[nextIdx]
+            val next = maneuvers[idx]
             val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
             else next.instructionNoRoad ?: next.spokenInstruction()
             val both = nav().thenNext(line, nav().repeatShort(nextText))
-            if (both != line) chainedNow = true
+            if (both != line) { chainedNow = true; chainedIdx = idx }
             return both
         }
         // The line at the turn, with the next turn on it when the two are chained. That next turn
@@ -552,14 +564,15 @@ object NavEngine {
         // the shortest form is said even when it will not quite fit, since it still says what
         // comes next. A first turn with no form without its street is said alone.
         fun turnNowLine(plain: String): String {
-            val full = withNext(plain)
+            val idx = if (nextIdx >= 0) nextIdx else laterIdx
+            val full = withNext(plain, idx)
             if (full == plain) return full
             val pace = v.coerceAtLeast(MIN_PACE_MPS)
-            val toNextNow = dtn + (manAlong[nextIdx] - manAlong[idxCur]) - turnNowM
+            val toNextNow = dtn + (manAlong[idx] - manAlong[idxCur]) - turnNowM
             fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
             if (fits(full)) return full
             val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
-            val next = maneuvers[nextIdx]
+            val next = maneuvers[idx]
             val nextNamed = nav().repeatShort(next.spokenInstruction())
             // An exit keeps its sign: "take exit 12" without it says too little.
             val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
@@ -746,7 +759,8 @@ object NavEngine {
             reacquireHits = reacquireHits,
             rerouteBlocked = rerouteBlocked,
             stopCuedAtM = stopCuedAt,
-            chainedStep = if (chainedNow) nextIdx else state.chainedStep,
+            chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
+            chainedBands = if (!chainedNow) state.chainedBands else if (chainedIdx == laterIdx) laterBands else setOf(0, 1),
         )
         return newState to events
     }
@@ -804,6 +818,24 @@ object NavEngine {
         while (j < ms.size && quiet(ms, j)) j++
         if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
         return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
+    }
+
+    /** A "then" past [CHAIN_M] means soon: never for a step further than this. */
+    const val THEN_SOON_M = 500.0
+
+    /** The next maneuver after [k] whose first prompt is due the moment [k] is made: within
+     *  [dueM] (the far band plus what the car covers in BAND_MERGE_S) and [THEN_SOON_M], not the arrival, a merge or a roundabout, with no lanes
+     *  to say; else -1. */
+    internal fun dueNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int, dueM: Double): Int {
+        var j = k + 1
+        while (j < ms.size && quiet(ms, j)) j++
+        if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
+        // A roundabout's entry and exit lines count exits and stay its own.
+        val rings = setOf(ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT)
+        if (ms[k].type in rings || ms[j].type in rings) return -1
+        if (ms[j].type == ManeuverType.MERGE || app.vela.core.model.laneGuidance(ms[j].lanes) != null) return -1
+        val gap = manAlong[j] - manAlong[k]
+        return if (gap <= dueM && gap <= THEN_SOON_M) j else -1
     }
 
     /** "left" for a left turn of any sharpness, "right" for a right one, null otherwise. */

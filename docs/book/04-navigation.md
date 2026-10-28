@@ -133,6 +133,14 @@ turn is then said only at the turn itself. Said apart, its approach line landed 
 first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
 apart.
 
+A next step up to 500 m on whose first prompt would come as soon as the turn is made joins the
+line at the turn only: "Take the ramp, then keep slight left". Said apart, the two came a
+second apart. Its later prompt is still said when it comes well after. A merge, a roundabout or
+a step with lanes to say keeps its own lines.
+
+An exit with no number and no sign says "Take the ramp toward" the road it leads to, taken from
+the fork or merge after it, instead of a bare "Take the exit".
+
 Two wording rules live in the routers and are heard here:
 
 - The on-phone router sometimes labels a road's own bend as a turn. A turn it flags
