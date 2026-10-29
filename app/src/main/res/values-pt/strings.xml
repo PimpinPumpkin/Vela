@@ -1348,7 +1348,7 @@
     <string name="settings_start_view_last">Onde fiquei no mapa</string>
     <string name="settings_start_view_place">Um local à minha escolha</string>
     <string name="settings_start_view_use_current">Usar a visão actual de mapa</string>
-    <string name="settings_start_view_hint">Onde o mapa se encontra ao iniciar o Vela. Um link para outra app ainda abre no seu local.</string>
+    <string name="settings_start_view_hint">O mapa é apresentado ao iniciar o Vela. No modo de condução, o mapa é o único elemento presente no ecrã, seja para um telemóvel ou tablet montado. Os links de outras aplicações ainda abrem em um local separado.</string>
     <string name="settings_start_view_saved">Vela abre nesta vista.</string>
     <string name="nav_bar_trip">Viagem %1$s · %2$s</string>
     <string name="nav_bar_your_stop">A sua paragem</string>
@@ -1491,4 +1491,7 @@
     </plurals>
     <string name="bulk_done">Seleção terminada</string>
     <string name="bulk_moved">%1$d movido para %2$s</string>
+    <string name="settings_region_updated_on">actualizado %1$s</string>
+    <string name="settings_start_view_drive">Modo de Condução</string>
+    <string name="driving_mode">Mode de condução</string>
 </resources>
