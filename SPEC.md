@@ -1188,7 +1188,10 @@ refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
   of the exit is said on the exit's line ("Take the exit toward ..., then keep left"). A bare
   exit (the language's off-ramp phrase with no number or sign, `isBareExit`) followed in the
   complex by a fork or merge with a ref or road becomes "Take the ramp toward" that ref or road,
-  both forms. `ExitForkTest`, `OsrmRouterTest.aBareExitTakesTheRoadItLeadsTo`.
+  both forms. A turn with no road or ref right after a ramp shorter than `RAMP_SPLIT_MAX_M`
+  (200 m) is the ramp splitting inside its curve, and becomes a fork of the same side ("Keep
+  right"). `ExitForkTest`, `OsrmRouterTest.aBareExitTakesTheRoadItLeadsTo`,
+  `OsrmRouterTest.aBareTurnJustPastARampStartIsAKeep`.
 - `RouteGeometry.foldSameRoadMerges` folds a merge onto the road the driver is already on into
   the step before, which takes its length, road and ref. "Already on" means the road or ref the
   earlier steps entered is the merge's, or the step before pointed toward it and has run more
@@ -1538,6 +1541,8 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
 - A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
   merge skips the far band. Arrival gets one near-band cue.
+- In English a lane clause on a ramp of the same side drops the ramp's side: "Use the right
+  lane to take the ramp toward ...", not "... the ramp on the right toward ...".
 - A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
   `MIN_PACE_MPS` (1.5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
   its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.

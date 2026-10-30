@@ -236,6 +236,19 @@ class OsrmRouterTest {
         assertEquals("Take exit 12 toward Downtown", RouteGeometry.consolidateExits(listOf(signed, fork, man(ManeuverType.ARRIVE, 0.0)))[0].instruction)
     }
 
+    @Test fun aBareTurnJustPastARampStartIsAKeep() {
+        val ramp = app.vela.core.model.Maneuver(ManeuverType.RAMP_RIGHT, "Take the ramp on the right toward CA 99 North", LatLng(0.0, 0.0), 80.0, 0.0, ref = "CA 99")
+        val turn = man(ManeuverType.TURN_RIGHT, 2000.0)
+        val out = RouteGeometry.consolidateExits(listOf(ramp, turn, man(ManeuverType.ARRIVE, 0.0)))
+        assertEquals(ManeuverType.FORK_RIGHT, out[1].type)
+        assertEquals("Keep right", out[1].instruction)
+        // A named turn, or one past a long ramp, stays a turn.
+        val named = turn.copy(road = "Oak Street")
+        assertEquals(ManeuverType.TURN_RIGHT, RouteGeometry.consolidateExits(listOf(ramp, named, man(ManeuverType.ARRIVE, 0.0)))[1].type)
+        val long = ramp.copy(distanceMeters = 600.0)
+        assertEquals(ManeuverType.TURN_RIGHT, RouteGeometry.consolidateExits(listOf(long, turn, man(ManeuverType.ARRIVE, 0.0)))[1].type)
+    }
+
     @Test fun disambiguateDestIsConservative() {
         // No branch / no direction in the branch / single-part ramp text → untouched.
         assertEquals("Take the ramp toward CA-99 West, CA-99 East",

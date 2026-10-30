@@ -271,8 +271,10 @@ object EnNavStrings : NavStrings {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         val lanes = if (count > 1) "the $sideWord $count lanes" else "the $sideWord lane"
         // "Use the right 2 lanes to take exit 172 toward Sacramento" — lowercase the maneuver's first
-        // word so it reads as one sentence after the "In <distance>, " frame.
-        return "Use $lanes to " + instruction.replaceFirstChar { it.lowercaseChar() }
+        // word so it reads as one sentence after the "In <distance>, " frame. A ramp on the side
+        // the lanes already name loses its side: "use the right lane to take the ramp toward".
+        val said = instruction.replaceFirst("the ramp on the $sideWord", "the ramp")
+        return "Use $lanes to " + said.replaceFirstChar { it.lowercaseChar() }
     }
 
     /** "1st", "2nd", "3rd", "4th"... (11th-13th are "th"). TTS engines read these as the ordinal words. */

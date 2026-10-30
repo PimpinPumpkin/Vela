@@ -94,7 +94,10 @@ The card moves to the next step when the car is at the turn: 2.5 s ahead at spee
 than 5 m ahead at a crawl. Waiting at a stop line before a turn, the card still shows that
 turn. The voice says "turn left" 25 m out either way.
 
-- The first prompt for a step leads with lane guidance when the step has lanes.
+- The first prompt for a step leads with lane guidance when the step has lanes. A ramp on the
+  same side does not say the side again: "Use the right lane to take the ramp toward ...".
+- A turn with no street name right after a short ramp is the ramp splitting, said "Keep right"
+  or "Keep left", not "Turn right".
 - In English a later prompt for the same step drops the sign's "toward ..." tail.
 - A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
   (see Stops below).

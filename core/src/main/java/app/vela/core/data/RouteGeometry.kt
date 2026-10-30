@@ -538,7 +538,24 @@ object RouteGeometry {
         var i = 0
         var inComplex = false
         while (i < list.size) {
-            val m = list[i]
+            var m = list[i]
+            // A bare turn (no road, no ref) just past the start of a ramp is where the ramp splits,
+            // inside a loop ramp's curve: "Turn right" there read as a turn off the ramp. It is
+            // a fork of the same side ("Keep right").
+            val prev = out.lastOrNull()
+            if (prev != null && (prev.type == ManeuverType.RAMP_LEFT || prev.type == ManeuverType.RAMP_RIGHT) &&
+                prev.distanceMeters < RAMP_SPLIT_MAX_M && m.road.isNullOrBlank() && m.ref.isNullOrBlank()
+            ) {
+                val left = when (m.type) {
+                    ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT -> true
+                    ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT -> false
+                    else -> null
+                }
+                if (left != null) {
+                    val keep = osrmPhrase("fork", if (left) "left" else "right", null, null, null, null)
+                    m = m.copy(type = if (left) ManeuverType.FORK_LEFT else ManeuverType.FORK_RIGHT, instruction = keep, instructionNoRoad = keep)
+                }
+            }
             val isRamp = m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT
             if (!isRamp && !(inComplex && isFork(m))) {
                 inComplex = false
@@ -594,6 +611,9 @@ object RouteGeometry {
         }
         return out
     }
+
+    /** A bare turn this soon after a ramp starts is the ramp splitting ([consolidateExits]). */
+    private const val RAMP_SPLIT_MAX_M = 200.0
 
     /** The language's exit phrase with no number and no sign ("Take the exit"). */
     private fun isBareExit(instruction: String): Boolean =
