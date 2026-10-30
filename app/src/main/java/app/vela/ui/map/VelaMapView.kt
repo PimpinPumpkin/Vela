@@ -35,7 +35,6 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.gestures.MoveGestureDetector
 import org.maplibre.android.gestures.ShoveGestureDetector
-import org.maplibre.android.gestures.StandardScaleGestureDetector
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -1136,6 +1135,9 @@ fun VelaMapView(
     val gestureMove = remember { booleanArrayOf(false) }
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
+    // The camera move that closes a zoom gesture (MapZoomGestures) is on its way: it is the user's,
+    // though made through the camera API. Cleared at the next camera idle.
+    val zoomSettling = remember { booleanArrayOf(false) }
     val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
     val camState = remember { doubleArrayOf(Double.NaN, 0.0, 0.0, 0.0) } // eased follow-camera [lat,lng,bearing,zoom]; lat NaN = needs re-seed
     val routeColorHolder = rememberUpdatedState(routeColor)
@@ -1268,6 +1270,7 @@ fun VelaMapView(
     // DRAWING: a finger that comes down on a drawn point owns the gesture. Dragging moves the
     // point, a plain tap removes it; anything else falls through to the map (pan, zoom, and the
     // tap that adds a point). The listener sees the touch before the map's own gestures.
+    // The zoom gestures (MapZoomGestures) see what the drawing leaves.
     DisposableEffect(mapView, mapRef) {
         val map = mapRef
         if (map == null) onDispose { } else {
@@ -1276,6 +1279,42 @@ fun VelaMapView(
             var held = -1
             var downX = 0f; var downY = 0f
             var moved = false
+            val zoomGestures = MapZoomGestures(map, mapView, object : MapZoomGestures.Listener {
+                override fun onZoomBegin() {
+                    scaling[0] = true
+                    overviewLive[0] = false
+                    browseZoomGoal[0] = Double.NaN // fingers beat a pending locate-tap zoom
+                    val turn = map.gesturesManager.rotateGestureDetector
+                    if (!turn.isInProgress) turn.angleThreshold = TURN_START_PINCHING_DEG
+                }
+                // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
+                // if the end callback is missed; we keep FOLLOWING at it and never detach.
+                override fun onZoom() {
+                    if (navModeHolder.value) {
+                        val cp = map.cameraPosition
+                        navUserZoom[0] = cp.zoom
+                        zoomOverride.value(true)
+                        // Flatten as the pinch zooms out, while it is happening: the ticker
+                        // stands aside during a gesture, and a tilted view of a whole city is
+                        // what stalls (navTiltCap).
+                        val cap = navTiltCap(cp.zoom)
+                        if (cp.tilt > cap + 0.5) runCatching {
+                            map.moveCamera(CameraUpdateFactory.tiltTo(cap))
+                            navTiltEase[0] = cap
+                        }
+                    }
+                }
+                override fun onZoomEnd() {
+                    if (navModeHolder.value) {
+                        navUserZoom[0] = map.cameraPosition.zoom
+                        zoomOverride.value(true)
+                    }
+                    scaling[0] = false
+                    map.gesturesManager.rotateGestureDetector.angleThreshold = TURN_START_DEG
+                }
+                override fun following() = (navModeHolder.value && navFollowingHolder.value) || driveFollowingHolder.value
+                override fun onSettle() { zoomSettling[0] = true }
+            })
             mapView.setOnTouchListener { _, ev ->
                 val dots = drawDotsHolder.value
                 twoDown[0] = when (ev.actionMasked) {
@@ -1283,7 +1322,7 @@ fun VelaMapView(
                     android.view.MotionEvent.ACTION_POINTER_UP -> ev.pointerCount - 1 >= 2
                     else -> false // down, up, cancel: one finger or none
                 }
-                when (ev.actionMasked) {
+                val drawTook = when (ev.actionMasked) {
                     android.view.MotionEvent.ACTION_DOWN -> {
                         held = -1
                         if (dots != null && dots.isNotEmpty()) {
@@ -1309,8 +1348,9 @@ fun VelaMapView(
                     android.view.MotionEvent.ACTION_CANCEL -> if (held < 0) false else { held = -1; true }
                     else -> held >= 0 // a second finger while a point is held: ignored
                 }
+                drawTook || zoomGestures.onTouch(ev)
             }
-            onDispose { mapView.setOnTouchListener(null) }
+            onDispose { mapView.setOnTouchListener(null); zoomGestures.release() }
         }
     }
     // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
@@ -3985,7 +4025,7 @@ fun VelaMapView(
                 // shut the other out: a pinch recognized first disables rotation until the fingers
                 // lift, and a rotation recognized first interrupts the pinch until its span has
                 // changed by 75 dp. A pinch that came first asks more twist before the map turns
-                // (TURN_START_PINCHING_DEG, the scale listener below), so a plain one stays put.
+                // (TURN_START_PINCHING_DEG, the zoom gesture's onZoomBegin), so a plain one stays put.
                 map.uiSettings.isDisableRotateWhenScaling = false
                 map.uiSettings.isIncreaseScaleThresholdWhenRotating = false
                 // Two-finger tilt was nearly impossible to trigger (user 2026-07-11): stock
@@ -4246,14 +4286,15 @@ fun VelaMapView(
                 // our own programmatic framing) → drives "Search this area".
                 map.addOnCameraMoveStartedListener { reason ->
                     gestureMove[0] = reason ==
-                        MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
+                        MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE || zoomSettling[0]
                     if (gestureMove[0]) MapPerf.gesture()
+                    if (zoomSettling[0]) return@addOnCameraMoveStartedListener
                     // The user grabbing the map is a signal in its own right — MapScreen uses it
                     // to drop the results sheet down out of the way (Google's behavior).
                     // A PINCH (or two-finger tilt) is NOT that signal: zooming while the free-drive
                     // follow is tracking you must keep tracking, just at the new zoom (user
                     // 2026-07-17 — same pan-vs-pinch split nav's onMove listener makes). By the
-                    // time the camera first moves, onScaleBegin/onShoveBegin has set the flag —
+                    // time the camera first moves, onZoomBegin/onShoveBegin has set the flag:
                     // the ordering the nav listener already relies on. gestureMove stays set
                     // either way so "Search this area" still keys off a zoom change.
                     if (gestureMove[0] && !scaling[0] && !shoving[0] && twoFingerMove[0] == 0f) userPan.value()
@@ -4269,7 +4310,7 @@ fun VelaMapView(
                         twoFingerMove[1] = 0f
                     }
                     // Detach on a genuine PAN — decided in onMove, NOT onMoveBegin: by the time
-                    // onMove fires, onScaleBegin has already set `scaling` for a pinch, so a pinch's
+                    // onMove fires, onZoomBegin has already set `scaling` for a pinch, so a pinch's
                     // incidental translation isn't mistaken for a pan (that misread is what made the
                     // camera detach + stop tracking the instant you zoomed). A pan drops the pinch
                     // zoom too, so a later Re-center returns to auto-zoom. navPanned is idempotent.
@@ -4310,40 +4351,7 @@ fun VelaMapView(
                         turnEnded[0] = !navModeHolder.value
                     }
                 })
-                map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
-                    override fun onScaleBegin(detector: StandardScaleGestureDetector) {
-                        scaling[0] = true
-                        overviewLive[0] = false
-                        browseZoomGoal[0] = Double.NaN // fingers beat a pending locate-tap zoom
-                        val turn = map.gesturesManager.rotateGestureDetector
-                        if (!turn.isInProgress) turn.angleThreshold = TURN_START_PINCHING_DEG
-                    }
-                    // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
-                    // if the end callback is missed; we keep FOLLOWING at it and never detach.
-                    override fun onScale(detector: StandardScaleGestureDetector) {
-                        if (navModeHolder.value) {
-                            val cp = map.cameraPosition
-                            navUserZoom[0] = cp.zoom
-                            zoomOverride.value(true)
-                            // Flatten as the pinch zooms out, while it is happening: the ticker
-                            // stands aside during a gesture, and a tilted view of a whole city is
-                            // what stalls (navTiltCap).
-                            val cap = navTiltCap(cp.zoom)
-                            if (cp.tilt > cap + 0.5) runCatching {
-                                map.moveCamera(CameraUpdateFactory.tiltTo(cap))
-                                navTiltEase[0] = cap
-                            }
-                        }
-                    }
-                    override fun onScaleEnd(detector: StandardScaleGestureDetector) {
-                        if (navModeHolder.value) {
-                            navUserZoom[0] = map.cameraPosition.zoom
-                            zoomOverride.value(true)
-                        }
-                        scaling[0] = false
-                        map.gesturesManager.rotateGestureDetector.angleThreshold = TURN_START_DEG
-                    }
-                })
+                // Pinch zoom and one-finger zoom: MapZoomGestures, set up with the touch listener.
                 // Two-finger TILT (shove). Without this the nav ticker kept writing its own tilt
                 // every frame and the gesture jittered and lost (user 2026-07-15). The shove flag
                 // makes the ticker step aside like a pinch, and the resulting tilt sticks as an
@@ -4526,6 +4534,7 @@ fun VelaMapView(
                 ovlGateHook[0] = runOvlGate
                 map.addOnCameraIdleListener {
                     idleEvents[0]++
+                    zoomSettling[0] = false
                     // "Keep north up": whatever turned the map (a restored camera, an animation that
                     // carried a bearing), it goes back to north once the camera rests. A following
                     // drive camera is left to its ticker, which eases to north itself.

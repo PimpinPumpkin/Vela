@@ -1794,7 +1794,7 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   (two simulated drives, 400 seconds each), and about 48.5 at 546 dpi. The ticker records that
   ceiling the first time the eased tilt sits 0.3 degrees above the camera (`navTiltCeiling`,
   cleared when the drive ends), and the turn framing below uses it. The cap is applied during the
-  pinch itself (`onScale`), where the follow ticker stands aside, and by the ticker after it.
+  pinch itself (`onZoom`), where the follow ticker stands aside, and by the ticker after it.
   A view tilted 55 degrees at city-wide zoom reaches the horizon and loads the tiles for all
   of it. Pixel 4a, San Francisco, eight zoom sweeps between z16.7 and z10.6 in a drive:
   4,195 frames and 16 stalls over 250 ms (longest 943 ms) uncapped, 5,178 frames and none
@@ -1810,19 +1810,55 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   (`twoDown`, set by the map's touch listener), not from the pinch being recognized. Until
   then the fingers slid the map and the loop put it back every frame, which felt like the map
   holding on.
-- MapLibre starts a pinch zoom only above a span speed. `res/values/map_gestures.xml` lowers
-  `maplibre_minimum_scale_speed` from 0.6 dp to 0.15 dp per millisecond. On a Pixel 4a a pinch
-  closing at 990 px a second zoomed nothing at 0.6 dp, and one at 400 zooms at 0.15. A level
-  tilt drag, a diagonal one with uneven fingers and a two-finger pan still read as tilt and
-  pan. `scripts/touch/two-finger.sh` plays these gestures on a phone.
-- A pinch whose fingers also turn needs `maplibre_minimum_angled_scale_speed`, lowered from
-  0.9 dp to 0.15 dp. A hand's pinch always turns a little: on a Pixel 4a a pinch at 1,000 px a
-  second with a 20 degree twist zoomed nothing at 0.9 dp and 0.6 levels at 0.15.
+- The pinch and the one-finger zoom (tap, touch again and drag) are `ui/map/MapZoomGestures`,
+  with MapLibre's scale detector switched off. MapLibre starts a pinch only above a span speed
+  (0.6 dp per millisecond, 0.15 as Vela had it), so a slower pinch panned: on a 1,080 x 2,340 px
+  phone at 480 dpi a pinch opening at 0.1 dp per millisecond zoomed 0.00 levels, and 1.17 here.
+  MapLibre keeps the pan, the turn, the tilt, the double tap and the two-finger tap.
+- A pinch starts after `PINCH_START_INCH` (0.1 inch, from the screen's dpi) of span change at
+  any speed, twice that while the map is turning. A doubled span is one zoom level, about the
+  focal point. A step whose span ratio lies between 0.999 and 1.001001 is skipped and measured
+  again from the last span used, so a still pinch does not jitter. While tilt is on, the span must
+  also change by at least `TILT_GUARD` (0.5) of the fingers' vertical travel, or a tilt drag's
+  wobble would start a zoom. A pinch holds the tilt detector and the two-finger tap off until the
+  fingers lift.
+- The one-finger zoom moves `QUICK_LEVELS_PER_HEIGHT` (4) levels per map height of drag, down to
+  zoom in, about the screen center, counted from where the drag crosses `QUICK_DEAD_DP` (20 dp).
+  Google Maps measures the same on a 1,080 x 2,340 px screen at 480 dpi (Davis, z15): 0.168 to
+  0.170 levels per 100 px while the finger moves, the first 65 px ignored, the same at any speed
+  from 0.25 to 2.5 s per 800 px and from z11 to z15, and the center fixed wherever the drag starts.
+  Before the dead zone is crossed the touch is MapLibre's, so a double tap that does not move
+  still zooms in one level.
+- The fingers add to a pending zoom `a`. Each frame the camera takes `sign(a) min(|a|, 10 a^2)`
+  (`DRAIN_GAIN`), and all of it under `SNAP_LEVELS` (0.002): a large change goes through at once,
+  a small one eases in.
+- After the lift the map flings with Android's `Scroller`, the deceleration of a list fling on the
+  same phone: one fling for the pan and the zoom together. MapLibre keeps the drag
+  (`isFlingVelocityAnimationEnabled` off, so its own fling does not run). The pan flings at the
+  fingers' average velocity, uncapped and with no distance limit; with several fingers the
+  velocity is taken when the first one lifts if the last follows within `LIFT_SNAPSHOT_MS`
+  (100 ms). It does not fling during a tilt, after a pinch or a turn while the camera follows
+  (`Listener.following`), or after a one-finger zoom. Each channel travels what a `Scroller`
+  fling of its own speed would, and the fastest in pixels drives the shared curve, so both end
+  together. A zoom speed over `FLING_MAX_LEVELS_PER_S` scales the pan down by the same factor. The one-finger zoom flings at 4 x the finger's vertical speed / map height levels a
+  second, from `VelocityTracker`. A pinch flings at the span's rate projected 1 ms ahead, taken
+  when its first finger lifts so the finger left on the screen adds nothing, and starts when the
+  last one lifts, about the last focal point. `FLING_LEVEL_OF_SCREEN` (1/8 of the screen height)
+  is one level, at most `FLING_MAX_LEVELS_PER_S` (15) and `FLING_MAX_LEVELS` (4). While it runs the
+  pending zoom is applied in full. A touch stops it, and a new fling never adds to the last one's
+  speed. A finger that stopped before the lift has no
+  speed and does not fling. On a 1,080 x 2,340 px phone at 480 dpi a 300 px one-finger flick in
+  80 ms zooms 1.27 levels, 0.86 of them after the lift; Google Maps on the same phone ends the same
+  flick at about 1.2 by video, which reads a few percent low. Dials: `pinchStartInch`,
+  `quickZoomPerHeight`, `quickZoomDeadDp`.
+- The camera moves by `MapLibreMap.setZoom`, which fires no camera idle. When a zoom and its fling
+  end, one `moveCamera` of 1e-6 levels fires the move-started and idle pair, and `zoomSettling`
+  marks that move as the user's so it neither drops the follow nor reads as a program's move.
 - A pinch and a turn work in one gesture (`isDisableRotateWhenScaling` and
   `isIncreaseScaleThresholdWhenRotating` off). MapLibre's defaults let whichever is recognized
   first shut the other out, and with the lower pinch speeds the pinch nearly always won, so
   the map would not turn. A turn starts after 3 degrees of twist (`TURN_START_DEG`), and after
-  15 once a pinch is under way (`TURN_START_PINCHING_DEG`, set in the scale listener). A turn
+  15 once a pinch is under way (`TURN_START_PINCHING_DEG`, set when the pinch begins). A turn
   of the browse map that rests within `BROWSE_TURN_KEEP_MIN_DEG` (12) of north goes back to
   north, checked at camera idle because the turn's fling runs on after the fingers lift.
   While a drive follows the car a pinch does not turn the map. With "Keep north up" (`NorthLock`)

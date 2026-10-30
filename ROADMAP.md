@@ -257,6 +257,9 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The zoom gestures and the fling (`MapZoomGestures`) during a drive: a pinch or a one-finger zoom,
+  and its fling, should keep the follow and set the drive's zoom, and a pan's fling should follow
+  the pan that let go of the car. Checked on the browse map only.
 - Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
   needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
   `bare=1`, then `recheck upgraded route for names`.

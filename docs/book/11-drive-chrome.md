@@ -229,7 +229,9 @@ rubber duck, which in a drive are low-poly 3D models (`ui/map/Puck3D.kt`).
 The camera follows the arrow, tilted 55 degrees, with the arrow 72.5 percent down the map. Its zoom
 runs from 18.5 at a standstill to 15.8 at 30 m/s. The bearing eases over 1.6 s for a small error and 0.35 s past 25 degrees, so noise in
 the line does not swing the map. A pinch sets a zoom that holds until a pan or Re-center. The
-camera lets go of the map as soon as a second finger touches it, and a slow pinch zooms.
+camera lets go of the map as soon as a second finger touches it, and a pinch zooms at any speed.
+The zoom gestures are Vela's own (`MapZoomGestures`): the fingers add to a pending zoom the camera
+takes a share of each frame, and a quick lift flings on like a list (SPEC 4.7, Nav camera).
 Pinching out flattens the camera, fully by zoom 12.5, and zooming back in past 15 tilts it
 again: tilted at 55 degrees, a view of a whole city reaches the horizon and stalled the map for
 up to a second on a Pixel 4a.
