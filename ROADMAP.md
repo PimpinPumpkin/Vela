@@ -257,6 +257,8 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The free-drive follow turns heading-up only on speed held over 4 s (#905): builds. Not tried
+  on a phone or on foot.
 - A Google place asked for as the place, so the route ends at its entrance point
   (`DestinationPlaces`): checked live on twelve fixture stores, the built request answering the
   same route as the web client's own form. Not seen on a drive.

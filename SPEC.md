@@ -2090,6 +2090,9 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
 
 - The target is `FollowEstimator`, fed the raw accepted fix, with half of each residual spread
   over 0.9 s.
+- It turns heading-up once the speed, averaged over `FREE_HEADING_UP_TAU_S` (4 s), passes
+  `FREE_HEADING_UP_MPS` (3 m/s), and stays so until the follow ends. A single noisy fix on foot
+  does not reach it.
 - The bearing eases toward the GPS course with a speed-scaled look-ahead
   (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow. With "Keep
   north up" the follow stays north-up at any speed, flat unless tilted by hand, and the beam still

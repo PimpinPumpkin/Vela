@@ -381,6 +381,10 @@ private const val PREVIEW_LAYER = "vela-preview"
 private const val NAV_IDLE_TICK_MS = 120L
 // Standing still (under 0.5 m/s), the free-drive camera ignores target moves smaller than this.
 private const val FOLLOW_STILL_DEADBAND_M = 2.0
+/** The free-drive follow turns heading-up once its speed, averaged over this many seconds, passes
+ *  [FREE_HEADING_UP_MPS]: sustained riding or driving, not one noisy fix on foot. */
+private const val FREE_HEADING_UP_TAU_S = 4.0
+private const val FREE_HEADING_UP_MPS = 3.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
 // SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
@@ -1129,7 +1133,7 @@ fun VelaMapView(
     // on at driving speed, released only by the follow ending - a red light must HOLD the heading,
     // not level the camera out), [2] the course the camera is easing toward, [3] eased forward
     // lookahead meters (the padding-free puck-low).
-    val browseDrive = remember { doubleArrayOf(0.0, 0.0, Double.NaN, 0.0) }
+    val browseDrive = remember { doubleArrayOf(0.0, 0.0, Double.NaN, 0.0, 0.0) }
     val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
@@ -2691,7 +2695,7 @@ fun VelaMapView(
             browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
             browseCam[0] = Double.NaN
             lastBrowse[0] = Double.NaN
-            browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
+            browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0; browseDrive[4] = 0.0
             browseZoomGoal[0] = Double.NaN
             if (navMode) browseUserTilt[0] = Double.NaN // a pan or a sheet keeps the angle, like Google's
             browseEst.reset()
@@ -2809,7 +2813,11 @@ fun VelaMapView(
                 // camera must track the heading like navigation; the earlier north-up ask turned
                 // out to be about the puck moving SIDEWAYS, and course-up is what Google does).
                 browseDrive[0] += (browseFix[3] - browseDrive[0]) * (1.0 - kotlin.math.exp(-dt / 1.0))
-                if (browseDrive[1] < 0.5 && browseDrive[0] > 2.5 && !browseFix[4].isNaN()) browseDrive[1] = 1.0
+                // The latch reads a slower average (FREE_HEADING_UP_TAU_S). On the 1 s average a
+                // single noisy 4 m/s fix on foot passed 2.5, and the map then turned with the
+                // walker for the rest of the follow.
+                browseDrive[4] += (browseFix[3] - browseDrive[4]) * (1.0 - kotlin.math.exp(-dt / FREE_HEADING_UP_TAU_S))
+                if (browseDrive[1] < 0.5 && browseDrive[4] > FREE_HEADING_UP_MPS && !browseFix[4].isNaN()) browseDrive[1] = 1.0
                 // "Keep north up": still driving (the beam keeps preferring the GPS course), but
                 // the camera takes the north-up branch below.
                 val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value
