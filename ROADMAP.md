@@ -261,6 +261,7 @@ off the list when it has been.
   unit-tested. Not seen on a drive.
 - A bare turn just past a ramp start said as a keep, and a lane clause on a ramp not saying the
   side twice: unit-tested, and a recorded loop ramp replayed says "Keep right". Not heard.
+- Arrival short of the last turn only after 10 stopped fixes: unit-tested. Not seen on a drive.
 - A fork on an exit ramp kept as its own step instead of folded into the exit: unit-tested with
   a fork 60 m and 300 m past the exit. Not heard on a drive.
 - A bare exit worded "Take the ramp toward" the road after it, and a next step due at once said

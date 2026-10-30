@@ -43,6 +43,7 @@ object NavEngine {
     private const val MIN_PACE_MPS = 1.5
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
     private const val END_PARK_ALONG_M = 60.0 // stopped this close to the end along the route, with turns still unsaid, is arrived
+    private const val PARK_STILL_FIXES = 10    // ... once stopped this many fixes in a row (about 10 s)
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
     private const val STOP_ON_ROUTE_M = 150.0 // a waypoint farther than this from the line isn't on this route
@@ -676,7 +677,10 @@ object NavEngine {
         // the step stays on that turn until the car is at it, so without this the arrival test
         // below, which runs on the last step, is never reached and the drive never ends.
         val crowEnd = loc.distanceTo(maneuvers.last().location)
-        val parkedAtEnd = !moving && remaining <= END_PARK_ALONG_M && crowEnd <= ARRIVE_PROX_M
+        // Parked, not waiting to turn in: a car stopped to yield at the lot's entrance 3 s after
+        // "Turn right" was told it had arrived. Stopped for PARK_STILL_FIXES fixes in a row.
+        val stillFixes = if (moving) 0 else state.stillFixes + 1
+        val parkedAtEnd = stillFixes >= PARK_STILL_FIXES && remaining <= END_PARK_ALONG_M && crowEnd <= ARRIVE_PROX_M
         if (idxCur < maneuvers.lastIndex && !parkedAtEnd) {
             if (dtn <= turnNowM && TURN_NOW_SLOT !in spoken) {
                 if (!voiceSilent) {
@@ -759,6 +763,7 @@ object NavEngine {
             reacquireHits = reacquireHits,
             rerouteBlocked = rerouteBlocked,
             stopCuedAtM = stopCuedAt,
+            stillFixes = stillFixes,
             chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
             chainedBands = if (!chainedNow) state.chainedBands else if (chainedIdx == laterIdx) laterBands else setOf(0, 1),
         )

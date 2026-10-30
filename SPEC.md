@@ -1644,9 +1644,10 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Arrival fires within `ARRIVE_RADIUS_M` (25 m) along the route of the arrive maneuver, within
   `ARRIVE_PROX_M` (40 m) straight-line of it, or with under 50 m of route left while stopped and
   within 60 m straight-line. Those three run on the last step. On any step, a car stopped with
-  `END_PARK_ALONG_M` (60 m) or less of route left and within `ARRIVE_PROX_M` of the end has
-  arrived: the step does not move on at a standstill, so a car parked short of a last turn
-  into a lot never reaches the last step.
+  `END_PARK_ALONG_M` (60 m) or less of route left and within `ARRIVE_PROX_M` of the end, for
+  `PARK_STILL_FIXES` (10) fixes in a row (`NavState.stillFixes`), has arrived: the step does not
+  move on at a standstill, so a car parked short of a last turn into a lot never reaches the
+  last step. The count keeps a car waiting to turn in from arriving at the entrance.
 - The arrival line is "Your destination is on the left/right" when the arrive step has a side,
   else "You have arrived". OSRM and Valhalla put a side on their arrive step; the on-phone router
   and a route named from Google's line do not, so `NavEngine.withArrivalSide` gives one where a

@@ -27,6 +27,7 @@ data class NavState(
                                        // so it is said once; a new route starts a fresh NavState
     val chainedStep: Int = -1,         // the step already said as the "then ..." of the turn before it
     val chainedBands: Set<Int> = setOf(0, 1), // the approach bands of [chainedStep] that "then" said
+    val stillFixes: Int = 0,           // fixes in a row under the moving speed
                                        // (NavEngine.chainedNext): its own approach is not said again
 )
 
