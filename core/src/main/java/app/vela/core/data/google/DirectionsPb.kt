@@ -31,6 +31,24 @@ object DirectionsPb {
         "!1i0!2i0!2m2!1i530!2i768!1m6!1m2!1i974!2i0!2m2!1i1024!2i768!1m6!1m2!1i0!2i0!2m2!1i1024" +
         "!2i20!1m6!1m2!1i0!2i748!2m2!1i1024!2i768!27b1!40i783!47m2!8b1!10e2"
 
+    /** A destination that is a Google place, as Google's web client sends it (captured
+     *  2026-10-29): the place's text, its feature id, its point, and `!6e0` where a bare point has
+     *  `!6e2`. On twelve Davis and Sacramento stores the route then ended up to 135 m from where
+     *  the bare point's route ended: at the place's entrance point, not the road nearest the pin. */
+    const val DEFAULT_PLACE_GROUP = "!1m6!1s{DTEXT}!2s{DFID}!3m2!3d{DLAT}!4d{DLNG}!6e0"
+
+    /** Text inside a pb string: `!` and `*` are written as their escapes. */
+    internal fun pbText(s: String): String = s.replace("*", "*2A").replace("!", "*21")
+
+    /** [template] with its destination group asked as [place] ([DEFAULT_PLACE_GROUP]). A template
+     *  without the destination group, or a place group without the point, is left alone. */
+    internal fun withPlace(template: String, place: app.vela.core.data.DestinationPlaces.Ref?, placeGroup: String): String {
+        if (place == null || "{DLAT}" !in placeGroup || "{DLNG}" !in placeGroup) return template
+        val m = DEST_GROUP.findAll(template).lastOrNull() ?: return template
+        val group = placeGroup.replace("{DTEXT}", pbText(place.text)).replace("{DFID}", pbText(place.featureId))
+        return template.replaceRange(m.range, group)
+    }
+
     fun build(
         origin: LatLng,
         destination: LatLng,
@@ -40,6 +58,8 @@ object DirectionsPb {
         avoidHighways: Boolean = false,
         avoidFerries: Boolean = false,
         waypoints: List<LatLng> = emptyList(),
+        place: app.vela.core.data.DestinationPlaces.Ref? = null,
+        placeGroup: String = DEFAULT_PLACE_GROUP,
     ): String {
         val modeCode = when (mode) {
             TravelMode.DRIVE -> 0
@@ -49,7 +69,7 @@ object DirectionsPb {
         }
         val drive = mode == TravelMode.DRIVE
         val fitted = RequestShape.fitDirections(template, listOf(origin) + waypoints + destination)
-        return BrowserViewport.apply(withWaypoints(withAvoid(fitted, avoidTolls && drive, avoidHighways && drive, avoidFerries && drive), waypoints))
+        return BrowserViewport.apply(withPlace(withWaypoints(withAvoid(fitted, avoidTolls && drive, avoidHighways && drive, avoidFerries && drive), waypoints), place, placeGroup))
             .replace("{OLAT}", origin.lat.toString())
             .replace("{OLNG}", origin.lng.toString())
             .replace("{DLAT}", destination.lat.toString())

@@ -257,6 +257,9 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A Google place asked for as the place, so the route ends at its entrance point
+  (`DestinationPlaces`): checked live on twelve fixture stores, the built request answering the
+  same route as the web client's own form. Not seen on a drive.
 - A recheck on the same roads never offered as a faster route (`RouteGeometry.sameRoad`):
   unit-tested. Not seen on a drive.
 - A bare turn just past a ramp start said as a keep, and a lane clause on a ramp not saying the

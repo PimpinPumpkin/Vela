@@ -184,6 +184,14 @@ the tiles (`GOOGLE_LINE_NAMED`, no lanes or sign text). When that fails too, the
 driven on Google's short steps. The route keeps the Google time the list showed, so picking it
 cannot move the row.
 
+### A place as the destination
+
+When the destination is a Google place, Google is asked for the place (its name, address and
+feature id), not only its point, the way its own web page asks. The route then ends at the
+place's entrance point. Asked for the bare point, Google ends on the road nearest the pin, which
+for a large store can be the road behind the building. Reroutes and rechecks to the same point
+ask the same way (`DestinationPlaces`).
+
 ### Stops
 
 Google is asked for the trip through the stops: `DirectionsPb.withWaypoints` adds one waypoint

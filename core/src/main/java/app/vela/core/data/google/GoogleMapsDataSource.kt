@@ -1987,7 +1987,10 @@ class GoogleMapsDataSource @Inject constructor(
         if (mode == TravelMode.WALK && !walkCompare) return emptyList()
         session.ensure()
         val cal = calibration.current()
-        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints)
+        val pb = DirectionsPb.build(
+            origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints,
+            place = app.vela.core.data.DestinationPlaces.at(destination), placeGroup = cal.directionsPlaceGroup,
+        )
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = try {
             DirectionsParser.parse(GoogleResponse.parse(get(url)), cal.directionsPaths)

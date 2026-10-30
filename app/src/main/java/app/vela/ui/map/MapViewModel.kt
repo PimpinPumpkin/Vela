@@ -6572,6 +6572,11 @@ class MapViewModel @Inject constructor(
         val origin = (if (s.directionsReversed) place else fromPoint) ?: return
         val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
+        // A Google place is asked for as the place, so the route ends at its entrance point
+        // (DestinationPlaces); reroutes and rechecks to the same point ask the same way.
+        (if (s.directionsReversed) s.directionsOrigin else s.selected)?.let { p ->
+            p.featureId?.let { fid -> app.vela.core.data.DestinationPlaces.remember(dest, listOfNotNull(p.name, p.address).filter { it.isNotBlank() }.joinToString(", "), fid) }
+        }
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }

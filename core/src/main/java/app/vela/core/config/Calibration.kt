@@ -20,6 +20,9 @@ data class Calibration(
     val searchPb: String,
     val directionsEndpoint: String,
     val directionsPb: String,
+    // A destination that is a Google place: replaces the template's destination group
+    // (DirectionsPb.withPlace). `{DTEXT}` the place's text, `{DFID}` its feature id.
+    val directionsPlaceGroup: String = DirectionsPb.DEFAULT_PLACE_GROUP,
     val reviewsEndpoint: String,
     val reviewsPb: String,
     val sessionWarmUrl: String,

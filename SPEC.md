@@ -413,6 +413,15 @@ block. `DirectionsPb.withAvoid` places them by pattern and fixes the `m` group c
 recalibrated template still works. A stop is one more `!1m4!3m2!3d<lat>!4d<lng>!6e2` group
 before the destination's (`withWaypoints`).
 
+A destination that is a Google place is asked for the way Google's web client asks:
+`!1m6!1s<text>!2s<feature id>!3m2!3d<lat>!4d<lng>!6e0` in place of the destination's bare-point
+group (`DirectionsPb.withPlace`, calibration `directionsPlaceGroup`), with `!` and `*` in the
+text escaped as `*21` and `*2A`. The text is the place's name and address. Google's route then
+ends at the place's own entrance point instead of the road nearest the pin. On twelve Davis and
+Sacramento stores the end moved by 0 to 123 m. `MapViewModel.route` records the place by its
+point (`DestinationPlaces`, 16 kept, a point within 2 m is the same), so a reroute or a recheck
+to that point asks for the place too.
+
 Not reachable without a key or a login. Each was probed and settled:
 
 - A per-departure or time-of-day ETA curve. The response has none, and injected time fields are
