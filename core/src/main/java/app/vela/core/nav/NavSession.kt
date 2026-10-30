@@ -940,6 +940,12 @@ class NavSession @Inject constructor(
                 return@launch
             }
             val saving = remaining - candidateEta
+            // The same roads are not a faster route: a lower time for them is fresher traffic, and
+            // the arrival time above has already taken it. Offered, it was the road being driven.
+            if (sameCourse && app.vela.core.data.RouteGeometry.sameRoad(current.polyline, candidate.polyline)) {
+                note("recheck: kept current route (same road, candidate saves ${saving.toInt()} s, traffic=$trafficAware)")
+                return@launch
+            }
             // A candidate similar to one the user DISMISSED is only re-offered when it beats the
             // dismissed saving by a real margin — not re-spoken verbatim every 2 minutes.
             if (routeKey(candidate) == dismissedFasterKey && saving < dismissedFasterSaving + 60.0) return@launch

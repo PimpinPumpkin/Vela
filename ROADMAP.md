@@ -257,6 +257,8 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A recheck on the same roads never offered as a faster route (`RouteGeometry.sameRoad`):
+  unit-tested. Not seen on a drive.
 - A fork on an exit ramp kept as its own step instead of folded into the exit: unit-tested with
   a fork 60 m and 300 m past the exit. Not heard on a drive.
 - A bare exit worded "Take the ramp toward" the road after it, and a next step due at once said

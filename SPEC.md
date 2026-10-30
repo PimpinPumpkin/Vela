@@ -1793,6 +1793,9 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
   re-check that could not build the hybrid answers with the open router's own route, and the
   same-course test (five samples) cannot see a short detour. The note in the trip says which
   was gained.
+- Same road (`RouteGeometry.sameRoad`: every point along the candidate, every 50 m or more
+  with at most 400 read, past its first 100 m, within 40 m of the current line): never offered.
+  Its lower time is fresher traffic, and the recalibration above has taken it.
 - Different course: offered when it has traffic and real steps, covers every remaining stop,
   saves more than `FASTER_THRESHOLD_S`, and its ETA is between 0.4 and 0.9 of the time left. A
   trafficless candidate is never offered and never calibrates, because free-flow always appears

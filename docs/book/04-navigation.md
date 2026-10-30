@@ -288,6 +288,10 @@ while off route and while an offer is on screen. What happens next depends on th
   better in steps, street names or traffic and worse in none (`RouteHeal`). A route whose names
   missed the planning deadline is asked for again about every 20 seconds, six times, and gets
   its names within the first answer that has them.
+- The same roads: never offered, whatever it saves. Every point along it, every 50 m or more,
+  lies within 40 m of your line (`RouteGeometry.sameRoad`); the five-sample same-course test
+  cannot tell a parallel street from the same one. Its lower time is fresher traffic, and it
+  has already corrected the arrival time.
 - Another course: it is offered when it saves more than 90 seconds, has live traffic and full
   steps, passes every remaining stop, and takes between 40% and 90% of the time left. A
   candidate without traffic never counts, because free-flow time always looks faster. A

@@ -1144,6 +1144,30 @@ object RouteGeometry {
         }
     }
 
+    /** True when [candidate] runs on [current]'s roads all the way: every point read along it
+     *  (every [STEP_M] or more, at most [SAME_ROAD_SAMPLES] of them, past its first
+     *  [SAME_ROAD_SKIP_M]) lies within [tolM] of [current]'s line. [divergent]'s five samples at
+     *  250 m cannot tell a parallel street from the same road; this can. */
+    internal fun sameRoad(current: List<LatLng>, candidate: List<LatLng>, tolM: Double = SAME_ROAD_TOL_M): Boolean {
+        if (current.size < 2 || candidate.size < 2) return false
+        val cumCur = app.vela.core.nav.RouteProjection.cumulative(current)
+        val cumCand = app.vela.core.nav.RouteProjection.cumulative(candidate)
+        val len = cumCand.last()
+        if (len <= SAME_ROAD_SKIP_M) return true
+        val step = maxOf(SAME_ROAD_STEP_M, (len - SAME_ROAD_SKIP_M) / SAME_ROAD_SAMPLES)
+        var m = SAME_ROAD_SKIP_M
+        while (m <= len) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(candidate, cumCand, m)
+            if (app.vela.core.nav.RouteProjection.alongMeters(current, cumCur, p, tolM) == null) return false
+            m += step
+        }
+        return true
+    }
+    private const val SAME_ROAD_TOL_M = 40.0
+    private const val SAME_ROAD_STEP_M = 50.0
+    private const val SAME_ROAD_SAMPLES = 400
+    private const val SAME_ROAD_SKIP_M = 100.0
+
     /** Interior points spaced along [poly] to feed OSRM as via-waypoints so it follows that path.
      *  ~[count] of them: dense enough that OSRM's shortest path between consecutive vias IS the road
      *  Google took (a short jam-detour between two sparse vias would otherwise be skipped), yet not so
