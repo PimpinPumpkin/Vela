@@ -6193,6 +6193,10 @@ the geometry.
   named as the full share is, `tripFullFileName`). The file stays on the phone, so nothing is
   trimmed; it is how a trip reaches a computer over USB (`adb pull` from Downloads) without
   passing through another app. Added 2026-10-18.
+- The batch dialog has the same two: "Save to phone" writes the picked trips' full traces as one
+  zip (`MapViewModel.saveTripsTo`, `CreateDocument("application/zip")`), and "Share full traces"
+  sends that zip (`shareFullTripsZipIntent`). Each entry is named as a single full trace is
+  (`vela-trip-<stamp>-full.csv`).
 
 ### 14.4 Location hygiene
 

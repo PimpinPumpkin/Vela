@@ -706,6 +706,38 @@ private fun TripBatchShareDialog(
                 Spacer(Modifier.height(6.dp))
                 Hint(stringResource(R.string.settings_trip_share_also))
             }
+            Spacer(Modifier.height(8.dp))
+            // The same reach as one trip's dialog: saving keeps the full traces on this phone,
+            // sharing sends them untrimmed.
+            val saver = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.CreateDocument(app.vela.core.replay.TripShareBatch.MIME),
+            ) { uri ->
+                if (uri == null) return@rememberLauncherForActivityResult
+                onClose()
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) { vm.saveTripsTo(metas, uri) }
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(if (ok) R.string.settings_trip_batch_saved else R.string.settings_trip_read_error),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+            Row {
+                TextButton(onClick = { runCatching { saver.launch(vm.tripsFullFileName()) } }) {
+                    Text(stringResource(R.string.settings_trip_save_phone))
+                }
+                TextButton(onClick = {
+                    onClose()
+                    scope.launch {
+                        val intent = withContext(Dispatchers.IO) { vm.shareFullTripsZipIntent(metas) }
+                        if (intent != null) runCatching { context.startActivity(intent) }
+                        else android.widget.Toast.makeText(
+                            context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }) { Text(stringResource(R.string.settings_trip_batch_share_full)) }
+            }
         }
     }
 }

@@ -260,6 +260,8 @@ off the list when it has been.
 - A Google place asked for as the place, so the route ends at its entrance point
   (`DestinationPlaces`): checked live on twelve fixture stores, the built request answering the
   same route as the web client's own form. Not seen on a drive.
+- Full traces from the multi-select share (Save to phone, Share full traces): builds. Not tried
+  on a phone.
 - A recheck on the same roads never offered as a faster route (`RouteGeometry.sameRoad`):
   unit-tested. Not seen on a drive.
 - A bare turn just past a ramp start said as a keep, and a lane clause on a ramp not saying the

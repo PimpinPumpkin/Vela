@@ -7850,6 +7850,49 @@ class MapViewModel @Inject constructor(
         }.getOrNull()
     }
 
+    /** The picked trips' full traces, untrimmed, as one zip: each entry named as [tripFullFileName]
+     *  names a single one. Writes a file, so call it off the main thread. Null when none can be read. */
+    private fun fullTripsZip(metas: List<app.vela.replay.TripMeta>): Pair<List<Pair<String, String>>, Int>? {
+        val kept = metas.mapNotNull { m -> tripStore.rawCsv(m.id)?.let { m to it } }
+        if (kept.isEmpty()) return null
+        val names = app.vela.core.replay.TripShareBatch.entryNames(kept.map { tripStamp(it.first.startedAt) })
+            .map { it.removeSuffix(".csv") + "-full.csv" }
+        return names.zip(kept.map { it.second }) to kept.sumOf { it.first.fixCount }
+    }
+
+    /** Share the picked trips' full traces as one zip ([fullTripsZip]). */
+    fun shareFullTripsZipIntent(metas: List<app.vela.replay.TripMeta>): android.content.Intent? {
+        val (entries, fixes) = fullTripsZip(metas) ?: return null
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(dir, "vela-trips-${tripStamp(System.currentTimeMillis())}-full.zip")
+            app.vela.core.replay.TripShareBatch.writeZip(entries, file.outputStream())
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = app.vela.core.replay.TripShareBatch.MIME
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_trips_subject, entries.size, fixes))
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_share_trip_chooser))
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+    }
+
+    /** Write the picked trips' full traces as one zip into [uri], a file the user picked with the
+     *  system's save dialog. Nothing is sent anywhere. Call off the main thread. */
+    fun saveTripsTo(metas: List<app.vela.replay.TripMeta>, uri: android.net.Uri): Boolean {
+        val (entries, _) = fullTripsZip(metas) ?: return false
+        return runCatching {
+            appContext.contentResolver.openOutputStream(uri, "wt")?.use { app.vela.core.replay.TripShareBatch.writeZip(entries, it); true } ?: false
+        }.getOrDefault(false)
+    }
+
+    /** The file name the picked trips' full traces are saved under. */
+    fun tripsFullFileName(): String = "vela-trips-${tripStamp(System.currentTimeMillis())}-full.zip"
+
     /** The file name a trip's full trace is shared and saved under. */
     fun tripFullFileName(meta: app.vela.replay.TripMeta): String = "vela-trip-${tripStamp(meta.startedAt)}-full.csv"
 

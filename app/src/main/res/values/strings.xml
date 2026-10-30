@@ -446,6 +446,8 @@
     <string name="settings_trip_batch_left_out">Left out because they are shorter than the trim distance: %1$d. A smaller distance may keep them.</string> <!-- format -->
     <string name="settings_trip_batch_none">Every selected trip is shorter than the trim distance, so there is nothing left to share. Try a smaller one.</string>
     <string name="settings_trip_batch_confirm">Share zip</string>
+    <string name="settings_trip_batch_share_full">Share full traces</string>
+    <string name="settings_trip_batch_saved">Saved the full traces</string>
     <string name="settings_name_trips">Name each trip when it is saved</string>
     <string name="settings_name_trips_hint">After a recorded drive ends, Vela asks what to call it. Off by default; you can always rename a trip later in the list below.</string>
     <string name="trip_name_prompt_title">Name this drive</string>
