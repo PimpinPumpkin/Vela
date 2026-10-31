@@ -1,3 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="cat_restaurants">Veitingastaðir</string>
+    <string name="cat_coffee">Kaffi</string>
+    <string name="cat_gas">Bensín</string>
+    <string name="cat_ev">Hleðslustöðvar</string>
+    <string name="cat_groceries">Matvörur</string>
+    <string name="cat_hotels">Hótel</string>
+    <string name="cat_pharmacy">Lyfjabúðir</string>
+    <string name="cat_atms">Hraðbankar</string>
+    <string name="cat_parks">Almenningsgarðar</string>
+    <string name="cat_things_to_do">Áhugavert</string>
+    <string name="cat_bars">Krár</string>
+    <string name="cat_parking">Bílastæði</string>
+    <string name="cat_hospitals">Sjúkrahús</string>
+    <string name="cat_banks">Bankar</string>
+    <string name="cat_post_offices">Pósthús</string>
+    <string name="cat_campgrounds">Tjaldsvæði</string>
+    <string name="settings_title">Stillingar</string>
+    <string name="settings_search_hint">Leitarstillingar</string>
+    <string name="settings_search_none">Ekkert fannst</string>
+    <string name="settings_back">Til baka</string>
+    <string name="settings_appearance">Útlit</string>
+    <string name="settings_follow_system">Kerfisbundið</string>
+    <string name="settings_theme_light">Ljóst</string>
+    <string name="settings_theme_dark">Dökkt</string>
+    <string name="settings_appearance_hint">Á aðeins við um Vela.</string>
+    <string name="settings_app_name_title">Heiti apps</string>
+    <string name="settings_app_name_generic">Láta það heita bara „Maps“</string>
+    <string name="settings_units">Einingar</string>
+    <string name="settings_clock">Klukka</string>
+    <string name="settings_clock_system">Í samræmi við símann</string>
+    <string name="settings_clock_12">12 tíma (4:35 PM)</string>
+    <string name="settings_clock_24">24 tíma (16:35)</string>
+    <string name="settings_units_imperial">Breska kerfið (mílur, fet)</string>
+    <string name="settings_units_metric">Metrakerfið (kílómetrar, metrar)</string>
+    <string name="settings_language">Tungumál</string>
+    <string name="settings_follow_system_language">Bundið tungumáli stýrikerfis</string>
 </resources>
