@@ -333,7 +333,7 @@
     <string name="settings_show_transit_stops_hint">Ikon halte bus dan stasiun kereta pada perbesaran tingkat jalan.</string>
     <string name="settings_poi_icon_size">Ukuran ikon tempat</string>
     <string name="settings_poi_size_small">Kecil</string>
-    <string name="settings_poi_size_default">Setelan bawaan</string>
+    <string name="settings_poi_size_default">Default</string>
     <string name="settings_poi_size_large">Besar</string>
     <string name="settings_poi_icon_size_hint">Kecil cocok untuk layar beresolusi rendah seperti head unit mobil, karena ikon default tampak terlalu besar.</string>
     <string name="settings_live_rechecks">Pemeriksaan ulang lalu lintas langsung saat navigasi</string>
@@ -524,7 +524,7 @@
     <string name="place_swap_start_destination">Tukar titik awal dan tujuan</string>
     <string name="place_close_directions">Tutup petunjuk arah</string>
     <string name="place_mode_drive">Berkendara</string>
-    <string name="place_mode_transit">Transit</string>
+    <string name="place_mode_transit">Transportasi umum</string>
     <string name="place_mode_walk">Jalan kaki</string>
     <string name="place_mode_bike">Sepeda</string>
     <string name="place_finding_route">Mencari rute terbaik…</string>
@@ -1449,7 +1449,7 @@
     <string name="settings_page_transitions">Transisi halaman</string>
     <string name="settings_page_transitions_hint">Animasikan halaman dan panel bawah saat dibuka dan ditutup, serta tampilkan pratinjau halaman sebelumnya saat Anda menggeser untuk kembali.</string>
     <string name="place_avoid_label">Hindari</string>
-    <string name="place_avoid_short_tolls">Jalan berbayar</string>
+    <string name="place_avoid_short_tolls">Tol</string>
     <string name="place_avoid_short_highways">Jalan raya utama</string>
     <string name="place_avoid_short_ferries">Feri</string>
     <string name="place_avoid_short_cameras">Kamera</string>
