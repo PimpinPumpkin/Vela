@@ -34,14 +34,14 @@
     <string name="settings_map_style_hint">OpenFreeMap berfungsi tanpa kunci API apa pun.</string>
     <string name="settings_units">Satuan</string>
     <string name="settings_clock">Jam</string>
-    <string name="settings_clock_system">Sama seperti perangkat</string>
+    <string name="settings_clock_system">Sama seperti ponsel</string>
     <string name="settings_clock_12">12-jam (16:35 PM)</string>
     <string name="settings_clock_24">24-jam (16:35)</string>
     <string name="settings_units_imperial">Imperial (mil, kaki)</string>
     <string name="settings_units_metric">Metrik (kilometer, meter)</string>
     <string name="settings_language">Bahasa</string>
     <string name="settings_follow_system_language">Ikuti bahasa sistem</string>
-    <string name="settings_language_hint">Mengubah bahasa aplikasi dan suara petunjuk arah. Pilih suara yang sesuai di Pustaka Suara.</string>
+    <string name="settings_language_hint">Mengubah bahasa aplikasi dan petunjuk arah lisan. Pilih suara yang sesuai di Pustaka Suara.</string>
     <string name="settings_directions_language">Bahasa petunjuk arah</string>
     <string name="settings_directions_same_as_app">Sama seperti bahasa aplikasi</string>
     <string name="settings_directions_language_hint">Bahasa saat berbelok ditampilkan dan diucapkan. Pilih suara yang sesuai di Pustaka Suara.</string>
@@ -67,11 +67,11 @@
     <string name="settings_voice_speak">Ucapkan</string>
     <string name="settings_voice_nav_sample">Contoh navigasi</string>
     <string name="settings_voice_speed">Kecepatan suara · %1$s</string>
-    <string name="settings_voice_speed_hint">Perlambat atau percepat suara petunjuk arah. Ketuk − / + (contoh suara akan diputar). 1,00× adalah normal.</string>
+    <string name="settings_voice_speed_hint">Perlambat atau percepat petunjuk arah lisan. Ketuk − / + (contoh suara akan diputar). 1,00× adalah normal.</string>
     <string name="settings_voice_variant">Varian suara #%1$d</string>
     <string name="settings_voice_variant_of">Varian suara #%1$d dari %2$d</string>
     <string name="settings_voice_variant_field">Varian #</string>
-    <string name="settings_voice_variant_go">Buka</string>
+    <string name="settings_voice_variant_go">Pergi</string>
     <string name="settings_voice_variant_hint">Suara ini memiliki ratusan model suara. Ketuk ◀ ▶ untuk mendengarkan satu per satu, atau ketik nomor varian dan Buka untuk langsung melompat ke nomor tersebut (sampel akan diucapkan). Pertahankan yang Anda sukai.</string>
     <string name="settings_navigation">Navigasi</string>
     <string name="settings_vibrate_on_turns">Getar saat berbelok</string>
@@ -210,7 +210,7 @@
     <plurals name="settings_cells_update_available">
         <item quantity="other">%1$d bagian memiliki versi baru</item>
     </plurals>
-    <string name="settings_area_confirm_region_have">Petunjuk arah dan tempat offline untuk %1$s sudah didownload.</string>
+    <string name="settings_area_confirm_region_have">Petunjuk arah dan tempat offline untuk %1$s sudah diunduh.</string>
     <string name="settings_offline_no_areas">Belum ada area yang disimpan.</string>
     <string name="settings_offline_addresses_missing">Area yang Anda simpan sebelum pembaruan ini tidak menyertakan data alamat. Perbarui area tersebut untuk menelusuri dan bernavigasi ke alamat secara offline.</string>
     <string name="settings_offline_addresses_update">Perbarui area yang disimpan</string>
@@ -326,7 +326,7 @@
     <string name="settings_places_lookup">Cari tempat yang diketuk di Google</string>
     <string name="settings_places_lookup_hint">Mengetuk tempat akan mengambil jam buka, ulasan, dan fotonya dari Google, dan Vela mengingat kecocokan tersebut sehingga ketukan berikutnya bersifat instan. Nonaktif = tempat yang diketuk hanya menampilkan data yang dimiliki Vela (nama, jenis, alamat, telepon, situs web) dan tidak ada informasi ketukan yang dikirim ke Google. Penelusuran dan petunjuk arah tetap menggunakan Google.</string>
     <string name="settings_places_source_more_title">Dari mana data tempat Vela berasal</string>
-    <string name="settings_places_source_more_body">Data tempat Vela berasal dari Overture Maps, dataset bisnis terbuka yang dikelola oleh Meta, Microsoft, dan pihak lain, serta AllThePlaces, yang mengumpulkan data jaringan toko dari penemunya masing-masing, dengan OpenStreetMap mengoreksi letak persis toko tersebut. Vela menggabungkan ketiganya ke dalam tile peta dan menyajikannya dari repositori GitHub miliknya sendiri, sehingga tidak ada informasi tentang apa yang Anda lihat yang dikirim ke Meta atau Google.\n\nData ini melakukan streaming saat Anda menjelajah dan didownload bersama wilayah untuk penggunaan offline. Jika Vela belum memiliki data untuk suatu area, peta akan beralih kembali ke Google.\n\nPenelusuran, detail tempat, jam buka, ulasan, dan foto selalu berasal dari Google, apa pun opsi yang Anda pilih.</string>
+    <string name="settings_places_source_more_body">Data tempat Vela berasal dari Overture Maps, dataset bisnis terbuka yang dikelola oleh Meta, Microsoft, dan pihak lain, serta AllThePlaces, yang mengumpulkan data jaringan toko dari penemunya masing-masing, dengan OpenStreetMap mengoreksi letak persis toko tersebut. Vela menggabungkan ketiganya ke dalam tile peta dan menyajikannya dari repositori GitHub miliknya sendiri, sehingga tidak ada informasi tentang apa yang Anda lihat yang dikirim ke Meta atau Google.\n\nData ini melakukan streaming saat Anda menjelajah dan diunduh bersama wilayah untuk penggunaan offline. Jika Vela belum memiliki data untuk suatu area, peta akan beralih kembali ke Google.\n\nPenelusuran, detail tempat, jam buka, ulasan, dan foto selalu berasal dari Google, apa pun opsi yang Anda pilih.</string>
     <string name="settings_show_civic">Taman, sekolah, dan fasilitas umum</string>
     <string name="settings_show_civic_hint">Tingkat ikon tempat non-bisnis. Nonaktif berarti hanya menampilkan bisnis saja.</string>
     <string name="settings_show_transit_stops">Perhentian transportasi umum</string>
@@ -388,7 +388,7 @@
     <string name="settings_clear_history_done">Riwayat dihapus</string>
     <string name="settings_privacy_button">Data apa yang diterima Google</string>
     <string name="settings_google_free">Gunakan Vela tanpa Google</string>
-    <string name="settings_google_free_hint">Tidak ada yang dikirim ke Google. Penelusuran menggunakan OpenStreetMap dan wilayah yang Anda download, tempat di peta berasal dari data Vela sendiri, dan rute berasal dari router terbuka tanpa lalu lintas langsung. Anda akan kehilangan ulasan, foto, jam buka Google, perkiraan waktu kedatangan langsung, Street View, dan tampilan dekat satelit. Petunjuk arah transportasi umum berasal dari perencana terbuka. Wilayah yang didownload tetap berfungsi sepenuhnya secara offline.</string>
+    <string name="settings_google_free_hint">Tidak ada yang dikirim ke Google. Penelusuran menggunakan OpenStreetMap dan wilayah yang Anda unduh, tempat di peta berasal dari data Vela sendiri, dan rute berasal dari router terbuka tanpa lalu lintas langsung. Anda akan kehilangan ulasan, foto, jam buka Google, perkiraan waktu kedatangan langsung, Street View, dan tampilan dekat satelit. Petunjuk arah transportasi umum berasal dari perencana terbuka. Wilayah yang diunduh tetap berfungsi sepenuhnya secara offline.</string>
     <string name="settings_diagnostics">Diagnostik</string>
     <string name="settings_diagnostics_hint">Nonaktif secara default. Saat aktif, Vela menyimpan log lokal singkat yang dapat Anda ekspor dan berikan kepada pengembang. Tidak ada yang diunggah, dan menonaktifkannya akan menghapus log tersebut.</string>
     <string name="settings_share_diagnostics">Bagikan diagnostik</string>
@@ -773,11 +773,11 @@
     <string name="mapvm_routing_failed_reason">Pencarian rute gagal: %1$s</string>
     <string name="mapvm_no_transit_routes">Rute transportasi umum tidak ditemukan</string>
     <string name="mapvm_trip_default_name">Perjalanan</string>
-    <string name="mapvm_no_voice_engine">Belum ada suara yang terpasang untuk petunjuk suara</string>
+    <string name="mapvm_no_voice_engine">Tidak ada suara yang terpasang untuk petunjuk suara lisan</string>
     <string name="mapscreen_get_voice">Dapatkan suara</string>
     <string name="mapscreen_download_voice">Unduh %1$s (%2$d MB)</string>
     <string name="mapscreen_system_voices">Suara sistem</string>
-    <string name="settings_spoken_directions">Petunjuk suara</string>
+    <string name="settings_spoken_directions">Petunjuk arah lisan</string>
     <string name="settings_voice_mode_on">Aktif</string>
     <string name="settings_voice_mode_alerts">Hanya peringatan</string>
     <string name="settings_voice_mode_off">Nonaktif</string>
@@ -789,7 +789,7 @@
     <string name="settings_spoken_detail_brief">Ringkas</string>
     <string name="settings_spoken_detail_exits">Hanya pintu keluar jalan tol</string>
     <string name="settings_spoken_detail_hint">Ringkas menyampaikan setiap belokan satu kali tanpa nama jalan. Hanya pintu keluar jalan tol tidak memberikan petunjuk suara di dalam kota dan hanya memberikan petunjuk untuk pintu keluar, percabangan, serta belokan saat melaju dengan kecepatan tinggi.</string>
-    <string name="mapvm_voice_lang_missing">Petunjuk suara memerlukan suara %1$s. Dapatkan melalui Pengaturan → Suara</string>
+    <string name="mapvm_voice_lang_missing">Petunjuk arah lisan memerlukan suara %1$s. Dapatkan melalui Pengaturan → Suara</string>
     <string name="mapvm_voice_lang_system">Petunjuk arah %1$s menggunakan suara ponsel Anda. Tambahkan suara melalui pengaturan suara sistem.</string>
     <string name="mapvm_resume_waiting_gps">Menunggu GPS untuk melanjutkan navigasi…</string>
     <string name="mapvm_resume_failed">Tidak dapat melanjutkan navigasi</string>
@@ -827,7 +827,7 @@
     <string name="navservice_notif_action_resume">Lanjutkan</string>
     <string name="navservice_notif_action_end">Akhiri</string>
     <string name="navservice_channel_name">Navigasi</string>
-    <string name="navservice_channel_turns_name">Peringatan belokan bersuara</string>
+    <string name="navservice_channel_turns_name">Peringatan belokan lisan</string>
     <string name="update_available_title">Vela %1$s tersedia</string>
     <string name="update_downloading">Mengunduh… %1$d%%</string>
     <string name="update_later">Nanti</string>
@@ -908,7 +908,7 @@
     <string name="car_home">Rumah</string>
     <string name="car_work">Kantor</string>
     <string name="car_settings">Pengaturan</string>
-    <string name="car_setting_voice">Petunjuk suara</string>
+    <string name="car_setting_voice">Petunjuk arah lisan</string>
     <string name="car_setting_avoid_tolls">Hindari jalan berbayar</string>
     <string name="car_setting_avoid_highways">Hindari jalan raya utama</string>
     <string name="car_setting_avoid_ferries">Hindari feri</string>
