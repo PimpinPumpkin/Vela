@@ -74,6 +74,8 @@ object PopularTimesParser {
             updates = matched?.updates.orEmpty(),
             svPanoId = matched?.svPanoId,
             svYawDeg = matched?.svYawDeg,
+            category = matched?.category,
+            temporarilyClosed = matched?.temporarilyClosed == true,
         )
         return if (details.isEmpty) null else details
     }

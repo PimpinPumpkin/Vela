@@ -1248,8 +1248,8 @@ fun PlaceSheet(
                 }
             }
 
-            // A permanently-closed POI already says so in red above — don't also
-            // nag "Hours not listed" beneath it (the dead-POI hours are moot).
+            // A closed POI (permanently or temporarily) already says so in red above, so do not
+            // also nag "Hours not listed" beneath it (Google sends no hours for either).
             // The list owner's personal note, carried over from an imported Google Maps list
             // ("this restaurant's fish is better than its chicken") — the part of a shared
             // list Google itself throws away on export, kept front and center here.
@@ -1277,7 +1277,7 @@ fun PlaceSheet(
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving) {
+            } else if (place.category != null && !place.permanentlyClosed && !place.temporarilyClosed && !isTransitStop && !resolving) {
                 // Not while the listing is still being looked up: the map's data lacking hours
                 // says nothing about Google's, which usually has them.
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))

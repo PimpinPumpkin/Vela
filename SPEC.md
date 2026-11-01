@@ -322,6 +322,7 @@ Results are at `root[64][i]`, and each entry's place node is `[1]`. The keys are
 | `hours203`, `hours118` | `[1][203][0]`, `[1][118][0][3][0]` | weekly hours (3.3) |
 | `departments` | `[1][118]` | per entry: name `[0]`, hours `[3][0]`, status `[3][1][4][0]` |
 | `closedFlag` | `[1][23]` | 1 = permanently closed |
+| `editMenu` | `[1][96][5]` | "Suggest an edit" entries; one with kind `[6]` == 3 ("Reopen this place") marks a temporary closure, which carries no `[203]` block or status text |
 | `popularTimes` | `[1][84]` | `[0]` holds 7 days, each `[dow, [[hour, percent, ...], ...]]` |
 | none | regex over the entry | Street View thumbnail pano id and yaw (`SearchParser.svThumb`) |
 
