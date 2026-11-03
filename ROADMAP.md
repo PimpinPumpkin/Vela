@@ -257,6 +257,8 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Takeout pins at 0,0 imported from their link, and a lists import of a saved places file
+  pointing to the right import (#920, #921): unit-tested. Not tried with a real Takeout file.
 - The free-drive follow turns heading-up only on speed held over 4 s (#905): builds. Not tried
   on a phone or on foot.
 - A Google place asked for as the place, so the route ends at its entrance point
