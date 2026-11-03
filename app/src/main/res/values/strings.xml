@@ -310,6 +310,7 @@
     <string name="settings_import_unreadable">That file could not be opened.</string>
     <string name="settings_import_wrong_format">No places found in that file. Vela reads its own exports, and GPX, KML or GeoJSON files saved from other map apps.</string>
     <string name="settings_import_wrong_format_named">No places found in that %1$s file.</string> <!-- format -->
+    <string name="settings_lists_import_is_places">That file holds saved places, not lists. Import it from Settings &gt; Saved places &gt; Import.</string>
     <string name="settings_import_no_picker">No file picker is available on this device, so a file cannot be chosen.</string>
     <string name="settings_no_saved_places">No saved places yet</string>
     <string name="settings_export">Export</string>

@@ -17,7 +17,8 @@ sealed interface ImportResult {
 
     /** Readable, but not Vela's own export. [format] names it when recognizable, so the message
      *  can say what the file actually is instead of shrugging. */
-    data class WrongFormat(val format: String?) : ImportResult
+    /** [placesFile]: the file is one the saved places import reads (a lists import was handed it). */
+    data class WrongFormat(val format: String?, val placesFile: Boolean = false) : ImportResult
 
     /** The file could not be opened or read at all. */
     data object Unreadable : ImportResult

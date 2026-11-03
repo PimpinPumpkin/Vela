@@ -3488,8 +3488,11 @@ the shared 12 s timeout cuts it off.
   is latitude first; KML and GeoJSON are longitude first. A KML placemark with several
   coordinate tuples is skipped. Only name, coordinate and a given address are taken. Ids derive
   from the rounded coordinate, so a re-import adds nothing; `0,0` and out-of-range points are
-  dropped. The picker keeps `*/*` last, because Android reports `.gpx` as an octet stream.
-  `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable. Never wrap the
+  dropped. A Takeout feature at `0,0` takes its point from its `google_maps_url` first
+  (`TakeoutCsv.readLink`, which reads `?q=<lat>,<lng>` as a point), and only a link without one
+  drops it. The picker keeps `*/*` last, because Android reports `.gpx` as an octet stream.
+  `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable. A lists import
+  handed a file the saved places import reads says so (`WrongFormat.placesFile`). Never wrap the
   launcher in a bare `runCatching`: with no documents provider the button then does nothing.
 - Google Takeout's Saved folder holds one CSV per list (`Title,Note,URL,Comment`, older
   exports `Tags`, and the header in the account's language, `Titre,Note,URL,Tags,Commentaire`)
