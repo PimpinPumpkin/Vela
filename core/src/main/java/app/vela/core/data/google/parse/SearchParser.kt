@@ -220,7 +220,9 @@ object SearchParser {
             // business temporarily closed, Google replaces the status text with "Temporarily closed"
             // (localized) — surface it first-class so the UI can banner it and suppress the now-
             // misleading weekly hours, instead of quietly relying on the red status color alone.
-            temporarilyClosed = isTemporarilyClosed(
+            // A temporary closure usually comes with no status text at all: Google drops the [203]
+            // hours block and offers "Reopen this place" in the edit menu instead (SPEC 3.2).
+            temporarilyClosed = hasReopenAction(field("editMenu")) || isTemporarilyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
             ),
             // Coherent pairing: when the displayed status came from [118] (no [203] status), take
@@ -379,6 +381,12 @@ object SearchParser {
         "Temporarily", "temporairement", "Vorübergehend", "temporalmente", "temporaneamente",
         "temporariamente", "Tijdelijk", "Временно", "Tymczasowo", "Tillfälligt", "Тимчасово", "זמנית", "temporar",
     )
+
+    /** The edit menu offers "Reopen this place" (entry kind `[6]` == 3) only on a place Google has
+     *  marked closed. The kind is the same in every `hl`, so no wording table is needed. A
+     *  permanently closed place may carry it too; the sheet lets the permanent flag win. */
+    internal fun hasReopenAction(menu: JsonElement?): Boolean =
+        menu.arr()?.any { it.at(6).int() == 3 } == true
 
     internal fun isTemporarilyClosed(vararg status: String?): Boolean =
         status.any { s -> s != null && TEMP_CLOSED_WORDS.any { s.contains(it, ignoreCase = true) } }

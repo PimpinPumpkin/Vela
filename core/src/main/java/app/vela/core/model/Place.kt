@@ -137,8 +137,13 @@ data class PlaceDetails(
      *  reply had none: the thumbnail above the card reads it (`Place.svPanoId`). */
     val svPanoId: String? = null,
     val svYawDeg: Double? = null,
+    /** The listing's category and its temporary-closure flag, for a sheet opened from the map's
+     *  own label: without them it showed Google's rating but no category and no closure. */
+    val category: String? = null,
+    val temporarilyClosed: Boolean = false,
 ) {
-    val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null &&
+    val isEmpty: Boolean get() = category == null && !temporarilyClosed &&
+        popularTimes == null && editorialSummary == null && ownerDescription == null &&
         rating == null && reviewCount == null && hours.isEmpty() && address == null && phone == null &&
         website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
         about.isEmpty() && featuredReview == null && updates.isEmpty() && svPanoId == null

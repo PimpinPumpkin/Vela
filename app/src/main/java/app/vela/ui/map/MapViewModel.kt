@@ -4139,6 +4139,9 @@ class MapViewModel @Inject constructor(
                     // The pano and its heading travel together, so the yaw is never another view's.
                     svPanoId = sel.svPanoId ?: d.svPanoId,
                     svYawDeg = if (sel.svPanoId != null) sel.svYawDeg else d.svYawDeg,
+                    category = sel.category ?: d.category,
+                    // A closure Google reports wins over a summary that did not say.
+                    temporarilyClosed = sel.temporarilyClosed || d.temporarilyClosed,
                 ),
             )
         }

@@ -320,6 +320,9 @@ data class Calibration(
             // It's how Google marks dead POIs that carry no open/closed status text,
             // and — unlike popular times — it survives the keyless degraded response.
             "closedFlag" to listOf(1, 23),
+            // The "Suggest an edit" menu: entries [label, hint, icon, link, kind@[6]]. A place Google
+            // has marked closed carries a kind-3 entry ("Reopen this place") and no hours block.
+            "editMenu" to listOf(1, 96, 5),
             // Popular-times histogram: [84][0] = 7 days, each [d][0]=day-of-week,
             // [d][1]=hourly [hour, occupancy%, …]. Relative to the place node [1].
             "popularTimes" to listOf(1, 84),

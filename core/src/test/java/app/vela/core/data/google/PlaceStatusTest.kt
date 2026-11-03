@@ -99,6 +99,24 @@ class PlaceStatusTest {
         assertEquals(false, SearchParser.isTemporarilyClosed(null, null))
     }
 
+    /** A temporary closure Google marks without status text: no [203] block, and the edit menu
+     *  offers "Reopen this place" (kind 3). Shapes from a live capture of a temporarily closed
+     *  museum and an open one, 2026-11. */
+    @Test fun `temporary closure is read from the edit menu's reopen entry`() {
+        val closed = kotlinx.serialization.json.Json.parseToJsonElement(
+            """[[null,null,"Reopen this place","Mark as open again",null,null,3],""" +
+                """[null,null,"Change name or other details","Edit name",null,null,1],""" +
+                """[null,null,"Close or remove","Mark as permanently closed",null,null,2]]""",
+        )
+        val open = kotlinx.serialization.json.Json.parseToJsonElement(
+            """[[null,null,"Change name or other details","Edit name",null,null,1],""" +
+                """[null,null,"Close or remove","Mark as closed",null,null,2]]""",
+        )
+        assertEquals(true, SearchParser.hasReopenAction(closed))
+        assertEquals(false, SearchParser.hasReopenAction(open))
+        assertEquals(false, SearchParser.hasReopenAction(null))
+    }
+
     @Test fun `localized - closed-first ordering disarms every prefix-cousin collision`() {
         // pt: "Fechado" (closed) is a PREFIX-EXTENSION of "Fecha" (closes → open) — closed wins.
         assertEquals(false, SearchParser.parseOpenNow("Fechado ⋅ Abre às 9:00", "pt"))
