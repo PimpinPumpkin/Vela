@@ -189,6 +189,8 @@ say offline or failed.
 
 "Search this area" (`searchThisArea`) reruns the query over the new viewport and keeps the
 results inside the view plus 10% (`AreaNarrow`). When none are inside, the whole answer shows.
+The list stays minimized until the new results arrive, so the map does not first fly back to the
+old ones.
 
 The results sheet shows while there are results, no place is open and the search field is closed
 (`SearchGates`). A search submitted while picking a stop or an endpoint shows its results the same

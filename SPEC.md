@@ -3124,7 +3124,9 @@ when the feature ids match. Two requests at most.
 - The "more results" row pulls the next three pages. It goes when a pull adds fewer than five or
   the query changes.
 - "Search this area" keeps the results inside the view, padded by 10% per side
-  (`AreaNarrow.PAD`), or the whole answer when none fall inside.
+  (`AreaNarrow.PAD`), or the whole answer when none fall inside. A list the pan minimized stays
+  minimized until the search answers (`runSearch(expand = false)`): opened at once, it still held
+  the old results and the map framed them before the new ones.
 - Filters are local to the fetched results and also drop the map pins. "Open now" also asks
   again: the fetch is about 60 results, and late at night nearly all of them are closed, so
   the chip calls `MapViewModel.searchOpenNow` (through `SearchActions`), which searches the

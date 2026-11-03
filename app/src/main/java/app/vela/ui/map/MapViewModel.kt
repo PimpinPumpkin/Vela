@@ -2229,7 +2229,14 @@ class MapViewModel @Inject constructor(
         narrowToView = viewport?.copyOf(4)
         narrowAskedMs = android.os.SystemClock.elapsedRealtime()
         if (here != null) _state.update { it.copy(center = here) }
-        runSearch(_state.value.query.trim(), here)
+        // A list a pan minimized stays down until this search answers (#891): opened at once,
+        // with the old results still in it, the map framed the old area first and then the new.
+        runSearch(_state.value.query.trim(), here, expand = false)
+        val job = searchJob
+        viewModelScope.launch {
+            job?.join()
+            if (searchJob === job) _state.update { it.copy(resultsCollapsed = false) }
+        }
     }
     /** Set by [searchThisArea] for the one search it starts: the view to keep the results to. */
     private var narrowToView: DoubleArray? = null
@@ -2543,7 +2550,7 @@ class MapViewModel @Inject constructor(
     // Maps in two hidden views on the chance a place got tapped, two whole web apps per search.
     // A tap's photos and reviews are single RPCs now; the pages load only when actually needed.)
 
-    private fun runSearch(q: String, near: LatLng?, remember: Boolean = true) {
+    private fun runSearch(q: String, near: LatLng?, remember: Boolean = true, expand: Boolean = true) {
         if (q.isEmpty()) return
         // Pasted coordinates ("37.77, -122.42" or a geo: string) drop a reverse-geocoded pin
         // there instead of going to the search endpoint as text - same handling a bare external
@@ -2595,7 +2602,7 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
-            _state.update { it.copy(openListId = null, searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
+            _state.update { it.copy(openListId = null, searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = if (expand) false else it.resultsCollapsed, alongRouteDest = null) }
             // A pasted Google Maps SHARE LINK: try the shared-list import (issue #1). The link
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
