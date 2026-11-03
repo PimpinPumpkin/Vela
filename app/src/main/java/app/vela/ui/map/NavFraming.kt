@@ -421,7 +421,7 @@ internal class NavFramer {
             pillHeightPx = pillH,
             speedTopPx = if (app.vela.ui.SpeedDisplay.on.value) NavChromeEdges.speedTopPx.toDouble() else 0.0,
             speedRightPx = NavChromeEdges.speedRightPx.toDouble(),
-            arrowHalfPx = (NavFraming.ARROW_HALF_PX * app.vela.ui.PuckStyle.scale()).toDouble(),
+            arrowHalfPx = (NavFraming.ARROW_HALF_PX * app.vela.ui.PuckStyle.phoneScale()).toDouble(),
         )
         val below = NavFraming.belowPuck(mode == app.vela.ui.RoadLabel.PUCK, pillH)
         val top = if (clear) 0 else NavChromeEdges.bannerBottomPx

@@ -1946,6 +1946,10 @@ leaves visible. At the default display and font size the frame is unchanged.
   (`BAR_PILL_GAP_DP`, 10 dp, over it), and the speed box once its right edge reaches the arrow's
   column (`ARROW_HALF_PX`, 101 px, times the arrow size). At default size the box stays in the
   corner and does not count.
+- The phone's arrow is 202 px times the arrow size, times `PuckStyle.screenFit`: the screen's
+  short side over 1080 px, at most 1 and at least 0.4. A screen 1080 px wide or more keeps the
+  202 px; on an 800 by 480 screen the arrow is 90 px instead of 42% of the width. The car screen
+  sizes its own arrow.
 - The look-ahead ratio is the dp between the turn card's bottom and the arrow, over the same on the
   same phone at its default density (`DisplayMetrics.DENSITY_DEVICE_STABLE`) with the card ending
   `REF_TOP_DP` (230 dp) down, or `REF_MIN_AHEAD_FRAC` (a quarter) of the map on a short screen. At

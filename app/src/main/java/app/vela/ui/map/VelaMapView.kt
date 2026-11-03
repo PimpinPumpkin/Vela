@@ -5723,7 +5723,7 @@ fun VelaMapView(
     if (puckOverlayOn.value && puckMesh != null) {
         // The car, UFO, ship and duck are 3D models drawn from the camera's own tilt and the
         // heading each frame (both read in the draw phase, so no recomposition per frame).
-        val sizePx = (202 * app.vela.ui.PuckStyle.scale()).toInt()
+        val sizePx = (202 * app.vela.ui.PuckStyle.phoneScale()).toInt()
         androidx.compose.foundation.Canvas(
             Modifier
                 .graphicsLayer {
@@ -10505,7 +10505,7 @@ private fun arrowBitmap(): Bitmap {
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
 internal fun navPuckBitmap(
-    scale: Float = app.vela.ui.PuckStyle.scale(),
+    scale: Float = app.vela.ui.PuckStyle.phoneScale(),
     whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
 ): Bitmap {
     // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
