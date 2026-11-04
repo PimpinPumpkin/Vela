@@ -62,7 +62,8 @@ traffic on the bus's route. GTFS-Realtime knows only how late a vehicle is now.
 
 A tapped stop icon knows its stop id (`Transitous.boardFor`). A place sheet gets a board when its
 category reads as a transit stop (`isTransitCategory`: word lists per language that calibration
-can replace, with exclusions so a gas station is not a station). `Transitous.board` then takes
+can replace, with exclusions so a gas station is not a station, and a compiled list of bike words
+so a bike-share station is not one either). `Transitous.board` then takes
 the nearest of the stops within 200 m of the place. A tapped basemap stop with no Google listing
 gets its board the same way.
 

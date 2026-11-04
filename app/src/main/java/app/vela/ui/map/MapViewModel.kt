@@ -3530,9 +3530,11 @@ class MapViewModel @Inject constructor(
     @Volatile private var TRANSIT_CAT = TRANSIT_CAT_COMPILED
     @Volatile private var NON_TRANSIT_CAT = NON_TRANSIT_CAT_COMPILED
 
-    /** The ONE transit-category predicate: a gate word must match AND no exclusion word may. */
+    /** The ONE transit-category predicate: a gate word must match AND no exclusion word may. A
+     *  bike-share or bike rental category is never a stop, whatever the published lists hold
+     *  ([BikeShareStations.isBikeCategory]). */
     private fun isTransitCategory(cat: String): Boolean =
-        TRANSIT_CAT.containsMatchIn(cat) && !NON_TRANSIT_CAT.containsMatchIn(cat)
+        TRANSIT_CAT.containsMatchIn(cat) && !NON_TRANSIT_CAT.containsMatchIn(cat) && !BikeShareStations.isBikeCategory(cat)
 
     /** Push the calibration bundle's keyword-table overrides into their consumers (called at init
      *  and again after the remote refresh). Absent fields leave the compiled tables in place. */

@@ -4857,7 +4857,8 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   `Transitous.bikeStationsInBox` for the view padded by half on each side (`padded`), from z15
   (`MIN_ZOOM`, the stop icons' fetch zoom), after a 350 ms settle (`SETTLE_MS`). It asks again
   when the view no longer fits in that box or its center leaves the box's middle half (`covers`),
-  and every 60 s (`REFRESH_MS`) for the same box while the app is on screen. Nothing is asked
+  and every 60 s (`REFRESH_MS`) for the same box while the app is on screen, timed on the
+  elapsed-time clock so a change of the phone's clock cannot stall it. Nothing is asked
   during navigation, with "Use less data", or offline. A failure keeps what is drawn and is never
   kept as "no stations".
 - The request is
@@ -4885,13 +4886,18 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   from the theme when the layer is made; a new theme or icon size makes it again. The layer is
   off the map during navigation.
 - A tap competes by screen distance with the businesses and the stop under the finger. It opens a
-  light place `bikeshare:<providerId>/<station id>` with no Google lookup and no board. Its pin
-  takes the `bike` icon group: `PoiIcons.groupForCategory` reads bike share and bike rental
-  before transit, since "Bike-share station" and Google's "Bike sharing station" say "station".
-  `Place.bikeShare` holds the counts and when they were fetched, and is never serialized, so a
+  light place `bikeshare:<providerId>/<station id>` with no Google lookup and no board. Its
+  category is the translated label, and its pin is drawn from `PIN_CATEGORY` ("Bike-share
+  station") instead, because `PoiIcons.groupForCategory` reads English words. That function reads
+  bike share and bike rental before transit, since "Bike-share station" and Google's "Bike
+  sharing station" say "station". `Place.bikeShare` holds the counts and when they were fetched, and is never serialized, so a
   saved station keeps no count. Each refresh that still holds the open station updates its sheet:
   "7 bikes · 16 free docks · Updated 1 min ago", or "No rentals now", "No returns now" and "Out
   of service".
+- `isTransitCategory` turns down any category with a bike word (`BikeShareStations.isBikeCategory`:
+  bike, bicycle, bici, vélo, Fahrrad, fiets, cykel, sykkel), so a Google bike-share listing gets
+  no departure board and is never taken for a stop. The words are compiled in: a published
+  `transitExcludeWords` replaces the compiled exclusions and would drop them.
 - Coverage is what Transitous carries: a system is one entry in its `feeds/<country>.json`.
 
 #### Directions

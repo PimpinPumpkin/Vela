@@ -53,6 +53,19 @@ class BikeShareStationsTest {
         assertEquals("bike", PoiIcons.groupForCategory("Bike sharing station"))
         assertEquals("transit", PoiIcons.groupForCategory("Bus station"))
         assertEquals("civic", PoiIcons.groupForCategory("Fire station"))
+        // The app's own station is drawn from this, not from its translated category.
+        assertEquals("bike", PoiIcons.groupForCategory(BikeShareStations.PIN_CATEGORY))
+    }
+
+    @Test fun `a bike-share category is never a transit stop`() {
+        for (c in listOf("Bike sharing station", "Bicycle rental service", "Estación de bicicletas compartidas",
+            "Estación de alquiler de bicicletas", "Estación de bici pública", "Station de vélos en libre-service",
+            "Velostation", "Fahrradverleih")) {
+            assertTrue(c, BikeShareStations.isBikeCategory(c))
+        }
+        for (c in listOf("Bus station", "Estación de tren", "Gare routière", "Development office", "Mobile home park")) {
+            assertFalse(c, BikeShareStations.isBikeCategory(c))
+        }
     }
 
     @Test fun `other places and a station out of the list are left as they were`() {

@@ -20,7 +20,7 @@ import org.maplibre.geojson.Point
 /**
  * The bike-share stations on the map (SPEC 8, Bike-share stations): a round teal badge with a
  * bike for each station and its free bikes beside it, gray when it has none to rent. One GeoJSON
- * source and one symbol layer, from [MIN_ZOOM], under the transit stops. Colors are fixed when
+ * source and one symbol layer, from [BikeShareStations.MIN_ZOOM], under the transit stops. Colors are fixed when
  * the layer is made, from the theme; a new theme or icon size makes it again, a new list only
  * replaces the data. An empty list takes the layer off the map.
  */
@@ -31,7 +31,6 @@ internal object BikeShareMapLayer {
     const val KEY_PROP = "vela_bikeshare_key"
     private const val BIKES_PROP = "bikes"
     private const val EMPTY_PROP = "empty"
-    private const val MIN_ZOOM = 15f
     private const val BADGE_PX = 44
 
     private var last: List<Transitous.BikeStation>? = null
@@ -82,7 +81,7 @@ internal object BikeShareMapLayer {
             style.addSource(GeoJsonSource(SRC, fc, GeoJsonOptions().withMaxZoom(18)))
             val isEmpty = Expression.eq(Expression.get(EMPTY_PROP), Expression.literal(true))
             val layer = SymbolLayer(LAYER, SRC).apply {
-                setMinZoom(MIN_ZOOM)
+                setMinZoom(BikeShareStations.MIN_ZOOM.toFloat())
                 setProperties(
                     PropertyFactory.iconImage(Expression.switchCase(isEmpty, Expression.literal(empty), Expression.literal(full))),
                     PropertyFactory.iconSize(

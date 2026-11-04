@@ -2869,8 +2869,9 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
         // pins the LIST dropped must drop off the MAP too (user 2026-07-11). null = no filter on.
         .let { list -> if (filteredIds == null) list else list.filter { it.id in filteredIds } }
         // A custom map's markers draw as pins in their own icon and color (savedPinData); here they
-        // only frame the view and keep the tap index, except the one that is selected.
-        .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id, areaZoom = it.areaZoom()) }
+        // only frame the view and keep the tap index, except the one that is selected. A bike-share
+        // station's pin is drawn from PIN_CATEGORY: its own category is the translated label.
+        .map { MapMarker(it.name, it.location, if (it.id.startsWith(BikeShareStations.ID_PREFIX)) BikeShareStations.PIN_CATEGORY else it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id, areaZoom = it.areaZoom()) }
 
 /** The nav bar and the step sheet it opens into: flush with the screen's bottom edge in portrait
  *  (the card pads its own content off the system bar), a floating card in the landscape column. */

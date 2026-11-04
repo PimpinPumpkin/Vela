@@ -46,8 +46,10 @@ internal class BikeShareStations(
     /** The padded box the shown stations came from, `[south, west, north, east]`. */
     private var box: DoubleArray? = null
     private var job: Job? = null
-    /** When the shown stations were fetched (wall clock, ms). */
+    /** When the shown stations were fetched: the wall clock for the sheet's age, the elapsed-time
+     *  clock for the minute refresh, which a change of the phone's clock must not stall. */
     private var fetchedAt = 0L
+    private var fetchedElapsed = -REFRESH_MS
 
     fun bind() {
         // Turning the layer on (or off) acts at once, not at the next pan.
@@ -67,7 +69,7 @@ internal class BikeShareStations(
                 .collectLatest { live ->
                     if (!live) return@collectLatest
                     while (true) {
-                        val age = System.currentTimeMillis() - fetchedAt
+                        val age = SystemClock.elapsedRealtime() - fetchedElapsed
                         if (age < REFRESH_MS) { delay(REFRESH_MS - age); continue }
                         val b = box
                         if (b != null && job?.isActive != true) fetch(b, settleMs = 0)
@@ -122,6 +124,7 @@ internal class BikeShareStations(
                 else got.sortedBy { (it.lat - cLat) * (it.lat - cLat) + (it.lon - cLng) * (it.lon - cLng) }.take(MAX_STATIONS)
             box = b
             fetchedAt = System.currentTimeMillis()
+            fetchedElapsed = SystemClock.elapsedRealtime()
             Log.i(TAG, "bike share: ${list.size} stations (${got.size} in the box) in ${SystemClock.elapsedRealtime() - t0} ms")
             val at = fetchedAt
             state.update { s ->
@@ -142,7 +145,20 @@ internal class BikeShareStations(
         const val SETTLE_MS = 350L
         /** The most stations drawn, nearest the box's center first. */
         const val MAX_STATIONS = 500
+        /** What a station's pin is drawn from. The place's own category is the translated label,
+         *  and [PoiIcons.groupForCategory] reads English words: a translation that says "station"
+         *  drew the bus pin. */
+        const val PIN_CATEGORY = "Bike-share station"
         private const val TAG = "VelaTransit"
+
+        // Bike words in the languages Transitous covers most. A category with one is never a
+        // transit stop, though Google's "Bike sharing station" and "Estación de alquiler de
+        // bicicletas" say "station". Compiled in: a published `transitExcludeWords` replaces the
+        // compiled exclusions, and these must hold whatever it says.
+        private val BIKE_CATEGORY = Regex("""bike|bicycl|\bbici|\bv[ée]lo|fahrrad|fiets|cykel|sykkel""", RegexOption.IGNORE_CASE)
+
+        /** Whether a place category names bike share or bike rental. */
+        internal fun isBikeCategory(category: String): Boolean = BIKE_CATEGORY.containsMatchIn(category)
 
         /** The view padded by half its size on each side. */
         internal fun padded(south: Double, west: Double, north: Double, east: Double): DoubleArray {

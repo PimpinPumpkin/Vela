@@ -501,11 +501,14 @@ off the list when it has been.
   places found before its first save. Not seen: a real Takeout file imported again, which should
   take the rows it already matched with no lookup.
 - Bike-share stations on the map (`BikeShareStations`, `BikeShareMapLayer`, SPEC 8): seen on a
-  Pixel through adb, light and dark, over Lyon (bikes only: its feed has no dock counts) and over
-  a feed that repeats one dock count under each bike model. Seen in the log: a request a minute
-  with the app on screen, none with the layer off, below z15, in the background or during a
-  simulated drive, and one at once on return. Not seen: the counts against a station's own
-  display, a feed that sends `numDocksAvailable`, the AMOLED theme and a D-pad device.
+  Pixel through adb, light and dark, in English and Spanish, over Lyon (bikes only: its feed has
+  no dock counts) and over a feed that repeats one dock count under each bike model. Seen in the
+  log: a request a minute with the app on screen, none with the layer off, below z15, in the
+  background or during a simulated drive, and one at once on return. A Google bike rental listing
+  ("Estación de alquiler de bicicletas") opens with no departure board. Not seen: the counts
+  against a station's own display, a feed that sends `numDocksAvailable`, the AMOLED theme and a
+  D-pad device. Open: with the phone moving at about 26 km/h and the map following the fix, one
+  run asked for nothing in 2.5 minutes, the minute refresh included. The cause is not known.
 
 ### Open from the October 2026 audit
 

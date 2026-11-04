@@ -362,7 +362,9 @@ Unless "Look up tapped places on Google" is off, the name is searched near the t
 4.7 s tap on pages two and three. One page takes about 1.3 s.
 
 A transit stop is recognized from the feature's kind, after the exclusion list
-`NON_TRANSIT_CAT` (fuel, charging, fire, police), because "Gas station" contains "station". It
+`NON_TRANSIT_CAT` (fuel, charging, fire, police) and the bike words
+(`BikeShareStations.isBikeCategory`), because "Gas station" and "Bike sharing station" contain
+"station". It
 resolves to the nearest live transit listing within 250 m, else to the Transitous board at the
 tapped point.
 
