@@ -2103,6 +2103,10 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
+- The dot is drawn at the eased follow position, so it stays centered as the map glides. While
+  the follow glides back in from where a pan left the camera (`browseSeeking`), it is drawn at the
+  fix until the camera is within `SEEK_DONE_M` (3 m) of it; drawn at the eased position then, it
+  jumped to the screen's center and rode back with the map.
 - A two-finger tilt pauses the follow's camera writes and becomes its tilt target
   (`browseUserTilt`) in place of the automatic 0 or 55 degrees. It survives a pan, a sheet and
   the locate button. The compass, visible while a tilt is held, returns the map to north and

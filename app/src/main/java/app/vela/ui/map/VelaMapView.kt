@@ -384,6 +384,8 @@ private const val FOLLOW_STILL_DEADBAND_M = 2.0
 /** The free-drive follow turns heading-up once its speed, averaged over this many seconds, passes
  *  [FREE_HEADING_UP_MPS]: sustained riding or driving, not one noisy fix on foot. */
 private const val FREE_HEADING_UP_TAU_S = 4.0
+/** The follow's glide in from a pan is over once the camera is this close to the fix. */
+private const val SEEK_DONE_M = 3.0
 private const val FREE_HEADING_UP_MPS = 3.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
@@ -1115,6 +1117,9 @@ fun VelaMapView(
     // the next frame re-seeds, so pinching out past z14 while still following flew you straight
     // back in, over and over, until you panned (which drops follow). User report 2026-09-16.
     val browseEngaged = remember { booleanArrayOf(false) }
+    // True while the follow glides in from where a pan left the camera: the dot stays on the fix
+    // until the camera reaches it (#889).
+    val browseSeeking = remember { booleanArrayOf(false) }
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
@@ -2699,7 +2704,7 @@ fun VelaMapView(
             browseZoomGoal[0] = Double.NaN
             if (navMode) browseUserTilt[0] = Double.NaN // a pan or a sheet keeps the angle, like Google's
             browseEst.reset()
-            browseEngaged[0] = false
+            browseEngaged[0] = false; browseSeeking[0] = false
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
@@ -2780,6 +2785,7 @@ fun VelaMapView(
                         continue
                     } else {
                         browseEngaged[0] = true
+                        browseSeeking[0] = true
                         browseCam[0] = cp.target?.latitude ?: loc.lat
                         browseCam[1] = cp.target?.longitude ?: loc.lng
                     }
@@ -2897,7 +2903,10 @@ fun VelaMapView(
                 // catch up (the visible hop). At the eased position the dot stays centered and glides with
                 // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
                 // while pinching, when the camera isn't easing.)
-                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
+                // Not while the camera glides in from a pan: drawn at the eased position then, the dot
+                // jumped to the screen's center and rode back with the map (#889).
+                if (browseSeeking[0] && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
+                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0] && !browseSeeking[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
                     if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value)) {
