@@ -4765,7 +4765,7 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 | Piece | Source |
 | --- | --- |
 | Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. |
-| Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
+| Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. The box is asked through `ViewFetch` (bike-share stations below), so a request that is out lands before the next view is asked. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
 | Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
 | Bike-share stations | Transitous `/api/v1/rentals` from z15, behind the "Bike share" layer, off by default. A tapped station opens a sheet with its counts. |
@@ -4859,8 +4859,10 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   when the view no longer fits in that box or its center leaves the box's middle half (`covers`),
   and every 60 s (`REFRESH_MS`) for the box around the view while the app is on screen, timed on
   the elapsed-time clock so a change of the phone's clock cannot stall it. A request that is out
-  is never canceled for a newer view; when it lands, a view it no longer covers is asked for
-  next. While the map follows a moving fix the view comes once a second (`IDLE_WORK_GAP_MS`), and
+  is not canceled for a newer view (`ViewFetch`); when it lands, a view it no longer covers is
+  asked for next. One out longer than 15 s (`WIRE_DEADLINE_MS`, past the shared client's 12 s
+  call timeout) is canceled by the next view and its late reply dropped, since a socket read that
+  never returns outlives a cancel. While the map follows a moving fix the view comes once a second (`IDLE_WORK_GAP_MS`), and
   canceling there meant a reply slower than that never landed: central Paris took 732 ms after
   the settle. Nothing is asked during navigation, with "Use less data", or offline. A failure
   keeps what is drawn and is never kept as "no stations".

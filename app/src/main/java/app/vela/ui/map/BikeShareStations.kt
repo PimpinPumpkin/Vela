@@ -13,7 +13,6 @@ import app.vela.ui.BikeShareLayer
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -51,9 +50,7 @@ internal class BikeShareStations(
     private var view: DoubleArray? = null
     /** The padded box the shown stations came from, `[south, west, north, east]`. */
     private var box: DoubleArray? = null
-    private var job: Job? = null
-    /** A request is out. A newer view waits for it instead of canceling it ([fetch]). */
-    private var onWire = false
+    private val requests = ViewFetch(scope)
     /** When the shown stations were fetched: the wall clock for the sheet's age, the elapsed-time
      *  clock for the minute refresh, which a change of the phone's clock must not stall. */
     private var fetchedAt = 0L
@@ -79,7 +76,7 @@ internal class BikeShareStations(
                     while (true) {
                         val age = SystemClock.elapsedRealtime() - fetchedElapsed
                         if (age < REFRESH_MS) { delay(REFRESH_MS - age); continue }
-                        if (box != null && job?.isActive != true) fetch(settle = 0)
+                        if (box != null) fetch(settle = 0) // a request already out is left to land
                         delay(REFRESH_MS)
                     }
                 }
@@ -90,7 +87,7 @@ internal class BikeShareStations(
         view = doubleArrayOf(south, west, north, east, zoom)
         if (!BikeShareLayer.on.value || zoom < MIN_ZOOM) {
             box = null
-            job?.cancel()
+            requests.cancel()
             if (state.value.bikeStations.isNotEmpty()) state.update { it.copy(bikeStations = emptyList()) }
             return
         }
@@ -111,28 +108,24 @@ internal class BikeShareStations(
 
     /**
      * Asks for the box around the last view after [settle] ms. A request already out is never
-     * canceled for a newer view: while the map follows a moving fix the view comes once a second,
-     * and canceling there meant a reply slower than that never landed (central Paris took 732 ms
-     * after the 350 ms settle). The view it no longer covers is asked for when it lands.
+     * canceled for a newer view ([ViewFetch]): central Paris took 732 ms after the 350 ms settle,
+     * longer than the second between views while the map follows a moving fix. The view it no
+     * longer covers is asked for when it lands.
      */
     private fun fetch(settle: Long) {
         // "Use less data" and offline keep what is drawn and ask for nothing.
         if (app.vela.core.data.LowDataMode.enabled || state.value.offline) return
-        if (onWire) return
-        job?.cancel()
-        job = scope.launch {
-            if (settle > 0) delay(settle)
-            val v = view ?: return@launch
+        requests.ask(settle, send = send@{
+            val v = view ?: return@send false
             val b = padded(v[0], v[1], v[2], v[3])
             val t0 = SystemClock.elapsedRealtime()
-            onWire = true
-            val got = try { fetchBox(b) } finally { onWire = false }
+            val got = fetchBox(b)
             if (got == null) {
                 // A failure is never kept as "no stations": the next pan or minute asks again.
                 Log.i(TAG, "bike share: fetch failed after ${SystemClock.elapsedRealtime() - t0} ms")
-                return@launch
+                return@send false
             }
-            if (!BikeShareLayer.on.value || state.value.navigating) return@launch
+            if (!BikeShareLayer.on.value || state.value.navigating) return@send false
             val cLat = (b[0] + b[2]) / 2
             val cLng = (b[1] + b[3]) / 2
             val list = if (got.size <= MAX_STATIONS) got
@@ -146,9 +139,13 @@ internal class BikeShareStations(
                 val selected = refreshed(s.selected, list, at)
                 if (list == s.bikeStations && selected === s.selected) s else s.copy(bikeStations = list, selected = selected)
             }
+            true
+        }, landed = {
             // The map moved on while the request was out: ask for where it is now.
-            view?.let { nv -> if (!covers(b, nv[0], nv[1], nv[2], nv[3])) { job = null; onViewport(nv[0], nv[1], nv[2], nv[3], nv[4]) } }
-        }
+            val b = box
+            val nv = view
+            if (b != null && nv != null && !covers(b, nv[0], nv[1], nv[2], nv[3])) onViewport(nv[0], nv[1], nv[2], nv[3], nv[4])
+        })
     }
 
     companion object {

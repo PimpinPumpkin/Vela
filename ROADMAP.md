@@ -507,9 +507,11 @@ off the list when it has been.
   background or during a simulated drive, and one at once on return. A Google bike rental listing
   ("Estación de alquiler de bicicletas") opens with no departure board. Central Paris draws
   Vélib's stations and no operator's parking spots. Not seen: the counts against a station's own
-  display, a feed that sends `numDocksAvailable`, the AMOLED theme, a D-pad device, and the layer
-  keeping up while the map follows a moving fix (a request out is no longer canceled by the next
-  view; before that, one run at about 26 km/h asked for nothing in 2.5 minutes).
+  display, a feed that sends `numDocksAvailable`, the AMOLED theme and a D-pad device.
+- Bike-share stations and stop icons keeping up while the map follows a moving fix (`ViewFetch`):
+  a request that is out is no longer canceled by the next view. Tested in units and on a still
+  phone; not seen on the move, where one run at about 26 km/h had asked for no stations in 2.5
+  minutes.
 
 ### Open from the October 2026 audit
 
@@ -629,6 +631,10 @@ Found reading everything since 0.4.1912 and not fixed yet.
   brand draws its spots until it is added to `FREE_FLOATING_OPERATORS`, which takes a release.
   MOTIS's `numDocksAvailable`, once the public instance sends it, tells a docked station from a
   spot without a list.
+- Traffic controls, speed cameras, Flock cameras, transit lines and the satellite depth check
+  still cancel their request for each new view, so while the map follows a moving fix a reply
+  slower than the second between views never lands. They can ask through `ViewFetch` as the
+  stop icons and bike-share stations do.
 - Bike share in directions, after the stations layer. Transitous's planner already routes it:
   `/api/v1/plan` with `RENTAL` in `directModes`, `preTransitModes` and `postTransitModes` and
   the `BICYCLE` form factor returns a walk, a ride from one station to another and a walk,

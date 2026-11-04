@@ -106,7 +106,9 @@ back from the stops on its approaches.
 
 Stops are fetched from zoom 15 (`TRANSIT_STOPS_MIN_ZOOM`), drawn from 16 and named from 17, one
 icon per station with bays collapsed onto their parent. The fetch covers the view padded by half
-on each side and repeats only when the view's center leaves the middle half of that box.
+on each side and repeats only when the view's center leaves the middle half of that box. A
+request that is out is left to land before the next view is asked (`ViewFetch`, as for bike-share
+stations below).
 
 While the layer has stops, the basemap's own bus icons are filtered out so a stop cannot draw
 twice at slightly different corners. Rail and airport icons stay on the basemap.

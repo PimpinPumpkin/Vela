@@ -9472,7 +9472,7 @@ class MapViewModel @Inject constructor(
     private var flockOnRoute: List<app.vela.core.data.AlprCamera>? = null // the cameras on those routes, once worked out
     private var flockOnRouteJobKey = 0 // the route set that work was started for
     private var transitStopsBox: DoubleArray? = null
-    private var transitStopsJob: Job? = null
+    private val transitStopsFetch = ViewFetch(viewModelScope)
     private val transitStopCache by lazy { app.vela.data.TransitStopCache(appContext) }
     private val transitBoardCache by lazy { app.vela.data.TransitBoardCache(appContext) }
     private var lastFlockViewport: DoubleArray? = null
@@ -9856,7 +9856,7 @@ class MapViewModel @Inject constructor(
         // Transit-stop toggle (user 2026-07-15): treat "off" like zoomed-out - clear + skip.
         if (!app.vela.ui.MapPoiPrefs.showTransit.value || zoom < TRANSIT_STOPS_MIN_ZOOM) {
             transitStopsBox = null
-            transitStopsJob?.cancel()
+            transitStopsFetch.cancel()
             if (_state.value.transitStops.isNotEmpty()) _state.update { it.copy(transitStops = emptyList()) }
             return
         }
@@ -9865,11 +9865,12 @@ class MapViewModel @Inject constructor(
             val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
             if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
         }
-        transitStopsJob?.cancel()
-        transitStopsJob = viewModelScope.launch {
-            delay(350)
+        // A request that is out lands before the next view is asked (ViewFetch): while the map
+        // follows a moving fix the view comes once a second, sooner than a slow link answers.
+        transitStopsFetch.ask(350, send = send@{
             val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
             val s0 = south - padLat; val n0 = north + padLat; val w0 = west - padLng; val e0 = east + padLng
+            val t0 = android.os.SystemClock.elapsedRealtime()
             val live = withContext(Dispatchers.IO) {
                 runCatching { app.vela.core.data.transit.Transitous.stopsInBox(http, s0, w0, n0, e0) }.getOrNull()
             }
@@ -9879,8 +9880,9 @@ class MapViewModel @Inject constructor(
             } else {
                 // Offline / fetch failed: the disk cache is the floor. Null there too -> keep whatever
                 // is drawn (don't blank the layer on a blip) and leave the box unset so we retry.
-                withContext(Dispatchers.IO) { runCatching { transitStopCache.lookup(s0, w0, n0, e0) }.getOrNull() } ?: return@launch
+                withContext(Dispatchers.IO) { runCatching { transitStopCache.lookup(s0, w0, n0, e0) }.getOrNull() } ?: return@send false
             }
+            android.util.Log.i("VelaTransit", "transit stops: ${stops.size} (${if (live != null) "live" else "cached"}) in ${android.os.SystemClock.elapsedRealtime() - t0} ms")
             transitStopsBox = doubleArrayOf(s0, w0, n0, e0)
             // One icon per station: bays collapse onto their parent (the board queries the parent
             // anyway), and a same-named directional pair folds into ONE icon at its midpoint whose
@@ -9891,7 +9893,11 @@ class MapViewModel @Inject constructor(
             // stop filter in Settings asks "does anything of this kind stop here".)
             val deduped = stops.groupBy { it.parentId ?: it.stopId }.map { (_, group) -> group.first().copy(modes = group.flatMap { it.modes }.distinct()) }
             _state.update { it.copy(transitStops = app.vela.core.data.transit.Transitous.mergeDirectionalPairs(deduped)) }
-        }
+            true
+        }, landed = {
+            // The map moved on while the request was out: ask for where it is now.
+            viewport?.let { v -> refreshTransitStops(v[0], v[1], v[2], v[3], v[4]) }
+        })
     }
 
     /** A tapped Transitous stop icon: open a lightweight place at the stop and fetch its board
