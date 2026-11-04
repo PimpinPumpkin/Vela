@@ -235,8 +235,10 @@ classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_E
 false and the parameter is never sent.
 
 When Google does not answer and a region is downloaded, the on-phone router computes the
-avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). If nothing
-honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
+avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). With no region,
+or none in time, the other open service, Valhalla, is asked for a car route told to keep off
+them. Its options are preferences, so its route counts only when its own summary says it used
+none of what was avoided. If nothing honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
 use tolls, highways, or ferries" when every route carries the tag.
 
 ### Times and traffic colors

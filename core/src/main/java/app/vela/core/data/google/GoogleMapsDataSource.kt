@@ -1191,6 +1191,24 @@ class GoogleMapsDataSource @Inject constructor(
                     return@coroutineScope avoidRoutes
                 }
             }
+            // No Google route and no region on the phone, or none in time: the other open
+            // service's car route, which keeps off highways, tolls and ferries where another way
+            // reaches (#878). Kept only when its summary says it did.
+            if (avoidWanted && gTop == null && !avoidHonored) {
+                val wait = budget.remainingMs()?.let { minOf(it, AVOID_ONDEVICE_TIMEOUT_MS) } ?: AVOID_ONDEVICE_TIMEOUT_MS
+                val other = if (wait <= 0) null else withContext(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.ValhallaRouter.driveRouteAvoiding(http, listOf(origin, destination), avoidTolls, avoidHighways, avoidFerries, timeoutMs = wait)
+                    }.getOrNull()
+                }
+                val note = "DRIVE avoid, no google: valhalla ${if (other != null) "kept off, ${other.maneuvers.size} steps" else "no route that keeps off"}"
+                diag.record("directions", note, "")
+                runCatching { android.util.Log.i("VelaDirections", note) }
+                if (other != null) {
+                    avoidHonored = true
+                    return@coroutineScope listOf(other)
+                }
+            }
             // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
             // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
             // through Google's path so we follow the traffic-smart route WITH full street-named steps.

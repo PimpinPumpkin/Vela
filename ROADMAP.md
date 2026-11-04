@@ -263,6 +263,9 @@ off the list when it has been.
 - The voice engine's own threads take the worker's priority (#795): a test line under eight
   busy loops on a 4a rendered in 11 to 15 s instead of 25 s. Not heard on a hot phone on a
   drive, and the far prompts (speaking priority, nice 8) were not timed under load.
+- A drive with Avoid on and no Google route takes Valhalla's avoiding route (#878): on the 4a
+  with Google off, a Davis fixture trip moved off I-80 and the "may still use" note was gone.
+  Not driven, and a trip with stops still gets no avoiding route without Google or a region.
 - The phone arrow fitted to screens narrower than 1080 px (#911): builds. Not seen on a small
   screen.
 - Takeout pins at 0,0 imported from their link, and a lists import of a saved places file

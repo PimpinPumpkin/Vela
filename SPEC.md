@@ -1259,6 +1259,11 @@ through what the plan avoided. They apply to DRIVE.
 - Google silent and a region installed: the on-device router is tried for
   `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). The attempt runs on an unstructured scope so the timeout
   can abandon the search.
+- Google silent and no route on the phone in time: the FOSSGIS Valhalla car route with
+  `use_tolls`, `use_highways` and `use_ferry` at 0 (`ValhallaRouter.driveRouteAvoiding`), within
+  the same 4 s. Those are preferences, so the route is kept only when the trip summary's
+  `has_toll`, `has_highway` and `has_ferry` are false for what was asked. Start and end only:
+  a trip with stops does not take this path.
 - The on-device car profile takes `avoid_toll`, `avoid_motorway` and `avoid_ferries` as dynamic
   routing.xml parameters. `avoid_highway` there belongs to the horse-riding profile and does
   nothing for a car.
