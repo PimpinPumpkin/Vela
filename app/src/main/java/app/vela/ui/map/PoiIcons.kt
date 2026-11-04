@@ -40,6 +40,7 @@ object PoiIcons {
         Triple("culture", 0xea36, "#9334E6"),
         Triple("sport", 0xeb43, "#E37400"),
         Triple("transit", 0xe530, "#1A73E8"),
+        Triple("bike", 0xe52f, "#007B8B"), // bike share and bike rental, the cycleways' teal
         Triple("default", 0xe55f, "#5F6368"),
     )
 
@@ -433,6 +434,9 @@ object PoiIcons {
             any("museum", "theater", "theatre", "gallery", "cinema", "movie", "art ", "cultural", "historical", "aquarium", "zoo") -> "culture"
             any("gym", "fitness", "stadium", "sport", "golf", "bowling", "yoga", "arena", "athletic",
                 "climbing", "recreation cent", "rec cent", "ice rink", "skating") -> "sport"
+            // Bike share before TRANSIT: "Bike-share station" and "Bike sharing station" say
+            // "station", which drew them as bus stops.
+            any("bike share", "bike-share", "bike sharing", "bicycle sharing", "bike rental", "bicycle rental") -> "bike"
             // CIVIC before TRANSIT (user 2026-07-15): a fire station's category IS "Fire station",
             // and the transit branch's bare "station" caught it first - fire houses drew as bus
             // stops. Anything here that contains "station" is deliberately non-transit.

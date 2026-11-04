@@ -1204,6 +1204,8 @@ fun PlaceSheet(
                 },
             ) {
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
+            // A bike-share station: its free bikes and docks (SPEC 8, Bike-share stations).
+            place.bikeShare?.let { BikeShareLine(it, ink, dim) }
             // Gas stations: the fuel price, bold, first in the body like Google's gas prices card
             // ("$5.34/Regular" from Google, "172.9p/E10 · 199.9p/B7" in the UK). Below the action
             // pills, so a price that lands after the sheet opened moves nothing above them. A UK

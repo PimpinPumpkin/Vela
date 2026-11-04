@@ -4264,6 +4264,14 @@ private fun MapSurface(
         // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
         transitStops = state.transitStops.filter { st -> state.selected?.id != "gtfs:${st.stopId}" && app.vela.ui.TransitLayer.showsStop(st.modes) },
         onTransitStopTap = vm::onTransitStopTap,
+        // Off during a drive, and the open station's badge steps aside for its pin like a stop's.
+        bikeStations = when {
+            state.navigating -> emptyList()
+            state.selected?.id?.startsWith(BikeShareStations.ID_PREFIX) == true ->
+                state.bikeStations.filter { st -> state.selected?.id != BikeShareStations.ID_PREFIX + st.key }
+            else -> state.bikeStations
+        },
+        onBikeStationTap = vm::onBikeStationTap,
         navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
         navBarTopPx = navBarTopPx,
         // Index into the SHOWN list (the same one ambientMarkersOf uploads), not the raw

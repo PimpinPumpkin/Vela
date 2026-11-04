@@ -72,6 +72,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Bridge openings (Netherlands) | NDW open data, `planningsfeed_brugopeningen` | No | No |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
 | Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
+| Bike-share stations | Transitous (`/api/v1/rentals`, the operators' GBFS feeds), behind a layer that is off by default (section 8) | No | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
 | Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
 
@@ -153,7 +154,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
     OverpassPois, OverpassEndpoints, OverpassTrafficSignals, OverpassAlprCameras
     NdwBridgeOpenings     Dutch bridge openings (NDW open data); BridgeAlerts
     OfflinePoiStore, OfflineAddressStore, OfflinePacks, OfflineRank
-    transit/Transitous    MOTIS client: stops, boards, trips, plans
+    transit/Transitous    MOTIS client: stops, boards, trips, plans, bike-share stations
     CategoryFilter        content gating
     tiles/                map style catalog
   net/            GoogleTransport (the Cronet hook, AgedSession)
@@ -4767,6 +4768,7 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 | Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
 | Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
+| Bike-share stations | Transitous `/api/v1/rentals` from z15, behind the "Bike share" layer, off by default. A tapped station opens a sheet with its counts. |
 
 #### Lines on the map
 
@@ -4847,6 +4849,50 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - A transit-named place that resolves to an "Intersection" re-resolves to the co-located stop:
   search `<name> bus stop`, then `bus stop`, nearest live transit listing within 250 m (a real
   pair measured 89 m).
+
+#### Bike-share stations
+
+- `BikeShareLayer` (key `bike_share_layer_on`, off by default) is the "Bike share" switch in
+  Layers and Settings > Map. While it is on, `BikeShareStations` asks
+  `Transitous.bikeStationsInBox` for the view padded by half on each side (`padded`), from z15
+  (`MIN_ZOOM`, the stop icons' fetch zoom), after a 350 ms settle (`SETTLE_MS`). It asks again
+  when the view no longer fits in that box or its center leaves the box's middle half (`covers`),
+  and every 60 s (`REFRESH_MS`) for the same box while the app is on screen. Nothing is asked
+  during navigation, with "Use less data", or offline. A failure keeps what is drawn and is never
+  kept as "no stations".
+- The request is
+  `/api/v1/rentals?min=..&max=..&withProviders=false&withVehicles=false&withZones=false`, with
+  `VELA_UA` and the app language, read from the stream. Lyon center at z15 on a 411x923 dp
+  screen: 218 stations of every kind, 58 of them bike share, 13.7 KB on the wire (115 KB
+  unpacked).
+- A station counts when its `formFactors` include `BICYCLE` or `CARGO_BICYCLE`: car-share and
+  scooter stations come in the same reply. Free-floating operators' parking zones and service
+  areas come in it too, and two rules leave them out (`isZone`). A station that also takes
+  scooters and has no dock count is a parking zone: in central Paris on 2026-11-04, 1,029 of
+  2,107 "bike stations" in a 2 by 3 km box were one operator's. A point with more than
+  `MAX_BIKES_AT_STATION` (300) bikes is a whole area: another operator sent 5,887 bikes at one
+  point. Bike-only parking spots pass both rules: a third operator's 984 spots in that box,
+  named by id, draw as stations. Bikes are `numVehiclesAvailable`, so a docked station that also
+  lists scooters counts them too. Free docks are `numDocksAvailable` when the reply has it,
+  else the largest value in `vehicleDocksAvailable`, else unknown. A feed that gives one count for
+  several vehicle types has it repeated under each type, so the sum would be several times too
+  many. The public instance sent no `numDocksAvailable` on 2026-11-04, and the Lyon reply no
+  per-type dock counts, so Lyon's stations show bikes only.
+- At most `MAX_STATIONS` (500), nearest the box's center.
+- `BikeShareMapLayer` draws them under the transit stops from z15: a teal badge (the cycleways'
+  color) with the free bikes beside it, gray with 0 when the station is empty, gray with no count
+  when it is not renting. The badge always draws and claims its space, like a stop's. Colors come
+  from the theme when the layer is made; a new theme or icon size makes it again. The layer is
+  off the map during navigation.
+- A tap competes by screen distance with the businesses and the stop under the finger. It opens a
+  light place `bikeshare:<providerId>/<station id>` with no Google lookup and no board. Its pin
+  takes the `bike` icon group: `PoiIcons.groupForCategory` reads bike share and bike rental
+  before transit, since "Bike-share station" and Google's "Bike sharing station" say "station".
+  `Place.bikeShare` holds the counts and when they were fetched, and is never serialized, so a
+  saved station keeps no count. Each refresh that still holds the open station updates its sheet:
+  "7 bikes · 16 free docks · Updated 1 min ago", or "No rentals now", "No returns now" and "Out
+  of service".
+- Coverage is what Transitous carries: a system is one entry in its `feeds/<country>.json`.
 
 #### Directions
 
@@ -5972,8 +6018,8 @@ recomposition. Neither can be parallelized, so the rules send each less work.
 
 `PRIVACY.md` is the user-facing accounting and must agree with section 1.4. In the default
 configuration browsing the map does not contact Google. Search, opening a place, a driving route
-and transit directions do. Routes also reach FOSSGIS, transit boards Transitous, reverse
-geocoding Nominatim. A UK gas station without a price makes the phone fetch the fuel price file
+and transit directions do. Routes also reach FOSSGIS, transit boards Transitous (and the
+bike-share stations while that layer is on), reverse geocoding Nominatim. A UK gas station without a price makes the phone fetch the fuel price file
 from GitHub (5.8). With "Use Vela without Google" on, only the open services are asked.
 
 ### 14.1a State files

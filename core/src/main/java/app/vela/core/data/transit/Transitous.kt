@@ -235,6 +235,101 @@ object Transitous {
         return pts.filterIndexed { idx, _ -> keep[idx] }
     }
 
+    // --- bike share ----------------------------------------------------------------------------
+
+    /** A docked bike-share station as the service last reported it (GBFS through MOTIS).
+     *  [key] is `<providerId>/<station id>`, unique across systems. [docks] is the number of free
+     *  docks, null when the feed gives none. A station that is not [renting] has no bike to take,
+     *  whatever [bikes] says; one that is not [returning] takes none back. */
+    data class BikeStation(
+        val key: String,
+        val name: String,
+        val lat: Double,
+        val lon: Double,
+        val address: String?,
+        val bikes: Int,
+        val docks: Int?,
+        val renting: Boolean,
+        val returning: Boolean,
+    )
+
+    // `stations` has no default: a reply without it (an error, a changed shape) fails to decode
+    // and reads as a failure, never as "no stations here".
+    @Serializable private data class RentalsReply(val stations: List<RentalStationDto>)
+    @Serializable private data class RentalStationDto(
+        val id: String = "",
+        val providerId: String = "",
+        val name: String = "",
+        val lat: Double = 0.0,
+        val lon: Double = 0.0,
+        val address: String? = null,
+        val isRenting: Boolean = true,
+        val isReturning: Boolean = true,
+        val numVehiclesAvailable: Int = 0,
+        val formFactors: List<String> = emptyList(),
+        val vehicleDocksAvailable: Map<String, Int> = emptyMap(),
+        val numDocksAvailable: Int? = null,
+    )
+
+    /** The form factors a station must offer to count as bike share. */
+    private val BIKE_FORM_FACTORS = setOf("BICYCLE", "CARGO_BICYCLE")
+    private val SCOOTER_FORM_FACTORS = setOf("SCOOTER_STANDING", "SCOOTER_SEATED", "MOPED")
+    /** More bikes than any station holds: a whole service area published as one point. */
+    private const val MAX_BIKES_AT_STATION = 300
+
+    /** A free-floating operator's parking zone or service area, not a bike-share station. A
+     *  station that also takes scooters and has no dock count is a parking zone (Paris,
+     *  2026-11-04: 1,029 of them from one operator in a 2 by 3 km box); a point with more than
+     *  [MAX_BIKES_AT_STATION] bikes is an area (another Paris operator: 5,887 bikes at one point). */
+    private fun RentalStationDto.isZone(): Boolean =
+        (formFactors.any { it in SCOOTER_FORM_FACTORS } && vehicleDocksAvailable.isEmpty() && numDocksAvailable == null) ||
+            numVehiclesAvailable > MAX_BIKES_AT_STATION
+
+    /**
+     * The bike-share stations in a box: the service's `rentals`, stations only. Car-share and
+     * scooter stations come in the same reply and are dropped here. Null on any failure, an empty
+     * list where the service has no station.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun bikeStationsInBox(http: OkHttpClient, south: Double, west: Double, north: Double, east: Double): List<BikeStation>? = runCatching {
+        val url = withLanguage(
+            "$BASE/api/v1/rentals?min=${coord(south)},${coord(west)}&max=${coord(north)},${coord(east)}" +
+                "&withProviders=false&withVehicles=false&withZones=false",
+        )
+        http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return null
+            val body = resp.body ?: return null
+            bikeStationsOf(json.decodeFromStream(RentalsReply.serializer(), body.byteStream()))
+        }
+    }.getOrNull()
+
+    /** Public for the parser test. Null when the reply does not parse. */
+    fun parseBikeStations(text: String): List<BikeStation>? =
+        runCatching { bikeStationsOf(json.decodeFromString(RentalsReply.serializer(), text)) }.getOrNull()
+
+    private fun bikeStationsOf(reply: RentalsReply): List<BikeStation> = reply.stations
+        .filter { s -> s.id.isNotBlank() && (s.lat != 0.0 || s.lon != 0.0) && s.formFactors.any { it in BIKE_FORM_FACTORS } && !s.isZone() }
+        .map { s ->
+            BikeStation(
+                key = "${s.providerId}/${s.id}",
+                name = s.name.trim(),
+                lat = s.lat,
+                lon = s.lon,
+                address = s.address?.trim()?.takeIf { it.isNotEmpty() },
+                bikes = s.numVehiclesAvailable.coerceAtLeast(0),
+                // A feed that gives one free-dock count for several vehicle types has it repeated
+                // under each type: the largest value is the station's count, the sum would be
+                // several times too many.
+                docks = (s.numDocksAvailable ?: s.vehicleDocksAvailable.values.maxOrNull())?.coerceAtLeast(0),
+                renting = s.isRenting,
+                returning = s.isReturning,
+            )
+        }
+        .distinctBy { it.key }
+
+    /** A coordinate for a query string: plain decimals, never `1.0E-5` near the zero meridian. */
+    private fun coord(v: Double): String = String.format(Locale.ROOT, "%.6f", v)
+
     /** Transit stops within roughly [radiusM] of the point, nearest first. Empty on any failure. */
     fun stopsNear(http: OkHttpClient, lat: Double, lng: Double, radiusM: Double = 200.0): List<MapStop> {
         val dLat = radiusM / 111_320.0

@@ -500,6 +500,12 @@ off the list when it has been.
   stopped the app part way): seen on a 4a, a 63-row test list killed at row 36 kept the 12
   places found before its first save. Not seen: a real Takeout file imported again, which should
   take the rows it already matched with no lookup.
+- Bike-share stations on the map (`BikeShareStations`, `BikeShareMapLayer`, SPEC 8): seen on a
+  Pixel through adb, light and dark, over Lyon (bikes only: its feed has no dock counts) and over
+  a feed that repeats one dock count under each bike model. Seen in the log: a request a minute
+  with the app on screen, none with the layer off, below z15, in the background or during a
+  simulated drive, and one at once on return. Not seen: the counts against a station's own
+  display, a feed that sends `numDocksAvailable`, the AMOLED theme and a D-pad device.
 
 ### Open from the October 2026 audit
 
@@ -606,21 +612,20 @@ Found reading everything since 0.4.1912 and not fixed yet.
   through sparse country can be compared before one is taken. The places come from the
   downloaded place pack or the open places tiles, so it works offline; the gap is measured
   along the line. Not started.
-- Bike-share stations on the map: each docked station with its free bikes and free docks,
-  behind a Layers switch that is off by default. It is a new data flow, so it goes in
-  `PRIVACY.md` when built. The source is Transitous `/api/v1/rentals` by bounding box with
-  `VELA_UA`, at most once a minute while the layer is on, from z15, never during a drive.
-  Free docks are the largest value in `vehicleDocksAvailable`, not the sum: a feed that gives
-  one count for several vehicle types has it repeated under each. MOTIS's development branch
-  also returns `numDocksAvailable` and `capacity`; the public instance did not on 2026-10-30.
-  Keep the `BICYCLE` form factor only: an operator's vehicle types can include a scooter.
-  Coverage is whatever Transitous carries: 428 rental providers on 2026-10-22, most in
-  France, Norway, Germany and Switzerland. Capital Bikeshare is listed and returned no stations
-  in DC. A missing system is one entry in Transitous's `feeds/<country>.json` (`"spec": "gbfs"`).
-  Wider coverage later means reading each operator's GBFS directly (1,264 systems in
-  MobilityData's catalog), which needs a bake of each system's area. The CityBikes API (300
-  requests an hour, attribution required) is the last resort. The sprite already has a
-  `bicycle_rental` icon. Not started.
+- Bike-share coverage past Transitous. The stations layer shows what Transitous carries: 428
+  rental providers on 2026-10-22, most in France, Norway, Germany and Switzerland. Capital
+  Bikeshare is listed and returned no stations in DC. A missing system is one entry in
+  Transitous's `feeds/<country>.json` (`"spec": "gbfs"`). Wider coverage means reading each
+  operator's GBFS directly (1,264 systems in MobilityData's catalog), which needs a bake of each
+  system's area. The CityBikes API (300 requests an hour, attribution required) is the last
+  resort. Not started.
+- Bike-share parking spots that are not stations. Free-floating operators publish their parking
+  spots as stations, and GBFS's `is_virtual_station` does not reach the `rentals` reply. Two
+  rules drop the zones that also take scooters and the one-point service areas (SPEC 8,
+  Bike-share stations), but bike-only spots pass: in central Paris, one operator's 984 spots
+  named by id against 93 docked stations. MOTIS's `numDocksAvailable`, once the public instance
+  sends it, tells a docked station from a spot; until then a station's flag would have to be
+  added upstream.
 - Bike share in directions, after the stations layer. Transitous's planner already routes it:
   `/api/v1/plan` with `RENTAL` in `directModes`, `preTransitModes` and `postTransitModes` and
   the `BICYCLE` form factor returns a walk, a ride from one station to another and a walk,
