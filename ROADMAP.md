@@ -513,8 +513,13 @@ off the list when it has been.
   phone; not seen on the move, where one run at about 26 km/h had asked for no stations in 2.5
   minutes.
 - Bike-share trips in transit directions, with their stations' counts and guidance on the ride
-  (`BikeShareTripSearch`, `Transitous.planBikeShare`, SPEC 8): unit-tested on Lyon and Paris
-  replies. Not yet seen on a phone.
+  (`BikeShareTripSearch`, `Transitous.planBikeShare`, SPEC 8): seen on a Pixel through adb in
+  Spanish and dark mode. Lyon, Part-Dieu to Vieux Lyon: a Vélov ride alone and one after metro B
+  in their own section, the free bikes at each pickup (one amber), the teal leg on the map, the
+  bike router's steps, and the spoken line for the ride in guidance. Central Paris: Vélib' rides
+  only, one before metro 1. With the chip off the log shows no bike-share request. Not seen: a
+  feed with dock counts, the guide moving on at the return station with a real fix, English,
+  the light theme, "Use less data" and a D-pad device.
 
 ### Open from the October 2026 audit
 
