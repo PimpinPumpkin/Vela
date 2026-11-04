@@ -5061,11 +5061,17 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   rebuilds it and stops unless the source reproduces the stock file byte for byte. The location
   guard skips the list (`scripts/check-location.sh` and `location-guard.yml`, kept in step).
 - A line renders phrase by phrase (`SpeechText.speechFragments`) and `PiperSynth.speak` hands
-  each phrase to the `piper-play` thread as it is made, so the first word waits for one phrase
-  (Pixel 4a, 52 characters: first audio at 0.29 s, all rendered at 0.70 s). Prepared lines
-  (`prepare`) render whole.
+  each phrase to the `piper-play` thread as it is made (Pixel 4a, 52 characters, a medium
+  voice: first audio at 0.29 s, all rendered at 0.70 s). Prepared lines (`prepare`) render whole.
+- Playing starts once the audio made outlasts the next phrase's render and the amount the rest
+  renders slower than it plays (`StreamStart.ready`, from per-letter render time and audio length
+  kept per voice, speaker and speed). A fast voice starts on its first phrase. A voice that renders
+  slower than it speaks (a high-quality voice on a slow phone, or a raised speed) waits, instead
+  of stopping mid-line for its next phrase. Pixel 4a, high-quality voice, normal speed, the
+  52-letter test line: first audio at about 2.0 s either way, mid-line silence 0 to 240 ms.
 - When the next phrase is not ready the player writes `STARVE_MS` (60) of silence: an underrun
-  makes AudioFlinger drop the track, which aborts the process. Audio is written in about 200 ms
+  makes AudioFlinger drop the track, which aborts the process. A line with `STARVE_NOTE_MS` (300)
+  or more of it adds a "voice: paused" note to the trip. Audio is written in about 200 ms
   pieces with a generation check between them, which bounds an interrupt.
 - Every line starts with `SpeechLeadIn.ms` of silence, in the neural player and on the
   phone's engine alike: `MS` (300), or `BLUETOOTH_MS` (700) when navigation speech is

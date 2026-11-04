@@ -105,6 +105,11 @@ class PiperSynth @Inject constructor(
     // so a voice plays at the same loudness from its first line.
     private val voiceLevels = java.util.concurrent.ConcurrentHashMap<String, VoiceLevel.Meter>()
     private fun levelPrefs() = context.getSharedPreferences("vela_voice_level", android.content.Context.MODE_PRIVATE)
+    /** Render time and audio length per letter by voice, speaker and speed (StreamStart.perChar),
+     *  kept for the process: a line's start waits on what the rest of it will take to render. */
+    private val renderCost = java.util.concurrent.ConcurrentHashMap<String, Double>()
+    private val audioCost = java.util.concurrent.ConcurrentHashMap<String, Double>()
+
     private fun levelFor(key: String): VoiceLevel.Meter =
         voiceLevels.getOrPut(key) { VoiceLevel.Meter.decode(levelPrefs().getString(key, null)) }
 
@@ -260,25 +265,43 @@ class PiperSynth @Inject constructor(
                     synchronized(level) { level.add(chunk) }
                     if (gain.isNaN() && level.rms > 0f) gain = VoiceLevel.gain(level.rms, vol)
                     VoiceLevel.apply(chunk, if (gain.isNaN()) vol else gain)
+                    if (made == 0) sampleRate = rate
                     made += chunk.size
                     queue.put(chunk)
-                    if (player == null) {
-                        sampleRate = rate
-                        firstAudioMs = android.os.SystemClock.elapsedRealtime() - t0
-                        val at = ensureTrack(rate)
-                        player = playerThread.submit<Long> { play(at, rate, queue, aborted) }
-                    }
                 }
-                if (ready != null) feed(ready.first, ready.second)
+                fun start() {
+                    if (player != null || made == 0) return
+                    firstAudioMs = android.os.SystemClock.elapsedRealtime() - t0
+                    val at = ensureTrack(sampleRate)
+                    val rate = sampleRate
+                    player = playerThread.submit<Long> { play(at, rate, queue, aborted) }
+                }
+                if (ready != null) { feed(ready.first, ready.second); start() }
                 else {
                     val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
-                    for ((frag, gapAfter) in frags) {
+                    // Played once the audio made covers the rest's expected render time
+                    // (StreamStart), so a slow voice does not stop mid-line for its next phrase.
+                    val costKey = "$loadedVoiceId|$sid|$spd"
+                    var charsLeft = frags.sumOf { it.first.length }
+                    for ((i, f) in frags.withIndex()) {
+                        val (frag, gapAfter) = f
                         if (aborted()) break
+                        val r0 = android.os.SystemClock.elapsedRealtime()
                         val (audio, rate) = render(engine, frag, sid, spd)
+                        val renderMs = (android.os.SystemClock.elapsedRealtime() - r0).toDouble()
+                        val before = made
                         feed(audio, rate)
                         if (gapAfter > 0f) feed(FloatArray(gapFrames(rate, gapAfter, spd)), rate)
+                        val renderPer = app.vela.core.voice.StreamStart.perChar(renderCost[costKey], renderMs, frag.length)
+                        val audioPer = app.vela.core.voice.StreamStart.perChar(audioCost[costKey], (made - before) * 1000.0 / rate, frag.length)
+                        renderCost[costKey] = renderPer
+                        audioCost[costKey] = audioPer
+                        charsLeft -= frag.length
+                        val nextChars = frags.getOrNull(i + 1)?.first?.length ?: 0
+                        if (app.vela.core.voice.StreamStart.ready(made * 1000.0 / sampleRate, charsLeft, nextChars, renderPer, audioPer)) start()
                     }
                 }
+                start()
                 queue.put(END)
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 // How long a line waited (queue + model load) and took to make: a late "Starting
@@ -313,7 +336,10 @@ class PiperSynth @Inject constructor(
                     // prompts instead of holding a PLAYING stream (the next prompt plays it again).
                     if (myGen == generation) runCatching { at.pause() }
                 }
-                Log.i(TAG, "spoke ${"%.1f".format(made / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "streamed"}) in ${genMs}ms, gain ${"%.2f".format(gain)}")
+                val starvedMs = starvedFrames * 1000 / sampleRate
+                Log.i(TAG, "spoke ${"%.1f".format(made / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "streamed"}) in ${genMs}ms, gain ${"%.2f".format(gain)}, waited for audio $starvedMs ms mid-line")
+                // A shared trip shows a line that stopped mid-way for its next phrase (#795).
+                if (starvedMs >= STARVE_NOTE_MS) app.vela.diag.TripNote.add("voice: paused $starvedMs ms mid-line waiting for its next phrase")
                 // Derived from the voice itself, so it is not in the backup rules.
                 runCatching { levelPrefs().edit().putString(levelKey, synchronized(level) { level.encode() }).apply() }
             } catch (t: Throwable) {
@@ -371,6 +397,7 @@ class PiperSynth @Inject constructor(
      *  not rendered yet it writes [STARVE_MS] of silence, so the stream never underruns (a
      *  starved stream was the SIGABRT of the first streaming attempt). */
     private fun play(at: AudioTrack, sampleRate: Int, queue: java.util.concurrent.BlockingQueue<FloatArray>, aborted: () -> Boolean): Long {
+        starvedFrames = 0L
         runCatching { at.pause(); at.flush(); at.play() }
         val writeChunk = sampleRate / 5
         val silence = FloatArray(sampleRate * STARVE_MS / 1000)
@@ -387,6 +414,7 @@ class PiperSynth @Inject constructor(
             if (chunk === END) return written
             if (chunk == null) {
                 at.write(silence, 0, silence.size, AudioTrack.WRITE_BLOCKING); written += silence.size
+                starvedFrames += silence.size
                 continue
             }
             var off = 0
@@ -400,6 +428,9 @@ class PiperSynth @Inject constructor(
     }
 
     private val playerThread = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "piper-play") }
+
+    /** Silence [play] wrote because the next phrase was not rendered yet, for the log. */
+    @Volatile private var starvedFrames = 0L
     private val END = FloatArray(0)
 
     /** Synthesize [text] now, at background priority, and keep the audio for the next [speak] of
@@ -523,5 +554,7 @@ class PiperSynth @Inject constructor(
         const val INTER_PROMPT_GAP_MS = 350L
         /** Silence fed to the stream while the next phrase is still rendering. */
         const val STARVE_MS = 60
+        /** Mid-line silence from this long on is noted in the trip. */
+        const val STARVE_NOTE_MS = 300L
     }
 }

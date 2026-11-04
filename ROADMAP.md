@@ -257,6 +257,9 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A line waits to play until it can play through (`StreamStart`, #795): on a 4a with a
+  high-quality voice at normal speed it starts as before. Not tried on a slow phone or at a
+  raised voice speed, which is where the mid-line pauses were reported.
 - The phone arrow fitted to screens narrower than 1080 px (#911): builds. Not seen on a small
   screen.
 - Takeout pins at 0,0 imported from their link, and a lists import of a saved places file
