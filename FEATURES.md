@@ -14,6 +14,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Tap a place, a house number or a building to open it. Long-press to drop a pin.
 - Tilt the map for 3D buildings. "Tilt with two fingers" and "3D buildings" turn those off.
 - Pinch and turn in one gesture. A small turn goes back to north when you let go.
+- A pinch zooms at any speed. Tap, then touch again and drag to zoom with one finger: down zooms in.
+  Both keep zooming after a quick flick, and a touch stops them.
+- A flick on the map throws it on and slows like a list. A pinch thrown while moving pans and zooms as one.
 - "Keep north up" stops the map turning: no two-finger rotation, and the map stays north-up while
   you drive, with or without a route, on the phone and in Android Auto.
 - A layers button opens a panel of picture tiles: the map type (the Vela, Bright, Positron, Fiord
