@@ -266,6 +266,9 @@ off the list when it has been.
 - A drive with Avoid on and no Google route takes Valhalla's avoiding route (#878): on the 4a
   with Google off, a Davis fixture trip moved off I-80 and the "may still use" note was gone.
   Not driven, and a trip with stops still gets no avoiding route without Google or a region.
+- A shared run whose open route piece leaves Google's line by more than 15 m is drawn on
+  Google's line (#895): unit test only. The reporter's trip today draws the same before and
+  after on a 4a, so whether this was their loop is not known.
 - The phone arrow fitted to screens narrower than 1080 px (#911): builds. Not seen on a small
   screen.
 - Takeout pins at 0,0 imported from their link, and a lists import of a saved places file

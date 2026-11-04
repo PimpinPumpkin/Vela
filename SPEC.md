@@ -2376,7 +2376,10 @@ Measured and not worth doing:
   Google's line sits a few meters off their center on curves. Where Google's line runs along
   the open route, that route's own line. Inside a stretch where they differ, the matched road
   shape (Valhalla, only when the match has no off-line part). A piece whose ends are over 25 m
-  from Google's or whose length is off by a third keeps Google's line.
+  from Google's or whose length is off by a third keeps Google's line, and so does an open
+  route piece that goes more than `OFF_M` (15 m) from Google's anywhere, read every 20 m
+  (`HybridRoute.staysNear`). Stretches are found from Google's side only, and an open route that
+  takes an exit and the entrance straight back stays near Google's line the whole way.
 - A piece left on Google's line is nudged onto the middle of the map's roads (`RoadCenter`),
   from the tiles the naming already read (`RoadNameTiles.roadsAlong(fetchMissing = false)`, up to
   `DRAW_ROADS_MAX_TILES` 48; nothing is requested for it, and a tile not in hand is left out).
