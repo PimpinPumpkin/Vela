@@ -4869,6 +4869,10 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   generic ride, never a walk.
 - In a trip summary an operator icon entry followed directly by a text entry is one line. The
   icon's file name is the line's name only when no text follows.
+- Compact direction previews show every ride in step order, including repeated lines after
+  transfers. Summary badges retain interchangeable lines only when each badge matches its ride
+  in order; incomplete or mismatched summaries use the ride lines and their colors. With no
+  ride lines, the summary remains the fallback. Badges wrap without a four-line limit.
 - `trip[13]` is `[seconds, "10 min", seconds]` where the service has a headway; the card shows
   "Every 10 min".
 - `Transitous.plan` (`/api/v1/plan`) asks for up to 5 itineraries, with `arriveBy` for arrive-by

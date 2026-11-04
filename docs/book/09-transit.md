@@ -177,6 +177,9 @@ https://www.google.com/maps/dir/<origin>/<destination>/data=!4m2!4m1!3e3?hl=<lan
 - Interchangeable lines on one direct ride (S1, S11, S12) merge into one badge, so the trip does
   not read as two transfers.
 
+The compact route card includes each ride in journey order, including a line taken again after
+transfers. Its badge selection and wrapping rules are in [SPEC 8](../../SPEC.md#8-transit).
+
 A walk leg's steps come from the walk router when the leg is opened.
 
 The planner's trips take the same form. They lack a fare, service alerts and walk distances. The
