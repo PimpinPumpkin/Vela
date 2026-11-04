@@ -227,9 +227,6 @@ Small items, one pull request each.
 - A resumed drive keeps its stops. After the app is killed mid-drive, the resume offer restores
   the destination, label and mode only: the remaining stops and a saved route's hidden points
   are gone (`NavController.persistNav`).
-- On-street bike lanes. Painted lanes (`cycleway=lane`) are not in the OpenMapTiles schema and
-  need a baked layer, never a per-viewport Overpass query. The painted-roads test under
-  "Richer roads" draws them.
 - Street View: walking can step to a neighbor from a different year (the neighbor graph
   carries no date), higher-zoom tiles on pinch-in, and hiding the pill where there is no
   coverage.
@@ -609,6 +606,45 @@ Found reading everything since 0.4.1912 and not fixed yet.
   through sparse country can be compared before one is taken. The places come from the
   downloaded place pack or the open places tiles, so it works offline; the gap is measured
   along the line. Not started.
+- Bike-share stations on the map: each docked station with its free bikes and free docks,
+  behind a Layers switch that is off by default. It is a new data flow, so it goes in
+  `PRIVACY.md` when built. The source is Transitous `/api/v1/rentals` by bounding box with
+  `VELA_UA`, at most once a minute while the layer is on, from z15, never during a drive.
+  Free docks are the largest value in `vehicleDocksAvailable`, not the sum: a feed that gives
+  one count for several vehicle types has it repeated under each. MOTIS's development branch
+  also returns `numDocksAvailable` and `capacity`; the public instance did not on 2026-10-30.
+  Keep the `BICYCLE` form factor only: an operator's vehicle types can include a scooter.
+  Coverage is whatever Transitous carries: 428 rental providers on 2026-10-22, most in
+  France, Norway, Germany and Switzerland. Capital Bikeshare is listed and returned no stations
+  in DC. A missing system is one entry in Transitous's `feeds/<country>.json` (`"spec": "gbfs"`).
+  Wider coverage later means reading each operator's GBFS directly (1,264 systems in
+  MobilityData's catalog), which needs a bake of each system's area. The CityBikes API (300
+  requests an hour, attribution required) is the last resort. The sprite already has a
+  `bicycle_rental` icon. Not started.
+- Bike share in directions, after the stations layer. Transitous's planner already routes it:
+  `/api/v1/plan` with `RENTAL` in `directModes`, `preTransitModes` and `postTransitModes` and
+  the `BICYCLE` form factor returns a walk, a ride from one station to another and a walk,
+  alone or around a transit ride. MOTIS skips a station with no bikes for a pickup and one with
+  no free docks for a return, as of the request. Lyon, 2026-10-22: a 5 min walk to a Vélo'v
+  station, a 12 min ride, a 3 min walk, past a nearer station with no bikes. Vela reads a
+  `RENTAL` leg as a walk today (`Transitous.parseItinerary`). It needs a ride step with the
+  system and the pickup and return stations, bike guidance on that leg, and a check of the
+  return station's docks on the way that offers the next station when it fills. Not started.
+- A bike lanes layer, and bike routes that show their lanes. The map draws separate cycleways
+  only (`vela-bikeroutes`, OSM `highway=cycleway`). Lanes and tracks along a road (`cycleway`,
+  `cycleway:left`, `cycleway:right` or `cycleway:both` set to `lane`, `track` or
+  `shared_lane`), bicycle streets (`bicycle_road`, `cyclestreet`) and signed routes
+  (`route=bicycle` relations) are not in the OpenMapTiles schema. They need a baked layer per
+  region, never a per-viewport Overpass query: a bake like the painted-roads one under "Richer
+  roads", streamed through `StreamedPmtiles`, part of a region download, behind a Layers switch.
+  Routing already prefers lanes: the on-phone bicycle profile and Valhalla at `use_roads` 0.1
+  read the same OSM tags. Two gaps remain. The fastest fallback (`routed-bike`, Google's bike
+  alternates) ignores lanes, and the route chooser never says how much of a route has one.
+  Valhalla's `trace_attributes`, which `ValhallaRouter` already calls for map matching, returns
+  `edge.cycle_lane` (none, shared, dedicated, separated) for each edge. A 2.6 km San Francisco
+  trip came back 10% separated path, 52% painted lane, 3% shared lane and 36% plain road. That
+  split goes on each bike route card and can color the line; offline, the baked layer gives
+  it. Not started.
 
 ## Big bets
 
