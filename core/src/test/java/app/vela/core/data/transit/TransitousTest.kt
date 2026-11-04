@@ -230,4 +230,22 @@ class TransitousTest {
         assertEquals(Transitous.stopKey("E 42nd St & Madison Ave"), Transitous.stopKey("MADISON AV/E 42 ST"))
         assertEquals("E 42 St/Madison Av", Transitous.displayName(listOf("E 42 ST/MADISON AV")))
     }
+    // Issue #900: a merged icon keeps every mode of the stops in it, so a station's badge and the
+    // Settings stop filter see the subway under a colocated bus stop.
+    @Test fun `a merged stop keeps the modes of every stop in it`() {
+        fun stop(id: String, name: String, lat: Double, lng: Double, modes: List<String>) =
+            Transitous.MapStop(name = name, stopId = id, lat = lat, lon = lng, modes = modes)
+        val colocated = Transitous.mergeColocated(listOf(
+            stop("b", "Times Sq", 40.75550, -73.98700, listOf("BUS")),
+            stop("s", "Times Sq-42 St", 40.75551, -73.98701, listOf("SUBWAY")),
+        ))
+        assertEquals(1, colocated.size)
+        assertEquals(setOf("BUS", "SUBWAY"), colocated[0].modes.toSet())
+        val paired = Transitous.mergeDirectionalPairs(listOf(
+            stop("n", "Main St", 38.5450, -121.7400, listOf("BUS")),
+            stop("x", "Main St", 38.5452, -121.7401, listOf("TRAM")),
+        ))
+        assertEquals(1, paired.size)
+        assertEquals(setOf("BUS", "TRAM"), paired[0].modes.toSet())
+    }
 }

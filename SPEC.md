@@ -4976,6 +4976,11 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - Before that pass, stops within `COLOCATED_M` (3 m) fold whatever their names: one corner in
   several feeds, or a station complex's several parents. An all-caps merged name shows in title
   case (`Transitous.displayName`). Midtown Manhattan: 78 icons become 55.
+- A merged icon carries the modes of every stop in it.
+- A stop's badge follows its modes (`stopKind`): a train calls there, a rounded square with the
+  railway glyph; else a subway, tram or light rail, a rounded square with the subway glyph; else
+  the round bus badge. Station badges are 1.25 times the bus badge and place first
+  (`symbol-sort-key`), so a station's name wins a crowded corner.
 - Where Transitous stops are drawn, the basemap's OSM bus icons hide by filter (rail and airport
   stay).
 - A looping run boards at the tapped lap. Some agencies publish a day of laps as one trip (a

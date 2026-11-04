@@ -6565,15 +6565,22 @@ PropertyFactory.iconPadding(2f),
     // replaces the OSM basemap bus icons wherever this layer has coverage (poi_transit filter flips
     // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
+    // Stand-ins for the station badges, which PoiIcons.addTo draws from the icon font right after.
+    listOf(PoiIcons.STOP_METRO_IMG, PoiIcons.STOP_TRAIN_IMG).forEach { if (style.getImage(it) == null) style.addImage(it, transitStopBitmap()) }
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
         style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(18)))
         // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
         // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
+        // A station is drawn a quarter larger than a bus stop.
+        fun bySize(bus: Float) = Expression.match(
+            Expression.get("kind"), Expression.literal(bus),
+            Expression.stop("train", bus * 1.25f), Expression.stop("metro", bus * 1.25f),
+        )
         val stopSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
-            Expression.stop(15f, 0.78f),
-            Expression.stop(17f, 1.1f),
-            Expression.stop(19f, 1.4f),
+            Expression.stop(15f, bySize(0.78f)),
+            Expression.stop(17f, bySize(1.1f)),
+            Expression.stop(19f, bySize(1.4f)),
         )
         style.addLayer(
             SymbolLayer(TRANSIT_STOPS_LAYER, TRANSIT_STOPS_SRC).apply {
@@ -6583,7 +6590,21 @@ PropertyFactory.iconPadding(2f),
                 // OSM bus icons stay hidden, so z15 shows neither instead of the basemap's.
                 setMinZoom(16f)
                 setProperties(
-                    PropertyFactory.iconImage(TRANSIT_STOP_IMG),
+                    // A station where a subway or a train calls wears its glyph; a bus stop the bus.
+                    // Stations place first, so their names win a crowded corner (issue #900).
+                    PropertyFactory.iconImage(
+                        Expression.match(
+                            Expression.get("kind"), Expression.literal(TRANSIT_STOP_IMG),
+                            Expression.stop("train", PoiIcons.STOP_TRAIN_IMG),
+                            Expression.stop("metro", PoiIcons.STOP_METRO_IMG),
+                        ),
+                    ),
+                    PropertyFactory.symbolSortKey(
+                        Expression.match(
+                            Expression.get("kind"), Expression.literal(2f),
+                            Expression.stop("train", 0f), Expression.stop("metro", 1f),
+                        ),
+                    ),
                     PropertyFactory.iconSize(stopSize),
                     // The flock pattern (2026-07-20, car-screen "icons bump into the text" report):
                     // the badge never yields itself (allowOverlap), but with ignorePlacement TRUE it
@@ -10377,6 +10398,7 @@ private fun applyData(
                 Feature.fromGeometry(Point.fromLngLat(st.lon, st.lat)).apply {
                     addNumberProperty(TRANSIT_STOP_INDEX_PROP, i)
                     addStringProperty("name", st.name)
+                    addStringProperty("kind", stopKind(st.modes))
                 }
             },
         )
@@ -10979,6 +11001,17 @@ internal fun speedCamBitmap(): Bitmap {
 
 /** Canonical GTFS stop badge: a small blue circle with a white bus glyph, the same marker
  *  language as the ALPR badge but round + transit-blue so it reads as a stop, not a POI. */
+/** The badge a stop wears: "train" when a train calls there, else "metro" when a subway, tram or
+ *  light rail does, else "bus". */
+internal fun stopKind(modes: List<String>): String {
+    val kinds = modes.mapNotNull { app.vela.core.data.transit.Transitous.kindOf(it) }
+    return when {
+        app.vela.core.data.transit.Transitous.Kind.TRAIN in kinds -> "train"
+        app.vela.core.data.transit.Transitous.Kind.METRO in kinds -> "metro"
+        else -> "bus"
+    }
+}
+
 private fun transitStopBitmap(): Bitmap {
     val s = 40
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)

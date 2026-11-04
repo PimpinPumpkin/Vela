@@ -77,6 +77,34 @@ object PoiIcons {
                 style.addImage("vela-poi-$key", marker(tf, codepoint, color))
             }
         }
+        // The transit stop badges for a station: a rounded square, so it reads apart from the round
+        // bus badge, with the subway or the railway glyph (both stand on rails). Replaces the
+        // bus-look stand-ins the stop layer adds under these names.
+        style.addImage(STOP_METRO_IMG, stopBadge(tf, 0xe533))
+        style.addImage(STOP_TRAIN_IMG, stopBadge(tf, 0xe534))
+    }
+
+    const val STOP_METRO_IMG = "vela-transit-stop-metro"
+    const val STOP_TRAIN_IMG = "vela-transit-stop-train"
+
+    /** A 40 px station badge: white rim, transit-blue rounded square, a white Material glyph. */
+    private fun stopBadge(tf: Typeface, codepoint: Int): Bitmap {
+        val s = 40
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val cx = s / 2f
+        c.drawRoundRect(android.graphics.RectF(1.5f, 1.5f, s - 1.5f, s - 1.5f), 10f, 10f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
+        c.drawRoundRect(android.graphics.RectF(3.5f, 3.5f, s - 3.5f, s - 3.5f), 8f, 8f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#1A73E8") })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = tf
+            color = Color.WHITE
+            textSize = 26f
+            textAlign = Paint.Align.CENTER
+        }
+        val glyph = String(Character.toChars(codepoint))
+        val fm = text.fontMetrics
+        c.drawText(glyph, cx, cx - (fm.ascent + fm.descent) / 2f, text)
+        return bmp
     }
 
     private var cachedTf: Typeface? = null

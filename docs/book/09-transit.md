@@ -2,7 +2,8 @@
 
 ## What you see
 
-From street zoom the map shows a blue badge at each transit stop. Tap one and the sheet opens on
+From street zoom the map shows a blue badge at each transit stop: round with a bus at a bus stop,
+a larger rounded square with a train or a subway car at a station. Tap one and the sheet opens on
 its departure board: one row per route and direction, with the route's pill in the agency's
 color, the next departure and a countdown (green when the vehicle is tracked live), and the
 times after it. Tap Stops on a row for the run's stop list: stops already passed are gray, live
