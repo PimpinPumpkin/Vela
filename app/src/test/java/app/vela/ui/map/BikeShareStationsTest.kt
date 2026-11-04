@@ -1,8 +1,15 @@
 package app.vela.ui.map
 
+import android.content.ContextWrapper
 import app.vela.core.data.transit.Transitous
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
+import app.vela.ui.BikeShareLayer
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -38,6 +45,29 @@ class BikeShareStationsTest {
     @Test fun `a zoom out past the box asks again even with the center in place`() {
         val b = BikeShareStations.padded(s, w, n, e)
         assertFalse(BikeShareStations.covers(b, s - 0.010, w - 0.010, n + 0.010, e + 0.010))
+    }
+
+    @Test fun `a request on the wire lands while the view keeps moving, and the new view is asked next`() {
+        // While the map follows a moving fix the view comes once a second, sooner than a slow reply.
+        val asked = mutableListOf<DoubleArray>()
+        val replies = mutableListOf<CompletableDeferred<List<Transitous.BikeStation>?>>()
+        val state = MutableStateFlow(MapUiState())
+        val shares = BikeShareStations(ContextWrapper(null), CoroutineScope(Dispatchers.Unconfined), state, OkHttpClient(), settleMs = 0) { b ->
+            asked += b
+            CompletableDeferred<List<Transitous.BikeStation>?>().also { replies += it }.await()
+        }
+        BikeShareLayer.on.value = true
+        try {
+            shares.onViewport(s, w, n, e, 16.0)
+            shares.onViewport(s, w + 0.02, n, e + 0.02, 16.0) // a view east, out of the first box
+            assertEquals("the first request is still out", 1, asked.size)
+            replies[0].complete(listOf(station("7", 9)))
+            assertEquals(listOf(station("7", 9)), state.value.bikeStations)
+            assertEquals("the moved view is asked for once the first lands", 2, asked.size)
+            assertTrue(asked[1][1] > asked[0][1])
+        } finally {
+            BikeShareLayer.on.value = false
+        }
     }
 
     @Test fun `an open station takes its new counts`() {

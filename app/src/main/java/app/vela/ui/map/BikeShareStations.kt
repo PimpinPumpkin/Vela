@@ -28,8 +28,8 @@ import okhttp3.OkHttpClient
 /**
  * Bike-share stations for the map (SPEC 8, Bike-share stations): while [BikeShareLayer] is on and
  * the map is at street zoom, the stations around the view come from Transitous and land in
- * [MapUiState.bikeStations]. The same box is asked again every [REFRESH_MS] while the app is on
- * screen, and an open station's sheet takes the new counts. Nothing is asked during navigation,
+ * [MapUiState.bikeStations]. The box around the view is asked again every [REFRESH_MS] while the
+ * app is on screen, and an open station's sheet takes the new counts. Nothing is asked during navigation,
  * with "Use less data", offline, or with the app in the background.
  *
  * Construct it ABOVE the view model's `init` and call [bind] from there: the collectors' first
@@ -40,12 +40,20 @@ internal class BikeShareStations(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<MapUiState>,
     private val http: OkHttpClient,
+    /** The wait after the view settles. A test passes 0. */
+    private val settleMs: Long = SETTLE_MS,
+    /** Asks for the stations in a box; null on any failure. A test passes a fake. */
+    private val fetchBox: suspend (DoubleArray) -> List<Transitous.BikeStation>? = { b ->
+        withContext(Dispatchers.IO) { runCatching { Transitous.bikeStationsInBox(http, b[0], b[1], b[2], b[3]) }.getOrNull() }
+    },
 ) {
     /** The last settled view, `[south, west, north, east, zoom]`. */
     private var view: DoubleArray? = null
     /** The padded box the shown stations came from, `[south, west, north, east]`. */
     private var box: DoubleArray? = null
     private var job: Job? = null
+    /** A request is out. A newer view waits for it instead of canceling it ([fetch]). */
+    private var onWire = false
     /** When the shown stations were fetched: the wall clock for the sheet's age, the elapsed-time
      *  clock for the minute refresh, which a change of the phone's clock must not stall. */
     private var fetchedAt = 0L
@@ -71,8 +79,7 @@ internal class BikeShareStations(
                     while (true) {
                         val age = SystemClock.elapsedRealtime() - fetchedElapsed
                         if (age < REFRESH_MS) { delay(REFRESH_MS - age); continue }
-                        val b = box
-                        if (b != null && job?.isActive != true) fetch(b, settleMs = 0)
+                        if (box != null && job?.isActive != true) fetch(settle = 0)
                         delay(REFRESH_MS)
                     }
                 }
@@ -89,7 +96,7 @@ internal class BikeShareStations(
         }
         if (state.value.navigating) return // the map hides the stations during a drive
         box?.let { b -> if (covers(b, south, west, north, east)) return }
-        fetch(padded(south, west, north, east), SETTLE_MS)
+        fetch(settleMs)
     }
 
     /** The light place a tapped station opens: its counts, no Google lookup. */
@@ -102,16 +109,24 @@ internal class BikeShareStations(
         bikeShare = statusOf(station, fetchedAt),
     )
 
-    private fun fetch(b: DoubleArray, settleMs: Long) {
+    /**
+     * Asks for the box around the last view after [settle] ms. A request already out is never
+     * canceled for a newer view: while the map follows a moving fix the view comes once a second,
+     * and canceling there meant a reply slower than that never landed (central Paris took 732 ms
+     * after the 350 ms settle). The view it no longer covers is asked for when it lands.
+     */
+    private fun fetch(settle: Long) {
         // "Use less data" and offline keep what is drawn and ask for nothing.
         if (app.vela.core.data.LowDataMode.enabled || state.value.offline) return
+        if (onWire) return
         job?.cancel()
         job = scope.launch {
-            if (settleMs > 0) delay(settleMs)
+            if (settle > 0) delay(settle)
+            val v = view ?: return@launch
+            val b = padded(v[0], v[1], v[2], v[3])
             val t0 = SystemClock.elapsedRealtime()
-            val got = withContext(Dispatchers.IO) {
-                runCatching { Transitous.bikeStationsInBox(http, b[0], b[1], b[2], b[3]) }.getOrNull()
-            }
+            onWire = true
+            val got = try { fetchBox(b) } finally { onWire = false }
             if (got == null) {
                 // A failure is never kept as "no stations": the next pan or minute asks again.
                 Log.i(TAG, "bike share: fetch failed after ${SystemClock.elapsedRealtime() - t0} ms")
@@ -131,6 +146,8 @@ internal class BikeShareStations(
                 val selected = refreshed(s.selected, list, at)
                 if (list == s.bikeStations && selected === s.selected) s else s.copy(bikeStations = list, selected = selected)
             }
+            // The map moved on while the request was out: ask for where it is now.
+            view?.let { nv -> if (!covers(b, nv[0], nv[1], nv[2], nv[3])) { job = null; onViewport(nv[0], nv[1], nv[2], nv[3], nv[4]) } }
         }
     }
 

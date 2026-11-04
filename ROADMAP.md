@@ -505,10 +505,11 @@ off the list when it has been.
   no dock counts) and over a feed that repeats one dock count under each bike model. Seen in the
   log: a request a minute with the app on screen, none with the layer off, below z15, in the
   background or during a simulated drive, and one at once on return. A Google bike rental listing
-  ("Estación de alquiler de bicicletas") opens with no departure board. Not seen: the counts
-  against a station's own display, a feed that sends `numDocksAvailable`, the AMOLED theme and a
-  D-pad device. Open: with the phone moving at about 26 km/h and the map following the fix, one
-  run asked for nothing in 2.5 minutes, the minute refresh included. The cause is not known.
+  ("Estación de alquiler de bicicletas") opens with no departure board. Central Paris draws
+  Vélib's stations and no operator's parking spots. Not seen: the counts against a station's own
+  display, a feed that sends `numDocksAvailable`, the AMOLED theme, a D-pad device, and the layer
+  keeping up while the map follows a moving fix (a request out is no longer canceled by the next
+  view; before that, one run at about 26 km/h asked for nothing in 2.5 minutes).
 
 ### Open from the October 2026 audit
 
@@ -622,13 +623,12 @@ Found reading everything since 0.4.1912 and not fixed yet.
   operator's GBFS directly (1,264 systems in MobilityData's catalog), which needs a bake of each
   system's area. The CityBikes API (300 requests an hour, attribution required) is the last
   resort. Not started.
-- Bike-share parking spots that are not stations. Free-floating operators publish their parking
-  spots as stations, and GBFS's `is_virtual_station` does not reach the `rentals` reply. Two
-  rules drop the zones that also take scooters and the one-point service areas (SPEC 8,
-  Bike-share stations), but bike-only spots pass: in central Paris, one operator's 984 spots
-  named by id against 93 docked stations. MOTIS's `numDocksAvailable`, once the public instance
-  sends it, tells a docked station from a spot; until then a station's flag would have to be
-  added upstream.
+- Bike-share parking spots from an operator not on the list. Free-floating operators publish
+  their parking spots as stations, and GBFS's `is_virtual_station` does not reach the `rentals`
+  reply. Vela leaves them out by the operator's name (SPEC 8, Bike-share stations), so a new
+  brand draws its spots until it is added to `FREE_FLOATING_OPERATORS`, which takes a release.
+  MOTIS's `numDocksAvailable`, once the public instance sends it, tells a docked station from a
+  spot without a list.
 - Bike share in directions, after the stations layer. Transitous's planner already routes it:
   `/api/v1/plan` with `RENTAL` in `directModes`, `preTransitModes` and `postTransitModes` and
   the `BICYCLE` form factor returns a walk, a ride from one station to another and a walk,

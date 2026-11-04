@@ -259,6 +259,7 @@ object Transitous {
     @Serializable private data class RentalStationDto(
         val id: String = "",
         val providerId: String = "",
+        val providerGroupId: String = "",
         val name: String = "",
         val lat: Double = 0.0,
         val lon: Double = 0.0,
@@ -276,13 +277,21 @@ object Transitous {
     private val SCOOTER_FORM_FACTORS = setOf("SCOOTER_STANDING", "SCOOTER_SEATED", "MOPED")
     /** More bikes than any station holds: a whole service area published as one point. */
     private const val MAX_BIKES_AT_STATION = 300
+    /** Free-floating operators, by the first word of their provider group ("Dott paris", "Voi
+     *  Technology AB", "Ryde Oslo"). A public system's group is named after the system ("Paris",
+     *  "nextbike Berlin", "WienMobil Rad"). */
+    private val FREE_FLOATING_OPERATORS = setOf("dott", "tier", "voi", "lime", "bolt", "bird", "ryde", "zeus", "pony")
 
-    /** A free-floating operator's parking zone or service area, not a bike-share station. A
-     *  station that also takes scooters and has no dock count is a parking zone (Paris,
-     *  2026-11-04: 1,029 of them from one operator in a 2 by 3 km box); a point with more than
-     *  [MAX_BIKES_AT_STATION] bikes is an area (another Paris operator: 5,887 bikes at one point). */
+    /** A free-floating operator's parking spot or zone, or a service area, not a bike-share
+     *  station. A free-floating operator's stations are its parking spots: in central Paris on
+     *  2026-11-04, 803 of the 884 bike stations in a phone's box were one operator's spots, beside
+     *  81 Vélib' stations. A station that also takes scooters and has no dock count is a parking
+     *  zone (Paris, 2026-11-04: 1,029 of them from one operator in a 2 by 3 km box); a point with
+     *  more than [MAX_BIKES_AT_STATION] bikes is an area (another Paris operator: 5,887 bikes at
+     *  one point). */
     private fun RentalStationDto.isZone(): Boolean =
-        (formFactors.any { it in SCOOTER_FORM_FACTORS } && vehicleDocksAvailable.isEmpty() && numDocksAvailable == null) ||
+        providerGroupId.trimStart().takeWhile { it.isLetter() }.lowercase(Locale.ROOT) in FREE_FLOATING_OPERATORS ||
+            (formFactors.any { it in SCOOTER_FORM_FACTORS } && vehicleDocksAvailable.isEmpty() && numDocksAvailable == null) ||
             numVehiclesAvailable > MAX_BIKES_AT_STATION
 
     /**

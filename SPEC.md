@@ -4857,23 +4857,31 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   `Transitous.bikeStationsInBox` for the view padded by half on each side (`padded`), from z15
   (`MIN_ZOOM`, the stop icons' fetch zoom), after a 350 ms settle (`SETTLE_MS`). It asks again
   when the view no longer fits in that box or its center leaves the box's middle half (`covers`),
-  and every 60 s (`REFRESH_MS`) for the same box while the app is on screen, timed on the
-  elapsed-time clock so a change of the phone's clock cannot stall it. Nothing is asked
-  during navigation, with "Use less data", or offline. A failure keeps what is drawn and is never
-  kept as "no stations".
+  and every 60 s (`REFRESH_MS`) for the box around the view while the app is on screen, timed on
+  the elapsed-time clock so a change of the phone's clock cannot stall it. A request that is out
+  is never canceled for a newer view; when it lands, a view it no longer covers is asked for
+  next. While the map follows a moving fix the view comes once a second (`IDLE_WORK_GAP_MS`), and
+  canceling there meant a reply slower than that never landed: central Paris took 732 ms after
+  the settle. Nothing is asked during navigation, with "Use less data", or offline. A failure
+  keeps what is drawn and is never kept as "no stations".
 - The request is
   `/api/v1/rentals?min=..&max=..&withProviders=false&withVehicles=false&withZones=false`, with
   `VELA_UA` and the app language, read from the stream. Lyon center at z15 on a 411x923 dp
   screen: 218 stations of every kind, 58 of them bike share, 13.7 KB on the wire (115 KB
   unpacked).
 - A station counts when its `formFactors` include `BICYCLE` or `CARGO_BICYCLE`: car-share and
-  scooter stations come in the same reply. Free-floating operators' parking zones and service
-  areas come in it too, and two rules leave them out (`isZone`). A station that also takes
-  scooters and has no dock count is a parking zone: in central Paris on 2026-11-04, 1,029 of
-  2,107 "bike stations" in a 2 by 3 km box were one operator's. A point with more than
-  `MAX_BIKES_AT_STATION` (300) bikes is a whole area: another operator sent 5,887 bikes at one
-  point. Bike-only parking spots pass both rules: a third operator's 984 spots in that box,
-  named by id, draw as stations. Bikes are `numVehiclesAvailable`, so a docked station that also
+  scooter stations come in the same reply. Free-floating operators' parking spots, parking zones
+  and service areas come in it too, and three rules leave them out (`isZone`). A station whose
+  provider group's first word is a free-floating operator (`FREE_FLOATING_OPERATORS`: Dott,
+  Tier, Voi, Lime, Bolt, Bird, Ryde, Zeus, Pony) is a parking spot; a public system's group is
+  named after the system ("Paris", "nextbike Berlin"). In a phone's box at z15 on 2026-11-04
+  that took central Paris from 884 bike stations to Vélib's 81, Bordeaux from 904 to 49 and
+  Oslo from 123 to 46. The return rules Transitous guesses for each provider cannot do it: they
+  mark Dott free-floating, and also nextbike Berlin, MyRadl, Velospot, WienMobil Rad and
+  Blue-bike. A station that also takes scooters and has no dock count is a parking zone: in
+  central Paris on 2026-11-04, 1,029 of 2,107 "bike stations" in a 2 by 3 km box were one
+  operator's. A point with more than `MAX_BIKES_AT_STATION` (300) bikes is a whole area: another
+  operator sent 5,887 bikes at one point. Bikes are `numVehiclesAvailable`, so a docked station that also
   lists scooters counts them too. Free docks are `numDocksAvailable` when the reply has it,
   else the largest value in `vehicleDocksAvailable`, else unknown. A feed that gives one count for
   several vehicle types has it repeated under each type, so the sum would be several times too

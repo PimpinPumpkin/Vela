@@ -119,15 +119,20 @@ stop or the business beside it, whichever is nearer on screen.
 
 Transitous reads the GBFS feeds that bike-share operators publish, and its `rentals` call answers
 every rental station in a box. Vela keeps the bike stations from that answer; car-share and
-scooter stations come in it too. So do the parking zones of free-floating bike and scooter
-operators, which publish them as stations: a spot that also takes scooters and counts no docks
-is left out, and so is a "station" with more bikes than any station holds. Bike-only parking
-spots still draw: in central Paris they outnumber the docked stations ten to one. The layer is
+scooter stations come in it too. So do the parking spots of free-floating bike and scooter
+operators, which publish them as stations. They are left out by the operator's name (Dott,
+Voi, Lime and the like head their provider group, where a public system's group is named after
+the system), by a spot that also takes scooters and counts no docks, and by a "station" with
+more bikes than any station holds. Without the names, central Paris drew one operator's
+parking spots ten to one against Vélib's stations. The layer is
 off by default because it is a request of its own, once a minute while it is on.
 
 The fetch follows the stops' rules: from zoom 15, the view padded by half on each side, again only
-when the view leaves that box. On top of that the same box is asked again every 60 s while the
-app is on screen, and not at all during a drive, with "Use less data" or offline. In central Lyon
+when the view leaves that box. On top of that the box around the view is asked again every 60 s
+while the app is on screen, and not at all during a drive, with "Use less data" or offline. A
+request that is out is left to land, and only then is a view it no longer covers asked for:
+while the map follows a moving fix the view comes once a second, sooner than a busy city answers,
+and a request canceled for each new view never landed. In central Lyon
 one answer at zoom 15 on a phone is 13.7 KB, with 58 bike stations among 218 rental stations.
 
 Free docks need care. A feed with several bike models can give one free-dock count and have it

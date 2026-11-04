@@ -72,6 +72,23 @@ class TransitousBikeShareTest {
         assertEquals(1, Transitous.parseBikeStations(one("""["BICYCLE"]""", 60, "{}"))!!.size)
     }
 
+    private fun grouped(group: String) = """
+        {"stations":[{"id":"9","providerId":"test-op","providerGroupId":"$group","name":"id_59032","lat":38.5449,
+          "lon":-121.7405,"isRenting":true,"isReturning":true,"numVehiclesAvailable":3,"formFactors":["BICYCLE"],
+          "vehicleTypesAvailable":{},"vehicleDocksAvailable":{},"bbox":[]}]}
+    """.trimIndent()
+
+    @Test fun `a free-floating operator's parking spots are not stations`() {
+        // Group names as the service sends them (central Paris, Bordeaux, Oslo, 2026-11-04).
+        for (g in listOf("Dott paris", "Voi Technology AB", "VOI", "Ryde Oslo", "Lime Paris Proper", "pony", "Bolt")) {
+            assertTrue(g, Transitous.parseBikeStations(grouped(g))!!.isEmpty())
+        }
+        // Public systems are named after the system; a longer word that starts with a brand is not it.
+        for (g in listOf("Paris", "nextbike Berlin", "WienMobil Rad", "Villo!", "Blue-bike", "Oslo Bysykkel", "Limerick Bikes")) {
+            assertEquals(g, 1, Transitous.parseBikeStations(grouped(g))!!.size)
+        }
+    }
+
     @Test fun `a changed reply is a failure, not an empty map`() {
         assertNull(Transitous.parseBikeStations("""{"error":"moved"}"""))
         assertNull(Transitous.parseBikeStations("not json"))
