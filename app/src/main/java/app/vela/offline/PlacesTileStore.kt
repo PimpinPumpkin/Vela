@@ -68,7 +68,16 @@ class BasemapTileStore @Inject constructor(
         // its data lets go of it.
         if (keepMounted && mounted != null && mounted.name != "$WORLD_ID.pmtiles" && mounted.exists()) {
             val (mx, my) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
-            if (viewTouches(mounted, mx, my, view)) return mounted
+            if (viewTouches(mounted, mx, my, view)) {
+                // Unless the center is in another downloaded region's roads and in none of this
+                // one's (#902): that region is the one being looked at, and it stayed blank until
+                // every corner of the view had left this archive.
+                if (coverage(mounted, mx, my) != false) return mounted
+                return installed().entries
+                    .filter { (id, f) -> id != WORLD_ID && f != mounted && (index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true) }
+                    .sortedBy { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
+                    .firstOrNull { (_, f) -> coverage(f, mx, my) == true }?.value ?: mounted
+            }
         }
         // The WORLD archive is never a normal candidate: it covers every point on earth, so the
         // area sort would rank it last anyway, and the roads probe below would reject it outright

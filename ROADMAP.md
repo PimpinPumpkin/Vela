@@ -269,6 +269,11 @@ off the list when it has been.
 - A shared run whose open route piece leaves Google's line by more than 15 m is drawn on
   Google's line (#895): unit test only. The reporter's trip today draws the same before and
   after on a 4a, so whether this was their loop is not known.
+- Offline, the downloaded region under the view's center is drawn instead of the one the view
+  came from (#902): on the 4a, Montenegro then Kosovo downloaded, airplane mode, the center
+  moved into Kosovo with Montenegro still in the west of the view, and Kosovo mounted. Not
+  tried with regions of one country, and the neighbor beside the mounted region still draws
+  blank.
 - The phone arrow fitted to screens narrower than 1080 px (#911): builds. Not seen on a small
   screen.
 - Takeout pins at 0,0 imported from their link, and a lists import of a saved places file

@@ -4536,7 +4536,9 @@ as offline. `BasemapTileStore.installedFor(center, mounted, corners, keepMounted
 returns the first of:
 
 1. The mounted archive, while its roads reach the center tile, one of the eight tiles around it
-   or a viewport corner.
+   or a viewport corner. When the center tile has none of its roads and another installed
+   archive's box holds the center and its roads reach that tile, the smallest such archive
+   instead: the region being looked at is drawn, not the one the view came from.
 2. The smallest installed archive whose box holds the center or a corner and whose roads reach
    one of those tiles.
 3. An archive in view that the probe could not read.
