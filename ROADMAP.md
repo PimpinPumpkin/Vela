@@ -314,6 +314,10 @@ off the list when it has been.
   compiled one. The status words need no push.
 - Takeout lists (#767): a real Takeout export, and the import carrying on after Settings is
   left with its outcome on the status card.
+- Thinner residential streets (#862, `RoadWidths`): not seen on a phone. Check the Davis and San
+  Francisco fixtures at the 200 m, 100 m and 50 m scales in each palette, the route line on a
+  residential street from z18 (about 2 dp wider than the street each side), bridges and tunnels,
+  painted roads (`paintedRoads`) inside a minor street, and `scripts/map-fps.sh` before and after.
 - Timed speed limits from `maxspeed:conditional` (#728, Malse-Makker): the parser is
   unit-tested on the Dutch tags and the badge still reads the streamed tiles on a simulated
   drive. Nothing changes on a phone until the maxspeed tiles are rebaked with the tag kept, so

@@ -3734,8 +3734,8 @@ also splits the two halves of a divided road.
 | Motorway and its links | `#8aa4c0` | `#5e75a0` | `#07090e` |
 | Service and track | `#9bacbc` | `#8593a2` | `#07090e` |
 
-Each edge is at least `ROAD_EDGE_DP` (1 dp) wide from z16, growing in from z13.5 (`edgeFloor` in
-`widenStreets`).
+Each edge is at least `ROAD_EDGE_DP` (1 dp) wide from z16, growing in from z13.5
+(`RoadWidths.edgeFloor`).
 
 **3D buildings.** Extrusions take the building fill color with the vertical gradient on, under a
 style light of intensity `B3D_LIGHT` (0.25). At 0 every face draws one color and no wall reads as
@@ -3885,24 +3885,29 @@ collision. Hidden in the overview with the other `vela-nav-` layers.
 
 Liberty grows a road's line 1.2x per zoom level while the map doubles, so its streets thin out
 next to the buildings as the map zooms in. `widenStreets`, run for every palette, draws each
-class at the wider of its base curve and a real width in meters:
+class at the wider of its base curve and a real width in meters (`ui/map/RoadWidths`):
 
     dp = min(cap, meters x roadWidthScale x 2^z / (78271.517 x cos 40))
 
 An expression cannot read the latitude, so 40 degrees is fixed. Stops are every half level from z5
 to z20. Roads, bridges and tunnels of a class share one curve.
 
-| Class | `ROAD_WIDTH_M` | `ROAD_ONEWAY_WIDTH_M` | `ROAD_WIDTH_CAP_DP` |
+| Class | `WIDTH_M` | `ONEWAY_WIDTH_M` | `CAP_DP` |
 | --- | --- | --- | --- |
-| minor (`road_minor`, `bridge_street`, `tunnel_minor`, `tunnel_street`) | 10 | same | 34 |
+| minor (`road_minor`, `bridge_street`, `tunnel_minor`, `tunnel_street`) | 7.5 | same | 26 |
 | service_track | 3.5 | same | 14 |
 | link, motorway_link | 8 | 6 | 28 |
 | secondary_tertiary | 13 | 9 | 42 |
 | trunk_primary | 17 | 11 | 52 |
 | motorway | 22 | 13 | 62 |
 
-- The base curve is Liberty's own, except minor roads: 0 at z12.5, 1.6 at z13, 4 at z14, 9 at
-  z16, 18 at z20.
+- The base curve is Liberty's own, except minor roads. Fill: 0 at z12.5, 0.8 at z13, 1.6 at z14,
+  2.6 at z15, 4.2 at z16, 12 at z20. Casing: 0.5 at z12, 1.4 at z13, 2.5 at z14, 3.6 at z15, 5.2
+  at z16, 13.5 at z20.
+- From z13.5 up a minor street's casing is at most 0.65 of a secondary or tertiary road's (about
+  0.55 to 0.62), so the main roads stand out from the residential grid. The classes keep their
+  order at every zoom: service and track, minor, secondary and tertiary, trunk and primary,
+  motorway. `RoadWidthsTest` checks both.
 - A casing keeps the style's border width around the wider fill, and at least the road-edge floor
   (6.2).
 - A piece whose tile `oneway` is set takes the one-way width: OSM draws a divided road as two
@@ -3960,7 +3965,8 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
 
 - `routeWidth()` is the wider of a pixel curve (7 / 11.2 / 11.5 / 11 / 17 / 20.4 dp at z10 / 14 /
   15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). At 8.5 m it
-  covers a two-lane street or one carriageway with a little road showing each side.
+  covers one carriageway of a main road with a little road showing each side, and a minor street
+  edge to edge (from z18 it is about 2 dp wider on each side).
 - Alternates use `ALT_REAL_M` (7.65 m), capped at `ALT_CAP_DP` (30), with their edge
   (`vela-alt-route-edge`) inside that width. Both widths follow `roadWidthScale`.
 - Each route piece has an outline layer `<piece>-ol` on the piece's own source: `#0e326a` by day,
