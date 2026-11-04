@@ -5011,6 +5011,9 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - Times are formatted from each tuple's epoch and zone, not the page's clock text.
 - A line is its badge, or an agency icon filename when the badge has no text (subway bullets). A
   line icon is operator-scoped and contains a slash; the generic vehicle icon is bare.
+- A badge is `["name", int, "#fill", "#text"]`. Inside the line facet `[5, badge]` it can come
+  with no fill, a line the agency gives no color; the trip summary writes some lines that way
+  while their own leg gives a fill. A summary line with no color takes its ride leg's.
 - Mode comes from icon filenames only: mode words in nearby text also occur in place names.
 - A ridden leg in Japan has no generic vehicle icon. Its operator icon's path decides:
   `shinkansen` a train, `metro` or `subway` a subway, `jp2ltr` or `jp-jr` a train, any other a

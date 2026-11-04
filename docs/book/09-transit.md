@@ -8,7 +8,8 @@ color, the next departure and a countdown (green when the vehicle is tracked liv
 times after it. Tap Stops on a row for the run's stop list: stops already passed are gray, live
 times are green or red, canceled calls are struck through. Tap a stop there to open its board.
 
-Directions in transit mode list trips with their times, lines and walks. Chips set the time
+Directions in transit mode list trips with their times, lines and walks. A trip's card shows
+its first four lines and a count of the rest. Chips set the time
 (Leave now, Depart at, Arrive by, Last available), the vehicles to prefer, and fewer transfers
 or less walking. A picked time is kept while the sheet is swiped down and back, until its time
 has passed or another destination is chosen. Expanding a trip draws it on the map, and it stays
@@ -171,6 +172,8 @@ https://www.google.com/maps/dir/<origin>/<destination>/data=!4m2!4m1!3e3?hl=<lan
 - A line is its text pill, or the file name of an operator's icon when there is no pill
   (`us-ny-mta/2.png` is the 2). An operator's path has a slash. A bare file name such as
   `bus2.png` is the vehicle icon.
+- A pill can have no color. The trip summary lists some lines that way, and the trip card then
+  draws them in the colors their ride leg gives.
 - The vehicle type comes from icon file names only, because a stop name can contain "bus". Where
   a leg has only an operator icon, as in Japan, its path decides: JR and the lettered lines are
   trains, a `metro` or `subway` operator is a subway.
