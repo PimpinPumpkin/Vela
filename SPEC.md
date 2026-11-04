@@ -2222,7 +2222,11 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
 - The voice speaks at `PiperSynth.SPEAK_PRIORITY` (nice 8, foreground group). At the default
   priority it held the map at 2 to 30 fps; `BACKGROUND` puts a prompt ten seconds out. An
   imminent-turn prompt and the opener (`interrupt = true`) keep the default. No prompt is
-  dropped by priority.
+  dropped by priority. The engine's own threads (`PiperSynth.poolTids`, found by the worker's
+  name after a load) take every priority the worker takes: they start inside the load and kept
+  its priority of that moment, background after a warm-up, and a render waits for its slowest
+  thread. On a Pixel 4a with eight busy loops on the cores, a 52 letter test line rendered in
+  25 s with them left at nice 10 and 11 to 15 s with them moved along (4.6 s idle either way).
 - The opener and the first two turns' prompts are synthesized while the route preview is up
   (`NavSession.prepareStart` -> `VoiceGuide.prepare` -> `PiperSynth.prepare`, background
   priority). `NavEngine.startPrompts` gives the far and near approach lines at the 400 m and

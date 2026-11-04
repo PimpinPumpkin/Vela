@@ -30,7 +30,31 @@ class PiperSynth @Inject constructor(
 ) : NeuralSynth {
 
     private val worker = Executors.newSingleThreadExecutor { r ->
-        Thread({ android.os.Process.setThreadPriority(SPEAK_PRIORITY); r.run() }, "piper-tts").apply { isDaemon = true }
+        Thread({ android.os.Process.setThreadPriority(SPEAK_PRIORITY); r.run() }, WORKER_NAME).apply { isDaemon = true }
+    }
+
+    /** The engine's own threads (one at two synthesis threads). The runtime starts them during the
+     *  load, on [worker], and they keep the name and the priority the worker had then, so a load at
+     *  background priority left them at nice 10 for good. A render waits for its slowest thread: on
+     *  a Pixel 4a with every core busy a 52 letter line took 25 s, against 11 to 15 s once they move
+     *  with the worker ([setPriority]) and 4.6 s idle. */
+    @Volatile private var poolTids = IntArray(0)
+
+    /** Threads named like [worker], other than the caller. Read on the worker after a load. */
+    private fun findPoolTids(): IntArray {
+        val me = android.os.Process.myTid()
+        return runCatching {
+            java.io.File("/proc/self/task").listFiles().orEmpty().mapNotNull { d ->
+                val tid = d.name.toIntOrNull()?.takeIf { it != me } ?: return@mapNotNull null
+                tid.takeIf { runCatching { java.io.File(d, "comm").readText().trim() }.getOrNull() == WORKER_NAME }
+            }.toIntArray()
+        }.getOrDefault(IntArray(0))
+    }
+
+    /** Sets [pri] on the calling worker, or on [tid] when given, and on the engine's threads. */
+    private fun setPriority(pri: Int, tid: Int = 0) {
+        runCatching { if (tid == 0) android.os.Process.setThreadPriority(pri) else android.os.Process.setThreadPriority(tid, pri) }
+        for (t in poolTids) runCatching { android.os.Process.setThreadPriority(t, pri) }
     }
 
     @Volatile private var tts: OfflineTts? = null
@@ -123,10 +147,10 @@ class PiperSynth @Inject constructor(
         // queued behind a slow background load raises it back ([speak] calls [boostBackground]).
         worker.execute {
             backgroundTid = android.os.Process.myTid()
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            setPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try { ensureLoaded() } finally {
                 backgroundTid = 0
-                android.os.Process.setThreadPriority(SPEAK_PRIORITY)
+                setPriority(SPEAK_PRIORITY)
             }
         }
     }
@@ -141,7 +165,7 @@ class PiperSynth @Inject constructor(
      *  call and cannot be cut short, so it must not also run slow. */
     private fun boostBackground(urgent: Boolean = false) {
         val tid = backgroundTid
-        if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, if (urgent) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY) }
+        if (tid != 0) setPriority(if (urgent) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY, tid)
     }
 
     /** Bumped by every [speak]: a [prepare] still queued when a real line is asked for is dropped,
@@ -159,7 +183,7 @@ class PiperSynth @Inject constructor(
         // thread, so no generate() can be running concurrently → releasing here is safe (never a
         // use-after-free). loadFailed resets so a previously-bad voice doesn't block a new one.
         runCatching { cur?.release() }
-        tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
+        tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false; poolTids = IntArray(0)
         val loadStart = android.os.SystemClock.elapsedRealtime()
         // Place names said the local way: swap the voice's English dictionary before it is read.
         PlaceDictionary.install(context, r.voiceId, r.dataDir)
@@ -185,6 +209,7 @@ class PiperSynth @Inject constructor(
                 val engine = OfflineTts(assetManager = null, config = cfg)
                 numSpeakers = engine.numSpeakers()
                 runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
+                poolTids = findPoolTids()
                 tts = engine
                 loadedVoiceId = r.voiceId
                 Log.i(TAG, "loaded ${r.voiceId} in ${android.os.SystemClock.elapsedRealtime() - loadStart} ms: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
@@ -210,7 +235,7 @@ class PiperSynth @Inject constructor(
         worker.execute {
             runCatching { track?.pause(); track?.flush() }
             runCatching { tts?.release() }
-            tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
+            tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false; poolTids = IntArray(0)
             ensureLoaded()
         }
     }
@@ -234,7 +259,7 @@ class PiperSynth @Inject constructor(
             if (engine == null || myGen != generation) { onDone(); return@execute }
             // An imminent-turn prompt (interrupt: it cuts whatever is playing) keeps the default
             // priority so a busy map cannot delay it; the far prompts and the opener yield.
-            runCatching { android.os.Process.setThreadPriority(if (interrupt) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY) }
+            setPriority(if (interrupt) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY)
             try {
                 val t0 = android.os.SystemClock.elapsedRealtime()
                 val sid = speakerId()
@@ -440,7 +465,7 @@ class PiperSynth @Inject constructor(
         worker.execute {
             if (asked != speaksAsked) { onDone(); return@execute }
             backgroundTid = android.os.Process.myTid()
-            runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
+            setPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
                 // Read again with the priority down. [speak] counts a line before it raises this
                 // thread, so a line asked up to here ends the work and a later one raises it.
@@ -464,7 +489,7 @@ class PiperSynth @Inject constructor(
                 Log.w(TAG, "prepare failed: ${t.message}")
             } finally {
                 backgroundTid = 0
-                runCatching { android.os.Process.setThreadPriority(SPEAK_PRIORITY) }
+                setPriority(SPEAK_PRIORITY)
                 onDone()
             }
         }
@@ -542,6 +567,7 @@ class PiperSynth @Inject constructor(
         /** Prepared lines kept at once: a drive's opener and its first turns' prompts (up to 7). */
         const val MAX_PREPARED = 8
         const val TAG = "PiperSynth"
+        const val WORKER_NAME = "piper-tts"
         const val SPEED = 1.0f
         // Silence spliced between sentences (seconds) — a natural period beat for nav prompts.
         const val PAUSE_SEC = 0.32f
