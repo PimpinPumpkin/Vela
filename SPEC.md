@@ -5539,7 +5539,8 @@ The whole UI works with a five-key D-pad and no touchscreen.
   Settings is the first thing in a session to take focus the first key press lands on Back.
 - A Compose `DropdownMenu` popup and an `AlertDialog` cannot be pre-focused. `VelaMenu` renders a
   raw `Dialog` with its first item focused on a D-pad-first device and the ordinary
-  `DropdownMenu` under touch. `VelaDialog` is a raw `Dialog` that focuses the dismiss button.
+  `DropdownMenu` under touch, capped at 70% of the screen height so a long one scrolls instead
+  of running under the navigation bar. `VelaDialog` is a raw `Dialog` that focuses the dismiss button.
   Their items take focus through `.focusable()` plus `.onKeyEvent` plus `pointerInput`, because
   the nested focusable inside `.clickable` does not accept `requestFocus` in a dialog window.
 - `Modifier.dpadFieldEscape` makes up and down leave a text field.
