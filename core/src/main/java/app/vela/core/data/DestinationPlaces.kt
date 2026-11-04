@@ -29,4 +29,19 @@ object DestinationPlaces {
     @Synchronized fun at(p: LatLng): Ref? = refs.lastOrNull { it.first.distanceTo(p) <= SAME_POINT_M }?.second
 
     @Synchronized fun clear() = refs.clear()
+
+    /** Google's end of a place route this far from the pin or less is the place's entrance. */
+    const val END_MAX_M = 400.0
+
+    /**
+     * Where an open-router route that follows Google's [line] to [destination] must end: Google's
+     * own last point when [destination] was asked for as a place, else [destination]. The snap
+     * that names Google's course ran its last leg to the pin, so a route Google ended at the front
+     * of a large store ended on the road behind it.
+     */
+    fun routeEnd(line: List<LatLng>?, destination: LatLng): LatLng {
+        if (at(destination) == null) return destination
+        val end = line?.lastOrNull() ?: return destination
+        return if (end.distanceTo(destination) <= END_MAX_M) end else destination
+    }
 }

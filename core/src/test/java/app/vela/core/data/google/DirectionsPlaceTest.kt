@@ -41,4 +41,15 @@ class DirectionsPlaceTest {
         assertEquals("a blank text is not kept", "0x1:0x2", DestinationPlaces.at(store)?.featureId)
         assertFalse(DirectionsPb.withPlace("!1m4!3m2!3d{OLAT}!4d{OLNG}!6e2", DestinationPlaces.at(store), DirectionsPb.DEFAULT_PLACE_GROUP).contains("0x1"))
     }
+
+    @Test fun `a snapped route to a place ends where Google's line ends, not at the pin`() {
+        val entrance = LatLng(store.lat - 0.0009, store.lng) // 100 m south of the pin
+        val line = listOf(davis, entrance)
+        assertEquals("a bare point keeps the pin", store, DestinationPlaces.routeEnd(line, store))
+        DestinationPlaces.remember(store, "Target", "0x1:0x2")
+        assertEquals(entrance, DestinationPlaces.routeEnd(line, store))
+        val far = LatLng(store.lat - 0.01, store.lng) // 1.1 km off: not this place's entrance
+        assertEquals(store, DestinationPlaces.routeEnd(listOf(davis, far), store))
+        assertEquals(store, DestinationPlaces.routeEnd(null, store))
+    }
 }

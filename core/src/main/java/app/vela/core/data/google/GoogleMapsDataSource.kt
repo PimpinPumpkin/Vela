@@ -778,7 +778,11 @@ class GoogleMapsDataSource @Inject constructor(
         val routes = directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
         // Off the caller's thread (the view model calls from Main): the tiles' protobuf is
         // decoded here. Every route at once, so a tile host that does not answer costs one wait.
-        return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }
+        return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }.also { rs ->
+            runCatching {
+                android.util.Log.i("VelaDirections", "ends: ${rs.joinToString { "${it.source} ${it.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m" }} from the pin")
+            }
+        }
     }
 
     /**
@@ -944,7 +948,7 @@ class GoogleMapsDataSource @Inject constructor(
                         if (divergentStops && (!urgent || avoidWantedHere)) {
                             val pts = RouteGeometry.sampleViasThrough(gStops.polyline, waypoints)
                             if (pts != null) {
-                                val all = listOf(origin) + pts + destination
+                                val all = listOf(origin) + pts + app.vela.core.data.DestinationPlaces.routeEnd(gStops.polyline, destination)
                                 // The real stops' positions in the via list: exempt from the strict
                                 // snap-distance refusal (a stop in a lot is a stop, not an appendix).
                                 val loose = all.indices.filter { i -> i in 1 until all.lastIndex && waypoints.any { it == all[i] } }.toSet()
@@ -1155,6 +1159,9 @@ class GoogleMapsDataSource @Inject constructor(
                 chosen
             } else googleAll
             val gTop = google.firstOrNull()
+            if (gTop != null && mode == TravelMode.DRIVE && app.vela.core.data.DestinationPlaces.at(destination) != null) runCatching {
+                android.util.Log.i("VelaDirections", "place: Google's line ends ${gTop.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m from the pin")
+            }
             // Every Google route set aside: the open router's route still takes Google's clock and
             // traffic, as a trip through stops does when Google's detour is not taken. On its own
             // clock it runs fast, and the ETA stayed short until the recheck healed it.
@@ -1422,7 +1429,7 @@ class GoogleMapsDataSource @Inject constructor(
             val viaRoute = when {
                 hybrid != null -> hybrid
                 (!urgent || avoidWanted) && topDivergent -> RouteGeometry.routeVia(
-                    http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
+                    http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + app.vela.core.data.DestinationPlaces.routeEnd(gTop.polyline, destination), mode,
                     avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
                     tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
                 ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP) // a trip log can tell a jam snap from a plain route
@@ -1938,7 +1945,7 @@ class GoogleMapsDataSource @Inject constructor(
         if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
         // A reroute's heading pins where the snap starts, and the samples on Google's own unheaded
         // start are left out (RouteGeometry.snapVias).
-        val vias = listOf(origin) + RouteGeometry.snapVias(route.polyline, origin, departBearingDeg) + destination
+        val vias = listOf(origin) + RouteGeometry.snapVias(route.polyline, origin, departBearingDeg) + app.vela.core.data.DestinationPlaces.routeEnd(route.polyline, destination)
         // The avoid flags ride along on the snap, but they add nothing on the public server:
         // OSRM_SUPPORTS_EXCLUDE is off, so no `exclude=` is sent and the vias alone hold the
         // snap to Google's chosen path.

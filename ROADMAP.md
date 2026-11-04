@@ -269,6 +269,9 @@ off the list when it has been.
 - A shared run whose open route piece leaves Google's line by more than 15 m is drawn on
   Google's line (#895): unit test only. The reporter's trip today draws the same before and
   after on a 4a, so whether this was their loop is not known.
+- A snapped route to a place ends where Google's line ends instead of at the pin: unit test.
+  The one store tried on the 4a has Google's own end 25 m from the pin, so no route there
+  changed; not yet seen moving a route.
 - Offline, the downloaded region under the view's center is drawn instead of the one the view
   came from (#902): on the 4a, Montenegro then Kosovo downloaded, airplane mode, the center
   moved into Kosovo with Montenegro still in the west of the view, and Kosovo mounted. Not

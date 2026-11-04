@@ -190,7 +190,8 @@ When the destination is a Google place, Google is asked for the place (its name,
 feature id), not only its point, the way its own web page asks. The route then ends at the
 place's entrance point. Asked for the bare point, Google ends on the road nearest the pin, which
 for a large store can be the road behind the building. Reroutes and rechecks to the same point
-ask the same way (`DestinationPlaces`).
+ask the same way (`DestinationPlaces`). A route made by snapping the open router to Google's
+course ends where Google's line ends; its last leg used to run to the pin.
 
 ### Stops
 

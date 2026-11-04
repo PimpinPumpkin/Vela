@@ -420,7 +420,10 @@ text escaped as `*21` and `*2A`. The text is the place's name and address. Googl
 ends at the place's own entrance point instead of the road nearest the pin. On twelve Davis and
 Sacramento stores the end moved by 0 to 123 m. `MapViewModel.route` records the place by its
 point (`DestinationPlaces`, 16 kept, a point within 2 m is the same), so a reroute or a recheck
-to that point asks for the place too.
+to that point asks for the place too. An open-router snap through Google's course (the via-snap,
+the stops snap and `nameRoute`) ends where Google's line ends, not at the pin, when that end is
+within `DestinationPlaces.END_MAX_M` (400 m) of it (`DestinationPlaces.routeEnd`).
+`VelaDirections` logs how far Google's line and each returned route end from the pin.
 
 Not reachable without a key or a login. Each was probed and settled:
 
