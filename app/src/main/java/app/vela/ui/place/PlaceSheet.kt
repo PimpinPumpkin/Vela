@@ -1873,6 +1873,7 @@ fun DirectionsPanel(
                             shape = androidx.compose.foundation.shape.CircleShape,
                         )
                     }
+                    BikeShareTripsChip()
                 }
                 // Google's route preference, carried on its request (2 fewer transfers, 3 less
                 // walking). One or neither: tapping the selected chip goes back to the best route.
@@ -2430,8 +2431,23 @@ private fun TransitBoard(
             }
             // A new set of results drops the expansions kept for the old one (issue #812).
             LaunchedEffect(trips) { app.vela.ui.TransitExpanded.prune(trips.map { app.vela.ui.TransitExpanded.keyOf(it) }) }
+            // Bike-share trips (SPEC 8, Bike share in directions) get a section of their own above
+            // the usual list, which they leave as it was.
+            val bike = trips.filter { t -> t.steps.any { it.mode == TransitMode.BIKE_SHARE } }
+            val rest = if (bike.isEmpty()) trips else trips.filter { t -> t.steps.none { it.mode == TransitMode.BIKE_SHARE } }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                trips.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
+                if (bike.isNotEmpty()) {
+                    Text(stringResource(R.string.map_layers_bike_share), style = MaterialTheme.typography.labelLarge, color = dim)
+                    bike.take(BIKE_SHARE_ROWS).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
+                    if (rest.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.place_mode_transit),
+                            style = MaterialTheme.typography.labelLarge, color = dim,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+                rest.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
             }
         }
     }
@@ -2726,7 +2742,9 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
         return
     }
     val line = s.line ?: return // unreachable (walk branch returned) — re-narrows the cross-module type
-    val lineColor = parseHexColor(line.colorHex) ?: dim
+    // A bike-share leg reads like a ride: its system's pill, the station the bike is taken from
+    // and the one it is returned to (SPEC 8, Bike share in directions).
+    val lineColor = parseHexColor(line.colorHex) ?: if (s.mode == TransitMode.BIKE_SHARE) bikeShareTeal() else dim
     var stopsOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
         Icon(transitModeIcon(s.mode), null, tint = lineColor, modifier = Modifier.padding(top = 2.dp).size(18.dp))
@@ -2734,6 +2752,9 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LinePill(line)
                 s.headsign?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, maxLines = 2) }
+                if (s.rental?.electric == true) {
+                    Text(stringResource(R.string.place_bike_share_ebike), style = MaterialTheme.typography.labelMedium, color = dim)
+                }
             }
             s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
             val rideLabel = listOfNotNull(
@@ -3175,14 +3196,44 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
     TransitMode.TRAIN -> Sym.Train
     TransitMode.TRAM -> Sym.Tram
     TransitMode.FERRY -> Sym.DirectionsBoat
+    TransitMode.BIKE_SHARE -> Sym.DirectionsBike
     else -> Sym.DirectionsTransit
 }
 
+/** Bike-share trips shown in their own section of the transit board. */
+private const val BIKE_SHARE_ROWS = 2
+
+/** The bike-share accent: the stations' badge and the map's cycleways ([app.vela.ui.map.BikeShareMapLayer]). */
+@Composable
+private fun bikeShareTeal(): Color =
+    Color(if (isAppInDarkTheme()) app.vela.ui.map.BikeShareMapLayer.FILL_DARK else app.vela.ui.map.BikeShareMapLayer.FILL_LIGHT)
+
+/** The transit options' "Bike share" chip (SPEC 8, Bike share in directions): flips
+ *  [app.vela.ui.BikeShareTrips] and asks for the transit trips again through
+ *  [app.vela.ui.RouteActions], so MapScreen takes no new callback. */
+@Composable
+private fun BikeShareTripsChip() {
+    val context = LocalContext.current
+    val on = app.vela.ui.BikeShareTrips.on.value
+    FilterChip(
+        selected = on,
+        onClick = {
+            app.vela.ui.BikeShareTrips.set(context, !on)
+            app.vela.ui.RouteActions.bikeShareChanged?.invoke()
+        },
+        label = { Text(stringResource(R.string.map_layers_bike_share)) },
+        leadingIcon = { Icon(Sym.DirectionsBike, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        shape = androidx.compose.foundation.shape.CircleShape,
+        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+    )
+}
+
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no color is supplied. */
+ *  transit pills; falls back to the theme primary when no color is supplied, and a bike-share
+ *  system to the bike-share teal. */
 @Composable
 private fun LinePill(line: TransitLine) {
-    val fallback = MaterialTheme.colorScheme.primary
+    val fallback = if (line.mode == TransitMode.BIKE_SHARE) bikeShareTeal() else MaterialTheme.colorScheme.primary
     val bg = parseHexColor(line.colorHex) ?: fallback
     val fg = parseHexColor(line.textColorHex) ?: if (bg.luminance() > 0.5f) Color(0xFF202124) else Color.White
     Row(
@@ -3206,6 +3257,7 @@ private fun transitModeIcon(mode: TransitMode) = when (mode) {
     TransitMode.FERRY -> Sym.DirectionsBoat
     TransitMode.WALK -> Sym.DirectionsWalk
     TransitMode.GENERIC -> Sym.DirectionsTransit
+    TransitMode.BIKE_SHARE -> Sym.DirectionsBike
 }
 
 /** Parse a CSS hex color ("#rrggbb" / "#rgb"); null if absent/malformed. */

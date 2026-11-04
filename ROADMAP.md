@@ -512,6 +512,8 @@ off the list when it has been.
   a request that is out is no longer canceled by the next view. Tested in units and on a still
   phone; not seen on the move, where one run at about 26 km/h had asked for no stations in 2.5
   minutes.
+- Bike-share trips in transit directions (`BikeShareTripSearch`, `Transitous.planBikeShare`,
+  SPEC 8): unit-tested on Lyon and Paris replies. Not yet seen on a phone.
 
 ### Open from the October 2026 audit
 
@@ -635,15 +637,12 @@ Found reading everything since 0.4.1912 and not fixed yet.
   still cancel their request for each new view, so while the map follows a moving fix a reply
   slower than the second between views never lands. They can ask through `ViewFetch` as the
   stop icons and bike-share stations do.
-- Bike share in directions, after the stations layer. Transitous's planner already routes it:
-  `/api/v1/plan` with `RENTAL` in `directModes`, `preTransitModes` and `postTransitModes` and
-  the `BICYCLE` form factor returns a walk, a ride from one station to another and a walk,
-  alone or around a transit ride. MOTIS skips a station with no bikes for a pickup and one with
-  no free docks for a return, as of the request. Lyon, 2026-10-22: a 5 min walk to a Vélo'v
-  station, a 12 min ride, a 3 min walk, past a nearer station with no bikes. Vela reads a
-  `RENTAL` leg as a walk today (`Transitous.parseItinerary`). It needs a ride step with the
-  system and the pickup and return stations, bike guidance on that leg, and a check of the
-  return station's docks on the way that offers the next station when it fills. Not started.
+- Bike share in directions, the rest. Bike-share trips are in transit directions (SPEC 8, Bike
+  share in directions). Still to do: the pickup and return stations' counts on the trip, the
+  ride's own spoken line and steps, and a check of both stations on the way that offers the
+  nearest other one when the pickup runs out of bikes or the return fills. Most feeds on the
+  public instance give no dock counts (none for Lyon, Paris, Bordeaux, Berlin, Montreal or
+  Brussels on 2026-11-04), so the return check works only where one does. Not started.
 - A bike lanes layer, and bike routes that show their lanes. The map draws separate cycleways
   only (`vela-bikeroutes`, OSM `highway=cycleway`). Lanes and tracks along a road (`cycleway`,
   `cycleway:left`, `cycleway:right` or `cycleway:both` set to `lane`, `track` or

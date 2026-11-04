@@ -23,6 +23,11 @@ With "Bike share" on in Layers, each docked bike-share station shows from street
 badge with its free bikes beside it, gray when it has none. Tap one for its free docks and how
 old the counts are. They refresh every minute while Vela is on screen.
 
+With the "Bike share" chip on among the transit options, a trip that leaves now also gets
+bike-share trips: a docked bike taken from one station and returned to another, alone or before
+or after a ride. Up to two show above the other trips under their own heading, with the system's
+pill in teal.
+
 ## Where the data comes from
 
 | Piece | First | Fallback |
@@ -34,6 +39,7 @@ old the counts are. They refresh every minute while Vela is on screen.
 | Path of a ride on the map | the Transitous planner | a road route through the stops (bus), straight lines (rail) |
 | Colored rail lines | Transitous | the basemap's plain rail highlight |
 | Bike-share stations | Transitous, from the operators' GBFS feeds | none |
+| Bike-share trips | the Transitous planner, on the same feeds | none |
 
 Transitous (`api.transitous.org`) is a community-run service with no key or account. It serves
 the GTFS and GTFS-Realtime feeds that agencies publish, through the MOTIS engine. Every call
@@ -219,10 +225,34 @@ The planner's trips take the same form. They lack a fare, service alerts and wal
 vehicle chips become its `transitModes`, and `TransitOrder.byPreference` sorts its answers
 because it has no route preference.
 
+### Bike-share trips
+
+With the "Bike share" chip on and a trip that leaves now, `BikeShareTripSearch` runs beside the
+transit search. It never runs for a later time: the planner picks stations by their bikes and
+docks as of the request.
+
+1. `Transitous.bikeShareGroups` asks which systems run around the trip, for providers only. A
+   system counts when it rents bicycles and is not a free-floating operator, by the same list as
+   the station layer. With none, nothing more is asked.
+2. `Transitous.planBikeShare` asks the planner for trips with `RENTAL` before, after or instead
+   of transit, on those systems only. Without that list it also rides free-floating bikes: central
+   Paris came back with Lime, Voi and Dott bikes ahead of its one Vélib' ride. This is a request
+   of its own because with `RENTAL` as a direct mode the planner drops the transit trips slower
+   than the fastest bike ride.
+3. A rental leg becomes a ride on the system's line, from the pickup station to the return
+   station. A trip with any other rental leg is dropped, and a later run of the same trip counts
+   once.
+
+The planner itself takes a bike only from a station with one, and returns it only where a dock
+is free, when the feed says so. Most feeds on the public instance give no dock counts, and there
+any station that takes returns will do. [SPEC 8](../../SPEC.md#8-transit), Bike share in
+directions, has the rules.
+
 ### The trip on the map
 
 Expanding a trip draws its rides in the agency's color (blue when there is none), its stops as
-ringed white dots and its walks as dotted gray links, under the map labels.
+ringed white dots and its walks as dotted gray links, under the map labels. A bike-share ride
+draws along its own path, teal when its system gives no color, with dots at its two stations.
 
 The planner's trips carry their own paths. Google's have stops and no track, so a ride first
 draws as straight lines through its stops. `MapViewModel.shapeTransitLegs` then looks up each

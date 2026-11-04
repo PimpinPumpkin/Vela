@@ -1225,6 +1225,7 @@
     <string name="place_bike_share_no_rentals">No rentals now</string>
     <string name="place_bike_share_no_returns">No returns now</string>
     <string name="place_bike_share_closed">Out of service</string>
+    <string name="place_bike_share_ebike">E-bike</string>
     <string name="place_bike_share_updated_now">Updated just now</string>
     <plurals name="place_bike_share_updated_min">
         <item quantity="one">Updated %d min ago</item>

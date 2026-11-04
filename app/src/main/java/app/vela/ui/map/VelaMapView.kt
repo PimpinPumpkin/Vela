@@ -230,6 +230,7 @@ private const val TRANSIT_PREV_WALK_LAYER = "vela-transit-prev-walk"
 private const val TRANSIT_PREV_RIDE_LAYER = "vela-transit-prev-ride"
 private const val TRANSIT_PREV_STOPS_LAYER = "vela-transit-prev-stops"
 private const val TRANSIT_PREV_FALLBACK_COLOR = "#4285F4" // rides whose agency sends no line color
+private const val TRANSIT_PREV_BIKE_SHARE_COLOR = "#007B8B" // a bike-share leg: the stations' badge teal (BikeShareMapLayer)
 private const val TRANSIT_PREV_WALK_COLOR = "#7C8A99" // dotted walk links, legible on both themes
 private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val ROUTE_BUBBLE_SRC = "vela-route-bubble-src"
@@ -8094,6 +8095,9 @@ private fun transitPreviewCoords(itin: app.vela.core.model.TransitItinerary?): L
  *  camera framing during step-by-step transit nav (issue #232). Null/empty = no geometry. */
 private fun transitLegCoords(itin: app.vela.core.model.TransitItinerary?, leg: Int): List<LatLng>? {
     val s = itin?.steps?.getOrNull(leg) ?: return null
+    // A bike-share ride is framed by its path: its two stations alone leave the streets between
+    // them off screen.
+    if (s.mode == app.vela.core.model.TransitMode.BIKE_SHARE) TransitShapes.of(s)?.let { return it }
     return if (s.mode == app.vela.core.model.TransitMode.WALK) {
         listOfNotNull(s.walkFrom, s.walkTo)
     } else {
@@ -8147,7 +8151,8 @@ private fun ensureTransitPreview(style: Style, itin: app.vela.core.model.Transit
                 s.alightStop?.location?.let { add(it) }
             }
             if (pts.size >= 2) {
-                val color = s.line?.colorHex?.takeIf { it.startsWith("#") } ?: TRANSIT_PREV_FALLBACK_COLOR
+                val color = s.line?.colorHex?.takeIf { it.startsWith("#") }
+                    ?: if (s.mode == app.vela.core.model.TransitMode.BIKE_SHARE) TRANSIT_PREV_BIKE_SHARE_COLOR else TRANSIT_PREV_FALLBACK_COLOR
                 // The ride's real path where one is known (issue #677), else straight lines through
                 // the stops. The stop dots below stay on the stops either way.
                 val line = TransitShapes.of(s) ?: pts

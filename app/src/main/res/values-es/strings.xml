@@ -1342,6 +1342,7 @@
     <string name="place_bike_share_no_rentals">Sin préstamos ahora</string>
     <string name="place_bike_share_no_returns">Sin devoluciones ahora</string>
     <string name="place_bike_share_closed">Fuera de servicio</string>
+    <string name="place_bike_share_ebike">Eléctrica</string>
     <string name="place_bike_share_updated_now">Actualizado ahora mismo</string>
     <plurals name="place_bike_share_updated_min">
         <item quantity="one">Actualizado hace %d min</item>

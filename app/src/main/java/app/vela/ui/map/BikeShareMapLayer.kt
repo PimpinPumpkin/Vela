@@ -145,9 +145,10 @@ internal object BikeShareMapLayer {
 
     /** Material Icons `directions_bike`, the glyph the shortcuts use for bike. */
     private const val BIKE_GLYPH = 0xe52f
-    // The bike accent of the map's cycleways (`vela-bikeroutes`), light and dark.
-    private const val FILL_LIGHT = 0xFF007B8B.toInt()
-    private const val FILL_DARK = 0xFF1F8F9C.toInt()
+    // The bike accent of the map's cycleways (`vela-bikeroutes`), light and dark. A bike-share
+    // leg in transit directions takes it too.
+    internal const val FILL_LIGHT = 0xFF007B8B.toInt()
+    internal const val FILL_DARK = 0xFF1F8F9C.toInt()
     private const val EMPTY_LIGHT = 0xFF9AA0A6.toInt()
     private const val EMPTY_DARK = 0xFF5F6368.toInt()
     private const val TEXT_LIGHT = "#00616E"

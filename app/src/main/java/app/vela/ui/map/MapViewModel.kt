@@ -563,6 +563,8 @@ class MapViewModel @Inject constructor(
     private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
     // Bike-share stations while their layer is on (SPEC 8). Above init like ukFuel.
     private val bikeShare = BikeShareStations(appContext, viewModelScope, _state, http)
+    // Bike-share trips beside the transit ones while the transit options' chip is on (SPEC 8).
+    private val bikeShareTrips = BikeShareTripSearch(http)
 
     // The voice mode written from outside this model (the car's on/off switch, CarVoice):
     // followed here so the phone's state and the drive button agree with it. A strong reference,
@@ -5926,7 +5928,7 @@ class MapViewModel @Inject constructor(
         app.vela.ui.ParkingActions.arrivedByCar = { _state.value.travelMode == TravelMode.DRIVE }
         app.vela.ui.ParkingActions.parkedAt = { _state.value.parkedAtMillis }
     }
-    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) } }
+    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = { if (_state.value.directionsOpen && _state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT) } }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
@@ -7034,7 +7036,11 @@ class MapViewModel @Inject constructor(
     private fun shapeTransitLegs(itin: TransitItinerary) {
         transitShapeJob?.cancel()
         if (offlineNow() || _state.value.lowData) return
-        val rides = itin.steps.filter { it.mode != app.vela.core.model.TransitMode.WALK && app.vela.ui.map.TransitShapes.of(it) == null }
+        // A bike-share leg comes with its own path, and the planner has no "ride" of it to look up.
+        val rides = itin.steps.filter {
+            it.mode != app.vela.core.model.TransitMode.WALK && it.mode != app.vela.core.model.TransitMode.BIKE_SHARE &&
+                app.vela.ui.map.TransitShapes.of(it) == null
+        }
             .take(TRANSIT_SHAPE_MAX_LEGS)
         if (rides.isEmpty()) return
         transitShapeJob = viewModelScope.launch {
@@ -7091,8 +7097,15 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
         val prefer = _state.value.transitPrefer
         val routePref = _state.value.transitRoutePref
+        // Bike-share trips are looked for beside the transit ones, leaving now only: they are
+        // planned on the stations' counts as of now (SPEC 8, Bike share in directions). Not in
+        // transitTrips, which the mode chips' ETA prefetch also calls.
+        val withBikeShare = app.vela.ui.BikeShareTrips.on.value && timeMode == 0 && !offlineNow()
         viewModelScope.launch {
-            val trips = transitTrips(origin, dest, timeMode, timeEpochSec, prefer, routePref)
+            val bike = if (withBikeShare) async { bikeShareTrips.search(origin, dest) } else null
+            val base = transitTrips(origin, dest, timeMode, timeEpochSec, prefer, routePref)
+            // One list: the board shows the bike-share trips in a section of their own above.
+            val trips = bike?.await().orEmpty() + base
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(
@@ -7102,7 +7115,7 @@ class MapViewModel @Inject constructor(
                 )
             }
             if (etaKey != null) {
-                trips.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }
+                base.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }
                 val s = _state.value
                 prefetchModeEtas(etaKey, origin, dest, s.directionsWaypoints.map { it.location }, s.avoidTolls, s.avoidHighways, s.avoidFerries, timeMode, timeEpochSec, except = TravelMode.TRANSIT)
             }

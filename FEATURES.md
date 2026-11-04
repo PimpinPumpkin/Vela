@@ -196,6 +196,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   list.
 - Offline, a stop shows the last board you saw there.
 - With Google off, trips come from the open Transitous planner.
+- A "Bike share" chip adds trips on docked bike-share bikes leaving now, alone or with transit,
+  from the open Transitous planner.
 
 ## Cameras and road alerts
 
