@@ -7102,10 +7102,12 @@ class MapViewModel @Inject constructor(
         // transitTrips, which the mode chips' ETA prefetch also calls.
         val withBikeShare = app.vela.ui.BikeShareTrips.on.value && timeMode == 0 && !offlineNow()
         viewModelScope.launch {
+            if (withBikeShare) BikeShareCounts.replace(emptyMap())
             val bike = if (withBikeShare) async { bikeShareTrips.search(origin, dest) } else null
             val base = transitTrips(origin, dest, timeMode, timeEpochSec, prefer, routePref)
             // One list: the board shows the bike-share trips in a section of their own above.
-            val trips = bike?.await().orEmpty() + base
+            val bikeTrips = bike?.await().orEmpty()
+            val trips = bikeTrips + base
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(
@@ -7113,6 +7115,10 @@ class MapViewModel @Inject constructor(
                     transitLoading = false,
                     status = if (trips.isEmpty()) appContext.getString(R.string.mapvm_no_transit_routes) else null,
                 )
+            }
+            // Their stations' free bikes and docks land after them; "Use less data" asks for none.
+            if (bikeTrips.isNotEmpty() && !app.vela.core.data.LowDataMode.enabled) {
+                launch { bikeShareTrips.counts(bikeTrips)?.let { BikeShareCounts.replace(it) } }
             }
             if (etaKey != null) {
                 base.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }

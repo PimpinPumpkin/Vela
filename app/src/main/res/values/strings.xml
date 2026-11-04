@@ -1226,6 +1226,8 @@
     <string name="place_bike_share_no_returns">No returns now</string>
     <string name="place_bike_share_closed">Out of service</string>
     <string name="place_bike_share_ebike">E-bike</string>
+    <!-- A station's count and its name on a bike-share trip, "3 bikes at Part-Dieu". -->
+    <string name="place_bike_share_at">%1$s at %2$s</string>
     <string name="place_bike_share_updated_now">Updated just now</string>
     <plurals name="place_bike_share_updated_min">
         <item quantity="one">Updated %d min ago</item>

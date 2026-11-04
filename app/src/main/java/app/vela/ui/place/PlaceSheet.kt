@@ -2645,6 +2645,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
         }
         val sub = listOfNotNull(t.frequencyText?.let { stringResource(R.string.place_every, it) }, t.distanceText, t.agency).joinToString("  ·  ")
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+        BikeShareTripSummary(t, dim)
         if (expanded) {
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
             // Step-by-step guidance (Moovit-style) for this itinerary.
@@ -2757,6 +2758,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                 }
             }
             s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
+            if (s.mode == TransitMode.BIKE_SHARE) BikeShareStopCount(s, pickup = true, dim)
             val rideLabel = listOfNotNull(
                 s.durationText,
                 s.numStops?.let { pluralStringResource(R.plurals.place_transit_stops, it, it) },
@@ -2783,6 +2785,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                 Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
             }
             s.alightStop?.let { StopLine(it, ink, dim, emphasize = true) }
+            if (s.mode == TransitMode.BIKE_SHARE) BikeShareStopCount(s, pickup = false, dim)
         }
     }
 }
@@ -3226,6 +3229,57 @@ private fun BikeShareTripsChip() {
         shape = androidx.compose.foundation.shape.CircleShape,
         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
     )
+}
+
+/** A count's color on a bike-share trip: red at none, amber at [app.vela.ui.map.BikeShareCounts.FEW] or fewer. */
+private fun bikeShareCountColor(n: Int, dim: Color): Color = when {
+    n <= 0 -> SheetPalette.TrafficRed
+    n <= app.vela.ui.map.BikeShareCounts.FEW -> SheetPalette.TrafficAmber
+    else -> dim
+}
+
+/** A bike-share leg's count under one of its stations (SPEC 8, Bike share in directions): the
+ *  free bikes where the bike is taken, the free docks where it is returned when the feed gives
+ *  them. Nothing until the counts have landed. Lined up under the station's name. */
+@Composable
+private fun BikeShareStopCount(s: TransitStep, pickup: Boolean, dim: Color) {
+    app.vela.ui.map.BikeShareCounts.version.intValue // redraws when the counts land
+    val rental = s.rental
+    val stop = if (pickup) s.boardStop else s.alightStop
+    val c = if (rental != null && stop != null) app.vela.ui.map.BikeShareCounts.of(rental, stop) else null
+    val docks = c?.docks
+    val shown: Pair<String, Color>? = when {
+        c == null -> null
+        pickup && !c.renting -> stringResource(R.string.place_bike_share_no_rentals) to SheetPalette.TrafficRed
+        !pickup && !c.returning -> stringResource(R.string.place_bike_share_no_returns) to SheetPalette.TrafficRed
+        pickup -> pluralStringResource(R.plurals.place_bike_share_bikes, c.bikes, c.bikes) to bikeShareCountColor(c.bikes, dim)
+        docks != null -> pluralStringResource(R.plurals.place_bike_share_docks, docks, docks) to bikeShareCountColor(docks, dim)
+        else -> null
+    }
+    if (shown != null) {
+        Text(shown.first, style = MaterialTheme.typography.labelSmall, color = shown.second, modifier = Modifier.padding(start = 62.dp))
+    }
+}
+
+/** A bike-share trip's free bikes at its first pickup, under the collapsed row's pills: "3 bikes
+ *  at Part-Dieu". Nothing until the counts have landed. */
+@Composable
+private fun BikeShareTripSummary(t: TransitItinerary, dim: Color) {
+    app.vela.ui.map.BikeShareCounts.version.intValue // redraws when the counts land
+    val s = t.steps.firstOrNull { it.mode == TransitMode.BIKE_SHARE }
+    val rental = s?.rental
+    val stop = s?.boardStop
+    val c = if (rental != null && stop != null) app.vela.ui.map.BikeShareCounts.of(rental, stop) else null
+    if (c != null && stop != null) {
+        val count = if (!c.renting) stringResource(R.string.place_bike_share_no_rentals)
+            else pluralStringResource(R.plurals.place_bike_share_bikes, c.bikes, c.bikes)
+        Text(
+            stringResource(R.string.place_bike_share_at, count, stop.name),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (!c.renting) SheetPalette.TrafficRed else bikeShareCountColor(c.bikes, dim),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's

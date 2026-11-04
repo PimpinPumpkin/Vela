@@ -4995,6 +4995,18 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   on the map in the station badges' teal (`BikeShareMapLayer.FILL_LIGHT`, `FILL_DARK`), and an
   electric bike's pill has "E-bike" beside it. `shapeTransitLegs` skips a bike leg, and guidance
   frames it by its path.
+- Once the trips are on screen, `BikeShareTripSearch.counts` asks for their stations' free bikes
+  and docks, except with "Use less data": `bikeStationsInBox` with `providerGroups` set to the
+  trips' groups, one box per group of ends (`boxes`). An end joins the first group whose first end
+  is within 1.5 km (`CLUSTER_M`); each box is padded by 100 m (`COUNTS_PAD_M`); at most 4
+  (`MAX_BOXES`). Central Paris on 2026-11-04 with `providerGroups=Paris`: 176 stations in 9.2 KB,
+  against 4,251 in 241 KB with every operator's. A plan's station has no id, so
+  `Transitous.stationFor` takes the same provider's station of the same name, else its nearest
+  within 30 m (`STATION_MATCH_M`). `BikeShareCounts` holds the counts by provider and station
+  name, and a new search empties it first.
+- The collapsed row reads "3 bikes at <pickup>" under its pills. The bike leg shows the free bikes
+  under its pickup and the free docks under its return when the feed gives them. A count of 2 or
+  fewer (`BikeShareCounts.FEW`) is amber; none, or a station not renting or not returning, is red.
 - MOTIS takes a bike only from a station that is renting and has one of the asked type, and
   returns it only to a station that is returning and has a free dock for that type, or a free-dock
   total where the station declares a capacity (`src/gbfs/osr_mapping.cc`). Where a feed gives no

@@ -26,7 +26,7 @@ old the counts are. They refresh every minute while Vela is on screen.
 With the "Bike share" chip on among the transit options, a trip that leaves now also gets
 bike-share trips: a docked bike taken from one station and returned to another, alone or before
 or after a ride. Up to two show above the other trips under their own heading, with the system's
-pill in teal.
+pill in teal and the free bikes at the station where the bike is taken.
 
 ## Where the data comes from
 
@@ -242,6 +242,11 @@ docks as of the request.
 3. A rental leg becomes a ride on the system's line, from the pickup station to the return
    station. A trip with any other rental leg is dropped, and a later run of the same trip counts
    once.
+4. Once the trips are on screen, their stations' free bikes and docks are asked for, one small
+   box per group of stations, for those systems only. The plan names its stations without an id,
+   so each is found by name, or by position within 30 m. A trip shows the free bikes at its
+   pickup, and its bike leg the free docks at its return where the feed gives them: amber at two
+   or fewer, red at none. "Use less data" skips this step.
 
 The planner itself takes a bike only from a station with one, and returns it only where a dock
 is free, when the feed says so. Most feeds on the public instance give no dock counts, and there

@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** How the bike-share trip search asks: the systems first, kept for the same ends (Davis and
@@ -64,6 +65,52 @@ class BikeShareTripSearchTest {
         s.search(davis, sacramento)
         assertEquals(2, calls.groups)
         assertEquals(0, calls.plans)
+    }
+
+    // A ride from a station on Covell Boulevard to one downtown, in Davis.
+    private val covell = LatLng(38.5617, -121.7604)
+    private val downtown = LatLng(38.5440, -121.7400)
+    private val ride = app.vela.core.model.TransitStep(
+        mode = app.vela.core.model.TransitMode.BIKE_SHARE,
+        boardStop = app.vela.core.model.TransitStopTime(name = "Covell Park", location = covell),
+        alightStop = app.vela.core.model.TransitStopTime(name = "Downtown", location = downtown),
+        rental = app.vela.core.model.TransitRental(providerId = "test-bikes", groupId = "test", system = "Test Bikes"),
+    )
+    private val bikeTrip = TransitItinerary(steps = listOf(ride))
+
+    private fun station(id: String, name: String, at: LatLng, bikes: Int, docks: Int?) = app.vela.core.data.transit.Transitous.BikeStation(
+        key = "test-bikes/$id", name = name, lat = at.lat, lon = at.lng, address = null,
+        bikes = bikes, docks = docks, renting = true, returning = true,
+    )
+
+    @Test fun `the counts are found for both stations of a ride`() = runBlocking {
+        val asked = ArrayList<List<String>>()
+        val s = BikeShareTripSearch(
+            OkHttpClient(),
+            stationsOf = { _, g -> asked += g; listOf(station("1", "COVELL PARK", covell, 1, null), station("2", "Downtown", downtown, 9, 4)) },
+            clock = { 0L }, wallClock = { 42L },
+        )
+        val counts = s.counts(listOf(bikeTrip))!!
+        assertEquals(listOf("test"), asked.first())
+        val pickup = counts[BikeShareCounts.keyOf("test-bikes", "Covell Park")]!!
+        assertEquals(1, pickup.bikes)
+        assertEquals(42L, pickup.atMs)
+        assertEquals(4, counts[BikeShareCounts.keyOf("test-bikes", "Downtown")]!!.docks)
+    }
+
+    @Test fun `with no reply there are no counts, not zero bikes`() = runBlocking {
+        val s = BikeShareTripSearch(OkHttpClient(), stationsOf = { _, _ -> null }, clock = { 0L })
+        assertEquals(null, s.counts(listOf(bikeTrip)))
+        assertEquals(null, s.counts(listOf(trip)))
+    }
+
+    @Test fun `stations near each other share a box, far ones get their own`() {
+        // Covell to downtown is about 2.7 km: two boxes. Two points 300 m apart: one.
+        assertEquals(2, BikeShareTripSearch.boxes(listOf(covell, downtown)).size)
+        val near = LatLng(covell.lat + 0.0027, covell.lng)
+        val one = BikeShareTripSearch.boxes(listOf(covell, near)).single()
+        assertTrue(one[0] < covell.lat && one[2] > near.lat)
+        assertEquals("at most four boxes", 4, BikeShareTripSearch.boxes((0 until 6).map { LatLng(38.0 + it * 0.1, -121.7) }).size)
     }
 
     @Test fun `ends a kilometer apart share an area, ends farther apart do not`() {

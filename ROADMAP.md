@@ -512,8 +512,9 @@ off the list when it has been.
   a request that is out is no longer canceled by the next view. Tested in units and on a still
   phone; not seen on the move, where one run at about 26 km/h had asked for no stations in 2.5
   minutes.
-- Bike-share trips in transit directions (`BikeShareTripSearch`, `Transitous.planBikeShare`,
-  SPEC 8): unit-tested on Lyon and Paris replies. Not yet seen on a phone.
+- Bike-share trips in transit directions, with their stations' counts (`BikeShareTripSearch`,
+  `Transitous.planBikeShare`, SPEC 8): unit-tested on Lyon and Paris replies. Not yet seen on a
+  phone.
 
 ### Open from the October 2026 audit
 
@@ -637,10 +638,10 @@ Found reading everything since 0.4.1912 and not fixed yet.
   still cancel their request for each new view, so while the map follows a moving fix a reply
   slower than the second between views never lands. They can ask through `ViewFetch` as the
   stop icons and bike-share stations do.
-- Bike share in directions, the rest. Bike-share trips are in transit directions (SPEC 8, Bike
-  share in directions). Still to do: the pickup and return stations' counts on the trip, the
-  ride's own spoken line and steps, and a check of both stations on the way that offers the
-  nearest other one when the pickup runs out of bikes or the return fills. Most feeds on the
+- Bike share in directions, the rest. Bike-share trips are in transit directions with their
+  stations' counts (SPEC 8, Bike share in directions). Still to do: the ride's own spoken line
+  and steps, and a check of both stations on the way that offers the nearest other one when the
+  pickup runs out of bikes or the return fills. Most feeds on the
   public instance give no dock counts (none for Lyon, Paris, Bordeaux, Berlin, Montreal or
   Brussels on 2026-11-04), so the return check works only where one does. Not started.
 - A bike lanes layer, and bike routes that show their lanes. The map draws separate cycleways

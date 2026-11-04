@@ -304,9 +304,17 @@ object Transitous {
      * list where the service has no station.
      */
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-    fun bikeStationsInBox(http: OkHttpClient, south: Double, west: Double, north: Double, east: Double): List<BikeStation>? = runCatching {
+    fun bikeStationsInBox(
+        http: OkHttpClient, south: Double, west: Double, north: Double, east: Double,
+        /** Only these provider groups' stations, when given: central Paris with `Paris` alone is
+         *  176 stations in 9.2 KB, against 4,251 in 241 KB with every operator's (2026-11-04). */
+        groups: Collection<String>? = null,
+    ): List<BikeStation>? = runCatching {
+        val only = groups?.takeIf { it.isNotEmpty() }
+            ?.joinToString(",", prefix = "&providerGroups=") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+            .orEmpty()
         val url = withLanguage(
-            "$BASE/api/v1/rentals?min=${coord(south)},${coord(west)}&max=${coord(north)},${coord(east)}" +
+            "$BASE/api/v1/rentals?min=${coord(south)},${coord(west)}&max=${coord(north)},${coord(east)}$only" +
                 "&withProviders=false&withVehicles=false&withZones=false",
         )
         http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { resp ->
@@ -342,6 +350,24 @@ object Transitous {
 
     /** A coordinate for a query string: plain decimals, never `1.0E-5` near the zero meridian. */
     private fun coord(v: Double): String = String.format(Locale.ROOT, "%.6f", v)
+
+    /**
+     * The station a bike-share leg's end stands for, among [stations] from `rentals`. The plan's
+     * end has a name and a position and no station id: the same provider's station of the same
+     * name, else that provider's nearest within [STATION_MATCH_M]. Null when there is none.
+     */
+    fun stationFor(stations: List<BikeStation>, providerId: String, name: String, at: LatLng?): BikeStation? {
+        val own = stations.filter { it.key.startsWith("$providerId/") }
+        val wanted = name.trim()
+        own.firstOrNull { it.name.equals(wanted, ignoreCase = true) }?.let { return it }
+        if (at == null) return null
+        return own.map { it to distM(at.lat, at.lng, it.lat, it.lon) }
+            .filter { it.second <= STATION_MATCH_M }
+            .minByOrNull { it.second }?.first
+    }
+
+    /** A plan's station and a `rentals` station this close, of the same provider, are one. */
+    private const val STATION_MATCH_M = 30.0
 
     /** Transit stops within roughly [radiusM] of the point, nearest first. Empty on any failure. */
     fun stopsNear(http: OkHttpClient, lat: Double, lng: Double, radiusM: Double = 200.0): List<MapStop> {
@@ -791,7 +817,7 @@ object Transitous {
         .distinct()
 
     /** The box around two points padded by [padM] meters, `[south, west, north, east]`. */
-    internal fun paddedBox(a: LatLng, b: LatLng, padM: Double): DoubleArray {
+    fun paddedBox(a: LatLng, b: LatLng, padM: Double): DoubleArray {
         val dLat = padM / 111_320.0
         val dLng = padM / (111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2)))
         return doubleArrayOf(

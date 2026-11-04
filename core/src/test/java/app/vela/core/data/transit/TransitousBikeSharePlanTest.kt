@@ -129,6 +129,33 @@ class TransitousBikeSharePlanTest {
         assertFalse(url.contains("arriveBy"))
     }
 
+    // The Vélov stations near those Lyon trips' bike legs, captured beside them.
+    private val velovStations by lazy { Transitous.parseBikeStations(fixture("rentals-lyon-velov.json"))!! }
+
+    @Test fun `each bike leg's stations are found among the system's stations`() {
+        val legs = (
+            Transitous.parseBikeSharePlan(lyonDirect, partDieu, vieuxLyon, velov) +
+                Transitous.parseBikeSharePlan(lyonTransit, villeurbanne, confluence, velov)
+            ).flatMap { t -> t.steps.filter { it.mode == TransitMode.BIKE_SHARE } }
+        assertEquals(5, legs.size)
+        for (s in legs) for (end in listOf(s.boardStop!!, s.alightStop!!)) {
+            val st = Transitous.stationFor(velovStations, s.rental!!.providerId, end.name, end.location)
+            assertNotNull(end.name, st)
+            assertEquals(end.name, st!!.name)
+        }
+        val pickup = legs.first { it.boardStop!!.name == "3019 - PART-DIEU / DERUELLE" }
+        assertEquals(1, Transitous.stationFor(velovStations, pickup.rental!!.providerId, pickup.boardStop!!.name, null)!!.bikes)
+    }
+
+    @Test fun `a station named another way is found by its position, a farther one is not`() {
+        val st = velovStations.first { it.name == "QUAI ROMAIN ROLLAND" }
+        val provider = st.key.substringBefore('/')
+        // 11 m off, and 56 m from the nearest station.
+        assertEquals(st, Transitous.stationFor(velovStations, provider, "Quai Romain-Rolland", LatLng(st.lat + 0.0001, st.lon)))
+        assertEquals(null, Transitous.stationFor(velovStations, provider, "Quai Romain-Rolland", LatLng(st.lat + 0.0005, st.lon)))
+        assertEquals("another provider's station is never this one", null, Transitous.stationFor(velovStations, "other-bikes", st.name, LatLng(st.lat, st.lon)))
+    }
+
     @Test fun `the systems are looked for a kilometer past both ends`() {
         val b = Transitous.paddedBox(partDieu, vieuxLyon, 1000.0)
         assertEquals(45.7606 - 1000.0 / 111_320.0, b[0], 1e-9)
