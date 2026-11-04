@@ -1211,7 +1211,12 @@ refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
 - `RouteGeometry.roundaboutMod` words an OSRM roundabout from `RoundaboutGeometry.exitAngleDeg`
   ("straight" within 30 degrees), because OSRM's modifier is not the entry-to-exit turn. With
   no geometry a "straight" is dropped.
-- `osrmPhrase` phrases "turn straight" as continue.
+- `osrmPhrase` phrases "turn straight" as continue, and a `notification` step (a change of
+  travel mode on the same way) as a continue, a silent CONTINUE when straight.
+- A ferry leg says the language's `ferry()` phrase ("Take the ferry") with a straight arrow: an
+  OSRM step with mode `ferry` (foot) or the intersection class `ferry` (bicycle, where the mode
+  is `pushing bike`), and Valhalla's ferry entry (type 28). Leaving the ferry is a continue.
+  `FerryStepTest`.
 
 `RouteGeometry.rampTurns`, all three routers. A turn whose road has no name or ref, followed
 within `RAMP_TURN_MAX_M` (600 m) by a merge onto a named road, is the turn onto that road's

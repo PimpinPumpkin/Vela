@@ -880,7 +880,12 @@ object RouteGeometry {
                     ?: return@mapNotNull null
                 Lane(inds, o["valid"]?.jsonPrimitive?.booleanOrNull ?: false)
             }.orEmpty()
-        val effType = rampReclass(type, mod, dest)
+        // A ferry leg: the foot profile marks it with mode "ferry", the bicycle profile with the
+        // intersection class "ferry" (its mode there is "pushing bike"). It is said as such, not as
+        // a turn onto the ferry's name.
+        val ferry = s["mode"]?.jsonPrimitive?.contentOrNull == "ferry" ||
+            s["intersections"]?.jsonArray?.any { i -> i.jsonObject["classes"]?.jsonArray?.any { it.jsonPrimitive.contentOrNull == "ferry" } == true } == true
+        val effType = if (ferry) "ferry" else rampReclass(type, mod, dest)
         return Maneuver(
             type = osrmType(effType, mod),
             instruction = osrmPhrase(effType, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
@@ -957,6 +962,10 @@ object RouteGeometry {
             // exit road name. Without this the exit step fell through to byMod() → a bland "Continue onto X"
             // and the "take the Nth exit" was silently dropped (the reported "didn't say which exit").
             "exit roundabout", "exit rotary" -> ManeuverType.EXIT_ROUNDABOUT
+            // A change of travel mode on the same way (walking to pushing the bike, off a ferry).
+            "notification" -> if (mod == null || mod == "straight") ManeuverType.CONTINUE else byMod()
+            // Boarding a ferry: spoken, with the straight arrow.
+            "ferry" -> ManeuverType.STRAIGHT
             "end of road", "turn" -> byMod()
             else -> byMod()
         }
@@ -969,8 +978,11 @@ object RouteGeometry {
     // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
     // byte-identical to the original template set). This is the seam that lets nav be spoken/shown in
     // the app's language — the road/dest name passed in stays in its native local form. See core/i18n.
-    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+    internal fun osrmPhrase(typeIn: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
         val strings = app.vela.core.i18n.NavStringsRegistry.current()
+        if (typeIn == "ferry") return strings.ferry()
+        // A mode change is phrased as going on: it read "Turn straight onto <ferry name>".
+        val type = if (typeIn == "notification") "continue" else typeIn
         // OSRM's arrive modifier says WHICH SIDE the destination is on — the banner + the
         // pre-arrival prompt become Google's "Your destination is on the right" instead of the
         // generic line (user 2026-07-11). A sideless arrive keeps the generic phrase.

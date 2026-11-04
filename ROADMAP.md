@@ -257,6 +257,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A ferry leg on a walk or a ride says "Take the ferry" (#824): seen in the step list on a 4a,
+  walk and bike. Not heard on a real crossing. The phrase in the 17 other languages has not been
+  read by a native speaker, and the on-device router's ferry legs are not phrased this way.
+
 - A line waits to play until it can play through (`StreamStart`, #795): on a 4a with a
   high-quality voice at normal speed it starts as before. Not tried on a slow phone or at a
   raised voice speed, which is where the mid-line pauses were reported.

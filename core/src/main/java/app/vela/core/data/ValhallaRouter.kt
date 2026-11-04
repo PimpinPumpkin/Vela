@@ -775,6 +775,7 @@ object ValhallaRouter {
         27 -> "exit roundabout" to null
         37 -> "merge" to "slight right"
         38 -> "merge" to "slight left"
-        else -> "continue" to "straight"   // ferries, transit, steps, elevators: nothing to steer
+        28 -> "ferry" to null              // boarding a ferry; leaving one (29) is a plain continue
+        else -> "continue" to "straight"   // transit, steps, elevators: nothing to steer
     }
 }

@@ -300,6 +300,9 @@ street under it. The line is never snapped through the foot router. Points on Go
 land on the far sidewalk or a flyover deck, and the snapped route doubled back at each one (20
 to 110% longer on Davis, Sacramento and Dhaka walks).
 
+A walk or a ride that crosses water on a ferry has a "Take the ferry" step where it boards. The
+open routers include passenger ferries, which run on their own timetable.
+
 ### Bikes
 
 With Settings > Navigation > "Bike routes prefer bike lanes and quiet streets" on (the
