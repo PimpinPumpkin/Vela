@@ -2781,6 +2781,8 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                         s.intermediateStops.forEach { StopLine(it, ink, dim, emphasize = false) }
                     }
                 }
+            } else if (s.mode == TransitMode.BIKE_SHARE) {
+                BikeShareRideSteps(s, rideLabel, dim)
             } else if (rideLabel.isNotEmpty()) {
                 Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
             }
@@ -3258,6 +3260,47 @@ private fun BikeShareStopCount(s: TransitStep, pickup: Boolean, dim: Color) {
     }
     if (shown != null) {
         Text(shown.first, style = MaterialTheme.typography.labelSmall, color = shown.second, modifier = Modifier.padding(start = 62.dp))
+    }
+}
+
+/** A bike-share ride's length; tapped, its turn-by-turn cycling steps between its two stations,
+ *  from the bike router through [app.vela.ui.RouteActions.bikeDirections], as a walk leg's come
+ *  from the walk router (SPEC 8, Bike share in directions). */
+@Composable
+private fun BikeShareRideSteps(s: TransitStep, label: String, dim: Color) {
+    val from = s.boardStop?.location
+    val to = s.alightStop?.location
+    val fetch = app.vela.ui.RouteActions.bikeDirections
+    val canExpand = from != null && to != null && fetch != null
+    var open by remember { mutableStateOf(false) }
+    var steps by remember(from, to) { mutableStateOf<List<String>?>(null) }
+    if (open && canExpand) {
+        LaunchedEffect(from, to) { steps = fetch!!(from!!, to!!) }
+    }
+    Row(
+        Modifier.then(
+            if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(6.dp)).clickable { open = !open }.padding(vertical = 1.dp)
+            else Modifier,
+        ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = dim)
+        if (canExpand) {
+            Icon(
+                if (open) Sym.ExpandLess else Sym.ExpandMore,
+                contentDescription = if (open) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
+                tint = dim, modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+    if (open && canExpand) {
+        Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            when (val list = steps) {
+                null -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                else -> list.forEach { instr -> Text("•  $instr", style = MaterialTheme.typography.labelSmall, color = dim) }
+            }
+        }
     }
 }
 

@@ -5007,6 +5007,11 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - The collapsed row reads "3 bikes at <pickup>" under its pills. The bike leg shows the free bikes
   under its pickup and the free docks under its return when the feed gives them. A count of 2 or
   fewer (`BikeShareCounts.FEW`) is amber; none, or a station not renting or not returning, is red.
+- In guidance a bike leg is spoken as "Take a bike at <pickup>. Return it at <return>."
+  (`transit_nav_bike_take`, `transit_nav_bike_return`) and advances at the return station like a
+  ride at its stop. Its length opens to cycling steps from the bike router
+  (`RouteActions.bikeDirections`, `TravelMode.BICYCLE`), as a walk leg's open to the walk
+  router's. The counts are the ones fetched with the trip; they are not asked again on the way.
 - MOTIS takes a bike only from a station that is renting and has one of the asked type, and
   returns it only to a station that is returning and has a free dock for that type, or a free-dock
   total where the station declares a capacity (`src/gbfs/osr_mapping.cc`). Where a feed gives no

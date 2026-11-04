@@ -222,6 +222,8 @@ object RouteActions {
     /** The transit options' "Bike share" chip flipped [BikeShareTrips]: transit trips are asked
      *  for again. */
     @Volatile var bikeShareChanged: (() -> Unit)? = null
+    /** Turn-by-turn cycling steps between a bike-share leg's two stations, from the bike router. */
+    @Volatile var bikeDirections: (suspend (app.vela.core.model.LatLng, app.vela.core.model.LatLng) -> List<String>)? = null
     /** "Add to home screen" in the route card's menu: pins the trip on screen as a shortcut. */
     @Volatile var pinTrip: ((label: String, iconKey: String, themed: Boolean) -> Unit)? = null
     /** The current trip's travel mode as a shortcut glyph key, the dialog's starting pick. */

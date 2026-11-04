@@ -302,6 +302,11 @@ that end (`TRANSIT_ARM_M`), then advances within 40 m (`TRANSIT_ARRIVE_M`). Armi
 transfer hub, where two leg ends are close together, from running through several legs at once.
 Unlike a drive ([chapter 4](04-navigation.md)) there is no off-route detection and no rerouting.
 
+A bike-share leg is spoken by its two stations, where to take a bike and where to return it, and
+advances at the return station. Its length opens to cycling steps from the bike router, the way a
+walk leg opens to walking steps. Its counts are the ones fetched with the trip and are not asked
+again on the way.
+
 ### Offline copies
 
 - `TransitStopCache` keeps the stops of the 24 most recent areas (`MAX_AREAS`), overwritten by

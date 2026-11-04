@@ -5928,7 +5928,7 @@ class MapViewModel @Inject constructor(
         app.vela.ui.ParkingActions.arrivedByCar = { _state.value.travelMode == TravelMode.DRIVE }
         app.vela.ui.ParkingActions.parkedAt = { _state.value.parkedAtMillis }
     }
-    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = { if (_state.value.directionsOpen && _state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT) } }
+    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = { if (_state.value.directionsOpen && _state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT) }; app.vela.ui.RouteActions.bikeDirections = ::bikeDirections }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
@@ -7008,6 +7008,13 @@ class MapViewModel @Inject constructor(
             ?.maneuvers?.mapNotNull { it.instruction.takeIf { s -> s.isNotBlank() } }.orEmpty()
     }.getOrDefault(emptyList())
 
+    /** The same for a bike-share leg, from its pickup station to its return station, via the
+     *  normal bike router. Reached through [app.vela.ui.RouteActions.bikeDirections]. */
+    private suspend fun bikeDirections(from: LatLng, to: LatLng): List<String> = runCatching {
+        dataSource.directions(from, to, TravelMode.BICYCLE).firstOrNull()
+            ?.maneuvers?.mapNotNull { it.instruction.takeIf { s -> s.isNotBlank() } }.orEmpty()
+    }.getOrDefault(emptyList())
+
     /** Transit can't self-route (no traffic-free open transit graph) and Google
      *  only serves it to a real browser engine, so it goes through the hidden
      *  WebView ([WebDirectionsFetcher]) rather than the OkHttp data source. We
@@ -7260,9 +7267,15 @@ class MapViewModel @Inject constructor(
         else if (transitLegArmed && d < TRANSIT_ARRIVE_M) advanceTransitNav()
     }
 
-    /** The spoken cue for a transit leg. */
+    /** The spoken cue for a transit leg. A bike-share leg names its two stations, not a line
+     *  to take and a stop to get off at (SPEC 8, Bike share in directions). */
     private fun transitStepSpoken(step: TransitStep): String =
-        if (step.line == null) {
+        if (step.mode == app.vela.core.model.TransitMode.BIKE_SHARE) {
+            listOfNotNull(
+                step.boardStop?.name?.let { appContext.getString(R.string.transit_nav_bike_take, it) },
+                step.alightStop?.name?.let { appContext.getString(R.string.transit_nav_bike_return, it) },
+            ).joinToString(" ")
+        } else if (step.line == null) {
             // durationText is Google's own abbreviated string ("10 min"), which TTS read
             // literally as "min" (user 2026-08-08). English guidance expands the units to words;
             // other languages carry their own hl= abbreviations and pass through unchanged.
