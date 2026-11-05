@@ -705,6 +705,19 @@ class NavSession @Inject constructor(
     }
 
     /**
+     * Says the upcoming instruction again on request (a steering-wheel voice key, SPEC 10.9). It
+     * speaks through a mute, because the press asked for it. False when there is nothing to say.
+     */
+    fun repeatInstruction(): Boolean {
+        val s = _state.value
+        if (!s.navigating || s.paused || s.arrived) return false
+        val text = s.route?.maneuvers?.getOrNull(s.nav.stepIndex)?.spokenInstruction() ?: s.maneuverText
+        if (text.isBlank()) return false
+        voice.speak(text, interrupt = true, ignoreMute = true)
+        return true
+    }
+
+    /**
      * Rolling away from the stop resumes by itself, because forgetting to un-pause is the obvious
      * way this feature bites: driving on with a frozen banner is worse than never having paused.
      * It takes [AUTO_RESUME_HITS] consecutive fixes that are both moving and inside the route

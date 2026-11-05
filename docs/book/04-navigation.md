@@ -99,6 +99,11 @@ turn. The voice says "turn left" 25 m out either way.
 - A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
   (see Stops below).
 - A continue or a straight-on is silent unless its lanes show a real fork.
+- A roundabout is said at its entry, with the exit to take. Its own exit step right after the
+  entry says nothing and is never the "then" of a chained line.
+- A turn lane mapped as its own way does not split a turn in two. A short unnamed slight turn
+  followed by a turn the same way, adding up to a real turn, is one "Turn right onto" the street,
+  said where the lane leaves the road.
 - The first instruction is spoken once by the drive's opener ("Starting navigation. Head east on
   ..."). The engine skips it.
 - Off route, the voice says only "Rerouting". Prompts computed against a route you are not on

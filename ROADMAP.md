@@ -270,6 +270,16 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The BYD instrument-cluster map (SPEC 10.9). A `Presentation` on the cluster's public display
+  showing the same `CarMapRenderer` map as Android Auto. The DiLink 5.0 and 5.1 benches both list
+  the cluster displays and the selection and teardown run, but nothing has been seen on a cluster
+  panel. Needs a car, parked, with the cluster's navigation view on.
+- The BYD cluster turn arrows over the FCE vehicle HAL (SPEC 10.9). The property writes, the glyph
+  table and the state transitions are unit-tested, and the service is correctly absent on both
+  benches, so the write path has never run against a real HAL. Needs a car that has the service.
+- The BYD steering-wheel voice button repeating the current direction (SPEC 10.9). The key router
+  is unit-tested; no wheel press has reached the filter. Needs a car, and the accessibility
+  service enabled, with a drive on. `adb shell input keyevent` does not exercise the filter.
 - Side streets' stop signs left off a drive (#805): the bake's road for a sign from drivable ways
   and the most minor road at a junction, and the 10 m limit for a sign with no road. Needs a
   rebaked region driven down a main street, and one drive with no region (the Overpass path).
@@ -503,6 +513,12 @@ off the list when it has been.
   stopped the app part way): seen on a 4a, a 63-row test list killed at row 36 kept the 12
   places found before its first save. Not seen: a real Takeout file imported again, which should
   take the rows it already matched with no lookup.
+- A roundabout's exit step says nothing after its entry (a real drive through two roundabouts
+  had each said twice and two lines cut off inside the ring): an engine test, which repeats
+  that drive's lines with the rule off, and the replay audit of the drive. Not heard on a drive.
+- One turn split in two by a mapped turn lane is said as one turn (a real drive heard two
+  slight rights for one right at a divided corner): a unit test, the drive's own route (folded),
+  and the 39 stored lines (three other folds, each a turn lane on the map). Not heard on a drive.
 
 ### Open from the October 2026 audit
 

@@ -343,6 +343,19 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A car with an instrument-cluster display gets the turns there.
 - A car that runs Android itself can show Vela in its map panel.
 
+## On a BYD car
+
+These are off until you turn them on, each works on its own, and none has been checked on a car
+yet.
+
+- On a BYD head unit, Vela can draw its real navigation map on the driver's instrument cluster
+  while you drive, showing the same route as the phone.
+- On a BYD cluster that has its own built-in turn view, Vela can fill it with the turn arrow and
+  distance instead.
+- The steering wheel's voice button can repeat the current spoken direction during a drive, once
+  you enable Vela's key access in Android Settings.
+- Settings > Diagnostics shows what the car offers and why anything is unavailable.
+
 ## Phones without a touchscreen
 
 - Every screen works with a D-pad and an OK key, and every control shows a focus ring.

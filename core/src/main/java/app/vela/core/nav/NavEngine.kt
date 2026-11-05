@@ -471,7 +471,8 @@ object NavEngine {
         // silent, and so do we — the reported "it says use the lanes to continue when only the name changes".
         val redundantContinue =
             (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) &&
-                !app.vela.core.model.continueHasGenuineFork(target.lanes)
+                !app.vela.core.model.continueHasGenuineFork(target.lanes) ||
+                ringExit(route.maneuvers, idxCur)
         // MUTE turn guidance while off-route (Google's behavior): the progress snap still maps
         // the driver onto the OLD route while a reroute is pending (or failing in a dead spot),
         // and as the phantom snap drifts past old maneuvers the engine happily announced them -
@@ -752,10 +753,23 @@ object NavEngine {
     /** More bend than this through the mark and the side is not said (a corner, a U-turn). */
     private const val SIDE_MAX_BEND_DEG = 45.0
 
-    /** The voice says nothing for this maneuver in any setting: a continue or a straight-on with no
-     *  real fork in its lanes. */
-    private fun quiet(m: Maneuver) =
-        (m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) && !app.vela.core.model.continueHasGenuineFork(m.lanes)
+    /** The voice says nothing for maneuver [i] in any setting: a continue or a straight-on with no
+     *  real fork in its lanes, or a roundabout's own exit ([ringExit]). */
+    private fun quiet(ms: List<Maneuver>, i: Int): Boolean {
+        val m = ms[i]
+        return (m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) &&
+            !app.vela.core.model.continueHasGenuineFork(m.lanes) || ringExit(ms, i)
+    }
+
+    /**
+     * The exit step of the roundabout just entered. Its entry already said which exit to take,
+     * and both carry the same words, so the exit step speaking was the roundabout said twice and
+     * a long line cut off inside the ring; as the "then" of the entry it named the same
+     * roundabout again. The turn card's "then" row passes over it too. An exit step whose entry
+     * is not the maneuver before it (a route that starts inside the ring) still speaks.
+     */
+    internal fun ringExit(ms: List<Maneuver>, i: Int): Boolean =
+        i > 0 && ms[i].type == ManeuverType.EXIT_ROUNDABOUT && ms[i - 1].type == ManeuverType.ROUNDABOUT
 
     /** The maneuver whose leg the stop at [atM] sits on, among those the voice speaks (a silent
      *  rename on the way is passed over), when the stop is within [STOP_THEN_M] of it; else -1. */
@@ -763,7 +777,7 @@ object NavEngine {
         val ms = route.maneuvers
         var k = -1
         for (i in ms.indices) { if (manAlong[i] <= atM) k = i else break }
-        while (k > 0 && quiet(ms[k])) k--
+        while (k > 0 && quiet(ms, k)) k--
         if (k <= 0 || ms[k].type == ManeuverType.ARRIVE || ms[k].type == ManeuverType.DEPART) return -1
         return if (atM - manAlong[k] <= STOP_THEN_M) k else -1
     }
@@ -775,7 +789,7 @@ object NavEngine {
      *  the arrival (which has lines of its own); else -1. */
     internal fun chainedNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int): Int {
         var j = k + 1
-        while (j < ms.size && quiet(ms[j])) j++
+        while (j < ms.size && quiet(ms, j)) j++
         if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
         return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
     }
@@ -806,7 +820,7 @@ object NavEngine {
         while (k > 0 && out.size < LOT_DEST_TURNS) {
             if (endM - man[k] > LOT_DEST_BACK_M) break
             val m = ms[k]
-            if (!quiet(m)) {
+            if (!quiet(ms, k)) {
                 val left = turnLeftOf(m.type) ?: break
                 if (!m.road.isNullOrBlank() || !m.ref.isNullOrBlank()) break
                 out += Triple(k, man[k], left)
@@ -882,9 +896,7 @@ object NavEngine {
             if (taken >= count) break
             val m = ms[i]
             if (m.type == ManeuverType.ARRIVE) break
-            if ((m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) &&
-                !app.vela.core.model.continueHasGenuineFork(m.lanes)
-            ) continue
+            if (quiet(ms, i)) continue
             taken++
             val said = if (i == fromStep) spoken else emptySet()
             val leg = ms[i - 1].distanceMeters

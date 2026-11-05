@@ -293,7 +293,8 @@ internal object NavTurnTarget {
         r.maneuvers.getOrNull(i)?.location
     }
 
-    /** A continue or straight step the voice says nothing for: the same test as NavEngine's. */
+    /** A continue or straight step the voice says nothing for: NavEngine's test without its
+     *  roundabout part. A roundabout's exit stays a target, so the camera frames where the ring is left. */
     private fun quiet(m: app.vela.core.model.Maneuver): Boolean =
         (m.type == app.vela.core.model.ManeuverType.CONTINUE || m.type == app.vela.core.model.ManeuverType.STRAIGHT) &&
             !app.vela.core.model.continueHasGenuineFork(m.lanes)

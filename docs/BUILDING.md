@@ -52,6 +52,35 @@ debug keystore, so `adb install` still works. Do not hand out a local build with
 `-PappVersionCode` above the release line: the next real release then looks like a downgrade.
 `-PappId=app.vela.dev` builds a copy that installs beside the real app.
 
+## A custom edition that coexists with the official build
+
+The app id is `app.vela` and the official releases are signed with the maintainer's key (its
+certificate SHA-256 is in the README). Two consequences for a fork:
+
+- Android refuses to install one `app.vela` over another signed with a different key. A build of
+  your own, signed with your own key or the debug key, cannot replace the official `app.vela`
+  build and the official APK cannot replace yours. Back up first (Settings > Diagnostics, and the
+  system backup covers the files listed in `res/xml/backup_rules.xml`); a reinstall across keys
+  wipes the app's data.
+- The in-app updater follows the release feed in `VelaLinks` (the official repository by default)
+  and offers a newer version by its version code. A local build's version code is 1, so the
+  updater always reports the latest official release as newer. That is a version and feed
+  difference, not a missing feature in your build.
+
+To run a fork build beside the official app and keep your own updates, build a separate edition:
+
+```bash
+# a distinct id (installs side by side; the file provider, backup and deep links already
+# derive from ${applicationId}) and your own keystore and version code
+VELA_KEYSTORE_PATH=~/my-vela.jks VELA_KEYSTORE_PASSWORD=… VELA_KEY_ALIAS=vela \
+  ./gradlew :app:assembleRelease -PappId=app.vela.byd -PappVersionCode=<n> -PappVersionName=<name>
+```
+
+Keep the same id and key for every later build of that edition, or its own updates stop
+installing too. Point its updater at your own fork's releases with a signed `calibration.json`
+`links` push (SPEC 11.4), or leave update checks off, so it does not offer the official APK (which
+would not install over it anyway). Do not try to obtain or reuse the maintainer's private key.
+
 ## What CI does
 
 Every push to `main` or `canary` builds and tests. A push to `canary` replaces the rolling
