@@ -1388,6 +1388,11 @@ fun VelaMapView(
     var lastInsetPx by remember { mutableStateOf(if (startFramed) 0 else -1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedTransitKey by remember { mutableStateOf<Int?>(null) }
+    // The Bike tab's expanded bike-share trip draws like a transit preview (SPEC 8, Bike share in
+    // directions). It comes from a holder because MapScreen takes no new parameter; the view
+    // model empties the holder whenever the Bike tab is not on screen.
+    @Suppress("NAME_SHADOWING")
+    val transitPreview = transitPreview ?: BikeShareTripsShown.preview.value
     // Whole-trip coords for the chooser fit; during transit NAV the fit narrows to the guided
     // leg's own coords (falling back to the whole trip when a leg carries no geometry).
     val transitPrevCoords = remember(transitPreview, transitNavLeg) {

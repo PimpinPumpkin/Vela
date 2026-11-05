@@ -1873,7 +1873,6 @@ fun DirectionsPanel(
                             shape = androidx.compose.foundation.shape.CircleShape,
                         )
                     }
-                    BikeShareTripsChip()
                 }
                 // Google's route preference, carried on its request (2 fewer transfers, 3 less
                 // walking). One or neither: tapping the selected chip goes back to the best route.
@@ -1896,6 +1895,12 @@ fun DirectionsPanel(
                         )
                     }
                 }
+            }
+            // Bike only: the "Bike share" chip, in sight under the time chooser (SPEC 8, Bike share
+            // in directions). Its trips show above the bike routes.
+            if (currentMode == TravelMode.BICYCLE) {
+                Spacer(Modifier.height(8.dp))
+                BikeShareTripsChip()
             }
             // Route preferences, drive only (tolls/motorways/ferries mean nothing on foot or transit).
             // Honored on-device where the region graph carries the avoid profiles; online the
@@ -1969,6 +1974,7 @@ fun DirectionsPanel(
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit, onTransitPreview)
             } else {
+                if (currentMode == TravelMode.BICYCLE) BikeShareSection(ink, dim, dark)
                 Spacer(Modifier.height(12.dp))
                 if (routes.isEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2431,23 +2437,8 @@ private fun TransitBoard(
             }
             // A new set of results drops the expansions kept for the old one (issue #812).
             LaunchedEffect(trips) { app.vela.ui.TransitExpanded.prune(trips.map { app.vela.ui.TransitExpanded.keyOf(it) }) }
-            // Bike-share trips (SPEC 8, Bike share in directions) get a section of their own above
-            // the usual list, which they leave as it was.
-            val bike = trips.filter { t -> t.steps.any { it.mode == TransitMode.BIKE_SHARE } }
-            val rest = if (bike.isEmpty()) trips else trips.filter { t -> t.steps.none { it.mode == TransitMode.BIKE_SHARE } }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (bike.isNotEmpty()) {
-                    Text(stringResource(R.string.map_layers_bike_share), style = MaterialTheme.typography.labelLarge, color = dim)
-                    bike.take(BIKE_SHARE_ROWS).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
-                    if (rest.isNotEmpty()) {
-                        Text(
-                            stringResource(R.string.place_mode_transit),
-                            style = MaterialTheme.typography.labelLarge, color = dim,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                }
-                rest.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
+                trips.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
             }
         }
     }
@@ -3205,19 +3196,68 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
     else -> Sym.DirectionsTransit
 }
 
-/** Bike-share trips shown in their own section of the transit board. */
+/** Bike-share trips shown above the bike routes. */
 private const val BIKE_SHARE_ROWS = 2
+/** The most of the screen's height the bike-share trips take before they scroll. */
+private const val BIKE_SHARE_MAX_HEIGHT = 0.32f
+
+/**
+ * The Bike tab's bike-share trips (SPEC 8, Bike share in directions), above the bike routes and
+ * under their own heading, the bike routes then under "Your bike". A trip row is a transit row:
+ * expanding draws it on the map and Start guides it leg by leg. Nothing while the chip is off;
+ * a line when the search found no trip.
+ */
+@Composable
+internal fun BikeShareSection(ink: Color, dim: Color, dark: Boolean) {
+    val onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { a, b -> app.vela.ui.RouteActions.walkDirections?.invoke(a, b).orEmpty() }
+    val onStartTransit: (TransitItinerary) -> Unit = { app.vela.ui.RouteActions.startTransit?.invoke(it) }
+    val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
+    val loading = app.vela.ui.map.BikeShareTripsShown.loading.value
+    if (trips == null && !loading) return
+    Spacer(Modifier.height(12.dp))
+    when {
+        trips == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodyMedium, color = dim)
+        }
+        trips.isEmpty() -> Text(stringResource(R.string.place_bike_share_none), style = MaterialTheme.typography.bodyMedium, color = dim)
+        else -> {
+            val nowSec by produceState(initialValue = app.vela.ui.DemoClock.nowSec()) {
+                while (true) {
+                    delay(30_000L)
+                    value = app.vela.ui.DemoClock.nowSec()
+                }
+            }
+            val shown = trips.take(BIKE_SHARE_ROWS)
+            // One trip open at a time, and the trips scroll inside a capped height, so an opened
+            // trip never pushes the sheet over the map that draws it.
+            val onPreview: (TransitItinerary, Boolean) -> Unit = { t, open ->
+                if (open) shown.filter { it !== t }.forEach { app.vela.ui.TransitExpanded.open.remove(app.vela.ui.TransitExpanded.keyOf(it)) }
+                app.vela.ui.map.BikeShareTripsShown.onExpanded(t, open)
+            }
+            val maxH = (LocalConfiguration.current.screenHeightDp * BIKE_SHARE_MAX_HEIGHT).dp
+            Column(
+                Modifier.heightIn(max = maxH).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                shown.forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    Text(stringResource(R.string.place_bike_share_own_bike), style = MaterialTheme.typography.labelLarge, color = dim)
+}
 
 /** The bike-share accent: the stations' badge and the map's cycleways ([app.vela.ui.map.BikeShareMapLayer]). */
 @Composable
 private fun bikeShareTeal(): Color =
     Color(if (isAppInDarkTheme()) app.vela.ui.map.BikeShareMapLayer.FILL_DARK else app.vela.ui.map.BikeShareMapLayer.FILL_LIGHT)
 
-/** The transit options' "Bike share" chip (SPEC 8, Bike share in directions): flips
- *  [app.vela.ui.BikeShareTrips] and asks for the transit trips again through
+/** The Bike tab's "Bike share" chip (SPEC 8, Bike share in directions): flips
+ *  [app.vela.ui.BikeShareTrips] and asks for the bike routes and trips again through
  *  [app.vela.ui.RouteActions], so MapScreen takes no new callback. */
 @Composable
-private fun BikeShareTripsChip() {
+internal fun BikeShareTripsChip() {
     val context = LocalContext.current
     val on = app.vela.ui.BikeShareTrips.on.value
     FilterChip(

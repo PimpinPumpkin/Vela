@@ -512,14 +512,15 @@ off the list when it has been.
   a request that is out is no longer canceled by the next view. Tested in units and on a still
   phone; not seen on the move, where one run at about 26 km/h had asked for no stations in 2.5
   minutes.
-- Bike-share trips in transit directions, with their stations' counts and guidance on the ride
+- Bike-share trips on the Bike tab, with their stations' counts and guidance on the ride
   (`BikeShareTripSearch`, `Transitous.planBikeShare`, SPEC 8): seen on a Pixel through adb in
-  Spanish and dark mode. Lyon, Part-Dieu to Vieux Lyon: a Vélov ride alone and one after metro B
-  in their own section, the free bikes at each pickup (one amber), the teal leg on the map, the
-  bike router's steps, and the spoken line for the ride in guidance. Central Paris: Vélib' rides
-  only, one before metro 1. With the chip off the log shows no bike-share request. Not seen: a
-  feed with dock counts, the guide moving on at the return station with a real fix, English,
-  the light theme, "Use less data" and a D-pad device.
+  Spanish and dark mode. Lyon, Part-Dieu to Vieux Lyon: two Vélov rides above "Your bike" in the
+  Google-style picker, the free bikes at each pickup (amber at one), one trip open at a time, and
+  the opened trip drawn in teal beside the bike route. Earlier, from the transit tab: the bike
+  router's steps, the spoken line for the ride in guidance, Vélib' rides only in central Paris,
+  and no bike-share request with the chip off. Not seen: a feed with dock counts, the guide moving
+  on at the return station with a real fix, the classic panel, English, the light theme, "Use
+  less data" and a D-pad device.
 
 ### Open from the October 2026 audit
 
@@ -643,7 +644,7 @@ Found reading everything since 0.4.1912 and not fixed yet.
   still cancel their request for each new view, so while the map follows a moving fix a reply
   slower than the second between views never lands. They can ask through `ViewFetch` as the
   stop icons and bike-share stations do.
-- Bike share in directions, the stations on the way. Bike-share trips are in transit directions
+- Bike share in directions, the stations on the way. Bike-share trips are on the Bike tab
   with their stations' counts and guidance on the ride (SPEC 8, Bike share in directions), and
   the counts are the ones fetched with the trip. Still to do: a check of both stations on the
   way that offers the nearest other one when the pickup runs out of bikes or the return fills. Most feeds on the

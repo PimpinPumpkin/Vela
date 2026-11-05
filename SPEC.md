@@ -73,7 +73,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
 | Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
 | Bike-share stations | Transitous (`/api/v1/rentals`, the operators' GBFS feeds), behind a layer that is off by default (section 8) | No | No |
-| Bike-share trips | Transitous' planner (`/api/v1/plan` with `RENTAL`), behind the transit options' "Bike share" chip, off by default (section 8) | No | No |
+| Bike-share trips | Transitous' planner (`/api/v1/plan` with `RENTAL`), behind the Bike tab's "Bike share" chip, off by default (section 8) | No | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
 | Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
 
@@ -4770,7 +4770,7 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
 | Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
 | Bike-share stations | Transitous `/api/v1/rentals` from z15, behind the "Bike share" layer, off by default. A tapped station opens a sheet with its counts. |
-| Bike-share trips | Transitous `/api/v1/plan` with `RENTAL`, beside the transit trips, behind the transit options' "Bike share" chip, off by default. |
+| Bike-share trips | Transitous `/api/v1/plan` with `RENTAL`, on the Bike tab above the bike routes, behind its "Bike share" chip, off by default. |
 
 #### Lines on the map
 
@@ -4956,12 +4956,16 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 
 #### Bike share in directions
 
-- `BikeShareTrips` (key `transit_bike_share_on`, off by default) is the "Bike share" chip among
-  the transit options. While it is on and the trip leaves now, `MapViewModel.routeTransit` runs
-  `BikeShareTripSearch` beside `transitTrips`, so Transitous gets the trip's two ends whether or
-  not Google answers the transit search. A later departure gets none: the planner places bikes
-  and docks as of the request. The mode chips' ETA prefetch calls `transitTrips` alone and never
-  asks. Offline nothing is asked.
+- `BikeShareTrips` (key `transit_bike_share_on`, off by default) is the "Bike share" chip on the
+  Bike tab: under the time chooser in the classic panel, above the route summary in the
+  Google-style picker. While it is on and the trip leaves now, `MapViewModel.searchBikeShare`
+  runs `BikeShareTripSearch` beside the bike routes, so Transitous gets the trip's two ends. A
+  later departure gets none: the planner places bikes and docks as of the request. Another tab
+  asks nothing, and the mode chips' ETA prefetch never asks. Offline nothing is asked.
+- The trips, the search's state and the expanded trip live in `BikeShareTripsShown`, read by the
+  sheet and by `VelaMapView`, which draws the expanded trip as it draws a transit preview:
+  MapScreen takes no new parameter. The view model empties it when the Bike tab leaves the
+  screen (another tab, a closed sheet, a drive).
 - The docked systems come first. `Transitous.bikeShareGroups` asks `rentals` for providers only
   (`withProviders=true&withStations=false&withVehicles=false&withZones=false`) over the box
   around both ends padded by 1 km (`GROUPS_PAD_M`). A group counts when its `formFactors` include
@@ -4989,9 +4993,9 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - Trips sort by arrival, then by length. A later run of the same trip is the same choice, so the
   first of each sequence of modes, lines and stations stays. Lyon, Part-Dieu to Vieux Lyon on
   2026-11-04: seven answers, four distinct trips, the first three kept.
-- The transit board shows up to 2 of them (`BIKE_SHARE_ROWS`) under a "Bike share" heading. The
-  other trips follow under a "Transit" heading, in their own order and number. The transit mode
-  chip's ETA is the first of the other trips'. A system with no color draws its pill and its leg
+- The Bike tab shows up to 2 of them (`BIKE_SHARE_ROWS`) under a "Bike share" heading, as
+  transit rows: expanding draws the trip, Start guides it leg by leg. The bike routes follow under
+  "Your bike". A search that found none says so in one line. A system with no color draws its pill and its leg
   on the map in the station badges' teal (`BikeShareMapLayer.FILL_LIGHT`, `FILL_DARK`), and an
   electric bike's pill has "E-bike" beside it. `shapeTransitLegs` skips a bike leg, and guidance
   frames it by its path.

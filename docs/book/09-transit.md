@@ -23,10 +23,10 @@ With "Bike share" on in Layers, each docked bike-share station shows from street
 badge with its free bikes beside it, gray when it has none. Tap one for its free docks and how
 old the counts are. They refresh every minute while Vela is on screen.
 
-With the "Bike share" chip on among the transit options, a trip that leaves now also gets
-bike-share trips: a docked bike taken from one station and returned to another, alone or before
-or after a ride. Up to two show above the other trips under their own heading, with the system's
-pill in teal and the free bikes at the station where the bike is taken.
+With the "Bike share" chip on in the Bike tab, a trip that leaves now also gets bike-share
+trips: a docked bike taken from one station and returned to another, alone or before or after a
+ride. Up to two show above the bike routes under their own heading, with the system's pill in
+teal and the free bikes at the station where the bike is taken.
 
 ## Where the data comes from
 
@@ -227,9 +227,10 @@ because it has no route preference.
 
 ### Bike-share trips
 
-With the "Bike share" chip on and a trip that leaves now, `BikeShareTripSearch` runs beside the
-transit search. It never runs for a later time: the planner picks stations by their bikes and
-docks as of the request.
+With the "Bike share" chip on the Bike tab and a trip that leaves now, `BikeShareTripSearch` runs
+beside the bike routes. It never runs for a later time: the planner picks stations by their bikes
+and docks as of the request. The trips sit in `BikeShareTripsShown`, a holder the sheet and the
+map read, since MapScreen takes no new parameter.
 
 1. `Transitous.bikeShareGroups` asks which systems run around the trip, for providers only. A
    system counts when it rents bicycles and is not a free-floating operator, by the same list as

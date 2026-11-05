@@ -563,8 +563,9 @@ class MapViewModel @Inject constructor(
     private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
     // Bike-share stations while their layer is on (SPEC 8). Above init like ukFuel.
     private val bikeShare = BikeShareStations(appContext, viewModelScope, _state, http)
-    // Bike-share trips beside the transit ones while the transit options' chip is on (SPEC 8).
+    // Bike-share trips beside the bike routes while the Bike tab's chip is on (SPEC 8).
     private val bikeShareTrips = BikeShareTripSearch(http)
+    private var bikeShareJob: Job? = null
 
     // The voice mode written from outside this model (the car's on/off switch, CarVoice):
     // followed here so the phone's state and the drive button agree with it. A strong reference,
@@ -5928,7 +5929,14 @@ class MapViewModel @Inject constructor(
         app.vela.ui.ParkingActions.arrivedByCar = { _state.value.travelMode == TravelMode.DRIVE }
         app.vela.ui.ParkingActions.parkedAt = { _state.value.parkedAtMillis }
     }
-    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = { if (_state.value.directionsOpen && _state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT) }; app.vela.ui.RouteActions.bikeDirections = ::bikeDirections }
+    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = { if (_state.value.directionsOpen && _state.value.travelMode == TravelMode.BICYCLE) route(TravelMode.BICYCLE) }; app.vela.ui.RouteActions.bikeDirections = ::bikeDirections; app.vela.ui.RouteActions.walkDirections = ::walkDirections; app.vela.ui.RouteActions.startTransit = ::startTransitNav
+        // The Bike tab's bike-share trips leave with it: another tab, a closed sheet or a drive.
+        viewModelScope.launch {
+            _state.map { it.directionsOpen && it.travelMode == TravelMode.BICYCLE && !it.navigating }.distinctUntilChanged().collect { shown ->
+                if (!shown) { bikeShareJob?.cancel(); BikeShareTripsShown.clear() }
+            }
+        }
+    }
 
     // ---- Viewed places, kept for offline (PlaceCache; the storage and the setting are from PR #658) ----
     private fun placeCacheDir(): java.io.File = java.io.File(appContext.filesDir, "placecache")
@@ -6595,6 +6603,7 @@ class MapViewModel @Inject constructor(
         if (plan == null) linkPlan = null
         val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec)
         beginModeEtas(etaKey)
+        searchBikeShare(origin, dest, mode, s.directionsTimeMode)
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec, etaKey); return }
         // Guard: this reply is only applied if directions is still open for the SAME mode (the user hasn't
         // backed out or switched away while it was fetching). Mirrors routeTransit's stale-load guard.
@@ -6639,6 +6648,32 @@ class MapViewModel @Inject constructor(
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_directions_need_recalibration, e.message)) }
             } catch (e: Exception) {
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
+            }
+        }
+    }
+
+    /**
+     * Bike-share trips beside the bike routes (SPEC 8, Bike share in directions): asked for on the
+     * Bike tab while its "Bike share" chip is on and the trip leaves now, since the planner places
+     * bikes and docks as of the request. Any other tab, or no chip, empties what was shown. The
+     * stations' counts follow the trips, except with "Use less data".
+     */
+    private fun searchBikeShare(origin: LatLng, dest: LatLng, mode: TravelMode, timeMode: Int) {
+        bikeShareJob?.cancel()
+        BikeShareTripsShown.clear()
+        if (mode != TravelMode.BICYCLE || !app.vela.ui.BikeShareTrips.on.value || timeMode != 0 || offlineNow()) return
+        BikeShareTripsShown.loading.value = true
+        bikeShareJob = viewModelScope.launch {
+            try {
+                val trips = bikeShareTrips.search(origin, dest)
+                if (!_state.value.directionsOpen || _state.value.travelMode != TravelMode.BICYCLE) return@launch
+                BikeShareTripsShown.trips.value = trips
+                BikeShareTripsShown.loading.value = false
+                if (trips.isNotEmpty() && !app.vela.core.data.LowDataMode.enabled) {
+                    bikeShareTrips.counts(trips)?.let { BikeShareCounts.replace(it) }
+                }
+            } finally {
+                BikeShareTripsShown.loading.value = false
             }
         }
     }
@@ -7104,17 +7139,8 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
         val prefer = _state.value.transitPrefer
         val routePref = _state.value.transitRoutePref
-        // Bike-share trips are looked for beside the transit ones, leaving now only: they are
-        // planned on the stations' counts as of now (SPEC 8, Bike share in directions). Not in
-        // transitTrips, which the mode chips' ETA prefetch also calls.
-        val withBikeShare = app.vela.ui.BikeShareTrips.on.value && timeMode == 0 && !offlineNow()
         viewModelScope.launch {
-            if (withBikeShare) BikeShareCounts.replace(emptyMap())
-            val bike = if (withBikeShare) async { bikeShareTrips.search(origin, dest) } else null
-            val base = transitTrips(origin, dest, timeMode, timeEpochSec, prefer, routePref)
-            // One list: the board shows the bike-share trips in a section of their own above.
-            val bikeTrips = bike?.await().orEmpty()
-            val trips = bikeTrips + base
+            val trips = transitTrips(origin, dest, timeMode, timeEpochSec, prefer, routePref)
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(
@@ -7123,12 +7149,8 @@ class MapViewModel @Inject constructor(
                     status = if (trips.isEmpty()) appContext.getString(R.string.mapvm_no_transit_routes) else null,
                 )
             }
-            // Their stations' free bikes and docks land after them; "Use less data" asks for none.
-            if (bikeTrips.isNotEmpty() && !app.vela.core.data.LowDataMode.enabled) {
-                launch { bikeShareTrips.counts(bikeTrips)?.let { BikeShareCounts.replace(it) } }
-            }
             if (etaKey != null) {
-                base.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }
+                trips.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }
                 val s = _state.value
                 prefetchModeEtas(etaKey, origin, dest, s.directionsWaypoints.map { it.location }, s.avoidTolls, s.avoidHighways, s.avoidFerries, timeMode, timeEpochSec, except = TravelMode.TRANSIT)
             }
