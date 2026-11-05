@@ -29,7 +29,18 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(date -u +%Y%m%d)
-          FLOCK_VERSION="$VERSION" python3 scripts/build-flock-cameras.py
+          # 90% of the published count: a reply cut short is not published over a full set.
+          FLOOR=$(curl -fsSL --max-time 60 "https://github.com/${{ github.repository }}/releases/download/flock-cameras/flock-manifest.json" \
+            | python3 -c 'import json, sys; print(int(json.load(sys.stdin)["count"] * 0.9))' || echo 0)
+          rc=0
+          FLOCK_VERSION="$VERSION" FLOCK_MIN_COUNT="$FLOOR" python3 scripts/build-flock-cameras.py || rc=$?
+          if [ "$rc" = 3 ]; then
+            # Overpass overloaded or a short reply: no retry here can fix it, next Monday tries again.
+            echo "::warning::No usable answer from Overpass; the published camera file is kept."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$rc" = 0 ] || exit "$rc"
           BIN=app/src/main/assets/flock_cameras.bin
           COUNT=$(gzip -dc "$BIN" | wc -l | tr -d ' ')
           SIZE=$(wc -c < "$BIN" | tr -d ' ')
@@ -38,6 +49,7 @@ jobs:
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
 
       - name: Write manifest
+        if: steps.bake.outputs.skip != 'true'
         run: |
           cat > flock-manifest.json <<JSON
           {
@@ -51,6 +63,7 @@ jobs:
           cat flock-manifest.json
 
       - name: Publish to flock-cameras release
+        if: steps.bake.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

@@ -2529,6 +2529,11 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   direction` TSV, about 129,000 points in the bundled July 2026 snapshot, loaded off the main
   thread into flat arrays with a 0.1-degree grid. The loader prefers the higher version and
   deletes a download the bundled floor has passed.
+- The weekly bake asks Overpass for every `surveillance:type=ALPR` node as CSV (157,576 nodes,
+  7 MB, in November 2026; the same reply as JSON is 59 MB and ran past the servers' gateway
+  timeouts). It tries the three servers in order, twice, ten minutes apart. No answer, or one
+  under 90 percent of the published count, keeps the published file and ends the run with a
+  warning.
 - With a route up (chooser or drive) only cameras on a shown route draw (`FlockCameras.along`,
   45 m and facing the road). With no route the layer shows the viewport's.
 - Badges cluster at 40 m: below z16 one badge per cluster, from z16 one badge and a facing cone
@@ -4323,6 +4328,8 @@ manifest.
   all 532,164 rows (its source definition names the column `HOUSENUMBNER`, the state's layer
   calls it `HOUSENUMBER`), while the three county files and two city files carry 515,694
   distinct house numbers between them.
+- A region with no road tagged `maxspeed` (a small island) is skipped with a warning
+  (`build-maxspeed-region.sh`) and has no manifest row. tippecanoe exits 110 on empty input.
 
 #### Infrastructure releases
 
@@ -6148,6 +6155,9 @@ recomposition. Neither can be parallelized, so the rules send each less work.
   `app/src/release/generated/baselineProfiles/baseline-prof.txt` on a Gradle-managed emulator,
   and a release build bakes in the profile it finds there. Never run it on a connected phone:
   the harness uninstalls the app, which deletes saved places, trips and grants.
+- A changed profile is pushed to a `baseline-profile-refresh-<date>` branch. The repository
+  does not let Actions open pull requests, so the run ends with a warning that links the branch,
+  and the pull request is opened by hand.
 - The journey (`BaselineProfileGenerator`) grants the app's permissions, leaves the welcome
   screen, takes the "no" side of each first-run prompt, pans the map and walks Settings. A
   prompt left up covers the map and the run records that prompt alone. After changing the
@@ -6371,7 +6381,9 @@ carries `<prefix>-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and `<pref
   ride the same Pages artifact. The landing page, the press page, the privacy page (`scripts/build-site-privacy.py` renders
   `PRIVACY.md` into the site's layout at deploy time) and the press kit are also
   published to velamaps.org on Cloudflare Pages by the same workflow; `site/_redirects` sends
-  velamaps.org/docs to the GitHub Pages docs.
+  velamaps.org/docs to the GitHub Pages docs. A failed velamaps.org deploy does not stop the
+  GitHub Pages one: the `website` job turns the run red after Pages has deployed. "Invalid
+  access token" in the log means `CLOUDFLARE_API_TOKEN` has expired or been revoked.
   Never add a second Pages workflow, since `actions/deploy-pages` replaces the whole site. Never
   re-run only a failed deploy job. Dispatch a fresh run.
 - The docs site (`/Vela/docs/`) is the repository's Markdown built with MkDocs Material by

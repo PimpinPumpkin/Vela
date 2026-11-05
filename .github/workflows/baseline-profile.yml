@@ -103,6 +103,9 @@ jobs:
           git add app/src/release/generated/baselineProfiles/
           git commit -m "Refresh the baseline profile"
           git push origin "$BRANCH"
+          # The repository does not let Actions open pull requests (Settings > Actions > General).
+          # The branch is the result then: open the pull request from it by hand.
           gh pr create --base main --head "$BRANCH" \
             --title "Refresh the baseline profile" \
-            --body "Automated monthly regeneration on the emulator. The committed profile is what every release build bakes; merging ships the refreshed hot-path list with the next nightly."
+            --body "Automated monthly regeneration on the emulator. The committed profile is what every release build bakes; merging ships the refreshed hot-path list with the next nightly." \
+            || echo "::warning::The refreshed profile is on branch $BRANCH. Open a pull request: https://github.com/${{ github.repository }}/compare/main...$BRANCH"

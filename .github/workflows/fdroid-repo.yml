@@ -63,6 +63,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      velamaps: ${{ steps.velamaps.outcome }}
     # Two gates:
     #  - workflow_run: only rebuild after a SUCCESSFUL main run (a red CI published nothing),
     #    and not after a PUSH run: a push builds and tests only, it releases nothing, so the
@@ -226,6 +228,10 @@ jobs:
         # The signed settings file and its signature ride along: installed apps read this copy
         # when GitHub does not answer (`VelaLinks.CALIBRATION_MIRROR`), so a closed account can
         # still hand them a bundle whose links name the new home.
+        # It never stops the GitHub Pages deploy (the F-Droid index, fonts and docs). A failure
+        # here turns the run red through the `website` job instead.
+        id: velamaps
+        continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -264,3 +270,15 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  website:
+    # Red when velamaps.org was not published, after GitHub Pages has deployed. "Invalid access
+    # token" in the build job's log means CLOUDFLARE_API_TOKEN has expired or been revoked.
+    needs: [build, deploy]
+    if: always() && needs.build.outputs.velamaps == 'failure'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: |
+          echo "::error::velamaps.org was not updated: the Cloudflare deploy failed (see the build job). GitHub Pages deployed."
+          exit 1
