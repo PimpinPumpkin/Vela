@@ -964,6 +964,16 @@ fun VelaMapView(
     dpadController: MapDpadController? = null, // key-driven pan/zoom/select for D-pad-only devices (docs/dpad.md)
     modifier: Modifier = Modifier,
 ) {
+    // The Bike tab's expanded bike-share trip draws like a transit preview (SPEC 8, Bike share in
+    // directions). It comes from a holder because MapScreen takes no new parameter; the view
+    // model empties the holder whenever the Bike tab is not on screen. While it is open the bike
+    // route, its alternates and their time bubbles stand aside: dotted like a walk, the route
+    // read as part of the trip it lay under.
+    val bikeSharePreview = BikeShareTripsShown.preview.value
+    @Suppress("NAME_SHADOWING") val transitPreview = transitPreview ?: bikeSharePreview
+    @Suppress("NAME_SHADOWING") val routePolyline = if (bikeSharePreview != null) emptyList() else routePolyline
+    @Suppress("NAME_SHADOWING") val alternates = if (bikeSharePreview != null) emptyList() else alternates
+    @Suppress("NAME_SHADOWING") val routeBubbles = if (bikeSharePreview != null) emptyList() else routeBubbles
     val context = LocalContext.current
     val density = LocalDensity.current
     // Push MapLibre's compass below the status bar (it defaults to the top-right corner, which sits
@@ -1388,11 +1398,6 @@ fun VelaMapView(
     var lastInsetPx by remember { mutableStateOf(if (startFramed) 0 else -1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedTransitKey by remember { mutableStateOf<Int?>(null) }
-    // The Bike tab's expanded bike-share trip draws like a transit preview (SPEC 8, Bike share in
-    // directions). It comes from a holder because MapScreen takes no new parameter; the view
-    // model empties the holder whenever the Bike tab is not on screen.
-    @Suppress("NAME_SHADOWING")
-    val transitPreview = transitPreview ?: BikeShareTripsShown.preview.value
     // Whole-trip coords for the chooser fit; during transit NAV the fit narrows to the guided
     // leg's own coords (falling back to the whole trip when a leg carries no geometry).
     val transitPrevCoords = remember(transitPreview, transitNavLeg) {
