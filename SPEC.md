@@ -5544,7 +5544,7 @@ the same `:core` singletons as the phone (`CarDeps`).
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`, `Step` and `Trip`, sets the phone's
   glyph as the icon (`NavGlyphs.bitmap`), and reads the roundabout direction and exit number
   from the route's geometry. The destination estimate's time left takes the route line's
-  traffic colors from `Route.trafficRatio`: red over 1.4, amber over 1.15, green below, and no
+  traffic colors from `Route.trafficRatio`: red over 1.4, yellow over 1.15 (the car API allows only its standard colors here), green below, and no
   color when the route has no live traffic.
 - On the drive screen a paused drive shows a `MessageInfo` ("Paused") in place of the turn card,
   and the strip has Pause/Resume. A turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card

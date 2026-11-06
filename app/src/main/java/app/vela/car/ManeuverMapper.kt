@@ -153,7 +153,7 @@ object ManeuverMapper {
     /** [tripText] is a line the host shows with the estimate ("To Davis Food Co-op" while a stop
      *  is ahead); it needs car API level 5, so the caller passes it only there. */
     /** [trafficRatio] is the route's live time over its typical time; it colors the time left
-     *  as the phone colors the route line: green when traffic is light, amber, then red. */
+     *  as the phone colors the route line: green when traffic is light, yellow, then red. */
     fun destinationEstimate(remainingMeters: Double, remainingSeconds: Double, nowEpochMillis: Long, imperial: Boolean, tripText: String? = null, trafficRatio: Double? = null): TravelEstimate {
         // Clamp remaining ≥ 0 so a momentary NavEngine overshoot can't show a past arrival time.
         val remaining = remainingSeconds.coerceAtLeast(0.0)
@@ -171,7 +171,8 @@ object ManeuverMapper {
     private fun trafficColor(ratio: Double?): CarColor? = when {
         ratio == null -> null
         ratio > 1.4 -> CarColor.RED
-        ratio > 1.15 -> CarColor.createCustom(0xFFC26A12.toInt(), 0xFFE8923D.toInt())
+        // The car API allows only its standard colors here; a custom amber throws.
+        ratio > 1.15 -> CarColor.YELLOW
         else -> CarColor.GREEN
     }
 

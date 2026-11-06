@@ -265,7 +265,7 @@ session's place list is not allowed on that display and crashes the app there.
 - Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
   lanes.
 - The time left is colored by traffic with the route line's thresholds: red when the live time
-  runs more than 40% over the typical time, amber over 15%, green below. A route without live
+  runs more than 40% over the typical time, yellow over 15%, green below. A route without live
   traffic leaves it the host's default color.
 - Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to
   kilometers at 1,000 m. Zero is allowed so the host can say "now".
