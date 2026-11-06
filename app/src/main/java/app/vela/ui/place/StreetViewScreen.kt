@@ -66,6 +66,7 @@ import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadAutoFocus
 import androidx.compose.ui.focus.focusRequester
+import app.vela.ui.map.coversMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -113,7 +114,7 @@ fun StreetViewScreen(
     // Back backs out of full screen first, then closes the viewer.
     BackHandler(onBack = { if (full) full = false else onClose() })
     BoxWithConstraints(
-        Modifier.fillMaxWidth().fillMaxHeight(if (full) 1f else 0.55f).background(Color.Black),
+        Modifier.fillMaxWidth().fillMaxHeight(if (full) 1f else 0.55f).coversMap().background(Color.Black),
     ) {
             val density = LocalDensity.current
             val paneH = maxHeight // captured: BoxWithConstraints' receiver doesn't reach nested lambdas

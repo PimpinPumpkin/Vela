@@ -1392,7 +1392,6 @@
         <item quantity="other">%1$d Orte nicht gefunden</item>
     </plurals>
     <string name="settings_zoom_key_none">Nicht festgelegt</string>
-    <string name="settings_zoom_keys_hint">Zwei Tasten, mit denen man die Karte von jeder beliebigen Stelle aus vergrößern kann, beispielsweise die Tasten 2 und 5 auf dem Ziffernblock. In einem Textfeld dienen sie weiterhin zur Eingabe.</string>
     <string name="settings_voice_mode_on">An</string>
     <string name="settings_voice_mode_alerts">Nur Benachrichtigungen</string>
     <string name="settings_voice_mode_off">Aus</string>
