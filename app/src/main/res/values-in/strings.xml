@@ -1454,4 +1454,18 @@
     <string name="place_avoid_short_ferries">Feri</string>
     <string name="place_avoid_short_cameras">Kamera</string>
     <string name="trip_shortcut_themed">Sesuaikan dengan ikon bertema</string>
+    <string name="settings_trip_batch_share_full">Bagikan trace lengkap</string>
+    <string name="settings_trip_batch_saved">Trace lengkap telah disimpan</string>
+    <string name="welcome_trips_title">Perjalanan Anda</string>
+    <string name="welcome_trips_intro">Disimpan di ponsel ini agar Anda dapat memutar ulang perjalanan atau melampirkannya pada laporan bug. Tidak ada data yang dikirim keluar dari ponsel kecuali Anda membagikannya.</string>
+    <string name="welcome_trips_save">Simpan perjalanan saya di ponsel ini</string>
+    <string name="welcome_trips_clear">Hapus perjalanan setelah 30 hari</string>
+    <string name="settings_trip_auto_clear">Hapus perjalanan setelah 30 hari</string>
+    <string name="settings_trip_auto_clear_hint">Perjalanan tersimpan yang berusia lebih dari 30 hari akan dihapus secara otomatis.</string>
+    <string name="transit_notice_next_is_yours">Turun di pemberhentian berikutnya: %1$s</string>
+    <string name="transit_notice_to">Ke %1$s</string>
+    <string name="transit_notice_to_destination">Ke tujuan Anda</string>
+    <plurals name="transit_notice_stops_left">
+        <item quantity="other">%d pemberhentian lagi</item>
+    </plurals>
 </resources>
