@@ -1553,7 +1553,25 @@
     <string name="link_trip_pick_start">Miejsce początkowe</string>
     <string name="link_trip_start_title">Miejsce początkowe nie zostało odnalezione</string>
     <string name="settings_trip_save_phone">Zapisz w telefonie</string>
-    <string name="settings_trip_saved">Zapisano pełny ślad</string>
+    <string name="settings_trip_saved">Zapisano pełny ślad trasy</string>
     <string name="settings_road_numbers">Najpierw numery dróg</string>
     <string name="settings_road_numbers_hint">Droga posiadająca numer trasy jest identyfikowana za pomocą tego numeru a nie nazwy – takiej jak na przykład „Pearl Harbor Memorial Expressway”. Numer ten widoczny jest pod strzałką na ekranie w samochodzie oraz w instrukcjach dotyczących dalszego przebiegu trasy.</string>
+    <string name="settings_lists_import_is_places">Ten plik zawiera zapisane miejsca,a nie listy. Zaimportuj go wybierając Ustawienia &gt; Zapisane miejsca &gt; Importuj.</string>
+    <string name="welcome_trips_intro">Zapisywane w pamięci telefonu dzięki czemu możesz ponownie odtworzyć przebieg trasy lub dołączyć do zgłoszenia błędu. Żadne dane nie opuszczają telefonu chyba że zdecydujesz się je udostępnić.</string>
+    <string name="welcome_trips_save">Zapisz moje trasy na tym telefonie</string>
+    <string name="welcome_trips_clear">Usuń trasy po 30 dniach</string>
+    <string name="settings_trip_auto_clear">Usuń trasy po 30 dniach</string>
+    <string name="settings_trip_auto_clear_hint">Zapisane trasy starsze niż 30 dni są usuwane automatycznie.</string>
+    <string name="transit_notice_next_is_yours">Wysiądź na następnym przystanku: %1$s</string>
+    <string name="transit_notice_to">Do %1$s</string>
+    <string name="transit_notice_to_destination">Do celu</string>
+    <plurals name="transit_notice_stops_left">
+        <item quantity="one">pozostał %d przystanek</item>
+        <item quantity="few">pozostało %d przystanków</item>
+        <item quantity="many">pozostało %d przystanków</item>
+        <item quantity="other">pozostało %d przystanków</item>
+    </plurals>
+    <string name="settings_trip_batch_share_full">Udostępnij pełne ślady trasy</string>
+    <string name="settings_trip_batch_saved">Zapisano pełny ślad trasy</string>
+    <string name="welcome_trips_title">Twoje trasy</string>
 </resources>
