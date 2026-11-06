@@ -1498,4 +1498,21 @@
     <string name="settings_trip_saved">Am salvat înregistrarea completă</string>
     <string name="settings_road_numbers">Mai întâi numerele drumurilor</string>
     <string name="settings_road_numbers_hint">O șosea cu un număr de traseu este identificată prin acest număr, nu printr-un nume, cum ar fi „Autostrada Memorială Pearl Harbor”. Sub săgeată, pe ecranul mașinii și în indicațiile pentru următorul traseu.</string>
+    <string name="settings_lists_import_is_places">Fișierul respectiv conține locații salvate, nu liste. Importă-l în Setări &gt; Locații salvate &gt; Import.</string>
+    <string name="settings_trip_batch_share_full">Partajează traseele complete</string>
+    <string name="settings_trip_batch_saved">Am salvat înregistrările complete</string>
+    <string name="welcome_trips_title">Călătoriile tale</string>
+    <string name="welcome_trips_intro">Se păstrează pe acest telefon, astfel încât să poți reda o înregistrare a traseului sau să o atașezi la un raport de eroare. Nimic nu părăsește telefonul, decât dacă alegi să partajezi.</string>
+    <string name="welcome_trips_save">Salvează călătoriile pe acest telefon</string>
+    <string name="welcome_trips_clear">Șterge călătoriile după 30 de zile</string>
+    <string name="settings_trip_auto_clear">Șterge călătoriile după 30 de zile</string>
+    <string name="settings_trip_auto_clear_hint">Călătoriile salvate cu mai mult de 30 de zile în urmă sunt șterse automat.</string>
+    <string name="transit_notice_next_is_yours">Coboară la următoarea stație: %1$s</string>
+    <string name="transit_notice_to">La %1$s</string>
+    <string name="transit_notice_to_destination">Către destinația ta</string>
+    <plurals name="transit_notice_stops_left">
+        <item quantity="one">%d oprire rămasă</item>
+        <item quantity="few">%d opriri rămase</item>
+        <item quantity="other">%d de opriri rămase</item>
+    </plurals>
 </resources>
