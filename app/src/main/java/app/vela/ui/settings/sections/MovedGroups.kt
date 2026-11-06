@@ -45,7 +45,7 @@ import app.vela.ui.settings.ToggleRow
 /** Surveillance and speed cameras: the map markers and every alert about them, one group
  *  (moved from Map to Navigation, 2026-09-17: they are driving alerts first). */
 @Composable
-internal fun CameraSettingsGroup() {
+internal fun CameraSettingsGroup(onOpenAlertDistances: (() -> Unit)? = null) {
     val context = LocalContext.current
     SettingsGroup(title = stringResource(R.string.settings_cameras_group)) {
         ToggleRow(
@@ -72,6 +72,22 @@ internal fun CameraSettingsGroup() {
                 checked = app.vela.ui.SpeedCamWarn.on.value,
                 onCheckedChange = { app.vela.ui.SpeedCamWarn.set(context, it) },
                 hint = stringResource(R.string.settings_speed_cam_warn_hint),
+            )
+        }
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_waze_alerts_title),
+            checked = app.vela.ui.WazeAlertsPrefs.masterOn.value,
+            onCheckedChange = { app.vela.ui.WazeAlertsPrefs.setMaster(context, it) },
+            hint = stringResource(R.string.settings_waze_alerts_subtitle),
+            leading = { app.vela.ui.PoliceBadge() },
+        )
+        if (app.vela.ui.WazeAlertsPrefs.masterOn.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_waze_police),
+                checked = app.vela.ui.WazeAlertsPrefs.policeOn.value,
+                onCheckedChange = { app.vela.ui.WazeAlertsPrefs.setPolice(context, it) },
+                hint = stringResource(R.string.settings_waze_police_hint),
             )
         }
         GroupDivider()
@@ -106,6 +122,10 @@ internal fun CameraSettingsGroup() {
             onCheckedChange = { app.vela.ui.FlockNavAlert.setVoice(context, it) },
             hint = stringResource(R.string.settings_flock_nav_voice_hint),
         )
+        if (onOpenAlertDistances != null) {
+            GroupDivider()
+            AlertDistanceNavigationRow(onOpen = onOpenAlertDistances)
+        }
     }
 }
 

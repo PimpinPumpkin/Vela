@@ -21,7 +21,7 @@ object RouteBar {
     /** What a mark on the bar represents. The kinds are exactly the ones Vela already draws on the
      *  map, so the bar can never claim knowledge the map does not have. */
     /** [priority]: which member of a merged cluster is drawn (higher wins); badges beat dots. */
-    enum class Mark(val priority: Int) { SIGNAL(0), STOP(1), SPEED_HUMP(2), RAIL_CROSSING(3), CAMERA(4) }
+    enum class Mark(val priority: Int) { SIGNAL(0), STOP(1), SPEED_HUMP(2), RAIL_CROSSING(3), CAMERA(4), POLICE(5) }
 
     /** A congestion band, as a fraction of the REMAINING trip: 0 = where you are, 1 = destination.
      *  [level] is Google's grade (1 moderate, 2 heavy, 3+ severe). */
