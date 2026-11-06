@@ -1468,4 +1468,5 @@
     <plurals name="transit_notice_stops_left">
         <item quantity="other">%d pemberhentian lagi</item>
     </plurals>
+    <string name="settings_lists_import_is_places">Berkas tersebut berisi tempat tersimpan, bukan daftar. Impor dari Setelan &gt; Tempat tersimpan &gt; Impor.</string>
 </resources>
