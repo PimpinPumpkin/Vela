@@ -206,6 +206,19 @@ object HybridRoute {
         return out
     }
 
+    /** Whether every point of [piece], every [STEP_M], is within [tolM] of [line]. */
+    internal fun staysNear(piece: List<LatLng>, line: List<LatLng>, tolM: Double): Boolean {
+        if (piece.size < 2 || line.size < 2) return true
+        val grid = RouteGeometry.SegmentGrid(line, cumulative(line))
+        val cum = cumulative(piece)
+        var m = 0.0
+        while (m <= cum.last()) {
+            if (grid.along(pointAt(piece, cum, m), tolM) == null) return false
+            m += STEP_M
+        }
+        return grid.along(piece.last(), tolM) != null
+    }
+
     /** The piece of [line] between [fromM] and [toM] along it. */
     fun slice(line: List<LatLng>, fromM: Double, toM: Double): List<LatLng> {
         val cum = cumulative(line)
@@ -404,8 +417,14 @@ object HybridRoute {
             val oa = alongNear(open, oCum, pa, maxOf(0.0, oAt - 30.0), minOf(oTotal, oAt + (b - a) + 400.0), DRAW_JOIN_M)
             val ob = oa?.let { alongNear(open, oCum, pb, it, minOf(oTotal, it + (b - a) * 1.5 + 100.0), DRAW_JOIN_M) }
             if (oa == null || ob == null || ob <= oa || kotlin.math.abs((ob - oa) - (b - a)) > (b - a) / 3.0 + 10.0) { add(nudge?.invoke(gPiece) ?: gPiece); return }
-            add(slice(open, oa, ob))
+            val oPiece = slice(open, oa, ob)
             oAt = ob
+            // [stretches] only asks whether Google's line stays near the open route. An open
+            // route that takes an exit and the entrance straight back stays near Google's line
+            // all the way (the ramps run beside the motorway, the bridge crosses it), so the
+            // loop has to be caught from this side: such a run is drawn on Google's line.
+            if (!staysNear(oPiece, gPiece, OFF_M)) { add(nudge?.invoke(gPiece) ?: gPiece); return }
+            add(oPiece)
         }
         for (s in sorted) {
             shared(at, s.fromM)

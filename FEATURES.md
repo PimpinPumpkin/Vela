@@ -121,7 +121,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Navigation
 
 - A turn banner with arrow, distance, road name, highway shields, exit numbers and lanes. Swipe it
-  to look ahead. Street words are abbreviated on screen ("Court St", "NE 8th St"); the voice says
+  to look ahead. Street words are abbreviated on screen ("Court St", "W Covell Blvd"); the voice says
   them in full.
 - With a large display size or large text the turn card stays within a third of the screen, the
   arrow stays clear of the bottom bar, and the map zooms out to keep the road ahead in view.
@@ -191,7 +191,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   or less walking.
 - Expand a trip for each leg's stops, times, alerts and fare, drawn on the map along its real track.
 - A walk leg expands to turn-by-turn walking directions.
-- Start a trip for a leg-by-leg guide that speaks each leg and moves on at its end.
+- Start a trip for a leg-by-leg guide that speaks each leg and moves on at its end. It keeps going
+  in a pocket, with the leg and the stops left in a notification and a heads-up at the stop before
+  yours.
 - Tap a stop on the map for its departure board, with a countdown, a Live mark and each run's stop
   list.
 - Offline, a stop shows the last board you saw there.
@@ -368,8 +370,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 ## Recorded trips and diagnostics
 
-- "Save my trips (for replay)" records drives on the phone, off by default. Replay, rename or delete
-  them. "Select trips", or a long press on one, picks several to share or delete together.
+- "Save my trips (for replay)" records drives on the phone. A new install turns it on from its
+  first screens, with "Delete drives after 30 days" on too; older installs keep their setting.
+  Replay, rename or delete them. "Select trips", or a long press on one, picks several to share
+  or delete together.
 - Sharing a trip first trims the points near its start, its end, Home and Work. The notes on what
   the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you

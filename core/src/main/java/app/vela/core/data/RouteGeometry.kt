@@ -407,7 +407,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val consolidated = rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers))))
+        val consolidated = foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers)))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -440,68 +440,184 @@ object RouteGeometry {
 
     private const val RAMP_TURN_MAX_M = 600.0
 
-    /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
-     *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
-     *  its OWN spoken prompt seconds apart ("Take exit 15" … "Keep right" … "Merge onto I-90") — the reported
-     *  "it told me related instructions over and over." Google says it once. Fold a ramp's IMMEDIATELY-
-     *  following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 15
-     *  toward …"), SUM the distances so the step lengths still tile the polyline (NavEngine locates each
-     *  maneuver by a prefix-sum of step distances), and drop the redundant follow-ups. It stops at the first
-     *  real turn / next ramp / continue / arrive, and at a > [EXIT_COMPLEX_GAP_M] gap, so a genuine later
-     *  decision (a fork to a different highway a km on) is never swallowed. */
-    internal fun consolidateExits(list: List<Maneuver>): List<Maneuver> {
-        val out = mutableListOf<Maneuver>()
+    /**
+     * A turn split in two by a turn lane mapped as its own way: a short unnamed slight turn where
+     * the lane peels off the road, then the turn onto the street, the same way. A real drive heard
+     * "Turn slight right, then turn slight right onto" a street for one right turn at a divided
+     * corner, four times on the way in. The pair becomes one turn at the first step's place, where
+     * the lane is taken, onto the second step's road, worded "Turn left" or "Turn right" by how far
+     * the line turns across both. Only when the first step bends the line [TURN_LANE_PEEL_DEG] or
+     * less and runs at most [TURN_LANE_MAX_M], and the line turns [TURN_LANE_MIN_DEG] to
+     * [TURN_LANE_MAX_DEG] across the two, so two real turns a block apart stay two. [poly] is the
+     * line the steps tile.
+     */
+    internal fun foldTurnLanes(poly: List<LatLng>, list: List<Maneuver>): List<Maneuver> {
+        if (poly.size < 2 || list.size < 3) return list
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val along = DoubleArray(list.size)
+        for (i in 1 until list.size) along[i] = along[i - 1] + list[i - 1].distanceMeters
+        val out = ArrayList<Maneuver>(list.size)
         var i = 0
         while (i < list.size) {
-            val m = list[i]
-            if (m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT) {
-                var j = i + 1
-                var folded = m.distanceMeters
-                var foldedS = m.durationSeconds // the time too, or the remaining time runs short
-                while (j < list.size &&
-                    (list[j].type == ManeuverType.FORK_LEFT || list[j].type == ManeuverType.FORK_RIGHT ||
-                        list[j].type == ManeuverType.MERGE) &&
-                    list[j - 1].distanceMeters < EXIT_COMPLEX_GAP_M
-                ) {
-                    folded += list[j].distanceMeters
-                    foldedS += list[j].durationSeconds
-                    j++
-                }
-                if (j > i + 1) {
-                    // The shared ramp's sign often lists BOTH directions of the target highway
-                    // ("99 North, 99 South" - one onramp splitting later); the folded FORK is the
-                    // branch actually taken, so its instruction disambiguates. Keep the ramp's
-                    // phrasing/arrow but drop the not-taken direction from its destination list,
-                    // and adopt the fork's lane diagram when the ramp has none (that split is
-                    // where the lane choice matters). Voice + shield chips both read from the
-                    // instruction, so both stop announcing the wrong direction (user 2026-07-16).
-                    val branch = list.subList(i + 1, j).lastOrNull { it.instruction.isNotBlank() }
-                    out += m.copy(
-                        distanceMeters = folded,
-                        durationSeconds = foldedS,
-                        instruction = disambiguateDest(m.instruction, branch?.instruction),
-                        // The nameless twin gets the same surgery, or with spoken street names
-                        // off the voice would go back to announcing BOTH directions of the split
-                        // - the exact bug disambiguateDest exists to fix (issue #596).
-                        instructionNoRoad = m.instructionNoRoad?.let { disambiguateDest(it, branch?.instruction) },
-                        lanes = m.lanes.ifEmpty { branch?.lanes.orEmpty() },
-                        laneHint = m.laneHint ?: branch?.laneHint,
-                        // The road ENTERED by the fold is the branch's (the ramp itself is
-                        // nameless/ref-less) - without this, passing a folded on-ramp left the
-                        // "current road" with no ref and the bottom bar's persistent highway
-                        // shield never appeared on the freeway it exists for (device 2026-07-17).
-                        road = m.road ?: branch?.road,
-                        ref = m.ref ?: branch?.ref,
-                    )
-                    i = j
-                    continue
-                }
-            }
-            out += m
-            i++
+            val one = list.getOrNull(i + 1)?.let { turnLane(poly, cum, list[i], along[i], it, along[i + 1]) }
+            if (one != null) { out += one; i += 2 } else { out += list[i]; i++ }
         }
         return out
     }
+
+    private fun turnLane(poly: List<LatLng>, cum: DoubleArray, a: Maneuver, atA: Double, b: Maneuver, atB: Double): Maneuver? {
+        val right = when (a.type) {
+            ManeuverType.SLIGHT_RIGHT -> true
+            ManeuverType.SLIGHT_LEFT -> false
+            else -> return null
+        }
+        val sameSide = if (right) b.type in RIGHT_TURNS else b.type in LEFT_TURNS
+        val road = b.road ?: b.ref
+        if (!sameSide || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
+        if (a.distanceMeters > TURN_LANE_MAX_M || atA < TURN_LANE_LOOK_M || atB + TURN_LANE_LOOK_M > cum.last()) return null
+        fun heading(from: Double, to: Double): Double {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)
+            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, to)
+            return Math.toDegrees(kotlin.math.atan2((q.lng - p.lng) * kotlin.math.cos(Math.toRadians(p.lat)), q.lat - p.lat))
+        }
+        fun turn(h1: Double, h2: Double) = ((h2 - h1 + 540.0) % 360.0) - 180.0
+        val before = heading(atA - TURN_LANE_LOOK_M, atA - 3.0)
+        val lane = heading(atA + 3.0, maxOf(atA + 6.0, atB - 3.0))
+        val after = heading(atB + 3.0, atB + TURN_LANE_LOOK_M)
+        val sign = if (right) 1.0 else -1.0
+        val peel = turn(before, lane) * sign
+        val whole = turn(before, after) * sign
+        val fold = peel <= TURN_LANE_PEEL_DEG && peel >= -TURN_LANE_PEEL_DEG / 2 && whole >= TURN_LANE_MIN_DEG && whole <= TURN_LANE_MAX_DEG
+        onTurnLane?.invoke(a, b, peel, whole, fold)
+        if (!fold) return null
+        val mod = if (right) "right" else "left"
+        return b.copy(
+            type = if (right) ManeuverType.TURN_RIGHT else ManeuverType.TURN_LEFT,
+            instruction = osrmPhrase("turn", mod, road, null, null, null),
+            instructionNoRoad = osrmPhrase("turn", mod, null, null, null, null),
+            location = a.location,
+            distanceMeters = a.distanceMeters + b.distanceMeters,
+            // The time too, or the remaining time runs short.
+            durationSeconds = a.durationSeconds + b.durationSeconds,
+            lanes = a.lanes.ifEmpty { b.lanes },
+            laneHint = a.laneHint ?: b.laneHint,
+            renames = a.renames + b.renames.map { it.copy(atMeters = it.atMeters + a.distanceMeters) },
+            lightsBeforeM = a.lightsBeforeM,
+        )
+    }
+
+    private val RIGHT_TURNS = setOf(ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT)
+    private val LEFT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT)
+
+    /** Desk studies only (NamingStudyTest): every pair [foldTurnLanes] measures, with the lane's
+     *  bend, the turn across both, and whether it folded. */
+    @Volatile internal var onTurnLane: ((first: Maneuver, second: Maneuver, peelDeg: Double, wholeDeg: Double, folded: Boolean) -> Unit)? = null
+
+    /** The lane before the turn is at most this long. */
+    const val TURN_LANE_MAX_M = 120.0
+    /** The lane leaves the road at no more than this angle (degrees). */
+    const val TURN_LANE_PEEL_DEG = 45.0
+    /** Across both steps the line turns at least this far, and at most [TURN_LANE_MAX_DEG]. */
+    const val TURN_LANE_MIN_DEG = 60.0
+    const val TURN_LANE_MAX_DEG = 135.0
+    /** The headings are read over this much line before the first step and after the second. */
+    private const val TURN_LANE_LOOK_M = 30.0
+
+    /** Fold the MERGE steps of an EXIT / interchange complex into the step before them. OSRM splits
+     *  leaving a highway into a ramp step plus trailing fork/merge steps. A merge is no decision, so a
+     *  ramp's or a fork's IMMEDIATELY-following, SHORT-gapped merges are folded into it: its instruction
+     *  is kept and the distances and times SUMMED, so the step lengths still tile the polyline (NavEngine
+     *  locates each maneuver by a prefix-sum of step distances). A fork on the ramp is where the ramp
+     *  splits and is kept as its own step ("Keep left toward ..."): folded, the exit was said and the
+     *  split never was. One close to the ramp rides on the ramp's line ("Take exit 18, then keep left",
+     *  NavEngine.chainedNext). The complex stops at the first real turn / next ramp / continue / arrive,
+     *  and at a > [EXIT_COMPLEX_GAP_M] gap. */
+    internal fun consolidateExits(list: List<Maneuver>): List<Maneuver> {
+        val out = mutableListOf<Maneuver>()
+        val isFork = { m: Maneuver -> m.type == ManeuverType.FORK_LEFT || m.type == ManeuverType.FORK_RIGHT }
+        var i = 0
+        var inComplex = false
+        while (i < list.size) {
+            var m = list[i]
+            // A bare turn (no road, no ref) just past the start of a ramp is where the ramp splits,
+            // inside a loop ramp's curve: "Turn right" there read as a turn off the ramp. It is
+            // a fork of the same side ("Keep right").
+            val prev = out.lastOrNull()
+            if (prev != null && (prev.type == ManeuverType.RAMP_LEFT || prev.type == ManeuverType.RAMP_RIGHT) &&
+                prev.distanceMeters < RAMP_SPLIT_MAX_M && m.road.isNullOrBlank() && m.ref.isNullOrBlank()
+            ) {
+                val left = when (m.type) {
+                    ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT -> true
+                    ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT -> false
+                    else -> null
+                }
+                if (left != null) {
+                    val keep = osrmPhrase("fork", if (left) "left" else "right", null, null, null, null)
+                    m = m.copy(type = if (left) ManeuverType.FORK_LEFT else ManeuverType.FORK_RIGHT, instruction = keep, instructionNoRoad = keep)
+                }
+            }
+            val isRamp = m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT
+            if (!isRamp && !(inComplex && isFork(m))) {
+                inComplex = false
+                out += m
+                i++
+                continue
+            }
+            var j = i + 1
+            var folded = m.distanceMeters
+            var foldedS = m.durationSeconds // the time too, or the remaining time runs short
+            while (j < list.size && list[j].type == ManeuverType.MERGE && list[j - 1].distanceMeters < EXIT_COMPLEX_GAP_M) {
+                folded += list[j].distanceMeters
+                foldedS += list[j].durationSeconds
+                j++
+            }
+            val merged = list.subList(i + 1, j).lastOrNull { it.instruction.isNotBlank() }
+            // The shared ramp's sign often lists BOTH directions of the target highway ("99 North,
+            // 99 South" - one onramp splitting later). The fork just after it is the branch actually
+            // taken, so its instruction disambiguates: the ramp's line drops the not-taken direction
+            // (voice + shield chips both read it, user 2026-07-16).
+            val branch = if (!isRamp) null else run {
+                var k = i + 1
+                var found: Maneuver? = null
+                while (k < list.size && (isFork(list[k]) || list[k].type == ManeuverType.MERGE) && list[k - 1].distanceMeters < EXIT_COMPLEX_GAP_M) {
+                    if (list[k].instruction.isNotBlank()) found = list[k]
+                    k++
+                }
+                found
+            }
+            val hint = branch ?: merged
+            // A bare "Take the exit" (no number, no sign) is a ramp with nothing to say where it
+            // goes: the road it leads to sat on the fork or merge after it, said once the car was
+            // already on the ramp. It becomes "Take the ramp toward" that road.
+            val bareTo = if (isRamp && isBareExit(m.instruction)) hint?.let { it.ref?.takeIf(String::isNotBlank) ?: it.road?.takeIf(String::isNotBlank) } else null
+            val rampLine = bareTo?.let { osrmPhrase("on ramp", null, null, it, null, null) }
+            out += m.copy(
+                distanceMeters = folded,
+                durationSeconds = foldedS,
+                instruction = rampLine ?: disambiguateDest(m.instruction, hint?.instruction),
+                // The nameless twin gets the same surgery, or with spoken street names off the
+                // voice would go back to announcing BOTH directions of the split (issue #596).
+                instructionNoRoad = rampLine ?: m.instructionNoRoad?.let { disambiguateDest(it, hint?.instruction) },
+                lanes = m.lanes.ifEmpty { merged?.lanes.orEmpty() },
+                laneHint = m.laneHint ?: merged?.laneHint,
+                // The road ENTERED by a folded merge is the merge's (a ramp is nameless/ref-less):
+                // without it the bottom bar's highway shield never appeared on the freeway past a
+                // folded on-ramp (device 2026-07-17).
+                road = m.road ?: merged?.road,
+                ref = m.ref ?: merged?.ref,
+            )
+            inComplex = folded < EXIT_COMPLEX_GAP_M
+            i = j
+        }
+        return out
+    }
+
+    /** A bare turn this soon after a ramp starts is the ramp splitting ([consolidateExits]). */
+    private const val RAMP_SPLIT_MAX_M = 200.0
+
+    /** The language's exit phrase with no number and no sign ("Take the exit"). */
+    private fun isBareExit(instruction: String): Boolean =
+        listOf(null, "right", "left", "slight right", "slight left").any { instruction == osrmPhrase("off ramp", it, null, null, null, null) }
 
     // Cardinal tokens as signed on US-style destinations ("99 North", "I-80 E").
     private val DIR_TOKEN = Regex("""\b(North|South|East|West|N|S|E|W)\b""", RegexOption.IGNORE_CASE)
@@ -764,7 +880,12 @@ object RouteGeometry {
                     ?: return@mapNotNull null
                 Lane(inds, o["valid"]?.jsonPrimitive?.booleanOrNull ?: false)
             }.orEmpty()
-        val effType = rampReclass(type, mod, dest)
+        // A ferry leg: the foot profile marks it with mode "ferry", the bicycle profile with the
+        // intersection class "ferry" (its mode there is "pushing bike"). It is said as such, not as
+        // a turn onto the ferry's name.
+        val ferry = s["mode"]?.jsonPrimitive?.contentOrNull == "ferry" ||
+            s["intersections"]?.jsonArray?.any { i -> i.jsonObject["classes"]?.jsonArray?.any { it.jsonPrimitive.contentOrNull == "ferry" } == true } == true
+        val effType = if (ferry) "ferry" else rampReclass(type, mod, dest)
         return Maneuver(
             type = osrmType(effType, mod),
             instruction = osrmPhrase(effType, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
@@ -841,6 +962,10 @@ object RouteGeometry {
             // exit road name. Without this the exit step fell through to byMod() → a bland "Continue onto X"
             // and the "take the Nth exit" was silently dropped (the reported "didn't say which exit").
             "exit roundabout", "exit rotary" -> ManeuverType.EXIT_ROUNDABOUT
+            // A change of travel mode on the same way (walking to pushing the bike, off a ferry).
+            "notification" -> if (mod == null || mod == "straight") ManeuverType.CONTINUE else byMod()
+            // Boarding a ferry: spoken, with the straight arrow.
+            "ferry" -> ManeuverType.STRAIGHT
             "end of road", "turn" -> byMod()
             else -> byMod()
         }
@@ -853,8 +978,11 @@ object RouteGeometry {
     // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
     // byte-identical to the original template set). This is the seam that lets nav be spoken/shown in
     // the app's language — the road/dest name passed in stays in its native local form. See core/i18n.
-    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+    internal fun osrmPhrase(typeIn: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
         val strings = app.vela.core.i18n.NavStringsRegistry.current()
+        if (typeIn == "ferry") return strings.ferry()
+        // A mode change is phrased as going on: it read "Turn straight onto <ferry name>".
+        val type = if (typeIn == "notification") "continue" else typeIn
         // OSRM's arrive modifier says WHICH SIDE the destination is on — the banner + the
         // pre-arrival prompt become Google's "Your destination is on the right" instead of the
         // generic line (user 2026-07-11). A sideless arrive keeps the generic phrase.
@@ -1048,6 +1176,30 @@ object RouteGeometry {
         }
     }
 
+    /** True when [candidate] runs on [current]'s roads all the way: every point read along it
+     *  (every [STEP_M] or more, at most [SAME_ROAD_SAMPLES] of them, past its first
+     *  [SAME_ROAD_SKIP_M]) lies within [tolM] of [current]'s line. [divergent]'s five samples at
+     *  250 m cannot tell a parallel street from the same road; this can. */
+    internal fun sameRoad(current: List<LatLng>, candidate: List<LatLng>, tolM: Double = SAME_ROAD_TOL_M): Boolean {
+        if (current.size < 2 || candidate.size < 2) return false
+        val cumCur = app.vela.core.nav.RouteProjection.cumulative(current)
+        val cumCand = app.vela.core.nav.RouteProjection.cumulative(candidate)
+        val len = cumCand.last()
+        if (len <= SAME_ROAD_SKIP_M) return true
+        val step = maxOf(SAME_ROAD_STEP_M, (len - SAME_ROAD_SKIP_M) / SAME_ROAD_SAMPLES)
+        var m = SAME_ROAD_SKIP_M
+        while (m <= len) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(candidate, cumCand, m)
+            if (app.vela.core.nav.RouteProjection.alongMeters(current, cumCur, p, tolM) == null) return false
+            m += step
+        }
+        return true
+    }
+    private const val SAME_ROAD_TOL_M = 40.0
+    private const val SAME_ROAD_STEP_M = 50.0
+    private const val SAME_ROAD_SAMPLES = 400
+    private const val SAME_ROAD_SKIP_M = 100.0
+
     /** Interior points spaced along [poly] to feed OSRM as via-waypoints so it follows that path.
      *  ~[count] of them: dense enough that OSRM's shortest path between consecutive vias IS the road
      *  Google took (a short jam-detour between two sparse vias would otherwise be skipped), yet not so
@@ -1133,6 +1285,19 @@ object RouteGeometry {
     private const val SPUR_NORMAL_FRACTION = 0.8    // progress at or above this share = normal driving, stretch resets
     private const val SPUR_END_SLACK_M = 300.0      // origin/destination approaches may differ from the course
     private const val SPUR_LOCAL_M = 200.0          // beyond this from the windowed match, search the whole course
+
+    /**
+     * The vias that snap the open router onto [poly] from [origin] (the naming of a provisional
+     * Google route). With a departure heading, a sample within [VIA_ORIGIN_CLEAR_M] of the origin
+     * is left out: it sits on Google's own start, which Google picked with no heading, and it held
+     * a reroute's snap to it. On a real drive the snap began on a cross street, went round a block
+     * and crossed the road the car was on.
+     */
+    internal fun snapVias(poly: List<LatLng>, origin: LatLng, departBearingDeg: Double?): List<LatLng> =
+        sampleVias(poly).let { v -> if (departBearingDeg == null) v else v.filter { it.distanceTo(origin) >= VIA_ORIGIN_CLEAR_M } }
+
+    /** See [snapVias]. */
+    const val VIA_ORIGIN_CLEAR_M = 150.0
 
     internal fun sampleVias(poly: List<LatLng>, count: Int = 12): List<LatLng> {
         if (poly.size < 3) return emptyList() // need at least one interior point

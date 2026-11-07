@@ -89,7 +89,8 @@ class WebDirectionsFetcher @Inject constructor(
         if (!raw.isNullOrEmpty() && android.util.Log.isLoggable("VelaCapture", android.util.Log.DEBUG)) runCatching {
             val id = System.currentTimeMillis().toString(36)
             android.util.Log.d("VelaCapture", "TBEGIN $id ${pageLanguage()} ${raw.length}")
-            raw.replace('\n', ' ').chunked(3000).forEachIndexed { i, c -> android.util.Log.d("VelaCapture", "T $id $i $c") }
+            // logcat cuts a line at about 4 KB, and Hebrew or CJK text is 2 to 3 bytes a character.
+            raw.replace('\n', ' ').chunked(1000).forEachIndexed { i, c -> android.util.Log.d("VelaCapture", "T $id $i $c") }
             android.util.Log.d("VelaCapture", "TEND $id")
         }
         return if (raw.isNullOrEmpty()) emptyList()

@@ -174,7 +174,7 @@ Focus:
   map target panned whenever it held focus, and nothing else on the screen could be reached.
 - On a small screen a fixed layout pushes the primary button off the bottom. Welcome scrolls,
   and on a D-pad-first device opens scrolled to the bottom so Get started can take focus.
-  `VelaDialog` (90% of screen height), `VelaMenu` (85%) and the classic directions panel's body
+  `VelaDialog` (90% of screen height), `VelaMenu` (85% as a chooser, 70% as a touch menu) and the classic directions panel's body
   (58%) cap their height and scroll.
 
 Search bar (`SearchBar.kt`, `MapScreen`):

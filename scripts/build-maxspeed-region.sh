@@ -32,6 +32,14 @@ osmium tags-filter --overwrite -o "$WORK/ms.osm.pbf" "$WORK/region.osm.pbf" w/ma
 echo "→ osmium export → GeoJSONSeq"
 osmium export "$WORK/ms.osm.pbf" -f geojsonseq --geometry-types=linestring -o "$WORK/ms.geojsonseq" --overwrite
 
+# A region whose roads carry no maxspeed at all (a small island) has nothing to bake, and
+# tippecanoe exits 110 on empty input. Skip it with a warning: no file, no manifest row. (An
+# empty export is one newline, so test for content, not size.)
+if ! grep -q '[^[:space:]]' "$WORK/ms.geojsonseq"; then
+  echo "::warning::$ID has no road with a maxspeed tag. Nothing to publish."
+  exit 0
+fi
+
 # Bbox from the PBF header (not the geometry extent - a stray node sends it to Alaska; same guard as routing).
 read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]" # [S,W,N,E], the shape the routing manifest + picker use

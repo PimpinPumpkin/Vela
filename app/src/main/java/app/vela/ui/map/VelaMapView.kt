@@ -381,6 +381,12 @@ private const val PREVIEW_LAYER = "vela-preview"
 private const val NAV_IDLE_TICK_MS = 120L
 // Standing still (under 0.5 m/s), the free-drive camera ignores target moves smaller than this.
 private const val FOLLOW_STILL_DEADBAND_M = 2.0
+/** The free-drive follow turns heading-up once its speed, averaged over this many seconds, passes
+ *  [FREE_HEADING_UP_MPS]: sustained riding or driving, not one noisy fix on foot. */
+private const val FREE_HEADING_UP_TAU_S = 4.0
+/** The follow's glide in from a pan is over once the camera is this close to the fix. */
+private const val SEEK_DONE_M = 3.0
+private const val FREE_HEADING_UP_MPS = 3.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
 // SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
@@ -1115,6 +1121,9 @@ fun VelaMapView(
     // the next frame re-seeds, so pinching out past z14 while still following flew you straight
     // back in, over and over, until you panned (which drops follow). User report 2026-09-16.
     val browseEngaged = remember { booleanArrayOf(false) }
+    // True while the follow glides in from where a pan left the camera: the dot stays on the fix
+    // until the camera reaches it (#889).
+    val browseSeeking = remember { booleanArrayOf(false) }
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
@@ -1133,7 +1142,7 @@ fun VelaMapView(
     // on at driving speed, released only by the follow ending - a red light must HOLD the heading,
     // not level the camera out), [2] the course the camera is easing toward, [3] eased forward
     // lookahead meters (the padding-free puck-low).
-    val browseDrive = remember { doubleArrayOf(0.0, 0.0, Double.NaN, 0.0) }
+    val browseDrive = remember { doubleArrayOf(0.0, 0.0, Double.NaN, 0.0, 0.0) }
     val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
@@ -2465,11 +2474,18 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         runCatching { ensureShapes(style, savedShapes) }.onFailure { android.util.Log.w("VelaShapes", "shapes: ${it.message}") }
     }
-    // Turn arrows on the route at the turns ahead (issue #804), during a drive alone.
-    val turnArrows = app.vela.ui.TurnArrows.arrows.value
-    LaunchedEffect(turnArrows, navMode, styleRef) {
+    // Turn arrows on the route at the turns ahead (issue #804), during a drive alone. Cut from the
+    // line drawn here (routePolyline), not the guidance line, which can run meters to one side of
+    // it; off the main thread, since the drawn line is the long, smoothed one.
+    val turnArrowsFor = app.vela.ui.TurnArrows.input.value
+    LaunchedEffect(turnArrowsFor, routePolyline, navMode, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
-        runCatching { ensureTurnArrows(style, if (navMode) turnArrows else emptyList()) }.onFailure { android.util.Log.w("VelaTurnArrows", "arrows: ${it.message}") }
+        val f = turnArrowsFor
+        val arrows = if (!navMode || f == null) emptyList() else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            runCatching { app.vela.core.nav.TurnArrowGeometry.arrows(f.route, f.step, routePolyline.takeIf { it.size >= 2 } ?: f.route.polyline) }
+                .getOrDefault(emptyList())
+        }
+        runCatching { ensureTurnArrows(style, arrows) }.onFailure { android.util.Log.w("VelaTurnArrows", "arrows: ${it.message}") }
     }
     LaunchedEffect(shapeDraft, drawDots, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
@@ -2695,11 +2711,11 @@ fun VelaMapView(
             browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
             browseCam[0] = Double.NaN
             lastBrowse[0] = Double.NaN
-            browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
+            browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0; browseDrive[4] = 0.0
             browseZoomGoal[0] = Double.NaN
             if (navMode) browseUserTilt[0] = Double.NaN // a pan or a sheet keeps the angle, like Google's
             browseEst.reset()
-            browseEngaged[0] = false
+            browseEngaged[0] = false; browseSeeking[0] = false
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
@@ -2780,6 +2796,7 @@ fun VelaMapView(
                         continue
                     } else {
                         browseEngaged[0] = true
+                        browseSeeking[0] = true
                         browseCam[0] = cp.target?.latitude ?: loc.lat
                         browseCam[1] = cp.target?.longitude ?: loc.lng
                     }
@@ -2813,7 +2830,11 @@ fun VelaMapView(
                 // camera must track the heading like navigation; the earlier north-up ask turned
                 // out to be about the puck moving SIDEWAYS, and course-up is what Google does).
                 browseDrive[0] += (browseFix[3] - browseDrive[0]) * (1.0 - kotlin.math.exp(-dt / 1.0))
-                if (browseDrive[1] < 0.5 && browseDrive[0] > 2.5 && !browseFix[4].isNaN()) browseDrive[1] = 1.0
+                // The latch reads a slower average (FREE_HEADING_UP_TAU_S). On the 1 s average a
+                // single noisy 4 m/s fix on foot passed 2.5, and the map then turned with the
+                // walker for the rest of the follow.
+                browseDrive[4] += (browseFix[3] - browseDrive[4]) * (1.0 - kotlin.math.exp(-dt / FREE_HEADING_UP_TAU_S))
+                if (browseDrive[1] < 0.5 && browseDrive[4] > FREE_HEADING_UP_MPS && !browseFix[4].isNaN()) browseDrive[1] = 1.0
                 // "Keep north up": still driving (the beam keeps preferring the GPS course), but
                 // the camera takes the north-up branch below.
                 val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value
@@ -2893,7 +2914,10 @@ fun VelaMapView(
                 // catch up (the visible hop). At the eased position the dot stays centered and glides with
                 // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
                 // while pinching, when the camera isn't easing.)
-                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
+                // Not while the camera glides in from a pan: drawn at the eased position then, the dot
+                // jumped to the screen's center and rode back with the map (#889).
+                if (browseSeeking[0] && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
+                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0] && !browseSeeking[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
                     if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value)) {
@@ -5728,7 +5752,7 @@ fun VelaMapView(
     if (puckOverlayOn.value && puckMesh != null) {
         // The car, UFO, ship and duck are 3D models drawn from the camera's own tilt and the
         // heading each frame (both read in the draw phase, so no recomposition per frame).
-        val sizePx = (202 * app.vela.ui.PuckStyle.scale()).toInt()
+        val sizePx = (202 * app.vela.ui.PuckStyle.phoneScale()).toInt()
         androidx.compose.foundation.Canvas(
             Modifier
                 .graphicsLayer {
@@ -6561,15 +6585,22 @@ PropertyFactory.iconPadding(2f),
     // replaces the OSM basemap bus icons wherever this layer has coverage (poi_transit filter flips
     // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
+    // Stand-ins for the station badges, which PoiIcons.addTo draws from the icon font right after.
+    listOf(PoiIcons.STOP_METRO_IMG, PoiIcons.STOP_TRAIN_IMG).forEach { if (style.getImage(it) == null) style.addImage(it, transitStopBitmap()) }
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
         style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(18)))
         // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
         // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
+        // A station is drawn a quarter larger than a bus stop.
+        fun bySize(bus: Float) = Expression.match(
+            Expression.get("kind"), Expression.literal(bus),
+            Expression.stop("train", bus * 1.25f), Expression.stop("metro", bus * 1.25f),
+        )
         val stopSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
-            Expression.stop(15f, 0.78f),
-            Expression.stop(17f, 1.1f),
-            Expression.stop(19f, 1.4f),
+            Expression.stop(15f, bySize(0.78f)),
+            Expression.stop(17f, bySize(1.1f)),
+            Expression.stop(19f, bySize(1.4f)),
         )
         style.addLayer(
             SymbolLayer(TRANSIT_STOPS_LAYER, TRANSIT_STOPS_SRC).apply {
@@ -6579,7 +6610,21 @@ PropertyFactory.iconPadding(2f),
                 // OSM bus icons stay hidden, so z15 shows neither instead of the basemap's.
                 setMinZoom(16f)
                 setProperties(
-                    PropertyFactory.iconImage(TRANSIT_STOP_IMG),
+                    // A station where a subway or a train calls wears its glyph; a bus stop the bus.
+                    // Stations place first, so their names win a crowded corner (issue #900).
+                    PropertyFactory.iconImage(
+                        Expression.match(
+                            Expression.get("kind"), Expression.literal(TRANSIT_STOP_IMG),
+                            Expression.stop("train", PoiIcons.STOP_TRAIN_IMG),
+                            Expression.stop("metro", PoiIcons.STOP_METRO_IMG),
+                        ),
+                    ),
+                    PropertyFactory.symbolSortKey(
+                        Expression.match(
+                            Expression.get("kind"), Expression.literal(2f),
+                            Expression.stop("train", 0f), Expression.stop("metro", 1f),
+                        ),
+                    ),
                     PropertyFactory.iconSize(stopSize),
                     // The flock pattern (2026-07-20, car-screen "icons bump into the text" report):
                     // the badge never yields itself (allowOverlap), but with ignorePlacement TRUE it
@@ -7626,19 +7671,50 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     }
 }
 
-// Turn arrows on the route (issue #804): a short white arrow in a dark casing through each turn
-// ahead, Google's shape. Read from the TurnArrows holder, so MapScreen carries no parameter for it.
+// Turn arrows on the route (issue #804): a short white arrow with a thin dark edge through each
+// turn ahead, inside the blue line, as Google draws it. Read from the TurnArrows holder, so
+// MapScreen carries no parameter for it.
 private const val TURN_ARROW_SRC = "vela-turn-arrows-src"
 private const val TURN_ARROW_CASING_LAYER = "vela-turn-arrows-casing"
 private const val TURN_ARROW_LAYER = "vela-turn-arrows"
+private const val TURN_ARROW_HEAD_CASING_LAYER = "vela-turn-arrows-head-casing"
 private const val TURN_ARROW_HEAD_LAYER = "vela-turn-arrows-head"
-private const val TURN_ARROW_HEAD_IMG = "vela-turn-arrow-head"
+private const val TURN_ARROW_HEAD_CASING_IMG = "vela-turn-arrow-head-casing"
+private const val TURN_ARROW_HEAD_IMG = "vela-turn-arrow-head-fill"
+// The arrow's width as shares of the blue line's at every zoom: its dark edge spans 72% and its
+// white 54%, so it sits inside the stripe with blue showing each side, as Google's does. Before,
+// a fixed 10 to 24 dp curve ran wider than the stripe from about z15 to z17.
+private const val TURN_ARROW_CASING_OF_ROUTE = 0.72
+private const val TURN_ARROW_BODY_OF_ROUTE = 0.54
+private const val TURN_ARROW_EDGE = "#1A1470" // Google's dark indigo edge, on any route color
+// The head at icon size 1, in dp, against a [TURN_ARROW_REF_DP] shaft (its dark edge's width): a
+// plain triangle 1.45 shafts wide with a 74 degree tip and rounded corners, no swept-back barbs.
+private const val TURN_ARROW_REF_DP = 10f
+private const val TURN_ARROW_HEAD_W_DP = 14.5f
+private const val TURN_ARROW_HEAD_TIP_DEG = 74f
+private const val TURN_ARROW_HEAD_ROUND_DP = 1.5f
+private const val TURN_ARROW_HEAD_PAD_DP = 1f
+// The head's base sits this far behind the shaft's end, so the white shaft runs into the head.
+private const val TURN_ARROW_HEAD_TUCK_DP = 1f
+
+private fun turnArrowScaled(f: Double) = FloatArray(ROUTE_BASE_STOPS.size) { i -> if (i % 2 == 1) (ROUTE_BASE_STOPS[i] * f).toFloat() else ROUTE_BASE_STOPS[i] }
+private fun turnArrowCasingWidth() = realWidthCurve(turnArrowScaled(TURN_ARROW_CASING_OF_ROUTE), ROUTE_REAL_M * TURN_ARROW_CASING_OF_ROUTE, ROUTE_CAP_DP * TURN_ARROW_CASING_OF_ROUTE)
+private fun turnArrowBodyWidth() = realWidthCurve(turnArrowScaled(TURN_ARROW_BODY_OF_ROUTE), ROUTE_REAL_M * TURN_ARROW_BODY_OF_ROUTE, ROUTE_CAP_DP * TURN_ARROW_BODY_OF_ROUTE)
+/** The head's icon size by zoom: the shaft's dark width over [TURN_ARROW_REF_DP], so the head keeps its proportions. */
+private fun turnArrowHeadSize(): Expression {
+    val stops = (28..40).map { it / 2.0 }.map { z ->
+        val c = realWidthDp(turnArrowScaled(TURN_ARROW_CASING_OF_ROUTE), ROUTE_REAL_M * TURN_ARROW_CASING_OF_ROUTE, ROUTE_CAP_DP * TURN_ARROW_CASING_OF_ROUTE, z)
+        Expression.stop(z.toFloat(), (c / TURN_ARROW_REF_DP).toFloat())
+    }.toTypedArray()
+    return Expression.interpolate(Expression.linear(), Expression.zoom(), *stops)
+}
 
 private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnArrowGeometry.Arrow>) {
     if (style.getSource(TURN_ARROW_SRC) == null) {
         if (arrows.isEmpty()) return
         style.addSource(GeoJsonSource(TURN_ARROW_SRC))
-        if (style.getImage(TURN_ARROW_HEAD_IMG) == null) style.addImage(TURN_ARROW_HEAD_IMG, turnArrowHeadBitmap())
+        if (style.getImage(TURN_ARROW_HEAD_IMG) == null) style.addImage(TURN_ARROW_HEAD_IMG, turnArrowHeadBitmap(edge = false))
+        if (style.getImage(TURN_ARROW_HEAD_CASING_IMG) == null) style.addImage(TURN_ARROW_HEAD_CASING_IMG, turnArrowHeadBitmap(edge = true))
     }
     // Seated directly above the topmost route piece, below the labels, and seated AGAIN when a
     // piece has come in above them since: the stretch ahead and the tail arrive with the drive,
@@ -7649,30 +7725,40 @@ private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnAr
     val routeTop = layers.indexOfLast { it.id.startsWith("vela-route") && it !is SymbolLayer }
     val mine = layers.indexOfFirst { it.id == TURN_ARROW_CASING_LAYER }
     if (mine < 0 || (routeTop >= 0 && mine < routeTop)) {
-        for (id in listOf(TURN_ARROW_HEAD_LAYER, TURN_ARROW_LAYER, TURN_ARROW_CASING_LAYER)) runCatching { style.removeLayer(id) }
-        val zoomed = { lo: Float, hi: Float -> Expression.interpolate(Expression.exponential(1.5f), Expression.zoom(), Expression.stop(14, lo), Expression.stop(18, hi)) }
+        for (id in listOf(TURN_ARROW_HEAD_LAYER, TURN_ARROW_LAYER, TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_CASING_LAYER)) runCatching { style.removeLayer(id) }
+        // Round caps: a soft tail, and the shaft's end tucks under the head. Opaque edge: the
+        // shaft's and the head's edges overlap at the joint and must not darken there.
         val casing = LineLayer(TURN_ARROW_CASING_LAYER, TURN_ARROW_SRC).withProperties(
-            PropertyFactory.lineColor("#202124"), PropertyFactory.lineOpacity(0.85f), PropertyFactory.lineWidth(zoomed(10f, 24f)),
-            PropertyFactory.lineCap(Property.LINE_CAP_BUTT), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.lineColor(TURN_ARROW_EDGE), PropertyFactory.lineWidth(turnArrowCasingWidth()),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         ).apply { minZoom = 14f }
         val body = LineLayer(TURN_ARROW_LAYER, TURN_ARROW_SRC).withProperties(
-            PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(zoomed(5f, 14f)),
-            PropertyFactory.lineCap(Property.LINE_CAP_BUTT), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(turnArrowBodyWidth()),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         ).apply { minZoom = 14f }
-        val head = SymbolLayer(TURN_ARROW_HEAD_LAYER, TURN_ARROW_SRC)
+        val padDp = TURN_ARROW_HEAD_PAD_DP + turnArrowHeadEdgeDp()
+        fun head(id: String, img: String) = SymbolLayer(id, TURN_ARROW_SRC)
             .withFilter(Expression.eq(Expression.get("head"), Expression.literal(true)))
             .withProperties(
-                PropertyFactory.iconImage(TURN_ARROW_HEAD_IMG),
+                PropertyFactory.iconImage(img),
                 PropertyFactory.iconRotate(Expression.get("bearing")),
                 PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                // The bitmap's bottom margin, plus the tuck, back along the shaft: the head's base
+                // sits just behind the shaft's end, so the two read as one arrow.
+                PropertyFactory.iconOffset(arrayOf(0f, padDp + TURN_ARROW_HEAD_TUCK_DP)),
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
-                PropertyFactory.iconSize(zoomed(0.7f, 1.6f)),
+                PropertyFactory.iconSize(turnArrowHeadSize()),
             ).apply { minZoom = 14f }
+        val headCasing = head(TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_HEAD_CASING_IMG)
+        val headFill = head(TURN_ARROW_HEAD_LAYER, TURN_ARROW_HEAD_IMG)
+        // Edge, head edge, white shaft, white head: the head's edge lies under the white shaft, so
+        // no dark line crosses the joint.
         val above = layers.getOrNull(routeTop)?.id
         if (above != null) {
-            style.addLayerAbove(casing, above); style.addLayerAbove(body, casing.id); style.addLayerAbove(head, body.id)
-        } else { style.addLayer(casing); style.addLayer(body); style.addLayer(head) }
+            style.addLayerAbove(casing, above); style.addLayerAbove(headCasing, casing.id)
+            style.addLayerAbove(body, headCasing.id); style.addLayerAbove(headFill, body.id)
+        } else { style.addLayer(casing); style.addLayer(headCasing); style.addLayer(body); style.addLayer(headFill) }
     }
     val features = arrows.flatMap { a ->
         val line = Feature.fromGeometry(LineString.fromLngLats(a.points.map { Point.fromLngLat(it.lng, it.lat) }))
@@ -7686,14 +7772,38 @@ private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnAr
     android.util.Log.i("VelaTurnArrows", "set ${arrows.size} arrow(s), seated ${if (mine < 0 || (routeTop >= 0 && mine < routeTop)) "now" else "before"}")
 }
 
-/** The arrowhead: a white triangle in a dark casing, pointing up (north); the layer turns it. */
-private fun turnArrowHeadBitmap(): Bitmap {
-    val w = 56; val h = 44
-    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bmp)
-    val path = Path().apply { moveTo(w / 2f, 2f); lineTo(w - 2f, h - 2f); lineTo(w / 2f, h - 14f); lineTo(2f, h - 2f); close() }
-    canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xD9202124.toInt(); style = Paint.Style.STROKE; strokeWidth = 6f; strokeJoin = Paint.Join.ROUND })
-    canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); style = Paint.Style.FILL })
+/** The head's dark edge at icon size 1, in dp: the shaft's own, half the gap between its dark and white widths. */
+private fun turnArrowHeadEdgeDp(): Float =
+    (TURN_ARROW_REF_DP * (1.0 - TURN_ARROW_BODY_OF_ROUTE / TURN_ARROW_CASING_OF_ROUTE) / 2.0).toFloat()
+
+/**
+ * The arrowhead pointing up (north), the layer turns it: [edge] true is the dark edge drawn under
+ * the white shaft, false the white triangle drawn over it. Built in dp with the screen's density
+ * set on the bitmap, so the head keeps its size against the shaft on every screen.
+ */
+private fun turnArrowHeadBitmap(edge: Boolean): Bitmap {
+    val dm = android.content.res.Resources.getSystem().displayMetrics
+    val d = dm.density
+    val e = turnArrowHeadEdgeDp()
+    val fillW = TURN_ARROW_HEAD_W_DP - 2 * e
+    val fillL = (fillW / 2) / kotlin.math.tan(Math.toRadians(TURN_ARROW_HEAD_TIP_DEG / 2.0)).toFloat()
+    val pad = (TURN_ARROW_HEAD_PAD_DP + e) * d
+    val w = kotlin.math.ceil(fillW * d + 2 * pad).toInt()
+    val h = kotlin.math.ceil(fillL * d + 2 * pad).toInt()
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply { density = dm.densityDpi }
+    val cx = w / 2f
+    val base = h - pad
+    // Started mid-base, so the rounding reaches every corner.
+    val path = Path().apply {
+        moveTo(cx, base); lineTo(cx + fillW * d / 2, base); lineTo(cx, base - fillL * d); lineTo(cx - fillW * d / 2, base); close()
+    }
+    Canvas(bmp).drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        pathEffect = android.graphics.CornerPathEffect(TURN_ARROW_HEAD_ROUND_DP * d)
+        if (edge) {
+            color = android.graphics.Color.parseColor(TURN_ARROW_EDGE); style = Paint.Style.FILL_AND_STROKE
+            strokeWidth = 2 * e * d; strokeJoin = Paint.Join.ROUND
+        } else { color = 0xFFFFFFFF.toInt(); style = Paint.Style.FILL }
+    })
     return bmp
 }
 
@@ -8598,12 +8708,16 @@ private fun roadWidthScale(): Double = (app.vela.ui.AppTune.local("roadWidthScal
 /** A line's width by zoom: the wider of [base] (dp stops, exponential 1.5) and [realM] meters at
  *  [roadWidthScale], capped at [capDp], less [minus] (dp) at each zoom. Stops every half level. */
 private fun realWidthCurve(base: FloatArray, realM: Double, capDp: Double, minus: (Double) -> Double = { 0.0 }): Expression {
-    val m = realM * roadWidthScale()
     val stops = (10..40).map { it / 2.0 }.map { z ->
-        val w = maxOf(expInterp(base, z, 1.5), if (m > 0) minOf(capDp, m / (M_PER_DP_Z0 / Math.pow(2.0, z))) else 0.0)
-        Expression.stop(z.toFloat(), (w - minus(z)).coerceAtLeast(0.0).toFloat())
+        Expression.stop(z.toFloat(), (realWidthDp(base, realM, capDp, z) - minus(z)).coerceAtLeast(0.0).toFloat())
     }.toTypedArray()
     return Expression.interpolate(Expression.linear(), Expression.zoom(), *stops)
+}
+
+/** [realWidthCurve]'s width at zoom [z], in dp. */
+private fun realWidthDp(base: FloatArray, realM: Double, capDp: Double, z: Double): Double {
+    val m = realM * roadWidthScale()
+    return maxOf(expInterp(base, z, 1.5), if (m > 0) minOf(capDp, m / (M_PER_DP_Z0 / Math.pow(2.0, z))) else 0.0)
 }
 
 /** Street-name spacing by zoom (2026-10-03, issue #655): [base] px up to z16, widening to
@@ -10304,6 +10418,7 @@ private fun applyData(
                 Feature.fromGeometry(Point.fromLngLat(st.lon, st.lat)).apply {
                     addNumberProperty(TRANSIT_STOP_INDEX_PROP, i)
                     addStringProperty("name", st.name)
+                    addStringProperty("kind", stopKind(st.modes))
                 }
             },
         )
@@ -10441,7 +10556,7 @@ private fun arrowBitmap(): Bitmap {
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
 internal fun navPuckBitmap(
-    scale: Float = app.vela.ui.PuckStyle.scale(),
+    scale: Float = app.vela.ui.PuckStyle.phoneScale(),
     whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
 ): Bitmap {
     // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
@@ -10906,6 +11021,17 @@ internal fun speedCamBitmap(): Bitmap {
 
 /** Canonical GTFS stop badge: a small blue circle with a white bus glyph, the same marker
  *  language as the ALPR badge but round + transit-blue so it reads as a stop, not a POI. */
+/** The badge a stop wears: "train" when a train calls there, else "metro" when a subway, tram or
+ *  light rail does, else "bus". */
+internal fun stopKind(modes: List<String>): String {
+    val kinds = modes.mapNotNull { app.vela.core.data.transit.Transitous.kindOf(it) }
+    return when {
+        app.vela.core.data.transit.Transitous.Kind.TRAIN in kinds -> "train"
+        app.vela.core.data.transit.Transitous.Kind.METRO in kinds -> "metro"
+        else -> "bus"
+    }
+}
+
 private fun transitStopBitmap(): Bitmap {
     val s = 40
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)

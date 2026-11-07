@@ -184,6 +184,15 @@ the tiles (`GOOGLE_LINE_NAMED`, no lanes or sign text). When that fails too, the
 driven on Google's short steps. The route keeps the Google time the list showed, so picking it
 cannot move the row.
 
+### A place as the destination
+
+When the destination is a Google place, Google is asked for the place (its name, address and
+feature id), not only its point, the way its own web page asks. The route then ends at the
+place's entrance point. Asked for the bare point, Google ends on the road nearest the pin, which
+for a large store can be the road behind the building. Reroutes and rechecks to the same point
+ask the same way (`DestinationPlaces`). A route made by snapping the open router to Google's
+course ends where Google's line ends; its last leg used to run to the pin.
+
 ### Stops
 
 Google is asked for the trip through the stops: `DirectionsPb.withWaypoints` adds one waypoint
@@ -227,8 +236,10 @@ classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_E
 false and the parameter is never sent.
 
 When Google does not answer and a region is downloaded, the on-phone router computes the
-avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). If nothing
-honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
+avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). With no region,
+or none in time, the other open service, Valhalla, is asked for a car route told to keep off
+them. Its options are preferences, so its route counts only when its own summary says it used
+none of what was avoided. If nothing honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
 use tolls, highways, or ferries" when every route carries the tag.
 
 ### Times and traffic colors
@@ -269,7 +280,9 @@ missed turn says "make a U-turn", and so does the next one. A planning fetch sen
 Setting a route aside has a price limit (`RouteGeometry.forwardChoice`). A forward Google route
 is taken only when it is within 3 minutes, or 8 percent, of the best one. With none, the open
 router's own route is used when it is that close to the best route's time without traffic: it
-was asked with the heading and usually goes round the block. When going on costs more than that
+was asked with the heading and usually goes round the block. It runs on the set-aside route's
+clock and traffic, so its arrival time is Google's from the first answer instead of the open
+router's fast one until the next recheck. When going on costs more than that
 either way, the best route stands and the car is told to turn around. Without the limit a
 forward alternate 20 minutes longer was taken over the best route.
 
@@ -286,6 +299,9 @@ the line must be named or the route is dropped, and a road bridge's name never l
 street under it. The line is never snapped through the foot router. Points on Google's line
 land on the far sidewalk or a flyover deck, and the snapped route doubled back at each one (20
 to 110% longer on Davis, Sacramento and Dhaka walks).
+
+A walk or a ride that crosses water on a ferry has a "Take the ferry" step where it boards. The
+open routers include passenger ferries, which run on their own timetable.
 
 ### Bikes
 

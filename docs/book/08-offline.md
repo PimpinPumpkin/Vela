@@ -153,6 +153,11 @@ map's source:
 - An archive is mounted, and the mounted one kept, while its roads reach the center tile, one
   of the eight around it, or a corner of the screen. Requiring every corner dropped a whole
   downloaded state to the world floor when one corner sat over a lake.
+- The mounted one gives way when the center tile has none of its roads and another downloaded
+  region's roads are there. Otherwise a neighboring region the screen was centered on stayed
+  blank until no corner of the screen was left over the first one.
+- One archive draws at a time, so past the edge of the mounted region the map is blank even
+  where a neighbor is downloaded.
 - Where nothing qualifies the world floor draws coastlines, borders and place names at low
   zoom.
 - A swap reloads the whole style, so swaps are at least `BASEMAP_SWAP_COOLDOWN_MS` (2 s)

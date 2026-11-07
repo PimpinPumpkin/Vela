@@ -127,4 +127,16 @@ class TransitSubwayTest {
         assertEquals(listOf("阪和線", "高野線"), lines.map { it.name })
         assertTrue(lines.all { it.mode == TransitMode.TRAIN })
     }
+    // Issue #888: a trip summary as captured. Lines 448 and 18 have no color there, so their pills
+    // are `["448",1]` with no fill, and the card showed only line 301.
+    @Test fun `a line with no color in the summary is still on the card`() {
+        val bus = """[4,null,[3,"bus2.png",null,"Bus",[["//maps.gstatic.com/mapfiles/transit/iw2/svg/bus2.svg",1,[44,44],null,0]]]]"""
+        val summary = Json.parseToJsonElement("""[$bus,[5,["301",1,"#018369","#ffffff"]],[9],$bus,[5,["448",1]],[9],$bus,[5,["18",1]],
+          [1,null,[3,"walk.png",null,"Walk",[["//maps.gstatic.com/mapfiles/transit/iw2/svg/walk.svg",1,[44,44],null,0]],"3"]]]""")
+        val lines = TransitParser.parseLinesForTest(summary, null)
+        assertEquals(listOf("301", "448", "18"), lines.map { it.name })
+        assertEquals(null, lines[1].colorHex)
+        val ride = app.vela.core.model.TransitStep(mode = TransitMode.BUS, line = app.vela.core.model.TransitLine("448", TransitMode.BUS, "#ffffff"))
+        assertEquals("#ffffff", TransitParser.withRideColors(lines, listOf(ride))[1].colorHex)
+    }
 }

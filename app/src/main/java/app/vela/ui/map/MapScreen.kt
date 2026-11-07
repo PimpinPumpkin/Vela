@@ -6753,17 +6753,22 @@ private fun ListEditorDialog(
                 }
                 } // end scrolling form column
                 Spacer(Modifier.height(20.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // A flow, so a button that does not fit moves to the next line whole instead of
+                // being squeezed to its word broken over lines (#906).
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     if (onDelete != null) {
                         TextButton(onClick = onDelete, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
-                            Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error, maxLines = 1, softWrap = false)
                         }
+                        Spacer(Modifier.weight(1f))
                     }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel)) }
-                    Spacer(Modifier.width(4.dp))
+                    TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel), maxLines = 1, softWrap = false) }
                     Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color, alert) }, enabled = name.isNotBlank(), modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
-                        Text(stringResource(R.string.list_save))
+                        Text(stringResource(R.string.list_save), maxLines = 1, softWrap = false)
                     }
                 }
             }

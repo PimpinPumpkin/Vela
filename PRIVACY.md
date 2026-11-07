@@ -43,8 +43,8 @@ logged-out browser's. They are not tied to an account.
 | **google.com** (search) | every search you submit, and a tap on a place on the map | your IP, the query (for a tap, the place's name), the map view (for a tap, the tapped spot). When you search from inside the view, a second request over about 2.5 km around your position so nearby places rank first. The same short-lived cookie |
 | **google.com** (places on the map) | only with "Place icons on the map" on **Both** (one request after you stop panning) or **Google** (as you pan) | your IP, the map area |
 | **google.com** (place details, photos, reviews) | opening a place | your IP, the place's name and address or Google's id for it, and the Google session cookie (below) |
-| **google.com** (directions) | planning a driving route, a walking route once, and a cycling route when the bike-lanes setting is off or its routers have no answer | your IP, and the coordinates of the start, the end and any stops. The start is your position when you route from "Your location". Google's answer is the route you drive |
-| **google.com** (directions, during a drive) | when you leave the route, and every 2 minutes or so for traffic | your IP, your current position and the destination. Settings > Navigation > "Live traffic re-checks while navigating" turns the periodic one off |
+| **google.com** (directions) | planning a driving route, a walking route once, and a cycling route when the bike-lanes setting is off or its routers have no answer | your IP, and the coordinates of the start, the end and any stops. When the end is a place found on Google, its name, address and Google id too. The start is your position when you route from "Your location". Google's answer is the route you drive |
+| **google.com** (directions, during a drive) | when you leave the route, and every 2 minutes or so for traffic | your IP, your current position and the destination (with its name, address and Google id when it is a Google place). Settings > Navigation > "Live traffic re-checks while navigating" turns the periodic one off |
 | **google.com** (hidden pages) | the features only a browser engine gets, listed under "The hidden pages" | your IP, the page's address (the place, or a transit trip's endpoints), the Google session cookie, and whatever Google's own page script collects |
 | **google.com / googleapis.com** (Street View) | opening Street View, walking between panoramas, going back in time | your IP, the place's coordinate or a panorama id, then image tile coordinates |
 | **google.com/maps/vt** (traffic layer) | "Live traffic overlay" on (Settings > Map, off by default) | your IP, the tile coordinates in view |
@@ -57,7 +57,7 @@ logged-out browser's. They are not tied to an account.
 | **Transitous** (open transit data) | transit stops at street zoom, colored rail lines while "Highlight transit lines" is on, bike-share stations at street zoom while "Bike share" is on (refreshed every minute while Vela is on screen), every departure board (refreshed every 30 s while open), and the real path of a transit trip you expand | your IP, the map area, a stop's id or coordinate, or the trip's two stops |
 | **AWS** (terrain tiles) | hillshade relief | your IP, tile coordinates |
 | **FOSSGIS OSRM** | every route you plan and every reroute | your IP, the start, end and stop coordinates, and during a reroute your position and heading. Its turn instructions are used wherever its roads match the route |
-| **FOSSGIS Valhalla** | a driving route where Google's path and OSRM's differ; bike routes with "Bike routes prefer bike lanes and quiet streets" on (the default) and no downloaded region | your IP. For a drive, the coordinates along the stretches that differ, to get their street names. For a bike route, the start, end and stops |
+| **FOSSGIS Valhalla** | a driving route where Google's path and OSRM's differ; a drive with an Avoid switch on when Google gives no route and no downloaded region does; bike routes with "Bike routes prefer bike lanes and quiet streets" on (the default) and no downloaded region | your IP. For a drive, the coordinates along the stretches that differ, to get their street names, or the start and end of an avoiding drive. For a bike route, the start, end and stops |
 | **NDW** (Dutch national road data) | a drive whose route enters the Netherlands, with "Bridge openings" on (the default), then every 5 minutes while a movable bridge is on the route | your IP. A plain file download, the same for everyone |
 | **Overpass** (OpenStreetMap) | only where no baked region file covers the spot: traffic lights and stop signs, the opt-in speed camera layer, and with "Traffic-light guidance" on the lights along a route when its drive starts | your IP, a bounding box |
 | **raw.githubusercontent.com, api.github.com, GitHub Pages** | at launch (settings file, map fonts), about once a day for the update check, once after an update for the What's new notes | your IP. A plain file download |
@@ -214,12 +214,17 @@ and hand it to a developer.
   places in exports" goes further for a report you mean to post publicly: coordinates round to
   about 10 km, and searches, destinations, links and place names become `[redacted]`.
 
-## Trip recording (off by default)
+## Trip recording
 
-Settings > "Save my trips" is a second switch and more revealing than diagnostics.
+Settings > "Save my trips" is a second switch and more revealing than diagnostics. A new
+install asks on its first screens, with "Save my drives on this phone" and "Delete drives after
+30 days" both on; installs from before October 23, 2026 keep the setting they had, and their
+drives are not deleted until they turn the second switch on under Settings > Diagnostics.
 
 - When on, Vela records the GPS trace of each drive to a file on your phone, so a trip can be
-  replayed later to test turn-by-turn.
+  replayed later to test turn-by-turn, or attached to a bug report.
+- With "Delete drives after 30 days" on, a drive is deleted 30 days after it ended, checked at
+  every launch and every drive's start.
 - This is your exact movement, the most sensitive thing the app stores. Vela never uploads it.
   A trace leaves the phone only when you tap Share on a trip and choose where to send it.
 - **Share trims the private ends first, and that is the default button.** "Share trimmed"

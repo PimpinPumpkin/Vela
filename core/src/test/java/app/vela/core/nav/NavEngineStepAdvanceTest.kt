@@ -94,7 +94,9 @@ class NavEngineStepAdvanceTest {
         assertTrue("still driving, 40 m short of the turn: not there yet", !arrived)
         for (x in listOf(372.0, 380.0, 385.0)) go(east(x), 2.5)
         assertTrue("rolling up to the entrance is not arriving", !arrived)
-        repeat(3) { go(east(385.0), 0.0) }
+        repeat(5) { go(east(385.0), 0.0) }
+        assertTrue("waiting a few seconds to turn in is not arriving", !arrived)
+        repeat(5) { go(east(385.0), 0.0) }
         assertTrue("parked 15 m before the turn, 35 m of route left", arrived)
     }
 

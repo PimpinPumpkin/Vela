@@ -335,6 +335,7 @@ data class MapUiState(
     val voiceAlertsOnly: Boolean = false, // muted, with the speeding and camera alerts as a chime (issue 735)
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
+    val tripAutoClear: Boolean = false, // delete saved drives after TripRetention.KEEP_DAYS
     val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
     // A drive just finished and the user asked to be prompted for its name; the prompt shows on
     // the map so it is answered while the drive is fresh, not found later in Settings.
@@ -545,6 +546,7 @@ class MapViewModel @Inject constructor(
         override fun restartStaleTimer() = this@MapViewModel.restartStaleTimer()
         override fun flashStatus(msg: String, millis: Long) = this@MapViewModel.flashStatus(msg, millis)
         override fun showStatus(msg: String, voiceAction: Boolean) = this@MapViewModel.showStatus(msg, voiceAction)
+        override fun pruneOldTrips() = this@MapViewModel.pruneOldTrips()
         override fun updateSpeedLimit(here: LatLng) = this@MapViewModel.updateSpeedLimit(here)
         override fun passAlert(here: LatLng, speedMps: Double?) =
             this@MapViewModel.passAlert(here, speedMps, android.os.SystemClock.elapsedRealtime())
@@ -844,6 +846,7 @@ class MapViewModel @Inject constructor(
         app.vela.data.StreamedSpeedLimit.http = http.newBuilder().addInterceptor(app.vela.diag.NetCount).addInterceptor(app.vela.offline.ReleaseRedirects).build()
         nav.bind()
         ukFuel.bind()
+        pruneOldTrips() // saved drives past their days, when that setting is on
         bikeShare.bind()
         // Turning the transit lines on (or off) acts at once, not at the next pan.
         viewModelScope.launch {
@@ -1096,6 +1099,7 @@ class MapViewModel @Inject constructor(
                 restartStaleTimer()
                 // Advance transit step-by-step guidance when we reach the current leg's end (no-op off transit).
                 maybeAdvanceTransitNav(here)
+                if (_state.value.transitNav != null) publishTransitNotice(here)
                 // Save the fix to the active trip (no-op unless one is recording).
                 tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits)
                 passAlert(here, speed?.toDouble(), nowMs)
@@ -1114,6 +1118,8 @@ class MapViewModel @Inject constructor(
                         // Course for the engine's heading-vs-route off-route term and the
                         // reroute's departure heading. Fresh only: stopped = null.
                         bearingDeg = fixBearing?.toDouble(),
+                        // An outlier hold steers with the last good position; it never starts a recheck.
+                        fromFix = here == rawHere,
                     )
                     nav.lastNavFedMs = nowMs
                     nav.recordDriveFix(here)
@@ -2228,7 +2234,14 @@ class MapViewModel @Inject constructor(
         narrowToView = viewport?.copyOf(4)
         narrowAskedMs = android.os.SystemClock.elapsedRealtime()
         if (here != null) _state.update { it.copy(center = here) }
-        runSearch(_state.value.query.trim(), here)
+        // A list a pan minimized stays down until this search answers (#891): opened at once,
+        // with the old results still in it, the map framed the old area first and then the new.
+        runSearch(_state.value.query.trim(), here, expand = false)
+        val job = searchJob
+        viewModelScope.launch {
+            job?.join()
+            if (searchJob === job) _state.update { it.copy(resultsCollapsed = false) }
+        }
     }
     /** Set by [searchThisArea] for the one search it starts: the view to keep the results to. */
     private var narrowToView: DoubleArray? = null
@@ -2542,7 +2555,7 @@ class MapViewModel @Inject constructor(
     // Maps in two hidden views on the chance a place got tapped, two whole web apps per search.
     // A tap's photos and reviews are single RPCs now; the pages load only when actually needed.)
 
-    private fun runSearch(q: String, near: LatLng?, remember: Boolean = true) {
+    private fun runSearch(q: String, near: LatLng?, remember: Boolean = true, expand: Boolean = true) {
         if (q.isEmpty()) return
         // Pasted coordinates ("37.77, -122.42" or a geo: string) drop a reverse-geocoded pin
         // there instead of going to the search endpoint as text - same handling a bare external
@@ -2594,7 +2607,7 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
-            _state.update { it.copy(openListId = null, searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
+            _state.update { it.copy(openListId = null, searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = if (expand) false else it.resultsCollapsed, alongRouteDest = null) }
             // A pasted Google Maps SHARE LINK: try the shared-list import (issue #1). The link
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
@@ -6575,6 +6588,11 @@ class MapViewModel @Inject constructor(
         val origin = (if (s.directionsReversed) place else fromPoint) ?: return
         val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
+        // A Google place is asked for as the place, so the route ends at its entrance point
+        // (DestinationPlaces); reroutes and rechecks to the same point ask the same way.
+        (if (s.directionsReversed) s.directionsOrigin else s.selected)?.let { p ->
+            p.featureId?.let { fid -> app.vela.core.data.DestinationPlaces.remember(dest, listOfNotNull(p.name, p.address).filter { it.isNotBlank() }.joinToString(", "), fid) }
+        }
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
@@ -7205,6 +7223,11 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(transitNav = TransitNavState(itin, 0), directionsOpen = false, selected = null) }
         startLocation()
         itin.steps.firstOrNull()?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+        // The notification that carries the trip with the phone in a pocket (issue #880).
+        transitAlertedLeg = -1
+        app.vela.service.TransitGuide.onEnd = { endTransitNav() }
+        publishTransitNotice(_state.value.myLocation)
+        app.vela.service.TransitGuide.start(appContext)
     }
 
     fun advanceTransitNav() {
@@ -7213,20 +7236,71 @@ class MapViewModel @Inject constructor(
         if (tn.isLastStep) {
             _state.update { it.copy(transitNav = tn.copy(arrived = true)) }
             voice.speak(appContext.getString(R.string.transit_nav_arrived), interrupt = true)
+            publishTransitNotice(_state.value.myLocation)
             return
         }
         val ni = tn.stepIndex + 1
         _state.update { it.copy(transitNav = tn.copy(stepIndex = ni)) }
         tn.itinerary.steps.getOrNull(ni)?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+        publishTransitNotice(_state.value.myLocation)
     }
 
     fun backTransitNav() {
         val tn = _state.value.transitNav ?: return
         transitLegArmed = false
         _state.update { it.copy(transitNav = tn.copy(stepIndex = (tn.stepIndex - 1).coerceAtLeast(0), arrived = false)) }
+        publishTransitNotice(_state.value.myLocation)
     }
 
-    fun endTransitNav() = _state.update { it.copy(transitNav = null) }
+    fun endTransitNav() {
+        _state.update { it.copy(transitNav = null) }
+        app.vela.service.TransitGuide.end(appContext)
+    }
+
+    /** The leg [transitAlertedLeg] said "get off at the next stop" for, -1 for none yet. */
+    private var transitAlertedLeg = -1
+
+    /**
+     * The transit guidance notification for the leg in hand at [here] (issue #880): a ride shows
+     * its line and where to get off with the stops left, a walk where it goes, and the stop before
+     * the rider's raises a heads-up and says it once. Unchanged content is not re-posted (the
+     * holder is a state flow).
+     */
+    private fun publishTransitNotice(here: LatLng?) {
+        val tn = _state.value.transitNav ?: run { app.vela.service.TransitGuide.notice.value = null; return }
+        if (tn.arrived) {
+            app.vela.service.TransitGuide.notice.value =
+                app.vela.service.TransitGuide.Notice(appContext.getString(R.string.transit_nav_arrived), "", arrived = true)
+            return
+        }
+        val step = tn.step ?: return
+        val notice = if (step.line != null) {
+            val title = buildString {
+                append(appContext.getString(R.string.transit_nav_take, step.line?.name.orEmpty()))
+                step.headsign?.let { append(" ").append(appContext.getString(R.string.transit_nav_towards, it)) }
+            }
+            val left = app.vela.core.nav.TransitProgress.stopsLeft(step, here)
+            val text = listOfNotNull(
+                step.alightStop?.name?.let { appContext.getString(R.string.transit_nav_get_off, it) },
+                left?.takeIf { it > 0 }?.let { appContext.resources.getQuantityString(R.plurals.transit_notice_stops_left, it, it) },
+            ).joinToString(" · ")
+            val yours = app.vela.core.nav.TransitProgress.nextIsYours(step, here)
+            val alert = if (yours) step.alightStop?.name?.let { appContext.getString(R.string.transit_notice_next_is_yours, it) } else null
+            app.vela.service.TransitGuide.Notice(title, text, alert, alertKey = alert?.let { "leg${tn.stepIndex}" })
+        } else {
+            val next = tn.itinerary.steps.getOrNull(tn.stepIndex + 1)
+            app.vela.service.TransitGuide.Notice(
+                appContext.getString(R.string.transit_nav_walk, step.durationText.orEmpty()).trim(),
+                next?.boardStop?.name?.let { appContext.getString(R.string.transit_notice_to, it) }
+                    ?: appContext.getString(R.string.transit_notice_to_destination),
+            )
+        }
+        app.vela.service.TransitGuide.notice.value = notice
+        if (notice.alert != null && transitAlertedLeg != tn.stepIndex) {
+            transitAlertedLeg = tn.stepIndex
+            voice.speak(notice.alert, interrupt = false)
+        }
+    }
 
     /** Auto-advance transit guidance when GPS reaches the current leg's end (board/alight stop or the
      *  leg's walk destination). Latched: the leg must first be ARMED by being >TRANSIT_ARM_M from its
@@ -7454,6 +7528,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false),
+                tripAutoClear = settingsPrefs.getBoolean(TRIP_AUTO_CLEAR, false),
                 nameTripsOnSave = settingsPrefs.getBoolean("trip_name_on_save", false),
             )
         }
@@ -7463,6 +7538,25 @@ class MapViewModel @Inject constructor(
     fun setTripRecording(on: Boolean) {
         settingsPrefs.edit().putBoolean("trip_recording_on", on).apply()
         _state.update { it.copy(tripRecordingEnabled = on) }
+    }
+
+    /** "Delete drives after 30 days" (the first-run card, Settings > Diagnostics). Turning it on
+     *  clears the old drives at once; after that at every launch and every drive's start. */
+    fun setTripAutoClear(on: Boolean) {
+        settingsPrefs.edit().putBoolean(TRIP_AUTO_CLEAR, on).apply()
+        _state.update { it.copy(tripAutoClear = on) }
+        if (on) pruneOldTrips()
+    }
+
+    /** Drops the saved drives past their days when the setting is on (off the main thread). Called
+     *  from the constructor too, before [settingsPrefs] is assigned, so it opens the file itself. */
+    fun pruneOldTrips() {
+        val prefs = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(TRIP_AUTO_CLEAR, false)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val n = tripStore.pruneExpired()
+            if (n > 0) android.util.Log.i("VelaTrips", "deleted $n drive(s) past ${app.vela.core.replay.TripRetention.KEEP_DAYS} days")
+        }
     }
 
     fun recordedTrips(): List<app.vela.replay.TripMeta> = tripStore.list()
@@ -7771,6 +7865,49 @@ class MapViewModel @Inject constructor(
                 .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
         }.getOrNull()
     }
+
+    /** The picked trips' full traces, untrimmed, as one zip: each entry named as [tripFullFileName]
+     *  names a single one. Writes a file, so call it off the main thread. Null when none can be read. */
+    private fun fullTripsZip(metas: List<app.vela.replay.TripMeta>): Pair<List<Pair<String, String>>, Int>? {
+        val kept = metas.mapNotNull { m -> tripStore.rawCsv(m.id)?.let { m to it } }
+        if (kept.isEmpty()) return null
+        val names = app.vela.core.replay.TripShareBatch.entryNames(kept.map { tripStamp(it.first.startedAt) })
+            .map { it.removeSuffix(".csv") + "-full.csv" }
+        return names.zip(kept.map { it.second }) to kept.sumOf { it.first.fixCount }
+    }
+
+    /** Share the picked trips' full traces as one zip ([fullTripsZip]). */
+    fun shareFullTripsZipIntent(metas: List<app.vela.replay.TripMeta>): android.content.Intent? {
+        val (entries, fixes) = fullTripsZip(metas) ?: return null
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(dir, "vela-trips-${tripStamp(System.currentTimeMillis())}-full.zip")
+            app.vela.core.replay.TripShareBatch.writeZip(entries, file.outputStream())
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = app.vela.core.replay.TripShareBatch.MIME
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_trips_subject, entries.size, fixes))
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_share_trip_chooser))
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+    }
+
+    /** Write the picked trips' full traces as one zip into [uri], a file the user picked with the
+     *  system's save dialog. Nothing is sent anywhere. Call off the main thread. */
+    fun saveTripsTo(metas: List<app.vela.replay.TripMeta>, uri: android.net.Uri): Boolean {
+        val (entries, _) = fullTripsZip(metas) ?: return false
+        return runCatching {
+            appContext.contentResolver.openOutputStream(uri, "wt")?.use { app.vela.core.replay.TripShareBatch.writeZip(entries, it); true } ?: false
+        }.getOrDefault(false)
+    }
+
+    /** The file name the picked trips' full traces are saved under. */
+    fun tripsFullFileName(): String = "vela-trips-${tripStamp(System.currentTimeMillis())}-full.zip"
 
     /** The file name a trip's full trace is shared and saved under. */
     fun tripFullFileName(meta: app.vela.replay.TripMeta): String = "vela-trip-${tripStamp(meta.startedAt)}-full.csv"
@@ -10690,6 +10827,7 @@ class MapViewModel @Inject constructor(
         /** How long one place of a link's trip may take to look up before it counts as not found. */
         private const val LINK_PLACE_TIMEOUT_MS = 8_000L
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
+        const val TRIP_AUTO_CLEAR = "trip_auto_clear"
         const val KEY_DISMISSED = "dismissed"
         const val KEY_SAVED_PIN_TIP = "saved_pin_tip_done"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close

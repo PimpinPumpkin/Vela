@@ -75,7 +75,20 @@ object PuckStyle {
         style.value = p.getString(KEY_STYLE, STYLE_BLUE) ?: STYLE_BLUE
         shape.value = p.getString(KEY_SHAPE, SHAPE_ARROW) ?: SHAPE_ARROW
         carColor.value = p.getString(KEY_CAR_COLOR, "red")?.takeIf { it in CAR_COLORS } ?: "red"
+        val dm = context.resources.displayMetrics
+        screenFit = (minOf(dm.widthPixels, dm.heightPixels) / FIT_FULL_PX).coerceIn(FIT_MIN, 1f)
     }
+
+    /** The phone arrow's share of a screen narrower than [FIT_FULL_PX]: its size is in pixels, so
+     *  on an 800 by 480 screen it covered 42% of the width (#911). 1 on a 1080 px wide screen or
+     *  larger, which keeps those as they were. */
+    var screenFit = 1f
+        private set
+    private const val FIT_FULL_PX = 1080f
+    private const val FIT_MIN = 0.4f
+
+    /** [scale] fitted to this phone's screen ([screenFit]); the car screen sizes its own. */
+    fun phoneScale(): Float = scale() * screenFit
 
     fun setSize(context: Context, value: String) {
         size.value = value

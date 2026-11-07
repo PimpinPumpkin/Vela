@@ -157,6 +157,9 @@ interface MapDataSource {
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
         avoidFerries: Boolean = false,
+        // A reroute's departure heading: the snap starts the way the car points, as every other
+        // reroute fetch does. Null for a pick made while planning.
+        departBearingDeg: Double? = null,
     ): Route = route
 }
 

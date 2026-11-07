@@ -94,11 +94,27 @@ The card moves to the next step when the car is at the turn: 2.5 s ahead at spee
 than 5 m ahead at a crawl. Waiting at a stop line before a turn, the card still shows that
 turn. The voice says "turn left" 25 m out either way.
 
-- The first prompt for a step leads with lane guidance when the step has lanes.
+- The first prompt for a step leads with lane guidance when the step has lanes. A ramp on the
+  same side does not say the side again: "Use the right lane to take the ramp toward ...".
+- A turn with no street name right after a short ramp is the ramp splitting, said "Keep right"
+  or "Keep left", not "Turn right".
 - In English a later prompt for the same step drops the sign's "toward ..." tail.
 - A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
   (see Stops below).
+- The destination is said with its side, "Your destination is on the right", from the router or,
+  when the router gives none, from where the destination's pin sits against the end of the line.
+  Its approach prompt says the same side ("Your destination will be on the right"). A pin on the
+  line itself gives no side: the approach says "will be ahead" and the arrival is "You have
+  arrived".
+- A fork on an exit ramp is its own step, said like any fork. One close to the exit rides on the
+  exit's line: "Take the exit toward ..., then keep left". The merge at the ramp's end is folded
+  into the step before it.
 - A continue or a straight-on is silent unless its lanes show a real fork.
+- A roundabout is said at its entry, with the exit to take. Its own exit step right after the
+  entry says nothing and is never the "then" of a chained line.
+- A turn lane mapped as its own way does not split a turn in two. A short unnamed slight turn
+  followed by a turn the same way, adding up to a real turn, is one "Turn right onto" the street,
+  said where the lane leaves the road.
 - The first instruction is spoken once by the drive's opener ("Starting navigation. Head east on
   ..."). The engine skips it.
 - Off route, the voice says only "Rerouting". Prompts computed against a route you are not on
@@ -119,6 +135,14 @@ turn left onto Oak Avenue", when the first is announced and again at the first t
 turn is then said only at the turn itself. Said apart, its approach line landed on top of the
 first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
 apart.
+
+A next step up to 500 m on whose first prompt would come as soon as the turn is made joins the
+line at the turn only: "Take the ramp, then keep slight left". Said apart, the two came a
+second apart. Its later prompt is still said when it comes well after. A merge, a roundabout or
+a step with lanes to say keeps its own lines.
+
+An exit with no number and no sign says "Take the ramp toward" the road it leads to, taken from
+the fork or merge after it, instead of a bare "Take the exit".
 
 Two wording rules live in the routers and are heard here:
 
@@ -144,6 +168,7 @@ far off          = 2 x corridor, capped 110 / 75 / 60 m (drive / bike / walk)
 moving floor     = 2.0 / 1.0 / 0.6 m/s (drive / bike / walk)
 OFF_ROUTE_HITS   = 3      // hits before the drive counts as off route
 HEADING_OFF_DEG  = 60     // heading this far against the route's direction is a hit
+HEADING_MIN_MPS  = 5      // driving: the heading counts only this fast, from a fix of 30 m or better
 ```
 
 For driving, a 5 m fix gives a 28 m corridor, a fix with no accuracy figure 42 m, and a 30 m fix
@@ -157,6 +182,9 @@ Each fix changes a hit count:
 - Moving against the route's direction: one hit even inside the corridor, and two once the fix is
   a quarter of the corridor off the line. A wrong turn onto a road that runs beside the planned
   one stays inside the corridor for blocks, and distance alone never catches it.
+  Driving, this needs 5 m/s and a fix of 30 m or better: from a crawl the GPS course is noise,
+  and drift after a light once read as backing down the route. A reroute pins its start to
+  the car's heading only from such a fix too.
 - Stationary: the count holds, unless the fix is past the far distance. A red light cannot cause
   a reroute. Creeping out of a parking lot still can.
 
@@ -167,7 +195,7 @@ REROUTE_FETCH_TIMEOUT_MS   = 20_000   // deadline of a lean attempt
 REROUTE_LADDER_TIMEOUT_MS  = 40_000   // deadline of an escalated attempt
 REROUTE_ESCALATE_AFTER     = 2        // failed attempts before escalating
 REROUTE_FINISH_RESERVE_MS  = 4_000    // held back from the fetch for naming and adopting
-REROUTE_COOLDOWN_MS        = 10_000   // minimum gap after an adopted reroute
+REROUTE_COOLDOWN_MS        = 10_000   // minimum gap after an adopted reroute (a heal does not count)
 REROUTE_STUCK_GRACE_MS     = 5_000    // past deadline + this, a running attempt is dead
 REROUTE_SPEAK_MIN_MS       = 30_000   // "Rerouting" is spoken at most this often
 BACK_ON_COURSE_HITS        = 2        // on-route fixes that discard a reroute in flight
@@ -217,6 +245,13 @@ set aside when the open router answered, unless going on would cost minutes more
 around (book 5). A stopped car has no fresh course and sends none.
 Planning sends none.
 
+The pinned heading has a side effect: a car that has to turn round is sent into the nearest side
+street, which can be a car length ahead when the answer lands. A driving reroute whose first turn
+is less than 5 seconds away at the car's speed, and never less than 25 m, is not driven
+(`NavSession.turnOutOfReach`). The fetch waits until the car is 10 m past that turn and asks
+again from there, at most twice. Asked again at once, from the same fix, the answer is the same
+turn. If an ask fails, the answer in hand is driven.
+
 The answer is checked before it is driven (`NavSession.driveable`). It must end within
 `REACH_TOLERANCE_M = 500` of the destination. A provisional Google alternate is named first, and
 a route with only Google's short steps loses to a full-stepped one from the same reply. A
@@ -256,6 +291,10 @@ while off route and while an offer is on screen. What happens next depends on th
   better in steps, street names or traffic and worse in none (`RouteHeal`). A route whose names
   missed the planning deadline is asked for again about every 20 seconds, six times, and gets
   its names within the first answer that has them.
+- The same roads: never offered, whatever it saves. Every point along it, every 50 m or more,
+  lies within 40 m of your line (`RouteGeometry.sameRoad`); the five-sample same-course test
+  cannot tell a parallel street from the same one. Its lower time is fresher traffic, and it
+  has already corrected the arrival time.
 - Another course: it is offered when it saves more than 90 seconds, has live traffic and full
   steps, passes every remaining stop, and takes between 40% and 90% of the time left. A
   candidate without traffic never counts, because free-flow time always looks faster. A
@@ -420,8 +459,9 @@ The drive arrives when any of these holds:
   destination to the road, and you may park beside it.
 - You are stopped with 50 m or less left and within 60 m in a straight line.
 - You are stopped with `END_PARK_ALONG_M = 60` or less left and within 40 m in a straight
-  line, whatever turns remain. The first three are tested on the last step only, and a car
-  parked just short of a last turn into a lot never gets to it.
+  line, whatever turns remain, for 10 fixes in a row (`PARK_STILL_FIXES`). The first three are
+  tested on the last step only, and a car parked just short of a last turn into a lot never
+  gets to it. The count keeps a car waiting to turn into the lot from arriving at the entrance.
 
 The voice says which side the destination is on when the route knows it, else "You have
 arrived". Within `DEST_ZONE_M = 150` of the destination nothing reroutes, so parking short of

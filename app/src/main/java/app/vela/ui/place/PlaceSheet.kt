@@ -2625,6 +2625,8 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
                     )
                     LinePill(line)
                 }
+                // More rides than fit: say how many, so the card never reads as the whole trip.
+                if (t.lines.size > 4) Text("+${t.lines.size - 4}", style = MaterialTheme.typography.labelMedium, color = dim)
             }
         }
         val sub = listOfNotNull(t.frequencyText?.let { stringResource(R.string.place_every, it) }, t.distanceText, t.agency).joinToString("  ·  ")

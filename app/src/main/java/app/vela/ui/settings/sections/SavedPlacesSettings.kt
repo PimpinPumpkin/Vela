@@ -188,7 +188,8 @@ private fun toastImport(
         app.vela.core.data.ImportResult.NothingNew -> context.getString(R.string.settings_import_nothing_new)
         app.vela.core.data.ImportResult.Unreadable -> context.getString(R.string.settings_import_unreadable)
         is app.vela.core.data.ImportResult.WrongFormat ->
-            result.format?.let { context.getString(R.string.settings_import_wrong_format_named, it) }
+            if (!places && result.placesFile) context.getString(R.string.settings_lists_import_is_places)
+            else result.format?.let { context.getString(R.string.settings_import_wrong_format_named, it) }
                 ?: context.getString(R.string.settings_import_wrong_format)
         is app.vela.core.data.ImportResult.ListAdded -> vm.takeoutOutcome(result)
         app.vela.core.data.ImportResult.Busy -> context.getString(R.string.settings_takeout_busy)

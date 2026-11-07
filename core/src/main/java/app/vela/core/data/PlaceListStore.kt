@@ -48,6 +48,10 @@ fun linkListing(all: List<PlaceList>, heldId: String, at: LatLng, listing: Place
     return if (changed) out else all
 }
 
+/** Not a lists file: says what it is, and whether the saved places import reads it. */
+internal fun listsWrongFormat(json: String): ImportResult =
+    ImportResult.WrongFormat(ImportFormats.describe(json), placesFile = PlaceImport.parse(json).isNotEmpty())
+
 /** Persisted user place-lists (issue #1). Newest-first; all mutations return the fresh list. */
 @Singleton
 class PlaceListStore @Inject constructor(
@@ -196,7 +200,7 @@ class PlaceListStore @Inject constructor(
      *  [ImportResult] - "not our format" and "nothing new" are different answers). */
     fun importMerge(json: String): ImportResult {
         val incoming = runCatching { this.json.decodeFromString<List<PlaceList>>(json) }.getOrNull()
-            ?: return ImportResult.WrongFormat(ImportFormats.describe(json))
+            ?: return listsWrongFormat(json)
         val current = lists()
         val existingIds = current.mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existingIds }
