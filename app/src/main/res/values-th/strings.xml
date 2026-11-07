@@ -97,4 +97,14 @@
     <string name="mapvm_cells_ready">ทิศทางและสถานที่สำหรับส่วนนี้ของ %1$s สามารถใช้งานออฟไลน์ได้</string>
     <string name="mapvm_cells_incomplete">บางส่วนของ %1$s ไม่สามารถดาวน์โหลดได้ ลองใหม่ในภายหลัง</string>
     <string name="mapvm_region_ready">%1$s ดาวน์โหลดแล้ว แผนที่ เส้นทาง และสถานที่สามารถใช้งานออฟไลน์ได้</string>
+    <string name="settings_directions_language_hint">ภาษาที่จะแสดงและพูดในเวลาที่ต้องเลี้ยว เลือกเสียงพูดที่ตรงกันในคลังเสียงพูด</string>
+    <string name="mapvm_region_incomplete">%1$s ดาวน์โหลดเพียงบางส่วน เชื่อมต่อแล้วกดอัปเดตในการตั้งค่าแล้วเลือกแผนที่ออฟไลน์เพื่อดาวน์โหลดให้เสร็จสิ้น</string>
+    <string name="mapvm_poipack_ready">สถานที่ใน %1$s สามารถค้นหาออฟไลน์ได้แล้ว</string>
+    <string name="mapvm_poipack_unavailable">ยังไม่มีแพ็กสถานที่สำหรับ %1$s แพ็กสถานที่จะแสดงตรงนี้เมื่อเผยแพร่แล้ว</string>
+    <string name="settings_demo_drive">จำลองการขับขี่ (เดโม)</string>
+    <string name="settings_demo_drive_hint">เริ่มจำลองการขับขี่เส้นทางที่วางไว้แทนการใช้ GPS ปิดตัวเลือกนี้เพื่อนำทางจริง</string>
+    <string name="settings_sim_location">จำลองตำแหน่งของฉัน (เดโม)</string>
+    <string name="settings_sim_location_hint">แสร้งทําเป็นว่าคุณอยู่ตรงกลางแผนที่ เพื่อดูเดโมและจับภาพหน้าจอ ปิดตัวเลือกนี้เพื่อใช้ GPS จริง</string>
+    <string name="settings_map">แผนที่</string>
+    <string name="settings_live_traffic">ซ้อนทับการจราจรแบบสด</string>
 </resources>
