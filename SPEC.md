@@ -5000,7 +5000,9 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   height animates as they arrive, change or leave. The classic panel shows them as transit rows
   under a "Bike share" heading, the bike routes under "Your bike". One row opens at a time and the
   rows scroll within 32% of the screen's height (`BIKE_SHARE_MAX_HEIGHT`). A search that found
-  none says so in one line. A system with no color draws its pill and its leg
+  none says so in one line. A trip with stops asks for nothing and says bike share does not take
+  stops yet: the planner's `via` takes up to two transit stop ids and no coordinate, so its trips
+  would skip the stops. A system with no color draws its pill and its leg
   on the map in the station badges' teal (`BikeShareMapLayer.FILL_LIGHT`, `FILL_DARK`), and an
   electric bike's pill has "E-bike" beside it. `shapeTransitLegs` skips a bike leg, and guidance
   frames it by its path.

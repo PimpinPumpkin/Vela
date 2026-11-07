@@ -650,6 +650,11 @@ Found reading everything since 0.4.1912 and not fixed yet.
   way that offers the nearest other one when the pickup runs out of bikes or the return fills. Most feeds on the
   public instance give no dock counts (none for Lyon, Paris, Bordeaux, Berlin, Montreal or
   Brussels on 2026-11-04), so the return check works only where one does. Not started.
+- Bike share on a trip with stops. Such a trip gets no bike-share trip today, only a line saying
+  so: the planner's `via` takes up to two transit stop ids and no coordinate. One plan per stretch
+  (start to the first stop, then on from each stop at the time the last stretch arrives), joined
+  into one trip, would give it: the bike goes back to a station near each stop and another is
+  taken after it. One more request per stop. Not started.
 - A bike lanes layer, and bike routes that show their lanes. The map draws separate cycleways
   only (`vela-bikeroutes`, OSM `highway=cycleway`). Lanes and tracks along a road (`cycleway`,
   `cycleway:left`, `cycleway:right` or `cycleway:both` set to `lane`, `track` or

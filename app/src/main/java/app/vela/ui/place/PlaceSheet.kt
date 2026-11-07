@@ -3216,9 +3216,11 @@ internal fun BikeShareSection(ink: Color, dim: Color, dark: Boolean) {
     val onStartTransit: (TransitItinerary) -> Unit = { app.vela.ui.RouteActions.startTransit?.invoke(it) }
     val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
     val loading = app.vela.ui.map.BikeShareTripsShown.loading.value
-    if (trips == null && !loading) return
+    val withStops = app.vela.ui.map.BikeShareTripsShown.withStops.value
+    if (trips == null && !loading && !withStops) return
     Spacer(Modifier.height(12.dp))
     when {
+        withStops -> Text(stringResource(R.string.place_bike_share_no_stops), style = MaterialTheme.typography.bodyMedium, color = dim)
         trips == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodyMedium, color = dim)
@@ -3263,11 +3265,17 @@ internal fun BikeShareTripCards(ink: Color, dim: Color, dark: Boolean) {
     val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
     val loading = app.vela.ui.map.BikeShareTripsShown.loading.value
     val selected = app.vela.ui.map.BikeShareTripsShown.preview.value
+    val withStops = app.vela.ui.map.BikeShareTripsShown.withStops.value
     Column(
         Modifier.fillMaxWidth().animateContentSize(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when {
+            withStops -> Text(
+                stringResource(R.string.place_bike_share_no_stops),
+                style = MaterialTheme.typography.bodySmall, color = dim,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             trips == null && loading -> Row(
                 Modifier.padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,

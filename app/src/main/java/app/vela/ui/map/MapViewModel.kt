@@ -6603,7 +6603,7 @@ class MapViewModel @Inject constructor(
         if (plan == null) linkPlan = null
         val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec)
         beginModeEtas(etaKey)
-        searchBikeShare(origin, dest, mode, s.directionsTimeMode)
+        searchBikeShare(origin, dest, mode, s.directionsTimeMode, hasStops = stops.isNotEmpty())
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec, etaKey); return }
         // Guard: this reply is only applied if directions is still open for the SAME mode (the user hasn't
         // backed out or switched away while it was fetching). Mirrors routeTransit's stale-load guard.
@@ -6656,12 +6656,18 @@ class MapViewModel @Inject constructor(
      * Bike-share trips beside the bike routes (SPEC 8, Bike share in directions): asked for on the
      * Bike tab while its "Bike share" chip is on and the trip leaves now, since the planner places
      * bikes and docks as of the request. Any other tab, or no chip, empties what was shown. The
-     * stations' counts follow the trips, except with "Use less data".
+     * stations' counts follow the trips, except with "Use less data". A trip with stops asks for
+     * nothing: the planner takes no stop that is not a transit stop, so its trips would skip
+     * them, and the sheet says bike share does not take stops yet.
      */
-    private fun searchBikeShare(origin: LatLng, dest: LatLng, mode: TravelMode, timeMode: Int) {
+    private fun searchBikeShare(origin: LatLng, dest: LatLng, mode: TravelMode, timeMode: Int, hasStops: Boolean) {
         bikeShareJob?.cancel()
         BikeShareTripsShown.clear()
         if (mode != TravelMode.BICYCLE || !app.vela.ui.BikeShareTrips.on.value || timeMode != 0 || offlineNow()) return
+        if (hasStops) {
+            BikeShareTripsShown.withStops.value = true
+            return
+        }
         BikeShareTripsShown.loading.value = true
         bikeShareJob = viewModelScope.launch {
             try {

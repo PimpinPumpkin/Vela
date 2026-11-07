@@ -1232,6 +1232,8 @@
     <!-- A station's count and its name on a bike-share trip, "3 bikes at Part-Dieu". -->
     <string name="place_bike_share_at">%1$s at %2$s</string>
     <string name="place_bike_share_none">No bike-share trip for this one right now</string>
+    <!-- Shown on the Bike tab instead of bike-share trips when the trip has stops. -->
+    <string name="place_bike_share_no_stops">Bike share does not take stops yet</string>
     <!-- The Bike tab's heading over the routes for a bike of your own, below the bike-share trips. -->
     <string name="place_bike_share_own_bike">Your bike</string>
     <string name="place_bike_share_updated_now">Updated just now</string>
