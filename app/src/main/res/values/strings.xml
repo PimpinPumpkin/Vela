@@ -1537,4 +1537,7 @@
     <string name="place_avoid_short_ferries">Ferries</string>
     <string name="place_avoid_short_cameras">Cameras</string>
     <string name="trip_shortcut_themed">Match themed icons</string>
+    <string name="settings_nav_tab_general">General</string>
+    <string name="settings_nav_tab_display">Display</string>
+    <string name="settings_nav_tab_alerts">Alerts &amp; Radars</string>
 </resources>

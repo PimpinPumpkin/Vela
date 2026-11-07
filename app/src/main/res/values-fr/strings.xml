@@ -1335,4 +1335,7 @@
     <string name="trip_shortcut_unsupported">Cet écran d\'accueil ne peut pas épingler de raccourcis</string>
     <string name="trip_shortcut_themed">Comme les icônes à thème</string>
     <string name="settings_places_source_note">Rechercher ou toucher un lieu interroge toujours Google pour les horaires, les avis et les photos, quel que soit votre choix.</string>
+    <string name="settings_nav_tab_general">G�n�ral</string>
+    <string name="settings_nav_tab_display">Affichage</string>
+    <string name="settings_nav_tab_alerts">Alertes &amp; Radars</string>
 </resources>
