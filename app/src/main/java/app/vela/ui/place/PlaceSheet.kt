@@ -13,6 +13,9 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.border
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -3246,6 +3249,77 @@ internal fun BikeShareSection(ink: Color, dim: Color, dark: Boolean) {
     }
     Spacer(Modifier.height(12.dp))
     Text(stringResource(R.string.place_bike_share_own_bike), style = MaterialTheme.typography.labelLarge, color = dim)
+}
+
+/**
+ * The Bike tab's bike-share trips in the Google-style picker (SPEC 8, Bike share in directions):
+ * one two-line card per trip, the system's pill and the time, then the free bikes at the pickup.
+ * A tap draws that trip on the map in place of the bike route, and Start then guides it; a
+ * second tap lets go of it. Kept short so the route stays in sight with the picker up, and its
+ * height animates as the trips arrive, change or leave.
+ */
+@Composable
+internal fun BikeShareTripCards(ink: Color, dim: Color, dark: Boolean) {
+    val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
+    val loading = app.vela.ui.map.BikeShareTripsShown.loading.value
+    val selected = app.vela.ui.map.BikeShareTripsShown.preview.value
+    Column(
+        Modifier.fillMaxWidth().animateContentSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        when {
+            trips == null && loading -> Row(
+                Modifier.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodySmall, color = dim)
+            }
+            trips == null -> Unit
+            trips.isEmpty() -> Text(
+                stringResource(R.string.place_bike_share_none),
+                style = MaterialTheme.typography.bodySmall, color = dim,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            else -> {
+                Spacer(Modifier.height(2.dp))
+                trips.take(BIKE_SHARE_ROWS).forEach { t -> BikeShareTripCard(t, t === selected, ink, dim, dark) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BikeShareTripCard(t: TransitItinerary, selected: Boolean, ink: Color, dim: Color, dark: Boolean) {
+    val shape = RoundedCornerShape(12.dp)
+    val teal = bikeShareTeal()
+    val border by animateColorAsState(if (selected) teal else Color.Transparent, label = "bikeShareCard")
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(SheetPalette.row(dark))
+            .border(2.dp, border, shape)
+            .dpadHighlight(shape)
+            .clickable { app.vela.ui.map.BikeShareTripsShown.select(t) }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            t.lines.take(3).forEachIndexed { i, line ->
+                if (i > 0) Icon(Sym.ChevronRight, contentDescription = null, tint = dim, modifier = Modifier.size(14.dp))
+                LinePill(line)
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                listOfNotNull(t.departureText, t.arrivalText).joinToString(" – ").ifEmpty { t.durationText.orEmpty() },
+                style = MaterialTheme.typography.bodySmall, color = dim, maxLines = 1,
+            )
+            t.durationText?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1) }
+        }
+        BikeShareTripSummary(t, dim)
+    }
 }
 
 /** The bike-share accent: the stations' badge and the map's cycleways ([app.vela.ui.map.BikeShareMapLayer]). */

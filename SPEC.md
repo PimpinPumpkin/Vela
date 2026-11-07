@@ -4993,9 +4993,14 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - Trips sort by arrival, then by length. A later run of the same trip is the same choice, so the
   first of each sequence of modes, lines and stations stays. Lyon, Part-Dieu to Vieux Lyon on
   2026-11-04: seven answers, four distinct trips, the first three kept.
-- The Bike tab shows up to 2 of them (`BIKE_SHARE_ROWS`) under a "Bike share" heading, as
-  transit rows: expanding draws the trip, Start guides it leg by leg. The bike routes follow under
-  "Your bike". A search that found none says so in one line. A system with no color draws its pill and its leg
+- The Bike tab shows up to 2 of them (`BIKE_SHARE_ROWS`). In the Google-style picker each is a
+  two-line card (`BikeShareTripCards`): the pills and the times, then the free bikes at the
+  pickup. A tap selects it: the map draws that trip, the bike route, its alternates and their
+  time bubbles step aside, and Start guides the trip leg by leg. A second tap lets go. The cards'
+  height animates as they arrive, change or leave. The classic panel shows them as transit rows
+  under a "Bike share" heading, the bike routes under "Your bike". One row opens at a time and the
+  rows scroll within 32% of the screen's height (`BIKE_SHARE_MAX_HEIGHT`). A search that found
+  none says so in one line. A system with no color draws its pill and its leg
   on the map in the station badges' teal (`BikeShareMapLayer.FILL_LIGHT`, `FILL_DARK`), and an
   electric bike's pill has "E-bike" beside it. `shapeTransitLegs` skips a bike leg, and guidance
   frames it by its path.

@@ -7323,6 +7323,9 @@ class MapViewModel @Inject constructor(
      *  are there), nothing changes. A simulated drive has no position of its own to start from: it
      *  drives the planned line from the chosen start (issue #835). */
     fun startNav() {
+        // A bike-share trip picked on the Bike tab is what the map shows, so Start guides it
+        // (SPEC 8, Bike share in directions).
+        BikeShareTripsShown.preview.value?.takeIf { _state.value.travelMode == TravelMode.BICYCLE }?.let { startTransitNav(it); return }
         val s = _state.value
         val start = if (s.directionsReversed) null else s.directionsOrigin
         val me = s.myLocation

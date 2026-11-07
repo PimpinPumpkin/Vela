@@ -21,6 +21,11 @@ object BikeShareTripsShown {
         if (expanded) preview.value = t else if (preview.value === t) preview.value = null
     }
 
+    /** A compact row was tapped: it becomes the drawn trip, or stops being it. */
+    fun select(t: TransitItinerary) {
+        preview.value = if (preview.value === t) null else t
+    }
+
     fun clear() {
         if (trips.value != null) trips.value = null
         if (loading.value) loading.value = false

@@ -296,8 +296,8 @@ fun GoogleStyleDirectionsPanel(
                     // without opening the options (SPEC 8, Bike share in directions).
                     if (currentMode == TravelMode.BICYCLE) {
                         BikeShareTripsChip()
-                        BikeShareSection(ink, dim, dark)
-                        Spacer(Modifier.height(8.dp))
+                        BikeShareTripCards(ink, dim, dark)
+                        Spacer(Modifier.height(10.dp))
                     }
                     if (route == null) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
