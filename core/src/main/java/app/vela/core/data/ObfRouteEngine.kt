@@ -240,12 +240,19 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                 val seg = RoutePlannerFrontEnd().findRouteSegment(lat, lng, ctx, null) ?: return@synchronized null
                 // distToProj is the SQUARED distance in meters from the point to its projection.
                 if (seg.distToProj > LIMIT_SNAP_M * LIMIT_SNAP_M) return@synchronized null
-                val mps = seg.road.getMaximumSpeed(true)
-                if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return@synchronized null
-                val kmh = mps * 3.6
-                if (kmh < 150.0) kmh else null
+                obfKmh(seg.road, true)
             }
         }.getOrNull()
+    }
+
+    /** The posted limit of [road] in km/h the way it was driven, or null: untagged, derestricted
+     *  (`maxspeed=none`, stored as [RouteDataObject.NONE_MAX_SPEED]), or 150 or more, where a wrong
+     *  number on an autobahn is worse than a blank. One rule for the badge and the route's spans. */
+    private fun obfKmh(road: RouteDataObject, forward: Boolean): Double? {
+        val mps = road.getMaximumSpeed(forward)
+        if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return null
+        val kmh = mps * 3.6
+        return if (kmh < 150.0) kmh else null
     }
 
     /** What the speed-limit lookup sees at a point, for the on-demand harness: which files cover it,
@@ -328,15 +335,29 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
      *  the online path uses ([OfflinePhrases.phrase]). */
     private fun toRoute(segments: List<RouteSegmentResult>): Route {
         val poly = ArrayList<LatLng>(segments.size * 4)
+        // Each segment's first and last index in [poly] with its limit, turned into meters along
+        // the line below, so the spans are measured the way the drive measures progress.
+        val segLimits = ArrayList<Triple<Int, Int, Double>>()
         for (seg in segments) {
             val obj = seg.`object`
             val step = if (seg.startPointIndex <= seg.endPointIndex) 1 else -1
+            val first = poly.size
             var i = seg.startPointIndex
             while (true) {
                 poly.add(LatLng(MapUtils.get31LatitudeY(obj.getPoint31YTile(i)), MapUtils.get31LongitudeX(obj.getPoint31XTile(i))))
                 if (i == seg.endPointIndex) break
                 i += step
             }
+            runCatching { obfKmh(obj, step > 0) }.getOrNull()?.let { segLimits.add(Triple(first, poly.size - 1, it)) }
+        }
+        val limitSpans = run {
+            val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+            // A segment starts on the point the one before it ended on, so the join is counted
+            // from the previous segment's end.
+            segLimits.map { (a, b, kmh) ->
+                val from = if (a > 0) cum[a - 1] else 0.0
+                app.vela.core.model.LimitSpan(from, cum[b] - from, kmh)
+            }.filter { it.lengthMeters > 0.0 }
         }
         val totalDist = segments.sumOf { it.distance.toDouble() }
         val totalTime = segments.sumOf { it.segmentTime.toDouble() }
@@ -427,6 +448,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
             durationSeconds = totalTime,
             durationInTrafficSeconds = null, // offline: no live traffic
             summary = folded.asReversed().firstNotNullOfOrNull { it.road },
+            limitSpans = app.vela.core.nav.LimitDrops.merge(limitSpans),
         )
     }
 

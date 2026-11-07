@@ -147,10 +147,13 @@ nearby lands in one pixel. With under 400 m left there is no bar.
 - Lights and stop signs sit on the track as the map's own glyphs, the light's housing and the
   stop sign's octagon, 16 dp tall. Cameras, level crossings and speed humps are badges beside
   it, so a badge never covers congestion.
+- With "Warn before the speed limit drops" on, a sharp drop in the limit is the new limit's sign
+  beside the track: a red-ring disc in km/h, a black-edged rectangle in mph
+  ([chapter 4](04-navigation.md)).
 - A mark must lie within 40 m of the line, and a plate camera must face the route
   ([chapter 3](03-cameras.md)).
-- Marks within `PIN_MERGE_M = 60` m merge, and the kind that says most wins: camera, crossing,
-  hump, stop sign, light. A plate camera on a signal mast would otherwise hide behind the light.
+- Marks within `PIN_MERGE_M = 60` m merge, and the kind that says most wins: limit drop, camera,
+  crossing, hump, stop sign, light. A plate camera on a signal mast would otherwise hide behind the light.
 
 The bar is portrait only, since in landscape the left side is the chrome column.
 

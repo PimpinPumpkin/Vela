@@ -395,6 +395,9 @@ off the list when it has been.
   with the turn ("Take the ramp, then keep slight left"): unit-tested, and a recorded drive
   replayed through the voice went from 30 lines to 27 with none a second apart. Not heard on a
   drive; the replay re-folds the recorded steps rather than a fresh route.
+- The speed limit drop warning (#857): the card, the voice, the road-ahead bar's sign, the obf
+  route's own limits and the sampled limits on an online route. A trip's notes show it as
+  `limit drop:` lines.
 - Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
   needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
   `bare=1`, then `recheck upgraded route for names`.

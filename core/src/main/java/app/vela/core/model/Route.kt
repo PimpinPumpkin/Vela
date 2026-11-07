@@ -164,6 +164,14 @@ data class TrafficSpan(
     val lengthMeters: Double,
 )
 
+/** One stretch of the route with a known posted limit, in km/h, located like [TrafficSpan] by
+ *  meters along the route's polyline. Stretches with no known limit are not listed. */
+data class LimitSpan(
+    val startMeters: Double,
+    val lengthMeters: Double,
+    val kmh: Double,
+)
+
 /**
  * A full route. When [durationInTrafficSeconds] is non-null it came straight
  * out of Google's directions response — i.e. the traffic is already baked in,
@@ -293,6 +301,10 @@ data class Route(
      *  by `DirectionsParser`). A turn the map tiles leave unnamed takes the street of the one at
      *  its corner (`LineNamer`). Empty for every other router. */
     val stepNames: List<StepName> = emptyList(),
+    /** The posted limits along [polyline], when the router read them from its own data (the
+     *  on-device obf router). Empty for every other source: the drive samples those ahead of the
+     *  car instead ([app.vela.core.nav.LimitDrops.sample]). */
+    val limitSpans: List<LimitSpan> = emptyList(),
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 
