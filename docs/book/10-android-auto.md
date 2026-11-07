@@ -280,14 +280,18 @@ is chosen.
 ### Android Automotive
 
 Android Automotive is Android running in the car itself. Vela's templated screens belong to
-Android Auto, and on Automotive the ordinary app runs. Two manifest declarations serve it:
+Android Auto, and on Automotive the ordinary app runs. These manifest declarations serve it:
 
-- Each launcher alias has a second intent filter with `MAIN`, `DEFAULT` and
-  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map panel of
+- A hidden alias pair, `.MapsPanel` and `.MapsPanelGeneric`, answers `MAIN`, `DEFAULT` and
+  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map pane of
   its home screen. The start is an implicit intent, which only matches a filter that declares
-  `DEFAULT`, so the category cannot sit on the launcher filter alone. On a phone the same filter
-  answers "open maps" requests.
-- `MainActivity` and both aliases carry `distractionOptimized`. Without it the car grays Vela out
+  `DEFAULT`. On a phone the same filter answers "open maps" requests. `AppNameAlias` enables the
+  one whose label matches the launcher's name ("call it just Maps").
+- `MainActivity` is `singleTask`, `resizeableActivity` and `allowEmbedded`. Automotive 10 and 11
+  embed the pane with an ActivityView, which starts an app that does not allow embedding full
+  screen instead. Automotive 14 embeds it either way. One task holds the map wherever it was
+  started from: the pane, the app list, a link or a share.
+- `MainActivity` and every alias carry `distractionOptimized`. Without it the car grays Vela out
   of its app list once the car is in gear.
 
 ### The install gate

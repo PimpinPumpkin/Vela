@@ -260,8 +260,15 @@ off the list when it has been.
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each
-  ran locally against the live servers and files. None has run on GitHub yet, which needs them
-  on main.
+  ran locally against the live servers and files. They are on main and none has run on GitHub
+  yet.
+- The car's time left is colored by traffic (#928): seen on a real Android Auto connection on a
+  debug build. Not seen on a release build, on the desktop head unit or in heavy traffic.
+- Android Automotive 10 and 11 keep Vela in the home screen's map pane (#879): on the
+  Automotive 14 emulator the pane, the app list and Home behave as before, with one task, and on
+  a 4a links and shares reach the running map and the "maps app" entry follows the "Maps" name.
+  Not seen on an Automotive 10 or 11 car, which is what it is for. A share from inside another
+  app now lands in Vela's own task; that was not tried by hand.
 - A ferry leg on a walk or a ride says "Take the ferry" (#824): seen in the step list on a 4a,
   walk and bike. Not heard on a real crossing. The phrase in the 17 other languages has not been
   read by a native speaker, and the on-device router's ferry legs are not phrased this way.
