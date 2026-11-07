@@ -125,8 +125,21 @@ class TransitousBikeSharePlanTest {
         assertTrue(url.contains("&directRentalProviderGroups=$groups"))
         assertTrue(url.contains("&preTransitRentalProviderGroups=$groups"))
         assertTrue(url.contains("&postTransitRentalProviderGroups=$groups"))
-        assertFalse(url.contains("time="))
+        assertFalse(url.contains("&time="))
         assertFalse(url.contains("arriveBy"))
+        // A bike alone may take an hour with its walks, a bike around transit half an hour.
+        assertTrue(url.contains("&maxDirectTime=3600&maxPreTransitTime=1800&maxPostTransitTime=1800"))
+    }
+
+    @Test fun `a trip that leaves long after the search is dropped`() {
+        fun at(iso: String) = java.time.Instant.parse(iso).epochSecond
+        // The metro runs leave from 18:17 on: at 17:52 the 18:23 one is past the half hour.
+        val soon = Transitous.parseBikeSharePlan(lyonTransit, villeurbanne, confluence, velov, at("2026-11-04T17:52:00Z"))
+        assertEquals(listOf("REMPARTS D'AINAY"), soon.map { it.steps[3].boardStop!!.name })
+        // An hour before, none is near enough.
+        assertEquals(emptyList<Any>(), Transitous.parseBikeSharePlan(lyonTransit, villeurbanne, confluence, velov, at("2026-11-04T17:15:00Z")))
+        // Without a time nothing is dropped for it.
+        assertEquals(2, Transitous.parseBikeSharePlan(lyonTransit, villeurbanne, confluence, velov).size)
     }
 
     // The Vélov stations near those Lyon trips' bike legs, captured beside them.

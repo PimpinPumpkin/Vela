@@ -4976,7 +4976,12 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   same two ends on a 0.01 degree grid (`areaKey`). A failed lookup is not kept.
 - The plan request (`bikeSharePlanUrl`) asks for 3 itineraries (`BIKE_PLAN_MAX`) with
   `directModes=RENTAL`, `WALK,RENTAL` as the pre- and post-transit modes, the `BICYCLE` form
-  factor, the groups in all three `*RentalProviderGroups`, and no time. It is a request of its
+  factor, the groups in all three `*RentalProviderGroups`, no time, and raised time limits: a
+  bike alone up to 3600 s with its walks (`maxDirectTime`, `BIKE_MAX_DIRECT_S`), a walk and ride
+  before or after transit up to 1800 s (`maxPreTransitTime`, `maxPostTransitTime`,
+  `BIKE_MAX_PREPOST_S`). At the planner's defaults (1800 and 900) a trip a bike of your own rode
+  in 27 min had no bike-share trip alone; Lyon, Croix-Rousse to Gerland on 2026-11-07: none at
+  the default, two of 55 and 57 min at 3600. It is a request of its
   own: with `RENTAL` among the direct modes the planner drops every transit trip slower than the
   fastest direct one. Without the groups, central Paris on 2026-11-04 answered with Lime, Voi and
   Dott bikes before its one Vélib' ride, and every trip with a metro ride used a Dott bike.
@@ -4990,6 +4995,8 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   `boardStop` the pickup station (`fromStationName`), `alightStop` the return station, with the
   leg's times and `legGeometry`. `TransitRental` keeps the provider, the group, and whether the
   bike is electric (`ELECTRIC` or `ELECTRIC_ASSIST`).
+- A trip leaving more than 30 min after the search (`BIKE_LATE_START_S`) is dropped: its bikes
+  and docks are counted now. A night's search came back with the first bus of the morning.
 - Trips sort by arrival, then by length. A later run of the same trip is the same choice, so the
   first of each sequence of modes, lines and stations stays. Lyon, Part-Dieu to Vieux Lyon on
   2026-11-04: seven answers, four distinct trips, the first three kept.

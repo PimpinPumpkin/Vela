@@ -829,7 +829,10 @@ object Transitous {
     /** The planner request for bike-share trips: a bicycle of one of [groups] from one station to
      *  another, alone (`direct`) or before or after a transit ride, leaving now. It is a request
      *  of its own: with `RENTAL` among the direct modes the planner drops every transit trip
-     *  slower than the fastest direct one. */
+     *  slower than the fastest direct one. Its time limits are raised past the planner's
+     *  defaults: a bike alone up to [BIKE_MAX_DIRECT_S], a bike before or after transit up to
+     *  [BIKE_MAX_PREPOST_S]. At the default 30 min, a trip a bike of your own rides in 27 had
+     *  no bike-share trip alone, since the walks to and from the stations are counted too. */
     internal fun bikeSharePlanUrl(origin: LatLng, destination: LatLng, groups: Collection<String>): String = buildString {
         val g = groups.joinToString(",") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
         append(BASE).append("/api/v1/plan?fromPlace=").append(coord(origin.lat)).append(',').append(coord(origin.lng))
@@ -837,6 +840,9 @@ object Transitous {
         append("&numItineraries=").append(BIKE_PLAN_MAX)
         append("&directModes=RENTAL&preTransitModes=WALK,RENTAL&postTransitModes=WALK,RENTAL")
         append("&directRentalFormFactors=BICYCLE&preTransitRentalFormFactors=BICYCLE&postTransitRentalFormFactors=BICYCLE")
+        append("&maxDirectTime=").append(BIKE_MAX_DIRECT_S)
+        append("&maxPreTransitTime=").append(BIKE_MAX_PREPOST_S)
+        append("&maxPostTransitTime=").append(BIKE_MAX_PREPOST_S)
         append("&directRentalProviderGroups=").append(g)
         append("&preTransitRentalProviderGroups=").append(g)
         append("&postTransitRentalProviderGroups=").append(g)
@@ -847,15 +853,18 @@ object Transitous {
     fun planBikeShare(http: OkHttpClient, origin: LatLng, destination: LatLng, groups: Collection<String>): List<TransitItinerary> {
         if (groups.isEmpty()) return emptyList()
         val body = get(http, bikeSharePlanUrl(origin, destination, groups)) ?: return emptyList()
-        return runCatching { parseBikeSharePlan(body, origin, destination, groups.toSet()) }.getOrDefault(emptyList())
+        val now = System.currentTimeMillis() / 1000
+        return runCatching { parseBikeSharePlan(body, origin, destination, groups.toSet(), now) }.getOrDefault(emptyList())
     }
 
     /** The bike-share trips in a plan reply, pure and fixture-tested: the `direct` answers and the
      *  transit ones that hold a bike leg, every rented vehicle a bicycle of [groups] taken from one
      *  station and returned to another. A later run of the same trip is the same choice here, so
-     *  only its earliest arrival stays. At most [BIKE_PLAN_MAX], earliest arrival first, then the
-     *  shortest. */
-    internal fun parseBikeSharePlan(json: String, origin: LatLng, destination: LatLng, groups: Set<String>): List<TransitItinerary> {
+     *  only its earliest arrival stays. With [nowSec], a trip that leaves more than
+     *  [BIKE_LATE_START_S] after it is dropped: the bikes and docks it was planned on are the
+     *  stations' now, and a night's search otherwise came back with the first bus of the morning.
+     *  At most [BIKE_PLAN_MAX], earliest arrival first, then the shortest. */
+    internal fun parseBikeSharePlan(json: String, origin: LatLng, destination: LatLng, groups: Set<String>, nowSec: Long? = null): List<TransitItinerary> {
         val root = JSONObject(json)
         val trips = ArrayList<TransitItinerary>()
         for (key in listOf("direct", "itineraries")) {
@@ -863,6 +872,7 @@ object Transitous {
             for (i in 0 until arr.length()) {
                 runCatching { parseItinerary(arr.getJSONObject(i), origin, destination, groups) }.getOrNull()
                     ?.takeIf { t -> t.steps.any { it.mode == TransitMode.BIKE_SHARE } }
+                    ?.takeIf { t -> nowSec == null || (t.departureEpochSec ?: nowSec) <= nowSec + BIKE_LATE_START_S }
                     ?.let { trips += it }
             }
         }
@@ -1008,6 +1018,12 @@ object Transitous {
     private val PLAN_MODES = mapOf(0 to "BUS", 1 to "SUBWAY", 2 to "RAIL", 3 to "TRAM")
     /** Bike-share trips asked for, and the most kept. */
     private const val BIKE_PLAN_MAX = 3
+    /** The longest bike-share trip alone, walks included (the planner's default is 1800). */
+    private const val BIKE_MAX_DIRECT_S = 3600
+    /** The longest walk and ride before or after a transit ride (the planner's default is 900). */
+    private const val BIKE_MAX_PREPOST_S = 1800
+    /** A bike-share trip leaving later than this after the search is not shown. */
+    internal const val BIKE_LATE_START_S = 1800L
     /** How far past a trip's ends the systems are looked for: a station a short walk outside the
      *  box between them still belongs to a system the trip can use. */
     private const val GROUPS_PAD_M = 1000.0
