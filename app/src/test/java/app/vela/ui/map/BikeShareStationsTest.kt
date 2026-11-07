@@ -52,7 +52,10 @@ class BikeShareStationsTest {
         val asked = mutableListOf<DoubleArray>()
         val replies = mutableListOf<CompletableDeferred<List<Transitous.BikeStation>?>>()
         val state = MutableStateFlow(MapUiState())
-        val shares = BikeShareStations(ContextWrapper(null), CoroutineScope(Dispatchers.Unconfined), state, OkHttpClient(), settleMs = 0) { b ->
+        val shares = BikeShareStations(
+            ContextWrapper(null), CoroutineScope(Dispatchers.Unconfined), state, OkHttpClient(), settleMs = 0,
+            groupsOf = { listOf("test-bikes") },
+        ) { b, _ ->
             asked += b
             CompletableDeferred<List<Transitous.BikeStation>?>().also { replies += it }.await()
         }
@@ -68,6 +71,82 @@ class BikeShareStationsTest {
         } finally {
             BikeShareLayer.on.value = false
         }
+    }
+
+    /** A layer whose lookups answer at once and are counted. */
+    private class Rig(
+        var groups: List<String>? = listOf("test-bikes"),
+        var stations: List<Transitous.BikeStation>? = emptyList(),
+    ) {
+        var now = 0L
+        val groupBoxes = mutableListOf<DoubleArray>()
+        val stationAsks = mutableListOf<Pair<DoubleArray, List<String>?>>()
+        val state = MutableStateFlow(MapUiState())
+        val layer = BikeShareStations(
+            ContextWrapper(null), CoroutineScope(Dispatchers.Unconfined), state, OkHttpClient(), settleMs = 0,
+            groupsOf = { b -> groupBoxes += b; groups },
+            clock = { now },
+        ) { b, g -> stationAsks += b to g; stations }
+    }
+
+    private fun withLayerOn(block: () -> Unit) {
+        BikeShareLayer.on.value = true
+        try { block() } finally { BikeShareLayer.on.value = false }
+    }
+
+    @Test fun `the docked systems found are passed to the stations request`() = withLayerOn {
+        val rig = Rig(groups = listOf("docked-a", "docked-b"), stations = listOf(station("7", 9)))
+        rig.layer.onViewport(s, w, n, e, 16.0)
+        assertEquals(1, rig.groupBoxes.size)
+        assertEquals(listOf("docked-a", "docked-b"), rig.stationAsks.single().second)
+        assertEquals(listOf(station("7", 9)), rig.state.value.bikeStations)
+        // The systems are asked for over a box twice as wide as the stations' box.
+        val b = rig.stationAsks.single().first
+        assertTrue(BikeShareStations.contains(rig.groupBoxes.single(), b))
+        assertEquals((b[3] - b[1]) * 2, rig.groupBoxes.single()[3] - rig.groupBoxes.single()[1], 1e-9)
+    }
+
+    @Test fun `with no docked system nothing is drawn and no stations are asked for`() = withLayerOn {
+        val rig = Rig(groups = emptyList(), stations = listOf(station("7", 9)))
+        rig.state.value = MapUiState(bikeStations = listOf(station("6", 1)))
+        rig.layer.onViewport(s, w, n, e, 16.0)
+        assertEquals(1, rig.groupBoxes.size)
+        assertTrue(rig.stationAsks.isEmpty())
+        assertTrue(rig.state.value.bikeStations.isEmpty())
+        // A small pan is served by the same box and asks nothing.
+        rig.layer.onViewport(s, w + 0.0025, n, e + 0.0025, 16.0)
+        assertEquals(1, rig.groupBoxes.size)
+        assertTrue(rig.stationAsks.isEmpty())
+    }
+
+    @Test fun `a failed systems lookup asks for every operator's stations and is not kept`() = withLayerOn {
+        val rig = Rig(groups = null, stations = listOf(station("7", 9)))
+        rig.layer.onViewport(s, w, n, e, 16.0)
+        assertNull("unfiltered", rig.stationAsks.single().second)
+        assertEquals(listOf(station("7", 9)), rig.state.value.bikeStations)
+        // The next box asks for the systems again.
+        rig.groups = listOf("docked-a")
+        rig.layer.onViewport(s, w + 0.010, n, e + 0.010, 16.0)
+        assertEquals(2, rig.groupBoxes.size)
+        assertEquals(listOf("docked-a"), rig.stationAsks.last().second)
+    }
+
+    @Test fun `the systems are reused while kept and asked again once old or out of their box`() = withLayerOn {
+        val rig = Rig(groups = listOf("docked-a"))
+        rig.layer.onViewport(s, w, n, e, 16.0)
+        // Most of a view east: a new stations box, still inside the systems' box.
+        rig.layer.onViewport(s, w + 0.008, n, e + 0.008, 16.0)
+        assertEquals(2, rig.stationAsks.size)
+        assertEquals(1, rig.groupBoxes.size)
+        assertEquals(listOf("docked-a"), rig.stationAsks.last().second)
+        // Far east, out of the systems' box.
+        rig.layer.onViewport(s, w + 0.050, n, e + 0.050, 16.0)
+        assertEquals(2, rig.groupBoxes.size)
+        // The same step east, once the kept systems are old.
+        rig.now += BikeShareStations.GROUPS_TTL_MS
+        rig.layer.onViewport(s, w + 0.058, n, e + 0.058, 16.0)
+        assertEquals(3, rig.groupBoxes.size)
+        assertEquals(4, rig.stationAsks.size)
     }
 
     @Test fun `an open station takes its new counts`() {

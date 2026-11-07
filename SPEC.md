@@ -5033,11 +5033,18 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   canceling there meant a reply slower than that never landed: central Paris took 732 ms after
   the settle. Nothing is asked during navigation, with "Use less data", or offline. A failure
   keeps what is drawn and is never kept as "no stations".
-- The request is
-  `/api/v1/rentals?min=..&max=..&withProviders=false&withVehicles=false&withZones=false`, with
-  `VELA_UA` and the app language, read from the stream. Lyon center at z15 on a 411x923 dp
-  screen: 218 stations of every kind, 58 of them bike share, 13.7 KB on the wire (115 KB
-  unpacked).
+- Two requests, with `VELA_UA` and the app language, read from the stream. The docked systems
+  come first (`Transitous.bikeShareGroupsInBox`, the providers-only `rentals` request of Bike
+  share in directions, about 4.4 KB), over the stations' box padded by half on each side
+  (`groupsBox`). They are kept for `GROUPS_TTL_MS` (10 minutes) and reused while their box holds
+  the stations' box. Then the stations:
+  `/api/v1/rentals?min=..&max=..&providerGroups=..&withProviders=false&withVehicles=false&withZones=false`.
+  Central Paris on 2026-11-04: 4,251 stations in 241 KB with every operator's, 176 in 9.2 KB with
+  `providerGroups=Paris`. Lyon center at z15 on a 411x923 dp screen, every operator's: 218
+  stations of every kind, 58 of them bike share, 13.7 KB on the wire (115 KB unpacked). With no
+  docked system in the box nothing is drawn and no stations are asked for. A failed systems
+  lookup is never kept as "none": that box is asked for without `providerGroups`, and the rules
+  below filter it.
 - A station counts when its `formFactors` include `BICYCLE` or `CARGO_BICYCLE`: car-share and
   scooter stations come in the same reply. Free-floating operators' parking spots, parking zones
   and service areas come in it too, and three rules leave them out (`isZone`). A station whose

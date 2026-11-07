@@ -796,11 +796,19 @@ object Transitous {
      * from one `rentals` request for providers only, over the box around both ends padded by
      * [GROUPS_PAD_M]. Null on any failure, empty where there is no such system.
      */
-    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-    fun bikeShareGroups(http: OkHttpClient, a: LatLng, b: LatLng): List<String>? = runCatching {
+    fun bikeShareGroups(http: OkHttpClient, a: LatLng, b: LatLng): List<String>? {
         val box = paddedBox(a, b, GROUPS_PAD_M)
+        return bikeShareGroupsInBox(http, box[0], box[1], box[2], box[3])
+    }
+
+    /** The docked bike-share systems in a box, as [bikeShareGroups] finds them. Null on any
+     *  failure, empty where there is no such system. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun bikeShareGroupsInBox(
+        http: OkHttpClient, south: Double, west: Double, north: Double, east: Double,
+    ): List<String>? = runCatching {
         val url = withLanguage(
-            "$BASE/api/v1/rentals?min=${coord(box[0])},${coord(box[1])}&max=${coord(box[2])},${coord(box[3])}" +
+            "$BASE/api/v1/rentals?min=${coord(south)},${coord(west)}&max=${coord(north)},${coord(east)}" +
                 "&withProviders=true&withStations=false&withVehicles=false&withZones=false",
         )
         http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { resp ->

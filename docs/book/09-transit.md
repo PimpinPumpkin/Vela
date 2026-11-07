@@ -144,6 +144,9 @@ request that is out is left to land, and only then is a view it no longer covers
 while the map follows a moving fix the view comes once a second, sooner than a busy city answers,
 and a request canceled for each new view never landed. In central Lyon
 one answer at zoom 15 on a phone is 13.7 KB, with 58 bike stations among 218 rental stations.
+The box asks for docked systems' stations only, named by a small providers-only lookup kept for
+ten minutes: central Paris is 176 stations in 9.2 KB that way, against 4,251 in 241 KB with every
+operator's.
 
 Free docks need care. A feed with several bike models can give one free-dock count and have it
 repeated under each model, so the station's count is the largest of them, not their sum. Where a

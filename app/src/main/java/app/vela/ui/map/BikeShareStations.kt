@@ -31,6 +31,11 @@ import okhttp3.OkHttpClient
  * app is on screen, and an open station's sheet takes the new counts. Nothing is asked during navigation,
  * with "Use less data", offline, or with the app in the background.
  *
+ * Only docked systems' stations are asked for: the docked provider groups around the box come
+ * first ([Transitous.bikeShareGroupsInBox]), kept for [GROUPS_TTL_MS] over a box twice as wide
+ * ([groupsBox]). With none, nothing more is asked and nothing is drawn. A failed lookup is never
+ * kept as "none": that box is asked for with every operator's stations, and `isZone` filters them.
+ *
  * Construct it ABOVE the view model's `init` and call [bind] from there: the collectors' first
  * pass runs inline.
  */
@@ -41,9 +46,15 @@ internal class BikeShareStations(
     private val http: OkHttpClient,
     /** The wait after the view settles. A test passes 0. */
     private val settleMs: Long = SETTLE_MS,
-    /** Asks for the stations in a box; null on any failure. A test passes a fake. */
-    private val fetchBox: suspend (DoubleArray) -> List<Transitous.BikeStation>? = { b ->
-        withContext(Dispatchers.IO) { runCatching { Transitous.bikeStationsInBox(http, b[0], b[1], b[2], b[3]) }.getOrNull() }
+    /** The docked systems in a box `[south, west, north, east]`; null on any failure. A test passes a fake. */
+    private val groupsOf: suspend (DoubleArray) -> List<String>? = { b ->
+        withContext(Dispatchers.IO) { runCatching { Transitous.bikeShareGroupsInBox(http, b[0], b[1], b[2], b[3]) }.getOrNull() }
+    },
+    private val clock: () -> Long = SystemClock::elapsedRealtime,
+    /** Asks for the stations in a box, of those systems only when given; null on any failure. A
+     *  test passes a fake. */
+    private val fetchBox: suspend (DoubleArray, List<String>?) -> List<Transitous.BikeStation>? = { b, g ->
+        withContext(Dispatchers.IO) { runCatching { Transitous.bikeStationsInBox(http, b[0], b[1], b[2], b[3], g) }.getOrNull() }
     },
 ) {
     /** The last settled view, `[south, west, north, east, zoom]`. */
@@ -55,6 +66,10 @@ internal class BikeShareStations(
      *  clock for the minute refresh, which a change of the phone's clock must not stall. */
     private var fetchedAt = 0L
     private var fetchedElapsed = -REFRESH_MS
+    /** The docked systems last found, the box they were asked for and when. */
+    private var keptGroups: List<String> = emptyList()
+    private var keptGroupsBox: DoubleArray? = null
+    private var keptGroupsAt = 0L
 
     fun bind() {
         // Turning the layer on (or off) acts at once, not at the next pan.
@@ -119,7 +134,18 @@ internal class BikeShareStations(
             val v = view ?: return@send false
             val b = padded(v[0], v[1], v[2], v[3])
             val t0 = SystemClock.elapsedRealtime()
-            val got = fetchBox(b)
+            val groups = groups(b)
+            if (groups != null && groups.isEmpty()) {
+                // No docked system here: nothing to draw and no stations to ask for.
+                if (!BikeShareLayer.on.value || state.value.navigating) return@send false
+                box = b
+                fetchedAt = System.currentTimeMillis()
+                fetchedElapsed = SystemClock.elapsedRealtime()
+                Log.i(TAG, "bike share: no docked system in the box")
+                state.update { s -> if (s.bikeStations.isEmpty()) s else s.copy(bikeStations = emptyList()) }
+                return@send true
+            }
+            val got = fetchBox(b, groups)
             if (got == null) {
                 // A failure is never kept as "no stations": the next pan or minute asks again.
                 Log.i(TAG, "bike share: fetch failed after ${SystemClock.elapsedRealtime() - t0} ms")
@@ -133,7 +159,7 @@ internal class BikeShareStations(
             box = b
             fetchedAt = System.currentTimeMillis()
             fetchedElapsed = SystemClock.elapsedRealtime()
-            Log.i(TAG, "bike share: ${list.size} stations (${got.size} in the box) in ${SystemClock.elapsedRealtime() - t0} ms")
+            Log.i(TAG, "bike share: ${list.size} stations (${got.size} in the box, ${groups?.size ?: "all"} systems) in ${SystemClock.elapsedRealtime() - t0} ms")
             val at = fetchedAt
             state.update { s ->
                 val selected = refreshed(s.selected, list, at)
@@ -148,7 +174,27 @@ internal class BikeShareStations(
         })
     }
 
+    /** The docked systems for box [b]: the kept ones while their box holds [b] and they are under
+     *  [GROUPS_TTL_MS] old, else a new lookup over [groupsBox]. Null when the lookup failed. */
+    private suspend fun groups(b: DoubleArray): List<String>? {
+        val kb = keptGroupsBox
+        if (kb != null && clock() - keptGroupsAt < GROUPS_TTL_MS && contains(kb, b)) return keptGroups
+        val gb = groupsBox(b)
+        val got = groupsOf(gb)
+        if (got == null) {
+            Log.i(TAG, "bike share: the systems lookup failed, asking for every operator's stations")
+            return null
+        }
+        keptGroups = got
+        keptGroupsBox = gb
+        keptGroupsAt = clock()
+        return got
+    }
+
     companion object {
+        /** How long the docked systems found around the view are kept. */
+        const val GROUPS_TTL_MS = 10 * 60_000L
+
         /** The id prefix of a tapped station's place, `bikeshare:<providerId>/<station id>`. */
         const val ID_PREFIX = "bikeshare:"
         /** Stations are asked for and drawn from this zoom, the transit stops' fetch zoom. */
@@ -180,6 +226,14 @@ internal class BikeShareStations(
             val padLng = (east - west) * 0.5
             return doubleArrayOf(south - padLat, west - padLng, north + padLat, east + padLng)
         }
+
+        /** The box the docked systems are asked for: the stations' box padded by half on each side,
+         *  so a pan within a box's width keeps them. */
+        internal fun groupsBox(b: DoubleArray): DoubleArray = padded(b[0], b[1], b[2], b[3])
+
+        /** Whether box [outer] holds box [inner], both `[south, west, north, east]`. */
+        internal fun contains(outer: DoubleArray, inner: DoubleArray): Boolean =
+            inner[0] >= outer[0] && inner[1] >= outer[1] && inner[2] <= outer[2] && inner[3] <= outer[3]
 
         /** Whether box [b] still serves the view: the view fits inside it and its center sits in the
          *  box's middle half. A zoom out past the box, or a pan out of the middle, asks again. */

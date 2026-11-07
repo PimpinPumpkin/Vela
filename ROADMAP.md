@@ -597,7 +597,10 @@ off the list when it has been.
   log: a request a minute with the app on screen, none with the layer off, below z15, in the
   background or during a simulated drive, and one at once on return. A Google bike rental listing
   ("Estación de alquiler de bicicletas") opens with no departure board. Central Paris draws
-  Vélib's stations and no operator's parking spots. Not seen: the counts against a station's own
+  Vélib's stations and no operator's parking spots. The box asks for docked systems' stations
+  only (`providerGroups`), after a providers-only lookup kept ten minutes: over central Paris at
+  z16, one system and 19 stations in 1.4 KB, where every operator's were 362 in 20.8 KB.
+  Not seen: the counts against a station's own
   display, a feed that sends `numDocksAvailable`, the AMOLED theme and a D-pad device.
 - Bike-share stations and stop icons keeping up while the map follows a moving fix (`ViewFetch`):
   a request that is out is no longer canceled by the next view. Tested in units and on a still
