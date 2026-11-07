@@ -258,6 +258,8 @@ data class MapUiState(
     // Rail track around the view with each line's own color (Transitous map/routes), while
     // "Highlight transit lines" is on; empty where the service has none or the view is too wide.
     val transitLines: List<app.vela.core.data.transit.Transitous.MapLine> = emptyList(),
+    // Docked bike-share stations around the view (Transitous rentals), while "Bike share" is on.
+    val bikeStations: List<app.vela.core.data.transit.Transitous.BikeStation> = emptyList(),
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -561,6 +563,8 @@ class MapViewModel @Inject constructor(
     private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost)
     // UK gas stations get their price from the Fuel Finder file (SPEC 5.8). Above init like nav.
     private val ukFuel = UkFuelPrices(appContext, viewModelScope, _state, http)
+    // Bike-share stations while their layer is on (SPEC 8). Above init like ukFuel.
+    private val bikeShare = BikeShareStations(appContext, viewModelScope, _state, http)
 
     // The voice mode written from outside this model (the car's on/off switch, CarVoice):
     // followed here so the phone's state and the drive button agree with it. A strong reference,
@@ -843,6 +847,7 @@ class MapViewModel @Inject constructor(
         nav.bind()
         ukFuel.bind()
         pruneOldTrips() // saved drives past their days, when that setting is on
+        bikeShare.bind()
         // Turning the transit lines on (or off) acts at once, not at the next pan.
         viewModelScope.launch {
             androidx.compose.runtime.snapshotFlow { app.vela.ui.TransitLayer.on.value }.collect {
@@ -3538,9 +3543,11 @@ class MapViewModel @Inject constructor(
     @Volatile private var TRANSIT_CAT = TRANSIT_CAT_COMPILED
     @Volatile private var NON_TRANSIT_CAT = NON_TRANSIT_CAT_COMPILED
 
-    /** The ONE transit-category predicate: a gate word must match AND no exclusion word may. */
+    /** The ONE transit-category predicate: a gate word must match AND no exclusion word may. A
+     *  bike-share or bike rental category is never a stop, whatever the published lists hold
+     *  ([BikeShareStations.isBikeCategory]). */
     private fun isTransitCategory(cat: String): Boolean =
-        TRANSIT_CAT.containsMatchIn(cat) && !NON_TRANSIT_CAT.containsMatchIn(cat)
+        TRANSIT_CAT.containsMatchIn(cat) && !NON_TRANSIT_CAT.containsMatchIn(cat) && !BikeShareStations.isBikeCategory(cat)
 
     /** Push the calibration bundle's keyword-table overrides into their consumers (called at init
      *  and again after the remote refresh). Absent fields leave the compiled tables in place. */
@@ -3597,6 +3604,8 @@ class MapViewModel @Inject constructor(
     }
 
     private fun fetchStopDepartures(p: Place) {
+        // A bike-share station's category says "station", which reads as transit: it has no board.
+        if (p.id.startsWith(BikeShareStations.ID_PREFIX)) return
         val cat = p.category ?: ""
         val isTransit = isTransitCategory(cat)
         val isIntersection = cat.contains("intersection", ignoreCase = true)
@@ -8447,6 +8456,7 @@ class MapViewModel @Inject constructor(
         refreshSpeedCams(south, west, north, east, zoom) // + fixed radar cameras when that layer is on
         refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
         refreshTransitLines(south, west, north, east, zoom) // + rail lines in their own colors, when that layer is on
+        bikeShare.onViewport(south, west, north, east, zoom) // + bike-share stations, when that layer is on
         refreshImageryYear(south, west, north, east) // + the capture year for the satellite attribution
         refreshSatDeep(south, west, north, east, zoom) // + deep-zoom imagery availability (issue #244)
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
@@ -10062,6 +10072,34 @@ class MapViewModel @Inject constructor(
                 else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = placeholder.id, stopDeparturesCachedAt = null)
             }
             if (board != null && board.lines.isNotEmpty()) startBoardRefresh(placeholder.id, stop.lat, stop.lon)
+        }
+    }
+
+    /** A tapped bike-share station: a light place with the station's counts, which the minute
+     *  refresh keeps current (SPEC 8, Bike-share stations). No Google lookup. */
+    fun onBikeStationTap(station: app.vela.core.data.transit.Transitous.BikeStation) {
+        if (_state.value.navigating) return // dead during a live drive, like onTransitStopTap
+        val place = bikeShare.placeOf(station)
+        reviewsJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = place,
+                results = emptyList(),
+                center = place.location,
+                placesHere = emptyList(),
+                reviews = emptyList(),
+                stopDepartures = null,
+                stopDeparturesLoading = false,
+                stopDeparturesFor = null,
+                stopDeparturesCachedAt = null,
+                reviewsLoading = false,
+                reviewsFound = 0,
+                loadingDetails = false,
+                photosLoading = false,
+                pickingOrigin = false, pickingDest = false,
+                pickingStop = false,
+                directionsOpen = false,
+            )
         }
     }
 
