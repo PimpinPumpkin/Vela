@@ -1537,4 +1537,18 @@
     <string name="place_avoid_short_ferries">Ferries</string>
     <string name="place_avoid_short_cameras">Cameras</string>
     <string name="trip_shortcut_themed">Match themed icons</string>
+    <string name="settings_speed_cams_display">Show speed cameras on map</string>
+    <string name="settings_flock_display">Show surveillance cameras on map</string>
+    <string name="settings_speed_cam_nav_card">Speed camera heads-up card</string>
+    <string name="settings_speed_cam_nav_card_hint">Shows an on-screen alert banner when approaching a speed camera on your route.</string>
+    <string name="settings_speed_cam_nav_voice">Speed camera voice alert</string>
+    <string name="settings_speed_cam_nav_voice_hint">Says \"Speed camera ahead\" through navigation audio.</string>
+    <string name="settings_speed_cam_distance_title">Alert distance</string>
+    <string name="settings_speed_cam_distance_hint">Choose how far in advance to trigger the alert before reaching the camera.</string>
+    <string name="settings_speed_cam_dist_auto">Auto (12 s)</string>
+    <string name="settings_speed_cam_dist_200">200 m</string>
+    <string name="settings_speed_cam_dist_400">400 m</string>
+    <string name="settings_speed_cam_dist_600">600 m</string>
+    <string name="settings_speed_cam_dist_800">800 m</string>
+    <string name="settings_speed_cam_dist_1000">1 km</string>
 </resources>

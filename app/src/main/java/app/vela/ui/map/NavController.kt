@@ -241,11 +241,11 @@ internal class NavController(
                 }
             }
         }
-        // Flipping "Warn me out loud" on MID-DRIVE fetches the current route's cameras right away;
+        // Flipping speed camera warnings on MID-DRIVE fetches the current route's cameras right away;
         // before, the fetch only ran on a route change, so the toggle did nothing until the next
         // reroute (review 2026-09-12). Flipping it off clears the list through the same function.
         scope.launch {
-            androidx.compose.runtime.snapshotFlow { app.vela.ui.SpeedCamWarn.on.value && app.vela.ui.SpeedCams.on.value }
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.SpeedCamWarn.card.value || app.vela.ui.SpeedCamWarn.voice.value }
                 .collect { on ->
                     val r = navSession.state.value.route ?: return@collect
                     if (on) routeCamKey = null // force the fetch even for the same route
@@ -1127,7 +1127,7 @@ internal class NavController(
     // reroute (review 2026-09-12). Flipping it off clears the list through the same function.
 
     private fun refreshRouteSpeedCams(route: app.vela.core.model.Route) {
-        if (!app.vela.ui.SpeedCams.on.value || !app.vela.ui.SpeedCamWarn.on.value) {
+        if (!app.vela.ui.SpeedCamWarn.any) {
             routeCamKey = null; routeCamMeters = emptyList(); spokenCams = emptySet()
             return
         }
@@ -1233,8 +1233,9 @@ internal class NavController(
      *  both, per the two settings. Timing is the speed-camera warning's ([CameraAlerts.due]). */
     private fun maybeWarnFlock(ns: app.vela.core.nav.NavSession.State) {
         if (routeFlockMeters.isEmpty() || !app.vela.ui.FlockNavAlert.any) return
+        val customDist = app.vela.ui.FlockNavAlert.distanceMeters.intValue.takeIf { it > 0 }?.toDouble()
         val i = app.vela.core.nav.CameraAlerts.due(
-            routeFlockMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), alertedFlock,
+            routeFlockMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), alertedFlock, customDist,
         ) ?: return
         alertedFlock = alertedFlock + i
         val msg = appContext.getString(
@@ -1251,7 +1252,7 @@ internal class NavController(
     fun drivingModeFix(here: app.vela.core.model.LatLng, bearingDeg: Double?) {
         if (navSession.state.value.navigating) return
         maybeWarnSpeeding()
-        val wantCams = app.vela.ui.SpeedCams.on.value && app.vela.ui.SpeedCamWarn.on.value
+        val wantCams = app.vela.ui.SpeedCamWarn.any
         val wantFlock = app.vela.ui.FlockNavAlert.any
         if (!wantCams && !wantFlock) return
         val speed = (_state.value.mySpeed ?: 0f).toDouble()
@@ -1263,22 +1264,28 @@ internal class NavController(
         }
         if (from == null) return
         val since = from.distanceTo(here)
-        if (wantCams) app.vela.core.nav.CameraAlerts.dueKeyed(driveCams, since, speed, driveAnnouncedCams)?.let { key ->
-            driveAnnouncedCams = driveAnnouncedCams + key
-            android.util.Log.i("VelaSpeedCam", "driving mode: camera ahead")
-            val msg = appContext.getString(R.string.nav_speed_camera_ahead)
-            host.flashStatus(msg, 6000L)
-            alert(msg)
-            app.vela.car.CarBridge.toast(msg)
+        if (wantCams) {
+            val customDist = app.vela.ui.SpeedCamWarn.distanceMeters.intValue.takeIf { it > 0 }?.toDouble()
+            app.vela.core.nav.CameraAlerts.dueKeyed(driveCams, since, speed, driveAnnouncedCams, customDist)?.let { key ->
+                driveAnnouncedCams = driveAnnouncedCams + key
+                android.util.Log.i("VelaSpeedCam", "driving mode: camera ahead")
+                val msg = appContext.getString(R.string.nav_speed_camera_ahead)
+                if (app.vela.ui.SpeedCamWarn.card.value) host.flashStatus(msg, 6000L)
+                if (app.vela.ui.SpeedCamWarn.voice.value) alert(msg)
+                app.vela.car.CarBridge.toast(msg)
+            }
         }
-        if (wantFlock) app.vela.core.nav.CameraAlerts.dueKeyed(driveFlock, since, speed, driveAnnouncedFlock)?.let { key ->
-            driveAnnouncedFlock = driveAnnouncedFlock + key
-            val msg = appContext.getString(
-                if ((driveFlockCount[key] ?: 1) > 1) R.string.nav_flock_cameras_ahead else R.string.nav_flock_camera_ahead,
-            )
-            if (app.vela.ui.FlockNavAlert.card.value) host.flashStatus(msg, 6000L)
-            if (app.vela.ui.FlockNavAlert.voice.value) alert(msg)
-            app.vela.car.CarBridge.toast(msg)
+        if (wantFlock) {
+            val customDist = app.vela.ui.FlockNavAlert.distanceMeters.intValue.takeIf { it > 0 }?.toDouble()
+            app.vela.core.nav.CameraAlerts.dueKeyed(driveFlock, since, speed, driveAnnouncedFlock, customDist)?.let { key ->
+                driveAnnouncedFlock = driveAnnouncedFlock + key
+                val msg = appContext.getString(
+                    if ((driveFlockCount[key] ?: 1) > 1) R.string.nav_flock_cameras_ahead else R.string.nav_flock_camera_ahead,
+                )
+                if (app.vela.ui.FlockNavAlert.card.value) host.flashStatus(msg, 6000L)
+                if (app.vela.ui.FlockNavAlert.voice.value) alert(msg)
+                app.vela.car.CarBridge.toast(msg)
+            }
         }
     }
 
@@ -1362,17 +1369,16 @@ internal class NavController(
     /** Announce the camera coming up, once each. Timing lives in :core [CameraAlerts]. */
     private fun maybeWarnCamera(ns: app.vela.core.nav.NavSession.State) {
         if (routeCamMeters.isEmpty()) return
-        if (!app.vela.ui.SpeedCams.on.value || !app.vela.ui.SpeedCamWarn.on.value) return
+        if (!app.vela.ui.SpeedCamWarn.any) return
+        val customDist = app.vela.ui.SpeedCamWarn.distanceMeters.intValue.takeIf { it > 0 }?.toDouble()
         val i = app.vela.core.nav.CameraAlerts.due(
-            routeCamMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenCams,
+            routeCamMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenCams, customDist,
         ) ?: return
         spokenCams = spokenCams + i
         android.util.Log.i("VelaSpeedCam", "warning ${i + 1} of ${routeCamMeters.size}")
         val msg = appContext.getString(R.string.nav_speed_camera_ahead)
-        // The card as well as the voice (issue #696): a muted drive got nothing, and the map icon
-        // is small at speed.
-        host.flashStatus(msg, 6000L)
-        alert(msg)
+        if (app.vela.ui.SpeedCamWarn.card.value) host.flashStatus(msg, 6000L)
+        if (app.vela.ui.SpeedCamWarn.voice.value) alert(msg)
         app.vela.car.CarBridge.toast(msg)
     }
 

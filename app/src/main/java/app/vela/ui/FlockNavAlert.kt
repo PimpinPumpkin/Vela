@@ -1,6 +1,7 @@
 package app.vela.ui
 
 import android.content.Context
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 
 /**
@@ -15,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 object FlockNavAlert {
     val card = mutableStateOf(false)
     val voice = mutableStateOf(false)
+    val distanceMeters = mutableIntStateOf(0) // 0 = Auto (12s depending on speed)
 
     val any: Boolean get() = card.value || voice.value
 
@@ -22,6 +24,7 @@ object FlockNavAlert {
         val p = prefs(context)
         card.value = p.getBoolean(KEY_CARD, false)
         voice.value = p.getBoolean(KEY_VOICE, false)
+        distanceMeters.intValue = p.getInt(KEY_DISTANCE, 0)
     }
 
     fun setCard(context: Context, value: Boolean) {
@@ -34,7 +37,13 @@ object FlockNavAlert {
         prefs(context).edit().putBoolean(KEY_VOICE, value).apply()
     }
 
+    fun setDistanceMeters(context: Context, meters: Int) {
+        distanceMeters.intValue = meters
+        prefs(context).edit().putInt(KEY_DISTANCE, meters).apply()
+    }
+
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_CARD = "flock_nav_alert_card"
     private const val KEY_VOICE = "flock_nav_alert_voice"
+    private const val KEY_DISTANCE = "flock_nav_alert_distance"
 }
