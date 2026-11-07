@@ -566,6 +566,8 @@ class MapViewModel @Inject constructor(
     // Bike-share trips beside the bike routes while the Bike tab's chip is on (SPEC 8).
     private val bikeShareTrips = BikeShareTripSearch(http)
     private var bikeShareJob: Job? = null
+    /** The last directions' ends and whether it had stops, for [researchBikeShare]. */
+    private var bikeShareEnds: Triple<LatLng, LatLng, Boolean>? = null
 
     // The voice mode written from outside this model (the car's on/off switch, CarVoice):
     // followed here so the phone's state and the drive button agree with it. A strong reference,
@@ -5929,7 +5931,7 @@ class MapViewModel @Inject constructor(
         app.vela.ui.ParkingActions.arrivedByCar = { _state.value.travelMode == TravelMode.DRIVE }
         app.vela.ui.ParkingActions.parkedAt = { _state.value.parkedAtMillis }
     }
-    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = { if (_state.value.directionsOpen && _state.value.travelMode == TravelMode.BICYCLE) route(TravelMode.BICYCLE) }; app.vela.ui.RouteActions.bikeDirections = ::bikeDirections; app.vela.ui.RouteActions.walkDirections = ::walkDirections; app.vela.ui.RouteActions.startTransit = ::startTransitNav
+    init { app.vela.ui.SavedActions.rename = ::renamePlace; app.vela.ui.ShapeActions.delete = ::deleteOpenedShape; app.vela.ui.ShapeActions.edit = ::editOpenedShape; app.vela.ui.RouteActions.pinTrip = ::pinTripShortcut; app.vela.ui.RouteActions.modeKey = { app.vela.ui.TripShortcut.defaultIcon(_state.value.travelMode) }; app.vela.ui.RouteActions.camerasChanged = { if (_state.value.directionsOpen) route(_state.value.travelMode) }; app.vela.ui.RouteActions.bikeShareChanged = ::researchBikeShare; app.vela.ui.RouteActions.bikeDirections = ::bikeDirections; app.vela.ui.RouteActions.walkDirections = ::walkDirections; app.vela.ui.RouteActions.startTransit = ::startTransitNav
         // The Bike tab's bike-share trips leave with it: another tab, a closed sheet or a drive.
         viewModelScope.launch {
             _state.map { it.directionsOpen && it.travelMode == TravelMode.BICYCLE && !it.navigating }.distinctUntilChanged().collect { shown ->
@@ -6572,8 +6574,10 @@ class MapViewModel @Inject constructor(
         // time-dependent. The keyless drive/walk/bike request has no departure field at all,
         // so refetching those returned identical routes and just flickered the list while the
         // chooser's own arrival-window arithmetic was the only thing that changed (the "kinda
-        // janky" report, user 2026-07-11).
+        // janky" report, user 2026-07-11). Bike share is for leaving now: on the Bike tab its trips
+        // alone are asked for again, or give way to a line saying so.
         if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
+        else if (_state.value.travelMode == TravelMode.BICYCLE) researchBikeShare()
     }
 
     private fun route(mode: TravelMode) {
@@ -6658,30 +6662,42 @@ class MapViewModel @Inject constructor(
      * bikes and docks as of the request. Any other tab, or no chip, empties what was shown. The
      * stations' counts follow the trips, except with "Use less data". A trip with stops asks for
      * nothing: the planner takes no stop that is not a transit stop, so its trips would skip
-     * them, and the sheet says bike share does not take stops yet.
+     * them, and the sheet says bike share does not take stops yet. A trip that does not leave now
+     * says so too.
      */
     private fun searchBikeShare(origin: LatLng, dest: LatLng, mode: TravelMode, timeMode: Int, hasStops: Boolean) {
+        bikeShareEnds = Triple(origin, dest, hasStops)
         bikeShareJob?.cancel()
         BikeShareTripsShown.clear()
-        if (mode != TravelMode.BICYCLE || !app.vela.ui.BikeShareTrips.on.value || timeMode != 0 || offlineNow()) return
-        if (hasStops) {
-            BikeShareTripsShown.withStops.value = true
+        if (mode != TravelMode.BICYCLE || !app.vela.ui.BikeShareTrips.on.value || offlineNow()) return
+        if (hasStops || timeMode != 0) {
+            BikeShareTripsShown.notice.value = if (hasStops) R.string.place_bike_share_no_stops else R.string.place_bike_share_now_only
             return
         }
         BikeShareTripsShown.loading.value = true
         bikeShareJob = viewModelScope.launch {
-            try {
-                val trips = bikeShareTrips.search(origin, dest)
-                if (!_state.value.directionsOpen || _state.value.travelMode != TravelMode.BICYCLE) return@launch
-                BikeShareTripsShown.trips.value = trips
-                BikeShareTripsShown.loading.value = false
-                if (trips.isNotEmpty() && !app.vela.core.data.LowDataMode.enabled) {
-                    bikeShareTrips.counts(trips)?.let { BikeShareCounts.replace(it) }
-                }
-            } finally {
-                BikeShareTripsShown.loading.value = false
+            val trips = bikeShareTrips.search(origin, dest)
+            // The search swallows its own cancel: a newer search or a chip turned off must not
+            // be overwritten by this one's late reply.
+            ensureActive()
+            if (!_state.value.directionsOpen || _state.value.travelMode != TravelMode.BICYCLE) return@launch
+            BikeShareTripsShown.trips.value = trips
+            BikeShareTripsShown.loading.value = false
+            if (trips.isNotEmpty() && !app.vela.core.data.LowDataMode.enabled) {
+                val counts = bikeShareTrips.counts(trips)
+                ensureActive()
+                counts?.let { BikeShareCounts.replace(it) }
             }
         }
+    }
+
+    /** The bike-share trips asked for again for the last trip's ends, without asking for the
+     *  bike routes again: the chip flipped or the departure time changed on the Bike tab. */
+    private fun researchBikeShare() {
+        val s = _state.value
+        if (!s.directionsOpen || s.travelMode != TravelMode.BICYCLE) return
+        val (origin, dest, hasStops) = bikeShareEnds ?: return
+        searchBikeShare(origin, dest, TravelMode.BICYCLE, s.directionsTimeMode, hasStops)
     }
 
     private var flockRouteJob: kotlinx.coroutines.Job? = null

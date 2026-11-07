@@ -228,8 +228,9 @@ because it has no route preference.
 ### Bike-share trips
 
 With the "Bike share" chip on the Bike tab and a trip that leaves now, `BikeShareTripSearch` runs
-beside the bike routes. It never runs for a later time: the planner picks stations by their bikes
-and docks as of the request. The trips sit in `BikeShareTripsShown`, a holder the sheet and the
+beside the bike routes. It never runs for a later time, and the sheet says bike share is only for
+leaving now: the planner picks stations by their bikes and docks as of the request. Flipping the
+chip or changing the time asks for the bike-share trips again and leaves the bike routes alone. The trips sit in `BikeShareTripsShown`, a holder the sheet and the
 map read, since MapScreen takes no new parameter.
 
 1. `Transitous.bikeShareGroups` asks which systems run around the trip, for providers only. A

@@ -14,9 +14,9 @@ object BikeShareTripsShown {
     /** Null until a search has answered; empty when it found none. */
     val trips = mutableStateOf<List<TransitItinerary>?>(null)
     val loading = mutableStateOf(false)
-    /** The trip has stops, which bike-share trips do not take yet: nothing was asked for, and the
-     *  sheet says why instead of showing trips that skip the stops. */
-    val withStops = mutableStateOf(false)
+    /** Why nothing was asked for, as a string id, shown in place of the trips: the trip has stops,
+     *  which bike-share trips do not take yet, or it does not leave now. Null otherwise. */
+    val notice = mutableStateOf<Int?>(null)
     val preview = mutableStateOf<TransitItinerary?>(null)
 
     /** A row was expanded or collapsed. Collapsing clears the preview only if that row owns it. */
@@ -32,7 +32,7 @@ object BikeShareTripsShown {
     fun clear() {
         if (trips.value != null) trips.value = null
         if (loading.value) loading.value = false
-        if (withStops.value) withStops.value = false
+        if (notice.value != null) notice.value = null
         if (preview.value != null) preview.value = null
         BikeShareCounts.replace(emptyMap())
     }

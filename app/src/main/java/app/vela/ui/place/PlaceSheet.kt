@@ -3215,17 +3215,10 @@ internal fun BikeShareSection(ink: Color, dim: Color, dark: Boolean) {
     val onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { a, b -> app.vela.ui.RouteActions.walkDirections?.invoke(a, b).orEmpty() }
     val onStartTransit: (TransitItinerary) -> Unit = { app.vela.ui.RouteActions.startTransit?.invoke(it) }
     val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
-    val loading = app.vela.ui.map.BikeShareTripsShown.loading.value
-    val withStops = app.vela.ui.map.BikeShareTripsShown.withStops.value
-    if (trips == null && !loading && !withStops) return
+    if (trips == null && !app.vela.ui.map.BikeShareTripsShown.loading.value && app.vela.ui.map.BikeShareTripsShown.notice.value == null) return
     Spacer(Modifier.height(12.dp))
     when {
-        withStops -> Text(stringResource(R.string.place_bike_share_no_stops), style = MaterialTheme.typography.bodyMedium, color = dim)
-        trips == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodyMedium, color = dim)
-        }
-        trips.isEmpty() -> Text(stringResource(R.string.place_bike_share_none), style = MaterialTheme.typography.bodyMedium, color = dim)
+        trips.isNullOrEmpty() -> BikeShareStatus(dim, MaterialTheme.typography.bodyMedium, spinner = 18.dp)
         else -> {
             val nowSec by produceState(initialValue = app.vela.ui.DemoClock.nowSec()) {
                 while (true) {
@@ -3263,38 +3256,37 @@ internal fun BikeShareSection(ink: Color, dim: Color, dark: Boolean) {
 @Composable
 internal fun BikeShareTripCards(ink: Color, dim: Color, dark: Boolean) {
     val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
-    val loading = app.vela.ui.map.BikeShareTripsShown.loading.value
     val selected = app.vela.ui.map.BikeShareTripsShown.preview.value
-    val withStops = app.vela.ui.map.BikeShareTripsShown.withStops.value
     Column(
         Modifier.fillMaxWidth().animateContentSize(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        when {
-            withStops -> Text(
-                stringResource(R.string.place_bike_share_no_stops),
-                style = MaterialTheme.typography.bodySmall, color = dim,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            trips == null && loading -> Row(
-                Modifier.padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodySmall, color = dim)
-            }
-            trips == null -> Unit
-            trips.isEmpty() -> Text(
-                stringResource(R.string.place_bike_share_none),
-                style = MaterialTheme.typography.bodySmall, color = dim,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            else -> {
-                Spacer(Modifier.height(2.dp))
-                trips.take(BIKE_SHARE_ROWS).forEach { t -> BikeShareTripCard(t, t === selected, ink, dim, dark) }
-            }
+        if (trips.isNullOrEmpty()) {
+            BikeShareStatus(dim, MaterialTheme.typography.bodySmall, spinner = 16.dp, Modifier.padding(top = 8.dp))
+        } else {
+            Spacer(Modifier.height(2.dp))
+            trips.take(BIKE_SHARE_ROWS).forEach { t -> BikeShareTripCard(t, t === selected, ink, dim, dark) }
         }
+    }
+}
+
+/** The Bike tab's line in place of bike-share trips: why none were asked for, the search under
+ *  way, or that it found none. Nothing while the chip is off. Both directions panels show it. */
+@Composable
+private fun BikeShareStatus(dim: Color, style: androidx.compose.ui.text.TextStyle, spinner: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
+    val notice = app.vela.ui.map.BikeShareTripsShown.notice.value
+    when {
+        notice != null -> Text(stringResource(notice), style = style, color = dim, modifier = modifier)
+        trips == null && app.vela.ui.map.BikeShareTripsShown.loading.value -> Row(
+            modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CircularProgressIndicator(Modifier.size(spinner), strokeWidth = 2.dp)
+            Text(stringResource(R.string.place_finding_route), style = style, color = dim)
+        }
+        trips != null && trips.isEmpty() -> Text(stringResource(R.string.place_bike_share_none), style = style, color = dim, modifier = modifier)
     }
 }
 
@@ -3336,8 +3328,8 @@ private fun bikeShareTeal(): Color =
     Color(if (isAppInDarkTheme()) app.vela.ui.map.BikeShareMapLayer.FILL_DARK else app.vela.ui.map.BikeShareMapLayer.FILL_LIGHT)
 
 /** The Bike tab's "Bike share" chip (SPEC 8, Bike share in directions): flips
- *  [app.vela.ui.BikeShareTrips] and asks for the bike routes and trips again through
- *  [app.vela.ui.RouteActions], so MapScreen takes no new callback. */
+ *  [app.vela.ui.BikeShareTrips] and asks for the bike-share trips again, the bike routes left as
+ *  they are, through [app.vela.ui.RouteActions], so MapScreen takes no new callback. */
 @Composable
 internal fun BikeShareTripsChip() {
     val context = LocalContext.current

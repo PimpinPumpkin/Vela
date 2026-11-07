@@ -4960,8 +4960,12 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   Bike tab: under the time chooser in the classic panel, above the route summary in the
   Google-style picker. While it is on and the trip leaves now, `MapViewModel.searchBikeShare`
   runs `BikeShareTripSearch` beside the bike routes, so Transitous gets the trip's two ends. A
-  later departure gets none: the planner places bikes and docks as of the request. Another tab
-  asks nothing, and the mode chips' ETA prefetch never asks. Offline nothing is asked.
+  later departure gets none and says bike share is only for leaving now: the planner places
+  bikes and docks as of the request. Flipping the chip or changing the time on the Bike tab asks
+  for the trips again (`researchBikeShare`, from the last directions' ends) and leaves the bike
+  routes as they are. A newer search, or the chip turned off, drops the reply of a search that
+  is still out. Another tab asks nothing, and the mode chips' ETA prefetch never asks. Offline
+  nothing is asked.
 - The trips, the search's state and the expanded trip live in `BikeShareTripsShown`, read by the
   sheet and by `VelaMapView`, which draws the expanded trip as it draws a transit preview:
   MapScreen takes no new parameter. The view model empties it when the Bike tab leaves the
