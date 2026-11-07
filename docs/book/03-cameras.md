@@ -33,9 +33,11 @@ one gzipped TSV of latitude, longitude, operator and facing in degrees. The APK 
 2026 snapshot of about 129,000 cameras, 93% with a facing, so the layer works on first launch.
 
 The `flock-cameras` workflow rebakes the file every Monday at 08:17 UTC
-([chapter 2](02-data-and-rebakes.md)). At launch `FlockCameras` loads the newer of the bundled
-and downloaded copies, then downloads the hosted one if its version is higher. Until the file
-has loaded, Overpass answers (`OverpassAlprCameras`), with a 120 m corridor for route counts.
+([chapter 2](02-data-and-rebakes.md)). It asks Overpass for the whole set as CSV, tries the three
+servers twice, ten minutes apart, and keeps the published file when no full answer comes back.
+At launch `FlockCameras` loads the newer of the bundled and downloaded copies, then downloads the
+hosted one if its version is higher. Until the file has loaded, Overpass answers
+(`OverpassAlprCameras`), with a 120 m corridor for route counts.
 
 Speed cameras are OSM `highway=speed_camera` nodes in the per-region `road-features` file,
 rebaked every 30 days. The phone downloads its region's file once and answers from memory

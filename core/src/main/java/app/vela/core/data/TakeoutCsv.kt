@@ -87,11 +87,14 @@ object TakeoutCsv {
         val at = AT.find(raw)
         val search = SEARCH.find(raw)?.groupValues?.get(1)?.let { decode(it) }
         val searchCoord = search?.let { COORD.matchEntire(it.trim()) }
-        val lat = pin?.groupValues?.get(1)?.toDoubleOrNull() ?: searchCoord?.groupValues?.get(1)?.toDoubleOrNull() ?: at?.groupValues?.get(1)?.toDoubleOrNull()
-        val lng = pin?.groupValues?.get(2)?.toDoubleOrNull() ?: searchCoord?.groupValues?.get(2)?.toDoubleOrNull() ?: at?.groupValues?.get(2)?.toDoubleOrNull()
+        // `?q=38.54491,-121.74012`, how Takeout writes a dropped pin's link: a point, not a name.
+        val q = queryParam(raw, "q")?.let { decode(it.replace('+', ' ')).trim() }
+        val qCoord = q?.let { COORD.matchEntire(it) }
+        val lat = pin?.groupValues?.get(1)?.toDoubleOrNull() ?: searchCoord?.groupValues?.get(1)?.toDoubleOrNull() ?: qCoord?.groupValues?.get(1)?.toDoubleOrNull() ?: at?.groupValues?.get(1)?.toDoubleOrNull()
+        val lng = pin?.groupValues?.get(2)?.toDoubleOrNull() ?: searchCoord?.groupValues?.get(2)?.toDoubleOrNull() ?: qCoord?.groupValues?.get(2)?.toDoubleOrNull() ?: at?.groupValues?.get(2)?.toDoubleOrNull()
         val name = PLACE.find(raw)?.groupValues?.get(1)?.let { decode(it.replace('+', ' ')) }
             ?: search?.takeIf { searchCoord == null }
-            ?: queryParam(raw, "q")?.let { decode(it.replace('+', ' ')) }
+            ?: q?.takeIf { qCoord == null }
         val okLat = lat?.takeIf { it in -90.0..90.0 }
         val okLng = lng?.takeIf { it in -180.0..180.0 }
         return Link(

@@ -105,6 +105,11 @@ class NavStringsTest {
             "Use the right 2 lanes to take exit 172 toward Sacramento",
             EnNavStrings.useLanesToDo(g.side, g.count, "Take exit 172 toward Sacramento"),
         )
+        // A ramp on the side the lanes name does not say the side twice.
+        assertEquals(
+            "Use the right 2 lanes to take the ramp toward CA 99 North",
+            EnNavStrings.useLanesToDo(g.side, g.count, "Take the ramp on the right toward CA 99 North"),
+        )
         // Other languages fall back to a safe two-sentence, lanes-first form.
         assertEquals(
             "Empruntez les 2 voies de droite. Prenez la sortie 172",

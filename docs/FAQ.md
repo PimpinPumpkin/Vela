@@ -124,3 +124,6 @@ GitHub releases, through Obtainium, the F-Droid repo or a manual APK. There is a
 stable channel, a nightly one, and a canary channel for testers in the in-app updater only.
 The in-app updater follows the one you pick under Settings > About > "Update channel". Every
 channel is signed with the same key, so switching never needs a reinstall.
+Since October 22, 2026 a release carries one APK per chip type beside an all-in-one one;
+almost every phone wants `vela-maps-arm64.apk` (74 MB instead of 122). Obtainium, the
+F-Droid repo and the in-app updater pick the right file themselves.

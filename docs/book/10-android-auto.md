@@ -135,8 +135,7 @@ over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles 
 zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.
 
 The view is heading-up when it follows a moving car: during a drive, and with no route once the
-smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known, the phone's free-drive
-latch. The latch holds through a red light and lets go when the follow ends. Heading-up, the
+smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known. The latch holds through a red light and lets go when the follow ends. Heading-up, the
 camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow `PUCK_DOWN` (0.72)
 of the way down, so more road shows ahead. Parked with no route, after a pan, and with the phone's
 "Keep north up" on, the view is north up, flat and centered on the arrow, which still turns with

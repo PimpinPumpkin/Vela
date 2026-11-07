@@ -333,6 +333,7 @@ class NamingStudyTest {
         var trips = 0; var notPlaced = 0; var noStretch = 0; var baseline = 0
         val changed = java.util.Collections.synchronizedList(ArrayList<String>())
         app.vela.core.data.ValhallaRouter.onChanged = { stated, len, runs, out -> if (stated.isNotEmpty()) changed += "'$stated' (step ${len.toInt()} m) -> '$out' | $runs" }
+        RouteGeometry.onTurnLane = { a, b, peel, whole, fold -> if (fold) changed += "turn lane folded: ${a.distanceMeters.toInt()} m bend ${peel.toInt()} whole ${whole.toInt()} | ${a.instruction} | ${b.instruction} @${"%.5f,%.5f".format(a.location.lat, a.location.lng)}" }
         val src = IntArray(3); val audit = IntArray(5); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
         val notes = ArrayList<String>()
         for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
@@ -407,8 +408,40 @@ class NamingStudyTest {
         println("LINES audit: ${audit[0]} turns, ${audit[1]} agree, ${audit[2]} other way, ${audit[3]} no bend, ${audit[4]} bends unsaid | drive suspects $suspects (the open router's own routes: $baseline) | steps $steps, with lanes $lanes")
         notes.filterNot { " STRAIGHT " in it && "DRIVE" in it }.forEach { println("LINES $it") }
         app.vela.core.data.ValhallaRouter.onChanged = null
+        RouteGeometry.onTurnLane = null
 
         changed.distinct().forEach { println("LINES CHANGED $it") }
+    }
+
+    /**
+     * TURN LANES ON THE CAPTURED LINES: the open router's route between each line's ends, with
+     * every pair [RouteGeometry.foldTurnLanes] measures printed (a short unnamed slight turn, then
+     * a turn the same way onto a road): the lane's bend, the turn across both, folded or not.
+     * -DvelaStudy=1 turns it on.
+     */
+    @Test fun turnLanesOnCapturedLines() = runBlocking {
+        Assume.assumeTrue("set -DvelaStudy=1", System.getProperty("velaStudy") != null)
+        val dir = System.getProperty("velaLines")?.let { java.io.File(it) }
+            ?: java.io.File(javaClass.getResource("/google_lines")!!.toURI())
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        var trips = 0; var steps = 0; var folded = 0; var looked = 0
+        for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
+            val line = app.vela.core.data.google.PolylineCodec.decode(f.readText().trim())
+            if (line.size < 5) continue
+            val tag = f.name.removeSuffix(".txt")
+            val seen = ArrayList<String>()
+            RouteGeometry.onTurnLane = { a, b, peel, whole, fold ->
+                seen += "TURNLANE $tag ${if (fold) "FOLD" else "keep"} lane ${a.distanceMeters.toInt()} m bend ${peel.toInt()} whole ${whole.toInt()} | ${a.instruction} | ${b.instruction} @${"%.5f,%.5f".format(a.location.lat, a.location.lng)}"
+            }
+            Thread.sleep(1100)
+            val open = RouteGeometry.route(http, line.first(), line.last(), TravelMode.DRIVE).firstOrNull()
+            RouteGeometry.onTurnLane = null
+            if (open == null) continue
+            trips++; steps += open.maneuvers.size
+            looked += seen.size; folded += seen.count { " FOLD " in it }
+            seen.forEach { println(it) }
+        }
+        println("TURNLANE trips=$trips steps after=$steps pairs looked at=$looked folded=$folded")
     }
 
     /**

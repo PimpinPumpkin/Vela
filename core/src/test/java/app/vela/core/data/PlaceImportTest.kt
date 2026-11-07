@@ -83,6 +83,24 @@ class PlaceImportTest {
         assertTrue(PlaceImport.parse(junk).isEmpty())
     }
 
+    @Test fun `a takeout pin at zero zero takes its point from its link`() {
+        val pin = """{"type":"FeatureCollection","features":[{"geometry":{"coordinates":[0,0],"type":"Point"},
+            "properties":{"google_maps_url":"http://maps.google.com/?q=38.54491,-121.74012",
+            "Comment":"No location information is available for this saved place"},"type":"Feature"}]}"""
+        val out = PlaceImport.parse(pin)
+        assertEquals(1, out.size)
+        assertEquals(38.54491, out[0].lat, 1e-9)
+        assertEquals(-121.74012, out[0].lng, 1e-9)
+        assertEquals("38.5449, -121.7401", out[0].name)
+        // No point in the link either: still dropped.
+        assertTrue(PlaceImport.parse(pin.replace("?q=38.54491,-121.74012", "?cid=123")).isEmpty())
+    }
+
+    @Test fun `a lists import of a saved places file says so`() {
+        val r = listsWrongFormat(takeout)
+        assertTrue(r is ImportResult.WrongFormat && r.placesFile)
+    }
+
     @Test fun `an impossible coordinate is dropped`() {
         val bad = """<gpx><wpt lat="999" lon="12"><name>Broken</name></wpt></gpx>"""
         assertTrue(PlaceImport.parse(bad).isEmpty())

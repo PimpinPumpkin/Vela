@@ -27,6 +27,17 @@ class HybridDrawLineTest {
         assertTrue("every drawn point is on the open route", line!!.all { p -> open.minOf { it.distanceTo(p) } < 6.0 && p.lat < start.lat + 0.00001 })
     }
 
+    @Test fun `an open route that leaves the road and comes back is not drawn where Google stays on it`() {
+        // The open route takes an exit up to a bridge 50 m off the motorway and comes straight
+        // back down. Every point of Google's line stays within reach of it, so no stretch is found.
+        val ramp = walk(start.destinationPoint(1000.0, 90.0), 0.0, 50.0) + walk(start.destinationPoint(1000.0, 90.0).destinationPoint(50.0, 0.0), 180.0, 50.0).drop(1)
+        val open = walk(start, 90.0, 1000.0) + ramp.drop(1) + walk(start.destinationPoint(1000.0, 90.0), 90.0, 1000.0).drop(1)
+        val google = walk(start.destinationPoint(3.0, 0.0), 90.0, 2000.0, step = 50.0)
+        assertTrue(HybridRoute.stretches(google, open).isEmpty())
+        val line = HybridRoute.drawLine(google, open, emptyList(), emptyMap())!!
+        assertTrue("nothing drawn off the motorway", line.all { p -> google.minOf { it.distanceTo(p) } < 15.0 })
+    }
+
     @Test fun `a stretch with a matched shape is drawn on that shape, without one on Google's line`() {
         val open = walk(start, 90.0, 900.0)
         val google = walk(start.destinationPoint(2.0, 0.0), 90.0, 900.0, step = 50.0)

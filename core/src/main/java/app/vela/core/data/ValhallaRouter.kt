@@ -10,6 +10,7 @@ import app.vela.core.model.RouteLeg
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -111,6 +112,38 @@ object ValhallaRouter {
         http: OkHttpClient, points: List<LatLng>,
         avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, timeoutMs: Long = 4_000,
     ): Route? {
+        val text = driveRouteText(http, points, avoidTolls, avoidHighways, avoidFerries, timeoutMs) ?: return null
+        return runCatching { parse(text).firstOrNull() }.getOrNull()
+    }
+
+    /**
+     * A car route that keeps off the asked road kinds, for a drive with Avoid set when Google gave
+     * no route and no downloaded region answered: the open router cannot exclude anything. Null
+     * when the route still uses one of them ([usesAvoided]) or on any failure.
+     */
+    fun driveRouteAvoiding(
+        http: OkHttpClient, points: List<LatLng>,
+        avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, timeoutMs: Long,
+    ): Route? {
+        val text = driveRouteText(http, points, avoidTolls, avoidHighways, avoidFerries, timeoutMs) ?: return null
+        if (usesAvoided(text, avoidTolls, avoidHighways, avoidFerries)) return null
+        return runCatching { parse(text).firstOrNull() }.getOrNull()
+    }
+
+    /** `use_highways` 0 and the like are a preference, the strongest the service has: it still
+     *  takes a highway, toll or ferry when nothing else reaches. The trip summary's `has_*` flags
+     *  say whether it did. No summary counts as used. */
+    internal fun usesAvoided(text: String, tolls: Boolean, highways: Boolean, ferries: Boolean): Boolean {
+        val s = runCatching { json.parseToJsonElement(text).jsonObject["trip"]?.jsonObject?.get("summary")?.jsonObject }.getOrNull()
+            ?: return true
+        fun has(k: String) = s[k]?.jsonPrimitive?.booleanOrNull ?: false
+        return (tolls && has("has_toll")) || (highways && has("has_highway")) || (ferries && has("has_ferry"))
+    }
+
+    private fun driveRouteText(
+        http: OkHttpClient, points: List<LatLng>,
+        avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, timeoutMs: Long,
+    ): String? {
         if (points.size < 2) return null
         val body = buildJsonObject {
             putJsonArray("locations") {
@@ -139,10 +172,9 @@ object ValhallaRouter {
             .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
         val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
-        val text = runCatching {
+        return runCatching {
             client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
-        }.getOrNull() ?: return null
-        return runCatching { parse(text).firstOrNull() }.getOrNull()
+        }.getOrNull()
     }
 
     /**
@@ -689,7 +721,7 @@ object ValhallaRouter {
                 folded += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val maneuvers = RouteGeometry.rampTurns(RouteGeometry.foldSameRoadMerges(RouteGeometry.foldRenames(RouteGeometry.consolidateExits(folded))))
+        val maneuvers = RouteGeometry.foldTurnLanes(polyline, RouteGeometry.rampTurns(RouteGeometry.foldSameRoadMerges(RouteGeometry.foldRenames(RouteGeometry.consolidateExits(folded)))))
         if (maneuvers.size < 2) return null
         // The steps' own sums, not the trip summary: Valhalla rounds each step to whole meters
         // and the summary separately, and NavEngine locates maneuvers by a prefix sum of steps,
@@ -743,6 +775,7 @@ object ValhallaRouter {
         27 -> "exit roundabout" to null
         37 -> "merge" to "slight right"
         38 -> "merge" to "slight left"
-        else -> "continue" to "straight"   // ferries, transit, steps, elevators: nothing to steer
+        28 -> "ferry" to null              // boarding a ferry; leaving one (29) is a plain continue
+        else -> "continue" to "straight"   // transit, steps, elevators: nothing to steer
     }
 }

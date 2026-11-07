@@ -5,6 +5,7 @@ import app.vela.core.data.google.GoogleResponse
 import app.vela.core.data.google.arr
 import app.vela.core.data.google.at
 import app.vela.core.data.google.dbl
+import app.vela.core.data.google.int
 import app.vela.core.data.google.long
 import app.vela.core.data.google.str
 import app.vela.core.model.LatLng
@@ -15,6 +16,8 @@ import app.vela.core.model.TransitStep
 import app.vela.core.model.TransitStopTime
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -85,7 +88,7 @@ object TransitParser {
             // trip[13] = [seconds, "10 min", seconds]: how often the service runs, present only
             // where the lines have a headway (checked on London, New York and SF trips).
             frequencyText = trip.at(13, 1).str()?.takeIf { (trip.at(13, 0).long() ?: 0L) in 60L..10_800L },
-            lines = mergeAlternativeLines(parseLines(t.at(14)), steps.mapNotNull { it.line?.name }),
+            lines = withRideColors(mergeAlternativeLines(parseLines(t.at(14)), steps.mapNotNull { it.line?.name }), steps),
             steps = steps,
         )
     }
@@ -117,6 +120,15 @@ object TransitParser {
             else ride.copy(name = group.joinToString(" / ") { it.name })
         }
     }
+
+    /** A summary line with no colors takes the ones its ride leg carries, so the card and the
+     *  steps draw it alike. */
+    internal fun withRideColors(lines: List<TransitLine>, steps: List<TransitStep>): List<TransitLine> =
+        lines.map { l ->
+            if (l.colorHex != null) l
+            else steps.firstNotNullOfOrNull { s -> s.line?.takeIf { it.name == l.name && it.colorHex != null } }
+                ?.let { l.copy(colorHex = it.colorHex, textColorHex = it.textColorHex) } ?: l
+        }
 
     /** Give each WALK leg its start/end coordinates so the UI can fetch turn-by-turn walking
      *  directions on demand: from the previous ride's alight stop (or the trip origin) to the next
@@ -283,23 +295,28 @@ object TransitParser {
         val mode = guessMode(leg ?: root)
         val out = ArrayList<TransitLine>()
         val seen = HashSet<String>()
-        fun walk(n: JsonElement) {
+        fun walk(n: JsonElement, inLineFacet: Boolean = false) {
             val a = n as? JsonArray ?: return
             val name = a.getOrNull(0).str()
             val fill = a.getOrNull(2).str()
+            // A line the agency gives no color is `[5, ["448", 1]]`: the line facet (5) holding a
+            // name with no fill. The trip summary carries such a line that way while its own leg
+            // gives it a white fill, so the card left it out and the steps showed it (issue #888).
+            val bare = inLineFacet && fill == null && (a.getOrNull(0) as? JsonPrimitive)?.isString == true && a.getOrNull(1).int() != null
             // length 1..60: single-digit route numbers ("9", "5") are real bus lines; the
             // `["name", int, "#fill", "#text"]` node shape + a "#…" fill keeps that from over-matching.
-            if (name != null && name.length in 1..60 && fill != null && fill.startsWith("#") && seen.add(name)) {
+            if (name != null && name.length in 1..60 && (fill?.startsWith("#") == true || bare) && seen.add(name)) {
                 out.add(
                     TransitLine(
                         name = name.trim(),
                         mode = mode,
-                        colorHex = fill,
+                        colorHex = fill?.takeIf { it.startsWith("#") },
                         textColorHex = a.getOrNull(3).str()?.takeIf { it.startsWith("#") },
                     )
                 )
             }
-            a.forEach(::walk)
+            val lineFacet = (a.getOrNull(0) as? JsonPrimitive)?.let { !it.isString && it.intOrNull == 5 } == true
+            a.forEachIndexed { i, c -> walk(c, lineFacet && i == 1) }
         }
         walk(root)
         // A line drawn as a BULLET rather than a text pill carries no color badge at all - the
@@ -333,7 +350,7 @@ object TransitParser {
         }
         fun isPill(e: JsonElement?): Boolean {
             val pill = (e as? JsonArray)?.getOrNull(1) as? JsonArray ?: return false
-            return pill.getOrNull(0).str() != null && pill.getOrNull(2).str()?.startsWith("#") == true
+            return pill.getOrNull(0).str() != null && (pill.getOrNull(2).str()?.startsWith("#") == true || pill.getOrNull(1).int() != null)
         }
         fun walk(n: JsonElement) {
             when (n) {

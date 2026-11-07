@@ -3,17 +3,22 @@ package app.vela.ui
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import app.vela.core.model.Route
-import app.vela.core.nav.TurnArrowGeometry
 
 /**
  * The arrows drawn on the route at its turns while navigating (issue #804): whether they are
- * wanted (Settings > Navigation, on by default) and the arrows for the drive in hand, from the
- * step in hand onward. `NavController` writes [update] per nav tick, change-gated on the route
- * and the step; `VelaMapView` reads [arrows] directly, so `MapScreen` carries no new parameter.
+ * wanted (Settings > Navigation, on by default) and which route and step they are for.
+ * `NavController` writes [update] per nav tick, change-gated on the route and the step;
+ * `VelaMapView` reads [input] directly and cuts the arrows from the line it draws
+ * (`TurnArrowGeometry.arrows`), so `MapScreen` carries no new parameter.
  */
 object TurnArrows {
     val on = mutableStateOf(true)
-    val arrows = mutableStateOf<List<TurnArrowGeometry.Arrow>>(emptyList())
+
+    /** The route and the step in hand the arrows are for. */
+    class Input(val route: Route, val step: Int)
+
+    /** Null outside a drive or with the switch off. */
+    val input = mutableStateOf<Input?>(null)
 
     private var route: Route? = null
     private var step = -1
@@ -32,7 +37,7 @@ object TurnArrows {
         if (route === this.route && stepIndex == step) return
         this.route = route
         step = stepIndex
-        arrows.value = if (route == null || !on.value) emptyList() else TurnArrowGeometry.arrows(route, stepIndex)
+        input.value = if (route == null || !on.value) null else Input(route, stepIndex)
     }
 
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)

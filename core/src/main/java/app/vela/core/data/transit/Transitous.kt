@@ -447,6 +447,7 @@ object Transitous {
                     lat = cl.sumOf { it.lat } / cl.size,
                     lon = cl.sumOf { it.lon } / cl.size,
                     siblingIds = (cl.drop(1).map { it.stopId } + cl.flatMap { it.siblingIds }).distinct(),
+                    modes = cl.flatMap { it.modes }.distinct(),
                 )
             }
         }.map { if (it.name == it.name.uppercase() && it.name.any(Char::isLetter)) it.copy(name = displayName(listOf(it.name))) else it }
@@ -471,6 +472,9 @@ object Transitous {
             else cl.first().copy(
                 name = displayName(cl.map { it.name }),
                 siblingIds = (cl.drop(1).map { it.stopId } + cl.flatMap { it.siblingIds }).distinct(),
+                // The merged icon stands for every stop in it: a bus stop on top of a subway
+                // platform keeps the subway.
+                modes = cl.flatMap { it.modes }.distinct(),
             )
         }
     }

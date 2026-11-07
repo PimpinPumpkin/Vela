@@ -1,13 +1,13 @@
 package app.vela.core.util
 
 /**
- * A road name shortened the way a street sign does it: "Inglewood Road Northeast" would not fit
- * the small label beside the speed readout, "Inglewood Rd NE" does. English street words only;
+ * A road name shortened the way a street sign does it: "Russell Road Northeast" would not fit
+ * the small label beside the speed readout, "Russell Rd NE" does. English street words only;
  * a name in any other language has none of them and comes back unchanged.
  *
  * The first word is never shortened (it is the name: "North Avenue" stays "North Ave", "Court
  * Street" stays "Court St"), and a direction is shortened only as the first or last word of a name
- * of three words or more ("Northeast 8th Street" is "NE 8th St").
+ * of three words or more ("East 8th Street" is "E 8th St").
  *
  * On screen every road name goes through it: the pill under the arrow, the turn card and its
  * "then" line ([inText]), the car's step (issue #837). The voice keeps the full words.
@@ -43,7 +43,7 @@ object RoadNameShort {
      *  first word is kept; the text is unchanged when the road is not in it (a romanized name, a
      *  number used instead). A compass word after a route number is cut to its letter wherever it
      *  stands, a sign's destination included ("toward US 169 North" is "toward US 169 N", as the
-     *  sign reads; issue #837). A direction in a town's name ("toward North Bend") stays. */
+     *  sign reads; issue #837). A direction in a town's name ("toward North Highlands") stays. */
     fun inText(text: String, road: String?): String {
         val t = routeCardinals(text)
         if (road.isNullOrBlank()) return t

@@ -199,6 +199,7 @@ class CalibrationStore @Inject constructor(
                 searchPb = str("searchPb", d.searchPb),
                 directionsEndpoint = str("directionsEndpoint", d.directionsEndpoint),
                 directionsPb = str("directionsPb", d.directionsPb),
+                directionsPlaceGroup = str("directionsPlaceGroup", d.directionsPlaceGroup),
                 reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
                 reviewsPb = str("reviewsPb", d.reviewsPb),
                 sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),

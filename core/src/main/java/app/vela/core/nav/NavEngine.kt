@@ -43,6 +43,7 @@ object NavEngine {
     private const val MIN_PACE_MPS = 1.5
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
     private const val END_PARK_ALONG_M = 60.0 // stopped this close to the end along the route, with turns still unsaid, is arrived
+    private const val PARK_STILL_FIXES = 10    // ... once stopped this many fixes in a row (about 10 s)
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
     private const val STOP_ON_ROUTE_M = 150.0 // a waypoint farther than this from the line isn't on this route
@@ -57,6 +58,13 @@ object NavEngine {
                                               // engine kept guiding on the OLD route with no reroute and no
                                               // redrawn line (device report 2026-07-16). The same 3-hit
                                               // debounce absorbs turn transients and lane changes.
+    /** The heading term needs this speed when driving ([update]'s headingMinMps): a GPS course
+     *  under it is mostly noise. A car pulling away from a light between tall buildings was read
+     *  crawling backward along its own route at 2.7 to 3.9 m/s for three fixes, right on the
+     *  line, and the route was dropped for one that sent it the other way. */
+    const val HEADING_MIN_MPS = 5.0
+    /** A fix the phone rates worse than this says nothing about the course (NavSession). */
+    const val HEADING_MAX_ACC_M = 30.0
 
     /**
      * Accuracy-scaled off-route corridor, in meters, for a travel mode. Real navigators (OsmAnd,
@@ -265,6 +273,9 @@ object NavEngine {
         // The next stop on a drive with stops (NavSession), so the voice says it is coming the
         // way it says the destination is. Null = no stop cues, everything else unchanged.
         stop: StopAhead? = null,
+        // The speed the heading term needs, MODE-AWARE (NavSession passes it): [HEADING_MIN_MPS]
+        // driving; a walker or cyclist keeps the moving floor.
+        headingMinMps: Double = HEADING_MIN_MPS,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -347,7 +358,7 @@ object NavEngine {
         // carried on with its turns, no reroute, no redrawn line. Turn transients and lane changes
         // are absorbed by the same OFF_ROUTE_HITS debounce; a legit route turn flips the snapped
         // segment's bearing along with the driver's, so it doesn't accumulate hits.
-        val headingOff = moving && bearingDeg != null &&
+        val headingOff = moving && (speedMps ?: 99.0) >= headingMinMps && bearingDeg != null &&
             routeBearingAt(route.polyline, cum, traveled)?.let { rb ->
                 kotlin.math.abs(((bearingDeg - rb + 540.0) % 360.0) - 180.0) > HEADING_OFF_DEG
             } == true
@@ -451,7 +462,7 @@ object NavEngine {
         val isArrive = target.type == ManeuverType.ARRIVE
         // This turn was already said as the "then ..." of the one before it, a block back: its
         // approach lines are taken as said. Its line at the turn itself still comes.
-        if (state.chainedStep == idxCur && spoken.isEmpty()) spoken = setOf(0, 1)
+        if (state.chainedStep == idxCur && spoken.isEmpty()) spoken = state.chainedBands
         // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken as a
         // PREFACE on the first prompt that fires for the step, Google-style ("use the right 2
         // lanes to take exit 172 toward Sacramento"), so the lanes come BEFORE the maneuver.
@@ -471,7 +482,8 @@ object NavEngine {
         // silent, and so do we — the reported "it says use the lanes to continue when only the name changes".
         val redundantContinue =
             (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) &&
-                !app.vela.core.model.continueHasGenuineFork(target.lanes)
+                !app.vela.core.model.continueHasGenuineFork(target.lanes) ||
+                ringExit(route.maneuvers, idxCur)
         // MUTE turn guidance while off-route (Google's behavior): the progress snap still maps
         // the driver onto the OLD route while a reroute is pending (or failing in a dead spot),
         // and as the phantom snap drifts past old maneuvers the engine happily announced them -
@@ -501,6 +513,8 @@ object NavEngine {
         // when the map says that turn enters one. Only on the step's first line and its turn-now
         // line, so a stop is named at most twice for its turn.
         val stopLeft = when (stop?.side) { "left" -> true; "right" -> false; else -> null }
+        // The destination's side, said on the approach as at the arrival.
+        val arriveLeft = when (target.side) { "left" -> true; "right" -> false; else -> null }
         val thenStopHere = stop != null && !isArrive && !isDepart && idxCur == stopLegManeuver(route, manAlong, stop.atM)
         // The turn into the stop's parking lot (NavSession.lotTurn), which is the turn off the
         // street and may sit a turn or two before the last one: its lines say so, and when it is
@@ -519,15 +533,27 @@ object NavEngine {
         // onto Oak Avenue". Said apart, the second turn's approach landed on top of the first
         // turn's own line or was cut by it. Never on a line that already carries a stop.
         val nextIdx = if (isArrive || isDepart || thenStopHere) -1 else chainedNext(maneuvers, manAlong, idxCur)
+        // FURTHER ON, BUT DUE AT ONCE. A next step past CHAIN_M whose first prompt would fire as
+        // soon as this turn is made rides on the line at this turn only: "Take the ramp, then keep
+        // left". Said apart, "Take the exit" and "In a quarter mile, keep slight left" came a
+        // second apart. Its bands the car reaches within BAND_MERGE_S of here count as said; a
+        // later one is still said. Not for a step with lanes, whose first line carries them.
+        val laterIdx = if (nextIdx >= 0 || isArrive || isDepart || thenStopHere) -1 else dueNext(maneuvers, manAlong, idxCur, farM + v.coerceAtLeast(MIN_PACE_MPS) * BAND_MERGE_S)
+        val laterBands = if (laterIdx < 0) emptySet() else {
+            val gap = manAlong[laterIdx] - manAlong[idxCur]
+            val pace = v.coerceAtLeast(MIN_PACE_MPS)
+            listOf(farM, nearM).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
+        }
         var chainedNow = false
-        fun withNext(line: String): String {
-            if (nextIdx < 0) return line
+        var chainedIdx = -1
+        fun withNext(line: String, idx: Int = nextIdx): String {
+            if (idx < 0) return line
             // In the shorter settings the second turn loses its street name too, as its own line would.
-            val next = maneuvers[nextIdx]
+            val next = maneuvers[idx]
             val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
             else next.instructionNoRoad ?: next.spokenInstruction()
             val both = nav().thenNext(line, nav().repeatShort(nextText))
-            if (both != line) chainedNow = true
+            if (both != line) { chainedNow = true; chainedIdx = idx }
             return both
         }
         // The line at the turn, with the next turn on it when the two are chained. That next turn
@@ -539,14 +565,15 @@ object NavEngine {
         // the shortest form is said even when it will not quite fit, since it still says what
         // comes next. A first turn with no form without its street is said alone.
         fun turnNowLine(plain: String): String {
-            val full = withNext(plain)
+            val idx = if (nextIdx >= 0) nextIdx else laterIdx
+            val full = withNext(plain, idx)
             if (full == plain) return full
             val pace = v.coerceAtLeast(MIN_PACE_MPS)
-            val toNextNow = dtn + (manAlong[nextIdx] - manAlong[idxCur]) - turnNowM
+            val toNextNow = dtn + (manAlong[idx] - manAlong[idxCur]) - turnNowM
             fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
             if (fits(full)) return full
             val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
-            val next = maneuvers[nextIdx]
+            val next = maneuvers[idx]
             val nextNamed = nav().repeatShort(next.spokenInstruction())
             // An exit keeps its sign: "take exit 12" without it says too little.
             val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
@@ -563,7 +590,7 @@ object NavEngine {
                 spoken = setOf(0, 1)
                 val sayM = (if (dtn >= band * 0.85) band else round10(dtn)).coerceAtLeast(10.0)
                 val line = when {
-                    isArrive -> nav().destinationAhead()
+                    isArrive -> nav().destinationWillBe(arriveLeft)
                     // An exit keeps its number and road: that is what the sign overhead says.
                     SpokenDetail.exitLike(target.type) -> nav().repeatShort(target.spokenInstruction())
                     else -> nav().repeatShort(lotLine ?: target.instructionNoRoad ?: target.spokenInstruction())
@@ -594,7 +621,7 @@ object NavEngine {
                 // back-to-back. One prompt per update, larger bands silently consumed.
                 val sayM = (if (dtn >= band * 0.85) band else round10(dtn)).coerceAtLeast(10.0)
                 val instruction = when {
-                    isArrive -> nav().destinationAhead()
+                    isArrive -> nav().destinationWillBe(arriveLeft)
                     // spokenSign drops the secondary sign destinations for SPEECH (the banner keeps
                     // the full sign) - speaking the whole sign took long enough that the next
                     // prompt interrupted it mid-sentence.
@@ -650,7 +677,10 @@ object NavEngine {
         // the step stays on that turn until the car is at it, so without this the arrival test
         // below, which runs on the last step, is never reached and the drive never ends.
         val crowEnd = loc.distanceTo(maneuvers.last().location)
-        val parkedAtEnd = !moving && remaining <= END_PARK_ALONG_M && crowEnd <= ARRIVE_PROX_M
+        // Parked, not waiting to turn in: a car stopped to yield at the lot's entrance 3 s after
+        // "Turn right" was told it had arrived. Stopped for PARK_STILL_FIXES fixes in a row.
+        val stillFixes = if (moving) 0 else state.stillFixes + 1
+        val parkedAtEnd = stillFixes >= PARK_STILL_FIXES && remaining <= END_PARK_ALONG_M && crowEnd <= ARRIVE_PROX_M
         if (idxCur < maneuvers.lastIndex && !parkedAtEnd) {
             if (dtn <= turnNowM && TURN_NOW_SLOT !in spoken) {
                 if (!voiceSilent) {
@@ -733,7 +763,9 @@ object NavEngine {
             reacquireHits = reacquireHits,
             rerouteBlocked = rerouteBlocked,
             stopCuedAtM = stopCuedAt,
-            chainedStep = if (chainedNow) nextIdx else state.chainedStep,
+            stillFixes = stillFixes,
+            chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
+            chainedBands = if (!chainedNow) state.chainedBands else if (chainedIdx == laterIdx) laterBands else setOf(0, 1),
         )
         return newState to events
     }
@@ -752,10 +784,23 @@ object NavEngine {
     /** More bend than this through the mark and the side is not said (a corner, a U-turn). */
     private const val SIDE_MAX_BEND_DEG = 45.0
 
-    /** The voice says nothing for this maneuver in any setting: a continue or a straight-on with no
-     *  real fork in its lanes. */
-    private fun quiet(m: Maneuver) =
-        (m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) && !app.vela.core.model.continueHasGenuineFork(m.lanes)
+    /** The voice says nothing for maneuver [i] in any setting: a continue or a straight-on with no
+     *  real fork in its lanes, or a roundabout's own exit ([ringExit]). */
+    private fun quiet(ms: List<Maneuver>, i: Int): Boolean {
+        val m = ms[i]
+        return (m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) &&
+            !app.vela.core.model.continueHasGenuineFork(m.lanes) || ringExit(ms, i)
+    }
+
+    /**
+     * The exit step of the roundabout just entered. Its entry already said which exit to take,
+     * and both carry the same words, so the exit step speaking was the roundabout said twice and
+     * a long line cut off inside the ring; as the "then" of the entry it named the same
+     * roundabout again. The turn card's "then" row passes over it too. An exit step whose entry
+     * is not the maneuver before it (a route that starts inside the ring) still speaks.
+     */
+    internal fun ringExit(ms: List<Maneuver>, i: Int): Boolean =
+        i > 0 && ms[i].type == ManeuverType.EXIT_ROUNDABOUT && ms[i - 1].type == ManeuverType.ROUNDABOUT
 
     /** The maneuver whose leg the stop at [atM] sits on, among those the voice speaks (a silent
      *  rename on the way is passed over), when the stop is within [STOP_THEN_M] of it; else -1. */
@@ -763,7 +808,7 @@ object NavEngine {
         val ms = route.maneuvers
         var k = -1
         for (i in ms.indices) { if (manAlong[i] <= atM) k = i else break }
-        while (k > 0 && quiet(ms[k])) k--
+        while (k > 0 && quiet(ms, k)) k--
         if (k <= 0 || ms[k].type == ManeuverType.ARRIVE || ms[k].type == ManeuverType.DEPART) return -1
         return if (atM - manAlong[k] <= STOP_THEN_M) k else -1
     }
@@ -775,9 +820,27 @@ object NavEngine {
      *  the arrival (which has lines of its own); else -1. */
     internal fun chainedNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int): Int {
         var j = k + 1
-        while (j < ms.size && quiet(ms[j])) j++
+        while (j < ms.size && quiet(ms, j)) j++
         if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
         return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
+    }
+
+    /** A "then" past [CHAIN_M] means soon: never for a step further than this. */
+    const val THEN_SOON_M = 500.0
+
+    /** The next maneuver after [k] whose first prompt is due the moment [k] is made: within
+     *  [dueM] (the far band plus what the car covers in BAND_MERGE_S) and [THEN_SOON_M], not the arrival, a merge or a roundabout, with no lanes
+     *  to say; else -1. */
+    internal fun dueNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int, dueM: Double): Int {
+        var j = k + 1
+        while (j < ms.size && quiet(ms, j)) j++
+        if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
+        // A roundabout's entry and exit lines count exits and stay its own.
+        val rings = setOf(ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT)
+        if (ms[k].type in rings || ms[j].type in rings) return -1
+        if (ms[j].type == ManeuverType.MERGE || app.vela.core.model.laneGuidance(ms[j].lanes) != null) return -1
+        val gap = manAlong[j] - manAlong[k]
+        return if (gap <= dueM && gap <= THEN_SOON_M) j else -1
     }
 
     /** "left" for a left turn of any sharpness, "right" for a right one, null otherwise. */
@@ -806,7 +869,7 @@ object NavEngine {
         while (k > 0 && out.size < LOT_DEST_TURNS) {
             if (endM - man[k] > LOT_DEST_BACK_M) break
             val m = ms[k]
-            if (!quiet(m)) {
+            if (!quiet(ms, k)) {
                 val left = turnLeftOf(m.type) ?: break
                 if (!m.road.isNullOrBlank() || !m.ref.isNullOrBlank()) break
                 out += Triple(k, man[k], left)
@@ -829,6 +892,25 @@ object NavEngine {
      * honestly: the pin is on the line (under [SIDE_MIN_OFF_M]), or the line bends more than
      * [SIDE_MAX_BEND_DEG] through the mark (a corner, a turn into the lot at the stop itself).
      */
+    /**
+     * [route] with a side on its arrival when the router left it out. Only OSRM and Valhalla put
+     * one on their arrive step; the on-phone router and routes named from Google's line ended in a
+     * bare arrival, so "Your destination is on the right" came on some drives and "You have
+     * arrived" on others. The side is the destination pin [dest] against the line's last
+     * [SIDE_SPAN_M], as [stopSide] reads a stop, and the step's words say it too. A route with a
+     * side, or a pin on the line, comes back as it was.
+     */
+    fun withArrivalSide(route: Route, dest: LatLng?): Route {
+        val last = route.maneuvers.lastOrNull() ?: return route
+        if (dest == null || last.type != ManeuverType.ARRIVE || last.side != null || route.legs.isEmpty()) return route
+        val total = geomFor(route).cum.lastOrNull() ?: return route
+        val side = stopSide(route, dest, total) ?: return route
+        val text = app.vela.core.data.RouteGeometry.osrmPhrase("arrive", side, null, null, null, null)
+        val arrive = last.copy(side = side, instruction = text, instructionNoRoad = text)
+        val leg = route.legs.last()
+        return route.copy(legs = route.legs.dropLast(1) + leg.copy(maneuvers = leg.maneuvers.dropLast(1) + arrive))
+    }
+
     fun stopSide(route: Route, stop: LatLng, atM: Double): String? {
         val poly = route.polyline
         if (poly.size < 2) return null
@@ -882,9 +964,7 @@ object NavEngine {
             if (taken >= count) break
             val m = ms[i]
             if (m.type == ManeuverType.ARRIVE) break
-            if ((m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) &&
-                !app.vela.core.model.continueHasGenuineFork(m.lanes)
-            ) continue
+            if (quiet(ms, i)) continue
             taken++
             val said = if (i == fromStep) spoken else emptySet()
             val leg = ms[i - 1].distanceMeters

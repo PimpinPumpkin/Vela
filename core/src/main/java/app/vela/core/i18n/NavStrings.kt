@@ -29,6 +29,9 @@ interface NavStrings {
      */
     fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String
 
+    /** A ferry leg on a walk or a ride: EN "Take the ferry". Every language overrides it. */
+    fun ferry(): String
+
     /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
      *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
      *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
@@ -117,6 +120,11 @@ interface NavStrings {
     /** Approach cue for the FINAL destination, framed by [inThen] ("In 400 meters, <this>"). */
     fun destinationAhead(): String = "Your destination will be ahead"
 
+    /** The same cue when the destination's side is known: EN "Your destination will be on the
+     *  right". A null [left] is [destinationAhead]. The arrival then says [destinationSide], so
+     *  the two agree. */
+    fun destinationWillBe(left: Boolean?): String
+
     /** A spoken lane recommendation — EN "Use the right 2 lanes" / "Use the left lane". */
     fun useLanes(side: LaneSide, count: Int): String
 
@@ -139,6 +147,7 @@ interface NavStrings {
 
 /** English (source of truth) — byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
 object EnNavStrings : NavStrings {
+    override fun ferry() = "Take the ferry"
     override val locale: Locale = Locale.US
 
     override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
@@ -214,6 +223,7 @@ object EnNavStrings : NavStrings {
     override fun arrived(): String = "You have arrived;"
 
     override fun destinationSide(left: Boolean): String = if (left) "Your destination is on the left" else "Your destination is on the right"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "Your destination will be on the left" else "Your destination will be on the right" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
 
@@ -265,8 +275,10 @@ object EnNavStrings : NavStrings {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         val lanes = if (count > 1) "the $sideWord $count lanes" else "the $sideWord lane"
         // "Use the right 2 lanes to take exit 172 toward Sacramento" — lowercase the maneuver's first
-        // word so it reads as one sentence after the "In <distance>, " frame.
-        return "Use $lanes to " + instruction.replaceFirstChar { it.lowercaseChar() }
+        // word so it reads as one sentence after the "In <distance>, " frame. A ramp on the side
+        // the lanes already name loses its side: "use the right lane to take the ramp toward".
+        val said = instruction.replaceFirst("the ramp on the $sideWord", "the ramp")
+        return "Use $lanes to " + said.replaceFirstChar { it.lowercaseChar() }
     }
 
     /** "1st", "2nd", "3rd", "4th"... (11th-13th are "th"). TTS engines read these as the ordinal words. */
@@ -349,6 +361,7 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
  * sortie"). Road/dest names are passed through untranslated.
  */
 object FrNavStrings : NavStrings {
+    override fun ferry() = "Prenez le ferry"
     override val locale: Locale = Locale.FRANCE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -412,6 +425,7 @@ object FrNavStrings : NavStrings {
     override fun arrived(): String = "Vous êtes arrivé"
 
     override fun destinationSide(left: Boolean): String = if (left) "Votre destination est à gauche" else "Votre destination est à droite"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "Votre destination sera sur votre gauche" else "Votre destination sera sur votre droite" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Démarrage de la navigation. $firstInstruction"
 
@@ -457,6 +471,7 @@ object FrNavStrings : NavStrings {
 }
 
 object DeNavStrings : NavStrings {
+    override fun ferry() = "Nehmen Sie die Fähre"
     override val locale: Locale = Locale.GERMANY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -521,6 +536,7 @@ object DeNavStrings : NavStrings {
     override fun arrived(): String = "Sie haben Ihr Ziel erreicht"
 
     override fun destinationSide(left: Boolean): String = if (left) "Ihr Ziel befindet sich links" else "Ihr Ziel befindet sich rechts"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Ihr Ziel liegt ${deStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Navigation wird gestartet. $firstInstruction"
 
@@ -584,6 +600,7 @@ object DeNavStrings : NavStrings {
 }
 
 object EsNavStrings : NavStrings {
+    override fun ferry() = "Tome el ferri"
     override val locale: Locale = Locale("es", "ES")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -653,6 +670,7 @@ object EsNavStrings : NavStrings {
     override fun arrived(): String = "Ha llegado"
 
     override fun destinationSide(left: Boolean): String = if (left) "Su destino está a la izquierda" else "Su destino está a la derecha"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Su destino estará ${esStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Iniciando la navegación. $firstInstruction"
 
@@ -696,6 +714,7 @@ object EsNavStrings : NavStrings {
 }
 
 object ItNavStrings : NavStrings {
+    override fun ferry() = "Prendi il traghetto"
     override val locale: Locale = Locale.ITALY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -768,6 +787,7 @@ object ItNavStrings : NavStrings {
     override fun arrived(): String = "Sei arrivato"
 
     override fun destinationSide(left: Boolean): String = if (left) "La tua destinazione è a sinistra" else "La tua destinazione è a destra"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "La tua destinazione sarà ${itStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Avvio della navigazione. $firstInstruction"
 
@@ -816,6 +836,7 @@ object ItNavStrings : NavStrings {
  * passed through untranslated. Brazil is metric and uses a decimal COMMA ("1,2 km").
  */
 object PtPtNavStrings : NavStrings {
+    override fun ferry() = "Apanhe o ferry"
     override val locale: Locale = Locale("pt", "PT")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -879,6 +900,7 @@ object PtPtNavStrings : NavStrings {
     override fun arrived(): String = "Você chegou"
 
     override fun destinationSide(left: Boolean): String = if (left) "O seu destino fica à esquerda" else "O seu destino fica à direita"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "O seu destino estará ${ptStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "A iniciar a navegação. $firstInstruction"
 
@@ -922,6 +944,7 @@ object PtPtNavStrings : NavStrings {
 }
 
 object PtBrNavStrings : NavStrings {
+    override fun ferry() = "Pegue a balsa"
     override val locale: Locale = Locale("pt", "BR")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -985,6 +1008,7 @@ object PtBrNavStrings : NavStrings {
     override fun arrived(): String = "Você chegou"
 
     override fun destinationSide(left: Boolean): String = if (left) "Seu destino está à esquerda" else "Seu destino está à direita"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Seu destino estará ${ptStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Iniciando a navegação. $firstInstruction"
 
@@ -1028,6 +1052,7 @@ object PtBrNavStrings : NavStrings {
 }
 
 object NlNavStrings : NavStrings {
+    override fun ferry() = "Neem de veerboot"
     override val locale: Locale = Locale("nl", "NL")
 
     // Plain directional phrase — the verb is folded into each template (Dutch "afslaan" is separable),
@@ -1124,6 +1149,7 @@ object NlNavStrings : NavStrings {
     override fun arrived(): String = "U bent aangekomen"
 
     override fun destinationSide(left: Boolean): String = if (left) "Uw bestemming is aan de linkerkant" else "Uw bestemming is aan de rechterkant"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Uw bestemming ligt ${nlStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Navigatie wordt gestart. $firstInstruction"
 
@@ -1165,6 +1191,7 @@ object NlNavStrings : NavStrings {
 }
 
 object RuNavStrings : NavStrings {
+    override fun ferry() = "Сядьте на паром"
     override val locale: Locale = Locale("ru", "RU")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1228,6 +1255,7 @@ object RuNavStrings : NavStrings {
     override fun arrived(): String = "Вы на месте"
 
     override fun destinationSide(left: Boolean): String = if (left) "Пункт назначения слева" else "Пункт назначения справа"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Пункт назначения будет ${ruStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Начинаю навигацию. $firstInstruction"
 
@@ -1351,6 +1379,7 @@ object RuNavStrings : NavStrings {
  * 2nd-person imperative ("Skręć", "Jedź"). Number-noun agreement follows Polish rules (see [plUnit]).
  */
 object PlNavStrings : NavStrings {
+    override fun ferry() = "Wsiądź na prom"
     override val locale: Locale = Locale("pl", "PL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1414,6 +1443,7 @@ object PlNavStrings : NavStrings {
     override fun arrived(): String = "Dotarłeś do celu"
 
     override fun destinationSide(left: Boolean): String = if (left) "Cel znajduje się po lewej stronie" else "Cel znajduje się po prawej stronie"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Cel podróży będzie ${plStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Rozpoczynam nawigację. $firstInstruction"
 
@@ -1475,6 +1505,7 @@ object PlNavStrings : NavStrings {
 }
 
 object SvNavStrings : NavStrings {
+    override fun ferry() = "Ta färjan"
     override val locale: Locale = Locale("sv", "SE")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1563,6 +1594,7 @@ object SvNavStrings : NavStrings {
     override fun arrived(): String = "Du är framme"
 
     override fun destinationSide(left: Boolean): String = if (left) "Din destination är till vänster" else "Din destination är till höger"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Din destination ligger ${svStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Startar navigeringen. $firstInstruction"
 
@@ -1604,6 +1636,7 @@ object SvNavStrings : NavStrings {
 }
 
 object UkNavStrings : NavStrings {
+    override fun ferry() = "Сядьте на пором"
     override val locale: Locale = Locale("uk", "UA")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1675,6 +1708,7 @@ object UkNavStrings : NavStrings {
     override fun arrived(): String = "Ви прибули"
 
     override fun destinationSide(left: Boolean): String = if (left) "Пункт призначення ліворуч" else "Пункт призначення праворуч"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Пункт призначення буде ${ukStopSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Починаємо навігацію. $firstInstruction"
 
@@ -1745,6 +1779,7 @@ object UkNavStrings : NavStrings {
  * ("500 米后，向左转，进入中山路"). Road/dest names pass through untranslated.
  */
 object ZhNavStrings : NavStrings {
+    override fun ferry() = "乘坐渡轮"
     override val locale: Locale = Locale.SIMPLIFIED_CHINESE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1815,6 +1850,7 @@ object ZhNavStrings : NavStrings {
     override fun arrived(): String = "您已到达目的地"
 
     override fun destinationSide(left: Boolean): String = if (left) "目的地在左侧" else "目的地在右侧"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "目的地在左侧" else "目的地在右侧" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "开始导航。$firstInstruction"
 
@@ -1862,6 +1898,7 @@ object ZhNavStrings : NavStrings {
  * reads both scripts). Road/dest names pass through untranslated.
  */
 object ZhTwNavStrings : NavStrings {
+    override fun ferry() = "搭乘渡輪"
     override val locale: Locale = Locale.TAIWAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1932,6 +1969,7 @@ object ZhTwNavStrings : NavStrings {
     override fun arrived(): String = "您已到達目的地"
 
     override fun destinationSide(left: Boolean): String = if (left) "目的地在左側" else "目的地在右側"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "目的地在左側" else "目的地在右側" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "開始導航。$firstInstruction"
 
@@ -1980,6 +2018,7 @@ object ZhTwNavStrings : NavStrings {
  * through untranslated.
  */
 object JaNavStrings : NavStrings {
+    override fun ferry() = "フェリーに乗ります"
     override val locale: Locale = Locale.JAPAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2043,6 +2082,7 @@ object JaNavStrings : NavStrings {
     override fun arrived(): String = "目的地に到着しました"
 
     override fun destinationSide(left: Boolean): String = if (left) "目的地は左側です" else "目的地は右側です"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "目的地は左側です" else "目的地は右側です" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "ナビを開始します。$firstInstruction"
 
@@ -2089,6 +2129,7 @@ object JaNavStrings : NavStrings {
  * Metric only in practice, but the imperial branch is kept for parity.
  */
 object HeNavStrings : NavStrings {
+    override fun ferry() = "עלה על המעבורת"
     override val locale: Locale = Locale("he", "IL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2160,6 +2201,7 @@ object HeNavStrings : NavStrings {
     override fun arrived(): String = "הגעת"
 
     override fun destinationSide(left: Boolean): String = if (left) "היעד שלך מצד שמאל" else "היעד שלך מצד ימין"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "היעד שלך יהיה מצד שמאל" else "היעד שלך יהיה מצד ימין" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "מתחיל ניווט. $firstInstruction"
 
@@ -2209,6 +2251,7 @@ object HeNavStrings : NavStrings {
  */
 /** Hungarian (Magyar): contributed by Zsolt Laszlo Kaiser (kaiser-app fork), ported 2026-09-13. */
 object HuNavStrings : NavStrings {
+    override fun ferry() = "Szállj fel a kompra"
     override val locale: Locale = Locale("hu", "HU")
 
     override fun passLights(count: Int): String =
@@ -2323,6 +2366,7 @@ object HuNavStrings : NavStrings {
     override fun arrived(): String = "Megérkeztél"
 
     override fun destinationSide(left: Boolean): String = if (left) "Az úti célod a bal oldalon lesz" else "Az úti célod a jobb oldalon lesz"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Az úti célod ${huStopSide(it)} lesz" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Navigáció indítása. $firstInstruction"
 
@@ -2372,6 +2416,7 @@ object HuNavStrings : NavStrings {
  * ordinals ("a doua ieșire"), sign destinations with "spre". Road names pass through untouched.
  */
 object RoNavStrings : NavStrings {
+    override fun ferry() = "Luați feribotul"
     override val locale: Locale = Locale("ro", "RO")
 
     override fun passLights(count: Int): String = if (count <= 1) "Treceți de semafor" else "Treceți de $count semafoare"
@@ -2478,6 +2523,7 @@ object RoNavStrings : NavStrings {
     override fun arrived(): String = "Ați ajuns la destinație"
 
     override fun destinationSide(left: Boolean): String = if (left) "Destinația este pe stânga" else "Destinația este pe dreapta"
+    override fun destinationWillBe(left: Boolean?): String = left?.let { "Destinația va fi ${roSide(it)}" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Începe navigarea. $firstInstruction"
 

@@ -89,7 +89,10 @@ The F-Droid badge is **Vela's own repository**, not the f-droid.org catalog. Add
 `https://pimpinpumpkin.github.io/Vela/repo` to any F-Droid client and it serves
 the same signed APKs, weekly stable by default (fingerprint and nightly setup in
 [FDROID.md](FDROID.md)). Or take an APK straight from
-[Releases](https://github.com/PimpinPumpkin/Vela/releases).
+[Releases](https://github.com/PimpinPumpkin/Vela/releases): releases from the
+nightly of October 22, 2026 on carry one APK per chip type, and almost every phone
+wants `vela-maps-arm64.apk`. `vela-maps-all.apk` runs on any phone. Obtainium, the
+F-Droid repo and the in-app updater pick the right one by themselves.
 
 ### Check you got the real thing
 

@@ -112,9 +112,14 @@ object PlaceImport {
             val geom = o["geometry"] as? JsonObject ?: return@mapNotNull null
             val coords = geom["coordinates"] as? JsonArray ?: return@mapNotNull null
             // GeoJSON is [lng, lat] - the same reversal trap as KML.
-            val lng = coords.getOrNull(0)?.num() ?: return@mapNotNull null
-            val lat = coords.getOrNull(1)?.num() ?: return@mapNotNull null
+            var lng = coords.getOrNull(0)?.num() ?: return@mapNotNull null
+            var lat = coords.getOrNull(1)?.num() ?: return@mapNotNull null
             val props = o["properties"] as? JsonObject
+            // Takeout writes some dropped pins as [0, 0] with the real point only in the link.
+            if (lat == 0.0 && lng == 0.0) {
+                val link = (props?.get("google_maps_url") ?: props?.get("Google Maps URL"))?.text()?.let { TakeoutCsv.readLink(it) }
+                if (link?.hasPoint == true) { lat = link.lat!!; lng = link.lng!! }
+            }
             place(geoJsonName(props) ?: fallbackName(lat, lng), lat, lng, geoJsonAddress(props))
         }.take(MAX_PLACES)
     }

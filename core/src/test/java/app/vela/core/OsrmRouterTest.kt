@@ -185,22 +185,27 @@ class OsrmRouterTest {
         assertEquals(ManeuverType.ARRIVE, out[2].type)
     }
 
-    @Test fun exitRampForkMergeFoldsToOne() {
+    @Test fun exitRampKeepsItsForkAndFoldsTheMerge() {
         val out = RouteGeometry.consolidateExits(listOf(
             man(ManeuverType.RAMP_RIGHT, 120.0), // exit ramp, 120 m to the fork
             man(ManeuverType.FORK_RIGHT, 30.0),  // keep right, 30 m to the merge
             man(ManeuverType.MERGE, 200.0),      // merge, 200 m to the next turn
             man(ManeuverType.TURN_LEFT, 50.0),   // a genuine later turn
         ))
-        assertEquals(2, out.size) // [folded exit, turn]
-        assertEquals(ManeuverType.RAMP_RIGHT, out[0].type)
-        assertEquals(350.0, out[0].distanceMeters, 1e-9) // 120+30+200 — still tiles the polyline
-        assertEquals(ManeuverType.TURN_LEFT, out[1].type)
+        assertEquals(listOf(ManeuverType.RAMP_RIGHT, ManeuverType.FORK_RIGHT, ManeuverType.TURN_LEFT), out.map { it.type })
+        assertEquals(120.0, out[0].distanceMeters, 1e-9)
+        assertEquals(230.0, out[1].distanceMeters, 1e-9) // 30+200, the merge folded into the fork
+        // A merge right after the ramp still folds into the ramp.
+        val merged = RouteGeometry.consolidateExits(listOf(
+            man(ManeuverType.RAMP_RIGHT, 120.0), man(ManeuverType.MERGE, 200.0), man(ManeuverType.TURN_LEFT, 50.0),
+        ))
+        assertEquals(listOf(ManeuverType.RAMP_RIGHT, ManeuverType.TURN_LEFT), merged.map { it.type })
+        assertEquals(320.0, merged[0].distanceMeters, 1e-9)
     }
 
-    /** A shared onramp's sign lists BOTH directions of the target highway; the folded fork is the
-     *  branch actually taken. The fold must keep only the taken direction (voice + shield chips
-     *  both read the instruction) and adopt the fork's lane diagram when the ramp has none. */
+    /** A shared onramp's sign lists BOTH directions of the target highway; the fork after it is the
+     *  branch actually taken. The ramp's line keeps only the taken direction (voice + shield chips
+     *  both read the instruction), and the fork stays a step with its own lanes and road. */
     @Test fun foldedExitKeepsOnlyTheTakenDirection() {
         val lanes = listOf(app.vela.core.model.Lane(listOf("left"), true))
         val ramp = app.vela.core.model.Maneuver(
@@ -212,10 +217,36 @@ class OsrmRouterTest {
             LatLng(0.0, 0.0), 30.0, 0.0, ref = "CA 99", lanes = lanes,
         )
         val out = RouteGeometry.consolidateExits(listOf(ramp, fork, man(ManeuverType.ARRIVE, 0.0)))
-        assertEquals(2, out.size)
+        assertEquals(3, out.size)
         assertEquals("Take the ramp on the right toward CA-99 West", out[0].instruction)
-        assertEquals(lanes, out[0].lanes) // the split's lane diagram survives the fold
-        assertEquals("CA 99", out[0].ref) // the road ENTERED is the branch's; the ramp has no ref
+        assertEquals(ManeuverType.FORK_LEFT, out[1].type)
+        assertEquals(lanes, out[1].lanes)
+        assertEquals("CA 99", out[1].ref)
+    }
+
+    @Test fun aBareExitTakesTheRoadItLeadsTo() {
+        val bare = RouteGeometry.osrmPhrase("off ramp", "slight right", null, null, null, null)
+        val ramp = app.vela.core.model.Maneuver(ManeuverType.RAMP_RIGHT, bare, LatLng(0.0, 0.0), 400.0, 0.0, instructionNoRoad = bare)
+        val fork = app.vela.core.model.Maneuver(ManeuverType.FORK_LEFT, "Keep slight left toward CA 99", LatLng(0.0, 0.0), 2000.0, 0.0, road = "Golden State Highway", ref = "CA 99")
+        val out = RouteGeometry.consolidateExits(listOf(ramp, fork, man(ManeuverType.ARRIVE, 0.0)))
+        assertEquals("Take the ramp toward CA 99", out[0].instruction)
+        assertEquals("Take the ramp toward CA 99", out[0].instructionNoRoad)
+        // A signed exit keeps its own words.
+        val signed = ramp.copy(instruction = "Take exit 12 toward Downtown", instructionNoRoad = null)
+        assertEquals("Take exit 12 toward Downtown", RouteGeometry.consolidateExits(listOf(signed, fork, man(ManeuverType.ARRIVE, 0.0)))[0].instruction)
+    }
+
+    @Test fun aBareTurnJustPastARampStartIsAKeep() {
+        val ramp = app.vela.core.model.Maneuver(ManeuverType.RAMP_RIGHT, "Take the ramp on the right toward CA 99 North", LatLng(0.0, 0.0), 80.0, 0.0, ref = "CA 99")
+        val turn = man(ManeuverType.TURN_RIGHT, 2000.0)
+        val out = RouteGeometry.consolidateExits(listOf(ramp, turn, man(ManeuverType.ARRIVE, 0.0)))
+        assertEquals(ManeuverType.FORK_RIGHT, out[1].type)
+        assertEquals("Keep right", out[1].instruction)
+        // A named turn, or one past a long ramp, stays a turn.
+        val named = turn.copy(road = "Oak Street")
+        assertEquals(ManeuverType.TURN_RIGHT, RouteGeometry.consolidateExits(listOf(ramp, named, man(ManeuverType.ARRIVE, 0.0)))[1].type)
+        val long = ramp.copy(distanceMeters = 600.0)
+        assertEquals(ManeuverType.TURN_RIGHT, RouteGeometry.consolidateExits(listOf(long, turn, man(ManeuverType.ARRIVE, 0.0)))[1].type)
     }
 
     @Test fun disambiguateDestIsConservative() {

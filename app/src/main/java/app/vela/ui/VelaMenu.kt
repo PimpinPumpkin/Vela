@@ -79,12 +79,14 @@ fun VelaMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
         }
     } else {
         // The cards' corner, not the menu default's, and a small gap from the button it hangs
-        // from (issue #771).
+        // from (issue #771). Capped at 70% of the screen height so a long menu scrolls: uncapped
+        // it fills the window and runs under the navigation bar on some phones (issue #923).
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = onDismissRequest,
             offset = androidx.compose.ui.unit.DpOffset(0.dp, 6.dp),
             shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.7f).dp),
         ) {
             VelaMenuScope(dpad = false).content()
         }

@@ -778,7 +778,11 @@ class GoogleMapsDataSource @Inject constructor(
         val routes = directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
         // Off the caller's thread (the view model calls from Main): the tiles' protobuf is
         // decoded here. Every route at once, so a tile host that does not answer costs one wait.
-        return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }
+        return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }.also { rs ->
+            runCatching {
+                android.util.Log.i("VelaDirections", "ends: ${rs.joinToString { "${it.source} ${it.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m" }} from the pin")
+            }
+        }
     }
 
     /**
@@ -944,7 +948,7 @@ class GoogleMapsDataSource @Inject constructor(
                         if (divergentStops && (!urgent || avoidWantedHere)) {
                             val pts = RouteGeometry.sampleViasThrough(gStops.polyline, waypoints)
                             if (pts != null) {
-                                val all = listOf(origin) + pts + destination
+                                val all = listOf(origin) + pts + app.vela.core.data.DestinationPlaces.routeEnd(gStops.polyline, destination)
                                 // The real stops' positions in the via list: exempt from the strict
                                 // snap-distance refusal (a stop in a lot is a stop, not an appendix).
                                 val loose = all.indices.filter { i -> i in 1 until all.lastIndex && waypoints.any { it == all[i] } }.toSet()
@@ -1147,7 +1151,7 @@ class GoogleMapsDataSource @Inject constructor(
                     "directions",
                     "reroute: $against of ${googleAll.size} google route(s) start against the car's heading, " +
                         when {
-                            chosen.isEmpty() -> "set aside for the open router's"
+                            chosen.isEmpty() -> "set aside for the open router's, on google's clock"
                             RouteGeometry.startsAgainst(chosen.first().polyline, departBearingDeg) -> "kept: going on costs too much"
                             else -> "set aside"
                         },
@@ -1155,6 +1159,13 @@ class GoogleMapsDataSource @Inject constructor(
                 chosen
             } else googleAll
             val gTop = google.firstOrNull()
+            if (gTop != null && mode == TravelMode.DRIVE && app.vela.core.data.DestinationPlaces.at(destination) != null) runCatching {
+                android.util.Log.i("VelaDirections", "place: Google's line ends ${gTop.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m from the pin")
+            }
+            // Every Google route set aside: the open router's route still takes Google's clock and
+            // traffic, as a trip through stops does when Google's detour is not taken. On its own
+            // clock it runs fast, and the ETA stayed short until the recheck healed it.
+            val setAside = if (gTop == null) googleAll.minByOrNull { it.durationInTrafficSeconds ?: it.durationSeconds } else null
             val open = openRaw
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
@@ -1185,6 +1196,24 @@ class GoogleMapsDataSource @Inject constructor(
                     // Offline (no Google answer): the engine's own time is all there is. Online,
                     // this branch never runs; Google's avoiding route carries the traffic ETA.
                     return@coroutineScope avoidRoutes
+                }
+            }
+            // No Google route and no region on the phone, or none in time: the other open
+            // service's car route, which keeps off highways, tolls and ferries where another way
+            // reaches (#878). Kept only when its summary says it did.
+            if (avoidWanted && gTop == null && !avoidHonored) {
+                val wait = budget.remainingMs()?.let { minOf(it, AVOID_ONDEVICE_TIMEOUT_MS) } ?: AVOID_ONDEVICE_TIMEOUT_MS
+                val other = if (wait <= 0) null else withContext(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.ValhallaRouter.driveRouteAvoiding(http, listOf(origin, destination), avoidTolls, avoidHighways, avoidFerries, timeoutMs = wait)
+                    }.getOrNull()
+                }
+                val note = "DRIVE avoid, no google: valhalla ${if (other != null) "kept off, ${other.maneuvers.size} steps" else "no route that keeps off"}"
+                diag.record("directions", note, "")
+                runCatching { android.util.Log.i("VelaDirections", note) }
+                if (other != null) {
+                    avoidHonored = true
+                    return@coroutineScope listOf(other)
                 }
             }
             // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
@@ -1400,7 +1429,7 @@ class GoogleMapsDataSource @Inject constructor(
             val viaRoute = when {
                 hybrid != null -> hybrid
                 (!urgent || avoidWanted) && topDivergent -> RouteGeometry.routeVia(
-                    http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
+                    http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + app.vela.core.data.DestinationPlaces.routeEnd(gTop.polyline, destination), mode,
                     avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
                     tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
                 ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP) // a trip log can tell a jam snap from a plain route
@@ -1512,7 +1541,9 @@ class GoogleMapsDataSource @Inject constructor(
                     // routes were computed with no avoid at all (it cannot exclude), so they are
                     // not offered, the same rule as the snapped branch. Before this they were, and
                     // with Google having honored the avoid, without the "may still use" note.
-                    else (if (avoidWanted && gTop != null) open.take(1) else open).map { applyTraffic(it, gTop, freeFlowCal) }
+                    else (if (avoidWanted && gTop != null) open.take(1) else open).map {
+                        if (setAside != null) applyTraffic(it, setAside, freeFlowCal = speedCal(it, setAside)) else applyTraffic(it, gTop, freeFlowCal)
+                    }
                 // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
                 // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
@@ -1905,21 +1936,23 @@ class GoogleMapsDataSource @Inject constructor(
      *  through OSRM for real named turn-by-turn, guarded to reach the destination, and re-apply Google's
      *  live-traffic overlay. Failure keeps Google's own (abbreviated) steps so nav still works.
      *  (An on-device map-match for downloaded regions could plug in here next.) */
-    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route {
-        val named = nameRoutePlain(route, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries)
+    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?): Route {
+        val named = nameRoutePlain(route, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)
         return if (mode == TravelMode.DRIVE) io { withLotTurn(named, urgent = false) } else named
     }
 
-    private suspend fun nameRoutePlain(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route = io {
+    private suspend fun nameRoutePlain(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?): Route = io {
         if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
-        val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
+        // A reroute's heading pins where the snap starts, and the samples on Google's own unheaded
+        // start are left out (RouteGeometry.snapVias).
+        val vias = listOf(origin) + RouteGeometry.snapVias(route.polyline, origin, departBearingDeg) + app.vela.core.data.DestinationPlaces.routeEnd(route.polyline, destination)
         // The avoid flags ride along on the snap, but they add nothing on the public server:
         // OSRM_SUPPORTS_EXCLUDE is off, so no `exclude=` is sent and the vias alone hold the
         // snap to Google's chosen path.
         // The traffic snap's guards (issue #478): a sampled point that lands on a flyover deck, the
         // far carriageway or a dead-end lane forces an out-and-back or a loop, so the snap must reach
         // the destination, stay within SNAP_LENGTH_SLACK of the route it names, and carry no spur.
-        val named = RouteGeometry.routeVia(http, vias, mode, avoidTolls, avoidHighways, avoidFerries, strictVias = true).firstOrNull()
+        val named = RouteGeometry.routeVia(http, vias, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg = departBearingDeg, strictVias = true).firstOrNull()
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
             ?.takeIf { it.distanceMeters <= route.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M }
             ?.takeIf { !spurWithTurn(it, route.polyline) }
@@ -1979,7 +2012,10 @@ class GoogleMapsDataSource @Inject constructor(
         if (mode == TravelMode.WALK && !walkCompare) return emptyList()
         session.ensure()
         val cal = calibration.current()
-        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints)
+        val pb = DirectionsPb.build(
+            origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints,
+            place = app.vela.core.data.DestinationPlaces.at(destination), placeGroup = cal.directionsPlaceGroup,
+        )
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = try {
             DirectionsParser.parse(GoogleResponse.parse(get(url)), cal.directionsPaths)

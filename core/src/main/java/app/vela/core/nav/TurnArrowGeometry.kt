@@ -16,8 +16,13 @@ import kotlin.math.hypot
  *
  * The corner is found on the line rather than taken from the maneuver point: a fork's or a
  * ramp's split sits past the point the route puts the maneuver at, and an arrow cut at a fixed
- * distance there ran straight on. Each arm is simplified so a lane change in the line is not a
- * kink in the arrow.
+ * distance there ran straight on. Each arm is simplified within [SIMPLIFY_M], so a wobble in the
+ * line is not a kink in the arrow while the arrow stays on a curve.
+ *
+ * The arrows are cut from the line the map draws, passed as `line`: a Google route is guided on
+ * Google's own line, which runs in a lane, while the map draws a line moved onto the road's
+ * center and smoothed, up to about 9 m away, and arrows cut from the guidance line sat beside
+ * the blue line in places.
  */
 object TurnArrowGeometry {
     data class Arrow(val points: List<LatLng>, val endBearingDeg: Double)
@@ -43,11 +48,17 @@ object TurnArrowGeometry {
     /** A sharper vertex within this of a corner candidate is the corner instead. */
     const val CORNER_NEAR_M = 15.0
 
-    /** The arrowhead aims along the chord over the last this many meters. */
-    const val HEAD_CHORD_M = 12.0
+    /** The arrowhead aims along the arrow's own last this many meters, as drawn. */
+    const val HEAD_CHORD_M = 6.0
 
-    /** A vertex nearer than this to the chord between its arm's ends is dropped. */
-    const val SIMPLIFY_M = 5.0
+    /** A vertex nearer than this to the chord between its arm's ends is dropped: well inside the
+     *  blue line's half width, so a shaft on a curve stays on the line (5 m cut a curve's chord
+     *  up to 4.5 m inside it). */
+    const val SIMPLIFY_M = 1.5
+
+    /** On a drawn line, a maneuver is looked for within this of where the guidance line puts it,
+     *  scaled by the two lines' lengths: the other carriageway of a U-turn is never taken for it. */
+    const val DRAWN_WINDOW_M = 120.0
 
     val TYPES: Set<ManeuverType> = setOf(
         ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
@@ -56,17 +67,26 @@ object TurnArrowGeometry {
         ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
     )
 
-    fun arrows(route: Route, fromStep: Int): List<Arrow> {
-        val poly = route.polyline
+    /** The arrows for [route] from [fromStep] on, cut from [line], the line the map draws for it. */
+    fun arrows(route: Route, fromStep: Int, line: List<LatLng> = route.polyline): List<Arrow> {
+        val poly = line
         if (poly.size < 2) return emptyList()
         val cum = RouteProjection.cumulative(poly)
         val total = cum.last()
+        val guide = route.polyline
+        val guideCum = if (guide === poly) cum else RouteProjection.cumulative(guide)
+        val scale = if (guide === poly || guideCum.isEmpty() || guideCum.last() <= 0.0) 1.0 else total / guideCum.last()
         val out = ArrayList<Arrow>()
         val maneuvers = route.maneuvers
         for (i in maxOf(fromStep, 0) until maneuvers.size) {
             val m = maneuvers[i]
             if (m.type !in TYPES) continue
-            val at = RouteProjection.alongMeters(poly, cum, m.location, MATCH_M) ?: continue
+            val at = if (guide === poly) RouteProjection.alongMeters(poly, cum, m.location, MATCH_M) ?: continue else {
+                val g = RouteProjection.alongMeters(guide, guideCum, m.location, MATCH_M) ?: continue
+                val (a, off) = NavEngine.projectAlong(poly, cum, m.location, g * scale - DRAWN_WINDOW_M, g * scale + DRAWN_WINDOW_M)
+                if (off > MATCH_M) continue
+                a
+            }
             val s0 = maxOf(0.0, at - BEFORE_M)
             val corner = cornerIndex(poly, cum, at)
             val cornerM = if (corner >= 0) cum[corner] else at
@@ -75,7 +95,9 @@ object TurnArrowGeometry {
             val pts = if (corner >= 0 && cornerM > s0 && cornerM < s1)
                 simplify(stretch(poly, cum, s0, cornerM)) + simplify(stretch(poly, cum, cornerM, s1)).drop(1)
             else simplify(stretch(poly, cum, s0, s1))
-            out += Arrow(pts, chord(poly, cum, maxOf(s0, s1 - HEAD_CHORD_M), s1))
+            // The head lines up with the shaft's end as drawn, not with the line under it.
+            val pc = RouteProjection.cumulative(pts)
+            out += Arrow(pts, chord(pts, pc, maxOf(0.0, pc.last() - HEAD_CHORD_M), pc.last()))
         }
         return out
     }
