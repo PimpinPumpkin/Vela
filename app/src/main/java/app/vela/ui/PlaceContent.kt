@@ -219,6 +219,15 @@ object SavedActions {
  *  again through here; a holder so MapScreen takes no new callback (it is at the method limit). */
 object RouteActions {
     @Volatile var camerasChanged: (() -> Unit)? = null
+    /** The Bike tab's "Bike share" chip flipped [BikeShareTrips]: the bike-share trips are asked
+     *  for again, the bike routes are not. */
+    @Volatile var bikeShareChanged: (() -> Unit)? = null
+    /** Turn-by-turn cycling steps between a bike-share leg's two stations, from the bike router. */
+    @Volatile var bikeDirections: (suspend (app.vela.core.model.LatLng, app.vela.core.model.LatLng) -> List<String>)? = null
+    /** The same from the walk router, for a bike-share trip's walks on the Bike tab. */
+    @Volatile var walkDirections: (suspend (app.vela.core.model.LatLng, app.vela.core.model.LatLng) -> List<String>)? = null
+    /** Starts leg-by-leg guidance on a bike-share trip from the Bike tab. */
+    @Volatile var startTransit: ((app.vela.core.model.TransitItinerary) -> Unit)? = null
     /** "Add to home screen" in the route card's menu: pins the trip on screen as a shortcut. */
     @Volatile var pinTrip: ((label: String, iconKey: String, themed: Boolean) -> Unit)? = null
     /** The current trip's travel mode as a shortcut glyph key, the dialog's starting pick. */

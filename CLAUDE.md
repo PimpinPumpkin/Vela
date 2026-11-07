@@ -391,7 +391,11 @@ signed file the app fetches at launch (SPEC 11).
   mode. Name new ones.
 - `querySourceFeatures` and `queryRenderedFeatures` block on the render thread. Gate them by
   time and distance, never per frame or per idle event.
-- Camera-idle fires after every `moveCamera`, 60 times a second while a ticker follows.
+- Camera-idle fires after every `moveCamera`, 60 times a second while a ticker follows. A finger
+  drag fires none until the finger lifts, so a drag cannot stand in for a followed fix.
+- The view model hears the view once a second while the map follows a moving fix. A per-view
+  fetch that cancels its request for each new view never lands when the reply takes longer. Ask
+  through `ViewFetch`, which leaves a request that is out to land for up to 15 s.
 - A SurfaceView's window hole does not follow a Compose resize. Recreate the view.
 - An interceptor on MapLibre's HTTP client is installed after `MapLibre.getInstance`.
 - The pmtiles path never cold-fetches a tile two or more levels under the camera. A layer

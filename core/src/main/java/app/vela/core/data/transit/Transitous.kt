@@ -235,6 +235,140 @@ object Transitous {
         return pts.filterIndexed { idx, _ -> keep[idx] }
     }
 
+    // --- bike share ----------------------------------------------------------------------------
+
+    /** A docked bike-share station as the service last reported it (GBFS through MOTIS).
+     *  [key] is `<providerId>/<station id>`, unique across systems. [docks] is the number of free
+     *  docks, null when the feed gives none. A station that is not [renting] has no bike to take,
+     *  whatever [bikes] says; one that is not [returning] takes none back. */
+    data class BikeStation(
+        val key: String,
+        val name: String,
+        val lat: Double,
+        val lon: Double,
+        val address: String?,
+        val bikes: Int,
+        val docks: Int?,
+        val renting: Boolean,
+        val returning: Boolean,
+    )
+
+    // `stations` has no default: a reply without it (an error, a changed shape) fails to decode
+    // and reads as a failure, never as "no stations here".
+    @Serializable private data class RentalsReply(val stations: List<RentalStationDto>)
+    @Serializable private data class RentalStationDto(
+        val id: String = "",
+        val providerId: String = "",
+        val providerGroupId: String = "",
+        val name: String = "",
+        val lat: Double = 0.0,
+        val lon: Double = 0.0,
+        val address: String? = null,
+        val isRenting: Boolean = true,
+        val isReturning: Boolean = true,
+        val numVehiclesAvailable: Int = 0,
+        val formFactors: List<String> = emptyList(),
+        val vehicleDocksAvailable: Map<String, Int> = emptyMap(),
+        val numDocksAvailable: Int? = null,
+    )
+
+    /** The form factors a station must offer to count as bike share. */
+    private val BIKE_FORM_FACTORS = setOf("BICYCLE", "CARGO_BICYCLE")
+    private val SCOOTER_FORM_FACTORS = setOf("SCOOTER_STANDING", "SCOOTER_SEATED", "MOPED")
+    /** More bikes than any station holds: a whole service area published as one point. */
+    private const val MAX_BIKES_AT_STATION = 300
+    /** Free-floating operators, by the first word of their provider group ("Dott paris", "Voi
+     *  Technology AB", "Ryde Oslo"). A public system's group is named after the system ("Paris",
+     *  "nextbike Berlin", "WienMobil Rad"). */
+    private val FREE_FLOATING_OPERATORS = setOf("dott", "tier", "voi", "lime", "bolt", "bird", "ryde", "zeus", "pony")
+
+    /** Whether a provider group is a free-floating operator's, by its first word. */
+    internal fun isFreeFloatingGroup(groupId: String): Boolean =
+        groupId.trimStart().takeWhile { it.isLetter() }.lowercase(Locale.ROOT) in FREE_FLOATING_OPERATORS
+
+    /** A free-floating operator's parking spot or zone, or a service area, not a bike-share
+     *  station. A free-floating operator's stations are its parking spots: in central Paris on
+     *  2026-11-04, 803 of the 884 bike stations in a phone's box were one operator's spots, beside
+     *  81 Vélib' stations. A station that also takes scooters and has no dock count is a parking
+     *  zone (Paris, 2026-11-04: 1,029 of them from one operator in a 2 by 3 km box); a point with
+     *  more than [MAX_BIKES_AT_STATION] bikes is an area (another Paris operator: 5,887 bikes at
+     *  one point). */
+    private fun RentalStationDto.isZone(): Boolean =
+        isFreeFloatingGroup(providerGroupId) ||
+            (formFactors.any { it in SCOOTER_FORM_FACTORS } && vehicleDocksAvailable.isEmpty() && numDocksAvailable == null) ||
+            numVehiclesAvailable > MAX_BIKES_AT_STATION
+
+    /**
+     * The bike-share stations in a box: the service's `rentals`, stations only. Car-share and
+     * scooter stations come in the same reply and are dropped here. Null on any failure, an empty
+     * list where the service has no station.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun bikeStationsInBox(
+        http: OkHttpClient, south: Double, west: Double, north: Double, east: Double,
+        /** Only these provider groups' stations, when given: central Paris with `Paris` alone is
+         *  176 stations in 9.2 KB, against 4,251 in 241 KB with every operator's (2026-11-04). */
+        groups: Collection<String>? = null,
+    ): List<BikeStation>? = runCatching {
+        val only = groups?.takeIf { it.isNotEmpty() }
+            ?.joinToString(",", prefix = "&providerGroups=") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+            .orEmpty()
+        val url = withLanguage(
+            "$BASE/api/v1/rentals?min=${coord(south)},${coord(west)}&max=${coord(north)},${coord(east)}$only" +
+                "&withProviders=false&withVehicles=false&withZones=false",
+        )
+        http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return null
+            val body = resp.body ?: return null
+            bikeStationsOf(json.decodeFromStream(RentalsReply.serializer(), body.byteStream()))
+        }
+    }.getOrNull()
+
+    /** Public for the parser test. Null when the reply does not parse. */
+    fun parseBikeStations(text: String): List<BikeStation>? =
+        runCatching { bikeStationsOf(json.decodeFromString(RentalsReply.serializer(), text)) }.getOrNull()
+
+    private fun bikeStationsOf(reply: RentalsReply): List<BikeStation> = reply.stations
+        .filter { s -> s.id.isNotBlank() && (s.lat != 0.0 || s.lon != 0.0) && s.formFactors.any { it in BIKE_FORM_FACTORS } && !s.isZone() }
+        .map { s ->
+            BikeStation(
+                key = "${s.providerId}/${s.id}",
+                name = s.name.trim(),
+                lat = s.lat,
+                lon = s.lon,
+                address = s.address?.trim()?.takeIf { it.isNotEmpty() },
+                bikes = s.numVehiclesAvailable.coerceAtLeast(0),
+                // A feed that gives one free-dock count for several vehicle types has it repeated
+                // under each type: the largest value is the station's count, the sum would be
+                // several times too many.
+                docks = (s.numDocksAvailable ?: s.vehicleDocksAvailable.values.maxOrNull())?.coerceAtLeast(0),
+                renting = s.isRenting,
+                returning = s.isReturning,
+            )
+        }
+        .distinctBy { it.key }
+
+    /** A coordinate for a query string: plain decimals, never `1.0E-5` near the zero meridian. */
+    private fun coord(v: Double): String = String.format(Locale.ROOT, "%.6f", v)
+
+    /**
+     * The station a bike-share leg's end stands for, among [stations] from `rentals`. The plan's
+     * end has a name and a position and no station id: the same provider's station of the same
+     * name, else that provider's nearest within [STATION_MATCH_M]. Null when there is none.
+     */
+    fun stationFor(stations: List<BikeStation>, providerId: String, name: String, at: LatLng?): BikeStation? {
+        val own = stations.filter { it.key.startsWith("$providerId/") }
+        val wanted = name.trim()
+        own.firstOrNull { it.name.equals(wanted, ignoreCase = true) }?.let { return it }
+        if (at == null) return null
+        return own.map { it to distM(at.lat, at.lng, it.lat, it.lon) }
+            .filter { it.second <= STATION_MATCH_M }
+            .minByOrNull { it.second }?.first
+    }
+
+    /** A plan's station and a `rentals` station this close, of the same provider, are one. */
+    private const val STATION_MATCH_M = 30.0
+
     /** Transit stops within roughly [radiusM] of the point, nearest first. Empty on any failure. */
     fun stopsNear(http: OkHttpClient, lat: Double, lng: Double, radiusM: Double = 200.0): List<MapStop> {
         val dLat = radiusM / 111_320.0
@@ -651,7 +785,118 @@ object Transitous {
         return (0 until its.length()).mapNotNull { i -> runCatching { parseItinerary(its.getJSONObject(i), origin, destination) }.getOrNull() }
     }
 
-    private fun parseItinerary(it: JSONObject, origin: LatLng, destination: LatLng): TransitItinerary? {
+    // --- bike share in directions ----------------------------------------------------------------
+
+    @Serializable private data class ProvidersReply(val providerGroups: List<ProviderGroupDto>)
+    @Serializable private data class ProviderGroupDto(val id: String = "", val formFactors: List<String> = emptyList())
+
+    /**
+     * The docked bike-share systems around a trip (SPEC 8, Bike share in directions): the provider
+     * groups that rent bicycles and are not a free-floating operator's ([isFreeFloatingGroup]),
+     * from one `rentals` request for providers only, over the box around both ends padded by
+     * [GROUPS_PAD_M]. Null on any failure, empty where there is no such system.
+     */
+    fun bikeShareGroups(http: OkHttpClient, a: LatLng, b: LatLng): List<String>? {
+        val box = paddedBox(a, b, GROUPS_PAD_M)
+        return bikeShareGroupsInBox(http, box[0], box[1], box[2], box[3])
+    }
+
+    /** The docked bike-share systems in a box, as [bikeShareGroups] finds them. Null on any
+     *  failure, empty where there is no such system. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun bikeShareGroupsInBox(
+        http: OkHttpClient, south: Double, west: Double, north: Double, east: Double,
+    ): List<String>? = runCatching {
+        val url = withLanguage(
+            "$BASE/api/v1/rentals?min=${coord(south)},${coord(west)}&max=${coord(north)},${coord(east)}" +
+                "&withProviders=true&withStations=false&withVehicles=false&withZones=false",
+        )
+        http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return null
+            val body = resp.body ?: return null
+            dockedGroupsOf(json.decodeFromStream(ProvidersReply.serializer(), body.byteStream()))
+        }
+    }.getOrNull()
+
+    /** Public for the parser test. Null when the reply does not parse. */
+    fun parseBikeShareGroups(text: String): List<String>? =
+        runCatching { dockedGroupsOf(json.decodeFromString(ProvidersReply.serializer(), text)) }.getOrNull()
+
+    // A comma in an id would split the planner's list, so such a group is left out.
+    private fun dockedGroupsOf(reply: ProvidersReply): List<String> = reply.providerGroups
+        .filter { g -> g.id.isNotBlank() && ',' !in g.id && "BICYCLE" in g.formFactors && !isFreeFloatingGroup(g.id) }
+        .map { it.id }
+        .distinct()
+
+    /** The box around two points padded by [padM] meters, `[south, west, north, east]`. */
+    fun paddedBox(a: LatLng, b: LatLng, padM: Double): DoubleArray {
+        val dLat = padM / 111_320.0
+        val dLng = padM / (111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2)))
+        return doubleArrayOf(
+            minOf(a.lat, b.lat) - dLat, minOf(a.lng, b.lng) - dLng,
+            maxOf(a.lat, b.lat) + dLat, maxOf(a.lng, b.lng) + dLng,
+        )
+    }
+
+    /** The planner request for bike-share trips: a bicycle of one of [groups] from one station to
+     *  another, alone (`direct`) or before or after a transit ride, leaving now. It is a request
+     *  of its own: with `RENTAL` among the direct modes the planner drops every transit trip
+     *  slower than the fastest direct one. Its time limits are raised past the planner's
+     *  defaults: a bike alone up to [BIKE_MAX_DIRECT_S], a bike before or after transit up to
+     *  [BIKE_MAX_PREPOST_S]. At the default 30 min, a trip a bike of your own rides in 27 had
+     *  no bike-share trip alone, since the walks to and from the stations are counted too. */
+    internal fun bikeSharePlanUrl(origin: LatLng, destination: LatLng, groups: Collection<String>): String = buildString {
+        val g = groups.joinToString(",") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+        append(BASE).append("/api/v1/plan?fromPlace=").append(coord(origin.lat)).append(',').append(coord(origin.lng))
+        append("&toPlace=").append(coord(destination.lat)).append(',').append(coord(destination.lng))
+        append("&numItineraries=").append(BIKE_PLAN_MAX)
+        append("&directModes=RENTAL&preTransitModes=WALK,RENTAL&postTransitModes=WALK,RENTAL")
+        append("&directRentalFormFactors=BICYCLE&preTransitRentalFormFactors=BICYCLE&postTransitRentalFormFactors=BICYCLE")
+        append("&maxDirectTime=").append(BIKE_MAX_DIRECT_S)
+        append("&maxPreTransitTime=").append(BIKE_MAX_PREPOST_S)
+        append("&maxPostTransitTime=").append(BIKE_MAX_PREPOST_S)
+        append("&directRentalProviderGroups=").append(g)
+        append("&preTransitRentalProviderGroups=").append(g)
+        append("&postTransitRentalProviderGroups=").append(g)
+    }
+
+    /** Bike-share trips from [origin] to [destination] on the docked systems [groups], leaving now
+     *  ([parseBikeSharePlan]). Empty on any failure or with no group. */
+    fun planBikeShare(http: OkHttpClient, origin: LatLng, destination: LatLng, groups: Collection<String>): List<TransitItinerary> {
+        if (groups.isEmpty()) return emptyList()
+        val body = get(http, bikeSharePlanUrl(origin, destination, groups)) ?: return emptyList()
+        val now = System.currentTimeMillis() / 1000
+        return runCatching { parseBikeSharePlan(body, origin, destination, groups.toSet(), now) }.getOrDefault(emptyList())
+    }
+
+    /** The bike-share trips in a plan reply, pure and fixture-tested: the `direct` answers and the
+     *  transit ones that hold a bike leg, every rented vehicle a bicycle of [groups] taken from one
+     *  station and returned to another. A later run of the same trip is the same choice here, so
+     *  only its earliest arrival stays. With [nowSec], a trip that leaves more than
+     *  [BIKE_LATE_START_S] after it is dropped: the bikes and docks it was planned on are the
+     *  stations' now, and a night's search otherwise came back with the first bus of the morning.
+     *  At most [BIKE_PLAN_MAX], earliest arrival first, then the shortest. */
+    internal fun parseBikeSharePlan(json: String, origin: LatLng, destination: LatLng, groups: Set<String>, nowSec: Long? = null): List<TransitItinerary> {
+        val root = JSONObject(json)
+        val trips = ArrayList<TransitItinerary>()
+        for (key in listOf("direct", "itineraries")) {
+            val arr = root.optJSONArray(key) ?: continue
+            for (i in 0 until arr.length()) {
+                runCatching { parseItinerary(arr.getJSONObject(i), origin, destination, groups) }.getOrNull()
+                    ?.takeIf { t -> t.steps.any { it.mode == TransitMode.BIKE_SHARE } }
+                    ?.takeIf { t -> nowSec == null || (t.departureEpochSec ?: nowSec) <= nowSec + BIKE_LATE_START_S }
+                    ?.let { trips += it }
+            }
+        }
+        return trips
+            .sortedWith(compareBy({ it.arrivalEpochSec ?: Long.MAX_VALUE }, { (it.arrivalEpochSec ?: 0L) - (it.departureEpochSec ?: 0L) }))
+            .distinctBy { t -> t.steps.joinToString("|") { s -> "${s.mode}:${s.line?.name}:${s.boardStop?.name}:${s.alightStop?.name}" } }
+            .take(BIKE_PLAN_MAX)
+    }
+
+    /** One itinerary. With [bikeGroups] (a bike-share plan), every `RENTAL` leg must be a docked
+     *  bike of one of those systems ([bikeShareStep]), or the itinerary is not one Vela shows. */
+    private fun parseItinerary(it: JSONObject, origin: LatLng, destination: LatLng, bikeGroups: Set<String>? = null): TransitItinerary? {
         val legs = it.optJSONArray("legs") ?: return null
         val steps = ArrayList<TransitStep>()
         for (i in 0 until legs.length()) {
@@ -660,6 +905,10 @@ object Transitous {
             val from = leg.optJSONObject("from"); val to = leg.optJSONObject("to")
             val start = parseIso(leg.optString("startTime", "")); val end = parseIso(leg.optString("endTime", ""))
             val secs = leg.optLong("duration", if (start != null && end != null) end - start else 0L)
+            if (mode == "RENTAL" && bikeGroups != null) {
+                steps += bikeShareStep(leg, secs, start, end)?.takeIf { s -> s.rental?.groupId in bikeGroups } ?: return null
+                continue
+            }
             if (mode == "WALK" || mode == "BIKE" || mode == "CAR" || mode == "RENTAL") {
                 // A transfer walk between two stops, or the first/last mile: the app fetches the
                 // turn-by-turn steps for it on demand from the walk router, like the Google legs.
@@ -707,6 +956,45 @@ object Transitous {
         )
     }
 
+    /** A `RENTAL` leg as a bike-share ride: a bicycle taken from one station and returned to
+     *  another. Null for a vehicle that is not a bicycle, or one picked up or left anywhere but a
+     *  station (a free-floating bike's ends are not both `BIKESHARE`). */
+    private fun bikeShareStep(leg: JSONObject, secs: Long, start: Long?, end: Long?): TransitStep? {
+        val r = leg.optJSONObject("rental") ?: return null
+        if (r.optString("formFactor", "") !in BIKE_FORM_FACTORS) return null
+        val from = leg.optJSONObject("from") ?: return null
+        val to = leg.optJSONObject("to") ?: return null
+        if (from.optString("vertexType", "") != "BIKESHARE" || to.optString("vertexType", "") != "BIKESHARE") return null
+        val group = r.optString("providerGroupId", "")
+        val system = r.optString("systemName", "").trim().ifBlank { group.trim() }
+        val fromTz = from.optString("tz", null)
+        val toTz = to.optString("tz", null) ?: fromTz
+        val pickup = TransitStopTime(
+            name = r.optString("fromStationName", "").trim().ifBlank { from.optString("name", "").trim() },
+            timeText = start?.let { clockText(it, fromTz) },
+            location = point(from),
+        )
+        val dropoff = TransitStopTime(
+            name = r.optString("toStationName", "").trim().ifBlank { to.optString("name", "").trim() },
+            timeText = end?.let { clockText(it, toTz) },
+            location = point(to),
+        )
+        return TransitStep(
+            mode = TransitMode.BIKE_SHARE, durationText = durationText(secs),
+            line = TransitLine(
+                name = system, mode = TransitMode.BIKE_SHARE,
+                colorHex = r.optString("color", "").trim().takeIf { it.isNotBlank() }?.let { "#" + it.removePrefix("#") },
+            ),
+            departText = pickup.timeText, arriveText = dropoff.timeText,
+            boardStop = pickup, alightStop = dropoff,
+            path = legPath(leg),
+            rental = app.vela.core.model.TransitRental(
+                providerId = r.optString("providerId", ""), groupId = group, system = system,
+                electric = r.optString("propulsionType", "") in ELECTRIC_PROPULSION,
+            ),
+        )
+    }
+
     private fun point(o: JSONObject): LatLng? {
         val lat = o.optDouble("lat", Double.NaN); val lng = o.optDouble("lon", Double.NaN)
         return if (lat.isNaN() || lng.isNaN()) null else LatLng(lat, lng)
@@ -740,6 +1028,18 @@ object Transitous {
     private const val PLAN_MAX = 5
     /** The chooser's vehicle numbers (Google's, issue #431) as the planner's mode names. */
     private val PLAN_MODES = mapOf(0 to "BUS", 1 to "SUBWAY", 2 to "RAIL", 3 to "TRAM")
+    /** Bike-share trips asked for, and the most kept. */
+    private const val BIKE_PLAN_MAX = 3
+    /** The longest bike-share trip alone, walks included (the planner's default is 1800). */
+    private const val BIKE_MAX_DIRECT_S = 3600
+    /** The longest walk and ride before or after a transit ride (the planner's default is 900). */
+    private const val BIKE_MAX_PREPOST_S = 1800
+    /** A bike-share trip leaving later than this after the search is not shown. */
+    internal const val BIKE_LATE_START_S = 1800L
+    /** How far past a trip's ends the systems are looked for: a station a short walk outside the
+     *  box between them still belongs to a system the trip can use. */
+    private const val GROUPS_PAD_M = 1000.0
+    private val ELECTRIC_PROPULSION = setOf("ELECTRIC", "ELECTRIC_ASSIST")
 
     // --- helpers ----------------------------------------------------------------------------------
 

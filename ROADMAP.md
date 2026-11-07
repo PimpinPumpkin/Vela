@@ -227,9 +227,6 @@ Small items, one pull request each.
 - A resumed drive keeps its stops. After the app is killed mid-drive, the resume offer restores
   the destination, label and mode only: the remaining stops and a saved route's hidden points
   are gone (`NavController.persistNav`).
-- On-street bike lanes. Painted lanes (`cycleway=lane`) are not in the OpenMapTiles schema and
-  need a baked layer, never a per-viewport Overpass query. The painted-roads test under
-  "Richer roads" draws them.
 - Street View: walking can step to a neighbor from a different year (the neighbor graph
   carries no date), higher-zoom tiles on pinch-in, and hiding the pill where there is no
   coverage.
@@ -594,6 +591,30 @@ off the list when it has been.
 - The open router's reroute taken because Google's routes started against the car keeps
   Google's clock and traffic (the ETA read 9 minutes until a heal 35 s later made it 12): code
   only, through the helper trips with stops use. Not driven.
+- Bike-share stations on the map (`BikeShareStations`, `BikeShareMapLayer`, SPEC 8): seen on a
+  Pixel through adb, light and dark, in English and Spanish, over Lyon (bikes only: its feed has
+  no dock counts) and over a feed that repeats one dock count under each bike model. Seen in the
+  log: a request a minute with the app on screen, none with the layer off, below z15, in the
+  background or during a simulated drive, and one at once on return. A Google bike rental listing
+  ("Estación de alquiler de bicicletas") opens with no departure board. Central Paris draws
+  Vélib's stations and no operator's parking spots. The box asks for docked systems' stations
+  only (`providerGroups`), after a providers-only lookup kept ten minutes: over central Paris at
+  z16, one system and 19 stations in 1.4 KB, where every operator's were 362 in 20.8 KB.
+  Not seen: the counts against a station's own
+  display, a feed that sends `numDocksAvailable`, the AMOLED theme and a D-pad device.
+- Bike-share stations and stop icons keeping up while the map follows a moving fix (`ViewFetch`):
+  a request that is out is no longer canceled by the next view. Tested in units and on a still
+  phone; not seen on the move, where one run at about 26 km/h had asked for no stations in 2.5
+  minutes.
+- Bike-share trips on the Bike tab, with their stations' counts and guidance on the ride
+  (`BikeShareTripSearch`, `Transitous.planBikeShare`, SPEC 8): seen on a Pixel through adb in
+  Spanish and dark mode. Lyon, Part-Dieu to Vieux Lyon: two Vélov rides above "Your bike" in the
+  Google-style picker, the free bikes at each pickup (amber at one), one trip open at a time, and
+  the opened trip drawn in teal beside the bike route. Earlier, from the transit tab: the bike
+  router's steps, the spoken line for the ride in guidance, Vélib' rides only in central Paris,
+  and no bike-share request with the chip off. Not seen: a feed with dock counts, the guide moving
+  on at the return station with a real fix, the classic panel, English, the light theme, "Use
+  less data" and a D-pad device.
 
 ### Open from the October 2026 audit
 
@@ -695,6 +716,49 @@ Found reading everything since 0.4.1912 and not fixed yet.
   through sparse country can be compared before one is taken. The places come from the
   downloaded place pack or the open places tiles, so it works offline; the gap is measured
   along the line. Not started.
+- Bike-share coverage past Transitous. The stations layer shows what Transitous carries: 428
+  rental providers on 2026-10-22, most in France, Norway, Germany and Switzerland. Capital
+  Bikeshare is listed and returned no stations in DC. A missing system is one entry in
+  Transitous's `feeds/<country>.json` (`"spec": "gbfs"`). Wider coverage means reading each
+  operator's GBFS directly (1,264 systems in MobilityData's catalog), which needs a bake of each
+  system's area. The CityBikes API (300 requests an hour, attribution required) is the last
+  resort. Not started.
+- Bike-share parking spots from an operator not on the list. Free-floating operators publish
+  their parking spots as stations, and GBFS's `is_virtual_station` does not reach the `rentals`
+  reply. Vela leaves them out by the operator's name (SPEC 8, Bike-share stations), so a new
+  brand draws its spots until it is added to `FREE_FLOATING_OPERATORS`, which takes a release.
+  MOTIS's `numDocksAvailable`, once the public instance sends it, tells a docked station from a
+  spot without a list.
+- Traffic controls, speed cameras, Flock cameras, transit lines and the satellite depth check
+  still cancel their request for each new view, so while the map follows a moving fix a reply
+  slower than the second between views never lands. They can ask through `ViewFetch` as the
+  stop icons and bike-share stations do.
+- Bike share in directions, the stations on the way. Bike-share trips are on the Bike tab
+  with their stations' counts and guidance on the ride (SPEC 8, Bike share in directions), and
+  the counts are the ones fetched with the trip. Still to do: a check of both stations on the
+  way that offers the nearest other one when the pickup runs out of bikes or the return fills. Most feeds on the
+  public instance give no dock counts (none for Lyon, Paris, Bordeaux, Berlin, Montreal or
+  Brussels on 2026-11-04), so the return check works only where one does. Not started.
+- Bike share on a trip with stops. Such a trip gets no bike-share trip today, only a line saying
+  so: the planner's `via` takes up to two transit stop ids and no coordinate. One plan per stretch
+  (start to the first stop, then on from each stop at the time the last stretch arrives), joined
+  into one trip, would give it: the bike goes back to a station near each stop and another is
+  taken after it. One more request per stop. Not started.
+- A bike lanes layer, and bike routes that show their lanes. The map draws separate cycleways
+  only (`vela-bikeroutes`, OSM `highway=cycleway`). Lanes and tracks along a road (`cycleway`,
+  `cycleway:left`, `cycleway:right` or `cycleway:both` set to `lane`, `track` or
+  `shared_lane`), bicycle streets (`bicycle_road`, `cyclestreet`) and signed routes
+  (`route=bicycle` relations) are not in the OpenMapTiles schema. They need a baked layer per
+  region, never a per-viewport Overpass query: a bake like the painted-roads one under "Richer
+  roads", streamed through `StreamedPmtiles`, part of a region download, behind a Layers switch.
+  Routing already prefers lanes: the on-phone bicycle profile and Valhalla at `use_roads` 0.1
+  read the same OSM tags. Two gaps remain. The fastest fallback (`routed-bike`, Google's bike
+  alternates) ignores lanes, and the route chooser never says how much of a route has one.
+  Valhalla's `trace_attributes`, which `ValhallaRouter` already calls for map matching, returns
+  `edge.cycle_lane` (none, shared, dedicated, separated) for each edge. A 2.6 km San Francisco
+  trip came back 10% separated path, 52% painted lane, 3% shared lane and 36% plain road. That
+  split goes on each bike route card and can color the line; offline, the baked layer gives
+  it. Not started.
 
 ## Big bets
 
