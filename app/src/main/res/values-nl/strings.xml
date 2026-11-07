@@ -55,7 +55,7 @@
     <string name="settings_live_traffic">Live verkeerslaag</string>
     <string name="settings_live_traffic_hint">Kleurt wegen naar drukte tijdens het browsen. Navigatie kleurt je route toch al naar verkeer.</string>
     <string name="settings_transit_layer">Ov-lijnen markeren</string>
-    <string name="settings_transit_layer_hint">Tekent trein- en metrolijnen op de kaart.</string>
+    <string name="settings_transit_layer_hint">Tekent trein- en metrolijnen op de kaart, elke lijn in zijn eigen kleur op basis van de open transitgegevens.</string>
     <string name="settings_read_all_reviews">Knop “Alle recensies lezen”</string>
     <string name="settings_read_all_reviews_hint">Voegt een knop toe die Googles volledige reviewpagina in de app opent, met alle reviews. Uit = alleen Vela\'s eigen lijst.</string>
     <string name="settings_buildings_3d">3D-gebouwen</string>
@@ -1327,4 +1327,23 @@
     <string name="trip_shortcut_unsupported">Dit startscherm kan geen snelkoppelingen vastzetten</string>
     <string name="trip_shortcut_themed">Zoals thematische iconen</string>
     <string name="settings_places_source_note">Zoeken of op een plaats tikken vraagt nog steeds openingstijden, recensies en foto\'s op bij Google, wat je ook kiest.</string>
+    <string name="settings_directions_language">Taal van de aanwijzingen</string>
+    <string name="settings_directions_same_as_app">Hetzelfde als de taal van de app</string>
+    <string name="settings_directions_language_hint">De aanwijzingen worden getoond en ingesproken. Kies een bijpassende stem uit de bibliotheek.</string>
+    <string name="settings_region_updated_on">bijgewerkt op %1$s</string>
+    <string name="settings_keep_north_up">Het noorden bovenaan houden</string>
+    <string name="settings_keep_north_up_hint">De kaart draait nooit: de rotatie met twee vingers is uitgeschakeld en de route blijft met het noorden bovenaan.</string>
+    <string name="settings_start_view">Waar de kaart opent</string>
+    <string name="settings_start_view_here">Waar ik mij bevind</string>
+    <string name="settings_start_view_last">Waar ik de kaart verlaten verliet</string>
+    <string name="settings_start_view_place">Een plek naar mijn keuze</string>
+    <string name="settings_start_view_use_current">Huidige kaartweergave gebruiken</string>
+    <string name="settings_start_view_drive">Rijmodus</string>
+    <string name="settings_start_view_hint">Waar de kaart is als je Vela start. De rijmodus is alleen de kaart in de routeweergave, voor een gemonteerde telefoon of tablet. Een link van een andere app opent nog steeds op zijn eigen plek.</string>
+    <string name="driving_mode">Rijmodus</string>
+    <string name="driving_mode_leave">Rijmodus verlaten</string>
+    <string name="settings_start_view_saved">Vela opent in deze weergave.</string>
+    <string name="settings_car_speed">Jouw snelheid op het scherm van de wagen</string>
+    <string name="settings_car_speed_hint">Uit, het scherm van de auto geeft allee de geldende snelheidslimiet aan; de auto gebruikt zijn eigen snelheidsmeter.</string>
+    <string name="settings_update_all_regions">Alles bijwerken (%1$d)</string>
 </resources>
