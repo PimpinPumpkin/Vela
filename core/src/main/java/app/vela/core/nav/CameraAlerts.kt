@@ -25,9 +25,13 @@ object CameraAlerts {
      *  and a spoken camera warning would be noise. */
     const val MOVING_FLOOR_MPS = 2.0
 
-    /** How far the lead distance is for [speedMps]. */
-    fun leadDistanceM(speedMps: Double): Double =
-        (speedMps * LEAD_SECONDS).coerceIn(MIN_LEAD_M, MAX_LEAD_M)
+    /** How far the lead distance is for [speedMps], using an optional custom distance floor [customDistanceM] (null or <= 0 uses default speed-based calculation). */
+    fun leadDistanceM(speedMps: Double, customDistanceM: Double? = null): Double {
+        if (customDistanceM != null && customDistanceM > 0.0) {
+            return customDistanceM
+        }
+        return (speedMps * LEAD_SECONDS).coerceIn(MIN_LEAD_M, MAX_LEAD_M)
+    }
 
     /** A run of cameras close together along the route, announced as one: where the first one
      *  sits and how many there are. */
@@ -74,10 +78,16 @@ object CameraAlerts {
      * the scan, [sinceM] is what was driven since, and [announced] holds keys, so a camera stays
      * announced however the list is rebuilt. Returns the key to announce, or null.
      */
-    fun dueKeyed(ahead: List<Pair<String, Double>>, sinceM: Double, speedMps: Double, announced: Set<String>): String? {
+    fun dueKeyed(
+        ahead: List<Pair<String, Double>>,
+        sinceM: Double,
+        speedMps: Double,
+        announced: Set<String>,
+        customDistanceM: Double? = null,
+    ): String? {
         if (ahead.isEmpty()) return null
         val spoken = ahead.indices.filter { ahead[it].first in announced }.toSet()
-        return due(ahead.map { it.second }, sinceM, speedMps, spoken)?.let { ahead[it].first }
+        return due(ahead.map { it.second }, sinceM, speedMps, spoken, customDistanceM)?.let { ahead[it].first }
     }
 
     fun due(
@@ -85,9 +95,10 @@ object CameraAlerts {
         traveledM: Double,
         speedMps: Double,
         spoken: Set<Int>,
+        customDistanceM: Double? = null,
     ): Int? {
         if (speedMps < MOVING_FLOOR_MPS) return null
-        val lead = leadDistanceM(speedMps)
+        val lead = leadDistanceM(speedMps, customDistanceM)
         var best: Int? = null
         var bestAhead = Double.MAX_VALUE
         for (i in cameraMeters.indices) {
