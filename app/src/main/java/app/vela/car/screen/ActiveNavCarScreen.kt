@@ -117,6 +117,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             else ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial, continueCue)
         val estimate = ManeuverMapper.destinationEstimate(
             s.remainingDistance, s.remainingDuration, System.currentTimeMillis(), imperial,
+            trafficRatio = s.route?.trafficRatio,
         )
         // With a stop ahead the estimate on screen is the stop's, as on the phone's bar, named
         // where the host can show a line with it (car API 5).
@@ -127,6 +128,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             ManeuverMapper.destinationEstimate(
                 it.distanceM, it.seconds, System.currentTimeMillis(), imperial,
                 tripText = if (carContext.carAppApiLevel >= 5) carContext.getString(app.vela.R.string.nav_bar_to_stop, stopName) else null,
+                trafficRatio = s.route?.trafficRatio,
             )
         } ?: estimate
 
