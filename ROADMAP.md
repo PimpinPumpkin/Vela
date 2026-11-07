@@ -672,6 +672,9 @@ off the list when it has been.
 - The open router's reroute taken because Google's routes started against the car keeps
   Google's clock and traffic (the ETA read 9 minutes until a heal 35 s later made it 12): code
   only, through the helper trips with stops use. Not driven.
+- Place names More and Most (#852, `MapPoiPrefs.namesSooner`): not seen on a phone. Check names
+  arriving a zoom or two sooner on Vela data, Google and Both, and frame rate with Most in a
+  dense city on a release build (`scripts/map-fps.sh`).
 
 ### Open from the October 2026 audit
 

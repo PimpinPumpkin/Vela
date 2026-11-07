@@ -11,6 +11,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   Google, or Both.
 - "Show places", "Parks, schools and civic places", "Transit stops" and "Place icon size" control
   what is drawn.
+- "Place names" (Default, More, Most) brings place names and icons in one or two zoom levels
+  sooner.
 - Tap a place, a house number or a building to open it. Long-press to drop a pin.
 - Tilt the map for 3D buildings. "Tilt with two fingers" and "3D buildings" turn those off.
 - Pinch and turn in one gesture. A small turn goes back to north when you let go.
