@@ -7344,7 +7344,14 @@ class MapViewModel @Inject constructor(
             return
         }
         val step = tn.step ?: return
-        val notice = if (step.line != null) {
+        // A bike-share leg names its two stations, like its spoken line; a return station is not
+        // a stop to be told about one stop ahead.
+        val notice = if (step.mode == app.vela.core.model.TransitMode.BIKE_SHARE) {
+            app.vela.service.TransitGuide.Notice(
+                title = step.boardStop?.name?.let { appContext.getString(R.string.transit_nav_bike_take, it) }.orEmpty(),
+                text = step.alightStop?.name?.let { appContext.getString(R.string.transit_nav_bike_return, it) }.orEmpty(),
+            )
+        } else if (step.line != null) {
             val title = buildString {
                 append(appContext.getString(R.string.transit_nav_take, step.line?.name.orEmpty()))
                 step.headsign?.let { append(" ").append(appContext.getString(R.string.transit_nav_towards, it)) }

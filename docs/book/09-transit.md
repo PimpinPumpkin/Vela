@@ -322,7 +322,7 @@ a start the system refuses leaves guidance working in the app, as before.
 A bike-share leg is spoken by its two stations, where to take a bike and where to return it, and
 advances at the return station. Its length opens to cycling steps from the bike router, the way a
 walk leg opens to walking steps. Its counts are the ones fetched with the trip and are not asked
-again on the way.
+again on the way. Its notification names the same two stations, with no "next stop" heads-up.
 
 ### Offline copies
 

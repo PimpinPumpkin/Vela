@@ -5218,6 +5218,8 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   ride at its stop. Its length opens to cycling steps from the bike router
   (`RouteActions.bikeDirections`, `TravelMode.BICYCLE`), as a walk leg's open to the walk
   router's. The counts are the ones fetched with the trip; they are not asked again on the way.
+  The guidance notification (`publishTransitNotice`) carries the same two lines and raises no
+  "next stop" heads-up for the return station.
 - MOTIS takes a bike only from a station that is renting and has one of the asked type, and
   returns it only to a station that is returning and has a free dock for that type, or a free-dock
   total where the station declares a capacity (`src/gbfs/osr_mapping.cc`). Where a feed gives no
