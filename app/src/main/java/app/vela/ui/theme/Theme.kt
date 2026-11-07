@@ -108,12 +108,12 @@ fun VelaTheme(
             // AMOLED with the wallpaper's colors: its accents on the same true black surfaces.
             // The wallpaper's own dark surfaces are a tinted gray, which made the two settings
             // together look like plain Dark on every menu screen (issue 709).
-            if (darkTheme && AppTheme.mode.value == ThemeMode.AMOLED) scheme.onTrueBlack() else scheme
+            if (darkTheme && isAppInAmoled()) scheme.onTrueBlack() else scheme
         }
         // AMOLED is a flavor of DARK, so it must yield when something resolves the app to light -
         // the day/night-while-navigating override (issue #262) does exactly that, and without the
         // darkTheme guard a daylight drive got a black UI over a light map.
-        AppTheme.mode.value == ThemeMode.AMOLED && darkTheme -> AmoledColors
+        isAppInAmoled() && darkTheme -> AmoledColors
         darkTheme -> DarkColors
         else -> LightColors
     }
