@@ -4,7 +4,9 @@ import app.vela.ui.icons.Sym
 import app.vela.ui.icons.SymOutlined
 
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.scrollBy
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -173,6 +175,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.draw.blur
@@ -228,6 +231,7 @@ import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
 import app.vela.core.model.TransitStep
 import app.vela.core.model.TransitStopTime
+import app.vela.core.model.TransitWalkStep
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
@@ -1612,7 +1616,7 @@ fun DirectionsPanel(
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
     onSearchAlongRoute: (String) -> Unit,
-    onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
+    onWalkDirections: suspend (LatLng, LatLng) -> List<TransitWalkStep> = { _, _ -> emptyList() },
     onStartTransit: (TransitItinerary) -> Unit = {},
     onTransitPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> },
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
@@ -2059,12 +2063,54 @@ fun DirectionsPanel(
             // Grows in only over the SAME last-160dp window the body fades out in - starting
             // it at the first pixel of travel had two Start buttons on screen mid-drag.
             app.vela.ui.SheetFold(startComposed, { ((160f - dirH.value) / 160f).coerceIn(0f, 1f) }) {
-                Button(
-                    onClick = onStartNav,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
-                ) {
-                    Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text(stringResource(R.string.place_start))
+                val activeTransit = if (currentMode == TravelMode.TRANSIT) {
+                    transit.firstOrNull { app.vela.ui.TransitExpanded.open[app.vela.ui.TransitExpanded.keyOf(it)] == true }
+                        ?: transit.firstOrNull()
+                } else null
+                if (currentMode == TravelMode.TRANSIT && activeTransit != null) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { collapsed.value = false }
+                            .padding(top = 6.dp, end = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            val range = listOfNotNull(activeTransit.departureText, activeTransit.arrivalText).joinToString(" – ")
+                            Text(
+                                text = listOfNotNull(range.takeIf { it.isNotEmpty() }, activeTransit.durationText).joinToString("  ·  "),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ink,
+                            )
+                            if (activeTransit.lines.isNotEmpty()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    activeTransit.lines.take(4).forEachIndexed { i, line ->
+                                        if (i > 0) Icon(Sym.ChevronRight, null, tint = dim, modifier = Modifier.size(12.dp))
+                                        LinePill(line)
+                                    }
+                                }
+                            }
+                        }
+                        if (activeTransit.steps.isNotEmpty()) {
+                            Button(onClick = { onStartTransit(activeTransit) }) {
+                                Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.padding(end = 6.dp).size(18.dp))
+                                Text(stringResource(R.string.place_start))
+                            }
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onStartNav,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
+                    ) {
+                        Icon(Sym.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Text(stringResource(R.string.place_start))
+                    }
                 }
             }
         }
@@ -2403,7 +2449,7 @@ private fun TransitBoard(
     ink: Color,
     dim: Color,
     dark: Boolean,
-    onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
+    onWalkDirections: suspend (LatLng, LatLng) -> List<TransitWalkStep> = { _, _ -> emptyList() },
     onStartTransit: (TransitItinerary) -> Unit = {},
     onPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> },
 ) {
@@ -2435,75 +2481,442 @@ private fun TransitBoard(
     }
 }
 
-/** Full-screen step-by-step transit guidance (Moovit-style): the current leg large, the remaining
- *  legs as a timeline, Back / Next controls. Advances automatically as GPS reaches each leg's end. */
+/** Google Maps-style transit navigation sheet: shows the ENTIRE trip timeline at once (no Next/Back
+ *  buttons) and can be smoothly slid down to a compact bottom bar to view the map in full screen,
+ *  or slid up to inspect all stops and walking directions. */
 @Composable
 fun TransitNavSheet(
     nav: TransitNavState,
     onNext: () -> Unit,
     onBack: () -> Unit,
     onEnd: () -> Unit,
-    onWalkDirections: suspend (LatLng, LatLng) -> List<String>,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<TransitWalkStep>,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
     val itin = nav.itinerary
-    val step = itin.steps.getOrNull(nav.stepIndex)
-    // A BOTTOM PANE, not a full-screen takeover (issue #232, 2026-08-08): the top half stays live
-    // map, where the guided itinerary draws (colored ride legs + stop dots + dotted walks) and
-    // the camera frames the CURRENT leg, re-framing on each advance — the old full-screen sheet
-    // hid the map entirely and the guidance read as a text list ("it just tells you the
-    // instructions"). Same top-aligned-pane grammar as Street View's half-screen viewer.
-    Surface(
-        modifier.fillMaxWidth().fillMaxHeight(0.48f),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        shadowElevation = 4.dp,
-        color = if (dark) SheetDark else SheetLight,
-    ) {
-        Column(Modifier.fillMaxSize().navigationBarsPadding().padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (nav.arrived) stringResource(R.string.transit_nav_arrived)
-                    else "${nav.stepIndex + 1} / ${itin.steps.size}",
-                    style = MaterialTheme.typography.titleMedium, color = dim, modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onEnd) { Icon(Sym.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
-            }
-            Spacer(Modifier.height(8.dp))
-            // Current leg, large.
-            if (step != null && !nav.arrived) {
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
-                ) { TransitStepRow(step, ink, dim, onWalkDirections) }
-            } else {
-                Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
-            }
-            Spacer(Modifier.height(16.dp))
-            // Remaining legs as a compact timeline.
-            val remaining = itin.steps.drop(nav.stepIndex + 1)
-            if (remaining.isNotEmpty()) {
-                Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
-                Spacer(Modifier.height(6.dp))
-                // The list takes all the room above the buttons and scrolls inside it. It used to
-                // share that room with a spacer, and a short list left the buttons floating on the
-                // one card whose list was short (issue #831).
-                Column(
-                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_back))
+    val screenH = LocalConfiguration.current.screenHeightDp.toFloat()
+    val midH = (screenH * 0.44f).coerceAtLeast(180f)
+    val maxH = (screenH * 0.78f).coerceAtLeast(midH + 80f)
+
+    var collapsed by app.vela.ui.TransitExpanded.navCollapsed
+    var focusedLeg by app.vela.ui.TransitExpanded.navFocusedLeg
+    val bodyH = remember(itin) { Animatable(if (collapsed) 0f else midH) }
+    val settleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    val decaySpec = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 160f) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val bodyScroll = rememberScrollState()
+
+    RoutePanelBack(collapsed) {
+        collapsed = false
+        scope.launch { bodyH.animateTo(midH, settleSpec) }
+    }
+
+    fun snapOrAnimateTo(target: Float, velocityDp: Float = 0f) {
+        scope.launch {
+            bodyH.animateTo(target, settleSpec, initialVelocity = velocityDp)
+            collapsed = target == 0f
+        }
+    }
+
+    fun dragByPx(dyPx: Float) {
+        val dyDp = with(density) { dyPx.toDp().value }
+        scope.launch {
+            val next = (bodyH.value - dyDp).coerceIn(0f, maxH)
+            bodyH.snapTo(next)
+            collapsed = next < 8f
+        }
+    }
+
+    fun settleDrag(velocityPxPerSec: Float) {
+        val vDp = with(density) { velocityPxPerSec.toDp().value }
+        val projected = decaySpec.calculateTargetValue(bodyH.value, -vDp)
+        val cur = bodyH.value
+        val target = when {
+            vDp > FLING_COMMIT_DPS -> if (cur > midH + 40f) midH else 0f
+            vDp < -FLING_COMMIT_DPS -> if (cur < midH - 40f) midH else maxH
+            else -> {
+                val d0 = kotlin.math.abs(projected - 0f)
+                val dMid = kotlin.math.abs(projected - midH)
+                val dMax = kotlin.math.abs(projected - maxH)
+                when {
+                    d0 <= dMid && d0 <= dMax -> 0f
+                    dMax < dMid -> maxH
+                    else -> midH
                 }
-                // The last card's button ends the guidance (issue #811): Next had nothing left
-                // to advance to and only said the arrival line again.
-                Button(onClick = if (nav.arrived) onEnd else onNext, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(if (nav.arrived) R.string.nav_done else R.string.transit_nav_next))
+            }
+        }
+        snapOrAnimateTo(target, -vDp)
+    }
+
+    val nestedConn = remember(itin) {
+        object : NestedScrollConnection {
+            private var dragging = false
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Pulling down when scroll is at top collapses the sheet
+                if (available.y > 0f && bodyScroll.value == 0 && bodyH.value > 0f) {
+                    dragging = true
+                    dragByPx(available.y)
+                    return available
+                }
+                // Pushing up while sheet is below maxH expands the sheet first
+                if (available.y < 0f && bodyH.value < maxH) {
+                    dragging = true
+                    dragByPx(available.y)
+                    return available
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (dragging) {
+                    dragging = false
+                    settleDrag(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+
+    // Smoothly collapse when the user grabs/pans the map directly
+    val panTick = app.vela.ui.TransitExpanded.navPanTick.intValue
+    var seenPanTick by remember { mutableStateOf(panTick) }
+    LaunchedEffect(panTick) {
+        if (panTick == seenPanTick || collapsed) return@LaunchedEffect
+        seenPanTick = panTick
+        if (bodyH.value > 0.5f) bodyH.animateTo(0f, glideSpec)
+        collapsed = true
+    }
+
+    val nowSec by produceState(initialValue = app.vela.ui.DemoClock.nowSec()) {
+        while (true) {
+            delay(30_000L)
+            value = app.vela.ui.DemoClock.nowSec()
+        }
+    }
+    val countdown = departsInLabel(itin.departureEpochSec, nowSec)
+    val live = itin.steps.any { it.delayText != null || it.boardStop?.scheduledText != null }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
+    ) {
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                .pointerInput(itin) {
+                    sheetDragGestures(dragBy = { dragByPx(it) }, settle = { settleDrag(it) })
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            // Drag handle — swipe down for full-screen map, swipe up or tap to toggle
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .dpadHighlight(RoundedCornerShape(3.dp))
+                    .clickable {
+                        val nextTarget = if (collapsed || bodyH.value < 20f) midH else 0f
+                        snapOrAnimateTo(nextTarget)
+                    }
+                    .padding(vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.width(38.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.45f)))
+            }
+
+            // Always-visible summary header (stays at the bottom when slid down to full-screen map)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (collapsed || bodyH.value < 20f) snapOrAnimateTo(midH)
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val range = listOfNotNull(itin.departureText, itin.arrivalText).joinToString(" – ")
+                        Text(
+                            text = range.ifEmpty { itin.durationText.orEmpty() },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ink,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                        if (range.isNotEmpty()) {
+                            itin.durationText?.let { dur ->
+                                Text(
+                                    text = "·  $dur",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            }
+                        }
+                        if (live) {
+                            Box(Modifier.size(7.dp).clip(CircleShape).background(SheetPalette.TrafficGreen))
+                        }
+                    }
+
+                    // Line badges strip + countdown
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (itin.lines.isNotEmpty()) {
+                            itin.lines.take(5).forEachIndexed { i, line ->
+                                if (i > 0) {
+                                    Icon(
+                                        Sym.ChevronRight,
+                                        contentDescription = null,
+                                        tint = dim,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                                LinePill(line)
+                            }
+                            if (itin.lines.size > 5) {
+                                Text("+${itin.lines.size - 5}", style = MaterialTheme.typography.labelMedium, color = dim, maxLines = 1, softWrap = false)
+                            }
+                        }
+                        countdown?.let { cd ->
+                            Text(
+                                text = if (itin.lines.isNotEmpty()) "· $cd" else cd,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (live) SheetPalette.TrafficGreen else dim,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
+                    }
+                }
+
+                IconButton(onClick = onEnd) {
+                    Icon(
+                        Sym.Close,
+                        contentDescription = stringResource(R.string.place_close_directions),
+                        tint = dim,
+                    )
+                }
+            }
+
+            // Foldable body containing the full Google Maps-style vertical timeline of the trip
+            val bodyComposed by remember(itin) {
+                derivedStateOf { !collapsed || bodyH.value > 1f }
+            }
+            if (bodyComposed) {
+                Column(
+                    Modifier
+                        .graphicsLayer {
+                            alpha = (bodyH.value / 110f).coerceIn(0f, 1f)
+                            clip = true
+                            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+                        }
+                        .layout { measurable, constraints ->
+                            val capPx = bodyH.value.dp.roundToPx().coerceAtLeast(0)
+                            val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, capPx)))
+                            layout(pl.width, pl.height) { pl.place(0, 0) }
+                        },
+                ) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = dim.copy(alpha = 0.2f))
+                    Spacer(Modifier.height(10.dp))
+
+                    val stepOffsets = remember(itin) { androidx.compose.runtime.mutableStateMapOf<Int, Int>() }
+                    LaunchedEffect(nav.stepIndex, stepOffsets[nav.stepIndex]) {
+                        val targetY = stepOffsets[nav.stepIndex]
+                        if (targetY != null && nav.stepIndex > 0) {
+                            bodyScroll.animateScrollTo((targetY - 24).coerceAtLeast(0))
+                        }
+                    }
+
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .nestedScroll(nestedConn)
+                            .verticalScroll(bodyScroll)
+                            .padding(bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        itin.steps.forEachIndexed { index, s ->
+                            val isCurrentGpsStep = !nav.arrived && index == nav.stepIndex
+                            val isPastStep = nav.arrived || index < nav.stepIndex
+                            val isFocused = focusedLeg == index
+                            val stepColor = s.line?.let { parseHexColor(it.colorHex) } ?: MaterialTheme.colorScheme.primary
+                            val isWalk = s.line == null
+
+                            val barColor = when {
+                                isPastStep -> dim.copy(alpha = 0.25f)
+                                isWalk -> dim.copy(alpha = 0.40f)
+                                else -> stepColor.copy(alpha = 0.85f)
+                            }
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .onGloballyPositioned { coords ->
+                                        stepOffsets[index] = coords.positionInParent().y.toInt()
+                                    }
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        when {
+                                            isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                            isCurrentGpsStep -> stepColor.copy(alpha = if (dark) 0.14f else 0.10f)
+                                            else -> Color.Transparent
+                                        }
+                                    )
+                                    .then(
+                                        if (isCurrentGpsStep) {
+                                            Modifier.border(1.5.dp, stepColor.copy(alpha = 0.65f), RoundedCornerShape(12.dp))
+                                        } else Modifier
+                                    )
+                                    .clickable {
+                                        focusedLeg = if (focusedLeg == index) null else index
+                                    }
+                                    .drawBehind {
+                                        val centerX = 20.dp.toPx()
+                                        val dotDiameter = (if (isWalk) 10.dp else 14.dp).toPx()
+                                        val topY = 10.dp.toPx() + dotDiameter + 4.dp.toPx()
+                                        val bottomY = (size.height - 4.dp.toPx()).coerceAtLeast(topY + 8.dp.toPx())
+                                        val barW = (if (isWalk) 2.dp else 4.dp).toPx()
+                                        drawRoundRect(
+                                            color = barColor,
+                                            topLeft = Offset(centerX - barW / 2f, topY),
+                                            size = androidx.compose.ui.geometry.Size(barW, bottomY - topY),
+                                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(barW / 2f, barW / 2f),
+                                        )
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                // Left Google Maps-style timeline rail (dot at top; vertical bar drawn full-height behind)
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.width(24.dp).padding(top = 1.dp),
+                                ) {
+                                    if (isCurrentGpsStep) {
+                                        Box(
+                                            Modifier
+                                                .size(20.dp)
+                                                .clip(CircleShape)
+                                                .background(stepColor.copy(alpha = 0.30f)),
+                                        )
+                                    }
+                                    Box(
+                                        Modifier
+                                            .size(if (isWalk) 10.dp else 14.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                when {
+                                                    isPastStep -> dim.copy(alpha = 0.35f)
+                                                    isWalk -> if (isCurrentGpsStep) stepColor else dim.copy(alpha = 0.5f)
+                                                    else -> stepColor
+                                                }
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        if (!isWalk) {
+                                            Box(Modifier.size(6.dp).clip(CircleShape).background(if (dark) SheetDark else SheetLight))
+                                        }
+                                    }
+                                }
+
+                                Spacer(Modifier.width(8.dp))
+
+                                Box(Modifier.weight(1f)) {
+                                    TransitStepRow(
+                                        s = s,
+                                        ink = ink,
+                                        dim = dim,
+                                        onWalkDirections = onWalkDirections,
+                                        isCurrentStep = isCurrentGpsStep,
+                                        isPastStep = isPastStep,
+                                        userLocation = if (isCurrentGpsStep) nav.userLocation else null,
+                                    )
+                                }
+                            }
+                        }
+
+                        // Final arrival node at the bottom of the timeline
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier.width(24.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    Sym.Place,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) }
+                                    ?: stringResource(R.string.transit_nav_arrived),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ink,
+                            )
+                        }
+
+                        // Service alerts if any
+                        if (itin.alerts.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Column(
+                                Modifier.padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                itin.alerts.take(4).forEach { alert ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
+                                        Icon(Sym.Info, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.padding(top = 2.dp).size(15.dp))
+                                        Text(alert, style = MaterialTheme.typography.labelSmall, color = dim)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Fare / agency info footer if available
+                        if (itin.fare != null || itin.agencyPhone != null) {
+                            val context = LocalContext.current
+                            Spacer(Modifier.height(8.dp))
+                            HorizontalDivider(color = dim.copy(alpha = 0.2f))
+                            Spacer(Modifier.height(6.dp))
+                            Column(Modifier.padding(horizontal = 8.dp)) {
+                                Text(stringResource(R.string.place_transit_tickets), style = MaterialTheme.typography.labelMedium, color = ink)
+                                itin.fare?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink) }
+                                val info = listOfNotNull(itin.agency, itin.agencyPhone).joinToString("  ·  ")
+                                if (info.isNotEmpty()) {
+                                    val phone = itin.agencyPhone
+                                    Text(
+                                        info,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (phone != null) MaterialTheme.colorScheme.primary else dim,
+                                        modifier = if (phone != null) Modifier.dpadHighlight(RoundedCornerShape(6.dp)).clickable {
+                                            val dialable = "tel:" + phone.filter { it.isDigit() || it == '+' }
+                                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                                        } else Modifier,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2538,7 +2951,7 @@ private fun departsInLabel(depEpochSec: Long?, nowSec: Long): String? {
 }
 
 @Composable
-private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}, onPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> }) {
+private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<TransitWalkStep> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}, onPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> }) {
     // Held outside the row (issue #812): the row leaves composition when the sheet drops to its
     // card and came back collapsed, with its itinerary still drawn on the map.
     val expandedKey = app.vela.ui.TransitExpanded.keyOf(t)
@@ -2680,26 +3093,58 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
 /** One leg in the expanded drill-down: a mode glyph + the line/"Walk" title and a
  *  times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
 @Composable
-private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }) {
+private fun TransitStepRow(
+    s: TransitStep,
+    ink: Color,
+    dim: Color,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<TransitWalkStep> = { _, _ -> emptyList() },
+    isCurrentStep: Boolean = false,
+    isPastStep: Boolean = false,
+    userLocation: LatLng? = null,
+) {
+    val effectiveInk = if (isPastStep) dim else ink
     // Walk leg — "Walk · 11 min · 0.5 mi", tap to expand turn-by-turn walking directions
     // (fetched on demand via the walk router between this leg's endpoints).
     if (s.line == null) {
         val from = s.walkFrom; val to = s.walkTo
         val canExpand = from != null && to != null
         var open by remember { mutableStateOf(false) }
-        var steps by remember(from, to) { mutableStateOf<List<String>?>(null) }
+        var steps by remember(from, to) { mutableStateOf<List<TransitWalkStep>?>(null) }
+        LaunchedEffect(isCurrentStep) {
+            if (isCurrentStep) open = true
+        }
         if (open && canExpand) {
             LaunchedEffect(from, to) { steps = onWalkDirections(from!!, to!!) }
         }
+        val activeWalkIdx = remember(steps, userLocation, isCurrentStep) {
+            if (isCurrentStep && steps != null) {
+                app.vela.core.nav.TransitProgress.activeWalkStepIndex(steps!!, userLocation, from, to)
+            } else -1
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            Icon(transitModeIcon(s.mode), null, tint = dim, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+            Icon(
+                transitModeIcon(s.mode),
+                null,
+                tint = if (isCurrentStep) MaterialTheme.colorScheme.primary else dim,
+                modifier = Modifier.padding(top = 2.dp).size(18.dp),
+            )
             Column(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier.then(if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(8.dp)).clickable { open = !open } else Modifier),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                stringResource(R.string.place_walk),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isCurrentStep) FontWeight.SemiBold else FontWeight.Normal,
+                                color = effectiveInk,
+                            )
+                            if (isCurrentStep) {
+                                CurrentStepBadge(MaterialTheme.colorScheme.primary)
+                            }
+                        }
                         val sub = listOfNotNull(s.durationText, s.distanceText).joinToString("  ·  ")
                         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
                     }
@@ -2715,8 +3160,17 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                             null -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             else -> if (list.isEmpty()) {
                                 Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.labelSmall, color = dim)
-                            } else list.forEach { instr ->
-                                Text("•  $instr", style = MaterialTheme.typography.labelSmall, color = dim)
+                            } else list.forEachIndexed { idx, walkStep ->
+                                val isCurrent = isCurrentStep && idx == activeWalkIdx
+                                val isPassed = isPastStep || (isCurrentStep && activeWalkIdx >= 0 && idx < activeWalkIdx)
+                                WalkStepLine(
+                                    step = walkStep,
+                                    ink = effectiveInk,
+                                    dim = dim,
+                                    isCurrentStep = isCurrent,
+                                    isPassedStep = isPassed,
+                                    accentColor = MaterialTheme.colorScheme.primary,
+                                )
                             }
                         }
                     }
@@ -2726,16 +3180,52 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
         return
     }
     val line = s.line ?: return // unreachable (walk branch returned) — re-narrows the cross-module type
-    val lineColor = parseHexColor(line.colorHex) ?: dim
+    val lineColor = parseHexColor(line.colorHex) ?: MaterialTheme.colorScheme.primary
+    val (currentStopName, passedStopNames) = remember(s, userLocation, isCurrentStep) {
+        if (isCurrentStep) app.vela.core.nav.TransitProgress.activeStopInfo(s, userLocation) else (null to emptySet())
+    }
     var stopsOpen by remember { mutableStateOf(false) }
+    // Auto-expand intermediate stops when the user's live GPS position is at an intermediate stop on this leg
+    LaunchedEffect(currentStopName) {
+        if (currentStopName != null && s.intermediateStops.any { it.name == currentStopName }) {
+            stopsOpen = true
+        }
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-        Icon(transitModeIcon(s.mode), null, tint = lineColor, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+        Icon(
+            transitModeIcon(s.mode),
+            null,
+            tint = if (isPastStep) dim.copy(alpha = 0.55f) else lineColor,
+            modifier = Modifier.padding(top = 2.dp).size(18.dp),
+        )
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LinePill(line)
-                s.headsign?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, maxLines = 2) }
+                s.headsign?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = effectiveInk,
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+                if (isCurrentStep) {
+                    CurrentStepBadge(lineColor)
+                }
             }
-            s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
+            s.boardStop?.let { stop ->
+                StopLine(
+                    stop = stop,
+                    ink = effectiveInk,
+                    dim = dim,
+                    emphasize = true,
+                    delay = s.delayText,
+                    isCurrentStop = stop.name == currentStopName,
+                    isPassedStop = isPastStep || stop.name in passedStopNames,
+                    accentColor = lineColor,
+                )
+            }
             val rideLabel = listOfNotNull(
                 s.durationText,
                 s.numStops?.let { pluralStringResource(R.plurals.place_transit_stops, it, it) },
@@ -2755,13 +3245,122 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                 }
                 if (stopsOpen) {
                     Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        s.intermediateStops.forEach { StopLine(it, ink, dim, emphasize = false) }
+                        s.intermediateStops.forEach { stop ->
+                            StopLine(
+                                stop = stop,
+                                ink = effectiveInk,
+                                dim = dim,
+                                emphasize = false,
+                                isCurrentStop = stop.name == currentStopName,
+                                isPassedStop = isPastStep || stop.name in passedStopNames,
+                                accentColor = lineColor,
+                            )
+                        }
                     }
                 }
             } else if (rideLabel.isNotEmpty()) {
                 Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
             }
-            s.alightStop?.let { StopLine(it, ink, dim, emphasize = true) }
+            s.alightStop?.let { stop ->
+                StopLine(
+                    stop = stop,
+                    ink = effectiveInk,
+                    dim = dim,
+                    emphasize = true,
+                    isCurrentStop = stop.name == currentStopName,
+                    isPassedStop = isPastStep || stop.name in passedStopNames,
+                    accentColor = lineColor,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurrentStepBadge(color: Color) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.20f))
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(color))
+        Text(
+            stringResource(R.string.transit_step_current),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+@Composable
+private fun WalkStepLine(
+    step: TransitWalkStep,
+    ink: Color,
+    dim: Color,
+    isCurrentStep: Boolean,
+    isPassedStep: Boolean,
+    accentColor: Color = Color.Unspecified,
+) {
+    val activeAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
+    val textInk = when {
+        isCurrentStep -> ink
+        isPassedStep -> dim.copy(alpha = 0.55f)
+        else -> ink
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(
+                if (isCurrentStep) {
+                    Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(activeAccent.copy(alpha = 0.16f))
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                } else {
+                    Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                }
+            ),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isCurrentStep) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(activeAccent))
+        } else {
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(if (isPassedStep) dim.copy(alpha = 0.35f) else dim.copy(alpha = 0.80f))
+            )
+        }
+        Row(
+            Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                step.instruction,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isCurrentStep) FontWeight.Bold else FontWeight.Normal,
+                color = textInk,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (isCurrentStep) {
+                Text(
+                    "· ${stringResource(R.string.transit_stop_current)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = activeAccent,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
         }
     }
 }
@@ -2769,22 +3368,72 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
 /** One stop in the transit drill-down: its call time, name, and (for board/alight) the agency
  *  stop code + any real-time delay. Emphasized for board/alight, lighter for the intermediate list. */
 @Composable
-private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: Boolean, delay: String? = null) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+private fun StopLine(
+    stop: TransitStopTime,
+    ink: Color,
+    dim: Color,
+    emphasize: Boolean,
+    delay: String? = null,
+    isCurrentStop: Boolean = false,
+    isPassedStop: Boolean = false,
+    accentColor: Color = Color.Unspecified,
+) {
+    val activeAccent = if (accentColor != Color.Unspecified) accentColor else MaterialTheme.colorScheme.primary
+    val textInk = when {
+        isCurrentStop -> ink
+        isPassedStop -> dim.copy(alpha = 0.6f)
+        else -> ink
+    }
+    Row(
+        Modifier
+            .then(
+                if (isCurrentStop) {
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(activeAccent.copy(alpha = 0.16f))
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                } else Modifier
+            ),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         stop.timeText?.let {
             Text(
                 it,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (delay != null) SheetPalette.TrafficRed else dim,
+                fontWeight = if (isCurrentStop) FontWeight.Bold else FontWeight.Normal,
+                color = when {
+                    delay != null -> SheetPalette.TrafficRed
+                    isCurrentStop -> activeAccent
+                    isPassedStop -> dim.copy(alpha = 0.55f)
+                    else -> dim
+                },
                 modifier = Modifier.widthIn(min = 54.dp),
             )
         }
-        Column {
-            Text(
-                stop.name,
-                style = if (emphasize) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
-                color = ink,
-            )
+        if (isCurrentStop) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(activeAccent))
+        }
+        Column(Modifier.weight(1f, fill = false)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    stop.name,
+                    style = if (emphasize || isCurrentStop) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                    fontWeight = if (isCurrentStop) FontWeight.Bold else if (emphasize) FontWeight.SemiBold else FontWeight.Normal,
+                    color = textInk,
+                )
+                if (isCurrentStop) {
+                    Text(
+                        "· ${stringResource(R.string.transit_stop_current)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = activeAccent,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
             val meta = listOfNotNull(
                 delay,
                 stop.scheduledText?.takeIf { emphasize },
