@@ -7325,7 +7325,14 @@ class MapViewModel @Inject constructor(
     fun startNav() {
         // A bike-share trip picked on the Bike tab is what the map shows, so Start guides it
         // (SPEC 8, Bike share in directions).
-        BikeShareTripsShown.preview.value?.takeIf { _state.value.travelMode == TravelMode.BICYCLE }?.let { startTransitNav(it); return }
+        // The bike route it stood in for goes with it, or its dotted line stays on the map through
+        // the guidance and after it.
+        BikeShareTripsShown.preview.value?.takeIf { _state.value.travelMode == TravelMode.BICYCLE }?.let { trip ->
+            routeJob?.cancel()
+            _state.update { it.copy(routes = emptyList(), activeRoute = null, flockOnRoute = emptyList()) }
+            startTransitNav(trip)
+            return
+        }
         val s = _state.value
         val start = if (s.directionsReversed) null else s.directionsOrigin
         val me = s.myLocation
