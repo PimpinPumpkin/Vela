@@ -230,8 +230,10 @@ restart in airplane mode.
 ### Guidance
 
 `TransitNavSheet` takes the bottom half of the screen, with the trip drawn above it and the
-camera on the current leg. Each leg is spoken as it begins. Next and Back step by hand, at the
-bottom of the sheet on every card; the remaining legs scroll in the room above them.
+camera on the current leg. Each leg is spoken as it begins. Next and Back step by hand, at
+the bottom of the sheet on every card. The current leg and the legs after it scroll between the
+header and those two buttons, which keep their full height when a leg's walk steps or stops are
+open. A leg left open closes on Next.
 
 A leg advances by itself when you reach its end. It must first arm by being more than 90 m from
 that end (`TRANSIT_ARM_M`), then advances within 40 m (`TRANSIT_ARRIVE_M`). Arming keeps a

@@ -146,6 +146,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -2473,30 +2474,30 @@ fun TransitNavSheet(
                 IconButton(onClick = onEnd) { Icon(Sym.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             Spacer(Modifier.height(8.dp))
-            // Current leg, large.
-            if (step != null && !nav.arrived) {
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
-                ) { TransitStepRow(step, ink, dim, onWalkDirections) }
-            } else {
-                Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+            // The legs scroll in all the room between the header and the buttons, so Back and Next
+            // stay at the bottom on every card (issue #831) and a leg with its walk steps or stops
+            // open never squeezes them (issue #853).
+            val scroll = rememberScrollState()
+            LaunchedEffect(nav.stepIndex) { scroll.scrollTo(0) }
+            Column(Modifier.weight(1f).verticalScroll(scroll)) {
+                // Current leg, large. Keyed on the step, so a leg left open closes on Next.
+                if (step != null && !nav.arrived) key(nav.stepIndex) {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
+                    ) { TransitStepRow(step, ink, dim, onWalkDirections) }
+                } else {
+                    Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+                }
+                Spacer(Modifier.height(16.dp))
+                // Remaining legs as a compact timeline.
+                val remaining = itin.steps.drop(nav.stepIndex + 1)
+                if (remaining.isNotEmpty()) {
+                    Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
+                    Spacer(Modifier.height(6.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { remaining.forEach { TransitStepRow(it, ink, dim) } }
+                }
             }
-            Spacer(Modifier.height(16.dp))
-            // Remaining legs as a compact timeline.
-            val remaining = itin.steps.drop(nav.stepIndex + 1)
-            if (remaining.isNotEmpty()) {
-                Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
-                Spacer(Modifier.height(6.dp))
-                // The list takes all the room above the buttons and scrolls inside it. It used to
-                // share that room with a spacer, and a short list left the buttons floating on the
-                // one card whose list was short (issue #831).
-                Column(
-                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
+            Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_back))
