@@ -149,9 +149,9 @@ addresses and "checked on a drive to X" notes add up to where the developer live
   `org.jetbrains.kotlin.android` plugin and no `kotlinOptions`.
 - Do not take core-ktx 1.19, navigation-compose 2.10 or hilt-navigation-compose 1.4 in
   passing. They pull Compose from 1.7 to 1.10 across the app, which is its own job.
-- The Gradle setup action stays on v5. From v6 its caching is closed source under Gradle's
-  terms. Every action in every workflow is pinned to a commit SHA, and a new workflow declares
-  `permissions:`.
+- The Gradle actions (setup and wrapper validation) stay on v5. From v6 their caching is closed
+  source under Gradle's terms. Every action in every workflow is pinned to a commit SHA, and a
+  new workflow declares `permissions:`.
 - Library versions held for the build tools' sake (lint, the plugin classpath, the baseline
   profile module) are at the top and bottom of the root `build.gradle.kts`.
 
