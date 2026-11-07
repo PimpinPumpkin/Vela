@@ -1335,4 +1335,12 @@
     <string name="trip_shortcut_unsupported">Cet Ã©cran d\'accueil ne peut pas Ã©pingler de raccourcis</string>
     <string name="trip_shortcut_themed">Comme les icÃ´nes Ã  thÃ¨me</string>
     <string name="settings_places_source_note">Rechercher ou toucher un lieu interroge toujours Google pour les horaires, les avis et les photos, quel que soit votre choix.</string>
+    <string name="settings_nav_icon_scale">Taille des pictogrammes sur l\'itinéraire</string>
+    <string name="settings_nav_icon_scale_hint">Choisissez individuellement la taille de chaque pictogramme affiché sur votre trajet pendant la navigation.</string>
+    <string name="settings_nav_icon_speedcam">Radars</string>
+    <string name="settings_nav_icon_flock">Caméras de surveillance</string>
+    <string name="settings_nav_icon_signal">Feux de signalisation</string>
+    <string name="settings_nav_icon_stop">Panneaux Stop</string>
+    <string name="settings_nav_icon_railx">Passages à niveau</string>
+    <string name="settings_nav_icon_hump">Ralentisseurs</string>
 </resources>
