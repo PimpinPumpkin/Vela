@@ -1540,4 +1540,6 @@
     <string name="settings_theme_amoled_for_dark">Use AMOLED black for dark theme</string>
     <string name="settings_theme_amoled_for_dark_hint">When switching to dark mode, uses true AMOLED black instead of dark gray.</string>
     <string name="settings_theme_amoled_for_nav_hint">When driving at night, uses true AMOLED black instead of dark gray.</string>
+    <string name="settings_map_theme_amoled_for_dark">AMOLED black for map</string>
+    <string name="settings_map_theme_amoled_for_dark_hint">Use true AMOLED black when the map is in dark mode.</string>
 </resources>

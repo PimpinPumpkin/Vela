@@ -1336,6 +1336,8 @@
     <string name="trip_shortcut_themed">Comme les ic√¥nes √† th√®me</string>
     <string name="settings_places_source_note">Rechercher ou toucher un lieu interroge toujours Google pour les horaires, les avis et les photos, quel que soit votre choix.</string>
     <string name="settings_theme_amoled_for_dark">Utiliser le noir AMOLED pour le mode sombre</string>
-    <string name="settings_theme_amoled_for_dark_hint">Lors du passage au thËme sombre, utilise le noir pur AMOLED plutÙt que le gris foncÈ.</string>
-    <string name="settings_theme_amoled_for_nav_hint">Pendant la conduite de nuit, utilise le noir pur AMOLED plutÙt que le gris foncÈ.</string>
+    <string name="settings_theme_amoled_for_dark_hint">Lors du passage au th√®me sombre, utilise le noir pur AMOLED plut√¥t que le gris fonc√©.</string>
+    <string name="settings_theme_amoled_for_nav_hint">Pendant la conduite de nuit, utilise le noir pur AMOLED plut√¥t que le gris fonc√©.</string>
+    <string name="settings_map_theme_amoled_for_dark">Noir AMOLED pour la carte</string>
+    <string name="settings_map_theme_amoled_for_dark_hint">Utilise le noir pur AMOLED lorsque la carte est en mode sombre.</string>
 </resources>

@@ -112,6 +112,21 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.DARK,
                 onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.DARK) },
             )
+            GroupDivider()
+            SelectableRow(
+                label = stringResource(R.string.settings_theme_amoled),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.AMOLED,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.AMOLED) },
+            )
+            if (AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.FOLLOW) {
+                GroupDivider()
+                ToggleRow(
+                    label = stringResource(R.string.settings_map_theme_amoled_for_dark),
+                    checked = AppTheme.mapAmoledDark.value,
+                    onCheckedChange = { AppTheme.setMapAmoledDark(context, it) },
+                    hint = stringResource(R.string.settings_map_theme_amoled_for_dark_hint),
+                )
+            }
         }
         Hint(stringResource(R.string.settings_map_theme_hint))
 
