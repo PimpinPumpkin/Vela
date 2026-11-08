@@ -72,4 +72,19 @@ class LateTurnTest {
     @Test fun `a car beside the line is not judged`() {
         assertNull(NavSession.firstTurnAheadM(sideStreetTurnRound(), pt(0.0, -120.0)))
     }
+
+    @Test fun `an exit two seconds ahead at freeway speed is out of reach`() {
+        val line = listOf(pt(0.0, 0.0), pt(45.0, 0.0), pt(345.0, -20.0))
+        val steps = listOf(
+            Maneuver(ManeuverType.DEPART, "Head east", line[0], 45.0, 2.0),
+            Maneuver(ManeuverType.RAMP_RIGHT, "Take exit 72B toward Richards Boulevard", line[1], 300.0, 15.0),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", line[2], 0.0, 0.0),
+        )
+        val r = Route(line, listOf(RouteLeg(345.0, 17.0, null, steps)), 345.0, 17.0, null)
+        val ahead = NavSession.firstTurnAheadM(r, pt(0.0, 0.0))!!
+        assertEquals(45.0, ahead, 1.5)
+        assertTrue(NavSession.turnOutOfReach(ahead, 20.0))
+        // The same exit from 150 m back is makeable at that speed.
+        assertFalse(NavSession.turnOutOfReach(150.0, 20.0))
+    }
 }

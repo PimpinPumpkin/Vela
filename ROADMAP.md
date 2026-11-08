@@ -263,6 +263,8 @@ off the list when it has been.
 - A fork said as the "then" of the fork 45 m before it is not said again at its own turn
   (`CHAIN_REPEAT_S`): unit-tested at 25 m/s. The trip replay passes no speed, so it cannot show
   this. Not heard on a freeway interchange.
+- A reroute whose first step is a ramp, exit or fork the car cannot reach in 5 s asks again past
+  it (`PLACED_STEPS`): unit-tested. Not seen on a freeway reroute.
 
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and

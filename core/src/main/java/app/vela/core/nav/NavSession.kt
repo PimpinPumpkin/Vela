@@ -1328,13 +1328,17 @@ class NavSession @Inject constructor(
          *  and not already counted as off the line. */
         fun recheckFrom(trustedFix: Boolean, offRouteHits: Int): Boolean = trustedFix && offRouteHits == 0
 
-        /** The steps a driver slows down for. A slight bend, a fork or a ramp is taken at speed. */
-        private val SLOW_TURNS = setOf(
+        /** The steps the car has to be in place for: a turn it slows down for, or a ramp, an exit
+         *  or a fork it needs the right lane for. A slight bend needs neither. Without the ramps a
+         *  reroute at freeway speed kept an exit two seconds ahead and announced it too late. */
+        private val PLACED_STEPS = setOf(
             ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT,
             ManeuverType.UTURN, ManeuverType.ROUNDABOUT,
+            ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT, ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,
+            ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
         )
 
-        /** Meters along [route] from [car] to its first step of [SLOW_TURNS]: 0 when the car is level
+        /** Meters along [route] from [car] to its first step of [PLACED_STEPS]: 0 when the car is level
          *  with it or past it, null when the car is not on the line or there is no such step. A step
          *  sits where the engine puts it, at the sum of the step lengths before it. */
         fun firstTurnAheadM(route: Route, car: LatLng): Double? {
@@ -1345,7 +1349,7 @@ class NavSession @Inject constructor(
             if (perp > CAR_ON_CANDIDATE_M) return null
             var at = 0.0
             route.maneuvers.forEachIndexed { i, m ->
-                if (i > 0 && m.type in SLOW_TURNS) return (at - along).coerceAtLeast(0.0)
+                if (i > 0 && m.type in PLACED_STEPS) return (at - along).coerceAtLeast(0.0)
                 at += m.distanceMeters
             }
             return null

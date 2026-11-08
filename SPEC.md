@@ -1777,8 +1777,9 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   that way keeps the set-aside best route's clock and traffic (`applyTraffic` with `speedCal`,
   spans carried where the roads are shared), as a trip through stops does when Google's detour
   is not taken. Without them its ETA stayed short until the recheck's heal.
-- A driving reroute's first turn must be one the car can still make. A turn, sharp turn, U-turn
-  or roundabout entry (`NavSession.firstTurnAheadM`) under `REACH_S` seconds away at the newest
+- A driving reroute's first turn must be one the car can still make. A turn, sharp turn, U-turn,
+  roundabout entry, ramp, exit, fork or keep (`NavSession.firstTurnAheadM`, `PLACED_STEPS`; a
+  ramp or a fork needs the car in its lane) under `REACH_S` seconds away at the newest
   trusted fix's speed, and never under `REACH_MIN_M`, is out of reach (`turnOutOfReach`, only at
   `HEADING_MIN_MPS` and up). The first line is said after "Rerouting", a second or more after
   the route lands. The fetch then waits until the car is `LATE_TURN_PAST_M` past that turn at
