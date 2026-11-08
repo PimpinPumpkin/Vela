@@ -31,6 +31,13 @@ object NavEngine {
     private const val ADVANCE_MIN_M = 5.0
     /** In [NavState.spoken]: the turn-now line of the step has been said (0 and 1 are the bands). */
     const val TURN_NOW_SLOT = 2
+    /** In [NavState.spoken]: the step's turn-now WORDS were already said as the "then" of the line
+     *  just before, so its turn-now point buzzes without speaking ([CHAIN_REPEAT_S]). */
+    const val TURN_NOW_SAID_SLOT = 3
+    /** A chained step whose own turn-now line would come within this many seconds of the "then"
+     *  that named it, in the same words, is not said again: at speed two forks 45 m apart said
+     *  "keep slight right" twice in two seconds. */
+    const val CHAIN_REPEAT_S = 5.0
     /** A band the car reaches within this many seconds of a prompt is taken as said by it. */
     private const val BAND_MERGE_S = 8.0
     /** The voice's pace in letters a second and the lead before its first sound: how long a line takes. */
@@ -546,14 +553,18 @@ object NavEngine {
         }
         var chainedNow = false
         var chainedIdx = -1
+        // The words the "then" gave the chained step, and whether they were said at this turn.
+        var thenSaid: String? = null
+        var thenAtTurn = false
         fun withNext(line: String, idx: Int = nextIdx): String {
             if (idx < 0) return line
             // In the shorter settings the second turn loses its street name too, as its own line would.
             val next = maneuvers[idx]
             val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
             else next.instructionNoRoad ?: next.spokenInstruction()
-            val both = nav().thenNext(line, nav().repeatShort(nextText))
-            if (both != line) { chainedNow = true; chainedIdx = idx }
+            val thenPart = nav().repeatShort(nextText)
+            val both = nav().thenNext(line, thenPart)
+            if (both != line) { chainedNow = true; chainedIdx = idx; thenSaid = thenPart; thenAtTurn = false }
             return both
         }
         // The line at the turn, with the next turn on it when the two are chained. That next turn
@@ -571,14 +582,17 @@ object NavEngine {
             val pace = v.coerceAtLeast(MIN_PACE_MPS)
             val toNextNow = dtn + (manAlong[idx] - manAlong[idxCur]) - turnNowM
             fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
-            if (fits(full)) return full
+            if (fits(full)) { thenAtTurn = true; return full }
             val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
             val next = maneuvers[idx]
             val nextNamed = nav().repeatShort(next.spokenInstruction())
             // An exit keeps its sign: "take exit 12" without it says too little.
             val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
             val named = nav().thenNext(bare, nextNamed)
-            return if (fits(named)) named else nav().thenNext(bare, nextBare)
+            thenAtTurn = true
+            if (fits(named)) { thenSaid = nextNamed; return named }
+            thenSaid = nextBare
+            return nav().thenNext(bare, nextBare)
         }
         if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
             // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
@@ -687,8 +701,15 @@ object NavEngine {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
                     val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else nav().repeatShort(lotLine ?: target.spokenInstruction())
+                    // A roundabout said at its near band by its own approach is not said again at
+                    // its entry, where the driver is yielding and the words would be the same. The
+                    // line still comes when it carries the step after it (roundabouts in a row).
+                    val ringSaid = target.type == ManeuverType.ROUNDABOUT && 1 in spoken &&
+                        state.chainedStep != idxCur && nextIdx < 0 && laterIdx < 0
                     // The shorter modes said their one line on the approach; the buzz below stays.
-                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(turnNowLine(withStop(turnText)), interrupt = true)
+                    if (detail == SpokenDetail.Mode.FULL && !ringSaid && TURN_NOW_SAID_SLOT !in spoken) {
+                        events += NavEvent.Speak(turnNowLine(withStop(turnText)), interrupt = true)
+                    }
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 spoken = spoken + TURN_NOW_SLOT
@@ -765,7 +786,8 @@ object NavEngine {
             stopCuedAtM = stopCuedAt,
             stillFixes = stillFixes,
             chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
-            chainedBands = if (!chainedNow) state.chainedBands else if (chainedIdx == laterIdx) laterBands else setOf(0, 1),
+            chainedBands = if (!chainedNow) state.chainedBands else (if (chainedIdx == laterIdx) laterBands else setOf(0, 1)) +
+                (if (thenAtTurn && chainRepeatsSoon(maneuvers, manAlong, idxCur, chainedIdx, dtn, turnNowM, v, thenSaid)) setOf(TURN_NOW_SAID_SLOT) else emptySet()),
         )
         return newState to events
     }
@@ -823,6 +845,20 @@ object NavEngine {
         while (j < ms.size && quiet(ms, j)) j++
         if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
         return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
+    }
+
+    /** True when step [j], named as "then [said]" on the turn-now line of step [k], would say the
+     *  same words at its own turn-now point within [CHAIN_REPEAT_S] of now ([dtn] meters short of
+     *  [k], at [speedMps]). */
+    internal fun chainRepeatsSoon(
+        ms: List<Maneuver>, manAlong: DoubleArray, k: Int, j: Int, dtn: Double, turnNowM: Double,
+        speedMps: Double, said: String?,
+    ): Boolean {
+        if (said == null || j !in ms.indices) return false
+        val own = nav().repeatShort(ms[j].spokenInstruction())
+        if (!own.equals(said, ignoreCase = true)) return false
+        val toOwnNow = dtn + (manAlong[j] - manAlong[k]) - turnNowM
+        return toOwnNow / speedMps.coerceAtLeast(MIN_PACE_MPS) < CHAIN_REPEAT_S
     }
 
     /** A "then" past [CHAIN_M] means soon: never for a step further than this. */
@@ -992,7 +1028,8 @@ object NavEngine {
                 spokenDistance(near, imperial),
                 if (farSpoken || said.isNotEmpty()) lightLead(m, near, short) else if (lane != null) full else lightLead(m, near, full),
             )
-            if (TURN_NOW_SLOT !in said) lines += now
+            val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said)
+            if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid) lines += now
             // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
             out += if (i == fromStep && nearestFirst) lines.reversed() else lines
         }

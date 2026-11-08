@@ -257,6 +257,13 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A roundabout is said on its approach and only buzzes at its entry, unless the entry line
+  carries the next step: replayed on a recorded drive, the roundabout got its two approach
+  lines and none at the entry. Not heard on a drive, nor through roundabouts in a row.
+- A fork said as the "then" of the fork 45 m before it is not said again at its own turn
+  (`CHAIN_REPEAT_S`): unit-tested at 25 m/s. The trip replay passes no speed, so it cannot show
+  this. Not heard on a freeway interchange.
+
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each

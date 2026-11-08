@@ -110,8 +110,13 @@ turn. The voice says "turn left" 25 m out either way.
   exit's line: "Take the exit toward ..., then keep left". The merge at the ramp's end is folded
   into the step before it.
 - A continue or a straight-on is silent unless its lanes show a real fork.
-- A roundabout is said at its entry, with the exit to take. Its own exit step right after the
-  entry says nothing and is never the "then" of a chained line.
+- A roundabout is said on its approach, with the exit to take, and buzzes at its entry. A line
+  at the entry would repeat the approach line while the driver is yielding, so it comes only
+  when it carries what follows the roundabout, such as the next roundabout. Its own exit step
+  right after the entry says nothing and is never the "then" of a chained line.
+- Two steps close together are said on one line ("Keep slight left, then keep slight right").
+  The second one's own line at its turn is left out when it would come within 5 seconds and say
+  the same words; it still buzzes.
 - A turn lane mapped as its own way does not split a turn in two. A short unnamed slight turn
   followed by a turn the same way, adding up to a real turn, is one "Turn right onto" the street,
   said where the lane leaves the road.

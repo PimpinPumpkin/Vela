@@ -1618,8 +1618,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Two turns within `CHAIN_M` (130 m) of each other along the road are said on one line
   (`NavEngine.chainedNext`, `NavStrings.thenNext`): "Turn right onto Elm Street, then turn left
   onto Oak Avenue", on the first turn's first line and on its line at the turn. The second
-  turn's approach lines are then not said (`NavState.chainedStep`); its line at the turn is. Not
-  on a line with lane guidance, a stop or a traffic-light lead, and never onto the arrival.
+  turn's approach lines are then not said (`NavState.chainedStep`); its line at the turn is,
+  unless the line at the first turn named it in the same words and its own would come within
+  `CHAIN_REPEAT_S` (5 s) at the current pace (`chainRepeatsSoon`, slot `TURN_NOW_SAID_SLOT` in
+  `chainedBands`). Then it only buzzes: at 25 m/s two forks 45 m apart said "keep slight right"
+  twice in two seconds. Not on a line with lane guidance, a stop or a traffic-light lead, and
+  never onto the arrival.
   `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
   turns apart, as before. The chained line is not among `upcomingPrompts`, so the voice renders
   it when it is spoken.
@@ -1645,6 +1649,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   the stop leg and the prepared prompts pass over it (`NavEngine.quiet`). An exit step after
   anything but its entry (a route that starts in the ring) still speaks. The drive camera still
   frames the exit (`NavTurnTarget`).
+- A roundabout said at its near band by its own approach has no line at its entry, only the
+  buzz: the words would be the same, about 10 s later, while the driver is yielding. The entry
+  line still comes when it carries the step after the roundabout (a "then" or a due step), or
+  when the roundabout was only said as another turn's "then". `upcomingPrompts` leaves it out
+  too.
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
 - Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, off by default,
   English only). With it on, `NavController.lightCues` looks up the signals along each route
