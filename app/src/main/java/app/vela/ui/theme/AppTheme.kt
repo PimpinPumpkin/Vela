@@ -16,7 +16,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK, AMOLED, AUTO }
 
 /** The MAP's own light/dark, apart from the app's (user 2026-09-28: a light map under dark
  *  settings, or the other way round). FOLLOW = whatever the app resolves to. */
-enum class MapThemeMode { FOLLOW, LIGHT, DARK }
+enum class MapThemeMode { FOLLOW, LIGHT, DARK, AMOLED }
 
 /**
  * App-wide appearance preference. A process-wide reactive holder (like [app.vela.ui.Units]):
@@ -46,6 +46,18 @@ object AppTheme {
     /** Mirrored from the nav state by MapViewModel, so [navDayNight] can act on it. */
     val navigating = mutableStateOf(false)
 
+    /**
+     * Whether dynamic dark modes ([ThemeMode.SYSTEM] or [ThemeMode.AUTO]) and
+     * the driving day/night switch resolve to AMOLED true black instead of standard Dark.
+     */
+    val amoledDark = mutableStateOf(false)
+
+    /**
+     * Whether the map's dark mode resolves to AMOLED true black instead of standard Dark
+     * when [mapMode] is [MapThemeMode.FOLLOW] or during night navigation.
+     */
+    val mapAmoledDark = mutableStateOf(false)
+
     private var lat: Double? = null
     private var lng: Double? = null
     private var at: Long = 0L // when the point was recorded (epoch ms); 0 = a pre-timestamp store
@@ -62,8 +74,14 @@ object AppTheme {
         mode.value = runCatching { ThemeMode.valueOf(prefs(context).getString(KEY, null) ?: "SYSTEM") }
             .getOrDefault(ThemeMode.SYSTEM)
         navDayNight.value = prefs(context).getBoolean(KEY_NAV_DAY_NIGHT, false)
+        amoledDark.value = prefs(context).getBoolean(KEY_AMOLED_DARK, false)
         mapMode.value = runCatching { MapThemeMode.valueOf(prefs(context).getString(KEY_MAP, null) ?: "FOLLOW") }
             .getOrDefault(MapThemeMode.FOLLOW)
+        mapAmoledDark.value = if (prefs(context).contains(KEY_MAP_AMOLED_DARK)) {
+            prefs(context).getBoolean(KEY_MAP_AMOLED_DARK, false)
+        } else {
+            amoledDark.value
+        }
         val p = prefs(context)
         if (p.contains(KEY_LAT)) {
             lat = p.getFloat(KEY_LAT, 0f).toDouble()
@@ -84,9 +102,19 @@ object AppTheme {
         prefs(context).edit().putString(KEY_MAP, value.name).apply()
     }
 
+    fun setMapAmoledDark(context: Context, value: Boolean) {
+        mapAmoledDark.value = value
+        prefs(context).edit().putBoolean(KEY_MAP_AMOLED_DARK, value).apply()
+    }
+
     fun setNavDayNight(context: Context, value: Boolean) {
         navDayNight.value = value
         prefs(context).edit().putBoolean(KEY_NAV_DAY_NIGHT, value).apply()
+    }
+
+    fun setAmoledDark(context: Context, value: Boolean) {
+        amoledDark.value = value
+        prefs(context).edit().putBoolean(KEY_AMOLED_DARK, value).apply()
     }
 
     /**
@@ -130,7 +158,9 @@ object AppTheme {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "theme_mode"
     private const val KEY_NAV_DAY_NIGHT = "theme_nav_day_night"
+    private const val KEY_AMOLED_DARK = "theme_amoled_dark"
     private const val KEY_MAP = "theme_map_mode"
+    private const val KEY_MAP_AMOLED_DARK = "theme_map_amoled_dark"
     private const val KEY_LAT = "theme_sun_lat"
     private const val KEY_LNG = "theme_sun_lng"
     private const val KEY_AT = "theme_sun_at"
@@ -163,19 +193,39 @@ fun isMapDark(): Boolean {
     if ((AppTheme.navigating.value || app.vela.ui.DrivingMode.on.value) && AppTheme.navDayNight.value) return AppTheme.night.value
     return when (AppTheme.mapMode.value) {
         MapThemeMode.LIGHT -> false
-        MapThemeMode.DARK -> true
+        MapThemeMode.DARK, MapThemeMode.AMOLED -> true
         MapThemeMode.FOLLOW -> isAppInDarkTheme()
     }
 }
 
-/** The map's true-black palette: only while the map follows an AMOLED app theme. */
+/** The map's true-black palette: honors mapMode.AMOLED or mapAmoledDark when dark. */
 @Composable
-fun isMapAmoled(): Boolean = app.vela.ui.MapLook.style.value.painted && AppTheme.mapMode.value == MapThemeMode.FOLLOW && isAppInAmoled()
+fun isMapAmoled(): Boolean {
+    val look = app.vela.ui.MapLook.style.value
+    if (!look.painted) return false
+    if (!isMapDark()) return false
+    return when (AppTheme.mapMode.value) {
+        MapThemeMode.AMOLED -> true
+        MapThemeMode.DARK -> false
+        MapThemeMode.FOLLOW, MapThemeMode.LIGHT -> AppTheme.mapAmoledDark.value
+    }
+}
 
 /** True when the app is resolved to true-black AMOLED theme right now. */
 @Composable
-fun isAppInAmoled(): Boolean =
-    AppTheme.mode.value == ThemeMode.AMOLED && isAppInDarkTheme()
+fun isAppInAmoled(): Boolean {
+    val dark = isAppInDarkTheme()
+    if (!dark) return false
+    return when (AppTheme.mode.value) {
+        ThemeMode.AMOLED -> true
+        ThemeMode.SYSTEM, ThemeMode.AUTO -> AppTheme.amoledDark.value
+        ThemeMode.LIGHT, ThemeMode.DARK -> {
+            // If navDayNight override is active during navigation at night and user prefers AMOLED
+            val navOverridden = (AppTheme.navigating.value || app.vela.ui.DrivingMode.on.value) && AppTheme.navDayNight.value
+            navOverridden && AppTheme.amoledDark.value
+        }
+    }
+}
 
 
 /**

@@ -77,6 +77,15 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             selected = AppTheme.mode.value == ThemeMode.AUTO,
             onClick = { AppTheme.set(context, ThemeMode.AUTO) },
         )
+        if (AppTheme.mode.value == ThemeMode.SYSTEM || AppTheme.mode.value == ThemeMode.AUTO) {
+            GroupDivider()
+            ToggleRow(
+                label = stringResource(R.string.settings_theme_amoled_for_dark),
+                checked = AppTheme.amoledDark.value,
+                onCheckedChange = { AppTheme.setAmoledDark(context, it) },
+                hint = stringResource(R.string.settings_theme_amoled_for_dark_hint),
+            )
+        }
         }
         Hint(stringResource(R.string.settings_theme_auto_hint))
         Hint(stringResource(R.string.settings_appearance_hint))
@@ -103,6 +112,21 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.DARK,
                 onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.DARK) },
             )
+            GroupDivider()
+            SelectableRow(
+                label = stringResource(R.string.settings_theme_amoled),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.AMOLED,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.AMOLED) },
+            )
+            if (AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.FOLLOW) {
+                GroupDivider()
+                ToggleRow(
+                    label = stringResource(R.string.settings_map_theme_amoled_for_dark),
+                    checked = AppTheme.mapAmoledDark.value,
+                    onCheckedChange = { AppTheme.setMapAmoledDark(context, it) },
+                    hint = stringResource(R.string.settings_map_theme_amoled_for_dark_hint),
+                )
+            }
         }
         Hint(stringResource(R.string.settings_map_theme_hint))
 
@@ -118,6 +142,15 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     onCheckedChange = { AppTheme.setNavDayNight(context, it) },
                     hint = stringResource(R.string.settings_nav_day_night_hint),
                 )
+                if (AppTheme.navDayNight.value && AppTheme.mode.value != ThemeMode.SYSTEM) {
+                    GroupDivider()
+                    ToggleRow(
+                        label = stringResource(R.string.settings_theme_amoled_for_dark),
+                        checked = AppTheme.amoledDark.value,
+                        onCheckedChange = { AppTheme.setAmoledDark(context, it) },
+                        hint = stringResource(R.string.settings_theme_amoled_for_nav_hint),
+                    )
+                }
             }
         }
 
