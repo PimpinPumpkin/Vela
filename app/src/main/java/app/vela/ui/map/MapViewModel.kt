@@ -7403,8 +7403,11 @@ class MapViewModel @Inject constructor(
         app.vela.ui.VoiceAlertsOnly.on.value = alerts
         // State before the prefs: the prefs listener runs inline on the main thread and compares
         // the two, so the other order called this once more for nothing.
+        val changed = muted != _state.value.voiceMuted || alerts != _state.value.voiceAlertsOnly
         _state.update { it.copy(voiceMuted = muted, voiceAlertsOnly = alerts) }
         settingsPrefs.edit().putBoolean("spoken_directions", !muted).putBoolean("spoken_alerts_only", alerts).apply()
+        // A drive that goes quiet reads the same in its trip as a voice that broke. Say which.
+        if (changed) tripStore.note("K", "voice: " + when { !muted -> "on"; alerts -> "alerts only"; else -> "off" })
     }
 
     /** Settings -> Data & privacy: periodic in-drive traffic re-checks (they send the current

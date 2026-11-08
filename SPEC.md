@@ -2700,8 +2700,10 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   stall of `STALL_MS` (250) or more, under `LOW_FPS` (20) map frames during a gesture, or a
   main-thread pass of 100 ms or more, at most one per `MIN_GAP_MS` (2 s). A `camera:` note marks
   the camera leaving or rejoining the car. A summary is written every 10 s.
-- Other `K` notes: build and settings, each spoken line's wait and render time, and network,
-  thermal, memory, screen and GPS changes. No note holds a coordinate, a name or spoken text.
+- Other `K` notes: build and settings, each spoken line's wait and render time, a change of the
+  voice mode (`voice: on`, `voice: alerts only`, `voice: off`, from the speaker button, Settings
+  or the car), and network, thermal, memory, screen and GPS changes. No note holds a coordinate,
+  a name or spoken text.
 - A trip replay runs at 1x, 3x (default) or 10x, pauses, and seeks. A seek restarts it and runs
   silently to the chosen moment.
 
