@@ -107,4 +107,23 @@
     <string name="settings_sim_location_hint">แสร้งทําเป็นว่าคุณอยู่ตรงกลางแผนที่ เพื่อดูเดโมและจับภาพหน้าจอ ปิดตัวเลือกนี้เพื่อใช้ GPS จริง</string>
     <string name="settings_map">แผนที่</string>
     <string name="settings_live_traffic">ซ้อนทับการจราจรแบบสด</string>
+    <string name="settings_live_traffic_hint">ใช้สีถนนตามความติดขัดของจราจรขณะขับขี่ การนำทางใช้สีเส้นทางของคุณด้วยการจราจรอยู่แล้ว</string>
+    <string name="settings_transit_layer">ไฮไลท์เส้นบริการขนส่ง</string>
+    <string name="settings_transit_layer_hint">วาดเส้นรถไฟและรถไฟใต้ดินบนแผนที่ แต่ละเส้นจะมีสีของตนเองในขณะที่ข้อมูลจาก open transit จะมีสีแยกต่างหาก</string>
+    <string name="settings_transit_lines_metro">เส้นรถไฟใต้ดิน รถราง และรถไฟฟ้า</string>
+    <string name="settings_transit_lines_trains">เส้นรถไฟ</string>
+    <string name="settings_transit_stops_bus">ป้ายรถเมล์</string>
+    <string name="settings_transit_stops_metro">ป้ายรถไฟใต้ดินและรถราง</string>
+    <string name="settings_transit_stops_train">สถานีรถไฟ</string>
+    <string name="settings_topography">การลงสีภูมิประเทศ</string>
+    <string name="settings_topography_hint">ลงสีหุบเขาและภูเขาบนแผนที่ ปิดโดยค่าเริ่มต้น</string>
+    <string name="settings_flock">กล้องเฝ้าระวัง</string>
+    <string name="settings_flock_hint">แสดงกล้องอ่านป้ายทะเบียนอัตโนมัติ (Flock) ตามที่บันทึกไว้จากชุมชนของโปรเจค DeFlock ใน OpenStreetMap เปิดโดยค่าเริ่มต้น</string>
+    <string name="settings_speed_cams">กล้องตรวจจับความเร็ว</string>
+    <string name="settings_speed_cam_warn">เตือนฉันออกมาดัง ๆ</string>
+    <string name="settings_speed_cam_warn_hint">พูดว่า \"กล้องตรวจจับความเร็วอยู่ข้างหน้า\" และแสดงการ์ดในขณะที่คุณกำลังเจอกล้องตรวจจับความเร็วขณะการนำทาง ประมาณ 12 วินาทีก่อนถึง ตั้งค่าตามการตั้งค่าเสียงพูดการนำทางของคุณ การเตือนถึงกล้องตรวจจับความเร็วถูกห้ามใช้ในบางประเทศ ตัวเลือกนี้จึงถูกปิดจนกว่าคุณจะเปิด</string>
+    <string name="nav_speed_camera_ahead">กล้องตรวจจับความเร็วอยู่ข้างหน้า</string>
+    <string name="settings_flock_nav_card">กล้องอ่านป้ายทะเบียนอยู่ข้างหน้า</string>
+    <string name="settings_flock_nav_card_hint">ขณะนำทาง แสดงการ์ดเมื่อคุณเข้าใกล้กล้องอ่านป้ายทะเบียนบนเส้นทางของคุณ กล้องที่ส่องตรงข้ามถนนของคุณจะถูกข้าม ปิดโดยค่าเริ่มต้น</string>
+    <string name="settings_flock_nav_voice">พูดเมื่อกล้องอ่านป้ายทะเบียนอยู่ข้างหน้า</string>
 </resources>
