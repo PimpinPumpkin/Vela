@@ -574,8 +574,9 @@ drawing.
 
 Reading a shared trip (`SPEC.md` 4.10 has the line kinds): each route block's `RD` line says
 what made the steps (`source=`, `named=KofN`, then `Route.made`), the `K` notes say what the
-drive decided, and `S` lines are what the voice said. To see how a route in it would be named
-now, save its `RP` line as the only `.txt` in a folder and run
+drive decided, and `S` lines are what the voice said (or, marked `(muted)`, would have said).
+To see how a route in it would be named now, save its `RP` line as the only `.txt` in a folder
+and run
 `NamingStudyTest.replayCapturedLines -DvelaStudy=1 -DvelaOne=1 -DvelaLines=<folder>`.
 
 ## Where things are written down

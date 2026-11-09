@@ -283,7 +283,9 @@ object TripLog {
             val fromIdx = seg.fromPoint.coerceIn(0, parsed.points.size)
             val toIdx = (parsed.segments.getOrNull(i + 1)?.fromPoint ?: parsed.points.size)
                 .coerceIn(fromIdx, parsed.points.size)
-            val r = NavReplay.analyze(seg.route, parsed.points.subList(fromIdx, toIdx).map { it.latLng }, imperial)
+            val pts = parsed.points.subList(fromIdx, toIdx)
+            // Speed only: a fix the phone gave no bearing is recorded with 0, which reads as north.
+            val r = NavReplay.analyze(seg.route, pts.map { it.latLng }, imperial, speeds = pts.map { it.speed.toDouble() })
             cards += r.cards.map { it.copy(fixIndex = it.fixIndex + fromIdx) }
             maneuvers += r.maneuvers.map { it.copy(index = it.index + manOffset) }
             manOffset += seg.route.maneuvers.size

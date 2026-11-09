@@ -377,6 +377,10 @@ class VoiceGuide @Inject constructor(
      *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
     var onSpoken: ((String) -> Unit)? = null
 
+    /** Fired instead of [onSpoken] for a line guidance would have said with the voice muted or on
+     *  alerts only, so a trip still shows what the drive meant to say. */
+    var onMuted: ((String) -> Unit)? = null
+
     /** Fired beside [onSpoken] on every line guidance actually speaks. The nav service taps this
      *  to pop a visible heads-up of the turn while the app is backgrounded - a separate slot so
      *  it can't clobber the trip recorder's hook (each is set by a different `:app` owner). */
@@ -393,7 +397,10 @@ class VoiceGuide @Inject constructor(
     private val OPENER_MAX_WAIT_MS = 2500L // cap the nav-start opener's wait for its romanized road name
 
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
-        if (muted && !ignoreMute) return
+        if (muted && !ignoreMute) {
+            runCatching { onMuted?.invoke(text) }
+            return
+        }
         // The line itself, only when a developer asks (adb shell setprop log.tag.VelaSpeak DEBUG):
         // it names stops and streets, which no log carries otherwise.
         runCatching { if (android.util.Log.isLoggable("VelaSpeak", android.util.Log.DEBUG)) android.util.Log.d("VelaSpeak", text) }

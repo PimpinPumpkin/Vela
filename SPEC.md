@@ -2673,7 +2673,10 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   for a demo drive, unless `debug.vela.tune.demoSpeedup` is set.
 - `NavReplay` runs fixes through the real `NavEngine` and checks cards and voice against the
   maneuver positions, flagging silent turns, early announcements and wrong distances.
-  `TripLog.audit(csv)` is the one-call entry. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
+  `TripLog.audit(csv)` is the one-call entry and passes each fix's recorded speed, as a live
+  drive does: prompt distances, the line at the turn and chained-turn timing scale with speed,
+  and a replay without it is timed for a crawl. Not the bearing: a fix the phone gave none is
+  recorded with 0, which reads as north. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
   and `-DvelaSeg=<n>`, forwarded to the test JVM in `core/build.gradle.kts`.
 - Demo drive (pref `demo_drive`, off by default): `DemoTrace.fromRoute` turns a planned route
   into one `ReplayFix` per second and runs it down the same hermetic path. The drive keeps a
@@ -2700,6 +2703,8 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   stall of `STALL_MS` (250) or more, under `LOW_FPS` (20) map frames during a gesture, or a
   main-thread pass of 100 ms or more, at most one per `MIN_GAP_MS` (2 s). A `camera:` note marks
   the camera leaving or rejoining the car. A summary is written every 10 s.
+- An `S` line is a line the voice said. With the voice muted or on alerts only, the line it
+  would have said is still written, as `S` with `(muted) ` in front (`VoiceGuide.onMuted`).
 - Other `K` notes: build and settings, each spoken line's wait and render time, a change of the
   voice mode (`voice: on`, `voice: alerts only`, `voice: off`, from the speaker button, Settings
   or the car), and network, thermal, memory, screen and GPS changes. No note holds a coordinate,

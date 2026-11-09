@@ -598,6 +598,7 @@ class MapViewModel @Inject constructor(
         // trip answers "what did it say", "was it actually dropping frames" and "what did the
         // drive cost" by itself.
         voice.onSpoken = { tripStore.note("S", it) }
+        voice.onMuted = { tripStore.note("S", "(muted) $it") }
         navSession.onNote = { tripStore.note("K", it); app.vela.diag.NavTrace.event(it) } // nav decisions (rechecks, reroutes, swaps)
         navSession.onLeftPlannedWay = { name -> flashStatus(appContext.getString(R.string.nav_left_your_route, name), 8_000L) }
         // The GraphHopper graphs retired 2026-09-15: reclaim any old install and say so once.
