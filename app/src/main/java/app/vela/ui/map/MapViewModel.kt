@@ -47,6 +47,7 @@ import app.vela.voice.VoiceInstaller
 import app.vela.service.NavigationService
 import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitStep
+import app.vela.core.model.TransitWalkStep
 import app.vela.web.WebDirectionsFetcher
 import app.vela.web.WebPhotoFetcher
 import app.vela.web.WebReviewsFetcher
@@ -85,6 +86,7 @@ data class TransitNavState(
     val itinerary: TransitItinerary,
     val stepIndex: Int = 0,
     val arrived: Boolean = false,
+    val userLocation: LatLng? = null,
 ) {
     val step: TransitStep? get() = itinerary.steps.getOrNull(stepIndex)
     val isLastStep: Boolean get() = stepIndex >= itinerary.steps.lastIndex
@@ -1252,7 +1254,10 @@ class MapViewModel @Inject constructor(
      *  lands after the user has started looking around used to yank the camera back and zoom in
      *  (issue #362, and the same complaint on the 4a; 2026-09-13). */
     @Volatile private var userPannedSinceLaunch = false
-    fun onUserPanned() { userPannedSinceLaunch = true }
+    fun onUserPanned() {
+        userPannedSinceLaunch = true
+        if (_state.value.transitNav != null) app.vela.ui.TransitExpanded.navPanTick.intValue++
+    }
 
     // --- where the map opens (app.vela.ui.StartView) -------------------------------------------
     private var startDecided = false
@@ -7010,9 +7015,13 @@ class MapViewModel @Inject constructor(
 
     /** Turn-by-turn walking steps between two points (for a transit trip's walk legs), via the
      *  normal walk router. Returns the maneuver instructions, or empty on failure. */
-    suspend fun walkDirections(from: LatLng, to: LatLng): List<String> = runCatching {
+    suspend fun walkDirections(from: LatLng, to: LatLng): List<TransitWalkStep> = runCatching {
         dataSource.directions(from, to, TravelMode.WALK).firstOrNull()
-            ?.maneuvers?.mapNotNull { it.instruction.takeIf { s -> s.isNotBlank() } }.orEmpty()
+            ?.maneuvers?.mapNotNull { m ->
+                m.instruction.takeIf { it.isNotBlank() }?.let { text ->
+                    TransitWalkStep(instruction = text, location = m.location, distanceMeters = m.distanceMeters)
+                }
+            }.orEmpty()
     }.getOrDefault(emptyList())
 
     /** Transit can't self-route (no traffic-free open transit graph) and Google
@@ -7211,13 +7220,23 @@ class MapViewModel @Inject constructor(
     fun startTransitNav(itin: TransitItinerary) {
         if (itin.steps.isEmpty()) return
         transitLegArmed = false
-        _state.update { it.copy(transitNav = TransitNavState(itin, 0), directionsOpen = false, selected = null) }
+        app.vela.ui.TransitExpanded.navCollapsed.value = false
+        app.vela.ui.TransitExpanded.navFocusedLeg.value = null
+        val myLoc = _state.value.myLocation
+        val initialStep = app.vela.core.nav.TransitProgress.locateStepIndex(itin.steps, myLoc, 0)
+        _state.update {
+            it.copy(
+                transitNav = TransitNavState(itin, stepIndex = initialStep, userLocation = myLoc),
+                directionsOpen = false,
+                selected = null,
+            )
+        }
         startLocation()
-        itin.steps.firstOrNull()?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+        itin.steps.getOrNull(initialStep)?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
         // The notification that carries the trip with the phone in a pocket (issue #880).
         transitAlertedLeg = -1
         app.vela.service.TransitGuide.onEnd = { endTransitNav() }
-        publishTransitNotice(_state.value.myLocation)
+        publishTransitNotice(myLoc)
         app.vela.service.TransitGuide.start(appContext)
     }
 
@@ -7244,6 +7263,8 @@ class MapViewModel @Inject constructor(
     }
 
     fun endTransitNav() {
+        app.vela.ui.TransitExpanded.navCollapsed.value = false
+        app.vela.ui.TransitExpanded.navFocusedLeg.value = null
         _state.update { it.copy(transitNav = null) }
         app.vela.service.TransitGuide.end(appContext)
     }
@@ -7294,16 +7315,31 @@ class MapViewModel @Inject constructor(
     }
 
     /** Auto-advance transit guidance when GPS reaches the current leg's end (board/alight stop or the
-     *  leg's walk destination). Latched: the leg must first be ARMED by being >TRANSIT_ARM_M from its
-     *  end, then advances on entering the TRANSIT_ARRIVE_M radius — one advance per leg, no cascade. */
+     *  leg's walk destination), or when GPS locates the rider on another leg along the itinerary. */
     private fun maybeAdvanceTransitNav(here: LatLng) {
         val tn = _state.value.transitNav ?: return
         if (tn.arrived) return
         val step = tn.step ?: return
-        val end = (if (step.line != null) step.alightStop?.location else step.walkTo) ?: return
-        val d = here.distanceTo(end)
-        if (d > TRANSIT_ARM_M) transitLegArmed = true
-        else if (transitLegArmed && d < TRANSIT_ARRIVE_M) advanceTransitNav()
+        val end = (if (step.line != null) step.alightStop?.location else step.walkTo)
+        if (end != null) {
+            val d = here.distanceTo(end)
+            if (d > TRANSIT_ARM_M) transitLegArmed = true
+            else if (transitLegArmed && d < TRANSIT_ARRIVE_M) {
+                _state.update { it.copy(transitNav = tn.copy(userLocation = here)) }
+                advanceTransitNav()
+                return
+            }
+        }
+        val detectedIdx = app.vela.core.nav.TransitProgress.locateStepIndex(tn.itinerary.steps, here, tn.stepIndex)
+        if (detectedIdx != tn.stepIndex) {
+            transitLegArmed = false
+            _state.update { it.copy(transitNav = tn.copy(stepIndex = detectedIdx, userLocation = here)) }
+            if (detectedIdx > tn.stepIndex) {
+                tn.itinerary.steps.getOrNull(detectedIdx)?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+            }
+        } else if (tn.userLocation == null || tn.userLocation.distanceTo(here) >= 8.0) {
+            _state.update { it.copy(transitNav = tn.copy(userLocation = here)) }
+        }
     }
 
     /** The spoken cue for a transit leg. */
