@@ -130,6 +130,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
@@ -4732,8 +4733,21 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
         }
         app.vela.ui.CategoryChipsPref.Mode.ROW -> Unit
     }
+    // The row scrolls out to the screen edge, under the top chrome's 12 dp side padding, so a
+    // chip cut by the edge reads as more to scroll. The first chip still lines up with the
+    // search bar. In landscape the row sits beside the bar and only its end runs out.
+    val edge = 12.dp
+    val bleedStart = LocalConfiguration.current.let { it.screenWidthDp <= it.screenHeightDp }
     Row(
-        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier.fillMaxWidth()
+            .layout { measurable, constraints ->
+                val start = if (bleedStart) edge.roundToPx() else 0
+                val end = edge.roundToPx()
+                val placeable = measurable.measure(constraints.offset(horizontal = start + end))
+                layout(placeable.width - start - end, placeable.height) { placeable.place(-start, 0) }
+            }
+            .horizontalScroll(rememberScrollState())
+            .padding(start = if (bleedStart) edge else 0.dp, end = edge),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
