@@ -25,6 +25,13 @@ object MapPoiPrefs {
     val showTransit = mutableStateOf(true)
     val showCivic = mutableStateOf(true)
     val iconScale = mutableFloatStateOf(1.0f)
+    /** Individual multipliers for each route/navigation pictogram on the map. */
+    val speedcamScale = mutableFloatStateOf(1.0f)
+    val flockScale = mutableFloatStateOf(1.0f)
+    val signalScale = mutableFloatStateOf(1.0f)
+    val stopSignScale = mutableFloatStateOf(1.0f)
+    val railCrossingScale = mutableFloatStateOf(1.0f)
+    val speedHumpScale = mutableFloatStateOf(1.0f)
     /** Where the businesses on the browse map come from, one of [SOURCE_OPEN] (the Overture places
      *  layer where a region file covers the view, Google only on tap, works offline), [SOURCE_GOOGLE]
      *  (the ambient fan-out on every pan, nothing offline) or [SOURCE_BOTH] (the open layer draws the
@@ -59,6 +66,12 @@ object MapPoiPrefs {
         showTransit.value = p.getBoolean(KEY_TRANSIT, true)
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
+        speedcamScale.floatValue = p.getFloat(KEY_SPEEDCAM_SCALE, 1.0f)
+        flockScale.floatValue = p.getFloat(KEY_FLOCK_SCALE, 1.0f)
+        signalScale.floatValue = p.getFloat(KEY_SIGNAL_SCALE, 1.0f)
+        stopSignScale.floatValue = p.getFloat(KEY_STOP_SCALE, 1.0f)
+        railCrossingScale.floatValue = p.getFloat(KEY_RAILX_SCALE, 1.0f)
+        speedHumpScale.floatValue = p.getFloat(KEY_HUMP_SCALE, 1.0f)
         explicitSource = p.getString(KEY_PLACES_SOURCE, null)
         placesSource.value = explicitSource ?: remoteDefault
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
@@ -129,11 +142,47 @@ object MapPoiPrefs {
         prefs(context).edit().putFloat(KEY_SCALE, value).apply()
     }
 
+    fun setSpeedcamScale(context: Context, value: Float) {
+        speedcamScale.floatValue = value
+        prefs(context).edit().putFloat(KEY_SPEEDCAM_SCALE, value).apply()
+    }
+
+    fun setFlockScale(context: Context, value: Float) {
+        flockScale.floatValue = value
+        prefs(context).edit().putFloat(KEY_FLOCK_SCALE, value).apply()
+    }
+
+    fun setSignalScale(context: Context, value: Float) {
+        signalScale.floatValue = value
+        prefs(context).edit().putFloat(KEY_SIGNAL_SCALE, value).apply()
+    }
+
+    fun setStopSignScale(context: Context, value: Float) {
+        stopSignScale.floatValue = value
+        prefs(context).edit().putFloat(KEY_STOP_SCALE, value).apply()
+    }
+
+    fun setRailCrossingScale(context: Context, value: Float) {
+        railCrossingScale.floatValue = value
+        prefs(context).edit().putFloat(KEY_RAILX_SCALE, value).apply()
+    }
+
+    fun setSpeedHumpScale(context: Context, value: Float) {
+        speedHumpScale.floatValue = value
+        prefs(context).edit().putFloat(KEY_HUMP_SCALE, value).apply()
+    }
+
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_POIS = "map_show_pois"
     private const val KEY_TRANSIT = "map_show_transit_stops"
     private const val KEY_CIVIC = "map_show_civic_pois"
     private const val KEY_SCALE = "map_poi_icon_scale"
+    private const val KEY_SPEEDCAM_SCALE = "map_nav_speedcam_scale"
+    private const val KEY_FLOCK_SCALE = "map_nav_flock_scale"
+    private const val KEY_SIGNAL_SCALE = "map_nav_signal_scale"
+    private const val KEY_STOP_SCALE = "map_nav_stop_scale"
+    private const val KEY_RAILX_SCALE = "map_nav_railx_scale"
+    private const val KEY_HUMP_SCALE = "map_nav_hump_scale"
     private const val KEY_PLACES_SOURCE = "map_places_source"
     private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
     private const val KEY_LOOKUP_TAPPED = "map_places_google_lookup"

@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -202,6 +205,105 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         )
                     }
                 }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+                // Route/navigation pictogram sizes: independent multiplier for each pictogram
+        // (speed cameras/radars, surveillance cameras, traffic lights, stop signs, level crossings, speed humps).
+        SettingsGroup(title = stringResource(R.string.settings_nav_icon_scale)) {
+            val speedcamBmp = remember { app.vela.ui.map.speedCamBitmap() }
+            val flockBmp = remember { app.vela.ui.map.alprCameraBitmap() }
+            val signalBmp = remember { app.vela.ui.map.trafficLightBitmap() }
+            val stopBmp = remember { app.vela.ui.map.stopSignBitmap() }
+            val railxBmp = remember { app.vela.ui.map.railCrossingBitmap() }
+            val humpBmp = remember { app.vela.ui.map.speedHumpBitmap() }
+
+            data class NavPictogramRow(
+                val labelRes: Int,
+                val bitmap: android.graphics.Bitmap,
+                val currentScale: Float,
+                val onScaleChange: (Float) -> Unit,
+            )
+
+            val rows = listOf(
+                NavPictogramRow(
+                    R.string.settings_nav_icon_speedcam,
+                    speedcamBmp,
+                    app.vela.ui.MapPoiPrefs.speedcamScale.floatValue,
+                ) { app.vela.ui.MapPoiPrefs.setSpeedcamScale(context, it) },
+                NavPictogramRow(
+                    R.string.settings_nav_icon_flock,
+                    flockBmp,
+                    app.vela.ui.MapPoiPrefs.flockScale.floatValue,
+                ) { app.vela.ui.MapPoiPrefs.setFlockScale(context, it) },
+                NavPictogramRow(
+                    R.string.settings_nav_icon_signal,
+                    signalBmp,
+                    app.vela.ui.MapPoiPrefs.signalScale.floatValue,
+                ) { app.vela.ui.MapPoiPrefs.setSignalScale(context, it) },
+                NavPictogramRow(
+                    R.string.settings_nav_icon_stop,
+                    stopBmp,
+                    app.vela.ui.MapPoiPrefs.stopSignScale.floatValue,
+                ) { app.vela.ui.MapPoiPrefs.setStopSignScale(context, it) },
+                NavPictogramRow(
+                    R.string.settings_nav_icon_railx,
+                    railxBmp,
+                    app.vela.ui.MapPoiPrefs.railCrossingScale.floatValue,
+                ) { app.vela.ui.MapPoiPrefs.setRailCrossingScale(context, it) },
+                NavPictogramRow(
+                    R.string.settings_nav_icon_hump,
+                    humpBmp,
+                    app.vela.ui.MapPoiPrefs.speedHumpScale.floatValue,
+                ) { app.vela.ui.MapPoiPrefs.setSpeedHumpScale(context, it) },
+            )
+
+            rows.forEachIndexed { rowIdx, row ->
+                if (rowIdx > 0) GroupDivider()
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                ) {
+                    androidx.compose.foundation.layout.Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    ) {
+                        val img = remember(row.bitmap) {
+                            row.bitmap.asImageBitmap()
+                        }
+                        val previewDp = (22f * row.currentScale).dp
+                        androidx.compose.foundation.Image(
+                            bitmap = img,
+                            contentDescription = stringResource(row.labelRes),
+                            modifier = Modifier.size(previewDp),
+                            filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                        )
+                        Text(
+                            text = stringResource(row.labelRes),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                        )
+                    }
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val scales = listOf(1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.25f, 2.5f, 2.75f)
+                        val navIconFocus = remember { List(scales.size) { FocusRequester() } }
+                        scales.forEachIndexed { i, f ->
+                            FilterChip(
+                                selected = kotlin.math.abs(row.currentScale - f) < 0.01f,
+                                onClick = { row.onScaleChange(f) },
+                                label = { Text("%") },
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                modifier = Modifier
+                                    .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                                    .dpadRowSibling(navIconFocus, i),
+                            )
+                        }
+                    }
+                }
+            }
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+                Hint(stringResource(R.string.settings_nav_icon_scale_hint))
             }
         }
 
