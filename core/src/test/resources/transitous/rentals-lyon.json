@@ -1,0 +1,185 @@
+{
+ "providerGroups": [
+  {
+   "id": "Citiz En Autopartage Métropole de Lyon ",
+   "name": "Citiz En Autopartage Métropole de Lyon ",
+   "providers": [],
+   "formFactors": [
+    "CAR"
+   ]
+  },
+  {
+   "id": "Dott lyon",
+   "name": "Dott lyon",
+   "providers": [],
+   "formFactors": [
+    "SCOOTER_STANDING"
+   ]
+  },
+  {
+   "id": "Vélov",
+   "name": "Vélov",
+   "providers": [],
+   "formFactors": [
+    "BICYCLE"
+   ]
+  }
+ ],
+ "providers": [],
+ "stations": [
+  {
+   "id": "10036",
+   "providerId": "fr-stations-velov-de-la-metropole-de-lyon-disponibilites-temps-reel",
+   "providerGroupId": "Vélov",
+   "name": "STALINGRAD",
+   "lat": 45.77435,
+   "lon": 4.859157,
+   "address": "Boulevard Stalingrad/angle rue Charlie Chaplin",
+   "crossStreet": "",
+   "rentalUriAndroid": "",
+   "rentalUriIOS": "",
+   "rentalUriWeb": "",
+   "isRenting": true,
+   "isReturning": true,
+   "numVehiclesAvailable": 18,
+   "formFactors": [
+    "BICYCLE"
+   ],
+   "vehicleTypesAvailable": {
+    "electrical": 4,
+    "mechanical": 14
+   },
+   "vehicleDocksAvailable": {},
+   "bbox": [
+    4.859157,
+    45.77435,
+    4.859157,
+    45.77435
+   ]
+  },
+  {
+   "id": "1001",
+   "providerId": "fr-stations-velov-de-la-metropole-de-lyon-disponibilites-temps-reel",
+   "providerGroupId": "Vélov",
+   "name": "TERREAUX / TERME",
+   "lat": 45.767736,
+   "lon": 4.832114,
+   "address": "Angle rue d'Algérie",
+   "crossStreet": "",
+   "rentalUriAndroid": "",
+   "rentalUriIOS": "",
+   "rentalUriWeb": "",
+   "isRenting": true,
+   "isReturning": true,
+   "numVehiclesAvailable": 0,
+   "formFactors": [
+    "BICYCLE"
+   ],
+   "vehicleTypesAvailable": {
+    "electrical": 0,
+    "mechanical": 0
+   },
+   "vehicleDocksAvailable": {},
+   "bbox": [
+    4.832114,
+    45.767736,
+    4.832114,
+    45.767736
+   ]
+  },
+  {
+   "id": "2039",
+   "providerId": "fr-stations-velov-de-la-metropole-de-lyon-disponibilites-temps-reel",
+   "providerGroupId": "Vélov",
+   "name": "CHARITÉ / RÉCAMIER",
+   "lat": 45.749257,
+   "lon": 4.82984,
+   "address": "86 RUE DE LA CHARITE",
+   "crossStreet": "",
+   "rentalUriAndroid": "",
+   "rentalUriIOS": "",
+   "rentalUriWeb": "",
+   "isRenting": false,
+   "isReturning": false,
+   "numVehiclesAvailable": 0,
+   "formFactors": [
+    "BICYCLE"
+   ],
+   "vehicleTypesAvailable": {
+    "electrical": 0,
+    "mechanical": 0
+   },
+   "vehicleDocksAvailable": {},
+   "bbox": [
+    4.82984,
+    45.749257,
+    4.82984,
+    45.749257
+   ]
+  },
+  {
+   "id": "1115",
+   "providerId": "fr-offre-et-disponibilite-temps-reel-du-service-citiz-en-autopartage-metropole-de-lyon",
+   "providerGroupId": "Citiz En Autopartage Métropole de Lyon ",
+   "name": "Lyon 2ème - Parking LPA République",
+   "lat": 45.7601890563965,
+   "lon": 4.83660221099854,
+   "address": "Rue Childebert",
+   "crossStreet": "",
+   "rentalUriAndroid": "",
+   "rentalUriIOS": "",
+   "rentalUriWeb": "",
+   "isRenting": true,
+   "isReturning": true,
+   "numVehiclesAvailable": 6,
+   "formFactors": [
+    "CAR"
+   ],
+   "vehicleTypesAvailable": {
+    "11": 1,
+    "12": 1,
+    "13": 1,
+    "145": 1,
+    "59": 2
+   },
+   "vehicleDocksAvailable": {},
+   "bbox": [
+    4.83660221099854,
+    45.7601890563965,
+    4.83660221099854,
+    45.7601890563965
+   ]
+  },
+  {
+   "id": "00fa11f2-9df2-4ae4-92a2-48e99374756c",
+   "providerId": "fr-tier-dott-gbfs-lyon",
+   "providerGroupId": "Dott lyon",
+   "name": "Place d'Helvétie",
+   "lat": 45.77282889,
+   "lon": 4.841489291,
+   "address": "",
+   "crossStreet": "",
+   "rentalUriAndroid": "",
+   "rentalUriIOS": "",
+   "rentalUriWeb": "",
+   "isRenting": true,
+   "isReturning": true,
+   "numVehiclesAvailable": 14,
+   "formFactors": [
+    "SCOOTER_STANDING"
+   ],
+   "vehicleTypesAvailable": {
+    "dott_scooter": 14
+   },
+   "vehicleDocksAvailable": {},
+   "bbox": [
+    4.841489291,
+    45.77282889,
+    4.841489291,
+    45.77282889
+   ]
+  }
+ ],
+ "vehicles": [],
+ "zones": []
+}

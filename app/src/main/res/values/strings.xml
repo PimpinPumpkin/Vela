@@ -115,6 +115,8 @@
     <string name="settings_live_traffic_hint">Shades roads by congestion while browsing. Navigation already colors your route by traffic.</string>
     <string name="settings_transit_layer">Highlight transit lines</string>
     <string name="settings_transit_layer_hint">Draws train and subway lines on the map, each line in its own color where the open transit data has one.</string>
+    <string name="settings_bike_share_layer">Bike-share stations</string>
+    <string name="settings_bike_share_layer_hint">Shows bike-share stations from street zoom with their free bikes, from the open Transitous service. Tap one for its free docks. The counts refresh every minute while Vela is open.</string>
     <string name="settings_transit_lines_metro">Subway, tram and light rail lines</string>
     <string name="settings_transit_lines_trains">Train lines</string>
     <string name="settings_transit_stops_bus">Bus stops</string>
@@ -1227,6 +1229,23 @@
         <item quantity="one">Updated %d day ago</item>
         <item quantity="other">Updated %d days ago</item>
     </plurals>
+    <string name="place_bike_share_station">Bike-share station</string>
+    <plurals name="place_bike_share_bikes">
+        <item quantity="one">%d bike</item>
+        <item quantity="other">%d bikes</item>
+    </plurals>
+    <plurals name="place_bike_share_docks">
+        <item quantity="one">%d free dock</item>
+        <item quantity="other">%d free docks</item>
+    </plurals>
+    <string name="place_bike_share_no_rentals">No rentals now</string>
+    <string name="place_bike_share_no_returns">No returns now</string>
+    <string name="place_bike_share_closed">Out of service</string>
+    <string name="place_bike_share_updated_now">Updated just now</string>
+    <plurals name="place_bike_share_updated_min">
+        <item quantity="one">Updated %d min ago</item>
+        <item quantity="other">Updated %d min ago</item>
+    </plurals>
     <string name="map_layers">Layers</string>
     <string name="map_layers_type">Map type</string>
     <string name="map_layers_details">Map details</string>
@@ -1234,9 +1253,10 @@
     <string name="map_layers_satellite">Satellite</string>
     <string name="map_layers_traffic">Traffic</string>
     <string name="map_layers_transit">Transit lines</string>
+    <string name="map_layers_bike_share">Bike share</string>
     <string name="map_layers_terrain">Terrain</string>
     <string name="settings_layers_button">Show layers button</string>
-    <string name="settings_layers_button_hint">The button on the map that picks the map look, flips satellite, traffic, transit, terrain, 3D buildings and place icons, and opens driving mode.</string>
+    <string name="settings_layers_button_hint">The button on the map that picks the map look, flips satellite, traffic, transit, bike share, terrain, 3D buildings and place icons, and opens driving mode.</string>
     <plurals name="topcard_more_stops">
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
