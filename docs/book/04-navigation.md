@@ -98,7 +98,11 @@ turn. The voice says "turn left" 25 m out either way.
   same side does not say the side again: "Use the right lane to take the ramp toward ...".
 - A turn with no street name right after a short ramp is the ramp splitting, said "Keep right"
   or "Keep left", not "Turn right".
-- In English a later prompt for the same step drops the sign's "toward ..." tail.
+- In English an approach repeat for the same step drops the sign's "toward ..." tail. The line
+  at a ramp, fork or keep names the first route on its sign again ("Keep slight right toward US
+  50 East"), because that is where the choice is made and the banner shows it.
+- A fork or keep that heads for the road the car is already on says so: "Keep left to stay on I
+  80 West", on the banner and in the voice.
 - A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
   (see Stops below).
 - The destination is said with its side, "Your destination is on the right", from the router or,

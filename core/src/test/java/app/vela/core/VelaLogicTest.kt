@@ -165,8 +165,9 @@ class NavEngineTest {
         assertTrue("merge spoken at most twice (near + turn-now), got: $merges", merges.size <= 2)
     }
 
-    /** A step's second and third prompts drop the sign-destination tail: the far band names the
-     *  destination once, the repeats say just the action ("Take the ramp on the right"). */
+    /** A step's approach repeat drops the sign-destination tail: the far band names the
+     *  destination once, the repeat says just the action ("Take the ramp on the right"). The line
+     *  at the ramp names its route again, nothing else on the sign. */
     @Test
     fun repeatedRampPromptsDropTheDestinationTail() {
         val a = LatLng(37.0000, -122.0000)
@@ -199,9 +200,10 @@ class NavEngineTest {
         val ramps = speaks.filter { it.contains("Take the ramp") }
         assertTrue("expected multiple ramp prompts, got: $speaks", ramps.size >= 2)
         assertTrue("the FIRST prompt carries the sign destination: ${ramps.first()}", ramps.first().contains("toward CA-99 North"))
-        ramps.drop(1).forEach {
+        ramps.drop(1).dropLast(1).forEach {
             assertTrue("repeats drop the destination tail: $it", !it.contains("toward"))
         }
+        assertEquals("the line at the ramp names its route", "Take the ramp on the right toward CA-99 North", ramps.last())
     }
 
     @Test

@@ -131,6 +131,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Two turns a block apart are said together: "Turn right onto Elm Street, then turn left onto Oak
   Avenue". When there is little time before the second turn, the street names are left out so
   the line is not cut off.
+- At a freeway fork or ramp the voice names the road it heads for ("Keep slight right toward US
+  50 East"), and a fork that keeps you on your road says "Keep left to stay on I 80 West".
 - A route that starts without some of its street names, because the naming services were slow,
   gets them during the drive, usually within 20 seconds.
 - "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits

@@ -562,7 +562,7 @@ object NavEngine {
             val next = maneuvers[idx]
             val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
             else next.instructionNoRoad ?: next.spokenInstruction()
-            val thenPart = nav().repeatShort(nextText)
+            val thenPart = thenShort(target, next, nextText)
             val both = nav().thenNext(line, thenPart)
             if (both != line) { chainedNow = true; chainedIdx = idx; thenSaid = thenPart; thenAtTurn = false }
             return both
@@ -585,7 +585,7 @@ object NavEngine {
             if (fits(full)) { thenAtTurn = true; return full }
             val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
             val next = maneuvers[idx]
-            val nextNamed = nav().repeatShort(next.spokenInstruction())
+            val nextNamed = thenShort(target, next, next.spokenInstruction())
             // An exit keeps its sign: "take exit 12" without it says too little.
             val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
             val named = nav().thenNext(bare, nextNamed)
@@ -665,8 +665,8 @@ object NavEngine {
                 // the car reaches the turn-now point before the line could end, the first prompt
                 // keeps its lanes and drops the tail, as a repeat does.
                 if (firstForStep && !isArrive && (dtn - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
-                    val short = nav().repeatShort(lotLine ?: target.spokenInstruction())
-                    line = nav().inThen(distancePhrase, wrap(if (lane != null) nav().useLanesToDo(lane.side, lane.count, short) else short))
+                    val brief = nav().repeatShort(lotLine ?: target.spokenInstruction())
+                    line = nav().inThen(distancePhrase, wrap(if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief))
                 }
                 events += NavEvent.Speak(line)
                 // A band the car reaches within BAND_MERGE_S of this line is said by it: entering
@@ -700,7 +700,7 @@ object NavEngine {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
-                    val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else nav().repeatShort(lotLine ?: target.spokenInstruction())
+                    val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else lotLine?.let { nav().repeatShort(it) } ?: short(target, target.spokenInstruction())
                     // A roundabout said at its near band by its own approach is not said again at
                     // its entry, where the driver is yielding and the words would be the same. The
                     // line still comes when it carries the step after it (roundabouts in a row).
@@ -855,8 +855,9 @@ object NavEngine {
         speedMps: Double, said: String?,
     ): Boolean {
         if (said == null || j !in ms.indices) return false
-        val own = nav().repeatShort(ms[j].spokenInstruction())
-        if (!own.equals(said, ignoreCase = true)) return false
+        val own = short(ms[j], ms[j].spokenInstruction())
+        // A "then" that left out the route the line before it had just said counts as the same words.
+        if (!own.equals(said, ignoreCase = true) && !nav().repeatShort(ms[j].spokenInstruction()).equals(said, ignoreCase = true)) return false
         val toOwnNow = dtn + (manAlong[j] - manAlong[k]) - turnNowM
         return toOwnNow / speedMps.coerceAtLeast(MIN_PACE_MPS) < CHAIN_REPEAT_S
     }
@@ -1018,15 +1019,15 @@ object NavEngine {
             val lane = app.vela.core.model.laneGuidance(m.lanes)
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
-            val short = nav().repeatShort(m.spokenInstruction())
+            val brief = nav().repeatShort(m.spokenInstruction())
             val farSpoken = leg >= far * 0.85 && m.type != ManeuverType.MERGE
             val anyApproach = leg >= near * 0.85 || said.isNotEmpty()
-            val now = if (anyApproach) short else nav().spokenSign(m.spokenInstruction())
+            val now = if (anyApproach) short(m, m.spokenInstruction()) else nav().spokenSign(m.spokenInstruction())
             val lines = ArrayList<String>()
             if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), if (lane != null) full else lightLead(m, far, full))
             if (leg >= near * 0.85 && 1 !in said) lines += nav().inThen(
                 spokenDistance(near, imperial),
-                if (farSpoken || said.isNotEmpty()) lightLead(m, near, short) else if (lane != null) full else lightLead(m, near, full),
+                if (farSpoken || said.isNotEmpty()) lightLead(m, near, brief) else if (lane != null) full else lightLead(m, near, full),
             )
             val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said)
             if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid) lines += now
@@ -1053,6 +1054,27 @@ object NavEngine {
     private const val LIGHT_AHEAD_MIN_M = 20.0
 
     private fun nav() = app.vela.core.i18n.NavStringsRegistry.current()
+
+    /** Ramps, forks and keeps: their short lines keep the first route number on the sign. */
+    private val SIGN_STEPS = setOf(
+        ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT, ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,
+        ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
+    )
+
+    /** The short form of [text], step [m]'s instruction, for its line at the turn and for a "then"
+     *  that names it: a ramp, fork or keep keeps the route it heads for ("Keep slight right toward
+     *  US 50 East"), so the voice names the road the banner shows at the moment it matters; anything
+     *  else drops its sign ([NavStrings.repeatShort]). The approach repeats stay without it. */
+    private fun short(m: Maneuver, text: String): String =
+        if (m.type in SIGN_STEPS) nav().repeatWithRoute(text) else nav().repeatShort(text)
+
+    /** [short] for step [next] as the "then" of [cur]'s line, without a route [cur] already named:
+     *  "Keep slight left toward I 80 West, then keep slight left", not the route twice. */
+    private fun thenShort(cur: Maneuver, next: Maneuver, text: String): String {
+        fun route(m: Maneuver) = nav().signParts(m.spokenInstruction()).firstNotNullOfOrNull { routeKey(it) }
+        val r = route(next)
+        return if (r != null && r == route(cur)) nav().repeatShort(text) else short(next, text)
+    }
 
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — now localized via the
      *  active [NavStrings] (English is byte-identical to the old inline logic). */

@@ -1223,7 +1223,14 @@ within `RAMP_TURN_MAX_M` (600 m) by a merge onto a named road, is the turn onto 
 on-ramp. It takes the language's ramp phrase toward the merge's ref or name ("Take the ramp on
 the left toward I 80"). Type, arrow and lanes are unchanged.
 
-`RouteGeometry.foldTurnLanes`, all three routers, last. A turn lane mapped as its own way
+`RouteGeometry.stayOnForks`, all three routers, after the passes below. A fork or keep whose
+sign's first route (`NavStrings.signParts`, `routeKey`: I, US or a state or provincial route and
+its number, however written) is the road the car is on, the end of the step before it, says so:
+"Keep left to stay on I 80 West" (`NavStrings.stayOn`). Read as "toward" the same road it
+sounded like a road to join. Only the instruction changes; the no-street form keeps "Keep left".
+English only; a language without `stayOn` keeps its text.
+
+`RouteGeometry.foldTurnLanes`, all three routers. A turn lane mapped as its own way
 splits one turn in two: an unnamed slight turn where the lane leaves the road, then the turn
 onto the street the same way ("Turn slight right, then turn slight right onto" a street, for one
 right turn at a divided corner). The pair becomes one TURN_LEFT or TURN_RIGHT at the first
@@ -1561,8 +1568,14 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   standstill the card and the road name stay on the turn in hand until the car is at it. The
   turn-now line is still said 25 m out, once (`TURN_NOW_SLOT` in `spoken`). Both used to happen
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
-- A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
-  merge skips the far band. Arrival gets one near-band cue.
+- A step's first prompt carries lane guidance. Its approach repeats speak
+  `NavStrings.repeatShort`. Its line at the turn, and a "then" that names it, speak
+  `repeatWithRoute` for a ramp, fork or keep: the head and the first route number on its sign
+  ("Keep slight right toward US 50 East"), so the voice names the road the banner shows where
+  the choice is made. A sign with places only says the head alone. English marks the sign with
+  " toward "; the other languages have no override and say `repeatShort`. A "then" leaves out a
+  route its own line just named ("Keep slight left toward I 80 West, then keep slight left").
+  A merge skips the far band. Arrival gets one near-band cue.
 - In English a lane clause on a ramp of the same side drops the ramp's side: "Use the right
   lane to take the ramp toward ...", not "... the ramp on the right toward ...".
 - A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a

@@ -265,6 +265,9 @@ off the list when it has been.
   this. Not heard on a freeway interchange.
 - A reroute whose first step is a ramp, exit or fork the car cannot reach in 5 s asks again past
   it (`PLACED_STEPS`): unit-tested. Not seen on a freeway reroute.
+- The line at a ramp, fork or keep names the first route on its sign, and a fork toward the
+  road the car is on says "to stay on" it (`repeatWithRoute`, `stayOnForks`): unit-tested and
+  replayed on a recorded interchange. Not heard on a drive; "stay on" not seen on a real route.
 
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and

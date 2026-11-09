@@ -407,7 +407,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val consolidated = foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers)))))
+        val consolidated = stayOnForks(foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers))))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -694,6 +694,28 @@ object RouteGeometry {
      *  distances). A CONTINUE that is a GENUINE fork (lanes show an off-lane that also goes straight, "use the
      *  left 2 lanes to stay on I-80") is KEPT — it's a real decision and IS spoken. Never folds the first
      *  maneuver, and STRAIGHT (a junction straight-through, a real intersection) is intentionally left alone. */
+    /** A fork or keep whose sign's first route is the road the car is already on says so: "Keep
+     *  left to stay on I 80 West". Read as "toward I 80 West" it sounded like a road to join, not
+     *  the one being driven. The road the car is on is the one the step before it ends on (its last
+     *  rename). Languages without a "stay on" line keep their text. */
+    internal fun stayOnForks(list: List<Maneuver>): List<Maneuver> {
+        val nav = app.vela.core.i18n.NavStringsRegistry.current()
+        return list.mapIndexed { i, m ->
+            if (i == 0 || m.type !in STAY_ON_TYPES) return@mapIndexed m
+            val prev = list[i - 1]
+            val (name, ref) = prev.roadAt(prev.distanceMeters)
+            val on = listOfNotNull(ref, name).flatMap { it.split(';', '/') }
+                .mapNotNull { app.vela.core.nav.routeKey(it) }.toSet()
+            if (on.isEmpty()) return@mapIndexed m
+            val first = nav.signParts(m.instruction).firstOrNull { app.vela.core.nav.routeKey(it) != null } ?: return@mapIndexed m
+            if (app.vela.core.nav.routeKey(first) !in on) return@mapIndexed m
+            nav.stayOn(m.instruction, first)?.let { m.copy(instruction = it) } ?: m
+        }
+    }
+    private val STAY_ON_TYPES = setOf(
+        ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT, ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
+    )
+
     internal fun foldRenames(list: List<Maneuver>): List<Maneuver> {
         val out = mutableListOf<Maneuver>()
         for (m in list) {

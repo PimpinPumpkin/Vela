@@ -56,6 +56,21 @@ interface NavStrings {
      *  with its own destination marker, same English-first pattern as [passLights]). */
     fun repeatShort(instruction: String): String = instruction
 
+    /** [repeatShort] for a ramp, fork or keep, keeping the first route number on its sign: "Keep
+     *  slight right toward US 50 East". The voice then names the road the banner shows. Default =
+     *  [repeatShort]; a language overrides with its own sign marker. */
+    fun repeatWithRoute(instruction: String): String = repeatShort(instruction)
+
+    /** The primary sign destinations of [instruction] (before any ":"), each as written:
+     *  "toward I 80 West, Davis: San Francisco" gives ["I 80 West", "Davis"]. Empty when the
+     *  language does not mark the sign. */
+    fun signParts(instruction: String): List<String> = emptyList()
+
+    /** [instruction], a fork or keep whose sign heads for [route], the road the car is already
+     *  on, said as staying on it: "Keep left to stay on I 80 West". Null when the language has no
+     *  such line. */
+    fun stayOn(instruction: String, route: String): String? = null
+
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
@@ -270,6 +285,20 @@ object EnNavStrings : NavStrings {
     // The exit number stays ("Take exit 172"); only the sign-destination tail drops. The " toward "
     // marker is exactly what osrmPhrase/ghPhrase emit for EN ramp/exit/fork steps.
     override fun repeatShort(instruction: String): String = instruction.substringBefore(" toward ")
+
+    override fun repeatWithRoute(instruction: String): String {
+        val head = repeatShort(instruction)
+        val route = signParts(instruction).firstOrNull { app.vela.core.nav.routeKey(it) != null } ?: return head
+        return "$head toward $route"
+    }
+
+    override fun signParts(instruction: String): List<String> {
+        val t = instruction.indexOf(" toward ")
+        if (t < 0) return emptyList()
+        return spokenSign(instruction).substring(t + " toward ".length).split(", ").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    override fun stayOn(instruction: String, route: String): String? = "${repeatShort(instruction)} to stay on $route"
 
     override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
