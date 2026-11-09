@@ -79,6 +79,15 @@ fun RouteBarStrip(model: RouteBar.Model, modifier: Modifier = Modifier) {
                     when (p.kind) {
                         // A light and a stop sign are the map's own glyphs on the track (issue #828),
                         // the light's housing and the sign's octagon; small, since a town has many of both.
+                        RouteBar.Mark.POLICE -> Box(
+                            Modifier
+                                .size(BADGE.dp)
+                                .shadow(2.dp, CircleShape)
+                                .span(p.at, p.at, kind = ROLE_BADGE),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            app.vela.ui.PoliceBadge(modifier = Modifier.size(BADGE.dp))
+                        }
                         RouteBar.Mark.SIGNAL -> androidx.compose.foundation.Image(
                             bitmap = lightImage, contentDescription = null,
                             modifier = Modifier.size(width = (MINI / 2).dp, height = MINI.dp).span(p.at, p.at, kind = ROLE_DOT),
@@ -182,6 +191,7 @@ private fun congestionColor(level: Int): Color = when {
 }
 
 private fun pinColor(kind: RouteBar.Mark): Color = when (kind) {
+    RouteBar.Mark.POLICE -> Color(0xFF1877F2)
     RouteBar.Mark.CAMERA -> Color(0xFF8E24AA)        // the purple the camera badge uses
     RouteBar.Mark.RAIL_CROSSING -> Color(0xFF37474F)
     RouteBar.Mark.SPEED_HUMP -> Color(0xFFFFA000)
