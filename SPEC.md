@@ -5408,7 +5408,9 @@ reuses it.
 `VelaMenu`, or none. Decided inside `CategoryChips`. The row shows `QuickCategories.all()` in
 the user's order and ends with a More chip (`MoreCategoriesChip`), a `VelaMenu` of every chip in
 the catalog, the ones switched off included; a pick runs that search. The one-button menu lists
-`all()` only.
+`all()` only. The row scrolls out to the screen edges, past the top chrome's 12 dp side
+padding, with its first chip in line with the search bar. In landscape, beside the bar, only
+its end runs out.
 
 #### Drive chrome
 
