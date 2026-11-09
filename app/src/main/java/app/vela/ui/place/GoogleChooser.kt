@@ -292,6 +292,13 @@ fun GoogleStyleDirectionsPanel(
                 if (compact) Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()) else Modifier,
             ) {
                 Column(Modifier.padding(start = 20.dp, end = 16.dp, top = if (compact) 6.dp else 12.dp)) {
+                    // Bike tab: the "Bike share" chip and its trips above the summary, in sight
+                    // without opening the options (SPEC 8, Bike share in directions).
+                    if (currentMode == TravelMode.BICYCLE) {
+                        BikeShareTripsChip()
+                        BikeShareTripCards(ink, dim, dark)
+                        Spacer(Modifier.height(10.dp))
+                    }
                     if (route == null) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)

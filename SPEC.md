@@ -72,6 +72,8 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Bridge openings (Netherlands) | NDW open data, `planningsfeed_brugopeningen` | No | No |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
 | Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
+| Bike-share stations | Transitous (`/api/v1/rentals`, the operators' GBFS feeds), behind a layer that is off by default (section 8) | No | No |
+| Bike-share trips | Transitous' planner (`/api/v1/plan` with `RENTAL`), behind the Bike tab's "Bike share" chip, off by default (section 8) | No | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
 | Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
 
@@ -153,7 +155,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
     OverpassPois, OverpassEndpoints, OverpassTrafficSignals, OverpassAlprCameras
     NdwBridgeOpenings     Dutch bridge openings (NDW open data); BridgeAlerts
     OfflinePoiStore, OfflineAddressStore, OfflinePacks, OfflineRank
-    transit/Transitous    MOTIS client: stops, boards, trips, plans
+    transit/Transitous    MOTIS client: stops, boards, trips, plans, bike-share stations and trips
     CategoryFilter        content gating
     tiles/                map style catalog
   net/            GoogleTransport (the Cronet hook, AgedSession)
@@ -4924,9 +4926,11 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 | Piece | Source |
 | --- | --- |
 | Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. |
-| Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
+| Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. The box is asked through `ViewFetch` (bike-share stations below), so a request that is out lands before the next view is asked. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
 | Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
+| Bike-share stations | Transitous `/api/v1/rentals` from z15, behind the "Bike share" layer, off by default. A tapped station opens a sheet with its counts. |
+| Bike-share trips | Transitous `/api/v1/plan` with `RENTAL`, on the Bike tab above the bike routes, behind its "Bike share" chip, off by default. |
 
 #### Lines on the map
 
@@ -5013,6 +5017,73 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   search `<name> bus stop`, then `bus stop`, nearest live transit listing within 250 m (a real
   pair measured 89 m).
 
+#### Bike-share stations
+
+- `BikeShareLayer` (key `bike_share_layer_on`, off by default) is the "Bike share" switch in
+  Layers and Settings > Map. While it is on, `BikeShareStations` asks
+  `Transitous.bikeStationsInBox` for the view padded by half on each side (`padded`), from z15
+  (`MIN_ZOOM`, the stop icons' fetch zoom), after a 350 ms settle (`SETTLE_MS`). It asks again
+  when the view no longer fits in that box or its center leaves the box's middle half (`covers`),
+  and every 60 s (`REFRESH_MS`) for the box around the view while the app is on screen, timed on
+  the elapsed-time clock so a change of the phone's clock cannot stall it. A request that is out
+  is not canceled for a newer view (`ViewFetch`); when it lands, a view it no longer covers is
+  asked for next. One out longer than 15 s (`WIRE_DEADLINE_MS`, past the shared client's 12 s
+  call timeout) is canceled by the next view and its late reply dropped, since a socket read that
+  never returns outlives a cancel. While the map follows a moving fix the view comes once a second (`IDLE_WORK_GAP_MS`), and
+  canceling there meant a reply slower than that never landed: central Paris took 732 ms after
+  the settle. Nothing is asked during navigation, with "Use less data", or offline. A failure
+  keeps what is drawn and is never kept as "no stations".
+- Two requests, with `VELA_UA` and the app language, read from the stream. The docked systems
+  come first (`Transitous.bikeShareGroupsInBox`, the providers-only `rentals` request of Bike
+  share in directions, about 4.4 KB), over the stations' box padded by half on each side
+  (`groupsBox`). They are kept for `GROUPS_TTL_MS` (10 minutes) and reused while their box holds
+  the stations' box. Then the stations:
+  `/api/v1/rentals?min=..&max=..&providerGroups=..&withProviders=false&withVehicles=false&withZones=false`.
+  Central Paris on 2026-11-04: 4,251 stations in 241 KB with every operator's, 176 in 9.2 KB with
+  `providerGroups=Paris`. Lyon center at z15 on a 411x923 dp screen, every operator's: 218
+  stations of every kind, 58 of them bike share, 13.7 KB on the wire (115 KB unpacked). With no
+  docked system in the box nothing is drawn and no stations are asked for. A failed systems
+  lookup is never kept as "none": that box is asked for without `providerGroups`, and the rules
+  below filter it.
+- A station counts when its `formFactors` include `BICYCLE` or `CARGO_BICYCLE`: car-share and
+  scooter stations come in the same reply. Free-floating operators' parking spots, parking zones
+  and service areas come in it too, and three rules leave them out (`isZone`). A station whose
+  provider group's first word is a free-floating operator (`FREE_FLOATING_OPERATORS`: Dott,
+  Tier, Voi, Lime, Bolt, Bird, Ryde, Zeus, Pony) is a parking spot; a public system's group is
+  named after the system ("Paris", "nextbike Berlin"). In a phone's box at z15 on 2026-11-04
+  that took central Paris from 884 bike stations to Vélib's 81, Bordeaux from 904 to 49 and
+  Oslo from 123 to 46. The return rules Transitous guesses for each provider cannot do it: they
+  mark Dott free-floating, and also nextbike Berlin, MyRadl, Velospot, WienMobil Rad and
+  Blue-bike. A station that also takes scooters and has no dock count is a parking zone: in
+  central Paris on 2026-11-04, 1,029 of 2,107 "bike stations" in a 2 by 3 km box were one
+  operator's. A point with more than `MAX_BIKES_AT_STATION` (300) bikes is a whole area: another
+  operator sent 5,887 bikes at one point. Bikes are `numVehiclesAvailable`, so a docked station that also
+  lists scooters counts them too. Free docks are `numDocksAvailable` when the reply has it,
+  else the largest value in `vehicleDocksAvailable`, else unknown. A feed that gives one count for
+  several vehicle types has it repeated under each type, so the sum would be several times too
+  many. The public instance sent no `numDocksAvailable` on 2026-11-04, and the Lyon reply no
+  per-type dock counts, so Lyon's stations show bikes only.
+- At most `MAX_STATIONS` (500), nearest the box's center.
+- `BikeShareMapLayer` draws them under the transit stops from z15: a teal badge (the cycleways'
+  color) with the free bikes beside it, gray with 0 when the station is empty, gray with no count
+  when it is not renting. The badge always draws and claims its space, like a stop's. Colors come
+  from the theme when the layer is made; a new theme or icon size makes it again. The layer is
+  off the map during navigation.
+- A tap competes by screen distance with the businesses and the stop under the finger. It opens a
+  light place `bikeshare:<providerId>/<station id>` with no Google lookup and no board. Its
+  category is the translated label, and its pin is drawn from `PIN_CATEGORY` ("Bike-share
+  station") instead, because `PoiIcons.groupForCategory` reads English words. That function reads
+  bike share and bike rental before transit, since "Bike-share station" and Google's "Bike
+  sharing station" say "station". `Place.bikeShare` holds the counts and when they were fetched, and is never serialized, so a
+  saved station keeps no count. Each refresh that still holds the open station updates its sheet:
+  "7 bikes · 16 free docks · Updated 1 min ago", or "No rentals now", "No returns now" and "Out
+  of service".
+- `isTransitCategory` turns down any category with a bike word (`BikeShareStations.isBikeCategory`:
+  bike, bicycle, bici, vélo, Fahrrad, fiets, cykel, sykkel), so a Google bike-share listing gets
+  no departure board and is never taken for a stop. The words are compiled in: a published
+  `transitExcludeWords` replaces the compiled exclusions and would drop them.
+- Coverage is what Transitous carries: a system is one entry in its `feeds/<country>.json`.
+
 #### Directions
 
 - `WebDirectionsFetcher` loads Google's `maps/dir` page in a hidden WebView, in the app's
@@ -5073,6 +5144,94 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   (Done, End, closing the card) stops the service and clears it. Posting the arrival over the
   detached ongoing card lost the race on a 4a, hence the separate id. A refused start leaves
   guidance in the app as before.
+
+#### Bike share in directions
+
+- `BikeShareTrips` (key `transit_bike_share_on`, off by default) is the "Bike share" chip on the
+  Bike tab: under the time chooser in the classic panel, above the route summary in the
+  Google-style picker. While it is on and the trip leaves now, `MapViewModel.searchBikeShare`
+  runs `BikeShareTripSearch` beside the bike routes, so Transitous gets the trip's two ends. A
+  later departure gets none and says bike share is only for leaving now: the planner places
+  bikes and docks as of the request. Flipping the chip or changing the time on the Bike tab asks
+  for the trips again (`researchBikeShare`, from the last directions' ends) and leaves the bike
+  routes as they are. A newer search, or the chip turned off, drops the reply of a search that
+  is still out. Another tab asks nothing, and the mode chips' ETA prefetch never asks. Offline
+  nothing is asked.
+- The trips, the search's state and the expanded trip live in `BikeShareTripsShown`, read by the
+  sheet and by `VelaMapView`, which draws the expanded trip as it draws a transit preview:
+  MapScreen takes no new parameter. The view model empties it when the Bike tab leaves the
+  screen (another tab, a closed sheet, a drive).
+- The docked systems come first. `Transitous.bikeShareGroups` asks `rentals` for providers only
+  (`withProviders=true&withStations=false&withVehicles=false&withZones=false`) over the box
+  around both ends padded by 1 km (`GROUPS_PAD_M`). A group counts when its `formFactors` include
+  `BICYCLE` and its first word is no free-floating operator's (`isFreeFloatingGroup`, the station
+  layer's list). Central Paris on 2026-11-04: 4.4 KB, five groups, one of them docked (Vélib',
+  group `Paris`). With no group, no plan is asked for. A group id with a comma is left out: the
+  planner reads its lists comma-separated. The groups are kept 10 min (`GROUPS_TTL_MS`) for the
+  same two ends on a 0.01 degree grid (`areaKey`). A failed lookup is not kept.
+- The plan request (`bikeSharePlanUrl`) asks for 3 itineraries (`BIKE_PLAN_MAX`) with
+  `directModes=RENTAL`, `WALK,RENTAL` as the pre- and post-transit modes, the `BICYCLE` form
+  factor, the groups in all three `*RentalProviderGroups`, no time, and raised time limits: a
+  bike alone up to 3600 s with its walks (`maxDirectTime`, `BIKE_MAX_DIRECT_S`), a walk and ride
+  before or after transit up to 1800 s (`maxPreTransitTime`, `maxPostTransitTime`,
+  `BIKE_MAX_PREPOST_S`). At the planner's defaults (1800 and 900) a trip a bike of your own rode
+  in 27 min had no bike-share trip alone; Lyon, Croix-Rousse to Gerland on 2026-11-07: none at
+  the default, two of 55 and 57 min at 3600. It is a request of its
+  own: with `RENTAL` among the direct modes the planner drops every transit trip slower than the
+  fastest direct one. Without the groups, central Paris on 2026-11-04 answered with Lime, Voi and
+  Dott bikes before its one Vélib' ride, and every trip with a metro ride used a Dott bike.
+- The reply's `direct` trips (a bike alone) and `itineraries` (a bike before or after transit)
+  parse together (`parseBikeSharePlan`). A `RENTAL` leg is a `BIKE_SHARE` step when its
+  `rental.formFactor` is a bicycle, both its ends are `BIKESHARE` vertices and its
+  `providerGroupId` is one of the groups. Any other rental leg drops the trip. Lime and Voi bikes
+  end at a `NORMAL` vertex. Dott's parking spots are `BIKESHARE` at both ends, so only the group
+  list keeps them out.
+- The step reads like a ride: `line` is the `systemName` (else the group id) in `rental.color`,
+  `boardStop` the pickup station (`fromStationName`), `alightStop` the return station, with the
+  leg's times and `legGeometry`. `TransitRental` keeps the provider, the group, and whether the
+  bike is electric (`ELECTRIC` or `ELECTRIC_ASSIST`).
+- A trip leaving more than 30 min after the search (`BIKE_LATE_START_S`) is dropped: its bikes
+  and docks are counted now. A night's search came back with the first bus of the morning.
+- Trips sort by arrival, then by length. A later run of the same trip is the same choice, so the
+  first of each sequence of modes, lines and stations stays. Lyon, Part-Dieu to Vieux Lyon on
+  2026-11-04: seven answers, four distinct trips, the first three kept.
+- The Bike tab shows up to 2 of them (`BIKE_SHARE_ROWS`). In the Google-style picker each is a
+  two-line card (`BikeShareTripCards`): the pills and the times, then the free bikes at the
+  pickup. A tap selects it: the map draws that trip, the bike route, its alternates and their
+  time bubbles step aside, and Start guides the trip leg by leg. A second tap lets go. The cards'
+  height animates as they arrive, change or leave. The classic panel shows them as transit rows
+  under a "Bike share" heading, the bike routes under "Your bike". One row opens at a time and the
+  rows scroll within 32% of the screen's height (`BIKE_SHARE_MAX_HEIGHT`). A search that found
+  none says so in one line. A trip with stops asks for nothing and says bike share does not take
+  stops yet: the planner's `via` takes up to two transit stop ids and no coordinate, so its trips
+  would skip the stops. A system with no color draws its pill and its leg
+  on the map in the station badges' teal (`BikeShareMapLayer.FILL_LIGHT`, `FILL_DARK`), and an
+  electric bike's pill has "E-bike" beside it. `shapeTransitLegs` skips a bike leg, and guidance
+  frames it by its path.
+- Once the trips are on screen, `BikeShareTripSearch.counts` asks for their stations' free bikes
+  and docks, except with "Use less data": `bikeStationsInBox` with `providerGroups` set to the
+  trips' groups, one box per group of ends (`boxes`). An end joins the first group whose first end
+  is within 1.5 km (`CLUSTER_M`); each box is padded by 100 m (`COUNTS_PAD_M`); at most 4
+  (`MAX_BOXES`). Central Paris on 2026-11-04 with `providerGroups=Paris`: 176 stations in 9.2 KB,
+  against 4,251 in 241 KB with every operator's. A plan's station has no id, so
+  `Transitous.stationFor` takes the same provider's station of the same name, else its nearest
+  within 30 m (`STATION_MATCH_M`). `BikeShareCounts` holds the counts by provider and station
+  name, and a new search empties it first.
+- The collapsed row reads "3 bikes at <pickup>" under its pills. The bike leg shows the free bikes
+  under its pickup and the free docks under its return when the feed gives them. A count of 2 or
+  fewer (`BikeShareCounts.FEW`) is amber; none, or a station not renting or not returning, is red.
+- In guidance a bike leg is spoken as "Take a bike at <pickup>. Return it at <return>."
+  (`transit_nav_bike_take`, `transit_nav_bike_return`) and advances at the return station like a
+  ride at its stop. Its length opens to cycling steps from the bike router
+  (`RouteActions.bikeDirections`, `TravelMode.BICYCLE`), as a walk leg's open to the walk
+  router's. The counts are the ones fetched with the trip; they are not asked again on the way.
+  The guidance notification (`publishTransitNotice`) carries the same two lines and raises no
+  "next stop" heads-up for the return station.
+- MOTIS takes a bike only from a station that is renting and has one of the asked type, and
+  returns it only to a station that is returning and has a free dock for that type, or a free-dock
+  total where the station declares a capacity (`src/gbfs/osr_mapping.cc`). Where a feed gives no
+  dock counts, any returning station passes. The public instance gave none for Lyon, Paris,
+  Bordeaux, Berlin, Montreal or Brussels on 2026-11-04.
 
 ---
 
@@ -6176,8 +6335,8 @@ recomposition. Neither can be parallelized, so the rules send each less work.
 
 `PRIVACY.md` is the user-facing accounting and must agree with section 1.4. In the default
 configuration browsing the map does not contact Google. Search, opening a place, a driving route
-and transit directions do. Routes also reach FOSSGIS, transit boards Transitous, reverse
-geocoding Nominatim. A UK gas station without a price makes the phone fetch the fuel price file
+and transit directions do. Routes also reach FOSSGIS, transit boards Transitous (and the
+bike-share stations while that layer is on), reverse geocoding Nominatim. A UK gas station without a price makes the phone fetch the fuel price file
 from GitHub (5.8). With "Use Vela without Google" on, only the open services are asked.
 
 ### 14.1a State files

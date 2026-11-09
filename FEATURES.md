@@ -23,6 +23,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   drive the route line carries the traffic and the overlay is hidden.
 - "Highlight transit lines" draws subway, tram and train lines in their own colors. Lines for
   places you have looked at are kept on the phone, so they show at once and with no signal.
+- "Bike share" in Layers shows bike-share stations with their free bikes from street zoom. Tap
+  one for its free docks. The counts come from Transitous and refresh every minute.
 - Traffic lights, stop signs, railway crossings and speed humps show at close zoom.
 - "House numbers" sets how far out numbers show. "Fill missing buildings" draws buildings the map
   lacks.
@@ -196,6 +198,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   list.
 - Offline, a stop shows the last board you saw there.
 - With Google off, trips come from the open Transitous planner.
+- A "Bike share" chip on the Bike tab adds trips on docked bike-share bikes leaving now, alone or
+  with transit, from the open Transitous planner, with the free bikes at the pickup and the free
+  docks at the return. The guide names both stations, and the bike leg expands to turn-by-turn cycling steps.
 
 ## Cameras and road alerts
 

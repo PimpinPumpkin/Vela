@@ -230,6 +230,7 @@ private const val TRANSIT_PREV_WALK_LAYER = "vela-transit-prev-walk"
 private const val TRANSIT_PREV_RIDE_LAYER = "vela-transit-prev-ride"
 private const val TRANSIT_PREV_STOPS_LAYER = "vela-transit-prev-stops"
 private const val TRANSIT_PREV_FALLBACK_COLOR = "#4285F4" // rides whose agency sends no line color
+private const val TRANSIT_PREV_BIKE_SHARE_COLOR = "#007B8B" // a bike-share leg: the stations' badge teal (BikeShareMapLayer)
 private const val TRANSIT_PREV_WALK_COLOR = "#7C8A99" // dotted walk links, legible on both themes
 private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val ROUTE_BUBBLE_SRC = "vela-route-bubble-src"
@@ -947,6 +948,8 @@ fun VelaMapView(
     flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
     speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (issue #229)
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
+    bikeStations: List<app.vela.core.data.transit.Transitous.BikeStation> = emptyList(), // bike-share stations, empty while the layer is off
+    onBikeStationTap: (app.vela.core.data.transit.Transitous.BikeStation) -> Unit = {},
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     navBarTopPx: Float = 0f, // the nav bar's top edge in window px (0 = unknown); passed street bubbles fade out above it
     // Compass tap: return true to CONSUME (nav uses it to toggle heading-up/north-up); false runs
@@ -967,6 +970,16 @@ fun VelaMapView(
     dpadController: MapDpadController? = null, // key-driven pan/zoom/select for D-pad-only devices (docs/dpad.md)
     modifier: Modifier = Modifier,
 ) {
+    // The Bike tab's expanded bike-share trip draws like a transit preview (SPEC 8, Bike share in
+    // directions). It comes from a holder because MapScreen takes no new parameter; the view
+    // model empties the holder whenever the Bike tab is not on screen. While it is open the bike
+    // route, its alternates and their time bubbles stand aside: dotted like a walk, the route
+    // read as part of the trip it lay under.
+    val bikeSharePreview = BikeShareTripsShown.preview.value
+    @Suppress("NAME_SHADOWING") val transitPreview = transitPreview ?: bikeSharePreview
+    @Suppress("NAME_SHADOWING") val routePolyline = if (bikeSharePreview != null) emptyList() else routePolyline
+    @Suppress("NAME_SHADOWING") val alternates = if (bikeSharePreview != null) emptyList() else alternates
+    @Suppress("NAME_SHADOWING") val routeBubbles = if (bikeSharePreview != null) emptyList() else routeBubbles
     val context = LocalContext.current
     val density = LocalDensity.current
     // Push MapLibre's compass below the status bar (it defaults to the top-right corner, which sits
@@ -1030,6 +1043,8 @@ fun VelaMapView(
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val transitStopTap = rememberUpdatedState(onTransitStopTap)
     val transitStopsNow = rememberUpdatedState(transitStops)
+    val bikeStationTap = rememberUpdatedState(onBikeStationTap)
+    val bikeStationsNow = rememberUpdatedState(bikeStations)
     val parkingTap = rememberUpdatedState(onParkingTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
@@ -2451,6 +2466,13 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains, darkTheme) }
         runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
+    }
+    // Bike-share stations (SPEC 8): their own source and layer, rebuilt on a new style or theme.
+    LaunchedEffect(bikeStations, styleRef, darkTheme, amoled, poiIconScale, poiLabelScale) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching {
+            BikeShareMapLayer.apply(context, style, bikeStations, darkTheme, amoled, poiIconScale, poiLabelScale, below = TRANSIT_STOPS_LAYER)
+        }
     }
     // The shape being drawn is the last of `shapes` once it has two points (MapSurface appends it).
     // It draws from a source of its own, so a dragged point uploads that one shape: on one shared
@@ -4154,6 +4176,15 @@ fun VelaMapView(
                         .minByOrNull(::screenDist2)
                     // The stop wins only when it really is the icon under the finger.
                     val business = listOfNotNull(amb, hit).minByOrNull(::screenDist2)
+                    // A bike-share station competes the same way, with the businesses and the stop.
+                    val bikeHit = feats.filter { it.hasProperty(BikeShareMapLayer.KEY_PROP) }.minByOrNull(::screenDist2)
+                    if (bikeHit != null && (business == null || screenDist2(bikeHit) < screenDist2(business)) &&
+                        (gtfsStop == null || screenDist2(bikeHit) <= screenDist2(gtfsStop))
+                    ) {
+                        val key = bikeHit.getStringProperty(BikeShareMapLayer.KEY_PROP)
+                        bikeStationsNow.value.firstOrNull { it.key == key }
+                            ?.let { st -> bikeStationTap.value(st); return@handleTap true }
+                    }
                     if (gtfsStop != null && (business == null || screenDist2(gtfsStop) < screenDist2(business))) {
                         transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
                             ?.let { st -> transitStopTap.value(st); return@handleTap true }
@@ -8184,6 +8215,9 @@ private fun transitPreviewCoords(itin: app.vela.core.model.TransitItinerary?): L
  *  camera framing during step-by-step transit nav (issue #232). Null/empty = no geometry. */
 private fun transitLegCoords(itin: app.vela.core.model.TransitItinerary?, leg: Int): List<LatLng>? {
     val s = itin?.steps?.getOrNull(leg) ?: return null
+    // A bike-share ride is framed by its path: its two stations alone leave the streets between
+    // them off screen.
+    if (s.mode == app.vela.core.model.TransitMode.BIKE_SHARE) TransitShapes.of(s)?.let { return it }
     return if (s.mode == app.vela.core.model.TransitMode.WALK) {
         listOfNotNull(s.walkFrom, s.walkTo)
     } else {
@@ -8237,7 +8271,8 @@ private fun ensureTransitPreview(style: Style, itin: app.vela.core.model.Transit
                 s.alightStop?.location?.let { add(it) }
             }
             if (pts.size >= 2) {
-                val color = s.line?.colorHex?.takeIf { it.startsWith("#") } ?: TRANSIT_PREV_FALLBACK_COLOR
+                val color = s.line?.colorHex?.takeIf { it.startsWith("#") }
+                    ?: if (s.mode == app.vela.core.model.TransitMode.BIKE_SHARE) TRANSIT_PREV_BIKE_SHARE_COLOR else TRANSIT_PREV_FALLBACK_COLOR
                 // The ride's real path where one is known (issue #677), else straight lines through
                 // the stops. The stop dots below stay on the stops either way.
                 val line = TransitShapes.of(s) ?: pts

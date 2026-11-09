@@ -136,6 +136,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
         Traffic.init(this)
         TransitLayer.init(this)
+        app.vela.ui.BikeShareLayer.init(this) // bike-share stations, off by default (SPEC 8)
+        app.vela.ui.BikeShareTrips.init(this) // bike-share trips in transit directions, off by default (SPEC 8)
         app.vela.ui.SatelliteLayer.init(this) // persisted satellite-imagery toggle
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
