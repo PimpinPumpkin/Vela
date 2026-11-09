@@ -268,6 +268,27 @@
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="settings_car_speed">Your speed on the car screen</string>
     <string name="settings_car_speed_hint">Off, the car screen shows the posted limit alone; the car has its own speedometer.</string>
+    <!-- Car instrument cluster integrations (a BYD head unit). Off by default. -->
+    <string name="settings_vehicle_group">Instrument cluster</string>
+    <string name="settings_cluster_map">Map on the instrument cluster</string>
+    <string name="settings_cluster_map_hint">Draw Vela\'s navigation map on the driver\'s cluster display while you drive, on a car that offers one. The cluster shows it only while its own navigation view is on.</string>
+    <string name="settings_cluster_map_display">Cluster display</string>
+    <string name="settings_cluster_map_display_auto">Choose automatically</string>
+    <string name="settings_cluster_map_none">No cluster display found on this device.</string>
+    <string name="settings_cluster_hud">Turn arrows on the cluster</string>
+    <string name="settings_cluster_hud_hint">Send the turn arrow and distance to the cluster\'s built-in navigation view on a car that supports it. Independent of the map above.</string>
+    <string name="settings_cluster_hud_absent">This head unit does not offer the cluster navigation service.</string>
+    <string name="settings_windshield_hud">Windshield head-up display</string>
+    <string name="settings_windshield_hud_hint">Send the turn arrow, distance, road and arrival time to the car\'s windshield display while you drive, on a car that has one.</string>
+    <string name="settings_windshield_hud_absent">This head unit does not offer the windshield display service.</string>
+    <string name="settings_wheel_voice">Steering wheel voice button</string>
+    <string name="settings_wheel_voice_hint">Press the voice button on the wheel during a drive to hear the current direction again. Needs Vela\'s key access, which you turn on in Android Settings.</string>
+    <string name="settings_wheel_voice_enabled">On: Vela reads the wheel\'s voice button during a drive.</string>
+    <string name="settings_wheel_voice_open">Open accessibility settings</string>
+    <string name="settings_vehicle_diagnostics">Cluster and wheel status</string>
+    <!-- The steering-wheel accessibility service, shown in Android\'s accessibility list and its enable dialog. -->
+    <string name="steering_wheel_a11y_label">Vela steering wheel keys</string>
+    <string name="steering_wheel_a11y_description">Lets Vela read the steering wheel\'s voice button while you are navigating, to repeat the current spoken direction. Vela reads no screen content and takes no other key.</string>
     <string name="mapvm_area_pack_big">Offline search here uses the place pack for all of %1$s. Get it from Settings > Offline maps.</string> <!-- format: %1$s country or state name -->
     <string name="settings_places_shared_pack">Places cover all of %1$s (%2$s)</string> <!-- format: %1$s country or state name, %2$s a size like "1.9 GB" -->
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
