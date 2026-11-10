@@ -111,7 +111,7 @@
     <string name="settings_transit_layer">ไฮไลท์เส้นบริการขนส่ง</string>
     <string name="settings_transit_layer_hint">วาดเส้นรถไฟและรถไฟใต้ดินบนแผนที่ แต่ละเส้นจะมีสีของตนเองในขณะที่ข้อมูลจาก open transit จะมีสีแยกต่างหาก</string>
     <string name="settings_transit_lines_metro">เส้นรถไฟใต้ดิน รถราง และรถไฟฟ้า</string>
-    <string name="settings_transit_lines_trains">เส้นรถไฟ</string>
+    <string name="settings_transit_lines_trains">เส้นทางรถไฟ</string>
     <string name="settings_transit_stops_bus">ป้ายรถเมล์</string>
     <string name="settings_transit_stops_metro">ป้ายรถไฟใต้ดินและรถราง</string>
     <string name="settings_transit_stops_train">สถานีรถไฟ</string>
