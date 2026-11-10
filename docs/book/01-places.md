@@ -394,7 +394,10 @@ duplicate.
 
 A business tap never resolves to a transit stop or a junction (`JUNCTION_CATEGORIES`). The pick
 must be within 1.5 km for a business and 30 km for a settlement label. With no pick the label
-keeps its own data and the source line says "not matched on Google".
+keeps its own data and the source line says "not matched on Google". Its address is often only
+the city in the open data; it then takes the address at its point, from the downloaded address
+data or, failing that, the same lookup a dropped pin uses. A saved place with no address of its
+own is filled from the downloaded address data only.
 
 #### After the pick
 

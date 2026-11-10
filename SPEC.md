@@ -3121,6 +3121,15 @@ Then:
 - Offline or with Google off (`googleOff()`), the tap runs no search, reviews or photos. An open
   place shows its tile data or the remembered listing.
 - The `VelaTap` log line carries each gate's counts (`cross=N`) and no coordinates.
+- A tap Google did not match keeps the open data's address, which is often a city alone. With
+  no street line (no digit) it takes the address at its point (`fillUnlinkedAddress`): the
+  on-device address index (`OfflineAddressStore.reverseGeocode`, `completeAddress`), else the
+  reverse geocode a dropped pin gets. Google was just asked about this place by name and point,
+  so the second request adds nothing it did not have.
+- Any selected place with no street line that is not a Google listing (an open-data place, a
+  saved place kept without an address) is filled from the on-device address index, online or
+  offline (`backfillOfflineAddress`). That fill never asks Google, so opening a saved place
+  sends its location nowhere.
 
 #### The same-business rule
 

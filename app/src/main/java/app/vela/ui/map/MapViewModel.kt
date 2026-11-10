@@ -4001,17 +4001,20 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
-     *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
-     *  index (nearest mapped house, else nearest street) so it still shows an address. Only when offline,
-     *  only when the place lacks one, and only if it's still the selected place when the lookup returns. */
+    /** A place with no street line (a POI that OSM or Overture gave no address, most US chains, or a
+     *  saved place kept without one) shows a bare sheet. Reverse-geocode its location against the
+     *  on-device address index (nearest mapped house, else nearest street) so it still shows an
+     *  address. Never asks Google: online, a Google listing gets its address from the detail fetch,
+     *  and a saved place's location is not sent anywhere for this. Only when the place lacks one,
+     *  and only if it's still the selected place when the lookup returns. */
     private fun backfillOfflineAddress(p: Place) {
         // Fire when there's no real street line, not only when address is fully blank: OSM often tags a POI
         // with just `addr:state`/`addr:city` (a chain came back as bare state initials), which is useless. Treat an
         // address with no digit (no house number) as "needs a street".
         // A street line with no city, state or ZIP gets those from the places around it too.
         val hasStreet = !p.address.isNullOrBlank() && p.address!!.any { it.isDigit() }
-        if (isOnline() || (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(p.address!!))) return
+        if (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(p.address!!)) return
+        if (isOnline() && p.featureId != null) return
         viewModelScope.launch {
             val addr = withContext(Dispatchers.IO) {
                 val street = if (hasStreet) p.address else runCatching { addressStore.reverseGeocode(p.location) }.getOrNull()
@@ -5251,10 +5254,34 @@ class MapViewModel @Inject constructor(
           } finally {
             stopResolving() // nothing resolved, an error, or a cancel: the label's own data shows
             // Still the tapped label after a real lookup: Google had nothing that matched.
-            if (willResolve) _state.update {
-                if (isPlaceholder(it.selected, placeholder)) it.copy(tapUnlinkedFor = placeholder.id) else it
+            if (willResolve) {
+                _state.update {
+                    if (isPlaceholder(it.selected, placeholder)) it.copy(tapUnlinkedFor = placeholder.id) else it
+                }
+                if (isPlaceholder(_state.value.selected, placeholder)) fillUnlinkedAddress(_state.value.selected ?: placeholder, placeholder)
             }
           }
+        }
+    }
+
+    /** A tapped map place Google could not match keeps the open data's address, often only a city
+     *  ("San Francisco, CA") or nothing. Give it the address at its point: the on-device address
+     *  index first, then the same reverse geocode a dropped pin gets. Google was just asked about
+     *  this place by name and location, so the second ask tells it nothing new. */
+    private fun fillUnlinkedAddress(shown: Place, placeholder: Place) {
+        val hasStreet = !shown.address.isNullOrBlank() && shown.address!!.any { it.isDigit() }
+        if (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(shown.address!!)) return
+        viewModelScope.launch {
+            val addr = withContext(Dispatchers.IO) {
+                val local = runCatching { addressStore.reverseGeocode(shown.location) }.getOrNull()
+                    ?.let { runCatching { addressStore.completeAddress(it, shown.location) }.getOrNull() ?: it }
+                local ?: if (isOnline()) runCatching { dataSource.reverseGeocode(shown.location) }.getOrNull()?.address
+                    ?.takeIf { a -> a.any { it.isDigit() } } else null
+            } ?: return@launch
+            _state.update { st ->
+                val sel = st.selected
+                if (isPlaceholder(sel, placeholder) && sel != null && sel.address == shown.address) st.copy(selected = sel.copy(address = addr)) else st
+            }
         }
     }
 
