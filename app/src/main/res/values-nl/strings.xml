@@ -775,7 +775,7 @@
     <string name="suggestion_contact_badge">Contact</string>
     <string name="settings_speed_cams">Flitspalen</string>
     <string name="settings_speed_cam_warn">Hardop waarschuwen</string>
-    <string name="settings_speed_cam_warn_hint">Zegt \"Flitspaal vooruit\" wanneer je er tijdens het navigeren een nadert, zo\'n twaalf seconden van tevoren. Volgt je instelling voor gesproken aanwijzingen. Waarschuwen voor flitspalen tijdens het rijden is in sommige landen beperkt, dus dit staat uit tenzij je het aanzet.</string>
+    <string name="settings_speed_cam_warn_hint">Zegt \"Flitspaal vooruit\" en geeft een signaal weer, wanneer je er een nadert tijdens de navigatie, zo\'n twaalf seconden van tevoren. Volgt je instelling voor gesproken aanwijzingen. Waarschuwen voor flitspalen tijdens het rijden is in sommige landen beperkt, dus dit staat uit tenzij je het aanzet.</string>
     <string name="nav_speed_camera_ahead">Flitspaal vooruit</string>
     <string name="settings_flock_nav_card">Waarschuwing voor kentekencamera\'s</string>
     <string name="settings_flock_nav_card_hint">Toont tijdens het navigeren een melding wanneer je een kentekencamera op je route nadert. Camera\'s die op een kruisende weg gericht zijn, worden overgeslagen. Standaard uit.</string>
