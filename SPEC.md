@@ -2730,7 +2730,9 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   came, `h` the last good position an outlier hold kept, `d` a dead-reckoned point between fixes;
   `msSinceFix` counts from the last fix line, and an empty field was not passed. The location
   path writes the route block first if the route changed (`NavController.syncTripRoute`), so an
-  input never lands ahead of the route it ran against.
+  input never lands ahead of the route it ran against. A file runs about 600 KB per hour of
+  driving, 39 percent of it `N` lines and 3 percent `RC` (a 4-minute Davis mock drive with two
+  reroutes, 40 KB).
 - A `routing:` note at the start says the units, the avoid switches, Google traffic, rechecks
   and the travel mode.
 - Each route fetch during a drive writes what the routers answered (`TripLines`): a

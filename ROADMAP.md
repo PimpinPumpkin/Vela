@@ -285,7 +285,14 @@ off the list when it has been.
   seen on a real drive. The held-course turn check is unit-tested only.
 - A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
   replay feeds those inputs back: checked on the 4a, where the replay went off route and
-  swapped routes in the drive's order. Re-drive (`replayLive`) used on the 4a only.
+  swapped routes in the drive's order. Also on the 4a with a Davis mock drive: a seek to three
+  quarters ran both reroutes silently and played on from 3:00 of 3:54 on the drive's last
+  route; two 10 s GPS gaps left 10 dead-reckoned points, and the replay went through them with
+  no false off-route; a trip recorded before `N` lines replayed its six reroutes in order.
+  Re-drive (`replayLive`) used on the 4a only. Not tried on a real drive's file.
+- A missed exit on I 80 at Davis (mock drive on the 4a): every answer went on to the next exit,
+  none was flagged as turning round, and the reroute was adopted in 1.2 s; missing the next
+  exit too, the second in 1.0 s.
 
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
