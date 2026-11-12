@@ -20,6 +20,16 @@ import app.vela.core.model.TravelMode
  */
 data class SuggestResult(val places: List<Place>, val queries: List<String>)
 
+/** What a reroute's routers offered beside the route the answer leads with
+ *  ([MapDataSource.directions], [RouteGeometry.forwardPick]). */
+class TurnRoundVerdict {
+    /** The route that leads turns the car round, and a route that turned it round less (went
+     *  on, or turned round further on rather than where the car is) was offered but cost too
+     *  much more. Turning round is then the way, and asking again a moment later does not
+     *  change that. */
+    @Volatile var lessCostsMore: Boolean = false
+}
+
 interface MapDataSource {
     /** [spanMeters]: the caller's visible viewport height — widens Google's result window to
      *  match how far out the map is zoomed (the pb template's baked span is ~25 km). */
@@ -147,6 +157,8 @@ interface MapDataSource {
         // only): a route that takes the car back along it turns it round
         // (RouteGeometry.goesBack), and one that goes on is preferred while it costs little more.
         behind: List<LatLng> = emptyList(),
+        // Filled in when the routes were judged against [departBearingDeg] or [behind].
+        turnRound: TurnRoundVerdict? = null,
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its

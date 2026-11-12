@@ -111,6 +111,47 @@ class TurnBackTest {
         assertSame(gOn, RouteGeometry.forwardPick(listOf(gBack, gOn), listOf(oBack), turns).first.single())
     }
 
+    @Test fun `round a block beats turning round where the car is`() {
+        val now = { x: Route -> RouteGeometry.startsAgainst(x.polyline, 90.0) || RouteGeometry.startsBehind(x.polyline, 90.0) }
+        val turns = { x: Route -> now(x) || RouteGeometry.goesBack(x.polyline, track) }
+        // Google: back west at once. The open router: right, right and back west along the road.
+        val gHere = route(listOf(p(0.0, 0.0), p(-300.0, 0.0), p(-300.0, 400.0)), 240.0)
+        val oBlock = route(listOf(p(0.0, 0.0), p(60.0, 0.0), p(60.0, -80.0), p(-40.0, -80.0), p(-40.0, 0.0), p(-300.0, 0.0), p(-300.0, 400.0)), 250.0)
+        assertEquals(2, RouteGeometry.turnRank(gHere, turns, now))
+        assertEquals(1, RouteGeometry.turnRank(oBlock, turns, now))
+        val (google, open) = RouteGeometry.forwardPick(listOf(gHere), listOf(oBlock), turns, now)
+        assertTrue("Google's turn on the spot is set aside", google.isEmpty())
+        assertSame(oBlock, open.first())
+        // A Google alternate round a block is taken before the open router's.
+        val gBlock = route(oBlock.polyline, 270.0)
+        assertSame(gBlock, RouteGeometry.forwardPick(listOf(gHere, gBlock), listOf(oBlock), turns, now).first.single())
+        // One that goes on beats both.
+        val gOn = route(listOf(p(0.0, 0.0), p(60.0, 0.0), p(60.0, 400.0)), 300.0)
+        assertSame(gOn, RouteGeometry.forwardPick(listOf(gHere, gBlock, gOn), listOf(oBlock), turns, now).first.single())
+        // Minutes more round the block is not little: Google's way stands.
+        val far = route(oBlock.polyline, 900.0)
+        assertSame(gHere, RouteGeometry.forwardPick(listOf(gHere), listOf(far), turns, now).first.first())
+        // Without a test for where the car is, a route that turns round is one rank, as before.
+        assertSame(gHere, RouteGeometry.forwardPick(listOf(gHere), listOf(oBlock), turns).first.single())
+    }
+
+    @Test fun `one router's answers alone lead with the one that turns round least`() {
+        val now = { x: Route -> RouteGeometry.startsAgainst(x.polyline, 90.0) || RouteGeometry.startsBehind(x.polyline, 90.0) }
+        val turns = { x: Route -> now(x) || RouteGeometry.goesBack(x.polyline, track) }
+        val rank = { x: Route -> RouteGeometry.turnRank(x, turns, now) }
+        val here = route(listOf(p(0.0, 0.0), p(-300.0, 0.0), p(-300.0, 400.0)), 240.0)
+        val block = route(listOf(p(0.0, 0.0), p(60.0, 0.0), p(60.0, -80.0), p(-40.0, -80.0), p(-40.0, 0.0), p(-300.0, 0.0), p(-300.0, 400.0)), 280.0)
+        val on = route(listOf(p(0.0, 0.0), p(60.0, 0.0), p(60.0, 400.0)), 330.0)
+        assertSame(on, RouteGeometry.leastTurning(listOf(here, block, on), rank).first())
+        assertSame(block, RouteGeometry.leastTurning(listOf(here, block), rank).first())
+        assertEquals(2, RouteGeometry.leastTurning(listOf(here, block), rank).size)
+        // The best that goes on is left as it is, and so is one whose way on costs minutes more.
+        val first = listOf(on, here)
+        assertSame(first, RouteGeometry.leastTurning(first, rank))
+        val far = route(on.polyline, 900.0)
+        assertSame(here, RouteGeometry.leastTurning(listOf(here, far), rank).first())
+    }
+
     @Test fun `after its own U-turn the way on along the road is not turning round`() {
         // Recorded on Covell Blvd in Davis, a divided road: the car drove east past its turn and
         // took the median opening. The reroute from the crossover sent it west to the turn.

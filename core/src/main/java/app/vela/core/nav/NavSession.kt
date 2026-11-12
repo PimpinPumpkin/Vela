@@ -1182,7 +1182,7 @@ class NavSession @Inject constructor(
             // drive. That is the "Re-routing" spinner that never exits and only a restart clears
             // (reported on a real drive; the same trap the avoid path hit, see
             // AVOID_ONDEVICE_TIMEOUT_MS). The orphan finishes into the void and is discarded.
-            fun ask(from: LatLng, heading: Double?, budgetMs: Long) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+            fun ask(from: LatLng, heading: Double?, budgetMs: Long, verdict: app.vela.core.data.TurnRoundVerdict) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                 runCatching {
                     dataSource.directions(
                         from, dest, mode, remainingStops.map { it.location },
@@ -1197,6 +1197,7 @@ class NavSession @Inject constructor(
                         // and the downloaded region each get a slice instead of the first eating it all.
                         budgetMs = budgetMs,
                         behind = trackTo(from, heading),
+                        turnRound = verdict,
                     )
                 }
                     .getOrNull()?.let { routes ->
@@ -1204,7 +1205,8 @@ class NavSession @Inject constructor(
                         driveable(routes, from, dest, nameWithinMs = left.coerceAtLeast(0L), departBearingDeg = heading)
                     }?.takeIf { it.reaches(dest) }
             }
-            val fetch = ask(loc, course, attempt.budgetMs)
+            var verdict = app.vela.core.data.TurnRoundVerdict()
+            val fetch = ask(loc, course, attempt.budgetMs, verdict)
             var landed = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
             val timedOut = landed == null && !fetch.isCompleted
             if (landed == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
@@ -1230,33 +1232,42 @@ class NavSession @Inject constructor(
                 kotlinx.coroutines.delay(waitMs)
                 if (gen != sessionGen) return@launch
                 val from = trustedNow() ?: break
-                val again = ask(from, lastBearing ?: course, left)
-                landed = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); got }
-                if (landed === got) break
+                val v = app.vela.core.data.TurnRoundVerdict()
+                val again = ask(from, lastBearing ?: course, left, v)
+                val next = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); null }
+                if (next == null) break
+                landed = next; verdict = v
             }
-            // A ROUTE THAT TURNS A MOVING CAR ROUND IS ASKED AGAIN A MOMENT LATER (OsmAnd does the
-            // same): every answer went back the way the car came, which from a few seconds further
-            // on often stops being the best way. Not shown or said meanwhile; after
-            // [BACK_ASKS] tries the last answer is taken, since the way may really be behind.
+            // A ROUTE THAT TURNS A MOVING CAR ROUND WHERE IT IS IS ASKED AGAIN A MOMENT LATER
+            // (OsmAnd does the same) when nothing that turns round less was offered: no route went
+            // on or round a block, and from a few seconds further on one often does. Not shown or
+            // said meanwhile; after [BACK_ASKS] tries the last answer is taken. A route that turns
+            // round further on is drivable from here and is taken at once, as is a turn-round when
+            // going on was offered and cost too much more ([TurnRoundVerdict.lessCostsMore]).
             var backAsks = 0
             while (mode == TravelMode.DRIVE && backAsks < BACK_ASKS) {
                 val got = landed ?: break
                 val speed = lastTrustedSpeedMps
                 if (speed < BACK_ASK_MIN_MPS) break
-                val h = lastBearing ?: course
-                val turns = (h != null && (app.vela.core.data.RouteGeometry.startsAgainst(got.polyline, h) || app.vela.core.data.RouteGeometry.startsBehind(got.polyline, h))) ||
-                    app.vela.core.data.RouteGeometry.goesBack(got.polyline, trackTo(null, h))
-                if (!turns) break
+                val h = lastBearing ?: course ?: break
+                val turnsHere = app.vela.core.data.RouteGeometry.startsAgainst(got.polyline, h) || app.vela.core.data.RouteGeometry.startsBehind(got.polyline, h)
+                if (!turnsHere) break
+                if (verdict.lessCostsMore) {
+                    note("reroute: its route turns the car round, going on costs too much more, taking it")
+                    break
+                }
                 val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_FINISH_RESERVE_MS - BACK_ASK_WAIT_MS
                 if (left < LATE_TURN_MIN_LEFT_MS) break
                 backAsks++
-                note("reroute: its route turns the car round at ${speed.toInt()} m/s, asking again in ${BACK_ASK_WAIT_MS / 1000} s")
+                note("reroute: its route turns the car round at ${speed.toInt()} m/s and nothing goes on, asking again in ${BACK_ASK_WAIT_MS / 1000} s")
                 kotlinx.coroutines.delay(BACK_ASK_WAIT_MS)
                 if (gen != sessionGen) return@launch
                 val from = trustedNow() ?: break
-                val again = ask(from, lastBearing ?: course, left)
-                landed = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); got }
-                if (landed === got) break
+                val v = app.vela.core.data.TurnRoundVerdict()
+                val again = ask(from, lastBearing ?: course, left, v)
+                val next = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); null }
+                if (next == null) break
+                landed = next; verdict = v
             }
             val r = landed
             val tookMs = SystemClock.elapsedRealtime() - now

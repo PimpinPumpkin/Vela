@@ -297,9 +297,14 @@ car's own track, the last 300 m it drove, and a route that runs back along it in
 where the car last turned round, so after a U-turn of its own the way on back down the road is
 not read as turning round again. Both routers'
 routes are tested, the open router's alternates included (`forwardPick`), with the same price
-limit. A route that still turns a moving car round is not shown: Vela asks again 3 s later,
-twice at most, and then takes what it has. A car stopped at a light keeps the course it had
-while moving, so a reroute from the stop is not free to send it back the way it came.
+limit, and ranked: going on first, then turning round further on (round a block, or back from
+the next exit), then turning round where the car is. A route that still turns a moving car
+round where it is, when nothing better was offered at any price, is not shown: Vela asks again
+3 s later, twice at most, and then takes what it has. When going on was offered and cost too
+much more, the turn-round is taken at once. A car stopped at a light keeps the course it had
+while moving, so a reroute from the stop is not free to send it back the way it came. When the
+open router does not answer, Google's routes, or the phone's, are weighed the same way among
+themselves.
 
 ### Walking
 

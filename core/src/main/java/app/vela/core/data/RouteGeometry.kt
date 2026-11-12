@@ -1229,6 +1229,7 @@ object RouteGeometry {
         }
         return behind
     }
+
     private const val TURN_REF_M = 15.0
     private const val TURN_MIN_SEG_M = 2.0
 
@@ -1257,21 +1258,45 @@ object RouteGeometry {
     /**
      * The routes a reroute may lead with, given the way the car is going: Google's (the list
      * [forwardChoice] keeps) and the open router's, reordered. A route [back] is one that turns
-     * the car round ([startsAgainst] the heading, or [goesBack] along its track). The open
-     * router's best can do that too, though it was asked with the heading: it starts the car's
-     * way and goes round the block. One of its alternates that goes on leads instead while it
-     * costs no more than [FORWARD_MAX_EXTRA_S] or [FORWARD_MAX_EXTRA_SHARE] over its best; and
-     * when the open route that leads still turns back, Google's best is not set aside for it.
+     * the car round ([startsAgainst] the heading, or [goesBack] along its track), and [now] one
+     * that does so where the car is rather than further on. A route that goes on beats one that
+     * turns the car round further on (round a block, back from the next exit), which beats one
+     * that turns it round where it is, while it costs no more than [FORWARD_MAX_EXTRA_S] or
+     * [FORWARD_MAX_EXTRA_SHARE] over the best ([turnRank]). The open router's best can turn
+     * round too, though it was asked with the heading: one of its alternates that turns round
+     * less leads instead, and Google's best is set aside only for an open route that turns
+     * round less than it.
      */
-    internal fun forwardPick(google: List<Route>, open: List<Route>, back: (Route) -> Boolean): Pair<List<Route>, List<Route>> {
+    internal fun forwardPick(
+        google: List<Route>, open: List<Route>, back: (Route) -> Boolean, now: (Route) -> Boolean = { false },
+    ): Pair<List<Route>, List<Route>> {
+        val rank = { r: Route -> turnRank(r, back, now) }
         val top = open.firstOrNull()
-        val lead = if (top != null && back(top)) open.firstOrNull { r ->
-            !back(r) && r.durationSeconds - top.durationSeconds <= maxOf(FORWARD_MAX_EXTRA_S, top.durationSeconds * FORWARD_MAX_EXTRA_SHARE)
-        } else null
+        val lead = if (top != null && rank(top) > 0) open.filter { r ->
+            rank(r) < rank(top) && r.durationSeconds - top.durationSeconds <= maxOf(FORWARD_MAX_EXTRA_S, top.durationSeconds * FORWARD_MAX_EXTRA_SHARE)
+        }.minByOrNull(rank) else null
         val ordered = if (lead != null) listOf(lead) + open.filter { it !== lead } else open
-        val openLead = ordered.firstOrNull()?.takeIf { !back(it) }
-        return forwardChoice(google, back, openLead?.durationSeconds, openLead?.distanceMeters) to ordered
+        val openLead = ordered.firstOrNull()
+        return forwardChoice(google, rank, openLead?.let(rank), openLead?.durationSeconds, openLead?.distanceMeters) to ordered
     }
+
+    /** One router's [routes] for a reroute, reordered: when its first turns the car round, the
+     *  route of the lowest [rank] ([turnRank]) that costs no more than the [forwardPick]
+     *  allowance over it leads. For answers with no other router's to weigh them against: Google's
+     *  with the open router out, the phone's. */
+    internal fun leastTurning(routes: List<Route>, rank: (Route) -> Int): List<Route> {
+        val top = routes.firstOrNull() ?: return routes
+        if (rank(top) == 0) return routes
+        fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
+        val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(top) * FORWARD_MAX_EXTRA_SHARE)
+        val lead = routes.filter { rank(it) < rank(top) && eta(it) - eta(top) <= allowance }.minByOrNull(rank) ?: return routes
+        return listOf(lead) + routes.filter { it !== lead }
+    }
+
+    /** How much [r] turns the car round: 0 it goes on, 1 it turns round further on, 2 it turns
+     *  round where the car is ([back] and [now] as in [forwardPick]). */
+    internal fun turnRank(r: Route, back: (Route) -> Boolean, now: (Route) -> Boolean): Int =
+        if (!back(r)) 0 else if (now(r)) 2 else 1
 
     /** Going on instead of turning around may cost this much over Google's best route... */
     const val FORWARD_MAX_EXTRA_S = 180.0
@@ -1296,20 +1321,30 @@ object RouteGeometry {
     internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?, openMeters: Double? = null): List<Route> =
         forwardChoice(google, { startsAgainst(it.polyline, headingDeg) }, openSeconds, openMeters)
 
-    /** [forwardChoice] with the test for a route that turns the car round given as [back]. */
-    internal fun forwardChoice(google: List<Route>, back: (Route) -> Boolean, openSeconds: Double?, openMeters: Double? = null): List<Route> {
+    /** [forwardChoice] with the test for a route that turns the car round given as [back]; a
+     *  given [openSeconds] is an open route that goes on. */
+    internal fun forwardChoice(google: List<Route>, back: (Route) -> Boolean, openSeconds: Double?, openMeters: Double? = null): List<Route> =
+        forwardChoice(google, { if (back(it)) 1 else 0 }, if (openSeconds != null) 0 else null, openSeconds, openMeters)
+
+    /** [forwardChoice] by [turnRank]: [rank] of each route, and [openRank] of the open router's
+     *  route that leads. Google's best stands unless a route of a lower rank costs little more,
+     *  Google's own first, then the open router's. */
+    internal fun forwardChoice(google: List<Route>, rank: (Route) -> Int, openRank: Int?, openSeconds: Double?, openMeters: Double?): List<Route> {
         if (google.isEmpty()) return google
         fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
         val best = google.minByOrNull { eta(it) }!!
-        val forward = google.filterNot(back)
-        if (best in forward) return forward
+        val bestRank = rank(best)
+        if (bestRank == 0) return google.filter { rank(it) == 0 }
         val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(best) * FORWARD_MAX_EXTRA_SHARE)
-        val affordable = forward.filter { eta(it) - eta(best) <= allowance }
-        if (affordable.isNotEmpty()) return affordable
-        if (openSeconds != null && openSeconds > 0.0) {
+        val openAffordable = openSeconds != null && openSeconds > 0.0 && run {
             val cal = if (openMeters != null && openMeters > 0.0 && best.distanceMeters > 0.0 && best.durationSeconds > 0.0)
                 ((openMeters / openSeconds) / (best.distanceMeters / best.durationSeconds)).coerceIn(0.5, 3.0) else 1.0
-            if (openSeconds * cal - best.durationSeconds <= allowance) return emptyList()
+            openSeconds * cal - best.durationSeconds <= allowance
+        }
+        for (tier in 0 until bestRank) {
+            val affordable = google.filter { rank(it) == tier && eta(it) - eta(best) <= allowance }
+            if (affordable.isNotEmpty()) return affordable
+            if (openRank == tier && openAffordable) return emptyList()
         }
         return listOf(best) + google.filter { it !== best }
     }

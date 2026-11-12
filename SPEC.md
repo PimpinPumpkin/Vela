@@ -1747,7 +1747,7 @@ LATE_TURN_ASKS                   2   asks again for one reroute when its first t
 LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its wait
 REROUTE_COOLDOWN_UNJOINED_MS 3_000   the gap after a reroute whose route the car never joined
 JOINED_M                        50   meters along an adopted route that count as joining it
-BACK_ASKS                        2   asks again for one reroute whose route turns the car round
+BACK_ASKS                        2   asks again for one reroute whose route turns the car round where it is
 BACK_ASK_WAIT_MS             3_000   the wait before each of them
 BACK_ASK_MIN_MPS               4.0   only while the car moves at least this fast
 HELD_COURSE_MAX_M               25   a stopped car keeps its moving course this far from where it showed it
@@ -1775,7 +1775,12 @@ TRACK_KEEP_M                   300   the car's own track kept for the turn-round
   canceled when the fetch returns or is canceled, and ends at its own timeout.
 - When the open router gives nothing, `RerouteFallback.pick` takes Google's route if it is
   already back, otherwise races Google against the on-device router inside the remaining budget.
-  Google's routes are tagged `GOOGLE_ABBREVIATED`.
+  Google's routes are tagged `GOOGLE_ABBREVIATED`. A fallback's routes, and the phone-first
+  routes above, are one router's answers alone: on a reroute the one that turns the car round
+  least leads while it costs little more (`RouteGeometry.leastTurning`, the `turnRank` and
+  allowance of the turn-round rules below), and their `RC` lines carry the same flags. The
+  adb switch `debug.vela.tune.openRouterDown` at 1 (read at launch, `RouterTestHooks`) makes the
+  open router answer nothing, to try these paths on a test phone.
 - A reroute pins its departure heading. OSRM gets `bearings=<heading>,65` for the first
   waypoint and an empty entry for every later one; the count must match the coordinates or the
   request is rejected. Planning fetches and stationary fixes send none, and neither does a fix
@@ -1802,13 +1807,15 @@ TRACK_KEEP_M                   300   the car's own track kept for the turn-round
   stretch more than 135 degrees off the car's course, and everything before it, is left out.
   Kept whole, the track of a car that had made its own U-turn read every route on back down the
   road as turning it round again, and the reroute waited out both back re-asks.
-  Both routers' routes are tested (`forwardPick`): when the open router's best turns round, one
-  of its alternates that goes on leads while it costs no more than the same allowance over the
-  best, and when the open route that leads still turns round, Google's best is not set aside
-  for it. `forwardChoice`
-  limits what that may cost: a forward Google route within `FORWARD_MAX_EXTRA_S` (180 s) or
-  `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
-  is that close without traffic, else the best route, turn-around and all. The open router's
+  Both routers' routes are tested (`forwardPick`) and ranked (`turnRank`): one that goes on
+  beats one that turns the car round further on (round a block, back from the next exit), which
+  beats one that turns it round where it is (`startsAgainst` or `startsBehind`), while it costs
+  no more than the allowance below over the best. When the open router's best turns round, the
+  lowest-ranked of its alternates within that allowance leads, and Google's best is set aside
+  only for an open route ranked below it. `forwardChoice`
+  limits what that may cost: a Google route of a lower rank within `FORWARD_MAX_EXTRA_S` (180 s)
+  or `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
+  is that close without traffic, rank by rank, else the best route, turn-around and all. The open router's
   time is first put on Google's clock (its length at the best route's average speed, factor
   held to 0.5 to 3), because its own free-flow time runs fast. The open router's route taken
   that way keeps the set-aside best route's clock and traffic (`applyTraffic` with `speedCal`,
@@ -1826,9 +1833,13 @@ TRACK_KEEP_M                   300   the car's own track kept for the turn-round
   turn. A failed ask keeps the answer in hand. Pinned to the heading, the open router sends a car
   that has to turn round into the nearest side street, which can be a meter ahead when the route
   lands.
-- A route that still turns a moving car round (at `BACK_ASK_MIN_MPS` or more) is not shown or
-  said: the fetch waits `BACK_ASK_WAIT_MS` and asks again from the newest trusted fix, up to
-  `BACK_ASKS` times, then takes the last answer, since the way may really be behind.
+- A route that still turns a moving car round where it is (at `BACK_ASK_MIN_MPS` or more, by
+  `startsAgainst` or `startsBehind` against its newest course) is not shown or said when no
+  route that turns round less was offered: the fetch waits `BACK_ASK_WAIT_MS` and asks again
+  from the newest trusted fix, up to `BACK_ASKS` times, then takes the last answer. A route
+  that turns round further on is taken at once, and so is a turn-round when a route that turns
+  round less was offered and cost more than the allowance (`TurnRoundVerdict.lessCostsMore`,
+  filled in by `directions`): from a few seconds on, the answer is the same.
 - A car stopped at a light points the way it was going: a reroute from a fix with no course
   keeps the last moving course while the car is within `HELD_COURSE_MAX_M` of where it showed
   it (`NavSession.heldCourse`). Unpinned, both routers sent a car back the way it came from a

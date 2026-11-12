@@ -114,6 +114,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
+        app.vela.core.data.RouterTestHooks.openRouterDown = app.vela.ui.AppTune.localOn("openRouterDown")
         app.vela.offline.StorageLocation.init(this)
         app.vela.offline.RoadNameTileSource.install(this) // street names for LineNamer (issue #478)
         Units.init(this)

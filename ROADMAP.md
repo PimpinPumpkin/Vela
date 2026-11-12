@@ -269,15 +269,19 @@ off the list when it has been.
   road the car is on says "to stay on" it (`repeatWithRoute`, `stayOnForks`): unit-tested and
   replayed on a recorded interchange. Not heard on a drive; "stay on" not seen on a real route.
 - A reroute turns down routes that turn the car round (back along its own track, backing up,
-  or set off against it) for one that goes on and costs little more, from both routers; asks
-  again 3 s later when every answer turns a moving car round; keeps the last course at a stop;
-  and waits 3 s, not 10, after a route the car never joined. Unit-tested, and re-driven on a
-  recorded Davis drive with two missed turns on the 4a: the old code rerouted four times and
-  sat 30 s on a turn-around; the new code rerouted once per missed turn, set Google's
-  turn-around aside both times, and its route matched the road driven. The track starts at the
-  car's last turn-round: on a mock drive on a divided Davis road, the reroute after the car's own
-  U-turn took its route at once, where the uncut track held it 7 s. Not seen on a real drive;
-  the back re-ask itself has not fired on any test.
+  or set off against it) for one that goes on and costs little more, then for one that turns
+  round further on over one that turns round where the car is, from both routers or from one
+  alone when the open router is out; asks again 3 s later when the route turns a moving car
+  round where it is and nothing better was offered; keeps the last course at a stop; and waits 3 s, not 10, after a route the car never joined. Unit-tested,
+  and re-driven on a recorded Davis drive with two missed turns on the 4a: the old code rerouted
+  four times and sat 30 s on a turn-around; the new code rerouted once per missed turn, set
+  Google's turn-around aside both times, and its route matched the road driven. The track
+  starts at the car's last turn-round: on a mock drive on a divided Davis road, the reroute
+  after the car's own U-turn took its route at once, where the uncut track held it 7 s. With the
+  open router off (`openRouterDown`) on the Davis mock drive, Google's alternate that went on
+  led at the first missed turn, and at the second, where Google's one route turned the car
+  round, the re-ask fired and its answer went on (adopted after 4.2 s, no reroute after). Not
+  seen on a real drive.
 - A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
   replay feeds those inputs back: checked on the 4a, where the replay went off route and
   swapped routes in the drive's order. Re-drive (`replayLive`) used on the 4a only.
