@@ -268,6 +268,9 @@ off the list when it has been.
 - The line at a ramp, fork or keep names the first route on its sign, and a fork toward the
   road the car is on says "to stay on" it (`repeatWithRoute`, `stayOnForks`): unit-tested and
   replayed on a recorded interchange. Not heard on a drive; "stay on" not seen on a real route.
+- A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
+  replay feeds those inputs back: checked on the 4a, where the replay went off route and
+  swapped routes in the drive's order. Re-drive (`replayLive`) used on the 4a only.
 
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and

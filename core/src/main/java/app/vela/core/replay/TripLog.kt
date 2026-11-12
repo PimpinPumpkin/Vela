@@ -27,6 +27,16 @@ import app.vela.core.nav.NavReplay
  *   recorded GPS fix (the last four are appended fields, absent on older trips)
  * - `K,<t>,<text>`: a nav decision (recheck offered / kept, reroute attempt, swap) or a note on
  *   what the drive ran on; no coordinates, no names, no spoken text
+ * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
+ *   handed, once per call: kind `f` is a fix as it came, `h` the last good position an outlier
+ *   hold kept, `d` a dead-reckoned point between fixes, [msSinceFix] after the last fix line.
+ *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
+ * - `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`: one route a router
+ *   answered while the drive asked for one (a reroute, a recheck): Google's and the open router's
+ *   each, taken or not, so a file says why the route it switched to was the one it got
+ *
+ * `N` and `RC` lines hold positions, so a shared copy leaves them out ([TripScrub] drops kinds it
+ * does not list).
  *
  * The line kind is told by the first field, so [parsePoints] naturally ignores the non-fix lines
  * (their first field never parses as a latitude).
@@ -49,6 +59,45 @@ object TripLog {
      *  recheck offered / kept / reroute attempt / swap; never a coordinate). */
     data class Event(val tag: String, val t: Long, val text: String)
 
+    /** One call of the nav engine as the drive made it (an `N` line): [segment] is the route block
+     *  it ran against, [afterFix] the fix line it followed (-1 before the first), and [kind] `f` (a
+     *  fix), `h` (an outlier hold's last good position) or `d` (dead-reckoned). */
+    data class Input(
+        val segment: Int, val afterFix: Int, val msSinceFix: Long, val kind: Char,
+        val lat: Double, val lng: Double, val speed: Double?, val accuracyM: Double?, val bearing: Double?,
+    ) {
+        val latLng: LatLng get() = LatLng(lat, lng)
+        /** False for a point that is not this fix's own position (the engine's `fromFix`). */
+        val fromFix: Boolean get() = kind == 'f'
+    }
+
+    /** The payload of an `N` line after its time (the writer adds `N,<t>,`). */
+    fun inputPayload(kind: Char, msSinceFix: Long, loc: LatLng, speed: Double?, accuracyM: Double?, bearing: Double?): String =
+        "$kind,${msSinceFix.coerceAtLeast(0L)},${loc.lat},${loc.lng},${speed ?: ""},${accuracyM ?: ""},${bearing ?: ""}"
+
+    /** The payload of an `RC` line after its time. [flags] is `;`-separated words, no commas. */
+    fun candidatePayload(stage: String, source: String, flags: List<String>, route: Route): String =
+        "$stage,$source,${flags.joinToString(";") { it.replace(',', ' ').replace(';', ' ') }}," +
+            "${(route.durationInTrafficSeconds ?: route.durationSeconds).toInt()},${route.distanceMeters.toInt()}," +
+            PolylineCodec.encode(route.polyline)
+
+    /** The drive's routing choices as a `routing:` note: what a replay needs to say things as the
+     *  drive did, and what a reroute was asked with. Words and switches only. */
+    fun routingNote(imperial: Boolean, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, traffic: Boolean, rechecks: Boolean, mode: String): String =
+        "routing: units ${if (imperial) "imperial" else "metric"}, avoid tolls ${onOff(avoidTolls)}, highways ${onOff(avoidHighways)}, " +
+            "ferries ${onOff(avoidFerries)}, google traffic ${onOff(traffic)}, rechecks ${onOff(rechecks)}, mode $mode"
+
+    private fun onOff(b: Boolean) = if (b) "on" else "off"
+
+    /** The units the drive spoke in, from its `routing:` note; null for a file from before it. */
+    fun recordedImperial(events: List<Event>): Boolean? = events.firstOrNull { it.tag == "K" && it.text.startsWith("routing: ") }?.text?.let {
+        when {
+            "units imperial" in it -> true
+            "units metric" in it -> false
+            else -> null
+        }
+    }
+
     /** A route block and the fix index it became ACTIVE at. A mid-trip block records the drive
      *  SWITCHING routes there (a reroute, an accepted faster route, or a restarted navigation) —
      *  replay/audit must swap to it at that fix, never mash all blocks into one route. */
@@ -63,6 +112,8 @@ object TripLog {
         val route: Route?, // the FIRST segment's route (compat convenience)
         val points: List<Point>,
         val segments: List<RouteSegment> = emptyList(),
+        /** What the nav engine was handed, in order (empty for a file from before `N` lines). */
+        val inputs: List<Input> = emptyList(),
     )
 
     /** The route block (`RP`/`RD`/`M` lines) appended to a trip after its `META` line. */
@@ -198,6 +249,7 @@ object TripLog {
         val points = ArrayList<Point>()
         val segments = ArrayList<RouteSegment>()
         val events = ArrayList<Event>()
+        val inputs = ArrayList<Input>()
         var rp: String? = null
         var rd: List<String> = emptyList()
         var spans: List<app.vela.core.model.TrafficSpan> = emptyList()
@@ -254,6 +306,9 @@ object TripLog {
                     if (level != null && start != null && len != null) app.vela.core.model.TrafficSpan(level, start, len) else null
                 }
                 line.startsWith("M,") -> parseManeuver(line)?.let { ms.add(it) }
+                // The block an input ran against is the one open when it was written.
+                line.startsWith("N,") -> parseInput(line, if (rp != null) segments.size else segments.size - 1, points.size - 1)?.let { inputs.add(it) }
+                line.startsWith("RC,") -> Unit
                 line.startsWith("S,") || line.startsWith("J,") || line.startsWith("B,") || line.startsWith("K,") -> {
                     val e = line.split(',', limit = 3)
                     val t = e.getOrNull(1)?.toLongOrNull()
@@ -263,7 +318,18 @@ object TripLog {
             }
         }
         closeBlock()
-        return Parsed(label, startedAt, dest, versionCode, events, segments.firstOrNull()?.route, points, segments)
+        return Parsed(label, startedAt, dest, versionCode, events, segments.firstOrNull()?.route, points, segments, inputs)
+    }
+
+    private fun parseInput(line: String, segment: Int, afterFix: Int): Input? {
+        val p = line.split(',')
+        if (p.size < 9) return null
+        val kind = p[2].singleOrNull() ?: return null
+        return Input(
+            segment.coerceAtLeast(0), afterFix, p[3].toLongOrNull() ?: 0L, kind,
+            p[4].toDoubleOrNull() ?: return null, p[5].toDoubleOrNull() ?: return null,
+            p[6].toDoubleOrNull(), p[7].toDoubleOrNull(), p[8].toDoubleOrNull(),
+        )
     }
 
     /**
@@ -279,14 +345,24 @@ object TripLog {
         val cards = ArrayList<NavReplay.CardSnapshot>()
         val maneuvers = ArrayList<NavReplay.ManeuverDiff>()
         var manOffset = 0
+        val units = recordedImperial(parsed.events) ?: imperial
         parsed.segments.forEachIndexed { i, seg ->
             val fromIdx = seg.fromPoint.coerceIn(0, parsed.points.size)
             val toIdx = (parsed.segments.getOrNull(i + 1)?.fromPoint ?: parsed.points.size)
                 .coerceIn(fromIdx, parsed.points.size)
-            val pts = parsed.points.subList(fromIdx, toIdx)
-            // Speed only: a fix the phone gave no bearing is recorded with 0, which reads as north.
-            val r = NavReplay.analyze(seg.route, pts.map { it.latLng }, imperial, speeds = pts.map { it.speed.toDouble() })
-            cards += r.cards.map { it.copy(fixIndex = it.fixIndex + fromIdx) }
+            val inSeg = parsed.inputs.filter { it.segment == i }
+            val r = if (parsed.inputs.isNotEmpty()) {
+                // What the engine was handed, bearings included: an input carries one only when
+                // the drive passed one. A card's fix index is then the fix the input followed.
+                val rr = NavReplay.analyze(seg.route, inSeg.map { it.latLng }, units, speeds = inSeg.map { it.speed }, bearings = inSeg.map { it.bearing })
+                rr.copy(cards = rr.cards.map { c -> c.copy(fixIndex = (inSeg.getOrNull(c.fixIndex)?.afterFix ?: fromIdx).coerceAtLeast(0)) })
+            } else {
+                val pts = parsed.points.subList(fromIdx, toIdx)
+                // Speed only: a fix the phone gave no bearing is recorded with 0, which reads as north.
+                val rr = NavReplay.analyze(seg.route, pts.map { it.latLng }, units, speeds = pts.map { it.speed.toDouble() })
+                rr.copy(cards = rr.cards.map { it.copy(fixIndex = it.fixIndex + fromIdx) })
+            }
+            cards += r.cards
             maneuvers += r.maneuvers.map { it.copy(index = it.index + manOffset) }
             manOffset += seg.route.maneuvers.size
         }

@@ -575,6 +575,13 @@ Two switches in Settings > Diagnostics make every nav screen testable at a desk:
 A simulated drive and a replayed trip never reroute or recheck (`NavSession.replayMode`). Both
 switches reach the car screens too. Turn both off before a real drive.
 
+A recorded trip keeps what the nav engine was handed on every fix, and every route the routers
+answered during the drive. Its replay feeds the engine those same inputs, so it goes off route
+and speaks where the drive did, in the drive's units, and swaps routes where the drive did. To
+try a change to rerouting on a recorded wrong turn, replay the trip with
+`adb shell setprop debug.vela.tune.replayLive 1`: it runs at the drive's pace and reroutes live
+with today's code instead of playing the recorded swaps.
+
 ## Limits
 
 - Paused, the distance left stays the route's remaining distance, because Vela cannot know how

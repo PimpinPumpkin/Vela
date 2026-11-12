@@ -86,7 +86,20 @@ class TripStore @Inject constructor(
                 "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
                     "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits\n",
             )
+            lastFixWallMs = System.currentTimeMillis()
         }
+        Unit
+    }
+
+    @Volatile private var lastFixWallMs = 0L
+
+    /** Append what the nav engine was just handed as an `N` line ([TripLog.Input]), timed from
+     *  the last fix line so a replay can hand it over at the same moment. No-op unless recording. */
+    fun recordInput(kind: Char, loc: LatLng, speedMps: Double?, accuracyM: Double?, bearingDeg: Double?) = synchronized(lock) {
+        val f = active ?: return
+        val now = System.currentTimeMillis()
+        val since = if (lastFixWallMs > 0L) now - lastFixWallMs else 0L
+        runCatching { f.appendText("N,$now," + TripLog.inputPayload(kind, since, loc, speedMps, accuracyM, bearingDeg) + "\n") }
         Unit
     }
 

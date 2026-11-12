@@ -599,7 +599,10 @@ class MapViewModel @Inject constructor(
         // drive cost" by itself.
         voice.onSpoken = { tripStore.note("S", it) }
         voice.onMuted = { tripStore.note("S", "(muted) $it") }
-        navSession.onNote = { tripStore.note("K", it); app.vela.diag.NavTrace.event(it) } // nav decisions (rechecks, reroutes, swaps)
+        navSession.onNote = { // nav decisions (rechecks, reroutes, swaps); a replay's to logcat
+            tripStore.note("K", it); app.vela.diag.NavTrace.event(it)
+            if (_state.value.replaying) android.util.Log.i("VelaTrip", it)
+        }
         navSession.onLeftPlannedWay = { name -> flashStatus(appContext.getString(R.string.nav_left_your_route, name), 8_000L) }
         // The GraphHopper graphs retired 2026-09-15: reclaim any old install and say so once.
         viewModelScope.launch(Dispatchers.IO) {
@@ -609,6 +612,17 @@ class MapViewModel @Inject constructor(
         // EVERYTHING ELSE A DRIVE'S RECORDING NEEDS (2026-10-04): notes from outside the nav
         // code reach the trip through TripNote (the voice's timing, the network, heat, memory, the
         // app leaving the screen, GPS going quiet), only while a real drive is on.
+        // The routers' answers (TripLines): the same rule, a real drive's file only.
+        app.vela.core.diag.TripLines.sink = { tag, line ->
+            val s = _state.value
+            if (s.navigating) {
+                // A replay's (a re-drive's) answers reach logcat only: the summary always, the
+                // routes when asked for (adb shell setprop log.tag.VelaRC DEBUG).
+                if (tag == "K") android.util.Log.i("VelaTrip", line)
+                else if (android.util.Log.isLoggable("VelaRC", android.util.Log.DEBUG)) android.util.Log.d("VelaRC", line)
+                if (!s.replaying || s.demoDriving) tripStore.note(tag, line)
+            }
+        }
         app.vela.diag.TripNote.sink = { n ->
             val s = _state.value
             // Logged for every drive, a replay included (a replay is how a drive gets looked at
@@ -633,6 +647,13 @@ class MapViewModel @Inject constructor(
                             "places ${app.vela.ui.MapPoiPrefs.placesSource.value}, icon ${app.vela.ui.PuckStyle.key()}",
                     )
                     app.vela.diag.TripNote.add("settings: " + app.vela.diag.SettingsDump.line(appContext))
+                    app.vela.diag.TripNote.add(
+                        app.vela.core.replay.TripLog.routingNote(
+                            app.vela.ui.Units.imperial.value, app.vela.core.data.RoutingPrefs.avoidTolls,
+                            app.vela.core.data.RoutingPrefs.avoidHighways, app.vela.core.data.RoutingPrefs.avoidFerries,
+                            app.vela.core.data.RoutingPrefs.googleTraffic, navSession.liveRechecks, _state.value.travelMode.name,
+                        ),
+                    )
                     app.vela.diag.TripNote.add("location: " + app.vela.diag.SettingsDump.location(appContext))
                     app.vela.core.location.Stillness.hold(appContext); stillHeld = true // the at-rest sensor, for the drive
                     app.vela.diag.NetCount.drain(); netTick = 0; lastDataNote = null
@@ -1108,6 +1129,15 @@ class MapViewModel @Inject constructor(
                 // accuracy for minutes), SAY so — the frozen banner used to be indistinguishable
                 // from working nav (the stale timer never fires while coarse fixes keep coming).
                 if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    // The drive's record of what the engine is handed (TripLog `N`), after the
+                    // route it runs against, so a replay feeds the engine the same.
+                    if (!_state.value.replaying && navSession.state.value.navigating) {
+                        nav.syncTripRoute()
+                        tripStore.recordInput(
+                            if (here == rawHere) 'f' else 'h', here, speed?.toDouble(),
+                            if (loc.hasAccuracy()) loc.accuracy.toDouble() else null, fixBearing?.toDouble(),
+                        )
+                    }
                     navSession.onLocation(
                         here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
                         accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,

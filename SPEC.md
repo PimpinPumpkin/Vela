@@ -2677,19 +2677,46 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   turns of the candidate against the current route's. An `eta:` note every 30 s records
   minutes and kilometers left, the step, the traffic ratio, the number of congestion stretches
   and the route's source.
+- An `N` line is one call of the nav engine as the drive made it:
+  `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is a fix as it
+  came, `h` the last good position an outlier hold kept, `d` a dead-reckoned point between fixes;
+  `msSinceFix` counts from the last fix line, and an empty field was not passed. The location
+  path writes the route block first if the route changed (`NavController.syncTripRoute`), so an
+  input never lands ahead of the route it ran against.
+- A `routing:` note at the start says the units, the avoid switches, Google traffic, rechecks
+  and the travel mode.
+- Each route fetch during a drive writes what the routers answered (`TripLines`): a
+  `route answers (reroute|ladder|plan):` note with each router's count and time, how many of
+  Google's start against the car's heading and how many were set aside, and an `RC` line
+  per route: `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`, source
+  `open`, `google`, `phone` or a fallback's, flags `against` (it sets off against the car's
+  heading) and `aside` (a Google route set aside).
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:
-  a shared copy's route is trimmed and the offsets no longer fit.
+  a shared copy's route is trimmed and the offsets no longer fit. `N` and `RC` hold positions
+  and are dropped too; the `route answers` note has none and is kept.
 - Replay is hermetic: `NavSession.replayMode` suppresses live reroute and recheck fetches, and
   recorded swaps play back through `replaySetRoute`.
+- A file with `N` lines replays them: the engine gets the drive's own inputs (fix, hold or
+  dead-reckoned point, speed, accuracy, heading) at the moment it got them, the fixes move the
+  dot, and a route swap lands at the first input that ran on the new block or at the fix where
+  the block was written, whichever is first. The engine speaks in the units of the `routing:`
+  note. An older file derives the inputs from the fixes as a drive would: GPS fixes of 50 m or
+  better only, with their accuracy, and the fix's heading while moving (a recorded 0 is none).
+- Re-drive, the debug dial `debug.vela.tune.replayLive` at 1: the replay runs at 1x with
+  `replayMode` off and plays none of the recorded swaps, so today's code reroutes live from the
+  drive's own inputs. It is how a rerouting change is tried on a recorded wrong turn. Nothing is
+  written to a trip; the nav notes and route answers go to logcat (`VelaTrip`, and `VelaRC` for
+  the routes when that tag is set to DEBUG).
 - The map scales the puck's clocks by `replaySpeedup`: the chosen speed for a trip replay and 1
   for a demo drive, unless `debug.vela.tune.demoSpeedup` is set.
 - `NavReplay` runs fixes through the real `NavEngine` and checks cards and voice against the
   maneuver positions, flagging silent turns, early announcements and wrong distances.
-  `TripLog.audit(csv)` is the one-call entry and passes each fix's recorded speed, as a live
-  drive does: prompt distances, the line at the turn and chained-turn timing scale with speed,
-  and a replay without it is timed for a crawl. Not the bearing: a fix the phone gave none is
-  recorded with 0, which reads as north. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
+  `TripLog.audit(csv)` is the one-call entry. With `N` lines it runs the engine's own inputs,
+  headings included; without them it passes each fix's recorded speed, as a live drive does:
+  prompt distances, the line at the turn and chained-turn timing scale with speed, and a replay
+  without it is timed for a crawl. Not the fix's bearing: one the phone gave none is recorded
+  with 0, which reads as north. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
   and `-DvelaSeg=<n>`, forwarded to the test JVM in `core/build.gradle.kts`.
 - Demo drive (pref `demo_drive`, off by default): `DemoTrace.fromRoute` turns a planned route
   into one `ReplayFix` per second and runs it down the same hermetic path. The drive keeps a
@@ -6291,6 +6318,7 @@ the geometry.
 - Timestamps rebase to zero.
 - An `S` line survives only if a fix within `EVENT_NEAR_MS` (3 s) survived: it is the spoken
   text and names the street.
+- `N` and `RC` lines are dropped: they hold positions.
 - `K`, `J` and `B` lines are kept for the whole drive, the trimmed ends included. They hold no
   position, name or spoken text, and the start of a drive is where its route is planned and
   named. One from before the first surviving fix has a negative time. They show how long the
