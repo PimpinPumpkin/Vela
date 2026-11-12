@@ -787,10 +787,16 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     /** The routers' answers for one fetch as trip lines ([app.vela.core.diag.TripLines]): a `K`
-     *  summary and an `RC` line per route. [googleMs] is -1 when Google was not back in time. */
-    private fun recordAnswers(stage: String, open: List<Route>, openMs: Long, googleAll: List<Route>, googleKept: List<Route>, googleMs: Long, heading: Double?, turnsBack: ((Route) -> Boolean)?) {
+     *  summary and an `RC` line per route. [googleMs] is -1 when Google was not back in time.
+     *  A route that turns the car round is flagged `back`, and `later` too when it does so
+     *  further on rather than where the car is ([turnsNow] false). */
+    private fun recordAnswers(
+        stage: String, open: List<Route>, openMs: Long, googleAll: List<Route>, googleKept: List<Route>, googleMs: Long, heading: Double?,
+        turnsBack: ((Route) -> Boolean)?, turnsNow: (Route) -> Boolean,
+    ) {
         if (app.vela.core.diag.TripLines.sink == null) return
         val back = { r: Route -> turnsBack?.invoke(r) == true }
+        fun turnFlags(r: Route) = if (!back(r)) emptyList() else if (turnsNow(r)) listOf("back") else listOf("back", "later")
         val aside = googleAll.count { r -> googleKept.none { it === r } }
         app.vela.core.diag.TripLines.add(
             "K",
@@ -799,10 +805,10 @@ class GoogleMapsDataSource @Inject constructor(
                 ", heading ${heading?.toInt() ?: "none"}" + (if (aside > 0) ", $aside set aside" else ""),
         )
         open.forEach { r ->
-            app.vela.core.diag.TripLines.add("RC", app.vela.core.replay.TripLog.candidatePayload(stage, "open", listOfNotNull("back".takeIf { back(r) }), r))
+            app.vela.core.diag.TripLines.add("RC", app.vela.core.replay.TripLog.candidatePayload(stage, "open", turnFlags(r), r))
         }
         googleAll.forEach { r ->
-            val flags = listOfNotNull("back".takeIf { back(r) }, "aside".takeIf { googleKept.none { it === r } })
+            val flags = turnFlags(r) + listOfNotNull("aside".takeIf { googleKept.none { it === r } })
             app.vela.core.diag.TripLines.add("RC", app.vela.core.replay.TripLog.candidatePayload(stage, "google", flags, r))
         }
     }
@@ -1190,10 +1196,11 @@ class GoogleMapsDataSource @Inject constructor(
             // starts. The open router's best did that too, round a block back to the missed turn,
             // and was taken because only Google's routes were tested. Now both routers' are, and a
             // route that goes on leads while it costs little more (RouteGeometry.forwardPick).
-            val turnsBack: (Route) -> Boolean = { r ->
-                (departBearingDeg != null && (RouteGeometry.startsAgainst(r.polyline, departBearingDeg) || RouteGeometry.startsBehind(r.polyline, departBearingDeg))) ||
-                    RouteGeometry.goesBack(r.polyline, behind)
+            // Turning round where the car is, or further on (recorded apart, recordAnswers).
+            val turnsNow: (Route) -> Boolean = { r ->
+                departBearingDeg != null && (RouteGeometry.startsAgainst(r.polyline, departBearingDeg) || RouteGeometry.startsBehind(r.polyline, departBearingDeg))
             }
+            val turnsBack: (Route) -> Boolean = { r -> turnsNow(r) || RouteGeometry.goesBack(r.polyline, behind) }
             val judged = departBearingDeg != null || behind.size >= 2
             val (google, open) = if (judged && openRaw.isNotEmpty()) {
                 val (kept, ordered) = RouteGeometry.forwardPick(googleAll, openRaw, turnsBack)
@@ -1213,7 +1220,7 @@ class GoogleMapsDataSource @Inject constructor(
             // WHAT EACH ROUTER SAID, into the recorded drive: every route the open router and
             // Google answered, which way each starts against the car, and which Google ones were
             // set aside. Without it a file showed the route a reroute switched to, never why.
-            if (mode == TravelMode.DRIVE) recordAnswers(answerStage, open, openTookMs, googleAll, google, gTookMs.get(), departBearingDeg, turnsBack.takeIf { judged })
+            if (mode == TravelMode.DRIVE) recordAnswers(answerStage, open, openTookMs, googleAll, google, gTookMs.get(), departBearingDeg, turnsBack.takeIf { judged }, turnsNow)
             if (gTop != null && mode == TravelMode.DRIVE && app.vela.core.data.DestinationPlaces.at(destination) != null) runCatching {
                 android.util.Log.i("VelaDirections", "place: Google's line ends ${gTop.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m from the pin")
             }

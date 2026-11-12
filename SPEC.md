@@ -1798,6 +1798,10 @@ TRACK_KEEP_M                   300   the car's own track kept for the turn-round
   400 m turns the car round too (`RouteGeometry.goesBack`): a U-turn onto either side of the
   road, or the way round a small block back to a missed turn, which starts the car's way and
   passed the heading test. A loop ramp never comes back onto the road driven and is not caught.
+  The track starts where the car last turned round (`RouteGeometry.sinceTurnRound`): its newest
+  stretch more than 135 degrees off the car's course, and everything before it, is left out.
+  Kept whole, the track of a car that had made its own U-turn read every route on back down the
+  road as turning it round again, and the reroute waited out both back re-asks.
   Both routers' routes are tested (`forwardPick`): when the open router's best turns round, one
   of its alternates that goes on leads while it costs no more than the same allowance over the
   best, and when the open route that leads still turns round, Google's best is not set aside
@@ -2719,7 +2723,8 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   `route answers (reroute|ladder|plan):` note with each router's count and time, how many of
   each turn the car round, the heading and how many of Google's were set aside, and an `RC` line
   per route: `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`, source
-  `open`, `google`, `phone` or a fallback's, flags `back` (it turns the car round) and `aside`
+  `open`, `google`, `phone` or a fallback's, flags `back` (it turns the car round), `later` (it
+  does so further on, not where the car is) and `aside`
   (a Google route set aside).
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:

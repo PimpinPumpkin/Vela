@@ -293,7 +293,9 @@ turns up that street (`RouteGeometry.startsBehind`).
 Starting the right way is not enough. A route can set off the car's way, go round a small block
 and come back along the road just driven, to the turn the car missed. The reroute passes the
 car's own track, the last 300 m it drove, and a route that runs back along it in its first
-400 m turns the car round as surely as a U-turn (`RouteGeometry.goesBack`). Both routers'
+400 m turns the car round as surely as a U-turn (`RouteGeometry.goesBack`). The track starts
+where the car last turned round, so after a U-turn of its own the way on back down the road is
+not read as turning round again. Both routers'
 routes are tested, the open router's alternates included (`forwardPick`), with the same price
 limit. A route that still turns a moving car round is not shown: Vela asks again 3 s later,
 twice at most, and then takes what it has. A car stopped at a light keeps the course it had

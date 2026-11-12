@@ -110,4 +110,37 @@ class TurnBackTest {
         val gOn = route(listOf(p(0.0, 0.0), p(60.0, 0.0), p(60.0, 400.0)), 300.0)
         assertSame(gOn, RouteGeometry.forwardPick(listOf(gBack, gOn), listOf(oBack), turns).first.single())
     }
+
+    @Test fun `after its own U-turn the way on along the road is not turning round`() {
+        // Recorded on Covell Blvd in Davis, a divided road: the car drove east past its turn and
+        // took the median opening. The reroute from the crossover sent it west to the turn.
+        val drove = listOf(
+            LatLng(38.56074, -121.75087), LatLng(38.56074, -121.75049), LatLng(38.56073, -121.75011), LatLng(38.56072, -121.74973),
+            LatLng(38.56072, -121.74935), LatLng(38.56071, -121.74897), LatLng(38.56071, -121.74859), LatLng(38.56071, -121.74822),
+            LatLng(38.56070, -121.74784), LatLng(38.56070, -121.74748), LatLng(38.56078, -121.74744),
+        )
+        val west = listOf(
+            LatLng(38.56080, -121.74749), LatLng(38.56083, -121.74982), LatLng(38.56088, -121.75013), LatLng(38.56090, -121.75021),
+            LatLng(38.56094, -121.75028), LatLng(38.56102, -121.75037), LatLng(38.56119, -121.75044), LatLng(38.56178, -121.75043),
+        )
+        assertTrue("against the whole track it reads as going back", RouteGeometry.goesBack(west, drove))
+        assertFalse(RouteGeometry.goesBack(west, RouteGeometry.sinceTurnRound(drove, 270.0)))
+    }
+
+    @Test fun `the track since a turn-round still catches going back again`() {
+        // East 300 m, a U-turn across a 12 m median, then 100 m west: the car's own course is
+        // read from its newest 15 m of track.
+        val drove = track + listOf(p(0.0, 6.0), p(0.0, 12.0)) + (1..20).map { p(-it * 5.0, 12.0) }
+        val since = RouteGeometry.sinceTurnRound(drove)
+        assertTrue("the eastbound stretch is dropped", since.size < 25)
+        assertFalse("on west", RouteGeometry.goesBack(listOf(p(-100.0, 12.0), p(-500.0, 12.0)), since))
+        assertTrue("back east along it", RouteGeometry.goesBack(listOf(p(-100.0, 12.0), p(300.0, 12.0)), since))
+    }
+
+    @Test fun `a corner is not a turn-round`() {
+        // East 300 m, then left and 60 m north: the whole track stays.
+        val drove = track + (1..12).map { p(0.0, it * 5.0) }
+        assertEquals(drove.size, RouteGeometry.sinceTurnRound(drove).size)
+        assertEquals(drove.size, RouteGeometry.sinceTurnRound(drove, 0.0).size)
+    }
 }

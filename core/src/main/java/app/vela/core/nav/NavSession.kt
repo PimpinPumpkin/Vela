@@ -1068,12 +1068,16 @@ class NavSession @Inject constructor(
         return movingCourse?.takeIf { at.distanceTo(loc) <= HELD_COURSE_MAX_M }
     }
 
-    /** The car's track ending at [to] (or where the last trusted fix was). */
-    private fun trackTo(to: LatLng?): List<LatLng> = synchronized(trackLock) {
-        val out = ArrayList<LatLng>(track.size + 1)
-        out.addAll(track)
-        if (to != null && (out.isEmpty() || out.last().distanceTo(to) >= 1.0)) out.add(to)
-        out
+    /** The car's track ending at [to] (or where the last trusted fix was), from where it last
+     *  turned round given its course [headingDeg] ([app.vela.core.data.RouteGeometry.sinceTurnRound]). */
+    private fun trackTo(to: LatLng?, headingDeg: Double?): List<LatLng> {
+        val out = synchronized(trackLock) {
+            val out = ArrayList<LatLng>(track.size + 1)
+            out.addAll(track)
+            if (to != null && (out.isEmpty() || out.last().distanceTo(to) >= 1.0)) out.add(to)
+            out
+        }
+        return app.vela.core.data.RouteGeometry.sinceTurnRound(out, headingDeg)
     }
 
     /**
@@ -1192,7 +1196,7 @@ class NavSession @Inject constructor(
                         // The fetch's own share of the deadline (issue #557): the open router, Google
                         // and the downloaded region each get a slice instead of the first eating it all.
                         budgetMs = budgetMs,
-                        behind = trackTo(from),
+                        behind = trackTo(from, heading),
                     )
                 }
                     .getOrNull()?.let { routes ->
@@ -1241,7 +1245,7 @@ class NavSession @Inject constructor(
                 if (speed < BACK_ASK_MIN_MPS) break
                 val h = lastBearing ?: course
                 val turns = (h != null && (app.vela.core.data.RouteGeometry.startsAgainst(got.polyline, h) || app.vela.core.data.RouteGeometry.startsBehind(got.polyline, h))) ||
-                    app.vela.core.data.RouteGeometry.goesBack(got.polyline, trackTo(null))
+                    app.vela.core.data.RouteGeometry.goesBack(got.polyline, trackTo(null, h))
                 if (!turns) break
                 val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_FINISH_RESERVE_MS - BACK_ASK_WAIT_MS
                 if (left < LATE_TURN_MIN_LEFT_MS) break

@@ -274,8 +274,10 @@ off the list when it has been.
   and waits 3 s, not 10, after a route the car never joined. Unit-tested, and re-driven on a
   recorded Davis drive with two missed turns on the 4a: the old code rerouted four times and
   sat 30 s on a turn-around; the new code rerouted once per missed turn, set Google's
-  turn-around aside both times, and its route matched the road driven. Not seen on a real
-  drive.
+  turn-around aside both times, and its route matched the road driven. The track starts at the
+  car's last turn-round: on a mock drive on a divided Davis road, the reroute after the car's own
+  U-turn took its route at once, where the uncut track held it 7 s. Not seen on a real drive;
+  the back re-ask itself has not fired on any test.
 - A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
   replay feeds those inputs back: checked on the 4a, where the replay went off route and
   swapped routes in the drive's order. Re-drive (`replayLive`) used on the 4a only.

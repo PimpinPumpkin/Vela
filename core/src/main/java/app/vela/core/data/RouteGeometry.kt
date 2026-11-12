@@ -1206,6 +1206,32 @@ object RouteGeometry {
     private const val BEHIND_LOOK_M = 60.0
     private const val BEHIND_M = 12.0
 
+    /**
+     * The part of the car's track [behind] (oldest first) driven since it last turned round: the
+     * newest stretch more than [BACK_OPPOSITE_DEG] off the way it goes now ([headingDeg], else
+     * the direction of its newest [TURN_REF_M]), and everything before it, is dropped. A car
+     * that has made its own U-turn goes back along the road it came by, and a route on that way
+     * does not turn it round again. A corner is kept.
+     */
+    internal fun sinceTurnRound(behind: List<LatLng>, headingDeg: Double? = null): List<LatLng> {
+        if (behind.size < 3) return behind
+        val ref = headingDeg ?: run {
+            val last = behind.last()
+            var i = behind.size - 2
+            while (i > 0 && behind[i].distanceTo(last) < TURN_REF_M) i--
+            if (behind[i].distanceTo(last) < TURN_MIN_SEG_M) return behind
+            bearingDeg(behind[i], last)
+        }
+        for (i in behind.size - 1 downTo 1) {
+            val a = behind[i - 1]; val b = behind[i]
+            if (a.distanceTo(b) < TURN_MIN_SEG_M) continue
+            if (angleBetween(bearingDeg(a, b), ref) > BACK_OPPOSITE_DEG) return behind.subList(i, behind.size)
+        }
+        return behind
+    }
+    private const val TURN_REF_M = 15.0
+    private const val TURN_MIN_SEG_M = 2.0
+
     private const val BACK_LOOK_M = 400.0
     private const val BACK_SKIP_M = 10.0
     private const val BACK_STEP_M = 5.0
