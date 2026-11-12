@@ -143,6 +143,10 @@ interface MapDataSource {
         // A mid-drive reroute passes what is left of its deadline so every stage (open router,
         // Google, the on-device engine) takes its share instead of the first one eating it all.
         budgetMs: Long? = null,
+        // The road the car just drove, oldest first, ending where it is (a mid-drive reroute
+        // only): a route that takes the car back along it turns it round
+        // (RouteGeometry.goesBack), and one that goes on is preferred while it costs little more.
+        behind: List<LatLng> = emptyList(),
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its

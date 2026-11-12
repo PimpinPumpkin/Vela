@@ -768,6 +768,7 @@ class GoogleMapsDataSource @Inject constructor(
         urgent: Boolean,
         departBearingDeg: Double?,
         budgetMs: Long?,
+        behind: List<LatLng>,
     ): List<Route> {
         if (mode != TravelMode.DRIVE) return directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
         // The map's roads round the destination are asked for while the routes are fetched, so
@@ -775,7 +776,7 @@ class GoogleMapsDataSource @Inject constructor(
         if (!app.vela.core.data.LowDataMode.enabled) kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             runCatching { app.vela.core.data.naming.RoadNameTiles.roadsAlong(listOf(destination)) }
         }
-        val routes = directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
+        val routes = directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs, behind)
         // Off the caller's thread (the view model calls from Main): the tiles' protobuf is
         // decoded here. Every route at once, so a tile host that does not answer costs one wait.
         return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }.also { rs ->
@@ -787,20 +788,21 @@ class GoogleMapsDataSource @Inject constructor(
 
     /** The routers' answers for one fetch as trip lines ([app.vela.core.diag.TripLines]): a `K`
      *  summary and an `RC` line per route. [googleMs] is -1 when Google was not back in time. */
-    private fun recordAnswers(stage: String, open: List<Route>, openMs: Long, googleAll: List<Route>, googleKept: List<Route>, googleMs: Long, heading: Double?) {
+    private fun recordAnswers(stage: String, open: List<Route>, openMs: Long, googleAll: List<Route>, googleKept: List<Route>, googleMs: Long, heading: Double?, turnsBack: ((Route) -> Boolean)?) {
         if (app.vela.core.diag.TripLines.sink == null) return
-        val against = googleAll.map { r -> heading != null && RouteGeometry.startsAgainst(r.polyline, heading) }
+        val back = { r: Route -> turnsBack?.invoke(r) == true }
         val aside = googleAll.count { r -> googleKept.none { it === r } }
         app.vela.core.diag.TripLines.add(
             "K",
-            "route answers ($stage): open router ${open.size} in $openMs ms, google " +
-                (if (googleMs < 0) "not back" else "${googleAll.size} in $googleMs ms") +
-                ", heading ${heading?.toInt() ?: "none"}" + (if (heading != null) ", ${against.count { it }} against it" else "") +
-                (if (aside > 0) ", $aside set aside" else ""),
+            "route answers ($stage): open router ${open.size} (${open.count(back)} turn round) in $openMs ms, google " +
+                (if (googleMs < 0) "not back" else "${googleAll.size} (${googleAll.count(back)} turn round) in $googleMs ms") +
+                ", heading ${heading?.toInt() ?: "none"}" + (if (aside > 0) ", $aside set aside" else ""),
         )
-        open.forEach { app.vela.core.diag.TripLines.add("RC", app.vela.core.replay.TripLog.candidatePayload(stage, "open", emptyList(), it)) }
-        googleAll.forEachIndexed { i, r ->
-            val flags = listOfNotNull("against".takeIf { against[i] }, "aside".takeIf { googleKept.none { it === r } })
+        open.forEach { r ->
+            app.vela.core.diag.TripLines.add("RC", app.vela.core.replay.TripLog.candidatePayload(stage, "open", listOfNotNull("back".takeIf { back(r) }), r))
+        }
+        googleAll.forEach { r ->
+            val flags = listOfNotNull("back".takeIf { back(r) }, "aside".takeIf { googleKept.none { it === r } })
             app.vela.core.diag.TripLines.add("RC", app.vela.core.replay.TripLog.candidatePayload(stage, "google", flags, r))
         }
     }
@@ -831,6 +833,7 @@ class GoogleMapsDataSource @Inject constructor(
         urgent: Boolean,
         departBearingDeg: Double?,
         budgetMs: Long?,
+        behind: List<LatLng> = emptyList(),
     ): List<Route> = io {
         // Mid-drive reroutes are URGENT: one shot per source, no divergence snap, no alternates
         // polish. The retry ladders below (3x OSRM + 3x Google with backoff) are right for a
@@ -1182,25 +1185,35 @@ class GoogleMapsDataSource @Inject constructor(
             // three reroutes in thirty seconds). The open router was asked with the car's heading;
             // a Google route that starts against it is set aside when the open router answered,
             // unless going on costs minutes more than turning around (RouteGeometry.forwardChoice).
-            val google = if (departBearingDeg != null && openRaw.isNotEmpty()) {
-                val chosen = RouteGeometry.forwardChoice(googleAll, departBearingDeg, openRaw.firstOrNull()?.durationSeconds, openRaw.firstOrNull()?.distanceMeters)
-                val against = googleAll.count { RouteGeometry.startsAgainst(it.polyline, departBearingDeg) }
-                if (against > 0) diag.record(
+            // ...AND DOES NOT GO BACK THE WAY IT CAME (2026-11-11, a recorded wrong turn): with
+            // the car's own track, a route that runs back along it turns the car round however it
+            // starts. The open router's best did that too, round a block back to the missed turn,
+            // and was taken because only Google's routes were tested. Now both routers' are, and a
+            // route that goes on leads while it costs little more (RouteGeometry.forwardPick).
+            val turnsBack: (Route) -> Boolean = { r ->
+                (departBearingDeg != null && (RouteGeometry.startsAgainst(r.polyline, departBearingDeg) || RouteGeometry.startsBehind(r.polyline, departBearingDeg))) ||
+                    RouteGeometry.goesBack(r.polyline, behind)
+            }
+            val judged = departBearingDeg != null || behind.size >= 2
+            val (google, open) = if (judged && openRaw.isNotEmpty()) {
+                val (kept, ordered) = RouteGeometry.forwardPick(googleAll, openRaw, turnsBack)
+                val against = googleAll.count(turnsBack)
+                if (against > 0 || ordered.firstOrNull() !== openRaw.firstOrNull()) diag.record(
                     "directions",
-                    "reroute: $against of ${googleAll.size} google route(s) start against the car's heading, " +
+                    "reroute: $against of ${googleAll.size} google route(s) turn the car round, " +
                         when {
-                            chosen.isEmpty() -> "set aside for the open router's, on google's clock"
-                            RouteGeometry.startsAgainst(chosen.first().polyline, departBearingDeg) -> "kept: going on costs too much"
+                            kept.isEmpty() && googleAll.isNotEmpty() -> "set aside for the open router's, on google's clock"
+                            kept.firstOrNull()?.let(turnsBack) == true -> "kept: going on costs too much"
                             else -> "set aside"
-                        },
+                        } + if (ordered.firstOrNull() !== openRaw.firstOrNull()) "; the open router's best turns round, an alternate leads" else "",
                 )
-                chosen
-            } else googleAll
+                kept to ordered
+            } else googleAll to openRaw
             val gTop = google.firstOrNull()
             // WHAT EACH ROUTER SAID, into the recorded drive: every route the open router and
             // Google answered, which way each starts against the car, and which Google ones were
             // set aside. Without it a file showed the route a reroute switched to, never why.
-            if (mode == TravelMode.DRIVE) recordAnswers(answerStage, openRaw, openTookMs, googleAll, google, gTookMs.get(), departBearingDeg)
+            if (mode == TravelMode.DRIVE) recordAnswers(answerStage, open, openTookMs, googleAll, google, gTookMs.get(), departBearingDeg, turnsBack.takeIf { judged })
             if (gTop != null && mode == TravelMode.DRIVE && app.vela.core.data.DestinationPlaces.at(destination) != null) runCatching {
                 android.util.Log.i("VelaDirections", "place: Google's line ends ${gTop.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m from the pin")
             }
@@ -1208,7 +1221,6 @@ class GoogleMapsDataSource @Inject constructor(
             // traffic, as a trip through stops does when Google's detour is not taken. On its own
             // clock it runs fast, and the ETA stayed short until the recheck healed it.
             val setAside = if (gTop == null) googleAll.minByOrNull { it.durationInTrafficSeconds ?: it.durationSeconds } else null
-            val open = openRaw
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
             // excludable classes). Google's keyless directions DO honor avoid (DirectionsPb.withAvoid, 2026-09-06), so
@@ -1386,7 +1398,9 @@ class GoogleMapsDataSource @Inject constructor(
                 // The open router's steps that are carried over get their names checked first, at
                 // their own positions (the stitch moves them onto Google's line). The request has
                 // been running since the open router answered.
-                val ed = openEdgesD
+                // The edges were asked for the open router's own best; an alternate that leads
+                // instead (forwardPick) is not checked against them.
+                val ed = openEdgesD?.takeIf { open.firstOrNull()?.polyline === openLine }
                 val tally = IntArray(4)
                 val openChecked = (if (online && ed != null) kotlinx.coroutines.withTimeoutOrNull(if (urgent) OPEN_NAMES_WAIT_URGENT_MS else OPEN_NAMES_WAIT_MS) { ed.await() } else null)
                     ?.let { app.vela.core.data.ValhallaRouter.recheck(open.first(), it, keepUnplaced = true, tally = tally) }

@@ -1745,6 +1745,13 @@ REACH_MIN_M                     25   and never closer than this
 LATE_TURN_PAST_M                10   an ask again waits until the car is this far past that turn
 LATE_TURN_ASKS                   2   asks again for one reroute when its first turn is out of reach
 LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its wait
+REROUTE_COOLDOWN_UNJOINED_MS 3_000   the gap after a reroute whose route the car never joined
+JOINED_M                        50   meters along an adopted route that count as joining it
+BACK_ASKS                        2   asks again for one reroute whose route turns the car round
+BACK_ASK_WAIT_MS             3_000   the wait before each of them
+BACK_ASK_MIN_MPS               4.0   only while the car moves at least this fast
+HELD_COURSE_MAX_M               25   a stopped car keeps its moving course this far from where it showed it
+TRACK_KEEP_M                   300   the car's own track kept for the turn-round test
 ```
 
 - `NavSession.rerouteGate` allows one fetch at a time and enforces the cooldown. A job older
@@ -1780,8 +1787,21 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   with no heading. An unpinned snap began a reroute on a cross street, round a block, across the
   road the car was on.
 - Google's request carries no heading. On a fetch that has one, a Google route whose first 80 m
-  run more than 120 degrees off it (`RouteGeometry.startsAgainst`) is set aside when the open
-  router answered, so the hybrid cannot tell a moving car to turn around. `forwardChoice`
+  run more than 120 degrees off it (`RouteGeometry.startsAgainst`, measured at the point 80 m
+  along the line, not the first vertex past it) is set aside when the open router answered, so
+  the hybrid cannot tell a moving car to turn around. So is one that backs up: a point of its
+  first 60 m more than 12 m behind its start along the heading (`RouteGeometry.startsBehind`),
+  a U-turn to the street just passed that then turns off it, which reads as sideways at 80 m.
+  A reroute also passes the car's own track
+  (`behind`, the last `TRACK_KEEP_M` of trusted fixes), and a route that runs 30 m or more back
+  along it, within 25 m and more than 135 degrees off the way the car drove it, in its first
+  400 m turns the car round too (`RouteGeometry.goesBack`): a U-turn onto either side of the
+  road, or the way round a small block back to a missed turn, which starts the car's way and
+  passed the heading test. A loop ramp never comes back onto the road driven and is not caught.
+  Both routers' routes are tested (`forwardPick`): when the open router's best turns round, one
+  of its alternates that goes on leads while it costs no more than the same allowance over the
+  best, and when the open route that leads still turns round, Google's best is not set aside
+  for it. `forwardChoice`
   limits what that may cost: a forward Google route within `FORWARD_MAX_EXTRA_S` (180 s) or
   `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
   is that close without traffic, else the best route, turn-around and all. The open router's
@@ -1802,6 +1822,16 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   turn. A failed ask keeps the answer in hand. Pinned to the heading, the open router sends a car
   that has to turn round into the nearest side street, which can be a meter ahead when the route
   lands.
+- A route that still turns a moving car round (at `BACK_ASK_MIN_MPS` or more) is not shown or
+  said: the fetch waits `BACK_ASK_WAIT_MS` and asks again from the newest trusted fix, up to
+  `BACK_ASKS` times, then takes the last answer, since the way may really be behind.
+- A car stopped at a light points the way it was going: a reroute from a fix with no course
+  keeps the last moving course while the car is within `HELD_COURSE_MAX_M` of where it showed
+  it (`NavSession.heldCourse`). Unpinned, both routers sent a car back the way it came from a
+  stop, and it pulled away the other way.
+- A reroute whose route the car never joined (under `JOINED_M` along it when it went off
+  again) is followed by `REROUTE_COOLDOWN_UNJOINED_MS`, not the full cooldown, once: the next
+  waits the full time, so a fix biased off the road still settles.
 - A reroute that lands after the driver is back on the original route is discarded
   (`route === fromRoute && onRouteStreak >= BACK_ON_COURSE_HITS`). One grazing fix is not enough.
 - A provisional route is never driven raw. `NavSession.driveable` names a provisional top
@@ -2687,10 +2717,10 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   and the travel mode.
 - Each route fetch during a drive writes what the routers answered (`TripLines`): a
   `route answers (reroute|ladder|plan):` note with each router's count and time, how many of
-  Google's start against the car's heading and how many were set aside, and an `RC` line
+  each turn the car round, the heading and how many of Google's were set aside, and an `RC` line
   per route: `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`, source
-  `open`, `google`, `phone` or a fallback's, flags `against` (it sets off against the car's
-  heading) and `aside` (a Google route set aside).
+  `open`, `google`, `phone` or a fallback's, flags `back` (it turns the car round) and `aside`
+  (a Google route set aside).
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:
   a shared copy's route is trimmed and the offsets no longer fit. `N` and `RC` hold positions

@@ -286,6 +286,19 @@ router's fast one until the next recheck. When going on costs more than that
 either way, the best route stands and the car is told to turn around. Without the limit a
 forward alternate 20 minutes longer was taken over the best route.
 
+A route that backs up counts as setting off against the car too: one whose first 60 m reach
+more than 12 m behind where it starts, as a U-turn to the street just passed does before it
+turns up that street (`RouteGeometry.startsBehind`).
+
+Starting the right way is not enough. A route can set off the car's way, go round a small block
+and come back along the road just driven, to the turn the car missed. The reroute passes the
+car's own track, the last 300 m it drove, and a route that runs back along it in its first
+400 m turns the car round as surely as a U-turn (`RouteGeometry.goesBack`). Both routers'
+routes are tested, the open router's alternates included (`forwardPick`), with the same price
+limit. A route that still turns a moving car round is not shown: Vela asks again 3 s later,
+twice at most, and then takes what it has. A car stopped at a light keeps the course it had
+while moving, so a reroute from the stop is not free to send it back the way it came.
+
 ### Walking
 
 Walking routes come from the open foot router. Google has no traffic to add on foot and its

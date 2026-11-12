@@ -214,7 +214,9 @@ Going off route asks for a reroute. `NavSession.rerouteGate` decides whether it 
 
 - One fetch runs at a time. A request while one is out is dropped.
 - A request inside the cooldown is dropped, so fixes biased toward a parallel road cannot cause
-  a reroute storm.
+  a reroute storm. When the car never joined the route the last reroute gave (it went another
+  way at once, under 50 m along it), the next may start after 3 s instead, once; the one after
+  waits the full 10 s.
 - A fetch still running past its deadline plus the grace is abandoned and a new one starts. The
   fetch runs on its own scope so the deadline can abandon it. `withTimeoutOrNull` cannot
   interrupt a blocked socket read or the on-phone router, and a fetch stuck there used to block

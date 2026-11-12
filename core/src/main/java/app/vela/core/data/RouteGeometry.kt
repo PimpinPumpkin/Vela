@@ -1132,13 +1132,11 @@ object RouteGeometry {
     internal fun startsAgainst(poly: List<LatLng>, headingDeg: Double): Boolean {
         if (poly.size < 2) return false
         val a = poly.first()
-        var run = 0.0
-        var b = a
-        for (i in 1 until poly.size) {
-            run += poly[i - 1].distanceTo(poly[i])
-            b = poly[i]
-            if (run >= START_LOOK_M) break
-        }
+        // The point START_LOOK_M along the line, not the first vertex past it: Google's line
+        // has few vertices, and "56 m back, then right" whose next vertex was a kilometer up the
+        // new street read as setting off north from a car going east.
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val b = app.vela.core.nav.RouteProjection.pointAt(poly, cum, START_LOOK_M)
         if (a.distanceTo(b) < 15.0) return false
         val k = kotlin.math.cos(Math.toRadians(a.lat))
         val brg = (Math.toDegrees(kotlin.math.atan2((b.lng - a.lng) * k, b.lat - a.lat)) + 360.0) % 360.0
@@ -1147,6 +1145,107 @@ object RouteGeometry {
     }
     private const val START_LOOK_M = 80.0
     private const val AGAINST_DEG = 120.0
+
+    /**
+     * True when [poly] takes the car back along the road it came by: within its first
+     * [BACK_LOOK_M], [BACK_RUN_M] or more of it runs within [BACK_NEAR_M] of [behind] (the car's
+     * own track, oldest first, ending where the car is) the opposite way. A U-turn does, and so
+     * does the way round a block back to a missed turn. A loop ramp does not: it never comes back
+     * onto the road the car drove. Its first [BACK_SKIP_M] is left out, where the line still
+     * starts on the track.
+     */
+    internal fun goesBack(poly: List<LatLng>, behind: List<LatLng>): Boolean {
+        if (poly.size < 2 || behind.size < 2) return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val end = minOf(cum.last(), BACK_LOOK_M)
+        var run = 0.0
+        var m = BACK_SKIP_M
+        while (m + BACK_STEP_M <= end) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m + BACK_STEP_M)
+            val dir = bearingDeg(p, q)
+            // The nearest stretch of the track, and the way the car drove it.
+            var best = Double.MAX_VALUE
+            var trackDir = 0.0
+            for (i in 1 until behind.size) {
+                val a = behind[i - 1]; val b = behind[i]
+                if (a.distanceTo(b) < 1.0) continue
+                val d = distToSegment(p, a, b)
+                if (d < best) { best = d; trackDir = bearingDeg(a, b) }
+            }
+            val opposite = best <= BACK_NEAR_M && angleBetween(dir, trackDir) > BACK_OPPOSITE_DEG
+            run = if (opposite) run + BACK_STEP_M else 0.0
+            if (run >= BACK_RUN_M) return true
+            m += BACK_STEP_M
+        }
+        return false
+    }
+    /**
+     * True when [poly] begins by backing up: a point of its first [BEHIND_LOOK_M] lies more than
+     * [BEHIND_M] behind its start along [headingDeg]. A U-turn to the street just passed does,
+     * however soon it turns off again; [startsAgainst] read 15 m back and then up a cross street
+     * as setting off sideways. A turn at the junction the car is crossing lies a few meters
+     * behind at most, and a loop ramp only comes back behind its start much further on.
+     */
+    internal fun startsBehind(poly: List<LatLng>, headingDeg: Double): Boolean {
+        if (poly.size < 2) return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val a = poly.first()
+        val k = kotlin.math.cos(Math.toRadians(a.lat)) * 111_320.0
+        val hx = kotlin.math.sin(Math.toRadians(headingDeg)); val hy = kotlin.math.cos(Math.toRadians(headingDeg))
+        var m = 0.0
+        val end = minOf(cum.last(), BEHIND_LOOK_M)
+        while (m <= end) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+            val ahead = (p.lng - a.lng) * k * hx + (p.lat - a.lat) * 111_320.0 * hy
+            if (ahead < -BEHIND_M) return true
+            m += BACK_STEP_M
+        }
+        return false
+    }
+    private const val BEHIND_LOOK_M = 60.0
+    private const val BEHIND_M = 12.0
+
+    private const val BACK_LOOK_M = 400.0
+    private const val BACK_SKIP_M = 10.0
+    private const val BACK_STEP_M = 5.0
+    private const val BACK_NEAR_M = 25.0
+    private const val BACK_RUN_M = 30.0
+    private const val BACK_OPPOSITE_DEG = 135.0
+
+    private fun bearingDeg(a: LatLng, b: LatLng): Double {
+        val k = kotlin.math.cos(Math.toRadians(a.lat))
+        return (Math.toDegrees(kotlin.math.atan2((b.lng - a.lng) * k, b.lat - a.lat)) + 360.0) % 360.0
+    }
+    private fun angleBetween(x: Double, y: Double): Double = kotlin.math.abs((x - y + 540.0) % 360.0 - 180.0)
+    /** Meters from [p] to the segment [a]-[b], on a local flat projection. */
+    private fun distToSegment(p: LatLng, a: LatLng, b: LatLng): Double {
+        val k = kotlin.math.cos(Math.toRadians(a.lat)) * 111_320.0
+        val bx = (b.lng - a.lng) * k; val by = (b.lat - a.lat) * 111_320.0
+        val px = (p.lng - a.lng) * k; val py = (p.lat - a.lat) * 111_320.0
+        val len2 = bx * bx + by * by
+        val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+        return kotlin.math.hypot(px - t * bx, py - t * by)
+    }
+
+    /**
+     * The routes a reroute may lead with, given the way the car is going: Google's (the list
+     * [forwardChoice] keeps) and the open router's, reordered. A route [back] is one that turns
+     * the car round ([startsAgainst] the heading, or [goesBack] along its track). The open
+     * router's best can do that too, though it was asked with the heading: it starts the car's
+     * way and goes round the block. One of its alternates that goes on leads instead while it
+     * costs no more than [FORWARD_MAX_EXTRA_S] or [FORWARD_MAX_EXTRA_SHARE] over its best; and
+     * when the open route that leads still turns back, Google's best is not set aside for it.
+     */
+    internal fun forwardPick(google: List<Route>, open: List<Route>, back: (Route) -> Boolean): Pair<List<Route>, List<Route>> {
+        val top = open.firstOrNull()
+        val lead = if (top != null && back(top)) open.firstOrNull { r ->
+            !back(r) && r.durationSeconds - top.durationSeconds <= maxOf(FORWARD_MAX_EXTRA_S, top.durationSeconds * FORWARD_MAX_EXTRA_SHARE)
+        } else null
+        val ordered = if (lead != null) listOf(lead) + open.filter { it !== lead } else open
+        val openLead = ordered.firstOrNull()?.takeIf { !back(it) }
+        return forwardChoice(google, back, openLead?.durationSeconds, openLead?.distanceMeters) to ordered
+    }
 
     /** Going on instead of turning around may cost this much over Google's best route... */
     const val FORWARD_MAX_EXTRA_S = 180.0
@@ -1168,11 +1267,15 @@ object RouteGeometry {
      * length at the best route's average speed, within the 0.5 to 3 the other rebasing uses.
      * Raw, a way round that was really nine minutes longer read as a minute shorter.
      */
-    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?, openMeters: Double? = null): List<Route> {
+    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?, openMeters: Double? = null): List<Route> =
+        forwardChoice(google, { startsAgainst(it.polyline, headingDeg) }, openSeconds, openMeters)
+
+    /** [forwardChoice] with the test for a route that turns the car round given as [back]. */
+    internal fun forwardChoice(google: List<Route>, back: (Route) -> Boolean, openSeconds: Double?, openMeters: Double? = null): List<Route> {
         if (google.isEmpty()) return google
         fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
         val best = google.minByOrNull { eta(it) }!!
-        val forward = google.filterNot { startsAgainst(it.polyline, headingDeg) }
+        val forward = google.filterNot(back)
         if (best in forward) return forward
         val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(best) * FORWARD_MAX_EXTRA_SHARE)
         val affordable = forward.filter { eta(it) - eta(best) <= allowance }
