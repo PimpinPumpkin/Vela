@@ -17,4 +17,11 @@ class FullAddressTest {
         assertEquals("Davis, CA", p("Central Park", "Davis, CA").fullAddress())
         assertEquals(null, p("1451 W Covell Blvd", null).fullAddress())
     }
+
+    @Test fun `an address filed under a category still gets its street`() {
+        // A house Google lists with a category: its address field is only the locality.
+        assertEquals("1451 W Covell Blvd, Davis, CA 95616", p("1451 W Covell Blvd", "Davis, CA 95616", category = "Building").fullAddress())
+        // A business with a street line of its own is left as it is, whatever its name.
+        assertEquals("620 W Covell Blvd, Davis, CA", p("24 Hour Fitness", "620 W Covell Blvd, Davis, CA", category = "Gym").fullAddress())
+    }
 }

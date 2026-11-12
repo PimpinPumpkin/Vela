@@ -3267,7 +3267,9 @@ when the feature ids match. Two requests at most.
   dropped when another result has the address. Bracketing house numbers over `INTERP_MAX_GAP_M`
   (300 m) apart are not blended; the nearer one's point is used.
 - A place named by a street line whose address holds only the town shows and copies the two
-  joined (`Place.fullAddress`).
+  joined (`Place.fullAddress`). A listing keeps its own address when the first part of that has
+  a number (`hasStreetLine`); one without, an address Google files under a category, is joined
+  too.
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
   requires a decimal point in both halves and range-checks.
 
@@ -3326,7 +3328,8 @@ when the feature ids match. Two requests at most.
   saved from a search carries its street as the name and the locality as the address, so a
   rename, and setting Home or Work, moves the street into the address first
   (`SavedPlace.addressKeepingStreet`: a point whose address does not already start with its
-  name), once: the record is then marked `streetKept`, so a second rename leaves the address
+  name, or a record named by a street line whose address has none, an address Google filed under
+  a category and so saved as a listing), once: the record is then marked `streetKept`, so a second rename leaves the address
   alone. Whether the place is a point is read off the stored record, never off the Place a row
   hands in, which carries no listing fields. An address picked from a search as Home or Work is
   kept as a point (`MapViewModel.isAddressPick`: a result with no category, rating or reviews),
