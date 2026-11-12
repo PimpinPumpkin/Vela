@@ -1843,7 +1843,10 @@ TRACK_KEEP_M                   300   the car's own track kept for the turn-round
 - A car stopped at a light points the way it was going: a reroute from a fix with no course
   keeps the last moving course while the car is within `HELD_COURSE_MAX_M` of where it showed
   it (`NavSession.heldCourse`). Unpinned, both routers sent a car back the way it came from a
-  stop, and it pulled away the other way.
+  stop, and it pulled away the other way. Once the car is `HELD_TURN_CHECK_M` (10 m) from that
+  point, the bearing of the newest 10 m of its track must be within `HELD_TURN_MAX_DEG` (45
+  degrees) of the course (`RouteGeometry.courseStillHeld`), or the reroute goes unpinned: under
+  the heading speed a car crawls round a corner or turns in the road and shows no course.
 - A reroute whose route the car never joined (under `JOINED_M` along it when it went off
   again) is followed by `REROUTE_COOLDOWN_UNJOINED_MS`, not the full cooldown, once: the next
   waits the full time, so a fix biased off the road still settles.

@@ -152,6 +152,19 @@ class TurnBackTest {
         assertSame(here, RouteGeometry.leastTurning(listOf(here, far), rank).first())
     }
 
+    @Test fun `a stopped car keeps its course until its track turns off it`() {
+        val at = p(0.0, 0.0)
+        val before = (0..6).map { p(-30.0 + it * 5.0, 0.0) }
+        // Crawled on along the road to a light: still pointing east.
+        assertTrue(RouteGeometry.courseStillHeld(90.0, at, before + listOf(p(8.0, 0.5), p(16.0, 0.0), p(21.0, -0.5))))
+        // Fixes wandering a few meters at the stop are not a turn.
+        assertTrue(RouteGeometry.courseStillHeld(90.0, at, before + listOf(p(3.0, 4.0), p(-2.0, 5.0))))
+        // Round a corner to the right at a crawl, stopped in the side street: south now.
+        assertFalse(RouteGeometry.courseStillHeld(90.0, at, before + listOf(p(5.0, 0.0), p(7.0, -5.0), p(7.0, -11.0), p(7.0, -16.0))))
+        // Turned in the road, the last leg west.
+        assertFalse(RouteGeometry.courseStillHeld(90.0, at, before + listOf(p(6.0, 2.0), p(9.0, 6.0), p(3.0, 8.0), p(-12.0, 8.0))))
+    }
+
     @Test fun `after its own U-turn the way on along the road is not turning round`() {
         // Recorded on Covell Blvd in Davis, a divided road: the car drove east past its turn and
         // took the median opening. The reroute from the crossover sent it west to the turn.

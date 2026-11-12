@@ -302,9 +302,9 @@ the next exit), then turning round where the car is. A route that still turns a 
 round where it is, when nothing better was offered at any price, is not shown: Vela asks again
 3 s later, twice at most, and then takes what it has. When going on was offered and cost too
 much more, the turn-round is taken at once. A car stopped at a light keeps the course it had
-while moving, so a reroute from the stop is not free to send it back the way it came. When the
-open router does not answer, Google's routes, or the phone's, are weighed the same way among
-themselves.
+while moving, so a reroute from the stop is not free to send it back the way it came, unless its
+track since shows it crawled round a corner or turned in the road. When the open router does not
+answer, Google's routes, or the phone's, are weighed the same way among themselves.
 
 ### Walking
 

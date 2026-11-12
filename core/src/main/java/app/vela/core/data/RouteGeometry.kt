@@ -1230,6 +1230,25 @@ object RouteGeometry {
         return behind
     }
 
+    /**
+     * Whether a stopped car still points the way it was last going: [course], shown at [at], against
+     * its [track] since (oldest first, ending where it is). Under the heading speed a car can crawl
+     * round a corner or turn in the road and show no course. Once it is [HELD_TURN_CHECK_M] from
+     * [at], the bearing of the newest [HELD_TURN_CHECK_M] of the track decides: more than
+     * [HELD_TURN_MAX_DEG] off [course], the course is no longer the car's.
+     */
+    internal fun courseStillHeld(course: Double, at: LatLng, track: List<LatLng>): Boolean {
+        val here = track.lastOrNull() ?: return true
+        if (at.distanceTo(here) < HELD_TURN_CHECK_M) return true
+        var i = track.size - 2
+        while (i >= 0 && track[i].distanceTo(here) < HELD_TURN_CHECK_M) i--
+        val from = if (i >= 0) track[i] else at
+        if (from.distanceTo(here) < HELD_TURN_CHECK_M) return true
+        return angleBetween(bearingDeg(from, here), course) <= HELD_TURN_MAX_DEG
+    }
+    const val HELD_TURN_CHECK_M = 10.0
+    const val HELD_TURN_MAX_DEG = 45.0
+
     private const val TURN_REF_M = 15.0
     private const val TURN_MIN_SEG_M = 2.0
 

@@ -1062,10 +1062,24 @@ class NavSession @Inject constructor(
         }
 
     /** The course the car last showed while moving, for a reroute from a stop: only while it
-     *  is within [HELD_COURSE_MAX_M] of where it showed it. */
+     *  is within [HELD_COURSE_MAX_M] of where it showed it, and while its track since has not
+     *  turned off it ([app.vela.core.data.RouteGeometry.courseStillHeld]): a car that crawled
+     *  round a corner or turned in the road no longer points that way. */
     private fun heldCourse(loc: LatLng): Double? {
         val at = movingCourseAt ?: return null
-        return movingCourse?.takeIf { at.distanceTo(loc) <= HELD_COURSE_MAX_M }
+        val course = movingCourse ?: return null
+        if (at.distanceTo(loc) > HELD_COURSE_MAX_M) return null
+        val since = synchronized(trackLock) {
+            ArrayList<LatLng>(track.size + 1).also { out ->
+                out.addAll(track)
+                if (out.isEmpty() || out.last().distanceTo(loc) >= 1.0) out.add(loc)
+            }
+        }
+        if (!app.vela.core.data.RouteGeometry.courseStillHeld(course, at, since)) {
+            note("reroute: at a stop, the car turned since its last course, not keeping it")
+            return null
+        }
+        return course
     }
 
     /** The car's track ending at [to] (or where the last trusted fix was), from where it last
