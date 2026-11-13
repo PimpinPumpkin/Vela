@@ -257,6 +257,9 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Unnamed car parks show their P under the open places layer and Google's dots (issue #935,
+  `vela-osm-parking`): seen on the 4a at the reporter's lot; frame rate measured in Shinjuku.
+  Not looked at in a city with many unnamed lots at z15 to z16, where clutter would show.
 - Temporarily closed places (issue #930): the "Reopen this place" entry in a place's edit menu
   marks the closure when Google sends no status text. Checked on the 4a against open San
   Francisco listings (no kind 3) and a permanently closed Davis one (kind 3). No temporarily

@@ -2894,6 +2894,15 @@ results are up. Over an older archive they stay, or its parks would vanish, and 
 vegetation exclusion (wood, forest, tree, grass, wetland) must not cover park or garden. In
 drive navigation they show fuel only.
 
+Where they hide for the one-set archive or the ambient pool (browsing, at most one marker),
+`vela-osm-parking` shows the basemap's car parks with no name (class `parking`): the bake drops
+places without a name and Google's dots have no parking lots, so those lots had no icon at all
+(issue #935). A named lot is in those sources and would draw twice. It is one layer over the
+`poi` source-layer below `poi_r20`, rank under 20 from z15 and every rank from z18, as the tiers.
+Keeping the three tiers up with a parking filter instead cost frames over Shinjuku's dense tiles;
+the one layer did not measure (Shinjuku, z17 pan on a 4a, three runs each: 38 fps median with
+it, 41 hidden, 50 for a placebo layer hidden).
+
 Over an older archive `osmFillIn` drops OSM points whose name matches a drawn open icon within
 80 m (`OSM_AREA_TWIN_M`, 1,500 m, for area classes). It is viewport-only, rendered-only and
 grow-only (`OSM_EXCLUDE_MAX` 1,500 names; each `setFilter` re-lays the source), and throttled to

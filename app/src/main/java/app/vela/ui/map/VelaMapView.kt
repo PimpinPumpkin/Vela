@@ -1701,7 +1701,7 @@ fun VelaMapView(
         // This write races applyData's ambient/search suppression of the same layers: forcing
         // VISIBLE on nav end while its gate still says NONE left doubled icons until the next
         // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
-        lastOsmPoiVis = null; lastPreviewTransitHidden = null
+        lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null
         lastPoiFuelOnly = null
         // Stop signs + lights are a NAV aid from z15.4 — a hair UNDER the nav camera's 15.5 zoom
         // floor, so they can't blink out at highway speed (the old 16 sat above the floor and the
@@ -2024,7 +2024,7 @@ fun VelaMapView(
     }
     LaunchedEffect(placesOneSet, styleRef) {
         osmOneSet = placesOneSet
-        lastOsmPoiVis = null; lastPreviewTransitHidden = null // applyData re-decides the basemap point layers' visibility
+        lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null // applyData re-decides the basemap point layers' visibility
         styleRef?.let { st -> if (placesOneSet) OSM_POI_LAYERS.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE)) } }
     }
     LaunchedEffect(placesPending, styleRef, osmBusinesses) {
@@ -2351,7 +2351,7 @@ fun VelaMapView(
         fillLast[0] = Double.NaN // new sources: the next idle runs the pass regardless of movement
         osmHideBusiness = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
-        lastOsmPoiVis = null; lastPreviewTransitHidden = null
+        lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
         if (placesNavFuelOnly || placesNavDriveSet || placesPreviewHidden) applyOpenPlacesHidden(style)
     }
@@ -5261,7 +5261,7 @@ fun VelaMapView(
                 }
                 ensureLayers(style, painted)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
-                lastOsmPoiVis = null; lastPreviewTransitHidden = null
+                lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null
                 lastPoiFuelOnly = null
                 lastNavLabelKey = null
                 lastControlsVis = null
@@ -5888,6 +5888,32 @@ private fun ensureLayers(style: Style, painted: Boolean) {
     // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
     // forests flat color. Rebuild each tier's rank-band filter with vegetation excluded.
     applyPoiTierFilters(style, fuelOnly = false)
+    // (2b) Car parks with no name (issue #935), for when the tiers hide under the open places
+    // archive or Google's dots: neither has one. One layer over the poi source-layer with its
+    // own filter, not the three tiers narrowed: in Shinjuku the tiers kept up but filtered to
+    // parking cost about as much as drawing nothing with them hidden saved. Ranks as the tiers:
+    // under 20 from z15, every one from z18. Below the tiers, so a business wins a collision.
+    if (style.getLayer(OSM_PARKING_LAYER) == null && style.getLayer("poi_r20") != null) {
+        val src = basemapSrc(style)
+        if (src != null) {
+            val unnamed = Expression.any(Expression.not(Expression.has("name")), Expression.eq(Expression.get("name"), Expression.literal("")))
+            val ranked = Expression.any(Expression.lt(Expression.get("rank"), Expression.literal(20)), Expression.gte(Expression.zoom(), Expression.literal(18)))
+            val park = SymbolLayer(OSM_PARKING_LAYER, src).withSourceLayer("poi")
+                .withFilter(Expression.all(
+                    Expression.match(Expression.geometryType(), Expression.literal(false), Expression.stop("Point", true), Expression.stop("MultiPoint", true)),
+                    Expression.eq(Expression.get("class"), Expression.literal("parking")), unnamed, ranked,
+                ))
+                .withProperties(
+                    PropertyFactory.iconImage("vela-poi-parking"),
+                    PropertyFactory.iconSize(0.8f),
+                    PropertyFactory.symbolSortKey(Expression.get("rank")),
+                    PropertyFactory.visibility(Property.NONE),
+                )
+            park.minZoom = 15f
+            runCatching { style.addLayerBelow(park, "poi_r20") }
+            lastOsmParkVis = null
+        }
+    }
 
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
     if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
@@ -6916,6 +6942,9 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
 }
 
 private val OSM_POI_LAYERS = listOf("poi_r1", "poi_r7", "poi_r20")
+/** The basemap's unnamed car parks, shown where the tiers hide (issue #935). */
+private const val OSM_PARKING_LAYER = "vela-osm-parking"
+private var lastOsmParkVis: String? = null
 // Basemap point classes that stand for an AREA, and how far such a point may sit from the open
 // place of the same name and still be it.
 private val OSM_AREA_CLASSES = setOf("golf", "park", "stadium", "cemetery", "zoo", "college", "school", "hospital", "campsite", "garden")
@@ -10275,6 +10304,14 @@ private fun applyData(
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }
         lastOsmPoiVis = osmPoiVis
+    }
+    // Where the tiers step aside for the open places archive or Google's dots, the unnamed car
+    // parks neither draws stay (issue #935). Not while driving, previewing a route or showing
+    // several results, as the tiers.
+    val osmParkVis = if (poisEnabled && !previewing && !navMode && markers.size <= 1 && (osmOneSet || ambientCoversView)) Property.VISIBLE else Property.NONE
+    if (osmParkVis != lastOsmParkVis) {
+        style.getLayer(OSM_PARKING_LAYER)?.setProperties(PropertyFactory.visibility(osmParkVis))
+        lastOsmParkVis = osmParkVis
     }
     // Route preview hides the transit icons with the rest (basemap stations and the stop badges).
     // Never touched while navigating: the nav declutter effect owns both layers then.
