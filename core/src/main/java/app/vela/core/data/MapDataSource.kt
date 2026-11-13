@@ -45,6 +45,12 @@ interface MapDataSource {
     suspend fun searchOnce(query: String, near: LatLng, lang: String? = null): List<Place> =
         search(query, near, lang = lang).places
 
+    /** [places] from a search along [route] (the road ahead, its first point the car), each priced
+     *  with the drive time it adds to the trip and the road distance from the car, least detour
+     *  first. Null when there is no router to ask or it did not answer: the caller keeps its own
+     *  list. */
+    suspend fun detourAlongRoute(route: List<LatLng>, places: List<Place>): List<Place>? = null
+
     /** Search-as-you-type: the provider's own autocomplete for a partial [query], biased to
      *  [near] over a window [spanMeters] wide. Places carry a location; [SuggestResult.queries]
      *  are bare query rows to run as a search. Empty when the provider has no such thing. */

@@ -3566,9 +3566,11 @@ private fun ResultPlaceCard(
                 // One line, as on Google's cards: the number, one star, the count, then distance,
                 // price and kind, cut with an ellipsis when the card is narrow.
                 Icon(Sym.Star, contentDescription = null, tint = app.vela.ui.StarGold, modifier = Modifier.padding(horizontal = 2.dp).size(15.dp))
+                val detour = place.detourSeconds?.let { if (it < 30) stringResource(R.string.place_on_the_way) else "+" + formatDuration(it.toDouble()) }
                 val rest = listOfNotNull(
                     place.reviewCount?.let { "($it)" },
                     place.distanceMeters?.let { formatDistance(it) },
+                    detour,
                     place.priceText,
                     place.category,
                 ).joinToString(" · ")
@@ -3581,8 +3583,10 @@ private fun ResultPlaceCard(
             }
         }
         // An unrated row (an address, a place from the downloaded data) keeps its own line.
+        val detour = place.detourSeconds?.let { if (it < 30) stringResource(R.string.place_on_the_way) else "+" + formatDuration(it.toDouble()) }
         val sub = if (place.rating != null) "" else listOfNotNull(
             place.distanceMeters?.let { formatDistance(it) },
+            detour,
             place.priceText,
             place.category,
         ).joinToString(" · ")
