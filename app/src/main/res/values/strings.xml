@@ -1420,6 +1420,12 @@
     </plurals>
     <string name="exp_chooser_alts_same">About the same time</string>
     <string name="exp_chooser_fewest_cams">fewest cameras</string>
+    <string name="route_toll_about">Toll about %1$s</string> <!-- format: %1$s is an amount -->
+    <string name="route_toll_about_fee">Toll about %1$s + %2$s fee</string> <!-- format: %1$s and %2$s are amounts -->
+    <string name="route_toll_range">Toll about %1$s to %2$s</string> <!-- format: %1$s and %2$s are amounts -->
+    <string name="route_toll_range_fee">Toll about %1$s to %2$s + %3$s fee</string> <!-- format: amounts -->
+    <string name="settings_toll_transponder">I have a toll transponder</string>
+    <string name="settings_toll_transponder_hint">Route options on the A-25 and A-30 bridges and on Highway 407 ETR show the toll for a car. Without a transponder the A-25 bills your plate and adds an administration fee for each crossing, and the 407 adds a camera charge for each trip, so the row shows them too. The 407 price is a range, because its rate changes by zone and the zones are not held. Rates are from the operators\' published grids: A-25 of June 2025, A-30 of February 2026, 407 of January 2026. Electric vehicles do not pay on the A-25 and A-30.</string>
     <string name="nav_hold_controls">Pause or mute</string>
     <string name="nav_stop_offer_add">Add stop</string>
     <string name="nav_stop_offer_ahead">%1$s ahead</string>
