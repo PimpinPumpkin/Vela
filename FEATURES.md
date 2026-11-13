@@ -129,6 +129,12 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Avoid tolls, highways, ferries or cameras. Set Leave now, Depart at or Arrive by.
 - When the fastest drive may use a toll road, the chooser also lists the same trip without tolls,
   each with its time and distance. "No-toll route option" turns it off.
+- A route over the A-25 or A-30 bridge in Quebec shows the toll for a car, at the time it reaches the
+  bridge, from the operators' published rates. Without a transponder the A-25's administration fee is
+  shown too.
+- A route on Ontario's Highway 407 ETR shows a toll range for a car, from the kilometers driven and the
+  road's published rates for the direction and the hour, with the camera charge when there is no
+  transponder.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.
 - Ride a GPX track: open or share a `.gpx` file with Vela and the trip to its end follows the
