@@ -257,6 +257,11 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A phone's own text-to-speech engine (issues #949, #944): its prompts are labeled navigation
+  guidance, and it keeps the voice picked in its own settings when that voice speaks the
+  directions' language. Neither test phone nor the emulator has a system engine, so neither has
+  been heard yet: check with `adb shell dumpsys audio` (the player's usage) and an engine with
+  several voices a language.
 - Fewer voice lines on the freeway: any maneuver at 50 mph or more, and an exit, fork, keep,
   U-turn or on-ramp turn from 34 mph, gets one line about 15 s out and one at the turn. A merge
   is said once, often as the "then" of the step before it, and a "then" carries the lanes. A
