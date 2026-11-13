@@ -59,6 +59,7 @@ import app.vela.ui.map.MapUiState
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.map.NAV_FAB_EDGE_DP
 import app.vela.ui.map.SearchGates
+import app.vela.ui.map.coversMap
 import app.vela.ui.map.landscapeColumn
 import app.vela.ui.map.popIn
 import app.vela.ui.map.sidePanelWidth
@@ -146,6 +147,7 @@ internal fun BoxScope.DrivingChrome(state: MapUiState, vm: MapViewModel) {
             .landscapeColumn(landscape, sidePanelWidth())
             .then(if (landscape) Modifier.padding(start = DRIVING_LAND_EDGE_DP, end = 16.dp) else Modifier)
             .fillMaxWidth()
+            .coversMap() // docs/dpad.md, map keys
             .onGloballyPositioned {
                 // The card holds the system bar's space itself; what sits above the bar wants the
                 // height above that.

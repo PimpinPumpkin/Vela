@@ -479,8 +479,8 @@ fun MapScreen(
     val navListButton = app.vela.ui.PreferButtons.on.value || dpadFirst
     val navPauseInBar = app.vela.ui.PauseInBar.on.value && !dpadFirst
     val mapDpad = remember { MapDpadController() }
-    var mapFocused by remember { mutableStateOf(false) }
-    var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)
+    val mapEngagedState = remember { mutableStateOf(false) }
+    var mapEngaged by mapEngagedState // arrows pan only while engaged (docs/dpad.md)
     // Focuses the center map target. Used ONLY for Choose-on-map (entered mid-session, so
     // requestFocus lands) — the cold-open bare map deliberately does not auto-focus it (docs/dpad.md).
     val mapFocusRequester = remember { FocusRequester() }
@@ -1198,126 +1198,8 @@ fun MapScreen(
         // drops exactly when panning janks - the number to watch while chasing map smoothness.
         if (app.vela.ui.BuildingDebug.on.value) BuildingDebugBadge(overlayDebugState)
 
-        // --- D-pad map target (docs/dpad.md) -------------------------------
-        // TWO-STAGE so the chrome stays reachable (v1 trapped focus on the map):
-        //  · FOCUSED (ring + "OK" pill): a normal focus stop — arrows traverse to the
-        //    search bar / chips / zoom buttons / FABs like any other element; OK engages.
-        //  · ENGAGED (crosshair + edge ring): arrows pan, OK "taps" the crosshair (or
-        //    confirms a Choose-on-map pick), holding OK long-presses (pin / direct pick),
-        //    +/−/zoom keys zoom, BACK disengages (focus stays on the target).
-        // Shown only when the MAP is the primary surface — with a list/sheet/panel open the
-        // panel owns focus (a center crosshair + focus stop over the results list stole DOWN
-        // traversal into the rows). Closing a panel returns to the bare map un-engaged (the first
-        // arrow reaches the search bar); only Choose-on-map auto-engages the target (see above).
-        if (dpadMode && !mapTargetHidden) {
-            if (mapEngaged) {
-                // Screen-edge ring: unmistakable "the MAP has the keys now" signal.
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
-                )
-            }
-            val centerHeld = remember { booleanArrayOf(false) } // long-press fired for the held OK
-            Box(
-                Modifier
-                    .align(Alignment.Center)
-                    .size(140.dp)
-                    .focusRequester(mapFocusRequester)
-                    .onFocusChanged {
-                        mapFocused = it.isFocused
-                        if (!it.isFocused) mapEngaged = false
-                    }
-                    .onKeyEvent { ev ->
-                        if (!mapFocused) return@onKeyEvent false
-                        val isOk = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter
-                        if (!mapEngaged) {
-                            // Plain focus stop: only OK does anything (engage); arrows fall
-                            // through to normal focus traversal so the chrome is reachable.
-                            return@onKeyEvent when {
-                                isOk && ev.type == KeyEventType.KeyDown -> true
-                                isOk && ev.type == KeyEventType.KeyUp -> { mapEngaged = true; true }
-                                else -> false
-                            }
-                        }
-                        val pan = 0.22f // fraction of the view per press; holds auto-repeat
-                        when (ev.type) {
-                            KeyEventType.KeyDown -> when (ev.key) {
-                                Key.DirectionUp -> { mapDpad.panBy(0f, -pan); true }
-                                Key.DirectionDown -> { mapDpad.panBy(0f, pan); true }
-                                Key.DirectionLeft -> { mapDpad.panBy(-pan, 0f); true }
-                                Key.DirectionRight -> { mapDpad.panBy(pan, 0f); true }
-                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                    val n = ev.nativeKeyEvent
-                                    if (n.repeatCount == 0) {
-                                        centerHeld[0] = false
-                                    } else if (!centerHeld[0] && n.eventTime - n.downTime >= 500) {
-                                        centerHeld[0] = true
-                                        mapDpad.longPressAtCenter()
-                                    }
-                                    true
-                                }
-                                Key.ZoomIn, Key.Plus, Key.Equals -> { mapDpad.zoomBy(1.0); true }
-                                Key.ZoomOut, Key.Minus -> { mapDpad.zoomBy(-1.0); true }
-                                else -> false
-                            }
-                            KeyEventType.KeyUp -> when (ev.key) {
-                                Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
-                                Key.ZoomIn, Key.Plus, Key.Equals, Key.ZoomOut, Key.Minus,
-                                -> true
-                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                    if (!centerHeld[0]) {
-                                        // In Choose-on-map mode OK = the crosshair confirm;
-                                        // otherwise it's a tap at the crosshair.
-                                        if (state.pickOnMap != null) vm.confirmMapPick() else mapDpad.selectAtCenter()
-                                    }
-                                    centerHeld[0] = false
-                                    true
-                                }
-                                else -> false
-                            }
-                            else -> false
-                        }
-                    }
-                    .focusable(),
-                contentAlignment = Alignment.Center,
-            ) {
-                when {
-                    // Crosshair only while the map is key-driven; Choose-on-map draws its own.
-                    mapEngaged && state.pickOnMap == null -> {
-                        val crossColor = MaterialTheme.colorScheme.primary
-                        Canvas(Modifier.size(36.dp)) {
-                            val cx = size.width / 2f
-                            val cy = size.height / 2f
-                            drawCircle(Color.White, radius = size.minDimension * 0.30f, style = Stroke(7f))
-                            drawCircle(crossColor, radius = size.minDimension * 0.30f, style = Stroke(3.5f))
-                            drawLine(crossColor, Offset(cx, 0f), Offset(cx, cy - 8f), 3.5f)
-                            drawLine(crossColor, Offset(cx, cy + 8f), Offset(cx, size.height), 3.5f)
-                            drawLine(crossColor, Offset(0f, cy), Offset(cx - 8f, cy), 3.5f)
-                            drawLine(crossColor, Offset(cx + 8f, cy), Offset(size.width, cy), 3.5f)
-                        }
-                    }
-                    // Focused but not engaged: a visible stop + how to enter map control.
-                    // In Choose-on-map mode draw NOTHING here — the ChooseOnMapOverlay
-                    // supplies the pin + "Move the map to set…" banner, and the target is
-                    // auto-engaged so arrows already pan; the "OK: move the map" pill would
-                    // be wrong there (OK confirms the pick, it doesn't enter map control).
-                    mapFocused && state.pickOnMap == null -> Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        shadowElevation = 4.dp,
-                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                    ) {
-                        Text(
-                            stringResource(R.string.mapscreen_dpad_engage),
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        )
-                    }
-                }
-            }
-        }
+        // The D-pad map target (docs/dpad.md), its own composable for MapScreen's size limits.
+        if (dpadMode && !mapTargetHidden) MapDpadTarget(state, vm, mapDpad, mapFocusRequester, mapEngagedState)
 
         // --- top overlay: nav banner while navigating, else search ----------
         // Route bar (issue #228): the road ahead as a strip down the LEFT edge, opposite the
@@ -3177,7 +3059,7 @@ private fun SearchResults(
     Card(
         // statusBarsPadding caps the sheet's growth below the status bar, so the handle pill
         // never slides under the clock / camera cutout when expanded (user 2026-07-09).
-        Modifier.statusBarsPadding().padding(top = 8.dp).fillMaxWidth(),
+        Modifier.statusBarsPadding().padding(top = 8.dp).coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = SheetPalette.ink(dark)),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -4613,6 +4495,7 @@ private fun BoxScope.NavTurnBanner(
             .landscapeColumn(landscapeChrome, sidePanelWidthDp)
             .statusBarsPadding()
             .padding(start = if (landscapeChrome) NAV_LAND_EDGE_DP else 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
+            .coversMap() // docs/dpad.md, map keys
             // Report the banner's bottom edge so the compass can drop just below it (any height),
             // and to the drive camera, which keeps the road ahead out from under it.
             .onGloballyPositioned {
@@ -4626,6 +4509,7 @@ private fun BoxScope.NavTurnBanner(
  *  MapScreen on 2026-09-13 - see [BuildingDebugBadge]. */
 @Composable
 private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: androidx.compose.ui.focus.FocusManager) {
+    CoversWholeMap() // docs/dpad.md, map keys
     SearchEntryContent(
         savedRoutes = state.savedRoutes.filter { it.pinned },
         onPickSavedRoute = { focusManager.clearFocus(); vm.openSavedRoute(it) },

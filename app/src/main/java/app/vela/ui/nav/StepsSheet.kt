@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
+import app.vela.ui.map.coversMap
 import app.vela.ui.place.FLING_COMMIT_DPS
 import app.vela.ui.place.sheetDragGestures
 import kotlin.math.roundToInt
@@ -266,6 +267,7 @@ fun StepsSheet(
     }
     Card(
         modifier
+            .coversMap() // docs/dpad.md, map keys
             .fillMaxWidth()
             .onSizeChanged { sheetHeightPx = it.height }
             // Invisible until measured: the enter offset is a fraction of the sheet's own height,
