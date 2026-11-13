@@ -3167,6 +3167,19 @@ when the feature ids match. Two requests at most.
   places. The search box keeps the user's words and the reworded search is not added to the
   recents. Off asks the plain search again. A saved or imported list, an offline search and
   Google off keep the local filter only.
+- A search along a route prices its places (`AlongRouteDetour`, `MapDataSource.detourAlongRoute`):
+  one OSRM `table` request on the FOSSGIS car backend for up to `MAX_PLACES` (30) of the places the
+  corridor kept. Each place gets two anchors on the route, `ANCHOR_M` (3,000 m) before and after
+  its nearest point, held to the ends of the line. The first point of the route is the car.
+  `Place.detourSeconds` = first anchor to place + place to second anchor - first anchor to second
+  anchor, floored at 0, all from the same router. The anchors compare a place with the stretch of
+  the route it sits on. A detour measured to the destination would compare it with the router's own
+  road for the whole trip, which is not always the road the route takes. `Place.distanceMeters`
+  becomes the road distance from the car. Rank: detour in whole minutes, then rating (higher
+  first), then distance. A place the router cannot reach, and any place past the first 30, follow
+  the priced ones in their old order and keep their old distance. The search waits
+  `DETOUR_WAIT_MS` (3 s); no answer keeps the travel-order list. The row shows "On the way" under
+  30 s and `+N min` above. Free-flow times, no traffic.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
   in-nav search and the car's lists. Every query must be one the offline store expands.
   `catalog()` is every chip in the default order, `arranged()` the catalog in the user's order

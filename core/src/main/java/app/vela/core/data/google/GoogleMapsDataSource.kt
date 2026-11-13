@@ -351,6 +351,12 @@ class GoogleMapsDataSource @Inject constructor(
         CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places))
     }
 
+    /** The open router prices the places (see [app.vela.core.data.AlongRouteDetour]). It does not
+     *  need Google, so "Use Vela without Google" keeps it. */
+    override suspend fun detourAlongRoute(route: List<LatLng>, places: List<Place>): List<Place>? = io {
+        app.vela.core.data.AlongRouteDetour.fetch(http, route, places)
+    }
+
     /**
      * Google's own autocomplete (see [SuggestParser]) for the typed suggestions. Not the
      * calibrated search endpoint: that one ranks a partial address by prominence over the
