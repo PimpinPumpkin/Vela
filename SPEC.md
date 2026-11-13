@@ -1557,8 +1557,16 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Prompt distances scale with speed v: far `max(400 m, v × 35 s)`, near `max(150 m, v × 10 s)`,
   each rounded to 50 m, and turn-now `v × 2.5 s` clamped to 25 to 90 m. `spoken` stores band
   slots, so each prompt speaks the true distance.
+- In `FULL`, any maneuver at `SpokenDetail.FAST_MPS` (22.2 m/s, 80 km/h) or more, and a ramp,
+  fork, keep, U-turn (`SpokenDetail.exitLike`) or turn onto an on-ramp (`NavEngine.onRampTurn`: a
+  nameless turn whose next spoken step, within 600 m, is a merge) at `EXIT_ONE_LINE_MPS` (15 m/s)
+  or more, has one approach line instead of two (`oneApproach`): `bandsFor` gives both slots
+  `max(near, v × FAST_APPROACH_S)`, `FAST_APPROACH_S` 15 s ("In a quarter mile" from 50 to 80
+  mph), so they are said together. Then comes the turn-now line. Far, near and turn-now made
+  eight lines of one exit, the fork on its ramp and the merge after it, and a car near 50 mph got
+  far, near and turn-now or one line by turns.
 - "How much the voice says" (`SpokenDetail`, Settings, Voice) has three values. `FULL` is the
-  far, near and turn-now lines above. `BRIEF` says each maneuver once, in its short form with no
+  lines above. `BRIEF` says each maneuver once, in its short form with no
   street name: a ramp, fork, keep or U-turn at the far distance and keeping its exit number, any
   other maneuver at the near distance, and nothing at the turn. `EXITS` is `BRIEF` for ramps,
   forks, keeps, U-turns and the arrival only; any other maneuver is spoken only at
@@ -1575,7 +1583,8 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   the choice is made. A sign with places only says the head alone. English marks the sign with
   " toward "; the other languages have no override and say `repeatShort`. A "then" leaves out a
   route its own line just named ("Keep slight left toward I 80 West, then keep slight left").
-  A merge skips the far band. Arrival gets one near-band cue.
+  A merge is said once: its near-band line, or the "then" of the step before it. At the merge
+  itself it only buzzes. Arrival gets one near-band cue.
 - In English a lane clause on a ramp of the same side drops the ramp's side: "Use the right
   lane to take the ramp toward ...", not "... the ramp on the right toward ...".
 - A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
@@ -1644,8 +1653,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   fire as the first turn is made (the far band plus `BAND_MERGE_S` of travel, `dueNext`), rides
   on the first turn's line at the turn only: "Take the ramp, then keep slight left". Its bands
   the car reaches within `BAND_MERGE_S` of the turn count as said (`NavState.chainedBands`); a
-  later one is still said. Not onto a merge, a roundabout or a step with lane guidance, and
-  never from a roundabout.
+  later one is still said; a merge named this way counts as said. A "then" says the step's lanes
+  (`withLanes`): "Take the exit toward US 50 East, then use the left lane to keep slight left".
+  Not onto a roundabout, and never from a roundabout.
 - The chained line at the first turn has to end before the second turn's own line, which
   interrupts (`turnNowLine`): the time to the second turn's turn-now point at the current pace
   against `SPEECH_CPS` (13 letters a second) plus `SPEECH_LEAD_S` (0.6 s). When the whole line
@@ -5282,7 +5292,7 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
-  spoken turn (far at max(400 m, 35 s), near at max(150 m, 10 s), and turn-now), up to
+  spoken turn (the approach bands above and turn-now), up to
   `MAX_PREPARED` (8), at background priority.
 - A line asked to be spoken drops every prepare still queued and ends the one being rendered at
   its next phrase. A phrase is one engine call and cannot be cut, so the line waits for the

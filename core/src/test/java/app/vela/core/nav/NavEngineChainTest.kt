@@ -110,13 +110,14 @@ class NavEngineChainTest {
         assertEquals(-1, NavEngine.chainedNext(r.maneuvers, doubleArrayOf(0.0, 1000.0, 1000.0 + NavEngine.CHAIN_M + 1.0, 1900.0), 1))
     }
 
-    /** An interchange at freeway speed: two forks 45 m apart, a third 180 m on, then a merge. */
-    private fun forks(): Route {
+    /** An interchange at freeway speed: two forks 45 m apart, a third 180 m on, then a merge.
+     *  [middleLanes] gives the middle fork lanes to say. */
+    private fun forks(middleLanes: List<app.vela.core.model.Lane> = emptyList()): Route {
         val poly = (0..300).map { pt(it * 10.0, 0.0) }
         val ms = listOf(
             Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 1500.0, 60.0),
             Maneuver(ManeuverType.FORK_LEFT, "Keep slight left toward Sacramento, Davis", pt(1500.0, 0.0), 45.0, 2.0, instructionNoRoad = "Keep slight left"),
-            Maneuver(ManeuverType.FORK_RIGHT, "Keep slight right toward Davis: Woodland", pt(1545.0, 0.0), 180.0, 7.0, instructionNoRoad = "Keep slight right"),
+            Maneuver(ManeuverType.FORK_RIGHT, "Keep slight right toward Davis: Woodland", pt(1545.0, 0.0), 180.0, 7.0, instructionNoRoad = "Keep slight right", lanes = middleLanes),
             Maneuver(ManeuverType.FORK_RIGHT, "Keep slight right toward Dixon", pt(1725.0, 0.0), 680.0, 27.0, instructionNoRoad = "Keep slight right"),
             Maneuver(ManeuverType.MERGE, "Merge onto Elm Street", pt(2405.0, 0.0), 595.0, 24.0, road = "Elm Street"),
             Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
@@ -147,6 +148,24 @@ class NavEngineChainTest {
         // The third fork still has its own line at the turn, and the middle one still buzzes.
         assertTrue("$said", said.any { it.first > 1600.0 && it.second == "Keep slight right" })
         assertEquals("$said", 1, middleBuzz)
+    }
+
+    @Test fun `a fork said with its lanes in the then is not said again two seconds later`() {
+        val lanes = listOf(app.vela.core.model.Lane(listOf("slight left"), valid = false), app.vela.core.model.Lane(listOf("slight right"), valid = true))
+        val r = forks(lanes)
+        var st = NavState()
+        val said = ArrayList<Pair<Double, String>>()
+        var m = 0.0
+        while (m <= 2900.0) {
+            val (s, ev) = NavEngine.update(r, st, pt(m, 0.0), speedMps = 25.0, bearingDeg = 90.0)
+            ev.filterIsInstance<NavEvent.Speak>().forEach { said += m to it.text }
+            st = s
+            m += 25.0
+        }
+        val atFirst = said.last { it.second.startsWith("Keep slight left") }
+        assertTrue("$said", atFirst.second.endsWith(", then use the right lane to keep slight right"))
+        val next = said.first { it.first > atFirst.first }
+        assertTrue("$said", next.second.startsWith("In ") && "Dixon" in next.second)
     }
 
     @Test fun `at town speed the second turn keeps its own line`() {

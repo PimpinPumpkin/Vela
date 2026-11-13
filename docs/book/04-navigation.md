@@ -68,18 +68,22 @@ progress so far, so a route that passes over itself cannot jump to a later leg.
 ```
 far prompt   = max(400 m, speed x 35 s)
 near prompt  = max(150 m, speed x 10 s)
+one prompt   = max(near, speed x 15 s)    // anything at 50 mph or more; exits from 34 mph
 turn now     = speed x 2.5 s, clamped 25..90 m   // also where the step advances
 PASSED_SLACK_M = 75    // a maneuver this far behind was passed in a gap: advance silently
 ```
 
-Each step gets at most a far and a near prompt, then the short turn-now line. At 30 m/s (about
-67 mph) the far prompt comes 1,050 m out and the near one 300 m out. In town the 400 m and 150 m
-floors apply. A prompt speaks the real distance, so a turn 40 m into a short step is not
-announced as "in 400 meters". A band the car would reach within 8 s of a prompt counts as said
-by it, so entering a step 170 m before its turn does not give "in 170 meters" and then "in 150
-meters" three seconds apart. The turn-now line interrupts whatever is playing, so a first prompt
-that could not end before it (13 letters a second, plus 0.6 s to start) keeps its lane clause and
-drops the sign's "toward" tail, the way a repeat does.
+A turn in town gets a far and a near prompt, then the short turn-now line, with the 400 m and
+150 m floors. Any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
+turn onto an on-ramp at 55 km/h (34 mph) or more, gets one prompt about 15 s out and the
+turn-now line: at 29 m/s (65 mph) that is "In a quarter mile" 450 m out, then "Take exit 12" at
+the gore. With far and near prompts too, an exit, the fork on its ramp and the merge after it
+took eight lines in two minutes. A prompt speaks the real distance, so a turn 40 m into a short
+step is not announced as "in 400 meters". A band the car would reach within 8 s of a prompt
+counts as said by it, so entering a step 170 m before its turn does not give "in 170 meters" and
+then "in 150 meters" three seconds apart. The turn-now line interrupts whatever is playing, so a
+first prompt that could not end before it (13 letters a second, plus 0.6 s to start) keeps its
+lane clause and drops the sign's "toward" tail, the way a repeat does.
 
 That is the Everything setting. "How much the voice says" in Settings, Voice has two shorter
 ones (`SpokenDetail`). Brief says each maneuver once, with no street name: "In 150 meters, turn
@@ -103,7 +107,8 @@ turn. The voice says "turn left" 25 m out either way.
   50 East"), because that is where the choice is made and the banner shows it.
 - A fork or keep that heads for the road the car is already on says so: "Keep left to stay on I
   80 West", on the banner and in the voice.
-- A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
+- A merge is said once, on its near prompt or as the "then" of the step before it, and only
+  buzzes where it joins. The destination gets one near prompt, and so does each stop
   (see Stops below).
 - The destination is said with its side, "Your destination is on the right", from the router or,
   when the router gives none, from where the destination's pin sits against the end of the line.
@@ -147,8 +152,9 @@ apart.
 
 A next step up to 500 m on whose first prompt would come as soon as the turn is made joins the
 line at the turn only: "Take the ramp, then keep slight left". Said apart, the two came a
-second apart. Its later prompt is still said when it comes well after. A merge, a roundabout or
-a step with lanes to say keeps its own lines.
+second apart. Its later prompt is still said when it comes well after. A step with lanes says
+them in the "then" ("then use the left lane to keep slight left"), and a merge said this way is
+not said again. A roundabout keeps its own lines.
 
 An exit with no number and no sign says "Take the ramp toward" the road it leads to, taken from
 the fork or merge after it, instead of a bare "Take the exit".

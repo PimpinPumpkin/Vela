@@ -257,6 +257,14 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Fewer voice lines on the freeway: any maneuver at 50 mph or more, and an exit, fork, keep,
+  U-turn or on-ramp turn from 34 mph, gets one line about 15 s out and one at the turn. A merge
+  is said once, often as the "then" of the step before it, and a "then" carries the lanes. A
+  recorded drive replayed through the engine went from 24 lines to 17, and an exit, the fork on
+  its ramp and the merge from eight to four. A Davis mock drive on the 4a said an I 80 on-ramp,
+  its merge, exit 75 and the turn after it as expected. Not yet heard on a real drive: whether a
+  quarter mile is enough warning to change lanes.
+
 - A roundabout is said on its approach and only buzzes at its entry, unless the entry line
   carries the next step: replayed on a recorded drive, the roundabout got its two approach
   lines and none at the entry. Not heard on a drive, nor through roundabouts in a row.
