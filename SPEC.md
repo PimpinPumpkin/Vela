@@ -3167,6 +3167,12 @@ when the feature ids match. Two requests at most.
   places. The search box keeps the user's words and the reworded search is not added to the
   recents. Off asks the plain search again. A saved or imported list, an offline search and
   Google off keep the local filter only.
+- A search along a route keeps a typed name to its own places (`QueryNameFilter`): the places whose
+  name holds every naming word of the query, where a word may be the start of a name word. A
+  naming word is one outside `PlaceNames.GENERIC`, in the singular or the plural; a describing word
+  beside it ("shell gas station") may be in the name or in the category. A query that reads as a
+  kind of place keeps every result: one with no naming word ("pizza", "burger"), one whose naming
+  words are in the category of at least as many results as in the name, or one no name matches.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
   in-nav search and the car's lists. Every query must be one the offline store expands.
   `catalog()` is every chip in the default order, `arranged()` the catalog in the user's order

@@ -2983,7 +2983,9 @@ class MapViewModel @Inject constructor(
             }
             try {
                 val res = dataSource.search(query, route[route.size / 2])
-                val along = RouteCorridor.alongRoute(res.places, route)
+                // A brand or a chain typed by name ("Shell") keeps only places with that name.
+                // A kind of place ("pizza", "gas station") keeps every result.
+                val along = RouteCorridor.alongRoute(app.vela.core.search.QueryNameFilter.apply(query, res.places), route)
                 // "Searched and nothing happened" has three different causes (the search came back
                 // empty, the corridor filter dropped everything, or the results arrived and the
                 // sheet did not show) and none of them used to leave a trace.
