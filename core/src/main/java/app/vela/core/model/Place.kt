@@ -137,11 +137,15 @@ data class PlaceDetails(
      *  reply had none: the thumbnail above the card reads it (`Place.svPanoId`). */
     val svPanoId: String? = null,
     val svYawDeg: Double? = null,
+    /** The place's category and a closure Google marked: a map label's first reply may lack both. */
+    val category: String? = null,
+    val temporarilyClosed: Boolean = false,
 ) {
     val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null &&
         rating == null && reviewCount == null && hours.isEmpty() && address == null && phone == null &&
         website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
-        about.isEmpty() && featuredReview == null && updates.isEmpty() && svPanoId == null
+        about.isEmpty() && featuredReview == null && updates.isEmpty() && svPanoId == null &&
+        category == null && !temporarilyClosed
 }
 
 /** One business post: its text, when it was posted, an optional link and photo. */

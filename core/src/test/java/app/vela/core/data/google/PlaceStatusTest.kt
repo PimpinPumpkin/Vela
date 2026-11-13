@@ -87,6 +87,19 @@ class PlaceStatusTest {
     /** Owner-set temporary closure → first-class flag (the place-sheet banner + hours suppression;
      *  the temp-closure resilience ask — when the owner DOES tell Google, Vela must be loud about it).
      *  Multilingual CONTAINS matching: several languages put the closed word first. */
+    @Test fun `a closed place's edit menu offers Reopen this place, an open one's does not`() {
+        // The shape of [1][96][5] in a place's own reply: entries with their kind at [6]. Open
+        // places carried kinds 1 and 2; a closed one carried 3 where 1 was (San Francisco and
+        // Davis listings, November 2026).
+        fun menu(vararg kinds: Int) = kotlinx.serialization.json.Json.parseToJsonElement(
+            kinds.joinToString(",", "[", "]") { "[\"label\",null,null,null,null,null,$it]" },
+        )
+        assertEquals(false, SearchParser.hasReopenAction(menu(1, 2)))
+        assertEquals(true, SearchParser.hasReopenAction(menu(3, 2)))
+        assertEquals(false, SearchParser.hasReopenAction(null))
+        assertEquals(false, SearchParser.hasReopenAction(menu()))
+    }
+
     @Test fun `temporary closure is detected across languages, and only when present`() {
         assertEquals(true, SearchParser.isTemporarilyClosed("Temporarily closed"))
         assertEquals(true, SearchParser.isTemporarilyClosed(null, "Temporarily closed")) // any status slot

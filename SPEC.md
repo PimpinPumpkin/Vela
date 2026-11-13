@@ -322,6 +322,7 @@ Results are at `root[64][i]`, and each entry's place node is `[1]`. The keys are
 | `hours203`, `hours118` | `[1][203][0]`, `[1][118][0][3][0]` | weekly hours (3.3) |
 | `departments` | `[1][118]` | per entry: name `[0]`, hours `[3][0]`, status `[3][1][4][0]` |
 | `closedFlag` | `[1][23]` | 1 = permanently closed |
+| `editMenu` | `[1][96][5]` | "Suggest an edit" entries, kind at `[6]`; kind 3 ("Reopen this place") on a closed place. A place's own reply only, not a list |
 | `popularTimes` | `[1][84]` | `[0]` holds 7 days, each `[dow, [[hour, percent, ...], ...]]` |
 | none | regex over the entry | Street View thumbnail pano id and yaw (`SearchParser.svThumb`) |
 
@@ -343,6 +344,13 @@ Shape rules:
   start like their open words. The integers beside the text (`statusCodeRich`,
   `statusCodeSimple`) are style markers and are not read: reading them colors closed places
   green.
+- A temporary closure usually sends no status text and no hours. `SearchParser.hasReopenAction`
+  reads it from `editMenu`: open places carried kinds 1 and 2, a closed one 3 in place of 1
+  (San Francisco and Davis listings). The status words ("Temporarily closed" and its
+  translations) still count. `closedFlag` wins: a permanently closed place also carries kind 3.
+  `PlaceDetails` carries the closure and the category, so a place opened from a map label, whose
+  first reply is a summary without them, gets both through `mergeDetails`. A closed place's sheet
+  says so in red and not "Hours not listed".
 
 #### Other locations of a business
 

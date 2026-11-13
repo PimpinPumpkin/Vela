@@ -257,6 +257,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Temporarily closed places (issue #930): the "Reopen this place" entry in a place's edit menu
+  marks the closure when Google sends no status text. Checked on the 4a against open San
+  Francisco listings (no kind 3) and a permanently closed Davis one (kind 3). No temporarily
+  closed listing was at hand to see its sheet.
 - A phone's own text-to-speech engine (issues #949, #944): its prompts are labeled navigation
   guidance, and it keeps the voice picked in its own settings when that voice speaks the
   directions' language. Neither test phone nor the emulator has a system engine, so neither has
