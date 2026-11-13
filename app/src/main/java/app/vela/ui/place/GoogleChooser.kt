@@ -431,6 +431,7 @@ fun GoogleStyleDirectionsPanel(
                                         listOfNotNull(
                                             formatDistance(r.distanceMeters),
                                             r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
+                                            r.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) },
                                             if (cams > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams) else null,
                                             if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                         ).joinToString(" · "),

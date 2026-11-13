@@ -6640,6 +6640,9 @@ class MapViewModel @Inject constructor(
                 // re-applied traffic), exactly as picking an alternate does, so preview == nav.
                 if (routes.firstOrNull()?.provisional == true) selectRoute(0)
                 if (routes.isNotEmpty() && stops.isEmpty() && plan == null) offerSavedRoutes(origin, dest, mode, s.avoidTolls, s.avoidHighways, s.avoidFerries, ::stillWanted)
+                if (routes.isNotEmpty() && plan == null && mode == TravelMode.DRIVE && !s.avoidTolls && app.vela.ui.TollOption.on.value) {
+                    offerNoTollRoute(origin, dest, mode, stops, s.avoidHighways, s.avoidFerries, ::stillWanted)
+                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // superseded by a newer route()/cleared — don't touch state on a dead job
             } catch (e: CalibrationNeededException) {
@@ -6712,6 +6715,42 @@ class MapViewModel @Inject constructor(
                 val now = _state.value.routes
                 refreshFlockOnRoute(now, ++routesEpoch, origin, dest, mode, emptyList(), avoidTolls, avoidHighways, avoidFerries)
             }
+        }
+    }
+
+    private var noTollJob: kotlinx.coroutines.Job? = null
+
+    /** Ask Google for the same trip with tolls avoided and set the answer beside the routes on
+     *  offer: the fastest says it may have tolls, the avoiding route says it has none, and each
+     *  row already shows its time and distance ([app.vela.core.nav.TollCompare]). The avoiding
+     *  route joins the list at the END when it is not one of the routes. A route set that changed
+     *  while this ran (a mode switch, an edit, a saved route lifted to the top) is left alone. */
+    private fun offerNoTollRoute(
+        origin: LatLng, dest: LatLng, mode: TravelMode, stops: List<LatLng>,
+        avoidHighways: Boolean, avoidFerries: Boolean, stillWanted: () -> Boolean,
+    ) {
+        noTollJob?.cancel()
+        noTollJob = viewModelScope.launch {
+            val avoiding = runCatching { dataSource.directions(origin, dest, mode, stops, true, avoidHighways, avoidFerries) }
+                .getOrDefault(emptyList()).firstOrNull() ?: return@launch
+            val latest = _state.value.routes
+            if (latest.isEmpty() || !stillWanted()) return@launch
+            val plan = withContext(Dispatchers.Default) {
+                app.vela.core.nav.TollCompare.plan(latest, avoiding, app.vela.core.nav.SavedRoutes::sameWay)
+            } ?: return@launch
+            var added: List<app.vela.core.model.Route>? = null
+            _state.update { st ->
+                if (st.routes !== latest || !stillWanted()) st
+                else {
+                    val out = app.vela.core.nav.TollCompare.apply(st.routes, plan, avoiding)
+                    added = out.takeIf { plan.avoidingIdx == null }
+                    val active = st.routes.indexOfFirst { it === st.activeRoute }.takeIf { it >= 0 }?.let { out[it] } ?: st.activeRoute
+                    st.copy(routes = out, activeRoute = active)
+                }
+            }
+            // The list grew: the camera counts are index-aligned, so count again.
+            added?.let { refreshFlockOnRoute(it, ++routesEpoch, origin, dest, mode, stops, false, avoidHighways, avoidFerries) }
+            android.util.Log.i("VelaToll", "tolls: fastest may have tolls, avoiding route ${if (plan.avoidingIdx == null) "added" else "already on offer"}")
         }
     }
 

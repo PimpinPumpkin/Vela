@@ -2361,6 +2361,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             val sub = listOfNotNull(
                 formatDistance(r.distanceMeters),
                 r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.place_via, it) },
+                r.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) },
                 trafficWord,
             ).joinToString("  ·  ")
             r.savedName?.let { SavedRouteChip(it, Modifier.padding(vertical = 2.dp)) }

@@ -202,6 +202,10 @@ private val PLAIN_TURNS = setOf(
     ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.UTURN,
 )
 
+/** [Route.tolls]: the fastest route differs from the one Google gives with tolls avoided, so it
+ *  probably uses a toll road ([MAY_HAVE_TOLLS]); the avoiding route has none ([NO_TOLLS]). */
+enum class TollNote { MAY_HAVE_TOLLS, NO_TOLLS }
+
 data class Route(
     val polyline: List<LatLng>,
     val legs: List<RouteLeg>,
@@ -245,6 +249,9 @@ data class Route(
     val detourPlan: List<LatLng> = emptyList(),
     /** The name of the user's saved route this is (issue #622); shown on its row instead of the "via". */
     val savedName: String? = null,
+    /** What the chooser can say about tolls on this route, from asking Google for the same trip with
+     *  tolls avoided ([app.vela.core.nav.TollCompare]). Null when it says nothing. */
+    val tolls: TollNote? = null,
     // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
     val source: RouteSource = RouteSource.UNKNOWN,
     /** Local road name -> its Latin alias (OSM `name:en`, else a Latin `name:latin`) for the roads this
