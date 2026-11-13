@@ -425,9 +425,11 @@ delivery apps that hand over one stop after another.
 With a route on screen, the chooser's chips, the place sheet's along-route chips and the in-nav
 search field call `searchAlongRoute`:
 
-- It is one search centered on the route's middle point, with the template's own window (about
-  25 km) and no ranking point. There is no nearby pass, ambient merge, address geocoding or
-  intent parsing.
+- A route up to 25 km is one search centered on the route's middle point, with the template's
+  own window (about 25 km) and no ranking point. A longer route gets a window every 20 km from
+  the start, at most 6, so the search reaches about 120 km ahead. The windows run at the same
+  time and their results merge by place id. There is no nearby pass, ambient merge, address
+  geocoding or intent parsing.
 - `RouteCorridor.alongRoute` keeps results within 3 km of the line and sorts them in travel
   order. The distance shown is the distance along the route to the result plus its distance off
   the line.
@@ -495,9 +497,8 @@ corridor filter. [Chapter 10](10-android-auto.md) covers the rest.
   rows read as bare names until opened.
 - The on-device search that runs after a failed online search is thinner than the offline path.
   It has no address fill and no "businesses at this address" step.
-- Search along a route is one window at the route's middle. On a trip much longer than about
-  25 km, places near either end are not in the answer. It would need a search per stretch of
-  the route. It also has no offline path and reports that the search failed.
+- Search along a route reaches about 120 km ahead. Farther places come when you search again
+  from closer. It has no offline path and reports that the search failed.
 - With Google off and no download, a category search reads about 2 km of places around the
   search point. Farther places come only from an installed place pack.
 - Intents need a word table. Estonian gets the English table. Chinese and Japanese get no fuzzy

@@ -54,6 +54,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -2982,7 +2983,7 @@ class MapViewModel @Inject constructor(
                 )
             }
             try {
-                val res = dataSource.search(query, route[route.size / 2])
+                val res = searchAlongWindows(query, route)
                 val along = RouteCorridor.alongRoute(res.places, route)
                 // "Searched and nothing happened" has three different causes (the search came back
                 // empty, the corridor filter dropped everything, or the results arrived and the
@@ -3005,6 +3006,26 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(searching = false, status = appContext.getString(R.string.mapvm_search_failed)) }
             }
         }
+    }
+
+    /** The places for a search along [route]: one search at the middle of a short route, and on a
+     *  long one a window every 20 km ([RouteCorridor.searchCenters]), since the one window at the
+     *  middle never saw the places near either end. The windows run together and merge by place
+     *  id. One failing only thins the list; all failing is a failed search. */
+    private suspend fun searchAlongWindows(query: String, route: List<LatLng>): app.vela.core.model.SearchResult {
+        val centers = RouteCorridor.searchCenters(route)
+        if (centers.size == 1) return dataSource.search(query, centers[0])
+        val pages = kotlinx.coroutines.coroutineScope {
+            centers.map { c ->
+                async {
+                    try { Result.success(dataSource.searchOnce(query, c)) }
+                    catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (e: Exception) { Result.failure(e) }
+                }
+            }.awaitAll()
+        }
+        if (pages.none { it.isSuccess }) throw pages.first().exceptionOrNull()!!
+        return app.vela.core.model.SearchResult(query, pages.flatMap { it.getOrDefault(emptyList()) }.distinctBy { it.id })
     }
 
     /** Handle an external `geo:` / Google-Maps link (Vela as the system maps
