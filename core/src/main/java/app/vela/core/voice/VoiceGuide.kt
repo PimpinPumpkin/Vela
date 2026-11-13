@@ -307,6 +307,17 @@ class VoiceGuide @Inject constructor(
         // language it has no voice for.
         t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
+        // Labeled as navigation guidance, as the focus request and Vela's own voice are (issue
+        // #949). Unlabeled, the engine played as music: a car or a projection app routing audio by
+        // usage mixed the prompts into the music instead of ducking it.
+        runCatching {
+            t.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+        }
         systemReady = true
         systemInitFailed = false
         lastSystemLang = null // force setLanguage on the first utterance

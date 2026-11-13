@@ -5266,6 +5266,10 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
 - `showStatus` cards dismiss after `STATUS_AUTO_MS` (10 s) with a draining bar
   (`InfoCard(autoMs)`), frozen while focused. A card with a fix (`statusVoiceAction`) stays.
   `flashStatus` cards drain over their own duration.
+- A system TTS speaks with `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` and `CONTENT_TYPE_SPEECH`
+  (`setAudioAttributes` in `onInit`), as Vela's own voice and the focus request do. Unlabeled,
+  its prompts played as music, and a car or a projection app that routes audio by usage mixed
+  them into the music instead of ducking it.
 - Audio focus is refcounted through the utterance callbacks. A system TTS `speak()` returning
   `ERROR` fires no callback, so that path rolls back its acquire. A failed `onInit` clears the
   pending queue.
