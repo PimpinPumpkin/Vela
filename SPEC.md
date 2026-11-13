@@ -3167,6 +3167,11 @@ when the feature ids match. Two requests at most.
   places. The search box keeps the user's words and the reworded search is not added to the
   recents. Off asks the plain search again. A saved or imported list, an offline search and
   Google off keep the local filter only.
+- Search along a route (`MapViewModel.searchAlongWindows`): a route up to
+  `RouteCorridor.ONE_WINDOW_MAX_M` (25 km) is one `search` at its middle vertex. A longer route gets
+  `searchCenters`: a window every `WINDOW_SPACING_M` (20 km) from the start, at most `MAX_WINDOWS`
+  (6), the last never past the end. Each window is one `searchOnce`, run in parallel and merged by
+  place id. One failing window thins the list. All failing is a failed search.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
   in-nav search and the car's lists. Every query must be one the offline store expands.
   `catalog()` is every chip in the default order, `arranged()` the catalog in the user's order
