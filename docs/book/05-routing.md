@@ -231,6 +231,14 @@ Online they ride on Google's request, and Google's route is the avoiding route.
 feature block. The open router's own routes are not offered, because they were computed
 without the avoid.
 
+With the Avoid tolls chip off, the chooser also asks Google for the same trip with tolls avoided
+(Settings > Navigation > No-toll route option). Google's reply says nothing about tolls, but the
+avoid flag changes the route only when the fastest one uses a toll road. So when the avoiding
+route runs the same way as the fastest, nothing is said. When it differs, the fastest row says
+"May have tolls" and the avoiding row says "No tolls", added at the end of the list if it is not
+already one of the routes. Each row shows its own time and distance. The word is "may" because
+the answer is read from the route, with no toll record behind it.
+
 The open router cannot avoid anything. The FOSSGIS profiles were built without excludable
 classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_EXCLUDE` is
 false and the parameter is never sent.

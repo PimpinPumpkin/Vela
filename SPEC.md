@@ -1277,6 +1277,16 @@ through what the plan avoided. They apply to DRIVE.
   nothing for a car.
 - Nothing honored the avoid: the normal route is tagged `avoidNotHonored`. The chooser shows the
   note only when every route carries it.
+- No-toll option (`TollOption`, on by default). For a drive with the Avoid tolls chip off and no
+  link plan, the chooser asks once more for the same trip with tolls avoided
+  (`MapViewModel.offerNoTollRoute`), after the first routes are on screen. Google's reply carries
+  no toll data, but its avoid flag changes the route only when the fastest one uses a toll road,
+  so `TollCompare.plan` reads the answer. The avoiding route running the same way as the fastest
+  (`SavedRoutes.sameWay`, both ways) says nothing. Otherwise the fastest row says "May have tolls"
+  (`Route.tolls`) and the avoiding row says "No tolls": an existing row when one runs the same way,
+  else the avoiding route added at the END of the list, since other lists index into it, and the
+  flock counts run again. A route set that changed while the request ran is left alone. An
+  avoiding route tagged `avoidNotHonored` says nothing.
 
 #### Walking
 

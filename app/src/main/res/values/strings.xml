@@ -1350,6 +1350,10 @@
     <string name="settings_bike_safe_hint">Cycling routes favor signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
     <string name="settings_route_picker">Google-style route picker</string>
     <string name="settings_route_picker_hint">Shows one route at a time, with the others behind a tap and their times on the map, and Start along the bottom. Turn it off for Vela\'s classic panel, which lists every route at once.</string>
+    <string name="settings_toll_option">No-toll route option</string>
+    <string name="settings_toll_option_hint">When you plan a drive, also asks for the same trip with tolls avoided. If the fastest route differs, it is marked "May have tolls" and the route without tolls is listed beside it, each with its own time and distance. One more directions request per trip.</string>
+    <string name="route_may_have_tolls">May have tolls</string>
+    <string name="route_no_tolls">No tolls</string>
     <string name="settings_turn_arrows">Turn arrows on the route</string>
     <string name="settings_turn_arrows_hint">Short arrows on the route at the turns ahead while you drive.</string>
     <string name="settings_route_bar">Road ahead bar</string>
