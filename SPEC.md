@@ -1277,6 +1277,36 @@ through what the plan avoided. They apply to DRIVE.
   nothing for a car.
 - Nothing honored the avoid: the normal route is tagged `avoidNotHonored`. The chooser shows the
   note only when every route carries it.
+- Toll prices (`Tolls.charges`, `routeTollText`): a route row shows "Toll about $X" for a car where
+  a table holds the road. Google's reply gives no toll price, so the prices come from the operators'
+  published rate grids, each dated in the code. A held road is matched to the route's line by
+  `RouteOverlap.runsAlong`: the road's line is walked every `SAMPLE_M` (25 m) and lies on the route
+  when at least `MIN_SAMPLES` (3) steps are within `MAX_OFF_M` (40 m) of it and it runs the way the
+  route does there, so a road that crosses the route is not on it. A toll is priced at the time the
+  route reaches it, now plus its share of the route's time, on Eastern time (`Tolls.ZONE`).
+  "I have a toll transponder" (`TollTransponder`, off by default) drops the fees below from the row.
+- Quebec's two toll crossings (`QuebecTolls`, `QuebecTollBridges`): the `bridge=yes` and `toll=yes`
+  OpenStreetMap ways of the A-25 and the A-30 (queried 2026-10-31), matched in either direction.
+  Car (category B, two axles): A-25, grid of 1 June 2025, $4.12 in the peaks of a working day
+  (06:01 to 09:00, 15:01 to 18:00) and $3.30 at other times, plus $6.50 for a crossing by a vehicle
+  with no account (the grid's administration fee on the first payment request), shown as
+  "+ $6.50 fee". A-30, grid of 28 February 2026, $4.40 at every hour, no such fee. A weekday public
+  holiday counts as a working day. Electric vehicles are free on both and trucks pay more: neither
+  is modeled.
+- Highway 407 ETR (`Ontario407`, `Ontario407Data`): the toll is per kilometer by 12 zones, direction
+  and time band, plus a $1 trip toll and a $5.30 camera charge per trip without a transponder (rate
+  chart from 1 January 2026, `407etr.com/en/rate-chart-light`). The zone boundaries are not held: the
+  exits in OpenStreetMap carry only numbers. So the price is a range, from the cheapest zone's rate
+  to the dearest zone's rate for the direction and band (`RATES`, read from the page's own tables),
+  times the kilometers driven on the road. The road is the 477 mainline ways tagged `ref=407 ETR`,
+  `toll=yes`, `oneway=yes` (queried 2026-10-31), in traffic direction. `runs` samples the route every
+  50 m and counts a sample on the road when a line going the same way (within 60 degrees) is within
+  25 m of it. A run holds across a gap of 300 m and counts from 1 km, so an overpass is not a trip.
+  Each run is priced at its entry time: weekday bands start 05:00, 07:00, 09:30, 10:30, 14:30,
+  15:30, 18:00 and 21:00, weekend bands 08:30, 10:00, 19:00 and 21:00, and the last band runs
+  overnight. Saturday and Sunday are the weekend; a weekday holiday is priced as a weekday.
+  `TollCharge.cents` and `maxCents` hold the range with the $1 trip toll of each run, `feeCents` the
+  camera charges. The row reads "Toll about $A to $B + $C fee".
 
 #### Walking
 

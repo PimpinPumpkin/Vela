@@ -107,6 +107,12 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   "Stops" sheet comes back to it, so you can drag it into place and add the next. A stop added
   during a drive goes last; open the sheet to move it.
 - Avoid tolls, highways, ferries or cameras. Set Leave now, Depart at or Arrive by.
+- A route over the A-25 or A-30 bridge in Quebec shows the toll for a car, at the time it reaches the
+  bridge, from the operators' published rates. Without a transponder the A-25's administration fee is
+  shown too.
+- A route on Ontario's Highway 407 ETR shows a toll range for a car, from the kilometers driven and the
+  road's published rates for the direction and the hour, with the camera charge when there is no
+  transponder.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.
 - A step list before you start. Tap a step to see it on the map.

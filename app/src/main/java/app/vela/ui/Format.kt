@@ -85,6 +85,11 @@ fun formatDuration(seconds: Double): String {
     return if (m == 0) "$h h" else "$h h $m min"
 }
 
+/** [cents] as Canadian dollars in the app language: "$4.40", or "4,40 $" in French. */
+fun formatCad(cents: Int): String {
+    val locale = if (AppLocale.effective().language == "fr") Locale.CANADA_FRENCH else Locale.CANADA
+    return java.text.NumberFormat.getCurrencyInstance(locale).format(cents / 100.0)
+}
 /** Current speed as a (value, unit) pair for the speedometer, e.g. (65, "mph") —
  *  imperial vs metric follows the [Units] preference. */
 fun formatSpeed(metersPerSecond: Float): Pair<Int, String> =

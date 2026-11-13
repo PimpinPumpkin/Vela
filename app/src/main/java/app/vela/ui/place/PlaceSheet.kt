@@ -2361,6 +2361,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             val sub = listOfNotNull(
                 formatDistance(r.distanceMeters),
                 r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.place_via, it) },
+                routeTollText(r),
                 trafficWord,
             ).joinToString("  ·  ")
             r.savedName?.let { SavedRouteChip(it, Modifier.padding(vertical = 2.dp)) }

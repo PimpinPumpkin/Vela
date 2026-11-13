@@ -231,6 +231,22 @@ Online they ride on Google's request, and Google's route is the avoiding route.
 feature block. The open router's own routes are not offered, because they were computed
 without the avoid.
 
+Google gives no toll price. For the toll roads Vela holds a table for, a route row shows the toll
+for a car, priced at the time the route reaches the road. Quebec has two toll crossings, the A-25
+bridge between Montreal and Laval and the A-30 bridge over the St. Lawrence. Their lines come from
+OpenStreetMap and their rates from the operators' published grids: the A-25 costs $4.12 in the
+weekday peaks and $3.30 at other times, the A-30 $4.40 at all hours. Without a transponder the A-25
+bills the plate and adds an administration fee of $6.50 for each crossing, which the row shows too.
+"I have a toll transponder" removes it. The grids change each year and the table in the code names
+the date of each. Electric vehicles do not pay, and a truck pays more.
+
+Ontario's Highway 407 ETR is priced by the kilometer, with a rate for each of 12 zones that changes
+with the direction and the hour. Vela does not know where one zone ends and the next begins, so it
+shows a range: the kilometers you drive on the road, at the cheapest zone's rate and at the dearest
+zone's rate for your direction and the time you reach the road. The $1 trip toll is in both ends of
+the range. Without a transponder the camera charge of $5.30 per trip is added. The range is wide in
+the rush hours and narrow at night.
+
 The open router cannot avoid anything. The FOSSGIS profiles were built without excludable
 classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_EXCLUDE` is
 false and the parameter is never sent.
