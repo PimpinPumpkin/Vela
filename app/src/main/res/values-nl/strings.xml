@@ -36,7 +36,7 @@
     <string name="settings_voice_speak">Uitspreken</string>
     <string name="settings_voice_nav_sample">Navigatievoorbeeld</string>
     <string name="settings_voice_speed">Spraaksnelheid · %1$s</string>
-    <string name="settings_voice_speed_hint">Langzamere of snellere gesproken instructies, tik op − / + (er wordt een voorbeeld afgespeeld). 1,00× is normaal.</string>
+    <string name="settings_voice_speed_hint">Langzamere of snellere gesproken instructies. Tik op − / + (er wordt een voorbeeld afgespeeld). 1,00× is normaal.</string>
     <string name="settings_voice_variant">Stemvariant #%1$d</string>
     <string name="settings_voice_variant_of">Stemvariant #%1$d van %2$d</string>
     <string name="settings_voice_variant_field">Variant #</string>
@@ -46,7 +46,7 @@
     <string name="settings_vibrate_on_turns">Trillen bij afslagen</string>
     <string name="settings_mode_driving">Auto</string>
     <string name="settings_mode_walking">Lopen</string>
-    <string name="settings_mode_cycling">Fiets</string>
+    <string name="settings_mode_cycling">Fietsen</string>
     <string name="settings_mode_transit">OV</string>
     <string name="settings_vibrate_hint">Richtinggecodeerde trillingen bij elke afslag, verschillend voor links en rechts, zodat u een route op gevoel kunt volgen. Stel het per vervoerswijze in (bijv. aan voor fietsen en lopen, uit tijdens het rijden).</string>
     <string name="settings_keep_screen_on">Scherm aan houden tijdens navigeren</string>
@@ -116,7 +116,7 @@
     <string name="settings_data_privacy_hint">Vela praat rechtstreeks vanaf dit apparaat met Googles publieke endpoints: geen backend, geen account, geen API-sleutel. Google ziet je IP, zoekopdracht en kaartgebied, niet wie je bent.</string>
     <string name="settings_privacy_button">Welke gegevens Google ontvangt</string>
     <string name="settings_google_free">Vela zonder Google gebruiken</string>
-    <string name="settings_google_free_hint">Er wordt niets naar Google gestuurd. Zoeken gebruikt OpenStreetMap en je gedownloade regio\'s, plaatsen op de kaart komen uit Vela\'s eigen gegevens, en routes komen van de open routeplanner, zonder live verkeer. Je verliest recensies, foto\'s, openingstijden, live aankomsttijden, Street View, ov-routes en de satellietbeelden van dichtbij; gedownloade regio\'s werken nog steeds volledig offline.</string>
+    <string name="settings_google_free_hint">Er wordt niets naar Google gestuurd. Zoeken gebruikt OpenStreetMap en je gedownloade regio\'s, plaatsen op de kaart komen uit Vela\'s eigen gegevens, en routes komen van de open routeplanner, zonder live verkeer. Je verliest recensies, foto\'s, Google\'s openingstijden, live aankomsttijden, Street View en de satellietbeelden van dichtbij. Transit-aanwijzingen komen van de open planner. Gedownloade regio\'s werken nog steeds volledig offline.</string>
     <string name="settings_diagnostics">Diagnostiek</string>
     <string name="settings_diagnostics_hint">Standaard uit. Indien aan houdt Vela een kort lokaal logboek bij dat je kunt exporteren en aan een ontwikkelaar geven. Er wordt niets geüpload, en uitzetten wist het.</string>
     <string name="settings_share_diagnostics">Diagnostiek delen</string>
@@ -138,7 +138,7 @@
     <string name="settings_cancel">Annuleren</string>
     <string name="settings_crash_hint">Vela is onlangs onverwacht gesloten. Het crashrapport (stacktrace) sturen helpt het op te lossen, het is een gewoon tekstbestand, zonder persoonlijke gegevens.</string>
     <string name="settings_crash_export">Crashrapport exporteren</string>
-    <string name="settings_crash_discard">Verwijderen</string>
+    <string name="settings_crash_discard">Negeren</string>
     <string name="settings_crash_diag_offer">Diagnostiek staat uit, dus er is niets vastgelegd vlak voor deze crash. Zet het aan om de volgende keer meer details te bewaren.</string>
     <string name="settings_crash_enable_diag">Diagnostiek inschakelen</string>
     <string name="settings_diag_consent_title">Diagnostiek inschakelen?</string>
@@ -159,7 +159,7 @@
     <string name="settings_voice_lib_empty_hint">★ markeert de aanbevolen stemmen. Elke stem werkt offline op je telefoon.</string>
     <string name="settings_voice_lib_installed_hint">Geïnstalleerd: %1$d MB · %2$d stem(men).</string>
     <!-- format -->
-    <string name="settings_voice_lib_lang_hint">Uw apptaal is %1$s, download hieronder een %2$s-stem zodat de gesproken instructies overeenkomen (een Engelse stem zou %3$s straatnamen verkeerd uitspreken).</string>
+    <string name="settings_voice_lib_lang_hint">Aanwijzingen worden gegeven in %1$s. Download hieronder een %2$s stem zodat de gesproken instructies daarmee overeenkomen (een Engelse stem zou %3$s straatnamen verkeerd uitspreken).</string>
     <string name="settings_voice_search">Stemmen zoeken</string>
     <string name="settings_voice_show_more">%1$d meer tonen</string>
     <string name="settings_voice_show_less">Minder tonen</string>
@@ -389,7 +389,7 @@
     <string name="welcome_tagline">Kaarten en navigatie, gedegoogeld.</string>
     <string name="welcome_feature_no_tracking_title">Geen tracking</string>
     <string name="welcome_feature_places_title">Echte plaatsen en routes</string>
-    <string name="welcome_feature_places_body">Live zoeken, recensies, foto\'s, OV en verkeersbewuste routes.</string>
+    <string name="welcome_feature_places_body">Live zoeken, beoordelingen, foto\'s, OV en verkeersbewuste routes.</string>
     <string name="welcome_feature_open_source_title">Gratis en open source</string>
     <string name="welcome_feature_open_source_body">GPLv3, gebouwd voor GrapheneOS en andere gedegoogelde telefoons.</string>
     <string name="welcome_get_started">Aan de slag</string>
@@ -497,7 +497,7 @@
     </plurals>
     <string name="place_transit_stop_id">Halte %1$s</string>
     <!-- format -->
-    <string name="place_transit_tickets">Tickets &amp; info</string>
+    <string name="place_transit_tickets">Kaartjes &amp; Informatie</string>
     <string name="route_detail_unavailable">Lijndetails niet beschikbaar</string>
     <string name="place_transit_now">Vertrekt nu</string>
     <string name="place_transit_in_min">over %1$d min</string>
@@ -542,7 +542,7 @@
     <string name="car_along_none">Niets gevonden in de buurt</string>
     <string name="car_stop_added">%1$s toegevoegd als volgende stop</string>
     <string name="car_continue_on">Ga verder op %1$s</string>
-    <string name="car_no_route">Geen route, controleer je locatie</string>
+    <string name="car_no_route">Geen route beschikbaar. Controleer je locatie.</string>
     <string name="map_parking_saved">Parkeerplek opgeslagen</string>
     <string name="map_parking_no_fix">Wachten op locatie</string>
     <string name="map_parking_cleared">Parkeerplek gewist</string>
@@ -726,10 +726,10 @@
     <string name="settings_asr_use">Gebruiken</string>
     <!-- format -->
     <string name="no_browser_installed">Je toestel heeft geen browser</string>
-    <string name="street_view_none">No Street View imagery here</string>
-    <string name="street_view_move">Move here</string>
-    <string name="street_view_dates">See other dates</string>
-    <string name="street_view_fullscreen">Toggle full screen</string>
+    <string name="street_view_none">Geen Street View afbeeldingen hier</string>
+    <string name="street_view_move">Hierheen verplaatsen</string>
+    <string name="street_view_dates">Andere datums weergeven</string>
+    <string name="street_view_fullscreen">Volledig scherm schakelen</string>
     <string name="softkey_options">Opties</string>
     <string name="softkey_search">Zoeken</string>
     <string name="softkey_recenter">Centreren</string>
@@ -744,7 +744,7 @@
     <string name="voice_error_vad">Een deel van het spraakmodel ontbreekt. Download het opnieuw via Instellingen \u2192 Zoeken.</string>
     <string name="voice_error_audio">Deze telefoon opende de microfoon niet voor Vela. Sluit andere apps die audio opnemen en probeer opnieuw.</string>
     <string name="voice_error_recording">De opname stopte onverwacht. Probeer opnieuw.</string>
-    <string name="place_tab_reviews">Reviews</string>
+    <string name="place_tab_reviews">Beoordelingen</string>
     <string name="place_tab_about">Info</string>
     <string name="place_copy_name">Naam kopiëren</string>
     <string name="update_notes_show">Wat is nieuw</string>
@@ -764,7 +764,7 @@
     <string name="cat_hospitals">Ziekenhuizen</string>
     <string name="cat_banks">Banken</string>
     <string name="cat_post_offices">Postkantoren</string>
-    <string name="cat_campgrounds">Campings</string>
+    <string name="cat_campgrounds">Kampeerplaatsen</string>
     <string name="settings_search_hint">Instellingen doorzoeken</string>
     <string name="settings_search_none">Geen resultaten</string>
     <string name="settings_app_name_title">Appnaam</string>
@@ -775,7 +775,7 @@
     <string name="suggestion_contact_badge">Contact</string>
     <string name="settings_speed_cams">Flitspalen</string>
     <string name="settings_speed_cam_warn">Hardop waarschuwen</string>
-    <string name="settings_speed_cam_warn_hint">Zegt \"Flitspaal vooruit\" en geeft een signaal weer, wanneer je er een nadert tijdens de navigatie, zo\'n twaalf seconden van tevoren. Volgt je instelling voor gesproken aanwijzingen. Waarschuwen voor flitspalen tijdens het rijden is in sommige landen beperkt, dus dit staat uit tenzij je het aanzet.</string>
+    <string name="settings_speed_cam_warn_hint">Zegt \"Flitspaal verderop\" en geeft een signaal weer, wanneer je er een nadert tijdens de navigatie, zo\'n twaalf seconden van tevoren. Volgt je instelling voor gesproken aanwijzingen. Waarschuwen voor flitspalen tijdens het rijden is in sommige landen verboden, dus dit staat uit tenzij je het aanzet.</string>
     <string name="nav_speed_camera_ahead">Flitspaal vooruit</string>
     <string name="settings_flock_nav_card">Waarschuwing voor kentekencamera\'s</string>
     <string name="settings_flock_nav_card_hint">Toont tijdens het navigeren een melding wanneer je een kentekencamera op je route nadert. Camera\'s die op een kruisende weg gericht zijn, worden overgeslagen. Standaard uit.</string>
@@ -1081,7 +1081,7 @@
     <string name="area_pick_estimating">Grootte berekenen…</string>
     <string name="area_pick_too_large">Te groot om als één gebied op te slaan. Zoom in, of download hieronder heel %1$s.</string>
     <string name="area_pick_too_large_plain">Te groot om als één gebied op te slaan. Zoom iets verder in.</string>
-    <string name="settings_area_confirm_region">Ook %1$s ophalen voor offline routes, plaatsen en de kaart buiten dit gebied: ongeveer %2$s. Die zijn alleen als hele regio te krijgen.</string>
+    <string name="settings_area_confirm_region">Tevens %1$s voor offline routes, plaatsen en de kaart buiten dit gebied: ongeveer %2$s. Die zijn alleen als hele regio te krijgen.</string>
     <string name="settings_area_confirm_region_have">Offline routes en plaatsen voor %1$s zijn al gedownload.</string>
     <string name="settings_routing_updating">Bijwerken… %1$d%%</string>
     <string name="settings_google_usage">Verzoeken aan Google</string>
@@ -1120,7 +1120,7 @@
     <string name="settings_maps_links_off">Android opent Google Maps-links in de browser. Om ze in Vela te openen, zet je Ondersteunde links openen aan en voeg je de links toe onder Standaard openen.</string>
     <string name="settings_maps_links_open">Instellingen voor Standaard openen</string>
     <string name="mapvm_cells_progress">%1$s, deel %2$d van %3$d</string>
-    <string name="mapvm_cells_ready">Routes en plaatsen voor dit deel van %1$s werken offline</string>
+    <string name="mapvm_cells_ready">Aanwijzingen en plaatsen voor dit deel van %1$s werken offline</string>
     <string name="mapvm_cells_incomplete">Sommige stukken van %1$s zijn niet gedownload. Probeer het later opnieuw.</string>
     <plurals name="area_pick_cells">
         <item quantity="one">Download offline routes en plaatsen voor alleen dit gebied: ongeveer %1$s (%2$d deel van de regio)</item>
@@ -1136,7 +1136,7 @@
         <item quantity="other">%1$d stukken hebben een nieuwere versie</item>
     </plurals>
     <string name="settings_confirm_end_nav">Vragen voordat de navigatie wordt beëindigd</string>
-    <string name="settings_confirm_end_nav_hint">De rode X en Terug vragen tijdens een rit eerst om bevestiging, zodat een verdwaalde tik de rit niet beëindigt</string>
+    <string name="settings_confirm_end_nav_hint">Tijdens een rit vraagt \"Terug\" eerst om bevestiging. Met deze optie ingeschakeld doet de rode \"X\"-knop dat ook</string>
     <string name="nav_end_confirm_title">Navigatie beëindigen?</string>
     <string name="nav_end_confirm_body">De route en de tussenstops worden gewist.</string>
     <string name="nav_end_confirm_end">Beëindigen</string>
@@ -1238,7 +1238,7 @@
     <string name="exp_chooser_alts_title">Alternatieve routes</string>
     <string name="exp_chooser_alts_back">Terug</string>
     <string name="exp_chooser_along">Onderweg een tussenstop toevoegen</string>
-    <string name="exp_chooser_share_text">Route naar %1$s: %2$s, %3$s</string>
+    <string name="exp_chooser_share_text">Aanwijzingen naar %1$s: %2$s, %3$s</string>
     <string name="settings_flock_route_alert">Bewakingscamera\'s vermijden</string>
     <string name="settings_flock_detour">Zijstraten proberen om camera\'s heen</string>
     <string name="settings_flock_detour_hint">Als de beste route nog steeds langs camera\'s komt, probeert Vela bij elke camera een punt net naast de weg en plant de route daarlangs, zoals je zelf zou doen door de kaart lang ingedrukt te houden. Een route die binnen dezelfde kleine omweg langs minder camera\'s komt, gaat naar de top van de lijst. Kost een paar extra routeverzoeken per rit. Standaard uit.</string>
@@ -1328,15 +1328,15 @@
     <string name="trip_shortcut_themed">Zoals thematische iconen</string>
     <string name="settings_places_source_note">Zoeken of op een plaats tikken vraagt nog steeds openingstijden, recensies en foto\'s op bij Google, wat je ook kiest.</string>
     <string name="settings_directions_language">Taal van de aanwijzingen</string>
-    <string name="settings_directions_same_as_app">Hetzelfde als de taal van de app</string>
+    <string name="settings_directions_same_as_app">Zelfde taal als app</string>
     <string name="settings_directions_language_hint">De aanwijzingen worden getoond en ingesproken. Kies een bijpassende stem uit de bibliotheek.</string>
     <string name="settings_region_updated_on">bijgewerkt op %1$s</string>
-    <string name="settings_keep_north_up">Het noorden bovenaan houden</string>
+    <string name="settings_keep_north_up">Het noorden bovenaan</string>
     <string name="settings_keep_north_up_hint">De kaart draait nooit: de rotatie met twee vingers is uitgeschakeld en de route blijft met het noorden bovenaan.</string>
     <string name="settings_start_view">Waar de kaart opent</string>
-    <string name="settings_start_view_here">Waar ik mij bevind</string>
-    <string name="settings_start_view_last">Waar ik de kaart verlaten verliet</string>
-    <string name="settings_start_view_place">Een plek naar mijn keuze</string>
+    <string name="settings_start_view_here">Waar ik ben</string>
+    <string name="settings_start_view_last">Waar ik de kaart verliet</string>
+    <string name="settings_start_view_place">Een plaats die ik kies</string>
     <string name="settings_start_view_use_current">Huidige kaartweergave gebruiken</string>
     <string name="settings_start_view_drive">Rijmodus</string>
     <string name="settings_start_view_hint">Waar de kaart is als je Vela start. De rijmodus is alleen de kaart in de routeweergave, voor een gemonteerde telefoon of tablet. Een link van een andere app opent nog steeds op zijn eigen plek.</string>
@@ -1346,4 +1346,29 @@
     <string name="settings_car_speed">Jouw snelheid op het scherm van de wagen</string>
     <string name="settings_car_speed_hint">Uit, het scherm van de auto geeft allee de geldende snelheidslimiet aan; de auto gebruikt zijn eigen snelheidsmeter.</string>
     <string name="settings_update_all_regions">Alles bijwerken (%1$d)</string>
+    <string name="nav_bar_your_stop">jouw halte</string>
+    <string name="mapscreen_location_tip_title">Nog geen locatie?</string>
+    <string name="mapscreen_location_tip_settings">Locatie-instellingen</string>
+    <string name="welcome_continue">Doorgaan</string>
+    <string name="welcome_cameras_title">ANPR-camera\'s</string>
+    <string name="welcome_cameras_warn">Waarschuw me als ik dichtbij ben</string>
+    <string name="welcome_google_customize">Kies waar Google voor gebruikt wordt</string>
+    <string name="welcome_google_title">Google gebruiken?</string>
+    <string name="welcome_google_on_title">Google gebruiken</string>
+    <string name="welcome_google_off_title">Geen Google</string>
+    <string name="bulk_remove">Verwijderen</string>
+    <string name="settings_lists_import_is_places">Dat bestand bevat opgeslagen plaatsen, geen lijsten. Importeer het vanuit Instellingen &gt; Opgeslagen plaatsen &gt; Importeren.</string>
+    <string name="nav_bar_to_stop">Naar %1$s</string>
+    <string name="nav_bar_trip">Rit %1$s · %2$s</string>
+    <string name="nav_bar_stop_cd">%1$s en %2$s naar %3$s, aankomst om %4$s. Hele rit %5$s en %6$s, aankomst om %7$s.</string>
+    <string name="nav_stops_whole_trip">Hele reis: %1$s · %2$s · aankomst %3$s</string>
+    <string name="settings_trip_save_phone">Opslaan op telefoon</string>
+    <string name="settings_trip_saved">Gehele route opgeslagen</string>
+    <string name="settings_trip_batch_share_full">Complete routes delen</string>
+    <string name="settings_trip_batch_saved">Complete routes gedeeld</string>
+    <string name="settings_voice_row_other_language">Aanwijzingen worden gesproken in %1$s. Stel de taal in op %2$s om deze stem te horen.</string>
+    <string name="mapscreen_location_tip_body">GPS alleen kan binnen vaak exacte locatie verkrijgen. Schakel op GrapheneOS de Netwerklocatie in via Instellingen &gt; Locatie &gt; Locatiediensten in.</string>
+    <string name="search_saved_tip">Jouw opgeslagen plaatsen bevinden zich onder de bladwijzerknop hierboven. Speld er een vast om hem hier te houden.</string>
+    <string name="search_open_now_phrase">nu openen</string>
+    <string name="list_sound_ping">Ping</string>
 </resources>
