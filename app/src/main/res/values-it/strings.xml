@@ -34,12 +34,12 @@
     <string name="settings_voice_try_label">Prova la voce su un testo qualsiasi</string>
     <string name="settings_voice_nav_sample_text">Tra quattrocento metri svolta a destra in Via Roma, poi la destinazione è sulla sinistra.</string>
     <string name="settings_voice_speak">Pronuncia</string>
-    <string name="settings_voice_nav_sample">Esempio nav.</string>
+    <string name="settings_voice_nav_sample">Esempio di navigazione</string>
     <string name="settings_voice_speed">Velocità voce · %1$s</string>
     <string name="settings_voice_speed_hint">Indicazioni più lente o più veloci: tocca − / + (pronuncia un esempio). 1,00× è la velocità normale.</string>
     <string name="settings_voice_variant">Variante voce n. %1$d</string>
     <string name="settings_voice_variant_of">Variante voce n. %1$d di %2$d</string>
-    <string name="settings_voice_variant_field">Variante n.</string>
+    <string name="settings_voice_variant_field">Variante n.#</string>
     <string name="settings_voice_variant_go">Vai</string>
     <string name="settings_voice_variant_hint">Questa voce ha centinaia di interpreti: tocca ◀ ▶ per ascoltarli uno alla volta, oppure digita il numero di una variante e tocca Vai per passarvi direttamente (pronuncia un esempio). Mantieni quella che preferisci.</string>
     <string name="settings_navigation">Navigazione</string>
@@ -266,8 +266,8 @@
     <string name="place_search_reviews">Cerca nelle recensioni</string>
     <string name="place_sort_reviews">Ordina recensioni</string>
     <plurals name="place_review_count">
-        <!-- format -->
         <item quantity="one">%1$d recensione</item>
+        <item quantity="many">%1$d recensioni</item>
         <item quantity="other">%1$d recensioni</item>
     </plurals>
     <string name="place_more_photos">Altre foto</string>
@@ -322,8 +322,8 @@
     <string name="mapscreen_heads_up">Attenzione</string>
     <string name="mapscreen_dismiss">Ignora</string>
     <plurals name="mapscreen_results_count">
-        <!-- format -->
         <item quantity="one">%1$d risultato</item>
+        <item quantity="many">%1$d risultati</item>
         <item quantity="other">%1$d risultati</item>
     </plurals>
     <string name="mapscreen_shrink_list">Riduci elenco</string>
@@ -491,8 +491,8 @@
     <string name="settings_update_none">Hai già l\'ultima versione.</string>
     <string name="settings_place_pages">Pagine dei luoghi</string>
     <plurals name="place_transit_stops">
-        <!-- format -->
         <item quantity="one">%1$d fermata</item>
+        <item quantity="many">%1$d fermate</item>
         <item quantity="other">%1$d fermate</item>
     </plurals>
     <string name="place_transit_stop_id">Fermata %1$s</string>
@@ -542,7 +542,7 @@
     <string name="car_along_none">Nessun risultato nelle vicinanze</string>
     <string name="car_stop_added">Prossima tappa aggiunta: %1$s</string>
     <string name="car_continue_on">Prosegui su %1$s</string>
-    <string name="car_no_route">Nessun percorso, controlla la posizione</string>
+    <string name="car_no_route">Nessun percorso disponibile. Controlla la tua posizione.</string>
     <string name="map_parking_saved">Parcheggio salvato</string>
     <string name="map_parking_no_fix">In attesa della posizione</string>
     <string name="map_parking_cleared">Parcheggio rimosso</string>
@@ -573,12 +573,13 @@
     <string name="place_note_label">Nota</string>
     <plurals name="map_save_list">
         <item quantity="one">Salva lista · %1$d luogo</item>
+        <item quantity="many">Salva lista · %1$d luoghi</item>
         <item quantity="other">Salva lista · %1$d luoghi</item>
     </plurals>
     <string name="map_list_saved">“%1$s” salvata nelle tue liste</string>
     <string name="settings_update_nightly">Includi build nightly</string>
     <string name="settings_update_nightly_hint">Aggiorna all\'ultima nightly (anteprima) invece che solo alle versioni stabili. Le nightly sono più recenti ma meno testate.</string>
-    <string name="settings_lists_export_hint">Salva le tue liste in un file o ripristinale su un altro dispositivo.</string>
+    <string name="settings_lists_export_hint">Esegui il backup delle tue liste su un file oppure ripristinali su un altro dispositivo. È inoltre possibile importare un elenco dalla cartella \"Saved\" (Elementi salvati) di Google Takeout (un file CSV per ogni elenco); poiché ogni luogo contenuto nell\'elenco viene ricercato, è necessaria una connessione.</string>
     <string name="settings_lists_imported">%1$d lista/e importata/e</string>
     <string name="settings_places_imported">%1$d luogo/luoghi importato/i</string>
     <!-- format -->
@@ -588,6 +589,7 @@
     <string name="lists_empty_hint">Ancora nessuna lista. Tocca Nuova o salva un luogo dalla sua pagina.</string>
     <plurals name="lists_place_count">
         <item quantity="one">%1$d luogo</item>
+        <item quantity="many">%1$d luoghi</item>
         <item quantity="other">%1$d luoghi</item>
     </plurals>
     <string name="navservice_notif_eta">Arrivo %1$s</string>
@@ -641,7 +643,7 @@
     <string name="settings_map_colors">Colori della mappa</string>
     <string name="settings_map_colors_modern">Moderno</string>
     <string name="settings_map_colors_classic">Classico</string>
-    <string name="settings_map_colors_hint">Moderno segue la palette attuale di Google Maps. Classico è il vecchio aspetto di Vela: strade bianche, autostrade gialle, verdi pieni.</string>
+    <string name="settings_map_colors_hint">«Moderno» riprende la palette attualmente utilizzata nell\'app Google. «Classico» richiama il look precedente di Vela: strade bianche, autostrade gialle e tonalità di verde autentiche. «Contrasto» è una mappa notturna, con strade dai toni caldi su uno sfondo color ardesia — come la vista che si potrebbe avere dall\'alto di un monte — mentre, di giorno, viene visualizzata nello stile «Moderno».</string>
     <string name="map_parking_find">Trova la mia auto</string>
     <string name="map_parking_move_here">Sposta il parcheggio qui</string>
     <string name="map_parking_earlier">Posti precedenti</string>
@@ -665,10 +667,11 @@
     <string name="settings_topography_hint">Ombreggia colline e montagne sulla mappa. Disattivata per impostazione predefinita.</string>
     <string name="map_layers">Livelli</string>
     <string name="settings_layers_button">Mostra pulsante livelli</string>
-    <string name="settings_layers_button_hint">Il pulsante della mappa per satellite, traffico, trasporti e terreno.</string>
+    <string name="settings_layers_button_hint">Il pulsante sulla mappa consente di scegliere l\'aspetto della visualizzazione, attivare o disattivare le opzioni satellite, traffico, trasporti pubblici, rilievo, edifici 3D e icone dei luoghi, e avviare la modalità di guida.</string>
     <plurals name="topcard_more_stops">
-        <item quantity="one">+%d altra fermata</item>
-        <item quantity="other">+%d altre fermate</item>
+        <item quantity="one">%d fermata in più</item>
+        <item quantity="many">%d fermate in più</item>
+        <item quantity="other">%d fermate in più</item>
     </plurals>
     <string name="settings_places">Luoghi</string>
     <string name="settings_privacy">Privacy</string>
@@ -679,7 +682,7 @@
     <string name="settings_hub_map_sub">Traffico, trasporti, livelli, edifici 3D</string>
     <string name="settings_hub_navigation_sub">Guida, telecamere, controlli dal vivo</string>
     <string name="settings_hub_voice_sub">Indicazioni vocali e voci</string>
-    <string name="settings_hub_search_sub">Ricerca vocale e modelli vocali</string>
+    <string name="settings_hub_search_sub">Ricerca vocale, modelli di riconoscimento vocale e pulsanti di ricerca rapida</string>
     <string name="settings_hub_offline_sub">Mappe offline, percorsi, luoghi</string>
     <string name="settings_hub_saved_sub">Le tue liste, esporta, cronologia parcheggi</string>
     <string name="settings_hub_privacy_sub">Cosa riceve Google, cancella cronologia</string>
@@ -726,10 +729,10 @@
     <string name="settings_asr_use">Usa</string>
     <!-- format -->
     <string name="no_browser_installed">Il tuo dispositivo non ha un browser</string>
-    <string name="street_view_none">No Street View imagery here</string>
-    <string name="street_view_move">Move here</string>
-    <string name="street_view_dates">See other dates</string>
-    <string name="street_view_fullscreen">Toggle full screen</string>
+    <string name="street_view_none">Qui non sono disponibili immagini di Street View</string>
+    <string name="street_view_move">Muoviti qui</string>
+    <string name="street_view_dates">Vedi altre date</string>
+    <string name="street_view_fullscreen">Attiva/disattiva schermo intero</string>
     <string name="softkey_options">Opzioni</string>
     <string name="softkey_search">Cerca</string>
     <string name="softkey_recenter">Ricentra</string>
@@ -838,7 +841,7 @@
     <string name="settings_places_source_google_hint">Le icone vengono da Google. Ogni spostamento invia a Google la posizione della mappa e offline non si disegna nulla.</string>
     <string name="settings_places_source_both_hint">Le icone di Vela, più quello che Google ha in aggiunta quando smetti di spostare la mappa.</string>
     <string name="settings_places_source_more">Scopri di più</string>
-    <string name="settings_places_source_more_credit">Overture Maps</string>
+    <string name="settings_places_source_more_credit">Mappe Overture</string>
     <string name="settings_places_source_more_title">Da dove arrivano i dati sui luoghi di Vela</string>
     <string name="settings_places_source_more_body">I dati sui luoghi di Vela sono quelli di Overture Maps, un dataset aperto di attività mantenuto da Meta, Microsoft e altri. Vela li distribuisce dal proprio repository GitHub, quindi nulla di ciò che guardi arriva a Meta o a Google.\n\nArrivano man mano che esplori e si scaricano insieme a una regione per l\'uso offline. Dove Vela non ha ancora dati per una zona, la mappa ripiega su Google.\n\nRicerca, dettagli dei luoghi, orari, recensioni e foto arrivano sempre da Google, qualunque opzione tu scelga.</string>
     <string name="settings_show_civic">Parchi, scuole e luoghi pubblici</string>
@@ -982,7 +985,7 @@
     <string name="voice_cmd_eta">Orario di arrivo, alla guida</string>
     <string name="voice_cmd_hint">Funzionano a voce o scritti nella barra di ricerca, nella lingua dell\'app o in inglese. Il resto diventa una ricerca normale.</string>
     <string name="settings_map_data">Dati della mappa</string>
-    <string name="settings_map_data_hint">La mappa, le sue strade, le etichette e i numeri civici sono dati OpenStreetMap, disponibili con licenza Open Database, serviti come riquadri vettoriali da OpenFreeMap. Le attività sulla mappa nelle regioni coperte sono dati sui luoghi della Overture Maps Foundation (provenienti da Meta e Microsoft), disponibili con licenza Community Data License Agreement, Permissive 2.0. Dettagli dei luoghi, recensioni, percorsi e traffico arrivano da Google. Le immagini satellitari sono di Esri e Google.</string>
+    <string name="settings_map_data_hint">La mappa, con le sue strade, le etichette e i numeri civici, si basa su dati di OpenStreetMap, disponibili secondo la licenza Open Database License e forniti sotto forma di tile vettoriali da OpenFreeMap. Le attività commerciali indicate sulla mappa nelle aree coperte provengono dai dati sui luoghi della Overture Maps Foundation (forniti da Meta e Microsoft) e sono disponibili secondo la licenza Community Data License Agreement, Permissive 2.0. I dettagli sui luoghi, le recensioni, il calcolo dei percorsi e le informazioni sul traffico provengono da Google. Le immagini satellitari sono fornite da Esri e Google. La pronuncia vocale di circa 3.500 nomi di luoghi deriva da Wikipedia in inglese e dai suoi collaboratori, ed è soggetta alla licenza CC BY-SA 4.0.</string>
     <string name="settings_map_data_button">Copyright OpenStreetMap</string>
     <string name="settings_map_data_overture_button">Licenza Overture Maps</string>
     <string name="settings_theme_auto">Giorno e notte</string>
@@ -1027,6 +1030,7 @@
     <string name="routing_offer_body">Scarica strade, luoghi e mappa di questa regione, circa %1$s. I ricalcoli sono più rapidi e le indicazioni funzionano senza segnale. I download sono in Impostazioni, Mappe offline.</string>
     <plurals name="exp_chooser_alts">
         <item quantity="one">%1$d altro percorso</item>
+        <item quantity="many">%1$d altri percorsi</item>
         <item quantity="other">%1$d altri percorsi</item>
     </plurals>
     <string name="nav_hold_controls">Pausa o muto</string>
@@ -1123,20 +1127,23 @@
     <string name="mapvm_cells_ready">Indicazioni e luoghi per questa parte di %1$s funzionano offline</string>
     <string name="mapvm_cells_incomplete">Alcune sezioni di %1$s non sono state scaricate. Riprova più tardi.</string>
     <plurals name="area_pick_cells">
-        <item quantity="one">Scarica indicazioni e luoghi offline solo per questa zona: circa %1$s (%2$d parte della regione)</item>
-        <item quantity="other">Scarica indicazioni e luoghi offline solo per questa zona: circa %1$s (%2$d parti della regione)</item>
+        <item quantity="one">Ottieni indicazioni e luoghi offline solo per quest\'area: circa %1$s (%2$d parte della regione)</item>
+        <item quantity="many">Ottieni indicazioni e luoghi offline solo per quest\'area: circa %1$s (%2$d parti della regione)</item>
+        <item quantity="other">Ottieni indicazioni e luoghi offline solo per quest\'area: circa %1$s (%2$d parti della regione)</item>
     </plurals>
     <plurals name="settings_downloaded_cells">
         <item quantity="one">Parte della regione: %1$d sezione, %2$s</item>
+        <item quantity="many">Parte della regione: %1$d sezioni, %2$s</item>
         <item quantity="other">Parte della regione: %1$d sezioni, %2$s</item>
     </plurals>
     <string name="settings_offline_delete_cells">Elimina queste sezioni</string>
     <plurals name="settings_cells_update_available">
         <item quantity="one">%1$d sezione ha una versione più recente</item>
+        <item quantity="many">%1$d sezioni hanno una versione più recente</item>
         <item quantity="other">%1$d sezioni hanno una versione più recente</item>
     </plurals>
     <string name="settings_confirm_end_nav">Chiedi prima di terminare la navigazione</string>
-    <string name="settings_confirm_end_nav_hint">Durante la guida, il sistema chiede sempre prima conferma. Con questa funzione attiva, anche la \"X\" rossa richiede conferma.</string>
+    <string name="settings_confirm_end_nav_hint">Durante un tragitto, il sistema chiede sempre prima di procedere. Quando questa funzione è attiva, anche la \"X\" rossa richiede una conferma</string>
     <string name="nav_end_confirm_title">Terminare la navigazione?</string>
     <string name="nav_end_confirm_body">Il percorso e le sue tappe verranno cancellati.</string>
     <string name="nav_end_confirm_end">Termina</string>
@@ -1169,8 +1176,9 @@
     <string name="route_save_keep_stops">Fermati in questi luoghi</string>
     <string name="route_save_keep_stops_hint">Disattivato: le tappe servono solo a tracciare la strada, e il percorso viene proposto accanto agli altri per questo tragitto.</string>
     <plurals name="saved_route_stops">
-        <item quantity="one">%1$d tappa</item>
-        <item quantity="other">%1$d tappe</item>
+        <item quantity="one">%1$d fermata</item>
+        <item quantity="many">%1$d fermate</item>
+        <item quantity="other">%1$d fermate</item>
     </plurals>
     <string name="mapscreen_section_routes">I tuoi percorsi</string>
     <string name="stops_max">Un viaggio può avere al massimo %1$d tappe</string>
@@ -1244,11 +1252,13 @@
     <string name="settings_flock_detour_hint">Quando il percorso migliore passa comunque davanti a delle telecamere, prova un punto appena fuori dalla strada in corrispondenza di ciascuna e fa passare il percorso da lì, come faresti tu tenendo premuto sulla mappa. Un percorso che incontra meno telecamere con la stessa piccola deviazione sale in cima all\'elenco. Costa qualche richiesta di percorso in più per ogni viaggio. Disattivato di default.</string>
     <string name="settings_flock_route_alert_hint">Conta le telecamere di lettura targhe (Flock) su ogni percorso (una telecamera puntata di traverso sulla strada viene esclusa, perché legge il traffico trasversale) e ne sceglie da solo uno con meno telecamere quando allunga solo di poco. Non ti manda mai molto fuori strada: dove le telecamere sono inevitabili mostra solo i conteggi e lascia a te la scelta. Tieni premuto sulla mappa per far passare tu stesso il percorso da un punto. Disattivato di default.</string>
     <plurals name="dir_cameras_avoided">
-        <item quantity="one">Incontra %1$d telecamera in meno rispetto al percorso più veloce</item>
-        <item quantity="other">Incontra %1$d telecamere in meno rispetto al percorso più veloce</item>
+        <item quantity="one">Passa davanti a un numero di telecamere inferiore di %1$d rispetto al percorso più veloce</item>
+        <item quantity="many">Passa davanti a un numero di telecamere inferiore di %1$d rispetto al percorso più veloce</item>
+        <item quantity="other">Passa davanti a un numero di telecamere inferiore di %1$d rispetto al percorso più veloce</item>
     </plurals>
     <plurals name="dir_cameras_on_route">
         <item quantity="one">%1$d telecamera su questo percorso</item>
+        <item quantity="many">%1$d telecamere su questo percorso</item>
         <item quantity="other">%1$d telecamere su questo percorso</item>
     </plurals>
     <string name="settings_offline_cached_places">Conserva i luoghi visti per l\'uso offline</string>
@@ -1295,7 +1305,7 @@
     <string name="settings_pip_turn_card_hint">Durante la navigazione in picture-in-picture mostra la prossima svolta in una scheda in alto e il tempo rimanente in basso. Disattivato: un\'unica barra in basso con la strada, la distanza dalla svolta e l\'orario di arrivo, come la mini mappa di Google.</string>
     <string name="cat_menu">Categorie</string>
     <string name="settings_category_chips">Scorciatoie delle categorie</string>
-    <string name="settings_category_chips_hint">Le scorciatoie Ristoranti, Caffè, Benzina… sotto la barra di ricerca. Un solo pulsante le raccoglie in un menu.</string>
+    <string name="settings_category_chips_hint">Le scorciatoie \"Ristoranti\", \"Caffè\", \"Benzina\"... si trovano sotto la barra di ricerca. Un unico pulsante permette di raggrupparle in un menu. È possibile scegliere quali visualizzare e in quale ordine all\'interno della sezione \"Ricerca\".</string>
     <string name="settings_category_chips_row">Riga</string>
     <string name="settings_category_chips_button">Un solo pulsante</string>
     <string name="settings_category_chips_hidden">Nascoste</string>
@@ -1306,7 +1316,7 @@
     <string name="settings_map_names_local_english">Locale e inglese</string>
     <string name="settings_map_names_hint">I nomi romanizzati sono generati a macchina dove OpenStreetMap non ha un nome inglese, e si leggono male in ebraico e in altre scritture. La lingua dell\'app e la voce non cambiano.</string>
     <string name="settings_project">Progetto</string>
-    <string name="settings_project_hint">Codice sorgente, segnalazioni e discussioni sono su GitHub.</string>
+    <string name="settings_project_hint">Il sito web contiene una panoramica e la pagina dedicata alla stampa. Il codice sorgente, le segnalazioni di bug e le discussioni si trovano su GitHub.</string>
     <string name="settings_project_github_button">Vela su GitHub</string>
     <string name="mapvm_rechecking_connection">Controllo della connessione…</string>
     <string name="mapvm_back_online">Di nuovo online</string>
@@ -1339,7 +1349,7 @@
     <string name="welcome_feature_private_body">Nessun account, nessuna pubblicità, nessuna telemetria e nessun server Vela.</string>
     <string name="welcome_continue">Continua</string>
     <string name="welcome_cameras_title">Telecamere per targhe</string>
-    <string name="welcome_cameras_intro">Flock e altre telecamere per targhe vengono visualizzate sulla mappa. Vela può anche:</string>
+    <string name="welcome_cameras_intro">Questo indicatore segnala sulla mappa un dispositivo Flock o un altro sistema di lettura delle targhe. Vela può inoltre:</string>
     <string name="welcome_cameras_avoid">Evitarle</string>
     <string name="welcome_cameras_warn">Avvisarmi quando mi avvicino</string>
     <string name="welcome_google_customize">Scegli per cosa verrà utilizzato Google</string>
@@ -1362,7 +1372,7 @@
     <string name="settings_zoom_key_clear">Pulisci</string>
     <string name="nav_left_your_route">Lasciato “%1$s”. Percorro la strada più veloce.</string>
     <string name="list_sound_label">Suono quando passi accanto ad una</string>
-    <string name="list_sound_off">Off</string>
+    <string name="list_sound_off">Spento</string>
     <string name="list_sound_ping">Ping</string>
     <string name="list_sound_bell">Campanello</string>
     <string name="list_sound_double">Due beep</string>
@@ -1387,11 +1397,138 @@
     <string name="bulk_moved">%1$d spostato in %2$s</string>
     <string name="settings_start_view">Dove si apre la mappa</string>
     <string name="settings_region_updated_on">aggiornato %1$s</string>
-    <string name="settings_keep_north_up">Tieni il nord in alto</string>
+    <string name="settings_keep_north_up">Mantieni il Nord verso l\'alto</string>
     <string name="settings_keep_north_up_hint">La mappa non ruota mai: la rotazione con due dita è disattivata e le direzioni rimangono con il nord in alto.</string>
     <string name="settings_start_view_here">Dove mi trovo</string>
     <string name="settings_start_view_last">Dove avevo lasciato la mappa</string>
     <string name="settings_start_view_place">Un posto che ho scelto</string>
     <string name="settings_start_view_use_current">Utilizza la vista attuale della mappa</string>
     <string name="settings_start_view_drive">Modalità guida</string>
+    <string name="settings_start_view_hint">Dove si trova la mappa all\'avvio di Vela. Nella modalità di guida, la mappa occupa l\'intero schermo, nel layout di guida, per un telefono o un tablet montato sul cruscotto. Un link proveniente da un\'altra app si apre comunque nella propria finestra.</string>
+    <string name="driving_mode">Modalità di guida</string>
+    <string name="driving_mode_leave">Esci dalla modalità di guida</string>
+    <string name="settings_start_view_saved">Vela si aprirà su questa schermata.</string>
+    <string name="settings_car_speed">La tua velocità visualizzata sullo schermo dell\'auto</string>
+    <string name="settings_car_speed_hint">Quando è spento, lo schermo dell\'auto mostra solo il limite di velocità indicato; l\'auto è dotata di un proprio tachimetro.</string>
+    <string name="settings_update_all_regions">Aggiorna tutto (%1$d)</string>
+    <string name="nav_bar_to_stop">A %1$s</string>
+    <string name="nav_bar_trip">Viaggio %1$s · %2$s</string>
+    <string name="nav_bar_your_stop">la tua fermata</string>
+    <string name="nav_bar_stop_cd">Da %1$s e %2$s a %3$s, con arrivo a %4$s. L\'intero viaggio è durato %5$s e %6$s, con arrivo a %7$s.</string>
+    <string name="nav_stops_whole_trip">Intero viaggio: %1$s · %2$s · arrivo %3$s</string>
+    <string name="nav_voice_button">Istruzioni vocali: attive, solo avvisi o disattivate</string>
+    <string name="camera_badge_plate">Indicatore per telecamera di rilevamento targhe</string>
+    <string name="camera_badge_speed">Segnalatore di autovelox</string>
+    <string name="settings_voice_mode_on">Attivo</string>
+    <string name="settings_voice_mode_alerts">Solo avvisi</string>
+    <string name="settings_voice_mode_off">Spento</string>
+    <string name="settings_voice_mode_hint">La funzione \"Avvisi\" emette solo un breve segnale acustico per segnalare gli eccessi di velocità e la presenza di autovelox, senza fornire altre informazioni. Il pulsante dell\'altoparlante, quando si è alla guida, attiva gli stessi tre avvisi.</string>
+    <string name="car_setting_traffic">Traffico</string>
+    <string name="list_export">Esporta questo elenco</string>
+    <string name="list_delete_title">Elimina %1$s?</string>
+    <plurals name="lists_delete_count">
+        <item quantity="one">Eliminare questa lista?</item>
+        <item quantity="many">Eliminare %d liste?</item>
+        <item quantity="other">Eliminare %d liste?</item>
+    </plurals>
+    <string name="list_reorder">Trascina per riorganizzare</string>
+    <string name="recent_remove">Rimuovi dalla cronologia</string>
+    <string name="settings_takeout_list_default">Lista importata</string>
+    <string name="settings_takeout_progress">Ricerca del posto %1$d su %2$d</string>
+    <plurals name="settings_takeout_imported">
+        <item quantity="one">Importato un elemento in %2$s.</item>
+        <item quantity="many">Importati %1$d elementi in %2$s.</item>
+        <item quantity="other">Importati %1$d elementi in %2$s.</item>
+    </plurals>
+    <plurals name="settings_takeout_imported_missed">
+        <item quantity="one">È stato importato un elemento in %2$s. %3$d non è stato trovato.</item>
+        <item quantity="many">Sono stati importati %1$d elementi in %2$s. %3$d non è stato trovato.</item>
+        <item quantity="other">Sono stati importati %1$d elementi in %2$s. %3$d non è stato trovato.</item>
+    </plurals>
+    <string name="settings_takeout_imported_none">Non è stato possibile trovare alcuna voce in quell\'elenco, quindi %1$s non è stato creato.</string>
+    <plurals name="settings_takeout_need_google_none">
+        <item quantity="one">%1$d richiede una ricerca su Google, quindi %2$s non è stato creato.</item>
+        <item quantity="many">%1$d voci richiedono una ricerca su Google, quindi %2$s non è stato creato.</item>
+        <item quantity="other">%1$d voci richiedono una ricerca su Google, quindi %2$s non è stato creato.</item>
+    </plurals>
+    <string name="settings_takeout_busy">Una lista è ancora in fase di importazione, quindi attendi che il processo sia completato.</string>
+    <string name="mapvm_export_list_subject">Lista Vela: %1$s</string>
+    <string name="mapvm_export_list_chooser">Esporta lista</string>
+    <string name="settings_map_look">Aspetto della mappa</string>
+    <string name="settings_map_look_liberty">Vela</string>
+    <string name="settings_map_look_bright">Luminoso</string>
+    <string name="settings_map_look_positron">Positrone</string>
+    <string name="settings_map_look_fiord">Fiordo</string>
+    <string name="settings_map_look_dark">Nero</string>
+    <string name="settings_map_look_hint">Vela è lo stile \"Liberty\" di OpenFreeMap, con colori, icone e larghezze delle strade propri di Vela. Gli altri sono gli stili \"Luminoso\", \"Positrone\", \"Fiordo\" e \"Blacko\" (il suo stile \"Scuro\") di OpenFreeMap così come sono; \"Fiordo\" e \"Nero\" sono scuri indipendentemente dal tema.</string>
+    <string name="settings_map_buttons">Bottoni della mappa</string>
+    <string name="settings_map_buttons_round">Rotondo</string>
+    <string name="settings_map_buttons_square">Quadrato</string>
+    <string name="settings_map_buttons_hint">I pulsanti \"Trova\" e \"Parcheggia\" sulla mappa: rotondi o con angoli squadrati, come le app Material You che li circondano.</string>
+    <string name="settings_map_colors_contrast">Contrasto</string>
+    <string name="settings_map_data_fuel_gb">I prezzi dei carburanti nel Regno Unito provengono dal Fuel Finder del governo britannico, ripubblicato da matthewgall/fuelfinder-archive su GitHub. Contiene informazioni del settore pubblico concesse in licenza ai sensi della Open Government Licence v3.0.</string>
+    <string name="settings_map_data_ogl_button">Licenza per la trasparenza amministrativa</string>
+    <string name="place_fuel_updated_today">Aggiornato oggi</string>
+    <string name="place_fuel_updated_yesterday">Aggiornato ieri</string>
+    <plurals name="place_fuel_updated_days">
+        <item quantity="one">Aggiornato %d giorno fa</item>
+        <item quantity="many">Aggiornato %d giorni fa</item>
+        <item quantity="other">Aggiornato %d giorni fa</item>
+    </plurals>
+    <string name="map_layers_type">Tipo mappa</string>
+    <string name="map_layers_details">Dettagli della mappa</string>
+    <string name="map_layers_places_title">Posizione icone</string>
+    <string name="map_layers_satellite">Satellite</string>
+    <string name="map_layers_traffic">Traffico</string>
+    <string name="map_layers_transit">Linee di trasporto pubblico</string>
+    <string name="map_layers_terrain">Terreno</string>
+    <string name="link_trip_finding">Alla scoperta dei luoghi di questo viaggio</string>
+    <string name="link_trip_while_navigating">Chiudi la navigazione per aprire questo itinerario</string>
+    <string name="link_trip_looking_cd">Cercare informazioni</string>
+    <string name="link_trip_found_cd">Trovato</string>
+    <string name="link_trip_not_found_cd">Non trovato</string>
+    <string name="link_trip_stop_missing">Impossibile trovare %1$s. Il percorso lo ignora.</string>
+    <string name="link_trip_start_missing">Impossibile trovare %1$s. Il viaggio inizia proprio da dove ti trovi.</string>
+    <string name="link_trip_search">Cercalo</string>
+    <string name="link_trip_skip">Saltalo</string>
+    <string name="link_trip_stop_title">Punto di arresto non trovato</string>
+    <string name="link_trip_start_title">Punto di partenza non trovato</string>
+    <string name="link_trip_pick_start">Scegli un punto di partenza</string>
+    <string name="link_trip_start_here">Parti da dove mi trovo</string>
+    <string name="link_trip_fix">Correggi</string>
+    <plurals name="link_trip_places_missing">
+        <item quantity="one">%1$d posizione non trovata</item>
+        <item quantity="many">%1$d posizioni non trovate</item>
+        <item quantity="other">%1$d posizioni non trovate</item>
+    </plurals>
+    <string name="settings_road_alerts_group">Avvisi sul traffico</string>
+    <string name="settings_bridge_openings">Aperture di ponte</string>
+    <string name="settings_bridge_openings_hint">Nei Paesi Bassi, ti viene indicato se un ponte mobile lungo il tuo percorso è aperto o sta per aprirsi nel momento in cui lo raggiungi. Le informazioni sulle aperture programmate e in tempo reale provengono dai dati Open Road di NDW, richiesti solo quando il tuo percorso entra nei Paesi Bassi.</string>
+    <string name="nav_bridge_open_ahead">Il ponte più avanti è aperto</string>
+    <string name="nav_bridge_opening_ahead">Ponte davanti: apertura prevista alle %1$s</string>
+    <string name="settings_quick_chips">Pulsanti di ricerca rapida</string>
+    <string name="settings_quick_chips_sub">Quali vengono visualizzati e in quale ordine</string>
+    <string name="settings_quick_chips_hint">I pulsanti “Ristoranti”, “Caffè”, “Benzina…” sotto la barra di ricerca, lungo un percorso e all’interno dell’auto. Disattiva uno di essi per rimuoverlo dai risultati, oppure trascina il cursore per modificarne l’ordine. Un pulsante disattivato funziona comunque come ricerca digitata.</string>
+    <string name="settings_quick_chips_reset">Reimposta impostazioni predefinite</string>
+    <string name="cat_more">Altro</string>
+    <string name="settings_project_site_button">Sito web</string>
+    <string name="settings_turn_arrows">Frecce di svolta lungo il percorso</string>
+    <string name="settings_turn_arrows_hint">Freccette sul percorso che indicano le svolte imminenti mentre guidi.</string>
+    <string name="settings_zoom_to_turn">Ingrandisci la mappa fino alla prossima svolta</string>
+    <string name="settings_zoom_to_turn_hint">La mappa si restringe (zoom all\'indietro) finché la svolta successiva non si posiziona appena sotto la relativa indicazione; la visuale si orienta poi verso una deviazione laterale e torna ad avvicinarsi (zoom in avanti) man mano che ci si avvicina a essa. Questa modalità è pensata per i lunghi tratti tra una svolta e l\'altra; a una tale distanza, i nomi delle vie e i semafori non vengono visualizzati. È disponibile anche sullo schermo dell\'auto.</string>
+    <string name="settings_zoom_to_turn_floor">Rimpicciolisci al massimo fino a</string>
+    <string name="settings_zoom_to_turn_floor_town">Città</string>
+    <string name="settings_zoom_to_turn_floor_region">Regione</string>
+    <string name="settings_zoom_to_turn_floor_far">Lontano</string>
+    <string name="settings_zoom_to_turn_floor_hint">Quanto la mappa può allontanarsi per mantenere visibile la svolta successiva. Ogni livello di zoom copre una distanza circa quattro volte maggiore; ai livelli più distanti, i nomi delle vie lasciano il posto alla visuale del percorso che ti attende.</string>
+    <string name="route_save_default_from">Da %1$s a %2$s</string>
+    <plurals name="settings_takeout_need_google">
+        <item quantity="one">Per %1$d luogo è necessaria una ricerca su Google.</item>
+        <item quantity="many">Per %1$d luoghi è necessaria una ricerca su Google.</item>
+        <item quantity="other">Per %1$d luoghi è necessaria una ricerca su Google.</item>
+    </plurals>
+    <string name="settings_trip_save_phone">Salva sul telefono</string>
+    <string name="settings_trip_saved">Ho salvato la traccia completa</string>
+    <string name="settings_road_numbers">Prima i numeri delle strade</string>
+    <string name="settings_road_numbers_hint">Una strada dotata di un numero di percorso viene identificata tramite tale numero, anziché mediante un nome come, ad esempio, \"Pearl Harbor Memorial Expressway\". L\'indicazione appare sotto la freccia, sullo schermo dell\'auto e nelle istruzioni per il tratto di percorso successivo.</string>
 </resources>
