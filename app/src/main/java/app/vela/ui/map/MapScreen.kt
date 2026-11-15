@@ -4555,6 +4555,9 @@ private fun BoxScope.NavTurnBanner(
     val skipRbExit = shown?.type == app.vela.core.model.ManeuverType.ROUNDABOUT &&
         mans?.getOrNull(shownIdx + 1)?.type == app.vela.core.model.ManeuverType.EXIT_ROUNDABOUT
     val next = mans?.getOrNull(shownIdx + if (skipRbExit) 2 else 1)
+    // A GPX track ride away from its line (NavState.toTrackM): the text is "Ride to the track" and
+    // the distance is to the track, with no turn, lanes or "then" (those count from the track).
+    val toTrack = state.nav.toTrackM.takeIf { it >= 0.0 && !previewing }
     // Show the real romanized road name where the basemap gave us one (issue #184): swap the
     // local-script name in the instruction for its Latin form. No ICU fallback here - a name we
     // have no real romanization for keeps its local script (a skeleton on a sign reads broken).
@@ -4575,14 +4578,14 @@ private fun BoxScope.NavTurnBanner(
         distanceMeters = if (previewing) {
             mans?.getOrNull(shownIdx - 1)?.distanceMeters ?: state.nav.distanceToNextManeuver
         } else {
-            state.nav.distanceToNextManeuver
+            toTrack ?: state.nav.distanceToNextManeuver
         },
-        type = shown?.type ?: ManeuverType.STRAIGHT,
-        roundabout = shown?.roundabout,
-        ref = shown?.ref,
-        laneHint = shown?.laneHint,
-        lanes = shown?.lanes.orEmpty(),
-        nextText = next?.instruction?.let { navRomanize(app.vela.core.util.RoadNameShort.inText(it, next.road)) },
+        type = if (toTrack != null) ManeuverType.DEPART else shown?.type ?: ManeuverType.STRAIGHT,
+        roundabout = shown?.roundabout.takeIf { toTrack == null },
+        ref = shown?.ref.takeIf { toTrack == null },
+        laneHint = shown?.laneHint.takeIf { toTrack == null },
+        lanes = if (toTrack != null) emptyList() else shown?.lanes.orEmpty(),
+        nextText = next?.instruction?.takeIf { toTrack == null }?.let { navRomanize(app.vela.core.util.RoadNameShort.inText(it, next.road)) },
         nextType = next?.type,
         nextRoundabout = next?.roundabout,
         nextRef = next?.ref,

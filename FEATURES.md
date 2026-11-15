@@ -109,6 +109,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Avoid tolls, highways, ferries or cameras. Set Leave now, Depart at or Arrive by.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.
+- Ride a GPX track: open or share a `.gpx` file with Vela and the trip to its end follows the
+  track with spoken turns, drawn solid with the whole track shown in purple and a green pin at
+  its start. Leaving the track
+  does not reroute; prompts resume where you rejoin it.
 - A step list before you start. Tap a step to see it on the map.
 - "Save this route" keeps a route and offers it as "Your route" for the same trip, named
   "<start> to <end>" when the trip was planned from a place.

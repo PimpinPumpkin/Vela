@@ -175,6 +175,7 @@ class NavSession @Inject constructor(
     private var stopMarks: List<Double?> = emptyList()
     private var passedStops = 0
     private var planRoute: Route? = null // the route [stopMarks] were computed against
+    private var joinedTrack: Route? = null // the track route (TrackRide) the rider has reached the line of
 
     /** An intermediate stop on a multi-stop trip. */
     /** A stop on the drive. [silent] marks a side-street detour point the camera pass added (issue
@@ -494,7 +495,23 @@ class NavSession @Inject constructor(
         // and a reroute pins its departure to it only then ([departCourse]).
         val course = bearingDeg.takeIf { accuracyM == null || accuracyM <= NavEngine.HEADING_MAX_ACC_M }
         val departCourse = lastBearing
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, course, stopAhead, headingMinMps())
+        val (engineNext, engineEvents) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, course, stopAhead, headingMinMps())
+        // A track ride (TrackRide) away from its line: the engine still counts from the track's
+        // start (or the last point reached), so its turns and distances are not the rider's. The
+        // banner says to ride to the track instead, with the distance to it, and the turn prompts
+        // wait: they are dropped unsaid, so the first one is still spoken on reaching the line.
+        val toTrackM = if (!app.vela.core.data.TrackRide.isTrack(route)) -1.0 else {
+            val off = perpendicularToRouteM(route, loc)
+            when {
+                off <= offRoute -> { joinedTrack = route; -1.0 }
+                joinedTrack === route -> off
+                else -> loc.distanceTo(route.polyline.first())
+            }
+        }
+        val next = if (toTrackM < 0) engineNext else engineNext.copy(
+            toTrackM = toTrackM, spoken = nav.spoken, chainedStep = nav.chainedStep, chainedBands = nav.chainedBands,
+        )
+        val events = if (toTrackM < 0) engineEvents else engineEvents.filter { it !is NavEvent.Speak && it !is NavEvent.Haptic }
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // The figures to the next stop, measured on this fix's progress. Only while the marks were
         // measured on this very route (planRoute): against another route they mean nothing.
@@ -511,10 +528,14 @@ class NavSession @Inject constructor(
                 // The live-traffic ETA calibration (etaScale, set by the recheck) applies to the
                 // PUBLISHED remaining time only - the engine's own value stays pristine (it never
                 // reads it back; it recomputes from the route's step durations each fix).
-                val scaledNav = if (scale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * scale)
+                // A track ride (TrackRide) is never off route in the rerouting sense: away from the
+                // line the latch is dropped before it is published, so no "Rerouting" shows and
+                // guidance picks up when the rider reaches the line.
+                val shown = if (next.offRoute && app.vela.core.data.TrackRide.isTrack(route)) next.copy(offRoute = false) else next
+                val scaledNav = if (scale == 1.0) shown else shown.copy(remainingDuration = shown.remainingDuration * scale)
                 it.copy(
                     nav = scaledNav,
-                    maneuverText = maneuver?.instruction.orEmpty(),
+                    maneuverText = if (toTrackM >= 0) app.vela.core.i18n.NavStringsRegistry.current().toTrack() else maneuver?.instruction.orEmpty(),
                     remainingDistance = next.remainingDistance,
                     remainingDuration = scaledNav.remainingDuration,
                     nextStop = toStop,
@@ -571,7 +592,7 @@ class NavSession @Inject constructor(
                         )
                     }
                 }
-                NavEvent.RerouteNeeded -> {
+                NavEvent.RerouteNeeded -> if (!app.vela.core.data.TrackRide.isTrack(route)) {
                     diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${departCourse?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${departCourse?.toInt() ?: "not pinned"}")
                     reroute(loc, departCourse)
                 }
@@ -813,6 +834,7 @@ class NavSession @Inject constructor(
 
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
         if (replayMode) return // hermetic replays never fetch live traffic/routes
+        if (app.vela.core.data.TrackRide.isTrack(_state.value.route)) return // a track ride never looks for another route
         if (!liveRechecks) return // privacy opt-out: no periodic current-position requests
         val now = SystemClock.elapsedRealtime()
         // A DEGRADED adopted route (abbreviated steps from the Google fallback, or no live
@@ -1034,6 +1056,13 @@ class NavSession @Inject constructor(
         }
 
     private fun reroute(loc: LatLng, headingDeg: Double? = null) {
+        // A GPX track ride follows the track: off it, no fetch, no chime, no voice. Guidance resumes
+        // where the rider reaches the line (the engine re-acquires progress ahead). The off-route
+        // event is ignored for a track before it gets here; this covers resume and skipped stops.
+        if (app.vela.core.data.TrackRide.isTrack(_state.value.route)) {
+            note("track ride: off the track, not rerouting")
+            return
+        }
         if (replayMode) {
             note("replay: live reroute suppressed (recorded swaps play back instead)")
             return

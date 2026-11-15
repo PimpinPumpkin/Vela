@@ -9913,6 +9913,53 @@ private fun routeGradient(
     return Expression.step(Expression.lineProgress(), Expression.color(base), *stops.toTypedArray())
 }
 
+// The loaded GPX track (TrackRide), drawn whole under the route: purple on a white casing, which
+// reads in sunlight where the walk/bike dots do not, with a green start pin at its first point (the
+// trip's end has the destination pin). Shown while a track is loaded (until another track replaces
+// it or the app closes), so the ride can be looked over before, during and after.
+private const val GPX_TRACK_SRC = "vela-gpx-track-src"
+private const val GPX_TRACK_CASING = "vela-gpx-track-casing"
+private const val GPX_TRACK_LAYER = "vela-gpx-track"
+private const val GPX_START_SRC = "vela-gpx-start-src"
+private const val GPX_START_LAYER = "vela-gpx-start"
+private var gpxTrackShown: Any? = null
+
+private fun applyGpxTrack(style: Style, context: android.content.Context, track: app.vela.core.data.TrackRide.Track?) {
+    var src = style.getSourceAs<GeoJsonSource>(GPX_TRACK_SRC)
+    if (src == null) {
+        if (track == null) return
+        src = GeoJsonSource(GPX_TRACK_SRC)
+        style.addSource(src)
+        val width = { a: Float, b: Float -> Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(10f, a), Expression.stop(16f, b)) }
+        val casing = LineLayer(GPX_TRACK_CASING, GPX_TRACK_SRC).withProperties(
+            PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(width(5f, 11f)), PropertyFactory.lineOpacity(0.9f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND))
+        val line = LineLayer(GPX_TRACK_LAYER, GPX_TRACK_SRC).withProperties(
+            PropertyFactory.lineColor("#7B1FA2"), PropertyFactory.lineWidth(width(3f, 7f)),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND))
+        if (style.getLayer(ROUTE_LAYER) != null) { style.addLayerBelow(casing, ROUTE_LAYER); style.addLayerBelow(line, ROUTE_LAYER) }
+        else { style.addLayer(casing); style.addLayer(line) }
+        style.addSource(GeoJsonSource(GPX_START_SRC))
+        val start = SymbolLayer(GPX_START_LAYER, GPX_START_SRC).withProperties(
+            PropertyFactory.iconImage(PoiIcons.ensureStopNumberIcon(style, PoiIcons.START_PIN, context)),
+            PropertyFactory.iconSize(0.9f), PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+            PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+        // with the trip's other pins: above the route line, below the basemap labels
+        if (style.getLayer(MARKERS_LAYER) != null) style.addLayerAbove(start, MARKERS_LAYER) else style.addLayer(start)
+        gpxTrackShown = null
+    }
+    if (gpxTrackShown === track) return
+    gpxTrackShown = track
+    src.setGeoJson(
+        if (track == null) FeatureCollection.fromFeatures(emptyList<Feature>())
+        else FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(track.line.map { Point.fromLngLat(it.lng, it.lat) }))),
+    )
+    style.getSourceAs<GeoJsonSource>(GPX_START_SRC)?.setGeoJson(
+        if (track == null) FeatureCollection.fromFeatures(emptyList<Feature>())
+        else FeatureCollection.fromFeature(Feature.fromGeometry(track.line.first().let { Point.fromLngLat(it.lng, it.lat) })),
+    )
+}
+
 private fun applyData(
     map: org.maplibre.android.maps.MapLibreMap,
     style: Style,
@@ -9921,7 +9968,7 @@ private fun applyData(
     ambientCoversView: Boolean,
     route: List<LatLng>,
     routeColor: String,
-    routeDashed: Boolean,
+    routeDashedIn: Boolean,
     trafficSpans: List<Triple<Float, Float, Int>>,
     alternates: List<Pair<Int, List<LatLng>>>,
     altColor: String,
@@ -9944,6 +9991,13 @@ private fun applyData(
     poisEnabled: Boolean = true,
     svPose: DoubleArray? = null, // Street View pose [lat, lng, compassYawDeg]; null = viewer closed
 ) {
+    // A GPX track ride (TrackRide): a route that ends at the loaded track is drawn with the solid
+    // line, not the walk/bike dots, and the whole track stays drawn under it, after arrival too.
+    val gpxTrack = app.vela.core.data.TrackRide.active
+    val onGpxTrack = gpxTrack != null && route.size >= 2 &&
+        gpxTrack.line.last().distanceTo(route.last()) <= app.vela.core.data.TrackRide.END_M
+    val routeDashed = routeDashedIn && !onGpxTrack
+    applyGpxTrack(style, context, gpxTrack)
     // Accuracy halo: shown only for a vague fix (see ACCURACY_HALO_MIN_M) and never during nav,
     // where the puck snaps to the road anyway. Identity-gated like everything else here.
     val wantAcc = if (!navMode && me != null && meAccuracyM != null && meAccuracyM > ACCURACY_HALO_MIN_M) meAccuracyM else null

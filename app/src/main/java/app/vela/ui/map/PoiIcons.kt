@@ -121,6 +121,7 @@ object PoiIcons {
     // the bitmap, like Google does for restaurants. Results that lose the collision fight render
     // as a small red dot (their own layer in VelaMapView) that expands into the pin on zoom-in.
     private const val RESULT_RED = "#DB4437"
+    private const val START_GREEN = "#1E8E3E"
     const val RESULT_DOT_IMG = "vela-res-dot"
 
     /** The style-image key for a search result: a rating bubble for rated FOOD places
@@ -206,10 +207,15 @@ object PoiIcons {
      *  button says so. */
     const val CANDIDATE_PIN = -2
 
+    /** Sentinel [n] for [ensureStopNumberIcon]: the start of a GPX track being ridden (TrackRide),
+     *  the same teardrop and flag glyph as the destination, in green. */
+    const val START_PIN = -3
+
     fun ensureStopNumberIcon(style: Style, n: Int, context: Context? = null): String {
         val key = when (n) {
             DESTINATION_PIN -> "vela-stop-dest"
             CANDIDATE_PIN -> "vela-stop-candidate"
+            START_PIN -> "vela-stop-start"
             else -> "vela-stopnum-$n"
         }
         if (style.getImage(key) != null) return key
@@ -252,7 +258,7 @@ object PoiIcons {
         canvas.drawPath(
             teardrop,
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor(if (n == CANDIDATE_PIN) RESULT_RED else "#14857A")
+                color = Color.parseColor(when (n) { CANDIDATE_PIN -> RESULT_RED; START_PIN -> START_GREEN; else -> "#14857A" })
             },
         )
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -264,7 +270,7 @@ object PoiIcons {
         if (n == CANDIDATE_PIN) {
             val fm = text.fontMetrics
             canvas.drawText("+", cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
-        } else if (n == DESTINATION_PIN) {
+        } else if (n == DESTINATION_PIN || n == START_PIN) {
             // The icon font's flag glyph, same white-on-teal as the numbers.
             val glyph = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 typeface = context?.let { typeface(it) }

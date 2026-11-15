@@ -319,6 +319,21 @@ default, `RoutingPrefs.bikeSafe`), a bike trip is routed for safety:
 
 Bike routes carry no traffic.
 
+### Riding a GPX track
+
+Open or share a `.gpx` file with Vela and it plans a bike trip from the start of the track to
+its end. Vela does no routing of its own: start somewhere else and the route is still the
+track, and guidance starts when you reach it. The track is matched to the roads in pieces of
+about 5 km, each cut where the track runs straight, by Valhalla with bicycle costing and then
+pedestrian costing for walkways. A piece neither matches gets its turns from the track's bends,
+named from the map tiles. Turns are spoken like on any other route, in the directions language.
+
+The route is drawn with the solid line, and the whole track stays drawn in purple, with a green pin at
+its start, while it is loaded, after arrival too, so it can be looked over at any time. Away from the track Vela does
+not reroute and does not look for a faster route: there is no chime and no "Rerouting". The
+turn card says "Ride to the track" with the distance to it (to its start, before you have
+reached it), and the prompts start, or pick up again, when you reach the track. The track is held until the app closes. The constants are in [SPEC 4.3](../../SPEC.md).
+
 ### Offline: the on-phone router
 
 For driving and walking, `ObfRouteEngine` answers when the open router cannot. It returns one

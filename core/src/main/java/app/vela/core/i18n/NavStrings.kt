@@ -32,6 +32,10 @@ interface NavStrings {
     /** A ferry leg on a walk or a ride: EN "Take the ferry". Every language overrides it. */
     fun ferry(): String
 
+    /** A GPX track ride while the rider is away from the track's line (TrackRide): EN "Ride to the
+     *  track". Every language overrides it. */
+    fun toTrack(): String
+
     /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
      *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
      *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
@@ -148,6 +152,7 @@ interface NavStrings {
 /** English (source of truth) — byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
 object EnNavStrings : NavStrings {
     override fun ferry() = "Take the ferry"
+    override fun toTrack() = "Ride to the track"
     override val locale: Locale = Locale.US
 
     override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
@@ -362,6 +367,7 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
  */
 object FrNavStrings : NavStrings {
     override fun ferry() = "Prenez le ferry"
+    override fun toTrack() = "Rejoignez le tracé"
     override val locale: Locale = Locale.FRANCE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -472,6 +478,7 @@ object FrNavStrings : NavStrings {
 
 object DeNavStrings : NavStrings {
     override fun ferry() = "Nehmen Sie die Fähre"
+    override fun toTrack() = "Fahren Sie zur Strecke"
     override val locale: Locale = Locale.GERMANY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -601,6 +608,7 @@ object DeNavStrings : NavStrings {
 
 object EsNavStrings : NavStrings {
     override fun ferry() = "Tome el ferri"
+    override fun toTrack() = "Diríjase al recorrido"
     override val locale: Locale = Locale("es", "ES")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -715,6 +723,7 @@ object EsNavStrings : NavStrings {
 
 object ItNavStrings : NavStrings {
     override fun ferry() = "Prendi il traghetto"
+    override fun toTrack() = "Raggiungi il percorso"
     override val locale: Locale = Locale.ITALY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -837,6 +846,7 @@ object ItNavStrings : NavStrings {
  */
 object PtPtNavStrings : NavStrings {
     override fun ferry() = "Apanhe o ferry"
+    override fun toTrack() = "Dirija-se ao percurso"
     override val locale: Locale = Locale("pt", "PT")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -945,6 +955,7 @@ object PtPtNavStrings : NavStrings {
 
 object PtBrNavStrings : NavStrings {
     override fun ferry() = "Pegue a balsa"
+    override fun toTrack() = "Siga até o percurso"
     override val locale: Locale = Locale("pt", "BR")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1053,6 +1064,7 @@ object PtBrNavStrings : NavStrings {
 
 object NlNavStrings : NavStrings {
     override fun ferry() = "Neem de veerboot"
+    override fun toTrack() = "Ga naar de track"
     override val locale: Locale = Locale("nl", "NL")
 
     // Plain directional phrase — the verb is folded into each template (Dutch "afslaan" is separable),
@@ -1192,6 +1204,7 @@ object NlNavStrings : NavStrings {
 
 object RuNavStrings : NavStrings {
     override fun ferry() = "Сядьте на паром"
+    override fun toTrack() = "Двигайтесь к треку"
     override val locale: Locale = Locale("ru", "RU")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1380,6 +1393,7 @@ object RuNavStrings : NavStrings {
  */
 object PlNavStrings : NavStrings {
     override fun ferry() = "Wsiądź na prom"
+    override fun toTrack() = "Jedź do trasy"
     override val locale: Locale = Locale("pl", "PL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1506,6 +1520,7 @@ object PlNavStrings : NavStrings {
 
 object SvNavStrings : NavStrings {
     override fun ferry() = "Ta färjan"
+    override fun toTrack() = "Ta dig till spåret"
     override val locale: Locale = Locale("sv", "SE")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1637,6 +1652,7 @@ object SvNavStrings : NavStrings {
 
 object UkNavStrings : NavStrings {
     override fun ferry() = "Сядьте на пором"
+    override fun toTrack() = "Рухайтеся до треку"
     override val locale: Locale = Locale("uk", "UA")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1780,6 +1796,7 @@ object UkNavStrings : NavStrings {
  */
 object ZhNavStrings : NavStrings {
     override fun ferry() = "乘坐渡轮"
+    override fun toTrack() = "前往轨迹"
     override val locale: Locale = Locale.SIMPLIFIED_CHINESE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1899,6 +1916,7 @@ object ZhNavStrings : NavStrings {
  */
 object ZhTwNavStrings : NavStrings {
     override fun ferry() = "搭乘渡輪"
+    override fun toTrack() = "前往軌跡"
     override val locale: Locale = Locale.TAIWAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2019,6 +2037,7 @@ object ZhTwNavStrings : NavStrings {
  */
 object JaNavStrings : NavStrings {
     override fun ferry() = "フェリーに乗ります"
+    override fun toTrack() = "トラックに向かいます"
     override val locale: Locale = Locale.JAPAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2130,6 +2149,7 @@ object JaNavStrings : NavStrings {
  */
 object HeNavStrings : NavStrings {
     override fun ferry() = "עלה על המעבורת"
+    override fun toTrack() = "סע אל המסלול"
     override val locale: Locale = Locale("he", "IL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2252,6 +2272,7 @@ object HeNavStrings : NavStrings {
 /** Hungarian (Magyar): contributed by Zsolt Laszlo Kaiser (kaiser-app fork), ported 2026-09-13. */
 object HuNavStrings : NavStrings {
     override fun ferry() = "Szállj fel a kompra"
+    override fun toTrack() = "Menj a nyomvonalhoz"
     override val locale: Locale = Locale("hu", "HU")
 
     override fun passLights(count: Int): String =
@@ -2417,6 +2438,7 @@ object HuNavStrings : NavStrings {
  */
 object RoNavStrings : NavStrings {
     override fun ferry() = "Luați feribotul"
+    override fun toTrack() = "Mergeți la traseu"
     override val locale: Locale = Locale("ro", "RO")
 
     override fun passLights(count: Int): String = if (count <= 1) "Treceți de semafor" else "Treceți de $count semafoare"

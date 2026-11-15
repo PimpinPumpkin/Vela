@@ -167,9 +167,26 @@ class MainActivity : ComponentActivity() {
         app.vela.ui.StartView.saveLast(this) // the view the map was left on, for the next launch
     }
 
+    /** The file of a GPX open or share: a content or file URI typed as GPX or binary (geo: and web
+     *  links, and shared text, go on to the link parser). */
+    private fun gpxUri(intent: Intent?): android.net.Uri? {
+        if (intent == null || intent.resolveType(contentResolver) !in GPX_TYPES) return null
+        val u = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> if (android.os.Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                else @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            else -> null
+        } ?: return null
+        return u.takeIf { it.scheme == "content" || it.scheme == "file" }
+    }
+
+    private val GPX_TYPES = setOf("application/gpx+xml", "application/gpx", "application/octet-stream")
+
     /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the
      *  system maps handler; turn whichever we got into a search or a dropped pin. */
     private fun handleIntent(intent: Intent?) {
+        // A GPX file opened or shared with Vela: ride its track (TrackRide).
+        gpxUri(intent)?.let { vm.openGpxFile(it); return }
         when (intent?.action) {
             // A trip pinned to the home screen from the route picker (issue #675).
             app.vela.ui.TripShortcut.ACTION -> app.vela.ui.TripShortcut.read(intent)?.let { (points, mode) -> vm.openTripShortcut(points, mode) }

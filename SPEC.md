@@ -1297,6 +1297,56 @@ phrased by `osrmPhrase`, so voice, banner and step list match every other route.
 carry no Google traffic. With the setting off, or when neither answers, `routed-bike` runs
 through the driving chain without the hybrid.
 
+#### Riding a GPX track
+
+```
+PIECE_M            5_000   track matched per trace_route request
+SEAM_SEARCH_M        400   a piece ends at the straightest point within this of PIECE_M
+SEAM_TURN_DEG         40   a seam that turns more than this keeps the next piece's departure as a turn
+END_M                300   a bicycle request ends at the track within this of its last point
+THIN_M                 5   track points closer than this are dropped before matching
+SPEED_MS             4.2   riding speed (m/s) for a piece matched on foot, named from its bends, or bare
+```
+
+- A GPX file reaches Vela by a VIEW or SEND intent (`application/gpx+xml`, `application/gpx`,
+  `application/octet-stream`; content and file URIs). `MainActivity.gpxUri` checks the resolved
+  type, so shared text still goes to the link parser. A file over 20 MB (`GPX_MAX_BYTES`) is not
+  read. `GpxTrack.parse` takes the `trkpt` points, or the `rtept` points when there is no track.
+  `MapViewModel.openGpxFile` starts `TrackRide` and opens a bicycle trip from the track's first
+  point ("Start of <name>") to its last point ("End of <name>"). Start begins the drive on the
+  track from wherever the phone is: `startNav` skips its plan-from-here step (`START_FROM_ME_M`)
+  for a track route.
+- `TrackRide` lives in the process and is not saved. It holds one track at a time.
+- On the first route request the track is matched piece by piece. Each piece goes to
+  `ValhallaRouter.match` with `costing: bicycle`, then `pedestrian`. A piece both refuse is
+  named by `LineNamer` in strict mode from the map tiles along it (turns from its bends); only
+  when that fails too does it keep the track's line with a departure and an arrival.
+  A piece matched with pedestrian costing or named from its bends is re-timed at `SPEED_MS`
+  (`ridden`); a bicycle match keeps Valhalla's bicycle times. `TrackRide.join` joins the pieces:
+  each piece's arrival is dropped, and the next piece's departure is folded into the step before
+  it, or kept as a turn when the line turns more than `SEAM_TURN_DEG` at the seam. The route's
+  `made` is `track matched M/N bends B/N`.
+- The steps the track makes itself (a turn at a seam, a bare piece's start and end) are phrased
+  by `NavStrings.phrase`, so they are in the directions language like every other step.
+- `GoogleMapsDataSource.directions` asks `TrackRide.routeFor` first for every bicycle request.
+  It answers a request with no stops that ends within `END_M` of the track's end, from wherever
+  it is asked, with the whole matched track. Vela never routes to the track.
+- A drive on a track route (`TrackRide.isTrack`) is never off route in the rerouting sense.
+  `NavSession` ignores the engine's `RerouteNeeded` and publishes `offRoute = false`, so no
+  "Rerouting" shows on the phone or the car, and it skips the periodic recheck. `reroute`
+  returns before the fetch, the chime, the voice and the buzz for its other callers (resume,
+  a skipped stop). Guidance starts or resumes when the rider reaches the line, since the
+  engine re-acquires progress ahead.
+- Away from the line (farther than the off-route corridor), `NavState.toTrackM` is the distance
+  to it: to the track's start until the rider has reached the line, then to the line. The turn
+  card shows `NavStrings.toTrack` ("Ride to the track") with that distance and no turn, lanes or
+  "then" row. The engine's `Speak` and `Haptic` events are dropped and its spoken bookkeeping
+  is not kept, so the first prompt is still said on reaching the line.
+- `VelaMapView.applyData` draws a route that ends at the loaded track with the solid line, not
+  the walk and bike dots, and draws the whole track under it (`applyGpxTrack`: purple on a white
+  casing) with a green pin at its first point (`PoiIcons.START_PIN`; the end has the destination
+  pin) while a track is loaded, after arrival too.
+
 ### 4.4 Multi-stop
 
 `directions(origin, dest, mode, waypoints)` returns one route for a trip with stops. Neither
