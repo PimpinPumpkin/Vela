@@ -32,6 +32,15 @@ object LineNamer {
     private const val ALIGN_DEG = 35.0
     private const val SHORT_RUN_M = 40.0
     private const val LOOK_M = 400.0
+    /** A bend joins or leaves a highway by a ramp only when the line runs on a link road for
+     *  [LINK_RUN_M] between the bend and where it reaches the highway, with [LINK_LOOK_M] of
+     *  margin past both ends. A sample is on a link when a link running its way is within
+     *  [LINK_OFF_M] and no named street is more than [LINK_TIE_M] nearer. 40 m is longer than a
+     *  median crossing. */
+    private const val LINK_OFF_M = 12.0
+    private const val LINK_TIE_M = 1.0
+    private const val LINK_LOOK_M = 64.0
+    private const val LINK_RUN_M = 40.0
     private val ELEVATED_ROADS = setOf("motorway", "trunk", "primary", "secondary", "tertiary")
     /** Strict mode: a turn names its street only when the line stays on it this long after the
      *  turn, and a ramp or a rename only when the road it reaches runs this long. */
@@ -72,8 +81,9 @@ object LineNamer {
         if (s.size < 3) return null
         val total = s.last().m
         val maxOff = if (strict) STRICT_MAX_OFF_M else if (mode == TravelMode.WALK) 25.0 else 30.0
+        val (links, streets) = lines.partition { it.link }
         // On foot, a road flyover's name never labels the street underneath (issue #478, Dhaka).
-        val usable = if (mode == TravelMode.WALK) lines.filterNot { it.bridge && it.cls in ELEVATED_ROADS } else lines
+        val usable = if (mode == TravelMode.WALK) streets.filterNot { it.bridge && it.cls in ELEVATED_ROADS } else streets
         val idx = SegIndex(usable)
 
         // 1. A name per sample: the nearest street within maxOff that runs the same way.
@@ -81,6 +91,15 @@ object LineNamer {
         val named = names.count { it != null }.toDouble() / names.size
         lastNamedShare = named
         if (!strict && named < (if (mode == TravelMode.WALK) MIN_NAMED_SHARE_WALK else MIN_NAMED_SHARE)) return null
+
+        // Samples on a link road, for telling a ramp from an at-grade turn onto a highway.
+        val onLink = if (mode != TravelMode.DRIVE || links.isEmpty()) BooleanArray(s.size) else SegIndex(links).let { li ->
+            BooleanArray(s.size) { k ->
+                val d = li.alignedDist(s[k].pt, s[k].brg)
+                // A link with a name or route number is in the names too, on the same line.
+                d < LINK_OFF_M && d <= idx.alignedDist(s[k].pt, s[k].brg) + LINK_TIE_M
+            }
+        }
 
         // 2. Runs of one name; short runs (a cross street at a junction) and gaps absorbed.
         val runName = smoothRuns(s, names)
@@ -117,34 +136,48 @@ object LineNamer {
         val events = ArrayList<Ev>()
         // The nearest named run within LOOK_M either side: a ramp or a link is unnamed in the
         // tiles, and the road it leads to is what the instruction should name.
-        fun runAround(i: Int, dir: Int): NameRun? {
+        fun runAroundAt(i: Int, dir: Int): Int? {
             var k = (i + dir * w).coerceIn(0, s.lastIndex)
             while (k in s.indices && abs(s[k].m - s[i].m) <= LOOK_M) {
-                (if (dir > 0) solid(k, STRICT_FAR_RUN_M) else runName[k])?.let { return it }
+                if ((if (dir > 0) solid(k, STRICT_FAR_RUN_M) else runName[k]) != null) return k
                 k += dir
             }
             return null
+        }
+        fun runAround(i: Int, dir: Int): NameRun? = runAroundAt(i, dir)?.let { runName[it] }
+        val fast = setOf("motorway", "trunk")
+        val near = (LINK_LOOK_M / STEP_M).toInt()
+        // Whether the line runs on a link road between bend [i] and sample [far], where it reaches
+        // the highway it joins or leaves, with [LINK_LOOK_M] of margin past both ends (a link
+        // with a route number is in the names, so [far] can be the link itself).
+        fun viaLink(i: Int, far: Int): Boolean {
+            val a = (minOf(i, far) - near).coerceAtLeast(0); val b = (maxOf(i, far) + near).coerceAtMost(s.lastIndex)
+            return (a..b).count { onLink[it] } * STEP_M >= LINK_RUN_M
         }
         for (i in turns) {
             // Names come from right at the turn; the look-around only finds the highway a ramp joins
             // or leaves (an unnamed campus path must not borrow a street 300 m away).
             val before = runName.getOrNull((i - w).coerceAtLeast(0))
             val after = solid((i + w).coerceAtMost(s.lastIndex), STRICT_RUN_M)
-            val beforeFar = runAround(i, -1)
-            val afterFar = runAround(i, 1)
+            val beforeAt = runAroundAt(i, -1); val afterAt = runAroundAt(i, 1)
+            val beforeFar = beforeAt?.let { runName[it] }
+            val afterFar = afterAt?.let { runName[it] }
             val a = delta[i]
             val same = before != null && before == after
             if (same && abs(a) < TURN_SAME_NAME_DEG) continue
             if (before == null && after == null && abs(a) < 45.0) continue
             val (type, mod) = classify(a)
-            // Highways from the tiles' road class: joining one is a ramp, leaving one an exit, and a
-            // gentle split between two is a keep. A bend that keeps the name is a "continue".
-            val fast = setOf("motorway", "trunk")
+            // Highways from the tiles' road class: joining one by a link road is a ramp, leaving one
+            // by a link road an exit, and a gentle split between two is a keep. A bend that keeps
+            // the name is a "continue". A bend onto or off a highway with no link road at it is an
+            // at-grade junction, and says "Turn left onto" as the open router does.
             val drive = mode == TravelMode.DRIVE
             val bIn = drive && beforeFar?.cls in fast; val aIn = drive && afterFar?.cls in fast
+            val farAt = if (aIn) afterAt else beforeAt
+            val ramp = aIn != bIn && farAt != null && viaLink(i, farAt)
             events += when {
-                aIn && !bIn -> Ev(i, if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT, mod, afterFar?.name, "on ramp")
-                bIn && !aIn -> Ev(i, if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT, mod, after?.name ?: afterFar?.name, "off ramp")
+                aIn && !bIn && ramp -> Ev(i, if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT, mod, afterFar?.name, "on ramp")
+                bIn && !aIn && ramp -> Ev(i, if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT, mod, after?.name ?: afterFar?.name, "off ramp")
                 bIn && aIn && abs(a) < 55.0 -> Ev(i, if (a > 0) ManeuverType.KEEP_RIGHT else ManeuverType.KEEP_LEFT, if (a > 0) "slight right" else "slight left", afterFar?.name, "fork")
                 same -> Ev(i, type, mod, after?.name, "continue")
                 else -> Ev(i, type, mod, after?.name, osrmFor(type))
@@ -303,6 +336,16 @@ object LineNamer {
             if (bestD >= maxOff) return null
             if (strict && otherD - bestD < AMBIGUOUS_M) return null
             return best
+        }
+        /** Meters to the nearest line running [brg]'s way near [p], or infinity past one cell. */
+        fun alignedDist(p: LatLng, brg: Double): Double {
+            val gx = (p.lng * kx / cell).toInt(); val gy = (p.lat * 111_320.0 / cell).toInt()
+            var bestD = Double.POSITIVE_INFINITY
+            for (dx in -1..1) for (dy in -1..1) for (seg in grid[key(gx + dx, gy + dy)].orEmpty()) {
+                val diff = abs(RouteGeometry.bearingDelta(brg, seg.brg)).let { if (it > 90.0) 180.0 - it else it }
+                if (diff <= ALIGN_DEG) bestD = minOf(bestD, segDist(p, seg.a, seg.b))
+            }
+            return bestD
         }
         private fun segDist(p: LatLng, a: LatLng, b: LatLng): Double {
             val ax = a.lng * kx; val ay = a.lat * 111_320.0

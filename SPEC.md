@@ -1115,8 +1115,18 @@ or sign destinations and ignores Google's step positions.
   of the line. Runs under 40 m are absorbed.
 - A turn is announced when the name changes across it or it bends 70 degrees or more. A name
   change without a turn is a rename folded into the step before.
-- Driving phrases follow road class: joining a motorway or trunk is a ramp, leaving one an exit,
-  a split under 55 degrees between two a keep.
+- Driving phrases follow road class. A bend onto a motorway or trunk is a ramp, and a bend off
+  one an exit, only when the line runs on a link road for `LINK_RUN_M` (40 m) between the bend
+  and where it reaches the highway, with `LINK_LOOK_M` (64 m) of margin past both ends. Without
+  one it is an at-grade turn ("Turn left onto" the highway). A sample is on a link when a
+  `transportation` feature with `ramp=1`, running its way, is within `LINK_OFF_M` (12 m) and no
+  named street is more than `LINK_TIE_M` (1 m) nearer, so a numbered link, which is also in the
+  names layer, counts. 40 m is longer than a median crossing. On the 39 lines in
+  `google_lines`, both modes, 30 of 81 ramp, exit and keep steps became turns: trunk-class city
+  streets (Tokyo, London, Milton Keynes, Chicago, Portland), at-grade junctions (Boston, San
+  Francisco), two motorways that end in a local road (Heathrow, O'Hare) and curves on a Tokyo
+  expressway. Interchange ramps stayed ramps, except one onto FDR Drive, where the line runs
+  under the elevated road. A split under 55 degrees between two highways is a keep.
 - Walking ignores the name of a road bridge of tertiary class or higher, marked from
   `transportation` bridge segments within 6 m, since `transportation_name` has no bridge flag.
 - Under `MIN_NAMED_SHARE` (60%) of the line named, or `MIN_NAMED_SHARE_WALK` (50%), the result

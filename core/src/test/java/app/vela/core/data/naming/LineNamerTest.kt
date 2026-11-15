@@ -95,6 +95,62 @@ class LineNamerTest {
         }
     }
 
+    // Highway junctions at the Davis fixture. East along 2nd Street for 400 m, then north from
+    // (400, 0): straight onto the highway at grade, or onto a 250 m link that then becomes it.
+    private fun pt(e: Double, n: Double) = LatLng(o.lat + north(n), o.lng + east(e))
+    private fun path(vararg p: Pair<Double, Double>): List<LatLng> {
+        val out = ArrayList<LatLng>()
+        for ((a, b) in p.toList().zipWithNext()) {
+            val steps = (Math.hypot(b.first - a.first, b.second - a.second) / 20.0).toInt().coerceAtLeast(1)
+            for (k in 0 until steps) out += pt(a.first + (b.first - a.first) * k / steps, a.second + (b.second - a.second) * k / steps)
+        }
+        out += pt(p.last().first, p.last().second)
+        return out
+    }
+    private val second = NamedLine("2nd Street", null, "secondary", listOf(pt(-100.0, 0.0), pt(400.0, 0.0)))
+    private fun highway(fromN: Double) = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(400.0, fromN), pt(400.0, 1000.0)))
+    private val link = NamedLine("", null, "motorway", listOf(pt(400.0, 0.0), pt(400.0, 250.0)), link = true)
+    private fun drive(line: List<LatLng>, lines: List<NamedLine>) =
+        LineNamer.name(route(line), lines, TravelMode.DRIVE)!!.maneuvers.filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    @Test fun aTurnStraightOntoAHighwayIsATurnNotARamp() {
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(second, highway(0.0))).single()
+        assertEquals(ManeuverType.TURN_LEFT, m.type)
+        assertEquals("Interstate 80", m.road)
+        assertTrue(m.instruction, m.instruction.startsWith("Turn left"))
+    }
+
+    @Test fun aTurnFromADrivewayOntoAHighwayIsATurn() {
+        // The driveway has no name in the tiles, so nothing names the line before the turn.
+        val m = drive(path(330.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(highway(0.0))).single()
+        assertEquals(ManeuverType.TURN_LEFT, m.type)
+    }
+
+    @Test fun aTurnOntoALinkRoadIsARamp() {
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(second, link, highway(250.0))).single()
+        assertEquals(ManeuverType.RAMP_LEFT, m.type)
+        assertEquals("Interstate 80", m.road)
+        assertTrue(m.instruction, m.instruction.contains("ramp"))
+    }
+
+    @Test fun aLinkWithARouteNumberStillMakesARamp() {
+        // The names layer carries a numbered link as a named line on top of the link itself.
+        val numbered = NamedLine("I 80", "I 80", "motorway", link.points)
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(second, link, numbered, highway(250.0))).single()
+        assertEquals(ManeuverType.RAMP_LEFT, m.type)
+    }
+
+    @Test fun leavingAHighwayAtGradeIsATurnAndByALinkAnExit() {
+        // South down the highway, then east onto 2nd Street: the same junctions driven the other way.
+        val back = path(400.0 to 900.0, 400.0 to 0.0, -100.0 to 0.0)
+        val atGrade = drive(back, listOf(second, highway(0.0))).single()
+        assertEquals(ManeuverType.TURN_RIGHT, atGrade.type)
+        assertEquals("2nd Street", atGrade.road)
+        val exit = drive(back, listOf(second, link, highway(250.0))).single()
+        assertEquals(ManeuverType.RAMP_RIGHT, exit.type)
+        assertTrue(exit.instruction, exit.instruction.startsWith("Take the exit"))
+    }
+
     @Test fun anglesClassify() {
         assertEquals(ManeuverType.SLIGHT_LEFT, LineNamer.classify(-40.0).first)
         assertEquals(ManeuverType.TURN_RIGHT, LineNamer.classify(90.0).first)

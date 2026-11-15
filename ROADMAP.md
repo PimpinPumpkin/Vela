@@ -257,6 +257,11 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A turn straight onto or off a highway at an intersection says "Turn left onto", not "Take
+  the ramp" or "Take the exit", on a route named from the tiles (`LineNamer`): a ramp needs a
+  link road under the line. Checked on the 39 captured Google lines and the Davis I 80 ramps;
+  not yet heard on a drive.
+
 - Unnamed car parks show their P under the open places layer and Google's dots (issue #935,
   `vela-osm-parking`): seen on the 4a at the reporter's lot; frame rate measured in Shinjuku.
   Not looked at in a city with many unnamed lots at z15 to z16, where clutter would show.
