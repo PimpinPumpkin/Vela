@@ -1115,18 +1115,43 @@ or sign destinations and ignores Google's step positions.
   of the line. Runs under 40 m are absorbed.
 - A turn is announced when the name changes across it or it bends 70 degrees or more. A name
   change without a turn is a rename folded into the step before.
-- Driving phrases follow road class. A bend onto a motorway or trunk is a ramp, and a bend off
-  one an exit, only when the line runs on a link road for `LINK_RUN_M` (40 m) between the bend
-  and where it reaches the highway, with `LINK_LOOK_M` (64 m) of margin past both ends. Without
-  one it is an at-grade turn ("Turn left onto" the highway). A sample is on a link when a
-  `transportation` feature with `ramp=1`, running its way, is within `LINK_OFF_M` (12 m) and no
-  named street is more than `LINK_TIE_M` (1 m) nearer, so a numbered link, which is also in the
-  names layer, counts. 40 m is longer than a median crossing. On the 39 lines in
-  `google_lines`, both modes, 30 of 81 ramp, exit and keep steps became turns: trunk-class city
-  streets (Tokyo, London, Milton Keynes, Chicago, Portland), at-grade junctions (Boston, San
-  Francisco), two motorways that end in a local road (Heathrow, O'Hare) and curves on a Tokyo
-  expressway. Interchange ramps stayed ramps, except one onto FDR Drive, where the line runs
-  under the elevated road. A split under 55 degrees between two highways is a keep.
+- Driving phrases come from link roads (`ramp=1` in `transportation`, car classes only), said
+  once each the way a router that reads junctions says them. A sample is on a link when a link
+  running its way is within `LINK_OFF_M` (12 m) and no named street is more than `LINK_TIE_M`
+  (1 m) nearer, so a numbered link, which is also in the names layer, counts. A run of such
+  samples, gaps of `LINK_GAP` (2 samples) bridged, is a ramp when it is `RAMP_MIN_M` (80 m) long
+  and a motorway or trunk is at one end; a shorter link is a slip lane. The roads at its ends are
+  the nearest named runs off it within 128 m.
+  - From a highway it is an exit ("Take the exit onto" the road it leads to), said where the
+    line moves onto the link: at the bend there, else at the link's start, on the side the
+    heading moves across 64 m either side. Back onto a highway of the same name it is a keep
+    (express and local lanes).
+  - Onto a highway from anything else it is "Take the ramp onto" the highway, at the bend onto
+    the link. When the road just past that bend is a named street, the bend is a turn onto it
+    and the ramp is its own step where the line moves onto the link.
+  - A bend with the line on the link both sides is a curve of the ramp and says nothing. A bend
+    off its far end is a plain turn onto the street, and onto a highway only at `CURVE_DEG`
+    (50 degrees) or more, under which it is a merge and quiet. A link onto a highway that ends
+    in such a turn is a turn lane, and the turn is its only step.
+- With no link, a bend onto or off a motorway or trunk is an at-grade turn ("Turn left onto"
+  it). A bend under `CURVE_DEG` on a highway with no other named road after it is a curve and
+  quiet (Organic Maps says nothing for one way out under 50 degrees). A split under 55 degrees
+  between two highways is a keep.
+- A bend keeps the road when the name is the same; a change of ref or class alone is not a turn.
+- In a car, lines of classes a car does not drive (`path`, `rail`, `transit`, `aerialway`,
+  `pier`, `raceway`, `busway`, `bus_guideway`, `bridleway`) never name the line, and a named
+  footpath beside a road does not make strict naming unsure.
+- Two plain turns the same way within `SPLIT_TURN_M` (50 m, OsmAnd's figure), the second onto the
+  street the first went onto and at least one of them changing road, are one turn of their
+  summed angle. Two bends that both keep the name are a hairpin and stay two.
+- Measured with `NamingStudyTest.tileStepCensus` on the 39 lines in `google_lines`, both modes,
+  against the rule this replaced (any bend onto a motorway or trunk a ramp, off one an exit):
+  exits 41 to 69 (the old count includes at-grade turns and second exits at a ramp's end),
+  keeps 8 to 25, an exit said twice within 500 m 4 to 2, same-way turns onto one street within
+  60 m 13 to 0, steps 780 to 841. The Davis line from Richards Boulevard onto I 80 and off at
+  Chiles Road says the ramp, the exit, the left onto Chiles Road and the right onto Mace
+  Boulevard, the four steps Google gives. Where the line runs under an elevated highway (FDR
+  Drive in New York) the tiles cannot tell the two roads apart.
 - Walking ignores the name of a road bridge of tertiary class or higher, marked from
   `transportation` bridge segments within 6 m, since `transportation_name` has no bridge flag.
 - Under `MIN_NAMED_SHARE` (60%) of the line named, or `MIN_NAMED_SHARE_WALK` (50%), the result

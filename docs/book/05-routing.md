@@ -70,9 +70,12 @@ Where Google's line leaves the open route, the steps come from the first of thes
 2. The map tiles. `LineNamer` in strict mode takes the turns from the bends of Google's line. A
    turn gets a street's name only when the street is within `STRICT_MAX_OFF_M` (12 m), no
    street with another name is about as close, and the line stays on it for `STRICT_RUN_M`
-   (60 m). A bend onto or off a highway says "Take the ramp" or "Take the exit" only when the
-   line runs on a link road there (`ramp=1` in the tiles' `transportation` layer). A turn
-   straight onto a highway at an intersection says "Turn left onto" it.
+   (60 m). Highway steps come from the link roads (`ramp=1` in the tiles' `transportation`
+   layer), each said once, the way Organic Maps and OsmAnd read junctions: the exit where the
+   line leaves the highway, even with no bend there, nothing along the ramp or where it
+   merges, and a plain turn where it ends at a street. A turn straight onto a highway at an
+   intersection says "Turn left onto" it, and a gentle bend on a highway with no road leaving
+   it says nothing.
 3. The bends alone: "Turn right".
 
 Tiles come second because, on 90 test routes, naming from the tiles alone put a wrong name on

@@ -140,15 +140,64 @@ class LineNamerTest {
         assertEquals(ManeuverType.RAMP_LEFT, m.type)
     }
 
-    @Test fun leavingAHighwayAtGradeIsATurnAndByALinkAnExit() {
-        // South down the highway, then east onto 2nd Street: the same junctions driven the other way.
+    @Test fun leavingAHighwayAtGradeIsATurnAndByALinkAnExitThenATurn() {
+        // South down the highway, then west onto 2nd Street: the same junctions driven the other way.
         val back = path(400.0 to 900.0, 400.0 to 0.0, -100.0 to 0.0)
         val atGrade = drive(back, listOf(second, highway(0.0))).single()
         assertEquals(ManeuverType.TURN_RIGHT, atGrade.type)
         assertEquals("2nd Street", atGrade.road)
-        val exit = drive(back, listOf(second, link, highway(250.0))).single()
-        assertEquals(ManeuverType.RAMP_RIGHT, exit.type)
+        // By the link: the exit where the line leaves the highway, then the turn where the link
+        // meets the street, as Google says them ("Take exit 75", "Turn left onto Chiles Rd").
+        val (exit, turn) = drive(back, listOf(second, link, highway(250.0)))
         assertTrue(exit.instruction, exit.instruction.startsWith("Take the exit"))
+        assertEquals("2nd Street", exit.road)
+        assertTrue(exit.location.lat > o.lat + north(200.0))
+        assertEquals(ManeuverType.TURN_RIGHT, turn.type)
+        assertEquals("2nd Street", turn.road)
+    }
+
+    @Test fun aCurveAlongARampSaysNothing() {
+        // The link runs north 120 m, bends east and merges onto the highway: one step, at its start.
+        val bent = NamedLine("", null, "motorway", listOf(pt(400.0, 0.0), pt(400.0, 120.0), pt(600.0, 120.0)), link = true)
+        val east = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(600.0, 120.0), pt(1400.0, 120.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 120.0, 1400.0 to 120.0), listOf(second, bent, east)).single()
+        assertEquals(ManeuverType.RAMP_LEFT, m.type)
+        assertEquals("Interstate 80", m.road)
+    }
+
+    @Test fun aLinkBackOntoTheSameHighwayIsAKeep() {
+        // Express to local lanes: off the highway at x 400 and onto its other lanes at x 440.
+        val express = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(400.0, -500.0), pt(400.0, 1000.0)))
+        val local = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(440.0, 400.0), pt(440.0, 1000.0)))
+        val lanes = NamedLine("", null, "motorway", listOf(pt(400.0, 0.0), pt(440.0, 100.0), pt(440.0, 400.0)), link = true)
+        val m = drive(path(400.0 to -500.0, 400.0 to 0.0, 440.0 to 100.0, 440.0 to 1000.0), listOf(express, local, lanes)).single()
+        assertEquals(ManeuverType.KEEP_RIGHT, m.type)
+        assertEquals("Interstate 80", m.road)
+    }
+
+    @Test fun aTurnOntoAStreetJustBeforeARampIsItsOwnStep() {
+        // Right onto the frontage road, whose on-ramp peels off 20 m later.
+        val frontage = NamedLine("Frontage Road", null, "minor", listOf(pt(400.0, 0.0), pt(400.0, -1000.0)))
+        val ramp = NamedLine("", null, "motorway", listOf(pt(400.0, -20.0), pt(440.0, -200.0)), link = true)
+        val south = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(440.0, -200.0), pt(440.0, -1000.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to -20.0, 440.0 to -200.0, 440.0 to -1000.0), listOf(second, frontage, ramp, south))
+        assertEquals(listOf(ManeuverType.TURN_RIGHT, ManeuverType.RAMP_RIGHT), m.map { it.type })
+        assertEquals(listOf("Frontage Road", "Interstate 80"), m.map { it.road })
+    }
+
+    @Test fun twoTurnsOntoTheSameStreetWithinFiftyMetersAreOne() {
+        // Oak Street turns a corner 40 m after the line joins it: right, right is one U-turn.
+        val oak = NamedLine("Oak Street", null, "minor", listOf(pt(400.0, 0.0), pt(400.0, -40.0), pt(-100.0, -40.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to -40.0, 0.0 to -40.0), listOf(second, oak)).single()
+        assertEquals(ManeuverType.UTURN, m.type)
+        assertEquals("Oak Street", m.road)
+    }
+
+    @Test fun aHairpinOnOneRoadIsNotAUTurn() {
+        // Two right bends 40 m apart, both on Oak Street: a switchback, said as the bends it is.
+        val oak = NamedLine("Oak Street", null, "minor", listOf(pt(0.0, 0.0), pt(400.0, 0.0), pt(400.0, -40.0), pt(-100.0, -40.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to -40.0, 0.0 to -40.0), listOf(oak))
+        assertTrue(m.none { it.type == ManeuverType.UTURN })
     }
 
     @Test fun anglesClassify() {

@@ -568,7 +568,10 @@ signed file the app fetches at launch (SPEC 11).
 
 Checks to run before trusting a routing change: `core/nav/StepAudit`, then
 `NamingStudyTest.replayCapturedLines` (`-DvelaStudy=1`), then a few real trips on a phone with
-the step list read by hand. Probe tests that need a region file take `-DvelaObf=<folder>`.
+the step list read by hand. A change to naming from the tiles (`LineNamer`, `RoadNameTiles`)
+also runs `NamingStudyTest.tileStepCensus -DvelaCensus=<file>` before and after and diffs the two
+files: every step of the captured lines, both modes. `-DvelaOne=<file name>` adds each bend's
+inputs. Probe tests that need a region file take `-DvelaObf=<folder>`.
 `RoadCenterTest.deskLine` (`-DvelaNudge=<file>`) nudges a captured line and writes it out for
 drawing.
 

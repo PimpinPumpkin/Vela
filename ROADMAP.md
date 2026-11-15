@@ -257,10 +257,12 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
-- A turn straight onto or off a highway at an intersection says "Turn left onto", not "Take
-  the ramp" or "Take the exit", on a route named from the tiles (`LineNamer`): a ramp needs a
-  link road under the line. Checked on the 39 captured Google lines and the Davis I 80 ramps;
-  not yet heard on a drive.
+- Highway steps on a route named from the tiles (`LineNamer`) come from the link roads: a turn
+  straight onto or off a highway at an intersection says "Turn left onto", an exit is said once
+  where the line leaves the highway and the end of the ramp is a plain turn, curves along a ramp
+  or a highway say nothing, and two turns onto one street within 50 m are one. Checked with the
+  tile step census on the 39 captured Google lines and the Davis I 80 route against Google
+  Maps' steps; not yet heard on a drive.
 
 - Unnamed car parks show their P under the open places layer and Google's dots (issue #935,
   `vela-osm-parking`): seen on the 4a at the reporter's lot; frame rate measured in Shinjuku.

@@ -507,4 +507,57 @@ class NamingStudyTest {
         println("LANES for scale, the open router's own routes: $openLanes of $openSteps steps carry lanes")
         byType.toSortedMap().forEach { (k, v) -> println("LANES   $k: lanes ${v[0]}, none ${v[1]}, not told ${v[2]}") }
     }
+
+    /**
+     * The tile-named steps of every captured line, written to a file so two builds can be
+     * diffed: `-DvelaCensus=<out file>`. Each line is named whole, in both modes, from the live
+     * tiles, which are kept beside the file (`<out>.tiles`) so a second run reads the same bytes.
+     * One row per step: `<file> s=<strict> <meters> <type> | <instruction>`. `-DvelaLines=<folder>`
+     * names the `.txt` lines in that folder instead (a trip's `RP` line; mask what it prints). With
+     * `-DvelaOne=<file name>` only that line is named, and each bend's inputs are written too.
+     */
+    @Test fun tileStepCensus() = runBlocking {
+        val out = System.getProperty("velaCensus")
+        Assume.assumeTrue("set -DvelaCensus=<out file>", !out.isNullOrBlank())
+        val dir = System.getProperty("velaLines")?.let { java.io.File(it) } ?: java.io.File(javaClass.getResource("/google_lines")!!.toURI())
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        fun get(url: String): ByteArray? = runCatching {
+            http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps-naming-study (github.com/PimpinPumpkin/Vela)").build())
+                .execute().use { r -> if (r.isSuccessful) r.body?.bytes() else null }
+        }.getOrNull()
+        val keep = java.io.File("$out.tiles").apply { mkdirs() }
+        val template by lazy { Regex("\"tiles\"\\s*:\\s*\\[\\s*\"([^\"]+)\"").find(String(get("https://tiles.openfreemap.org/planet")!!))!!.groupValues[1] }
+        val before = RoadNameTiles.fetch
+        val sb = StringBuilder()
+        try {
+            RoadNameTiles.clearCache()
+            RoadNameTiles.fetch = { z, x, y ->
+                val f = java.io.File(keep, "$z-$x-$y.pbf")
+                if (f.exists()) f.readBytes() else get(template.replace("{z}", "$z").replace("{x}", "$x").replace("{y}", "$y"))?.also { f.writeBytes(it) }
+            }
+            val one = System.getProperty("velaOne")
+            if (one != null) LineNamer.onBend = { sb.append("  $it\n") }
+            for (f in dir.listFiles { x -> x.name.endsWith(".txt") && (one == null || x.name == one) }!!.sortedBy { it.name }) {
+                val text = f.readText().trim()
+                // A trip's RP line can be at 6 decimals.
+                val line = app.vela.core.data.google.PolylineCodec.decode(text).takeIf { l -> l.all { kotlin.math.abs(it.lat) <= 90.0 && kotlin.math.abs(it.lng) <= 180.0 } }
+                    ?: app.vela.core.data.google.PolylineCodec.decode(text, 6)
+                if (line.size < 5) continue
+                val len = app.vela.core.nav.RouteProjection.cumulative(line).last()
+                val lines = RoadNameTiles.linesAlong(line) ?: run { sb.append("${f.name} no tiles\n"); null } ?: continue
+                val r = app.vela.core.model.Route(polyline = line, legs = emptyList(), distanceMeters = len, durationSeconds = len / 13.0, durationInTrafficSeconds = null)
+                for (strict in listOf(false, true)) {
+                    val named = LineNamer.name(r, lines, TravelMode.DRIVE, strict = strict) ?: run { sb.append("${f.name} s=$strict null\n"); null } ?: continue
+                    var at = 0.0
+                    for (m in named.maneuvers) { sb.append("${f.name} s=$strict ${at.toInt()} ${m.type} | ${m.instruction}\n"); at += m.distanceMeters }
+                }
+            }
+        } finally {
+            LineNamer.onBend = null
+            RoadNameTiles.fetch = before
+            RoadNameTiles.clearCache()
+        }
+        java.io.File(out!!).writeText(sb.toString())
+        println("CENSUS ${sb.lines().size - 1} steps written to $out")
+    }
 }

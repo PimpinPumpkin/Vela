@@ -206,7 +206,8 @@ object RoadNameTiles {
                 if (brunnel != "bridge" && ramp != "1") continue
                 for (part in lineParts(geom) { gx, gy -> toLatLng(gx, gy) }) {
                     if (brunnel == "bridge") bridges += cls to part
-                    if (ramp == "1") out += NamedLine("", null, cls, part, link = true)
+                    // `ramp` also marks steps, which are paths.
+                    if (ramp == "1" && cls !in NOT_CAR_ROADS) out += NamedLine("", null, cls, part, link = true)
                 }
                 continue
             }
