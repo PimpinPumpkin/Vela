@@ -39,7 +39,7 @@
     <string name="settings_voice_speed_hint">Langsamere oder schnellere Ansagen, tippen Sie auf − / + (es wird ein Beispiel gesprochen). 1,00× ist normal.</string>
     <string name="settings_voice_variant">Stimmvariante Nr. %1$d</string>
     <string name="settings_voice_variant_of">Stimmvariante Nr. %1$d von %2$d</string>
-    <string name="settings_voice_variant_field">Variante Nr.</string>
+    <string name="settings_voice_variant_field">Variante Nr. #</string>
     <string name="settings_voice_variant_go">Los</string>
     <string name="settings_voice_variant_hint">Diese Stimme hat Hunderte von Sprechern, tippen Sie auf ◀ ▶, um einen nach dem anderen anzuhören, oder geben Sie eine Variantennummer ein und tippen Sie auf „Los“, um direkt dorthin zu springen (es wird ein Beispiel gesprochen). Behalten Sie die, die Ihnen gefällt.</string>
     <string name="settings_navigation">Navigation</string>
@@ -1136,7 +1136,7 @@
         <item quantity="other">Für %1$d Abschnitte gibt es eine neuere Version</item>
     </plurals>
     <string name="settings_confirm_end_nav">Vor dem Beenden der Navigation fragen</string>
-    <string name="settings_confirm_end_nav_hint">„Zurück-Taste“ fragt während der Fahrt immer zuerst, ob die Navigation beendet werden soll. Wenn diese Option aktiviert ist, fragt auch die \"Taste-X\" danach.</string>
+    <string name="settings_confirm_end_nav_hint">„Zurück-Taste“ fragt während der Fahrt immer zuerst, ob die Navigation beendet werden soll. Wenn diese Option aktiviert ist, fragt auch das \"Rote-X\" danach.</string>
     <string name="nav_end_confirm_title">Navigation beenden?</string>
     <string name="nav_end_confirm_body">Die Route und ihre Stopps werden gelöscht.</string>
     <string name="nav_end_confirm_end">Beenden</string>
@@ -1461,7 +1461,7 @@
     <string name="settings_map_look_bright">Bright (Hell)</string>
     <string name="settings_map_look_fiord">Fiord</string>
     <string name="settings_map_look_positron">Positron</string>
-    <string name="settings_map_look_dark">Schwarz</string>
+    <string name="settings_map_look_dark">Dunkel</string>
     <string name="settings_map_look_hint">„Vela“ ist der „Liberty“-Stil von OpenFreeMap mit Vela-eigenen Farben, Symbolen und Straßenbreiten. Die anderen sind die OpenFreeMap-Stile „Bright“, „Positron“, „Fiord“ und „Black“ (der „Dark“-Stil) in ihrer Standardausführung; „Fiord“ und „Black“ sind unabhängig vom Thema immer dunkel.</string>
     <string name="settings_road_alerts_group">Verkehrsmeldungen</string>
     <string name="settings_bridge_openings">Brücken-Öffnungs-Zeiten</string>
@@ -1502,7 +1502,7 @@
     <string name="settings_zoom_to_turn_floor_hint">Wie weit die Karte vergrößert werden kann, damit die nächste Abbiegung auf dem Bildschirm bleibt. Mit jedem Schritt wird die Ansicht etwa viermal so weit vergrößert; bei den weiter entfernten Ansichten werden die Straßennamen durch die Bezeichnung des vorangehenden Abschnitts ersetzt.</string>
     <string name="route_save_default_from">%1$s bis %2$s</string>
     <string name="settings_trip_save_phone">Auf dem Smartphone speichern</string>
-    <string name="settings_zoom_to_turn">Zur nächsten Kurve zoomen</string>
+    <string name="settings_zoom_to_turn">Zur nächsten Abbiegung zoomen</string>
     <string name="settings_road_numbers">Zuerst die Straßennummern</string>
     <string name="settings_road_numbers_hint">Eine Straße mit einer Routennummer wird anhand der Nummer bezeichnet, nicht anhand eines Namens wie beispielsweise „Pearl Harbor Memorial Expressway“. Unter dem Pfeil, auf dem Bildschirm im Auto und in der Wegbeschreibung zur nächsten Route.</string>
     <string name="settings_trip_saved">Komplette Route speichern</string>
@@ -1526,4 +1526,6 @@
         <item quantity="one">%d Haltestellen noch bis zur Ankunft</item>
         <item quantity="other">Noch %d Haltestellen</item>
     </plurals>
+    <string name="settings_trip_batch_share_full">Vollständige Traces teilen</string>
+    <string name="settings_trip_batch_saved">Vollstandige Traces abgespeichert</string>
 </resources>
