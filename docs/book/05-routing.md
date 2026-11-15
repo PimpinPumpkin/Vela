@@ -75,7 +75,10 @@ Where Google's line leaves the open route, the steps come from the first of thes
    line leaves the highway, even with no bend there, nothing along the ramp or where it
    merges, and a plain turn where it ends at a street. A turn straight onto a highway at an
    intersection says "Turn left onto" it, and a gentle bend on a highway with no road leaving
-   it says nothing.
+   it says nothing. The tiles carry no exit numbers or signs, so an exit takes them from
+   Google's own exit at the same place ("Take exit 4A toward I-5 N: Redding"), along with the
+   side it leaves on. Google's reply has every step at its exact point, even though its short
+   step list does not. Where the tiles miss an exit, Google's is said.
 3. The bends alone: "Turn right".
 
 Tiles come second because, on 90 test routes, naming from the tiles alone put a wrong name on
@@ -185,7 +188,7 @@ route is refused if a point moved more than `VIA_SNAP_MAX_M` (40 m), if it ends 
 500 m from the destination, if it is longer than Google's route by more than 5% plus 400 m, or
 if it has a spur: an out-and-back with a turn on it, which a point snapped onto a side street
 produces. When the snap is refused, Google's line is kept and `LineNamer` names its turns from
-the tiles (`GOOGLE_LINE_NAMED`, no lanes or sign text). When that fails too, the route is
+the tiles (`GOOGLE_LINE_NAMED`, no lanes; exit numbers and signs from Google's exits). When that fails too, the route is
 driven on Google's short steps. The route keeps the Google time the list showed, so picking it
 cannot move the row.
 

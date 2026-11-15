@@ -571,7 +571,7 @@ Checks to run before trusting a routing change: `core/nav/StepAudit`, then
 the step list read by hand. A change to naming from the tiles (`LineNamer`, `RoadNameTiles`)
 also runs `NamingStudyTest.tileStepCensus -DvelaCensus=<file>` before and after and diffs the two
 files: every step of the captured lines, both modes. `-DvelaOne=<file name>` adds each bend's
-inputs. Probe tests that need a region file take `-DvelaObf=<folder>`.
+inputs. A line with a `<name>.exits` beside it also has Google's exits from its reply. Probe tests that need a region file take `-DvelaObf=<folder>`.
 `RoadCenterTest.deskLine` (`-DvelaNudge=<file>`) nudges a captured line and writes it out for
 drawing.
 

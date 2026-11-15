@@ -263,6 +263,10 @@ off the list when it has been.
   or a highway say nothing, and two turns onto one street within 50 m are one. Checked with the
   tile step census on the 39 captured Google lines and the Davis I 80 route against Google
   Maps' steps; not yet heard on a drive.
+- Exits on those routes take Google's exit number, signs and side ("Take exit 4A toward I-5 N:
+  Redding"), and an exit the tiles miss is said where Google has it. Checked on 7 trips kept
+  with Google's replies (16 exits, all said once); not yet heard on a drive, and the phone's
+  reply has not been looked at for the same step fields (only the Mac's).
 
 - Unnamed car parks show their P under the open places layer and Google's dots (issue #935,
   `vela-osm-parking`): seen on the 4a at the reporter's lot; frame rate measured in Shinjuku.

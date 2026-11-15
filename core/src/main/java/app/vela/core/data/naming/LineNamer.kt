@@ -9,6 +9,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
 import app.vela.core.model.RouteSource
 import app.vela.core.model.TravelMode
+import app.vela.core.model.distanceTo
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -19,8 +20,9 @@ import kotlin.math.hypot
  * keyless steps are abbreviated, and forcing the open router through points on Google's line adds
  * crossings and double-backs. Here the line is kept exactly, the turns come from its own bends and
  * each stretch takes the name of the map street it runs along ([NamedLine]s from the vector tiles).
- * Nothing is routed, so nothing can loop. What it cannot give is lane guidance or sign destinations:
- * those live on the router's junctions, not in the tiles.
+ * Nothing is routed, so nothing can loop. What it cannot give is lane guidance: that lives on the
+ * router's junctions, not in the tiles. An exit's number and signs come from Google's own exit at
+ * the same place ([Route.exitSigns]).
  */
 object LineNamer {
     private const val STEP_M = 8.0
@@ -51,6 +53,11 @@ object LineNamer {
     private const val CURVE_DEG = 50.0
     /** Two same-way turns this close onto the same street are one turn (OsmAnd: 50 m). */
     private const val SPLIT_TURN_M = 50.0
+    /** One of Google's exits ([Route.exitSigns]) is the tiles' exit when its point is this close
+     *  to the line and this close along it to where the line moves onto the link. */
+    private const val SIGN_OFF_M = 20.0
+    private const val SIGN_ALONG_M = 150.0
+    private const val SIGN_LATE_M = 400.0
     private val PLAIN = setOf("turn", "continue")
     private val ELEVATED_ROADS = setOf("motorway", "trunk", "primary", "secondary", "tertiary")
     /** `transportation_name` classes a car does not drive on. */
@@ -78,8 +85,8 @@ object LineNamer {
 
     /**
      * [route] named from [lines], or null when too little of it lines up with a named street.
-     * Google's own step positions are not used: its keyless steps sit at the start of the stretch
-     * before the maneuver, a kilometer early on a highway ramp.
+     * Google's keyless step LIST is not used: it is short, and its steps are placed by their
+     * share of the trip, a kilometer off on a highway. Its exits are, at their own points.
      */
     /**
      * [strict] is for driving guidance stitched into a route (HybridRoute), where a wrong street
@@ -152,7 +159,7 @@ object LineNamer {
 
         // 4. Events: a turn is announced when the name changes across it or it bends hard; a name
         // change with no turn is a rename folded into the step before (as the open router's are).
-        data class Ev(val i: Int, val type: ManeuverType, val mod: String?, val road: String?, val osrm: String)
+        data class Ev(val i: Int, val type: ManeuverType, val mod: String?, val road: String?, val osrm: String, val exitNo: String? = null, val dest: String? = null)
         val events = ArrayList<Ev>()
         // The nearest named run within LOOK_M either side: a ramp or a link is unnamed in the
         // tiles, and the road it leads to is what the instruction should name.
@@ -291,6 +298,54 @@ object LineNamer {
                 events.removeAt(k + 1)
             } else k++
         }
+        // The tiles say where an exit is but not its number or signs; Google's exit at the same
+        // place does, and which side it leaves on. Each of Google's exits goes to the tiles' exit
+        // nearest it along the line. A tiles' exit found up to [SIGN_LATE_M] past it is the same
+        // exit seen late (a long exit lane hugs the highway) and moves back to Google's point.
+        // Where the tiles have no step near it at all, Google's exit is said as it is: the tiles
+        // missed the link road, and an exit nobody says is the worse miss.
+        if (drive && route.exitSigns.isNotEmpty()) {
+            val placed = route.exitSigns.mapNotNull { sg ->
+                val k = s.indices.minByOrNull { s[it].pt.distanceTo(sg.at) } ?: return@mapNotNull null
+                if (s[k].pt.distanceTo(sg.at) <= SIGN_OFF_M) k to sg else null
+            }.sortedBy { it.first }
+            fun signed(e: Ev, sg: app.vela.core.model.ExitSign, at: Int): Ev {
+                val right = sg.left?.not() ?: (e.type == ManeuverType.RAMP_RIGHT)
+                val agrees = (e.type == ManeuverType.RAMP_RIGHT) == right
+                return e.copy(
+                    i = at, type = if (right) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT,
+                    mod = if (agrees) e.mod else if (right) "slight right" else "slight left",
+                    exitNo = sg.number, dest = sg.dest,
+                )
+            }
+            val signedAt = HashSet<Int>()
+            for ((k, sg) in placed) {
+                val at = s[k].m
+                val same = events.indices.filter { it !in signedAt && events[it].osrm == "off ramp" && abs(s[events[it].i].m - at) <= SIGN_ALONG_M }
+                    .minByOrNull { abs(s[events[it].i].m - at) }
+                val how = when {
+                    same != null -> { events[same] = signed(events[same], sg, events[same].i); signedAt += same; "matched" }
+                    events.any { abs(s[it.i].m - at) <= SIGN_ALONG_M } -> "left alone, a step is here"
+                    // At an end of the line it may be the next piece's exit (a hybrid stretch is
+                    // a piece of Google's line, and the open router's steps go on from its ends).
+                    k < w || k > s.lastIndex - w -> "left alone, at an end of the line"
+                    else -> {
+                        val next = events.indices.firstOrNull { s[events[it].i].m > at }
+                        if (next != null && next !in signedAt && events[next].osrm == "off ramp" && s[events[next].i].m - at <= SIGN_LATE_M) {
+                            events[next] = signed(events[next], sg, k); signedAt += next; "moved back from ${s[events[next].i].m.toInt()} m"
+                        } else {
+                            val a = sg.left?.let { if (it) -1.0 else 1.0 }
+                                ?: RouteGeometry.bearingDelta(s[(k - near).coerceAtLeast(0)].brg, s[(k + near).coerceAtMost(s.lastIndex)].brg).let { if (it == 0.0) 1.0 else it }
+                            events += Ev(k, ramp(a), if (a > 0) "slight right" else "slight left", null, "off ramp", sg.number, sg.dest)
+                            events.sortBy { it.i }
+                            signedAt.clear(); events.indices.filterTo(signedAt) { events[it].exitNo != null || events[it].dest != null }
+                            "added"
+                        }
+                    }
+                }
+                onBend?.invoke("google exit ${at.toInt()} m ${sg.number} -> ${sg.dest} left=${sg.left}: $how")
+            }
+        }
 
         // 5. Maneuvers, with the renames between them.
         val dur = route.durationSeconds.takeIf { it > 0 } ?: 0.0
@@ -320,10 +375,10 @@ object LineNamer {
             val run = runName.getOrNull((e.i + w).coerceAtMost(s.lastIndex)) ?: if (e.osrm == "on ramp" || e.osrm == "fork") runAround(e.i, 1) else null
             out += Maneuver(
                 e.type,
-                RouteGeometry.osrmPhrase(e.osrm, e.mod, app.vela.core.nav.instructionRoad(e.road, run?.ref), null, null, null),
+                RouteGeometry.osrmPhrase(e.osrm, e.mod, app.vela.core.nav.instructionRoad(e.road, run?.ref), e.dest, e.exitNo, null),
                 s[e.i].pt, b - a, share(a, b), road = e.road, ref = run?.ref,
                 renames = renamesIn(a, b),
-                instructionNoRoad = RouteGeometry.osrmPhrase(e.osrm, e.mod, null, null, null, null),
+                instructionNoRoad = RouteGeometry.osrmPhrase(e.osrm, e.mod, null, e.dest, e.exitNo, null),
             )
         }
         out += Maneuver(ManeuverType.ARRIVE, RouteGeometry.osrmPhrase("arrive", null, null, null, null, null), poly.last(), 0.0, 0.0)

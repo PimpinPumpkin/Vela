@@ -1105,8 +1105,8 @@ via-snap below applies. The line drawn for a hybrid is `Route.drawPolyline` (4.8
 
 #### LineNamer
 
-`LineNamer` (`core/data/naming`) keeps a route's line and derives its steps. It gives no lanes
-or sign destinations and ignores Google's step positions.
+`LineNamer` (`core/data/naming`) keeps a route's line and derives its steps. It gives no lanes.
+Google's keyless step list is not used, but its exits are (`Route.exitSigns`, below).
 
 - Sampling: every 8 m, heading over 16 m either side.
 - Turns: peaks of the heading change across 32 m either side, 35 degrees or more, at least 30 m
@@ -1144,7 +1144,7 @@ or sign destinations and ignores Google's step positions.
 - Two plain turns the same way within `SPLIT_TURN_M` (50 m, OsmAnd's figure), the second onto the
   street the first went onto and at least one of them changing road, are one turn of their
   summed angle. Two bends that both keep the name are a hairpin and stay two.
-- Measured with `NamingStudyTest.tileStepCensus` on the 39 lines in `google_lines`, both modes,
+- Measured with `NamingStudyTest.tileStepCensus` on 39 lines in `google_lines`, both modes,
   against the rule this replaced (any bend onto a motorway or trunk a ramp, off one an exit):
   exits 41 to 69 (the old count includes at-grade turns and second exits at a ramp's end),
   keeps 8 to 25, an exit said twice within 500 m 4 to 2, same-way turns onto one street within
@@ -1152,6 +1152,25 @@ or sign destinations and ignores Google's step positions.
   Chiles Road says the ramp, the exit, the left onto Chiles Road and the right onto Mace
   Boulevard, the four steps Google gives. Where the line runs under an elevated highway (FDR
   Drive in New York) the tiles cannot tell the two roads apart.
+- Exit numbers and signs come from Google's own exits on the same reply (`Route.exitSigns`).
+  `DirectionsParser.exitSigns` reads every step of the route, also the ones without `<step>`
+  markup: `[7][2]` is the maneuver's own point, `[14]` the whole instruction as parts with the
+  names flagged, and the array the step heads carries its icon. A step is an exit when its
+  text says "exit" or "junction" or its icon is `dir-tt-ramp-left`/`-right` (the side), and it
+  is no roundabout's. The words before each name say what it is: after "exit" or "junction"
+  the number, after "toward", "signs for" or "ramp to" a sign, after "for" or "onto" the road.
+  Signs are written as the open router's are: route numbers, a colon, places ("I-5 N:
+  Redding"). A sign that repeats the number is dropped. The reply is always `hl=en`.
+  - Each of Google's exits within `SIGN_OFF_M` (20 m) of the line goes to the tiles' exit
+    nearest it along the line within `SIGN_ALONG_M` (150 m), which takes its number, its signs
+    and its side ("Take exit 4A toward I-5 N: Redding").
+  - With no step within 150 m, a tiles' exit up to `SIGN_LATE_M` (400 m) past it is the same
+    exit seen late and moves back to Google's point. With none, Google's exit is added, unless
+    it is within a turn window of an end of the line (a hybrid stretch's neighbor may say it).
+  - On 7 lines kept with their replies (`google_lines/<name>.exits`), all 16 of Google's exits
+    are said once: 13 matched, 2 added where the tiles had no link (Denver exit 284, San
+    Francisco exit 423A), 1 moved back 296 m. Two sides were wrong from the bend and are
+    Google's now. The 39 lines without replies are unchanged.
 - Walking ignores the name of a road bridge of tertiary class or higher, marked from
   `transportation` bridge segments within 6 m, since `transportation_name` has no bridge flag.
 - Under `MIN_NAMED_SHARE` (60%) of the line named, or `MIN_NAMED_SHARE_WALK` (50%), the result

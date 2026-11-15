@@ -142,7 +142,6 @@ class LineNamerTest {
 
     @Test fun leavingAHighwayAtGradeIsATurnAndByALinkAnExitThenATurn() {
         // South down the highway, then west onto 2nd Street: the same junctions driven the other way.
-        val back = path(400.0 to 900.0, 400.0 to 0.0, -100.0 to 0.0)
         val atGrade = drive(back, listOf(second, highway(0.0))).single()
         assertEquals(ManeuverType.TURN_RIGHT, atGrade.type)
         assertEquals("2nd Street", atGrade.road)
@@ -154,6 +153,48 @@ class LineNamerTest {
         assertTrue(exit.location.lat > o.lat + north(200.0))
         assertEquals(ManeuverType.TURN_RIGHT, turn.type)
         assertEquals("2nd Street", turn.road)
+    }
+
+    // Google's exits (Route.exitSigns) on the same junctions, driven south.
+    private val back = path(400.0 to 900.0, 400.0 to 0.0, -100.0 to 0.0)
+    private fun signed(line: List<LatLng>, lines: List<NamedLine>, vararg signs: app.vela.core.model.ExitSign) =
+        LineNamer.name(route(line).copy(exitSigns = signs.toList()), lines, TravelMode.DRIVE)!!.maneuvers
+            .filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    @Test fun googlesExitGivesTheTilesExitItsNumberSignsAndSide() {
+        // The tiles see a straight link and cannot tell the side; Google's icon says left.
+        val (exit, turn) = signed(back, listOf(second, link, highway(250.0)), app.vela.core.model.ExitSign(pt(400.0, 240.0), "75", "Mace Blvd", left = true))
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instruction)
+        assertEquals(ManeuverType.RAMP_LEFT, exit.type)
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instructionNoRoad)
+        assertEquals("2nd Street", exit.road)
+        assertEquals(ManeuverType.TURN_RIGHT, turn.type)
+    }
+
+    @Test fun aTilesExitFoundLateMovesBackToGooglesPoint() {
+        // Google's exit 300 m before the link the tiles have: the same exit, its lane hugging the highway.
+        val steps = signed(back, listOf(second, link, highway(250.0)), app.vela.core.model.ExitSign(pt(400.0, 550.0), "75", "Mace Blvd"))
+        val exit = steps.single { it.type == ManeuverType.RAMP_RIGHT || it.type == ManeuverType.RAMP_LEFT }
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instruction)
+        assertTrue("${exit.location.lat}", kotlin.math.abs(exit.location.lat - (o.lat + north(550.0))) < north(20.0))
+        assertEquals(2, steps.size)
+    }
+
+    @Test fun anExitTheTilesMissIsSaidWhereGoogleHasIt() {
+        val straight = path(400.0 to 900.0, 400.0 to 0.0)
+        assertTrue(signed(straight, listOf(highway(-100.0))).isEmpty())
+        val exit = signed(straight, listOf(highway(-100.0)), app.vela.core.model.ExitSign(pt(400.0, 500.0), "75", "Mace Blvd", left = false)).single()
+        assertEquals(ManeuverType.RAMP_RIGHT, exit.type)
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instruction)
+        // Off the line it is another road's exit.
+        assertTrue(signed(straight, listOf(highway(-100.0)), app.vela.core.model.ExitSign(pt(440.0, 500.0), "75", "Mace Blvd")).isEmpty())
+    }
+
+    @Test fun googlesExitNextToAnotherStepLeavesTheStepAlone() {
+        // An at-grade turn off the highway, and Google calling the same spot an exit: the turn stands.
+        val m = signed(back, listOf(second, highway(0.0)), app.vela.core.model.ExitSign(pt(400.0, 60.0), "75", "Mace Blvd")).single()
+        assertEquals(ManeuverType.TURN_RIGHT, m.type)
+        assertEquals("2nd Street", m.road)
     }
 
     @Test fun aCurveAlongARampSaysNothing() {

@@ -514,7 +514,8 @@ class NamingStudyTest {
      * tiles, which are kept beside the file (`<out>.tiles`) so a second run reads the same bytes.
      * One row per step: `<file> s=<strict> <meters> <type> | <instruction>`. `-DvelaLines=<folder>`
      * names the `.txt` lines in that folder instead (a trip's `RP` line; mask what it prints). With
-     * `-DvelaOne=<file name>` only that line is named, and each bend's inputs are written too.
+     * `-DvelaOne=<file name>` only that line is named, and each bend's inputs are written too. A
+     * `<name>.exits` beside a line holds Google's exits from the same reply, which the steps take.
      */
     @Test fun tileStepCensus() = runBlocking {
         val out = System.getProperty("velaCensus")
@@ -545,7 +546,13 @@ class NamingStudyTest {
                 if (line.size < 5) continue
                 val len = app.vela.core.nav.RouteProjection.cumulative(line).last()
                 val lines = RoadNameTiles.linesAlong(line) ?: run { sb.append("${f.name} no tiles\n"); null } ?: continue
-                val r = app.vela.core.model.Route(polyline = line, legs = emptyList(), distanceMeters = len, durationSeconds = len / 13.0, durationInTrafficSeconds = null)
+                // Google's exits for the line, where its reply was kept (`<name>.exits`: lat,lng|number|signs|L or R).
+                val exits = java.io.File(f.parentFile, f.name.removeSuffix(".txt") + ".exits").takeIf { it.exists() }?.readLines().orEmpty().mapNotNull { row ->
+                    val c = row.split("|").takeIf { it.size == 4 } ?: return@mapNotNull null
+                    val (la, lo) = c[0].split(",").map { it.toDouble() }
+                    app.vela.core.model.ExitSign(LatLng(la, lo), c[1].ifBlank { null }, c[2].ifBlank { null }, when (c[3]) { "L" -> true; "R" -> false; else -> null })
+                }
+                val r = app.vela.core.model.Route(polyline = line, legs = emptyList(), distanceMeters = len, durationSeconds = len / 13.0, durationInTrafficSeconds = null, exitSigns = exits)
                 for (strict in listOf(false, true)) {
                     val named = LineNamer.name(r, lines, TravelMode.DRIVE, strict = strict) ?: run { sb.append("${f.name} s=$strict null\n"); null } ?: continue
                     var at = 0.0

@@ -374,6 +374,10 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
     Regex("\\bTrl\\b", RegexOption.IGNORE_CASE) to "Trail",
     Regex("\\bExpy\\b", RegexOption.IGNORE_CASE) to "Expressway",
     Regex("\\bFwy\\b", RegexOption.IGNORE_CASE) to "Freeway",
+    // Google's exit signs ("toward Bush Intercont'l Arpt").
+    Regex("\\bArpt\\b", RegexOption.IGNORE_CASE) to "Airport",
+    Regex("\\bInt'?l\\b", RegexOption.IGNORE_CASE) to "International",
+    Regex("\\bIntercont'?l\\b", RegexOption.IGNORE_CASE) to "Intercontinental",
     Regex("\\bNE\\b") to "Northeast",
     Regex("\\bNW\\b") to "Northwest",
     Regex("\\bSE\\b") to "Southeast",
