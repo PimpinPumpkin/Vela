@@ -1094,6 +1094,23 @@
     <string name="settings_voice_volume_hint">How loud spoken directions play over your media. Louder tiers apply to the Vela voice; system voices can only be made softer.</string>
     <string name="place_avoid_not_honored">These routes may still use tolls, highways, or ferries: Google could not be reached to route around them, and the open router cannot. In a downloaded area Vela avoids them offline.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device. Import also takes a list from Google Takeout\'s Saved folder (one CSV per list); each place in it is looked up, so it needs a connection.</string>
+    <string name="settings_backup_title">Settings backup</string>
+    <string name="settings_backup_hint">Back up Vela\'s settings to a file, or restore them on another device: theme, map, units, navigation, voice, privacy, your interface font, and optionally Home, Work and your other places. Import replaces what the file holds and restarts Vela.</string>
+    <string name="settings_backup_export_title">Export settings</string>
+    <string name="settings_backup_places">Include places</string>
+    <string name="settings_backup_places_on_hint">Home and Work, saved routes, search history, the parking spot, where the map opens and trip shortcuts go in the file. Keep it to yourself: it shows where you live and go.</string>
+    <string name="settings_backup_places_off_hint">The file holds settings only, with no place in it.</string>
+    <string name="settings_backup_exported">Settings saved to the file.</string>
+    <string name="settings_backup_write_error">The settings could not be saved.</string>
+    <string name="settings_backup_empty">That file holds no settings.</string>
+    <string name="settings_backup_wrong_file">That is not a Vela settings file.</string>
+    <string name="settings_backup_too_new">That settings file is from a newer Vela. Update Vela, then import it.</string>
+    <string name="settings_backup_confirm_title">Replace your settings?</string>
+    <string name="settings_backup_confirm_ok">Replace and restart</string>
+    <plurals name="settings_backup_confirm_text">
+        <item quantity="one">Your settings become the ones in the file (%1$d saved setting). Any setting the file left at its default goes back to the default. Then Vela restarts.</item>
+        <item quantity="other">Your settings become the ones in the file (%1$d saved settings). Any setting the file left at its default goes back to the default. Then Vela restarts.</item>
+    </plurals>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
     <string name="settings_takeout_list_default">Imported list</string>
     <string name="settings_takeout_progress">Looking up place %1$d of %2$d</string> <!-- format -->
