@@ -108,6 +108,10 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         }
         }
 
+        // Settings backup (issue #951). On this page for now; where it belongs is an open question.
+        Spacer(Modifier.height(8.dp))
+        app.vela.ui.settings.SettingsBackupGroup()
+
         // Compatibility rendering moved to Settings > Performance (2026-09-22).
         Spacer(Modifier.height(4.dp))
         SettingsGroup {

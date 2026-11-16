@@ -509,6 +509,11 @@ signed file the app fetches at launch (SPEC 11).
   adds it to `StorageLocation.FOLDERS`.
 - A new preference file or user data file is not backed up until it is in both
   `res/xml/backup_rules.xml` and `data_extraction_rules.xml`.
+- The settings backup file (`core/data/SettingsBackup`) carries every key of the preference files
+  in `SETTINGS_FILES`. A new key that holds a place goes in `PLACE_KEYS` (it then follows the
+  "Include places" switch), and one that is machine state (a timestamp, a counter, a session or
+  simulator mark) goes in `SKIP`, or it ends up in a file people hand to each other. A new
+  preference file goes in `SETTINGS_FILES` or `PLACE_FILES`, or it is not backed up.
 - A change to a stored format reads the old key once and writes a new key. An older build
   then still finds its own data.
 - A list or saved place is matched with `ListPlace.matches` (id or Google feature id), never

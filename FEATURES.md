@@ -268,6 +268,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   editor. Import also reads GPX, KML and GeoJSON,
   and a list from Google Takeout's Saved folder (one CSV per list) becomes a list of the same name,
   each place looked up by its Google id.
+- Export Vela's settings to one file and import it on another phone (Settings > Diagnostics >
+  Settings backup): every choice, the tips already seen, your interface font, and, when you
+  include them, Home and Work, saved routes, search history and the parking spot. Import
+  replaces what the file holds and restarts Vela.
 - Select several places in a list or in Saved places (long press one, or the select button), then
   remove them or move them to another list or a new one.
 - A list can have a sound. Driving past one of its places plays it and shows the place on a card.

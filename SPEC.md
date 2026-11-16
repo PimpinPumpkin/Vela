@@ -5630,6 +5630,29 @@ one destination per `SettingsSection`. `SettingsHub` holds the category rows and
   what the map draws for places, then the place-page toggles (10.8).
 - No blocking IPC or IO runs in a composable body. A `PackageManager` query in composition
   re-runs on every recomposition. Load such data with `produceState` plus `withContext(IO)`.
+- Settings backup (Settings > Diagnostics, `SettingsBackupGroup`, `core/data/SettingsBackup`):
+  Export writes JSON (`format` `vela-settings`, `version` 1) through the system save dialog, each
+  value with its type (`b`, `i`, `l`, `f`, `s`, `ss`) so an Int stays an Int. Always in it: the
+  preference files in `SETTINGS_FILES` (`vela_settings`, `vela_units`, `vela_onboarding`,
+  `vela_notices`, `vela_voice_level`) and the custom font (`fonts/ui.ttf` as base64, at most
+  `MAX_FONT_BYTES`, 12 MB, the font picker's own limit). With "Include places" (on by default,
+  `places` in the file): `PLACE_FILES` (`vela_shortcuts`, `vela_saved_routes`, `vela_recents`,
+  `vela_recent_places`) and `PLACE_KEYS` of `vela_settings` (the parking spot, `start_view_loc`,
+  the trip shortcuts). `SettingsBackup.skip` never writes or reads machine state: timestamps and
+  update-checker marks, map crash counters, speech model strikes, the simulators, the Google
+  session (`google_session_started`, `browser_viewport`), the cached sun position, and the
+  location and notification permission prompts. Import applies the same rules, so a
+  hand-edited file cannot set a skipped key and a file made without places sets none. It reads
+  at most 17 MB, asks before writing, writes with `commit`, puts the font beside its target and
+  renames it over (`AppFont.init` drops it at launch if the platform cannot build it), and
+  restarts the process, since the settings holders read their values once in `VelaApp`. Import
+  makes what the file covers match it: a setting at its default is not stored, so the file leaves
+  it out, and `SettingsBackup.resets` removes every such key the phone has (skipped keys never;
+  places only when the file has them), or a setting changed after the export would keep its new
+  value. With no font in the file the font choice resets and `fonts/ui.ttf` is deleted. A file
+  from a newer `version` is refused. Saved places and
+  lists (`vela_saved`, `vela_lists`), recorded trips, the last position and the drive-resume
+  record are not in it; places and lists have their own export.
 
 #### Page transitions and predictive back
 

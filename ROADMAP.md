@@ -257,6 +257,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Settings backup file (#951, `SettingsBackup`): export without places and import with the
+  restart seen on a Pixel 5, a changed setting and one left at its default both restored. Not
+  yet checked: export with places and import on a fresh install (Home, Work, saved routes,
+  recents and the custom font coming across).
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each
