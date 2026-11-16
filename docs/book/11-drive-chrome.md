@@ -42,6 +42,17 @@ number and route numbers in the text. Lane arrows and the "Then" tab appear with
 Off route the headline reads "Rerouting". In landscape the banner and the bar are a column on
 the left.
 
+The card leads with where you are going, the way Google's does, with the distance under the
+arrow. A turn shows the road in bold ("W Covell Blvd") and one small line for what follows it
+("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit or a ramp shows
+the exit tab and the route shields as chips, and the sign's other destinations in bold ("Bellevue,
+Spokane"), shortened as a sign writes them ("150th Ave SE"); "Take exit 164 toward I 5 S" is not
+repeated as words, since the chips say it. A roundabout keeps "take the 2nd exit onto" above the
+road. The road is found by its own text in any language; the sign destinations need the
+language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`), which English and
+Romanian have. Other languages, the first and last steps, and a step neither rule fits keep the
+distance row and the sentence.
+
 A ramp, a fork or a keep shows the slight-left or slight-right arrow, the way you go and nothing
 else. A picture with both branches looked like a road sign offering either one. The step list,
 the mini map, the notification and Android Auto take their glyphs from the same table

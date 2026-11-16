@@ -257,6 +257,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The turn card leads with where you are going (#851, `TurnCardText`, `signDestination`): the
+  distance under the arrow, the road or the sign's destinations in bold, the verb left to the
+  arrow. Seen on a Pixel 5 on a simulated highway drive in English. Not yet checked at large
+  text, in compact mode, or in Romanian, the other language with a destination marker.
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each

@@ -56,6 +56,13 @@ interface NavStrings {
      *  with its own destination marker, same English-first pattern as [passLights]). */
     fun repeatShort(instruction: String): String = instruction
 
+    /** The sign destinations of a ramp, exit, fork or merge step: the text after the language's
+     *  destination marker ("Take exit 164 toward I 5 S: Bellevue, Portland" -> "I 5 S: Bellevue,
+     *  Portland"), or null when the instruction has none. The turn card shows this in place of
+     *  the sentence (`TurnCardText`). Default = null (the card keeps the sentence until a language
+     *  overrides with its own marker, same English-first pattern as [repeatShort]). */
+    fun signDestination(instruction: String): String? = null
+
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
@@ -270,6 +277,9 @@ object EnNavStrings : NavStrings {
     // The exit number stays ("Take exit 172"); only the sign-destination tail drops. The " toward "
     // marker is exactly what osrmPhrase/ghPhrase emit for EN ramp/exit/fork steps.
     override fun repeatShort(instruction: String): String = instruction.substringBefore(" toward ")
+
+    override fun signDestination(instruction: String): String? =
+        instruction.indexOf(" toward ").takeIf { it >= 0 }?.let { instruction.substring(it + " toward ".length).trim().ifEmpty { null } }
 
     override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
@@ -2570,6 +2580,9 @@ object RoNavStrings : NavStrings {
     }
 
     override fun repeatShort(instruction: String): String = instruction.substringBefore(" spre ")
+
+    override fun signDestination(instruction: String): String? =
+        instruction.indexOf(" spre ").takeIf { it >= 0 }?.let { instruction.substring(it + " spre ".length).trim().ifEmpty { null } }
 
     private fun roNum(x: Double): String {
         val s = x.toString().replace('.', ',')
