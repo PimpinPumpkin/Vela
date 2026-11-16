@@ -1,7 +1,17 @@
 package app.vela.core.model
 
-/** Coarse vehicle class for a transit line, used to pick a glyph + default color. */
-enum class TransitMode { WALK, BUS, TRAM, SUBWAY, TRAIN, FERRY, GENERIC }
+/** Coarse vehicle class for a transit line, used to pick a glyph + default color.
+ *  [BIKE_SHARE] is a ride on a docked bike-share bike, from one station to another. */
+enum class TransitMode { WALK, BUS, TRAM, SUBWAY, TRAIN, FERRY, GENERIC, BIKE_SHARE }
+
+/** The bike on a bike-share leg: the system it belongs to and what kind of bike it is.
+ *  [providerId] and [groupId] are the open planner's, the same ids its station list uses. */
+data class TransitRental(
+    val providerId: String,
+    val groupId: String,
+    val system: String,
+    val electric: Boolean = false,
+)
 
 /** One colored line you ride on a transit itinerary (Google draws these as
  *  color-filled pills, e.g. a blue "Amtrak Thruway" or a green "Route 42B"). */
@@ -57,6 +67,9 @@ data class TransitStep(
     // where the source carries one. Null = unknown: the map then joins the stops with straight
     // lines. Filled by the open planner's own answers; Google's itineraries carry none.
     val path: List<LatLng>? = null,
+    // A bike-share leg's bike. The leg reads like a ride: [line] is the system, [boardStop] the
+    // station the bike is taken from and [alightStop] the one it is returned to.
+    val rental: TransitRental? = null,
 )
 
 /**

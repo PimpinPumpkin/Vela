@@ -2869,8 +2869,9 @@ private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMar
         // pins the LIST dropped must drop off the MAP too (user 2026-07-11). null = no filter on.
         .let { list -> if (filteredIds == null) list else list.filter { it.id in filteredIds } }
         // A custom map's markers draw as pins in their own icon and color (savedPinData); here they
-        // only frame the view and keep the tap index, except the one that is selected.
-        .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id, areaZoom = it.areaZoom()) }
+        // only frame the view and keep the tap index, except the one that is selected. A bike-share
+        // station's pin is drawn from PIN_CATEGORY: its own category is the translated label.
+        .map { MapMarker(it.name, it.location, if (it.id.startsWith(BikeShareStations.ID_PREFIX)) BikeShareStations.PIN_CATEGORY else it.category, rating = it.rating, fuelPrice = it.fuelPrice, drawn = !it.ownPin() || it.id == state.selected?.id, areaZoom = it.areaZoom()) }
 
 /** The nav bar and the step sheet it opens into: flush with the screen's bottom edge in portrait
  *  (the card pads its own content off the system bar), a floating card in the landscape column. */
@@ -4264,6 +4265,14 @@ private fun MapSurface(
         // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
         transitStops = state.transitStops.filter { st -> state.selected?.id != "gtfs:${st.stopId}" && app.vela.ui.TransitLayer.showsStop(st.modes) },
         onTransitStopTap = vm::onTransitStopTap,
+        // Off during a drive, and the open station's badge steps aside for its pin like a stop's.
+        bikeStations = when {
+            state.navigating -> emptyList()
+            state.selected?.id?.startsWith(BikeShareStations.ID_PREFIX) == true ->
+                state.bikeStations.filter { st -> state.selected?.id != BikeShareStations.ID_PREFIX + st.key }
+            else -> state.bikeStations
+        },
+        onBikeStationTap = vm::onBikeStationTap,
         navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
         navBarTopPx = navBarTopPx,
         // Index into the SHOWN list (the same one ambientMarkersOf uploads), not the raw

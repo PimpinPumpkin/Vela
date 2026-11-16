@@ -13,6 +13,9 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.border
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -1204,6 +1207,8 @@ fun PlaceSheet(
                 },
             ) {
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
+            // A bike-share station: its free bikes and docks (SPEC 8, Bike-share stations).
+            place.bikeShare?.let { BikeShareLine(it, ink, dim) }
             // Gas stations: the fuel price, bold, first in the body like Google's gas prices card
             // ("$5.34/Regular" from Google, "172.9p/E10 · 199.9p/B7" in the UK). Below the action
             // pills, so a price that lands after the sheet opened moves nothing above them. A UK
@@ -1894,6 +1899,12 @@ fun DirectionsPanel(
                     }
                 }
             }
+            // Bike only: the "Bike share" chip, in sight under the time chooser (SPEC 8, Bike share
+            // in directions). Its trips show above the bike routes.
+            if (currentMode == TravelMode.BICYCLE) {
+                Spacer(Modifier.height(8.dp))
+                BikeShareTripsChip()
+            }
             // Route preferences, drive only (tolls/motorways/ferries mean nothing on foot or transit).
             // Honored on-device where the region graph carries the avoid profiles; online the
             // route falls back to normal rather than failing (the public OSRM can't exclude).
@@ -1966,6 +1977,7 @@ fun DirectionsPanel(
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit, onTransitPreview)
             } else {
+                if (currentMode == TravelMode.BICYCLE) BikeShareSection(ink, dim, dark)
                 Spacer(Modifier.height(12.dp))
                 if (routes.isEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2629,6 +2641,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
         }
         val sub = listOfNotNull(t.frequencyText?.let { stringResource(R.string.place_every, it) }, t.distanceText, t.agency).joinToString("  ·  ")
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+        BikeShareTripSummary(t, dim)
         if (expanded) {
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
             // Step-by-step guidance (Moovit-style) for this itinerary.
@@ -2726,7 +2739,9 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
         return
     }
     val line = s.line ?: return // unreachable (walk branch returned) — re-narrows the cross-module type
-    val lineColor = parseHexColor(line.colorHex) ?: dim
+    // A bike-share leg reads like a ride: its system's pill, the station the bike is taken from
+    // and the one it is returned to (SPEC 8, Bike share in directions).
+    val lineColor = parseHexColor(line.colorHex) ?: if (s.mode == TransitMode.BIKE_SHARE) bikeShareTeal() else dim
     var stopsOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
         Icon(transitModeIcon(s.mode), null, tint = lineColor, modifier = Modifier.padding(top = 2.dp).size(18.dp))
@@ -2734,8 +2749,12 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LinePill(line)
                 s.headsign?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, maxLines = 2) }
+                if (s.rental?.electric == true) {
+                    Text(stringResource(R.string.place_bike_share_ebike), style = MaterialTheme.typography.labelMedium, color = dim)
+                }
             }
             s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
+            if (s.mode == TransitMode.BIKE_SHARE) BikeShareStopCount(s, pickup = true, dim)
             val rideLabel = listOfNotNull(
                 s.durationText,
                 s.numStops?.let { pluralStringResource(R.plurals.place_transit_stops, it, it) },
@@ -2758,10 +2777,13 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
                         s.intermediateStops.forEach { StopLine(it, ink, dim, emphasize = false) }
                     }
                 }
+            } else if (s.mode == TransitMode.BIKE_SHARE) {
+                BikeShareRideSteps(s, rideLabel, dim)
             } else if (rideLabel.isNotEmpty()) {
                 Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
             }
             s.alightStop?.let { StopLine(it, ink, dim, emphasize = true) }
+            if (s.mode == TransitMode.BIKE_SHARE) BikeShareStopCount(s, pickup = false, dim)
         }
     }
 }
@@ -3175,14 +3197,256 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
     TransitMode.TRAIN -> Sym.Train
     TransitMode.TRAM -> Sym.Tram
     TransitMode.FERRY -> Sym.DirectionsBoat
+    TransitMode.BIKE_SHARE -> Sym.DirectionsBike
     else -> Sym.DirectionsTransit
 }
 
+/** Bike-share trips shown above the bike routes. */
+private const val BIKE_SHARE_ROWS = 2
+/** The most of the screen's height the bike-share trips take before they scroll. */
+private const val BIKE_SHARE_MAX_HEIGHT = 0.32f
+
+/**
+ * The Bike tab's bike-share trips (SPEC 8, Bike share in directions), above the bike routes and
+ * under their own heading, the bike routes then under "Your bike". A trip row is a transit row:
+ * expanding draws it on the map and Start guides it leg by leg. Nothing while the chip is off;
+ * a line when the search found no trip.
+ */
+@Composable
+internal fun BikeShareSection(ink: Color, dim: Color, dark: Boolean) {
+    val onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { a, b -> app.vela.ui.RouteActions.walkDirections?.invoke(a, b).orEmpty() }
+    val onStartTransit: (TransitItinerary) -> Unit = { app.vela.ui.RouteActions.startTransit?.invoke(it) }
+    val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
+    if (trips == null && !app.vela.ui.map.BikeShareTripsShown.loading.value && app.vela.ui.map.BikeShareTripsShown.notice.value == null) return
+    Spacer(Modifier.height(12.dp))
+    when {
+        trips.isNullOrEmpty() -> BikeShareStatus(dim, MaterialTheme.typography.bodyMedium, spinner = 18.dp)
+        else -> {
+            val nowSec by produceState(initialValue = app.vela.ui.DemoClock.nowSec()) {
+                while (true) {
+                    delay(30_000L)
+                    value = app.vela.ui.DemoClock.nowSec()
+                }
+            }
+            val shown = trips.take(BIKE_SHARE_ROWS)
+            // One trip open at a time, and the trips scroll inside a capped height, so an opened
+            // trip never pushes the sheet over the map that draws it.
+            val onPreview: (TransitItinerary, Boolean) -> Unit = { t, open ->
+                if (open) shown.filter { it !== t }.forEach { app.vela.ui.TransitExpanded.open.remove(app.vela.ui.TransitExpanded.keyOf(it)) }
+                app.vela.ui.map.BikeShareTripsShown.onExpanded(t, open)
+            }
+            val maxH = (LocalConfiguration.current.screenHeightDp * BIKE_SHARE_MAX_HEIGHT).dp
+            Column(
+                Modifier.heightIn(max = maxH).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                shown.forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    Text(stringResource(R.string.place_bike_share_own_bike), style = MaterialTheme.typography.labelLarge, color = dim)
+}
+
+/**
+ * The Bike tab's bike-share trips in the Google-style picker (SPEC 8, Bike share in directions):
+ * one two-line card per trip, the system's pill and the time, then the free bikes at the pickup.
+ * A tap draws that trip on the map in place of the bike route, and Start then guides it; a
+ * second tap lets go of it. Kept short so the route stays in sight with the picker up, and its
+ * height animates as the trips arrive, change or leave.
+ */
+@Composable
+internal fun BikeShareTripCards(ink: Color, dim: Color, dark: Boolean) {
+    val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
+    val selected = app.vela.ui.map.BikeShareTripsShown.preview.value
+    Column(
+        Modifier.fillMaxWidth().animateContentSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (trips.isNullOrEmpty()) {
+            BikeShareStatus(dim, MaterialTheme.typography.bodySmall, spinner = 16.dp, Modifier.padding(top = 8.dp))
+        } else {
+            Spacer(Modifier.height(2.dp))
+            trips.take(BIKE_SHARE_ROWS).forEach { t -> BikeShareTripCard(t, t === selected, ink, dim, dark) }
+        }
+    }
+}
+
+/** The Bike tab's line in place of bike-share trips: why none were asked for, the search under
+ *  way, or that it found none. Nothing while the chip is off. Both directions panels show it. */
+@Composable
+private fun BikeShareStatus(dim: Color, style: androidx.compose.ui.text.TextStyle, spinner: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    val trips = app.vela.ui.map.BikeShareTripsShown.trips.value
+    val notice = app.vela.ui.map.BikeShareTripsShown.notice.value
+    when {
+        notice != null -> Text(stringResource(notice), style = style, color = dim, modifier = modifier)
+        trips == null && app.vela.ui.map.BikeShareTripsShown.loading.value -> Row(
+            modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CircularProgressIndicator(Modifier.size(spinner), strokeWidth = 2.dp)
+            Text(stringResource(R.string.place_finding_route), style = style, color = dim)
+        }
+        trips != null && trips.isEmpty() -> Text(stringResource(R.string.place_bike_share_none), style = style, color = dim, modifier = modifier)
+    }
+}
+
+@Composable
+private fun BikeShareTripCard(t: TransitItinerary, selected: Boolean, ink: Color, dim: Color, dark: Boolean) {
+    val shape = RoundedCornerShape(12.dp)
+    val teal = bikeShareTeal()
+    val border by animateColorAsState(if (selected) teal else Color.Transparent, label = "bikeShareCard")
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(SheetPalette.row(dark))
+            .border(2.dp, border, shape)
+            .dpadHighlight(shape)
+            .clickable { app.vela.ui.map.BikeShareTripsShown.select(t) }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            t.lines.take(3).forEachIndexed { i, line ->
+                if (i > 0) Icon(Sym.ChevronRight, contentDescription = null, tint = dim, modifier = Modifier.size(14.dp))
+                LinePill(line)
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                listOfNotNull(t.departureText, t.arrivalText).joinToString(" – ").ifEmpty { t.durationText.orEmpty() },
+                style = MaterialTheme.typography.bodySmall, color = dim, maxLines = 1,
+            )
+            t.durationText?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1) }
+        }
+        BikeShareTripSummary(t, dim)
+    }
+}
+
+/** The bike-share accent: the stations' badge and the map's cycleways ([app.vela.ui.map.BikeShareMapLayer]). */
+@Composable
+private fun bikeShareTeal(): Color =
+    Color(if (isAppInDarkTheme()) app.vela.ui.map.BikeShareMapLayer.FILL_DARK else app.vela.ui.map.BikeShareMapLayer.FILL_LIGHT)
+
+/** The Bike tab's "Bike share" chip (SPEC 8, Bike share in directions): flips
+ *  [app.vela.ui.BikeShareTrips] and asks for the bike-share trips again, the bike routes left as
+ *  they are, through [app.vela.ui.RouteActions], so MapScreen takes no new callback. */
+@Composable
+internal fun BikeShareTripsChip() {
+    val context = LocalContext.current
+    val on = app.vela.ui.BikeShareTrips.on.value
+    FilterChip(
+        selected = on,
+        onClick = {
+            app.vela.ui.BikeShareTrips.set(context, !on)
+            app.vela.ui.RouteActions.bikeShareChanged?.invoke()
+        },
+        label = { Text(stringResource(R.string.map_layers_bike_share)) },
+        leadingIcon = { Icon(Sym.DirectionsBike, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        shape = androidx.compose.foundation.shape.CircleShape,
+        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+    )
+}
+
+/** A count's color on a bike-share trip: red at none, amber at [app.vela.ui.map.BikeShareCounts.FEW] or fewer. */
+private fun bikeShareCountColor(n: Int, dim: Color): Color = when {
+    n <= 0 -> SheetPalette.TrafficRed
+    n <= app.vela.ui.map.BikeShareCounts.FEW -> SheetPalette.TrafficAmber
+    else -> dim
+}
+
+/** A bike-share leg's count under one of its stations (SPEC 8, Bike share in directions): the
+ *  free bikes where the bike is taken, the free docks where it is returned when the feed gives
+ *  them. Nothing until the counts have landed. Lined up under the station's name. */
+@Composable
+private fun BikeShareStopCount(s: TransitStep, pickup: Boolean, dim: Color) {
+    app.vela.ui.map.BikeShareCounts.version.intValue // redraws when the counts land
+    val rental = s.rental
+    val stop = if (pickup) s.boardStop else s.alightStop
+    val c = if (rental != null && stop != null) app.vela.ui.map.BikeShareCounts.of(rental, stop) else null
+    val docks = c?.docks
+    val shown: Pair<String, Color>? = when {
+        c == null -> null
+        pickup && !c.renting -> stringResource(R.string.place_bike_share_no_rentals) to SheetPalette.TrafficRed
+        !pickup && !c.returning -> stringResource(R.string.place_bike_share_no_returns) to SheetPalette.TrafficRed
+        pickup -> pluralStringResource(R.plurals.place_bike_share_bikes, c.bikes, c.bikes) to bikeShareCountColor(c.bikes, dim)
+        docks != null -> pluralStringResource(R.plurals.place_bike_share_docks, docks, docks) to bikeShareCountColor(docks, dim)
+        else -> null
+    }
+    if (shown != null) {
+        Text(shown.first, style = MaterialTheme.typography.labelSmall, color = shown.second, modifier = Modifier.padding(start = 62.dp))
+    }
+}
+
+/** A bike-share ride's length; tapped, its turn-by-turn cycling steps between its two stations,
+ *  from the bike router through [app.vela.ui.RouteActions.bikeDirections], as a walk leg's come
+ *  from the walk router (SPEC 8, Bike share in directions). */
+@Composable
+private fun BikeShareRideSteps(s: TransitStep, label: String, dim: Color) {
+    val from = s.boardStop?.location
+    val to = s.alightStop?.location
+    val fetch = app.vela.ui.RouteActions.bikeDirections
+    val canExpand = from != null && to != null && fetch != null
+    var open by remember { mutableStateOf(false) }
+    var steps by remember(from, to) { mutableStateOf<List<String>?>(null) }
+    if (open && canExpand) {
+        LaunchedEffect(from, to) { steps = fetch!!(from!!, to!!) }
+    }
+    Row(
+        Modifier.then(
+            if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(6.dp)).clickable { open = !open }.padding(vertical = 1.dp)
+            else Modifier,
+        ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = dim)
+        if (canExpand) {
+            Icon(
+                if (open) Sym.ExpandLess else Sym.ExpandMore,
+                contentDescription = if (open) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
+                tint = dim, modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+    if (open && canExpand) {
+        Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            when (val list = steps) {
+                null -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                else -> list.forEach { instr -> Text("•  $instr", style = MaterialTheme.typography.labelSmall, color = dim) }
+            }
+        }
+    }
+}
+
+/** A bike-share trip's free bikes at its first pickup, under the collapsed row's pills: "3 bikes
+ *  at Part-Dieu". Nothing until the counts have landed. */
+@Composable
+private fun BikeShareTripSummary(t: TransitItinerary, dim: Color) {
+    app.vela.ui.map.BikeShareCounts.version.intValue // redraws when the counts land
+    val s = t.steps.firstOrNull { it.mode == TransitMode.BIKE_SHARE }
+    val rental = s?.rental
+    val stop = s?.boardStop
+    val c = if (rental != null && stop != null) app.vela.ui.map.BikeShareCounts.of(rental, stop) else null
+    if (c != null && stop != null) {
+        val count = if (!c.renting) stringResource(R.string.place_bike_share_no_rentals)
+            else pluralStringResource(R.plurals.place_bike_share_bikes, c.bikes, c.bikes)
+        Text(
+            stringResource(R.string.place_bike_share_at, count, stop.name),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (!c.renting) SheetPalette.TrafficRed else bikeShareCountColor(c.bikes, dim),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no color is supplied. */
+ *  transit pills; falls back to the theme primary when no color is supplied, and a bike-share
+ *  system to the bike-share teal. */
 @Composable
 private fun LinePill(line: TransitLine) {
-    val fallback = MaterialTheme.colorScheme.primary
+    val fallback = if (line.mode == TransitMode.BIKE_SHARE) bikeShareTeal() else MaterialTheme.colorScheme.primary
     val bg = parseHexColor(line.colorHex) ?: fallback
     val fg = parseHexColor(line.textColorHex) ?: if (bg.luminance() > 0.5f) Color(0xFF202124) else Color.White
     Row(
@@ -3206,6 +3470,7 @@ private fun transitModeIcon(mode: TransitMode) = when (mode) {
     TransitMode.FERRY -> Sym.DirectionsBoat
     TransitMode.WALK -> Sym.DirectionsWalk
     TransitMode.GENERIC -> Sym.DirectionsTransit
+    TransitMode.BIKE_SHARE -> Sym.DirectionsBike
 }
 
 /** Parse a CSS hex color ("#rrggbb" / "#rgb"); null if absent/malformed. */

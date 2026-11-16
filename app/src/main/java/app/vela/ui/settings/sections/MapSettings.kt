@@ -54,6 +54,13 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
         }
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_bike_share_layer),
+            checked = app.vela.ui.BikeShareLayer.on.value,
+            onCheckedChange = { app.vela.ui.BikeShareLayer.set(context, it) },
+            hint = stringResource(R.string.settings_bike_share_layer_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_topography),
             checked = app.vela.ui.Topography.on.value,
             onCheckedChange = { app.vela.ui.Topography.set(context, it) },

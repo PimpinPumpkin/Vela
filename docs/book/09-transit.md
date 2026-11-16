@@ -21,6 +21,15 @@ reads Done and closes the pane.
 "Highlight transit lines" draws rail lines in their own colors. With no connection, a stop whose
 board you opened before still shows it, marked with when it was last seen.
 
+With "Bike share" on in Layers, each docked bike-share station shows from street zoom as a teal
+badge with its free bikes beside it, gray when it has none. Tap one for its free docks and how
+old the counts are. They refresh every minute while Vela is on screen.
+
+With the "Bike share" chip on in the Bike tab, a trip that leaves now also gets bike-share
+trips: a docked bike taken from one station and returned to another, alone or before or after a
+ride. Up to two show above the bike routes under their own heading, with the system's pill in
+teal and the free bikes at the station where the bike is taken.
+
 ## Where the data comes from
 
 | Piece | First | Fallback |
@@ -31,6 +40,8 @@ board you opened before still shows it, marked with when it was last seen.
 | Transit directions | Google's directions page | the Transitous planner |
 | Path of a ride on the map | the Transitous planner | a road route through the stops (bus), straight lines (rail) |
 | Colored rail lines | Transitous | the basemap's plain rail highlight |
+| Bike-share stations | Transitous, from the operators' GBFS feeds | none |
+| Bike-share trips | the Transitous planner, on the same feeds | none |
 
 Transitous (`api.transitous.org`) is a community-run service with no key or account. It serves
 the GTFS and GTFS-Realtime feeds that agencies publish, through the MOTIS engine. Every call
@@ -59,7 +70,8 @@ traffic on the bus's route. GTFS-Realtime knows only how late a vehicle is now.
 
 A tapped stop icon knows its stop id (`Transitous.boardFor`). A place sheet gets a board when its
 category reads as a transit stop (`isTransitCategory`: word lists per language that calibration
-can replace, with exclusions so a gas station is not a station). `Transitous.board` then takes
+can replace, with exclusions so a gas station is not a station, and a compiled list of bike words
+so a bike-share station is not one either). `Transitous.board` then takes
 the nearest of the stops within 200 m of the place. A tapped basemap stop with no Google listing
 gets its board the same way.
 
@@ -102,7 +114,9 @@ back from the stops on its approaches.
 
 Stops are fetched from zoom 15 (`TRANSIT_STOPS_MIN_ZOOM`), drawn from 16 and named from 17, one
 icon per station with bays collapsed onto their parent. The fetch covers the view padded by half
-on each side and repeats only when the view's center leaves the middle half of that box.
+on each side and repeats only when the view's center leaves the middle half of that box. A
+request that is out is left to land before the next view is asked (`ViewFetch`, as for bike-share
+stations below).
 
 While the layer has stops, the basemap's own bus icons are filtered out so a stop cannot draw
 twice at slightly different corners. Rail and airport icons stay on the basemap.
@@ -110,6 +124,37 @@ twice at slightly different corners. Rail and airport icons stay on the basemap.
 The icons hide during a drive. Settings has a "Transit stops" switch with three under it, for bus
 stops, subway and tram stops, and train stations (`TransitLayer.showsStop`). A tap goes to the
 stop or the business beside it, whichever is nearer on screen.
+
+### Bike-share stations
+
+Transitous reads the GBFS feeds that bike-share operators publish, and its `rentals` call answers
+every rental station in a box. Vela keeps the bike stations from that answer; car-share and
+scooter stations come in it too. So do the parking spots of free-floating bike and scooter
+operators, which publish them as stations. They are left out by the operator's name (Dott,
+Voi, Lime and the like head their provider group, where a public system's group is named after
+the system), by a spot that also takes scooters and counts no docks, and by a "station" with
+more bikes than any station holds. Without the names, central Paris drew one operator's
+parking spots ten to one against Vélib's stations. The layer is
+off by default because it is a request of its own, once a minute while it is on.
+
+The fetch follows the stops' rules: from zoom 15, the view padded by half on each side, again only
+when the view leaves that box. On top of that the box around the view is asked again every 60 s
+while the app is on screen, and not at all during a drive, with "Use less data" or offline. A
+request that is out is left to land, and only then is a view it no longer covers asked for:
+while the map follows a moving fix the view comes once a second, sooner than a busy city answers,
+and a request canceled for each new view never landed. In central Lyon
+one answer at zoom 15 on a phone is 13.7 KB, with 58 bike stations among 218 rental stations.
+The box asks for docked systems' stations only, named by a small providers-only lookup kept for
+ten minutes: central Paris is 176 stations in 9.2 KB that way, against 4,251 in 241 KB with every
+operator's.
+
+Free docks need care. A feed with several bike models can give one free-dock count and have it
+repeated under each model, so the station's count is the largest of them, not their sum. Where a
+feed gives no dock count (Lyon's does not), the sheet shows bikes only.
+
+A tapped station opens a light sheet with its counts and when they were fetched. The minute
+refresh updates an open sheet while its station is in the fetched box. The counts are never
+saved with a place. [SPEC 8](../../SPEC.md#8-transit), Bike-share stations, has the rules.
 
 ### Merging stops
 
@@ -187,10 +232,41 @@ The planner's trips take the same form. They lack a fare, service alerts and wal
 vehicle chips become its `transitModes`, and `TransitOrder.byPreference` sorts its answers
 because it has no route preference.
 
+### Bike-share trips
+
+With the "Bike share" chip on the Bike tab and a trip that leaves now, `BikeShareTripSearch` runs
+beside the bike routes. It never runs for a later time, and the sheet says bike share is only for
+leaving now: the planner picks stations by their bikes and docks as of the request. Flipping the
+chip or changing the time asks for the bike-share trips again and leaves the bike routes alone. The trips sit in `BikeShareTripsShown`, a holder the sheet and the
+map read, since MapScreen takes no new parameter.
+
+1. `Transitous.bikeShareGroups` asks which systems run around the trip, for providers only. A
+   system counts when it rents bicycles and is not a free-floating operator, by the same list as
+   the station layer. With none, nothing more is asked.
+2. `Transitous.planBikeShare` asks the planner for trips with `RENTAL` before, after or instead
+   of transit, on those systems only. Without that list it also rides free-floating bikes: central
+   Paris came back with Lime, Voi and Dott bikes ahead of its one Vélib' ride. This is a request
+   of its own because with `RENTAL` as a direct mode the planner drops the transit trips slower
+   than the fastest bike ride.
+3. A rental leg becomes a ride on the system's line, from the pickup station to the return
+   station. A trip with any other rental leg is dropped, and a later run of the same trip counts
+   once.
+4. Once the trips are on screen, their stations' free bikes and docks are asked for, one small
+   box per group of stations, for those systems only. The plan names its stations without an id,
+   so each is found by name, or by position within 30 m. A trip shows the free bikes at its
+   pickup, and its bike leg the free docks at its return where the feed gives them: amber at two
+   or fewer, red at none. "Use less data" skips this step.
+
+The planner itself takes a bike only from a station with one, and returns it only where a dock
+is free, when the feed says so. Most feeds on the public instance give no dock counts, and there
+any station that takes returns will do. [SPEC 8](../../SPEC.md#8-transit), Bike share in
+directions, has the rules.
+
 ### The trip on the map
 
 Expanding a trip draws its rides in the agency's color (blue when there is none), its stops as
-ringed white dots and its walks as dotted gray links, under the map labels.
+ringed white dots and its walks as dotted gray links, under the map labels. A bike-share ride
+draws along its own path, teal when its system gives no color, with dots at its two stations.
 
 The planner's trips carry their own paths. Google's have stops and no track, so a ride first
 draws as straight lines through its stops. `MapViewModel.shapeTransitLegs` then looks up each
@@ -245,6 +321,11 @@ heads-up says "Get off at the next stop" once per leg and the voice says it too
 (`TransitProgress.nextIsYours`). On arrival the ongoing card gives way to a dismissable "You have
 arrived", which Done in the app clears. The view model writes the card (`TransitGuide.notice`);
 a start the system refuses leaves guidance working in the app, as before.
+
+A bike-share leg is spoken by its two stations, where to take a bike and where to return it, and
+advances at the return station. Its length opens to cycling steps from the bike router, the way a
+walk leg opens to walking steps. Its counts are the ones fetched with the trip and are not asked
+again on the way. Its notification names the same two stations, with no "next stop" heads-up.
 
 ### Offline copies
 

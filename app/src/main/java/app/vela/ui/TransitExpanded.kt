@@ -12,8 +12,11 @@ import app.vela.core.model.TransitItinerary
 object TransitExpanded {
     val open = mutableStateMapOf<String, Boolean>()
 
+    // The boarding stops are in it: two bike-share trips on one system at the same times differ
+    // only by their stations, and shared one key (both rows opened together).
     fun keyOf(t: TransitItinerary): String =
-        "${t.departureEpochSec}|${t.arrivalEpochSec}|${t.steps.size}|${t.durationText}|${t.lines.joinToString(",") { it.name }}"
+        "${t.departureEpochSec}|${t.arrivalEpochSec}|${t.steps.size}|${t.durationText}|${t.lines.joinToString(",") { it.name }}|" +
+            t.steps.joinToString(",") { it.boardStop?.name.orEmpty() }
 
     fun prune(keep: Collection<String>) {
         val gone = open.keys.filter { it !in keep }

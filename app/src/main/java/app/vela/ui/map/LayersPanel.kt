@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vela.R
 import app.vela.core.data.tiles.MapStyle
+import app.vela.ui.BikeShareLayer
 import app.vela.ui.Buildings3d
 import app.vela.ui.GoogleFree
 import app.vela.ui.MapLook
@@ -78,7 +79,7 @@ internal fun BoxScope.LayersCorner(vm: MapViewModel, landscapeChrome: Boolean, d
     var open by remember { mutableStateOf(false) }
     // The button takes the accent while something beyond the default map is on. 3D buildings are
     // on by default, so they do not count.
-    val anyLayerOn = SatelliteLayer.on.value || Traffic.on.value || TransitLayer.on.value || Topography.on.value
+    val anyLayerOn = SatelliteLayer.on.value || Traffic.on.value || TransitLayer.on.value || BikeShareLayer.on.value || Topography.on.value
     Box(
         modifier = Modifier
             .align(Alignment.TopEnd)
@@ -171,6 +172,9 @@ private fun LayersPanel(vm: MapViewModel, onClose: () -> Unit) {
                 },
                 Tile(stringResource(R.string.map_layers_transit), TransitLayer.on.value, { TransitLayer.set(ctx, !TransitLayer.on.value) }) {
                     GlyphDisc(Sym.Train, it)
+                },
+                Tile(stringResource(R.string.map_layers_bike_share), BikeShareLayer.on.value, { BikeShareLayer.set(ctx, !BikeShareLayer.on.value) }) {
+                    GlyphDisc(Sym.DirectionsBike, it)
                 },
                 Tile(stringResource(R.string.map_layers_terrain), Topography.on.value, { Topography.set(ctx, !Topography.on.value) }) {
                     GlyphDisc(Sym.Terrain, it)
