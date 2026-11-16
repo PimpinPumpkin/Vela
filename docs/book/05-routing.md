@@ -319,6 +319,35 @@ default, `RoutingPrefs.bikeSafe`), a bike trip is routed for safety:
 
 Bike routes carry no traffic.
 
+### Riding a GPX track
+
+Open or share a `.gpx` file with Vela and it plans a bike trip from the start of the track to
+its end. Vela does no routing of its own: start somewhere else and the route is still the
+track, and guidance starts when you reach it. The track is matched to the roads in pieces of
+about 5 km, each cut where the track runs straight, by Valhalla with bicycle costing. One-way
+streets count as ridable both ways, since the track is the rider's own line. Where the bicycle
+match leaves the track (a park path closed to bikes, detoured around the block), 150 m either
+side is matched again with pedestrian costing and spliced in when it stays closer to the track.
+The pieces are matched three at a time, no bigger a burst on the shared community server than an
+ordinary drive. A piece neither
+matches gets its turns from the track's bends, named
+from the map tiles. Where the matcher turns back and the track does not (a U-turn around a
+divided road's median), the out-and-back is cut and said as the one turn the rider makes. Two turns closer
+than 15 m are one movement: a sidewalk jog across a road is dropped, and anything else is said
+as one turn. Turns are spoken like on any other route, in the directions language. A turn the road does not make, where a short way such as a bridge is drawn at an angle, is dropped.
+
+The route is drawn with the solid line, and the whole track stays drawn in purple, with a green pin at
+its start, while it is loaded, after arrival too, so it can be looked over at any time. Away from the track Vela does
+not reroute and does not look for a faster route: there is no chime and no "Rerouting". The
+voice says where you stand. Start on the track and it says "Route started" with the first
+step; start away from it and it says "Go to the start of the route", then "Route started" with the
+next turn when you reach the line ("Route started. In 40 meters, turn left"). Three fixes in a row off the line say "Left the route", and two back on it
+say "Following the route". While you are away, the turn card says "Go to the start of the
+route" or "Return to the route" with the distance, and the prompts start, or pick up again,
+when you reach the track. On a track ride the prompts come at a cyclist's distances: the first about
+35 seconds out (at least 150 m), the second about 10 seconds out (at least 50 m), and two turns
+are said together ("Turn left, then turn right") only when they are within 60 m. The track is held until the app closes. The constants are in [SPEC 4.3](../../SPEC.md).
+
 ### Offline: the on-phone router
 
 For driving and walking, `ObfRouteEngine` answers when the open router cannot. It returns one

@@ -175,6 +175,7 @@ class NavSession @Inject constructor(
     private var stopMarks: List<Double?> = emptyList()
     private var passedStops = 0
     private var planRoute: Route? = null // the route [stopMarks] were computed against
+    private var trackGuide = TrackGuide.State() // where the rider stands on a GPX track ride (TrackRide)
 
     /** An intermediate stop on a multi-stop trip. */
     /** A stop on the drive. [silent] marks a side-street detour point the camera pass added (issue
@@ -279,7 +280,11 @@ class NavSession @Inject constructor(
         // speakOpener (not speak): briefly hold the opener until the first road's real romanized name
         // has loaded from the map tiles, so a foreign street isn't read as an ICU skeleton at T=0 while
         // the nav-zoom tiles are still loading (issue #184). Falls through to speaking after a short cap.
-        voice.speakOpener(openerFor(route))
+        // A GPX track ride (TrackRide) says its opener on the first fix, which tells whether the
+        // rider is on the line (TrackGuide): "Route started" and the first step, or "Go to the
+        // start of the route".
+        trackGuide = TrackGuide.State()
+        if (!app.vela.core.data.TrackRide.isTrack(route)) voice.speakOpener(openerFor(route))
         diag.record(
             "nav",
             "start → ${destinationLabel.ifBlank { "destination" }} " +
@@ -290,9 +295,30 @@ class NavSession @Inject constructor(
 
     /** The line [start] opens a drive of [route] with: the start phrase and the first instruction,
      *  with its compass heading and the spoken-street-names switch applied. */
-    fun openerFor(route: Route): String = app.vela.core.i18n.NavStringsRegistry.current().startNav(
-        Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline),
-    )
+    fun openerFor(route: Route, imperial: Boolean = false): String {
+        if (app.vela.core.data.TrackRide.isTrack(route)) return trackStartLine(route, 0, 0.0, imperial).text
+        val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline)
+        return app.vela.core.i18n.NavStringsRegistry.current().startNav(first)
+    }
+
+    /** A track ride's start line, and the turn it announced ([step], -1 for none) at [toStepM]. */
+    private class StartLine(val text: String, val step: Int = -1, val toStepM: Double = 0.0)
+
+    /** "Route started" and what comes next on a track ride, from step [stepIndex] that is
+     *  [toStepM] ahead: a departure that names its road is said with its heading ("Head east on
+     *  X"); a bare one ("Start your route") is skipped for the turn after it, with its distance. */
+    private fun trackStartLine(route: Route, stepIndex: Int, toStepM: Double, imperial: Boolean): StartLine {
+        val words = app.vela.core.i18n.NavStringsRegistry.current()
+        val ms = route.maneuvers
+        val here = ms.getOrNull(stepIndex) ?: return StartLine(words.trackStarted())
+        if (here.type == ManeuverType.DEPART && here.road != null) {
+            return StartLine("${words.trackStarted()} ${Heading.withCardinal(here.spokenInstruction(), route.polyline)}")
+        }
+        val (k, toK) = if (here.type == ManeuverType.DEPART) (stepIndex + 1) to (toStepM + here.distanceMeters) else stepIndex to toStepM
+        val turn = ms.getOrNull(k)
+        if (turn == null || turn.type == ManeuverType.ARRIVE) return StartLine(words.trackStarted())
+        return StartLine("${words.trackStarted()} ${words.inThen(words.spokenDistance(toK, imperial), turn.spokenInstruction())}", k, toK)
+    }
 
     /** Prepare the first lines of a drive of [route] while it is only being previewed: the opener
      *  and the first turns' prompts at starting speed ([NavEngine.startPrompts]), so Start plays them
@@ -300,7 +326,8 @@ class NavSession @Inject constructor(
     fun prepareStart(route: Route, imperial: Boolean, onDone: () -> Unit = {}) {
         if (_state.value.navigating || route.maneuvers.isEmpty()) { onDone(); return }
         // In speaking order, so a start that cannot wait for all of them has the first ones.
-        val lines = listOf(openerFor(route)) + NavEngine.startPrompts(route, imperial)
+        val lines = listOf(openerFor(route, imperial)) + NavEngine.startPrompts(route, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route)) +
+            listOfNotNull(app.vela.core.i18n.NavStringsRegistry.current().toTrackStart().takeIf { app.vela.core.data.TrackRide.isTrack(route) })
         val left = java.util.concurrent.atomic.AtomicInteger(lines.size)
         lines.forEach { voice.prepare(it) { if (left.decrementAndGet() == 0) onDone() } }
     }
@@ -321,7 +348,7 @@ class NavSession @Inject constructor(
         if (key == prewarmKey && !spoke) return
         prewarmKey = key
         // After the events below are spoken: speak() runs first on the same worker.
-        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial)
+        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route))
         scope.launch { lines.forEach { voice.prepare(it) } }
     }
 
@@ -494,7 +521,54 @@ class NavSession @Inject constructor(
         // and a reroute pins its departure to it only then ([departCourse]).
         val course = bearingDeg.takeIf { accuracyM == null || accuracyM <= NavEngine.HEADING_MAX_ACC_M }
         val departCourse = lastBearing
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, course, stopAhead, headingMinMps())
+        val (engineNext, engineEvents) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, course, stopAhead, headingMinMps(),
+            trackRide = app.vela.core.data.TrackRide.isTrack(route))
+        // A track ride (TrackRide) away from its line (TrackGuide.away): the engine still counts
+        // from the track's start (or the last point reached), so its turns and distances are not
+        // the rider's. The banner says to go to the start, or back to the route, with the distance
+        // to it, and the turn prompts wait: they are dropped unsaid, so the first one is still
+        // spoken on reaching the line. On the line the field is cleared, since the engine carries
+        // the state it was given forward.
+        var trackSay: TrackGuide.Say? = null
+        val toTrackM = if (!app.vela.core.data.TrackRide.isTrack(route)) -1.0 else {
+            val off = perpendicularToRouteM(route, loc)
+            val (g, say) = TrackGuide.next(trackGuide, off <= offRoute)
+            trackGuide = g; trackSay = say
+            when (g.phase) {
+                TrackGuide.Phase.TO_START -> loc.distanceTo(route.polyline.first())
+                TrackGuide.Phase.OFF -> off
+                else -> -1.0
+            }
+        }
+        var next = if (toTrackM < 0) engineNext.copy(toTrackM = -1.0) else engineNext.copy(
+            toTrackM = toTrackM, spoken = nav.spoken, chainedStep = nav.chainedStep, chainedBands = nav.chainedBands,
+        )
+        // The fix the route starts on says one line: "Route started" and the engine's own prompt
+        // for this fix, else the next step with its distance. Said apart, a near turn's prompt
+        // (which interrupts) came out before "Route started".
+        val starting = trackSay == TrackGuide.Say.STARTED || trackSay == TrackGuide.Say.STARTED_HERE
+        val startLine = if (!starting) null else {
+            val engineLines = engineEvents.filterIsInstance<NavEvent.Speak>().map { it.text }
+            if (engineLines.isNotEmpty()) "${app.vela.core.i18n.NavStringsRegistry.current().trackStarted()} ${engineLines.joinToString(" ")}"
+            else {
+                // The engine said nothing here (it is silent on the departure step, which a drive
+                // begun on the track is still on), so the line names the turn itself. The bands that
+                // turn is already inside are recorded as said, as the engine records its own: left
+                // unmarked, the engine said "In 30 meters, turn left" again on the next fix.
+                val line = trackStartLine(route, next.stepIndex, next.distanceToNextManeuver, imperial)
+                if (line.step >= 0) {
+                    val said = NavEngine.bandsWithin(line.toStepM, speedMps ?: 0.0, trackRide = true)
+                    next = if (line.step == next.stepIndex) next.copy(spoken = next.spoken + said)
+                    else next.copy(chainedStep = line.step, chainedBands = said)
+                }
+                line.text
+            }
+        }
+        val events = when {
+            toTrackM >= 0 -> engineEvents.filter { it !is NavEvent.Speak && it !is NavEvent.Haptic }
+            starting -> engineEvents.filter { it !is NavEvent.Speak }
+            else -> engineEvents
+        }
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // The figures to the next stop, measured on this fix's progress. Only while the marks were
         // measured on this very route (planRoute): against another route they mean nothing.
@@ -511,10 +585,18 @@ class NavSession @Inject constructor(
                 // The live-traffic ETA calibration (etaScale, set by the recheck) applies to the
                 // PUBLISHED remaining time only - the engine's own value stays pristine (it never
                 // reads it back; it recomputes from the route's step durations each fix).
-                val scaledNav = if (scale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * scale)
+                // A track ride (TrackRide) is never off route in the rerouting sense: away from the
+                // line the latch is dropped before it is published, so no "Rerouting" shows and
+                // guidance picks up when the rider reaches the line.
+                val shown = if (next.offRoute && app.vela.core.data.TrackRide.isTrack(route)) next.copy(offRoute = false) else next
+                val scaledNav = if (scale == 1.0) shown else shown.copy(remainingDuration = shown.remainingDuration * scale)
                 it.copy(
                     nav = scaledNav,
-                    maneuverText = maneuver?.instruction.orEmpty(),
+                    maneuverText = when {
+                        toTrackM < 0 -> maneuver?.instruction.orEmpty()
+                        trackGuide.phase == TrackGuide.Phase.TO_START -> app.vela.core.i18n.NavStringsRegistry.current().toTrackStart()
+                        else -> app.vela.core.i18n.NavStringsRegistry.current().backToTrack()
+                    },
                     remainingDistance = next.remainingDistance,
                     remainingDuration = scaledNav.remainingDuration,
                     nextStop = toStop,
@@ -522,6 +604,7 @@ class NavSession @Inject constructor(
             }
         }
         if (!applied) return
+        trackSay?.let { sayTrack(it, startLine) }
         // The stop just reached is said BEFORE this fix's turn lines: passing the mark and
         // coming within the next turn's announcing distance can land on one fix, and
         // "In 300 feet, turn left" before "You've reached the co-op" had them backwards. Not
@@ -571,7 +654,7 @@ class NavSession @Inject constructor(
                         )
                     }
                 }
-                NavEvent.RerouteNeeded -> {
+                NavEvent.RerouteNeeded -> if (!app.vela.core.data.TrackRide.isTrack(route)) {
                     diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${departCourse?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${departCourse?.toInt() ?: "not pinned"}")
                     reroute(loc, departCourse)
                 }
@@ -811,8 +894,22 @@ class NavSession @Inject constructor(
 
     // --- live re-check ------------------------------------------------------
 
+    /** The track ride's status line (TrackGuide), before this fix's own prompts. */
+    private fun sayTrack(say: TrackGuide.Say, startLine: String?) {
+        val words = app.vela.core.i18n.NavStringsRegistry.current()
+        note("track ride: $say")
+        when (say) {
+            TrackGuide.Say.STARTED_HERE -> voice.speakOpener(startLine ?: words.trackStarted())
+            TrackGuide.Say.GO_TO_START -> voice.speak(words.toTrackStart())
+            TrackGuide.Say.STARTED -> voice.speak(startLine ?: words.trackStarted(), interrupt = true)
+            TrackGuide.Say.LEFT -> voice.speak(words.trackLeft())
+            TrackGuide.Say.FOLLOWING -> voice.speak(words.trackFollowing())
+        }
+    }
+
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
         if (replayMode) return // hermetic replays never fetch live traffic/routes
+        if (app.vela.core.data.TrackRide.isTrack(_state.value.route)) return // a track ride never looks for another route
         if (!liveRechecks) return // privacy opt-out: no periodic current-position requests
         val now = SystemClock.elapsedRealtime()
         // A DEGRADED adopted route (abbreviated steps from the Google fallback, or no live
@@ -1034,6 +1131,13 @@ class NavSession @Inject constructor(
         }
 
     private fun reroute(loc: LatLng, headingDeg: Double? = null) {
+        // A GPX track ride follows the track: off it, no fetch, no chime, no voice. Guidance resumes
+        // where the rider reaches the line (the engine re-acquires progress ahead). The off-route
+        // event is ignored for a track before it gets here; this covers resume and skipped stops.
+        if (app.vela.core.data.TrackRide.isTrack(_state.value.route)) {
+            note("track ride: off the track, not rerouting")
+            return
+        }
         if (replayMode) {
             note("replay: live reroute suppressed (recorded swaps play back instead)")
             return

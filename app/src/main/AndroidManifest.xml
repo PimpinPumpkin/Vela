@@ -111,6 +111,26 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
+            <!-- A GPX file opened or shared from a file manager, a browser download or another app:
+                 Vela rides its track (TrackRide). File managers often label .gpx as octet-stream. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
             <!-- geo: links from other apps → Vela can be your default maps handler. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
