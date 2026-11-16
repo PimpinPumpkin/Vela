@@ -1306,6 +1306,19 @@ SEAM_TURN_DEG         40   a seam that turns more than this keeps the next piece
 END_M                300   a bicycle request ends at the track within this of its last point
 THIN_M                 5   track points closer than this are dropped before matching
 SPEED_MS             4.2   riding speed (m/s) for a piece matched on foot, named from its bends, or bare
+WINDOW_PAD_M         150   where the bicycle match leaves the track, the track this far either side is matched on foot
+MATCH_TIMEOUT_MS  10_000   one match request's time limit; never retried
+PIECES_AT_ONCE         3   pieces matched at once
+REV_M                 20   the match turns back where the points this far before and after...
+SPUR_GAP_M            15   ...are within this of each other
+SPUR_MAX_M           400   an out-and-back is cut no longer than this each way
+UTURN_TRACK_DEG      135   a turn-back is the track's own where the track turns this much...
+UTURN_NEAR_M          40   ...within this of it
+JOG_M                 15   a turn followed by another within this is one movement
+JOG_STRAIGHT_DEG      30   a jog ending within this of its starting heading is no turn
+JOG_SIDE_M            25   the heading before and after a jog is taken over this much line
+LEAVE_FIXES            3   fixes in a row off the line before the route is left (TrackGuide)
+REJOIN_FIXES           2   fixes in a row on the line before a left route is followed again
 ```
 
 - A GPX file reaches Vela by a VIEW or SEND intent (`application/gpx+xml`, `application/gpx`,
@@ -1318,14 +1331,50 @@ SPEED_MS             4.2   riding speed (m/s) for a piece matched on foot, named
   for a track route.
 - `TrackRide` lives in the process and is not saved. It holds one track at a time.
 - On the first route request the track is matched piece by piece. Each piece goes to
-  `ValhallaRouter.match` with `costing: bicycle`, then `pedestrian`. A piece both refuse is
+  `ValhallaRouter.match` with `costing: bicycle` and `ignore_oneways` (the rider's own line rides
+  a one-way street either way; obeying it, the matcher loops around the block and the match is
+  refused). Where the bicycle match still leaves the track (`ValhallaRouter.offLine`, measured
+  again after `withoutSpurs`; on bicycle costing a park path closed to bikes is detoured around
+  the block), the track from `WINDOW_PAD_M` before to `WINDOW_PAD_M` after is matched with
+  `pedestrian` costing, and that window is spliced in (`slice`, then `join`) when it leaves the
+  track less. A piece the bicycle match fails is matched on foot whole. A piece both refuse is
   named by `LineNamer` in strict mode from the map tiles along it (turns from its bends); only
   when that fails too does it keep the track's line with a departure and an arrival.
+- The pieces go out at once, as a driving route's stretches do (4.2), but at most
+  `PIECES_AT_ONCE` at a time, so a long track is no bigger a burst on the FOSSGIS server (fair
+  use) than an ordinary drive; a piece's walked windows follow its own match. Each match is 2
+  requests (`trace_route` and `trace_attributes`, sent together) and is never retried; a match
+  that fails waits for its `trace_attributes` to end (`settleOnFailure`) before the pedestrian
+  one is sent, so a piece never has more than 2 in flight. A 12 km
+  track is 3 pieces, 6 requests, plus 2 per walked window, and is matched once per app session:
+  a track drive makes no rechecks. The route's `made` is
+  `track matched M/N walked W bends B/N`.
+- The matcher turns back where the track does not, around a divided road's median (a U-turn
+  step, or two turns a few meters apart). `withoutSpurs` finds each such turn-back
+  (`phantomTurnBacks`: the points `REV_M` before and after it within `SPUR_GAP_M`, and the track
+  turning less than `UTURN_TRACK_DEG` within `UTURN_NEAR_M`), follows the line both ways while the
+  sides stay within `SPUR_GAP_M` (at most `SPUR_MAX_M`), cuts that stretch, and puts the steps
+  inside it as the one net turn, or none within `JOG_STRAIGHT_DEG` of straight on.
+- A track drive's prompts are a cyclist's (`NavEngine.update` `trackRide`): the approach bands
+  keep their 35 s and 10 s but with floors of `TRACK_FAR_MIN_M` (150 m) and `TRACK_NEAR_MIN_M`
+  (50 m) in place of 400 m and 150 m, and turns are said together within `TRACK_CHAIN_M` (60 m)
+  in place of `CHAIN_M` (130 m), and a turn further on is never said early as "then" for being
+  due at once (`dueNext`): it is said on its own line with its distance. With a car's floors at riding speed, nearly every turn's first
+  line was due the moment the turn before it was made, so it was said as "then". Other bike
+  routes keep a car's distances.
+- After the pieces are joined, `withoutJogs` takes each turn followed within `JOG_M` by another
+  as one movement, by the heading `JOG_SIDE_M` before the first and after the second. Within
+  `JOG_STRAIGHT_DEG` of straight on both steps are dropped (a sidewalk jog across a road); else
+  they become one turn onto the second's road. A TURN or SHARP step whose line heading
+  `JOG_SIDE_M` before and after it differs by less than `JOG_STRAIGHT_DEG` is dropped: a short way
+  drawn at an angle (a bridge) kinks the matched line, and the matcher says "Turn left" on a
+  straight road. Slight turns, forks and keeps stay. A turn within `JOG_M` of the arrival is dropped.
+  Without it a crossing read as "Turn right, then
+  turn left" and "Turn left, then turn right" several times in a row.
   A piece matched with pedestrian costing or named from its bends is re-timed at `SPEED_MS`
   (`ridden`); a bicycle match keeps Valhalla's bicycle times. `TrackRide.join` joins the pieces:
   each piece's arrival is dropped, and the next piece's departure is folded into the step before
-  it, or kept as a turn when the line turns more than `SEAM_TURN_DEG` at the seam. The route's
-  `made` is `track matched M/N bends B/N`.
+  it, or kept as a turn when the line turns more than `SEAM_TURN_DEG` at the seam.
 - The steps the track makes itself (a turn at a seam, a bare piece's start and end) are phrased
   by `NavStrings.phrase`, so they are in the directions language like every other step.
 - `GoogleMapsDataSource.directions` asks `TrackRide.routeFor` first for every bicycle request.
@@ -1337,11 +1386,27 @@ SPEED_MS             4.2   riding speed (m/s) for a piece matched on foot, named
   returns before the fetch, the chime, the voice and the buzz for its other callers (resume,
   a skipped stop). Guidance starts or resumes when the rider reaches the line, since the
   engine re-acquires progress ahead.
-- Away from the line (farther than the off-route corridor), `NavState.toTrackM` is the distance
-  to it: to the track's start until the rider has reached the line, then to the line. The turn
-  card shows `NavStrings.toTrack` ("Ride to the track") with that distance and no turn, lanes or
-  "then" row. The engine's `Speak` and `Haptic` events are dropped and its spoken bookkeeping
-  is not kept, so the first prompt is still said on reaching the line.
+- `TrackGuide` keeps where the rider stands, fed on every fix whether it is inside the off-route
+  corridor. A track drive has no opener at Start. The fix the route starts on (the first fix,
+  when it is on the line, or the one that reaches it) says one line: `NavStrings.trackStarted`
+  and the engine's own prompt for that fix ("Route started. In 40 meters, turn left"), or, when
+  the engine says nothing there, the next step: a departure that names its road with its heading
+  ("Route started. Head east on X"), else the turn after a bare departure with its distance. The
+  engine's own `Speak` events on that fix are dropped; said apart, a near turn's prompt (which
+  interrupts) came before "Route started". When the line names the turn itself, the approach
+  bands that turn is already inside (`NavEngine.bandsWithin`) are recorded as said: in its
+  `spoken` when the engine is on that turn, else as `chainedStep` and `chainedBands`. Unrecorded,
+  the engine said the same approach line again on the next fix. A first fix off the line says `toTrackStart` ("Go to
+  the start of the route"). After that, `LEAVE_FIXES` fixes in a row off the line say `trackLeft`
+  ("Left the route") and `REJOIN_FIXES` back on it say `trackFollowing` ("Following the route"),
+  so one stray fix says nothing. The status line is said before the fix's own prompts.
+- While the rider is away (before reaching the line, or after leaving it), `NavState.toTrackM`
+  is the distance to the track's start, or to the line, and the turn card shows `toTrackStart`
+  or `backToTrack` ("Return to the route") with that distance and no turn, lanes or "then" row.
+  The engine's `Speak` and `Haptic` events are dropped and its spoken bookkeeping is not kept, so
+  the first prompt is still said on reaching the line. On the line `toTrackM` is set back to -1
+  on every fix: the engine copies the state it is given, and a value left over kept the card on
+  the last distance to the track for the rest of the drive.
 - `VelaMapView.applyData` draws a route that ends at the loaded track with the solid line, not
   the walk and bike dots, and draws the whole track under it (`applyGpxTrack`: purple on a white
   casing) with a green pin at its first point (`PoiIcons.START_PIN`; the end has the destination

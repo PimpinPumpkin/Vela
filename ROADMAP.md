@@ -262,9 +262,6 @@ off the list when it has been.
   the baseline profile run warns instead of failing when it may not open a pull request. Each
   ran locally against the live servers and files. None has run on GitHub yet, which needs them
   on main.
-- Riding a GPX track: a 4 km track ridden on a release build opened from a file manager, showed
-  its turns and the right time. Not yet ridden: a track over 5 km (pieces and seams), starting
-  away from the track, and leaving the line and rejoining it.
 - A ferry leg on a walk or a ride says "Take the ferry" (#824): seen in the step list on a 4a,
   walk and bike. Not heard on a real crossing. The phrase in the 17 other languages has not been
   read by a native speaker, and the on-device router's ferry legs are not phrased this way.

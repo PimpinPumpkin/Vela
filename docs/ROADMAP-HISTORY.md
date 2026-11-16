@@ -9,6 +9,16 @@ says so.
 
 ## Shipped
 
+### November 2026
+
+- Riding a GPX track: open or share a `.gpx` file and the trip follows the track with spoken
+  turns. Ridden on release builds on tracks of 1.5 to 12 km, started away from the track, and
+  left and rejoined. The track is matched with one-way streets ridden either way, a walking match
+  spliced in only where the bike match leaves it, and out-and-backs, crossing jogs and turns the
+  road does not make dropped. The voice says "Go to the start of the route", "Route started",
+  "Left the route" and "Following the route", and the prompts come at a cyclist's distances.
+  The 17 non-English phrasings have not been read by a native speaker.
+
 ### October 2026
 
 - Driving mode on the phone (#727): the map alone in the drive's layout with no route, with the

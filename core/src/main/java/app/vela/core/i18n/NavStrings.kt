@@ -32,9 +32,18 @@ interface NavStrings {
     /** A ferry leg on a walk or a ride: EN "Take the ferry". Every language overrides it. */
     fun ferry(): String
 
-    /** A GPX track ride while the rider is away from the track's line (TrackRide): EN "Ride to the
-     *  track". Every language overrides it. */
-    fun toTrack(): String
+    /** A GPX track ride (TrackRide, nav.TrackGuide), every language overrides each. The turn card
+     *  and the voice before the rider has reached the line: EN "Go to the start of the route". */
+    fun toTrackStart(): String
+    /** The turn card after the rider has left the line: EN "Return to the route". */
+    fun backToTrack(): String
+    /** Said on reaching the line: EN "Route started." (on a drive begun on it, the first
+     *  instruction follows). */
+    fun trackStarted(): String
+    /** Said on leaving the line: EN "Left the route." */
+    fun trackLeft(): String
+    /** Said on getting back on it: EN "Following the route." */
+    fun trackFollowing(): String
 
     /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
      *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
@@ -152,7 +161,11 @@ interface NavStrings {
 /** English (source of truth) — byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
 object EnNavStrings : NavStrings {
     override fun ferry() = "Take the ferry"
-    override fun toTrack() = "Ride to the track"
+    override fun toTrackStart() = "Go to the start of the route"
+    override fun backToTrack() = "Return to the route"
+    override fun trackStarted() = "Route started."
+    override fun trackLeft() = "Left the route."
+    override fun trackFollowing() = "Following the route."
     override val locale: Locale = Locale.US
 
     override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
@@ -367,7 +380,11 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
  */
 object FrNavStrings : NavStrings {
     override fun ferry() = "Prenez le ferry"
-    override fun toTrack() = "Rejoignez le tracé"
+    override fun toTrackStart() = "Rejoignez le début de l'itinéraire"
+    override fun backToTrack() = "Revenez sur l'itinéraire"
+    override fun trackStarted() = "Itinéraire commencé."
+    override fun trackLeft() = "Vous avez quitté l'itinéraire."
+    override fun trackFollowing() = "Vous suivez l'itinéraire."
     override val locale: Locale = Locale.FRANCE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -478,7 +495,11 @@ object FrNavStrings : NavStrings {
 
 object DeNavStrings : NavStrings {
     override fun ferry() = "Nehmen Sie die Fähre"
-    override fun toTrack() = "Fahren Sie zur Strecke"
+    override fun toTrackStart() = "Fahren Sie zum Start der Route"
+    override fun backToTrack() = "Kehren Sie zur Route zurück"
+    override fun trackStarted() = "Route gestartet."
+    override fun trackLeft() = "Route verlassen."
+    override fun trackFollowing() = "Sie folgen der Route."
     override val locale: Locale = Locale.GERMANY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -608,7 +629,11 @@ object DeNavStrings : NavStrings {
 
 object EsNavStrings : NavStrings {
     override fun ferry() = "Tome el ferri"
-    override fun toTrack() = "Diríjase al recorrido"
+    override fun toTrackStart() = "Diríjase al inicio de la ruta"
+    override fun backToTrack() = "Vuelva a la ruta"
+    override fun trackStarted() = "Ruta iniciada."
+    override fun trackLeft() = "Ha salido de la ruta."
+    override fun trackFollowing() = "Siguiendo la ruta."
     override val locale: Locale = Locale("es", "ES")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -723,7 +748,11 @@ object EsNavStrings : NavStrings {
 
 object ItNavStrings : NavStrings {
     override fun ferry() = "Prendi il traghetto"
-    override fun toTrack() = "Raggiungi il percorso"
+    override fun toTrackStart() = "Raggiungi l'inizio del percorso"
+    override fun backToTrack() = "Torna sul percorso"
+    override fun trackStarted() = "Percorso iniziato."
+    override fun trackLeft() = "Hai lasciato il percorso."
+    override fun trackFollowing() = "Stai seguendo il percorso."
     override val locale: Locale = Locale.ITALY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -846,7 +875,11 @@ object ItNavStrings : NavStrings {
  */
 object PtPtNavStrings : NavStrings {
     override fun ferry() = "Apanhe o ferry"
-    override fun toTrack() = "Dirija-se ao percurso"
+    override fun toTrackStart() = "Dirija-se ao início do percurso"
+    override fun backToTrack() = "Volte ao percurso"
+    override fun trackStarted() = "Percurso iniciado."
+    override fun trackLeft() = "Saiu do percurso."
+    override fun trackFollowing() = "A seguir o percurso."
     override val locale: Locale = Locale("pt", "PT")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -955,7 +988,11 @@ object PtPtNavStrings : NavStrings {
 
 object PtBrNavStrings : NavStrings {
     override fun ferry() = "Pegue a balsa"
-    override fun toTrack() = "Siga até o percurso"
+    override fun toTrackStart() = "Siga até o início do percurso"
+    override fun backToTrack() = "Volte ao percurso"
+    override fun trackStarted() = "Percurso iniciado."
+    override fun trackLeft() = "Você saiu do percurso."
+    override fun trackFollowing() = "Seguindo o percurso."
     override val locale: Locale = Locale("pt", "BR")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1064,7 +1101,11 @@ object PtBrNavStrings : NavStrings {
 
 object NlNavStrings : NavStrings {
     override fun ferry() = "Neem de veerboot"
-    override fun toTrack() = "Ga naar de track"
+    override fun toTrackStart() = "Ga naar het begin van de route"
+    override fun backToTrack() = "Ga terug naar de route"
+    override fun trackStarted() = "Route gestart."
+    override fun trackLeft() = "Route verlaten."
+    override fun trackFollowing() = "U volgt de route."
     override val locale: Locale = Locale("nl", "NL")
 
     // Plain directional phrase — the verb is folded into each template (Dutch "afslaan" is separable),
@@ -1204,7 +1245,11 @@ object NlNavStrings : NavStrings {
 
 object RuNavStrings : NavStrings {
     override fun ferry() = "Сядьте на паром"
-    override fun toTrack() = "Двигайтесь к треку"
+    override fun toTrackStart() = "Двигайтесь к началу маршрута"
+    override fun backToTrack() = "Вернитесь на маршрут"
+    override fun trackStarted() = "Маршрут начат."
+    override fun trackLeft() = "Вы покинули маршрут."
+    override fun trackFollowing() = "Вы снова на маршруте."
     override val locale: Locale = Locale("ru", "RU")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1393,7 +1438,11 @@ object RuNavStrings : NavStrings {
  */
 object PlNavStrings : NavStrings {
     override fun ferry() = "Wsiądź na prom"
-    override fun toTrack() = "Jedź do trasy"
+    override fun toTrackStart() = "Jedź do początku trasy"
+    override fun backToTrack() = "Wróć na trasę"
+    override fun trackStarted() = "Trasa rozpoczęta."
+    override fun trackLeft() = "Opuszczono trasę."
+    override fun trackFollowing() = "Jedziesz trasą."
     override val locale: Locale = Locale("pl", "PL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1520,7 +1569,11 @@ object PlNavStrings : NavStrings {
 
 object SvNavStrings : NavStrings {
     override fun ferry() = "Ta färjan"
-    override fun toTrack() = "Ta dig till spåret"
+    override fun toTrackStart() = "Ta dig till början av rutten"
+    override fun backToTrack() = "Återvänd till rutten"
+    override fun trackStarted() = "Rutten har startat."
+    override fun trackLeft() = "Du har lämnat rutten."
+    override fun trackFollowing() = "Du följer rutten."
     override val locale: Locale = Locale("sv", "SE")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1652,7 +1705,11 @@ object SvNavStrings : NavStrings {
 
 object UkNavStrings : NavStrings {
     override fun ferry() = "Сядьте на пором"
-    override fun toTrack() = "Рухайтеся до треку"
+    override fun toTrackStart() = "Рухайтеся до початку маршруту"
+    override fun backToTrack() = "Поверніться на маршрут"
+    override fun trackStarted() = "Маршрут розпочато."
+    override fun trackLeft() = "Ви залишили маршрут."
+    override fun trackFollowing() = "Ви знову на маршруті."
     override val locale: Locale = Locale("uk", "UA")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1796,7 +1853,11 @@ object UkNavStrings : NavStrings {
  */
 object ZhNavStrings : NavStrings {
     override fun ferry() = "乘坐渡轮"
-    override fun toTrack() = "前往轨迹"
+    override fun toTrackStart() = "前往路线起点"
+    override fun backToTrack() = "返回路线"
+    override fun trackStarted() = "路线已开始。"
+    override fun trackLeft() = "已离开路线。"
+    override fun trackFollowing() = "正在沿路线行驶。"
     override val locale: Locale = Locale.SIMPLIFIED_CHINESE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1916,7 +1977,11 @@ object ZhNavStrings : NavStrings {
  */
 object ZhTwNavStrings : NavStrings {
     override fun ferry() = "搭乘渡輪"
-    override fun toTrack() = "前往軌跡"
+    override fun toTrackStart() = "前往路線起點"
+    override fun backToTrack() = "返回路線"
+    override fun trackStarted() = "路線已開始。"
+    override fun trackLeft() = "已離開路線。"
+    override fun trackFollowing() = "正在沿路線前進。"
     override val locale: Locale = Locale.TAIWAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2037,7 +2102,11 @@ object ZhTwNavStrings : NavStrings {
  */
 object JaNavStrings : NavStrings {
     override fun ferry() = "フェリーに乗ります"
-    override fun toTrack() = "トラックに向かいます"
+    override fun toTrackStart() = "ルートの始点に向かってください"
+    override fun backToTrack() = "ルートに戻ってください"
+    override fun trackStarted() = "ルートを開始しました。"
+    override fun trackLeft() = "ルートから外れました。"
+    override fun trackFollowing() = "ルートに戻りました。"
     override val locale: Locale = Locale.JAPAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2149,7 +2218,11 @@ object JaNavStrings : NavStrings {
  */
 object HeNavStrings : NavStrings {
     override fun ferry() = "עלה על המעבורת"
-    override fun toTrack() = "סע אל המסלול"
+    override fun toTrackStart() = "סע אל תחילת המסלול"
+    override fun backToTrack() = "חזור אל המסלול"
+    override fun trackStarted() = "המסלול התחיל."
+    override fun trackLeft() = "יצאת מהמסלול."
+    override fun trackFollowing() = "ממשיך במסלול."
     override val locale: Locale = Locale("he", "IL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2272,7 +2345,11 @@ object HeNavStrings : NavStrings {
 /** Hungarian (Magyar): contributed by Zsolt Laszlo Kaiser (kaiser-app fork), ported 2026-09-13. */
 object HuNavStrings : NavStrings {
     override fun ferry() = "Szállj fel a kompra"
-    override fun toTrack() = "Menj a nyomvonalhoz"
+    override fun toTrackStart() = "Menj az útvonal elejére"
+    override fun backToTrack() = "Térj vissza az útvonalra"
+    override fun trackStarted() = "Az útvonal elkezdődött."
+    override fun trackLeft() = "Letértél az útvonalról."
+    override fun trackFollowing() = "Követed az útvonalat."
     override val locale: Locale = Locale("hu", "HU")
 
     override fun passLights(count: Int): String =
@@ -2438,7 +2515,11 @@ object HuNavStrings : NavStrings {
  */
 object RoNavStrings : NavStrings {
     override fun ferry() = "Luați feribotul"
-    override fun toTrack() = "Mergeți la traseu"
+    override fun toTrackStart() = "Mergeți la începutul traseului"
+    override fun backToTrack() = "Reveniți pe traseu"
+    override fun trackStarted() = "Traseul a început."
+    override fun trackLeft() = "Ați părăsit traseul."
+    override fun trackFollowing() = "Urmați traseul."
     override val locale: Locale = Locale("ro", "RO")
 
     override fun passLights(count: Int): String = if (count <= 1) "Treceți de semafor" else "Treceți de $count semafoare"

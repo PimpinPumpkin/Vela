@@ -133,4 +133,123 @@ class TrackRideTest {
     @Test fun noTrackNoAnswer() = kotlinx.coroutines.runBlocking {
         assertNull(TrackRide.routeFor(okhttp3.OkHttpClient(), pt(100.0, 0.0), emptyList()))
     }
+
+    /** A route along [poly] with a step at each inner vertex: [types] for those steps, then the arrival. */
+    private fun stepped(poly: List<app.vela.core.model.LatLng>, types: List<ManeuverType>, roads: List<String?> = types.map { null }): Route {
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val ms = mutableListOf(Maneuver(ManeuverType.DEPART, "Head east", poly[0], cum[1], cum[1] / 5))
+        types.forEachIndexed { k, t ->
+            val run = cum[k + 2] - cum[k + 1]
+            ms += Maneuver(t, "${t.name} ${roads[k] ?: ""}".trim(), poly[k + 1], run, run / 5, road = roads[k])
+        }
+        ms += Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0)
+        val len = cum.last()
+        return Route(polyline = poly, legs = listOf(RouteLeg(len, len / 5, null, ms)), distanceMeters = len, durationSeconds = len / 5, durationInTrafficSeconds = null)
+    }
+
+    @Test fun aSidewalkJogAcrossARoadIsNoTurn() {
+        // East, a step 6 m south at x=200 (right, then left), and east again: one straight run.
+        val poly = listOf(pt(0.0, 0.0), pt(200.0, 0.0), pt(200.0, -6.0), pt(500.0, -6.0))
+        val r = TrackRide.withoutJogs(stepped(poly, listOf(ManeuverType.TURN_RIGHT, ManeuverType.TURN_LEFT)))
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.ARRIVE), r.maneuvers.map { it.type })
+        assertEquals(r.distanceMeters, r.maneuvers.sumOf { it.distanceMeters }, 1e-6)
+    }
+
+    @Test fun twoCloseTurnsTheSameWayAreOneTurn() {
+        // East, half left for 8 m, then north onto D Street: one left turn onto D Street.
+        val poly = listOf(pt(0.0, 0.0), pt(200.0, 0.0), pt(205.7, 5.7), pt(205.7, 400.0))
+        val r = TrackRide.withoutJogs(stepped(poly, listOf(ManeuverType.SLIGHT_LEFT, ManeuverType.TURN_LEFT), listOf(null, "D Street")))
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.TURN_LEFT, ManeuverType.ARRIVE), r.maneuvers.map { it.type })
+        assertEquals("Turn left onto D Street", r.maneuvers[1].instruction)
+        assertEquals(r.distanceMeters, r.maneuvers.sumOf { it.distanceMeters }, 1e-6)
+    }
+
+    @Test fun aTurnJustBeforeTheArrivalIsDropped() {
+        val poly = listOf(pt(0.0, 0.0), pt(300.0, 0.0), pt(300.0, 1.0))
+        val r = TrackRide.withoutJogs(stepped(poly, listOf(ManeuverType.TURN_LEFT)))
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.ARRIVE), r.maneuvers.map { it.type })
+        assertEquals(r.distanceMeters, r.maneuvers.sumOf { it.distanceMeters }, 1e-6)
+    }
+
+    @Test fun aTurnOnAStraightRoadIsDropped() {
+        // South, a short way drawn at an angle (a bridge: 8 m half right, then back), and south
+        // again: the matcher says "Turn left" where the bridge ends, but the road is straight.
+        val poly = listOf(pt(0.0, 0.0), pt(0.0, -100.0), pt(5.0, -106.0), pt(5.0, -118.0), pt(5.0, -400.0))
+        val r = TrackRide.withoutJogs(stepped(poly, listOf(ManeuverType.CONTINUE, ManeuverType.STRAIGHT, ManeuverType.TURN_LEFT)))
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.CONTINUE, ManeuverType.STRAIGHT, ManeuverType.ARRIVE), r.maneuvers.map { it.type })
+        assertEquals(r.distanceMeters, r.maneuvers.sumOf { it.distanceMeters }, 1e-6)
+    }
+
+    @Test fun turnsFartherApartAreKept() {
+        val poly = listOf(pt(0.0, 0.0), pt(200.0, 0.0), pt(200.0, -40.0), pt(500.0, -40.0))
+        val r = stepped(poly, listOf(ManeuverType.TURN_RIGHT, ManeuverType.TURN_LEFT))
+        assertEquals(r.maneuvers, TrackRide.withoutJogs(r).maneuvers)
+    }
+
+    @Test fun anOutAndBackTheTrackDoesNotMakeIsCut() {
+        // The track turns left off a road and right again 30 m on; the match overshoots 40 m,
+        // U-turns and comes back (a divided road's median). The overshoot is cut and the steps
+        // are the track's: left, then right.
+        val track = listOf(pt(0.0, 0.0), pt(300.0, 0.0), pt(300.0, 30.0), pt(600.0, 30.0))
+        val poly = listOf(pt(0.0, 0.0), pt(300.0, 0.0), pt(300.0, 70.0), pt(300.0, 30.0), pt(600.0, 30.0))
+        val loop = stepped(poly, listOf(ManeuverType.TURN_LEFT, ManeuverType.UTURN, ManeuverType.TURN_LEFT))
+        val r = TrackRide.withoutSpurs(loop, track)
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.ARRIVE), r.maneuvers.map { it.type })
+        assertEquals(r.distanceMeters, r.maneuvers.sumOf { it.distanceMeters }, 1.0)
+        assertTrue("about the track's length: ${r.distanceMeters}", r.distanceMeters in 600.0..640.0)
+        val cum = app.vela.core.nav.RouteProjection.cumulative(r.polyline)
+        assertTrue(TrackRide.phantomTurnBacks(r.polyline, cum, track).isEmpty())
+    }
+
+    @Test fun anOutAndBackTheTrackMakesIsKept() {
+        // Out 300 m and back: the track itself turns back.
+        val track = listOf(pt(0.0, 0.0), pt(300.0, 0.0), pt(300.0, 10.0), pt(0.0, 10.0))
+        val r = stepped(listOf(pt(0.0, 0.0), pt(300.0, 0.0), pt(300.0, 10.0), pt(0.0, 10.0)), listOf(ManeuverType.TURN_LEFT, ManeuverType.TURN_LEFT))
+        assertEquals(r, TrackRide.withoutSpurs(r, track))
+    }
+
+    @Test fun aSliceJoinedBackIsTheRoute() {
+        // East 1000 m with a left turn at 400 m, cut at 200 m and joined again.
+        val r = route(0.0, 1000.0, 400.0)
+        val a = TrackRide.slice(r, 0.0, 200.0); val b = TrackRide.slice(r, 200.0, 1000.0)
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.ARRIVE), a.maneuvers.map { it.type })
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.TURN_LEFT, ManeuverType.ARRIVE), b.maneuvers.map { it.type })
+        val j = TrackRide.join(listOf(a, b))
+        assertEquals(r.maneuvers.map { it.type }, j.maneuvers.map { it.type })
+        assertEquals(400.0, j.maneuvers[0].distanceMeters, 1.0)
+        assertEquals(1000.0, j.distanceMeters, 1.0)
+    }
+
+    @Test fun aLongTrackIsNoBiggerABurstThanADrive() = kotlinx.coroutines.runBlocking {
+        // 30 km east, about 6 pieces. The matcher here answers every request with an error after
+        // 150 ms, so nothing leaves the test; the pieces are asked side by side, never more than
+        // PIECES_AT_ONCE at a time (2 requests each), and no request is retried.
+        val inFlight = java.util.concurrent.atomic.AtomicInteger(); val most = java.util.concurrent.atomic.AtomicInteger(); val total = java.util.concurrent.atomic.AtomicInteger()
+        val http = okhttp3.OkHttpClient.Builder().addInterceptor { chain ->
+            val now = inFlight.incrementAndGet(); most.accumulateAndGet(now, ::maxOf); total.incrementAndGet()
+            try {
+                Thread.sleep(150)
+                okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(500).message("test")
+                    .body(okhttp3.ResponseBody.Companion.run { "".toResponseBody(null) }).build()
+            } finally { inFlight.decrementAndGet() }
+        }.build()
+        val line = (0..300).map { k -> pt(k * 100.0, 0.0) }
+        TrackRide.start("Long", line)!!
+        val r = TrackRide.routeFor(http, line.last(), emptyList())!!.single()
+        assertTrue("whole track: ${r.distanceMeters}", r.distanceMeters > 29_000.0)
+        assertTrue("at most ${2 * TrackRide.PIECES_AT_ONCE} in flight: ${most.get()}", most.get() <= 2 * TrackRide.PIECES_AT_ONCE)
+        assertTrue("side by side: ${most.get()}", most.get() > 2)
+        // Each piece: a bicycle match, then a pedestrian one, 2 requests each, none retried.
+        val pieces = TrackRide.cuts(line, app.vela.core.nav.RouteProjection.cumulative(line), TrackRide.PIECE_M, TrackRide.SEAM_SEARCH_M).size
+        assertEquals(pieces * 2 * 2, total.get())
+    }
+
+    @Test fun cutsCoverTheLineEndToEnd() {
+        val line = (0..60).map { k -> pt(k * 50.0, 0.0) }
+        val cum = app.vela.core.nav.RouteProjection.cumulative(line)
+        val c = TrackRide.cuts(line, cum, 1_000.0, 150.0)
+        assertEquals(0, c.first().first); assertEquals(line.lastIndex, c.last().second)
+        c.zipWithNext().forEach { (a, b) -> assertEquals(a.second, b.first) }
+        assertTrue("about 1 km each: $c", c.dropLast(1).all { (i0, i1) -> cum[i1] - cum[i0] in 850.0..1150.0 })
+    }
 }

@@ -4555,8 +4555,9 @@ private fun BoxScope.NavTurnBanner(
     val skipRbExit = shown?.type == app.vela.core.model.ManeuverType.ROUNDABOUT &&
         mans?.getOrNull(shownIdx + 1)?.type == app.vela.core.model.ManeuverType.EXIT_ROUNDABOUT
     val next = mans?.getOrNull(shownIdx + if (skipRbExit) 2 else 1)
-    // A GPX track ride away from its line (NavState.toTrackM): the text is "Ride to the track" and
-    // the distance is to the track, with no turn, lanes or "then" (those count from the track).
+    // A GPX track ride away from its line (NavState.toTrackM): the text is "Go to the start of the
+    // route" or "Return to the route" and the distance is to it, with no turn, lanes or "then"
+    // (those count from the track).
     val toTrack = state.nav.toTrackM.takeIf { it >= 0.0 && !previewing }
     // Show the real romanized road name where the basemap gave us one (issue #184): swap the
     // local-script name in the instruction for its Latin form. No ICU fallback here - a name we
