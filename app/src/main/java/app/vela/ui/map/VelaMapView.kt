@@ -508,6 +508,8 @@ private const val HILLSHADE_LAYER = "vela-hillshade"
 // no CORS to worry about on native. Gives Google-style terrain relief.
 private const val TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
+/** Before the nav puck engages, the map turns with the GPS course at or above this speed (m/s). */
+private const val PRE_ENGAGE_COURSE_MPS = 2.0f
 private const val TRAFFIC_SRC = "vela-traffic-src"
 private const val STOPNUM_SRC = "vela-stopnums-src"
 private const val STOPNUM_LAYER = "vela-stopnums"
@@ -5771,7 +5773,12 @@ fun VelaMapView(
                 // fit-route case and zooming the whole route out.
                 if (!navPuck.engaged) {
                     val loc = displayLoc ?: myLocation
-                    val brg = lastNavBearing ?: displayBearing ?: 0f
+                    // Off the line (riding to a track's start, before a reroute lands) the map turns
+                    // with the course while moving; stopped or at walking pace, where GPS course is
+                    // noise, it holds the last heading. Taking the last heading first froze the map
+                    // on its starting bearing until the puck engaged.
+                    val course = displayBearing?.takeIf { (mySpeed ?: 0f) >= PRE_ENGAGE_COURSE_MPS }
+                    val brg = course ?: lastNavBearing ?: displayBearing ?: 0f
                     val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
                     val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
                     if ((moved || turned) && !scaling[0] && !twoDown[0]) {
