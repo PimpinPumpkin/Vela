@@ -133,6 +133,9 @@ fun ManeuverBanner(
     // real exit angle and circulation instead of a fixed picture (issue #259). Null draws neutral.
     roundabout: app.vela.core.model.RoundaboutGeometry? = null,
     ref: String? = null,
+    // The road the shown maneuver enters, written as it stands in [text] (shortened, romanized).
+    // When [text] contains it, the card puts it on its own large line ([TurnCardText]).
+    road: String? = null,
     laneHint: String? = null,
     lanes: List<Lane> = emptyList(),
     nextText: String? = null,
@@ -273,38 +276,80 @@ fun ManeuverBanner(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
-        Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 8.dp else 16.dp)) {
+        val rerouting = offRoute && !previewing
+        val full = text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }
+        val strings = app.vela.core.i18n.NavStringsRegistry.current()
+        // Sentence layout: headline = the SPOKEN form of the instruction (primary sign destination
+        // only), so the card and the voice can never disagree; the chips row carries the stylized
+        // route + exit. The sign's secondary cities ([rest]) are a dim one-liner, subordinate, and
+        // harmless if a monster sign ellipsizes it (user-agreed design 2026-07-16).
+        val headline = strings.spokenSign(full)
+        val rest = if (headline.length < full.length) full.substring(headline.length).trim(':', ' ') else ""
+        val signs = if (rerouting) emptyList() else roadSigns(text, ref)
+        // Glance layout (Google's card): the distance under the arrow, the chips, and ONE large
+        // line for where you are going: the road entered, or the sign's destinations that are not
+        // already a chip. The verb is not shown (the arrow and the exit tab say it); a roundabout
+        // keeps its exit phrase. Depart ("Head north"), the arrival, rerouting and a step the
+        // language cannot take apart keep the sentence layout.
+        val parts = if (rerouting || type == ManeuverType.ARRIVE || type == ManeuverType.DEPART) null
+        else app.vela.core.nav.TurnCardText.of(full, road, strings.signDestination(full), signs.map { it.label })
+        val glance = parts != null
+        // The road you're ON, as its stylized shield - persistent for the whole stretch (user
+        // 2026-07-16: on the TOP card, and always, not only when a maneuver mentions the route).
+        // Skipped when the upcoming maneuver's own chips already show the same route, and while
+        // rerouting (the headline owns the row).
+        val cur = if (rerouting) null else currentRef?.trim()?.replace(WS_RUN, " ")
+            ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { routeKey(it.label) == routeKey(c) } }
+        val padV = when {
+            compact -> 8.dp
+            glance -> 12.dp
+            else -> 16.dp
+        }
+        Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = padV)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val rerouting = offRoute && !previewing
-                // The refresh glyph SPINS while rerouting (user 2026-07-16: nothing moved, so a
-                // slow fetch read as frozen). The angle is read in graphicsLayer - a draw-phase
-                // read, so the infinite transition never recomposes the banner; it only exists
-                // while rerouting is showing at all.
-                if (rerouting) {
-                    val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "reroute")
-                    val angle by spin.animateFloat(
-                        initialValue = 0f, targetValue = 360f,
-                        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                            androidx.compose.animation.core.tween(1100, easing = androidx.compose.animation.core.LinearEasing),
-                        ),
-                        label = "reroute-angle",
-                    )
-                    Icon(
-                        Sym.Refresh,
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // The refresh glyph SPINS while rerouting (user 2026-07-16: nothing moved, so a
+                    // slow fetch read as frozen). The angle is read in graphicsLayer - a draw-phase
+                    // read, so the infinite transition never recomposes the banner; it only exists
+                    // while rerouting is showing at all.
+                    if (rerouting) {
+                        val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "reroute")
+                        val angle by spin.animateFloat(
+                            initialValue = 0f, targetValue = 360f,
+                            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                                androidx.compose.animation.core.tween(1100, easing = androidx.compose.animation.core.LinearEasing),
+                            ),
+                            label = "reroute-angle",
+                        )
+                        Icon(
+                            Sym.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(if (compact) 36.dp else 54.dp)
+                                .graphicsLayer { rotationZ = angle },
+                        )
+                    } else Icon(
+                        if (isRoundabout(type)) rememberRoundaboutGlyph(roundabout) else maneuverIcon(type),
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(if (compact) 36.dp else 54.dp)
-                            .graphicsLayer { rotationZ = angle },
+                        modifier = Modifier.size(
+                            when {
+                                compact -> 36.dp
+                                glance -> 48.dp // leaves room for the distance under it
+                                else -> 54.dp
+                            },
+                        ),
                     )
-                } else Icon(
-                    if (isRoundabout(type)) rememberRoundaboutGlyph(roundabout) else maneuverIcon(type),
-                    contentDescription = null,
-                    modifier = Modifier.size(if (compact) 36.dp else 54.dp),
-                )
-                Spacer(Modifier.width(if (compact) 10.dp else 18.dp))
+                    if (glance) Text(
+                        formatDistance(distanceMeters),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+                Spacer(Modifier.width(if (compact) 10.dp else 16.dp))
                 Column(Modifier.weight(1f)) {
-                    val signs = if (rerouting) emptyList() else roadSigns(text, ref)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!glance) Row(verticalAlignment = Alignment.CenterVertically) {
                         // One line that shrinks to fit beside the shield: wrapped at large text it
                         // took two headline lines. Reset only when its length changes, not on
                         // every distance tick.
@@ -317,34 +362,45 @@ fun ManeuverBanner(
                             modifier = Modifier.weight(1f),
                             resetKey = distText.length,
                         )
-                        // The road you're ON, as its stylized shield - persistent for the whole
-                        // stretch, right-aligned on the distance row (user 2026-07-16: on the TOP
-                        // card, and always, not only when a maneuver mentions the route). Skipped
-                        // when the upcoming maneuver's own chips already show the same route, and
-                        // while rerouting (the headline owns the row).
-                        val cur = if (rerouting) null else currentRef?.trim()?.replace(WS_RUN, " ")
-                            ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { it.label == c } }
                         if (cur != null) {
                             Spacer(Modifier.width(8.dp))
                             SignChip(Sign(isExit = false, label = cur), onBanner = true)
                         }
                     }
-                    if (signs.isNotEmpty()) {
+                    // In the glance layout the distance row is gone, so the current road's chip
+                    // joins the maneuver's chips.
+                    val chips = if (glance && cur != null) signs + Sign(isExit = false, label = cur) else signs
+                    if (chips.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.padding(top = 2.dp, bottom = 1.dp),
-                        ) { signs.forEach { SignChip(it, onBanner = true) } }
+                        ) { chips.forEach { SignChip(it, onBanner = true) } }
                     }
-                    // Headline = the SPOKEN form of the instruction (primary sign destination
-                    // only), so the card and the voice can never disagree; the chips row above
-                    // already carries the stylized route + exit. The sign's secondary cities
-                    // drop to a dim one-liner below - present to confirm against the physical
-                    // sign, subordinate, and harmless if a monster sign ellipsizes it
-                    // (user-agreed design 2026-07-16).
-                    if (!rerouting) {
-                        val full = text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }
-                        val headline = app.vela.core.i18n.NavStringsRegistry.current().spokenSign(full)
+                    if (parts != null) {
+                        if (isRoundabout(type) && parts.lead.isNotEmpty()) Text(
+                            parts.lead,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = content.copy(alpha = 0.85f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        // Empty when the sign named only the route the chips already show.
+                        if (parts.main.isNotEmpty()) Text(
+                            parts.main,
+                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (parts.sub.isNotEmpty()) Text(
+                            parts.sub,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = content.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else if (!rerouting) {
                         Text(
                             headline,
                             style = MaterialTheme.typography.titleMedium,
@@ -352,16 +408,13 @@ fun ManeuverBanner(
                             maxLines = BANNER_HEADLINE_LINES,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        if (headline.length < full.length) {
-                            val rest = full.substring(headline.length).trim(':', ' ')
-                            if (rest.isNotBlank()) Text(
-                                rest,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = content.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        if (rest.isNotBlank()) Text(
+                            rest,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = content.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     // The arrive step names WHERE you're arriving (Google-style): the business or
                     // label, and its address when that adds anything. Skip a line that would just
@@ -500,7 +553,13 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
     }
     ROUTE_RE.findAll(text).forEach { m ->
         val label = m.value.trim().replace(WS_RUN, " ").uppercase()
-        if (seen.add(routeKey(label))) out.add(Sign(isExit = false, label = label))
+        val k = routeKey(label)
+        if (seen.add(k)) out.add(Sign(isExit = false, label = label))
+        else {
+            // The same route from the ref, without its direction: the text's "I 90 E" keeps the E.
+            val i = out.indexOfFirst { !it.isExit && routeKey(it.label) == k }
+            if (i >= 0 && label.length > out[i].label.length) out[i] = Sign(isExit = false, label = label)
+        }
     }
     return out.take(3)
 }

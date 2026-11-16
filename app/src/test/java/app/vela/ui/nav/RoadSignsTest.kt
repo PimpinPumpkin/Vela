@@ -18,4 +18,9 @@ class RoadSignsTest {
         assertEquals(routeKey("I-80 E"), routeKey("I 80"))
         assertEquals("CA99", routeKey("CA-99"))
     }
+
+    @Test fun `the text's direction letter stays on the ref's shield`() {
+        val signs = roadSigns("Keep slight left toward I 90 E: Bellevue", explicitRef = "I 90")
+        assertEquals(listOf("I 90 E"), signs.map { it.label })
+    }
 }
