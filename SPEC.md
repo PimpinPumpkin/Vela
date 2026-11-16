@@ -2149,7 +2149,8 @@ Zoom to the next turn (`ZoomToTurn`, Settings > Navigation, off by default; issu
   arrow's row to `TURN_MARGIN_PX` (40) under the top of the visible area, and its tilt flattens
   with the zoom as the phone's does (`tiltAt`).
 - The pre-engage camera (the car not yet on the line, a reroute) takes the same zoom, so a
-  reroute does not zoom in and back out.
+  reroute does not zoom in and back out. It turns with the GPS course at `PRE_ENGAGE_COURSE_MPS`
+  (2 m/s) or more and holds its last heading below that, where the course is noise.
 - On the fixture with the card at 230 dp and latitude 38.5: 344 dp above the arrow reach 949
   ground dp at 55 degrees. The speed zoom at 30 m/s (z15.8) frames a turn 1,019 m ahead and
   takes over inside that; z17 frames 443 m. A turn 1 km ahead frames at z15.8, 2 km at z13.7
