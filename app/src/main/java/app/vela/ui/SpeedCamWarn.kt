@@ -1,30 +1,49 @@
 package app.vela.ui
 
 import android.content.Context
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 
 /**
- * Whether an approaching speed camera is announced OUT LOUD during navigation (issue #229).
+ * Radar / speed camera alerts during navigation (issue #229).
  *
- * Separate from [SpeedCams], which only draws them on the map, for two reasons. Seeing a marker
- * and being spoken to are different enough that wanting one is not wanting the other. And warning
- * about speed cameras while driving is treated differently country to country - some ban devices
- * that do it - so the spoken half is its own deliberate opt-in rather than something that arrives
- * with a map layer. Nested under the camera toggle in Settings, and it respects the global spoken
- * -directions mute like every other prompt.
+ * Two independent opt-ins matching [FlockNavAlert]: [card] shows the heads-up banner,
+ * [voice] says "Speed camera ahead" through the nav voice, plus customizable lead distance
+ * ([distanceMeters] = 0 for auto / 12 seconds, or specific meters e.g. 200, 400, 600, 800, 1000).
  */
 object SpeedCamWarn {
-    val on = mutableStateOf(false)
+    val card = mutableStateOf(false)
+    val voice = mutableStateOf(false)
+    val distanceMeters = mutableIntStateOf(0) // 0 = Auto (12s depending on speed)
+
+    val any: Boolean get() = card.value || voice.value
 
     fun init(context: Context) {
-        on.value = prefs(context).getBoolean(KEY, false)
+        val p = prefs(context)
+        val legacyVoice = p.getBoolean(KEY_LEGACY, false)
+        card.value = p.getBoolean(KEY_CARD, false)
+        voice.value = p.getBoolean(KEY_VOICE, legacyVoice)
+        distanceMeters.intValue = p.getInt(KEY_DISTANCE, 0)
     }
 
-    fun set(context: Context, value: Boolean) {
-        on.value = value
-        prefs(context).edit().putBoolean(KEY, value).apply()
+    fun setCard(context: Context, value: Boolean) {
+        card.value = value
+        prefs(context).edit().putBoolean(KEY_CARD, value).apply()
+    }
+
+    fun setVoice(context: Context, value: Boolean) {
+        voice.value = value
+        prefs(context).edit().putBoolean(KEY_VOICE, value).putBoolean(KEY_LEGACY, value).apply()
+    }
+
+    fun setDistanceMeters(context: Context, meters: Int) {
+        distanceMeters.intValue = meters
+        prefs(context).edit().putInt(KEY_DISTANCE, meters).apply()
     }
 
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
-    private const val KEY = "speed_cam_warn"
+    private const val KEY_LEGACY = "speed_cam_warn"
+    private const val KEY_CARD = "speed_cam_warn_card"
+    private const val KEY_VOICE = "speed_cam_warn_voice"
+    private const val KEY_DISTANCE = "speed_cam_warn_distance"
 }

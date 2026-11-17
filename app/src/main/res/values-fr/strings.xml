@@ -1335,4 +1335,18 @@
     <string name="trip_shortcut_unsupported">Cet Ã©cran d\'accueil ne peut pas Ã©pingler de raccourcis</string>
     <string name="trip_shortcut_themed">Comme les icÃ´nes Ã  thÃ¨me</string>
     <string name="settings_places_source_note">Rechercher ou toucher un lieu interroge toujours Google pour les horaires, les avis et les photos, quel que soit votre choix.</string>
+    <string name="settings_speed_cams_display">Afficher les radars sur la carte</string>
+    <string name="settings_flock_display">Afficher sur la carte</string>
+    <string name="settings_speed_cam_nav_card">Bannière d\'alerte (radars)</string>
+    <string name="settings_speed_cam_nav_card_hint">Affiche une bannière à l\'écran à l\'approche d\'un radar fixe sur votre itinéraire.</string>
+    <string name="settings_speed_cam_nav_voice">Alerte vocale (radars)</string>
+    <string name="settings_speed_cam_nav_voice_hint">Annonce « Radar devant » via le guidage vocal.</string>
+    <string name="settings_speed_cam_distance_title">Distance d\'alerte</string>
+    <string name="settings_speed_cam_distance_hint">Choisissez la distance à l\'avance à laquelle déclencher l\'alerte.</string>
+    <string name="settings_speed_cam_dist_auto">Auto (12 s)</string>
+    <string name="settings_speed_cam_dist_200">200 m</string>
+    <string name="settings_speed_cam_dist_400">400 m</string>
+    <string name="settings_speed_cam_dist_600">600 m</string>
+    <string name="settings_speed_cam_dist_800">800 m</string>
+    <string name="settings_speed_cam_dist_1000">1 km</string>
 </resources>
