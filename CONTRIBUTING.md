@@ -43,9 +43,10 @@ and traps for changing the code are in [CLAUDE.md](CLAUDE.md), which is written 
   you touch a parser, check it against a real response.
 - **Commit subjects are the changelog users read.** Write them as plain sentences. A subject
   that starts with "Docs:" is left out of the in-app notes.
-- **Install the hooks once:** `bash scripts/install-hooks.sh`. CI fails a push whose added text
-  has an em dash, a British spelling, or an AI attribution line. The hook runs the same check
-  before anything is public.
+- **Install the hooks once:** `bash scripts/install-hooks.sh`. CI fails a push whose added
+  English text has an em dash or a British spelling, or whose commit message has an AI
+  attribution line. Translations may use dashes. The hook runs the same check before anything
+  is public.
 
 ## Bug reports and feature requests
 

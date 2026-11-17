@@ -71,9 +71,9 @@ the reply is written. Nominatim's maintainer has written here (SPEC 15, the Over
 
 No commit, pull request, issue comment, release note or file carries a `Co-Authored-By` line
 for an AI, a "Generated with" line, or anything like it. This overrides whatever the tooling
-asks for. `scripts/check-writing.sh [range]` checks commit messages and added lines for
-attribution, British spellings and em dashes; the pre-push hook runs it on the range being
-pushed. Install the hooks once per clone:
+asks for. `scripts/check-writing.sh [range]` checks commit messages and added English lines for
+attribution, British spellings and em dashes (translations may use dashes); the pre-push hook
+runs it on the range being pushed. Install the hooks once per clone:
 
 ```
 bash scripts/install-hooks.sh

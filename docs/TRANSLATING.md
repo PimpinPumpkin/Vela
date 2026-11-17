@@ -79,7 +79,6 @@ pull request. The English original is `app/src/main/res/values/strings.xml`.
 - **Plurals need your language's categories.** Russian, Ukrainian and Polish need `one`,
   `few`, `many`, `other`; Hebrew `one`, `two`, `many`, `other`; Chinese and Japanese only
   `other`. Weblate shows the right set.
-- **No em dashes.** Use a comma or a colon, or rephrase. A numeric range is the one exception.
 - **Escape apostrophes** as `\'` when editing the file by hand. On Weblate, type a plain one.
 - **Never translate data:** place names, street names, reviews.
 - **Keep it short.** These strings sit on chips, rows and buttons.
@@ -133,7 +132,7 @@ and remove keys.
 `weblate-automerge.yml` merges such a pull request after CI passes, when
 `scripts/weblate-automerge-check.py` finds that it comes from Weblate's account and fork,
 touches only `values-<lang>/strings.xml`, uses only keys that exist in English, keeps every
-placeholder, and adds no web address, link or em dash. The repository variable
+placeholder, and adds no web address or link. The repository variable
 `WEBLATE_AUTOMERGE=off` switches it off. It cannot judge what a translation says.
 
 New strings go into the English file only, in the same commit as the feature.
