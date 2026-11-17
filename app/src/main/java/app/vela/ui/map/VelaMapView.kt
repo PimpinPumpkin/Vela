@@ -947,6 +947,8 @@ fun VelaMapView(
     flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
     speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (issue #229)
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
+    bikeStations: List<app.vela.core.data.transit.Transitous.BikeStation> = emptyList(), // bike-share stations, empty while the layer is off
+    onBikeStationTap: (app.vela.core.data.transit.Transitous.BikeStation) -> Unit = {},
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     navBarTopPx: Float = 0f, // the nav bar's top edge in window px (0 = unknown); passed street bubbles fade out above it
     // Compass tap: return true to CONSUME (nav uses it to toggle heading-up/north-up); false runs
@@ -1030,6 +1032,8 @@ fun VelaMapView(
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val transitStopTap = rememberUpdatedState(onTransitStopTap)
     val transitStopsNow = rememberUpdatedState(transitStops)
+    val bikeStationTap = rememberUpdatedState(onBikeStationTap)
+    val bikeStationsNow = rememberUpdatedState(bikeStations)
     val parkingTap = rememberUpdatedState(onParkingTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
@@ -2451,6 +2455,13 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         runCatching { ensureTransitLines(style, if (transitOn && !driveNavNow) transitLines else emptyList(), transitMetro, transitTrains, darkTheme) }
         runCatching { ensureTransit(style, transitOn, accentMetro, accentTrains) }
+    }
+    // Bike-share stations (SPEC 8): their own source and layer, rebuilt on a new style or theme.
+    LaunchedEffect(bikeStations, styleRef, darkTheme, amoled, poiIconScale, poiLabelScale) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching {
+            BikeShareMapLayer.apply(context, style, bikeStations, darkTheme, amoled, poiIconScale, poiLabelScale, below = TRANSIT_STOPS_LAYER)
+        }
     }
     // The shape being drawn is the last of `shapes` once it has two points (MapSurface appends it).
     // It draws from a source of its own, so a dragged point uploads that one shape: on one shared
@@ -4154,6 +4165,15 @@ fun VelaMapView(
                         .minByOrNull(::screenDist2)
                     // The stop wins only when it really is the icon under the finger.
                     val business = listOfNotNull(amb, hit).minByOrNull(::screenDist2)
+                    // A bike-share station competes the same way, with the businesses and the stop.
+                    val bikeHit = feats.filter { it.hasProperty(BikeShareMapLayer.KEY_PROP) }.minByOrNull(::screenDist2)
+                    if (bikeHit != null && (business == null || screenDist2(bikeHit) < screenDist2(business)) &&
+                        (gtfsStop == null || screenDist2(bikeHit) <= screenDist2(gtfsStop))
+                    ) {
+                        val key = bikeHit.getStringProperty(BikeShareMapLayer.KEY_PROP)
+                        bikeStationsNow.value.firstOrNull { it.key == key }
+                            ?.let { st -> bikeStationTap.value(st); return@handleTap true }
+                    }
                     if (gtfsStop != null && (business == null || screenDist2(gtfsStop) < screenDist2(business))) {
                         transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
                             ?.let { st -> transitStopTap.value(st); return@handleTap true }

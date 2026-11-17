@@ -85,6 +85,20 @@ data class Place(
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
     val similarPlaces: List<SimilarPlace> = emptyList(), // "People also search for"
     val distanceMeters: Double? = null, // filled when searched relative to a point
+    /** A bike-share station's live counts (SPEC 8, Bike-share stations). Never saved: a count
+     *  read back from a saved place would be stale, and the stored format stays as it was. */
+    @kotlinx.serialization.Transient
+    val bikeShare: BikeShareStatus? = null,
+)
+
+/** A bike-share station's counts as the service gave them at [atMs] (wall clock, ms). [docks] is
+ *  null when the feed gives no free-dock count. */
+data class BikeShareStatus(
+    val bikes: Int,
+    val docks: Int?,
+    val renting: Boolean,
+    val returning: Boolean,
+    val atMs: Long,
 )
 
 /** A "People also search for" entry — a related place, enough to show a card and open it. */

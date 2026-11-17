@@ -21,6 +21,10 @@ reads Done and closes the pane.
 "Highlight transit lines" draws rail lines in their own colors. With no connection, a stop whose
 board you opened before still shows it, marked with when it was last seen.
 
+With "Bike share" on in Layers, each docked bike-share station shows from street zoom as a teal
+badge with its free bikes beside it, gray when it has none. Tap one for its free docks and how
+old the counts are. They refresh every minute while Vela is on screen.
+
 ## Where the data comes from
 
 | Piece | First | Fallback |
@@ -31,6 +35,7 @@ board you opened before still shows it, marked with when it was last seen.
 | Transit directions | Google's directions page | the Transitous planner |
 | Path of a ride on the map | the Transitous planner | a road route through the stops (bus), straight lines (rail) |
 | Colored rail lines | Transitous | the basemap's plain rail highlight |
+| Bike-share stations | Transitous, from the operators' GBFS feeds | none |
 
 Transitous (`api.transitous.org`) is a community-run service with no key or account. It serves
 the GTFS and GTFS-Realtime feeds that agencies publish, through the MOTIS engine. Every call
@@ -59,7 +64,8 @@ traffic on the bus's route. GTFS-Realtime knows only how late a vehicle is now.
 
 A tapped stop icon knows its stop id (`Transitous.boardFor`). A place sheet gets a board when its
 category reads as a transit stop (`isTransitCategory`: word lists per language that calibration
-can replace, with exclusions so a gas station is not a station). `Transitous.board` then takes
+can replace, with exclusions so a gas station is not a station, and a compiled list of bike words
+so a bike-share station is not one either). `Transitous.board` then takes
 the nearest of the stops within 200 m of the place. A tapped basemap stop with no Google listing
 gets its board the same way.
 
@@ -110,6 +116,34 @@ twice at slightly different corners. Rail and airport icons stay on the basemap.
 The icons hide during a drive. Settings has a "Transit stops" switch with three under it, for bus
 stops, subway and tram stops, and train stations (`TransitLayer.showsStop`). A tap goes to the
 stop or the business beside it, whichever is nearer on screen.
+
+### Bike-share stations
+
+Transitous reads the GBFS feeds that bike-share operators publish, and its `rentals` call answers
+every rental station in a box. Vela keeps the bike stations from that answer; car-share and
+scooter stations come in it too. So do the parking spots of free-floating bike and scooter
+operators, which publish them as stations. They are left out by the operator's name (Dott,
+Voi, Lime and the like head their provider group, where a public system's group is named after
+the system), by a spot that also takes scooters and counts no docks, and by a "station" with
+more bikes than any station holds. Without the names, central Paris drew one operator's
+parking spots ten to one against Vélib's stations. The layer is
+off by default because it is a request of its own, once a minute while it is on.
+
+The fetch follows the stops' rules: from zoom 15, the view padded by half on each side, again only
+when the view leaves that box. On top of that the box around the view is asked again every 60 s
+while the app is on screen, and not at all during a drive, with "Use less data" or offline. A
+request that is out is left to land, and only then is a view it no longer covers asked for:
+while the map follows a moving fix the view comes once a second, sooner than a busy city answers,
+and a request canceled for each new view never landed. In central Lyon
+one answer at zoom 15 on a phone is 13.7 KB, with 58 bike stations among 218 rental stations.
+
+Free docks need care. A feed with several bike models can give one free-dock count and have it
+repeated under each model, so the station's count is the largest of them, not their sum. Where a
+feed gives no dock count (Lyon's does not), the sheet shows bikes only.
+
+A tapped station opens a light sheet with its counts and when they were fetched. The minute
+refresh updates an open sheet while its station is in the fetched box. The counts are never
+saved with a place. [SPEC 8](../../SPEC.md#8-transit), Bike-share stations, has the rules.
 
 ### Merging stops
 
