@@ -121,6 +121,10 @@ matched road pieces (`trace_attributes`) and checks every turn against them (`ch
 - Valhalla counts staying on a numbered route as going straight, even through a corner. Where
   the matched line turns 60 degrees or more with no step near and the street name changes
   there, Vela adds the turn.
+- OSRM reads a rename's direction at the node, so a street that turns a corner into another
+  came out "straight" and was not said. A rename where its line turns 60 degrees or more within
+  10 m is said as a turn. A nameless slip lane followed by "straight onto" a street is one turn
+  onto that street, as Google says it.
 - At a roundabout, Valhalla's enter step carries the ring's own name. Vela says the street you
   leave by.
 - A turn onto the street the driver was just told is said without the name. What counts is the

@@ -407,7 +407,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val consolidated = stayOnForks(foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers))))))
+        val consolidated = stayOnForks(foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(bentRenames(poly, maneuvers)))))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -444,7 +444,9 @@ object RouteGeometry {
      * A turn split in two by a turn lane mapped as its own way: a short unnamed slight turn where
      * the lane peels off the road, then the turn onto the street, the same way. A real drive heard
      * "Turn slight right, then turn slight right onto" a street for one right turn at a divided
-     * corner, four times on the way in. The pair becomes one turn at the first step's place, where
+     * corner, four times on the way in. A slip lane that joins the street going straight ("Turn
+     * slight right", then "Continue onto" the street 80 m on) is the same turn, and its lane may
+     * leave the road at any angle. The pair becomes one turn at the first step's place, where
      * the lane is taken, onto the second step's road, worded "Turn left" or "Turn right" by how far
      * the line turns across both. Only when the first step bends the line [TURN_LANE_PEEL_DEG] or
      * less and runs at most [TURN_LANE_MAX_M], and the line turns [TURN_LANE_MIN_DEG] to
@@ -472,8 +474,10 @@ object RouteGeometry {
             else -> return null
         }
         val sameSide = if (right) b.type in RIGHT_TURNS else b.type in LEFT_TURNS
+        // A slip lane that joins the street running straight on: the whole turn is in the lane.
+        val joins = b.type == ManeuverType.STRAIGHT || b.type == ManeuverType.CONTINUE
         val road = b.road ?: b.ref
-        if (!sameSide || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
+        if (!(sameSide || joins) || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
         if (a.distanceMeters > TURN_LANE_MAX_M || atA < TURN_LANE_LOOK_M || atB + TURN_LANE_LOOK_M > cum.last()) return null
         fun heading(from: Double, to: Double): Double {
             val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)
@@ -487,7 +491,7 @@ object RouteGeometry {
         val sign = if (right) 1.0 else -1.0
         val peel = turn(before, lane) * sign
         val whole = turn(before, after) * sign
-        val fold = peel <= TURN_LANE_PEEL_DEG && peel >= -TURN_LANE_PEEL_DEG / 2 && whole >= TURN_LANE_MIN_DEG && whole <= TURN_LANE_MAX_DEG
+        val fold = (joins || peel <= TURN_LANE_PEEL_DEG && peel >= -TURN_LANE_PEEL_DEG / 2) && whole >= TURN_LANE_MIN_DEG && whole <= TURN_LANE_MAX_DEG
         onTurnLane?.invoke(a, b, peel, whole, fold)
         if (!fold) return null
         val mod = if (right) "right" else "left"
@@ -505,6 +509,52 @@ object RouteGeometry {
             lightsBeforeM = a.lightsBeforeM,
         )
     }
+
+    /**
+     * A rename where the line turns [RENAME_TURN_DEG] or more is a turn. OSRM marks a rename with a
+     * straight or slight modifier read at the node, so a street that curves into another ("L Street
+     * becomes 2nd Street" round a 90 degree corner) came out as a silent rename while Google says
+     * "Turn left onto 2nd St", and a left from one street onto another read "straight" and went
+     * unsaid. Measured on [poly], which the steps tile, as the most the line turns within
+     * [RENAME_TURN_REACH_M] of the step. A curve that keeps its name stays silent.
+     */
+    internal fun bentRenames(poly: List<LatLng>, list: List<Maneuver>): List<Maneuver> {
+        if (poly.size < 2 || list.size < 3) return list
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val total = cum.last()
+        var along = 0.0
+        return list.mapIndexed { i, m ->
+            val here = along
+            along += m.distanceMeters
+            val prev = list.getOrNull(i - 1)
+            val road = m.road ?: m.ref
+            if (i == 0 || i == list.lastIndex || m.type != ManeuverType.CONTINUE || road.isNullOrBlank() || prev == null ||
+                app.vela.core.model.continueHasGenuineFork(m.lanes) || here < RENAME_TURN_REACH_M || here > total - RENAME_TURN_REACH_M ||
+                road.equals(prev.road ?: prev.ref, ignoreCase = true)) return@mapIndexed m
+            var bend = 0.0
+            var o = -RENAME_TURN_REACH_M
+            while (o <= RENAME_TURN_REACH_M) {
+                val b = app.vela.core.nav.StepAudit.bendAt(poly, cum, here + o)
+                if (kotlin.math.abs(b) > kotlin.math.abs(bend)) bend = b
+                o += 10.0
+            }
+            if (kotlin.math.abs(bend) < RENAME_TURN_DEG) return@mapIndexed m
+            val sharp = kotlin.math.abs(bend) >= RENAME_SHARP_DEG
+            val mod = (if (sharp) "sharp " else "") + if (bend > 0) "right" else "left"
+            m.copy(
+                type = osrmType("turn", mod),
+                instruction = osrmPhrase("turn", mod, road, null, null, null),
+                instructionNoRoad = osrmPhrase("turn", mod, null, null, null, null),
+            )
+        }
+    }
+
+    /** How far a rename's corner must turn the line to be said as a turn (degrees). */
+    const val RENAME_TURN_DEG = 60.0
+    private const val RENAME_SHARP_DEG = 135.0
+    /** The corner is read this close to the rename's node. A road that changes its name and then
+     *  curves (an underpass ramping onto a parkway, the bend 30 m on) is not a turn. */
+    private const val RENAME_TURN_REACH_M = 10.0
 
     private val RIGHT_TURNS = setOf(ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT)
     private val LEFT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT)

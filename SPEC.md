@@ -1296,6 +1296,14 @@ refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
   no geometry a "straight" is dropped.
 - `osrmPhrase` phrases "turn straight" as continue, and a `notification` step (a change of
   travel mode on the same way) as a continue, a silent CONTINUE when straight.
+- `RouteGeometry.bentRenames`: a CONTINUE onto a road with another name, where the line turns
+  `RENAME_TURN_DEG` (60) degrees or more within 10 m of the step (`StepAudit.bendAt`), is a turn,
+  "Turn left onto 2nd Street" (sharp from 135). OSRM reads a rename's modifier at the node, so a
+  street that turns a corner into another came out "straight" or "slight" and went unsaid. A
+  road that keeps its name round a bend, or changes it and curves 30 m on, stays silent. On the
+  54 stored Google lines it adds the Davis corner Google words "Turn left onto 2nd St" and, on
+  OSRM's own route, a left from one street onto another in Boston, and nothing else.
+  `RenameCornerTest`.
 - A ferry leg says the language's `ferry()` phrase ("Take the ferry") with a straight arrow: an
   OSRM step with mode `ferry` (foot) or the intersection class `ferry` (bicycle, where the mode
   is `pushing bike`), and Valhalla's ferry entry (type 28). Leaving the ferry is a continue.
@@ -1316,12 +1324,14 @@ English only; a language without `stayOn` keeps its text.
 `RouteGeometry.foldTurnLanes`, all three routers. A turn lane mapped as its own way
 splits one turn in two: an unnamed slight turn where the lane leaves the road, then the turn
 onto the street the same way ("Turn slight right, then turn slight right onto" a street, for one
-right turn at a divided corner). The pair becomes one TURN_LEFT or TURN_RIGHT at the first
+right turn at a divided corner). A slip lane that joins the street going straight (a STRAIGHT
+or CONTINUE second step) is the same turn: on the stored lines, Davis's "Turn right onto Mace
+Blvd" and one in Tel Aviv. The pair becomes one TURN_LEFT or TURN_RIGHT at the first
 step's place, onto the second step's road, with both lengths and times, the first step's lanes
 and lights, and the second's renames moved by the first's length. Only when the first step runs
-at most `TURN_LANE_MAX_M` (120 m) and bends the line at most `TURN_LANE_PEEL_DEG` (45) degrees
-(the 30 m before it against the lane), and the line turns `TURN_LANE_MIN_DEG` (60) to
-`TURN_LANE_MAX_DEG` (135) degrees across both. On the 39 stored Google lines it folds three
+at most `TURN_LANE_MAX_M` (120 m), bends the line at most `TURN_LANE_PEEL_DEG` (45) degrees
+(the 30 m before it against the lane; any angle for a slip lane, which holds the whole turn),
+and the line turns `TURN_LANE_MIN_DEG` (60) to `TURN_LANE_MAX_DEG` (135) degrees across both. On the 39 stored Google lines it folds three
 pairs, each a turn lane on the map: a 29 m connector off a dual carriageway, a left-turn lane
 mapped beside a one-way street, and a dual carriageway's approach to a junction
 (`NamingStudyTest.turnLanesOnCapturedLines`, and `replayCapturedLines` lists them). Every folded
