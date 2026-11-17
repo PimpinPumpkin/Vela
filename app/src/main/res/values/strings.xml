@@ -1537,4 +1537,12 @@
     <string name="place_avoid_short_ferries">Ferries</string>
     <string name="place_avoid_short_cameras">Cameras</string>
     <string name="trip_shortcut_themed">Match themed icons</string>
+    <string name="settings_nav_icon_scale">Route pictogram size</string>
+    <string name="settings_nav_icon_scale_hint">Choose the size of each pictogram displayed along your route during car navigation.</string>
+    <string name="settings_nav_icon_speedcam">Speed cameras (radars)</string>
+    <string name="settings_nav_icon_flock">Surveillance &amp; plate cameras</string>
+    <string name="settings_nav_icon_signal">Traffic lights</string>
+    <string name="settings_nav_icon_stop">Stop signs</string>
+    <string name="settings_nav_icon_railx">Level crossings</string>
+    <string name="settings_nav_icon_hump">Speed humps</string>
 </resources>
