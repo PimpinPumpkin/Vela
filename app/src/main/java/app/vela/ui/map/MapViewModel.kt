@@ -2256,21 +2256,30 @@ class MapViewModel @Inject constructor(
         val here = plausibleBias(mapCenter)
         // The results are narrowed to this view (AreaNarrow), and the camera's remembered center
         // becomes this view's: with the old one the map flew back to where the first search was
-        // made before moving to the new results (issue #670).
+        // made before moving to the new results (issue #670). It is the camera's own target at
+        // the view's own zoom, so the map stays put: a new center flies at the browse zoom, and
+        // the view jumped to street level while the search ran (#891).
         narrowToView = viewport?.copyOf(4)
         narrowAskedMs = android.os.SystemClock.elapsedRealtime()
-        if (here != null) _state.update { it.copy(center = here) }
+        val zoom = viewport?.getOrNull(4)
+        val target = idleTarget ?: here
+        if (here != null) _state.update { it.copy(center = target, centerZoom = zoom) }
         // A list a pan minimized stays down until this search answers (#891): opened at once,
         // with the old results still in it, the map framed the old area first and then the new.
         runSearch(_state.value.query.trim(), here, expand = false)
         val job = searchJob
         viewModelScope.launch {
             job?.join()
-            if (searchJob === job) _state.update { it.copy(resultsCollapsed = false) }
+            if (searchJob === job) _state.update {
+                // The zoom was for that one move; a later fly to a new center takes its own.
+                it.copy(resultsCollapsed = false, centerZoom = if (it.center == target && it.centerZoom == zoom) null else it.centerZoom)
+            }
         }
     }
     /** Set by [searchThisArea] for the one search it starts: the view to keep the results to. */
     private var narrowToView: DoubleArray? = null
+    /** The camera's target after the last pan (the viewport's middle differs under a sheet or tilt). */
+    private var idleTarget: LatLng? = null
     private var narrowAskedMs = 0L
 
     // "More results" (2026-09-13): the search fetches three pages; this pulls the next three of
@@ -2331,6 +2340,7 @@ class MapViewModel @Inject constructor(
     /** Map settled after a user pan: offer "Search this area" while results show. */
     fun onCameraIdle(center: LatLng) {
         mapCenter = center
+        idleTarget = center
         maybeOfferRouting()
         if (_state.value.results.isNotEmpty() && _state.value.selected == null) {
             _state.update { it.copy(showSearchThisArea = true) }

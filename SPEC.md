@@ -3399,7 +3399,9 @@ when the feature ids match. Two requests at most.
 - "Search this area" keeps the results inside the view, padded by 10% per side
   (`AreaNarrow.PAD`), or the whole answer when none fall inside. A list the pan minimized stays
   minimized until the search answers (`runSearch(expand = false)`): opened at once, it still held
-  the old results and the map framed them before the new ones.
+  the old results and the map framed them before the new ones. The camera's remembered center
+  becomes its own target after the pan, at the view's zoom (`centerZoom`), so the map does not
+  move: a center alone flies at the browse zoom (15.5).
 - Filters are local to the fetched results and also drop the map pins. "Open now" also asks
   again: the fetch is about 60 results, and late at night nearly all of them are closed, so
   the chip calls `MapViewModel.searchOpenNow` (through `SearchActions`), which searches the
