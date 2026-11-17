@@ -175,6 +175,9 @@ https://www.google.com/maps/dir/<origin>/<destination>/data=!4m2!4m1!3e3?hl=<lan
   `bus2.png` is the vehicle icon.
 - A pill can have no color. The trip summary lists some lines that way, and the trip card then
   draws them in the colors their ride leg gives.
+- A pill keeps the agency's own color. A color that would melt into the sheet behind it, such
+  as a white line on the light sheet or the black Northern line on the dark one, gets a thin
+  gray outline (`BadgeContrast`).
 - The vehicle type comes from icon file names only, because a stop name can contain "bus". Where
   a leg has only an operator icon, as in Japan, its path decides: JR and the lettered lines are
   trains, a `metro` or `subway` operator is a subway.

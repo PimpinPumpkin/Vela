@@ -5258,6 +5258,10 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - A badge is `["name", int, "#fill", "#text"]`. Inside the line facet `[5, badge]` it can come
   with no fill, a line the agency gives no color; the trip summary writes some lines that way
   while their own leg gives a fill. A summary line with no color takes its ride leg's.
+- A line badge (`LinePill`) keeps the agency's fill. When that fill is under
+  `BadgeContrast.MIN_RATIO` (1.7, WCAG's contrast formula) against the sheet or an inset row of
+  the theme (a white or pale yellow line on the light sheet, a navy or black one on the dark
+  sheet), it gets a 1 dp outline in the theme's secondary text color at 70% (issue #888).
 - Mode comes from icon filenames only: mode words in nearby text also occur in place names.
 - A ridden leg in Japan has no generic vehicle icon. Its operator icon's path decides:
   `shinkansen` a train, `metro` or `subway` a subway, `jp2ltr` or `jp-jr` a train, any other a

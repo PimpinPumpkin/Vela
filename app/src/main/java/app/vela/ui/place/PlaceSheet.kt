@@ -25,6 +25,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -3179,16 +3180,21 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
 }
 
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no color is supplied. */
+ *  transit pills; falls back to the theme primary when no color is supplied. A color that would
+ *  melt into the sheet (a white line on the light sheet) keeps its fill and gets a thin outline
+ *  ([BadgeContrast]). */
 @Composable
 private fun LinePill(line: TransitLine) {
     val fallback = MaterialTheme.colorScheme.primary
     val bg = parseHexColor(line.colorHex) ?: fallback
     val fg = parseHexColor(line.textColorHex) ?: if (bg.luminance() > 0.5f) Color(0xFF202124) else Color.White
+    val dark = isAppInDarkTheme()
+    val shape = RoundedCornerShape(6.dp)
     Row(
         Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(shape)
             .background(bg)
+            .then(if (BadgeContrast.needsOutline(bg, dark)) Modifier.border(1.dp, app.vela.ui.SheetPalette.dim(dark).copy(alpha = 0.7f), shape) else Modifier)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
