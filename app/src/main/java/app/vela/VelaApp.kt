@@ -149,6 +149,10 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
         app.vela.ui.SpeedCams.init(this) // same init-or-it-reads-false trap as Flock
         app.vela.ui.SpeedCamWarn.init(this) // spoken camera warning (issue #229), off by default
+        app.vela.ui.WazeAlertsPrefs.init(this) // Waze crowd alerts and categories
+        app.vela.ui.AlertDistancePrefs.init(this) // warning trigger distances (issue #229 / morphe-patches)
+        app.vela.ui.WazePolice.init(this) // Waze police reports toggle
+        app.vela.ui.WazePoliceWarn.init(this) // spoken police warning, off by default
         app.vela.ui.SpeedingAlert.init(this) // spoken over-the-limit alert (issue #404), off by default
         app.vela.ui.BridgeAlert.init(this) // bridge openings on the route in the Netherlands, on by default
         app.vela.ui.BikeSafe.init(this) // bike routes prefer lanes and quiet streets (issue #401), on by default

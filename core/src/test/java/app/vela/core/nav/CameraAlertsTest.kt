@@ -85,4 +85,18 @@ class CameraAlertsTest {
         assertEquals(null, CameraAlerts.dueKeyed(scan1, 0.0, 1.0, emptySet()))
         assertEquals(null, CameraAlerts.dueKeyed(emptyList(), 0.0, 20.0, emptySet()))
     }
+
+    @Test fun `custom lead distance overrides dynamic calculation`() {
+        // At 25 m/s, dynamic lead is 300 m.
+        // At traveledM = 550 m (450 m ahead of cam at 1000 m):
+        assertNull(CameraAlerts.due(cams, traveledM = 550.0, speedMps = 25.0, spoken = emptySet()))
+        // Custom 500 m lead triggers:
+        assertEquals(0, CameraAlerts.due(cams, traveledM = 550.0, speedMps = 25.0, spoken = emptySet(), customLeadM = 500.0))
+        // Custom 200 m lead suppresses when dynamic would trigger at 750 m (250 m ahead):
+        assertNull(CameraAlerts.due(cams, traveledM = 750.0, speedMps = 25.0, spoken = emptySet(), customLeadM = 200.0))
+
+        // leadMAt per-index resolution:
+        val customResolv: (Int) -> Double? = { idx -> if (idx == 0) 500.0 else 200.0 }
+        assertEquals(0, CameraAlerts.due(cams, traveledM = 550.0, speedMps = 25.0, spoken = emptySet(), leadMAt = customResolv))
+    }
 }

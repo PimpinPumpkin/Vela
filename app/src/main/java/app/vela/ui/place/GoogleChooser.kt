@@ -102,6 +102,7 @@ fun GoogleStyleDirectionsPanel(
     routes: List<Route>,
     activeRoute: Route?,
     flockOnRoute: List<Int> = emptyList(),
+    policeOnRoute: List<Int> = emptyList(),
     modeEtas: Map<TravelMode, String> = emptyMap(),
     onModeSelected: (TravelMode) -> Unit,
     avoidTolls: Boolean = false,
@@ -329,6 +330,19 @@ fun GoogleStyleDirectionsPanel(
                         if (cams > 0) {
                             Text(androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
                         }
+                        val police = policeOnRoute.getOrElse(idx) { 0 }
+                        if (police > 0) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                app.vela.ui.PoliceBadge(modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    androidx.compose.ui.res.pluralStringResource(R.plurals.dir_police_on_route, police, police),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = androidx.compose.ui.graphics.Color(0xFF1877F2),
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
                         // Why a slower route leads (discussion #676): with "Avoid surveillance cameras"
                         // on, the picker puts a route with fewer cameras first, and said nothing about it.
                         val fastestCams = flockOnRoute.getOrElse(routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest }) { 0 }
@@ -396,6 +410,7 @@ fun GoogleStyleDirectionsPanel(
                             val delta = (eta - fastestEta).toInt()
                             val chosen = r === activeRoute
                             val cams = flockOnRoute.getOrElse(i) { 0 }
+                            val police = policeOnRoute.getOrElse(i) { 0 }
                             Row(
                                 Modifier
                                     .fillMaxWidth()
@@ -432,10 +447,11 @@ fun GoogleStyleDirectionsPanel(
                                             formatDistance(r.distanceMeters),
                                             r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
                                             if (cams > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams) else null,
+                                            if (police > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_police_on_route, police, police) else null,
                                             if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                         ).joinToString(" · "),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = if (cams > 0) SheetPalette.TrafficAmber else dim,
+                                        color = if (police > 0) androidx.compose.ui.graphics.Color(0xFF1877F2) else if (cams > 0) SheetPalette.TrafficAmber else dim,
                                     )
                                 }
                                 if (chosen) Icon(Sym.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)

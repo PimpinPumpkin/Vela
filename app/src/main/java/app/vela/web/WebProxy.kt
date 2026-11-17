@@ -64,17 +64,17 @@ object WebProxy {
 
     private fun on(): Boolean = AppTune.on("webProxy", false)
 
-    private fun isGoogle(host: String) = host == "google.com" || host.endsWith(".google.com")
+    private fun isGoogle(host: String) = host == "google.com" || host.endsWith(".google.com") || host == "recaptcha.net" || host.endsWith(".recaptcha.net")
 
     /** Installs the POST shim on [wv] (call once, when the view is created). No-op when the proxy
      *  or the shim is off at that moment, or the WebView has no document-start scripts. */
-    fun install(wv: WebView) {
+    fun install(wv: WebView, origins: Set<String> = setOf("https://www.google.com", "https://google.com")) {
         if (!on() || !AppTune.on("webProxyPosts", true)) return
         if (!androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) return
         wv.addJavascriptInterface(Bridge(), bridgeName)
         androidx.webkit.WebViewCompat.addDocumentStartJavaScript(
             wv, SHIM.replace("__B__", bridgeName).replace("__T__", tagParam),
-            setOf("https://www.google.com", "https://google.com"),
+            origins,
         )
     }
 
@@ -170,7 +170,7 @@ object WebProxy {
     private val SHIM = """
 (function(){
 var P=window.__B__; if(!P) return; var n=0;
-function g(u){ try{ var h=new URL(u, location.href).hostname; return h==='google.com'||/\.google\.com${'$'}/.test(h); }catch(e){ return false; } }
+function g(u){ try{ var h=new URL(u, location.href).hostname; return h==='google.com'||/\.google\.com${'$'}/.test(h)||h==='recaptcha.net'||/\.recaptcha\.net${'$'}/.test(h); }catch(e){ return false; } }
 function body(b){ if(typeof b==='string') return b; if(b instanceof URLSearchParams) return b.toString(); return null; }
 function tag(u,ct,b){ var id='v'+(++n)+'x'+Date.now(); P.put(id,ct||null,b); var s=String(u); return s+(s.indexOf('?')<0?'?':'&')+'__T__='+id; }
 function b64(buf){ var a=new Uint8Array(buf), s='', k=0x8000; for(var i=0;i<a.length;i+=k) s+=String.fromCharCode.apply(null,a.subarray(i,i+k)); return btoa(s); }

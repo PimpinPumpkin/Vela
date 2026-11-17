@@ -29,6 +29,8 @@ import app.vela.ui.settings.sections.QuickChipsSettingsScreen
 import app.vela.ui.settings.sections.SavedPlacesSettingsScreen
 import app.vela.ui.settings.sections.SearchSettingsScreen
 import app.vela.ui.settings.sections.VoiceSettingsScreen
+import app.vela.ui.settings.sections.WazeAlertsSettingsScreen
+import app.vela.ui.settings.sections.AlertDistanceSettingsScreen
 
 // A page preview must not steal keypad focus from the page the user is leaving.
 internal val LocalSettingsPageActive = androidx.compose.runtime.compositionLocalOf { true }
@@ -103,7 +105,11 @@ fun SettingsScreen(vm: MapViewModel, navController: androidx.navigation.NavHostC
                         SettingsSection.APPEARANCE -> AppearanceSettingsScreen(vm, onBack = toHub)
                         SettingsSection.MAP -> MapSettingsScreen(onBack = toHub, homeSet = state.home != null)
                         SettingsSection.PLACES -> PlacesSettingsScreen(onBack = toHub)
-                        SettingsSection.NAVIGATION -> NavigationSettingsScreen(vm, onBack = toHub)
+                        SettingsSection.NAVIGATION -> NavigationSettingsScreen(
+                            vm,
+                            onBack = toHub,
+                            onOpenAlertDistances = { navController.navigate(SettingsSection.ALERT_DISTANCES.route) { launchSingleTop = true } },
+                        )
                         SettingsSection.VOICE -> VoiceSettingsScreen(vm, onBack = toHub, openLibrary = openVoiceLibrary)
                         // Quick search buttons is a page under Search: pushed on top of it, so Back
                         // returns to Search, the one stack deeper than map, hub, page.
@@ -119,6 +125,11 @@ fun SettingsScreen(vm: MapViewModel, navController: androidx.navigation.NavHostC
                         SettingsSection.PERFORMANCE -> PerformanceSettingsScreen(onBack = toHub)
                         SettingsSection.DIAGNOSTICS -> DiagnosticsSettingsScreen(vm, onBack = toHub, onCloseSettings = close)
                         SettingsSection.ABOUT -> AboutSettingsScreen(vm, onBack = toHub)
+                        SettingsSection.WAZE_ALERTS -> WazeAlertsSettingsScreen(
+                            onBack = toHub,
+                            onOpenAlertDistances = { navController.navigate(SettingsSection.ALERT_DISTANCES.route) { launchSingleTop = true } },
+                        )
+                        SettingsSection.ALERT_DISTANCES -> AlertDistanceSettingsScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }

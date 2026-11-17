@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        activeActivity = java.lang.ref.WeakReference(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -187,6 +188,39 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_SEND -> {
                 val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
                 vm.openSharedText(text)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (activeActivity?.get() == this) activeActivity = null
+    }
+
+    companion object {
+        @Volatile var activeActivity: java.lang.ref.WeakReference<MainActivity>? = null
+
+        fun attachHiddenView(view: android.view.View) {
+            val act = activeActivity?.get() ?: return
+            act.runOnUiThread {
+                if (view.parent != null && view.parent !== act.window.decorView) {
+                    (view.parent as? android.view.ViewGroup)?.removeView(view)
+                }
+                if (view.parent == null) {
+                    val decor = act.window.decorView as? android.view.ViewGroup
+                    view.alpha = 0.01f
+                    view.isClickable = false
+                    view.isFocusable = false
+                    decor?.addView(
+                        view,
+                        0,
+                        android.view.ViewGroup.LayoutParams(
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        ),
+                    )
+                    android.util.Log.i("VelaWazePolice", "attached WebView to MainActivity decorView (MATCH_PARENT)")
+                }
             }
         }
     }

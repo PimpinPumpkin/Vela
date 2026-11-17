@@ -78,7 +78,7 @@ internal fun BoxScope.LayersCorner(vm: MapViewModel, landscapeChrome: Boolean, d
     var open by remember { mutableStateOf(false) }
     // The button takes the accent while something beyond the default map is on. 3D buildings are
     // on by default, so they do not count.
-    val anyLayerOn = SatelliteLayer.on.value || Traffic.on.value || TransitLayer.on.value || Topography.on.value
+    val anyLayerOn = SatelliteLayer.on.value || Traffic.on.value || TransitLayer.on.value || Topography.on.value || app.vela.ui.WazePolice.on.value
     Box(
         modifier = Modifier
             .align(Alignment.TopEnd)
@@ -177,6 +177,9 @@ private fun LayersPanel(vm: MapViewModel, onClose: () -> Unit) {
                 },
                 Tile(stringResource(R.string.settings_buildings_3d), Buildings3d.on.value, { Buildings3d.set(ctx, !Buildings3d.on.value) }) {
                     GlyphDisc(Sym.Apartment, it)
+                },
+                Tile(stringResource(R.string.map_waze_alerts_toggle), app.vela.ui.WazeAlertsPrefs.masterOn.value, { app.vela.ui.WazeAlertsPrefs.setMaster(ctx, !app.vela.ui.WazeAlertsPrefs.masterOn.value) }) {
+                    GlyphDisc(Sym.Shield, it)
                 },
             ),
         )

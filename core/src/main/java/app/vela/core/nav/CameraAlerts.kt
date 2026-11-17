@@ -74,10 +74,16 @@ object CameraAlerts {
      * the scan, [sinceM] is what was driven since, and [announced] holds keys, so a camera stays
      * announced however the list is rebuilt. Returns the key to announce, or null.
      */
-    fun dueKeyed(ahead: List<Pair<String, Double>>, sinceM: Double, speedMps: Double, announced: Set<String>): String? {
+    fun dueKeyed(
+        ahead: List<Pair<String, Double>>,
+        sinceM: Double,
+        speedMps: Double,
+        announced: Set<String>,
+        customLeadM: Double? = null,
+    ): String? {
         if (ahead.isEmpty()) return null
         val spoken = ahead.indices.filter { ahead[it].first in announced }.toSet()
-        return due(ahead.map { it.second }, sinceM, speedMps, spoken)?.let { ahead[it].first }
+        return due(ahead.map { it.second }, sinceM, speedMps, spoken, customLeadM = customLeadM)?.let { ahead[it].first }
     }
 
     fun due(
@@ -85,14 +91,17 @@ object CameraAlerts {
         traveledM: Double,
         speedMps: Double,
         spoken: Set<Int>,
+        customLeadM: Double? = null,
+        leadMAt: ((Int) -> Double?)? = null,
     ): Int? {
         if (speedMps < MOVING_FLOOR_MPS) return null
-        val lead = leadDistanceM(speedMps)
+        val defaultLead = if (customLeadM != null && customLeadM > 0.0) customLeadM else leadDistanceM(speedMps)
         var best: Int? = null
         var bestAhead = Double.MAX_VALUE
         for (i in cameraMeters.indices) {
             if (i in spoken) continue
             val ahead = cameraMeters[i] - traveledM
+            val lead = leadMAt?.invoke(i)?.takeIf { it > 0.0 } ?: defaultLead
             if (ahead <= 0.0 || ahead > lead) continue
             if (ahead < bestAhead) {
                 bestAhead = ahead
