@@ -60,6 +60,15 @@ data class TransitStep(
 )
 
 /**
+ * One turn-by-turn instruction for a transit itinerary's walking leg.
+ */
+data class TransitWalkStep(
+    val instruction: String,
+    val location: LatLng? = null,
+    val distanceMeters: Double = 0.0,
+)
+
+/**
  * One public-transit option from origin to destination: a departure/arrival
  * time window, total duration/distance, the operating agency, the ordered list
  * of lines you ride, and (for the drill-down) the ordered [steps]. All of it
