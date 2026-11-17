@@ -180,6 +180,12 @@ A part is listed in the app once the routing manifest carries it, so its place p
 basemap, road features and grid cells are baked first. A part downloaded before its own places
 and basemap archives exist would pull the whole state's.
 
+### Grid-cell boundaries
+
+Grid cells cover the region's land. A cell that only touches a polygon edge or corner is
+omitted from the cell list and cutline files. The clipping and cell-count rules are in
+[SPEC 7.6.1](../../SPEC.md#761-grid).
+
 ### How a manifest is published
 
 For places, basemap and grid cells the manifest is derived from the files on the release
