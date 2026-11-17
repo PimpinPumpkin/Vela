@@ -26,6 +26,53 @@ needs. On many phones it is not enough on its own: see "Where the real gate is" 
 music player shows up on Android Auto with no fuss while a nav app does not. See
 below.
 
+## Which way fits your phone
+
+| Your phone | What works today |
+|---|---|
+| GrapheneOS, or any phone without the Play Store signed in | Gearslip or myCar, in the next section. No install trick has passed a real car's check on these phones. |
+| Stock Android, signed in to the Play Store | King Installer ("Google installer" or Shizuku method) with Unknown sources on, in "Where the real gate is" below. Gearslip and myCar work too. |
+| Rooted, any ROM | PlayInstaller, or Gearslip and myCar. |
+
+## Gearslip and myCar: no Android Auto app in the path
+
+Gearslip and myCar are apps on your phone that talk to the car's screen themselves, in place
+of Google's Android Auto app. Google's app never runs, so the check on who installed Vela
+never runs either. They work on GrapheneOS with no Play services at all, and Vela draws its
+own car screen inside them: the map, turn cards, search and route choices.
+
+- [Gearslip](https://github.com/twinksoftware/Gearslip), by Twink Software.
+- [myCar](https://github.com/SirioNero/MyCar), by SirioNero, a fork of Gearslip with its own
+  changes.
+
+Both are separate projects, not part of Vela. Both are alpha software under the AGPL-3.0, and
+both install from GitHub or Obtainium.
+
+To set one up:
+
+1. Install Vela and either Gearslip or myCar. You do not need the Android Auto app, Play
+   services or a Google account.
+2. Open Gearslip or myCar and go through its setup, parked. It asks about the car's
+   certificate. Most cars work with what it offers, and some cars from about 2020 on need one
+   of your own; its own docs explain that step. Vela does not ship a certificate and cannot.
+3. On GrapheneOS, check that USB-C port control is not set to **Charging-only**, or the car
+   never sees the phone.
+4. Plug the phone into the car's USB port, or pair it over Bluetooth for a car with wireless
+   Android Auto. Pick Vela on the car screen.
+
+Reported to work:
+
+| Car | App | Notes |
+|---|---|---|
+| Volkswagen Golf 8, 2023 | myCar on GrapheneOS | Works. The link drops now and then when start/stop restarts the engine (GrapheneOS forum, November 2026). |
+
+[Gearslip's car list](https://github.com/twinksoftware/Gearslip/blob/main/CARS.md) has the
+cars its drivers have confirmed.
+
+Where to report a problem: if the car will not connect, or the car screen freezes outside Vela,
+that goes to Gearslip or myCar. If Vela's map, turns or search are wrong on the car screen,
+that goes to [Vela's issues](https://github.com/PimpinPumpkin/Vela/issues/new/choose).
+
 ## Why a sideloaded music app "just works" but a nav app does not
 
 They ride two completely different integrations:
@@ -157,5 +204,6 @@ lenient aftermarket unit, or a Play listing all need no proprietary code at all.
 Android Auto is part of Google Play services, so it works on a de-Googled ROM only where
 sandboxed Google Play is set up and Android Auto is talking to it. The ownership check above is
 what stops sideloaded navigation apps there, Vela included, and nothing inside the app can
-answer it. A listing on Google Play, a head unit running full Android, or a car running Android
-natively are the ways around it.
+answer it. Gearslip and myCar step around it by replacing the Android Auto app on the phone
+(see "Gearslip and myCar" above). A listing on Google Play, a head unit running full Android,
+or a car running Android natively are the other ways around it.
