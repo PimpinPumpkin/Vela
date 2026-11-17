@@ -500,6 +500,11 @@ while that timestamp is under an hour old (`RESUME_MAX_AGE_MS`). Resume waits up
 the position where the process died, and a route from there draws the line over road already
 driven. Then it plans a fresh route.
 
+A drive's trip id is saved with it, so a resumed drive records into the trip the killed process
+left: a `resumed:` note, the drive's opening notes again (a resume after an update names the new
+build), and the new route as a block with reason `resume`. With no trip to continue, because
+recording was off then or the file is gone, it starts one.
+
 ### The speed-limit badge and the speeding alert
 
 With a downloaded region, the fix is snapped to the nearest road within `LIMIT_SNAP_M = 25` and

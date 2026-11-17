@@ -172,7 +172,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A notification, a picture-in-picture mini map and, on Android 16, a live update carry the drive in
   the background.
 - "Turn card in the mini map" sets the mini map's layout.
-- If the app is closed mid-drive, the next launch offers to resume.
+- If the app is closed mid-drive, the next launch offers to resume, and the resumed drive records
+  into the same trip.
 - In a tunnel Vela keeps estimating your position.
 - A stop is announced as it comes up ("then Davis Food Co-op will be on your right", "turn left into
   the parking lot" where the map shows one) and when you reach it. Arrival is announced with the

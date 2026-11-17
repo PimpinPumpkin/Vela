@@ -71,6 +71,20 @@ class TripStore @Inject constructor(
         return id
     }
 
+    /** The recording trip's id, or null. */
+    val activeId: String? get() = active?.nameWithoutExtension
+
+    /** Record again into the trip [id] a killed process left behind, so a resumed drive stays
+     *  one trip. False when one is already recording or the file is gone (pruned, deleted). */
+    fun resumeTrip(id: String): Boolean = synchronized(lock) {
+        if (active != null) return false
+        val f = File(dir, "$id.csv")
+        if (!f.isFile) return false
+        active = f
+        lastFixWallMs = 0L
+        true
+    }
+
     /** Append a fix to the active trip (no-op if none is recording). */
     fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0) = synchronized(lock) {
         val f = active ?: return

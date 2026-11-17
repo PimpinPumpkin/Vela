@@ -605,11 +605,15 @@ internal class NavController(
         if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) } // starting fresh clears any stale offer
         // Record this trip's GPS trace for later replay, if the user opted in. Read
         // the pref directly so it works even before Settings has been opened.
+        var tripId: String? = null
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
             host.pruneOldTrips()
-            tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
+            tripId = tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
+                ?: tripStore.activeId
             tripStore.saveRoute(route, "start") // save the blue line + maneuvers so a replay drives THIS route
         }
+        // A resumed drive records into this drive's trip, never an older drive's (null removes it).
+        navResumePrefs.edit().putString("trip", tripId).apply()
         // If the phone has no voice engine, say so once instead of going silent - with a pill
         // straight to the voice library. Not when spoken directions are OFF: silence is chosen.
         if (voice.availableEngines().isEmpty() && !voice.muted) {
@@ -980,6 +984,23 @@ internal class NavController(
             .apply()
     }
 
+    /** A resumed drive records into the trip the killed process left, or into a new one when
+     *  there is none (recording was off then, or the file is gone). Before [NavSession.start],
+     *  so the drive's opening notes land in it. */
+    private fun resumeTrip(route: app.vela.core.model.Route, dest: LatLng, label: String) {
+        if (!settingsPrefs.getBoolean("trip_recording_on", false)) return
+        val prior = navResumePrefs.getString("trip", null)
+        if (prior != null && tripStore.resumeTrip(prior)) {
+            tripStore.note("K", "resumed: the app was restarted mid-drive")
+        } else {
+            host.pruneOldTrips()
+            val id = tripStore.startTrip(label.ifBlank { appContext.getString(R.string.mapvm_trip_default_name) }, dest, System.currentTimeMillis())
+                ?: tripStore.activeId
+            navResumePrefs.edit().putString("trip", id).apply()
+        }
+        tripStore.saveRoute(route, "resume")
+    }
+
     /** Nav ended (stopped/arrived/dismissed) → forget the resume target so it isn't offered next launch. */
     private fun clearPersistedNav() {
         resumeDest = null
@@ -1033,6 +1054,7 @@ internal class NavController(
             // No address survives a process kill (only the label was persisted); destinationDisplay
             // still guarantees SOMETHING shows on the arrive step (label, else the coordinates).
             val (resumedName, _) = NavSession.destinationDisplay(label, null, dest)
+            resumeTrip(route, dest, label)
             navSession.start(route, dest, resumedName, _state.value.selectedEngine?.packageName, emptyList(), mode)
             NavigationService.start(appContext)
             persistNav(dest, label, mode) // keep it persisted through the resumed drive

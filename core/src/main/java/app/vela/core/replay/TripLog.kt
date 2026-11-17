@@ -119,7 +119,7 @@ object TripLog {
     /** The route block (`RP`/`RD`/`M` lines) appended to a trip after its `META` line. */
     fun encodeRoute(route: Route, reason: String = ""): String = buildString {
         append("RP,").append(PolylineCodec.encode(route.polyline)).append('\n')
-        // reason LAST on RD (appended field, 2026-07-16): "start"/"reroute"/"faster"/"heal"/
+        // reason LAST on RD (appended field, 2026-07-16): "start"/"resume"/"reroute"/"faster"/"heal"/
         // "stop-added" - the file distinguishes a wrong turn from a chosen faster route. Old
         // parsers read RD by index and ignore extras.
         // Provenance LAST on RD (appended field, 2026-09-13): which kind of route was driven. The

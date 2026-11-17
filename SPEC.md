@@ -2778,6 +2778,11 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - Trips are segmented. The start route and every mid-drive swap is its own `RP`/`RD`/`M` block,
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.
+- A drive resumed after its process died records into the trip it interrupted: `launchNav`
+  saves the trip id under `trip` in `vela_nav_resume`, and resume reopens that file
+  (`TripStore.resumeTrip`), writes a `resumed:` note and its route as a block with reason
+  `resume`. With no trip to continue it starts one. The fixes either side of the restart have
+  a gap between them.
 - `RD` carries the route's provenance flags and source name, then `named=KofN` (how many of
   its lefts, rights and U-turns name a road or a number; ramps, exits, merges, forks and
   roundabouts are not counted, since a sign names them) and `Route.made`, how the steps were put
