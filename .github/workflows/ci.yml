@@ -25,7 +25,8 @@ on:
     # only skips when every changed file matches. Escape hatch either way: put
     # "[skip ci]" in the commit subject to suppress a run, or touch any code file to
     # force one. Keep this list to things that provably never reach the APK - workflow
-    # files are NOT ignored on purpose (they change the build itself).
+    # files are NOT ignored on purpose (they change the build itself). The cron nightly
+    # reads the same list from scripts/app-changed.sh; keep the two in step.
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -269,6 +270,13 @@ jobs:
              [ "$(git rev-parse "${LAST}^{commit}")" = "$(git rev-parse HEAD)" ] && \
              [ "${{ github.event.inputs.force || 'false' }}" != "true" ]; then
             echo "main has not moved since $LAST - no nightly today."
+            exit 0
+          fi
+          # The cron skips a main that moved only in docs, the website or repo metadata (the
+          # weekly reach snapshot cut identical nightlies). A dispatch always cuts.
+          if [ -n "$LAST" ] && [ "${{ github.event_name }}" = "schedule" ] && \
+             ! bash scripts/app-changed.sh "$LAST" HEAD; then
+            echo "only docs or the website changed since $LAST - no nightly today."
             exit 0
           fi
           VER="0.5.${{ github.run_number }}"

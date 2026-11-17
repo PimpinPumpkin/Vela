@@ -6520,7 +6520,8 @@ and in `location-guard.yml`.
   root `build.gradle.kts` pins the build tools' own libraries, none of which is in the app. CI
   validates the Gradle wrapper jar.
 - Channels. A push to `main` or `canary` builds and tests only. The nightly prerelease
-  `v0.5.<run>` is cut by `ci.yml` at 10:30 UTC when `main` has moved, or on dispatch, titled
+  `v0.5.<run>` is cut by `ci.yml` at 10:30 UTC when `main` has moved in a file that can reach
+  the app (`scripts/app-changed.sh`; a dispatch only needs `main` to have moved), titled
   `Vela <version> nightly` with notes that open "Nightly build." `promote-stable.yml` (Mondays
   16:00 UTC) promotes the newest nightly to stable: same tag, same signed APK, no rebuild,
   retitled `Vela <version>` with the notes regenerated. Each push to `canary` replaces the one

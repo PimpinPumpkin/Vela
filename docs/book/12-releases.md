@@ -60,9 +60,11 @@ versionCode: 38220
 Latest change: <newest user-facing commit subject>
 ```
 
-The nightly job publishes only if `main` has moved since the newest `v0.[0-9]*` tag. A manual
-dispatch of `ci.yml` does the same (`force` recuts the same commit) and is how a fix ships before
-the next cron. The title ends in "nightly" and the notes open with "Nightly build.", so that
+The nightly job publishes only if `main` has moved since the newest `v0.[0-9]*` tag. The cron
+also skips a `main` that moved only in files that never reach the app (docs, the website, repo
+metadata; `scripts/app-changed.sh`, the same list as the push filter), so the weekly reach
+snapshot cuts no nightly. A manual dispatch of `ci.yml` cuts whenever `main` moved (`force`
+recuts the same commit) and is how a fix ships before the next cron. The title ends in "nightly" and the notes open with "Nightly build.", so that
 someone reading them in the app can tell the channel.
 
 The promotion compares the newest prerelease and the newest full release whose tags match
