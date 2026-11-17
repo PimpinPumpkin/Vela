@@ -32,8 +32,11 @@ object StreetViewTiles {
     private const val OUT_W = 4096
     private const val OUT_H = 2048
 
-    suspend fun load(source: MapDataSource, pano: StreetViewPano): Bitmap? =
-        load(source, pano.panoId, pano.tileSize, pano.levelDims)
+    suspend fun load(source: MapDataSource, pano: StreetViewPano, maxWidth: Int = OUT_W): Bitmap? =
+        load(source, pano.panoId, pano.tileSize, pano.levelDims, maxWidth)
+
+    /** The level a quick first picture comes from: two tiles, shown while the sharp one loads. */
+    const val PREVIEW_W = 1024
 
     /** Load by pano id (time-travel fallback when the historical metadata fetch failed - the
      *  base pano's pyramid is the best guess we have). */
@@ -42,10 +45,13 @@ object StreetViewTiles {
         panoId: String,
         tileSize: Int = 512,
         levelDims: List<Pair<Int, Int>> = emptyList(),
+        maxWidth: Int = OUT_W,
     ): Bitmap? {
+        val outW = maxWidth.coerceAtMost(OUT_W)
+        val outH = outW / 2
         // The pano's own pyramid, else the modern default shape.
         val dims = levelDims.ifEmpty { List(6) { 512 * (1 shl it) to 256 * (1 shl it) } }
-        val z = dims.indexOfLast { it.first in 1..OUT_W }.coerceAtLeast(0)
+        val z = dims.indexOfLast { it.first in 1..outW }.coerceAtLeast(0)
         val (w, h) = dims[z]
         val ts = tileSize.coerceAtLeast(1)
         val cols = (w + ts - 1) / ts
@@ -82,8 +88,8 @@ object StreetViewTiles {
             bmp.recycle()
             return null
         }
-        if (w == OUT_W && h == OUT_H) return bmp
-        val scaled = Bitmap.createScaledBitmap(bmp, OUT_W, OUT_H, true)
+        if (w == outW && h == outH) return bmp
+        val scaled = Bitmap.createScaledBitmap(bmp, outW, outH, true)
         if (scaled !== bmp) bmp.recycle()
         return scaled
     }

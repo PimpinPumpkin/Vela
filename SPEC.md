@@ -6148,6 +6148,9 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
 
 - `StreetViewTiles` stitches the highest level at most 4096 px wide and `PanoramaView` textures
   it onto a GLES2 sphere. Never stitch the full 16384x8192 level: about 400 MB of texture.
+- Beside it, the level at most `PREVIEW_W` (1024 px, two tiles on a modern pano) loads too and is
+  shown first when it lands before the full one, which then fades in over it. Two more tile
+  requests per pano, for the pano already being fetched. Only the full picture is cached.
 - The tile pyramid is not one shape. Modern panoramas are `512 * 2^z` wide. Captures from before
   about 2016 are `416 * 2^z` and some have only four levels. The grid is sized from the
   panorama's own level dimensions, or the loader requests tiles past the edge and paints black
@@ -6174,6 +6177,16 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
 
 #### Viewer
 
+- Walk arrows are chevrons lying on the road (`GroundArrows`): 6 m out along each neighbor's
+  bearing, seen from 2.5 m up, projected through the panorama's own camera (yaw, pitch,
+  horizontal field of view), so they turn and foreshorten as the view moves and drop off the
+  bottom when it looks up. A tap within 72 dp of a chevron walks there (`PanoramaView.onTap`);
+  invisible 56 dp boxes on them carry TalkBack's label and D-pad focus.
+- A walk moves at once: the view zooms in up to 14 degrees over 450 ms while the next pano
+  loads, and the next pano fades in over 350 ms from that zoom, easing back out. It faces the
+  compass direction you were looking, as Google's does. Its heading and texture land on the same
+  GL frame (`setPanorama(bitmap, heading, face)`), since aiming first turned the old picture by
+  the new pano's heading at every corner. The spinner waits 700 ms on a step.
 - The viewer is a top-aligned pane over the live map (0.55 of the height, or full screen), not a
   dialog. It reports its pose so the map draws the puck and a view cone. The camera eases to the
   panorama on each hop only, never per yaw frame. A tap on the visible map moves the panorama

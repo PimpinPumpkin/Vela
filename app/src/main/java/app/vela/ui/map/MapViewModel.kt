@@ -3930,7 +3930,15 @@ class MapViewModel @Inject constructor(
                     streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,
                     streetViewHistorical = false)
             }
-            val live = if (fetched != null) runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull() else null
+            // A two-tile picture first, so the next spot shows at once and sharpens when the full
+            // level lands (32 tiles on a modern pano); the walk can go on from the preview.
+            val full = if (fetched != null) async { runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull() } else null
+            if (full != null) launch {
+                val quick = runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano, app.vela.streetview.StreetViewTiles.PREVIEW_W) }.getOrNull()
+                if (quick == null || full.isCompleted) { quick?.recycle(); return@launch }
+                _state.update { it.copy(streetViewBitmap = quick, streetViewLoading = false) }
+            }
+            val live = full?.await()
             val bmp = live ?: savedStreetViewImage(pano.panoId)
             if (bmp == null) {
                 _state.update { it.copy(streetViewLoading = false, streetView = null) }
@@ -3938,7 +3946,11 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             if (live != null) saveStreetView(pano, live)
+            // The preview goes once the GPU has surely copied it (the upload runs on the next GL
+            // frame; recycling under it would crash).
+            val preview = _state.value.streetViewBitmap?.takeIf { it !== bmp }
             _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+            if (preview != null) viewModelScope.launch { kotlinx.coroutines.delay(2_000); preview.recycle() }
         }
     }
 
