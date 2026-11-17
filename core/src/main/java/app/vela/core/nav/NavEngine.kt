@@ -75,6 +75,8 @@ object NavEngine {
      *  crawling backward along its own route at 2.7 to 3.9 m/s for three fixes, right on the
      *  line, and the route was dropped for one that sent it the other way. */
     const val HEADING_MIN_MPS = 5.0
+    /** How far ahead or behind a turn the route makes still counts as the way to go for the heading term. */
+    private const val HEADING_NEAR_M = 25.0
     /** A fix the phone rates worse than this says nothing about the course (NavSession). */
     const val HEADING_MAX_ACC_M = 30.0
 
@@ -370,10 +372,17 @@ object NavEngine {
         // carried on with its turns, no reroute, no redrawn line. Turn transients and lane changes
         // are absorbed by the same OFF_ROUTE_HITS debounce; a legit route turn flips the snapped
         // segment's bearing along with the driver's, so it doesn't accumulate hits.
+        // The course is held against the road just ahead and just behind too ([HEADING_NEAR_M]):
+        // mid-turn it has swung while the projection still sits before the corner, or not swung
+        // enough when the fix is already placed past it, and a turn the route makes was read as
+        // driving against it (a reroute 3 s after a right turn from a stop, taken as told, real
+        // drive 2026-11-17). A wrong turn points away from the road on both sides of the corner.
+        fun against(m: Double) = routeBearingAt(route.polyline, cum, m)?.let { rb ->
+            kotlin.math.abs(((bearingDeg!! - rb + 540.0) % 360.0) - 180.0) > HEADING_OFF_DEG
+        }
         val headingOff = moving && (speedMps ?: 99.0) >= headingMinMps && bearingDeg != null &&
-            routeBearingAt(route.polyline, cum, traveled)?.let { rb ->
-                kotlin.math.abs(((bearingDeg - rb + 540.0) % 360.0) - 180.0) > HEADING_OFF_DEG
-            } == true
+            against(traveled) == true && against(minOf(total, traveled + HEADING_NEAR_M)) != false &&
+            against(maxOf(0.0, traveled - HEADING_NEAR_M)) != false
         val offHits = when {
             offDist <= offRouteM && !headingOff -> 0
             !moving && offDist <= farOffM -> state.offRouteHits

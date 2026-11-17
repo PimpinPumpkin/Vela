@@ -1588,6 +1588,10 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   radius: under poor sky a receiver's accuracy figure halves and doubles from fix to fix, and a
   multipath leap taken as is becomes the position the outlier hold then keeps against the next
   good fixes. A first lock sharpening on a phone with no network location still lands at once.
+- Guidance steers by the fix itself. The speed-adaptive low-pass in `sanePosition` is the dot's:
+  under 10 m/s it trailed the car by up to 12 m while the course handed beside it was fresh, and
+  it marked every slow fix as not the fix's own, so slow driving started no recheck. Only an
+  outlier hold steers with the held position (`fromFix` false).
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says
@@ -1641,6 +1645,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   (`headingMinMps`; walking and cycling keep their moving floor). A car pulling away from a
   light between tall buildings was read crawling backward along its own route at 2.7 to
   3.9 m/s for three fixes, on the line, and was rerouted three times in 50 s.
+  A course within 60 degrees of the route's bearing `HEADING_NEAR_M` (25 m) ahead or behind is
+  not against it. Mid-turn the course has swung while the fix still projects before the corner,
+  or not swung enough once it projects past it, and a right turn from a stop, taken as told,
+  rerouted 3 s later (real drive 2026-11-17). A wrong turn points away from the road on both
+  sides of the corner and still counts.
 - No reroute fires while both the route left and the straight-line distance to the destination
   are under `DEST_ZONE_M` (150 m). The request is held until the car leaves that zone.
 - Turn prompts are muted while off route.
@@ -2835,7 +2844,9 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   and the route's source.
 - An `N` line is one call of the nav engine as the drive made it:
   `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is a fix as it
-  came, `h` the last good position an outlier hold kept, `d` a dead-reckoned point between fixes;
+  came, `h` the last good position an outlier hold kept (files from 2026-11-11 to 11-17 also wrote
+  `h` for the dot's low-passed point, which guidance then steered by), `d` a dead-reckoned point
+  between fixes;
   `msSinceFix` counts from the last fix line, and an empty field was not passed. The location
   path writes the route block first if the route changed (`NavController.syncTripRoute`), so an
   input never lands ahead of the route it ran against. A file runs about 600 KB per hour of

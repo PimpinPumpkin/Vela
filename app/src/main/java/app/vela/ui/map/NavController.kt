@@ -919,7 +919,9 @@ internal class NavController(
                             val sp = loc.speed
                             val wide = (acc ?: 0.0) > app.vela.core.location.Stillness.ACC_TRUST_M
                             val course = loc.bearing.takeIf { b -> b != 0f && sp > 0.5f && (!wide || sp >= app.vela.core.location.Stillness.SLOW_MPS) }
-                            navSession.onLocation(here, imperial, speed?.toDouble(), accuracyM = acc, bearingDeg = course?.toDouble())
+                            // Steered by the fix, as live: the low-pass is the dot's.
+                            val held = posOutlierStreak[0] > 0
+                            navSession.onLocation(if (held) here else rawHere, imperial, speed?.toDouble(), accuracyM = acc, bearingDeg = course?.toDouble(), fromFix = !held)
                         }
                     }
                     host.updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)

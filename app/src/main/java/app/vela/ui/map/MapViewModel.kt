@@ -1025,6 +1025,12 @@ class MapViewModel @Inject constructor(
                 )
                 // Drop outlier leaps + hold the dot when parked (see sanePosition).
                 val here = if (upgrade) { posOutlierStreak[0] = 0; rawHere } else sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                // Guidance steers by the fix: the low-pass is for the dot. Under 10 m/s it trails
+                // the car by up to 12 m while the course handed beside it is fresh, and it marked
+                // every slow fix as not the fix's own, so slow driving never started a recheck or
+                // kept the reroute's trusted position. Only an outlier hold steers with the held one.
+                val held = posOutlierStreak[0] > 0
+                val steerAt = if (held) here else rawHere
                 lastAccM = accM
                 lastAccRtNanos = fixRtNanos
                 val movedM = prev?.distanceTo(here) ?: 0.0
@@ -1134,21 +1140,21 @@ class MapViewModel @Inject constructor(
                     if (!_state.value.replaying && navSession.state.value.navigating) {
                         nav.syncTripRoute()
                         tripStore.recordInput(
-                            if (here == rawHere) 'f' else 'h', here, speed?.toDouble(),
+                            if (held) 'h' else 'f', steerAt, speed?.toDouble(),
                             if (loc.hasAccuracy()) loc.accuracy.toDouble() else null, fixBearing?.toDouble(),
                         )
                     }
                     navSession.onLocation(
-                        here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
+                        steerAt, app.vela.ui.Units.imperial.value, speed?.toDouble(),
                         accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
                         // Course for the engine's heading-vs-route off-route term and the
                         // reroute's departure heading. Fresh only: stopped = null.
                         bearingDeg = fixBearing?.toDouble(),
                         // An outlier hold steers with the last good position; it never starts a recheck.
-                        fromFix = here == rawHere,
+                        fromFix = !held,
                     )
                     nav.lastNavFedMs = nowMs
-                    nav.recordDriveFix(here)
+                    nav.recordDriveFix(steerAt)
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
                     // Driving mode with no route: the speeding and camera alerts run from the fixes (issue #727).
                     if (app.vela.ui.DrivingMode.on.value && !_state.value.navigating) nav.drivingModeFix(here, fixBearing?.toDouble())

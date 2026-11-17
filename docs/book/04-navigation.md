@@ -184,10 +184,14 @@ moving floor     = 2.0 / 1.0 / 0.6 m/s (drive / bike / walk)
 OFF_ROUTE_HITS   = 3      // hits before the drive counts as off route
 HEADING_OFF_DEG  = 60     // heading this far against the route's direction is a hit
 HEADING_MIN_MPS  = 5      // driving: the heading counts only this fast, from a fix of 30 m or better
+HEADING_NEAR_M   = 25     // a course matching the route this far ahead or behind is not against it
 ```
 
 For driving, a 5 m fix gives a 28 m corridor, a fix with no accuracy figure 42 m, and a 30 m fix
 70 m.
+
+The engine reads the GPS fix itself, not the dot. The dot is smoothed at low speed and trails the
+car by up to 12 m, which once put the car before a corner it was already turning at.
 
 Each fix changes a hit count:
 
@@ -200,6 +204,9 @@ Each fix changes a hit count:
   Driving, this needs 5 m/s and a fix of 30 m or better: from a crawl the GPS course is noise,
   and drift after a light once read as backing down the route. A reroute pins its start to
   the car's heading only from such a fix too.
+  A course that matches the road up to 25 m ahead or behind is not against the route, so a turn
+  the route makes does not count while the car is halfway round it. A wrong turn points away
+  from the road on both sides of the corner and still counts.
 - Stationary: the count holds, unless the fix is past the far distance. A red light cannot cause
   a reroute. Creeping out of a parking lot still can.
 
