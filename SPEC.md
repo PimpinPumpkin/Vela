@@ -6566,9 +6566,17 @@ carries `<prefix>-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and `<pref
   per check; `appReleaseTags` keeps each run's real tag name) and reads `releases/tags/<tag>`,
   canary reads its rolling tag. The releases list is never fetched:
   the data releases carry about 450 assets each and made a check 4 to 9 MB.
-- A stable check with nothing newer is 1 request. Nightly and canary checks are 2 to 4. An
+- Canary takes the newest nightly in its place only when the nightly's code is higher and it
+  holds canary's commit (`canaryPick`): `compare/<nightly commit>...<canary commit>?per_page=1&page=2`
+  answers `behind` or `identical`. The commits are the releases' `target_commitish`. Page 2 leaves
+  out the file list (about 10 KB; page 1 for a canary 26 commits ahead of `main` was 450 KB). A
+  failed compare keeps canary, and an unreadable canary release offers nothing. A nightly cut
+  from a `main` that lacks canary's commits has the higher run number whenever it was cut after
+  canary's last push.
+- A stable check with nothing newer is 1 request. Nightly and canary checks are 2 to 4, and a
+  canary check adds the compare when the nightly's code is higher. An
   offered update adds at most `HISTORY_MAX_RELEASES` (8) for the notes of the versions between
-  installed and offered. Every check logs one `VelaUpdate` line.
+  installed and offered. Every check logs one `VelaUpdate` line, and the compare one more.
 - `ApkChoice` picks the file for `Build.SUPPORTED_ABIS`. The download uses a client with no call
   timeout. `ApkCheck` requires the zip magic bytes, the release's size and its SHA-256 when
   GitHub publishes one.
