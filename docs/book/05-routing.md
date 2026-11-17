@@ -78,7 +78,11 @@ Where Google's line leaves the open route, the steps come from the first of thes
    it says nothing. The tiles carry no exit numbers or signs, so an exit takes them from
    Google's own exit at the same place ("Take exit 4A toward I-5 N: Redding"), along with the
    side it leaves on. Google's reply has every step at its exact point, even though its short
-   step list does not. Where the tiles miss an exit, Google's is said.
+   step list does not. Where the tiles miss an exit, Google's is said. A turn the tiles leave
+   bare, such as the short middle of a jog through a street grid, takes the street of Google's
+   own step at the same corner when that step turns the same way, and a bare slight bend on
+   what the tiles read as one street, with no step of Google's near it, is a curve and is not
+   said.
 3. The bends alone: "Turn right".
 
 Tiles come second because, on 90 test routes, naming from the tiles alone put a wrong name on

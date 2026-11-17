@@ -1106,7 +1106,8 @@ via-snap below applies. The line drawn for a hybrid is `Route.drawPolyline` (4.8
 #### LineNamer
 
 `LineNamer` (`core/data/naming`) keeps a route's line and derives its steps. It gives no lanes.
-Google's keyless step list is not used, but its exits are (`Route.exitSigns`, below).
+Google's keyless step list is not used, but its exits are (`Route.exitSigns`, below), and so
+are its steps' street names for turns the tiles leave bare (`Route.stepNames`, below).
 
 - Sampling: every 8 m, heading over 16 m either side.
 - Turns: peaks of the heading change across 32 m either side, 35 degrees or more, at least 30 m
@@ -1171,6 +1172,26 @@ Google's keyless step list is not used, but its exits are (`Route.exitSigns`, be
     are said once: 13 matched, 2 added where the tiles had no link (Denver exit 284, San
     Francisco exit 423A), 1 moved back 296 m. Two sides were wrong from the bend and are
     Google's now. The 39 lines without replies are unchanged.
+- Bare turns take Google's street (`Route.stepNames`, `DirectionsParser.stepNames`, the same
+  `[7][2]` and `[14]` parts): every step's point, the name after "onto ", "stay on " or
+  "becomes ", and the side from a name that is "left" or "right". A plain turn with no name
+  (strict mode leaves the short middle of a grid jog bare, since the street does not run
+  `STRICT_RUN_M` past it) takes the street of the nearest unused step within `STEP_NAME_M`
+  (25 m) that turns the same way or says no side. The route number then comes from the tiles
+  only when they have the same street there.
+  - A bare bend under 55 degrees with no step within `CURVE_STEP_M` (40 m), where the nearest
+    street within 30 m a turn window either side has the same name (or none), is the road
+    curving and is dropped. Google's silence alone is not enough: from Trafalgar Square its
+    keyless reply has one "Head toward" step for 1.1 km past a real bear-left onto Pall Mall.
+  - This runs before the same-way merge, which also joins two turns within `SPLIT_TURN_M` when
+    one took a step's street and Google has no other step at the other one (a wide corner the
+    tiles read as two bends).
+  - Measured on the 7 lines kept with their replies (`google_lines/<name>.names`, written by
+    `NamingStudyTest.tileStepCensus` from a `<name>.raw` reply beside a line; `-DvelaNoSteps`
+    for the before side): in strict mode 8 bare turns named and 3 bare slight bends on curves
+    dropped, in lenient mode 1 curve dropped. The other 32 lines are unchanged. A Davis to El
+    Macero reply outside the set also had a corner said twice ("Turn right", then "Turn right
+    onto Mace Boulevard" 32 m on), now said once.
 - Walking ignores the name of a road bridge of tertiary class or higher, marked from
   `transportation` bridge segments within 6 m, since `transportation_name` has no bridge flag.
 - Under `MIN_NAMED_SHARE` (60%) of the line named, or `MIN_NAMED_SHARE_WALK` (50%), the result

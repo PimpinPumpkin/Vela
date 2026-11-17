@@ -60,6 +60,10 @@ data class Maneuver(
  *  which side it leaves on ([left]; null when Google's icon does not say). */
 data class ExitSign(val at: LatLng, val number: String?, val dest: String?, val left: Boolean? = null)
 
+/** One of Google's steps: its point ([at]), the street it goes onto ([road], as Google writes it,
+ *  "E 8th St"), and the side it turns ([left]; null when the step does not say). */
+data class StepName(val at: LatLng, val road: String?, val left: Boolean?)
+
 /** A name change along a maneuver's leg: [atMeters] past the maneuver the road becomes [road] / [ref]. */
 data class RoadRename(val atMeters: Double, val road: String?, val ref: String?)
 
@@ -284,6 +288,10 @@ data class Route(
      *  signs (read by `DirectionsParser`). The steps of a route named from the map tiles take
      *  them, since the tiles carry neither (`LineNamer`). Empty for every other router. */
     val exitSigns: List<ExitSign> = emptyList(),
+    /** Google's steps along [polyline] that name a street or a side, each at its own point (read
+     *  by `DirectionsParser`). A turn the map tiles leave unnamed takes the street of the one at
+     *  its corner (`LineNamer`). Empty for every other router. */
+    val stepNames: List<StepName> = emptyList(),
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 

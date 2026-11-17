@@ -22,7 +22,8 @@ import kotlin.math.hypot
  * each stretch takes the name of the map street it runs along ([NamedLine]s from the vector tiles).
  * Nothing is routed, so nothing can loop. What it cannot give is lane guidance: that lives on the
  * router's junctions, not in the tiles. An exit's number and signs come from Google's own exit at
- * the same place ([Route.exitSigns]).
+ * the same place ([Route.exitSigns]), and a turn the tiles cannot name takes the street of Google's
+ * own step at its corner ([Route.stepNames]).
  */
 object LineNamer {
     private const val STEP_M = 8.0
@@ -58,6 +59,12 @@ object LineNamer {
     private const val SIGN_OFF_M = 20.0
     private const val SIGN_ALONG_M = 150.0
     private const val SIGN_LATE_M = 400.0
+    /** One of Google's steps ([Route.stepNames]) is at a turn's corner when its point is this
+     *  close to the turn, and a slight bend with none of them this close is a curve. */
+    private const val STEP_NAME_M = 25.0
+    private const val CURVE_STEP_M = 40.0
+    /** The lenient matching distance in a car, for reading a bend loosely in strict mode. */
+    private const val LOOSE_OFF_M = 30.0
     private val PLAIN = setOf("turn", "continue")
     private val ELEVATED_ROADS = setOf("motorway", "trunk", "primary", "secondary", "tertiary")
     /** `transportation_name` classes a car does not drive on. */
@@ -159,7 +166,7 @@ object LineNamer {
 
         // 4. Events: a turn is announced when the name changes across it or it bends hard; a name
         // change with no turn is a rename folded into the step before (as the open router's are).
-        data class Ev(val i: Int, val type: ManeuverType, val mod: String?, val road: String?, val osrm: String, val exitNo: String? = null, val dest: String? = null)
+        data class Ev(val i: Int, val type: ManeuverType, val mod: String?, val road: String?, val osrm: String, val exitNo: String? = null, val dest: String? = null, val google: app.vela.core.model.StepName? = null)
         val events = ArrayList<Ev>()
         // The nearest named run within LOOK_M either side: a ramp or a link is unnamed in the
         // tiles, and the road it leads to is what the instruction should name.
@@ -283,18 +290,52 @@ object LineNamer {
             events += linkEvent(ls.from, if (a == 0.0) 1.0 else a.coerceIn(-54.0, 54.0), ls)
         }
         events.sortBy { it.i }
+        // A turn the tiles leave unnamed (strict mode wants the street to run on after the turn,
+        // and the short middle of a grid jog does not) takes the street of Google's own step at the
+        // same corner, when that step turns the same way. A slight bend left unnamed where Google
+        // has no step and the tiles, read loosely, have the same street both sides is the road
+        // curving, and is not said. Google's silence alone is not enough: its keyless list can
+        // skip a real junction (a kilometer of "Head toward" from Trafalgar Square).
+        val gs = if (drive) route.stepNames.filter { g -> s.any { it.pt.distanceTo(g.at) <= SIGN_OFF_M } } else emptyList()
+        if (gs.isNotEmpty()) {
+            val used = HashSet<app.vela.core.model.StepName>()
+            fun loose(k: Int) = idx.nearestAligned(s[k.coerceIn(0, s.lastIndex)].pt, s[k.coerceIn(0, s.lastIndex)].brg, LOOSE_OFF_M)?.name
+            var j = 0
+            while (j < events.size) {
+                val e = events[j]
+                if (e.road != null || e.osrm !in PLAIN || e.exitNo != null || e.dest != null) { j++; continue }
+                val p = s[e.i].pt
+                val right = delta[e.i] > 0
+                val g = gs.filter { it !in used && it.at.distanceTo(p) <= STEP_NAME_M && (it.left == null || it.left == !right) }
+                    .minByOrNull { it.at.distanceTo(p) }
+                val how = when {
+                    g?.road != null -> { used += g; events[j] = e.copy(road = g.road, google = g); j++; "named ${g.road}" }
+                    g == null && abs(delta[e.i]) < 55.0 && gs.none { it.at.distanceTo(p) <= CURVE_STEP_M } && loose(e.i - w) == loose(e.i + w) -> { events.removeAt(j); "curve, dropped" }
+                    else -> { j++; "left bare" }
+                }
+                onBend?.invoke("google step ${s[e.i].m.toInt()} m ${delta[e.i].toInt()} deg: $how")
+            }
+        }
+
         // One turn read as two (a wide corner, a jog onto the same street): two plain turns the
         // same way within [SPLIT_TURN_M] whose second goes onto the street the first did are one
-        // turn of their summed angle, as OsmAnd merges them. Two bends that both keep the name
-        // are a hairpin, not a U-turn, and stay as they are.
+        // turn of their summed angle, as OsmAnd merges them. So are two where one took the street
+        // of Google's step and Google has no other step at the other (Google's "Mace Blvd" and the
+        // tiles' "Mace Boulevard" at one wide corner). Two bends that both keep the name are a
+        // hairpin, not a U-turn, and stay as they are.
+        fun oneCorner(e1: Ev, e2: Ev): Boolean {
+            val g = e1.google ?: e2.google ?: return false
+            val other = if (e1.google != null) e2 else e1
+            return other.google == null && other.road != null && gs.none { it != g && it.at.distanceTo(s[other.i].pt) <= STEP_NAME_M }
+        }
         var k = 0
         while (k + 1 < events.size) {
             val e1 = events[k]; val e2 = events[k + 1]
             val plain = e1.osrm in PLAIN && e2.osrm in PLAIN && (e1.osrm == "turn" || e2.osrm == "turn")
             val a1 = delta[e1.i]; val a2 = delta[e2.i]
-            if (plain && a1 * a2 > 0 && s[e2.i].m - s[e1.i].m < SPLIT_TURN_M && e2.road != null && e2.road == e1.road) {
+            if (plain && a1 * a2 > 0 && s[e2.i].m - s[e1.i].m < SPLIT_TURN_M && e2.road != null && (e2.road == e1.road || oneCorner(e1, e2))) {
                 val (type, mod) = classify((a1 + a2).coerceIn(-180.0, 180.0))
-                events[k] = Ev(e1.i, type, mod, e2.road, osrmFor(type))
+                events[k] = Ev(e1.i, type, mod, e2.road, osrmFor(type), google = e2.google)
                 events.removeAt(k + 1)
             } else k++
         }
@@ -372,7 +413,10 @@ object LineNamer {
         )
         for ((k, e) in events.withIndex()) {
             val a = starts[k + 1]; val b = ends[k + 1]
-            val run = runName.getOrNull((e.i + w).coerceAtMost(s.lastIndex)) ?: if (e.osrm == "on ramp" || e.osrm == "fork") runAround(e.i, 1) else null
+            val run = (runName.getOrNull((e.i + w).coerceAtMost(s.lastIndex)) ?: if (e.osrm == "on ramp" || e.osrm == "fork") runAround(e.i, 1) else null)
+                // A street named from Google's step takes the tiles' route number only when the
+                // tiles have the same street there.
+                ?.takeUnless { e.google != null && it.name != e.road }
             out += Maneuver(
                 e.type,
                 RouteGeometry.osrmPhrase(e.osrm, e.mod, app.vela.core.nav.instructionRoad(e.road, run?.ref), e.dest, e.exitNo, null),

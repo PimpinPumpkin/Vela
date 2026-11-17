@@ -73,4 +73,28 @@ class DirectionsExitSignsTest {
         )
         assertTrue(none.toString(), none.isEmpty())
     }
+
+    private fun names(vararg st: Triple<String, LatLng, String?>): List<app.vela.core.model.StepName> =
+        DirectionsParser.stepNames(arr(arr(*st.map { (t, at, icon) -> stepOf(t, at, icon) }.toTypedArray())))
+
+    @Test fun everyStepGivesTheStreetItGoesOntoAndItsSide() {
+        val steps = names(
+            Triple("Head toward [I St]", a, null),
+            Triple("Turn [right] onto [E 8th St]", a, "dir-tt-turn-right"),
+            Triple("[L St] turns [left] and becomes [2nd St]", b, null),
+            Triple("Turn [left] to stay on [Country Club Dr]", a, null),
+            Triple("Continue onto [King St]", b, null),
+            Triple("Keep [right] at the fork", a, null),
+        )
+        assertEquals(
+            listOf(
+                app.vela.core.model.StepName(a, "E 8th St", false),
+                app.vela.core.model.StepName(b, "2nd St", true),
+                app.vela.core.model.StepName(a, "Country Club Dr", true),
+                app.vela.core.model.StepName(b, "King St", null),
+                app.vela.core.model.StepName(a, null, false),
+            ),
+            steps,
+        )
+    }
 }

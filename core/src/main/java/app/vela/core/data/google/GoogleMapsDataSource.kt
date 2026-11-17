@@ -2107,6 +2107,8 @@ class GoogleMapsDataSource @Inject constructor(
             diag.record("drift", "directions parse drift: ${e.message}", url)
             throw e
         }
+        // Counts only: whether this reply carries the step parts the tiles' naming reads.
+        runCatching { android.util.Log.i("VelaDirections", "google steps: ${routes.joinToString { "${it.stepNames.size} named, ${it.exitSigns.size} exits" }}") }
         return if (routes.all { it.polyline.size > 2 }) routes
         else {
             val geoms = RouteGeometry.fetchAll(http, origin, destination, mode)

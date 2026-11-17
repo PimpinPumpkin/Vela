@@ -114,6 +114,7 @@ object DirectionsParser {
             typicalLowSeconds = typicalLow,
             typicalHighSeconds = typicalHigh,
             exitSigns = runCatching { exitSigns(route) }.getOrDefault(emptyList()),
+            stepNames = runCatching { stepNames(route) }.getOrDefault(emptyList()),
         )
     }
 
@@ -281,8 +282,21 @@ object DirectionsParser {
      * Denver and London trips. The reply is always English (`hl=en`), so the words around the
      * names say what each name is.
      */
-    internal fun exitSigns(route: JsonElement): List<app.vela.core.model.ExitSign> {
-        val out = ArrayList<app.vela.core.model.ExitSign>()
+    internal fun exitSigns(route: JsonElement): List<app.vela.core.model.ExitSign> =
+        ArrayList<app.vela.core.model.ExitSign>().also { out -> forEachStep(route) { st, left -> stepExit(st, left)?.let { out += it } } }
+
+    /**
+     * Every step of [route] that names the street it goes onto or the side it turns, at the
+     * step's own point, for the turns the map tiles leave unnamed (`LineNamer`). The street is the
+     * name after "onto ", "stay on " or "becomes " ("Turn [right] onto [E 8th St]", "[L St] turns
+     * [left] and becomes [2nd St]"), the side a name that is "left" or "right". Same parts as
+     * [exitSigns], calibrated on the same trips.
+     */
+    internal fun stepNames(route: JsonElement): List<app.vela.core.model.StepName> =
+        ArrayList<app.vela.core.model.StepName>().also { out -> forEachStep(route) { st, _ -> stepName(st)?.let { out += it } } }
+
+    /** Calls [f] with every step of [route] and the side its ramp icon shows (null without one). */
+    private fun forEachStep(route: JsonElement, f: (JsonArray, Boolean?) -> Unit) {
         fun isStep(n: JsonElement?): Boolean {
             val a = n.arr() ?: return false
             return a.size > 14 && a[14] is JsonArray && a.at(7, 2, 2).dbl() != null && a.at(7, 2, 3).dbl() != null
@@ -291,14 +305,47 @@ object DirectionsParser {
             val a = n as? JsonArray ?: return
             if (a.isNotEmpty() && isStep(a[0])) {
                 val icon = a.drop(1).firstNotNullOfOrNull { p -> p.arr()?.firstNotNullOfOrNull { RAMP_ICON.find(it.str().orEmpty()) } }
-                stepExit(a[0] as JsonArray, icon?.groupValues?.get(1)?.let { it == "left" })?.let { out += it }
+                f(a[0] as JsonArray, icon?.groupValues?.get(1)?.let { it == "left" })
                 return
             }
-            if (isStep(a)) { stepExit(a, null)?.let { out += it }; return }
+            if (isStep(a)) { f(a, null); return }
             a.forEach(::walk)
         }
         walk(route)
-        return out
+    }
+
+    /** A step's instruction parts, with names next to each other joined: "Int", "'", "l Airport"
+     *  is one sign. */
+    private data class StepPart(val text: String, val name: Boolean)
+    private fun stepParts(step: JsonArray): List<StepPart> {
+        val parts = ArrayList<StepPart>()
+        for (f in step[14] as JsonArray) {
+            val inner = f.at(1).arr() ?: continue
+            val t = inner.getOrNull(0).str() ?: continue
+            val name = inner.size > 1
+            val last = parts.lastOrNull()
+            if (name && last?.name == true) parts[parts.lastIndex] = StepPart(last.text + t, true) else parts += StepPart(t, name)
+        }
+        return parts
+    }
+
+    private fun stepName(step: JsonArray): app.vela.core.model.StepName? {
+        val lat = step.at(7, 2, 2).dbl() ?: return null
+        val lng = step.at(7, 2, 3).dbl() ?: return null
+        val parts = stepParts(step)
+        var road: String? = null
+        var left: Boolean? = null
+        for ((k, p) in parts.withIndex()) {
+            if (!p.name) continue
+            val t = p.text.trim()
+            val before = parts.getOrNull(k - 1)?.takeIf { !it.name }?.text.orEmpty().lowercase()
+            when {
+                left == null && (t.equals("left", true) || t.equals("right", true)) -> left = t.equals("left", true)
+                road == null && t.isNotEmpty() && (before.endsWith("onto ") || before.endsWith("stay on ") || before.endsWith("becomes ")) -> road = t
+            }
+        }
+        if (road == null && left == null) return null
+        return app.vela.core.model.StepName(LatLng(lat, lng), road, left)
     }
 
     private enum class Part { NUMBER, TOWARD, ONTO, FOR, OTHER }
@@ -312,16 +359,7 @@ object DirectionsParser {
     private fun stepExit(step: JsonArray, left: Boolean?): app.vela.core.model.ExitSign? {
         val lat = step.at(7, 2, 2).dbl() ?: return null
         val lng = step.at(7, 2, 3).dbl() ?: return null
-        // The parts, with names next to each other joined: "Int", "'", "l Airport" is one sign.
-        data class P(val text: String, val name: Boolean)
-        val parts = ArrayList<P>()
-        for (f in step[14] as JsonArray) {
-            val inner = f.at(1).arr() ?: continue
-            val t = inner.getOrNull(0).str() ?: continue
-            val name = inner.size > 1
-            val last = parts.lastOrNull()
-            if (name && last?.name == true) parts[parts.lastIndex] = P(last.text + t, true) else parts += P(t, name)
-        }
+        val parts = stepParts(step)
         val text = parts.joinToString("") { it.text }
         if ("roundabout" in text.lowercase() || !(left != null || EXIT_WORD.containsMatchIn(text))) return null
         // What each name is, from the words just before it; a "/" between two names keeps the

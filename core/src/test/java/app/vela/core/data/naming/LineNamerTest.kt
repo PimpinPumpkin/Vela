@@ -241,6 +241,69 @@ class LineNamerTest {
         assertTrue(m.none { it.type == ManeuverType.UTURN })
     }
 
+    // A grid jog: east on Main, left onto Short Ave for 70 m, right onto Oak St for 70 m, left
+    // onto Long Road. Strict naming wants 92 m of a street after a turn, so the middle two are bare.
+    private val jog = path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 70.0, 470.0 to 70.0, 470.0 to 600.0)
+    private val jogLines = listOf(
+        NamedLine("Main Street", null, "minor", listOf(pt(-100.0, 0.0), pt(400.0, 0.0))),
+        NamedLine("Short Avenue", null, "minor", listOf(pt(400.0, -200.0), pt(400.0, 70.0))),
+        NamedLine("Oak Street", null, "minor", listOf(pt(300.0, 70.0), pt(600.0, 70.0))),
+        NamedLine("Long Road", null, "minor", listOf(pt(470.0, 70.0), pt(470.0, 800.0))),
+    )
+    private fun strict(line: List<LatLng>, lines: List<NamedLine>, vararg steps: app.vela.core.model.StepName) =
+        LineNamer.name(route(line).copy(stepNames = steps.toList()), lines, TravelMode.DRIVE, strict = true)!!.maneuvers
+            .filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    @Test fun aJogsShortStreetsAreBareInStrictNaming() {
+        assertEquals(
+            listOf(ManeuverType.TURN_LEFT to null, ManeuverType.TURN_RIGHT to null, ManeuverType.TURN_LEFT to "Long Road"),
+            strict(jog, jogLines).map { it.type to it.road },
+        )
+    }
+
+    @Test fun aBareTurnTakesTheStreetOfGooglesStepAtItsCorner() {
+        val m = strict(
+            jog, jogLines,
+            app.vela.core.model.StepName(pt(402.0, 3.0), "Short Ave", left = true),
+            app.vela.core.model.StepName(pt(398.0, 72.0), "Oak St", left = false),
+            app.vela.core.model.StepName(pt(470.0, 70.0), "Long Rd", left = true),
+        )
+        // The tiles' own name stays where they have one.
+        assertEquals(listOf("Short Ave", "Oak St", "Long Road"), m.map { it.road })
+        assertEquals("Turn left onto Short Ave", m[0].instruction)
+    }
+
+    @Test fun googlesStepTurningTheOtherWayOrFarOffNamesNothing() {
+        val m = strict(
+            jog, jogLines,
+            app.vela.core.model.StepName(pt(400.0, 0.0), "Short Ave", left = false),
+            app.vela.core.model.StepName(pt(430.0, 110.0), "Oak St", left = false),
+        )
+        assertEquals(listOf(null, null, "Long Road"), m.map { it.road })
+    }
+
+    // North on Main Street, then the line bends 40 degrees right, the tiles' street going on for
+    // only 60 m past the bend: too short for strict naming, so the bend comes out bare.
+    private val bend = path(0.0 to 0.0, 0.0 to 400.0, 257.0 to 706.0)
+    private fun bendLines(after: String) = listOf(
+        NamedLine("Main Street", null, "minor", listOf(pt(0.0, -100.0), pt(0.0, 400.0))),
+        NamedLine(after, null, "minor", listOf(pt(0.0, 400.0), pt(38.6, 446.0))),
+    )
+    private val googleFarOff = app.vela.core.model.StepName(pt(0.0, 20.0), "Main St", null)
+
+    @Test fun aBareSlightBendOnTheSameStreetWithNoGoogleStepIsACurve() {
+        assertEquals(listOf(ManeuverType.SLIGHT_RIGHT to null), strict(bend, bendLines("Main Street")).map { it.type to it.road })
+        // Google has steps on this line, none at the bend: the road curves.
+        assertTrue(strict(bend, bendLines("Main Street"), googleFarOff).isEmpty())
+        // Google has a step at it: kept, bare (a keep with no street).
+        assertEquals(1, strict(bend, bendLines("Main Street"), app.vela.core.model.StepName(pt(2.0, 395.0), null, left = false)).size)
+    }
+
+    @Test fun aBareSlightBendOntoAnotherStreetStaysThoughGoogleIsSilent() {
+        // Google's keyless list can skip a real junction, so its silence alone drops nothing.
+        assertEquals(listOf(ManeuverType.SLIGHT_RIGHT), strict(bend, bendLines("Pall Mall"), googleFarOff).map { it.type })
+    }
+
     @Test fun anglesClassify() {
         assertEquals(ManeuverType.SLIGHT_LEFT, LineNamer.classify(-40.0).first)
         assertEquals(ManeuverType.TURN_RIGHT, LineNamer.classify(90.0).first)
