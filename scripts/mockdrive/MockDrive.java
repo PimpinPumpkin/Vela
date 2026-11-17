@@ -13,8 +13,9 @@
 //   adb shell cmd location providers set-test-provider-enabled gps true
 //   adb shell CLASSPATH=/data/local/tmp/mockdrive.dex app_process / MockDrive /data/local/tmp/drive.txt
 // drive.txt: one fix per line, lat,lon,speedMps,bearingDeg[,sleepMs], sent in order, 1 s apart
-// by default. Afterwards remove the provider and set the appop back to default, then reboot
-// the phone: a mock provider left behind has crashed system_server later.
+// by default. Afterwards remove the provider, set the appop back to default and check that
+// `dumpsys location | grep -ci mock` prints 0. A provider left behind has crashed system_server
+// later; reboot only if it will not go away.
 import android.location.Location;
 import android.os.IBinder;
 import android.os.SystemClock;
