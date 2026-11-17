@@ -5022,20 +5022,24 @@ a region a frame touches. The bake is 7.6.1 to 7.6.4, the app side 7.6.5.
 #### 7.6.1 Grid
 
 Cells are the tiles of one global grid at `STEP` degrees (`cells_grid.py`, 0.5 by default),
-each clipped to the region's header box (clamped by `clamp-bbox.py`). With region polygons,
-only intersections with nonzero area count as cells or become GeoJSON cutlines. Edge and
-corner touches are omitted before the `MAX_CELLS` check; multipart cutlines retain only
-parts with nonzero area. The area check accepts either ring winding, open or closed rings,
-and small positive intersections without an area cutoff. Without region polygons, cells use
-the box alone. A cell with no road and no pack row is dropped.
+each clipped to the region's header box (clamped by `clamp-bbox.py`). Each ring of the region
+polygon is clipped to the tile, and a tile where every clipped ring has zero area is not a
+cell: it touches the region only at an edge or a corner, or sits in a bay of a concave polygon,
+where clipping leaves a flat outline. Only rings with area go into the cell's cutline. Without
+a polygon the tile's box is the cell. A cell with no road and no pack row is dropped.
 
 The key is the tile's SW corner, fixed width: `[ns]DD.D[ew]DDD.D`, for example `n38.5w075.5`.
 The cell id is `<region>.<key>` (`delaware.n38.5w075.5`); region ids hold no dot, so the first
 dot splits them.
 
-A release holds 1000 assets, the zips plus the fragment. A region with more than `MAX_CELLS`
-(999) cells is regridded at double the step until it fits (`CELL_STEP` sets the start; past
-8 degrees the bake fails). The app never assumes a cell size: every cell carries its box.
+A release holds 1000 assets, the zips plus the fragment. A re-bake starts at the step of the
+cells already on the region's release (the largest cell side in its fragment), because a new
+step renames every cell: phones keep the old cells, which the manifest no longer lists and which
+never update, and the release would hold both sets. A new region starts at 0.5 degrees, and
+`CELL_STEP` overrides both. A region with more than `MAX_CELLS` (999) cells is regridded at
+double the step until it fits; past 8 degrees the bake fails. A published region whose step
+changes ends its bake with a warning. The app never assumes a cell size: every cell carries its
+box.
 
 #### 7.6.2 Bake
 

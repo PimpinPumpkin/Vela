@@ -182,8 +182,9 @@ and basemap archives exist would pull the whole state's.
 
 ### Grid-cell boundaries
 
-Grid cells cover the region's land. A cell that only touches a polygon edge or corner is
-omitted from the cell list and cutline files. The clipping and cell-count rules are in
+Grid cells cover the region's land. A tile that only touches the region polygon at an edge or a
+corner, or lies in a bay of it, is not a cell. A re-bake keeps the cell size the region already
+has, so installed cells keep their ids. The clipping and cell-size rules are in
 [SPEC 7.6.1](../../SPEC.md#761-grid).
 
 ### How a manifest is published
