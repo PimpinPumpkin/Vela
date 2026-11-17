@@ -43,7 +43,7 @@ class NavStringsTest {
         assertEquals(EnNavStrings, NavStringsRegistry.current()) // default, locale-independent
         assertEquals(FrNavStrings, NavStringsRegistry.forLanguage("fr"))
         assertEquals(JaNavStrings, NavStringsRegistry.forLanguage("ja")) // now translated
-        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("th")) // untranslated → English fallback
+        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("ko")) // untranslated → English fallback
         // Portuguese splits by country: Portugal's table for pt and pt-PT, Brazil's for pt-BR (PR #825).
         assertEquals("pt", NavStringsRegistry.tagOf(java.util.Locale("pt")))
         assertEquals("pt", NavStringsRegistry.tagOf(java.util.Locale("pt", "PT")))
@@ -156,8 +156,23 @@ class NavStringsTest {
         assertEquals("500 メートル先、右に曲がります", JaNavStrings.inThen("500 メートル", "右に曲がります"))
     }
 
+    @Test fun `thai phrases, distances and the registry`() {
+        val th = NavStringsRegistry.forLanguage("th")
+        assertEquals(ThNavStrings, th)
+        assertEquals(ThNavStrings, NavStringsRegistry.forLanguage(NavStringsRegistry.tagOf(java.util.Locale("th", "TH"))))
+        assertEquals("เลี้ยวซ้ายเข้าสู่ ถนนสายหลัก", th.phrase("turn", "left", "ถนนสายหลัก", null, null, null))
+        assertEquals("เลี้ยวขวา", th.phrase("turn", "right", null, null, null, null))
+        assertEquals("ใช้ทางออก 12 มุ่งหน้า Downtown", th.phrase("off ramp", null, null, "Downtown", "12", null))
+        assertEquals("ใช้ทางออก 12", th.repeatShort("ใช้ทางออก 12 มุ่งหน้า Downtown"))
+        assertEquals("ที่วงเวียน ใช้ทางออกที่ 2 เข้าสู่ Elm St", th.phrase("roundabout", null, "Elm St", null, null, 2))
+        assertEquals("150 เมตร", th.spokenDistance(150.0, false))
+        assertEquals("2.4 กิโลเมตร", th.spokenDistance(2400.0, false))
+        assertEquals("อีก 500 เมตร เลี้ยวขวา", th.inThen("500 เมตร", "เลี้ยวขวา"))
+        assertEquals("ใช้ 2 ช่องทางด้านขวา", th.useLanes(LaneSide.RIGHT, 2))
+    }
+
     @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
-        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "he")
+        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "th", "he")
         for (code in langs) {
             val ns = NavStringsRegistry.forLanguage(code)
             assertEquals("$code should map to its own NavStrings", code, ns.locale.language)
@@ -195,7 +210,7 @@ class NavStringsTest {
             // Hebrew directional adverbs; the noun "ימין" ends in a FINAL nun (ן), which is NOT a
             // substring of the emitted "ימינה" (medial נ) — so match the emitted forms themselves.
             "sv" to ("vänster" to "höger"), "uk" to ("лів" to "прав"), "he" to ("שמאלה" to "ימינה"),
-            "ro" to ("stânga" to "dreapta"),
+            "ro" to ("stânga" to "dreapta"), "th" to ("ซ้าย" to "ขวา"),
         )
         for ((code, words) in sideWords) {
             val ns = NavStringsRegistry.forLanguage(code)

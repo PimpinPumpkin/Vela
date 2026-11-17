@@ -2577,6 +2577,141 @@ object RoNavStrings : NavStrings {
     }
 }
 
+/**
+ * Thai (ไทย). The register of Thai navigation apps ("เลี้ยวซ้ายเข้าสู่ <ถนน>", "อีก 300 เมตร
+ * เลี้ยวขวา", "ชิดซ้ายที่ทางแยก"). Thai writes no spaces between words; a space marks a clause or
+ * phrase break, so the templates put one before a road name or a sign destination and between
+ * the distance and the instruction. Road/dest NAMES are DATA and never translated.
+ */
+object ThNavStrings : NavStrings {
+    override fun ferry() = "ขึ้นเรือข้ามฟาก"
+    override val locale: Locale = Locale("th", "TH")
+
+    private fun turnWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "เลี้ยวซ้าย"
+        "right" -> "เลี้ยวขวา"
+        "slight left" -> "เบี่ยงซ้าย"
+        "slight right" -> "เบี่ยงขวา"
+        "sharp left" -> "เลี้ยวซ้ายหักศอก"
+        "sharp right" -> "เลี้ยวขวาหักศอก"
+        "uturn" -> "กลับรถ"
+        else -> ""
+    }
+
+    private fun sideWord(mod: String?): String = when {
+        mod?.contains("left") == true -> "ซ้าย"
+        mod?.contains("right") == true -> "ขวา"
+        else -> ""
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) "เข้าสู่ $road" else ""
+        val ontoSp = if (road != null) " เข้าสู่ $road" else ""
+        val toward = when {
+            dest != null -> " มุ่งหน้า $dest"
+            road != null -> " เข้าสู่ $road"
+            else -> ""
+        }
+        val t = turnWord(mod)
+        val side = sideWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "มุ่งหน้าไปตาม $road" else "เริ่มเส้นทาง"
+            "arrive" -> "ถึงจุดหมาย"
+            "turn", "end of road" -> if (t.isNotBlank()) "$t$onto" else "ตรงไป$ontoSp"
+            "continue", "new name" -> when {
+                side.isNotBlank() -> "เบี่ยง$side$onto"
+                road != null -> "ตรงต่อไปที่ $road"
+                else -> "ตรงต่อไป"
+            }
+            "merge" -> "ขับเข้าร่วมช่องทาง$toward"
+            "on ramp", "ramp" -> if (side.isNotBlank()) "ใช้ทางลาดด้าน$side$toward" else "ใช้ทางลาด$toward"
+            "off ramp" -> if (exitNo != null) "ใช้ทางออก $exitNo$toward" else "ใช้ทางออก$toward"
+            "fork" -> if (side.isNotBlank()) "ชิด${side}ที่ทางแยก$toward" else "ตรงไปที่ทางแยก$toward"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> when {
+                rbExit == null -> "เข้าวงเวียน$ontoSp"
+                mod == "straight" -> "ที่วงเวียน ตรงไปทางออกที่ $rbExit$ontoSp"
+                else -> "ที่วงเวียน ใช้ทางออกที่ $rbExit$ontoSp"
+            }
+            "roundabout turn" -> if (t.isNotBlank()) "ที่วงเวียน $t$onto" else "ที่วงเวียน ตรงไป$ontoSp"
+            "uturn" -> "กลับรถ$onto"
+            else -> if (t.isNotBlank()) "$t$onto" else "ตรงไป$ontoSp"
+        }
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} ฟุต"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 ไมล์" else "$miles ไมล์"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} เมตร"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 กิโลเมตร" else "$km กิโลเมตร"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "อีก $distancePhrase $instruction"
+
+    override fun arrived(): String = "คุณมาถึงจุดหมายแล้ว"
+
+    override fun destinationSide(left: Boolean): String = if (left) "จุดหมายของคุณอยู่ทางซ้าย" else "จุดหมายของคุณอยู่ทางขวา"
+    override fun destinationWillBe(left: Boolean?): String =
+        left?.let { if (it) "จุดหมายของคุณจะอยู่ทางซ้าย" else "จุดหมายของคุณจะอยู่ทางขวา" } ?: destinationAhead()
+
+    override fun startNav(firstInstruction: String): String = "เริ่มการนำทาง $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "คุณมาถึง $label แล้ว" else "คุณมาถึงจุดแวะแล้ว"
+
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "จุดแวะของคุณ" }
+        return when (left) { true -> "$who จะอยู่ทางซ้าย"; false -> "$who จะอยู่ทางขวา"; null -> "$who จะอยู่ข้างหน้า" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction จากนั้น " + stopAhead(label, left)
+
+    override fun intoLot(turnLeft: Boolean): String = "${if (turnLeft) "เลี้ยวซ้าย" else "เลี้ยวขวา"}เข้าที่จอดรถ"
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
+        val who = label.ifBlank { "จุดแวะของคุณ" }
+        val where = when (left) { true -> "อยู่ทางซ้าย"; false -> "อยู่ทางขวา"; null -> "อยู่ข้างหน้า" }
+        return intoLot(turnLeft) + " จากนั้น $who $where"
+    }
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction จากนั้น$next"
+
+    override fun fasterRoute(firstInstruction: String): String = "เปลี่ยนไปใช้เส้นทางที่เร็วกว่า $firstInstruction"
+    override fun rerouting(): String = "กำลังคำนวณเส้นทางใหม่"
+    override fun fasterRouteAvailable(minutes: Int): String = "มีเส้นทางที่เร็วกว่า ประหยัดเวลาได้ประมาณ $minutes นาที"
+    override fun stopsNotIncluded(): String = "รวมจุดแวะของคุณไว้ในเส้นทางนี้ไม่ได้ จะลองต่อไป"
+    override fun leftYourRoute(): String = "คุณออกจากเส้นทางที่บันทึกไว้แล้ว จะนำทางด้วยเส้นทางที่เร็วที่สุด"
+    override fun destinationAhead(): String = "จุดหมายของคุณจะอยู่ข้างหน้า"
+
+    override fun voiceTest(): String = "เปิดเสียงนำทางแล้ว อีก 400 เมตร เลี้ยวขวา"
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val where = when (side) { LaneSide.LEFT -> "ด้านซ้าย"; LaneSide.RIGHT -> "ด้านขวา"; LaneSide.CENTER -> "ตรงกลาง" }
+        return if (count > 1) "ใช้ $count ช่องทาง$where" else "ใช้ช่องทาง$where"
+    }
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + " แล้ว$instruction"
+
+    // The sign destinations after a colon are dropped from speech; the colon only follows " มุ่งหน้า ".
+    override fun spokenSign(instruction: String): String {
+        val t = instruction.indexOf(" มุ่งหน้า ")
+        if (t < 0) return instruction
+        val colon = instruction.indexOf(':', startIndex = t)
+        return if (colon > 0) instruction.substring(0, colon) else instruction
+    }
+
+    override fun repeatShort(instruction: String): String = instruction.substringBefore(" มุ่งหน้า ")
+}
+
 object NavStringsRegistry {
     @Volatile
     private var active: NavStrings = EnNavStrings
@@ -2615,6 +2750,7 @@ object NavStringsRegistry {
         "zh" -> ZhNavStrings
         "zh-tw" -> ZhTwNavStrings
         "ja" -> JaNavStrings
+        "th" -> ThNavStrings
         "he", "iw" -> HeNavStrings // JDK 17+ normalizes the old code "iw" → "he"; accept both
         else -> EnNavStrings
     }
