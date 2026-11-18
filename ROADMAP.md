@@ -173,6 +173,8 @@ drive".
 
 Small items, one pull request each.
 
+- Turn arrows on the car screen (issue #804). The phone draws them on the route through the
+  turns ahead; the car's snapshot map has none yet.
 - Grid cells for the whole catalog. The bake conductor runs the US group and two world shards
   (`tools/bake-schedule.json`). Next: confirm from `cells-manifest.json` that every region has
   cells.
