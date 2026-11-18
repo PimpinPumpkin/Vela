@@ -194,6 +194,12 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             onCheckedChange = { on -> vm.setTripAutoClear(on); if (on) reloadTrips() },
             hint = stringResource(R.string.settings_trip_auto_clear_hint),
         )
+        ToggleRow(
+            label = stringResource(R.string.settings_location_test),
+            checked = state.locationTestOn,
+            onCheckedChange = { on -> vm.setLocationTest(on); if (!on) reloadTrips() },
+            hint = stringResource(R.string.settings_location_test_hint),
+        )
         if (state.tripRecordingEnabled) {
             ToggleRow(
                 label = stringResource(R.string.settings_name_trips),

@@ -31,6 +31,17 @@ class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
     /** The tuning in use: how hard the speed may change and how far one second may carry. The
      *  dot's filter ([DotFix]) switches it between a walker's and a car's as the motion shows. */
     @Volatile var mode: TravelMode = mode
+
+    /** Position noise in m²/s added on every prediction, beyond what the velocity explains: a
+     *  person drifts, turns and fidgets in ways no speed reading shows. 0 for a car (guidance). The
+     *  dot's filter ([DotFix]) sets it on foot and at rest, so it keeps following new fixes instead
+     *  of trusting where it sat to a meter. */
+    @Volatile var positionNoise: Double = 0.0
+
+    /** A fix the gate refuses widens the model's uncertainty by the fix's own, and a third in a row
+     *  is taken wherever the car is: the dot's rule ([DotFix]). Off, guidance's: a refused fix
+     *  changes nothing and, at rest, none is ever taken (a reflection at a red light). */
+    @Volatile var softGate: Boolean = false
     /** [accepted] false = this fix was not taken: [position] is where the model puts the car. */
     class Out(val position: LatLng, val accepted: Boolean, val sigmaM: Double)
 
@@ -128,10 +139,12 @@ class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
             // at rest by the accelerometer, the car is not moving and a fix that leaps is the GPS:
             // nothing gives way. Stopped by the Doppler alone, [MAX_REJECTED_STOPPED] do.
             val limit = when {
-                !stopped || tSec - seededAt < WARMUP_S -> MAX_REJECTED
+                softGate || !stopped || tSec - seededAt < WARMUP_S -> MAX_REJECTED
                 zupt -> Int.MAX_VALUE
                 else -> MAX_REJECTED_STOPPED
             }
+            // Soft gate: a refused fix says the model may be wrong by as much as the fix is.
+            if (softGate) { p[0] += rPos; p[5] += rPos }
             if (++rejected > limit && canReanchor) {
                 rejected = 0
                 lat = fix.lat; lng = fix.lng
@@ -231,6 +244,7 @@ class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
     private fun predict(dt: Double, q: Double) {
         lat += vn * dt / M_PER_DEG_LAT
         lng += ve * dt / mPerDegLng(lat)
+        if (positionNoise > 0.0) { p[0] += positionNoise * dt; p[5] += positionNoise * dt }
         // P = F P F' + Q, F = [[I, dt I], [0, I]].
         val f = DoubleArray(16)
         for (i in 0..3) for (j in 0..3) {

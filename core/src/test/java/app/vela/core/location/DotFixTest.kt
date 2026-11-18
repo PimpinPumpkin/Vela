@@ -123,6 +123,56 @@ class DotFixTest {
         assertTrue("east $de north $dn", de > 8.0 && kotlin.math.abs(dn) < 4.0)
     }
 
+    @Test fun indoorsAConfidentWrongFirstFixDoesNotPinTheDot() {
+        val d = DotFix()
+        // Standing indoors: the first fix claims 8 m and is 40 m out (the GPS through a roof); the
+        // ones after scatter 8 m around the phone at 12 m, every one reading 0 m/s.
+        // It has sat there a minute, past the filter's first 30 s, when it gave way easily.
+        for (i in 0..60) d.gps(east(40.0 + 2.0 * jitter(300 + i)), i.toDouble(), 8.0, 0.0, 0.3, null, null, still = false)
+        var at = d.position!!
+        for (i in 61..70) at = d.gps(east(8.0 * jitter(i), 6.0 * jitter(50 + i)), i.toDouble(), 12.0, 0.0, 0.3, null, null, still = false).position
+        assertTrue("after 10 s still ${at.distanceTo(start)} m from the phone", at.distanceTo(start) < 15.0)
+    }
+
+    @Test fun indoorsADotOffByLessThanTheGateStillComesBack() {
+        val d = DotFix()
+        // 25 m out but inside the gate: the old rule took each new fix at a hundredth.
+        for (i in 0..60) d.gps(east(25.0 + 2.0 * jitter(400 + i)), i.toDouble(), 8.0, 0.0, 0.3, null, null, still = false)
+        var at = d.position!!
+        for (i in 61..70) at = d.gps(east(4.0 * jitter(i), 4.0 * jitter(70 + i)), i.toDouble(), 10.0, 0.0, 0.3, null, null, still = false).position
+        assertTrue("after 10 s still ${at.distanceTo(start)} m from the phone", at.distanceTo(start) < 8.0)
+    }
+
+    @Test fun indoorsJunkSpeedNeverWalksTheDotAway() {
+        val d = DotFix()
+        d.gps(start, 0.0, 30.0, 0.0, 1.0, null, null, still = false)
+        var worst = 0.0
+        for (i in 1..60) {
+            val o = d.gps(east(15.0 * jitter(i), 15.0 * jitter(100 + i)), i.toDouble(), 30.0, 2.0, 1.5, (i * 83.0) % 360, 60.0, still = false)
+            worst = maxOf(worst, o.position.distanceTo(start))
+        }
+        assertTrue("worst $worst m", worst < 20.0)
+    }
+
+    @Test fun aWalkWithNoStepsHeardStillFollowsTheGps() {
+        val d = DotFix()
+        d.gps(start, 0.0, 8.0, 0.0, 0.3, null, null, still = false)
+        // 1 m/s east for 30 s, phone in a bag (no steps), fixes at 8 m with 4 m of scatter.
+        var at = start
+        for (i in 1..30) at = d.gps(east(1.0 * i + 4.0 * jitter(i), 3.0 * jitter(200 + i)), i.toDouble(), 8.0, 1.0, 0.3, 90.0, 10.0, still = false).position
+        assertEquals(30.0, alongM(at), 5.0)
+    }
+
+    @Test fun standingStillTheDotKeepsFollowingNewFixes() {
+        val d = DotFix()
+        d.gps(start, 0.0, 6.0, 0.0, 0.3, null, null, still = false)
+        for (i in 1..10) d.gps(start, i.toDouble(), 6.0, 0.0, 0.3, null, null, still = false)
+        // The fixes settle 12 m north (a better lock); the dot follows within a few seconds.
+        var at = start
+        for (i in 11..20) at = d.gps(east(0.0, 12.0), i.toDouble(), 5.0, 0.0, 0.3, null, null, still = false).position
+        assertTrue("north ${(at.lat - start.lat) * 110_540.0} m", (at.lat - start.lat) * 110_540.0 > 9.0)
+    }
+
     @Test fun aCarsVibrationNeverWalksTheDot() {
         val d = DotFix()
         d.gps(start, 0.0, 5.0, 15.0, 0.3, 90.0, 2.0, still = false)

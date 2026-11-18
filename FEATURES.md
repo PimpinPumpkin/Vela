@@ -152,6 +152,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - On foot the dot moves with each step between GPS fixes and stops when you stop, from the
   accelerometer and the compass, with no extra permission. Wi-Fi and cell location fill in when
   the GPS is weak.
+- "Record a location test" in Diagnostics saves every location fix, step and dot position for
+  sharing when the dot misbehaves.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray.

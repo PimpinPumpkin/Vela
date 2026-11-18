@@ -1657,6 +1657,17 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   - The tuning is a walker's (`Q_WALK`) while steps land, a car's otherwise.
   - `setprop debug.vela.tune.dotLog 1` logs each fix's distance to the dot, the circle and the
     learned step under `VelaDot`, in meters only.
+  - On foot and at rest (no trusted speed of 3 m/s or more in the last 10 s) the model takes
+    `ON_FOOT_POSITION_NOISE` (1 m²/s) of position noise per second, so it moves about a seventh of
+    the way to each new 10 m fix and a quarter of the way to a 5 m one, and a refused fix widens
+    its uncertainty by the fix's own (`softGate`), so the third in a row is taken. Without these a
+    phone at rest held its first position to a meter and took a new fix at a hundredth, and a dot
+    placed 40 m out indoors stayed there. A fix wider than 20 m (`DOPPLER_MAX_ACC_M`) gives no
+    speed or course, and with no step and no recent vehicle speed the velocity is held at zero.
+  - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
+    came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o` for
+    the old smoothing), into a trip named "Location test" until it is turned off. The bearing
+    field of those `N` lines is the compass.
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says

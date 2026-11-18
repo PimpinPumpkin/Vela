@@ -31,7 +31,9 @@ import app.vela.core.nav.NavReplay
  * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
  *   handed, once per call: kind `f` is the position filter's position for a fix it took, `h` for
  *   one it refused (older files: the fix as it came, and an outlier hold's position), `r` the fix
- *   as it came with FreeFused switched off, `w` the dot's FreeFused position on a walk, `d` a
+ *   as it came with FreeFused switched off, `w` the dot's FreeFused position on a walk or in a
+ *   location test (Diagnostics), `o` the dot's old smoothing in a location test with FreeFused off
+ *   (in a location test the bearing field is the compass and every fix is recorded as it came), `d` a
  *   dead-reckoned point between fixes, [msSinceFix] after the last fix line.
  *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
  * - `W,<t>,<intervalS>,<compassDeg>,<stepLengthM>`: one step of a walk being navigated, as the

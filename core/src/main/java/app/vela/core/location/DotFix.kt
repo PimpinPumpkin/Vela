@@ -25,7 +25,11 @@ import kotlin.math.sin
  * it, on the main thread.
  */
 class DotFix {
-    private val filter = PositionFilter(TravelMode.DRIVE)
+    private val filter = PositionFilter(TravelMode.DRIVE).apply { softGate = true }
+
+    /** The last GPS speed from a fix good enough to trust it, and when. */
+    private var goodSpeed: Double? = null
+    private var goodSpeedT = Double.NaN
     private var lastGpsT = Double.NaN
     private var lastGpsAcc = Double.NaN
     private var lastGpsSpeed: Double? = null
@@ -62,11 +66,23 @@ class DotFix {
     ): PositionFilter.Out {
         val walking = walkingAt(tSec)
         filter.mode = if (walking) TravelMode.WALK else TravelMode.DRIVE
+        // A fix this wide (indoors, under trees) has a Doppler speed and course of no use: taken,
+        // they read as motion and walk the dot off on its own.
+        val trusted = (accuracyM ?: 10.0) <= DOPPLER_MAX_ACC_M
+        @Suppress("NAME_SHADOWING") val speedMps = speedMps.takeIf { trusted }
+        @Suppress("NAME_SHADOWING") val bearingDeg = bearingDeg.takeIf { trusted }
+        if (trusted && speedMps != null) { goodSpeed = speedMps; goodSpeedT = tSec }
+        val lastGood = goodSpeed?.takeIf { tSec - goodSpeedT <= GOOD_SPEED_HOLD_S }
+        // A walker, someone standing, a phone on a table: let the position follow new fixes
+        // instead of trusting where it sat to a meter. A car at speed keeps guidance's tuning.
+        filter.positionNoise = if (walking || (lastGood ?: 0.0) < VEHICLE_MPS) ON_FOOT_POSITION_NOISE else 0.0
+        // Nothing says it moves (no step, no speed it can trust, no recent vehicle speed): at rest.
+        if (!trusted && !walking && (lastGood ?: 0.0) < VEHICLE_MPS) filter.holdStill()
         // Stopped: no step for a while and the GPS says not moving. Without this the position would
         // carry on at the last step's speed until the next fix pulled it back.
         if (walking && tSec - lastStepT > STOP_AFTER_S && (speedMps ?: 0.0) < STOP_MAX_MPS) filter.holdStill()
         if (walking) learn(tSec, accuracyM, speedMps, speedAccMps, bearingDeg, bearingAccDeg)
-        val out = filter.update(fix, tSec, accuracyM, speedMps, speedAccMps, bearingDeg, bearingAccDeg, still)
+        val out = filter.update(fix, tSec, accuracyM, speedMps, speedAccMps.takeIf { trusted }, bearingDeg, bearingAccDeg.takeIf { trusted }, still)
         if (out.accepted && (accuracyM ?: 10.0) <= GOOD_FIX_M) stepMetersSinceFix = 0.0
         lastGpsT = tSec
         lastGpsAcc = accuracyM ?: 10.0
@@ -80,6 +96,8 @@ class DotFix {
         val gpsAge = if (lastGpsT.isNaN()) Double.MAX_VALUE else tSec - lastGpsT
         if (gpsAge < NETWORK_GPS_FRESH_S && lastGpsAcc <= acc) return null
         filter.mode = if (walkingAt(tSec)) TravelMode.WALK else TravelMode.DRIVE
+        val lastGood = goodSpeed?.takeIf { tSec - goodSpeedT <= GOOD_SPEED_HOLD_S }
+        if ((lastGood ?: 0.0) < VEHICLE_MPS) filter.positionNoise = ON_FOOT_POSITION_NOISE
         return filter.update(fix, tSec, acc, null, null, null, null, still = false, canReanchor = gpsAge > NETWORK_REANCHOR_AFTER_S)
     }
 
@@ -139,11 +157,21 @@ class DotFix {
     fun reset() {
         filter.reset()
         lastGpsT = Double.NaN; lastGpsAcc = Double.NaN; lastGpsSpeed = null
+        goodSpeed = null; goodSpeedT = Double.NaN
         lastStepT = Double.NaN; stepTimes.clear()
     }
 
     companion object {
         const val DEFAULT_STEP_M = 0.72
+        /** A fix wider than this gives no speed or course the dot takes. */
+        const val DOPPLER_MAX_ACC_M = 20.0
+        /** How long a trusted speed says what the phone is doing. */
+        const val GOOD_SPEED_HOLD_S = 10.0
+        /** At or above this trusted speed the phone is in a vehicle. */
+        const val VEHICLE_MPS = 3.0
+        /** Position noise on foot and at rest, m²/s: with a 10 m fix the dot moves about a seventh
+         *  of the way to each new one, with a 5 m fix a quarter, the way the old smoothing felt. */
+        const val ON_FOOT_POSITION_NOISE = 1.0
         /** A GPS fix this accurate ends a walk on steps alone. */
         const val GOOD_FIX_M = 20.0
         /** Steps with no GPS fix for this long widen the dot's circle with the distance walked... */

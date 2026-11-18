@@ -333,6 +333,7 @@ data class MapUiState(
     val voiceAlertsOnly: Boolean = false, // muted, with the speeding and camera alerts as a chime (issue 735)
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
+    val locationTestOn: Boolean = false, // Diagnostics > Record a location test is recording
     val tripAutoClear: Boolean = false, // delete saved drives after TripRetention.KEEP_DAYS
     val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
     // A drive just finished and the user asked to be prompted for its name; the prompt shows on
@@ -988,7 +989,8 @@ class MapViewModel @Inject constructor(
                         dotFix.compassDeg = _state.value.compassHeading?.toDouble()
                         val o = dotFix.step(st.tSec, st.intervalS) ?: return@collect
                         // A walk being navigated records its steps (TripLog `W`), so it can be replayed.
-                        if (_state.value.navigating) tripStore.recordStep(st.intervalS, dotFix.compassDeg, dotFix.stepLengthM)
+                        if (_state.value.navigating || _state.value.locationTestOn) tripStore.recordStep(st.intervalS, dotFix.compassDeg, dotFix.stepLengthM)
+                        if (_state.value.locationTestOn && !_state.value.navigating) tripStore.recordInput('w', o.position, null, dotFix.accuracyM, dotFix.compassDeg)
                         _state.update { it.copy(myLocation = o.position, myAccuracyM = dotFix.accuracyM.toFloat()) }
                     }
                 }
@@ -1007,6 +1009,9 @@ class MapViewModel @Inject constructor(
                 // flight when a replay began (cancel hadn't landed yet), drop every real fix while the
                 // trace is playing so it can't snap the puck back to the user's actual location.
                 if (_state.value.replaying) return@collect
+                // A location test records every fix as it came, before anything below drops one.
+                val testRec = _state.value.locationTestOn && !navSession.state.value.navigating
+                if (testRec) tripStore.record(loc, still = app.vela.core.location.Stillness.still)
                 val nowMs = android.os.SystemClock.elapsedRealtime()
                 val isGps = loc.provider == android.location.LocationManager.GPS_PROVIDER
                 // Provider gating, OsmAnd-style (useOnlyGPS): a NETWORK (BeaconDB wifi/cell) fix
@@ -1199,7 +1204,10 @@ class MapViewModel @Inject constructor(
                 maybeAdvanceTransitNav(here)
                 if (_state.value.transitNav != null) publishTransitNotice(here)
                 // Save the fix to the active trip (no-op unless one is recording).
-                tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits, still = app.vela.core.location.Stillness.still)
+                if (testRec) tripStore.recordInput(
+                    if (dotFused && dot != null) 'w' else 'o', here, speed?.toDouble(),
+                    (if (dotFused && dot != null) dotFix.accuracyM else accM.toDouble()), _state.value.compassHeading?.toDouble(),
+                ) else tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits, still = app.vela.core.location.Stillness.still)
                 passAlert(here, speed?.toDouble(), nowMs)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
@@ -7711,6 +7719,23 @@ class MapViewModel @Inject constructor(
 
     /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
      *  more invasive than diagnostics, so it's its own toggle. */
+    /** Diagnostics > "Record a location test": every location fix as it came (GPS, Wi-Fi and cell),
+     *  each step, and where the dot was put, into a trip until it is turned off, so a walk or a
+     *  room where the dot misbehaves can be replayed (TripLog `N` kinds `w` and `o`, `W`). Not
+     *  while a drive records its own trip. */
+    fun setLocationTest(on: Boolean) {
+        if (on == _state.value.locationTestOn) return
+        if (on) {
+            tripStore.startTrip(appContext.getString(R.string.diag_location_test_name), null, System.currentTimeMillis()) ?: return
+            tripStore.note("K", "location test: " + (if (app.vela.core.location.GuidanceFix.rawWhen()) "FreeFused off" else "FreeFused on") +
+                ", build ${app.vela.BuildConfig.VERSION_CODE}")
+            _state.update { it.copy(locationTestOn = true) }
+        } else {
+            _state.update { it.copy(locationTestOn = false) }
+            if (!_state.value.navigating) tripStore.finishTrip()
+        }
+    }
+
     fun setTripRecording(on: Boolean) {
         settingsPrefs.edit().putBoolean("trip_recording_on", on).apply()
         _state.update { it.copy(tripRecordingEnabled = on) }
