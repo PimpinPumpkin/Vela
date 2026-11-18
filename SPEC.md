@@ -4228,6 +4228,13 @@ basemap anyway. A walk or a ride keeps it at opacity 0.
   tile template on `pmtiles.vela.invalid` through the map's HTTP client (`overlaySource`, headers
   read on IO first by `prefetchStreamed`). A downloaded archive file (`pmtiles://file://`) still
   goes to MapLibre as it is; that path loads.
+- A rebake replaces a streamed archive under the same address. `PmtilesReader.HttpRangeReader`
+  takes the file's total length from the first reply's `Content-Range` (its `ETag` when there is
+  no length), and a reply from a file of another length answers null and marks the archive
+  `replaced`. `StreamedPmtiles` then opens the address again, header and directories, once for all
+  the tile reads that found it, and reads the tile from the new file; `StreamedSpeedLimit` opens
+  it again on its next lookup, so a running app never reads the new file at the old offsets.
+  Tiles MapLibre cached from the old file stay until its cache drops them.
 - The pmtiles path never cold-fetches a tile clamped two or more levels below the camera.
 - Past a GeoJSON source's maxzoom every overscaled tile lays out all of its parent tile's
   features, so point sources set one. The route line sources set none.

@@ -84,7 +84,8 @@ object StreamedSpeedLimit {
     }
 
     private fun archive(uri: String): PmtilesReader.Archive? {
-        archives[uri]?.let { return it }
+        // A rebake replaced the file behind a streamed address: open it again (PmtilesReader.HttpRangeReader).
+        archives[uri]?.let { if (!it.replaced) return it; archives.remove(uri); runCatching { it.close() } }
         val target = uri.removePrefix("pmtiles://")
         val a = when {
             target.startsWith("file://") -> File(target.removePrefix("file://")).takeIf { it.exists() }?.let { PmtilesReader.Archive.file(it) }

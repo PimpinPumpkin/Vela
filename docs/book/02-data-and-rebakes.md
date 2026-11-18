@@ -259,8 +259,10 @@ to -129.9.
 ### How your phone picks up a new build
 
 Streamed data (places, buildings, house numbers, speed limits) is read by HTTP range requests
-against a fixed URL, so a rebuilt archive shows up once the map's tile cache drops the old bytes.
-Settings > Offline maps > Clear map cache forces it. The places and basemap stores cache a
+against a fixed URL. A rebake replaces the file there. The reader notices on its next read,
+because the file's length changed, and opens the new file before reading on. Tiles the map
+already cached from the old file stay until the map's tile cache drops them; Settings > Offline
+maps > Clear map cache forces it. The places and basemap stores cache a
 manifest for 60 minutes (`MANIFEST_TTL_MS`), so a long-running app still sees a new bake.
 
 Downloaded data stays as downloaded until it is updated. That includes the map you see online: a
