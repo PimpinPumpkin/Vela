@@ -17,12 +17,15 @@ modes and situations differ, as described below. The full list of thresholds is 
   makes, with no key and no account ([chapter 7](07-talking-to-google.md)). It returns the
   route line, the typical and in-traffic times, congestion spans along the line, and
   alternates. Its step list is shortened on longer trips (a 6-mile route came back with 2 of
-  about 10 turns), so its steps are used only when nothing else answers.
+  about 10 turns), so that list is driven only when nothing else answers. The reply still holds
+  every step at its own point with its full text, and routes named from the map tiles take their
+  exit numbers, signs and some street names from it.
 - The open router: OSRM on the FOSSGIS community server (`routing.openstreetmap.de`, fair use,
   no key), with a backend each for car, bike and foot. It returns every turn with street
   names, exit numbers, sign text and lanes. It knows nothing about traffic or closures.
 - Valhalla on the FOSSGIS server (`valhalla1.openstreetmap.de`): map matching of a line another
-  router drew, and safety-weighted bicycle routes.
+  router drew, the road pieces under a line, safety-weighted bicycle routes, and car routes that
+  keep off tolls, highways, ferries or farm tracks.
 - The map's own vector tiles (zoom 14), from a downloaded region's basemap file when it holds
   the tile, else from OpenFreeMap. `RoadNameTiles` reads street names and shapes from them.
 - The on-phone router: OsmAnd's Java router (GPLv3, vendored) over the `.obf` region files you
@@ -94,9 +97,10 @@ Valhalla returns no lane arrows. For a matched stretch, `laneDetail` asks the op
 drive the matched path. It takes the open router's steps when the two paths agree to within
 8 m, and otherwise borrows its lanes turn by turn.
 
-The tiles are not left until the match has failed. One second into a match that has not
-answered, the tiles under the stretch are read as well (0.3 s on a reroute), so the names are
-already there if the match is late. A matcher in good health answers a town stretch in 0.35 to
+The tiles do not wait for the match to fail. One second into a match that has not answered, the
+tiles under the stretch are read as well (0.3 s on a reroute), so the names are already there if
+the match is late. On a constrained connection, such as satellite, the tiles are read only after
+the match fails. A matcher in good health answers a town stretch in 0.35 to
 1.2 s and costs no tile request.
 
 All of this gets `HYBRID_WAIT_MS` (5.5 s). Past that, the route goes out on Google's line with
@@ -166,13 +170,18 @@ If the pieces cannot be joined, the older via snap runs when Google's line stray
 
 - Google does not answer: the open router's routes, with free-flow times, no traffic colors
   and no Google alternates.
+- Google does not answer and the open route drives 30 m or more of farm or forest track, with
+  ordinary road on both sides: Valhalla's car route kept off tracks replaces it. It must answer
+  within 4 s (1.5 s on a reroute) and be at most 1.3 times as long plus 2 km. OSRM's car
+  profile drives such a track as a slow road, and in much of Europe the track is closed to cars.
 - The open router does not answer: the on-phone route when a downloaded region covers the
   trip, with complete named turns and no traffic. Without a region, Google's routes with
   Google's own short step lists (`GOOGLE_ABBREVIATED`).
 - Neither answers and no region covers the trip: no route.
 
 During a drive, the recheck swaps in full steps, street names or traffic once the missing
-source answers ([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
+source answers. If the car is on the open router's own route, the recheck also puts it back on
+Google's line ([chapter 4](04-navigation.md)). Every route carries a `RouteSource` tag naming what produced
 it, and the trip log records it.
 
 ### Alternates and the order of the list
@@ -231,8 +240,9 @@ This path does not build the hybrid. It compares the two routes the older way:
   (`chainOnDevice`). If a leg fails, Google's own route, which has lost the stops if Google
   ignored them.
 
-During a drive, a stop you add goes first, ahead of the stops still to come, and the drive
-replans once from where you are (`NavSession.addStop`). The stops editor's Done and "Remove
+During a drive, a stop added on the phone goes after the stops still to come, where the stops
+editor can move it. A stop added from the car's search goes next. Either way the drive replans
+once from where you are (`NavSession.addStop`). The stops editor's Done and "Remove
 next" use the same path (`setStops`). The replan skips the reroute cooldown and runs as a
 planning fetch with all its retries. The new list is the plan at once, so if the fetch fails
 the next reroute or recheck routes through it.
@@ -298,7 +308,8 @@ is taken only when it is within 3 minutes, or 8 percent, of the best one. With n
 router's own route is used when it is that close to the best route's time without traffic: it
 was asked with the heading and usually goes round the block. It runs on the set-aside route's
 clock and traffic, so its arrival time is Google's from the first answer instead of the open
-router's fast one until the next recheck. When going on costs more than that
+router's fast one until the next recheck. The drive goes back to Google's line at the first
+recheck whose route does not turn the car round. When going on costs more than that
 either way, the best route stands and the car is told to turn around. Without the limit a
 forward alternate 20 minutes longer was taken over the best route.
 
@@ -400,8 +411,9 @@ saved start and ends within 250 m of the saved end is offered the saved route (`
 
 - If a route already on offer goes the same way (every 25 m sample within 60 m, in both
   directions), that row takes the saved name.
-- Otherwise the router is asked for the trip through points on the saved line, one in the
-  middle of each stretch of 150 m or more where it leaves the fastest route, at most 8. The
+- Otherwise the router is asked for the trip through points on the saved line where it leaves
+  the fastest route for 150 m or more: one in the middle of each such stretch, and one more for
+  each 2.5 km of a long stretch, at most 8 in all. The
   drive keeps the points as silent stops, so a traffic re-check keeps you on your route.
 
 Leaving a saved route lets go of it. The reroute drops the hidden points and goes the fastest
@@ -425,8 +437,9 @@ way you drove". A replayed trip never offers it.
 
 - The open router and the matcher are community servers with no guarantee. When OSRM does not
   answer, a drive gets the on-phone route or Google's short steps. When Valhalla does not
-  answer in time, stretches fall to tile names, with no lanes or sign text, and to bare turns
-  only when the tiles did not load either. That is more common on a reroute, where the
+  answer in time, stretches fall to tile names. These have no lanes, and have exit numbers and
+  signs only where Google's reply has the exit. Stretches fall to bare turns only when the tiles
+  did not load either. That is more common on a reroute, where the
   stretches get 1.5 s. Bare turns last until the drive's next recheck that comes back named,
   about 20 seconds. Self-hosting both would fix this and would allow `exclude=`.
 - A road that leaves a junction and then curves away is called a turn when the map draws an

@@ -145,6 +145,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   with stops the figures are for the next stop, named under them, with the whole trip on a line
   below. The notification and Android Auto show the next stop too.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
+- Guidance follows a position fused from the GPS fix and the speed and heading the GPS measures,
+  so a reflection off a tall building at a red light does not reroute you, and the arrow keeps up
+  through a turn.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray.
@@ -301,7 +304,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   data.
 - "Look up tapped places on Google" off keeps taps to Vela's own data.
 - "Google session" starts a new anonymous session weekly, daily or at every launch.
-- "Block Google's page telemetry" stops the background reports Google's pages send.
+- Google's pages never send their logging pings or ad requests. "Block Google's page telemetry"
+  also stops the account bar's background calls.
 - "Requests to Google" counts what the phone sent today and this week, by purpose.
 - "Live traffic re-checks while navigating" off stops position updates to Google during a drive.
 - "Clear history" wipes recent searches, recent places, parking history and recorded trips.

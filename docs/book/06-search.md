@@ -73,7 +73,9 @@ The request carries the text, the viewport center and the viewport height as the
 clamped to 2 to 500 km. `SUGGEST_SPAN_M` (20 km) is the window before the map has a viewport,
 and a typed address gets at least `ADDRESS_SEARCH_SPAN_M` (40 km). The search endpoint ranks by
 prominence over the whole window, which answers a bare house number with a ZIP code in another
-state. The autocomplete lists the nearby houses with that number first.
+state. The autocomplete lists nearby houses with that number, mixed with the same number on
+streets abroad. For a bare number Vela keeps only the rows within `SUGGEST_NEAR_M` (80 km) of the
+bias point when there are any.
 
 A suggestion with a location is a place row. One without is a query row ("Starbucks", "cvs
 pharmacy hours"), and tapping it runs that text as a search. At most eight place rows and three
@@ -131,11 +133,12 @@ hits, one with no rating and no category, so the house wins over a shop at the s
 Offline, or when that misses, it asks the on-device geocoder. The opened place carries only the
 name, the point and the address, so a business at that spot does not lend it a rating or hours.
 The address shown is the one saved in the contact, on one line (`contactAddressLine`): for a
-house the geocoder often knows only the town and ZIP, which used to be all the card said. A
-contact that holds only a street line takes the town from the geocoder.
+house the geocoder often knows only the town and ZIP. A contact that holds only a street line takes the town from the geocoder.
 If nothing geocodes, the address runs as a plain search.
 
-A saved pin or address opens as saved, with no lookup. A saved business looks up its listing
+A saved pin or address opens as itself and never turns into a listing. Online with Google on,
+its address is searched once at its point, and the businesses within
+`SAVED_ENRICH_SAME_SPOT_M` (30 m) show under "Also at this location". A saved business looks up its listing
 for photos and reviews. It accepts a hit within `SAVED_ENRICH_SAME_SPOT_M` (30 m), or within
 `SAVED_ENRICH_MAX_M` (250 m) when the names agree, and keeps a name you gave it.
 
@@ -156,8 +159,9 @@ cursor at the end.
 ### Search on Enter
 
 `search()` biases to the viewport center, or to your position before the map has one. The text
-first goes to the intent parser (below). If that declines, `runSearch` checks two shapes before
-searching. Pasted coordinates drop a pin. A pasted Google Maps share link opens the place it
+first goes to the intent parser (below). If that declines, `runSearch` checks three shapes
+before searching. A pasted Google Maps address, such as a place or a trip planned on a desktop,
+opens the way the same link opens from another app. Pasted coordinates drop a pin. A pasted Google Maps share link opens the place it
 points to, imports a shared list as results with a Save offer, or imports a My Maps custom map.
 With Google off, list and custom map imports are refused, and a short link is resolved only
 while "Open shared Google Maps links" is on.
@@ -197,10 +201,12 @@ old ones, and the map keeps the view you searched: it does not zoom in while the
 
 The results sheet shows while there are results, no place is open and the search field is closed
 (`SearchGates`). A search submitted while picking a stop or an endpoint shows its results the same
-way, over the map; the search page's gray background goes away with its entry page, where it used
-to stay and read as a black map under the results. After a search from a view under 2.5 km tall, the camera stays where it is when
-enough results fall in the visible part of the map: one for a name, three for a kind of place
-(`SearchKind`). Otherwise it frames the first 12 results.
+way, over the map; the search page's gray background goes away with its entry page. After a
+search from a view under 2.5 km tall, the camera stays where it is when enough results fall in
+the visible part of the map: one for a name, three for a kind of place (`SearchKind`).
+Otherwise, when the first result is a country, a state, a city or a postal code, the map goes to
+it at that kind's own zoom (`areaZoom`), because Google sends an area with no bounds. Any other
+search frames its first 12 results, leaving out a stray far from the rest.
 
 ### Other locations of a business
 
@@ -264,7 +270,7 @@ Every submitted query, typed or spoken, first goes through `QueryIntents.parse(t
 | Search | "where is the nearest pharmacy near me" | Strips the filler and searches "pharmacy" |
 | Eta | "what's my ETA" | While navigating, speaks and shows the remaining time |
 
-Null means plain search. There are word tables for 15 languages, which covers every app language
+Null means plain search. There are word tables for 16 languages, which covers every app language
 except Estonian. English is tried as a fallback in each, because "navigate to" on a French phone
 is common. Settings > Search lists example phrases (`VoiceCommandExamples`), and a test parses
 every one.

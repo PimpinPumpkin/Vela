@@ -10,9 +10,10 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Map: traffic, transit lines, terrain, tilt, "Keep north up", 3D buildings, map buttons, house
   numbers, names on the map (English then romanized, English then local, local only, or local
   and English), where the map opens.
-- Places: "Place icons on the map", which places the map draws, what a place page loads.
-- Navigation: route picker, road-ahead bar, arrow, speed limit, road numbers first, zoom keys,
-  cameras ([chapter 3](03-cameras.md)), traffic rechecks.
+- Places: "Place icons on the map", which places the map draws, how far out place names show,
+  what a place page loads.
+- Navigation: route picker, road-ahead bar, arrow, speed limit and the over-the-limit warning,
+  road numbers first, zoom keys, cameras ([chapter 3](03-cameras.md)), traffic rechecks.
 - Voice: spoken directions, street names, the voice library, speed and volume.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,
   a page of its own under Search for which category chips show and in what order.
@@ -127,6 +128,6 @@ rest of keypad operation.
   option on.
 - When Settings is the first thing in a session to take focus, focus requests do nothing until
   a key is pressed. That first press lands on Back.
-- Open search, picking an area or a point on the map, the alternates list, a minimized route
-  picker, and the place sheet and step list during a drive handle Back themselves and do not
+- Open search, picking an area or a point on the map, transit guidance, the alternates list, a
+  minimized route picker, and the place sheet and step list during a drive handle Back themselves and do not
   follow the swipe. Back during a drive asks before ending it.

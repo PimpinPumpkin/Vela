@@ -365,7 +365,7 @@ phone. It says nothing about the gate either.
 - Only typed search has an offline fallback. Nearby and search along the route need a connection.
 - The route preview is driving only and shows three routes at most.
 - A drive started from the car with the phone app never opened has no navigation controller, so
-  it gets no corridor dots and no alert toasts.
+  it gets no corridor dots and no alert toasts, and it records no trip.
 - The speed limit sign needs a downloaded region. The phone falls back to an online limit overlay
   and the car does not.
 - The speed badge is GPS speed. The manifest asks for `CAR_INFO`, and nothing reads the car's own

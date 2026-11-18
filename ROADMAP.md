@@ -257,6 +257,18 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The fused position guidance steers by (`PositionFilter`): on a 15-minute freeway drive it
+  stayed within 0.6 m of the GPS fix (median, 4.2 m at most) and refused no fix. Not yet seen on
+  a real drive: a stop, and a reflection at a red light between tall buildings. Those were
+  checked on desk replays of three recorded drives and the 4a canyon mock drive only.
+- The car screen's feed through the same filter (`GuidanceFix`): checked on the Desktop Head
+  Unit with the phone app open and closed. Not yet in a car.
+- A drive on the open router's line after a reroute returns to Google's line at the next
+  re-check that does not turn the car round: seen on a mock drive on the 4a. Not yet on a real
+  reroute.
+- A place's address takes Google's when it has a house number and the first fill did not:
+  unit-tested. The race between the two fills was not reproduced on the 4a.
+
 - Highway steps on a route named from the tiles (`LineNamer`) come from the link roads: a turn
   straight onto or off a highway at an intersection says "Turn left onto", an exit is said once
   where the line leaves the highway and the end of the ramp is a plain turn, curves along a ramp

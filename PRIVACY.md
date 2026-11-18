@@ -141,11 +141,10 @@ Settings > Performance > "Load all photos and reviews" (off by default) makes ev
 open walk its whole gallery and up to 50 reviews, which means more page loads.
 
 This is the one place Google's own JavaScript runs on your phone. It runs with no login, but
-like any browser visit to Google it can set cookies or fingerprint the browser, and it sends
-Google's usual page telemetry. That telemetry goes out by default, because a browser that never
-sends it looks less like a person, which feeds into whether a session gets the limited view.
-**Settings > Privacy > "Block Google's page telemetry"** answers those calls on the phone
-instead. Nothing Vela shows depends on them. If you never open a Google place, transit
+like any browser visit to Google it can set cookies or fingerprint the browser. The page's
+logging pings and ad and analytics requests are answered on the phone and never reach Google.
+The account bar's background calls go out by default; **Settings > Privacy > "Block Google's
+page telemetry"** answers those on the phone too. Nothing Vela shows depends on any of them. If you never open a Google place, transit
 directions, or a board outside Transitous's coverage, no hidden page loads.
 
 **You can see the numbers.** Settings > Privacy > "Requests to Google" counts every request
@@ -176,8 +175,9 @@ contact's name on this phone only. The name is never sent anywhere.
 ## No tracking
 
 Vela has no analytics, no advertising, no crash reporting, and no telemetry of its own that
-runs without you turning it on. The one telemetry that runs by default is Google's, from inside
-the Google pages Vela loads in hidden WebViews, and Settings > Privacy can block it. The app
+runs without you turning it on. The Google pages Vela loads in hidden WebViews never send their
+logging pings or ad requests. Their account bar's background calls go out by default, and
+Settings > Privacy can block them. The app
 makes network requests only to the services in the table, only when a feature needs them. It is
 GPLv3: every request is in
 [`core/data/google`](core/src/main/java/app/vela/core/data/google),

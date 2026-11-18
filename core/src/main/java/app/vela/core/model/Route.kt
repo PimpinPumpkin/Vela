@@ -191,7 +191,8 @@ enum class RouteSource {
      *  until it is picked and named. Never driven as is. */
     GOOGLE_PROVISIONAL,
     /** Google's line kept as is, turns taken from its bends and each stretch named from the map's
-     *  vector tiles (LineNamer). No lanes or sign destinations. */
+     *  vector tiles (LineNamer), with exit numbers and signs where Google's reply has the exit.
+     *  No lanes. */
     GOOGLE_LINE_NAMED,
     /** Google's line, with the open router's maneuvers where the two routes share the road and
      *  tile-named turns (LineNamer) where Google leaves it (HybridRoute). */

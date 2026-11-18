@@ -82,9 +82,8 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
      * One fix from the car screen's own feed, steered like the phone's: through the shared
      * position filter ([app.vela.core.location.GuidanceFix]) with the fix's accuracy, a course
      * only while moving, and a crawl read as 0 on a wide fix or with the phone at rest. While the
-     * phone's feed runs it is the drive's, and this one stands down. Before this every car fix
-     * went to the engine raw, without its accuracy or course, and with the phone app open each
-     * fix reached the engine twice.
+     * phone's feed runs it is the drive's, and this one stands down, so each fix reaches the
+     * engine once.
      */
     private fun carFix(loc: android.location.Location) {
         val now = android.os.SystemClock.elapsedRealtime()

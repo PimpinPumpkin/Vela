@@ -148,7 +148,9 @@ Three adjustments follow.
 Parks, schools and museums come from OSM, as points and outlines, with any named building or
 tower that has a Wikidata link. One archive then holds every map point.
 
-A row is a **landmark** when it is in an anchor category. An OSM park, attraction, historic or
+A row is a **landmark** when it is a hospital, university, airport, stadium, mall, museum, zoo,
+aquarium, amusement park, convention center or casino. A supermarket, grocery store or department
+store takes the anchor prior but is not a landmark. An OSM park, attraction, historic or
 civic building or place of worship is one when it has a Wikidata link, an outline of a hectare
 or more, or names in five or more languages. Landmarks are ordered by notability: outline size
 (log10 of the area in square meters minus 2, capped at 3), +1.5 for a Wikidata link, and fame,
@@ -252,8 +254,12 @@ below z18 and may overlap from z18, so a shop under a stack still appears up clo
 Over an archive whose `rev` (its bake date) is at least `placesOneSetRev` (20260923) the app
 hides the basemap's own point layers (`poi_r1`, `poi_r7`, `poi_r20`). On a Pixel 4a this took
 Shinjuku pans from 20 to 45 fps to 35 to 58. An older archive has no landmarks, so over it
-those layers keep drawing, less the points the archive already shows by name. The dial must
-never go below the oldest archive that carries landmarks.
+those layers keep drawing, less the points the archive already shows by name. Where those layers
+hide, for a new archive or under Google's places, one basemap layer stays: car parks with no name
+(`vela-osm-parking`). The bake drops places without a name and Google's places have no parking
+lots, so these lots would have no icon. It shows the same ranks as the point layers, under 20
+from z15 and all from z18, and hides with them during a drive, a route preview or a search with
+several results. The dial must never go below the oldest archive that carries landmarks.
 
 Vela's zoom number reads about one lower than Google's for the same area, because of 512 px
 tiles.
@@ -316,12 +322,16 @@ Hangul, Thai) are compared as strings (`cjkMatch`). A caller adds the town from 
 address (`cityWords`) and `localGeneric`, the words that three or more names in the current
 pool share, so a neighborhood's name does not join unrelated businesses.
 
-Two rules also take the places' kinds (their icon groups):
+Three rules also take the places' kinds (their icon groups):
 
 - `sameBusiness` refuses an OVERLAP between two known, different kinds, such as a fuel station
   and the pizza place on its lot. EXACT and VARIANT cross kinds, because a store and
   `<store> Pharmacy` are one business. A VARIANT between a park, transit or culture place and a
   business is refused, since a pharmacy named after a plaza is not the plaza.
+- `sameBusiness` accepts a NONE pair of the same known kind when each name has exactly one
+  identifying word and it is the same word of four letters or more. `<Name>kirche` and
+  `<Name> Church` are one church. `<Park> Park` and `<Park> Pool` stay two places, because
+  their kinds differ.
 - `sameFuelLot` calls two fuel stations within `FUEL_LOT_M` (30 m) one station whatever their
   names, unless both have house numbers and they differ.
 
@@ -403,7 +413,10 @@ must be within 1.5 km for a business and 30 km for a settlement label. With no p
 keeps its own data and the source line says "not matched on Google". Its address is often only
 the city in the open data; it then takes the address at its point, from the downloaded address
 data or, failing that, the same lookup a dropped pin uses. A saved place with no address of its
-own is filled from the downloaded address data only.
+own is filled from the downloaded address data only. That fill can be only the nearest street,
+and a numbered street such as "East 8th Street" has digits but no house. When Google's details
+for the place arrive with a house number and the address showing has none, Google's address
+replaces it (`hasHouseNumber`). An ordinal is never read as a house number.
 
 #### After the pick
 
@@ -416,7 +429,10 @@ seen. A listing with no review count and no hours is not remembered. The cache i
 the app's version changes and when a region's archive is updated, so a link made by an older
 rule does not outlive its fix.
 
-A closed pick hides the pin only when no live listing of that name is within 150 m. The hidden
+A permanently closed pick hides the pin only when no live listing of that name is within 150 m.
+A temporarily closed one keeps its pin, and its sheet says "Temporarily closed" in place of the
+hours. Google often marks a temporary closure only by offering "Reopen this place" in the
+listing's edit menu, and the app reads that. The hidden
 ids persist in `open_place_closed.json`, capped at `CLOSED_OPEN_PLACES_CAP` (2,000).
 
 Each tap that searched logs one `VelaTap` line with no coordinates: the pool sizes, the three

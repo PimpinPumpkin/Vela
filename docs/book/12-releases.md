@@ -2,7 +2,7 @@
 
 ## What you see
 
-When a newer build is out, a card on the bare map says "Vela 0.4.1830 is available", with Not now
+When a newer build is out, a card on the bare map says "Vela 0.5.2430 is available", with Not now
 and Update and a fold that shows what changed. Update downloads the file, then Android's install
 dialog takes over. The first launch of the new build shows its release notes once, in a "What's
 new" dialog.
@@ -55,7 +55,7 @@ either, so the version is in the notes:
 Canary branch.
 
 versionName: 0.5.2420-canary
-versionCode: 38220
+versionCode: 44200
 
 Latest change: <newest user-facing commit subject>
 ```
@@ -106,8 +106,7 @@ a code of 20000 or more by ten, which drops the chip digit: 38222 and 38220 both
 
 With the repository variable `ABI_SPLITS` set to `true`, a release carries one APK per chip type
 (`vela-maps-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk`) and the all-in-one
-`vela-maps-all.apk`. The switch is still off ([ROADMAP](../../ROADMAP.md)), so a release carries
-one APK.
+`vela-maps-all.apk`. The switch is on.
 
 - `ApkChoice.pick` walks `Build.SUPPORTED_ABIS` in the phone's order and takes the first asset
   ending in `-<chip>.apk`, else the first APK with no chip in its name.
@@ -116,8 +115,8 @@ one APK.
   the distinct code it needs for every APK.
 - GitHub lists assets by name, and updaters older than `ApkChoice` take the first `.apk`.
   `vela-maps-all.apk` sorts first, so an old build keeps getting a file that runs on every chip.
-  The switch can go on once a build with `ApkChoice` has been the stable for a few weeks.
-- An arm64 phone then downloads 74.3 MB in place of 108.4.
+- An arm64 phone downloads 74.3 MB. The all-in-one APK is 121.9 MB, because it keeps Cronet's x86
+  libraries.
 
 ### Release notes
 
@@ -154,9 +153,9 @@ its switch (`self_update_check`) and runs at most once in 20 hours.
   `v0.5.<run>` needs no change in the app.
 - Canary reads `releases/tags/canary` and the version lines in its notes, and also runs the nightly
   check. The nightly is taken only when its code is higher and it holds canary's commit, so a
-  canary that main has caught up with strands nobody. A nightly is cut from `main`, and a Weblate
-  merge or the weekly stats commit gives it a higher run number than a canary that is ahead of
-  `main`: by code alone it would replace canary's fixes with an older `main`. The check is one
+  canary that main has caught up with strands nobody. A nightly is cut from `main`. One cut after
+  canary's last push, such as after a Weblate merge, has a higher run number than a canary that
+  is ahead of `main`: by code alone it would replace canary's fixes with an older `main`. The check is one
   `compare/<nightly commit>...<canary commit>` request, made only when the nightly's code is
   higher, and it counts when the answer is `behind` or `identical`. It asks for page 2 at one
   commit a page, which leaves out the file list: about 10 KB, where page 1 for a canary ahead of
@@ -222,7 +221,9 @@ created where GitHub sorts them last ([SPEC section 7.6](../../SPEC.md)).
 repository, because f-droid.org builds every app from source and Vela bundles prebuilt libraries.
 [FDROID.md](../../FDROID.md) is the user guide.
 
-- It serves the newest stable, plus the newest nightly when that is ahead.
+- It serves the newest stable, plus the newest nightly when that is ahead. Each file is renamed
+  by its tag. Where a release has chip APKs the all-in-one one is left out, and the client picks
+  the APK for its chip.
 - The build reads the versionCode off each stable APK and writes the highest into the app metadata
   as `CurrentVersionCode`. Clients suggest versions up to that code and treat higher ones as
   unstable, so a default user updates weekly and the nightly reaches only someone who turns on
@@ -283,6 +284,8 @@ under `VelaUpdate`.
 - The notes of skipped releases cover the newest 8 tags in the gap, counted before the other
   channel's releases are filtered out, so on stable the nightlies in between take most of them. A
   nightly user's list leaves out a release that has since been promoted.
-- What Obtainium does with five APKs on one release is untested. A user may need to set a filter
-  once the per-chip switch is on.
+- Obtainium picks the chip file itself from version 1.6.16. An older Obtainium lists every file,
+  the all-in-one first. Its x86 match also takes `x86_64` names, so a 32-bit x86 phone may be
+  offered the x86_64 file. An update with five files on a release has not yet been seen through
+  Obtainium, the F-Droid repository or the in-app updater.
 - F-Droid installs are counted nowhere. Pages serves the files with no counter.

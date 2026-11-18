@@ -219,7 +219,8 @@ over the whole route smears the cut across `routeLength / 256` meters.
 The arrow is a Compose overlay placed at its point's screen position right after each camera
 move. As a map symbol it landed on time or a frame late at random, because a source update is
 asynchronous and the camera move is not. Its position is a filtered estimate of meters along the
-route, not the raw fix, and it is drawn on the route line itself. Its heading comes from a copy of
+route, fed by the fused position guidance steers by ([chapter 4](04-navigation.md)), and it is
+drawn on the route line itself. Its heading comes from a copy of
 the line with short median jogs straightened, so the arrow and the camera hold their heading
 through one.
 
@@ -252,11 +253,12 @@ nothing changes. With a large display size or large text:
   camera.
 
 "Zoom to the next turn" (Settings > Navigation, off by default) is for long stretches between
-turns. Heading-up, the camera zooms out until the next turn sits 24 dp under the turn card, or
-under the top of the map when nothing covers it, and the speed zoom takes over once the turn is
-near enough for it. It never goes below z12 unless the `turnZoomMin` dial says so: there the map
-still draws motorways through minor roads and the route, and a turn farther than that sits off
-the top until it is nearer. Street names, lights and stop signs do not draw that far out. Below
+turns. Heading-up, the camera zooms out until the next turn sits 72 dp under the turn card, room for
+the turn's callout, or 72 dp under the top of the map when nothing covers it, and the speed zoom
+takes over once the turn is near enough for it. "Zoom out as far as" sets how far out it may go:
+Town (z12, the default), Region (z10) or Far (z8). At z12 the map still draws motorways through
+minor roads and the route. A turn farther than the floor allows sits off the top until it is
+nearer. Street names, lights and stop signs do not draw that far out. Below
 z15 the camera lies flatter, the way it does for a pinch, and the zoom allows for that, as it
 allows for the pitch MapLibre holds the camera under (52.6 degrees on a Pixel 4a, less on a
 denser screen). A turn off to the side pulls the camera toward it, up to 90 degrees off the
@@ -273,7 +275,8 @@ zoom it crosses. On a Pixel 4a, seconds 2 to 4 after Start ran 6 to 20 fps flyin
 cutting.
 
 A phone in a driveway can be farther from the route than the arrow's 22 m snap tolerance. Until
-the car reaches the road the icon is drawn at the raw fix, and the map still tilts in.
+the car reaches the road the icon is drawn off the line at the fused position, and the map still
+tilts in.
 
 The overview button is a toggle. It cuts to a fit of the remaining route, and a second press or
 Re-center cuts back and tilts in like a start. Each cut fades off a veil in the map's land color

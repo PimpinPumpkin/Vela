@@ -549,9 +549,10 @@ OkHttp (no GREASE, ECH or ALPS)
   `cronet-runtime` release; CI fetches the pinned one from there, else packs it. The jars are
   Java 25 class files, which AGP 9.4's R8 reads and AGP 8.10's does not. Protobuf is shaded
   inside them (`org.chromium.net.internal`), so it does not clash with OsmAnd's.
-- The all-in-one APK carries Cronet for arm64-v8a and armeabi-v7a only. On x86 and x86_64 the
-  engine fails to load once and Google requests stay on OkHttp. The per-chip x86 APKs carry
-  their own.
+- A build made without the per-chip split (`-PabiSplits`, a local build) carries Cronet for
+  arm64-v8a and armeabi-v7a only. On x86 and x86_64 the engine fails to load once and Google
+  requests stay on OkHttp. Release builds are split, and every APK, the all-in-one included,
+  carries Cronet for its chips.
 - Cronet advertises `gzip, deflate, br` and strips `zstd` from a caller's `Accept-Encoding`, so
   `zstd` is not sent.
 - Coil loads images through the shared client with `GoogleTransport.imageHeaders` in front, so
@@ -588,11 +589,12 @@ OkHttp (no GREASE, ECH or ALPS)
     `passes through:`.
   - Any proxy failure returns null and the WebView loads the request itself.
   - Cost on a Pixel 9 place tap: about 0.2 s on the review page's load (2.15 s against 1.92 s).
-- Page telemetry (`play.google.com/log`, `gen_204`, `ogads-pa.*`) is answered locally with an
-  empty 200 only when Settings > Privacy "Block Google's page telemetry" is on
-  (`web/GoogleTelemetry`, pref `block_google_telemetry`, default off). It works with the proxy
-  on or off, and the dial `webProxyBlockLogs` overrides it when set. It is off by default
-  because a browser that never sends telemetry looks less like one.
+- Ad, analytics and logging requests (`play.google.com/log`, `gen_204`, `log204`,
+  `csi.gstatic.com`, the ad hosts) are always answered with an empty body on the hidden pages
+  and All reviews (`BlockedHosts`, below). Settings > Privacy "Block Google's page telemetry"
+  (`web/GoogleTelemetry`, pref `block_google_telemetry`, default off) adds the account bar's
+  `ogads-pa.*` calls, answered locally with an empty 200. It works with the proxy on or off,
+  and the dial `webProxyBlockLogs` overrides it when set.
 - A bridge object is visible to the page's scripts, so bridge names are random per process.
   Scripts are written with `VelaBridge` and `VelaPanel` and pass through `JsNames.of`.
 
@@ -2064,13 +2066,13 @@ replaying, `NavController` synthesizes 1 Hz fixes along the route through
 it until a fix says where the car went, so a feed that stalls at a junction no longer carries
 the puck down a turn the driver did not take (issue #745; a reporter's puck ran a turn and some
 forty seconds of road on a stalled feed). The "searching for GPS" chip stays up, the first real fix re-anchors, and
-synthesized fixes are never recorded into a trip.
+a recorded trip keeps each synthesized fix as an `N` line of kind `d`, never as a fix line.
 
 #### Pause
 
 While `NavSession.paused` is set, `onLocation` records the fix and returns before the engine.
 Nothing downstream runs: no off-route detection, reroute, arrival, stop cue, voice, recheck or
-offer. The puck keeps moving because it is drawn from the raw fix, and the arrival clock slides
+offer. The puck keeps moving because the position it is drawn from is not held, and the arrival clock slides
 on a 30-second tick. Resume reroutes once when the fix is outside the corridor, otherwise speaks
 the current instruction. Auto-resume is armed by the stop: a stationary or off-route fix sets
 `autoResumeArmed`, and then `AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes resume.
@@ -2772,8 +2774,8 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   one route; a cluster within 60 m of one already tried is skipped. `CameraDetour.choose` is
   the one rule for both: fewest cameras, ties to the faster, beating the leader within the cap.
 - A kept route leads the list and carries its waypoint plan (`Route.detourPlan`). A drive on it
-  holds the detour points as silent stops, which every reroute and recheck routes through and
-  nothing speaks or lists. `NavSession.withSilentVias` puts those still ahead back in after a
+  holds the detour points as silent stops, which every recheck routes through and nothing speaks
+  or lists. A reroute drops them (4.4): a driver who left the detour's way is taken on from there. `NavSession.withSilentVias` puts those still ahead back in after a
   mid-drive stops edit.
 
 #### Alerts
@@ -2973,7 +2975,7 @@ bar.
   stray touch at speed re-routes nobody.
 - The card prices the stop. One route through the candidate is fetched, bounded at
   `NAV_DETOUR_TIMEOUT_MS` (8 s), and `DetourEstimate.minutesAdded` compares it with the drive's
-  live remaining time. The candidate goes first in the waypoint list, where `NavSession.addStop`
+  live remaining time. The candidate goes last in the waypoint list, where `addStopDuringNav`
   puts it. A difference under `MIN_SHOW_S` (20 s) or over `MAX_PLAUSIBLE_S` (3 h) shows no
   figure. The fetch changes nothing in the session.
 - The card dismisses itself after 10 s, or 25 s under `dpadMode`, shown as a countdown ring
@@ -3379,8 +3381,7 @@ Then:
   so the second request adds nothing it did not have.
 - Any selected place with no street line that is not a Google listing (an open-data place, a
   saved place kept without an address) is filled from the on-device address index, online or
-  offline (`backfillOfflineAddress`). That fill never asks Google, so opening a saved place
-  sends its location nowhere.
+  offline (`backfillOfflineAddress`). That fill never asks Google.
 - That fill can land before the place's Google details with the nearest street alone, and a
   numbered street has digits ("East 8th Street, Davis, CA"). When the details bring an address
   with a house number (`hasHouseNumber`: a plain number in the first part, not an ordinal) and
@@ -3392,10 +3393,12 @@ Then:
 `core/util/PlaceNames` is one rule for the tap resolve, the Both-mode twin hiding and, mirrored
 in SQL, the bake's dedupe. `PlaceNamesMatchTest` pins it.
 
-- `normalized` folds accents (and ß, æ, ø, œ, ł, đ, ё), drops parentheticals, legal forms (LLC,
-  Inc, GmbH, SARL, S.r.l., B.V., ООО, Kft), chain tails ("by Wyndham"), a leading "The" and a
+- `normalized` folds accents (and ß, æ, ø, œ, ł, đ, ё), drops parentheticals, legal forms written
+  as one word (LLC, Inc, GmbH, SARL, Srl, BV, ООО, Kft), chain tails ("by Wyndham"), a leading "The" and a
   trailing store number, reads "&" as "and", keeps a possessive on its word, expands
-  abbreviations (St, Ave, NY, Dr, Str., ул.) and joins dotted initials ("U.S." is "us").
+  abbreviations (St, Ave, NY, Dr, Str., ул.) and joins dotted initials ("U.S." is "us"). A legal
+  form written with dots (S.r.l., B.V.) survives, because the legal-form test runs before the
+  initials are joined.
 - `match(a, b, extraGeneric)` answers EXACT (normalized equal), VARIANT (one name is the other
   plus only generic words: "CVS", "CVS Pharmacy"), OVERLAP or NONE.
 - OVERLAP: nested with non-generic extra words ("SpeeDee-Midas" over "SpeeDee"); two
@@ -3420,8 +3423,8 @@ in SQL, the bake's dedupe. `PlaceNamesMatchTest` pins it.
 - `same` is EXACT only; `agree` is anything but NONE.
 - `sameBusiness(a, kindA, b, kindB)` refuses an OVERLAP between two known, different icon
   groups (a fuel station and the pizza place on its lot). EXACT and VARIANT cross kinds
-  ("Safeway Pharmacy", "Safeway"). Two names that reduce to one four-letter word match when
-  their kinds agree.
+  ("Safeway Pharmacy", "Safeway"). Two names that reduce to one identifying word, the same word of four
+  letters or more, match when their kinds agree.
 - `sameFuelLot(kindA, kindB, distance, numberA, numberB)` calls two fuel stations within
   `FUEL_LOT_M` (30 m, short of a road plus two setbacks) one station whatever their names. Two
   known house numbers that differ refuse it. Ambient features carry `hn` for it.
@@ -5368,7 +5371,7 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   planner's leg geometry for a ride whose two ends are within 300 m of the stops, and sends no
   `maxTransfers`: the public instance answers nothing with `maxTransfers=0`. A bus without a
   path takes the road route through its stops when that is at most 1.8 times their
-  straight-line chain.
+  straight-line chain plus 300 m.
 - Guidance in a pocket (issue #880): `startTransitNav` starts `service/TransitGuideService`, a
   location foreground service that keeps the fixes and the voice going with the screen off, and
   `MapViewModel.publishTransitNotice` writes its card into `TransitGuide.notice` at every leg

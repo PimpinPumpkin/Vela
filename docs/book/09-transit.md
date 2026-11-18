@@ -107,7 +107,7 @@ on each side and repeats only when the view's center leaves the middle half of t
 While the layer has stops, the basemap's own bus icons are filtered out so a stop cannot draw
 twice at slightly different corners. Rail and airport icons stay on the basemap.
 
-The icons hide during a drive. Settings has a "Transit stops" switch with three under it, for bus
+The icons hide during a drive and a route preview. Settings has a "Transit stops" switch with three under it, for bus
 stops, subway and tram stops, and train stations (`TransitLayer.showsStop`). A tap goes to the
 stop or the business beside it, whichever is nearer on screen.
 
@@ -203,7 +203,7 @@ link:
 1. `Transitous.legShape` asks the planner for a trip between the two stops and takes the path of
    a ride whose ends are within 300 m of them (`LEG_SHAPE_STOP_M`).
 2. A bus with no path gets the road route through its stops (`busRoadPath`), refused when it is
-   over 1.8 times the stops' straight-line chain, which is what a stop placed across a barrier
+   more than 1.8 times the stops' straight-line chain plus 300 m, which is what a stop placed across a barrier
    produces.
 3. Rail with no published path keeps its straight lines.
 
@@ -279,6 +279,4 @@ a start the system refuses leaves guidance working in the app, as before.
 - Guidance does not re-plan after a missed connection.
 - A scheduled trip is sent to Google in the phone's time zone, which is wrong for a trip planned
   in another zone.
-- A merged stop keeps one member's modes, so the stop-kind switches can hide an icon that
-  another kind of vehicle also serves.
 - The colored-lines endpoint is experimental upstream. A changed reply reads as no lines.
