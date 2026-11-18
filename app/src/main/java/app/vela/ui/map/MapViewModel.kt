@@ -2137,15 +2137,14 @@ class MapViewModel @Inject constructor(
             is app.vela.core.search.QueryIntent.Home -> {
                 val home = _state.value.home ?: run { showStatus(appContext.getString(R.string.intent_home_unset)); return true }
                 _state.update { it.copy(query = q, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
-                // A BARE place under the shortcut's own name: selectSaved enriches by searching
-                // the address, which dresses Home as the business at that address (the same
-                // trap the contact pick had, issue #342).
-                selectPlace(Place(id = home.id, name = appContext.getString(R.string.shortcut_home), location = home.location, address = home.address)); routeToSelected()
+                // A BARE place under the shortcut's own name, with no lookup, as the chip opens it:
+                // a lookup searches "Home <address>" on Google and can dress Home as a business.
+                selectPlace(Place(id = home.id, name = appContext.getString(R.string.shortcut_home), location = home.location, address = home.address), lookup = false); routeToSelected()
             }
             is app.vela.core.search.QueryIntent.Work -> {
                 val work = _state.value.work ?: run { showStatus(appContext.getString(R.string.intent_work_unset)); return true }
                 _state.update { it.copy(query = q, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
-                selectPlace(Place(id = work.id, name = appContext.getString(R.string.shortcut_work), location = work.location, address = work.address)); routeToSelected()
+                selectPlace(Place(id = work.id, name = appContext.getString(R.string.shortcut_work), location = work.location, address = work.address), lookup = false); routeToSelected()
             }
             is app.vela.core.search.QueryIntent.NavigateTo -> {
                 openDirectionsOnResult = true
@@ -3429,7 +3428,8 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun selectPlace(p: Place) {
+    /** Open [p]. [lookup] false opens it as it is, asking nothing about it (Home and Work). */
+    fun selectPlace(p: Place, lookup: Boolean = true) {
         // A custom map's planned route, picked from the list: its line's own sheet.
         if (p.id.startsWith(ROUTE_ROW_ID)) {
             shapeForRow(p)?.let { openShape(it, p.location); _state.update { s -> s.copy(center = p.location) } }
@@ -3481,14 +3481,16 @@ class MapViewModel @Inject constructor(
                 stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
             )
         }
-        requestReviews(p)
-        fetchPhotos(p)
-        // A star or a list entry kept from a map label before its listing was known looks the
-        // listing up first; the details fetch follows with it, or without it on a miss.
-        if (!(p.featureId == null && keptAwaiting(p.id, p.location) && relinkKept(p, detailsOnMiss = true))) fetchPlaceDetails(p)
-        fetchStopDepartures(p)
+        if (lookup) {
+            requestReviews(p)
+            fetchPhotos(p)
+            // A star or a list entry kept from a map label before its listing was known looks the
+            // listing up first; the details fetch follows with it, or without it on a miss.
+            if (!(p.featureId == null && keptAwaiting(p.id, p.location) && relinkKept(p, detailsOnMiss = true))) fetchPlaceDetails(p)
+            fetchStopDepartures(p)
+        }
         backfillOfflineAddress(p)
-        rememberRecentPlace(SavedPlace.of(p))
+        rememberRecentPlace(SavedPlace.of(p).let { if (lookup) it else it.copy(bare = true) })
         showViewedCopy(p)
     }
 
@@ -6501,9 +6503,8 @@ class MapViewModel @Inject constructor(
         val baseline = s.nav.remainingDuration
         if (baseline <= 0.0) return
         navTapDetourJob = viewModelScope.launch {
-            // The candidate goes FIRST, which is where NavSession.addStop puts it: the figure has to
-            // price the drive the button would actually build.
-            // Last, where addStopDuringNav will put it.
+            // The candidate goes last, where addStopDuringNav puts it: the figure has to price the
+            // drive the button would actually build.
             val stops = nav.navRemainingStops().map { it.location } + p.location
             val route = withTimeoutOrNull(NAV_DETOUR_TIMEOUT_MS) {
                 runCatching {

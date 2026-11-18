@@ -5605,10 +5605,12 @@ means a plain search, so the parser cannot make a query worse. Word tables cover
 language but Estonian, with English as a fallback in each.
 
 - A bare verb counts only before home or work or an explicit "from A to B".
-- The Home and Work chips (`openShortcut`) open the same bare place the typed intent does:
-  `Place(id, name = the chip's label, location, address)` through `selectPlace`, so a stop,
-  origin or destination picked from the chip is named "Home" or "Work". `selectSaved` is not
-  used for them: it enriches by searching the address and dressed Home as the business there.
+- The Home and Work chips (`openShortcut`, through `selectContactPlace`) and the typed or
+  spoken intent (`selectPlace(lookup = false)`) open the same bare place:
+  `Place(id, name = the chip's label, location, address)`, so a stop, origin or destination
+  picked from them is named "Home" or "Work". Nothing is asked about it: no details search,
+  reviews, photos or departures. A lookup searches "Home <address>" on Google and can dress Home
+  as the business there.
 - A bare "X to Y" is a route only when X is not a question word or a verb.
 - `routeBetween` runs the whole phrase as a search first, so a place whose name contains "to"
   stays a place.
