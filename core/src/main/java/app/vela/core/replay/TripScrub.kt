@@ -42,6 +42,9 @@ import kotlin.math.sqrt
  * before the first surviving fix has a negative time. What it gives away is how long the drive
  * spent inside a trimmed end, never where.
  *
+ * `W` lines (a walk's steps: interval, compass heading, step length) are dropped as unknown:
+ * strung together they retrace the walk's shape from its first fix.
+ *
  * Unknown line kinds are DROPPED, not passed through. The format is deliberately append-only, so
  * a tag added later would otherwise be published by a scrubber written before it existed. If you
  * add a line kind to [TripLog], decide here whether it is safe to share.

@@ -31,9 +31,11 @@ import app.vela.core.nav.NavReplay
  * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
  *   handed, once per call: kind `f` is the position filter's position for a fix it took, `h` for
  *   one it refused (older files: the fix as it came, and an outlier hold's position), `r` the fix
- *   as it came with FreeFused switched off, `d` a
+ *   as it came with FreeFused switched off, `w` the dot's FreeFused position on a walk, `d` a
  *   dead-reckoned point between fixes, [msSinceFix] after the last fix line.
  *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
+ * - `W,<t>,<intervalS>,<compassDeg>,<stepLengthM>`: one step of a walk being navigated, as the
+ *   dot's FreeFused took it (empty compass: none). A share drops them ([TripScrub]).
  * - `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`: one route a router
  *   answered while the drive asked for one (a reroute, a recheck): Google's and the open router's
  *   each, taken or not, so a file says why the route it switched to was the one it got
@@ -68,14 +70,14 @@ object TripLog {
     /** One call of the nav engine as the drive made it (an `N` line): [segment] is the route block
      *  it ran against, [afterFix] the fix line it followed (-1 before the first), and [kind] `f` (the
      *  position filter's position for a fix it took), `h` (for one it refused), `r` (the fix as it
-     *  came, FreeFused off) or `d` (dead-reckoned). */
+     *  came, FreeFused off), `w` (the dot's FreeFused on a walk) or `d` (dead-reckoned). */
     data class Input(
         val segment: Int, val afterFix: Int, val msSinceFix: Long, val kind: Char,
         val lat: Double, val lng: Double, val speed: Double?, val accuracyM: Double?, val bearing: Double?,
     ) {
         val latLng: LatLng get() = LatLng(lat, lng)
         /** False for a point that is not this fix's own position (the engine's `fromFix`). */
-        val fromFix: Boolean get() = kind == 'f' || kind == 'r'
+        val fromFix: Boolean get() = kind == 'f' || kind == 'r' || kind == 'w'
     }
 
     /** The payload of an `N` line after its time (the writer adds `N,<t>,`). */
@@ -318,7 +320,7 @@ object TripLog {
                 line.startsWith("M,") -> parseManeuver(line)?.let { ms.add(it) }
                 // The block an input ran against is the one open when it was written.
                 line.startsWith("N,") -> parseInput(line, if (rp != null) segments.size else segments.size - 1, points.size - 1)?.let { inputs.add(it) }
-                line.startsWith("RC,") -> Unit
+                line.startsWith("RC,") || line.startsWith("W,") -> Unit
                 line.startsWith("S,") || line.startsWith("J,") || line.startsWith("B,") || line.startsWith("K,") -> {
                     val e = line.split(',', limit = 3)
                     val t = e.getOrNull(1)?.toLongOrNull()

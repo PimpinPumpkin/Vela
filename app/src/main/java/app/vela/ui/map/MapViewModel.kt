@@ -950,8 +950,9 @@ class MapViewModel @Inject constructor(
             launch {
                 var last = Float.NaN
                 var lastPushMs = 0L
+                // A walk being navigated keeps it: the dot's steps go the way the compass points.
                 kotlinx.coroutines.flow.combine(
-                    _state.map { it.navigating }.distinctUntilChanged(),
+                    _state.map { it.navigating && it.travelMode != TravelMode.WALK }.distinctUntilChanged(),
                     app.vela.ui.AppVisibility.foreground,
                 ) { nav, fg -> !nav && fg }.distinctUntilChanged().collectLatest { wanted ->
                     if (!wanted) return@collectLatest
@@ -977,7 +978,7 @@ class MapViewModel @Inject constructor(
             // the compass is. Each step moves the dot between fixes.
             launch {
                 kotlinx.coroutines.flow.combine(
-                    _state.map { it.navigating || it.replaying }.distinctUntilChanged(),
+                    _state.map { it.replaying || (it.navigating && it.travelMode != TravelMode.WALK) }.distinctUntilChanged(),
                     app.vela.ui.AppVisibility.foreground,
                     androidx.compose.runtime.snapshotFlow { app.vela.ui.FreeFused.on.value },
                 ) { busy, fg, on -> !busy && fg && on }.distinctUntilChanged().collectLatest { wanted ->
@@ -986,6 +987,8 @@ class MapViewModel @Inject constructor(
                         if (app.vela.ui.SimLocation.point.value != null || app.vela.core.location.GuidanceFix.rawWhen()) return@collect
                         dotFix.compassDeg = _state.value.compassHeading?.toDouble()
                         val o = dotFix.step(st.tSec, st.intervalS) ?: return@collect
+                        // A walk being navigated records its steps (TripLog `W`), so it can be replayed.
+                        if (_state.value.navigating) tripStore.recordStep(st.intervalS, dotFix.compassDeg, dotFix.stepLengthM)
                         _state.update { it.copy(myLocation = o.position, myAccuracyM = dotFix.accuracyM.toFloat()) }
                     }
                 }
@@ -1016,7 +1019,10 @@ class MapViewModel @Inject constructor(
                 // With FreeFused on and no drive, DotFix weighs every network fix against the GPS
                 // itself (DotFix.network); a drive keeps the rule above.
                 val navNow = navSession.state.value.navigating
-                val dotFused = !app.vela.core.location.GuidanceFix.rawWhen() && !navNow
+                // A walk being navigated steers by the dot's FreeFused too: steps carry it between
+                // fixes, and the walking corridor is narrow enough that their lead matters.
+                val walkNav = navNow && _state.value.travelMode == TravelMode.WALK
+                val dotFused = !app.vela.core.location.GuidanceFix.rawWhen() && (!navNow || walkNav)
                 if (!isGps) {
                     if (!dotFused && nowMs - lastGpsMs < NETWORK_FIX_QUIET_MS && lastGpsMs > 0L) return@collect
                 } else {
@@ -1095,7 +1101,7 @@ class MapViewModel @Inject constructor(
                         if (dotFix.walkingAt(fixRtNanos / 1e9)) "walking" else "not walking", dotFix.stepLengthM),
                 )
                 val here = when {
-                    navigatingNow && fused != null && !fused.raw -> { posOutlierStreak[0] = 0; fused.out.position }
+                    navigatingNow && fused != null && !fused.raw && !walkNav -> { posOutlierStreak[0] = 0; fused.out.position }
                     dotFused && dot != null -> { posOutlierStreak[0] = 0; dot.position }
                     upgrade -> { posOutlierStreak[0] = 0; rawHere }
                     else -> sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
@@ -1210,14 +1216,16 @@ class MapViewModel @Inject constructor(
                     // at a red light as the car. A fix the filter does not take steers with the
                     // model's position and never starts a recheck. It was taken above ([fused]).
                     val take = fused ?: return@collect
-                    val steerAt = take.out.position
-                    val held = !take.out.accepted
+                    // On foot with FreeFused on, the engine gets the dot's position (steps included).
+                    val walkSteer = dot?.takeIf { walkNav && dotFused }
+                    val steerAt = walkSteer?.position ?: take.out.position
+                    val held = if (walkSteer != null) !walkSteer.accepted else !take.out.accepted
                     // The drive's record of what the engine is handed (TripLog `N`), after the
                     // route it runs against, so a replay feeds the engine the same.
                     if (!_state.value.replaying && navSession.state.value.navigating) {
                         nav.syncTripRoute()
                         tripStore.recordInput(
-                            if (take.raw) 'r' else if (held) 'h' else 'f', steerAt, speed?.toDouble(),
+                            if (walkSteer != null) 'w' else if (take.raw) 'r' else if (held) 'h' else 'f', steerAt, speed?.toDouble(),
                             if (loc.hasAccuracy()) loc.accuracy.toDouble() else null, fixBearing?.toDouble(),
                         )
                     }

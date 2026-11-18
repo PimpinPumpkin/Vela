@@ -1626,7 +1626,10 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   - A gap over `RESEED_S` (120 s) starts the model over. A shorter one grows its uncertainty, so
     the first fix after a tunnel is taken.
 - The dot with no drive on is `core/location/DotFix`, one more `PositionFilter` the view model
-  feeds on the main thread, while FreeFused is on. A drive's dot stays guidance's.
+  feeds on the main thread, while FreeFused is on. A drive's dot stays guidance's. A walk being
+  navigated (travel mode WALK) takes the dot's: its dot, and the engine steers by it on each GPS
+  fix (`N` kind `w`); the steps and the compass keep running through it, and each step is
+  recorded as a `W` line. The engine is not called on steps.
   - Every GPS fix, any accuracy, as guidance takes one.
   - Wi-Fi and cell fixes (`network`), weighted by their own accuracy, unless a GPS fix under
     `NETWORK_GPS_FRESH_S` (3 s) old is at least as accurate. They re-anchor the model only after
@@ -2929,7 +2932,9 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - An `N` line is one call of the nav engine as the drive made it:
   `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is the position
   filter's position for a fix it took, `h` its position for a fix it refused, `r` the fix as it
-  came with FreeFused off, `d` a dead-reckoned point between fixes. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
+  came with FreeFused off, `w` the dot's FreeFused on a walk, `d` a dead-reckoned point between
+  fixes. A walk's steps are `W,<t>,<intervalS>,<compassDeg>,<stepLengthM>` lines, dropped from a
+  shared copy. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
   and the position an outlier hold kept for `h`, and from 2026-11-11 to 11-17 also `h` for the
   dot's low-passed point;
   `msSinceFix` counts from the last fix line, and an empty field was not passed. The location

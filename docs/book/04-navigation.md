@@ -205,7 +205,8 @@ accuracy; and steps. Steps come from the accelerometer, with no permission. Each
 dot toward the compass heading by the walker's step length, so the dot moves between GPS fixes
 and stops when the walker stops. The step length and the angle between the compass and the way
 the GPS says you walk are learned on the way, so a phone held crooked still steps the right way.
-A car's vibration is never taken as steps.
+A car's vibration is never taken as steps. Walking navigation steers by the same position, so
+the turn prompts follow your steps too.
 
 Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did before
 the filter, and the dot goes back to its old smoothing, which trails a walker by about 9 m. A

@@ -121,6 +121,17 @@ class TripStore @Inject constructor(
         Unit
     }
 
+    /** A step of a walk being navigated (TripLog `W`): the time since the step before, the compass
+     *  heading the dot took it toward (empty when none) and the step length then learned. */
+    fun recordStep(intervalS: Double, compassDeg: Double?, stepLengthM: Double) = synchronized(lock) {
+        val f = active ?: return
+        runCatching {
+            f.appendText(String.format(java.util.Locale.US, "W,%d,%.3f,%s,%.2f\n", System.currentTimeMillis(), intervalS,
+                compassDeg?.let { String.format(java.util.Locale.US, "%.1f", it) }.orEmpty(), stepLengthM))
+        }
+        Unit
+    }
+
     /** Append a flight-recorder EVENT line: [tag] is one of "S" (spoken), "J" (jank sample),
      *  "B" (battery). No-op unless a trip is recording. Commas inside [payload] are fine for S
      *  (the parser splits with a limit); J/B payloads are numeric. */
