@@ -398,7 +398,8 @@ Pause holds the drive where it is:
   is allowed to sleep.
 
 Resuming checks where you are. Off the route, it reroutes once from there. On it, it speaks the
-current instruction.
+step ahead with its distance ("In half a mile, make a U-turn"), so a turn far off does not sound
+due now.
 
 A paused drive resumes itself when you drive away, because driving on behind a frozen banner is
 worse than never pausing:

@@ -145,6 +145,9 @@ class NavSession @Inject constructor(
      *  is: no chime, no "Rerouting", no turn prompts for the old line, and the opener is said for
      *  the route that lands (or for the old one if none does). */
     @Volatile private var quietStart = false
+
+    /** The units of the last fix, for a line spoken outside the per-fix loop ([resumeLine]). */
+    @Volatile private var lastImperial = false
     @Volatile private var sessionGen = 0
     // A FAILED reroute must clear the engine's offRoute latch so it retries — but writing nav
     // state from the reroute coroutine races the in-flight onLocation frame (whose route-identity
@@ -494,6 +497,7 @@ class NavSession @Inject constructor(
         // the engine is what makes the hold total - events are what speak, reroute, count stops
         // and arrive, and they are all downstream of this call.
         lastLoc = loc
+        lastImperial = imperial
         lastBearing = departCourse(bearingDeg, speedMps, accuracyM)
         lastBearing?.let { movingCourse = it; movingCourseAt = loc }
         val trusted = fromFix && (accuracyM == null || accuracyM <= RECHECK_MAX_ACC_M)
@@ -771,7 +775,7 @@ class NavSession @Inject constructor(
             note("resumed off the route -> rerouting")
             reroute(loc, lastBearing)
         } else {
-            voice.speak(_state.value.maneuverText, interrupt = false)
+            voice.speak(resumeLine(), interrupt = false)
         }
     }
 
@@ -798,8 +802,20 @@ class NavSession @Inject constructor(
             backOnRouteHits = 0
             note("auto-resumed: moving and back on the route")
             _state.update { it.copy(paused = false) }
-            voice.speak(_state.value.maneuverText, interrupt = false)
+            voice.speak(resumeLine(), interrupt = false)
         }
+    }
+
+    /** What a resumed drive says: the step ahead with its distance, in its spoken wording (street
+     *  names per the spoken-names switch). Said bare, "Make a U-turn" sounded due now when it was
+     *  half a mile off. Inside [RESUME_BARE_M] it is said bare, as a turn-now line is. */
+    private fun resumeLine(): String {
+        val st = _state.value
+        val m = st.route?.maneuvers?.getOrNull(st.nav.stepIndex) ?: return st.maneuverText
+        val line = m.spokenInstruction()
+        val d = st.nav.distanceToNextManeuver
+        val nav = app.vela.core.i18n.NavStringsRegistry.current()
+        return if (d > RESUME_BARE_M) nav.inThen(nav.spokenDistance(d, lastImperial), line) else line
     }
 
     /** How far [loc] sits off the route line, in meters, measured the way the engine measures it
@@ -1639,6 +1655,7 @@ class NavSession @Inject constructor(
 
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
         const val START_REPLAN_M = 150.0           // Start this far from the route plans again from the car, quietly
+        const val RESUME_BARE_M = 60.0             // a resumed drive says the step ahead without its distance this close
         const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute
                                                    // is abandoned as "back on course" — >1 so a single grazing
                                                    // fix can't kill a legitimate missed-turn reroute (tune from

@@ -2141,7 +2141,8 @@ While `NavSession.paused` is set, `onLocation` records the fix and returns befor
 Nothing downstream runs: no off-route detection, reroute, arrival, stop cue, voice, recheck or
 offer. The puck keeps moving because the position it is drawn from is not held, and the arrival clock slides
 on a 30-second tick. Resume reroutes once when the fix is outside the corridor, otherwise speaks
-the current instruction. Auto-resume is armed by the stop: a stationary or off-route fix sets
+the step ahead with its distance in its spoken wording (`resumeLine`: "In half a mile, make a
+U-turn"), bare inside `RESUME_BARE_M` (60 m); auto-resume says the same. Auto-resume is armed by the stop: a stationary or off-route fix sets
 `autoResumeArmed`, and then `AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes resume.
 Without the arming step a pause taken at speed would resume itself three fixes later.
 
