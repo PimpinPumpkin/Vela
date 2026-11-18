@@ -3,6 +3,7 @@ package app.vela.core.data
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.distanceTo
+import app.vela.core.nav.RouteProjection
 import kotlin.math.cos
 import kotlin.math.hypot
 
@@ -59,6 +60,28 @@ object RouteCorridor {
             done += seg
         }
         return route.takeLast(2)
+    }
+
+    /** A route this long or shorter is searched from its middle, in one window. */
+    const val ONE_WINDOW_MAX_M = 25_000.0
+
+    /** On a longer route the windows sit this far apart: a little under the template's own
+     *  25 km, so neighbors overlap and a place on the seam is not lost. */
+    const val WINDOW_SPACING_M = 20_000.0
+
+    /** At most this many windows, so a search ahead reaches about 120 km. */
+    const val MAX_WINDOWS = 6
+
+    /** Where to search for something along [route]. One point (the middle vertex) for a short
+     *  route. A long route gets a window every [WINDOW_SPACING_M] from the start, since one
+     *  search at the middle never saw the places near either end. */
+    fun searchCenters(route: List<LatLng>): List<LatLng> {
+        if (route.size < 2) return route
+        val cum = RouteProjection.cumulative(route)
+        val total = cum.last()
+        if (total <= ONE_WINDOW_MAX_M) return listOf(route[route.size / 2])
+        val windows = minOf(MAX_WINDOWS, kotlin.math.ceil(total / WINDOW_SPACING_M).toInt())
+        return (0 until windows).map { k -> RouteProjection.pointAt(route, cum, minOf((k + 0.5) * WINDOW_SPACING_M, total)) }
     }
 
     /** Distance (m) from [p] to segment [a]–[b] plus the fraction t∈[0,1] along it,
