@@ -147,7 +147,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
 - Guidance follows a position fused from the GPS fix and the speed and heading the GPS measures,
   so a reflection off a tall building at a red light does not reroute you, and the arrow keeps up
-  through a turn.
+  through a turn. "Fused position" off follows the raw GPS fix.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray.

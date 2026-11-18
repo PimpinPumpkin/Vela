@@ -25,6 +25,23 @@ class GuidanceFixTest {
     }
 
     @Test
+    fun withTheFusedPositionOffGuidanceGetsTheFixAsItCame() {
+        val near = LatLng(38.5449, -121.7405)
+        GuidanceFix.take(near, 1.0, 5.0, 0.0, null, null, null, still = true)
+        GuidanceFix.take(near, 2.0, 5.0, 0.0, null, null, null, still = true)
+        // A 70 m leap at rest: the filter refuses it, the raw feed hands it on.
+        val leap = LatLng(38.5449, -121.7397)
+        assertFalse(GuidanceFix.take(leap, 3.0, 5.0, 0.0, null, null, null, still = true).out.accepted)
+        GuidanceFix.rawWhen = { true }
+        val t = GuidanceFix.take(leap, 4.0, 5.0, 0.0, null, null, null, still = true)
+        assertTrue(t.raw)
+        assertTrue(t.out.accepted)
+        assertSame(leap, t.out.position)
+        GuidanceFix.rawWhen = { false }
+        assertFalse(GuidanceFix.take(leap, 5.0, 5.0, 0.0, null, null, null, still = true).raw)
+    }
+
+    @Test
     fun theCarFeedStandsDownOnlyWhileThePhoneFeeds() {
         assertFalse(GuidanceFix.phoneFeeding(1_000L))
         GuidanceFix.phoneFed(1_000L)

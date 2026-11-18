@@ -198,6 +198,8 @@ leaps away from how the car is moving; three such fixes in a row while moving ar
 While the car is stopped and the phone at rest it skips every fix that leaps, so a reflection off
 a building at a red light cannot reroute. While you navigate, the dot and the arrow ride the same
 position. Browsing, the dot is smoothed at low speed and trails the car by up to 12 m.
+Settings > Navigation "Fused position" off steers by the raw GPS fix instead, the way Vela did
+before the filter, and a remote setting can turn it off for everyone without a release.
 
 Each fix changes a hit count:
 

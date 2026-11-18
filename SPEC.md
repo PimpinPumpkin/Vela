@@ -872,6 +872,7 @@ the page fills it after load, and a small stub sits beside it.
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
+| Navigation > Fused position | `FusedPosition.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `fusedOff` dial turns it off for every install |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
@@ -1597,6 +1598,11 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   trailed a car slowing for a turn by 3 to 6 m (median 3.5 m at 2 to 8 m/s on a real drive),
   so turns showed late. Browsing, the dot keeps the low-pass, which trails by up to 12 m under
   10 m/s.
+  - Settings > Navigation "Fused position" (`FusedPosition`, pref `fused_position`, on) off, or
+    the calibration dial `fusedOff` at 1, steers by the fix as it came (`GuidanceFix.rawWhen`):
+    the car screen's feed too, and the dot takes the low-pass while navigating as it does
+    browsing. The filter is still fed, so turning it back on mid-drive finds it current. A trip
+    records those inputs as `N` kind `r` and notes `guidance: raw fix` at the start.
   - A Kalman filter over east, north and both velocities with a full 4x4 covariance. Each fix
     gives its position, with the accuracy taken as 1.5 standard deviations (at least 3 m), and
     its Doppler velocity: the speed's accuracy along the course (0.5 m/s when the fix has none)
@@ -2884,8 +2890,8 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   and the route's source.
 - An `N` line is one call of the nav engine as the drive made it:
   `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is the position
-  filter's position for a fix it took, `h` its position for a fix it refused, `d` a dead-reckoned
-  point between fixes. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
+  filter's position for a fix it took, `h` its position for a fix it refused, `r` the fix as it
+  came with the fused position off, `d` a dead-reckoned point between fixes. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
   and the position an outlier hold kept for `h`, and from 2026-11-11 to 11-17 also `h` for the
   dot's low-passed point;
   `msSinceFix` counts from the last fix line, and an empty field was not passed. The location

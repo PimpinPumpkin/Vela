@@ -30,7 +30,8 @@ import app.vela.core.nav.NavReplay
  *   what the drive ran on; no coordinates, no names, no spoken text
  * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
  *   handed, once per call: kind `f` is the position filter's position for a fix it took, `h` for
- *   one it refused (older files: the fix as it came, and an outlier hold's position), `d` a
+ *   one it refused (older files: the fix as it came, and an outlier hold's position), `r` the fix
+ *   as it came with the fused position switched off, `d` a
  *   dead-reckoned point between fixes, [msSinceFix] after the last fix line.
  *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
  * - `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`: one route a router
@@ -66,14 +67,15 @@ object TripLog {
 
     /** One call of the nav engine as the drive made it (an `N` line): [segment] is the route block
      *  it ran against, [afterFix] the fix line it followed (-1 before the first), and [kind] `f` (the
-     *  position filter's position for a fix it took), `h` (for one it refused) or `d` (dead-reckoned). */
+     *  position filter's position for a fix it took), `h` (for one it refused), `r` (the fix as it
+     *  came, the fused position off) or `d` (dead-reckoned). */
     data class Input(
         val segment: Int, val afterFix: Int, val msSinceFix: Long, val kind: Char,
         val lat: Double, val lng: Double, val speed: Double?, val accuracyM: Double?, val bearing: Double?,
     ) {
         val latLng: LatLng get() = LatLng(lat, lng)
         /** False for a point that is not this fix's own position (the engine's `fromFix`). */
-        val fromFix: Boolean get() = kind == 'f'
+        val fromFix: Boolean get() = kind == 'f' || kind == 'r'
     }
 
     /** The payload of an `N` line after its time (the writer adds `N,<t>,`). */

@@ -450,6 +450,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         LiveRechecksGroup(vm)
+        Spacer(Modifier.height(8.dp))
+        SettingsGroup {
+            ToggleRow(
+                label = stringResource(R.string.settings_fused_position),
+                checked = app.vela.ui.FusedPosition.on.value,
+                onCheckedChange = { app.vela.ui.FusedPosition.set(context, it) },
+                hint = stringResource(R.string.settings_fused_position_hint),
+            )
+        }
         Spacer(Modifier.height(24.dp))
     }
 }

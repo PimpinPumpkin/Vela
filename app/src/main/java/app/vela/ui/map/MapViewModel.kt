@@ -655,6 +655,7 @@ class MapViewModel @Inject constructor(
                         ),
                     )
                     app.vela.diag.TripNote.add("location: " + app.vela.diag.SettingsDump.location(appContext))
+                    app.vela.diag.TripNote.add("guidance: " + if (app.vela.core.location.GuidanceFix.rawWhen()) "raw fix (fused position off)" else "fused position")
                     app.vela.core.location.Stillness.hold(appContext); stillHeld = true // the at-rest sensor, for the drive
                     app.vela.diag.NetCount.drain(); netTick = 0; lastDataNote = null
                 }
@@ -1043,7 +1044,7 @@ class MapViewModel @Inject constructor(
                 // dot, so turns showed late. The filter holds a parked car and refuses a leap itself.
                 val navigatingNow = navSession.state.value.navigating && !_state.value.replaying
                 val here = when {
-                    navigatingNow && fused != null -> { posOutlierStreak[0] = 0; fused.out.position }
+                    navigatingNow && fused != null && !fused.raw -> { posOutlierStreak[0] = 0; fused.out.position }
                     upgrade -> { posOutlierStreak[0] = 0; rawHere }
                     else -> sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                 }
@@ -1164,7 +1165,7 @@ class MapViewModel @Inject constructor(
                     if (!_state.value.replaying && navSession.state.value.navigating) {
                         nav.syncTripRoute()
                         tripStore.recordInput(
-                            if (held) 'h' else 'f', steerAt, speed?.toDouble(),
+                            if (take.raw) 'r' else if (held) 'h' else 'f', steerAt, speed?.toDouble(),
                             if (loc.hasAccuracy()) loc.accuracy.toDouble() else null, fixBearing?.toDouble(),
                         )
                     }

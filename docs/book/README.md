@@ -43,7 +43,7 @@ The names the chapters use for Vela's main parts, and where each is explained.
 | `NavEngine` | Runs on each fix: where you are on the route, what to say, whether you left it | [4](04-navigation.md) |
 | `NavSession` | The one drive the phone and the car screen share: reroutes, rechecks, stops | [4](04-navigation.md) |
 | `RouteHeal` | When a recheck's route replaces yours, and the way back to Google's line after a reroute | [4](04-navigation.md) |
-| `PositionFilter` | The fused position guidance steers by: the GPS fix and its Doppler speed and course | [4](04-navigation.md) |
+| Fused position (`PositionFilter`) | The position guidance steers by: the GPS fix with the speed and course the GPS measures. Settings > Navigation can turn it off | [4](04-navigation.md) |
 | `GuidanceFix` | Shares that filter between the phone's feed and the car screen's | [4](04-navigation.md), [10](10-android-auto.md) |
 | `GoogleMapsDataSource` | Every request to Google: search, place details, routes, traffic | [7](07-talking-to-google.md) |
 | Calibration | The signed remote settings file: request templates, word tables, dials | [7](07-talking-to-google.md) |
