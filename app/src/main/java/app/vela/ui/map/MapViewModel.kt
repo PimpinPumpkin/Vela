@@ -973,7 +973,6 @@ class MapViewModel @Inject constructor(
             nav.lastNavFedMs = android.os.SystemClock.elapsedRealtime()
             var prevWasGps = false
             val posOutlierStreak = intArrayOf(0)
-            val fixFilter = app.vela.core.location.PositionFilter() // the position guidance steers by
             var lastAccM = Float.NaN // accuracy of the last fix the dot took, and when (issue #630)
             var lastAccRtNanos = 0L
             locationProvider.updates().collect { loc ->
@@ -1134,8 +1133,10 @@ class MapViewModel @Inject constructor(
                     // Doppler velocity, with the accelerometer's at-rest flag. The dot's low-pass
                     // trails a slow car by up to 12 m; the raw fix takes a reflection off a building
                     // at a red light as the car. A fix the filter does not take steers with the
-                    // model's position and never starts a recheck.
-                    val fused = fixFilter.update(
+                    // model's position and never starts a recheck. The filter is the one the car
+                    // screen's feed shares (GuidanceFix); while this feed runs, that one stands down.
+                    app.vela.core.location.GuidanceFix.phoneFed(nowMs)
+                    val take = app.vela.core.location.GuidanceFix.take(
                         rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
                         if (loc.hasSpeed()) loc.speed.toDouble() else null,
                         if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
@@ -1143,8 +1144,8 @@ class MapViewModel @Inject constructor(
                         if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
                         still = app.vela.core.location.Stillness.still,
                     )
-                    val steerAt = fused.position
-                    val held = !fused.accepted
+                    val steerAt = take.out.position
+                    val held = !take.out.accepted
                     // The drive's record of what the engine is handed (TripLog `N`), after the
                     // route it runs against, so a replay feeds the engine the same.
                     if (!_state.value.replaying && navSession.state.value.navigating) {
@@ -1154,7 +1155,9 @@ class MapViewModel @Inject constructor(
                             if (loc.hasAccuracy()) loc.accuracy.toDouble() else null, fixBearing?.toDouble(),
                         )
                     }
-                    navSession.onLocation(
+                    // A fix the car's feed already handed the engine (before this feed's first) is not
+                    // handed again: the engine would count its off-route hit twice.
+                    if (take.fresh) navSession.onLocation(
                         steerAt, app.vela.ui.Units.imperial.value, speed?.toDouble(),
                         accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
                         // Course for the engine's heading-vs-route off-route term and the

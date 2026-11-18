@@ -612,12 +612,10 @@ with today's code instead of playing the recorded swaps.
   far you will wander. The arrival time does move.
 - A long pause does not re-plan. Resume gives the same route, rerouted from where you are if you
   moved. Traffic that changed while you sat is noticed by the next scheduled recheck.
-- The Android Auto feed (`VelaCarSession`) passes a fix's position and speed only. With no
-  accuracy its fixes use the default 42 m corridor. With no heading they never count the heading
-  rule, they reroute with no heading, and inside the corridor they reset the off-route count,
-  which slows detection of a wrong turn onto a parallel road. A fix with no speed arms the
-  auto-resume and never fires it, so resume by hand there. Passing accuracy, course and a derived
-  speed the way the phone's feed does would fix all three.
+- The car screen's feed (`VelaCarSession`) steers through the phone's position filter with the
+  fix's accuracy and course, but derives no speed from movement: a fix with no speed arms the
+  auto-resume and never fires it, so resume by hand there. A drive started from the car records
+  no trip.
 - A stop's side is the side its pin is on. A pin set on the far side of a divided road, or behind
   the building, gives that side.
 - "Into the parking lot" needs the lot's aisles mapped in OpenStreetMap and present in the map's

@@ -73,12 +73,42 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
                 // feeds those to the session itself.
                 val gps = loc.provider == android.location.LocationManager.GPS_PROVIDER ||
                     loc.provider == app.vela.core.location.SIM_PROVIDER
-                if (gps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
-                    val speed = if (loc.hasSpeed()) loc.speed.toDouble() else null
-                    deps.navSession.onLocation(LatLng(loc.latitude, loc.longitude), app.vela.ui.Units.imperial.value, speed)
-                }
+                if (gps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) carFix(loc)
             }
         }
+    }
+
+    /**
+     * One fix from the car screen's own feed, steered like the phone's: through the shared
+     * position filter ([app.vela.core.location.GuidanceFix]) with the fix's accuracy, a course
+     * only while moving, and a crawl read as 0 on a wide fix or with the phone at rest. While the
+     * phone's feed runs it is the drive's, and this one stands down. Before this every car fix
+     * went to the engine raw, without its accuracy or course, and with the phone app open each
+     * fix reached the engine twice.
+     */
+    private fun carFix(loc: android.location.Location) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (app.vela.core.location.GuidanceFix.phoneFeeding(now)) return
+        val acc = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null
+        val sp = if (loc.hasSpeed()) loc.speed.toDouble() else null
+        val wide = (acc ?: 0.0) > app.vela.core.location.Stillness.ACC_TRUST_M
+        val slow = app.vela.core.location.Stillness.SLOW_MPS
+        val still = app.vela.core.location.Stillness.still
+        val course = if (loc.hasBearing() && sp != null && sp > 0.5 && (!wide || sp >= slow)) loc.bearing.toDouble() else null
+        val speed = sp?.let { if (it < slow && (wide || still)) 0.0 else it }
+        val tSec = (if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L) / 1e9
+        val take = app.vela.core.location.GuidanceFix.take(
+            LatLng(loc.latitude, loc.longitude), tSec, acc, sp,
+            if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+            if (loc.hasBearing()) loc.bearing.toDouble() else null,
+            if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+            still,
+        )
+        if (!take.fresh) return
+        deps.navSession.onLocation(
+            take.out.position, app.vela.ui.Units.imperial.value, speed,
+            accuracyM = acc, bearingDeg = course, fromFix = take.out.accepted,
+        )
     }
 
     override fun onDestroy(owner: LifecycleOwner) {

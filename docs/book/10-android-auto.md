@@ -73,7 +73,11 @@ session and opens the drive screen when a drive starts, whichever side started i
 connects in the middle of a drive opens on the drive screen, with the landing list under it.
 
 Each projection is a `VelaCarSession`. It collects fixes from the location provider and passes
-them to the session under the phone's gate: GPS provider only, accuracy 50 m or better. With
+them to the session under the phone's gate: GPS provider only, accuracy 50 m or better. They go
+through the same position filter as the phone's fixes, with their accuracy and course, so a
+reflection off a building at a red light does not reroute the car either. While the phone app is
+open its feed is the drive's and the car's stands down; each fix reaches the engine once. This is
+the feed under Android Auto, Android Automotive, Gearslip and myCar alike. With
 "Simulate my location" on, the pinned point counts as the fix, and a demo drive started on the
 phone moves the car's arrow too. Guidance
 therefore runs with the phone's screen off and the app never opened. In that case the service

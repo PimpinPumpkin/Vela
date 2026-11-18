@@ -1589,7 +1589,8 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   multipath leap taken as is becomes the position the outlier hold then keeps against the next
   good fixes. A first lock sharpening on a phone with no network location still lands at once.
 - Guidance steers by Vela's own fused position, `core/location/PositionFilter`, run on every
-  guidance fix (the phone's feed and a replay of a file without `N` lines). The speed-adaptive
+  guidance fix: the phone's feed and the car screen's share one (`GuidanceFix`), and a replay of
+  a file without `N` lines runs its own. The speed-adaptive
   low-pass in `sanePosition` is the dot's: under 10 m/s it trails the car by up to 12 m.
   - A Kalman filter over east, north and both velocities with a full 4x4 covariance. Each fix
     gives its position, with the accuracy taken as 1.5 standard deviations (at least 3 m), and
@@ -6001,7 +6002,13 @@ the same `:core` singletons as the phone (`CarDeps`).
   `ClusterSession`, one bare `NavigationTemplate`, because that display rejects the place-list
   template. Its content comes from `updateTrip()`.
 - `VelaCarSession` runs its own AOSP location feed into the shared `NavSession` (GPS fixes at 50
-  m accuracy or better, or the simulated position), so navigation runs with the phone UI closed. It handles
+  m accuracy or better, or the simulated position), so navigation runs with the phone UI closed.
+  Its fixes go through the same position filter as the phone's (`GuidanceFix`, one
+  `PositionFilter` for both feeds) with their accuracy, a course while moving and the at-rest speed
+  rule. While the phone's feed has handed the engine a fix within `GuidanceFix.PHONE_FRESH_MS`
+  (2.5 s), the car's stands down, and a fix both feeds received reaches the engine once: before,
+  with the phone app alive, every fix reached the engine twice, the car's raw. A drive started
+  from the car records no trip (`TripStore.startTrip` runs only from the phone's `launchNav`). It handles
   `androidx.car.app.action.NAVIGATE` geo intents: coordinates open the route preview, and a
   free-text `q=` opens `SearchCarScreen` on that query, submitted, over the landing list. A drive started
   from the car speaks with the Piper voice when it is installed and chosen (the service attaches
