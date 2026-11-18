@@ -25,7 +25,7 @@ class GuidanceFixTest {
     }
 
     @Test
-    fun withTheFusedPositionOffGuidanceGetsTheFixAsItCame() {
+    fun withFreeFusedOffGuidanceGetsTheFixAsItCame() {
         val near = LatLng(38.5449, -121.7405)
         GuidanceFix.take(near, 1.0, 5.0, 0.0, null, null, null, still = true)
         GuidanceFix.take(near, 2.0, 5.0, 0.0, null, null, null, still = true)

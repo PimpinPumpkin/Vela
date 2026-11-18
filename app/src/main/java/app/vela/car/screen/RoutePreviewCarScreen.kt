@@ -188,7 +188,8 @@ class RoutePreviewCarScreen(
                     if (app.vela.core.voice.VelaPiper.isReady(carContext.applicationContext)) app.vela.core.voice.VelaPiper.ENGINE_ID else null
                 else -> savedRaw
             }
-            deps.navSession.start(named, dest, destName, engine, emptyList(), TravelMode.DRIVE)
+            // Where the car is now: a drive started away from the route plans again quietly.
+            deps.navSession.start(named, dest, destName, engine, emptyList(), TravelMode.DRIVE, from = deps.locationProvider.lastKnown())
             runCatching { NavigationService.start(carContext.applicationContext) }
             // VelaCarSession opens the drive screen when the session reports the drive.
         }

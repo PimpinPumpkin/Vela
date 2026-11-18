@@ -8,7 +8,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Vela's own fused position, the one guidance steers by: a Kalman filter over position and
+ * FreeFused, Vela's own fused position, the one guidance steers by: a Kalman filter over position and
  * velocity fed by each GPS fix's position, weighted by the accuracy the fix reports, and its
  * Doppler velocity (speed and course), which the receiver measures far more precisely than it
  * measures where it is. The accelerometer's at-rest reading lowers how much the model lets the

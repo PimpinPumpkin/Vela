@@ -257,7 +257,7 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
-- The fused position guidance steers by (`PositionFilter`): on a 15-minute freeway drive it
+- FreeFused, the fused position guidance steers by (`PositionFilter`): on a 15-minute freeway drive it
   stayed within 0.6 m of the GPS fix (median, 4.2 m at most) and refused no fix. Not yet seen on
   a real drive: a stop, and a reflection at a red light between tall buildings. Those were
   checked on desk replays of three recorded drives and the 4a canyon mock drive only.

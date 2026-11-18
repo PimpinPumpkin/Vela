@@ -1459,7 +1459,7 @@
     <string name="place_updates_all">Show all %1$d updates</string> <!-- format -->
     <string name="settings_nav_north_up">Start drives north-up</string>
     <string name="settings_nav_north_up_hint">The map stays flat with north at the top while you drive. Tap the compass during a drive to switch.</string>
-    <string name="settings_fused_position">Fused position</string>
+    <string name="settings_fused_position">FreeFused</string>
     <string name="settings_fused_position_hint">Guidance blends the GPS fix with the speed and heading the GPS measures, so a jump off a tall building is ignored. Off follows the raw GPS fix, as Vela did before.</string>
     <string name="settings_zoom_to_turn">Zoom to the next turn</string>
     <string name="settings_zoom_to_turn_hint">The map zooms out until the next turn sits just under the turn card, turns toward a turn off to the side, and zooms back in as you near it. Made for long stretches between turns; street names and traffic lights do not show that far out. On the car screen too.</string>

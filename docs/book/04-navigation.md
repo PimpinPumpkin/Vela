@@ -192,13 +192,13 @@ HEADING_NEAR_M   = 25     // a course matching the route this far ahead or behin
 For driving, a 5 m fix gives a 28 m corridor, a fix with no accuracy figure 42 m, and a 30 m fix
 70 m.
 
-The engine steers by Vela's own fused position (`PositionFilter`). Each GPS fix and its Doppler
+The engine steers by FreeFused, Vela's own fused position (`PositionFilter`). Each GPS fix and its Doppler
 speed and course go through a Kalman filter. It follows the fix without lag and skips a fix that
 leaps away from how the car is moving; three such fixes in a row while moving are taken as real.
 While the car is stopped and the phone at rest it skips every fix that leaps, so a reflection off
 a building at a red light cannot reroute. While you navigate, the dot and the arrow ride the same
 position. Browsing, the dot is smoothed at low speed and trails the car by up to 12 m.
-Settings > Navigation "Fused position" off steers by the raw GPS fix instead, the way Vela did
+Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did
 before the filter, and a remote setting can turn it off for everyone without a release.
 
 Each fix changes a hit count:
@@ -230,6 +230,11 @@ REROUTE_STUCK_GRACE_MS     = 5_000    // past deadline + this, a running attempt
 REROUTE_SPEAK_MIN_MS       = 30_000   // "Rerouting" is spoken at most this often
 BACK_ON_COURSE_HITS        = 2        // on-route fixes that discard a reroute in flight
 ```
+
+Start pressed more than 150 m from the route (`START_REPLAN_M`), on a route planned before the
+car moved off or from an old fix, plans again from where the car is before saying anything. There
+is no chime and no "Rerouting": the drive opens with the new route's first instruction, the way
+Google's Start does.
 
 Going off route asks for a reroute. `NavSession.rerouteGate` decides whether it starts:
 

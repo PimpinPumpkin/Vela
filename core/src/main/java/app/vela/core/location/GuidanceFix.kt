@@ -14,7 +14,7 @@ import app.vela.core.model.LatLng
  * fresh ([phoneFeeding]) and steers on its own only when the phone app is closed, as on an
  * Automotive head unit or a projection with the phone locked.
  *
- * With the fused position switched off ([rawWhen]), guidance steers by the GPS fix as it came, as
+ * With FreeFused switched off ([rawWhen]), guidance steers by the GPS fix as it came, as
  * before the filter. The filter is still fed, so switching it back on mid-drive finds it current.
  */
 object GuidanceFix {
@@ -27,13 +27,13 @@ object GuidanceFix {
 
     @Volatile private var phoneFedAtMs = 0L
 
-    /** True while guidance steers by the raw GPS fix: Settings > Navigation "Fused position" off,
-     *  or the `fusedOff` dial. Asked once a fix. */
+    /** True while guidance steers by the raw GPS fix: Settings > Navigation "FreeFused" off, or
+     *  the remote settings' `freeFusedOff` dial. Asked once a fix. */
     @Volatile var rawWhen: () -> Boolean = { false }
 
     /** One fix taken by [PositionFilter.update]. [fresh] false: this fix (by its time) was taken
      *  already, by the other feed, and is not to be handed to the engine again. [raw]: [out] is
-     *  the fix as it came, because the fused position is off. */
+     *  the fix as it came, because FreeFused is off. */
     class Take(val out: PositionFilter.Out, val fresh: Boolean, val raw: Boolean = false)
 
     @Synchronized

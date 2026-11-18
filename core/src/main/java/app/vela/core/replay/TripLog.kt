@@ -19,7 +19,7 @@ import app.vela.core.nav.NavReplay
  * - `META,<label>,<startedAt>,<destLat>,<destLng>` — header (written first)
  * - `RP,<encoded-polyline>` — the navigated route's blue line (optional)
  * - `RD,<distanceM>,<durationS>,<durationInTrafficS?>,<reason>,<flags>` — route totals; reason
- *   (start/reroute/faster/heal/stop-added) and flags (provisional;abbreviated;offline;traffic;
+ *   (start/start-replan/reroute/faster/heal/stop-added) and flags (provisional;abbreviated;offline;traffic;
  *   source=X;steps=N;named=KofN, then how the steps were made, [Route.made]) are appended fields,
  *   absent on older trips
  * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` — one per maneuver (instruction last; may hold commas)
@@ -31,7 +31,7 @@ import app.vela.core.nav.NavReplay
  * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
  *   handed, once per call: kind `f` is the position filter's position for a fix it took, `h` for
  *   one it refused (older files: the fix as it came, and an outlier hold's position), `r` the fix
- *   as it came with the fused position switched off, `d` a
+ *   as it came with FreeFused switched off, `d` a
  *   dead-reckoned point between fixes, [msSinceFix] after the last fix line.
  *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
  * - `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`: one route a router
@@ -68,7 +68,7 @@ object TripLog {
     /** One call of the nav engine as the drive made it (an `N` line): [segment] is the route block
      *  it ran against, [afterFix] the fix line it followed (-1 before the first), and [kind] `f` (the
      *  position filter's position for a fix it took), `h` (for one it refused), `r` (the fix as it
-     *  came, the fused position off) or `d` (dead-reckoned). */
+     *  came, FreeFused off) or `d` (dead-reckoned). */
     data class Input(
         val segment: Int, val afterFix: Int, val msSinceFix: Long, val kind: Char,
         val lat: Double, val lng: Double, val speed: Double?, val accuracyM: Double?, val bearing: Double?,

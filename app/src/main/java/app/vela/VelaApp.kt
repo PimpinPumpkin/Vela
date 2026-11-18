@@ -208,7 +208,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.RoadLabel.init(this)
         app.vela.ui.NavNorthUp.init(this)
         app.vela.ui.ZoomToTurn.init(this) // zoom out to the next turn while driving, off by default (issue #781)
-        app.vela.ui.FusedPosition.init(this) // guidance by the fused position, on by default
+        app.vela.ui.FreeFused.init(this) // guidance by FreeFused, the fused position, on by default
         app.vela.ui.PuckStyle.init(this)
         app.vela.ui.HouseNumbers.init(this) // house-number zoom gate (issue #329)
         app.vela.ui.MapNames.init(this) // which name a map label shows (issue #738)

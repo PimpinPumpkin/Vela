@@ -655,7 +655,7 @@ class MapViewModel @Inject constructor(
                         ),
                     )
                     app.vela.diag.TripNote.add("location: " + app.vela.diag.SettingsDump.location(appContext))
-                    app.vela.diag.TripNote.add("guidance: " + if (app.vela.core.location.GuidanceFix.rawWhen()) "raw fix (fused position off)" else "fused position")
+                    app.vela.diag.TripNote.add("guidance: " + if (app.vela.core.location.GuidanceFix.rawWhen()) "raw fix (FreeFused off)" else "FreeFused")
                     app.vela.core.location.Stillness.hold(appContext); stillHeld = true // the at-rest sensor, for the drive
                     app.vela.diag.NetCount.drain(); netTick = 0; lastDataNote = null
                 }

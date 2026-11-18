@@ -137,9 +137,14 @@ class NavSession @Inject constructor(
     @Volatile private var lastRerouteAdoptMs = 0L
     /** WHY the current route was adopted - stamped at every swap site, read by the trip recorder
      *  so the file distinguishes a wrong-turn reroute from a chosen faster route or a silent
-     *  heal: "start", "reroute", "faster", "heal", "stop-added". */
+     *  heal: "start", "start-replan", "reroute", "faster", "heal", "stop-added". */
     @Volatile var lastSwapReason: String = "start"
     @Volatile private var lastRerouteSpokeMs = 0L
+
+    /** A drive started away from its route ([START_REPLAN_M]) is planning again from where the car
+     *  is: no chime, no "Rerouting", no turn prompts for the old line, and the opener is said for
+     *  the route that lands (or for the old one if none does). */
+    @Volatile private var quietStart = false
     @Volatile private var sessionGen = 0
     // A FAILED reroute must clear the engine's offRoute latch so it retries — but writing nav
     // state from the reroute coroutine races the in-flight onLocation frame (whose route-identity
@@ -232,6 +237,8 @@ class NavSession @Inject constructor(
         stops: List<NavStop> = emptyList(),
         mode: TravelMode = TravelMode.DRIVE,
         destinationAddress: String = "",
+        from: LatLng? = null,
+        fromCourseDeg: Double? = null,
     ) {
         // The arrival says its side whichever router made the route (NavEngine.withArrivalSide).
         @Suppress("NAME_SHADOWING") val route = NavEngine.withArrivalSide(route, destination)
@@ -245,6 +252,9 @@ class NavSession @Inject constructor(
         // this one, and inheriting its streak would send the first reroute straight to the ladder.
         rerouteFailStreak = 0
         rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
+        // Nor do the last drive's reroute timers: a cooldown from it would skip this start's replan.
+        rerouteStartedMs = 0L; lastRerouteAdoptMs = 0L; lastRerouteSpokeMs = 0L
+        quietStart = false
         // The last drive's road and course say nothing about this one.
         synchronized(trackLock) { track.clear() }
         movingCourse = null; movingCourseAt = null; lastAdoptQuick = false
@@ -293,7 +303,18 @@ class NavSession @Inject constructor(
         // speakOpener (not speak): briefly hold the opener until the first road's real romanized name
         // has loaded from the map tiles, so a foreign street isn't read as an ICU skeleton at T=0 while
         // the nav-zoom tiles are still loading (issue #184). Falls through to speaking after a short cap.
-        voice.speakOpener(openerFor(route))
+        // Go pressed away from the route (planned before the car moved off, or from a stale fix): plan
+        // again from here before saying anything, the way Google's Start does, instead of opening
+        // on the old line and saying "Rerouting" a few seconds in.
+        val away = from != null && !replayMode && route.polyline.size >= 2 &&
+            RouteProjection.alongMeters(route.polyline, RouteProjection.cumulative(route.polyline), from, START_REPLAN_M) == null
+        if (away) {
+            quietStart = true
+            note("start: the car is over ${START_REPLAN_M.toInt()} m from the route, planning again from here")
+            reroute(from!!, fromCourseDeg)
+        } else {
+            voice.speakOpener(openerFor(route))
+        }
         diag.record(
             "nav",
             "start → ${destinationLabel.ifBlank { "destination" }} " +
@@ -340,6 +361,7 @@ class NavSession @Inject constructor(
     }
 
     fun stop() {
+        quietStart = false
         // A reroute canceled here ends without its own FAILED/adopted line, which made an export
         // read as one attempt hanging for minutes (issue #557). Say so.
         if (rerouteJob?.isActive == true) {
@@ -587,8 +609,9 @@ class NavSession @Inject constructor(
         val spokeNow = events.any { it is NavEvent.Speak }
         events.forEach { ev ->
             when (ev) {
-                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
+                // A start that is planning again says nothing about the old line.
+                is NavEvent.Speak -> if (!quietStart) voice.speak(ev.text, ev.interrupt)
+                is NavEvent.Haptic -> if (!silent && !quietStart) haptics.cue(ev.type, ev.approaching, mode)
                 NavEvent.Arrived -> {
                     note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
                     _state.update {
@@ -1153,7 +1176,7 @@ class NavSession @Inject constructor(
             RerouteGate.START -> Unit
         }
         // Announce sparsely: the first attempt of a burst speaks, silent retries don't re-announce.
-        if (now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
+        if (!quietStart && now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
             lastRerouteSpokeMs = now
             // Google's earcon first (a soft two-note chime), then the spoken word - the chime
             // registers even when a prompt is mid-sentence or the ear expects music (user 2026-07-16).
@@ -1316,6 +1339,7 @@ class NavSession @Inject constructor(
             val forSkippedStop = synchronized(stopLock) { skipHoldRoute != null && skipHoldRoute === fromRoute }
             if (!forSkippedStop && _state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
                 note("reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
+                openQuietStart(fromRoute)
                 return@launch
             }
             if (r == null) {
@@ -1329,6 +1353,7 @@ class NavSession @Inject constructor(
                 val why = if (timedOut) "deadline ${attempt.timeoutMs / 1000} s" else "nothing usable"
                 note("reroute FAILED (streak $rerouteFailStreak, $why after $tookMs ms), will retry while off-route")
                 pendingLatchClear.set(true)
+                openQuietStart(fromRoute)
                 return@launch
             }
             // New route starts here → recompute the marks, reset the counter. Unlike the faster-route
@@ -1364,7 +1389,7 @@ class NavSession @Inject constructor(
             )
             rerouteFailStreak = 0 // a route landed: back to lean, fast attempts
             lastAdoptQuick = quick
-            lastSwapReason = "reroute"
+            lastSwapReason = if (quietStart) "start-replan" else "reroute"
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
             etaScale = 1.0 // the fresh route carries fresh traffic
@@ -1383,7 +1408,16 @@ class NavSession @Inject constructor(
                     nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
                 )
             }
+            openQuietStart(r)
         }
+    }
+
+    /** The drive's opener, for a start that was planning again ([quietStart]): said once, for the
+     *  route the drive now has. */
+    private fun openQuietStart(route: Route?) {
+        if (!quietStart) return
+        quietStart = false
+        route?.let { voice.speakOpener(openerFor(it)) }
     }
 
     /**
@@ -1604,6 +1638,7 @@ class NavSession @Inject constructor(
             else RerouteAttempt(urgent = true, timeoutMs = REROUTE_FETCH_TIMEOUT_MS)
 
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
+        const val START_REPLAN_M = 150.0           // Start this far from the route plans again from the car, quietly
         const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute
                                                    // is abandoned as "back on course" — >1 so a single grazing
                                                    // fix can't kill a legitimate missed-turn reroute (tune from

@@ -454,8 +454,8 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         SettingsGroup {
             ToggleRow(
                 label = stringResource(R.string.settings_fused_position),
-                checked = app.vela.ui.FusedPosition.on.value,
-                onCheckedChange = { app.vela.ui.FusedPosition.set(context, it) },
+                checked = app.vela.ui.FreeFused.on.value,
+                onCheckedChange = { app.vela.ui.FreeFused.set(context, it) },
                 hint = stringResource(R.string.settings_fused_position_hint),
             )
         }

@@ -144,10 +144,11 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A bottom bar with time left, distance and arrival time. Swipe it up for the step list. On a trip
   with stops the figures are for the next stop, named under them, with the whole trip on a line
   below. The notification and Android Auto show the next stop too.
-- Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
+- Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner. Start
+  pressed away from the route plans again from where you are, quietly.
 - Guidance follows a position fused from the GPS fix and the speed and heading the GPS measures,
   so a reflection off a tall building at a red light does not reroute you, and the arrow keeps up
-  through a turn. "Fused position" off follows the raw GPS fix.
+  through a turn (FreeFused). Turned off, guidance follows the raw GPS fix.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray.

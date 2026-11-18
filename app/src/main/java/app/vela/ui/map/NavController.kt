@@ -597,7 +597,14 @@ internal class NavController(
         // coordinates (offline routing can have any of those missing); the address rides along
         // only when it says something the primary line doesn't.
         val (destName, destAddr) = NavSession.destinationDisplay(s.selected?.name, s.selected?.address, dest)
-        navSession.start(route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode, destinationAddress = destAddr.orEmpty())
+        // Where the car is now, for a start away from the route (NavSession.START_REPLAN_M): a live,
+        // usable fix only, and a course only while moving.
+        val from = s.myLocation?.takeIf { !s.myLocationStale && (s.myAccuracyM ?: 0f) <= 50f }
+        val course = s.myBearing?.toDouble()?.takeIf { (s.mySpeed ?: 0f) >= 3f }
+        navSession.start(
+            route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode,
+            destinationAddress = destAddr.orEmpty(), from = from, fromCourseDeg = course,
+        )
         navSession.plannedWayName = route.savedName // a saved route: leaving it is said once (NavSession.reroute)
         beginDriveTrace(route)
         NavigationService.start(appContext)

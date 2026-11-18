@@ -872,7 +872,7 @@ the page fills it after load, and a small stub sits beside it.
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
-| Navigation > Fused position | `FusedPosition.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `fusedOff` dial turns it off for every install |
+| Navigation > FreeFused | `FreeFused.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `freeFusedOff` dial turns it off for every install |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
@@ -1591,15 +1591,15 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   radius: under poor sky a receiver's accuracy figure halves and doubles from fix to fix, and a
   multipath leap taken as is becomes the position the outlier hold then keeps against the next
   good fixes. A first lock sharpening on a phone with no network location still lands at once.
-- Guidance steers by Vela's own fused position, `core/location/PositionFilter`, run on every
-  guidance fix: the phone's feed and the car screen's share one (`GuidanceFix`), and a replay of
+- Guidance steers by FreeFused, Vela's own fused position (`core/location/PositionFilter`), run
+  on every guidance fix: the phone's feed and the car screen's share one (`GuidanceFix`), and a replay of
   a file without `N` lines runs its own. While navigating the dot is the fused position too:
   the nav arrow is placed from the dot, and the speed-adaptive low-pass in `sanePosition`
   trailed a car slowing for a turn by 3 to 6 m (median 3.5 m at 2 to 8 m/s on a real drive),
   so turns showed late. Browsing, the dot keeps the low-pass, which trails by up to 12 m under
   10 m/s.
-  - Settings > Navigation "Fused position" (`FusedPosition`, pref `fused_position`, on) off, or
-    the calibration dial `fusedOff` at 1, steers by the fix as it came (`GuidanceFix.rawWhen`):
+  - Settings > Navigation "FreeFused" (`FreeFused`, pref `fused_position`, on) off, or the
+    calibration dial `freeFusedOff` at 1, steers by the fix as it came (`GuidanceFix.rawWhen`):
     the car screen's feed too, and the dot takes the low-pass while navigating as it does
     browsing. The filter is still fed, so turning it back on mid-drive finds it current. A trip
     records those inputs as `N` kind `r` and notes `guidance: raw fix` at the start.
@@ -1898,7 +1898,17 @@ BACK_ASK_WAIT_MS             3_000   the wait before each of them
 BACK_ASK_MIN_MPS               4.0   only while the car moves at least this fast
 HELD_COURSE_MAX_M               25   a stopped car keeps its moving course this far from where it showed it
 TRACK_KEEP_M                   300   the car's own track kept for the turn-round test
+START_REPLAN_M                 150   Start this far from the route plans again from the car, quietly
 ```
+
+- Start away from the route: when the car's last live fix (accuracy 50 m or better) is more than
+  `START_REPLAN_M` from the route line, `NavSession.start` plans again from it at once, through
+  `reroute` with the car's course while it moves at 3 m/s or more (`from`, `fromCourseDeg`;
+  `launchNav`, and the car screen's Start with its last fix). Until that answer lands
+  (`quietStart`) there is no chime, no "Rerouting", no buzz and no prompt or turn haptic for the
+  old line, and the opener is said for the route that lands, or for the old one when the fetch
+  fails or is discarded. The adopted block's reason is `start-replan`. A new session also clears
+  the last drive's reroute timers, so its cooldown cannot skip this replan.
 
 - `NavSession.rerouteGate` allows one fetch at a time and enforces the cooldown. A job older
   than its deadline plus the grace is abandoned and a new one starts. The fetch runs on an
@@ -2891,7 +2901,7 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - An `N` line is one call of the nav engine as the drive made it:
   `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is the position
   filter's position for a fix it took, `h` its position for a fix it refused, `r` the fix as it
-  came with the fused position off, `d` a dead-reckoned point between fixes. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
+  came with FreeFused off, `d` a dead-reckoned point between fixes. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
   and the position an outlier hold kept for `h`, and from 2026-11-11 to 11-17 also `h` for the
   dot's low-passed point;
   `msSinceFix` counts from the last fix line, and an empty field was not passed. The location
