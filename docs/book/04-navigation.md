@@ -194,8 +194,9 @@ The engine reads Vela's own fused position, not the dot (`PositionFilter`). Each
 Doppler speed and course go through a Kalman filter. It follows the fix without the dot's lag,
 skips a fix that leaps away from how the car is moving, and while the car is stopped and the
 phone at rest skips every fix that leaps, so a reflection off a building at a red light cannot
-reroute. The dot is smoothed at low speed and trails the car by up to 12 m, which once put the
-car before a corner it was already turning at.
+reroute. While you navigate the dot and the arrow ride the same position. Browsing, the dot is
+smoothed at low speed and trails the car by up to 12 m; on a drive that put the arrow 3 to 6 m
+short of a corner you were already turning at.
 
 Each fix changes a hit count:
 

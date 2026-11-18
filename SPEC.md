@@ -1590,8 +1590,11 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   good fixes. A first lock sharpening on a phone with no network location still lands at once.
 - Guidance steers by Vela's own fused position, `core/location/PositionFilter`, run on every
   guidance fix: the phone's feed and the car screen's share one (`GuidanceFix`), and a replay of
-  a file without `N` lines runs its own. The speed-adaptive
-  low-pass in `sanePosition` is the dot's: under 10 m/s it trails the car by up to 12 m.
+  a file without `N` lines runs its own. While navigating the dot is the fused position too:
+  the nav arrow is placed from the dot, and the speed-adaptive low-pass in `sanePosition`
+  trailed a car slowing for a turn by 3 to 6 m (median 3.5 m at 2 to 8 m/s on a real drive),
+  so turns showed late. Browsing, the dot keeps the low-pass, which trails by up to 12 m under
+  10 m/s.
   - A Kalman filter over east, north and both velocities with a full 4x4 covariance. Each fix
     gives its position, with the accuracy taken as 1.5 standard deviations (at least 3 m), and
     its Doppler velocity: the speed's accuracy along the course (0.5 m/s when the fix has none)

@@ -1023,8 +1023,30 @@ class MapViewModel @Inject constructor(
                     _state.value.myAccuracyM, accM, shownIsGps = prevWasGps, newIsGps = isGps,
                     movedM = prev?.distanceTo(rawHere) ?: 0.0,
                 )
-                // Drop outlier leaps + hold the dot when parked (see sanePosition).
-                val here = if (upgrade) { posOutlierStreak[0] = 0; rawHere } else sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                // Guidance's fused position for this fix (PositionFilter through GuidanceFix, the
+                // filter the car screen's feed shares; while this feed runs, that one stands down),
+                // taken once: the engine steers by it below, and while navigating the dot does too.
+                val fused = if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    app.vela.core.location.GuidanceFix.phoneFed(nowMs)
+                    app.vela.core.location.GuidanceFix.take(
+                        rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                        if (loc.hasSpeed()) loc.speed.toDouble() else null,
+                        if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+                        if (loc.hasBearing()) loc.bearing.toDouble() else null,
+                        if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+                        still = app.vela.core.location.Stillness.still,
+                    )
+                } else null
+                // Drop outlier leaps + hold the dot when parked (see sanePosition). While navigating
+                // the dot is the fused position instead: the low-pass trailed a car slowing for a
+                // turn by 3 to 6 m (a real drive, 2026-11-17), and the nav arrow is placed from the
+                // dot, so turns showed late. The filter holds a parked car and refuses a leap itself.
+                val navigatingNow = navSession.state.value.navigating && !_state.value.replaying
+                val here = when {
+                    navigatingNow && fused != null -> { posOutlierStreak[0] = 0; fused.out.position }
+                    upgrade -> { posOutlierStreak[0] = 0; rawHere }
+                    else -> sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                }
                 lastAccM = accM
                 lastAccRtNanos = fixRtNanos
                 val movedM = prev?.distanceTo(here) ?: 0.0
@@ -1133,17 +1155,8 @@ class MapViewModel @Inject constructor(
                     // Doppler velocity, with the accelerometer's at-rest flag. The dot's low-pass
                     // trails a slow car by up to 12 m; the raw fix takes a reflection off a building
                     // at a red light as the car. A fix the filter does not take steers with the
-                    // model's position and never starts a recheck. The filter is the one the car
-                    // screen's feed shares (GuidanceFix); while this feed runs, that one stands down.
-                    app.vela.core.location.GuidanceFix.phoneFed(nowMs)
-                    val take = app.vela.core.location.GuidanceFix.take(
-                        rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
-                        if (loc.hasSpeed()) loc.speed.toDouble() else null,
-                        if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
-                        if (loc.hasBearing()) loc.bearing.toDouble() else null,
-                        if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
-                        still = app.vela.core.location.Stillness.still,
-                    )
+                    // model's position and never starts a recheck. It was taken above ([fused]).
+                    val take = fused ?: return@collect
                     val steerAt = take.out.position
                     val held = !take.out.accepted
                     // The drive's record of what the engine is handed (TripLog `N`), after the
