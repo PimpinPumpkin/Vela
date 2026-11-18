@@ -615,7 +615,6 @@
     <string name="settings_hub_diagnostics_sub">Rapports de plantage, trajets, mode démo, expériences</string>
     <string name="settings_hub_about_sub">Version, mises à jour, soutien</string>
     <string name="settings_theme_amoled">Noir AMOLED</string>
-    <string name="place_review_more"></string>
     <string name="place_review_less">Moins</string>
     <string name="settings_traffic_lights">Guidage aux feux tricolores</string>
     <string name="settings_traffic_lights_hint">Reperes vocaux : passez le feu puis tournez. Anglais uniquement, desactive par defaut.</string>
@@ -1356,8 +1355,6 @@
     <string name="settings_update_all_regions">Tout mettre à jour (%1$d)</string>
     <string name="settings_lists_import_is_places">Ce fichier contient les lieux enregistrés, pas les listes. Importez-le depuis Paramètres &gt; Lieux enregistrés &gt; Importer.</string>
     <string name="settings_place_names">Noms de lieux</string>
-    <string name="settings_place_names_more"></string>
-    <string name="settings_place_names_most"></string>
     <string name="link_trip_stop_missing">%1$s introuvable. Le trajet va l\'ignorer.</string>
     <string name="transit_notice_to_destination">Vers votre destination</string>
     <string name="transit_notice_next_is_yours">Sortez au prochain arrêt : %1$s</string>
