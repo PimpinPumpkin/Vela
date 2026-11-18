@@ -95,8 +95,10 @@ request.
 
 ### The daily seventh of places
 
-The places catalog is sorted by id, and a row bakes on the day where `index % 7` equals the UTC
-weekday (Monday is 0): 64 regions a day. OpenStreetMap is the one source anybody can correct, so
+The places catalog is sorted by id and cut into seven slices by `index % 7`: 64 regions each.
+Each slice is due a week after its own last bake, and the conductor bakes the one for today's
+UTC weekday first (Monday is 0). A day it misses, behind another bake, is caught up at the next
+free hour instead of waiting a week. OpenStreetMap is the one source anybody can correct, so
 a fix there reaches the map within a week. The whole catalog is not baked daily because every
 rebake offers the archive again to everyone who downloaded the region. Each bake reads the
 newest Overture release and AllThePlaces run.

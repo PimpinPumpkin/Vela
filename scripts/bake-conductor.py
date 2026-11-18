@@ -215,6 +215,45 @@ def flip(f, state, now):
     return True
 
 
+DAY = 86400
+
+
+def slice_job(job):
+    """A job that bakes a seventh of the catalog per run (an input of "@slice7")."""
+    return any(v == "@slice7" for v in job.get("inputs", {}).values())
+
+
+def slice_ages(st, now):
+    """Seconds since each of the seven slices was last dispatched (`slices` in the record). A
+    record from before slices were kept counts each one as dispatched on its own weekday this past
+    week, and today's as dispatched when the job last was, if that was today."""
+    sl = st.setdefault("slices", {})
+    wd = time.gmtime(now).tm_wday
+    for k in range(7):
+        if str(k) not in sl:
+            if k == wd:
+                sl[str(k)] = st["dispatchedAt"] if st.get("dispatchedAt", 0) >= now - now % DAY else now - 7 * DAY
+            else:
+                sl[str(k)] = now - ((wd - k) % 7) * DAY
+    return {int(k): now - t for k, t in sl.items()}
+
+
+def due_slice(job, st, now):
+    """(slice, seconds overdue) for the slice to bake next, or None. Each slice is due a week of
+    the job's cadence after its own last dispatch, less half a day, so a day the conductor missed
+    is caught up at the next free hour instead of waiting another week, and a bake that started
+    late in the day does not push the next week's start later. Today's weekday goes first, then
+    the longest wait."""
+    hours = job["everyHours"] * 3600
+    gap = 7 * hours - hours / 2
+    due = {k: a - gap for k, a in slice_ages(st, now).items() if a >= gap}
+    if not due:
+        return None
+    wd = time.gmtime(now).tm_wday
+    k = wd if wd in due else max(due, key=due.get)
+    return k, due[k]
+
+
 def dispatch(job, inputs, now):
     if DRY:
         print(f"dry run: would dispatch {job['workflow']} {inputs}")
@@ -283,7 +322,11 @@ def main():
                 st = state[job["id"]]
                 if st.get("runId") and not st.get("settled"):
                     continue
-                overdue = now - st.get("lastSuccess", 0) - job["everyHours"] * 3600
+                if slice_job(job):
+                    ds = due_slice(job, st, now)
+                    overdue = ds[1] if ds else -1
+                else:
+                    overdue = now - st.get("lastSuccess", 0) - job["everyHours"] * 3600
                 if overdue >= 0 and (best is None or overdue > best[0]):
                     best = (overdue, i, job)
             if best:
@@ -301,7 +344,10 @@ def main():
                     inputs = {job["retryInput"]: job.get("retryJoin", ",").join(st["retryIds"])}
                     st["retries"] = st.get("retries", 0) + 1
                 else:
-                    inputs = {k: (str(time.gmtime(now).tm_wday) if v == "@slice7" else v) for k, v in job.get("inputs", {}).items()}
+                    part = due_slice(job, st, now)[0] if slice_job(job) else None
+                    inputs = {k: (str(part) if v == "@slice7" else v) for k, v in job.get("inputs", {}).items()}
+                    if part is not None:
+                        st["slices"][str(part)] = now
                     st["retries"] = 0
                 run_id = dispatch(job, inputs, now)
                 st.update(runId=run_id, settled=run_id is None, retryIds=[], dispatchedAt=now)
@@ -321,7 +367,12 @@ def main():
                 last = st.get("lastSuccess", 0)
                 fmt = lambda t: time.strftime("%Y-%m-%d %H:%M", time.gmtime(t)) if t else "never"
                 cur = "" if st.get("settled", True) else str(st.get("runId"))
-                f.write(f"| {job['id']} | {fmt(last)} | {fmt(last + job['everyHours'] * 3600) if last else 'now'} | {cur} | {st.get('lastError', '')} |\n")
+                if slice_job(job):
+                    gap = 7 * job["everyHours"] * 3600 - job["everyHours"] * 1800
+                    nxt = fmt(min(st.get("slices", {}).values() or [now - gap]) + gap)
+                else:
+                    nxt = fmt(last + job["everyHours"] * 3600) if last else "now"
+                f.write(f"| {job['id']} | {fmt(last)} | {nxt} | {cur} | {st.get('lastError', '')} |\n")
 
 
 if __name__ == "__main__":

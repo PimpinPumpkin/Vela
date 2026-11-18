@@ -5005,7 +5005,9 @@ spend it and fail other workflows with HTTP 403, so the bakes have no crons of t
    left, and does nothing at all under 60.
 
 Its state is `state.json` on the `bake-conductor` release, and its run never fails. Cadences
-(`everyHours`): a seventh of the places catalog every 24 h (`slice` is the UTC weekday); place
+(`everyHours`): a seventh of the places catalog every 24 h. Each of the seven slices is due 6.5 days
+after its own last dispatch (`slices` in the state), today's UTC weekday first, then the longest
+wait, so a day the conductor missed is caught up at the next free hour (`due_slice`). Place
 packs, road features, basemap and grid cells every 30 days; routing files, buildings, addresses
 and maxspeed every 90 days. ALPR cameras keep their own weekly cron, and UK fuel prices their own
 hourly one (5.8): that job fetches one small file and spends no API request while its source is
