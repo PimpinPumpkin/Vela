@@ -51,6 +51,28 @@ class RouteHealTest {
         assertEquals("steps still heal from any source, as before", "steps", RouteHeal.gains(route(abbreviated = true), route().copy(source = RouteSource.OSRM)))
     }
 
+    @Test fun `the open router's route goes back to Google's line once it does not turn the car round`() {
+        val open = route().copy(source = RouteSource.OSRM)
+        assertTrue(RouteHeal.offGoogleLine(open))
+        assertEquals("line", RouteHeal.gains(open, route(), lineOk = true))
+        assertEquals("line", RouteHeal.gains(open, route().copy(source = RouteSource.GOOGLE_LINE_NAMED), lineOk = true))
+        assertNull("a candidate that turns the car round, or a walk or ride", RouteHeal.gains(open, route(), lineOk = false))
+    }
+
+    @Test fun `Google's line is not swapped for itself, nor for a route short of names or traffic`() {
+        assertFalse(RouteHeal.offGoogleLine(route()))
+        assertNull(RouteHeal.gains(route(), route(), lineOk = true))
+        val open = route().copy(source = RouteSource.OSRM)
+        assertNull(RouteHeal.gains(open, route(namesShort = true), lineOk = true))
+        assertNull(RouteHeal.gains(open, route(traffic = false), lineOk = true))
+        assertNull("only Google's line replaces it", RouteHeal.gains(open, route().copy(source = RouteSource.OSRM), lineOk = true))
+    }
+
+    @Test fun `the bike-safe route is kept`() {
+        assertFalse(RouteHeal.offGoogleLine(route().copy(source = RouteSource.VALHALLA)))
+        assertNull(RouteHeal.gains(route().copy(source = RouteSource.VALHALLA), route(), lineOk = true))
+    }
+
     /** Meters east and north of the Davis fixture corner. */
     private fun m(e: Double, n: Double) = LatLng(38.54 + n / 111_320.0, -121.74 + e / (111_320.0 * Math.cos(Math.toRadians(38.54))))
 

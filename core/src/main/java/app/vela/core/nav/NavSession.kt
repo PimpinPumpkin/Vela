@@ -854,13 +854,18 @@ class NavSession @Inject constructor(
             degradedRouteRef = currentRoute
             degradedFastRechecks = 0
         }
-        val degraded = currentRoute != null && RouteHeal.degraded(currentRoute)
+        // A car on a route that is not Google's line (a reroute that had to take the open
+        // router's) is back on Google's line within seconds of a re-check that brings it forward,
+        // so the fast cadence asks for it, and asks down to [OFF_LINE_MIN_RECHECK_M] from the
+        // end: the open router's way into the destination is where it goes wrong.
+        val offLine = currentRoute != null && mode == TravelMode.DRIVE && RouteHeal.offGoogleLine(currentRoute)
+        val degraded = currentRoute != null && (RouteHeal.degraded(currentRoute) || offLine)
         val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
         // Spread by +/-25%, redrawn after every recheck: an exact 120 s beat is a rhythm every
         // install shares (see Jitter).
         val interval = ((if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS) * recheckSpread).toLong()
         if (now - lastRecheckMs < interval) return
-        if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
+        if (nav.offRoute || nav.remainingDistance < (if (offLine && fastHeal) OFF_LINE_MIN_RECHECK_M else MIN_RECHECK_DISTANCE_M)) return
         if (recheckJob?.isActive == true) return
         // An offer is already on screen — don't fetch/re-speak over it every interval.
         if (_state.value.fasterRoute != null) return
@@ -931,7 +936,16 @@ class NavSession @Inject constructor(
             // alone (the naming services missed the deadline, most often on a reroute's short
             // one) kept its bare "Turn left" for the rest of the drive, through every re-check
             // that came back named. Any of the three qualifies; none may be taken away.
-            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate) else null
+            // Google's line may replace a route that is not, but never by turning the car round:
+            // a re-check asks without a heading, and right after the reroute that set Google's
+            // routes aside the car is still going the other way.
+            val lineOk = mode == TravelMode.DRIVE && RouteHeal.offGoogleLine(current) && run {
+                val h = lastBearing ?: movingCourse ?: return@run false
+                !app.vela.core.data.RouteGeometry.startsAgainst(candidate.polyline, h) &&
+                    !app.vela.core.data.RouteGeometry.startsBehind(candidate.polyline, h) &&
+                    !app.vela.core.data.RouteGeometry.goesBack(candidate.polyline, trackTo(car, h))
+            }
+            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate, lineOk) else null
             if (gains != null) {
                 lastSwapReason = "heal"
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
@@ -1434,6 +1448,7 @@ class NavSession @Inject constructor(
         // for miles, and calibrating our ETA from a route we are not driving would lie.
         const val SAME_COURSE_M = 250.0
         const val MIN_RECHECK_DISTANCE_M = 1_500.0 // don't bother near the destination
+        const val OFF_LINE_MIN_RECHECK_M = 300.0    // ...except to bring back Google's line (RouteHeal.offGoogleLine)
         /** A recheck starts only from a fix rated this good or better. */
         const val RECHECK_MAX_ACC_M = 30.0
         /** What a recheck brings back is taken only when the last trusted fix is this recent... */

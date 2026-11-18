@@ -2028,6 +2028,16 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
   re-check that could not build the hybrid answers with the open router's own route, and the
   same-course test (five samples) cannot see a short detour. The note in the trip says which
   was gained.
+- Same course, and the current route is not Google's line (`RouteHeal.offGoogleLine`: the open
+  router's own route, or an on-device one) while the candidate is (`GOOGLE_HYBRID` or
+  `GOOGLE_LINE_NAMED`, real steps, names not short): in a car the candidate replaces it
+  silently (the `line` gain), unless it turns the car round from its last course
+  (`RouteGeometry.startsAgainst`, `startsBehind`, or `goesBack` along the track since its last
+  turn round); with no course known it waits. A reroute that set every Google route aside for
+  turning the car round adopts the open router's route, and that route keeps the open router's
+  way into the destination, which can be the street next to the right one (a real drive,
+  2026-11-17). Such a route is re-checked on the fast cadence, and down to
+  `OFF_LINE_MIN_RECHECK_M` (300 m) from the end instead of `MIN_RECHECK_DISTANCE_M`.
 - Same road (`RouteGeometry.sameRoad`: every point along the candidate, every 50 m or more
   with at most 400 read, past its first 100 m, within 40 m of the current line): never offered.
   Its lower time is fresher traffic, and the recalibration above has taken it.

@@ -317,7 +317,11 @@ while off route and while an offer is on screen. What happens next depends on th
   Without it the arrival time would carry the traffic measured at the last route fetch for the
   rest of the drive.
 - Same course, and the current route is degraded: the candidate replaces it silently when it is
-  better in steps, street names or traffic and worse in none (`RouteHeal`). A route whose names
+  better in steps, street names or traffic and worse in none (`RouteHeal`).
+- Same course, and you are on the open router's route because a reroute had to set Google's
+  aside (each one turned you round): the drive goes back to Google's line as soon as a recheck
+  brings it without turning you round, asked every 20 seconds or so and until 300 m from the
+  end. The open router's way into the destination can be the street next to the right one. A route whose names
   missed the planning deadline is asked for again about every 20 seconds, six times, and gets
   its names within the first answer that has them.
 - The same roads: never offered, whatever it saves. Every point along it, every 50 m or more,
