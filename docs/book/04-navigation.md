@@ -32,8 +32,10 @@ How these are drawn is [chapter 11](11-drive-chrome.md).
   same position filter (`GuidanceFix`), and a fix reaches the engine once.
   `NavigationService` keeps the process alive and mirrors the drive into the notification. A
   drive still works when the foreground service cannot start.
-- Beyond the map and speed-limit tiles for the area on screen, your position leaves the phone as
-  the start of a reroute, of a traffic recheck, and of the detour estimate for a tapped place.
+- Beyond the map tiles for the area on screen, and the speed-limit tiles where you are (and,
+  with the speed limit drop warning on, along the next 2 km of the route), your position leaves
+  the phone as the start of a reroute, of a traffic recheck, and of the detour estimate for a
+  tapped place.
   Settings > Navigation > "Live traffic re-checks while navigating" turns the rechecks off.
 - The speed limit is OpenStreetMap's `maxspeed`, from the downloaded region's file, else from
   the hosted speed-limit tiles.
