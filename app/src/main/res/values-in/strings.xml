@@ -1469,4 +1469,8 @@
         <item quantity="other">%d pemberhentian lagi</item>
     </plurals>
     <string name="settings_lists_import_is_places">Berkas tersebut berisi tempat tersimpan, bukan daftar. Impor dari Setelan &gt; Tempat tersimpan &gt; Impor.</string>
+    <string name="settings_place_names">Nama tempat</string>
+    <string name="settings_place_names_more">Selengkapnya</string>
+    <string name="settings_place_names_most">Paling banyak</string>
+    <string name="settings_place_names_hint">Selengkapnya dan Paling banyak menampilkan nama serta ikon toko, sekolah, dan tempat lain saat peta diperkecil lebih jauh. Area yang sibuk akan terlihat padat, dan pergerakan peta mungkin menjadi sedikit kurang lancar di area tersebut.</string>
 </resources>
