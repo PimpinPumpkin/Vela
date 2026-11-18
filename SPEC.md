@@ -2025,6 +2025,15 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
 - Same course, with traffic: the shown arrival time is recalibrated. `etaScale` is multiplied by
   candidate ETA over time left, clamped 0.5 to 2.5, applied where the state is published, and
   reset to 1.0 on every route swap.
+- Same course, with traffic, nothing to heal: its congestion spans replace the current route's
+  ahead of the car (`NavSession.liveSpans`, issue #973), carried onto the current line by where
+  they lie (`RouteGeometry.transferSpans`); the driven part keeps its own, and a span the car is
+  in is cut at the car. Spans that moved less than 50 m at both ends are no change. The new
+  spans go out on a copy of the route on the same line, swapped in with every reference to the
+  old one (`swapSameLine`, as the traffic lights are), so it is not a route swap: no trip block,
+  no `etaScale` reset, no callout reset. The line, the car's line, the notification and the
+  road-ahead bar then show a jam that formed after the route was fetched. The trip notes
+  `recheck: traffic ahead updated` with the count of stretches ahead, before and after.
 - Same course, better quality (`RouteHeal.gains`): the candidate replaces the current route
   silently. Full steps replace abbreviated ones, a named route replaces one short of names, and
   a traffic-carrying route replaces a trafficless one. None of the three is given up for

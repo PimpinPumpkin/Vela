@@ -319,6 +319,10 @@ while off route and while an offer is on screen. What happens next depends on th
   multiplier on the remaining time (`etaScale`, clamped 0.5 to 2.5, reset on every route swap).
   Without it the arrival time would carry the traffic measured at the last route fetch for the
   rest of the drive.
+- Same course, with live traffic: its congestion replaces the route's ahead of you, so a jam
+  that formed after the route was fetched turns the line red, on the car screen and in the
+  notification too, and one that cleared goes back to blue. The road behind you keeps what it
+  had. The route itself is not swapped: the same line, with fresher colors.
 - Same course, and the current route is degraded: the candidate replaces it silently when it is
   better in steps, street names or traffic and worse in none (`RouteHeal`). A degraded route is
   asked for again about every 20 seconds, six times, then on the normal interval. A route whose

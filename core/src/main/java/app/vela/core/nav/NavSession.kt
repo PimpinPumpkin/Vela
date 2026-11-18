@@ -7,6 +7,7 @@ import app.vela.core.feedback.Haptics
 import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
+import app.vela.core.model.TrafficSpan
 import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.voice.VoiceGuide
@@ -206,22 +207,30 @@ class NavSession @Inject constructor(
      * reroute, a stops edit or the end of the drive got there first).
      */
     fun applyEnrichedRoute(base: Route, lit: Route) {
+        swapSameLine(base, lit)
+    }
+
+    /** Replace [base], the route being driven, with [next], a copy of it on the same line with
+     *  more on it (its lights, fresher traffic), with every reference to [base]; or not at all
+     *  when something else replaced [base] first. True when it was swapped. */
+    private fun swapSameLine(base: Route, next: Route): Boolean {
         // A reroute in flight was asked from [base] and compares against it when it lands; the
-        // route it brings gets its own lights.
-        if (rerouteJob?.isActive == true) return
+        // route it brings gets its own lights and traffic.
+        if (rerouteJob?.isActive == true) return false
         synchronized(stopLock) {
-            if (planRoute !== base) return
+            if (planRoute !== base) return false
             var swapped = false
             _state.update { s ->
                 swapped = s.navigating && s.route === base
-                if (swapped) s.copy(route = lit) else s
+                if (swapped) s.copy(route = next) else s
             }
-            if (!swapped) return
-            planRoute = lit
-            if (progressRoute === base) progressRoute = lit
-            if (skipHoldRoute === base) skipHoldRoute = lit
-            if (marksHeldOn === base) marksHeldOn = lit
+            if (!swapped) return false
+            planRoute = next
+            if (progressRoute === base) progressRoute = next
+            if (skipHoldRoute === base) skipHoldRoute = next
+            if (marksHeldOn === base) marksHeldOn = next
         }
+        return true
     }
 
     fun start(
@@ -981,6 +990,20 @@ class NavSession @Inject constructor(
                 )
                 return@launch
             }
+            // The traffic on the road being driven (issue #973): the congestion spans live on the
+            // route and colored the line, the car's line, the notification and the road-ahead
+            // bar with the traffic of the last fetch for the whole drive, so a jam that formed
+            // after it never showed. A same-course candidate with live traffic carries the
+            // jams of now: they are carried onto the current line ahead of the car.
+            if (sameCourse && trafficAware) {
+                val traveled = _state.value.nav.traveledM
+                liveSpans(current, candidate, traveled)?.let { spans ->
+                    if (swapSameLine(current, current.copy(trafficSpans = spans))) {
+                        note("recheck: traffic ahead updated, ${spans.count { it.startMeters + it.lengthMeters > traveled }} congestion stretches " +
+                            "(was ${current.trafficSpans.count { it.startMeters + it.lengthMeters > traveled }})")
+                    }
+                }
+            }
             val saving = remaining - candidateEta
             // The same roads are not a faster route: a lower time for them is fresher traffic, and
             // the arrival time above has already taken it. Offered, it was the road being driven.
@@ -1460,6 +1483,41 @@ class NavSession @Inject constructor(
         /** May this fix start a recheck: the phone's own position, good enough ([RECHECK_MAX_ACC_M]),
          *  and not already counted as off the line. */
         fun recheckFrom(trustedFix: Boolean, offRouteHits: Int): Boolean = trustedFix && offRouteHits == 0
+
+        /**
+         * The congestion spans of [current] with the stretch ahead of [traveledM] taken from
+         * [fresh], a same-course route fetched from the car with live traffic, carried onto
+         * [current]'s line by where they lie (`RouteGeometry.transferSpans`). The driven part
+         * keeps its spans. Null when nothing ahead changed.
+         */
+        fun liveSpans(current: Route, fresh: Route, traveledM: Double): List<TrafficSpan>? {
+            val ahead = app.vela.core.data.RouteGeometry.transferSpans(fresh, current).mapNotNull { sp ->
+                val end = sp.startMeters + sp.lengthMeters
+                when {
+                    end <= traveledM -> null
+                    sp.startMeters < traveledM -> sp.copy(startMeters = traveledM, lengthMeters = end - traveledM)
+                    else -> sp
+                }
+            }
+            val behind = current.trafficSpans.mapNotNull { sp ->
+                val end = sp.startMeters + sp.lengthMeters
+                when {
+                    sp.startMeters >= traveledM -> null
+                    end > traveledM -> sp.copy(lengthMeters = traveledM - sp.startMeters)
+                    else -> sp
+                }
+            }
+            val oldAhead = current.trafficSpans.filter { it.startMeters + it.lengthMeters > traveledM }
+            val same = oldAhead.size == ahead.size && oldAhead.zip(ahead).all { (a, b) ->
+                a.level == b.level && kotlin.math.abs(maxOf(a.startMeters, traveledM) - b.startMeters) < SPAN_SAME_M &&
+                    kotlin.math.abs((a.startMeters + a.lengthMeters) - (b.startMeters + b.lengthMeters)) < SPAN_SAME_M
+            }
+            if (same) return null
+            return behind + ahead
+        }
+
+        /** Span ends this close (meters) are the same span: a fresh fetch moves them a little. */
+        private const val SPAN_SAME_M = 50.0
 
         /** The steps the car has to be in place for: a turn it slows down for, or a ramp, an exit
          *  or a fork it needs the right lane for. A slight bend needs neither. Without the ramps a
