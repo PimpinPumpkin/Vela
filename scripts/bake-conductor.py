@@ -117,7 +117,7 @@ def settle(job, st, now, max_retries):
     elif ids:
         st.update(retryIds=ids, rerun=False)
         print(f"{job['id']}: {len(ids)} region(s) to retry: {' '.join(ids[:20])}")
-    elif failed:
+    elif other:
         st.update(retryIds=[], rerun=True)
         print(f"{job['id']}: rerunning the failed step(s): {', '.join(other)}")
     else:
