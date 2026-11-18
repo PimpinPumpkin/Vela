@@ -41,7 +41,7 @@ import okhttp3.Request
  * profile.) Point it at a self-hosted OSRM/Valhalla before any real release.
  */
 object RouteGeometry {
-    private const val OSRM_BASE = "https://routing.openstreetmap.de"
+    internal const val OSRM_BASE = "https://routing.openstreetmap.de"
     /** We ask OSRM for `geometries=polyline6`. The default `polyline` is 1e5-scaled, i.e. a
      *  1.11 m latitude grid — every vertex of a physically straight road snapped to a meter-ish
      *  step, which the nav puck then has to smooth back out (issue #251). Verified supported by

@@ -85,6 +85,9 @@ data class Place(
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
     val similarPlaces: List<SimilarPlace> = emptyList(), // "People also search for"
     val distanceMeters: Double? = null, // filled when searched relative to a point
+    /** Seconds a stop here adds to the trip, set on an along-route result once the open router
+     *  has priced it ([app.vela.core.data.AlongRouteDetour]). Null on every other place. */
+    val detourSeconds: Int? = null,
 )
 
 /** A "People also search for" entry — a related place, enough to show a card and open it. */
