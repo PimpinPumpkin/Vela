@@ -1596,12 +1596,11 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   a file without `N` lines runs its own. While navigating the dot is the fused position too:
   the nav arrow is placed from the dot, and the speed-adaptive low-pass in `sanePosition`
   trailed a car slowing for a turn by 3 to 6 m (median 3.5 m at 2 to 8 m/s on a real drive),
-  so turns showed late. Browsing, the dot keeps the low-pass, which trails by up to 12 m under
-  10 m/s.
+  so turns showed late. With no drive on, the dot is the dot's own FreeFused (`DotFix`, below).
   - Settings > Navigation "FreeFused" (`FreeFused`, pref `fused_position`, on) off, or the
     calibration dial `freeFusedOff` at 1, steers by the fix as it came (`GuidanceFix.rawWhen`):
-    the car screen's feed too, and the dot takes the low-pass while navigating as it does
-    browsing. The filter is still fed, so turning it back on mid-drive finds it current. A trip
+    the car screen's feed too, and the dot takes the low-pass (`sanePosition`, which trails a
+    walker by about 9 m and a slow car by up to 12 m) whether navigating or not. The filter is still fed, so turning it back on mid-drive finds it current. A trip
     records those inputs as `N` kind `r` and notes `guidance: raw fix` at the start.
   - A Kalman filter over east, north and both velocities with a full 4x4 covariance. Each fix
     gives its position, with the accuracy taken as 1.5 standard deviations (at least 3 m), and
@@ -1626,6 +1625,35 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
     row is.
   - A gap over `RESEED_S` (120 s) starts the model over. A shorter one grows its uncertainty, so
     the first fix after a tunnel is taken.
+- The dot with no drive on is `core/location/DotFix`, one more `PositionFilter` the view model
+  feeds on the main thread, while FreeFused is on. A drive's dot stays guidance's.
+  - Every GPS fix, any accuracy, as guidance takes one.
+  - Wi-Fi and cell fixes (`network`), weighted by their own accuracy, unless a GPS fix under
+    `NETWORK_GPS_FRESH_S` (3 s) old is at least as accurate. They re-anchor the model only after
+    `NETWORK_REANCHOR_AFTER_S` (30 s) without GPS, so a biased Wi-Fi fix cannot pull a GPS-held
+    dot away. The 12 s quiet rule and `FixRules.betterThanLast` apply to a drive only.
+  - Steps (`core/location/StepDetector` through `WalkSense`): the accelerometer at game rate,
+    gravity taken off by a 1 s running mean, smoothed at 40 ms, a peak over 1.2 m/s² after a dip
+    under -0.6, at least 0.28 s and at most 1.5 s after the last, so the first step of a walk
+    and a single bump count for nothing. No permission. Registered only while the map shows in
+    the foreground with FreeFused on and no drive or replay. Each step is a velocity measurement
+    (`PositionFilter.step`): `stepLengthM` over the interval, toward the compass heading
+    (`compassHeading`) plus a learned offset, 0.3 m/s along and the heading's accuracy across.
+    The dot moves with each step.
+  - Learned while walking from a GPS fix of 15 m or better at 0.6 to 3.5 m/s: the step length
+    (GPS speed over the step rate of the last 4 s, 0.4 to 1.2 m, 0.72 m to start) and the
+    compass-to-course angle (a weighted circular mean). Before 4 samples the compass alone is
+    taken at 35 degrees; with samples that agree under 0.75 (a phone in a pocket) a step goes
+    along the model's own course.
+  - No step for `STOP_AFTER_S` (1.2 s) and the GPS under 0.6 m/s: the walker stopped, and the
+    velocity is set to zero (`holdStill`), so the next fix does not carry the dot on.
+  - Steps with no GPS fix for 3 s widen the circle to at least a tenth of the distance walked
+    since the last fix of 20 m or better (`inflate`): on steps alone the error grows with the
+    distance. The accuracy circle is the model's (`accuracyM`).
+  - Steps are ignored for 5 s after a GPS fix at 4 m/s or more: a car's vibration is no walk.
+  - The tuning is a walker's (`Q_WALK`) while steps land, a car's otherwise.
+  - `setprop debug.vela.tune.dotLog 1` logs each fix's distance to the dot, the circle and the
+    learned step under `VelaDot`, in meters only.
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says

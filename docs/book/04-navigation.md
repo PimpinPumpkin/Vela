@@ -197,9 +197,19 @@ speed and course go through a Kalman filter. It follows the fix without lag and 
 leaps away from how the car is moving; three such fixes in a row while moving are taken as real.
 While the car is stopped and the phone at rest it skips every fix that leaps, so a reflection off
 a building at a red light cannot reroute. While you navigate, the dot and the arrow ride the same
-position. Browsing, the dot is smoothed at low speed and trails the car by up to 12 m.
-Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did
-before the filter, and a remote setting can turn it off for everyone without a release.
+position.
+
+With no drive on, the dot runs its own FreeFused (`DotFix`) and takes everything the phone has:
+every GPS fix; Wi-Fi and cell fixes when the GPS is quiet or worse, each weighed by its own
+accuracy; and steps. Steps come from the accelerometer, with no permission. Each one moves the
+dot toward the compass heading by the walker's step length, so the dot moves between GPS fixes
+and stops when the walker stops. The step length and the angle between the compass and the way
+the GPS says you walk are learned on the way, so a phone held crooked still steps the right way.
+A car's vibration is never taken as steps.
+
+Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did before
+the filter, and the dot goes back to its old smoothing, which trails a walker by about 9 m. A
+remote setting can turn it off for everyone without a release.
 
 Each fix changes a hit count:
 

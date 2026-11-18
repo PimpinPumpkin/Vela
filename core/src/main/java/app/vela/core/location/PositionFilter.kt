@@ -27,7 +27,10 @@ import kotlin.math.sqrt
  * state is east, north and both velocities with a full 4x4 covariance.
  * Pure math, no Android, unit-tested in `:core`. Units: seconds, meters, m/s.
  */
-class PositionFilter(private val mode: TravelMode = TravelMode.DRIVE) {
+class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
+    /** The tuning in use: how hard the speed may change and how far one second may carry. The
+     *  dot's filter ([DotFix]) switches it between a walker's and a car's as the motion shows. */
+    @Volatile var mode: TravelMode = mode
     /** [accepted] false = this fix was not taken: [position] is where the model puts the car. */
     class Out(val position: LatLng, val accepted: Boolean, val sigmaM: Double)
 
@@ -64,7 +67,7 @@ class PositionFilter(private val mode: TravelMode = TravelMode.DRIVE) {
      */
     fun update(
         fix: LatLng, tSec: Double, accuracyM: Double?, speedMps: Double?, speedAccMps: Double?,
-        bearingDeg: Double?, bearingAccDeg: Double?, still: Boolean,
+        bearingDeg: Double?, bearingAccDeg: Double?, still: Boolean, canReanchor: Boolean = true,
     ): Out {
         val acc = (accuracyM ?: DEFAULT_ACC_M).coerceIn(MIN_ACC_M, MAX_ACC_M)
         val rPos = (acc / ACC_TO_SIGMA).let { it * it }
@@ -129,7 +132,7 @@ class PositionFilter(private val mode: TravelMode = TravelMode.DRIVE) {
                 zupt -> Int.MAX_VALUE
                 else -> MAX_REJECTED_STOPPED
             }
-            if (++rejected > limit) {
+            if (++rejected > limit && canReanchor) {
                 rejected = 0
                 lat = fix.lat; lng = fix.lng
                 for (i in 0..1) for (j in 0..3) { p[i * 4 + j] = 0.0; p[j * 4 + i] = 0.0 }
@@ -150,6 +153,62 @@ class PositionFilter(private val mode: TravelMode = TravelMode.DRIVE) {
     }
 
     private fun sigma() = sqrt((p[0] + p[5]) / 2)
+
+    /**
+     * One step of a walker at [tSec]: [lengthM] meters taken over [intervalS] seconds toward
+     * [headingDeg], whose accuracy is [headingAccDeg]. The model moves to the step's time and takes
+     * the step's velocity as a measurement, so the position moves with each step between fixes.
+     * With no heading, the step's speed is taken along the model's own course, and while the model
+     * has none the step only moves the clock. Null before the first fix.
+     */
+    fun step(tSec: Double, lengthM: Double, intervalS: Double, headingDeg: Double?, headingAccDeg: Double): Out? {
+        if (!seeded) return null
+        val dt = tSec - lastT
+        if (dt <= 0.0 || dt > RESEED_S) return Out(LatLng(lat, lng), true, sigma())
+        lastT = tSec
+        wasStopped = false
+        predict(dt, qMoving())
+        val sp = (lengthM / intervalS.coerceAtLeast(0.25)).coerceIn(0.2, STEP_MAX_MPS)
+        val course = headingDeg ?: if (ve * ve + vn * vn > 0.09) Math.toDegrees(kotlin.math.atan2(ve, vn)) else null
+        if (course != null) {
+            val r = Math.toRadians(course)
+            val ue = sin(r); val un = cos(r)
+            val along = STEP_SPEED_SIGMA
+            val cross = (sp * Math.toRadians(if (headingDeg == null) STEP_COURSE_ACC_DEG else headingAccDeg.coerceAtLeast(5.0))).coerceIn(0.1, 2.0)
+            val a2 = along * along; val c2 = cross * cross
+            val ree = a2 * ue * ue + c2 * un * un
+            val rnn = a2 * un * un + c2 * ue * ue
+            val ren = (a2 - c2) * ue * un
+            correct(2, doubleArrayOf(sp * ue - ve, sp * un - vn), sub(2, doubleArrayOf(ree, ren, ren, rnn)))
+        }
+        if (p[0] < PPP_FLOOR) p[0] = PPP_FLOOR
+        if (p[5] < PPP_FLOOR) p[5] = PPP_FLOOR
+        return Out(LatLng(lat, lng), true, sigma())
+    }
+
+    /** The walker stopped (no step for a while and no speed from the GPS): the velocity is zero from
+     *  here, so the next fix does not carry the position on past where they stood. */
+    fun holdStill() {
+        if (!seeded) return
+        ve = 0.0; vn = 0.0
+        for (i in 0..3) for (j in 2..3) { p[i * 4 + j] = 0.0; p[j * 4 + i] = 0.0 }
+        p[10] = HOLD_SIGMA * HOLD_SIGMA; p[15] = HOLD_SIGMA * HOLD_SIGMA
+    }
+
+    /** Widen the position's uncertainty to at least [sigmaM] (a walk on steps alone drifts with
+     *  the distance walked, which the per-step noise does not capture). */
+    fun inflate(sigmaM: Double) {
+        val v = sigmaM * sigmaM
+        if (p[0] < v) p[0] = v
+        if (p[5] < v) p[5] = v
+    }
+
+    /** The model's speed, meters per second. */
+    val speedMps: Double get() = sqrt(ve * ve + vn * vn)
+
+    /** The model's position accuracy as Android reports one: the radius holding the true position
+     *  about 68 percent of the time. */
+    val accuracyM: Double get() = sigma() * ACC_TO_SIGMA
 
     /** The Doppler velocity as a measurement (east, north) with its 2x2 noise, or null. */
     private fun doppler(speedMps: Double?, speedAccMps: Double?, bearingDeg: Double?, bearingAccDeg: Double?, acc: Double): Pair<DoubleArray, DoubleArray>? {
@@ -310,6 +369,17 @@ class PositionFilter(private val mode: TravelMode = TravelMode.DRIVE) {
         private const val DEFAULT_BEARING_ACC_DEG = 8.0
         private const val SEED_VEL_VAR = 25.0
         private const val ZUPT_SIGMA = 0.05
+        private const val HOLD_SIGMA = 0.1
+
+        /** A step's speed is believed to this many m/s; a walker's step length and timing vary. */
+        private const val STEP_SPEED_SIGMA = 0.3
+
+        /** A step taken along the model's own course, with no heading of its own, is believed to
+         *  this many degrees across it. */
+        private const val STEP_COURSE_ACC_DEG = 25.0
+
+        /** The fastest step taken as walking or jogging, m/s. */
+        const val STEP_MAX_MPS = 3.5
         private const val PPP_FLOOR = 1.0
         private const val M_PER_DEG_LAT = 110_540.0
         private fun mPerDegLng(lat: Double) = 111_320.0 * cos(Math.toRadians(lat))

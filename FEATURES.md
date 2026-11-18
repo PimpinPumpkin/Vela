@@ -149,6 +149,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Guidance follows a position fused from the GPS fix and the speed and heading the GPS measures,
   so a reflection off a tall building at a red light does not reroute you, and the arrow keeps up
   through a turn (FreeFused). Turned off, guidance follows the raw GPS fix.
+- On foot the dot moves with each step between GPS fixes and stops when you stop, from the
+  accelerometer and the compass, with no extra permission. Wi-Fi and cell location fill in when
+  the GPS is weak.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray.

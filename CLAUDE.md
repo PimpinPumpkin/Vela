@@ -561,7 +561,7 @@ signed file the app fetches at launch (SPEC 11).
 - Log tags worth knowing: `VelaDirections`, `VelaSteps`, `VelaCapture` and `VelaSpeak` (set to
   DEBUG; `VelaSpeak` prints every spoken line, names included, so only on a test phone),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
-  `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`.
+  `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`, `VelaDot` (`setprop debug.vela.tune.dotLog 1`).
 - The Android Auto desktop head unit shows Vela's car screens but skips the car's install
   check. Book chapter 10 has the setup.
 - Restore whatever a test changed on the phone.

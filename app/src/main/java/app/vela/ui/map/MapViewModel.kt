@@ -510,6 +510,11 @@ class MapViewModel @Inject constructor(
     private var destination: LatLng? = null
     private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
+
+    /** The dot's FreeFused while no drive is on: GPS, Wi-Fi and cell fixes and the steps between
+     *  them ([app.vela.core.location.DotFix]). Main thread only: the location collector and the
+     *  step collector both run on it. */
+    private val dotFix = app.vela.core.location.DotFix()
     private var staleTimerJob: Job? = null
     @Volatile private var lastVoiceLangHinted: String? = null // last language we told the user they lack a
                                                               // voice for — so the hint shows once, not per prompt
@@ -967,6 +972,24 @@ class MapViewModel @Inject constructor(
                     }
                 }
             }
+            // Steps for the dot's FreeFused (DotFix.step): the accelerometer at game rate, registered
+            // only while the map shows in the foreground with FreeFused on and no drive or replay, as
+            // the compass is. Each step moves the dot between fixes.
+            launch {
+                kotlinx.coroutines.flow.combine(
+                    _state.map { it.navigating || it.replaying }.distinctUntilChanged(),
+                    app.vela.ui.AppVisibility.foreground,
+                    androidx.compose.runtime.snapshotFlow { app.vela.ui.FreeFused.on.value },
+                ) { busy, fg, on -> !busy && fg && on }.distinctUntilChanged().collectLatest { wanted ->
+                    if (!wanted) return@collectLatest
+                    app.vela.core.location.WalkSense.steps(appContext).collect { st ->
+                        if (app.vela.ui.SimLocation.point.value != null || app.vela.core.location.GuidanceFix.rawWhen()) return@collect
+                        dotFix.compassDeg = _state.value.compassHeading?.toDouble()
+                        val o = dotFix.step(st.tSec, st.intervalS) ?: return@collect
+                        _state.update { it.copy(myLocation = o.position, myAccuracyM = dotFix.accuracyM.toFloat()) }
+                    }
+                }
+            }
             var lastFixRtNanos = 0L
             var lastGpsMs = 0L
             var lastSpeedEvidenceMs = 0L
@@ -990,8 +1013,12 @@ class MapViewModel @Inject constructor(
                 // DOT only when GPS has been quiet a while (cold start / garage / dead antenna —
                 // a GPS-less phone still deserves a coarse position), and it NEVER steers
                 // guidance: the navSession feed below is GPS-only.
+                // With FreeFused on and no drive, DotFix weighs every network fix against the GPS
+                // itself (DotFix.network); a drive keeps the rule above.
+                val navNow = navSession.state.value.navigating
+                val dotFused = !app.vela.core.location.GuidanceFix.rawWhen() && !navNow
                 if (!isGps) {
-                    if (nowMs - lastGpsMs < NETWORK_FIX_QUIET_MS && lastGpsMs > 0L) return@collect
+                    if (!dotFused && nowMs - lastGpsMs < NETWORK_FIX_QUIET_MS && lastGpsMs > 0L) return@collect
                 } else {
                     lastGpsMs = nowMs
                 }
@@ -1011,7 +1038,7 @@ class MapViewModel @Inject constructor(
                 // alternates a 40 m Wi-Fi fix with a 1500 m cell one, and taking every one of them
                 // walked the dot around the neighborhood (issue #630). GPS fixes are always taken.
                 val accM = if (loc.hasAccuracy()) loc.accuracy else if (isGps) 10f else 1000f
-                if (!isGps && !lastAccM.isNaN()) {
+                if (!isGps && !lastAccM.isNaN() && !dotFused) {
                     val ageS = (fixRtNanos - lastAccRtNanos) / 1e9
                     val sp = ((_state.value.mySpeed ?: 0f) + (if (loc.hasSpeed()) loc.speed else 0f)) / 2.0
                     if (!app.vela.core.location.FixRules.betterThanLast(accM, lastAccM, ageS, sp)) return@collect
@@ -1038,13 +1065,38 @@ class MapViewModel @Inject constructor(
                         still = app.vela.core.location.Stillness.still,
                     )
                 } else null
-                // Drop outlier leaps + hold the dot when parked (see sanePosition). While navigating
-                // the dot is the fused position instead: the low-pass trailed a car slowing for a
-                // turn by 3 to 6 m (a real drive, 2026-11-17), and the nav arrow is placed from the
-                // dot, so turns showed late. The filter holds a parked car and refuses a leap itself.
-                val navigatingNow = navSession.state.value.navigating && !_state.value.replaying
+                // The dot's FreeFused (DotFix) takes every fix while FreeFused is on, so it is current
+                // when a drive ends; a network fix it does not take (fresh, better GPS) changes nothing.
+                val dot = if (app.vela.core.location.GuidanceFix.rawWhen()) null else if (isGps) {
+                    dotFix.compassDeg = _state.value.compassHeading?.toDouble()
+                    dotFix.gps(
+                        rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                        if (loc.hasSpeed()) loc.speed.toDouble() else null,
+                        if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+                        if (loc.hasBearing()) loc.bearing.toDouble() else null,
+                        if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+                        still = app.vela.core.location.Stillness.still,
+                    )
+                } else {
+                    dotFix.network(rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null)
+                        ?: if (dotFused) return@collect else null
+                }
+                // While navigating the dot is guidance's fused position: the nav arrow is placed from
+                // the dot, and the old low-pass trailed a car slowing for a turn by 3 to 6 m (a real
+                // drive, 2026-11-17). With no drive it is the dot's own FreeFused, which follows a
+                // walker without the low-pass's lag (up to 9 m at walking pace) and takes the steps
+                // between fixes. FreeFused off: the low-pass with its outlier hold (sanePosition).
+                val navigatingNow = navNow && !_state.value.replaying
+                // adb only (`setprop debug.vela.tune.dotLog 1`): how far the dot sits from the fix, in
+                // meters, never a position.
+                if (dot != null && app.vela.ui.AppTune.localOn("dotLog")) android.util.Log.d(
+                    "VelaDot", String.format(java.util.Locale.US, "%s fix: dot %.1f m from it, circle %.1f m, %s, step %.2f m",
+                        if (isGps) "gps" else "network", dot.position.distanceTo(rawHere), dotFix.accuracyM,
+                        if (dotFix.walkingAt(fixRtNanos / 1e9)) "walking" else "not walking", dotFix.stepLengthM),
+                )
                 val here = when {
                     navigatingNow && fused != null && !fused.raw -> { posOutlierStreak[0] = 0; fused.out.position }
+                    dotFused && dot != null -> { posOutlierStreak[0] = 0; dot.position }
                     upgrade -> { posOutlierStreak[0] = 0; rawHere }
                     else -> sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                 }
@@ -1129,7 +1181,7 @@ class MapViewModel @Inject constructor(
                         mySpeedRaw = measured,
                         // Drives the map's accuracy halo: a coarse-permission or network fix reports
                         // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
-                        myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
+                        myAccuracyM = if (dotFused && dot != null) dotFix.accuracyM.toFloat() else if (loc.hasAccuracy()) loc.accuracy else null,
                         showPsdsTip = false, myLocationStale = false,
                         center = if (arrive) here else it.center ?: here.takeUnless { userPannedSinceLaunch },
                         recenterTick = if (arrive) it.recenterTick + 1 else it.recenterTick,

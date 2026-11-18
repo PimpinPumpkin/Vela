@@ -261,6 +261,11 @@ off the list when it has been.
   stayed within 0.6 m of the GPS fix (median, 4.2 m at most) and refused no fix. Not yet seen on
   a real drive: a stop, and a reflection at a red light between tall buildings. Those were
   checked on desk replays of three recorded drives and the 4a canyon mock drive only.
+- The dot on foot (`DotFix`): steps from the accelerometer move it between fixes, and Wi-Fi
+  and cell fixes fill in when the GPS is weak. Unit-tested (synthetic walks, a car's
+  vibration, a walk indoors on Wi-Fi), and a mock GPS walk on the 4a kept the dot within 0.5 m
+  of every fix, where the old smoothing trailed by about 9 m. Not yet on a real walk: the step
+  detector, the learned step length and the compass offset need a phone in a hand.
 - The car screen's feed through the same filter (`GuidanceFix`): checked on the Desktop Head
   Unit with the phone app open and closed. Not yet in a car.
 - A drive on the open router's line after a reroute returns to Google's line at the next
