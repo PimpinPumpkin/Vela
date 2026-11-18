@@ -1599,7 +1599,7 @@ class MapViewModel @Inject constructor(
             if (hit == null) { searchRecent(address); return@launch }
             // A bare place on purpose: whatever else the geocoder knew about that spot is not
             // the contact's, so the sheet shows the person, the address and the actions.
-            selectContactPlace(Place(id = hit.id, name = name, location = hit.location, address = hit.address ?: address))
+            selectContactPlace(Place(id = hit.id, name = name, location = hit.location, address = app.vela.core.model.contactAddressLine(address, hit.address)))
         }
     }
 
@@ -4227,7 +4227,12 @@ class MapViewModel @Inject constructor(
                     rating = sel.rating ?: d.rating,
                     reviewCount = sel.reviewCount ?: d.reviewCount,
                     hours = if (d.hours.size > sel.hours.size) d.hours else sel.hours,
-                    address = sel.address?.ifBlank { null } ?: d.address,
+                    // Google's address wins when it has a house number and the one showing has
+                    // not: the on-device fill (backfillOfflineAddress) can land first with the
+                    // nearest street alone, and on a numbered street that read as an address.
+                    address = sel.address?.ifBlank { null }
+                        ?.takeUnless { !app.vela.core.model.hasHouseNumber(it) && app.vela.core.model.hasHouseNumber(d.address) }
+                        ?: d.address ?: sel.address,
                     phone = sel.phone ?: d.phone,
                     website = sel.website ?: d.website,
                     statusText = sel.statusText ?: d.statusText,

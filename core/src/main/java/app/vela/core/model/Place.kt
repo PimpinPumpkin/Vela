@@ -226,6 +226,38 @@ private val STREET_LINE = Regex("""^\d+[A-Za-z]?\s+\S""")
 /** Whether [address]'s first part carries a number: "314 F St, Davis" does, "Davis, CA 95616" not. */
 internal fun hasStreetLine(address: String): Boolean = address.substringBefore(',').any { it.isDigit() }
 
+private val HOUSE_NUMBER = Regex("""^\d+[A-Za-z]?$|^\d+[-/]\d+[A-Za-z]?$""")
+private val ORDINAL = Regex("""^\d+(st|nd|rd|th)$""", RegexOption.IGNORE_CASE)
+
+/**
+ * Whether [address]'s first part has a house number: a plain number among its words ("1004 24th
+ * St", "Hauptstraße 5", "12-14 King St"), never an ordinal ("24th St", "1st Ave"). A numbered
+ * street is not an address: the street the on-device index gives when it knows no house there
+ * ("East 8th Street, Davis, CA") has digits and no number.
+ */
+fun hasHouseNumber(address: String?): Boolean {
+    val first = address?.substringBefore(',')?.trim().orEmpty()
+    return first.split(' ', '\t', '#').any { w -> HOUSE_NUMBER.matches(w) && !ORDINAL.matches(w) }
+}
+
+/**
+ * The address a place picked from a contact shows: the one saved in the contact, on one line,
+ * which is the person's own and full. A contact that holds only a street line takes the town from
+ * [geocoded] (the geocoder's answer for it), and one with no address the geocoder's. The geocoder
+ * gave a house only its town and ZIP, so it used to be all the sheet showed.
+ */
+fun contactAddressLine(saved: String, geocoded: String?): String? {
+    val own = saved.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(", ").replace(Regex("""\s+"""), " ").trim()
+    val g = geocoded?.trim()?.ifBlank { null }
+    return when {
+        own.isEmpty() -> g
+        own.contains(',') || g == null -> own
+        hasHouseNumber(g) -> g
+        g.contains(own, ignoreCase = true) -> g
+        else -> "$own, $g"
+    }
+}
+
 /**
  * The address to show and copy. A place found by its typed address is NAMED by the street line
  * ("1451 W Covell Blvd") and its address field holds only the rest ("Davis, CA 95616"), so the

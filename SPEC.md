@@ -3381,6 +3381,11 @@ Then:
   saved place kept without an address) is filled from the on-device address index, online or
   offline (`backfillOfflineAddress`). That fill never asks Google, so opening a saved place
   sends its location nowhere.
+- That fill can land before the place's Google details with the nearest street alone, and a
+  numbered street has digits ("East 8th Street, Davis, CA"). When the details bring an address
+  with a house number (`hasHouseNumber`: a plain number in the first part, not an ordinal) and
+  the one showing has none, the details' address replaces it (`mergeDetails`); otherwise the
+  address showing stays.
 
 #### The same-business rule
 

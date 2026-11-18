@@ -130,6 +130,9 @@ name, the way Home and Work open. Online it asks Google search and takes, among 
 hits, one with no rating and no category, so the house wins over a shop at the same address.
 Offline, or when that misses, it asks the on-device geocoder. The opened place carries only the
 name, the point and the address, so a business at that spot does not lend it a rating or hours.
+The address shown is the one saved in the contact, on one line (`contactAddressLine`): for a
+house the geocoder often knows only the town and ZIP, which used to be all the card said. A
+contact that holds only a street line takes the town from the geocoder.
 If nothing geocodes, the address runs as a plain search.
 
 A saved pin or address opens as saved, with no lookup. A saved business looks up its listing
