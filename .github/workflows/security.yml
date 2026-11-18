@@ -51,7 +51,7 @@ jobs:
       - name: Report to code scanning
         # A pull request from a fork has no permission to write results; the log above has them.
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: mobsfscan.sarif
           category: mobsfscan
