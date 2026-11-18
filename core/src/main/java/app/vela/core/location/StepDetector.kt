@@ -9,8 +9,10 @@ import kotlin.math.sqrt
  * Each sample's magnitude, gravity included, has its running mean taken off (gravity and a
  * tilted phone) and is smoothed to the band a walk lives in. A step is a peak over [PEAK_MPS2]
  * after a dip under [DIP_MPS2], at least [MIN_GAP_S] after the last one. A step counts only in a
- * rhythm: the one before it at most [MAX_GAP_S] earlier, so a single bump (a pothole, the phone
- * set down) is never a step, and the first step of a walk is not reported. Pure logic, no Android.
+ * rhythm: the one before it at most [MAX_GAP_S] earlier, and its gap within [RHYTHM_RATIO] of
+ * the gap before, so a bump, the phone set down or a hand fidgeting while sitting is never a
+ * step. The first two steps of a walk are not reported; the third, in rhythm, is. Pure logic, no
+ * Android.
  */
 class StepDetector {
     /** One step: when it landed, and the time since the step before it. */
@@ -23,6 +25,9 @@ class StepDetector {
     private var peak = 0.0
     private var peakT = 0.0
     private var lastStepT = Double.NaN
+    private var lastGap = Double.NaN
+    /** Steps in rhythm so far, the first one of the run not counted. */
+    private var inRhythm = 0
 
     /** Feed one accelerometer sample (m/s², device axes) at [tSec]; returns a step when one lands. */
     fun sample(tSec: Double, ax: Double, ay: Double, az: Double): Step? {
@@ -49,13 +54,18 @@ class StepDetector {
             val gap = if (lastStepT.isNaN()) Double.NaN else t - lastStepT
             if (!gap.isNaN() && gap < MIN_GAP_S) return null
             lastStepT = t
-            return if (!gap.isNaN() && gap <= MAX_GAP_S) Step(t, gap) else null
+            val rhythmic = !gap.isNaN() && gap <= MAX_GAP_S &&
+                (lastGap.isNaN() || gap / lastGap in (1.0 / RHYTHM_RATIO)..RHYTHM_RATIO)
+            inRhythm = if (rhythmic) inRhythm + 1 else 0
+            lastGap = if (!gap.isNaN() && gap <= MAX_GAP_S) gap else Double.NaN
+            return if (inRhythm >= 2) Step(t, gap) else null
         }
         return null
     }
 
     fun reset() {
         mean = Double.NaN; smooth = 0.0; lastT = Double.NaN; armed = false; peak = 0.0; lastStepT = Double.NaN
+        lastGap = Double.NaN; inRhythm = 0
     }
 
     companion object {
@@ -67,6 +77,8 @@ class StepDetector {
         const val MIN_GAP_S = 0.28
         /** A step more than this after the last one starts a new walk instead of continuing one. */
         const val MAX_GAP_S = 1.5
+        /** A step's gap may differ from the one before by at most this factor either way. */
+        const val RHYTHM_RATIO = 1.6
         private const val MEAN_TAU_S = 1.0
         /** Smoothing toward the walk band: a time constant of 40 ms is a cutoff near 4 Hz. */
         private const val SMOOTH_TAU_S = 0.04

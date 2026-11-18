@@ -1101,8 +1101,8 @@ class MapViewModel @Inject constructor(
                 // adb only (`setprop debug.vela.tune.dotLog 1`): how far the dot sits from the fix, in
                 // meters, never a position.
                 if (dot != null && app.vela.ui.AppTune.localOn("dotLog")) android.util.Log.d(
-                    "VelaDot", String.format(java.util.Locale.US, "%s fix: dot %.1f m from it, circle %.1f m, %s, step %.2f m",
-                        if (isGps) "gps" else "network", dot.position.distanceTo(rawHere), dotFix.accuracyM,
+                    "VelaDot", String.format(java.util.Locale.US, "%s fix (%.0f m): dot moved %.1f m, %.1f m from the fix, circle %.1f m, %s, step %.2f m",
+                        if (isGps) "gps" else "network", accM, prev?.distanceTo(dot.position) ?: 0.0, dot.position.distanceTo(rawHere), dotFix.accuracyM,
                         if (dotFix.walkingAt(fixRtNanos / 1e9)) "walking" else "not walking", dotFix.stepLengthM),
                 )
                 val here = when {

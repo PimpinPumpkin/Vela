@@ -1637,8 +1637,9 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
     dot away. The 12 s quiet rule and `FixRules.betterThanLast` apply to a drive only.
   - Steps (`core/location/StepDetector` through `WalkSense`): the accelerometer at game rate,
     gravity taken off by a 1 s running mean, smoothed at 40 ms, a peak over 1.2 m/s² after a dip
-    under -0.6, at least 0.28 s and at most 1.5 s after the last, so the first step of a walk
-    and a single bump count for nothing. No permission. Registered only while the map shows in
+    under -0.6, at least 0.28 s and at most 1.5 s after the last, and its gap within 1.6 times the
+    gap before (`RHYTHM_RATIO`). A step is reported from the third in rhythm, so a bump or a hand
+    fidgeting while sitting counts for nothing. No permission. Registered only while the map shows in
     the foreground with FreeFused on and no drive or replay. Each step is a velocity measurement
     (`PositionFilter.step`): `stepLengthM` over the interval, toward the compass heading
     (`compassHeading`) plus a learned offset, 0.3 m/s along and the heading's accuracy across.
@@ -1657,13 +1658,21 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   - The tuning is a walker's (`Q_WALK`) while steps land, a car's otherwise.
   - `setprop debug.vela.tune.dotLog 1` logs each fix's distance to the dot, the circle and the
     learned step under `VelaDot`, in meters only.
-  - On foot and at rest (no trusted speed of 3 m/s or more in the last 10 s) the model takes
-    `ON_FOOT_POSITION_NOISE` (1 m²/s) of position noise per second, so it moves about a seventh of
-    the way to each new 10 m fix and a quarter of the way to a 5 m one, and a refused fix widens
-    its uncertainty by the fix's own (`softGate`), so the third in a row is taken. Without these a
-    phone at rest held its first position to a meter and took a new fix at a hundredth, and a dot
-    placed 40 m out indoors stayed there. A fix wider than 20 m (`DOPPLER_MAX_ACC_M`) gives no
-    speed or course, and with no step and no recent vehicle speed the velocity is held at zero.
+  - Three states. Walking: a step in the last 2.5 s; steps move the dot, with `WALK_POSITION_NOISE`
+    (0.3 m²/s). Moving: no step but a trusted GPS speed of `MOVE_MPS` (0.8 m/s) or more in the
+    last 10 s (a car, a bike, a phone in a bag); guidance's tuning. Stationary: neither. A
+    stationary fix is taken as one at rest (speed 0, at rest), so the dot holds and averages the
+    fixes and never jumps to a far one, so indoor fixes jumping tens of meters a second do not move
+    it.
+  - A stationary dot moves only on a held drift (`Drift`, one per source): a running mean of where
+    the fixes land relative to the dot (rate 0.2). When its offset is over 6 m and over 0.75 of the
+    fixes' whole spread for 3 fixes in a row, the dot's uncertainty is widened to it (`inflate`)
+    and the next fixes move it there. Scatter averages out; a dot that started 40 m out comes back
+    within about 6 s. A fix wider than 20 m (`DOPPLER_MAX_ACC_M`) gives no speed or course.
+  - While a GPS fix is under `NETWORK_GPS_FRESH_S` (5 s) old, a network fix is taken only when the
+    GPS is twice as wide and wider than 25 m, and a network drift moves the dot only after 10 s
+    without GPS: indoors Wi-Fi and GPS often disagree by tens of meters, and taking both pulled the
+    dot back and forth.
   - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
     came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o` for
     the old smoothing), into a trip named "Location test" until it is turned off. The bearing

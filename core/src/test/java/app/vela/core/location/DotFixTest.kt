@@ -87,6 +87,7 @@ class DotFixTest {
         val d = DotFix()
         d.gps(start, 0.0, 5.0, 0.0, 0.3, null, null, still = false)
         assertNull(d.network(east(200.0), 1.0, 40.0))
+        assertNull(d.network(east(200.0), 4.0, 4.0))
         // Quiet GPS: taken, but a far Wi-Fi fix does not drag a 5 m model 200 m.
         val o = d.network(east(200.0), 8.0, 40.0)
         assertNotNull(o)
@@ -171,6 +172,48 @@ class DotFixTest {
         var at = start
         for (i in 11..20) at = d.gps(east(0.0, 12.0), i.toDouble(), 5.0, 0.0, 0.3, null, null, still = false).position
         assertTrue("north ${(at.lat - start.lat) * 110_540.0} m", (at.lat - start.lat) * 110_540.0 > 9.0)
+    }
+
+    @Test fun sittingStillTheDotHoldsThroughJumpyIndoorFixes() {
+        val d = DotFix()
+        d.gps(start, 0.0, 25.0, 0.0, 1.0, null, null, still = false)
+        var prev = d.position!!
+        var worstStep = 0.0
+        var worst = 0.0
+        // Two minutes in an office: GPS at 20 to 35 m jumping 25 m any way with a junk speed, and
+        // a 15 m Wi-Fi fix every 5 s scattered 12 m.
+        for (i in 1..120) {
+            var o = d.gps(
+                east(25.0 * jitter(i), 25.0 * jitter(500 + i)), i.toDouble(), 20.0 + 15.0 * kotlin.math.abs(jitter(900 + i)),
+                1.5 * kotlin.math.abs(jitter(700 + i)), 1.0, (i * 61.0) % 360, 50.0, still = false,
+            )
+            if (i % 5 == 0) d.network(east(12.0 * jitter(300 + i), 12.0 * jitter(800 + i)), i + 0.5, 15.0)?.let { o = it }
+            // The first half minute averages in from a 25 m first fix; after that the dot sits still.
+            if (i > 30) {
+                worstStep = maxOf(worstStep, o.position.distanceTo(prev))
+                worst = maxOf(worst, o.position.distanceTo(start))
+            }
+            prev = o.position
+        }
+        assertTrue("largest move between fixes $worstStep m", worstStep < 1.5)
+        assertTrue("farthest from the phone $worst m", worst < 6.0)
+    }
+
+    @Test fun aWifiFixThatDisagreesWithTheGpsDoesNotPullTheDot() {
+        val d = DotFix()
+        // Indoors: GPS at 12 m scattered 8 m around the phone, Wi-Fi at 12 m sitting 30 m east of
+        // it every 2 s. The dot stays with the GPS and does not swing between the two.
+        var prev: LatLng? = null
+        var worstStep = 0.0
+        var at = start
+        for (i in 0..90) {
+            at = d.gps(east(8.0 * jitter(i), 8.0 * jitter(600 + i)), i.toDouble(), 12.0, 0.1, 0.3, null, null, still = false).position
+            if (i % 2 == 0) d.network(east(30.0 + 3.0 * jitter(40 + i)), i + 0.5, 12.0)?.let { at = it.position }
+            if (i > 20) prev?.let { worstStep = maxOf(worstStep, at.distanceTo(it)) }
+            prev = at
+        }
+        assertTrue("ended ${at.distanceTo(start)} m from the phone", at.distanceTo(start) < 8.0)
+        assertTrue("largest move $worstStep m", worstStep < 1.5)
     }
 
     @Test fun aCarsVibrationNeverWalksTheDot() {

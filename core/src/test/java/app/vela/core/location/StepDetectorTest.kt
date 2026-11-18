@@ -26,15 +26,15 @@ class StepDetectorTest {
         return steps
     }
 
-    @Test fun aWalkCountsItsStepsAfterTheFirst() {
+    @Test fun aWalkCountsItsStepsFromTheThird() {
         // 1.8 steps a second for 10 s, a hand-held bounce of 2.5 m/s² with noise.
         val steps = run(10.0) { t, i -> 2.5 * sin(2 * PI * 1.8 * t) + 0.3 * jitter(i) }
-        assertTrue("steps $steps", steps in 16..18)
+        assertTrue("steps $steps", steps in 15..17)
     }
 
     @Test fun aSlowWalkCountsToo() {
         val steps = run(10.0) { t, i -> 1.8 * sin(2 * PI * 1.2 * t) + 0.2 * jitter(i) }
-        assertTrue("steps $steps", steps in 10..12)
+        assertTrue("steps $steps", steps in 9..11)
     }
 
     @Test fun roadVibrationThroughAMountIsNoWalk() {
@@ -44,6 +44,13 @@ class StepDetectorTest {
 
     @Test fun aSingleBumpIsNoStep() {
         val steps = run(10.0) { t, i -> (if (t in 4.0..4.15) 6.0 else 0.0) + 0.1 * jitter(i) }
+        assertEquals(0, steps)
+    }
+
+    @Test fun aHandFidgetingWhileSittingTakesNoSteps() {
+        // Sharp moves at uneven gaps (0.4, 1.1, 0.5, 1.4 s...), the phone picked up and turned.
+        val at = listOf(1.0, 1.4, 2.5, 3.0, 4.4, 4.8, 6.1, 6.5, 7.9, 8.3)
+        val steps = run(10.0) { t, i -> (if (at.any { kotlin.math.abs(t - it) < 0.06 }) 3.0 else 0.0) + 0.1 * jitter(i) }
         assertEquals(0, steps)
     }
 

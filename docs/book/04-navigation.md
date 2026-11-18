@@ -206,9 +206,11 @@ dot toward the compass heading by the walker's step length, so the dot moves bet
 and stops when the walker stops. The step length and the angle between the compass and the way
 the GPS says you walk are learned on the way, so a phone held crooked still steps the right way.
 A car's vibration is never taken as steps. Walking navigation steers by the same position, so
-the turn prompts follow your steps too. Standing or indoors, where GPS fixes scatter, the dot
-keeps following new fixes and a fix far from it is taken by the third in a row, so it never
-freezes on a bad first fix. Settings > Diagnostics > "Record a location test" records every fix,
+the turn prompts follow your steps too. When you are not stepping and the GPS shows no real
+speed, the phone is taken as stationary: the dot holds and averages the fixes instead of chasing
+their scatter, and it moves only when the fixes keep landing to one side of it, so it never
+freezes on a bad first fix either. While the GPS answers, a Wi-Fi fix that disagrees with it
+does not pull the dot. Steps count from the third in a steady rhythm. Settings > Diagnostics > "Record a location test" records every fix,
 step and dot position into a trip that can be shared.
 
 Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did before

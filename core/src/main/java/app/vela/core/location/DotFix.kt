@@ -25,7 +25,33 @@ import kotlin.math.sin
  * it, on the main thread.
  */
 class DotFix {
-    private val filter = PositionFilter(TravelMode.DRIVE).apply { softGate = true }
+    private val filter = PositionFilter(TravelMode.DRIVE)
+
+    /**
+     * Where one source's fixes have been landing relative to the dot, as running means: east and
+     * north offsets and the mean square distance. Scatter around the dot averages out; an offset
+     * that holds its direction means the dot, not the fixes, is wrong ([offset]).
+     */
+    private class Drift {
+        private var e = 0.0
+        private var n = 0.0
+        private var sq = 0.0
+        private var count = 0
+        private var held = 0
+        fun add(ye: Double, yn: Double) {
+            e += (ye - e) * DRIFT_RATE; n += (yn - n) * DRIFT_RATE
+            sq += (ye * ye + yn * yn - sq) * DRIFT_RATE
+            count++
+            val m = hypot(e, n)
+            held = if (count >= DRIFT_MIN_FIXES && m > DRIFT_MIN_M && m > DRIFT_RATIO * kotlin.math.sqrt(sq)) held + 1 else 0
+        }
+        /** The offset in meters once it has held for [DRIFT_HOLD_FIXES] fixes in a row, or null
+         *  while the fixes only scatter (a chance run of them one way does not last that long). */
+        fun offset(): Double? = if (held >= DRIFT_HOLD_FIXES) hypot(e, n) else null
+        fun reset() { e = 0.0; n = 0.0; sq = 0.0; count = 0; held = 0 }
+    }
+    private val gpsDrift = Drift()
+    private val netDrift = Drift()
 
     /** The last GPS speed from a fix good enough to trust it, and when. */
     private var goodSpeed: Double? = null
@@ -73,16 +99,22 @@ class DotFix {
         @Suppress("NAME_SHADOWING") val bearingDeg = bearingDeg.takeIf { trusted }
         if (trusted && speedMps != null) { goodSpeed = speedMps; goodSpeedT = tSec }
         val lastGood = goodSpeed?.takeIf { tSec - goodSpeedT <= GOOD_SPEED_HOLD_S }
-        // A walker, someone standing, a phone on a table: let the position follow new fixes
-        // instead of trusting where it sat to a meter. A car at speed keeps guidance's tuning.
-        filter.positionNoise = if (walking || (lastGood ?: 0.0) < VEHICLE_MPS) ON_FOOT_POSITION_NOISE else 0.0
-        // Nothing says it moves (no step, no speed it can trust, no recent vehicle speed): at rest.
-        if (!trusted && !walking && (lastGood ?: 0.0) < VEHICLE_MPS) filter.holdStill()
+        // Stationary: no step and no speed the GPS can be trusted for. The phone is not going
+        // anywhere, so the dot holds and averages the fixes instead of chasing their scatter
+        // (indoors they jump tens of meters a second). Walking, steps move it; moving with no steps
+        // (a car, a bike, a bag), the trusted speed does, as in guidance.
+        val stationary = !walking && (lastGood ?: 0.0) < MOVE_MPS
+        filter.positionNoise = if (walking) WALK_POSITION_NOISE else 0.0
+        if (stationary) filter.holdStill()
+        settleDrift(gpsDrift, fix)
         // Stopped: no step for a while and the GPS says not moving. Without this the position would
         // carry on at the last step's speed until the next fix pulled it back.
         if (walking && tSec - lastStepT > STOP_AFTER_S && (speedMps ?: 0.0) < STOP_MAX_MPS) filter.holdStill()
         if (walking) learn(tSec, accuracyM, speedMps, speedAccMps, bearingDeg, bearingAccDeg)
-        val out = filter.update(fix, tSec, accuracyM, speedMps, speedAccMps.takeIf { trusted }, bearingDeg, bearingAccDeg.takeIf { trusted }, still)
+        // Stationary, the fix is taken as one at rest (speed 0, at rest): it is averaged in, and one
+        // far off is never jumped to. Only a held drift ([settleDrift]) moves the dot.
+        val out = if (stationary) filter.update(fix, tSec, accuracyM, 0.0, STATIONARY_SPEED_ACC, null, null, still = true)
+        else filter.update(fix, tSec, accuracyM, speedMps, speedAccMps.takeIf { trusted }, bearingDeg, bearingAccDeg.takeIf { trusted }, still)
         if (out.accepted && (accuracyM ?: 10.0) <= GOOD_FIX_M) stepMetersSinceFix = 0.0
         lastGpsT = tSec
         lastGpsAcc = accuracyM ?: 10.0
@@ -94,11 +126,30 @@ class DotFix {
     fun network(fix: LatLng, tSec: Double, accuracyM: Double?): PositionFilter.Out? {
         val acc = accuracyM ?: NETWORK_DEFAULT_ACC_M
         val gpsAge = if (lastGpsT.isNaN()) Double.MAX_VALUE else tSec - lastGpsT
-        if (gpsAge < NETWORK_GPS_FRESH_S && lastGpsAcc <= acc) return null
-        filter.mode = if (walkingAt(tSec)) TravelMode.WALK else TravelMode.DRIVE
+        // While the GPS is fresh it is the reference: a Wi-Fi or cell fix is taken only when the GPS
+        // is far worse. Indoors the two often disagree by tens of meters, and taking both pulled the
+        // dot back and forth between them.
+        if (gpsAge < NETWORK_GPS_FRESH_S && !(lastGpsAcc > 2 * acc && lastGpsAcc > NETWORK_GPS_POOR_M)) return null
+        val walking = walkingAt(tSec)
+        filter.mode = if (walking) TravelMode.WALK else TravelMode.DRIVE
         val lastGood = goodSpeed?.takeIf { tSec - goodSpeedT <= GOOD_SPEED_HOLD_S }
-        if ((lastGood ?: 0.0) < VEHICLE_MPS) filter.positionNoise = ON_FOOT_POSITION_NOISE
-        return filter.update(fix, tSec, acc, null, null, null, null, still = false, canReanchor = gpsAge > NETWORK_REANCHOR_AFTER_S)
+        filter.positionNoise = if (walking) WALK_POSITION_NOISE else 0.0
+        val stationary = !walking && (lastGood ?: 0.0) < MOVE_MPS
+        if (stationary) filter.holdStill()
+        // Nor may a network fix's drift move the dot while the GPS speaks.
+        if (gpsAge > NETWORK_DRIFT_AFTER_S) settleDrift(netDrift, fix) else netDrift.reset()
+        return if (stationary) filter.update(fix, tSec, acc, 0.0, STATIONARY_SPEED_ACC, null, null, still = true, canReanchor = gpsAge > NETWORK_REANCHOR_AFTER_S)
+        else filter.update(fix, tSec, acc, null, null, null, null, still = false, canReanchor = gpsAge > NETWORK_REANCHOR_AFTER_S)
+    }
+
+    /** Feed one fix's offset from the dot to its source's [Drift]; when the offset holds, widen the
+     *  dot's uncertainty to it so the next fixes move the dot there, then start counting again. */
+    private fun settleDrift(drift: Drift, fix: LatLng) {
+        val at = filter.position ?: return
+        val ye = (fix.lng - at.lng) * 111_320.0 * cos(Math.toRadians(at.lat))
+        val yn = (fix.lat - at.lat) * 110_540.0
+        drift.add(ye, yn)
+        drift.offset()?.let { filter.inflate(it); drift.reset() }
     }
 
     /** A step that landed at [tSec], [intervalS] after the one before. Null when it is not taken
@@ -158,6 +209,7 @@ class DotFix {
         filter.reset()
         lastGpsT = Double.NaN; lastGpsAcc = Double.NaN; lastGpsSpeed = null
         goodSpeed = null; goodSpeedT = Double.NaN
+        gpsDrift.reset(); netDrift.reset()
         lastStepT = Double.NaN; stepTimes.clear()
     }
 
@@ -167,11 +219,21 @@ class DotFix {
         const val DOPPLER_MAX_ACC_M = 20.0
         /** How long a trusted speed says what the phone is doing. */
         const val GOOD_SPEED_HOLD_S = 10.0
-        /** At or above this trusted speed the phone is in a vehicle. */
-        const val VEHICLE_MPS = 3.0
-        /** Position noise on foot and at rest, m²/s: with a 10 m fix the dot moves about a seventh
-         *  of the way to each new one, with a 5 m fix a quarter, the way the old smoothing felt. */
-        const val ON_FOOT_POSITION_NOISE = 1.0
+        /** Under this trusted speed, with no step, the phone is stationary. */
+        const val MOVE_MPS = 0.8
+        /** Position noise while walking, m²/s, for the turns and stops steps do not show. */
+        const val WALK_POSITION_NOISE = 0.3
+        /** How fast a source's [Drift] follows its fixes (a running mean over about ten). */
+        const val DRIFT_RATE = 0.2
+        const val DRIFT_MIN_FIXES = 4
+        /** An offset counts as held from this many meters... */
+        const val DRIFT_MIN_M = 6.0
+        /** ...and when it is this large a part of the fixes' whole spread around the dot... */
+        const val DRIFT_RATIO = 0.75
+        /** ...for this many fixes in a row. */
+        const val DRIFT_HOLD_FIXES = 3
+        /** The speed accuracy a stationary fix is given, m/s. */
+        const val STATIONARY_SPEED_ACC = 0.3
         /** A GPS fix this accurate ends a walk on steps alone. */
         const val GOOD_FIX_M = 20.0
         /** Steps with no GPS fix for this long widen the dot's circle with the distance walked... */
@@ -189,8 +251,12 @@ class DotFix {
         const val STEP_IGNORE_MPS = 4.0
         /** ...for this long after such a fix. */
         const val VEHICLE_HOLD_S = 5.0
-        /** A network fix is skipped while a GPS fix this recent is at least as accurate. */
-        const val NETWORK_GPS_FRESH_S = 3.0
+        /** While a GPS fix is this recent, a network fix is skipped unless the GPS is far worse... */
+        const val NETWORK_GPS_FRESH_S = 5.0
+        /** ...twice as wide as the network fix and wider than this. */
+        const val NETWORK_GPS_POOR_M = 25.0
+        /** A network fix's drift may move the dot only once the GPS has been quiet this long. */
+        const val NETWORK_DRIFT_AFTER_S = 10.0
         /** A network fix may re-anchor the model only once the GPS has been quiet this long. */
         const val NETWORK_REANCHOR_AFTER_S = 30.0
         const val NETWORK_DEFAULT_ACC_M = 500.0

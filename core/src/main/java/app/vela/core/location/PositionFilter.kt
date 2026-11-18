@@ -33,15 +33,9 @@ class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
     @Volatile var mode: TravelMode = mode
 
     /** Position noise in m²/s added on every prediction, beyond what the velocity explains: a
-     *  person drifts, turns and fidgets in ways no speed reading shows. 0 for a car (guidance). The
-     *  dot's filter ([DotFix]) sets it on foot and at rest, so it keeps following new fixes instead
-     *  of trusting where it sat to a meter. */
+     *  walker turns and stops in ways the steps do not show. 0 for a car (guidance); the dot's
+     *  filter ([DotFix]) sets it while walking. */
     @Volatile var positionNoise: Double = 0.0
-
-    /** A fix the gate refuses widens the model's uncertainty by the fix's own, and a third in a row
-     *  is taken wherever the car is: the dot's rule ([DotFix]). Off, guidance's: a refused fix
-     *  changes nothing and, at rest, none is ever taken (a reflection at a red light). */
-    @Volatile var softGate: Boolean = false
     /** [accepted] false = this fix was not taken: [position] is where the model puts the car. */
     class Out(val position: LatLng, val accepted: Boolean, val sigmaM: Double)
 
@@ -139,12 +133,10 @@ class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
             // at rest by the accelerometer, the car is not moving and a fix that leaps is the GPS:
             // nothing gives way. Stopped by the Doppler alone, [MAX_REJECTED_STOPPED] do.
             val limit = when {
-                softGate || !stopped || tSec - seededAt < WARMUP_S -> MAX_REJECTED
+                !stopped || tSec - seededAt < WARMUP_S -> MAX_REJECTED
                 zupt -> Int.MAX_VALUE
                 else -> MAX_REJECTED_STOPPED
             }
-            // Soft gate: a refused fix says the model may be wrong by as much as the fix is.
-            if (softGate) { p[0] += rPos; p[5] += rPos }
             if (++rejected > limit && canReanchor) {
                 rejected = 0
                 lat = fix.lat; lng = fix.lng
