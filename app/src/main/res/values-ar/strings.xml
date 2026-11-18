@@ -1136,4 +1136,5 @@
         <item quantity="other">%1$d مكان</item>
     </plurals>
     <string name="navservice_notif_eta">الوصول %1$s</string>
+    <string name="settings_place_names_more">المزيد</string>
 </resources>
