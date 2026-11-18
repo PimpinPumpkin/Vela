@@ -790,7 +790,7 @@ internal class NavController(
                 val segments = parsed?.segments.orEmpty()
                 // WHAT THE ENGINE WAS HANDED (TripLog `N` lines): a file that has them feeds the
                 // engine exactly those, the positions, speeds, accuracies and headings the drive's
-                // engine got, its outlier holds and its dead-reckoned points between fixes, so the
+                // engine got, the fixes its position filter refused and its dead-reckoned points between fixes, so the
                 // replay goes off route and speaks where the drive did. The fixes still move the
                 // dot. An older file derives the inputs from the fixes as the drive would have.
                 val inputs = parsed?.inputs.orEmpty()
@@ -859,6 +859,7 @@ internal class NavController(
                 var lastReplayT = 0L
                 var fixIdx = 0
                 val posOutlierStreak = intArrayOf(0)
+                val fixFilter = app.vela.core.location.PositionFilter() // steers as live does
                 val t0 = fixes.first().t
                 // A re-drive runs at the drive's pace: a reroute takes the time it takes, and at
                 // three times the speed the car would be three times as far down the road by then.
@@ -919,9 +920,12 @@ internal class NavController(
                             val sp = loc.speed
                             val wide = (acc ?: 0.0) > app.vela.core.location.Stillness.ACC_TRUST_M
                             val course = loc.bearing.takeIf { b -> b != 0f && sp > 0.5f && (!wide || sp >= app.vela.core.location.Stillness.SLOW_MPS) }
-                            // Steered by the fix, as live: the low-pass is the dot's.
-                            val held = posOutlierStreak[0] > 0
-                            navSession.onLocation(if (held) here else rawHere, imperial, speed?.toDouble(), accuracyM = acc, bearingDeg = course?.toDouble(), fromFix = !held)
+                            // Steered by the position filter, as live: the low-pass is the dot's.
+                            val fused = fixFilter.update(
+                                rawHere, loc.time / 1000.0, acc, sp.toDouble(), pm?.speedAccuracy?.toDouble(),
+                                if (sp > 0.5f) loc.bearing.toDouble() else null, pm?.bearingAccuracy?.toDouble(), still = pm?.still == true,
+                            )
+                            navSession.onLocation(fused.position, imperial, speed?.toDouble(), accuracyM = acc, bearingDeg = course?.toDouble(), fromFix = fused.accepted)
                         }
                     }
                     host.updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)

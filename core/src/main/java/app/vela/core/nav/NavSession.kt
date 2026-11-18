@@ -461,8 +461,8 @@ class NavSession @Inject constructor(
 
     fun onLocation(
         loc: LatLng, imperial: Boolean = false, speedMps: Double? = null, accuracyM: Double? = null, bearingDeg: Double? = null,
-        // False when [loc] is not this fix's own position: a dead-reckoned point, or the last good
-        // position an outlier hold kept. Such a point steers the drive but never starts a recheck.
+        // False when [loc] is not this fix's own position: a dead-reckoned point, or the position
+        // filter's model for a fix it refused. Such a point steers the drive but never starts a recheck.
         fromFix: Boolean = true,
     ) {
         val s = _state.value

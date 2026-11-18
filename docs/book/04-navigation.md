@@ -190,8 +190,12 @@ HEADING_NEAR_M   = 25     // a course matching the route this far ahead or behin
 For driving, a 5 m fix gives a 28 m corridor, a fix with no accuracy figure 42 m, and a 30 m fix
 70 m.
 
-The engine reads the GPS fix itself, not the dot. The dot is smoothed at low speed and trails the
-car by up to 12 m, which once put the car before a corner it was already turning at.
+The engine reads Vela's own fused position, not the dot (`PositionFilter`). Each GPS fix and its
+Doppler speed and course go through a Kalman filter. It follows the fix without the dot's lag,
+skips a fix that leaps away from how the car is moving, and while the car is stopped and the
+phone at rest skips every fix that leaps, so a reflection off a building at a red light cannot
+reroute. The dot is smoothed at low speed and trails the car by up to 12 m, which once put the
+car before a corner it was already turning at.
 
 Each fix changes a hit count:
 

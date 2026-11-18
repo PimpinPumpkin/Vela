@@ -1588,10 +1588,32 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   radius: under poor sky a receiver's accuracy figure halves and doubles from fix to fix, and a
   multipath leap taken as is becomes the position the outlier hold then keeps against the next
   good fixes. A first lock sharpening on a phone with no network location still lands at once.
-- Guidance steers by the fix itself. The speed-adaptive low-pass in `sanePosition` is the dot's:
-  under 10 m/s it trailed the car by up to 12 m while the course handed beside it was fresh, and
-  it marked every slow fix as not the fix's own, so slow driving started no recheck. Only an
-  outlier hold steers with the held position (`fromFix` false).
+- Guidance steers by Vela's own fused position, `core/location/PositionFilter`, run on every
+  guidance fix (the phone's feed and a replay of a file without `N` lines). The speed-adaptive
+  low-pass in `sanePosition` is the dot's: under 10 m/s it trails the car by up to 12 m.
+  - A Kalman filter over east, north and both velocities with a full 4x4 covariance. Each fix
+    gives its position, with the accuracy taken as 1.5 standard deviations (at least 3 m), and
+    its Doppler velocity: the speed's accuracy along the course (0.5 m/s when the fix has none)
+    and speed times the course's accuracy across it (8 degrees when none). Acceleration noise is
+    `Q_DRIVE` (4), `Q_STOPPED` (0.2) or `Q_REST` (0.02).
+  - A fix past the 99.9 percent chi-square cut (`GATE`, 13.8) from the prediction is not taken:
+    guidance steers with the model's position and `fromFix` is false. Moving, the third in a row
+    (`MAX_REJECTED`, 2) re-anchors the model on it, and so does one in the first `WARMUP_S`
+    (30 s) after the model starts, so a bad first fix in a garage does not pin it.
+  - Stopped means a Doppler speed under `REST_MPS` (0.5 m/s) at both ends of the interval. Stopped
+    with the phone at rest (`Stillness`), the velocity is set to zero before predicting, without
+    the pull on the position a velocity correction makes, and no fix that leaps is ever taken: a
+    reflection off a building at a red light is the GPS, not the car. Stopped by the Doppler
+    alone, `MAX_REJECTED_STOPPED` (20) in a row give way. The accelerometer alone is not trusted:
+    it reads at rest while a car creeps at walking pace.
+  - The first fix that reads stopped raises the position variance to the fix's own, so the
+    stop's fixes place the car in a few seconds instead of the model creeping from where the
+    braking left it.
+  - A Doppler velocity further from the model than `MAX_ACCEL_MPS2` (8 m/s²) × dt plus three
+    times its noise is a glitch (0 at freeway speed for one fix): not taken, but the second in a
+    row is.
+  - A gap over `RESEED_S` (120 s) starts the model over. A shorter one grows its uncertainty, so
+    the first fix after a tunnel is taken.
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says
@@ -1985,7 +2007,8 @@ MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time 
 A recheck fetches from the current position through the remaining stops. It does not run off
 route, in a replay, with an offer on screen, or with "Live traffic re-checks" off (pref
 `nav_live_rechecks`, `NavSession.liveRechecks`). It starts only from a fix that is the phone's
-own position (`onLocation`'s `fromFix`: not a dead-reckoned point, not an outlier hold), rated
+own position (`onLocation`'s `fromFix`: not a dead-reckoned point, not a fix the position filter
+refused), rated
 `RECHECK_MAX_ACC_M` (30 m) or better, with no off-route hits counted (`recheckFrom`). What it
 brings back is dropped unless the last such fix, at most `TRUSTED_FIX_MAX_AGE_MS` (5 s) old, lies
 within `CAR_ON_CANDIDATE_M` (50 m) of the candidate's first km (`startsAtCar`). A real drive
@@ -2814,7 +2837,8 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 
 - The trip format is `core/replay/TripLog`: a `META` header, then route blocks and
   `lat,lng,t,bearing,speed` fixes. Every fix also carries its provider and the engine's
-  off-route hit count.
+  off-route hit count, and from 2026-11-17 its speed accuracy, course accuracy and the
+  accelerometer's at-rest flag: what the position filter took from it.
 - Trips are segmented. The start route and every mid-drive swap is its own `RP`/`RD`/`M` block,
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.
@@ -2843,10 +2867,11 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   minutes and kilometers left, the step, the traffic ratio, the number of congestion stretches
   and the route's source.
 - An `N` line is one call of the nav engine as the drive made it:
-  `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is a fix as it
-  came, `h` the last good position an outlier hold kept (files from 2026-11-11 to 11-17 also wrote
-  `h` for the dot's low-passed point, which guidance then steered by), `d` a dead-reckoned point
-  between fixes;
+  `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is the position
+  filter's position for a fix it took, `h` its position for a fix it refused, `d` a dead-reckoned
+  point between fixes. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
+  and the position an outlier hold kept for `h`, and from 2026-11-11 to 11-17 also `h` for the
+  dot's low-passed point;
   `msSinceFix` counts from the last fix line, and an empty field was not passed. The location
   path writes the route block first if the route changed (`NavController.syncTripRoute`), so an
   input never lands ahead of the route it ran against. A file runs about 600 KB per hour of

@@ -23,13 +23,15 @@ import app.vela.core.nav.NavReplay
  *   source=X;steps=N;named=KofN, then how the steps were made, [Route.made]) are appended fields,
  *   absent on older trips
  * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` — one per maneuver (instruction last; may hold commas)
- * - `<lat>,<lng>,<t>,<bearing>,<speed>,<offRoute>,<accuracy>,<provider>,<offRouteHits>` — one per
- *   recorded GPS fix (the last four are appended fields, absent on older trips)
+ * - `<lat>,<lng>,<t>,<bearing>,<speed>,<offRoute>,<accuracy>,<provider>,<offRouteHits>,<speedAcc>,
+ *   <bearingAcc>,<still>`: one per recorded GPS fix (all after speed are appended fields, absent
+ *   on older trips; the last three are what [app.vela.core.location.PositionFilter] took)
  * - `K,<t>,<text>`: a nav decision (recheck offered / kept, reroute attempt, swap) or a note on
  *   what the drive ran on; no coordinates, no names, no spoken text
  * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
- *   handed, once per call: kind `f` is a fix as it came, `h` the last good position an outlier
- *   hold kept, `d` a dead-reckoned point between fixes, [msSinceFix] after the last fix line.
+ *   handed, once per call: kind `f` is the position filter's position for a fix it took, `h` for
+ *   one it refused (older files: the fix as it came, and an outlier hold's position), `d` a
+ *   dead-reckoned point between fixes, [msSinceFix] after the last fix line.
  *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
  * - `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`: one route a router
  *   answered while the drive asked for one (a reroute, a recheck): Google's and the open router's
@@ -50,6 +52,9 @@ object TripLog {
         val accuracyM: Float? = null,  // the fix's reported accuracy (drives the corridor scaling)
         val provider: String? = null,  // "gps" / "network" / "fused" (2026-09-13+ recordings)
         val offRouteHits: Int? = null, // the engine's off-route debounce count at this fix (2026-09-13+)
+        val speedAccuracy: Float? = null,   // the fix's speed accuracy, m/s (2026-11-17+)
+        val bearingAccuracy: Float? = null, // the fix's course accuracy, degrees (2026-11-17+)
+        val still: Boolean? = null,         // the accelerometer's at-rest flag at this fix (2026-11-17+)
     ) {
         val latLng: LatLng get() = LatLng(lat, lng)
     }
@@ -60,8 +65,8 @@ object TripLog {
     data class Event(val tag: String, val t: Long, val text: String)
 
     /** One call of the nav engine as the drive made it (an `N` line): [segment] is the route block
-     *  it ran against, [afterFix] the fix line it followed (-1 before the first), and [kind] `f` (a
-     *  fix), `h` (an outlier hold's last good position) or `d` (dead-reckoned). */
+     *  it ran against, [afterFix] the fix line it followed (-1 before the first), and [kind] `f` (the
+     *  position filter's position for a fix it took), `h` (for one it refused) or `d` (dead-reckoned). */
     data class Input(
         val segment: Int, val afterFix: Int, val msSinceFix: Long, val kind: Char,
         val lat: Double, val lng: Double, val speed: Double?, val accuracyM: Double?, val bearing: Double?,
@@ -213,6 +218,9 @@ object TripLog {
             accuracyM = p.getOrNull(6)?.toFloatOrNull(),
             provider = p.getOrNull(7)?.takeIf { it.isNotBlank() },
             offRouteHits = p.getOrNull(8)?.toIntOrNull(),
+            speedAccuracy = p.getOrNull(9)?.toFloatOrNull(),
+            bearingAccuracy = p.getOrNull(10)?.toFloatOrNull(),
+            still = p.getOrNull(11)?.takeIf { it.isNotBlank() }?.let { it == "1" },
         )
     }
 

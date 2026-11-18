@@ -86,7 +86,7 @@ class TripStore @Inject constructor(
     }
 
     /** Append a fix to the active trip (no-op if none is recording). */
-    fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0) = synchronized(lock) {
+    fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0, still: Boolean = false) = synchronized(lock) {
         val f = active ?: return
         runCatching {
             // offRoute + accuracy LAST (appended columns, 2026-07-16): the parser reads fixes by
@@ -96,9 +96,13 @@ class TripStore @Inject constructor(
             // provider + offRouteHits LAST (appended columns, 2026-09-13): which provider the fix
             // came from (a network fix that slipped in explains a teleport) and how far the
             // engine's off-route debounce had counted (a reroute about to fire shows as 1, 2, 3).
+            // Speed accuracy, course accuracy and the at-rest flag LAST (2026-11-17): what the
+            // position filter took from this fix, so a replay can run the filter as the drive did.
             f.appendText(
                 "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
-                    "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits\n",
+                    "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits," +
+                    "${if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond else ""}," +
+                    "${if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees else ""},${if (still) 1 else 0}\n",
             )
             lastFixWallMs = System.currentTimeMillis()
         }

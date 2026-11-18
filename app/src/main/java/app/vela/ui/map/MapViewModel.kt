@@ -973,6 +973,7 @@ class MapViewModel @Inject constructor(
             nav.lastNavFedMs = android.os.SystemClock.elapsedRealtime()
             var prevWasGps = false
             val posOutlierStreak = intArrayOf(0)
+            val fixFilter = app.vela.core.location.PositionFilter() // the position guidance steers by
             var lastAccM = Float.NaN // accuracy of the last fix the dot took, and when (issue #630)
             var lastAccRtNanos = 0L
             locationProvider.updates().collect { loc ->
@@ -1025,12 +1026,6 @@ class MapViewModel @Inject constructor(
                 )
                 // Drop outlier leaps + hold the dot when parked (see sanePosition).
                 val here = if (upgrade) { posOutlierStreak[0] = 0; rawHere } else sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
-                // Guidance steers by the fix: the low-pass is for the dot. Under 10 m/s it trails
-                // the car by up to 12 m while the course handed beside it is fresh, and it marked
-                // every slow fix as not the fix's own, so slow driving never started a recheck or
-                // kept the reroute's trusted position. Only an outlier hold steers with the held one.
-                val held = posOutlierStreak[0] > 0
-                val steerAt = if (held) here else rawHere
                 lastAccM = accM
                 lastAccRtNanos = fixRtNanos
                 val movedM = prev?.distanceTo(here) ?: 0.0
@@ -1124,7 +1119,7 @@ class MapViewModel @Inject constructor(
                 maybeAdvanceTransitNav(here)
                 if (_state.value.transitNav != null) publishTransitNotice(here)
                 // Save the fix to the active trip (no-op unless one is recording).
-                tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits)
+                tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits, still = app.vela.core.location.Stillness.still)
                 passAlert(here, speed?.toDouble(), nowMs)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
@@ -1135,6 +1130,21 @@ class MapViewModel @Inject constructor(
                 // accuracy for minutes), SAY so — the frozen banner used to be indistinguishable
                 // from working nav (the stale timer never fires while coarse fixes keep coming).
                 if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    // Guidance steers by Vela's own fused position (PositionFilter): the fix and its
+                    // Doppler velocity, with the accelerometer's at-rest flag. The dot's low-pass
+                    // trails a slow car by up to 12 m; the raw fix takes a reflection off a building
+                    // at a red light as the car. A fix the filter does not take steers with the
+                    // model's position and never starts a recheck.
+                    val fused = fixFilter.update(
+                        rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                        if (loc.hasSpeed()) loc.speed.toDouble() else null,
+                        if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+                        if (loc.hasBearing()) loc.bearing.toDouble() else null,
+                        if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+                        still = app.vela.core.location.Stillness.still,
+                    )
+                    val steerAt = fused.position
+                    val held = !fused.accepted
                     // The drive's record of what the engine is handed (TripLog `N`), after the
                     // route it runs against, so a replay feeds the engine the same.
                     if (!_state.value.replaying && navSession.state.value.navigating) {
@@ -1150,7 +1160,7 @@ class MapViewModel @Inject constructor(
                         // Course for the engine's heading-vs-route off-route term and the
                         // reroute's departure heading. Fresh only: stopped = null.
                         bearingDeg = fixBearing?.toDouble(),
-                        // An outlier hold steers with the last good position; it never starts a recheck.
+                        // A fix the filter did not take steers with its model; it never starts a recheck.
                         fromFix = !held,
                     )
                     nav.lastNavFedMs = nowMs
