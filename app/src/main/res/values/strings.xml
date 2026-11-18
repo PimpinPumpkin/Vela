@@ -1370,7 +1370,7 @@
     <string name="settings_speeding_alert_hint">Says \"You\'re over the speed limit\" once you have been over the posted limit for a few seconds, and again after you slow down and creep back over it. Only where a posted limit is known, the one the speed badge shows. Off unless you turn it on.</string>
     <string name="nav_speeding_alert">You\'re over the speed limit</string>
     <string name="settings_limit_drop_alert">Warn before the speed limit drops</string>
-    <string name="settings_limit_drop_alert_hint">Shows a card when the posted limit on your route drops sharply ahead, up to a kilometer (about half a mile) before it at highway speed, and puts the new limit on the road ahead bar. Once per drop, and not when you are already at the new limit. Only where posted limits are known. Off unless you turn it on.</string>
+    <string name="settings_limit_drop_alert_hint">Shows a card before the posted limit on your route drops sharply, up to a kilometer ahead at highway speed, and marks it on the road ahead bar. Once per drop, and not when you are already slow enough.</string>
     <string name="settings_limit_drop_min">Warn for a drop of at least</string>
     <string name="settings_limit_drop_voice">Say it out loud</string>
     <string name="settings_limit_drop_voice_hint">Also says the new limit through the navigation voice. Off shows the card only.</string>
