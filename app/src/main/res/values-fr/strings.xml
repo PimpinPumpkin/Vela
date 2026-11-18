@@ -88,7 +88,7 @@
     <string name="settings_routing_installed_places">Installé · lieux consultables hors ligne</string>
     <string name="settings_routing_places_downloading">Enregistrement des lieux · %1$d %%</string>
     <!-- format -->
-    <string name="settings_get_places">Obtenir les lieux</string>
+    <string name="settings_get_places">Obtention des lieux</string>
     <string name="settings_update_places">Mettre à jour les lieux</string>
     <string name="settings_routing_update_available">Installé · mise à jour des lieux disponible</string>
     <string name="settings_routing_remove">Supprimer le routage hors ligne</string>
@@ -414,11 +414,11 @@
     <string name="navservice_channel_name">Navigation</string>
     <string name="cat_restaurants">Restaurants</string>
     <string name="cat_coffee">Café</string>
-    <string name="cat_gas">Essence</string>
-    <string name="cat_groceries">Épicerie</string>
+    <string name="cat_gas">Carburant</string>
+    <string name="cat_groceries">Épiceries</string>
     <string name="cat_hotels">Hôtels</string>
     <string name="cat_pharmacy">Pharmacie</string>
-    <string name="cat_atms">Distributeurs</string>
+    <string name="cat_atms">Distributeurs de billets</string>
     <string name="cat_parks">Parcs</string>
     <!-- Resume-navigation prompt (persisted nav session) -->
     <string name="mapscreen_resume_nav">Reprendre la navigation vers %1$s ?</string>
@@ -615,7 +615,7 @@
     <string name="settings_hub_diagnostics_sub">Rapports de plantage, trajets, mode démo, expériences</string>
     <string name="settings_hub_about_sub">Version, mises à jour, soutien</string>
     <string name="settings_theme_amoled">Noir AMOLED</string>
-    <string name="place_review_more">Plus</string>
+    <string name="place_review_more"></string>
     <string name="place_review_less">Moins</string>
     <string name="settings_traffic_lights">Guidage aux feux tricolores</string>
     <string name="settings_traffic_lights_hint">Reperes vocaux : passez le feu puis tournez. Anglais uniquement, desactive par defaut.</string>
@@ -704,7 +704,7 @@
     <string name="suggestion_contact_badge">Contact</string>
     <string name="settings_speed_cams">Radars</string>
     <string name="settings_speed_cam_warn">M\'avertir à voix haute</string>
-    <string name="settings_speed_cam_warn_hint">Annonce \"Radar devant\" à l\'approche d\'un radar pendant la navigation, environ douze secondes à l\'avance. Suit votre réglage d\'instructions vocales. Avertir de la présence de radars au volant est réglementé dans certains pays : l\'option reste désactivée tant que vous ne l\'activez pas.</string>
+    <string name="settings_speed_cam_warn_hint">Annonce \"Radar devant\" et affiche une notification à l\'approche d\'un radar pendant la navigation, environ douze secondes à l\'avance. Suit votre réglage d\'instructions vocales. Avertir la présence de radars au volant est réglementé dans certains pays : l\'option reste désactivée tant que vous ne l\'activez pas.</string>
     <string name="nav_speed_camera_ahead">Radar devant</string>
     <string name="settings_speed_cams_hint">Affiche les radars fixes cartographiés dans OpenStreetMap. Installations fixes uniquement ; la couverture suit la carte, surtout fournie en Europe. Désactivé par défaut.</string>
     <string name="settings_building_overlay">Compléter les bâtiments manquants</string>
@@ -824,7 +824,7 @@
     <string name="whatsnew_got_it">Compris</string>
     <string name="whatsnew_full_notes">Notes complètes</string>
     <string name="settings_whatsnew">Nouveautés de cette version</string>
-    <string name="settings_whatsnew_hint">Les notes de version de la build que vous utilisez. Elles s\'affichent aussi une fois après chaque mise à jour.</string>
+    <string name="settings_whatsnew_hint">Les notes de version du build que vous utilisez.</string>
     <string name="mapvm_export_trips_subject">Trajets Vela : %1$d trajets (%2$d points)</string>
     <string name="mapvm_export_trip_scrubbed_subject">Trajet Vela : %1$d points, extrémités rognées</string>
     <string name="mapvm_area_uses_pack">Les lieux et adresses de cette zone sont inclus dans le téléchargement de %1$s</string>
@@ -1141,7 +1141,7 @@
         <item quantity="other">%1$d morceaux ont une version plus récente</item>
     </plurals>
     <string name="settings_confirm_end_nav">Demander avant d\'arrêter la navigation</string>
-    <string name="settings_confirm_end_nav_hint">Pendant un trajet, la croix rouge et Retour demandent d\'abord, pour qu\'un appui accidentel n\'y mette pas fin</string>
+    <string name="settings_confirm_end_nav_hint">Pendant un trajet, la touche retour demande toujours validation. Si activé, la croix rouge également.</string>
     <string name="nav_end_confirm_title">Arrêter la navigation ?</string>
     <string name="nav_end_confirm_body">L\'itinéraire et ses arrêts seront effacés.</string>
     <string name="nav_end_confirm_end">Arrêter</string>
@@ -1335,4 +1335,50 @@
     <string name="trip_shortcut_unsupported">Cet écran d\'accueil ne peut pas épingler de raccourcis</string>
     <string name="trip_shortcut_themed">Comme les icônes à thème</string>
     <string name="settings_places_source_note">Rechercher ou toucher un lieu interroge toujours Google pour les horaires, les avis et les photos, quel que soit votre choix.</string>
+    <string name="settings_directions_language">Langue pour les directions</string>
+    <string name="settings_directions_same_as_app">Identique à l\'application</string>
+    <string name="settings_directions_language_hint">Langue dans laquelle les virages sont affichés et annoncés. Sélectionne une voix correspondante dans la bibliothèque de voix.</string>
+    <string name="settings_region_updated_on">mis à jour le %1$s</string>
+    <string name="settings_keep_north_up">Maintenir vers le nord</string>
+    <string name="settings_keep_north_up_hint">La carte ne pivote jamais : la rotation à deux doigts est désactivée et le nord reste orienté vers le haut.</string>
+    <string name="settings_start_view">Ouverture de la carte</string>
+    <string name="settings_start_view_here">Où je suis</string>
+    <string name="settings_start_view_last">Là où je l\'ai laissée</string>
+    <string name="settings_start_view_place">Sur un lieu défini</string>
+    <string name="settings_start_view_use_current">Utiliser la vue actuelle de la carte</string>
+    <string name="settings_start_view_drive">Mode conduite</string>
+    <string name="settings_start_view_hint">Lieu d\'ouverture de la carte au démarrage de Vela. Le mode conduite correspond à la carte seule avec l\'affichage de conduite, pour un smartphone ou une tablette montée. Un lien depuis une autre application s\'ouvrira quand même au bon emplacement.</string>
+    <string name="driving_mode">Mode conduite</string>
+    <string name="driving_mode_leave">Quitter le mode conduite</string>
+    <string name="settings_start_view_saved">Vela s\'ouvrira sur cette vue.</string>
+    <string name="settings_car_speed">Votre vitesse sur l\'écran de la voiture</string>
+    <string name="settings_car_speed_hint">Désactivé, l\'écran de la voiture affichera seulement la limite de vitesse ; la voiture a son propre compteur de vitesse.</string>
+    <string name="settings_update_all_regions">Tout mettre à jour (%1$d)</string>
+    <string name="settings_lists_import_is_places">Ce fichier contient les lieux enregistrés, pas les listes. Importez-le depuis Paramètres &gt; Lieux enregistrés &gt; Importer.</string>
+    <string name="settings_place_names">Noms de lieux</string>
+    <string name="settings_place_names_more"></string>
+    <string name="settings_place_names_most"></string>
+    <string name="link_trip_stop_missing">%1$s introuvable. Le trajet va l\'ignorer.</string>
+    <string name="transit_notice_to_destination">Vers votre destination</string>
+    <string name="transit_notice_next_is_yours">Sortez au prochain arrêt : %1$s</string>
+    <string name="camera_badge_plate">Marqueur de caméra de plaque d\'immatriculation</string>
+    <string name="welcome_google_on_gives">Avis, photos, circulation en temps réel et Street View.</string>
+    <string name="welcome_cameras_avoid">Contourner</string>
+    <string name="bulk_select">Sélectionner des lieux</string>
+    <string name="nav_voice_button">Directions annoncées : on, alertes uniquement ou off</string>
+    <string name="link_trip_pick_start">Choisir un départ</string>
+    <string name="settings_zoom_key_press">Appuyez sur la touche à utiliser. Les flèches, OK et Retour sont utilisés.</string>
+    <string name="welcome_trips_title">Vos trajets</string>
+    <string name="settings_map_look_dark">Noir</string>
+    <string name="mapscreen_location_tip_body">Le GPS peut difficilement se localiser en intérieur. Sur GrapheneOS, activez le réseau de localisation sous Paramètres &gt; Localisation &gt; Services de localisation.</string>
+    <string name="bulk_all">Tous</string>
+    <string name="bulk_done">Sélection terminée</string>
+    <string name="welcome_feature_private_body">Pas de compte, de publicité, de statistiques ni de serveur Vela.</string>
+    <string name="settings_zoom_key_in">Touche de zoom</string>
+    <string name="settings_map_look_hint">Vela est le style Liberty de OpenFreeMap avec les couleurs, icônes et largeurs de route de Vela. Les autres sont les styles Bright, Positron, Fiord et Black (son style sombre) de OpenFreeMap tels qu\'ils sont ; Fiord et Black sont sombres quel que soit le thème.</string>
+    <string name="mapvm_export_list_chooser">Exporter la liste</string>
+    <string name="settings_voice_mode_alerts">Alertes uniquement</string>
+    <string name="settings_map_look_bright">Clair</string>
+    <string name="link_trip_start_here">Démarrer d\'où je suis</string>
+    <string name="list_reorder">Glissez pour réorganiser</string>
 </resources>
