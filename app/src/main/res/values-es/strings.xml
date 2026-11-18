@@ -12,8 +12,8 @@
     <string name="settings_map_style">Estilo del mapa</string>
     <string name="settings_map_style_hint">OpenFreeMap funciona sin clave de API.</string>
     <string name="settings_units">Unidades</string>
-    <string name="settings_units_imperial">Imperiales (millas, pies)</string>
-    <string name="settings_units_metric">Métricas (kilómetros, metros)</string>
+    <string name="settings_units_imperial">Imperial (millas, pies)</string>
+    <string name="settings_units_metric">Métrico (kilómetros, metros)</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_follow_system_language">Seguir el idioma del sistema</string>
     <string name="settings_language_hint">Cambia el idioma de la app y de las indicaciones habladas. Descarga una voz a juego en la biblioteca de voces.</string>
@@ -696,7 +696,7 @@
     <string name="settings_search_hint">Buscar en los ajustes</string>
     <string name="settings_search_none">Sin coincidencias</string>
     <string name="settings_app_name_title">Nombre de la app</string>
-    <string name="settings_app_name_generic">Llamarla solo «Mapas»</string>
+    <string name="settings_app_name_generic">Llámalo solo «Mapas»</string>
     <string name="settings_app_name_generic_hint">Muestra el icono del lanzador como «Mapas» en vez de «Vela Maps», para un aspecto de serie. Puede que tengas que volver a añadir el acceso directo en la pantalla de inicio después del cambio.</string>
     <string name="settings_contacts_search">Buscar en tus contactos</string>
     <string name="settings_contacts_search_hint">Al escribir el nombre de un contacto se sugieren sus direcciones guardadas, con su foto y la etiqueta de la dirección de tu agenda. Tus contactos no salen de este teléfono; al elegir uno, esa dirección se busca como cualquier consulta escrita y se abre con el nombre del contacto.</string>
