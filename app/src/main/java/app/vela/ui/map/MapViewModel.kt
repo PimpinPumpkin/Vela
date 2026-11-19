@@ -6063,6 +6063,12 @@ class MapViewModel @Inject constructor(
         clearSearch()
         _state.update { it.copy(selected = null, drawing = DrawState()) }
     }
+    /** The ruler (issue #910): the drawing bar in measure mode, which saves nothing. */
+    fun startMeasure() {
+        if (_state.value.navigating) return
+        clearSearch()
+        _state.update { it.copy(selected = null, drawing = DrawState(measure = true, color = DRAW_COLORS[1])) }
+    }
     fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.add(p.lat, p.lng)) } ?: s }
     fun drawMovePoint(index: Int, to: LatLng) = _state.update { s ->
         s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->

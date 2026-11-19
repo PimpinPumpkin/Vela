@@ -3970,6 +3970,10 @@ the shared 12 s timeout cuts it off.
   drops the four layers and `ensureShapeLayers` seats them again on the fresh raster.
 - The shape sheet's menu has "Edit this drawing" (`DrawState.editOf`, saved back in place) and
   "Delete this drawing" (`ShapeActions.delete`, `MapViewModel.deleteOpenedShape`).
+- The ruler (issue #910) is the same tool with `DrawState.measure` set, opened from the layers
+  panel's "Measure distance" row (`MapViewModel.startMeasure`). An orange line; its bar
+  (`MeasureBar`) shows the total and, from three points, the last leg, with Undo and Done. Done
+  and Back clear it; nothing is saved.
 
 ### 5.7 Saved places, lists, parking and imports
 
@@ -5994,8 +5998,8 @@ reuses it.
   tiles, four to a row, with a label under each. Three groups: Map type has the five looks
   (`MapStyle`, the same pick as Settings > Appearance > Map look) and Satellite; Map details has
   traffic, transit lines, terrain and 3D buildings; Place icons has Vela data, Google and Both
-  (`MapPoiPrefs.placesSource`). The "Use Vela without Google" switch stays a row under them. Every
-  tile flips the holder Settings flips (`MapLook`, `SatelliteLayer`, `Traffic`, `TransitLayer`,
+  (`MapPoiPrefs.placesSource`). The "Use Vela without Google" switch stays a row under them,
+  then the "Driving mode" and "Measure distance" rows. Every tile flips the holder Settings flips (`MapLook`, `SatelliteLayer`, `Traffic`, `TransitLayer`,
   `Topography`, `Buildings3d`, `GoogleFree`). The chosen or on tile has a 2.5 dp `primary` ring on
   its picture and a `primary` label. Map type is one choice: picking a look while satellite is on
   turns satellite off, and the satellite tile toggles. A look's picture is drawn in Compose from

@@ -307,6 +307,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A Google My Maps link opens with its pins, lines and areas, and can be saved.
 - Draw a line or an area on the map from Your lists. A point tapped where the area would cross
   itself goes into its nearest side instead.
+- "Measure distance" in the layers panel is a ruler: tap points to read the total and the last
+  leg. Nothing is kept.
 - The parking button saves where you parked, then offers Find my car, which shows how far the car
   is and when you parked. "Parking history" keeps past spots. When a drive ends, the arrival card
   offers to save the spot too.

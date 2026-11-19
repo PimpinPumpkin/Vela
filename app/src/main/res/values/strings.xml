@@ -1101,6 +1101,9 @@
     <string name="draw_undo">Remove the last point</string>
     <string name="draw_cancel">Cancel</string>
     <string name="draw_save">Save</string>
+    <string name="measure_distance">Measure distance</string>
+    <string name="measure_hint">Tap the map to measure from point to point</string>
+    <string name="measure_total_leg">%1$s in all · last leg %2$s</string>
     <string name="draw_saved">Saved “%1$s” to My drawings</string>
     <string name="draw_list_name">My drawings</string>
     <string name="draw_delete">Delete this drawing</string>
