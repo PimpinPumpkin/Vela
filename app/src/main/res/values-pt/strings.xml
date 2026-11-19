@@ -1462,7 +1462,6 @@
     <string name="settings_zoom_key_in">Tecla de ampliação</string>
     <string name="settings_zoom_key_out">Tecla de redução</string>
     <string name="settings_zoom_key_none">Não definido</string>
-    <string name="settings_zoom_keys_hint">Duas teclas que permitem ampliar e reduzir o mapa em qualquer ponto, como as teclas 2 e 5 de um teclado numérico. Num campo de texto, o utilizador ainda digita.</string>
     <string name="settings_zoom_key_press">Pressione a tecla para usar. As setas, OK e Voltar estão reservadas.</string>
     <string name="settings_zoom_key_clear">Limpar</string>
     <string name="settings_project_site_button">Website</string>

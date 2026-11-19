@@ -1243,7 +1243,6 @@
     <string name="settings_zoom_key_in">Tasta de mărire</string>
     <string name="settings_zoom_key_out">Tasta de micșorare</string>
     <string name="settings_zoom_key_none">Nesetat</string>
-    <string name="settings_zoom_keys_hint">Două taste care măresc harta din orice punct al acesteia, cum ar fi tastele 2 și 5 de pe tastatură. În câmpurile de text, acestea funcționează în continuare ca taste de introducere a textului.</string>
     <string name="settings_zoom_key_press">Apasă tasta pe care dorești să o utilizezi. Săgețile, OK și Înapoi sunt deja ocupate.</string>
     <string name="settings_zoom_key_clear">Elimină</string>
     <string name="settings_prefer_buttons_hint">Menține activ un buton pentru elementele care pot fi controlate și prin gesturi: butoanele de mărire și micșorare de pe hartă și butonul listei de pași din bara de navigare. Rămâne activ în permanență pe telefoanele fără ecran tactil.</string>

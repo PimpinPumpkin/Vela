@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import app.vela.ui.dpadHighlight
+import app.vela.ui.map.coversMap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -117,7 +118,7 @@ fun SearchBar(
     // shadow reads as a smear on a dark map.
     val dark = app.vela.ui.theme.isAppInDarkTheme()
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap(withOthersOnly = true).fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerLowest),
         elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 6.dp),

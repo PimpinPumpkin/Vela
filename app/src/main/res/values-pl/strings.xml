@@ -1411,7 +1411,6 @@
     <string name="settings_zoom_key_in">Przycisk powiększania</string>
     <string name="settings_zoom_key_out">Przycisk pomniejszania</string>
     <string name="settings_zoom_key_none">Nieustawione</string>
-    <string name="settings_zoom_keys_hint">Dwa przyciski służące do powiększania mapy z dowolnego miejsca na niej, na przykład 2 i 5 na klawiaturze numerycznej. W polu tekstowym nadal wprowadzają one znaki.</string>
     <string name="settings_zoom_key_press">Naciśnij klawisz aby użyć. Klawisze strzałek, OK oraz Wstecz są już zajęte.</string>
     <string name="settings_project_site_button">Strona internetowa</string>
     <string name="nav_left_your_route">Skręcono w „%1$s”. Wybrano najszybszą trasę.</string>

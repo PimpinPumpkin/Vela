@@ -121,13 +121,13 @@ class MainActivity : ComponentActivity() {
     }
 
     @Deprecated("Deprecated in Java")
-    /** The assigned zoom keys (Settings > Navigation, issue #694). A key that types is offered
-     *  only after nothing else took it, so a digit still types in a text field. */
+    /** The map keys (Settings > Navigation, issue #694). A key that types is offered only after
+     *  nothing else took it, so a digit still types in a text field. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         val typing = event.isPrintingKey
-        if (!typing && app.vela.ui.ZoomKeys.handle(event)) return true
+        if (!typing && app.vela.ui.MapKeys.handle(event)) return true
         if (super.dispatchKeyEvent(event)) return true
-        return typing && app.vela.ui.ZoomKeys.handle(event)
+        return typing && app.vela.ui.MapKeys.handle(event)
     }
 
     override fun onUserLeaveHint() {

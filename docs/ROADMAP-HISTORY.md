@@ -51,6 +51,11 @@ says so.
   drive. Its level is the long-run average of what the voice has said, kept between drives.
 - Spoken directions can be brief (each turn once, no street name) or only for highway exits.
 - "Keep north up" stops the map from turning, and a north-up drive keeps the car in the middle.
+- Map keypad controls (SPEC 10.3): pan, rotation, zoom and selection use assigned keys and the
+  keypad layout. On an Android 16 emulator and an Android 14 keypad phone, the detached simulated
+  drive showed the crosshair and Re-center control after a key pan; recentering and touch panning
+  behaved as expected. Keypad pan, rotation and zoom round trips also passed on the phone. A real
+  drive and phone selection of an along-route result were not tested.
 - With a large display size or large text, the drive keeps the road ahead in view and the turn
   card fits (`NavFraming`).
 - Ramps, forks and keeps show an arrow that points only the way to go.
