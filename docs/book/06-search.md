@@ -77,8 +77,10 @@ state. The autocomplete lists the nearby houses with that number first.
 
 A suggestion with a location is a place row. One without is a query row ("Starbucks", "cvs
 pharmacy hours"), and tapping it runs that text as a search. At most eight place rows and three
-query rows show. On-device address hits lead them when they are within `SUGGEST_NEAR_M` (80 km)
-of the bias point and no Google row within 120 m carries the same house number.
+query rows show. Exact on-device address hits lead them when they are within `SUGGEST_NEAR_M`
+(80 km) of the bias point and no Google row within 120 m carries the same house number;
+approximate on-device estimates (interpolated positions, neighbor houses or street centerlines)
+are dropped when Google autocomplete returns places.
 
 When the view is 50 km or more from you and no suggestion's name starts with what you typed,
 `homeSuggestions` sends one more autocomplete request around you and puts up to three matching
@@ -212,17 +214,18 @@ setting off, the list ends in "Show other locations" and the requests run on a t
 
 ### A typed street address
 
-`AddressQuery.parse` recognizes text that starts with a house number and a street. A result is
-that address when the house number and the street's first distinguishing word (not a direction,
-not "St" or "Ave") are both whole words of its name or address. A substring test found the
-digits in ZIP codes and in neighbors' numbers and took a list of businesses for the address.
+`AddressQuery.parse` recognizes both number-first ("912 Miller Dr") and street-first
+("Hauptstraße 42") addresses. A result is that address when the house number and the street's
+first distinguishing word (not a direction, not "St" or "Ave") are both whole words of its name
+or address. A substring test found the digits in ZIP codes and in neighbors' numbers and took a
+list of businesses for the address.
 
 When no result within `ADDRESS_SEARCH_SPAN_M` of the view is the address, the search asks the
 autocomplete to geocode the text and takes up to three rows that are. The same constant is the
 least window an address is searched over, so zooming in to one building does not shrink it. The
 on-device geocoder adds up to three hits ahead of those, unless a result within 120 m already is
-the address. An on-device estimate (an interpolated position, or a point on the street) is
-dropped whenever any other result is the address.
+the address. An on-device estimate (an interpolated position, a neighbor house or a point on the
+street) is dropped whenever any other result is the address.
 
 Rows that are the address come first, ordered by how well they agree with the whole typed street
 (`AddressQuery.score` counts the direction and the street type), then by distance. The list is:

@@ -1392,16 +1392,24 @@ class MapViewModel @Inject constructor(
                 val localAddrs = localDeferred?.await().orEmpty()
                 photonDeferred?.cancel()
                 if (_state.value.query.trim() == term) {
-                    val houseNo = Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
+                    val parsedAddr = app.vela.core.util.AddressQuery.parse(term)
+                    val houseNo = parsedAddr?.first ?: Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
                     // A house number alone (issue #746): the keyless autocomplete mixes the same
                     // number on streets abroad into its rows (two of four from a view over Paris),
                     // so the rows near the view are kept when there are any.
                     val autoPlaces = if (term.trim().all { it.isDigit() } && near != null) {
                         auto.places.filter { it.location.distanceTo(near) <= SUGGEST_NEAR_M }.ifEmpty { auto.places }
                     } else auto.places
-                    fun coveredByGoogle(p: Place) = houseNo != null && autoPlaces.any { g ->
-                        g.location.distanceTo(p.location) < 120.0 &&
-                            (g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
+                    fun carries(p: Place) = parsedAddr != null && app.vela.core.util.AddressQuery.matches(term, p.name, p.address)
+                    fun coveredByGoogle(p: Place): Boolean {
+                        // Drop approximate OSM estimates (interpolated, neighbor house, or street
+                        // centerline) whenever Google autocomplete answered, so a fallback point
+                        // 200 m away at an intersection never leads Google's exact house.
+                        if (app.vela.core.data.OfflineAddressStore.isApproximate(p)) return autoPlaces.isNotEmpty()
+                        return houseNo != null && autoPlaces.any { g ->
+                            g.location.distanceTo(p.location) < 120.0 &&
+                                (carries(g) || g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
+                        }
                     }
                     val addrLead = localAddrs
                         .filter { p -> near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M }
@@ -1443,10 +1451,17 @@ class MapViewModel @Inject constructor(
                 // was the reported vanishing act - on a commercial road SOME business always sits
                 // within a block of the house, and the ADDRESS suggestion got eaten by it. Only a
                 // Google entry that carries the same HOUSE NUMBER actually covers an address hit.
-                val houseNo = Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
-                fun coveredByGoogle(p: Place) = houseNo != null && ranked.any { g ->
-                    g.location.distanceTo(p.location) < 120.0 &&
-                        (g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
+                val parsedAddr = app.vela.core.util.AddressQuery.parse(term)
+                val houseNo = parsedAddr?.first ?: Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
+                fun carries(p: Place) = parsedAddr != null && app.vela.core.util.AddressQuery.matches(term, p.name, p.address)
+                fun coveredByGoogle(p: Place): Boolean {
+                    if (app.vela.core.data.OfflineAddressStore.isApproximate(p)) {
+                        return ranked.any(::carries) || photon.any(::carries)
+                    }
+                    return houseNo != null && ranked.any { g ->
+                        g.location.distanceTo(p.location) < 120.0 &&
+                            (carries(g) || g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
+                    }
                 }
                 val addrLead = (localAddrs + photon)
                     .filter { p -> near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M }

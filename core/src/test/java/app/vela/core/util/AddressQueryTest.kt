@@ -12,13 +12,19 @@ class AddressQueryTest {
         assertEquals("1451" to "covell", AddressQuery.parse("1451 W Covell Blvd, Davis"))
         assertEquals("200" to "b", AddressQuery.parse("200 B St"))
         assertEquals("12" to "north", AddressQuery.parse("12 North St"))
+        assertEquals("42" to "hauptstraße", AddressQuery.parse("Hauptstraße 42"))
+        assertEquals("15a" to "berliner", AddressQuery.parse("Berliner Str. 15a, Berlin"))
         assertNull(AddressQuery.parse("coffee"))
         assertNull(AddressQuery.parse("5th street"))
+        assertNull(AddressQuery.parse("Highway 50"))
+        assertNull(AddressQuery.parse("Route 66"))
+        assertNull(AddressQuery.parse("Davis 95616"))
     }
 
     @Test fun theAddressItselfMatches() {
         assertTrue(AddressQuery.matches("912 Miller Dr", "912 Miller Dr", "Davis, CA 95616"))
         assertTrue(AddressQuery.matches("1451 w covell blvd", "Some Market", "1451 W Covell Blvd, Davis, CA 95616"))
+        assertTrue(AddressQuery.matches("Hauptstraße 42", "Hauptstraße 42", "10827 Berlin"))
     }
 
     @Test fun digitsInsideAZipOrANeighborAreNotAMatch() {
