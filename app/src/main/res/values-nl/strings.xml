@@ -578,7 +578,7 @@
     <string name="map_list_saved">“%1$s” opgeslagen in je lijsten</string>
     <string name="settings_update_nightly">Nightly-builds meenemen</string>
     <string name="settings_update_nightly_hint">Werk bij naar de nieuwste nightly (voorlopige versie) in plaats van alleen stabiele versies. Nightlies zijn verser maar minder getest.</string>
-    <string name="settings_lists_export_hint">Maak een back-up van je lijsten naar een bestand of herstel ze op een ander apparaat.</string>
+    <string name="settings_lists_export_hint">Maak een back-up van je lijsten naar een bestand of herstel ze op een ander apparaat. Importeren neemt ook een lijst uit de map \'Opgeslagen\' van Google Takeout (één CSV per lijst); elke plaats daarin wordt opgezocht, dus er is een verbinding nodig.</string>
     <string name="settings_lists_imported">%1$d lijst(en) geïmporteerd</string>
     <string name="settings_places_imported">%1$d plaats(en) geïmporteerd</string>
     <!-- format -->
@@ -933,7 +933,7 @@
     <string name="whatsnew_got_it">Begrepen</string>
     <string name="whatsnew_full_notes">Volledige notities</string>
     <string name="settings_whatsnew">Wat is er nieuw in deze versie</string>
-    <string name="settings_whatsnew_hint">De releasenotities van de build die je gebruikt. Ze verschijnen ook één keer na elke update.</string>
+    <string name="settings_whatsnew_hint">De releasenotities van de build die je gebruikt.</string>
     <string name="mapvm_export_trips_subject">Vela-ritten: %1$d ritten (%2$d punten)</string>
     <string name="mapvm_export_trip_scrubbed_subject">Vela-rit: %1$d punten, uiteinden ingekort</string>
     <string name="mapvm_area_uses_pack">Plaatsen en adressen voor dit gebied komen mee met de download van %1$s</string>
@@ -1371,4 +1371,54 @@
     <string name="search_saved_tip">Jouw opgeslagen plaatsen bevinden zich onder de bladwijzerknop hierboven. Speld er een vast om hem hier te houden.</string>
     <string name="search_open_now_phrase">nu openen</string>
     <string name="list_sound_ping">Ping</string>
+    <string name="settings_place_names">Namen voor plaatsen</string>
+    <string name="settings_place_names_more">Meer</string>
+    <string name="settings_place_names_most">Meest</string>
+    <string name="settings_place_names_hint">Meer en Meest tonen de namen en pictogrammen van winkels, scholen en andere plekken wanneer je verder uitzoomt. Een drukke omgeving wordt hierdoor voller, en de kaart kan daar minder soepel bewegen.</string>
+    <string name="nav_voice_button">Gesproken aanwijzingen: aan, alleen meldingen of uit</string>
+    <string name="welcome_feature_private_body">Geen account, geen advertenties, geen analyses en geen Vela-server.</string>
+    <string name="welcome_cameras_intro">Dit embleem markeert een Flock- of andere kentekenplaathercamera op de kaart. Vela kan ook:</string>
+    <string name="camera_badge_plate">Markering voor kentekenplaatcamera</string>
+    <string name="camera_badge_speed">Marketing voor snelheidscamera</string>
+    <string name="welcome_cameras_avoid">Eromheen rijden</string>
+    <string name="welcome_google_intro">U kunt dit later in de instellingen wijzigen, of slechts delen ervan uitschakelen.</string>
+    <string name="welcome_google_on_gives">Beoordelingen, foto’s, live verkeer en Street View.</string>
+    <string name="welcome_google_on_sends">Zoekopdrachten en routes gaan naar Google, zonder account.</string>
+    <string name="welcome_google_off_gives">Alleen open data. Geen beoordelingen, foto\'s of actuele verkeersinformatie.</string>
+    <string name="welcome_google_off_sends">Er wordt niets naar google verstuurd.</string>
+    <string name="settings_voice_mode_on">Aan</string>
+    <string name="settings_voice_mode_alerts">Alleen meldingen</string>
+    <string name="settings_voice_mode_off">Uit</string>
+    <string name="settings_voice_mode_hint">Alleen meldingen behoudt de snelheidsovertredings- en camera-waarschuwingen als een korte pieptoon en zegt verder niets. De luidsprekerknop tijdens het rijden opent dezelfde drie opties.</string>
+    <string name="welcome_trips_title">Uw ritten</string>
+    <string name="welcome_trips_intro">Wordt op deze telefoon bewaard, zodat u een rit kunt herhalen of aan een foutmelding bijvoegen. Niets verlaat de telefoon, tenzij u het deelt.</string>
+    <string name="welcome_trips_save">Mijn ritten opslaan op deze telefoon</string>
+    <string name="welcome_trips_clear">Ritten na 30 dagen verwijderen</string>
+    <string name="settings_trip_auto_clear">Verwijdert ritten na 30 dagen</string>
+    <string name="settings_trip_auto_clear_hint">Opgeslagen ritten die ouder zijn dan 30 dagen, worden automatisch verwijderd.</string>
+    <string name="transit_notice_next_is_yours">Bij de volgende halte uitstappen: %1$s</string>
+    <string name="transit_notice_to">Naar %1$s</string>
+    <string name="transit_notice_to_destination">Naar uw bestemming</string>
+    <plurals name="transit_notice_stops_left">
+        <item quantity="one">Nog %d halte</item>
+        <item quantity="other">Nog %d haltes</item>
+    </plurals>
+    <string name="car_setting_traffic">Verkeer</string>
+    <string name="settings_google_uses">Waar Google voor wordt gebruikt</string>
+    <string name="settings_google_uses_hint">Zet u er een uit en Vela stopt met het opvragen bij Google. Elke schakelaar bevindt zich ook op een aparte pagina.</string>
+    <string name="settings_google_uses_traffic">Verkeer en routes</string>
+    <string name="list_export">Deze lijst exporteren</string>
+    <string name="list_delete_title">%1$s verwijderen?</string>
+    <plurals name="lists_delete_count">
+        <item quantity="one">Lijst verwijderen?</item>
+        <item quantity="other">%d lijsten verwijderen?</item>
+    </plurals>
+    <string name="list_reorder">Sleep om te herschikken</string>
+    <string name="recent_remove">Uit geschiedenis verwijderen</string>
+    <string name="settings_takeout_list_default">Geïmporteerde lijst</string>
+    <string name="settings_takeout_progress">Plaats %1$d van %2$d opzoeken</string>
+    <plurals name="settings_takeout_imported">
+        <item quantity="one">%1$d plaats geïmporteerd in %2$s.</item>
+        <item quantity="other">%1$d plaatsen geïmporteerd in %2$s.</item>
+    </plurals>
 </resources>
