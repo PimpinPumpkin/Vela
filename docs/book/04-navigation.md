@@ -422,7 +422,10 @@ strip. The phone is usually in a cradle when the driver decides to pull in.
 ### Stops
 
 A stop counts as passed when progress comes within `STOP_ARRIVE_TOL_M = 25` of its mark on the
-route, and the voice says "You've reached <stop>".
+route, and the voice says "You've reached <stop>". The same words show in the status card under
+the turn card for 8 seconds, with the voice muted too, and the phone gives a short buzz then a
+long one when "Vibrate on turns" is on for the travel mode (`NavSession.onStopReached`,
+`Haptics.stopReached`). The destination keeps its own arrival card.
 
 The voice also says a stop is coming, the way it says the destination is:
 

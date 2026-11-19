@@ -738,6 +738,12 @@ class NavSession @Inject constructor(
         toSpeak.forEach { label -> voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label)) }
         // The count, never the stop's name: a note goes into the trip file and out with a share.
         if (toSpeak.isNotEmpty()) note("reached a stop: $passedNow of $stopCount passed")
+        // Seen and felt as well as heard (issue #955): a card and a buzz, also with the voice muted.
+        // Not while a replay runs through fixes to reach a moment ([silent]).
+        if (toSpeak.isNotEmpty() && !silent) {
+            haptics.stopReached(mode)
+            toSpeak.forEach { label -> onStopReached?.invoke(label) }
+        }
     }
 
     /** Every nav decision the session makes, for the diag ring AND the trip file (`K` lines,
@@ -750,6 +756,10 @@ class NavSession @Inject constructor(
     @Volatile var plannedWayName: String? = null
     /** The drive left its saved route and is now routed plainly ([plannedWayName] as it was). */
     var onLeftPlannedWay: ((String) -> Unit)? = null
+    /** A stop on the drive was just reached, with its label (may be blank): once per stop, as the
+     *  voice says "You've reached <stop>", and never for a silent via or the destination. Called on
+     *  the location thread. The label is a place name: never log it or write it to the trip. */
+    var onStopReached: ((String) -> Unit)? = null
     private fun note(msg: String) { diag.record("nav", msg); onNote?.invoke(msg) }
 
     /**

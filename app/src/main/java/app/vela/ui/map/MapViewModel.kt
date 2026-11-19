@@ -611,6 +611,13 @@ class MapViewModel @Inject constructor(
             if (_state.value.replaying) android.util.Log.i("VelaTrip", it)
         }
         navSession.onLeftPlannedWay = { name -> flashStatus(appContext.getString(R.string.nav_left_your_route, name), 8_000L) }
+        // A stop reached mid-drive (issue #955): the card the voice's "You've reached" line goes
+        // with, shown with the voice muted too. Called on the location thread, so posted to main.
+        navSession.onStopReached = { label ->
+            val msg = if (label.isBlank()) appContext.getString(R.string.nav_reached_your_stop)
+            else appContext.getString(R.string.nav_reached_stop, label)
+            viewModelScope.launch { flashStatus(msg, 8_000L) }
+        }
         // The GraphHopper graphs retired 2026-09-15: reclaim any old install and say so once.
         viewModelScope.launch(Dispatchers.IO) {
             val gone = app.vela.offline.LegacyGraphs.purge(appContext.filesDir)

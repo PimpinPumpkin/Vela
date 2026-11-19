@@ -277,6 +277,10 @@ off the list when it has been.
   drive, and how often a ban in OpenStreetMap is stale is not measured: read `bans=` in
   `Route.made` on shared trips.
 
+- The card and buzz at each stop reached (issue #955, `NavSession.onStopReached`): a unit test
+  drives a session past two stops and a silent via and gets one call per stop. Not yet seen on
+  a phone: check a simulated drive with two stops for the card under the turn card at each.
+
 - The map's own "Day and night" (`MapThemeMode.AUTO`, issue #874): the mapping and the rule
   that hides "Day and night while navigating" are unit-tested. Not yet seen on a phone: a dark
   app over a light map by day, the map flipping at sunset within a minute, and the switch

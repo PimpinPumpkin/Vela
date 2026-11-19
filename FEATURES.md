@@ -196,8 +196,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   into the same trip.
 - In a tunnel Vela keeps estimating your position.
 - A stop is announced as it comes up ("then Davis Food Co-op will be on your right", "turn left into
-  the parking lot" where the map shows one) and when you reach it. Arrival is announced with the
-  trip's time and distance.
+  the parking lot" where the map shows one) and when you reach it, with a card naming it (also with
+  the voice off) and a buzz when "Vibrate on turns" is on. Arrival is announced with the trip's
+  time and distance.
 - The turn off the street at the end of a trip reads "Turn left into the parking lot" when the
   map shows it entering the destination's lot, where it used to be a bare "Turn left".
 - "Tap places while driving (experiment)" offers a tapped place as a stop, with the time it adds.

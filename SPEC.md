@@ -1472,7 +1472,12 @@ During a drive:
 - `NavEngine.stopMarks(route, stops)` projects each stop onto the line in order. A stop over
   `STOP_ON_ROUTE_M` (150 m) from it has a null mark.
 - `NavSession` holds the stops, the marks and a passed counter, and speaks one cue per stop when
-  progress comes within `STOP_ARRIVE_TOL_M` (25 m) of its mark.
+  progress comes within `STOP_ARRIVE_TOL_M` (25 m) of its mark. With each cue it calls
+  `onStopReached` with the stop's label, and buzzes once (`Haptics.stopReached`, 120 ms, a 100 ms
+  gap, 450 ms) when the mode's "Vibrate on turns" is on. The app shows the label in the status
+  card for 8 s ("You've reached <stop>"), with the voice muted too. Neither happens for a silent
+  stop or while a replay runs through fixes to reach a moment (`silent`). The label is a place
+  name and goes into no log line or `K` note.
 - Rechecks fetch with `stops.drop(passedStops)`, so a traffic re-check never pulls a drive off
   a saved route or a camera detour. A reroute after leaving the route drops the silent stops
   and fetches through the real ones only: the driver is taken on from here, not back to the
