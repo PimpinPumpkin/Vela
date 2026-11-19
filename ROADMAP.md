@@ -280,8 +280,9 @@ off the list when it has been.
 - Round trips (issue #929): "Back to start" in the Stops sheet, and a trip from your location
   back to it ending at a fixed "Starting point". `NavEngineRoundTripTest` parks a car at the
   start of 400 m to 2 km loops, with the fix on the road back too, and drives round: no arrival
-  until the end, every turn in order. Not yet seen on a phone (the sheet, a demo drive round a
-  block, a pinned round-trip shortcut) or on a drive.
+  until the end, every turn in order. On a Pixel 4a in Davis, Back to start built the trip and
+  hid itself, and a demo drive (8 km) did not arrive as it set off, said "You've reached" at the
+  stop and arrived at "Starting point". Not yet seen: a pinned round-trip shortcut, and a drive.
 
 - The card and buzz at each stop reached (issue #955, `NavSession.onStopReached`): a unit test
   drives a session past two stops and a silent via and gets one call per stop, and a demo drive
