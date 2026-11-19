@@ -263,6 +263,12 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Custom route line width multiplier and camera-tilt foreshortening (`NavLineWidth`,
+  `scaleRouteStops`, `CarMapRenderer.drawPerspectiveRoute`; SPEC 3.8, 6.5, 10.6): compiled and
+  visually checked in static tests, not yet checked across a drive at `0.1x` to `2.0x` on phone
+  and Android Auto.
+
+
 - Toll prices from the toll file (#954, from #965; SPEC 4.3): on the API 26 emulator a Vaughan to
   Markham drive showed "Toll about $8.94 + $5.30 fee" and "$10.00 + $5.30 fee" on its two 407
   routes (the overnight band, so one price each). Not yet seen: a range at rush hour, the
