@@ -874,7 +874,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
 | Navigation > FreeFused | `FreeFused.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `freeFusedOff` dial turns it off for every install |
 | Navigation > Show the drive on the lock screen | `LockScreenNav.on`, `nav_on_lock_screen`, true | `MainActivity` shows over the lock screen while a drive runs and is not paused (10.2, Over the lock screen) |
-| Navigation > Wake the screen before each turn | `LockScreenNav.wake`, `nav_wake_for_turns`, false | lights the screen as a turn comes near during a drive with the screen off (10.2, Wake for turns) |
+| Navigation > Wake the screen before each turn | `LockScreenNav.wake`, `nav_wake_for_turns`, true | lights the screen as a turn comes near during a drive with the screen off (10.2, Wake for turns) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
@@ -5785,7 +5785,7 @@ reuses it.
   phone to the route instead of the PIN prompt. Paused or ended, the lock screen covers the app
   again. A drive's chrome has no way to Settings except the no-voice pill, and over a locked phone
   `openSettings` runs only after `requestDismissKeyguard` succeeds.
-- Wake for turns: with "Wake the screen before each turn" on (`LockScreenNav.wake`, off by
+- Wake for turns: with "Wake the screen before each turn" on (`LockScreenNav.wake`, on by
   default, shown only under the switch above), a driving route that is not paused, no car session
   (`CarBridge.live`) and the screen off, the screen lights when the next turn is under
   `WAKE_LEAD_S` (25 s) away at the route's pace (remaining distance over remaining time), clamped
@@ -5796,6 +5796,10 @@ reuses it.
   timeout, counted from the wake: an app cannot switch the screen off. The window's keep-awake
   flag comes off for the wake, or the screen would stay on for the rest of the drive, and goes
   back on the next touch or a power-button wake (a screen-on more than 2 s after the wake).
+  A screen lit this way shows the glance screen (`nav/TurnGlance`, over everything in `VelaRoot`,
+  while `LockScreenNav.glance`): black, the turn glyph at 140 dp, the distance at 64 sp, the
+  instruction, the lanes, and "then" with the next glyph when `isCompoundNext`. A touch, any key
+  but volume (`MainActivity.dispatchKeyEvent`) or a power-button wake brings back the whole drive.
   Android 14 logs "Allowing device wake-up without android.permission.TURN_SCREEN_ON" and wakes.
 - `MapScreen` takes no new call or parameter. It is at the JVM method-size limit ("Method too
   large" in the debug compile) and at ART's verifier limit, which fails on the phone. New

@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
                 if (!show) app.vela.ui.LockScreenNav.driveStopped()
             }
         }
-        // Wake the screen before each turn (Settings > Navigation, off by default): the drive's
+        // Wake the screen before each turn (Settings > Navigation, on by default): the drive's
         // step whose turn is near, or -1.
         lifecycleScope.launch {
             vm.state.map { s ->
@@ -154,6 +154,11 @@ class MainActivity : ComponentActivity() {
     /** The assigned zoom keys (Settings > Navigation, issue #694). A key that types is offered
      *  only after nothing else took it, so a digit still types in a text field. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        // Any key but volume ends a turn wake's glance screen, as a touch does.
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isVolumeKey()) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
+        }
         val typing = event.isPrintingKey
         if (!typing && app.vela.ui.ZoomKeys.handle(event)) return true
         if (super.dispatchKeyEvent(event)) return true
@@ -201,6 +206,9 @@ class MainActivity : ComponentActivity() {
         }
         return super.dispatchTouchEvent(ev)
     }
+
+    private fun android.view.KeyEvent.isVolumeKey() = keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+        keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_MUTE
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(screenOn) }

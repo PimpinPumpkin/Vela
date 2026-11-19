@@ -332,11 +332,14 @@ While a drive runs, Vela shows over the lock screen, so the power button brings 
 not the PIN prompt ("Show the drive on the lock screen", Settings > Navigation, on by default).
 Pausing or ending the drive puts the lock screen back over it, and Settings asks for the unlock.
 
-"Wake the screen before each turn" (off by default, under that switch) lights a dark screen
+"Wake the screen before each turn" (on by default, under that switch) lights a dark screen
 about 25 seconds before each turn at the route's pace: about 200 m out in town, 750 m on a
-freeway, never more than 1 km. It lets go 4 seconds after the turn, and the screen goes dark at
-the phone's own screen timeout, since an app cannot turn the screen off. A touch or the power
-button gives the drive its keep-awake back. Not on foot, and not while a car screen is up.
+freeway, never more than 1 km. It shows the glance screen: black, with the turn's arrow, the
+distance, the instruction and the lanes in large type. Black costs an OLED screen almost nothing
+and does not glare at night. It lets go 4 seconds after the turn, and the screen goes dark at the
+phone's own screen timeout, since an app cannot turn the screen off. A touch, a key or the power
+button brings back the whole drive and its keep-awake. Not on foot, and not while a car screen
+is up.
 
 ### Stops during the drive
 

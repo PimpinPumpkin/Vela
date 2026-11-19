@@ -220,6 +220,8 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         // window (not a child Dialog) — genuinely full-screen and rotation-safe. Last child = top
         // z-order, above the map + sheet + settings.
         PlaceOverlays()
+        // The glance screen of a turn wake (Settings > Navigation), over everything.
+        app.vela.ui.nav.TurnGlance(vm)
     }
     }
 }

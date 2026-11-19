@@ -18,18 +18,21 @@ import androidx.compose.runtime.mutableStateOf
  * PIN prompt. On by default, as in Organic Maps. Paused or ended, the lock screen covers Vela
  * again, and Settings asks for the unlock first ([unlockThen]): saved places and trips are there.
  *
- * "Wake the screen before each turn" ([wake], off by default, shown under [on]): with the screen
+ * "Wake the screen before each turn" ([wake], on by default, shown under [on]): with the screen
  * off during a drive, the screen lights as a turn comes near ([turnNear]) and goes dark at the
- * phone's own timeout, as OsmAnd's "Turn screen on" does. Not on foot (a phone in a pocket) or
- * with a car screen up.
+ * phone's own timeout, as OsmAnd's "Turn screen on" does. A screen lit that way shows the glance
+ * screen ([glance], `nav/TurnGlance`) until a touch, a key or the power button brings back the
+ * whole drive, as Apple Maps does. Not on foot (a phone in a pocket) or with a car screen up.
  */
 object LockScreenNav {
     val on = mutableStateOf(true)
-    val wake = mutableStateOf(false)
+    val wake = mutableStateOf(true)
+    /** The screen is lit by a turn wake and nobody has touched it: `nav/TurnGlance` shows. */
+    val glance = mutableStateOf(false)
 
     fun init(context: Context) {
         on.value = prefs(context).getBoolean(KEY, true)
-        wake.value = prefs(context).getBoolean(WAKE_KEY, false)
+        wake.value = prefs(context).getBoolean(WAKE_KEY, true)
     }
 
     fun setWake(context: Context, value: Boolean) {
@@ -79,23 +82,31 @@ object LockScreenNav {
         }
         main.removeCallbacks(release)
         lock?.let { if (it.isHeld) it.release() }
-        if (!lit) wokeAtMs = SystemClock.elapsedRealtime()
+        if (!lit) {
+            wokeAtMs = SystemClock.elapsedRealtime()
+            glance.value = true
+        }
         @Suppress("DEPRECATION")
         lock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "vela:turn")
             .apply { setReferenceCounted(false); acquire(WAKE_MAX_MS) }
     }
 
-    /** A touch, or the screen turned on by someone other than [turnStep]: the drive's keep-awake
-     *  flag goes back while [driving]. */
+    /** A touch, a key, or the screen turned on by someone other than [turnStep]: the glance gives
+     *  way to the whole drive, and the drive's keep-awake flag goes back while [driving]. */
     fun userActive(activity: Activity, driving: Boolean, screenOn: Boolean = false) {
-        if (!keepOnCleared) return
         if (screenOn && SystemClock.elapsedRealtime() - wokeAtMs < OWN_WAKE_MS) return
+        glance.value = false
+        if (!keepOnCleared) return
         keepOnCleared = false
         if (driving) activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
+    /** A tap on the glance screen. [userActive] runs for the same touch and does the rest. */
+    fun endGlance() { glance.value = false }
+
     /** The drive ended or paused: no flag to give back, and nothing left lit. */
     fun driveStopped() {
+        glance.value = false
         keepOnCleared = false
         wokenStep = -1
         main.removeCallbacks(release)
