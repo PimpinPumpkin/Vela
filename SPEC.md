@@ -225,7 +225,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `LockScreenNav`, `MapColors`, `MapPoiPrefs`,
-  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
+  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NavSchedule`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoadNumbers`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
@@ -877,6 +877,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Appearance > Map | `AppTheme.mapMode`, `theme_map_mode`, `FOLLOW` | the map's light or dark apart from the app: the app's, Light, Dark, or Day and night by the sun under any app theme (`AUTO`, issue #874); 6.2 has the order of the rules |
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
+| Appearance > Start dark mode on a schedule | `NavSchedule.enabled`, `nav_schedule_enabled`, off; `useSun`, `nav_schedule_sun`, true; `nav_schedule_sh` / `nav_schedule_sm` / `nav_schedule_eh` / `nav_schedule_em`, 18:00 to 06:00 | under `ThemeMode.SYSTEM`, sets the initial day or night state at launch on the phone (`isAppInDarkTheme` and `isMapDark`) and on Android Auto until the phone or head unit toggles its day/night signal |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
 | Navigation > FreeFused | `FreeFused.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `freeFusedOff` dial turns it off for every install |
@@ -4880,13 +4881,16 @@ shares (`widenStreets`, the road edges, label colors, the hide list, borders).
   DARK / AUTO, pref `theme_map_mode`, Settings > Appearance > Map). `isMapDark()` resolves the nav
   day/night override first, then the map mode, then the app theme (`mapDarkOwn`). AUTO ("Day and
   night") is `AppTheme.night` under any app theme. `isMapAmoled()` is true only while the map
-  follows an app in `ThemeMode.AMOLED`. The map surface, its route colors and the scale bar take
+  follows an app in `ThemeMode.AMOLED`. Under `ThemeMode.SYSTEM`, `NavSchedule.phoneDarkOverride`
+  sets the initial day or night state for both `isAppInDarkTheme()` and `isMapDark()` until the
+  phone toggles dark mode. The map surface, its route colors and the scale bar take
   these. Sheets, cards, bars and settings keep `isAppInDarkTheme()`. The car map reads the app
-  theme alone (`CarMapRenderer.isNight`, 10.6).
-- `AppTheme.night` is recomputed once a minute while the app is in the foreground (`VelaRoot`),
-  in every mode: the sun at the last position rounded to 0.01 degree (`SunTimes.isNight`), or
-  dark before 07:00 and from 19:00 when that position is more than 24 hours old or location is
-  not granted (`isNightByClock`).
+  theme (`CarMapRenderer.isNight`, 10.6), including `NavSchedule.carDarkOverride` under
+  `ThemeMode.SYSTEM`.
+- `AppTheme.night` is recomputed once a minute while the app is in the foreground (`VelaRoot`) or
+  a car session is active (`VelaCarSession`), in every mode: the sun at the last position rounded
+  to 0.01 degree (`SunTimes.isNight`), or dark before 07:00 and from 19:00 when that position is
+  more than 24 hours old or location is not granted (`isNightByClock`).
 - "Day and night while navigating" (`AppTheme.navDayNight`, pref `theme_nav_day_night`, off)
   sets both the app and the map to `AppTheme.night` during a drive or driving mode. Its row is
   hidden while it would change nothing: the app on AUTO with the map on FOLLOW or AUTO
@@ -7264,6 +7268,9 @@ The map:
   `controlGlyphPx`: a twentieth of the screen's short side, scaled with zoom as the phone
   scales its glyphs (0.7 at z14, 1 at z15.5, 1.3 at z17), between 16 and 56 px; a light is
   `LIGHT_TALL` (1.4) times that tall.
+- `CarMapRenderer.isNight` follows `AppTheme.mode` (Light, Dark, AMOLED, Auto by `AppTheme.night`,
+  and under `ThemeMode.SYSTEM` applies `NavSchedule.carDarkOverride` until the head unit toggles
+  day or night).
 - The speed badge and the limit sign draw during a drive and on the map-only landing
   (`setDriveScreen`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
   badge's radius is a 18th of the shorter side, 22 to 46 px, and the text, the sign and its

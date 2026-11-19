@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         liveConfig.value = android.content.res.Configuration(newConfig)
+        val sysDark = (newConfig.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        app.vela.ui.NavSchedule.onPhoneDarkSignal(sysDark)
     }
 
     override fun onResume() {
@@ -108,6 +111,9 @@ class MainActivity : ComponentActivity() {
         // After the intent, before the map exists: a link keeps the camera, anything else opens
         // on the view chosen in Settings > Map.
         vm.openStartView()
+        val initSysDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        app.vela.ui.NavSchedule.onPhoneDarkSignal(initSysDark)
         setContent {
             // Read the theme at the call site (a recomposing scope) and pass it in
             // — reading it inside VelaTheme's default arg didn't reliably invalidate
