@@ -228,7 +228,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Tap a stop on the map for its departure board, with a countdown, a Live mark and each run's stop
   list.
 - Offline, a stop shows the last board you saw there.
-- With Google off, trips come from the open Transitous planner.
+- With Google off, or where Google's answer is only a walk, trips come from the open Transitous planner.
 
 ## Cameras and road alerts
 

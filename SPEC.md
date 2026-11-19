@@ -71,7 +71,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Fuel prices on gas stations | US: Google's search reply. UK: the government's Fuel Finder, trimmed and hosted on the `fuel-gb` release (5.8) | US: in the search. UK: no | UK: the last file downloaded |
 | Bridge openings (Netherlands) | NDW open data, `planningsfeed_brugopeningen` | No | No |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
-| Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
+| Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off, answers nothing, or answers with walking only | Yes, unless Google is off | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
 | Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
 
@@ -5515,7 +5515,7 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 | Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. A realtime time more than `Transitous.EARLY_DOUBT_S` (180 s) before its timetable time is replaced by the timetable time and loses its realtime mark (`trustLive`), on boards, trip stop lists and planned legs: a vehicle waiting to start its run is predicted as already on its way. |
 | Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
-| Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
+| Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off, answers nothing, or answers with walking only. After a walk-only answer the planner's itineraries that ride something are listed first and Google's walk last (`TransitOrder.ridesBeforeWalk`); Google's feed misses lines the open feeds carry (Niš's suburban lines). |
 
 #### Lines on the map
 

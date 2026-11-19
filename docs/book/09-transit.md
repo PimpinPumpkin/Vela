@@ -152,7 +152,10 @@ match "10". This list has no earlier stops and no canceled flags.
 ### Transit directions
 
 `MapViewModel.transitTrips` asks Google first, and the planner (`Transitous.plan`) when Google is
-off or returns nothing.
+off, returns nothing, or returns walking only. Google's feed misses lines that the open feeds
+carry: for a trip from a village on the edge of Niš, Google answers a 50 minute walk and the planner
+answers three suburban lines at 20 minutes each. After a walk-only answer the planner's trips that ride
+something are listed first and Google's walk last; with none, Google's walk stands alone.
 
 Google serves transit itineraries only to a real browser engine. A plain HTTP request in transit
 mode gets a driving route back, measured from OkHttp and curl. `WebDirectionsFetcher` loads the

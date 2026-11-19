@@ -826,9 +826,8 @@ Found reading everything since 0.4.1912 and not fixed yet.
   which need a bake of their own. Not started.
 - Transit routing over OpenStreetMap's route relations (#809): the bus and tram lines mappers
   have drawn carry their stops and order, and Organic Maps routes over them with no timetable.
-  Google's feed misses whole cities (Niš has its coaches and none of its city lines), and
-  Transitous has no feed there either, so a planner over the relations in the downloaded
-  region would answer where neither does, without times. Its own engine; not started.
+  Where neither Google nor the open GTFS feeds have a city's lines, a planner over the relations
+  in the downloaded region would answer, without times. Its own engine; not started.
 - A swinging heading at a standstill and a speed readout that jumps at a steady speed (#818,
   #819, one Pixel 10 Pro, phone and car): the fix handler takes a bearing over 0.5 m/s and
   derives one from 3 m of movement, which may be too loose for that unit's fixes. Needs a
