@@ -747,6 +747,8 @@
     <string name="nav_maneuver_continue">Continue</string>
     <string name="nav_gps_lost">Searching for GPS…</string>
     <string name="nav_compound_then">then</string>
+    <string name="nav_turn_may_be_banned">This turn may not be allowed. Check the signs.</string>
+    <string name="nav_turn_may_be_banned_short">may not be allowed</string>
     <string name="nav_preview_tap_resume">Preview, tap to resume</string>
     <string name="nav_rerouting">rerouting…</string>
     <string name="nav_voice_button">Spoken directions: on, alerts only or off</string>

@@ -4599,6 +4599,7 @@ private fun BoxScope.NavTurnBanner(
         // (≤ ~60 mph), ~1 km ≈ 30 s at highway speed — Google's cadence.
         laneShowM = maxOf(800.0, (state.mySpeed ?: 0f).toDouble() * 30.0),
         previewing = previewing,
+        mayBeBanned = shown?.mayBeBanned == true,
         onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
         onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
         onExitPreview = vm::clearPreview,

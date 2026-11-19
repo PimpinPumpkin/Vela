@@ -51,7 +51,11 @@ legal turn comes back about 80 m long. A banned one comes back as the way round.
 asked the same, and only when both go round is the ban believed. If the way round adds no more
 than 1.5 km and two and a half minutes, it replaces that piece of Google's line, and the rest of
 the route is built on the corrected line. A dearer detour leaves Google's line alone, since a
-long way round is also what a wrong ban in OpenStreetMap would look like. A road that is missing
+long way round is also what a wrong ban in OpenStreetMap would look like; the turn is marked
+instead, and the turn card, the step list and the car say "This turn may not be allowed. Check
+the signs." A ban once found is remembered until the app closes. When the route is planned again
+during a drive, a remembered or new ban is replaced by the way round up to 10 km, so a driver who
+obeyed the sign is never sent back to it. A road that is missing
 from OpenStreetMap does not snap, so it never reads as a ban. On #947's junction both routers
 went about 870 m round for 82 m of road, and the phone's route took the legal way (+778 m).
 

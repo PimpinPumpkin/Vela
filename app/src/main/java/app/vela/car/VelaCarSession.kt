@@ -46,6 +46,7 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
 
     override fun onCreate(owner: LifecycleOwner) {
         CarBridge.live = true
+        ManeuverMapper.bannedNote = runCatching { carContext.getString(app.vela.R.string.nav_turn_may_be_banned_short) }.getOrDefault("")
         // Feed live GPS into NavSession while the car session is alive. Mirrors the phone's fix gate:
         // GPS fixes with accuracy ≤ 50 m drive guidance; coarser fixes are ignored for nav.
         // Cancel any prior collector first so a re-delivered onCreate can't leak a second one.

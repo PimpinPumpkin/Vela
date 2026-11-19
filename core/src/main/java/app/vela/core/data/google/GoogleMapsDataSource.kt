@@ -1328,17 +1328,20 @@ class GoogleMapsDataSource @Inject constructor(
             // A turn on Google's line that OpenStreetMap forbids, at a junction the open route reaches
             // and leaves another way (TurnBans, issue #947): both open routers are asked to drive
             // just that turn, and when both go round and the way round is cheap, it replaces that
-            // piece of Google's line. Everything below is built on the result.
+            // piece of Google's line. Everything below is built on the result. A replan during a drive
+            // (urgent, or with the car's heading) replaces a ban already found at any sane cost, so a
+            // driver who obeyed the sign is not sent back to it.
             val banCheck = if (mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5) {
                 try {
                     app.vela.core.data.naming.TurnBans.check(
                         http, gTop, open.first(),
                         if (urgent) app.vela.core.data.naming.TurnBans.PROBE_TIMEOUT_URGENT_MS else app.vela.core.data.naming.TurnBans.PROBE_TIMEOUT_MS,
+                        reroute = urgent || departBearingDeg != null,
                     )
                 } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) { null }
             } else null
             val gHyb = banCheck?.first ?: gTop
-            banCheck?.second?.let { o -> runCatching { android.util.Log.i("VelaDirections", "turn bans: ${o.banned} of ${o.candidates} asked, ${o.spliced} replaced (+${o.extraM.toInt()} m)" + (if (o.late) ", routers late" else "")) } }
+            banCheck?.second?.let { o -> runCatching { android.util.Log.i("VelaDirections", "turn bans: ${o.banned} of ${o.candidates} asked (${o.known} known), ${o.spliced} replaced (+${o.extraM.toInt()} m), ${o.kept.size} kept and marked" + (if (o.late) ", routers late" else "")) } }
             val hybridStretches = if (mode == TravelMode.DRIVE && open.isNotEmpty() && gHyb != null && gHyb.polyline.size >= 5)
                 app.vela.core.data.naming.HybridRoute.stretchesFor(gHyb.polyline, open.first()) else emptyList()
             // Which stretch ends the trip is read off the line's own length: stretches are meters
@@ -1501,7 +1504,7 @@ class GoogleMapsDataSource @Inject constructor(
                 ).joinToString(";"),
                 // A stretch that went out bare is asked for again during the drive (RouteHeal).
                 namesShort = !namedInTime || stretchSource[2] > 0,
-            )
+            )?.let { h -> banCheck?.second?.kept?.let { app.vela.core.data.naming.TurnBans.mark(h, it) } ?: h }
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gLineM.toInt()} m (Google states ${gTop?.distanceMeters?.toInt()} m), " +

@@ -81,6 +81,58 @@ class TurnBansTest {
         assertTrue(r.polyline.last().distanceTo(at(600.0, 0.0)) < 1.0)
     }
 
+    private fun routeOf(line: List<LatLng>, ms: List<app.vela.core.model.Maneuver> = emptyList()): Route {
+        val len = (0 until line.size - 1).sumOf { line[it].distanceTo(line[it + 1]) }
+        return Route(polyline = line, legs = listOf(RouteLeg(len, len / 10.0, null, ms)), distanceMeters = len, durationSeconds = len / 10.0, durationInTrafficSeconds = null)
+    }
+
+    // A ban the session already found, on a long way round (3 km).
+    private fun rememberLeftAt300(): TurnBans.Probe {
+        TurnBans.forget()
+        val round = line(260.0 to 0.0, 260.0 to -1500.0, 300.0 to -1500.0, 300.0 to 40.0)
+        val p = TurnBans.Probe(round, 3_080.0, 300.0, 2.0)
+        TurnBans.remember(at(300.0, 0.0), 90.0, 0.0, p)   // arriving east, leaving north
+        return p
+    }
+
+    @Test fun aKnownBanIsFoundWithoutTheOpenRoute() {
+        rememberLeftAt300()
+        val google = line(0.0 to 0.0, 300.0 to 0.0, 300.0 to 300.0)
+        assertEquals(1, TurnBans.knownOn(google).size)
+        // The same junction the other way (from the north, turning east) is not that ban.
+        val other = line(300.0 to 300.0, 300.0 to 0.0, 600.0 to 0.0)
+        assertTrue(TurnBans.knownOn(other).isEmpty())
+        TurnBans.forget()
+    }
+
+    @Test fun aDearWayRoundKeepsTheTurnAndMarksItButAReplanReplacesIt() = kotlinx.coroutines.runBlocking {
+        rememberLeftAt300()
+        val google = line(0.0 to 0.0, 300.0 to 0.0, 300.0 to 300.0)
+        val left = app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.TURN_LEFT, "Turn left", at(300.0, 0.0), 300.0, 30.0)
+        val route = routeOf(google, listOf(left))
+        // A fresh plan: 3 km round is too dear, so Google's turn stays and is marked.
+        val (planned, o) = TurnBans.check(OkHttpClient(), route, route, 1_000)!!
+        assertEquals(0, o.spliced); assertEquals(1, o.kept.size); assertEquals(1, o.known)
+        assertEquals(google.size, planned.polyline.size)
+        assertTrue(TurnBans.mark(planned, o.kept).maneuvers.single().mayBeBanned)
+        // A replan during the drive takes the way round.
+        val (rerouted, o2) = TurnBans.check(OkHttpClient(), route, route, 1_000, reroute = true)!!
+        assertEquals(1, o2.spliced); assertTrue(o2.kept.isEmpty())
+        assertTrue(rerouted.distanceMeters > route.distanceMeters + 2_500.0)
+        TurnBans.forget()
+    }
+
+    @Test fun onlyATurnNearTheBanIsMarked() {
+        val g = line(0.0 to 0.0, 300.0 to 0.0, 300.0 to 300.0)
+        val ms = listOf(
+            app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.STRAIGHT, "Continue", at(300.0, 0.0), 10.0, 1.0),
+            app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.TURN_LEFT, "Turn left", at(305.0, 5.0), 10.0, 1.0),
+            app.vela.core.model.Maneuver(app.vela.core.model.ManeuverType.TURN_RIGHT, "Turn right", at(300.0, 200.0), 10.0, 1.0),
+        )
+        val marked = TurnBans.mark(routeOf(g, ms), listOf(at(300.0, 0.0))).maneuvers.map { it.mayBeBanned }
+        assertEquals(listOf(false, true, false), marked)
+    }
+
     /**
      * Both open routers on the real junction of issue #947 (a no-left-turn relation mapped from a
      * survey): the left goes round, and the right, which is allowed, is driven straight through.

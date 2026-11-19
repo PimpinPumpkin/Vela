@@ -75,11 +75,16 @@ object ManeuverMapper {
 
     private const val GLYPH_PX = 128
 
+    /** "may not be allowed", in the car's language; set when the car session starts. */
+    @Volatile var bannedNote: String = ""
+
     /** A car [Step] for the current maneuver: the spoken cue + the road name being entered, its
      *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). */
     fun carStep(m: VelaManeuver): Step {
         val short = app.vela.core.util.RoadNameShort
-        val cue: CharSequence = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        val said = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        // A turn OpenStreetMap bans that Google's route keeps (TurnBans) says so on the car too.
+        val cue: CharSequence = if (m.mayBeBanned && bannedNote.isNotBlank()) "$said ($bannedNote)" else said
         return Step.Builder(cue)
             .setManeuver(carManeuver(m))
             .apply { (m.road?.let(short::shorten) ?: m.ref)?.takeIf { it.isNotBlank() }?.let { setRoad(it as CharSequence) } }

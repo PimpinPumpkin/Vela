@@ -979,14 +979,25 @@ the stretches, on Google's top line and the open route's top.
 - A banned turn whose way round adds at most `SPLICE_MAX_EXTRA_M` (1.5 km) and
   `SPLICE_MAX_EXTRA_S` (150 s) is replaced by OSRM's way round (`TurnBans.splice`): the length,
   times, the leg it is in and the traffic spans after it move with it. A dearer one leaves
-  Google's line as it is. The stretches, the naming and the checks that follow
-  (`viaReaches`, `spurWithTurn`, `applyTraffic`) all use the spliced line.
+  Google's line as it is and marks the turn (`TurnBans.mark`, `Maneuver.mayBeBanned`, a turn
+  within `MARK_NEAR_M` (30 m) of the corner): the turn card, the step list and the glance screen
+  say "This turn may not be allowed. Check the signs." and the car's step cue ends "(may not be
+  allowed)". The stretches, the naming and the checks that follow (`viaReaches`,
+  `spurWithTurn`, `applyTraffic`) all use the spliced line.
+- A ban is remembered for the session with its corner and the headings in and out
+  (`TurnBans.knownOn`, 32 at most). A later route that turns there the same way is caught
+  without the open route or a probe. A replan during a drive (`urgent`, or with the car's
+  heading) replaces a known or new ban up to `REROUTE_MAX_EXTRA_M` (10 km) whatever the time, so
+  a driver who obeyed the sign is not sent back to it.
 - The probes give up after `PROBE_TIMEOUT_MS` (1.5 s, 0.8 s on an urgent replan) and Google's
   line stands. Answers are kept for the session by junction and headings, so a reroute does not
-  ask again. `Route.made` gets `bans=<banned>/<asked>`, `banSplice`, `banExtra` and `banLate`.
+  ask again. `Route.made` gets `bans=<banned>/<asked>`, `banKnown`, `banSplice`, `banExtra`,
+  `banKept` and `banLate`.
 - On #947's junction both routers went 866 and 869 m round for 82 m of line, and the phone's
   route replaced it (+778 m).
-- `setprop debug.vela.tune.turnBansOff 1` keeps Google's turns (an adb-only dial).
+- `setprop debug.vela.tune.turnBansOff 1` keeps Google's turns, and
+  `debug.vela.tune.turnBanSpliceMaxM <m>` sets the fresh-plan limit (0 keeps and marks every
+  ban, to see the warning). Both adb-only, read at launch.
 
 #### Stretches
 

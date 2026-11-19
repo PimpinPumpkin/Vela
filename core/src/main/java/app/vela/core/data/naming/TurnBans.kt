@@ -5,6 +5,7 @@ import app.vela.core.data.ValhallaRouter
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
 import app.vela.core.model.TrafficSpan
+import app.vela.core.model.distanceTo
 import app.vela.core.nav.RouteProjection
 import app.vela.core.nav.StepAudit
 import kotlinx.coroutines.Dispatchers
@@ -27,8 +28,12 @@ import kotlin.math.cos
  * with the headings pinned and the snap held to [PROBE_RADIUS_M]. A legal turn comes back about
  * 2 x [PROBE_M] long; a banned one comes back as the way round. Only when both routers go round is
  * the ban taken as real, and only when the way round costs at most [SPLICE_MAX_EXTRA_M] and
- * [SPLICE_MAX_EXTRA_S] does it replace that piece of Google's line ([splice]). Otherwise Google's
- * line stands. A missing road in OpenStreetMap fails the snap, so it never reads as a ban.
+ * [SPLICE_MAX_EXTRA_S] does it replace that piece of Google's line ([splice]). A dearer one keeps
+ * Google's turn and marks it ([mark], `Maneuver.mayBeBanned`): the turn card says it may not be
+ * allowed. A ban once found is remembered for the session ([known]), and a replan during a drive
+ * (a reroute) replaces a remembered ban up to [REROUTE_MAX_EXTRA_M], so a driver who obeyed the
+ * sign is never sent back to it. A missing road in OpenStreetMap fails the snap, so it never reads
+ * as a ban.
  */
 object TurnBans {
     /** A corner this sharp on Google's line is a turn worth asking about. */
@@ -61,6 +66,10 @@ object TurnBans {
     /** The way round replaces Google's turn only when it costs no more than this. */
     const val SPLICE_MAX_EXTRA_M = 1_500.0
     const val SPLICE_MAX_EXTRA_S = 150.0
+    /** On a reroute any way round up to this replaces a banned turn, whatever the time. */
+    const val REROUTE_MAX_EXTRA_M = 10_000.0
+    /** A turn on the final route this close to a kept ban's corner is the banned one. */
+    const val MARK_NEAR_M = 30.0
 
     /** Probes give up after this, and Google's line stands. */
     const val PROBE_TIMEOUT_MS = 1_500L
@@ -68,19 +77,37 @@ object TurnBans {
 
     /** Off by an adb dial (`turnBansOff`), for comparing routes with and without. */
     @Volatile var off = false
+    /** [SPLICE_MAX_EXTRA_M] unless an adb dial (`turnBanSpliceMaxM`) sets another, to see a kept
+     *  and marked turn on a ban whose way round is short. */
+    @Volatile var spliceMaxM = SPLICE_MAX_EXTRA_M
 
-    data class Candidate(val atM: Double, val corner: LatLng, val aM: Double, val bM: Double, val a: LatLng, val b: LatLng, val headingA: Double, val headingB: Double)
+    data class Candidate(
+        val atM: Double, val corner: LatLng, val aM: Double, val bM: Double, val a: LatLng, val b: LatLng,
+        val headingA: Double, val headingB: Double,
+        /** A ban already found this session at this junction and these headings: no probe. */
+        val knownProbe: Probe? = null,
+    )
 
     /** One router's answer for one turn: its line, length and time, and how far its ends snapped. */
     data class Probe(val line: List<LatLng>, val distanceM: Double, val durationS: Double, val snapM: Double)
 
     enum class Verdict { LEGAL, ROUND, UNKNOWN }
 
-    /** What the check found and did, for the route's `made` note. */
-    data class Outcome(val candidates: Int, val banned: Int, val spliced: Int, val late: Boolean, val extraM: Double) {
+    /** What the check found and did, for the route's `made` note. [kept] are the corners of bans
+     *  left on Google's line because the way round costs too much. */
+    data class Outcome(
+        val candidates: Int, val banned: Int, val spliced: Int, val late: Boolean, val extraM: Double,
+        val kept: List<LatLng> = emptyList(), val known: Int = 0,
+    ) {
         fun note(): String? = if (candidates == 0) null else
-            "bans=$banned/$candidates" + (if (spliced > 0) ";banSplice=$spliced;banExtra=${extraM.toInt()}m" else "") + (if (late) ";banLate" else "")
+            "bans=$banned/$candidates" + (if (known > 0) ";banKnown=$known" else "") +
+                (if (spliced > 0) ";banSplice=$spliced;banExtra=${extraM.toInt()}m" else "") +
+                (if (kept.isNotEmpty()) ";banKept=${kept.size}" else "") + (if (late) ";banLate" else "")
     }
+
+    /** A ban found this session: the junction, the headings through it, and OSRM's way round. */
+    private data class Known(val corner: LatLng, val headingIn: Double, val headingOut: Double, val probe: Probe)
+    private val known = ArrayList<Known>()
 
     /**
      * Turns on [google] worth probing: a corner of at least [CORNER_DEG] where [open] passes within
@@ -94,20 +121,8 @@ object TurnBans {
         val total = gc.last()
         if (total < 2 * END_CLEAR_M + 2 * PROBE_M) return emptyList()
         val og = RouteGeometry.SegmentGrid(open, oc)
-        // Corners: local peaks of the bend, sampled every 5 m.
-        val step = 5.0
-        val xs = generateSequence(END_CLEAR_M) { it + step }.takeWhile { it <= total - END_CLEAR_M }.toList()
-        val bends = xs.map { abs(StepAudit.bendAt(google, gc, it)) }
-        val corners = ArrayList<Double>()
-        for (i in xs.indices) {
-            val b = bends[i]
-            if (b < CORNER_DEG) continue
-            if ((i > 0 && bends[i - 1] > b) || (i < xs.lastIndex && bends[i + 1] >= b)) continue
-            if (corners.isNotEmpty() && xs[i] - corners.last() < 2 * PROBE_M) continue
-            corners += xs[i]
-        }
         val out = ArrayList<Candidate>()
-        for (x in corners) {
+        for (x in corners(google, gc)) {
             val c = RouteProjection.pointAt(google, gc, x)
             val gIn = heading(RouteProjection.pointAt(google, gc, x - HEADING_M), c)
             val gOut = heading(c, RouteProjection.pointAt(google, gc, (x + HEADING_M).coerceAtMost(total)))
@@ -119,14 +134,90 @@ object TurnBans {
                 diff(gIn, oIn) <= SAME_HEADING_DEG && diff(gOut, oOut) > SAME_HEADING_DEG
             }
             if (!leftAnotherWay) continue
-            val aM = x - PROBE_M; val bM = x + PROBE_M
-            val a = RouteProjection.pointAt(google, gc, aM); val b = RouteProjection.pointAt(google, gc, bM)
-            val ha = heading(RouteProjection.pointAt(google, gc, aM - 10.0), RouteProjection.pointAt(google, gc, aM + 10.0))
-            val hb = heading(RouteProjection.pointAt(google, gc, bM - 10.0), RouteProjection.pointAt(google, gc, bM + 10.0))
-            out += Candidate(x, c, aM, bM, a, b, ha, hb)
+            out += candidateAt(google, gc, x)
             if (out.size >= MAX_CANDIDATES) break
         }
         return out
+    }
+
+    /** Corners of [google] that are bans already found this session, arriving and leaving the
+     *  way the ban was found. Found without the open route: after a reroute it no longer passes. */
+    fun knownOn(google: List<LatLng>): List<Candidate> {
+        val ks = synchronized(known) { known.toList() }
+        if (ks.isEmpty() || google.size < 2) return emptyList()
+        val gc = RouteProjection.cumulative(google)
+        val total = gc.last()
+        if (total < 2 * END_CLEAR_M + 2 * PROBE_M) return emptyList()
+        val out = ArrayList<Candidate>()
+        for (x in corners(google, gc)) {
+            val c = RouteProjection.pointAt(google, gc, x)
+            val gIn = heading(RouteProjection.pointAt(google, gc, x - HEADING_M), c)
+            val gOut = heading(c, RouteProjection.pointAt(google, gc, (x + HEADING_M).coerceAtMost(total)))
+            val k = ks.firstOrNull {
+                it.corner.distanceTo(c) <= SAME_JUNCTION_M && diff(it.headingIn, gIn) <= SAME_HEADING_DEG && diff(it.headingOut, gOut) <= SAME_HEADING_DEG
+            } ?: continue
+            out += candidateAt(google, gc, x).copy(knownProbe = k.probe)
+        }
+        return out
+    }
+
+    /** Remembered for the session: [corner] is banned arriving [headingIn] and leaving [headingOut]. */
+    fun remember(corner: LatLng, headingIn: Double, headingOut: Double, probe: Probe) = synchronized(known) {
+        if (known.none { it.corner.distanceTo(corner) <= SAME_JUNCTION_M && diff(it.headingIn, headingIn) <= SAME_HEADING_DEG && diff(it.headingOut, headingOut) <= SAME_HEADING_DEG }) {
+            known += Known(corner, headingIn, headingOut, probe)
+            if (known.size > 32) known.removeAt(0)
+        }
+    }
+
+    /** Forget every remembered ban (tests). */
+    fun forget() = synchronized(known) { known.clear() }
+
+    /** Corners of [line]: local peaks of the bend of at least [CORNER_DEG], every 5 m, kept
+     *  [END_CLEAR_M] from the trip's ends and [PROBE_M] x 2 apart. */
+    private fun corners(line: List<LatLng>, cum: DoubleArray): List<Double> {
+        val total = cum.last()
+        val xs = generateSequence(END_CLEAR_M) { it + 5.0 }.takeWhile { it <= total - END_CLEAR_M }.toList()
+        val bends = xs.map { abs(StepAudit.bendAt(line, cum, it)) }
+        val out = ArrayList<Double>()
+        for (i in xs.indices) {
+            val b = bends[i]
+            if (b < CORNER_DEG) continue
+            if ((i > 0 && bends[i - 1] > b) || (i < xs.lastIndex && bends[i + 1] >= b)) continue
+            if (out.isNotEmpty() && xs[i] - out.last() < 2 * PROBE_M) continue
+            out += xs[i]
+        }
+        return out
+    }
+
+    private fun candidateAt(line: List<LatLng>, cum: DoubleArray, x: Double): Candidate {
+        val total = cum.last()
+        val aM = x - PROBE_M; val bM = x + PROBE_M
+        val a = RouteProjection.pointAt(line, cum, aM); val b = RouteProjection.pointAt(line, cum, bM)
+        val ha = heading(RouteProjection.pointAt(line, cum, aM - 10.0), RouteProjection.pointAt(line, cum, aM + 10.0))
+        val hb = heading(RouteProjection.pointAt(line, cum, bM - 10.0), RouteProjection.pointAt(line, cum, (bM + 10.0).coerceAtMost(total)))
+        return Candidate(x, RouteProjection.pointAt(line, cum, x), aM, bM, a, b, ha, hb)
+    }
+
+    /** [route] with each turn within [MARK_NEAR_M] of a kept ban's corner marked as maybe not
+     *  allowed. Only turns: a straight-on step there is not the banned move. */
+    fun mark(route: Route, kept: List<LatLng>): Route {
+        if (kept.isEmpty()) return route
+        val turns = setOf(
+            app.vela.core.model.ManeuverType.TURN_LEFT, app.vela.core.model.ManeuverType.TURN_RIGHT,
+            app.vela.core.model.ManeuverType.SLIGHT_LEFT, app.vela.core.model.ManeuverType.SLIGHT_RIGHT,
+            app.vela.core.model.ManeuverType.SHARP_LEFT, app.vela.core.model.ManeuverType.SHARP_RIGHT,
+            app.vela.core.model.ManeuverType.UTURN, app.vela.core.model.ManeuverType.FORK_LEFT,
+            app.vela.core.model.ManeuverType.FORK_RIGHT, app.vela.core.model.ManeuverType.KEEP_LEFT,
+            app.vela.core.model.ManeuverType.KEEP_RIGHT, app.vela.core.model.ManeuverType.RAMP_LEFT,
+            app.vela.core.model.ManeuverType.RAMP_RIGHT,
+        )
+        var any = false
+        val legs = route.legs.map { leg ->
+            leg.copy(maneuvers = leg.maneuvers.map { m ->
+                if (m.type in turns && kept.any { it.distanceTo(m.location) <= MARK_NEAR_M }) { any = true; m.copy(mayBeBanned = true) } else m
+            })
+        }
+        return if (any) route.copy(legs = legs) else route
     }
 
     /** What one router's answer says about a turn whose line between the probe ends is [lineM]. */
@@ -199,14 +290,17 @@ object TurnBans {
      * cheap, or null when nothing was asked. The routers are asked in parallel and the whole check
      * gives up after [timeoutMs] with Google's line as it was.
      */
-    suspend fun check(http: OkHttpClient, google: Route, open: Route, timeoutMs: Long): Pair<Route, Outcome>? {
+    suspend fun check(http: OkHttpClient, google: Route, open: Route, timeoutMs: Long, reroute: Boolean = false): Pair<Route, Outcome>? {
         if (off) return null
-        val cands = candidates(google.polyline, open.polyline)
+        val fresh = candidates(google.polyline, open.polyline)
+        val again = knownOn(google.polyline).filter { k -> fresh.none { abs(it.atM - k.atM) < 2 * PROBE_M } }
+        val cands = (fresh + again).sortedBy { it.atM }
         if (cands.isEmpty()) return null
         val answers = withTimeoutOrNull(timeoutMs) {
             coroutineScope {
                 cands.map { c ->
                     async<Pair<Candidate, Pair<Verdict, Probe?>>>(Dispatchers.IO) {
+                        c.knownProbe?.let { return@async c to (Verdict.ROUND to it) }
                         synchronized(seen) { seen[key(c)] }?.let { return@async c to it }
                         val lineM = c.bM - c.aM
                         val osrm = RouteGeometry.probeTurn(http, c.a, c.headingA, c.b, c.headingB, timeoutMs)
@@ -223,22 +317,36 @@ object TurnBans {
                 }.awaitAll()
             }
         }
-        if (answers == null) return google to Outcome(cands.size, 0, 0, late = true, extraM = 0.0)
-        val banned = answers.filter { it.second.first == Verdict.ROUND }
+        // Known bans still apply when the routers are late.
+        val got = answers ?: cands.filter { it.knownProbe != null }.map { it to (Verdict.ROUND to it.knownProbe) }
+        val banned = got.filter { it.second.first == Verdict.ROUND }
+        val gc = RouteProjection.cumulative(google.polyline)
+        for ((c, ans) in banned) {
+            val p = ans.second ?: continue
+            val total = gc.last()
+            remember(
+                c.corner,
+                heading(RouteProjection.pointAt(google.polyline, gc, c.atM - HEADING_M), c.corner),
+                heading(c.corner, RouteProjection.pointAt(google.polyline, gc, (c.atM + HEADING_M).coerceAtMost(total))),
+                p,
+            )
+        }
         // Splice from the end back, so the meters of the earlier turns stay where they were.
         var r = google
         var spliced = 0
         var extra = 0.0
+        val kept = ArrayList<LatLng>()
         for ((c, ans) in banned.sortedByDescending { it.first.atM }) {
             val p = ans.second ?: continue
             val extraM = p.distanceM - (c.bM - c.aM)
             val lineS = if (google.distanceMeters > 0) google.durationSeconds * (c.bM - c.aM) / google.distanceMeters else 0.0
-            if (extraM > SPLICE_MAX_EXTRA_M || p.durationS - lineS > SPLICE_MAX_EXTRA_S) continue
+            val cheap = if (reroute) extraM <= REROUTE_MAX_EXTRA_M else extraM <= spliceMaxM && p.durationS - lineS <= SPLICE_MAX_EXTRA_S
+            if (!cheap) { kept += c.corner; continue }
             r = splice(r, c.aM, c.bM, p)
             spliced++
             extra += extraM
         }
-        return r to Outcome(cands.size, banned.size, spliced, late = false, extraM = extra)
+        return r to Outcome(cands.size, banned.size, spliced, late = answers == null, extraM = extra, kept = kept, known = again.size)
     }
 
     private fun heading(a: LatLng, b: LatLng): Double {

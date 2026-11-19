@@ -152,6 +152,9 @@ fun ManeuverBanner(
     // Off-route latch: the banner headline becomes "Rerouting..." (Google-style) instead of a stale
     // old-route instruction. Step preview still shows the previewed step normally.
     offRoute: Boolean = false,
+    // OpenStreetMap bans this turn and the way round was too long to take instead (TurnBans):
+    // a warning line under the instruction.
+    mayBeBanned: Boolean = false,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
     onExitPreview: () -> Unit = {},
@@ -362,6 +365,7 @@ fun ManeuverBanner(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                        if (mayBeBanned) TurnBanWarning(content)
                     }
                     // The arrive step names WHERE you're arriving (Google-style): the business or
                     // label, and its address when that adds anything. Skip a line that would just
@@ -511,6 +515,21 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
 internal fun routeKey(label: String): String {
     val compact = label.uppercase().replace(Regex("[\\s-]"), "")
     return Regex("^([A-Z]*?)(\\d+)").find(compact)?.let { it.groupValues[1] + it.groupValues[2] } ?: compact
+}
+
+/** "This turn may not be allowed": OpenStreetMap bans the turn Google takes (TurnBans). */
+@Composable
+internal fun TurnBanWarning(color: Color, modifier: Modifier = Modifier) {
+    Row(modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(app.vela.ui.icons.SymOutlined.Warning, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            stringResource(R.string.nav_turn_may_be_banned),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = color,
+        )
+    }
 }
 
 @Composable

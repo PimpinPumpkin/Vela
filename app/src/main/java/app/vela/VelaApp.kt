@@ -110,6 +110,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.core.data.ValhallaRouter.matchOff = app.vela.ui.AppTune.localOn("noMatch")
         // Google's turns kept even where both open routers find them banned (TurnBans). adb only.
         app.vela.core.data.naming.TurnBans.off = app.vela.ui.AppTune.localOn("turnBansOff")
+        app.vela.ui.AppTune.local("turnBanSpliceMaxM")?.let { app.vela.core.data.naming.TurnBans.spliceMaxM = it }
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())

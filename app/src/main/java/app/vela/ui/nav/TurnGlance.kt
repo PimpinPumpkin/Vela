@@ -87,6 +87,10 @@ fun TurnGlance(vm: MapViewModel) {
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (m?.mayBeBanned == true) {
+                Spacer(Modifier.height(12.dp))
+                TurnBanWarning(Color(0xFFFDD663))
+            }
             if (m != null && m.lanes.isNotEmpty()) {
                 Spacer(Modifier.height(20.dp))
                 LaneDiagram(m.lanes, m.type, on = white)
