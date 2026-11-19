@@ -977,6 +977,8 @@
     <string name="settings_voice_volume_normal">Normalnie</string>
     <string name="settings_voice_volume_louder">Głośniej</string>
     <string name="settings_voice_volume_loudest">Najgłośniej</string>
+    <string name="settings_voice_volume_custom">Własny</string>
+    <string name="settings_voice_volume_multiplier">Mnożnik głośności: %1$sx</string>
     <string name="settings_voice_volume_hint">Jak głośno wskazówki głosowe odtwarzają się na tle twoich multimediów. Głośniejsze poziomy dotyczą głosu Vela; głosy systemowe można tylko ściszyć.</string>
     <string name="place_avoid_not_honored">Te trasy mogą nadal prowadzić płatnymi drogami, autostradami lub promami: nie udało się połączyć z Google żeby je ominąć a otwarty planer tras tego nie potrafi. W pobranym obszarze Vela omija je offline.</string>
     <string name="settings_asr_engines_title">Silnik rozpoznawania mowy na urządzeniu</string>

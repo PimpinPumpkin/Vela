@@ -933,6 +933,8 @@
     <string name="settings_voice_volume_normal">正常</string>
     <string name="settings_voice_volume_louder">更响</string>
     <string name="settings_voice_volume_loudest">最响</string>
+    <string name="settings_voice_volume_custom">自定义</string>
+    <string name="settings_voice_volume_multiplier">音量倍数：%1$sx</string>
     <string name="settings_voice_volume_hint">语音播报盖过媒体声音的音量。更响的档位仅适用于 Vela 语音；系统语音只能调低。</string>
     <string name="settings_asr_engines_title">设备端识别引擎</string>
     <string name="voice_capture_examples_title">您可以这样说</string>

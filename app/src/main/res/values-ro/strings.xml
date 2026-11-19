@@ -1040,6 +1040,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Mai tare</string>
     <string name="settings_voice_volume_loudest">Cel mai tare</string>
+    <string name="settings_voice_volume_custom">Personalizat</string>
+    <string name="settings_voice_volume_multiplier">Multiplicator volum: %1$sx</string>
     <string name="settings_voice_volume_hint">Cât de tare se aud instrucțiunile vocale pe dispozitivul tău media. Nivelurile mai ridicate de volum se aplică vocii Vela; volumul vocilor sistemului poate fi redus doar.</string>
     <string name="place_avoid_not_honored">Este posibil ca aceste trasee să includă în continuare porțiuni cu taxă, autostrăzi sau feriboturi: nu s-a putut contacta Google pentru a le ocoli, iar aplicația OpenRouter nu are această posibilitate. Într-o zonă descărcată, Vela le ocolește în modul off-line.</string>
     <string name="settings_lists_export_hint">Creează o copie de rezervă a listelor într-un fișier sau restaurează pe un alt dispozitiv. Funcția de import preia, de asemenea, o listă din dosarul „Salvate” al serviciului Google Takeout (un fișier CSV pentru fiecare listă); fiecare locație din aceasta este căutată, așa că este necesară o conexiune la internet.</string>

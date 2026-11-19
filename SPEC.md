@@ -5428,7 +5428,7 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   `SpeechText.spokenClock` (English) spells out clock times, which otherwise read as a
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
-- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
+- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest, or a custom multiplier from 0.5 to 5) scales the neural voice from a
   leveled base (`VoiceLevel`). The voices render well under full scale: the default Vela voice
   (Piper `en_US-hfc_female-medium`) has a long-run RMS of about 0.053 on a Pixel 4a, a gain of
   2.43 at Normal. Each line gets one gain, `TARGET_RMS` (0.13) over
@@ -5438,7 +5438,10 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   preferences, so the level is the same from the first line of a session. It is not set from
   the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
   gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
-  so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
+  so nothing clips flat. Above a gain of 3.2, `VoiceLevel.apply` high-passes around 85 Hz,
+  applies two-band dynamic de-harshing across upper-mid (~1.2 to 3.4 kHz) and sibilance (>3.4 kHz)
+  bands, and rides a 32-sample look-ahead peak envelope follower before the soft limiter.
+  The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next

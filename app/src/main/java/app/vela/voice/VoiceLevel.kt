@@ -81,12 +81,78 @@ internal object VoiceLevel {
         return p
     }
 
-    /** [chunk] scaled by [gain] and limited, in place. */
+    /** [chunk] scaled by [gain] and limited, in place.
+     *
+     *  At high boost (above 3x user volume, where [gain] can reach 7..12 on a quiet neural voice),
+     *  sample-by-sample waveshaping alone square-waves vowel peaks and exaggerates 2.5-4 kHz
+     *  vocoder resonances. When [gain] pushes the chunk past [KNEE], we first remove sub-bass
+     *  plosive rumble, tame harsh upper-midrange spikes, and ride a smooth peak envelope so whole
+     *  waveform cycles scale together instead of flat-topping. */
     fun apply(chunk: FloatArray, gain: Float) {
+        if (chunk.isEmpty()) return
         if (gain == 1f) {
             for (i in chunk.indices) if (abs(chunk[i]) > KNEE) chunk[i] = limit(chunk[i])
             return
         }
-        for (i in chunk.indices) chunk[i] = limit(chunk[i] * gain)
+        val rawPeak = peak(chunk)
+        if (rawPeak * gain <= KNEE || chunk.size < 64) {
+            for (i in chunk.indices) chunk[i] = limit(chunk[i] * gain)
+            return
+        }
+        // 1. High-pass at ~85 Hz (at 22.05 kHz) and two-band dynamic de-harshing when boosted:
+        //    - Upper-mid band (~1.2-3.4 kHz): tames piercing vowel formants (especially on female voices).
+        //    - High sibilance band (>3.4 kHz): de-esses sharp fricatives and vocoder buzz.
+        if (gain > 3.2f) {
+            val hpAlpha = 0.976f
+            var prevIn = chunk[0]
+            var prevHp = chunk[0]
+            var lpMid = 0f
+            var lpHigh = 0f
+            val lpMidAlpha = 0.24f  // splits around ~1.2 kHz (female upper-mid formant band above this)
+            val lpHighAlpha = 0.52f // splits around ~3.4 kHz (high sibilance band above this)
+            val midDeHarsh = ((gain - 3.2f) / 6f).coerceIn(0f, 0.42f)
+            val hiDeHarsh = ((gain - 3.2f) / 5f).coerceIn(0f, 0.55f)
+            for (i in chunk.indices) {
+                val x = chunk[i]
+                val hp = hpAlpha * (prevHp + x - prevIn)
+                prevIn = x
+                prevHp = hp
+                lpMid += lpMidAlpha * (hp - lpMid)
+                lpHigh += lpHighAlpha * (hp - lpHigh)
+                val low = lpMid
+                val mid = lpHigh - lpMid
+                val hi = hp - lpHigh
+                val midAbs = abs(mid) * gain
+                val midScale = if (midAbs > 0.36f) 1f - midDeHarsh * ((midAbs - 0.36f) / midAbs) else 1f
+                val hiAbs = abs(hi) * gain
+                val hiScale = if (hiAbs > 0.26f) 1f - hiDeHarsh * ((hiAbs - 0.26f) / hiAbs) else 1f
+                chunk[i] = low + mid * midScale + hi * hiScale
+            }
+        }
+        // 2. Smooth look-ahead peak envelope follower so loud syllables compress cleanly without
+        //    clipping individual wave crests into square waves.
+        val n = chunk.size
+        val lookAhead = 32
+        val attack = 0.12f
+        val release = 0.0018f
+        var env = 0f
+        for (i in 0 until minOf(n, lookAhead)) {
+            val a = abs(chunk[i]) * gain
+            if (a > env) env = a
+        }
+        for (i in 0 until n) {
+            val lookIdx = (i + lookAhead).coerceAtMost(n - 1)
+            var localPeak = abs(chunk[i]) * gain
+            val ahead = abs(chunk[lookIdx]) * gain
+            if (ahead > localPeak) localPeak = ahead
+            env += if (localPeak > env) attack * (localPeak - env) else release * (localPeak - env)
+            val scaled = if (env > KNEE) {
+                val targetEnv = KNEE + (0.96f - KNEE) * tanh((env - KNEE) / (1.35f - KNEE))
+                chunk[i] * gain * (targetEnv / env)
+            } else {
+                chunk[i] * gain
+            }
+            chunk[i] = limit(scaled)
+        }
     }
 }

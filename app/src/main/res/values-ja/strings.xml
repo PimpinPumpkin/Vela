@@ -916,6 +916,8 @@
     <string name="settings_voice_volume_normal">標準</string>
     <string name="settings_voice_volume_louder">大きめ</string>
     <string name="settings_voice_volume_loudest">最大</string>
+    <string name="settings_voice_volume_custom">カスタム</string>
+    <string name="settings_voice_volume_multiplier">音量倍率: %1$sx</string>
     <string name="settings_voice_volume_hint">メディア音声に重ねて再生される音声案内の大きさです。「大きめ」以上は Vela 音声にのみ適用され、システムの音声は小さくすることしかできません。</string>
     <string name="settings_asr_engines_title">端末内の音声認識エンジン</string>
     <string name="voice_capture_examples_title">話しかけられる例</string>

@@ -859,6 +859,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Lauter</string>
     <string name="settings_voice_volume_loudest">Am lautesten</string>
+    <string name="settings_voice_volume_custom">Manuell</string>
+    <string name="settings_voice_volume_multiplier">Lautstärkefaktor: %1$sx</string>
     <string name="settings_voice_volume_hint">Wie laut die Sprachansagen über Ihre Medien wiedergegeben werden. Die lauteren Stufen gelten für die Vela-Stimme; Systemstimmen lassen sich nur leiser stellen.</string>
     <string name="settings_asr_engines_title">Erkennungs-Engine auf dem Gerät</string>
     <string name="voice_capture_examples_title">Das können Sie sagen</string>

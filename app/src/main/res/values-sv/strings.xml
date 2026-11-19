@@ -859,6 +859,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Högre</string>
     <string name="settings_voice_volume_loudest">Högst</string>
+    <string name="settings_voice_volume_custom">Anpassad</string>
+    <string name="settings_voice_volume_multiplier">Volymmultiplikator: %1$sx</string>
     <string name="settings_voice_volume_hint">Hur högt talade vägbeskrivningar spelas över din media. De högre nivåerna gäller Vela-rösten; systemröster går bara att göra tystare.</string>
     <string name="settings_asr_engines_title">Igenkänningsmotor på enheten</string>
     <string name="voice_capture_examples_title">Saker du kan säga</string>

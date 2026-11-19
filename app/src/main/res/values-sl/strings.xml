@@ -1117,6 +1117,8 @@
     <string name="settings_update_nightly_hint">Posodobite na najnovejšo nočno različico (predizdajo) namesto samo na stabilne izdaje. Nočne različice so novejše, vendar manj preizkušene.</string>
     <string name="settings_update_channel_hint">Stabilna različica prejme eno preizkušeno izdajo na teden. Nočna različica se posodobi vsak dan, ko pride do sprememb. Canary vključuje razvojne spremembe in lahko kadar koli preneha delovati.</string>
     <string name="settings_voice_volume_loudest">Najglasneje</string>
+    <string name="settings_voice_volume_custom">Po meri</string>
+    <string name="settings_voice_volume_multiplier">Množitelj glasnosti: %1$sx</string>
     <string name="settings_voice_volume_hint">Kako glasno se navigacijska navodila predvajajo čez drugo predstavnost. Višje ravni glasnosti veljajo za glas Vela; sistemske glasove je mogoče samo utišati.</string>
     <string name="place_avoid_not_honored">Pot lahko še vedno vključuje cestnine, avtoceste ali trajekte: Google ni bil dosegljiv za izračun poti, ki se jim izogne, odprti usmerjevalnik pa te možnosti ne podpira. Na prenesenem območju se jim Vela izogne brez povezave.</string>
     <string name="settings_lists_export_hint">Varnostno kopirajte sezname v datoteko ali jih obnovite v drugi napravi. Uvozite lahko tudi sezname iz mape »Saved« v Google Takeout (ena datoteka CSV na seznam). Za vsako mesto se poišče ustrezen zadetek, zato je potrebna povezava.</string>

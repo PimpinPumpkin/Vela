@@ -968,6 +968,8 @@
     <string name="settings_voice_volume_normal">Normale</string>
     <string name="settings_voice_volume_louder">Più alto</string>
     <string name="settings_voice_volume_loudest">Massimo</string>
+    <string name="settings_voice_volume_custom">Personalizzato</string>
+    <string name="settings_voice_volume_multiplier">Moltiplicatore volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Quanto forte si sentono le indicazioni vocali sopra la tua musica. I livelli più alti valgono per la voce Vela; le voci di sistema si possono solo abbassare.</string>
     <string name="place_avoid_not_honored">Questi percorsi potrebbero comunque includere pedaggi, autostrade o traghetti: non è stato possibile raggiungere Google per evitarli, e il router aperto non può farlo. In un\'area scaricata Vela li evita offline.</string>
     <string name="settings_asr_engines_title">Motore di riconoscimento sul dispositivo</string>

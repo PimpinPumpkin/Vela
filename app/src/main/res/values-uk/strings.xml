@@ -865,6 +865,8 @@
     <string name="settings_voice_volume_normal">Звичайна</string>
     <string name="settings_voice_volume_louder">Гучніше</string>
     <string name="settings_voice_volume_loudest">Найгучніше</string>
+    <string name="settings_voice_volume_custom">Власний</string>
+    <string name="settings_voice_volume_multiplier">Множник гучності: %1$sx</string>
     <string name="settings_voice_volume_hint">Наскільки гучно голосові вказівки звучать поверх вашої музики. Гучніші рівні працюють для голосу Vela; системні голоси можна лише приглушити.</string>
     <string name="settings_asr_engines_title">Рушій розпізнавання на пристрої</string>
     <string name="voice_capture_examples_title">Що можна сказати</string>

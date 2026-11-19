@@ -123,7 +123,7 @@ class PiperSynth @Inject constructor(
      *  louder, 2.2 loudest. [VoiceLevel] turns it into the gain for this voice. */
     private fun volume(): Float =
         context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-            .getFloat("voice_volume", 1.0f).coerceIn(0.2f, 3.0f)
+            .getFloat("voice_volume", 1.0f).coerceIn(0.2f, 5.0f)
 
     // Each voice's average level, by voice and speaker ([VoiceLevel.Meter]), kept between sessions
     // so a voice plays at the same loudness from its first line.

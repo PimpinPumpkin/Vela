@@ -13,7 +13,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Places: "Place icons on the map", which places the map draws, what a place page loads.
 - Navigation: route picker, road-ahead bar, arrow, speed limit, road numbers first, zoom keys,
   cameras ([chapter 3](03-cameras.md)), traffic rechecks.
-- Voice: spoken directions, street names, the voice library, speed and volume.
+- Voice: spoken directions, street names, the voice library, speed and custom volume multiplier.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,
   a page of its own under Search for which category chips show and in what order.
 - Saved places: export and import of places and lists, saved routes, parking history.

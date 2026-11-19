@@ -966,6 +966,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Mais alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
+    <string name="settings_voice_volume_custom">Personalizado</string>
+    <string name="settings_voice_volume_multiplier">Multiplicador de volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Com que volume as instruções faladas tocam por cima do que você está ouvindo. Os níveis mais altos se aplicam à voz Vela; as vozes do sistema só podem ficar mais baixas.</string>
     <string name="place_avoid_not_honored">Estas rotas ainda podem usar pedágios, rodovias ou balsas: não foi possível contatar o Google para evitá-los, e o planejador de rotas aberto não consegue. Em uma área baixada, o Vela os evita off-line.</string>
     <string name="settings_asr_engines_title">Mecanismo de reconhecimento no dispositivo</string>

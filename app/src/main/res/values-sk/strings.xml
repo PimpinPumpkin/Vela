@@ -1058,6 +1058,8 @@
     <string name="settings_voice_volume_normal">Normálne</string>
     <string name="settings_voice_volume_louder">Hlasnejšie</string>
     <string name="settings_voice_volume_loudest">Najhlasnejšie</string>
+    <string name="settings_voice_volume_custom">Vlastné</string>
+    <string name="settings_voice_volume_multiplier">Násobiteľ hlasitosti: %1$sx</string>
     <string name="settings_voice_volume_hint">Ako nahlas znejú hlasové pokyny ponad médiá. Vyššie úrovne platia pre hlas Vela; systémové hlasy možno len stíšiť.</string>
     <string name="place_avoid_not_honored">Tieto trasy môžu stále viesť cez spoplatnené úseky, diaľnice alebo trajekty: nepodarilo sa spojiť s Googlom, aby sa im vyhli, a otvorený plánovač to nedokáže. V stiahnutej oblasti sa im Vela vyhne offline.</string>
     <string name="settings_lists_export_hint">Zálohujte si zoznamy do súboru alebo ich obnovte v inom zariadení. Import dokáže načítať aj zoznam z priečinka Uložené v Google Takeout (jeden súbor CSV na zoznam); každé miesto sa v ňom vyhľadá, takže je potrebné pripojenie.</string>

@@ -38,7 +38,7 @@ class VoiceGuide @Inject constructor(
     // KEY_PARAM_VOLUME caps at 1.0); the boost tiers act on the neural voice's own PCM.
     @Volatile private var volume = 1.0f
     fun setVolume(v: Float) {
-        volume = v.coerceIn(0.2f, 3.0f)
+        volume = v.coerceIn(0.2f, 5.0f)
     }
     fun setRate(rate: Float) {
         speechRate = rate.coerceIn(0.5f, 2.0f)

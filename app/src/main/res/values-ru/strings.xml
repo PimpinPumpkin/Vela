@@ -867,6 +867,8 @@
     <string name="settings_voice_volume_normal">Обычная</string>
     <string name="settings_voice_volume_louder">Громче</string>
     <string name="settings_voice_volume_loudest">Максимальная</string>
+    <string name="settings_voice_volume_custom">Свой</string>
+    <string name="settings_voice_volume_multiplier">Множитель громкости: %1$sx</string>
     <string name="settings_voice_volume_hint">Насколько громко голосовые подсказки звучат поверх вашей музыки. Уровни выше обычного работают с голосом Vela, системные голоса можно только приглушить.</string>
     <string name="settings_asr_engines_title">Движок распознавания на устройстве</string>
     <string name="voice_capture_examples_title">Что можно сказать</string>

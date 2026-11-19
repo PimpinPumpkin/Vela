@@ -859,6 +859,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Más alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
+    <string name="settings_voice_volume_custom">Personalizado</string>
+    <string name="settings_voice_volume_multiplier">Multiplicador de volumen: %1$sx</string>
     <string name="settings_voice_volume_hint">Con qué volumen suenan las indicaciones habladas por encima de tu música. Los niveles más altos se aplican a la voz de Vela; las voces del sistema solo se pueden bajar.</string>
     <string name="settings_asr_engines_title">Motor de reconocimiento en el dispositivo</string>
     <string name="voice_capture_examples_title">Cosas que puedes decir</string>

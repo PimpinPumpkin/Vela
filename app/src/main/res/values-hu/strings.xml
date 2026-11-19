@@ -659,6 +659,8 @@
     <string name="settings_voice_volume_normal">Normál</string>
     <string name="settings_voice_volume_louder">Hangosabb</string>
     <string name="settings_voice_volume_loudest">Leghangosabb</string>
+    <string name="settings_voice_volume_custom">Egyéni</string>
+    <string name="settings_voice_volume_multiplier">Hangerő-szorzó: %1$sx</string>
     <string name="settings_voice_volume_hint">Milyen hangosan szól a hangos útvonalvezetés a médialejátszás felett. A hangosabb szintek csak a Vela hangra vonatkoznak; a rendszerhangok csak halkíthatók.</string>
     <string name="place_avoid_not_honored">Ezek az útvonalak továbbra is tartalmazhatnak díjköteles utakat, autópályákat vagy kompokat: a Google nem volt elérhető a kikerülésükhöz, a nyílt útvonaltervező pedig erre nem képes. Letöltött területen a Vela offline is elkerüli őket.</string>
     <string name="settings_lists_export_hint">Mentsd el a listáidat egy fájlba, vagy állítsd vissza egy másik eszközön.</string>

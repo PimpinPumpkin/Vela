@@ -1030,6 +1030,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Lebih keras</string>
     <string name="settings_voice_volume_loudest">Paling keras</string>
+    <string name="settings_voice_volume_custom">Kustom</string>
+    <string name="settings_voice_volume_multiplier">Pengali volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Seberapa keras petunjuk arah lisan diputar melebihi media Anda. Tingkat yang lebih keras berlaku untuk suara Vela; suara sistem hanya dapat dibuat lebih pelan.</string>
     <string name="place_avoid_not_honored">Rute ini mungkin masih menggunakan jalan tol, jalan bebas hambatan, atau feri: Google tidak dapat dihubungi untuk menghindari hal tersebut, dan open router juga tidak dapat melakukannya. Di area yang diunduh, Vela menghindarinya secara offline.</string>
     <string name="settings_lists_export_hint">Cadangkan daftar Anda ke file, atau pulihkan di perangkat lain. Impor juga dapat mengambil daftar dari folder Tersimpan Google Takeout (satu CSV per daftar); setiap tempat di dalamnya akan dicari, sehingga memerlukan koneksi.</string>

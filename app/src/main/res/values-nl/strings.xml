@@ -967,6 +967,8 @@
     <string name="settings_voice_volume_normal">Normaal</string>
     <string name="settings_voice_volume_louder">Luider</string>
     <string name="settings_voice_volume_loudest">Luidst</string>
+    <string name="settings_voice_volume_custom">Aangepast</string>
+    <string name="settings_voice_volume_multiplier">Volumevermenigvuldiger: %1$sx</string>
     <string name="settings_voice_volume_hint">Hoe luid gesproken aanwijzingen over je media klinken. De luidere standen gelden voor de Vela-stem; systeemstemmen kunnen alleen zachter.</string>
     <string name="place_avoid_not_honored">Deze routes kunnen nog steeds tolwegen, snelwegen of veerboten gebruiken: Google was niet bereikbaar om eromheen te plannen, en de open routeplanner kan dat niet. In een gedownload gebied vermijdt Vela ze offline.</string>
     <string name="settings_asr_engines_title">Spraakherkenning op het toestel</string>
