@@ -8485,13 +8485,58 @@ class MapViewModel @Inject constructor(
         onLevel: (Float) -> Unit,
         onListening: () -> Unit,
         canceled: () -> Boolean,
-    ): app.vela.voice.VoiceResult =
-        asrRecognizer.listen(onLevel, onListening, canceled)
+    ): app.vela.voice.VoiceResult {
+        // adb only (`setprop debug.vela.tune.voiceText "<words>"`): the words come back as heard,
+        // so a phone test of the voice search needs no speaking.
+        app.vela.ui.AppTune.text("voiceText")?.let { return app.vela.voice.VoiceResult.Text(it) }
+        return asrRecognizer.listen(onLevel, onListening, canceled)
+    }
 
-    /** Apply a transcript from either voice tier as the query and run the search. */
+    /** Apply a transcript from the on-device recognizer as the query and run the search. When the
+     *  whole transcript, house number aside, sounds like a street near the search center, that
+     *  street's own name is searched instead (SPEC 9.3). */
     fun applyVoiceQuery(text: String) {
         onQueryChange(text)
-        search() // intents first ("take me home"), else the plain search
+        voiceRetryJob?.cancel()
+        val center = plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation)
+        if (center == null) { search(); return }
+        voiceRetryJob = viewModelScope.launch {
+            val lang = app.vela.ui.AppLocale.effective().language
+            val street = VoiceStreetRetry.rewrite(text, lang, center, addressStore, whole = true)
+            if (_state.value.query != text) return@launch // the user typed or searched meanwhile
+            if (street != null) {
+                android.util.Log.i("VelaSearch", "voice: the words sound like a street nearby, searching its name")
+                fillQuery(street)
+                search()
+                return@launch
+            }
+            val before = searchJob
+            search() // intents first ("take me home"), else the plain search
+            retryVoiceSearch(text, searchJob?.takeIf { it !== before }, center)
+        }
+    }
+
+    private var voiceRetryJob: Job? = null
+
+    /**
+     * When the search [job] that [heard] started ends with no results, swap the heard words for the
+     * nearest-sounding street near the search center and search once more, with the rewrite in the
+     * search field (SPEC 9.3). Once only: the second search goes through [search], not here. Null
+     * [job] means the transcript was an intent or a link and no search ran. Runs inside
+     * [applyVoiceQuery]'s job, so a new voice search cancels it.
+     */
+    private suspend fun retryVoiceSearch(heard: String, job: Job?, center: LatLng) {
+        if (job == null) return
+        job.join()
+        if (job.isCancelled || _state.value.results.isNotEmpty()) return
+        val shown = _state.value.query
+        val lang = app.vela.ui.AppLocale.effective().language
+        val rewritten = VoiceStreetRetry.rewrite(heard, lang, center, addressStore) ?: return
+        // The user typed, searched again or left while the names were read.
+        if (searchJob !== job || _state.value.query != shown || _state.value.results.isNotEmpty()) return
+        android.util.Log.i("VelaSearch", "voice retry: searching the nearest-sounding street")
+        fillQuery(rewritten)
+        search()
     }
 
     /** Make an already-downloaded voice active: persist the pick, reload the synth (the single switch

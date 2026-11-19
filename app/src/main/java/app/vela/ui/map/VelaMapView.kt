@@ -1293,9 +1293,12 @@ fun VelaMapView(
     // DRAWING: a finger that comes down on a drawn point owns the gesture. Dragging moves the
     // point, a plain tap removes it; anything else falls through to the map (pan, zoom, and the
     // tap that adds a point). The listener sees the touch before the map's own gestures.
+    // The same effect lends the voice search's retry the loaded street names (VoiceStreetRetry).
     DisposableEffect(mapView, mapRef) {
         val map = mapRef
         if (map == null) onDispose { } else {
+            val streets: (LatLng, Double) -> List<String> = { c, r -> streetNamesNear(map, c, r) }
+            VoiceStreetRetry.mapStreets = streets
             val grabPx = 26f * context.resources.displayMetrics.density
             val slopPx = 8f * context.resources.displayMetrics.density
             var held = -1
@@ -1335,7 +1338,10 @@ fun VelaMapView(
                     else -> held >= 0 // a second finger while a point is held: ignored
                 }
             }
-            onDispose { mapView.setOnTouchListener(null) }
+            onDispose {
+                mapView.setOnTouchListener(null)
+                if (VoiceStreetRetry.mapStreets === streets) VoiceStreetRetry.mapStreets = null
+            }
         }
     }
     // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
@@ -7135,6 +7141,9 @@ private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nul
 /** Below this camera zoom the nav road-name pass does not run (see the pass). The nav camera's own
  *  floor is 15.5 and the callouts fade in from 15, so nothing is lost. */
 private const val NAV_LABEL_PASS_MIN_ZOOM = 14.6
+/** Below this camera zoom the voice search's retry reads no street names from the map (see
+ *  [streetNamesNear]). */
+private const val STREET_NAMES_MIN_ZOOM = 12.0
 /** Measuring only: `adb shell setprop debug.vela.navLabelProbe true` runs the pass at any zoom. */
 private val NAV_LABEL_PASS_PROBE: Boolean by lazy {
     runCatching { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java).invoke(null, "debug.vela.navLabelProbe") == "true" }.getOrDefault(false)
@@ -9884,6 +9893,35 @@ private fun nearestStreetName(map: MapLibreMap, lat: Double, lng: Double): Strin
         }
     }
     return bestName
+}
+
+/** The names of the roads in the loaded transportation_name tiles with a vertex in a box
+ *  [radiusM] each way from [center], for the voice search's sounds-like retry
+ *  ([VoiceStreetRetry]). Empty below [STREET_NAMES_MIN_ZOOM]: zoomed out, the loaded tiles hold
+ *  the major roads of a whole region and the query materializes all of them on the main thread. */
+private fun streetNamesNear(map: MapLibreMap, center: LatLng, radiusM: Double): List<String> {
+    if (map.cameraPosition.zoom < STREET_NAMES_MIN_ZOOM) return emptyList()
+    val src = map.style?.let { st -> basemapSrc(st)?.let { st.getSourceAs<org.maplibre.android.style.sources.VectorSource>(it) } } ?: return emptyList()
+    val feats = runCatching { src.querySourceFeatures(arrayOf("transportation_name"), null) }.getOrNull() ?: return emptyList()
+    val dLat = radiusM / 111_320.0
+    val dLng = radiusM / (111_320.0 * kotlin.math.cos(Math.toRadians(center.lat))).coerceAtLeast(1.0)
+    fun inBox(p: Point) = kotlin.math.abs(p.latitude() - center.lat) <= dLat && kotlin.math.abs(p.longitude() - center.lng) <= dLng
+    val out = LinkedHashSet<String>()
+    for (f in feats) {
+        val name = runCatching { f.getStringProperty("name") }.getOrNull()?.takeIf { it.isNotBlank() } ?: continue
+        val latin = runCatching { f.getStringProperty("name:latin") }.getOrNull()?.takeIf { it.isNotBlank() && it != name }
+        if (name in out && (latin == null || latin in out)) continue
+        val near = when (val g = f.geometry()) {
+            is org.maplibre.geojson.LineString -> g.coordinates().any(::inBox)
+            is org.maplibre.geojson.MultiLineString -> g.coordinates().any { line -> line.any(::inBox) }
+            is Point -> inBox(g)
+            else -> false
+        }
+        if (!near) continue
+        out += name
+        latin?.let { out += it }
+    }
+    return out.toList()
 }
 
 private fun bearingDeg(a: LatLng, b: LatLng): Float {

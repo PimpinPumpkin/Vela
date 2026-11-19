@@ -351,13 +351,11 @@ off the list when it has been.
   directions' language. Neither test phone nor the emulator has a system engine, so neither has
   been heard yet: check with `adb shell dumpsys audio` (the player's usage) and an engine with
   several voices a language.
-- Fewer voice lines on the freeway: any maneuver at 50 mph or more, and an exit, fork, keep,
-  U-turn or on-ramp turn from 34 mph, gets one line about 15 s out and one at the turn. A merge
-  is said once, often as the "then" of the step before it, and a "then" carries the lanes. A
-  recorded drive replayed through the engine went from 24 lines to 17, and an exit, the fork on
-  its ramp and the merge from eight to four. A Davis mock drive on the 4a said an I 80 on-ramp,
-  its merge, exit 75 and the turn after it as expected. Not yet heard on a real drive: whether a
-  quarter mile is enough warning to change lanes.
+- A misheard spoken street searched as the nearby street that sounds like it (issue #798, SPEC
+  9.3): on a Pixel 4a with transcripts fed in by `debug.vela.tune.voiceText`, "Sickamore Lain" in
+  Davis was searched as Sycamore Lane with Google on and off, and "coffee", a place name and
+  "pizza on Sickamore Lain" were left alone. Reading the street names took 93 to 109 ms, 643 ms
+  the first time. Not yet tried with real German dictation through Whisper.
 
 - A roundabout is said on its approach and only buzzes at its entry, unless the entry line
   carries the next step: replayed on a recorded drive, the roundabout got its two approach

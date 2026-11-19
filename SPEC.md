@@ -5834,6 +5834,40 @@ Two tiers, both keyless.
 `RECORD_AUDIO` is requested at the point of use. `listen()` returns a typed result (`Text`,
 `NoSpeech`, `Failed(reason)`) and the UI explains every failure.
 
+Sounds-like street names. Tier 1 writes a street name the way it heard it, often split and
+spelled by sound ("Kur fürsten damm"). `MapViewModel.applyVoiceQuery` reads it twice with
+`VoiceStreetRetry`:
+
+- Before the search: when the whole transcript, house numbers aside, sounds like one street near
+  the search center (`SoundsLike.rewrite` with `whole`), that street's name is put in the search
+  field and searched. Google and the downloaded index both answer a misheard name with something
+  (near Davis, "Sicka more Lane" got 17 places from Google and "Sickamore Lain" 30 from the index), so a retry on empty results alone would rarely run.
+- After it: when the search ends with no results, the words that sound like a street are swapped
+  for its name once and searched again. A search that found anything is never retried, and the
+  retry is never retried.
+- Tier 2 hands over through `fillQuery` and gets neither.
+- `setprop debug.vela.tune.voiceText "<words>"` (adb only) makes tier 1 return those words as
+  heard, so the voice search can be tested on a phone without speaking.
+
+- Candidates are the street names within `RADIUS_M` (3,000 m, a box) of the search center: the
+  `transportation_name` features of the basemap tiles the map has loaded (`name` and
+  `name:latin`, read once per retry, none below zoom 12), and the downloaded address index and
+  place packs (`OfflineAddressStore.streetNamesNear`, at most 5,000). The map's names are read on
+  the main thread, so each voice search pays that query once (timed in the `VelaSearch` "voice
+  street names" line).
+- `core/search/SoundsLike.rewrite` compares Kölner Phonetik codes. Each word alone, runs of two
+  and three adjacent words, and the whole transcript are tried with the spaces removed. A word
+  with a digit is never in a run. Words outside the run stay where they were.
+- A run matches a street when the codes are equal, the code has at least `MIN_CODE` (5) digits,
+  the name has at least `MIN_LETTERS` (6) letters, the spelling is within a third of the run's
+  letters (two edits at least), and the run is not already that street's name.
+- Several streets with the run's code: the closest spelling wins when it is the run's letters
+  exactly or `CLEAR_MARGIN` (2) edits closer than the next. Otherwise there is no rewrite. The
+  run covering the most letters wins, and two different rewrites that tie give none.
+- Languages: every app language written in Latin script (`SoundsLike.LANGS`). Kölner Phonetik is
+  German's; elsewhere its consonant classes serve as a general key. Arabic, Greek, Hebrew, Hindi,
+  Japanese, Russian, Thai, Ukrainian and Chinese get no retry.
+
 The model load is crash-sentineled: a truncated or corrupt archive makes sherpa-onnx abort
 natively, which cannot be caught, and warm-up runs at startup, so a bad model would crash every
 launch. A strike counter is raised before

@@ -280,6 +280,16 @@ every one.
 The mic turns speech into text with Vela's on-device model when it is installed, or with an
 installed voice-input app, and is hidden when neither exists (`VoiceSearch`).
 
+The on-device model writes a street name the way it heard it, so "Kurfürstendamm" can come out
+as "Kur fürsten damm" and find nothing useful. When everything said, a house number aside, sounds
+like a street within 3 km of the search center, Vela searches that street's name instead, and
+the box shows it. A spoken search with no results gets one more try (`VoiceStreetRetry`): the
+words that sound like a nearby street are replaced by its name, and the search runs again. "Sound
+like" means an equal Kölner Phonetik code (`core/search/SoundsLike`). The street names come from
+the map tiles already loaded and from downloaded regions. A match needs a code of five digits or
+more and one clear winner, or nothing is changed. The rules are in
+[SPEC section 9.3](../../SPEC.md).
+
 Guards:
 
 - A bare verb ("go", "take me") counts only before home or work, or before an explicit "from A

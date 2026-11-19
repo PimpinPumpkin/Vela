@@ -98,6 +98,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Voice search on the phone with five recognition engines (Whisper tiny, base and small, SenseVoice
   and Moonshine), or through a voice app. "Voice search
   mic" hides it.
+- A spoken street name that was misheard is searched as the nearby street that sounds like it.
 - "Search your contacts" suggests a contact's saved addresses. Off by default.
 - With a route planned or a drive running, search looks along the route.
 - Map links from other apps open in Vela. "Links from other apps" picks the place, directions or
