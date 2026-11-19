@@ -259,6 +259,11 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The location dot holds still through a pinch (`browseDot`, `ME_SRC` at z22): on a Pixel 4a with
+  the simulated location in Davis, a recorded pinch sweep from z15 to z20 had the dot leave its
+  spot and come back eight times before (up to 44 px) and not once after. Not yet seen while
+  walking or driving, where the dot is drawn at the eased camera and the hand-over fades in.
+
 - A turn Google takes that OpenStreetMap bans (`TurnBans`, issue #947): on a Pixel 4a, the
   reporter's trip found the banned left, both routers went round, and the planned route took the
   legal way (+778 m); with `turnBanSpliceMaxM 0` the turn was kept and the turn card showed the

@@ -2460,10 +2460,16 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
-- The dot is drawn at the eased follow position, so it stays centered as the map glides. While
-  the follow glides back in from where a pan left the camera (`browseSeeking`), it is drawn at the
-  fix until the camera is within `SEEK_DONE_M` (3 m) of it; drawn at the eased position then, it
-  jumped to the screen's center and rode back with the map.
+- Following a move, the dot is drawn at the eased follow position, so it stays centered as the
+  map glides. It is drawn at the fix while standing still (below 0.5 m/s, where the camera rests
+  up to `FOLLOW_STILL_DEADBAND_M` off it), while a pinch, a pan or a flight has the camera, and
+  while the follow glides back in from where a gesture left it (`browseSeeking`, until the camera
+  is within `SEEK_DONE_M` (3 m) of the fix). Drawn at the eased position then, it jumped to the
+  screen's center and rode back with the map.
+- A switch between the two carries the gap over and fades it out over `DOT_HANDOFF_TAU_S`
+  (0.25 s); a gap over `DOT_HANDOFF_MAX_M` (30 m) is a jump and is not carried. Switching
+  outright moved the dot by up to 3 m, 40 px at z20, at the start and end of each pinch.
+  `browseDot` holds where the ticker drew it, and a recomposition repaints there.
 - A two-finger tilt pauses the follow's camera writes and becomes its tilt target
   (`browseUserTilt`) in place of the automatic 0 or 55 degrees. It survives a pan, a sheet and
   the locate button. The compass, visible while a tilt is held, returns the map to north and
@@ -4366,14 +4372,17 @@ basemap anyway. A walk or a ride keeps it at opacity 0.
   Tiles MapLibre cached from the old file stay until its cache drops them.
 - The pmtiles path never cold-fetches a tile clamped two or more levels below the camera.
 - Past a GeoJSON source's maxzoom every overscaled tile lays out all of its parent tile's
-  features, so point sources set one. The route line sources set none.
+  features, so point sources set one. The route line sources set none. A point is placed on its
+  tile's grid, about 0.9 m at z12, so the location dot's source (`ME_SRC`) takes the full depth
+  (z22): at z12 the moving dot stepped from grid point to grid point, 13 px at z19.
 
 | maxzoom | GeoJSON sources |
 | --- | --- |
 | 18 | ambient, markers, traffic controls, transit stops |
 | 16 | plate cameras, their clusters, speed cameras, transit line labels, custom-map shapes, the shape being drawn |
+| 22 | me (the location dot, see above) |
 | 14 | accuracy disc, transit lines |
-| 12 | me, parking, saved, Street View |
+| 12 | parking, saved, Street View |
 
 - Every `setGeoJson` and `setProperties` is identity-gated by a `lastApplied` holder. Every such
   holder is reset in the style-reload block, or a theme, palette or satellite flip leaves sources

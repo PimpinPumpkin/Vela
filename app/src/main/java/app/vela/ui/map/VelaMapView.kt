@@ -386,6 +386,10 @@ private const val FOLLOW_STILL_DEADBAND_M = 2.0
 private const val FREE_HEADING_UP_TAU_S = 4.0
 /** The follow's glide in from a pan is over once the camera is this close to the fix. */
 private const val SEEK_DONE_M = 3.0
+/** The gap between the fix and the eased camera fades out over this when the dot switches between
+ *  them; a gap wider than DOT_HANDOFF_MAX_M is a jump and is not carried. */
+private const val DOT_HANDOFF_TAU_S = 0.25f
+private const val DOT_HANDOFF_MAX_M = 30.0
 private const val FREE_HEADING_UP_MPS = 3.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
@@ -1128,6 +1132,10 @@ fun VelaMapView(
     val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
+    // Where the follow ticker last drew the dot [lat,lng] (NaN = not yet), the offset it carries
+    // across a hand-over between the fix and the eased camera [dlat,dlng], and which it was on.
+    val browseDot = remember { doubleArrayOf(Double.NaN, Double.NaN, 0.0, 0.0) }
+    val browseDotOnFix = remember { booleanArrayOf(true) }
     val browseBeam = remember { floatArrayOf(Float.NaN) }              // smoothed browse heading (NaN = idle, use raw)
     val browseAtt = remember { doubleArrayOf(0.0, 0.0) } // next-frame [bearing (signed), tilt], recomputed from the LIVE camera each frame
     // Free-drive dead reckon: the last fix + its speed/course, so the follow target GLIDES between
@@ -2707,6 +2715,7 @@ fun VelaMapView(
         if (navMode || !driveFollowing) {
             browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
             browseCam[0] = Double.NaN
+            browseDot[0] = Double.NaN; browseDot[2] = 0.0; browseDot[3] = 0.0
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0; browseDrive[4] = 0.0
             browseZoomGoal[0] = Double.NaN
@@ -2892,7 +2901,31 @@ fun VelaMapView(
             // Skip the native calls when nothing moved enough to see (a settled follow at a red
             // light shouldn't re-upload the point + re-drive the camera 60×/s). ~1e-6 deg is well
             // under a pixel at street zoom; 0.4 deg of heading is invisible on the cone.
-            val moved = lastBrowse[0].isNaN() || attSettling ||
+            // WHERE THE DOT IS DRAWN. Following a move, at the eased camera position (at the raw fix
+            // the dot teleported forward on the map each 1 Hz fix while the camera eased to catch
+            // up). On the fix itself while standing still (the camera rests up to
+            // FOLLOW_STILL_DEADBAND_M off it), while a pinch or a pan has the camera, and while the
+            // camera glides back to the fix after one (#889). Switching between the two used to
+            // jump the dot by the gap, up to 3 m: 40 px at z20, at the end of every pinch and when
+            // a pinch began (user 2026-11-18). The gap is now carried across the switch and faded
+            // out over DOT_HANDOFF_TAU_S, so the dot never jumps.
+            if (browseSeeking[0] && !browseCam[0].isNaN() && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
+            val onFix = cam == null || scaling[0] || shoving[0] || twoDown[0] || browseFlying[0] || browseSeeking[0] || browseFix[3] < 0.5
+            val baseLat = if (onFix) loc.lat else camLat
+            val baseLng = if (onFix) loc.lng else camLng
+            if (onFix != browseDotOnFix[0]) {
+                browseDotOnFix[0] = onFix
+                if (!browseDot[0].isNaN() && LatLng(browseDot[0], browseDot[1]).distanceTo(LatLng(baseLat, baseLng)) < DOT_HANDOFF_MAX_M) {
+                    browseDot[2] = browseDot[0] - baseLat; browseDot[3] = browseDot[1] - baseLng
+                }
+            }
+            val fade = kotlin.math.exp(-dt / DOT_HANDOFF_TAU_S).toDouble()
+            browseDot[2] *= fade; browseDot[3] *= fade
+            if (kotlin.math.abs(browseDot[2]) < 1e-8 && kotlin.math.abs(browseDot[3]) < 1e-8) { browseDot[2] = 0.0; browseDot[3] = 0.0 }
+            val dotLat = baseLat + browseDot[2]
+            val dotLng = baseLng + browseDot[3]
+            val dotMoved = browseDot[0].isNaN() || kotlin.math.abs(dotLat - browseDot[0]) > 1e-7 || kotlin.math.abs(dotLng - browseDot[1]) > 1e-7
+            val moved = lastBrowse[0].isNaN() || attSettling || dotMoved ||
                 kotlin.math.abs(camLat - lastBrowse[0]) > 1e-6 ||
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
@@ -2906,16 +2939,9 @@ fun VelaMapView(
             }
             if (moved || !zoomEase.isNaN() || browseFlying[0]) idleFrames = 0
             if (moved || !zoomEase.isNaN()) {
-                // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
-                // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to
-                // catch up (the visible hop). At the eased position the dot stays centered and glides with
-                // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
-                // while pinching, when the camera isn't easing.)
-                // Not while the camera glides in from a pan: drawn at the eased position then, the dot
-                // jumped to the screen's center and rode back with the map (#889).
-                if (browseSeeking[0] && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
-                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0] && !browseSeeking[0]) LatLng(camLat, camLng) else loc
-                setMeSource(style, puckAt, beam)
+                // The dot where the block above put it (the eased position, or the fix).
+                setMeSource(style, LatLng(dotLat, dotLng), beam)
+                browseDot[0] = dotLat; browseDot[1] = dotLng
                 if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
                     if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value)) {
                         // Easing attitude (course-up while driving, back to north-up flat
@@ -5057,7 +5083,8 @@ fun VelaMapView(
         // second): the ticker draws the puck at the EASED follow point, but each fix's
         // recomposition ran this paint with the RAW fix - the dot teleported forward and the
         // ticker's next frame pulled it back. Paint the eased point while the ticker owns it.
-        val mePaint = if (!navMode && driveFollowing && !browseCam[0].isNaN()) LatLng(browseCam[0], browseCam[1]) else displayLoc
+        // Following, the ticker owns the dot: a recomposition repaints where it last drew it.
+        val mePaint = if (!navMode && driveFollowing && !browseDot[0].isNaN()) LatLng(browseDot[0], browseDot[1]) else displayLoc
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         // Gated on the fix being NEW (identity — the ViewModel makes a fresh LatLng per fix and
         // recompositions re-pass the same instance): this block runs in a recomposing scope, and
@@ -6659,7 +6686,11 @@ PropertyFactory.iconPadding(2f),
         )
     }
     if (style.getSource(ME_SRC) == null) {
-        style.addSource(GeoJsonSource(ME_SRC, GeoJsonOptions().withMaxZoom(12)))
+        // The full tile depth, unlike the other point sources: a point is placed on its tile's grid,
+        // and at z12 that grid is about 0.9 m, so the moving dot stepped from one grid point to the
+        // next, 13 px at z19 and 30 px past z20, while the map under it held still. One point costs
+        // nothing to re-cut.
+        style.addSource(GeoJsonSource(ME_SRC, GeoJsonOptions().withMaxZoom(22)))
         // Heading beam first so it sits BENEATH the dot (Google order): the
         // translucent cone fans out from under the dot in the facing direction.
         style.addLayer(
