@@ -3807,20 +3807,7 @@ private fun ResultsSheet(
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 },
-                onActionShare = { p ->
-                    val url = app.vela.ui.place.sharePlaceUrl(p)
-                    runCatching {
-                        context.startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, url)
-                                },
-                                context.getString(R.string.place_share_place),
-                            ),
-                        )
-                    }
-                },
+                onActionShare = { p -> app.vela.ui.place.sharePlace(context, p) },
                 onActionMenu = { p ->
                     focusManager.clearFocus()
                     onMenuAsk(p.id)

@@ -3532,6 +3532,31 @@ internal fun sharePlaceUrl(place: Place): String {
     else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
 }
 
+/** The name over the address, or the address alone when it already starts with the name.
+ *  Null when the place has no address. The sheet's Share > Address sends this. */
+internal fun shareAddressText(place: Place): String? =
+    place.fullAddress()?.let { addr -> if (addr.startsWith(place.name)) addr else "${place.name}\n$addr" }
+
+/** The name, the address and the link, one to a line: what a result card's Share sends, so the
+ *  address arrives as text a non-Google maps app can take (issue #903). */
+internal fun sharePlaceText(place: Place): String =
+    listOfNotNull(shareAddressText(place) ?: place.name.ifBlank { null }, sharePlaceUrl(place)).joinToString("\n")
+
+/** Opens the system share sheet on [text]. */
+internal fun shareText(context: Context, text: String) {
+    runCatching {
+        context.startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text),
+                context.getString(R.string.place_share_place),
+            ),
+        )
+    }
+}
+
+/** A result card's Share. */
+internal fun sharePlace(context: Context, place: Place) = shareText(context, sharePlaceText(place))
+
 /** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
  *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
  *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
@@ -4398,33 +4423,13 @@ private fun SharePill(place: Place) {
     val lng = place.location.lng
 
     fun share(text: String) {
-        runCatching {
-            context.startActivity(
-                Intent.createChooser(
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, text)
-                    },
-                    context.getString(R.string.place_share_place),
-                ),
-            )
-        }
+        shareText(context, text)
         open = false
     }
 
-    // Open this exact place on the Google Maps website (in the browser), not share a link. Prefer the
-    // place's own cid deep-link (opens the real place page); fall back to a name+coords query.
-    // The place's own link: the cid deep link when the place has a feature id (opens THE STORE in
-    // Google Maps or Vela), else a name + coordinate search.
-    fun placeUrl(): String {
-        val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
-            ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
-        return if (cid != null) "https://www.google.com/maps?cid=$cid"
-            else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
-    }
-
+    // Open this exact place on the Google Maps website (in the browser), not share a link.
     fun openWeb() {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(placeUrl()))) }
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sharePlaceUrl(place)))) }
         open = false
     }
 
@@ -4432,7 +4437,7 @@ private fun SharePill(place: Place) {
     // same link Open-on-web uses: this used to copy a bare coordinate query, so the recipient got
     // a pin instead of the place (issue #359).
     fun copyLink() {
-        val url = placeUrl()
+        val url = sharePlaceUrl(place)
         runCatching {
             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, url))
@@ -4481,8 +4486,8 @@ private fun SharePill(place: Place) {
             // degoogled-friendly way to send a pin.
             item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
             item(stringResource(R.string.place_share_coordinates)) { share("$lat, $lng") }
-            place.fullAddress()?.let { addr ->
-                item(stringResource(R.string.place_share_address)) { share(if (addr.startsWith(place.name)) addr else "${place.name}\n$addr") }
+            shareAddressText(place)?.let { text ->
+                item(stringResource(R.string.place_share_address)) { share(text) }
             }
         }
     }

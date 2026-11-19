@@ -3680,9 +3680,11 @@ when the feature ids match. Two requests at most.
   result order, and losers draw as small dots.
 - Result cards show the name, a facts line, the open-or-closed line, amenity ticks, up to three
   photos from the search reply, and buttons that act without opening the place (Directions,
-  Call, Website, Share, Menu). The address shows only when the name repeats, the place is
-  unrated, or there is no photo strip. No extra request is made per result. A closed place
-  reads in plain red on dark surfaces (`themedStatusColor`).
+  Call, Website, Share, Menu). Share sends the name, the address and the link, one to a line
+  (`sharePlaceText`). The name and address are the text the sheet's Share > Address sends
+  (`shareAddressText`), and the link is the sheet's Copy link (`sharePlaceUrl`). The address shows
+  only when the name repeats, the place is unrated, or there is no photo strip. No extra request
+  is made per result. A closed place reads in plain red on dark surfaces (`themedStatusColor`).
 - A result's distance is from the point its search ranked from. A tapped map place and a saved
   or recent place are looked up around their own point, so `MapViewModel.fromHere` sets their
   distance from the user's position, or none without a fix.

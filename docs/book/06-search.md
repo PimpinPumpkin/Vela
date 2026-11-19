@@ -18,7 +18,9 @@ open or closed line, up to three amenity ticks, up to three photos, and buttons 
 opening the place (Directions, Call, Website, Share, and Menu when there are menu photos). All
 of it comes from the one search reply. Nothing is fetched per result, so most cards have one
 photo and none has a review line. The address shows when the place is unrated, when its name
-repeats in the list, or when the card has no photos.
+repeats in the list, or when the card has no photos. Share sends the name, the full address and a
+Google Maps link as text, so the address can be pasted into any maps app. An opened list shows
+its places on the same cards.
 
 Some things you type are commands. "Take me home", "Davis to San Francisco", "nearest pharmacy"
 and "what's my ETA" are read as actions first. With no signal the box searches the regions you
