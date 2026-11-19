@@ -74,6 +74,11 @@ direction, sorted by next departure.
 - Canceled calls and runs are left off.
 - The time is the realtime departure when the feed has one, else the timetable time, in the
   stop's time zone and the app's 12 or 24 hour clock.
+- A realtime time more than 3 minutes before the timetable is not shown (`trustLive`): a
+  vehicle waiting to start its run already reports its position, and the feed predicts it as on
+  its way, so a stop two minutes from the start read "2 min" for a bus leaving in twelve. The
+  timetable time shows instead, without green. The same rule holds on a trip's stop list and a
+  planned trip's legs.
 - Green is the feed's own realtime flag, so a tracked vehicle that is on time is green too.
 - Two departures on one row at the same time are one vehicle. A stop can arrive through two
   agencies' feeds or a merged curb pair, and the trip ids differ between the copies.

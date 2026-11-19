@@ -5426,7 +5426,7 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 
 | Piece | Source |
 | --- | --- |
-| Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. |
+| Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. A realtime time more than `Transitous.EARLY_DOUBT_S` (180 s) before its timetable time is replaced by the timetable time and loses its realtime mark (`trustLive`), on boards, trip stop lists and planned legs: a vehicle waiting to start its run is predicted as already on its way. |
 | Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
 | Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
