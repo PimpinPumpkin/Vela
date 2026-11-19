@@ -11,6 +11,9 @@ says so.
 
 ### November 2026
 
+- The map's own "Day and night" (#874): a dark app over a map that goes by the sun. Checked on a
+  Pixel 4a with the simulated location moved to London by day: the map drew light under the dark
+  app.
 - One list exported on its own (#822), from the list editor's title row. Checked on a Pixel 4a:
   a list's exported file, imported after the list was deleted, brought it back with its place.
 
