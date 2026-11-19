@@ -953,6 +953,11 @@
     <string name="settings_theme_auto_hint">Nappal világos, napnyugta után sötét, a helyzeted alapján kiszámítva.</string>
     <string name="settings_nav_day_night">Nappal és éjszaka navigáció közben</string>
     <string name="settings_nav_day_night_hint">Mindenhol máshol megtartja a választott témádat, és csak vezetés közben vált a napszak szerint.</string>
+    <string name="settings_nav_schedule_enable">Sötét mód indítása ütemezés szerint</string>
+    <string name="settings_nav_schedule_enable_hint">Beállítja a térkép kezdeti megjelenését indításkor, amíg a rendszer vagy az autó magától nem vált.</string>
+    <string name="settings_nav_schedule_sun">Napnyugtától napkeltéig</string>
+    <string name="settings_nav_schedule_start">Kezdés: %1$s</string>
+    <string name="settings_nav_schedule_end">Befejezés: %1$s</string>
     <string name="mapscreen_shortcut_add">Hozzáadás</string>
     <string name="settings_road_label">Jelenlegi út neve</string>
     <string name="settings_road_label_off">Ki</string>

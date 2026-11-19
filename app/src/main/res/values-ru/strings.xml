@@ -890,6 +890,11 @@
     <string name="settings_theme_auto_hint">Светлая днём, тёмная после заката, по вашему местоположению.</string>
     <string name="settings_nav_day_night">День и ночь при навигации</string>
     <string name="settings_nav_day_night_hint">Везде сохраняет выбранную вами тему и переключается по освещённости только во время поездки.</string>
+    <string name="settings_nav_schedule_enable">Включать тёмную тему по расписанию</string>
+    <string name="settings_nav_schedule_enable_hint">Задаёт начальный вид карты при запуске, пока система или автомобиль сами не переключат режим.</string>
+    <string name="settings_nav_schedule_sun">От заката до рассвета</string>
+    <string name="settings_nav_schedule_start">Время начала: %1$s</string>
+    <string name="settings_nav_schedule_end">Время окончания: %1$s</string>
     <string name="mapscreen_shortcut_add">Добавить</string>
     <string name="settings_road_label">Название текущей дороги</string>
     <string name="settings_road_label_off">Выкл.</string>

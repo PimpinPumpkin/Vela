@@ -1001,6 +1001,11 @@
     <string name="settings_theme_auto_hint">Jasny w dzień, ciemny po zachodzie słońca, ustalane na podstawie twojej lokalizacji.</string>
     <string name="settings_nav_day_night">Dzień i noc podczas nawigacji</string>
     <string name="settings_nav_day_night_hint">Wszędzie indziej zachowuje wybrany motyw, a przełącza się według światła dziennego tylko podczas jazdy.</string>
+    <string name="settings_nav_schedule_enable">Uruchamiaj tryb ciemny według harmonogramu</string>
+    <string name="settings_nav_schedule_enable_hint">Ustawia początkowy wygląd mapy przy starcie, dopóki system lub samochód sam nie przełączy trybu dnia i nocy.</string>
+    <string name="settings_nav_schedule_sun">Od zachodu do wschodu słońca</string>
+    <string name="settings_nav_schedule_start">Czas rozpoczęcia: %1$s</string>
+    <string name="settings_nav_schedule_end">Czas zakończenia: %1$s</string>
     <string name="mapscreen_shortcut_add">Dodaj</string>
     <string name="settings_road_label">Nazwa bieżącej drogi</string>
     <string name="settings_road_label_off">Wyłączone</string>

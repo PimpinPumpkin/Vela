@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         liveConfig.value = android.content.res.Configuration(newConfig)
+        val sysDark = (newConfig.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        app.vela.ui.NavSchedule.onPhoneDarkSignal(sysDark)
     }
 
     override fun onResume() {

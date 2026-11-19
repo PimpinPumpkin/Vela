@@ -45,6 +45,10 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
     }
 
     override fun onCreate(owner: LifecycleOwner) {
+        // Reset the startup dark-mode schedule override once per car projection session (not on
+        // each screen transition) and seed it with the head unit's initial day/night state.
+        app.vela.ui.NavSchedule.resetToggle()
+        runCatching { carContext.isDarkMode }.getOrNull()?.let { app.vela.ui.NavSchedule.onCarDarkSignal(it) }
         // Feed live GPS into NavSession while the car session is alive. Mirrors the phone's fix gate:
         // GPS fixes with accuracy ≤ 50 m drive guidance; coarser fixes are ignored for nav.
         // Cancel any prior collector first so a re-delivered onCreate can't leak a second one.
@@ -114,6 +118,15 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
         if (screens.stackSize == 0 || screens.top is ActiveNavCarScreen) return
         screens.popToRoot()
         screens.push(ActiveNavCarScreen(carContext, deps))
+    }
+
+    override fun onCarConfigurationChanged(newConfiguration: android.content.res.Configuration) {
+        val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(
+            (newConfiguration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES,
+        )
+        app.vela.ui.NavSchedule.onCarDarkSignal(sysDark)
+        deps.mapRenderer(carContext).onConfigurationChanged()
     }
 
     /** A navigation intent delivered while the app is already running (the host reuses the session). */

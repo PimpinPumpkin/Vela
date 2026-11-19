@@ -345,8 +345,17 @@ class CarMapRenderer(
             app.vela.ui.theme.ThemeMode.LIGHT -> false
             app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
             app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
-            else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+            else -> {
+                val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(false)
+                app.vela.ui.NavSchedule.carDarkOverride(sysDark)
+            }
         }
+    }
+
+    fun onConfigurationChanged() {
+        val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(false)
+        app.vela.ui.NavSchedule.onCarDarkSignal(sysDark)
+        requestRender()
     }
 
     fun start() {
@@ -479,6 +488,7 @@ class CarMapRenderer(
                 if (abs(zoomTarget - zoom) > 0.004) { zoom += (zoomTarget - zoom) * ZOOM_EASE; moved = true }
                 if (stepFling(dt)) moved = true
                 if (following && previewRoute == null) puck?.let { center = it }
+                if (themedNight != null && themedNight != isNight()) moved = true
                 if (moved) requestRender()
                 kotlinx.coroutines.delay(TICK_MS)
             }

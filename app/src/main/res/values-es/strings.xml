@@ -882,6 +882,11 @@
     <string name="settings_theme_auto_hint">Claro de día, oscuro tras la puesta de sol, calculado a partir de tu ubicación.</string>
     <string name="settings_nav_day_night">Día y noche al navegar</string>
     <string name="settings_nav_day_night_hint">Mantiene el tema que elegiste en el resto de la app y cambia según la luz del día solo mientras conduces.</string>
+    <string name="settings_nav_schedule_enable">Iniciar el modo oscuro según horario</string>
+    <string name="settings_nav_schedule_enable_hint">Define la apariencia inicial del mapa al abrir la app hasta que el sistema o el coche cambien de modo por sí solos.</string>
+    <string name="settings_nav_schedule_sun">Del anochecer al amanecer</string>
+    <string name="settings_nav_schedule_start">Hora de inicio: %1$s</string>
+    <string name="settings_nav_schedule_end">Hora de fin: %1$s</string>
     <string name="mapscreen_shortcut_add">Añadir</string>
     <string name="settings_road_label">Nombre de la calle actual</string>
     <string name="settings_road_label_off">Desactivado</string>

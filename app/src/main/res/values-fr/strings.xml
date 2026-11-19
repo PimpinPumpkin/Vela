@@ -880,6 +880,11 @@
     <string name="settings_theme_auto_hint">Clair le jour, sombre après le coucher du soleil, calculé d\'après votre position.</string>
     <string name="settings_nav_day_night">Jour et nuit pendant la navigation</string>
     <string name="settings_nav_day_night_hint">Conserve votre thème partout ailleurs et bascule selon la lumière du jour uniquement quand vous conduisez.</string>
+    <string name="settings_nav_schedule_enable">Démarrer le mode sombre selon un horaire</string>
+    <string name="settings_nav_schedule_enable_hint">Définit l\'apparence initiale de la carte au lancement jusqu\'à ce que le système ou la voiture change de mode.</string>
+    <string name="settings_nav_schedule_sun">Du coucher au lever du soleil</string>
+    <string name="settings_nav_schedule_start">Heure de début : %1$s</string>
+    <string name="settings_nav_schedule_end">Heure de fin : %1$s</string>
     <string name="mapscreen_shortcut_add">Ajouter</string>
     <string name="settings_road_label">Nom de la route actuelle</string>
     <string name="settings_road_label_off">Désactivé</string>

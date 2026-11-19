@@ -992,6 +992,11 @@
     <string name="settings_theme_auto_hint">Chiaro di giorno, scuro dopo il tramonto, calcolato in base alla tua posizione.</string>
     <string name="settings_nav_day_night">Giorno e notte durante la navigazione</string>
     <string name="settings_nav_day_night_hint">Mantiene il tema che hai scelto ovunque e cambia in base alla luce del giorno solo mentre guidi.</string>
+    <string name="settings_nav_schedule_enable">Avvia la modalità scura a orario</string>
+    <string name="settings_nav_schedule_enable_hint">Imposta l\'aspetto iniziale della mappa all\'avvio finché il sistema o l\'auto non cambia modalità da sé.</string>
+    <string name="settings_nav_schedule_sun">Dal tramonto all\'alba</string>
+    <string name="settings_nav_schedule_start">Ora di inizio: %1$s</string>
+    <string name="settings_nav_schedule_end">Ora di fine: %1$s</string>
     <string name="mapscreen_shortcut_add">Aggiungi</string>
     <string name="settings_road_label">Nome della strada attuale</string>
     <string name="settings_road_label_off">Disattivato</string>

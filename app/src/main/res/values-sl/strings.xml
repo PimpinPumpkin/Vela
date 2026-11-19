@@ -1251,6 +1251,11 @@
     <string name="settings_map_theme_hint">Tema velja samo za zemljevid: svetle ceste na temnem ozadju aplikacije ali temne ceste na svetlem ozadju. Dnevni in nočni način med vožnjo še vedno vplivata na zemljevid.</string>
     <string name="settings_theme_auto_hint">Podnevi svetla tema, po sončnem zahodu temna, glede na vašo lokacijo.</string>
     <string name="settings_nav_day_night_hint">Povsod drugje ohrani izbrano temo, med vožnjo pa jo spreminja glede na dnevno svetlobo.</string>
+    <string name="settings_nav_schedule_enable">Zaženi temni način po urniku</string>
+    <string name="settings_nav_schedule_enable_hint">Ob zagonu nastavi začetni videz zemljevida, dokler sistem ali avto samodejno ne preklopi načina.</string>
+    <string name="settings_nav_schedule_sun">Od sončnega zahoda do vzhoda</string>
+    <string name="settings_nav_schedule_start">Začetek: %1$s</string>
+    <string name="settings_nav_schedule_end">Konec: %1$s</string>
     <string name="mapscreen_shortcut_add">Dodaj</string>
     <string name="settings_road_label_hint">Določa, kje je med vožnjo prikazano ime ceste. Nad vrstico ostane na sredini in je berljivo tudi pri dolgih imenih; pod puščico se premika skupaj s puščico.</string>
     <string name="settings_pip_turn_card_hint">Med navigacijo v načinu slika-v-sliki prikaže naslednji zavoj kot kartico na vrhu, preostali čas pa spodaj. Izklopljeno: ena vrstica na dnu prikazuje cesto, razdaljo do zavoja in čas prihoda, kot mini zemljevid Google Zemljevidov.</string>

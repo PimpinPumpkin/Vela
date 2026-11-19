@@ -1263,6 +1263,11 @@
     <string name="settings_theme_auto_hint">Cez deň svetlý, po západe slnka tmavý, podľa vašej polohy.</string>
     <string name="settings_nav_day_night">Deň a noc počas navigácie</string>
     <string name="settings_nav_day_night_hint">Inde ponechá zvolenú tému a podľa denného svetla prepína len počas jazdy.</string>
+    <string name="settings_nav_schedule_enable">Spustiť tmavý režim podľa plánu</string>
+    <string name="settings_nav_schedule_enable_hint">Nastaví počiatočný vzhľad mapy pri spustení, kým systém alebo auto samo neprepne denný či nočný režim.</string>
+    <string name="settings_nav_schedule_sun">Od západu do východu slnka</string>
+    <string name="settings_nav_schedule_start">Čas začiatku: %1$s</string>
+    <string name="settings_nav_schedule_end">Čas konca: %1$s</string>
     <string name="mapscreen_shortcut_add">Pridať</string>
     <string name="settings_road_label">Názov aktuálnej cesty</string>
     <string name="settings_road_label_off">Vypnuté</string>

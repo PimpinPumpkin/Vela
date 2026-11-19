@@ -1223,6 +1223,11 @@
     <string name="settings_theme_auto_hint">Luminoasă în timpul zilei, întunecată după apusul soarelui, în funcție de locație.</string>
     <string name="settings_nav_day_night">Zi și noapte, în timpul navigării</string>
     <string name="settings_nav_day_night_hint">Salvează tema aleasă de peste tot și comută în funcție de luminozitate doar în timpul navigării.</string>
+    <string name="settings_nav_schedule_enable">Pornește modul întunecat după program</string>
+    <string name="settings_nav_schedule_enable_hint">Stabilește aspectul inițial al hărții la pornire până când sistemul sau mașina comută automat modul zi/noapte.</string>
+    <string name="settings_nav_schedule_sun">De la apus până la răsărit</string>
+    <string name="settings_nav_schedule_start">Ora de început: %1$s</string>
+    <string name="settings_nav_schedule_end">Ora de sfârșit: %1$s</string>
     <string name="mapscreen_shortcut_add">Adaugă</string>
     <string name="settings_road_label">Denumirea actuală a străzii</string>
     <string name="settings_road_label_off">Oprit</string>

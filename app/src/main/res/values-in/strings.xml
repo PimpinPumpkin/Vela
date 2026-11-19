@@ -1211,6 +1211,11 @@
     <string name="settings_theme_auto_hint">Terang di siang hari, gelap setelah matahari terbenam, dihitung dari lokasi Anda.</string>
     <string name="settings_nav_day_night">Siang dan malam saat navigasi</string>
     <string name="settings_nav_day_night_hint">Mempertahankan tema pilihan Anda di tempat lain, dan beralih berdasarkan cahaya siang hari hanya saat Anda berkendara.</string>
+    <string name="settings_nav_schedule_enable">Mulai mode gelap sesuai jadwal</string>
+    <string name="settings_nav_schedule_enable_hint">Mengatur tampilan awal peta saat dibuka hingga sistem atau mobil beralih mode siang/malam sendiri.</string>
+    <string name="settings_nav_schedule_sun">Matahari terbenam hingga terbit</string>
+    <string name="settings_nav_schedule_start">Waktu mulai: %1$s</string>
+    <string name="settings_nav_schedule_end">Waktu selesai: %1$s</string>
     <string name="mapscreen_shortcut_add">Tambah</string>
     <string name="settings_road_label">Nama jalan saat ini</string>
     <string name="settings_road_label_off">Nonaktif</string>

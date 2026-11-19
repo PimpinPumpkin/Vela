@@ -882,6 +882,11 @@
     <string name="settings_theme_auto_hint">Ljust på dagen, mörkt efter solnedgången, uträknat från din plats.</string>
     <string name="settings_nav_day_night">Dag och natt under navigering</string>
     <string name="settings_nav_day_night_hint">Behåller ditt valda tema överallt annars och växlar efter dagsljus bara medan du kör.</string>
+    <string name="settings_nav_schedule_enable">Starta mörkt läge enligt schema</string>
+    <string name="settings_nav_schedule_enable_hint">Anger kartans utseende vid start tills systemet eller bilen själv växlar mellan dag och natt.</string>
+    <string name="settings_nav_schedule_sun">Från solnedgång till soluppgång</string>
+    <string name="settings_nav_schedule_start">Starttid: %1$s</string>
+    <string name="settings_nav_schedule_end">Sluttid: %1$s</string>
     <string name="mapscreen_shortcut_add">Lägg till</string>
     <string name="settings_road_label">Aktuellt vägnamn</string>
     <string name="settings_road_label_off">Av</string>

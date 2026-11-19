@@ -225,7 +225,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
-  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
+  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NavSchedule`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoadNumbers`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
@@ -868,6 +868,7 @@ the page fills it after load, and a small stub sits beside it.
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
+| Appearance > Start dark mode on a schedule | `NavSchedule.enabled`, `nav_schedule_enabled`, off; `useSun`, `nav_schedule_sun`, true; `startHour` / `startMinute` / `endHour` / `endMinute`, 18:00 to 06:00 | sets the initial map light or dark state at launch on the phone (`ThemeMode.SYSTEM` with `MapThemeMode.FOLLOW`) and on Android Auto until the phone or head unit toggles its day/night signal |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |

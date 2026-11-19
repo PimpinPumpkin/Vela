@@ -993,6 +993,11 @@
     <string name="settings_theme_auto_hint">Claro durante o dia, escuro depois do pôr do sol, calculado a partir da sua localização.</string>
     <string name="settings_nav_day_night">Dia e noite durante a navegação</string>
     <string name="settings_nav_day_night_hint">Mantém o tema que escolheu em todo o resto e muda conforme a luz do dia apenas enquanto conduz.</string>
+    <string name="settings_nav_schedule_enable">Iniciar modo escuro por horário</string>
+    <string name="settings_nav_schedule_enable_hint">Define o aspeto inicial do mapa ao abrir até o sistema ou o automóvel mudar de modo por si.</string>
+    <string name="settings_nav_schedule_sun">Do pôr ao nascer do sol</string>
+    <string name="settings_nav_schedule_start">Hora de início: %1$s</string>
+    <string name="settings_nav_schedule_end">Hora de fim: %1$s</string>
     <string name="mapscreen_shortcut_add">Adicionar</string>
     <string name="settings_road_label">Nome da estrada atual</string>
     <string name="settings_road_label_off">Desligado</string>

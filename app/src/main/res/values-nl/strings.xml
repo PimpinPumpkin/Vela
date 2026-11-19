@@ -991,6 +991,11 @@
     <string name="settings_theme_auto_hint">Licht overdag, donker na zonsondergang, bepaald aan de hand van je locatie.</string>
     <string name="settings_nav_day_night">Dag en nacht tijdens het navigeren</string>
     <string name="settings_nav_day_night_hint">Houdt overal je gekozen thema aan en schakelt alleen tijdens het rijden mee met het daglicht.</string>
+    <string name="settings_nav_schedule_enable">Donkere modus starten volgens schema</string>
+    <string name="settings_nav_schedule_enable_hint">Stelt het eerste kaartthema bij het opstarten in totdat het systeem of de auto zelf omschakelt.</string>
+    <string name="settings_nav_schedule_sun">Van zonsondergang tot zonsopgang</string>
+    <string name="settings_nav_schedule_start">Begintijd: %1$s</string>
+    <string name="settings_nav_schedule_end">Eindtijd: %1$s</string>
     <string name="mapscreen_shortcut_add">Toevoegen</string>
     <string name="settings_road_label">Naam van de huidige weg</string>
     <string name="settings_road_label_off">Uit</string>

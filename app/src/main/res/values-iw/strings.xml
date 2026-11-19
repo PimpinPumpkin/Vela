@@ -971,6 +971,11 @@
     <string name="settings_theme_auto_hint">בהיר ביום, כהה אחרי השקיעה, לפי המיקום שלך.</string>
     <string name="settings_nav_day_night">יום ולילה בזמן ניווט</string>
     <string name="settings_nav_day_night_hint">שומר על ערכת הנושא שבחרת בכל מקום אחר, ומחליף לפי אור היום רק בזמן נהיגה.</string>
+    <string name="settings_nav_schedule_enable">הפעל מצב כהה לפי לוח זמנים</string>
+    <string name="settings_nav_schedule_enable_hint">קובע את מראה המפה הראשוני בהפעלה עד שהמערכת או הרכב מחליפים מצב יום/לילה בעצמם.</string>
+    <string name="settings_nav_schedule_sun">משקיעה עד זריחה</string>
+    <string name="settings_nav_schedule_start">שעת התחלה: %1$s</string>
+    <string name="settings_nav_schedule_end">שעת סיום: %1$s</string>
     <string name="mapscreen_shortcut_add">הוסף</string>
     <string name="settings_road_label">שם הכביש הנוכחי</string>
     <string name="settings_road_label_off">כבוי</string>

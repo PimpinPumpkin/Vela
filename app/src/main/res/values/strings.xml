@@ -1291,6 +1291,11 @@
     <string name="settings_theme_auto_hint">Light during the day, dark after sunset, worked out from your location.</string>
     <string name="settings_nav_day_night">Day and night while navigating</string>
     <string name="settings_nav_day_night_hint">Keeps your chosen theme everywhere else, and switches by daylight only while you are driving.</string>
+    <string name="settings_nav_schedule_enable">Start dark mode on a schedule</string>
+    <string name="settings_nav_schedule_enable_hint">Sets the initial map appearance at launch until the system or car switches day/night mode on its own.</string>
+    <string name="settings_nav_schedule_sun">Sunset to sunrise</string>
+    <string name="settings_nav_schedule_start">Start time: %1$s</string>
+    <string name="settings_nav_schedule_end">End time: %1$s</string>
     <string name="mapscreen_shortcut_add">Add</string>
     <string name="settings_road_label">Current road name</string>
     <string name="settings_road_label_off">Off</string>

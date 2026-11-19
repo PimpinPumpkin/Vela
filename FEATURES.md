@@ -311,7 +311,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Look and settings
 
 - Themes are follow the system, Light, Dark, "AMOLED black" and "Day and night". "Day and night
-  while navigating" applies it to drives only.
+  while navigating" applies it to drives only. "Start dark mode on a schedule" sets the initial day/night state at launch (sunset to sunrise or custom hours) until the system or car switches on its own.
 - "Map" sets the map light or dark apart from the app. "Map look" picks the basemap style: the
   Vela look on OpenFreeMap Liberty, or OpenFreeMap's Bright, Positron, Fiord or Black (its Dark
   style) as served, on the same tiles. "Map colors" is Modern, Classic or Contrast (a night

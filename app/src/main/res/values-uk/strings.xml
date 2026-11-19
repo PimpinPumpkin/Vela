@@ -888,6 +888,11 @@
     <string name="settings_theme_auto_hint">Світла вдень, темна після заходу сонця, визначається за вашим місцезнаходженням.</string>
     <string name="settings_nav_day_night">День і ніч під час навігації</string>
     <string name="settings_nav_day_night_hint">Скрізь залишає обрану вами тему, а перемикається за освітленням лише поки ви за кермом.</string>
+    <string name="settings_nav_schedule_enable">Вмикати темний режим за розкладом</string>
+    <string name="settings_nav_schedule_enable_hint">Задає початковий вигляд карти під час запуску, доки система чи авто самі не перемкнуть режим.</string>
+    <string name="settings_nav_schedule_sun">Від заходу до сходу сонця</string>
+    <string name="settings_nav_schedule_start">Час початку: %1$s</string>
+    <string name="settings_nav_schedule_end">Час завершення: %1$s</string>
     <string name="mapscreen_shortcut_add">Додати</string>
     <string name="settings_road_label">Назва поточної дороги</string>
     <string name="settings_road_label_off">Вимкнено</string>

@@ -882,6 +882,11 @@
     <string name="settings_theme_auto_hint">Tagsüber hell, nach Sonnenuntergang dunkel, ermittelt aus Ihrem Standort.</string>
     <string name="settings_nav_day_night">Tag und Nacht während der Navigation</string>
     <string name="settings_nav_day_night_hint">Behält Ihr gewähltes Design überall sonst bei und wechselt nur während der Fahrt nach Tageslicht.</string>
+    <string name="settings_nav_schedule_enable">Dunkelmodus nach Zeitplan starten</string>
+    <string name="settings_nav_schedule_enable_hint">Legt beim Start fest, ob die Karte dunkel oder hell beginnt, bis das System oder Auto selbst umschaltet.</string>
+    <string name="settings_nav_schedule_sun">Sonnenuntergang bis Sonnenaufgang verwenden</string>
+    <string name="settings_nav_schedule_start">Beginn: %1$s</string>
+    <string name="settings_nav_schedule_end">Ende: %1$s</string>
     <string name="mapscreen_shortcut_add">Hinzufügen</string>
     <string name="settings_road_label">Name der aktuellen Straße</string>
     <string name="settings_road_label_off">Aus</string>

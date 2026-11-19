@@ -956,6 +956,11 @@
     <string name="settings_theme_auto_hint">白天使用浅色，日落后使用深色，依据您的位置推算。</string>
     <string name="settings_nav_day_night">导航时日夜切换</string>
     <string name="settings_nav_day_night_hint">其他界面保持您选择的主题，仅在驾驶时按日照切换。</string>
+    <string name="settings_nav_schedule_enable">按计划启动深色模式</string>
+    <string name="settings_nav_schedule_enable_hint">在启动时设置地图的初始外观，直到系统或车机自行切换日夜模式。</string>
+    <string name="settings_nav_schedule_sun">日落至日出</string>
+    <string name="settings_nav_schedule_start">开始时间：%1$s</string>
+    <string name="settings_nav_schedule_end">结束时间：%1$s</string>
     <string name="mapscreen_shortcut_add">添加</string>
     <string name="settings_road_label">当前道路名称</string>
     <string name="settings_road_label_off">关闭</string>
