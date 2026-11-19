@@ -1766,6 +1766,16 @@ penalty, and a jump over `REACQUIRE_JUMP_M` (1,500 m) must repeat for three fixe
 progress holds. Off-route distance is the distance of that projection, never the whole route's
 nearest point.
 
+A route whose start lies within `ARRIVE_PROX_M` (40 m) of its end, and under a third of its
+length from it, is a round trip (`NavEngine.loopGuardM`). Until progress is a third of the way
+round, at most `DEST_ZONE_M` (150 m), neither search matches anything in the last stretch of
+that length, not even the part of a segment that crosses into it. Without this, a 400 m and a
+600 m square loop whose first fix sat 15 m up the road the trip comes back on arrived on that fix
+(`NavEngineRoundTripTest`); loops longer than the window were not affected. Each step's mark is
+found forward of the one before (`geomFor`), and the depart step's is scored from the start with
+`ANCHOR_PENALTY`, so a depart point a meter nearer the way back does not put every step at the
+end.
+
 `NavEngine.offRouteCorridor(mode, accuracyM)` scales the corridor with the fix's accuracy,
 clamped to 3 to 40 m and taken as `DEFAULT_ACC_M` (12 m) when absent. `farOffDistance` is twice
 the corridor, capped.
@@ -4092,6 +4102,17 @@ are not in the saved-places export.
   most `SavedRoutes.MAX_STOPS` (10). A run is never offered as an alternate. `openSavedRoute`
   starts it in its own mode from "Your routes" or the Settings list.
 - A trip takes at most 10 stops: `addStop` refuses the eleventh and `applyTrip` truncates.
+- "Back to start" in the trip editor (issue #929) adds a copy of the first row as the
+  destination. Like every edit there it applies on Done. It is hidden when the last row is
+  already the first and when the old destination would be an eleventh stop, and with key input
+  focus moves to Done, since the row is gone.
+- A trip from "your location" back to it with a place between is a round trip. `applyTrip`
+  ends it at the fix of that moment, a place with id `round-trip-end` named "Starting point",
+  while the start follows the fix as any trip from your location does. `tripPointsForEditor`
+  shows that end as "your location" again, so reopening the editor shows the trip as built and
+  a pinned shortcut stores it as "your location"; `openTripShortcut` opens such a shortcut on
+  its first stop. With no fix, or nothing between the two ends, `applyTrip` does nothing.
+  Arrival waits for the end: 4.6, Progress and off route.
 - "Add stop" in the trip editor (`beginPickStopFromEditor`) comes back to the editor when the
   place is picked or the pick is cancelled, with the new stop as the last row before the
   destination. "Add stop" on the route card still lands on the route.

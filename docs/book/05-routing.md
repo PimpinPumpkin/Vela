@@ -264,6 +264,14 @@ next" use the same path (`setStops`). The replan skips the reroute cooldown and 
 planning fetch with all its retries. The new list is the plan at once, so if the fetch fails
 the next reroute or recheck routes through it.
 
+A round trip goes from where you are, through its stops and back. "Back to start" in the Stops
+sheet adds the first row again as the destination. When that row is "your location", the end
+becomes a fixed point where you are as the trip is planned, named "Starting point", while the
+start follows you as on any trip from your location. Reopened, the sheet shows the end as "your
+location" again, and a trip pinned to the home screen keeps it so: tapped elsewhere, the round
+trip starts and ends there. How the drive avoids arriving as it leaves is in
+[chapter 4](04-navigation.md#the-per-fix-loop).
+
 ### Avoid tolls, highways and ferries
 
 The three switches apply to driving and ride every fetch, including the reroutes, rechecks and

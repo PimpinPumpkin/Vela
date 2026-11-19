@@ -65,6 +65,13 @@ returns before it.
 Progress along the route only moves forward. A fix is matched inside a window around the
 progress so far, so a route that passes over itself cannot jump to a later leg.
 
+A round trip ends where it starts, so as the car leaves it is also at the end. Until the car is a
+third of the way round (150 m at most), the fix is not matched to the last stretch of that
+length. On a loop short enough for the 600 m window to reach its end, a fix at the start that
+drifted 15 m onto the road the trip comes back on read as the end of the trip, and the drive
+arrived as it set off. The depart step's own mark is measured from the start for the same
+reason.
+
 ### What the voice says, and when
 
 ```

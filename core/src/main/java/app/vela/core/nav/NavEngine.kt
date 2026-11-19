@@ -319,7 +319,13 @@ object NavEngine {
             // and the plain nearest one put progress 600 m ahead on the way IN, skipping the
             // roundabout's steps and misreading the next card by that much (a captured Milton
             // Keynes route, 2026-10-02).
-            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0, anchorM = state.traveledM)
+            // A round trip ends where it starts: until the car is [loopGuardM] in, the route's last
+            // stretch is no match for a fix. On a loop short enough for the window to reach its end,
+            // a fix at the start that drifted 15 m onto the road the trip comes back on read as the
+            // end of the trip, and the drive arrived as it set off.
+            val guardM = loopGuardM(route.polyline, total)
+            val capM = if (guardM > 0.0 && state.traveledM < guardM) total - guardM else Double.POSITIVE_INFINITY
+            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0, anchorM = state.traveledM, capM = capM)
             if (wD <= ON_ROUTE_M && state.traveledM <= total) {
                 traveled = maxOf(state.traveledM, wM)
                 offDist = wD
@@ -336,7 +342,7 @@ object NavEngine {
                 // near a far leg would otherwise teleport progress, firing every stop cue it passes
                 // (permanently) and skipping turns; a genuine gap (tunnel) keeps producing the same
                 // far match and gets adopted on the 3rd fix.
-                val (gM, gD) = projectNearAnchor(route.polyline, cum, loc, state.traveledM)
+                val (gM, gD) = projectNearAnchor(route.polyline, cum, loc, state.traveledM, capM)
                 val bigJump = kotlin.math.abs(gM - state.traveledM) > REACQUIRE_JUMP_M && gD >= 20.0
                 if (gD <= ON_ROUTE_M && (!bigJump || reacquireHits >= 2)) {
                     traveled = gM
@@ -1216,7 +1222,9 @@ object NavEngine {
         for (k in maneuvers.indices) {
             // +0.5 nudge past the previous position: a segment ENDING exactly at fromM still
             // overlaps the window and its (earlier) projection would win the strict-less tie.
-            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total)
+            // The first step is anchored at the start: a round trip passes its start again at the
+            // end, and a depart point a meter nearer the way back put every step at the end.
+            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total, anchorM = if (k == 0) 0.0 else null)
             manAlong[k] = (
                 if (wd <= ON_ROUTE_M) wm
                 else projectNearAnchor(route.polyline, cum, maneuvers[k].location, fromM).first
@@ -1236,8 +1244,9 @@ object NavEngine {
      *  along-route window `[loM, hiM]`. Returns (meters-along-route, perpendicular-meters).
      *  Windowing is what stops a route that passes near itself from matching a far leg; a
      *  caller passes the window around the last known progress. Returns the clamped window
-     *  start with a huge distance if no segment falls in the window. */
-    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double, anchorM: Double? = null): Pair<Double, Double> {
+     *  start with a huge distance if no segment falls in the window. Nothing past [capM] is
+     *  matched, not even the rest of a segment that crosses it. */
+    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double, anchorM: Double? = null, capM: Double = Double.POSITIVE_INFINITY): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
         var bestScore = Double.MAX_VALUE
         var bestD = Double.MAX_VALUE
@@ -1246,6 +1255,7 @@ object NavEngine {
         val mPerDegLng = 111_320.0 * cos(Math.toRadians(p.lat))
         for (i in 0 until path.size - 1) {
             if (cum[i + 1] < loM || cum[i] > hiM) continue // segment entirely outside the window
+            if (cum[i] >= capM) continue
             val a = path[i]
             val b = path[i + 1]
             val ax = (a.lng - p.lng) * mPerDegLng
@@ -1255,7 +1265,7 @@ object NavEngine {
             val dx = bx - ax
             val dy = by - ay
             val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, tMax(cum, i, capM))
             val d = hypot(ax + t * dx, ay + t * dy)
             val along = cum[i] + t * (cum[i + 1] - cum[i])
             // With an anchor, a pass farther along has to be that much nearer to win (2 cm per
@@ -1278,8 +1288,9 @@ object NavEngine {
      *  perpendicular distance, the pass NEAREST the anchor wins. A far leg must be >20 m
      *  perpendicular-closer per km of along-distance to beat a near match — impossible inside
      *  the ON_ROUTE acceptance band, so re-acquire can no longer teleport progress onto the
-     *  return leg. Returns (meters-along-route, ACTUAL perpendicular meters of the winner). */
-    internal fun projectNearAnchor(path: List<LatLng>, cum: DoubleArray, p: LatLng, anchorM: Double): Pair<Double, Double> {
+     *  return leg. Returns (meters-along-route, ACTUAL perpendicular meters of the winner).
+     *  Nothing past [capM] is matched. */
+    internal fun projectNearAnchor(path: List<LatLng>, cum: DoubleArray, p: LatLng, anchorM: Double, capM: Double = Double.POSITIVE_INFINITY): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
         var bestScore = Double.MAX_VALUE
         var bestD = Double.MAX_VALUE
@@ -1287,6 +1298,7 @@ object NavEngine {
         val mPerDegLat = 111_320.0
         val mPerDegLng = 111_320.0 * cos(Math.toRadians(p.lat))
         for (i in 0 until path.size - 1) {
+            if (cum[i] >= capM) continue
             val a = path[i]
             val b = path[i + 1]
             val ax = (a.lng - p.lng) * mPerDegLng
@@ -1296,7 +1308,7 @@ object NavEngine {
             val dx = bx - ax
             val dy = by - ay
             val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, tMax(cum, i, capM))
             val d = hypot(ax + t * dx, ay + t * dy)
             val along = cum[i] + t * (cum[i + 1] - cum[i])
             val score = d + ANCHOR_PENALTY * kotlin.math.abs(along - anchorM)
@@ -1307,6 +1319,20 @@ object NavEngine {
             }
         }
         return bestAlong to bestD
+    }
+
+    /** The farthest a projection onto segment [i] may run before it passes [capM]. */
+    private fun tMax(cum: DoubleArray, i: Int, capM: Double): Double =
+        if (cum[i + 1] <= capM || cum[i + 1] <= cum[i]) 1.0 else ((capM - cum[i]) / (cum[i + 1] - cum[i])).coerceIn(0.0, 1.0)
+
+    /** A route that ends where it starts (a round trip: its start within [ARRIVE_PROX_M] of its
+     *  end, and the two under a third of its length apart): how far in [update] keeps progress off
+     *  its last stretch, a third of the route at most [DEST_ZONE_M]. 0 for any other route, so a
+     *  reroute that starts farther from the destination is matched as before. */
+    internal fun loopGuardM(poly: List<LatLng>, total: Double): Double {
+        if (poly.size < 2) return 0.0
+        val gap = poly.first().distanceTo(poly.last())
+        return if (gap <= ARRIVE_PROX_M && gap < total / 3) minOf(DEST_ZONE_M, total / 3) else 0.0
     }
 
 }

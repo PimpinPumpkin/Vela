@@ -114,6 +114,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Add stops by search, on the map or by long-press, and drag to reorder. A stop added from the
   "Stops" sheet comes back to it, so you can drag it into place and add the next. A stop added
   during a drive goes last; open the sheet to move it.
+- "Back to start" in the "Stops" sheet makes a round trip: through your stops and back to where
+  you planned it.
 - Avoid tolls, highways, ferries or cameras. Set Leave now, Depart at or Arrive by.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.

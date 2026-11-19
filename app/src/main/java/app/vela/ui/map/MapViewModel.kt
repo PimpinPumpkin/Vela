@@ -6493,28 +6493,34 @@ class MapViewModel @Inject constructor(
     }
 
     /** The planning trip as the full-trip editor's rows (issue #516): start, stops, destination in
-     *  travel order, with null meaning "your location". */
+     *  travel order, with null meaning "your location". A round trip's end ([applyTrip]) reads as
+     *  "your location" again, so the editor and a pinned shortcut keep it a round trip. */
     fun tripPointsForEditor(): List<app.vela.ui.place.TripPoint> {
         val s = _state.value
         val place = s.selected
+        fun point(p: Place?) = app.vela.ui.place.TripPoint(p?.takeUnless { it.id == ROUND_TRIP_END_ID })
         val start = if (s.directionsReversed) place else s.directionsOrigin
         val end = if (s.directionsReversed) s.directionsOrigin else place
-        return listOf(app.vela.ui.place.TripPoint(start)) +
+        return listOf(point(start)) +
             s.directionsWaypoints.map { app.vela.ui.place.TripPoint(it) } +
-            app.vela.ui.place.TripPoint(end)
+            point(end)
     }
 
     /** Apply a full-trip edit (issue #516): the first point becomes the start and the last the
      *  destination, whatever they were before; "your location" in the middle becomes a stop at the
      *  current fix. Maps back onto the chooser's model (selected / directionsOrigin / reversed, with
-     *  stops always in travel order) and reroutes once. */
+     *  stops always in travel order) and reroutes once. A trip from "your location" back to it
+     *  with a place between is a round trip (issue #929): its end is the current fix, held as a
+     *  fixed point, while the start follows you as any trip from your location does. */
     fun applyTrip(points: List<app.vela.ui.place.TripPoint>) {
         if (points.size < 2) return
         val s = _state.value
-        val start = points.first().place
-        val end = points.last().place
-        if (start == null && end == null) return // both ends "you": nothing to route
         val me = s.myLocation
+        val start = points.first().place
+        val roundTrip = start == null && points.subList(1, points.size - 1).any { it.place != null }
+        val end = points.last().place
+            ?: if (roundTrip) me?.let { Place(id = ROUND_TRIP_END_ID, name = appContext.getString(R.string.trip_start_point), location = it) } else null
+        if (start == null && end == null) return // both ends "you" and nothing between, or no fix yet
         val mids = points.subList(1, points.size - 1).mapNotNull { p ->
             p.place ?: me?.let { Place(id = "me", name = appContext.getString(R.string.mapscreen_your_location), location = it) }
         }.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
@@ -6538,7 +6544,8 @@ class MapViewModel @Inject constructor(
 
     /** A home-screen trip shortcut was tapped: open the route picker on that trip. */
     fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
-        val anchor = points.last() ?: points.first() ?: return
+        // A round trip has "your location" at both ends: it opens on its first stop.
+        val anchor = points.last() ?: points.first() ?: points.firstNotNullOfOrNull { it } ?: return
         launchLink = true
         linkMode = mode
         selectPlace(anchor)
@@ -10967,6 +10974,8 @@ class MapViewModel @Inject constructor(
         private const val TRIP_AT_START_M = 150.0
         /** Within this of the first stop, the trip runs from you to it and on; farther, it is shown as planned. */
         private const val TRIP_NEAR_M = 50_000.0
+        /** Id of a round trip's end: where you were when it was planned ([MapViewModel.applyTrip]). */
+        private const val ROUND_TRIP_END_ID = "round-trip-end"
         /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
         const val CELLS_DOWNLOAD_ID = "cells"
         /** How long an informational heads-up card stays before dismissing itself. */

@@ -553,6 +553,8 @@
     <string name="place_move_stop_down">Move stop down</string>
     <string name="place_remove_stop">Remove stop</string>
     <string name="place_add_stop">Add stop</string>
+    <string name="trip_back_to_start">Back to start</string>
+    <string name="trip_start_point">Starting point</string>
     <string name="stops_editor_title">Stops</string>
     <string name="stops_edit">Edit stops</string>
     <string name="steps_stop_at">Stop: %1$s</string>
