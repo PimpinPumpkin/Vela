@@ -4539,7 +4539,10 @@ collision. Hidden in the overview with the other `vela-nav-` layers.
   `vela-addr-<i>` (the address overlay). `vela-housenumber` is hidden while an address overlay is
   mounted, so an address never draws twice.
 - Both gate on `houseNumberMinZoom()` (`HouseNumbers`, pref `housenumber_zoom`: near 18.3, normal
-  17.8, far 17.3) and fade in over the next 0.6 levels (`houseNumberFade`).
+  17.8, far 17.3, furthest 16.8) and fade in over the next 0.6 levels (`houseNumberFade`).
+  Furthest is opt-in and labeled as slower: panning central London at z17 on a Pixel 4a ran
+  24 fps median with it against 38-40 at far, where z17 shows no numbers. Under an address
+  overlay it starts at the overlay's z17.
 - The address archives carry tiles only at z16-17, so `vela-addr-*` has minzoom 17 and its gate is
   the text field, empty below `houseNumberMinZoom()`. With the gate as the layer minzoom a cold
   source fetched nothing. With an opacity gate every hidden number still ran placement.

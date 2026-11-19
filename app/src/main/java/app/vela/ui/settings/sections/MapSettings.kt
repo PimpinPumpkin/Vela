@@ -144,6 +144,7 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
             app.vela.ui.HouseNumbers.NEAR to stringResource(R.string.settings_house_numbers_near),
             app.vela.ui.HouseNumbers.NORMAL to stringResource(R.string.settings_house_numbers_normal),
             app.vela.ui.HouseNumbers.FAR to stringResource(R.string.settings_house_numbers_far),
+            app.vela.ui.HouseNumbers.FURTHEST to stringResource(R.string.settings_house_numbers_furthest),
         ).forEach { (id, label) ->
             SelectableRow(
                 label = label,
