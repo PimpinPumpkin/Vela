@@ -102,6 +102,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Directions by car, foot, bike or transit, from where you are or any start you pick.
 - A drive follows Google's route, which knows traffic and closures. Street names, lanes and exits
   come from open data. With Google off the route comes from open routers, and keeps off farm tracks.
+- A turn on Google's route that OpenStreetMap bans, and both open routers refuse, is replaced by
+  the legal way round when that costs under 1.5 km.
 - Up to four routes with time, distance and traffic. Tap one on the map to switch.
 - "Google-style route picker" (the default) shows one route at a time. Off, a classic panel lists
   them all.

@@ -392,6 +392,44 @@ object ValhallaRouter {
     const val OFF_RUN_MAX_M = 380.0
     const val OFF_TOTAL_SHARE = 0.08
 
+    /** Valhalla's car route for just one turn ([app.vela.core.data.naming.TurnBans]): from [a] heading [ha] to [b]
+     *  heading [hb], each end looked for within [app.vela.core.data.naming.TurnBans.PROBE_RADIUS_M]. Null on any
+     *  failure or when no road lies there. The snap is how far the route's own ends are from the
+     *  asked points. */
+    internal fun probeTurn(http: OkHttpClient, a: LatLng, ha: Double, b: LatLng, hb: Double, timeoutMs: Long): app.vela.core.data.naming.TurnBans.Probe? = runCatching {
+        val tol = app.vela.core.data.naming.TurnBans.PROBE_HEADING_TOL_DEG
+        val r = app.vela.core.data.naming.TurnBans.PROBE_RADIUS_M.toInt()
+        val body = buildJsonObject {
+            putJsonArray("locations") {
+                for ((p, h) in listOf(a to ha, b to hb)) add(buildJsonObject {
+                    put("lat", p.lat); put("lon", p.lng)
+                    put("heading", (((h % 360.0) + 360.0) % 360.0).toInt()); put("heading_tolerance", tol)
+                    put("radius", r)
+                })
+            }
+            put("costing", "auto")
+            put("units", "kilometers")
+        }.toString()
+        val req = Request.Builder()
+            .url(BASE)
+            .header("User-Agent", VelaConfig.VELA_UA)
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) return@use null
+            val trip = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject["trip"]?.jsonObject ?: return@use null
+            val summary = trip["summary"]?.jsonObject ?: return@use null
+            val line = trip["legs"]?.jsonArray?.firstOrNull()?.jsonObject?.get("shape")?.jsonPrimitive?.contentOrNull
+                ?.let { PolylineCodec.decode(it, PRECISION) }?.takeIf { it.size >= 2 } ?: return@use null
+            app.vela.core.data.naming.TurnBans.Probe(
+                line, (summary["length"]?.jsonPrimitive?.doubleOrNull ?: return@use null) * 1000.0,
+                summary["time"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                maxOf(line.first().distanceTo(a), line.last().distanceTo(b)),
+            )
+        }
+    }.getOrNull()
+
     /** For the studies and the log: why a match was not used. */
     @Volatile var onMatchFail: ((String) -> Unit)? = null
 

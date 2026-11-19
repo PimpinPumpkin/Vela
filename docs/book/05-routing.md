@@ -42,6 +42,19 @@ with a short jittered backoff. The line you drive is Google's top route, because
 about closures and traffic and the open router does not. The steps come from open data.
 `GoogleMapsDataSource.directions` runs the request and `HybridRoute` joins the pieces.
 
+### A turn Google takes that OpenStreetMap bans
+
+Google sometimes takes a turn that a sign forbids and OpenStreetMap records as banned (issue
+#947). Where Google turns at a junction the open route also reaches but leaves another way,
+`TurnBans` asks OSRM to drive just that turn, 40 m in and 40 m out, with the headings fixed. A
+legal turn comes back about 80 m long. A banned one comes back as the way round. Valhalla is then
+asked the same, and only when both go round is the ban believed. If the way round adds no more
+than 1.5 km and two and a half minutes, it replaces that piece of Google's line, and the rest of
+the route is built on the corrected line. A dearer detour leaves Google's line alone, since a
+long way round is also what a wrong ban in OpenStreetMap would look like. A road that is missing
+from OpenStreetMap does not snap, so it never reads as a ban. On #947's junction both routers
+went about 870 m round for 82 m of road, and the phone's route took the legal way (+778 m).
+
 ### Where the two routes share the road
 
 `HybridRoute.stretchesFor` walks Google's line in 20 m steps and marks each point more than

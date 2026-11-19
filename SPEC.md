@@ -957,7 +957,36 @@ files read back.
 ### 4.2 The hybrid route, traffic and alternates
 
 `HybridRoute` builds the `GOOGLE_HYBRID` route for DRIVE. Nothing is routed through sampled
-points, so the result cannot loop, and it is Google's line exactly.
+points, so the result cannot loop, and it is Google's line exactly, except where a turn on it is
+banned (below).
+
+#### Turn bans
+
+Google's line can take a turn that OpenStreetMap bans (issue #947). `TurnBans.check` runs before
+the stretches, on Google's top line and the open route's top.
+
+- A candidate is a corner of Google's line of at least `CORNER_DEG` (35 degrees), `END_CLEAR_M`
+  (60 m) from either trip end, where some pass of the open route comes within `SAME_JUNCTION_M`
+  (15 m), arriving within `SAME_HEADING_DEG` (30 degrees) of Google's approach and leaving more
+  than that from Google's exit. At most `MAX_CANDIDATES` (3) per route, nearest the start.
+- Each candidate is driven by FOSSGIS OSRM (`RouteGeometry.probeTurn`) from `PROBE_M` (40 m)
+  before the corner to 40 m after it on Google's line, headings pinned within 30 degrees, snap
+  radius `PROBE_RADIUS_M` (15 m). A road missing from OpenStreetMap fails the snap and is no ban.
+- An answer at most 70 m longer than the line between the ends drove the turn. One at least
+  120 m longer with both ends snapped within 12 m went round. Only when OSRM goes round is
+  Valhalla asked the same (`ValhallaRouter.probeTurn`), and only when both go round is the turn
+  banned.
+- A banned turn whose way round adds at most `SPLICE_MAX_EXTRA_M` (1.5 km) and
+  `SPLICE_MAX_EXTRA_S` (150 s) is replaced by OSRM's way round (`TurnBans.splice`): the length,
+  times, the leg it is in and the traffic spans after it move with it. A dearer one leaves
+  Google's line as it is. The stretches, the naming and the checks that follow
+  (`viaReaches`, `spurWithTurn`, `applyTraffic`) all use the spliced line.
+- The probes give up after `PROBE_TIMEOUT_MS` (1.5 s, 0.8 s on an urgent replan) and Google's
+  line stands. Answers are kept for the session by junction and headings, so a reroute does not
+  ask again. `Route.made` gets `bans=<banned>/<asked>`, `banSplice`, `banExtra` and `banLate`.
+- On #947's junction both routers went 866 and 869 m round for 82 m of line, and the phone's
+  route replaced it (+778 m).
+- `setprop debug.vela.tune.turnBansOff 1` keeps Google's turns (an adb-only dial).
 
 #### Stretches
 

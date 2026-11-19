@@ -108,6 +108,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         if (app.vela.ui.AppTune.localOn("netLog")) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
         // A test switch for the routes' fallbacks (ValhallaRouter.matchOff). adb only.
         app.vela.core.data.ValhallaRouter.matchOff = app.vela.ui.AppTune.localOn("noMatch")
+        // Google's turns kept even where both open routers find them banned (TurnBans). adb only.
+        app.vela.core.data.naming.TurnBans.off = app.vela.ui.AppTune.localOn("turnBansOff")
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())

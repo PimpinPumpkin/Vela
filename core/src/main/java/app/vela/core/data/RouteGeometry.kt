@@ -211,6 +211,31 @@ object RouteGeometry {
             callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure, waypointBearings = waypointBearings,
         )
 
+    /** OSRM's car route for just one turn ([app.vela.core.data.naming.TurnBans]): from [a] heading [ha] to [b] heading
+     *  [hb], each end snapped no farther than [app.vela.core.data.naming.TurnBans.PROBE_RADIUS_M]. Null on any failure,
+     *  and when no road lies there (OSRM answers NoSegment). */
+    internal fun probeTurn(http: OkHttpClient, a: LatLng, ha: Double, b: LatLng, hb: Double, timeoutMs: Long): app.vela.core.data.naming.TurnBans.Probe? = runCatching {
+        fun deg(h: Double) = (((h % 360.0) + 360.0) % 360.0).toInt()
+        val tol = app.vela.core.data.naming.TurnBans.PROBE_HEADING_TOL_DEG
+        val r = app.vela.core.data.naming.TurnBans.PROBE_RADIUS_M.toInt()
+        val url = "$OSRM_BASE/routed-car/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}" +
+            "?overview=full&geometries=polyline$OSRM_PRECISION&steps=false&alternatives=false" +
+            "&bearings=${deg(ha)},$tol;${deg(hb)},$tol&radiuses=$r;$r"
+        val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        client.newCall(Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return@use null
+            val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+            val route = root["routes"]?.jsonArray?.firstOrNull()?.jsonObject ?: return@use null
+            val line = route["geometry"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it, OSRM_PRECISION) }
+                ?.takeIf { it.size >= 2 } ?: return@use null
+            val snap = root["waypoints"]?.jsonArray?.maxOfOrNull { it.jsonObject["distance"]?.jsonPrimitive?.doubleOrNull ?: 999.0 } ?: 999.0
+            app.vela.core.data.naming.TurnBans.Probe(
+                line, route["distance"]?.jsonPrimitive?.doubleOrNull ?: return@use null,
+                route["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0, snap,
+            )
+        }
+    }.getOrNull()
+
     /** OSRM `bearings=` with one entry per waypoint: "<deg>,<tolerance>" where a heading is given,
      *  empty where not. The count must equal the waypoint count or OSRM rejects the request. */
     internal fun waypointBearingsParam(bearings: List<Double?>): String {
@@ -1171,6 +1196,37 @@ object RouteGeometry {
                 }
             }
             return bestAlong
+        }
+
+        /** Along-distances of every pass of the polyline within [tolM] of [p], one per pass (the
+         *  nearest point of each), in order. A pass ends where the line is [passGapM] or more along
+         *  from the last near point. */
+        fun allAlong(p: LatLng, tolM: Double, passGapM: Double = 60.0): List<Double> {
+            val cx = Math.floor(p.lng / cell).toInt(); val cy = Math.floor(p.lat / cell).toInt()
+            val latScale = Math.cos(Math.toRadians(p.lat))
+            val hits = ArrayList<Pair<Double, Double>>() // along, distance
+            val segsSeen = HashSet<Int>()
+            for (x in cx - 1..cx + 1) for (y in cy - 1..cy + 1) {
+                val segs = map[key(x, y)] ?: continue
+                for (i in segs) {
+                    if (!segsSeen.add(i)) continue
+                    val a = poly[i]; val b = poly[i + 1]
+                    val bx = (b.lng - a.lng) * latScale; val by = b.lat - a.lat
+                    val px = (p.lng - a.lng) * latScale; val py = p.lat - a.lat
+                    val len2 = bx * bx + by * by
+                    val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+                    val dM = Math.hypot(px - bx * t, py - by * t) * 111_320.0
+                    if (dM <= tolM) hits += (cum[i] + (cum[i + 1] - cum[i]) * t) to dM
+                }
+            }
+            hits.sortBy { it.first }
+            val passes = ArrayList<Pair<Double, Double>>()
+            for (h in hits) {
+                val last = passes.lastOrNull()
+                if (last != null && h.first - last.first < passGapM) { if (h.second < last.second) passes[passes.lastIndex] = h }
+                else passes += h
+            }
+            return passes.map { it.first }
         }
     }
 

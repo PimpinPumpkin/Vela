@@ -259,6 +259,11 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A turn Google takes that OpenStreetMap bans (`TurnBans`, issue #947): on a Pixel 4a, the
+  reporter's trip found the banned left, both routers went round, and the planned route took the
+  legal way (+778 m). Not yet seen on a drive, and how often a ban in OpenStreetMap is stale is
+  not measured: read `bans=` in `Route.made` on shared trips.
+
 - The drive on the lock screen (`LockScreenNav`, issue #896): on Android 14 and 8.0 emulators
   with a PIN, a running drive showed over the locked phone after the power button, Get a voice
   asked for the PIN first and Back returned to the drive, and pausing put the lock screen back.
