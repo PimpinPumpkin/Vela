@@ -11,6 +11,8 @@ says so.
 
 ### November 2026
 
+- An area tap that would make the outline cross itself goes into a side (#846). Drawn on a Pixel
+  4a: a triangle with a point tapped under its base became a kite, and Back took the point out.
 - The map's own "Day and night" (#874): a dark app over a map that goes by the sun. Checked on a
   Pixel 4a with the simulated location moved to London by day: the map drew light under the dark
   app.
