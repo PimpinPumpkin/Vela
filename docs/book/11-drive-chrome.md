@@ -369,7 +369,8 @@ opens" > "Driving mode" starts Vela in it ([chapter 13](13-settings.md)).
 - The map is the browse map's own follow, which turns heading-up and tilts once you move (unless
   "Turn the map as you drive" is off)
   ([SPEC 4.7, Free-drive follow](../../SPEC.md)). The location dot stays the dot: the arrow is
-  drawn on a route.
+  drawn on a route. At driving speed the dot is moved onto the road it runs along, so a weak GPS,
+  such as a head unit's, does not draw the car beside the street. It lets go at forks and turns.
 - The bar is the drive's bar with an X where End sits, the mode's name and the time of day.
   The X is the only way out; Back works as it does on the plain map.
 - The right-edge column has a locate button and the voice button with its three choices. The

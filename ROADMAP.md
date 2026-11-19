@@ -262,6 +262,10 @@ off the list when it has been.
   on a phone that is hot for real, or whether the voice lines then render in time: read the
   `voice: waited` notes after a `map: capped` note in a shared trip.
 
+- The no-route dot snapped to the road (`RoadSnap`, issue #803): on a Pixel 4a, a mock drive with
+  every fix 18 m off the road put the dot on the road for 203 of 250 fixes and let go at turns
+  and ramps. Not yet seen with a real weak GPS, on a divided road, or on a head unit.
+
 - "Turn the map as you drive" (`TurnWithTravel`, issue #905): on a Pixel 4a with mock fixes at
   10 m/s and no route, off kept the map north-up the whole way and on turned it to the course,
   as before. Not yet seen on a drive or in the car.
@@ -827,11 +831,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
   Google's feed misses whole cities (Niš has its coaches and none of its city lines), and
   Transitous has no feed there either, so a planner over the relations in the downloaded
   region would answer where neither does, without times. Its own engine; not started.
-- Snapping the dot to the road with no route (#803): the browse and driving-mode dot is the raw
-  fix, and a weak head unit GPS puts it a lane or a row of houses off. Vela already finds the
-  road under the car for the speed limit; a snap onto it while moving, released at junctions
-  and when the fix leaves the road, is the shape. Waiting on the reporter's recording and his
-  unit's accuracy figure. Not started.
 - A swinging heading at a standstill and a speed readout that jumps at a steady speed (#818,
   #819, one Pixel 10 Pro, phone and car): the fix handler takes a bearing over 0.5 m/s and
   derives one from 3 m of movement, which may be too loose for that unit's fixes. Needs a

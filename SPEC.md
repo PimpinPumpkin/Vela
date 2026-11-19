@@ -2483,6 +2483,28 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   any speed, flat unless tilted by hand, and the beam still prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
+- Road snap (`core/location/RoadSnap`, issue #803). Once the follow is driving (the heading-up
+  latch above, kept with the map north-up too), each fix is moved onto the road it runs along
+  before it reaches `FollowEstimator`, and the dot drawn at the fix carries the same offset. The
+  roads are the drawn road lines in a box around the fix (`RoadSnapQuery`,
+  `queryRenderedFeatures` on the 21 Liberty road layers that are not casings, rail or paths), so
+  the online and the downloaded basemap both work. The query waits for the render thread, so one
+  answer covers about `AHEAD_S` (4 s) of driving (`MIN_AHEAD_M` 30 to `MAX_AHEAD_M` 120 m past
+  `MAX_M`) and is reused for up to 6 s while it still covers the fix.
+  - A road counts within `MAX_M` (30 m) of the fix and `MAX_ANGLE_DEG` (35) of the GPS course,
+    either way unless it is one-way. Service roads add `SERVICE_PENALTY_M` (20 m), so a street
+    beats a nearer alley. Driveways, parking aisles, paths, tracks, busways and rail do not count.
+  - No snap starts under `START_MPS` (4 m/s), or when another road elsewhere is within
+    `AMBIGUOUS_M` (8 m) of the best (a fork, ramps, a frontage road). The road that continues the
+    last snap gets `STICK_BONUS_M` (6 m).
+  - Two fixes in a row with no road let go. Slow or stopped, the offset holds until the fix is
+    `HOLD_M` (25 m) from where it was set, so the dot stays on the road at a light.
+  - The offset eases in and out over `SNAP_EASE_S` (0.6 s). The accuracy halo stays on the fix.
+    The `roadSnapOff` dial turns it off.
+  - Pixel 4a, a 4.4 minute mock drive in Davis with every fix 18 m right of the road: 203 of 250
+    fixes snapped at 17.7 to 18.4 m, and it let go at turns and through an interchange's ramps.
+    The same drive on the road moved no fix more than 0.5 m. The query ran 57 times, 15 ms median
+    and 75 ms at most on the main thread; on every fix it cost 13 ms a second.
 - Following a move, the dot is drawn at the eased follow position, so it stays centered as the
   map glides. It is drawn at the fix while standing still (below 0.5 m/s, where the camera rests
   up to `FOLLOW_STILL_DEADBAND_M` off it), while a pinch, a pan or a flight has the camera, and

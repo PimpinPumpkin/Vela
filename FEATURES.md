@@ -34,7 +34,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - When the phone runs hot during a drive, the map draws at 30 frames a second to leave room for
   the voice.
 - Driving with no route, the map turns heading-up and shows your speed and the limit. "Turn the
-  map as you drive" off keeps it north-up, and two-finger rotation still works.
+  map as you drive" off keeps it north-up, and two-finger rotation still works. The dot sits on
+  the road you are driving, not beside it where a weak GPS puts it.
 - Driving mode: the map alone in the drive's layout with no route, with the speed badge, the
   voice button, a locate button and the search bar, for a mounted phone or tablet, and the
   speeding, speed camera and plate camera alerts running on the road ahead. From the map's layers

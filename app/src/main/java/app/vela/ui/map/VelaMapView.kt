@@ -389,6 +389,8 @@ private const val SEEK_DONE_M = 3.0
 /** The gap between the fix and the eased camera fades out over this when the dot switches between
  *  them; a gap wider than DOT_HANDOFF_MAX_M is a jump and is not carried. */
 private const val DOT_HANDOFF_TAU_S = 0.25f
+/** Seconds over which the no-route dot slides onto a road and back off it (RoadSnap, #803). */
+private const val SNAP_EASE_S = 0.6f
 private const val DOT_HANDOFF_MAX_M = 30.0
 private const val FREE_HEADING_UP_MPS = 3.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
@@ -1129,6 +1131,11 @@ fun VelaMapView(
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
     val myFixRawHolder = rememberUpdatedState(myFixRaw)         // raw fix, for the free-drive follow estimator
     val browseEst = remember { FollowEstimator() }              // the continuously integrated follow position
+    // The no-route dot snap onto the road under it (issue #803), and the offset [dlat,dlng] the
+    // dot carries now, eased toward the snap's so it slides on and off the road.
+    val roadSnap = remember { app.vela.core.location.RoadSnap() }
+    val snapOff = remember { doubleArrayOf(0.0, 0.0) }
+    val snapQueryMs = remember { doubleArrayOf(0.0) } // the last snap's query and pick, for the dotLog line
     val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
@@ -2722,6 +2729,7 @@ fun VelaMapView(
             browseZoomGoal[0] = Double.NaN
             if (navMode) browseUserTilt[0] = Double.NaN // a pan or a sheet keeps the angle, like Google's
             browseEst.reset()
+            roadSnap.clear(); snapOff[0] = 0.0; snapOff[1] = 0.0; RoadSnapQuery.clear()
             browseEngaged[0] = false; browseSeeking[0] = false
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
             return@LaunchedEffect
@@ -2763,7 +2771,22 @@ fun VelaMapView(
                 val crs = myBearingHolder.value?.toDouble()
                 val raw = myFixRawHolder.value
                 val fx = if (spd > 1.5 && raw != null) raw else loc
-                browseEst.onFix(fx.lat, fx.lng, spd, crs, nowMs)
+                // Driving with no route: move the fix onto the road it runs along (RoadSnap), from
+                // the roads the map has drawn. The query blocks on the render thread, so one answer
+                // covers the next few seconds of road (RoadSnapQuery).
+                val snapMap = mapRef
+                if (browseDrive[1] > 0.5 && snapMap != null && !app.vela.ui.AppTune.on("roadSnapOff", false)) {
+                    val t0 = System.nanoTime()
+                    val roads = if (spd >= app.vela.core.location.RoadSnap.START_MPS && crs != null)
+                        RoadSnapQuery.roadsNear(snapMap, style, fx.lat, fx.lng, spd, nowMs) else null
+                    roadSnap.onFix(fx.lat, fx.lng, spd, crs, roads, nowMs)
+                    snapQueryMs[0] = (System.nanoTime() - t0) / 1e6
+                    // adb only (`setprop debug.vela.tune.dotLog 1`): meters, never a position.
+                    if (app.vela.ui.AppTune.localOn("dotLog")) android.util.Log.d("VelaDot", String.format(java.util.Locale.US,
+                        "snap: %s, %d roads near, %.1f ms (query %d: %.1f, read %.1f)", if (!roadSnap.lastDistM.isNaN()) String.format(java.util.Locale.US, "%.1f m to the road", roadSnap.lastDistM)
+                            else if (roadSnap.snapped) "held" else "none", roads?.size ?: -1, snapQueryMs[0], RoadSnapQuery.queries, RoadSnapQuery.lastQueryMs, RoadSnapQuery.lastConvertMs))
+                } else if (roadSnap.snapped) roadSnap.clear()
+                browseEst.onFix(fx.lat + roadSnap.offLat, fx.lng + roadSnap.offLng, spd, crs, nowMs)
                 browseFix[3] = spd
                 browseFix[4] = crs ?: Double.NaN
             }
@@ -2912,8 +2935,13 @@ fun VelaMapView(
             // out over DOT_HANDOFF_TAU_S, so the dot never jumps.
             if (browseSeeking[0] && !browseCam[0].isNaN() && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
             val onFix = cam == null || scaling[0] || shoving[0] || twoDown[0] || browseFlying[0] || browseSeeking[0] || browseFix[3] < 0.5
-            val baseLat = if (onFix) loc.lat else camLat
-            val baseLng = if (onFix) loc.lng else camLng
+            // The road snap's offset, eased in and out (the follow estimate takes it with each fix).
+            val snapK = 1.0 - kotlin.math.exp(-dt / SNAP_EASE_S).toDouble()
+            snapOff[0] += (roadSnap.offLat - snapOff[0]) * snapK
+            snapOff[1] += (roadSnap.offLng - snapOff[1]) * snapK
+            if (kotlin.math.abs(snapOff[0] - roadSnap.offLat) < 1e-8 && kotlin.math.abs(snapOff[1] - roadSnap.offLng) < 1e-8) { snapOff[0] = roadSnap.offLat; snapOff[1] = roadSnap.offLng }
+            val baseLat = if (onFix) loc.lat + snapOff[0] else camLat
+            val baseLng = if (onFix) loc.lng + snapOff[1] else camLng
             if (onFix != browseDotOnFix[0]) {
                 browseDotOnFix[0] = onFix
                 if (!browseDot[0].isNaN() && LatLng(browseDot[0], browseDot[1]).distanceTo(LatLng(baseLat, baseLng)) < DOT_HANDOFF_MAX_M) {
