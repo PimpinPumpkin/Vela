@@ -24,6 +24,8 @@
 
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Settings > Navigation "Wake the screen before each turn" (LockScreenNav). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Voice search, tier-1 ONLY: recording the mic for the on-device Whisper model. Requested
          at point of use, and never needed for tier-2 (the RECOGNIZE_SPEECH provider records). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

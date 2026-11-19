@@ -85,8 +85,25 @@ class MainActivity : ComponentActivity() {
             ) { driving, on -> driving && on }.distinctUntilChanged().collect { show ->
                 runCatching { app.vela.ui.LockScreenNav.show(this@MainActivity, show) }
                     .onFailure { android.util.Log.w("VelaLock", "show when locked failed", it) }
+                if (!show) app.vela.ui.LockScreenNav.driveStopped()
             }
         }
+        // Wake the screen before each turn (Settings > Navigation, off by default): the drive's
+        // step whose turn is near, or -1.
+        lifecycleScope.launch {
+            vm.state.map { s ->
+                if (s.navigating && !s.navPaused && s.travelMode == app.vela.core.model.TravelMode.DRIVE &&
+                    app.vela.ui.LockScreenNav.turnNear(s.nav.distanceToNextManeuver, s.nav.remainingDistance, s.nav.remainingDuration)
+                ) s.nav.stepIndex else -1
+            }.distinctUntilChanged().collect { step ->
+                runCatching { app.vela.ui.LockScreenNav.turnStep(this@MainActivity, step) }
+                    .onFailure { android.util.Log.w("VelaLock", "turn wake failed", it) }
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         handleIntent(intent)
         // After the intent, before the map exists: a link keeps the camera, anything else opens
         // on the view chosen in Settings > Map.
@@ -167,6 +184,27 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+    }
+
+    /** The screen came on: the power button gives a drive its keep-awake back after a turn wake. */
+    private val screenOn = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this@MainActivity, s.navigating && !s.navPaused, screenOn = true)
+        }
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(screenOn) }
+        super.onDestroy()
     }
 
     override fun onStart() {

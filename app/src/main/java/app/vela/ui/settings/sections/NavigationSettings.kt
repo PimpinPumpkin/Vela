@@ -75,6 +75,16 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.LockScreenNav.set(context, it) },
             hint = stringResource(R.string.settings_lock_screen_nav_hint),
         )
+        // Lighting the screen for a turn shows the route only over the lock screen, so it hides
+        // with the switch above.
+        if (app.vela.ui.LockScreenNav.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_wake_for_turns),
+                checked = app.vela.ui.LockScreenNav.wake.value,
+                onCheckedChange = { app.vela.ui.LockScreenNav.setWake(context, it) },
+                hint = stringResource(R.string.settings_wake_for_turns_hint),
+            )
+        }
 
         // Which route chooser Directions opens. The Google-style picker graduated from an
         // experiment to the default on 2026-09-18; the classic panel stays one toggle away.

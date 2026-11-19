@@ -181,6 +181,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   "Arrow colors".
 - "Vibrate on turns", "Keep screen on while navigating" and "Ask before ending navigation".
 - A running drive shows over the lock screen, so the power button wakes the phone to the route.
+- "Wake the screen before each turn" lights a dark screen as each turn comes near during a drive.
 - A notification, a picture-in-picture mini map and, on Android 16, a live update carry the drive in
   the background.
 - "Turn card in the mini map" sets the mini map's layout.

@@ -259,10 +259,12 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
-- The drive on the lock screen (`LockScreenNav`, issue #896): on an Android 14 emulator with a
-  swipe lock, a running drive showed over the lock screen after the power button, and pausing,
-  ending or the switch off put the lock screen back. Not yet on a phone with a PIN, where Settings
-  over the drive should ask for it, or on Android 8.0, which takes the older window flag.
+- The drive on the lock screen (`LockScreenNav`, issue #896): on Android 14 and 8.0 emulators
+  with a PIN, a running drive showed over the locked phone after the power button, Get a voice
+  asked for the PIN first and Back returned to the drive, and pausing put the lock screen back.
+  With a swipe lock, ending the drive and the switch off did too. Wake for turns: on the Pixel
+  4a's demo drive in Davis the screen lit about 180 m before a right turn and went dark 40 s
+  later at a 30 s screen timeout. Not yet on a phone in a car.
 - FreeFused, the fused position guidance steers by (`PositionFilter`): on a 15-minute freeway drive it
   stayed within 0.6 m of the GPS fix (median, 4.2 m at most) and refused no fix. Not yet seen on
   a real drive: a stop, and a reflection at a red light between tall buildings. Those were

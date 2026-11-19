@@ -45,6 +45,7 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
     }
 
     override fun onCreate(owner: LifecycleOwner) {
+        CarBridge.live = true
         // Feed live GPS into NavSession while the car session is alive. Mirrors the phone's fix gate:
         // GPS fixes with accuracy ≤ 50 m drive guidance; coarser fixes are ignored for nav.
         // Cancel any prior collector first so a re-delivered onCreate can't leak a second one.
@@ -111,6 +112,7 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
+        CarBridge.live = false
         feedJob?.cancel()
         scope.cancel()
         deps.stopMapRenderer() // the shared map renderer lives for the session; stop its collector here

@@ -89,6 +89,8 @@
     <string name="settings_keep_screen_on_hint">Keeps the screen awake during turn-by-turn.</string>
     <string name="settings_lock_screen_nav">Show the drive on the lock screen</string>
     <string name="settings_lock_screen_nav_hint">The power button wakes the phone to the route instead of the lock screen. Settings still asks you to unlock.</string>
+    <string name="settings_wake_for_turns">Wake the screen before each turn</string>
+    <string name="settings_wake_for_turns_hint">With the screen off during a drive, it lights up as a turn comes near. It goes dark again at your usual screen timeout.</string>
     <string name="map_voice_downloading">Downloading Vela Voice · %1$d%%</string>
     <string name="map_voice_installing">Installing Vela Voice…</string>
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
