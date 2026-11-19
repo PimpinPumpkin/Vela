@@ -68,6 +68,8 @@ class VelaCarAppService : CarAppService() {
         // "Spoken directions" is applied to VoiceGuide by the phone's view model too: without it a
         // car-only start spoke with the setting off, and the car's own toggle showed On.
         getSharedPreferences("vela_settings", MODE_PRIVATE).let { prefs ->
+            voiceGuide.setVolume(prefs.getFloat("voice_volume", 1.0f))
+            voiceGuide.setRate(prefs.getFloat("voice_speed", 1.0f))
             if (!prefs.getBoolean("spoken_directions", true)) {
                 voiceGuide.muted = true
                 voiceGuide.alertsOnly = prefs.getBoolean("spoken_alerts_only", false)
