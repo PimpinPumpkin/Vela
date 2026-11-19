@@ -203,6 +203,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.Buildings3d.init(this)
         app.vela.ui.RouteTrail.init(this)
         app.vela.ui.NavSchedule.init(this)
+        app.vela.ui.NavLineWidth.init(this)
         app.vela.ui.TurnDeclutterPref.init(this)
         app.vela.ui.CategoryChipsPref.init(this)
         app.vela.ui.QuickChipsPref.init(this) // which quick-category chips show, and their order (issue #779)

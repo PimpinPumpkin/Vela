@@ -900,6 +900,8 @@
     <string name="nav_steps_handle_cd">Wegbeschreibung anzeigen</string>
     <string name="settings_route_trail">Strecke hinter Ihnen</string>
     <string name="settings_route_trail_hint">Zeichnet den bereits gefahrenen Teil der Route grau hinter dem Pfeil. Aus blendet ihn aus, sodass nur die Strecke voraus gezeichnet wird.</string>
+    <string name="settings_nav_line_custom">Breite der Routenlinie anpassen</string>
+    <string name="settings_nav_line_multiplier">Linienbreite: %1$sx</string>
     <string name="settings_bike_safe">Fahrradrouten bevorzugen Radwege und ruhige Straßen</string>
     <string name="settings_bike_safe_hint">Fahrradrouten bevorzugen ausgeschilderte Radrouten, Radwege und Wohnstraßen gegenüber der schnellsten Straße, so wie Google Fahrräder leitet. Nutzt die Offline-Karte, wo eine heruntergeladen ist, sonst online einen offenen Router. Aus ergibt die schlichte schnellste Fahrradroute.</string>
     <string name="settings_route_bar">Leiste für die Strecke voraus</string>

@@ -898,6 +898,8 @@
     <string name="nav_steps_handle_cd">Afficher les étapes</string>
     <string name="settings_route_trail">Route parcourue</string>
     <string name="settings_route_trail_hint">Garde la partie de l\'itinéraire déjà parcourue tracée en gris derrière la flèche. Désactivé la masque : seule la route à venir est tracée.</string>
+    <string name="settings_nav_line_custom">Largeur personnalisée du tracé</string>
+    <string name="settings_nav_line_multiplier">Largeur de ligne : %1$sx</string>
     <string name="settings_bike_safe">Les itinéraires vélo privilégient les pistes cyclables et les rues calmes</string>
     <string name="settings_bike_safe_hint">Les itinéraires vélo privilégient les voies cyclables balisées, les pistes cyclables et les rues résidentielles plutôt que la route la plus rapide, comme le fait Google. Utilise la carte hors ligne là où vous en avez téléchargé une, sinon un routeur ouvert en ligne. Désactivé donne simplement l\'itinéraire vélo le plus rapide.</string>
     <string name="settings_route_bar">Barre de la route à venir</string>

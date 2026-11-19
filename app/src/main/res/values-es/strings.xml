@@ -900,6 +900,8 @@
     <string name="nav_steps_handle_cd">Mostrar pasos</string>
     <string name="settings_route_trail">Camino recorrido</string>
     <string name="settings_route_trail_hint">Mantiene dibujada en gris, detrás de la flecha, la parte de la ruta que ya has recorrido. Desactivado la oculta, así que solo se dibuja el camino por delante.</string>
+    <string name="settings_nav_line_custom">Ancho personalizado de la línea de ruta</string>
+    <string name="settings_nav_line_multiplier">Ancho de línea: %1$sx</string>
     <string name="settings_bike_safe">Las rutas en bici prefieren carriles bici y calles tranquilas</string>
     <string name="settings_bike_safe_hint">Las rutas en bicicleta favorecen las vías ciclistas señalizadas, los carriles bici y las calles residenciales frente a la carretera más rápida, igual que Google con las bicis. Usa el mapa sin conexión si tienes uno descargado; si no, un servicio de rutas abierto con conexión. Desactivado da la ruta en bici más rápida sin más.</string>
     <string name="settings_route_bar">Barra del camino por delante</string>

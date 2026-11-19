@@ -1277,6 +1277,8 @@
     <string name="settings_turn_declutter">Sederhanakan peta saat berbelok</string>
     <string name="settings_turn_declutter_hint">Saat peta berputar mengikuti belokan, hanya nama jalan yang tetap ditampilkan. Tempat, rambu, dan kamera kembali muncul segera setelah peta berhenti berputar. Menjaga tampilan belokan tetap lancar pada ponsel yang lebih lambat.</string>
     <string name="settings_route_trail_hint">Tetap menampilkan bagian rute yang telah Anda lalui dengan warna abu-abu di belakang panah. Jika nonaktif, bagian tersebut disembunyikan sehingga hanya jalan di depan yang ditampilkan.</string>
+    <string name="settings_nav_line_custom">Lebar garis rute kustom</string>
+    <string name="settings_nav_line_multiplier">Lebar garis: %1$sx</string>
     <string name="settings_bike_safe">Rute sepeda mengutamakan jalur sepeda dan jalan yang sepi</string>
     <string name="settings_bike_safe_hint">Rute bersepeda mengutamakan rute sepeda bertanda, jalur sepeda, dan jalan permukiman daripada jalan tercepat, seperti cara Google menentukan rute sepeda. Menggunakan peta offline jika sudah diunduh; jika belum, menggunakan layanan perutean terbuka secara online. Jika nonaktif, rute sepeda tercepat biasa akan digunakan.</string>
     <string name="settings_route_picker">Pemilih rute bergaya Google</string>

@@ -906,6 +906,8 @@
     <string name="nav_steps_handle_cd">Показати кроки</string>
     <string name="settings_route_trail">Дорога позаду вас</string>
     <string name="settings_route_trail_hint">Залишає пройдену частину маршруту намальованою сірим позаду стрілки. Вимк. приховує її, тож малюється лише дорога попереду.</string>
+    <string name="settings_nav_line_custom">Власна ширина лінії маршруту</string>
+    <string name="settings_nav_line_multiplier">Ширина лінії: %1$sx</string>
     <string name="settings_bike_safe">Велосипедні маршрути надають перевагу велодоріжкам і тихим вулицям</string>
     <string name="settings_bike_safe_hint">Велосипедні маршрути обирають позначені велосипедні шляхи, велодоріжки та житлові вулиці замість найшвидшої дороги, як прокладає велосипедні маршрути Google. Використовує офлайн-карту там, де ви її завантажили, інакше відкритий маршрутизатор онлайн. Вимк. дає звичайний найшвидший велосипедний маршрут.</string>
     <string name="settings_route_bar">Панель дороги попереду</string>

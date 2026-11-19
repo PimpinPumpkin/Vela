@@ -1016,6 +1016,8 @@
     <string name="nav_steps_handle_cd">Mostra passaggi</string>
     <string name="settings_route_trail">Strada percorsa</string>
     <string name="settings_route_trail_hint">Mantiene disegnata in grigio dietro la freccia la parte di percorso che hai già fatto. Disattivato la nasconde, così viene disegnata solo la strada davanti a te.</string>
+    <string name="settings_nav_line_custom">Spessore personalizzato linea percorso</string>
+    <string name="settings_nav_line_multiplier">Spessore linea: %1$sx</string>
     <string name="settings_bike_safe">I percorsi in bici preferiscono piste ciclabili e strade tranquille</string>
     <string name="settings_bike_safe_hint">I percorsi in bici privilegiano gli itinerari ciclabili segnalati, le piste ciclabili e le strade residenziali rispetto alla strada più veloce, come fa Google con le bici. Usa la mappa offline dove ne hai scaricata una, altrimenti un router aperto online. Disattivato dà semplicemente il percorso in bici più veloce.</string>
     <string name="settings_route_picker">Selettore di percorsi in stile Google</string>

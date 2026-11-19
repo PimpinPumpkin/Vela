@@ -908,6 +908,8 @@
     <string name="nav_steps_handle_cd">Показать шаги</string>
     <string name="settings_route_trail">Пройденный путь</string>
     <string name="settings_route_trail_hint">Оставляет уже пройденную часть маршрута нарисованной серым позади стрелки. Выкл. скрывает её, и рисуется только дорога впереди.</string>
+    <string name="settings_nav_line_custom">Своя ширина линии маршрута</string>
+    <string name="settings_nav_line_multiplier">Ширина линии: %1$sx</string>
     <string name="settings_bike_safe">Веломаршруты по велодорожкам и тихим улицам</string>
     <string name="settings_bike_safe_hint">Велосипедные маршруты предпочитают размеченные велосипедные маршруты, велодорожки и жилые улицы вместо самой быстрой дороги, как это делает Google. Использует офлайн-карту там, где она загружена, иначе открытый маршрутизатор онлайн. Выкл. даёт обычный самый быстрый веломаршрут.</string>
     <string name="settings_route_bar">Полоса дороги впереди</string>

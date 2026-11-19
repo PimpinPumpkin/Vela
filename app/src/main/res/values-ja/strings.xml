@@ -957,6 +957,8 @@
     <string name="nav_steps_handle_cd">ルート詳細を表示</string>
     <string name="settings_route_trail">走行済みの区間</string>
     <string name="settings_route_trail_hint">すでに走ったルートの部分を、矢印の後ろにグレーで表示したままにします。オフにすると非表示になり、この先の道だけを描画します。</string>
+    <string name="settings_nav_line_custom">ルート線の太さを調整</string>
+    <string name="settings_nav_line_multiplier">線の太さ: %1$sx</string>
     <string name="settings_bike_safe">自転車ルートは自転車レーンや静かな道を優先</string>
     <string name="settings_bike_safe_hint">Google の自転車ルートと同じように、最速の道路よりも、案内標識のある自転車ルート、自転車レーン、住宅街の道を優先します。ダウンロード済みのオフライン地図があればそれを使い、なければオンラインのオープンな経路検索を使います。オフにすると、単純に最速の自転車ルートになります。</string>
     <string name="settings_route_bar">この先の道路バー</string>

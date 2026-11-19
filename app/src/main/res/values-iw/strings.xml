@@ -995,6 +995,8 @@
     <string name="nav_steps_handle_cd">הצג שלבים</string>
     <string name="settings_route_trail">הכביש מאחוריך</string>
     <string name="settings_route_trail_hint">משאיר את החלק מהמסלול שכבר נסעת משורטט באפור מאחורי החץ. כיבוי מסתיר אותו, כך שמשורטט רק הכביש שלפניך.</string>
+    <string name="settings_nav_line_custom">רוחב קו מסלול מותאם אישית</string>
+    <string name="settings_nav_line_multiplier">רוחב קו: %1$sx</string>
     <string name="settings_bike_safe">מסלולי אופניים מעדיפים נתיבי אופניים ורחובות שקטים</string>
     <string name="settings_bike_safe_hint">מסלולי רכיבה מעדיפים שבילי אופניים מסומנים, נתיבי אופניים ורחובות מגורים על פני הכביש המהיר ביותר, כמו ש-Google מנתב אופניים. משתמש במפה הלא מקוונת היכן שהורדת אחת, אחרת בנתב פתוח מקוון. כיבוי נותן את מסלול האופניים המהיר ביותר בלבד.</string>
     <string name="settings_route_picker">בורר מסלולים בסגנון Google</string>

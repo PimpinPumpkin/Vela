@@ -984,6 +984,8 @@
     <string name="nav_steps_handle_cd">Lépések megjelenítése</string>
     <string name="settings_route_trail">Megtett útszakasz</string>
     <string name="settings_route_trail_hint">Szürkével kirajzolva hagyja az útvonal már megtett részét a nyíl mögött. Kikapcsolva elrejti, így csak az előtted lévő út látszik.</string>
+    <string name="settings_nav_line_custom">Egyéni útvonalvonal-szélesség</string>
+    <string name="settings_nav_line_multiplier">Vonalvastagság: %1$sx</string>
     <string name="settings_bike_safe">A kerékpáros útvonalak a bringasávokat és a csendes utcákat részesítik előnyben</string>
     <string name="settings_bike_safe_hint">A kerékpáros útvonalak a kijelölt kerékpárutakat, a bringasávokat és a lakóutcákat részesítik előnyben a leggyorsabb úttal szemben, ahogy a Google is tervez kerékpárral. Ahol van letöltött offline térképed, azt használja, egyébként egy nyílt online útvonaltervezőt. Kikapcsolva az egyszerű leggyorsabb kerékpáros útvonalat adja.</string>
     <string name="settings_route_picker">Google-stílusú útvonalválasztó</string>

@@ -1017,6 +1017,8 @@
     <string name="nav_steps_handle_cd">Mostrar etapas</string>
     <string name="settings_route_trail">Estrada já percorrida</string>
     <string name="settings_route_trail_hint">Mantém a parte da rota que já percorreu desenhada a cinzento atrás da seta. Desligado esconde-a, ficando apenas a estrada à frente.</string>
+    <string name="settings_nav_line_custom">Largura personalizada da linha da rota</string>
+    <string name="settings_nav_line_multiplier">Largura da linha: %1$sx</string>
     <string name="settings_bike_safe">As rotas de bicicleta preferem ciclovias e ruas calmas</string>
     <string name="settings_bike_safe_hint">As rotas de bicicleta preferem percursos cicláveis sinalizados, ciclovias e ruas residenciais à estrada mais rápida, tal como a Google faz. Usa o mapa offline onde tiver um transferido, caso contrário um serviço aberto online. Desligado dá a rota de bicicleta mais rápida, sem mais.</string>
     <string name="settings_route_picker">Seletor de rotas ao estilo Google</string>

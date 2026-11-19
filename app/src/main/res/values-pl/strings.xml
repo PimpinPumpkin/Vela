@@ -1025,6 +1025,8 @@
     <string name="nav_steps_handle_cd">Pokaż etapy</string>
     <string name="settings_route_trail">Droga za tobą</string>
     <string name="settings_route_trail_hint">Zachowuje przejechaną część trasy narysowaną na szaro za strzałką. Wył. ukrywa ją, więc rysowana jest tylko droga przed tobą.</string>
+    <string name="settings_nav_line_custom">Własna szerokość linii trasy</string>
+    <string name="settings_nav_line_multiplier">Szerokość linii: %1$sx</string>
     <string name="settings_bike_safe">Trasy rowerowe preferują ścieżki rowerowe i spokojne ulice</string>
     <string name="settings_bike_safe_hint">Trasy rowerowe wybierają oznakowane szlaki rowerowe, pasy dla rowerów i ulice osiedlowe zamiast najszybszej drogi, tak jak wyznacza je Google. Korzysta z mapy offline tam, gdzie ją pobrałeś, w przeciwnym razie z otwartego routera online. Wył. daje zwykłą najszybszą trasę rowerową.</string>
     <string name="settings_route_picker">Wybór trasy w stylu Google</string>

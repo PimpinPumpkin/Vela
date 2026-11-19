@@ -1015,6 +1015,8 @@
     <string name="nav_steps_handle_cd">Stappen tonen</string>
     <string name="settings_route_trail">Weg achter je</string>
     <string name="settings_route_trail_hint">Houdt het deel van de route dat je al hebt gereden in grijs achter de pijl getekend. Uit verbergt het, zodat alleen de weg vooruit wordt getekend.</string>
+    <string name="settings_nav_line_custom">Aangepaste breedte van routelijn</string>
+    <string name="settings_nav_line_multiplier">Lijnbreedte: %1$sx</string>
     <string name="settings_bike_safe">Fietsroutes kiezen fietspaden en rustige straten</string>
     <string name="settings_bike_safe_hint">Fietsroutes geven de voorkeur aan bewegwijzerde fietsroutes, fietspaden en woonstraten boven de snelste weg, zoals Google fietsroutes berekent. Gebruikt de offlinekaart waar je er een hebt gedownload, en anders online een open router. Uit geeft de gewone snelste fietsroute.</string>
     <string name="settings_route_picker">Routekiezer in Google-stijl</string>

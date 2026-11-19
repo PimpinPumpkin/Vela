@@ -974,6 +974,8 @@
     <string name="nav_steps_handle_cd">显示步骤</string>
     <string name="settings_route_trail">身后的道路</string>
     <string name="settings_route_trail_hint">将已驶过的路线部分以灰色绘制在箭头后方。关闭后不再显示，只绘制前方的道路。</string>
+    <string name="settings_nav_line_custom">自定义路线线宽</string>
+    <string name="settings_nav_line_multiplier">线宽：%1$sx</string>
     <string name="settings_bike_safe">骑行路线优先选择自行车道和僻静街道</string>
     <string name="settings_bike_safe_hint">骑行路线会优先选择有标识的自行车路线、自行车道和居民区街道，而不是最快的道路，与 Google 规划骑行路线的方式一致。有已下载的离线地图时使用离线地图，否则联网使用开放路线服务。关闭后给出单纯最快的骑行路线。</string>
     <string name="settings_route_bar">前方路况条</string>

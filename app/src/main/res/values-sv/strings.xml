@@ -900,6 +900,8 @@
     <string name="nav_steps_handle_cd">Visa steg</string>
     <string name="settings_route_trail">Vägen bakom dig</string>
     <string name="settings_route_trail_hint">Behåller den del av rutten du redan kört ritad i grått bakom pilen. Av döljer den, så att bara vägen framåt ritas.</string>
+    <string name="settings_nav_line_custom">Anpassad bredd på ruttlinjen</string>
+    <string name="settings_nav_line_multiplier">Linjebredd: %1$sx</string>
     <string name="settings_bike_safe">Cykelrutter föredrar cykelbanor och lugna gator</string>
     <string name="settings_bike_safe_hint">Cykelrutter väljer skyltade cykelleder, cykelbanor och bostadsgator framför den snabbaste vägen, på samma sätt som Google ruttar cyklar. Använder offlinekartan där du hämtat en, annars en öppen ruttjänst online. Av ger den vanliga snabbaste cykelrutten.</string>
     <string name="settings_route_bar">Fält för vägen framåt</string>

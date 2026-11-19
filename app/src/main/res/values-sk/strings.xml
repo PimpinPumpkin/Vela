@@ -1329,6 +1329,8 @@
     <string name="settings_turn_declutter">Zjednodušiť mapu v zákrutách</string>
     <string name="settings_turn_declutter_hint">Kým sa mapa v zákrute otáča, zostávajú na nej len názvy ulíc. Miesta, značky a kamery sa vrátia hneď, ako sa ustáli. Na pomalších telefónoch to zaistí plynulé zákruty.</string>
     <string name="settings_route_trail_hint">Časť trasy, ktorú ste už prešli, zostane za šípkou vykreslená sivou. Vypnuté: zobrazí sa len cesta pred vami.</string>
+    <string name="settings_nav_line_custom">Vlastná šírka čiary trasy</string>
+    <string name="settings_nav_line_multiplier">Šírka čiary: %1$sx</string>
     <string name="settings_bike_safe">Cyklotrasy uprednostňujú cyklopruhy a pokojné ulice</string>
     <string name="settings_bike_safe_hint">Trasy pre bicykel uprednostňujú značené cyklotrasy, cyklopruhy a obytné ulice pred najrýchlejšou cestou, podobne ako Google. Používa offline mapu, ak ju máte stiahnutú, inak otvorený plánovač online. Vypnuté: najrýchlejšia trasa pre bicykel.</string>
     <string name="settings_route_picker">Výber trasy v štýle Google</string>
