@@ -1592,4 +1592,12 @@
     <string name="settings_place_names_more">Więcej</string>
     <string name="settings_place_names_most">WIększość</string>
     <string name="settings_place_names_hint">Po dalszym oddaleniu widoku na mapie „Więcej” i „Większość” wyświetlają nazwy i ikony sklepów, szkół oraz innych miejsc. W ruchliwych obszarach pojawia się duże natężenie ruchu przez co mapa może działać tam mniej płynnie.</string>
+    <string name="settings_backup_title">Kopia zapasowa ustawień</string>
+    <string name="settings_backup_hint">Wyeksportuj ustawienia do pliku JSON lub przywróć je na innym telefonie.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Przywrócono %1$d ustawienie</item>
+        <item quantity="few">Przywrócono %1$d ustawienia</item>
+        <item quantity="many">Przywrócono %1$d ustawień</item>
+        <item quantity="other">Przywrócono %1$d ustawienia</item>
+    </plurals>
 </resources>

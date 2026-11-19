@@ -1341,4 +1341,10 @@
     <string name="trip_shortcut_unsupported">Esta pantalla de inicio no permite fijar accesos directos</string>
     <string name="trip_shortcut_themed">Como los iconos con tema</string>
     <string name="settings_places_source_note">Al buscar o tocar un lugar se sigue consultando a Google el horario, las reseñas y las fotos, elijas lo que elijas.</string>
+    <string name="settings_backup_title">Copia de seguridad de ajustes</string>
+    <string name="settings_backup_hint">Exporta tus ajustes a un archivo JSON o restáuralos en otro teléfono.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Se restauró %1$d ajuste</item>
+        <item quantity="other">Se restauraron %1$d ajustes</item>
+    </plurals>
 </resources>

@@ -1391,4 +1391,9 @@
     <string name="trip_shortcut_unsupported">このホーム画面はショートカットの固定に対応していません</string>
     <string name="trip_shortcut_themed">テーマアイコンに合わせる</string>
     <string name="settings_places_source_note">どれを選んでも、場所を検索したりタップしたりすると、営業時間・クチコミ・写真は Google から取得します。</string>
+    <string name="settings_backup_title">設定のバックアップ</string>
+    <string name="settings_backup_hint">設定を JSON ファイルにエクスポートしたり、別のスマートフォンで復元したりできます。</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="other">%1$d 件の設定を復元しました</item>
+    </plurals>
 </resources>

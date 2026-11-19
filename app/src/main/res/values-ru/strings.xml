@@ -1380,4 +1380,12 @@
     <string name="trip_shortcut_unsupported">Этот главный экран не умеет закреплять ярлыки</string>
     <string name="trip_shortcut_themed">Как тематические значки</string>
     <string name="settings_places_source_note">При поиске или нажатии на место часы работы, отзывы и фото по-прежнему берутся из Google, что бы вы ни выбрали.</string>
+    <string name="settings_backup_title">Резервная копия настроек</string>
+    <string name="settings_backup_hint">Экспортируйте настройки в файл JSON или восстановите их на другом телефоне.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Восстановлена %1$d настройка</item>
+        <item quantity="few">Восстановлены %1$d настройки</item>
+        <item quantity="many">Восстановлено %1$d настроек</item>
+        <item quantity="other">Восстановлено %1$d настройки</item>
+    </plurals>
 </resources>

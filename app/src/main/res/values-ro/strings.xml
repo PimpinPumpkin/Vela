@@ -1533,4 +1533,11 @@
     <string name="settings_place_names_more">Mai multe</string>
     <string name="settings_place_names_most">Cele mai multe</string>
     <string name="settings_place_names_hint">Funcțiile „Mai multe” și „Cele mai multe” afișează numele și pictogramele magazinelor, școlilor și ale altor locuri atunci când se mărește imaginea la o scară mai mare. Într-o zonă aglomerată, harta poate deveni încărcată, iar derularea acesteia poate fi mai puțin fluidă.</string>
+    <string name="settings_backup_title">Copie de rezervă pentru setări</string>
+    <string name="settings_backup_hint">Exportă setările într-un fișier JSON sau restaurează-le pe alt telefon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">S-a restaurat %1$d setare</item>
+        <item quantity="few">S-au restaurat %1$d setări</item>
+        <item quantity="other">S-au restaurat %1$d de setări</item>
+    </plurals>
 </resources>

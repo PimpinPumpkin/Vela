@@ -1435,4 +1435,10 @@
         <item quantity="one">%1$d plaats geïmporteerd in %2$s.</item>
         <item quantity="other">%1$d plaatsen geïmporteerd in %2$s.</item>
     </plurals>
+    <string name="settings_backup_title">Instellingen back-uppen</string>
+    <string name="settings_backup_hint">Exporteer je instellingen naar een JSON-bestand of herstel ze op een andere telefoon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d instelling hersteld</item>
+        <item quantity="other">%1$d instellingen hersteld</item>
+    </plurals>
 </resources>

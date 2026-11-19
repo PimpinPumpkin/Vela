@@ -1417,4 +1417,9 @@
     <string name="mapscreen_location_tip_title">還沒有地點嗎？</string>
     <string name="mapscreen_location_tip_body">僅靠 GPS 通常無法在室內取得定位。在 GrapheneOS 上，請前往「設定」&gt;「位置」&gt;「位置服務」，開啟「網路定位」。</string>
     <string name="mapscreen_location_tip_settings">位置設定</string>
+    <string name="settings_backup_title">設定備份</string>
+    <string name="settings_backup_hint">將設定匯出為 JSON 檔案，或在另一部手機上還原。</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="other">已還原 %1$d 項設定</item>
+    </plurals>
 </resources>

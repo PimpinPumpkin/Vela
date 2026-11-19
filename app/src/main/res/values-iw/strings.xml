@@ -1401,4 +1401,12 @@
     <string name="welcome_google_on_gives">ביקורות, תמונות, תנועה בזמן אמת ו־Street View.</string>
     <string name="car_setting_traffic">תחבורה</string>
     <string name="settings_google_uses_traffic">תחבורה ומסלולים</string>
+    <string name="settings_backup_title">גיבוי הגדרות</string>
+    <string name="settings_backup_hint">ייצא את ההגדרות שלך לקובץ JSON או שחזר אותן בטלפון אחר.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">שוחזרה הגדרה %1$d</item>
+        <item quantity="two">שוחזרו %1$d הגדרות</item>
+        <item quantity="many">שוחזרו %1$d הגדרות</item>
+        <item quantity="other">שוחזרו %1$d הגדרות</item>
+    </plurals>
 </resources>

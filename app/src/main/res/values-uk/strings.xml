@@ -1380,4 +1380,12 @@
     <string name="trip_shortcut_unsupported">Цей головний екран не підтримує закріплення ярликів</string>
     <string name="trip_shortcut_themed">Як тематичні значки</string>
     <string name="settings_places_source_note">Пошук чи дотик до місця все одно йде в Google по години роботи, відгуки та фото, хоч би що ви вибрали.</string>
+    <string name="settings_backup_title">Резервна копія налаштувань</string>
+    <string name="settings_backup_hint">Експортуйте налаштування у файл JSON або відновіть їх на іншому телефоні.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Відновлено %1$d налаштування</item>
+        <item quantity="few">Відновлено %1$d налаштування</item>
+        <item quantity="many">Відновлено %1$d налаштувань</item>
+        <item quantity="other">Відновлено %1$d налаштування</item>
+    </plurals>
 </resources>

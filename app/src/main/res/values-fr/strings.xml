@@ -1499,4 +1499,11 @@
         <item quantity="other">Supprimer %d listes ?</item>
     </plurals>
     <string name="settings_takeout_list_default">Liste importée</string>
+    <string name="settings_backup_title">Sauvegarde des paramètres</string>
+    <string name="settings_backup_hint">Exportez vos paramètres vers un fichier JSON ou restaurez-les sur un autre téléphone.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d paramètre restauré</item>
+        <item quantity="many">%1$d paramètres restaurés</item>
+        <item quantity="other">%1$d paramètres restaurés</item>
+    </plurals>
 </resources>

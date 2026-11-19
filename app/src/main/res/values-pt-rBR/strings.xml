@@ -1342,4 +1342,10 @@
     <string name="trip_shortcut_unsupported">Esta tela inicial não permite fixar atalhos</string>
     <string name="trip_shortcut_themed">Como os ícones com tema</string>
     <string name="settings_places_source_note">Pesquisar ou tocar em um local continua consultando o Google para horários, avaliações e fotos, seja qual for a opção escolhida.</string>
+    <string name="settings_backup_title">Backup das configurações</string>
+    <string name="settings_backup_hint">Exporte suas configurações para um arquivo JSON ou restaure-as em outro celular.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d configuração restaurada</item>
+        <item quantity="other">%1$d configurações restauradas</item>
+    </plurals>
 </resources>

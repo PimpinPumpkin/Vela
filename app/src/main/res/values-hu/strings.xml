@@ -1305,4 +1305,10 @@
     <string name="trip_shortcut_unsupported">Ez a kezdőképernyő nem tud parancsikonokat kitűzni</string>
     <string name="trip_shortcut_themed">A témázott ikonokhoz igazítva</string>
     <string name="settings_places_source_note">A keresés vagy egy helyre koppintás bármelyik beállításnál a Google-től kéri le a nyitvatartást, a véleményeket és a fotókat.</string>
+    <string name="settings_backup_title">Beállítások biztonsági mentése</string>
+    <string name="settings_backup_hint">Exportálja beállításait egy JSON-fájlba, vagy állítsa vissza őket egy másik telefonon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d beállítás visszaállítva</item>
+        <item quantity="other">%1$d beállítás visszaállítva</item>
+    </plurals>
 </resources>

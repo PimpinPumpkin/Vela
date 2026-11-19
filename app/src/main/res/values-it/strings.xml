@@ -1545,4 +1545,11 @@
     <string name="settings_trip_saved">Ho salvato la traccia completa</string>
     <string name="settings_road_numbers">Prima i numeri delle strade</string>
     <string name="settings_road_numbers_hint">Una strada dotata di un numero di percorso viene identificata tramite tale numero, anziché mediante un nome come, ad esempio, \"Pearl Harbor Memorial Expressway\". L\'indicazione appare sotto la freccia, sullo schermo dell\'auto e nelle istruzioni per il tratto di percorso successivo.</string>
+    <string name="settings_backup_title">Backup delle impostazioni</string>
+    <string name="settings_backup_hint">Esporta le tue impostazioni in un file JSON o ripristinale su un altro telefono.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d impostazione ripristinata</item>
+        <item quantity="many">%1$d impostazioni ripristinate</item>
+        <item quantity="other">%1$d impostazioni ripristinate</item>
+    </plurals>
 </resources>

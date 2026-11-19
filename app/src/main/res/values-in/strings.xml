@@ -1487,4 +1487,9 @@
     <string name="settings_place_names_more">Selengkapnya</string>
     <string name="settings_place_names_most">Paling banyak</string>
     <string name="settings_place_names_hint">Selengkapnya dan Paling banyak menampilkan nama serta ikon toko, sekolah, dan tempat lain saat peta diperkecil lebih jauh. Area yang sibuk akan terlihat padat, dan pergerakan peta mungkin menjadi sedikit kurang lancar di area tersebut.</string>
+    <string name="settings_backup_title">Cadangan pengaturan</string>
+    <string name="settings_backup_hint">Ekspor pengaturan Anda ke file JSON atau pulihkan di ponsel lain.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="other">%1$d pengaturan dipulihkan</item>
+    </plurals>
 </resources>

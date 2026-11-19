@@ -1410,4 +1410,9 @@
     <string name="trip_shortcut_unsupported">此主屏幕不支持固定快捷方式</string>
     <string name="trip_shortcut_themed">匹配主题图标</string>
     <string name="settings_places_source_note">无论选择哪一项，搜索或点按某个地点时，营业时间、评价和照片仍来自 Google。</string>
+    <string name="settings_backup_title">设置备份</string>
+    <string name="settings_backup_hint">将设置导出为 JSON 文件，或在另一部手机上恢复。</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="other">已恢复 %1$d 项设置</item>
+    </plurals>
 </resources>

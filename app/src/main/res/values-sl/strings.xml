@@ -1418,4 +1418,12 @@
     <string name="place_avoid_short_ferries">Trajekti</string>
     <string name="place_avoid_short_cameras">Radarji</string>
     <string name="trip_shortcut_themed">Uskladi ikone s temo</string>
+    <string name="settings_backup_title">Varnostna kopija nastavitev</string>
+    <string name="settings_backup_hint">Izvozite nastavitve v datoteko JSON ali jih obnovite v drugem telefonu.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Obnovljena %1$d nastavitev</item>
+        <item quantity="two">Obnovljeni %1$d nastavitvi</item>
+        <item quantity="few">Obnovljene %1$d nastavitve</item>
+        <item quantity="other">Obnovljenih %1$d nastavitev</item>
+    </plurals>
 </resources>

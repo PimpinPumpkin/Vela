@@ -1354,4 +1354,10 @@
     <string name="trip_shortcut_unsupported">Den här startskärmen kan inte fästa genvägar</string>
     <string name="trip_shortcut_themed">Som ikoner med tema</string>
     <string name="settings_places_source_note">Att söka eller trycka på en plats frågar fortfarande Google om öppettider, recensioner och foton, vilket du än väljer.</string>
+    <string name="settings_backup_title">Säkerhetskopia av inställningar</string>
+    <string name="settings_backup_hint">Exportera dina inställningar till en JSON-fil eller återställ dem på en annan telefon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d inställning återställd</item>
+        <item quantity="other">%1$d inställningar återställda</item>
+    </plurals>
 </resources>

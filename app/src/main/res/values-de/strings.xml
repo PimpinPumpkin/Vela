@@ -1542,4 +1542,10 @@
     </plurals>
     <string name="settings_trip_batch_share_full">Vollständige Traces teilen</string>
     <string name="settings_trip_batch_saved">Vollstandige Traces abgespeichert</string>
+    <string name="settings_backup_title">Einstellungen sichern</string>
+    <string name="settings_backup_hint">Exportieren Sie Ihre Einstellungen in eine JSON-Datei oder stellen Sie sie auf einem anderen Gerät wieder her.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d Einstellung wiederhergestellt</item>
+        <item quantity="other">%1$d Einstellungen wiederhergestellt</item>
+    </plurals>
 </resources>

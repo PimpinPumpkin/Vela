@@ -1534,4 +1534,12 @@
     <string name="trip_shortcut_themed">Prispôsobiť tematickým ikonám</string>
     <string name="settings_places_source_more_body">Údaje o miestach vo Vela pochádzajú z Overture Maps, otvorenej databázy podnikov, ktorú spravujú Meta, Microsoft a ďalší, a z AllThePlaces, ktoré zbiera pobočky reťazcov z ich vlastných vyhľadávačov predajní. OpenStreetMap pritom opravuje, kde sa ktorý obchod skutočne nachádza. Vela tieto tri zdroje spája do mapových dlaždíc a poskytuje ich zo svojho repozitára na GitHube, takže informácie o tom, kam sa pozeráte, sa nedostanú k Mete ani Googlu.\n\nÚdaje sa načítavajú počas prezerania mapy a sťahujú sa spolu s regiónom na offline použitie. Tam, kde Vela pre oblasť zatiaľ nemá údaje, mapa použije Google.\n\nVyhľadávanie, podrobnosti o mieste, otváracie hodiny, recenzie a fotky vždy pochádzajú z Googlu, nech zvolíte čokoľvek.</string>
     <string name="update_car_body">Vela bola nainštalovaná spôsobom, ktorý Android Auto akceptuje. Ak túto aktualizáciu nainštalujete tu, tento spôsob sa nahradí a auto prestane Vela zobrazovať, kým súbor nenainštalujete nástrojom, ktorý ste použili prvýkrát (AAEnabler, King Installer).\n\nAk chcete, aby Vela v aute fungovala aj naďalej, uložte súbor a nainštalujte ho týmto spôsobom.</string>
+    <string name="settings_backup_title">Záloha nastavení</string>
+    <string name="settings_backup_hint">Exportujte svoje nastavenia do súboru JSON alebo ich obnovte v inom telefóne.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Obnovené %1$d nastavenie</item>
+        <item quantity="few">Obnovené %1$d nastavenia</item>
+        <item quantity="many">Obnovených %1$d nastavení</item>
+        <item quantity="other">Obnovených %1$d nastavení</item>
+    </plurals>
 </resources>

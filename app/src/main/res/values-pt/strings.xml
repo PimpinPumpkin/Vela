@@ -1508,4 +1508,11 @@
     <string name="settings_region_updated_on">actualizado %1$s</string>
     <string name="settings_start_view_drive">Modo de Condução</string>
     <string name="driving_mode">Mode de condução</string>
+    <string name="settings_backup_title">Cópia de segurança das definições</string>
+    <string name="settings_backup_hint">Exporte as suas definições para um ficheiro JSON ou restaure-as noutro telemóvel.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d definição restaurada</item>
+        <item quantity="many">%1$d definições restauradas</item>
+        <item quantity="other">%1$d definições restauradas</item>
+    </plurals>
 </resources>

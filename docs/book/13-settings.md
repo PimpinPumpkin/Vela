@@ -23,7 +23,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
   Google session, the request counter, Clear history
   ([chapter 7](07-talking-to-google.md)).
 - Performance: what loads ahead of time, how the map is drawn.
-- Diagnostics: diagnostics export, saved trips, the location and driving simulators.
+- Diagnostics: diagnostics export, settings backup (export and import), saved trips, the location and driving simulators.
 - About: version, update channel and checks ([chapter 12](12-releases.md)), map data credits,
   support, the project on GitHub.
 

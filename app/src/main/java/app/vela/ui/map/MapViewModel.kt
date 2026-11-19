@@ -7683,6 +7683,29 @@ class MapViewModel @Inject constructor(
             )
         }
 
+    fun reloadImportedSettings() {
+        val spd = settingsPrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
+        val vol = settingsPrefs.getFloat("voice_volume", 1.0f)
+        val muted = !settingsPrefs.getBoolean("spoken_directions", true)
+        val alerts = muted && settingsPrefs.getBoolean("spoken_alerts_only", false)
+        voice.setRate(spd)
+        voice.setVolume(vol)
+        voice.muted = muted
+        voice.alertsOnly = alerts
+        app.vela.ui.VoiceAlertsOnly.on.value = alerts
+        navSession.liveRechecks = settingsPrefs.getBoolean("nav_live_rechecks", true)
+        _state.update {
+            it.copy(
+                voiceSpeed = spd,
+                voiceMuted = muted,
+                voiceAlertsOnly = alerts,
+                routeBarEnabled = settingsPrefs.getBoolean("route_bar", false),
+                tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false),
+                nameTripsOnSave = settingsPrefs.getBoolean("trip_name_on_save", false),
+            )
+        }
+    }
+
     /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
      *  more invasive than diagnostics, so it's its own toggle. */
     fun setTripRecording(on: Boolean) {
