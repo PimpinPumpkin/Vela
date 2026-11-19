@@ -26,9 +26,10 @@ Set 2026-10-07.
    waits until it can be its own job: a full pass over the sheets, the gestures and D-pad
    operation, on both test phones.
 4. Read places from Vela Almanac, a separate open dataset of US places with dated evidence of
-   what is still open. It replaces the three closure steps in the places bake and later the
-   merge itself. Blocked on its first published files. The bake then reads one file per
-   state.
+   what is still open, built on Overture. It publishes monthly: four releases so far, and the
+   2026-11-01 build passed. Its README still says it is not ready to use. Vela has no reader
+   for it yet. Its open evidence would plug into the places bake's `almanac_backed` hook for
+   US regions, where it backs a row against the single-supplier rule.
 5. F-Droid's own catalog. The official catalog builds every app from source and cannot take
    the prebuilt voice runtime (sherpa-onnx) or the prebuilt Cronet. The work is a build
    flavor that compiles or leaves out each of them, and reproducible output. Not started.
@@ -200,9 +201,6 @@ Small items, one pull request each.
   started offline never picks up the patched style until the process restarts.
 - The first-line shortening measures speech in characters, so a Japanese, Chinese or Hebrew
   line is read as short and keeps its sign tail.
-- Duplicate names in the open places bake (#742). Overture carries one unbranded name at
-  several points with the same confidence, so a pin lands on the wrong one. Two fixes at the
-  bake: one row per unbranded name in a region, and a corrections list Vela maintains.
 - The neural voice's phonemizer. espeak, in front of the Piper model, misreads text that is
   not prose: "5:49 PM" came out as "five foot nine". `SpeechText` works around it case by
   case. The fix is a model that normalizes its own input and is fast enough on a Pixel 4a.
@@ -258,6 +256,14 @@ Small items, one pull request each.
 
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
+
+- The open places bake keeps one row for a business Overture lists at several points under one
+  name, street address and postcode (#742), and drops a row only BrightQuery, Microsoft or
+  Foursquare supplies unless OSM, a chain locator or an OSM landmark backs it (#914). Measured
+  in local bakes of the Delaware and Davis-Sacramento boxes (SPEC 5.2): 40% of the rows inside
+  Delaware go. Hospitals, emergency rooms, fuel, pharmacies and other civic kinds are exempt.
+  Not yet in a published archive or looked at on a phone. The corrections list
+  (`tools/places-corrections.csv`) is empty.
 
 - The location dot holds still through a pinch (`browseDot`, `ME_SRC` at z22): on a Pixel 4a with
   the simulated location in Davis, a recorded pinch sweep from z15 to z20 had the dot leave its
@@ -966,6 +972,9 @@ and how well one city's license feed matches the bake.
 First step: FDIC and SNAP as two adapters in the places bake, confirm and close only,
 measured on the District of Columbia and Sacramento. National registers outside the USA
 (France's Sirene, the UK Food Standards Agency's list) come after the US shape is proven.
+
+The places bake has the hook: an id in `almanac_backed` counts as a second source, so a
+register that saw a place open keeps a single-supplier row (SPEC 5.2). Nothing fills it yet.
 
 ### Vela traffic layer
 

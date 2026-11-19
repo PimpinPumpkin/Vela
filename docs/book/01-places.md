@@ -79,6 +79,22 @@ Overture's park, campus-building, housing, real-estate, school and transit rows 
 OSM supplies those. A row also goes when it has no name, when Overture marks it permanently
 closed, when its confidence is under 0.4, or when it has neither a category nor a website.
 
+Overture takes each place from one supplier (Meta, BrightQuery, Microsoft, Foursquare, a
+chain's locator and a few more) and records which in `sources`. A row that only BrightQuery,
+Microsoft or Foursquare supplies goes unless a second source lists it: an OSM business or a
+locator point with the same leading name words or brand within about 150 m, or an OSM landmark
+of the same name. Confidence cannot do this job. In the Delaware box 99% of the Microsoft-only
+and Foursquare-only rows score 0.75 or more, while a restaurant that only one of the three lists
+is found by health inspectors about a tenth as often as one a mapper confirmed (Vela Almanac).
+Hospitals, emergency rooms, urgent care, gas stations and charging, pharmacies, post offices,
+colleges, libraries, fire and police stations, courthouses, town halls and airports are exempt:
+a missing one costs more than a phantom one. The rule removed 19,191 of 48,694 rows inside
+Delaware, and kept 270 for their category, and removed 39,094 of 86,238 in the Davis and
+Sacramento box. None of them had a brand. The largest kinds were medical practices, offices,
+agents and ATMs, and 85% of those in Delaware drew only from z16. The bake has an empty hook,
+`almanac_backed`, for register evidence to back a row later. The rule is off when a bake has
+no OSM extract, since then almost nothing could back a row.
+
 AllThePlaces rows join at confidence 0.85 and OSM nodes at 0.8. Each is deduped against the
 table: a row with the same brand, or the same first two significant name words (`nkey`), within
 about 150 m is dropped. Its hours, phone, website and locality fill the kept row where that
@@ -89,7 +105,8 @@ cannot land on the next branch.
 
 Overture carries some businesses twice, such as a fuel station under its brand and under
 `<brand> Station <town>`. Two passes collapse rows within about 60 m onto one leader: a
-landmark's row, then not a kiosk, then higher confidence, then more contact fields.
+landmark's row, then not a kiosk, then higher confidence, then more contact fields. A third
+pass, after scoring, folds rows that share a street address.
 
 1. Rows with an equal snap key: the whole name with accents and parentheticals removed, "&"
    read as "and", English legal suffixes and a trailing store number dropped. Fuel rows also
@@ -98,6 +115,18 @@ landmark's row, then not a kiosk, then higher confidence, then more contact fiel
    the snap key minus the generic words in `tools/place-generic-words.txt` (generated from
    `PlaceNames.GENERIC`; a unit test keeps them equal), so `<Brand> Gas Station` folds onto
    `<Brand>`. A core key that is only a street number or one short word is skipped.
+3. Rows with an equal snap key, street line and postcode, at any distance. Overture also
+   carries one business at points kilometers apart under the same name and address, in two
+   thirds of the Delaware groups from two different suppliers. The row kept is the one nearest
+   Overture's address point for that house number, street and postcode (within 250 m), else
+   one a second source lists, else the most confident. It takes the others' hours, phone and
+   website. A name alone is never the test: with this rule and the single-supplier rule
+   applied, 816 unbranded names still repeat across Delaware for real, Walgreens, LabCorp and
+   USPS among them, because Overture gives them no brand. In the Delaware box the rule
+   dropped 2,022 rows, 522 of them inside the state.
+
+`tools/places-corrections.csv` lists rows known to be wrong, by id with a reason, and the bake
+deletes them before any fold.
 
 #### Closed places
 
@@ -462,9 +491,16 @@ describe an ordinary week. Syntax it does not understand is shown as its own tex
 - Closures lag. Without `FSQ_HF_TOKEN` the Foursquare copy ends in February 2025, and a closed
   place that none of the three sources records stays until someone tags it in OSM. A closed
   Google listing hides the pin on that phone only.
-- The bake folds EXACT and VARIANT duplicates only. An OVERLAP needs the kinds and the pool's
-  shared words, which only the app has. No rule covers a shop inside a fuel station under a
-  different name, or Google's own two profiles for one business.
+- The bake folds EXACT and VARIANT duplicates and address twins only. An OVERLAP needs the
+  kinds and the pool's shared words, which only the app has. No rule covers a shop inside a
+  fuel station under a different name, or Google's own two profiles for one business.
+- An address twin needs a postcode on both rows and a street line that starts with the house
+  number, so OSM rows without `addr:postcode` and addresses written number-last are not
+  folded. The kept twin keeps its own category, which can be the vaguer one.
+- The single-supplier rule trusts Overture's attribution and the region's own OSM extract. A
+  region's box reaches into its neighbors, whose OSM nodes are not in that extract, so rows
+  there can be backed only by a locator. Real places only one of the three suppliers knows
+  are gone until OSM maps them.
 - A non-Latin place without `name_en` cannot match Google's English name in Both mode, so both
   copies can draw.
 - Legal forms written with dots survive. Each word is checked against the legal-form list

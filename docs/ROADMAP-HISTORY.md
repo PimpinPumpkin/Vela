@@ -449,7 +449,13 @@ Once listed as dead and since fixed. Do not trust older notes that say otherwise
   doubtful places and 16% for confident ones, so a dead site says nothing.
 - Overture's `update_time` or confidence as a sign of life. `update_time` is the import
   date: a rule that spared recently updated rows spared 1,473 of 1,527 closed ones in the
-  District of Columbia. Closed restaurants sit at confidence 0.92 to 0.99.
+  District of Columbia. Closed restaurants sit at confidence 0.92 to 0.99. A higher confidence
+  floor (#914) would keep the phantoms: 99% of the Delaware box's Microsoft-only and
+  Foursquare-only rows score 0.75 or more. The bake drops by supplier instead (SPEC 5.2).
+- One row per unbranded name in a region (#742). Overture gives many chains no brand: with the
+  address-twin and single-supplier rules applied, 816 unbranded names still repeat across
+  Delaware at points over 150 m apart (2,297 rows), Walgreens, LabCorp and USPS among them.
+  The bake folds by name, street address and postcode instead.
 - Merging Microsoft's footprints into the basemap archive. Only 12% of Delaware's Microsoft
   footprints are in OSM, and the merged archive is 42.4 MB against 42.5 MB for the two
   apart. The render-time coverage gate also has to stay while the online basemap is

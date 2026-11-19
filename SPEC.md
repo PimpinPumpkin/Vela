@@ -3196,11 +3196,15 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles (
 
 - Overture: businesses only; its park, school, campus, housing and transit rows are dropped.
   Categories are the `categories.primary` set, and a release with `taxonomy` is mapped back
-  through `tools/overture-taxonomy-map.csv`.
+  through `tools/overture-taxonomy-map.csv`. A row's suppliers (side table `sups`) are the
+  datasets in its `sources` other than `Overture` (the confidence) and `Overture-signals` (an
+  operating-status signal). A record has one supplier; a second appears when another dataset
+  confirms a property, such as BrightQuery's operating status on a Meta record.
 - AllThePlaces: the newest weekly run (`data.alltheplaces.xyz/runs/latest.json` unless `ATP_RUN`
   pins one; the last pinned id is the fallback). Rows come from the world PMTiles
   (`pmtiles extract --bbox`, tippecanoe-decode, jq), filtered and mapped by `isbiz` and
-  `osmcat`. Confidence 0.85. Chains carry OSM-syntax `hours`.
+  `osmcat`. Confidence 0.85. Chains carry OSM-syntax `hours`. Rows are kept once per id: a
+  point on a tile edge decodes once per tile it touches.
 - OSM business nodes: the Geofabrik extract through `osmium tags-filter` and geojsonseq (strip
   the 0x1e separator before jq), same macros. Confidence 0.8; the id is the node id. Ways and
   relations stay out: a building centroid is the same guess as a parcel point.
@@ -3219,8 +3223,49 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles (
   by house number (`fuel@<number>`).
 - Rows with the same core key within 60 m fold too, when every word of one snap key is in the
   other. A shared core alone folded the Empire State Building into "Empire Beauty School".
-- Leader: the row standing for a landmark, then not a kiosk, confidence, more fields.
+- Leader: the row standing for a landmark, then not a kiosk, confidence, more fields. A
+  dropped row's suppliers move to its leader.
+- `tools/places-corrections.csv` (`id,reason`) lists rows Vela knows are wrong, by Overture
+  GERS id or `atp:` / `osm:` id. They are deleted before the folds. The list is empty.
 - The OVERLAP family (5.5) stays app-side: it needs the kinds and the pool's shared words.
+
+#### Address twins and single-supplier rows
+
+Both rules run after scoring and the OSM pairing, before the tenant rules. A row is backed when
+a second source lists it: an OSM business node or a locator point with the same `nkey` or the
+same brand within about 150 m, an OSM pair or locator snap (`srcbonus`), an OSM landmark of the
+same name (`markdupes`), or the row is itself an OSM or locator row. `almanac_backed` is an
+empty hook for register evidence (an inspection or a license that saw the place open).
+
+- Address twins (#742): rows with the same snap key, the same `akey` (the street line from
+  `anorm`, punctuation out, starting with a house number) and the same `pckey` (the postcode,
+  ZIP+4 cut to the ZIP) are one business at any distance. A row with no postcode is left out.
+  Kept: the landmark's row, then not a kiosk, then the row nearest the Overture address point
+  with the same number, first non-direction street word (`stword`) and postcode, when one is
+  within 250 m, then a backed row, then confidence, then more fields. The kept row takes the
+  dropped rows' suppliers, backing, hours, phone and website. The address point read is the same
+  one as the unit snap's (`addrsrc`).
+- Single supplier (#914): an Overture row whose only supplier is BrightQuery, Microsoft or
+  Foursquare and that is not backed is deleted, unless its category is one a missing place
+  costs more than a phantom (`lonekeep`): fuel, charging and truck stops, hospitals, emergency
+  rooms, urgent care, pharmacies, post offices, colleges, libraries, fire and police stations,
+  courthouses, town halls and airports. `medical_center` stays under the rule: 19 of its 469
+  such rows in the Delaware box read as a hospital, the rest as practices. The rule runs only
+  when the bake has an OSM extract, without which nothing could back most rows. Confidence does not separate these: 99% of the
+  Microsoft-only and Foursquare-only rows in the Delaware box score 0.75 or more. Against
+  health inspections and license registers (Vela Almanac), a restaurant listed only by one of
+  the three is found about a tenth as often as one a mapper confirmed.
+
+| Box (Overture 2026-10-21.0) | Rows before | Address twins | Single supplier dropped | Kept by `lonekeep` | Rows after |
+| --- | --- | --- | --- | --- | --- |
+| Delaware, whole box | 171,408 | 2,022 | 71,020 | 1,109 | 98,349 |
+| Delaware, inside the state | 48,694 | 522 | 19,191 | 270 | 28,975 |
+| Davis and Sacramento | 86,238 | 818 | 39,094 | 395 | 46,321 |
+
+In the Delaware box 949 of 1,994 twin groups were decided by the address point, 144 by
+backing and 901 by confidence; in the Davis and Sacramento box 735, 7 and 71 of 813. None of
+the single-supplier rows carry a brand. The rows kept by `lonekeep` in the Delaware box were
+mostly pharmacies (247), post offices (149), gas stations (146) and hospitals (104).
 
 #### Positions
 

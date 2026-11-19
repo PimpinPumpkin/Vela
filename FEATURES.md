@@ -9,6 +9,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   exit numbers.
 - "Place icons on the map" draws businesses and landmarks from Vela data (open data, the default),
   Google, or Both.
+- Vela data shows a business listed at several points once, and leaves out a business that only
+  one bulk data supplier lists and no second source confirms.
 - "Show places", "Parks, schools and civic places", "Transit stops" and "Place icon size" control
   what is drawn.
 - "Place names" (Default, More, Most) brings place names and icons in one or two zoom levels
