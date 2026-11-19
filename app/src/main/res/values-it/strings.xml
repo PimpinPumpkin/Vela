@@ -968,6 +968,8 @@
     <string name="settings_voice_volume_normal">Normale</string>
     <string name="settings_voice_volume_louder">Più alto</string>
     <string name="settings_voice_volume_loudest">Massimo</string>
+    <string name="settings_voice_volume_custom">Personalizzato</string>
+    <string name="settings_voice_volume_multiplier">Moltiplicatore volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Quanto forte si sentono le indicazioni vocali sopra la tua musica. I livelli più alti valgono per la voce Vela; le voci di sistema si possono solo abbassare.</string>
     <string name="place_avoid_not_honored">Questi percorsi potrebbero comunque includere pedaggi, autostrade o traghetti: non è stato possibile raggiungere Google per evitarli, e il router aperto non può farlo. In un\'area scaricata Vela li evita offline.</string>
     <string name="settings_asr_engines_title">Motore di riconoscimento sul dispositivo</string>
@@ -992,6 +994,11 @@
     <string name="settings_theme_auto_hint">Chiaro di giorno, scuro dopo il tramonto, calcolato in base alla tua posizione.</string>
     <string name="settings_nav_day_night">Giorno e notte durante la navigazione</string>
     <string name="settings_nav_day_night_hint">Mantiene il tema che hai scelto ovunque e cambia in base alla luce del giorno solo mentre guidi.</string>
+    <string name="settings_nav_schedule_enable">Avvia la modalità scura a orario</string>
+    <string name="settings_nav_schedule_enable_hint">Imposta l\'aspetto iniziale della mappa all\'avvio finché il sistema o l\'auto non cambia modalità da sé.</string>
+    <string name="settings_nav_schedule_sun">Dal tramonto all\'alba</string>
+    <string name="settings_nav_schedule_start">Ora di inizio: %1$s</string>
+    <string name="settings_nav_schedule_end">Ora di fine: %1$s</string>
     <string name="mapscreen_shortcut_add">Aggiungi</string>
     <string name="settings_road_label">Nome della strada attuale</string>
     <string name="settings_road_label_off">Disattivato</string>
@@ -1009,12 +1016,19 @@
     <string name="nav_steps_handle_cd">Mostra passaggi</string>
     <string name="settings_route_trail">Strada percorsa</string>
     <string name="settings_route_trail_hint">Mantiene disegnata in grigio dietro la freccia la parte di percorso che hai già fatto. Disattivato la nasconde, così viene disegnata solo la strada davanti a te.</string>
+    <string name="settings_nav_line_custom">Spessore personalizzato linea percorso</string>
+    <string name="settings_nav_line_multiplier">Spessore linea: %1$sx</string>
+    <string name="settings_speed_upcoming">Mostra i prossimi cambi di limite di velocità</string>
+    <string name="settings_speed_upcoming_hint">Mostra il prossimo limite di velocità e la distanza lungo il percorso o la strada attuale.</string>
+    <string name="settings_speed_upcoming_distance">Distanza di anticipo: %1$s</string>
     <string name="settings_bike_safe">I percorsi in bici preferiscono piste ciclabili e strade tranquille</string>
     <string name="settings_bike_safe_hint">I percorsi in bici privilegiano gli itinerari ciclabili segnalati, le piste ciclabili e le strade residenziali rispetto alla strada più veloce, come fa Google con le bici. Usa la mappa offline dove ne hai scaricata una, altrimenti un router aperto online. Disattivato dà semplicemente il percorso in bici più veloce.</string>
     <string name="settings_route_picker">Selettore di percorsi in stile Google</string>
     <string name="settings_route_picker_hint">Mostra un percorso alla volta, con gli altri a un tocco di distanza e i loro tempi sulla mappa, e Avvia in basso. Disattivalo per il pannello classico di Vela, che elenca tutti i percorsi insieme.</string>
     <string name="settings_route_bar">Barra della strada davanti</string>
-    <string name="settings_route_bar_hint">Una striscia accanto alla mappa che mostra il traffico e cosa ti aspetta nel resto del percorso. Mostra solo ciò che Vela sa davvero: congestione, semafori, stop, passaggi a livello, dossi e telecamere di sorveglianza. Solo in verticale.</string>
+    <string name="settings_route_bar_hint">Una striscia accanto alla mappa che mostra il traffico e cosa ti aspetta nel resto del percorso. Mostra solo ciò che Vela sa davvero: congestione, semafori, stop, passaggi a livello, dossi e telecamere di sorveglianza.</string>
+    <string name="settings_car_route_bar">Barra della strada davanti sullo schermo dell\'auto</string>
+    <string name="settings_car_route_bar_hint">Mostra la barra della strada davanti anche su Android Auto; disattivata, appare solo sul telefono.</string>
     <string name="settings_font">Carattere</string>
     <string name="settings_font_system">Carattere di sistema</string>
     <string name="settings_font_choose">Scegli un file di carattere…</string>
@@ -1531,4 +1545,11 @@
     <string name="settings_trip_saved">Ho salvato la traccia completa</string>
     <string name="settings_road_numbers">Prima i numeri delle strade</string>
     <string name="settings_road_numbers_hint">Una strada dotata di un numero di percorso viene identificata tramite tale numero, anziché mediante un nome come, ad esempio, \"Pearl Harbor Memorial Expressway\". L\'indicazione appare sotto la freccia, sullo schermo dell\'auto e nelle istruzioni per il tratto di percorso successivo.</string>
+    <string name="settings_backup_title">Backup delle impostazioni</string>
+    <string name="settings_backup_hint">Esporta le tue impostazioni in un file JSON o ripristinale su un altro telefono.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d impostazione ripristinata</item>
+        <item quantity="many">%1$d impostazioni ripristinate</item>
+        <item quantity="other">%1$d impostazioni ripristinate</item>
+    </plurals>
 </resources>

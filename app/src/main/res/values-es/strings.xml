@@ -859,6 +859,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Más alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
+    <string name="settings_voice_volume_custom">Personalizado</string>
+    <string name="settings_voice_volume_multiplier">Multiplicador de volumen: %1$sx</string>
     <string name="settings_voice_volume_hint">Con qué volumen suenan las indicaciones habladas por encima de tu música. Los niveles más altos se aplican a la voz de Vela; las voces del sistema solo se pueden bajar.</string>
     <string name="settings_asr_engines_title">Motor de reconocimiento en el dispositivo</string>
     <string name="voice_capture_examples_title">Cosas que puedes decir</string>
@@ -882,6 +884,11 @@
     <string name="settings_theme_auto_hint">Claro de día, oscuro tras la puesta de sol, calculado a partir de tu ubicación.</string>
     <string name="settings_nav_day_night">Día y noche al navegar</string>
     <string name="settings_nav_day_night_hint">Mantiene el tema que elegiste en el resto de la app y cambia según la luz del día solo mientras conduces.</string>
+    <string name="settings_nav_schedule_enable">Iniciar el modo oscuro según horario</string>
+    <string name="settings_nav_schedule_enable_hint">Define la apariencia inicial del mapa al abrir la app hasta que el sistema o el coche cambien de modo por sí solos.</string>
+    <string name="settings_nav_schedule_sun">Del anochecer al amanecer</string>
+    <string name="settings_nav_schedule_start">Hora de inicio: %1$s</string>
+    <string name="settings_nav_schedule_end">Hora de fin: %1$s</string>
     <string name="mapscreen_shortcut_add">Añadir</string>
     <string name="settings_road_label">Nombre de la calle actual</string>
     <string name="settings_road_label_off">Desactivado</string>
@@ -893,10 +900,17 @@
     <string name="nav_steps_handle_cd">Mostrar pasos</string>
     <string name="settings_route_trail">Camino recorrido</string>
     <string name="settings_route_trail_hint">Mantiene dibujada en gris, detrás de la flecha, la parte de la ruta que ya has recorrido. Desactivado la oculta, así que solo se dibuja el camino por delante.</string>
+    <string name="settings_nav_line_custom">Ancho personalizado de la línea de ruta</string>
+    <string name="settings_nav_line_multiplier">Ancho de línea: %1$sx</string>
+    <string name="settings_speed_upcoming">Mostrar próximos cambios de límite de velocidad</string>
+    <string name="settings_speed_upcoming_hint">Muestra el siguiente límite de velocidad y la distancia restante en tu ruta o carretera actual.</string>
+    <string name="settings_speed_upcoming_distance">Distancia de anticipación: %1$s</string>
     <string name="settings_bike_safe">Las rutas en bici prefieren carriles bici y calles tranquilas</string>
     <string name="settings_bike_safe_hint">Las rutas en bicicleta favorecen las vías ciclistas señalizadas, los carriles bici y las calles residenciales frente a la carretera más rápida, igual que Google con las bicis. Usa el mapa sin conexión si tienes uno descargado; si no, un servicio de rutas abierto con conexión. Desactivado da la ruta en bici más rápida sin más.</string>
     <string name="settings_route_bar">Barra del camino por delante</string>
-    <string name="settings_route_bar_hint">Una franja junto al mapa que muestra el tráfico y lo que viene en el resto de tu ruta. Solo muestra lo que Vela sabe de verdad: retenciones, semáforos, señales de stop, pasos a nivel, badenes y cámaras de vigilancia. Solo en vertical.</string>
+    <string name="settings_route_bar_hint">Una franja junto al mapa que muestra el tráfico y lo que viene en el resto de tu ruta. Solo muestra lo que Vela sabe de verdad: retenciones, semáforos, señales de stop, pasos a nivel, badenes y cámaras de vigilancia.</string>
+    <string name="settings_car_route_bar">Barra del camino por delante en la pantalla del coche</string>
+    <string name="settings_car_route_bar_hint">Muestra también la barra del camino por delante en Android Auto; desactivada, solo se muestra en el teléfono.</string>
     <string name="settings_font">Fuente</string>
     <string name="settings_font_system">Fuente del sistema</string>
     <string name="settings_font_choose">Elegir un archivo de fuente…</string>
@@ -1327,4 +1341,10 @@
     <string name="trip_shortcut_unsupported">Esta pantalla de inicio no permite fijar accesos directos</string>
     <string name="trip_shortcut_themed">Como los iconos con tema</string>
     <string name="settings_places_source_note">Al buscar o tocar un lugar se sigue consultando a Google el horario, las reseñas y las fotos, elijas lo que elijas.</string>
+    <string name="settings_backup_title">Copia de seguridad de ajustes</string>
+    <string name="settings_backup_hint">Exporta tus ajustes a un archivo JSON o restáuralos en otro teléfono.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Se restauró %1$d ajuste</item>
+        <item quantity="other">Se restauraron %1$d ajustes</item>
+    </plurals>
 </resources>

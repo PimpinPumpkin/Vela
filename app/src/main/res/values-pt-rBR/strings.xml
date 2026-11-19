@@ -966,6 +966,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Mais alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
+    <string name="settings_voice_volume_custom">Personalizado</string>
+    <string name="settings_voice_volume_multiplier">Multiplicador de volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Com que volume as instruções faladas tocam por cima do que você está ouvindo. Os níveis mais altos se aplicam à voz Vela; as vozes do sistema só podem ficar mais baixas.</string>
     <string name="place_avoid_not_honored">Estas rotas ainda podem usar pedágios, rodovias ou balsas: não foi possível contatar o Google para evitá-los, e o planejador de rotas aberto não consegue. Em uma área baixada, o Vela os evita off-line.</string>
     <string name="settings_asr_engines_title">Mecanismo de reconhecimento no dispositivo</string>
@@ -990,6 +992,11 @@
     <string name="settings_theme_auto_hint">Claro durante o dia, escuro depois do pôr do sol, calculado a partir da sua localização.</string>
     <string name="settings_nav_day_night">Dia e noite durante a navegação</string>
     <string name="settings_nav_day_night_hint">Mantém o tema que você escolheu em todo o resto e muda conforme a luz do dia apenas enquanto você dirige.</string>
+    <string name="settings_nav_schedule_enable">Iniciar modo escuro por horário</string>
+    <string name="settings_nav_schedule_enable_hint">Define a aparência inicial do mapa ao abrir até o sistema ou o carro mudar de modo por conta própria.</string>
+    <string name="settings_nav_schedule_sun">Do pôr ao nascer do sol</string>
+    <string name="settings_nav_schedule_start">Hora de início: %1$s</string>
+    <string name="settings_nav_schedule_end">Hora de término: %1$s</string>
     <string name="mapscreen_shortcut_add">Adicionar</string>
     <string name="settings_road_label">Nome da rua atual</string>
     <string name="settings_road_label_off">Desativado</string>
@@ -1007,12 +1014,19 @@
     <string name="nav_steps_handle_cd">Mostrar etapas</string>
     <string name="settings_route_trail">Rua já percorrida</string>
     <string name="settings_route_trail_hint">Mantém a parte da rota que você já percorreu desenhada em cinza atrás da seta. Desativado a esconde, ficando apenas a rua à frente.</string>
+    <string name="settings_nav_line_custom">Largura personalizada da linha da rota</string>
+    <string name="settings_nav_line_multiplier">Largura da linha: %1$sx</string>
+    <string name="settings_speed_upcoming">Mostrar próximas mudanças de limite de velocidade</string>
+    <string name="settings_speed_upcoming_hint">Mostra o próximo limite de velocidade e a distância à frente na sua rota ou via atual.</string>
+    <string name="settings_speed_upcoming_distance">Distância de antecipação: %1$s</string>
     <string name="settings_bike_safe">As rotas de bicicleta preferem ciclovias e ruas calmas</string>
     <string name="settings_bike_safe_hint">As rotas de bicicleta preferem trajetos cicláveis sinalizados, ciclovias e ruas residenciais à rua mais rápida, tal como o Google faz. Usa o mapa off-line onde você tiver um baixado, caso contrário um serviço aberto on-line. Desativado dá a rota de bicicleta mais rápida, sem mais.</string>
     <string name="settings_route_picker">Seletor de rotas estilo Google</string>
     <string name="settings_route_picker_hint">Mostra uma rota de cada vez, com as outras a um toque e os tempos delas no mapa, e Iniciar embaixo. Desative para o painel clássico do Vela, que lista todas as rotas de uma vez.</string>
     <string name="settings_route_bar">Barra da rua à frente</string>
-    <string name="settings_route_bar_hint">Uma faixa ao lado do mapa que mostra o trânsito e o que vem pela frente no resto da rota. Mostra apenas o que o Vela sabe de fato: congestionamento, semáforos, placas de pare, passagens de nível, lombadas e câmeras de vigilância. Só na vertical.</string>
+    <string name="settings_route_bar_hint">Uma faixa ao lado do mapa que mostra o trânsito e o que vem pela frente no resto da rota. Mostra apenas o que o Vela sabe de fato: congestionamento, semáforos, placas de pare, passagens de nível, lombadas e câmeras de vigilância.</string>
+    <string name="settings_car_route_bar">Barra da rua à frente na tela do carro</string>
+    <string name="settings_car_route_bar_hint">Também mostra a barra da rua à frente no Android Auto; desativada, aparece apenas no celular.</string>
     <string name="settings_font">Fonte</string>
     <string name="settings_font_system">Fonte do sistema</string>
     <string name="settings_font_choose">Escolher um arquivo de fonte…</string>
@@ -1328,4 +1342,10 @@
     <string name="trip_shortcut_unsupported">Esta tela inicial não permite fixar atalhos</string>
     <string name="trip_shortcut_themed">Como os ícones com tema</string>
     <string name="settings_places_source_note">Pesquisar ou tocar em um local continua consultando o Google para horários, avaliações e fotos, seja qual for a opção escolhida.</string>
+    <string name="settings_backup_title">Backup das configurações</string>
+    <string name="settings_backup_hint">Exporte suas configurações para um arquivo JSON ou restaure-as em outro celular.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d configuração restaurada</item>
+        <item quantity="other">%1$d configurações restauradas</item>
+    </plurals>
 </resources>

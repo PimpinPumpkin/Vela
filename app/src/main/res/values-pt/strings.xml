@@ -969,6 +969,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Mais alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
+    <string name="settings_voice_volume_custom">Personalizado</string>
+    <string name="settings_voice_volume_multiplier">Multiplicador de volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Com que volume as indicações faladas tocam por cima do que está a ouvir. Os níveis mais altos aplicam-se à voz Vela; as vozes do sistema só podem ficar mais baixas.</string>
     <string name="place_avoid_not_honored">Estas rotas podem ainda usar portagens, autoestradas ou ferries: não foi possível contactar a Google para as evitar, e o planeador de rotas aberto não consegue. Numa área transferida a Vela evita-as offline.</string>
     <string name="settings_asr_engines_title">Motor de reconhecimento no dispositivo</string>
@@ -993,6 +995,11 @@
     <string name="settings_theme_auto_hint">Claro durante o dia, escuro depois do pôr do sol, calculado a partir da sua localização.</string>
     <string name="settings_nav_day_night">Dia e noite durante a navegação</string>
     <string name="settings_nav_day_night_hint">Mantém o tema que escolheu em todo o resto e muda conforme a luz do dia apenas enquanto conduz.</string>
+    <string name="settings_nav_schedule_enable">Iniciar modo escuro por horário</string>
+    <string name="settings_nav_schedule_enable_hint">Define o aspeto inicial do mapa ao abrir até o sistema ou o automóvel mudar de modo por si.</string>
+    <string name="settings_nav_schedule_sun">Do pôr ao nascer do sol</string>
+    <string name="settings_nav_schedule_start">Hora de início: %1$s</string>
+    <string name="settings_nav_schedule_end">Hora de fim: %1$s</string>
     <string name="mapscreen_shortcut_add">Adicionar</string>
     <string name="settings_road_label">Nome da estrada atual</string>
     <string name="settings_road_label_off">Desligado</string>
@@ -1010,12 +1017,19 @@
     <string name="nav_steps_handle_cd">Mostrar etapas</string>
     <string name="settings_route_trail">Estrada já percorrida</string>
     <string name="settings_route_trail_hint">Mantém a parte da rota que já percorreu desenhada a cinzento atrás da seta. Desligado esconde-a, ficando apenas a estrada à frente.</string>
+    <string name="settings_nav_line_custom">Largura personalizada da linha da rota</string>
+    <string name="settings_nav_line_multiplier">Largura da linha: %1$sx</string>
+    <string name="settings_speed_upcoming">Mostrar próximas alterações ao limite de velocidade</string>
+    <string name="settings_speed_upcoming_hint">Mostra o próximo limite de velocidade e a distância à frente na rota ou estrada atual.</string>
+    <string name="settings_speed_upcoming_distance">Distância de antecipação: %1$s</string>
     <string name="settings_bike_safe">As rotas de bicicleta preferem ciclovias e ruas calmas</string>
     <string name="settings_bike_safe_hint">As rotas de bicicleta preferem percursos cicláveis sinalizados, ciclovias e ruas residenciais à estrada mais rápida, tal como a Google faz. Usa o mapa offline onde tiver um transferido, caso contrário um serviço aberto online. Desligado dá a rota de bicicleta mais rápida, sem mais.</string>
     <string name="settings_route_picker">Seletor de rotas ao estilo Google</string>
     <string name="settings_route_picker_hint">Mostra uma rota de cada vez, com as outras a um toque e os tempos delas no mapa, e Iniciar em baixo. Desligue para o painel clássico da Vela, que lista todas as rotas de uma vez.</string>
     <string name="settings_route_bar">Barra da estrada à frente</string>
-    <string name="settings_route_bar_hint">Uma faixa ao lado do mapa que mostra o trânsito e o que aí vem no resto da rota. Mostra apenas o que a Vela sabe mesmo: congestionamento, semáforos, sinais de stop, passagens de nível, lombas e câmaras de vigilância. Só na vertical.</string>
+    <string name="settings_route_bar_hint">Uma faixa ao lado do mapa que mostra o trânsito e o que aí vem no resto da rota. Mostra apenas o que a Vela sabe mesmo: congestionamento, semáforos, sinais de stop, passagens de nível, lombas e câmaras de vigilância.</string>
+    <string name="settings_car_route_bar">Barra da estrada à frente no ecrã do automóvel</string>
+    <string name="settings_car_route_bar_hint">Também mostra a barra da estrada à frente no Android Auto; desligado, aparece apenas no telemóvel.</string>
     <string name="settings_font">Tipo de letra</string>
     <string name="settings_font_system">Tipo de letra do sistema</string>
     <string name="settings_font_choose">Escolher um ficheiro de letra…</string>
@@ -1494,4 +1508,11 @@
     <string name="settings_region_updated_on">actualizado %1$s</string>
     <string name="settings_start_view_drive">Modo de Condução</string>
     <string name="driving_mode">Mode de condução</string>
+    <string name="settings_backup_title">Cópia de segurança das definições</string>
+    <string name="settings_backup_hint">Exporte as suas definições para um ficheiro JSON ou restaure-as noutro telemóvel.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d definição restaurada</item>
+        <item quantity="many">%1$d definições restauradas</item>
+        <item quantity="other">%1$d definições restauradas</item>
+    </plurals>
 </resources>

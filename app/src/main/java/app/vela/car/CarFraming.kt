@@ -72,6 +72,40 @@ internal object CarFraming {
         val d = cameraDistancePx(heightPx)
         return d * tan(p - atan((d * sin(p) - aheadPx) / (d * cos(p))))
     }
+
+    /**
+     * Vertical top and bottom bounds `(topY, botY)` for the road-ahead bar on the car surface, or
+     * null when there is not enough room.
+     *
+     * When [leftColumn] is true (full-screen Android Auto, where the top-left turn card and
+     * bottom-left ETA card push `safeArea().left` right of the bar's column), `visTop` and
+     * `visBottom` describe the open map to the right of those cards rather than the gap between
+     * them. The turn card has dynamic height (multi-line street names, lane arrows, next-step
+     * strip) while the ETA card at the bottom has fixed height, so the bar reserves top and bottom
+     * clearances and anchors to the bottom of the gap so the top span label stays clear of the
+     * turn card.
+     */
+    fun routeBarBounds(
+        visTop: Float,
+        visBottom: Float,
+        surfaceHeight: Int,
+        k: Float,
+        leftColumn: Boolean,
+    ): Pair<Float, Float>? {
+        val topAvail = if (leftColumn) maxOf(visTop + 14f * k, surfaceHeight * 0.38f) else visTop + 14f * k
+        val botAvail = if (leftColumn) minOf(visBottom - 28f * k, surfaceHeight * 0.78f) else visBottom - 28f * k
+        val availH = botAvail - topAvail
+        val minH = (if (leftColumn) 80f else 100f) * k
+        if (availH < minH) return null
+        return if (leftColumn) {
+            val barH = (availH * 0.90f).coerceIn(minH, 260f * k)
+            (botAvail - barH) to botAvail
+        } else {
+            val barH = (availH * 0.78f).coerceIn(minH, 320f * k)
+            val topY = topAvail + (availH - barH) * 0.5f
+            topY to (topY + barH)
+        }
+    }
 }
 
 /**

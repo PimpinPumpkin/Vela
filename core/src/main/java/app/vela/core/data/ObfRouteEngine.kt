@@ -248,6 +248,91 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         }.getOrNull()
     }
 
+    override fun upcomingRoadLimit(
+        poly: List<LatLng>,
+        startMeters: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? {
+        val base = currentLimitKmh ?: return null
+        if (poly.size < 2 || lookAheadMeters < 40.0) return null
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val total = cum.last()
+        if (startMeters >= total - 30.0) return null
+        val startPt = app.vela.core.nav.RouteProjection.pointAt(poly, cum, startMeters)
+        val cands = regions().filter { it.id !in failed && it.covers(startPt) }.sortedBy { (it.n - it.s) * (it.e - it.w) }
+        if (cands.isEmpty()) return null
+        val readers = cands.mapNotNull { reader(it) }
+        if (readers.isEmpty()) return null
+        return runCatching {
+            synchronized(routeLock) {
+                val key = cands.joinToString(",") { it.id }
+                val ctx = limitCtx?.takeIf { limitCtxKey == key } ?: RoutePlannerFrontEnd().buildRoutingContext(
+                    builder().build(
+                        profileFor(TravelMode.DRIVE)!!,
+                        RoutingConfiguration.RoutingMemoryLimits(LIMIT_MEMORY_MB, NATIVE_MEMORY_MB),
+                        emptyMap(),
+                    ),
+                    null, readers.toTypedArray(), RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
+                ).also { limitCtx = it; limitCtxKey = key }
+                val fe = RoutePlannerFrontEnd()
+                val freeDrive = poly.size == 2
+                val startSeg = if (freeDrive) fe.findRouteSegment(startPt.lat, startPt.lng, ctx, null) else null
+                val startName = startSeg?.road?.getName()?.takeIf { it.isNotBlank() }
+                val startHwy = startSeg?.road?.getHighway()
+                fun limitAtSample(m: Double): Double? {
+                    val pt = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+                    val brg = app.vela.core.nav.RouteProjection.bearingAt(poly, cum, m)
+                    val seg = fe.findRouteSegment(pt.lat, pt.lng, ctx, null) ?: return null
+                    if (seg.distToProj > LIMIT_SNAP_M * LIMIT_SNAP_M) return null
+                    val r = seg.road
+                    if (r.pointsLength >= 2) {
+                        var bestI = 0
+                        var bestD2 = Double.MAX_VALUE
+                        for (i in 0 until r.pointsLength - 1) {
+                            val mLat = (MapUtils.get31LatitudeY(r.getPoint31YTile(i)) + MapUtils.get31LatitudeY(r.getPoint31YTile(i + 1))) * 0.5
+                            val mLng = (MapUtils.get31LongitudeX(r.getPoint31XTile(i)) + MapUtils.get31LongitudeX(r.getPoint31XTile(i + 1))) * 0.5
+                            val d2 = (mLat - pt.lat) * (mLat - pt.lat) + (mLng - pt.lng) * (mLng - pt.lng)
+                            if (d2 < bestD2) { bestD2 = d2; bestI = i }
+                        }
+                        val lat0 = MapUtils.get31LatitudeY(r.getPoint31YTile(bestI))
+                        val lng0 = MapUtils.get31LongitudeX(r.getPoint31XTile(bestI))
+                        val lat1 = MapUtils.get31LatitudeY(r.getPoint31YTile(bestI + 1))
+                        val lng1 = MapUtils.get31LongitudeX(r.getPoint31XTile(bestI + 1))
+                        val dy = lat1 - lat0
+                        val dx = (lng1 - lng0) * kotlin.math.cos(Math.toRadians((lat0 + lat1) * 0.5))
+                        val roadDeg = (((Math.toDegrees(kotlin.math.atan2(dx, dy)) + 360.0) % 180.0)).toInt()
+                        if (!app.vela.core.nav.RouteProjection.alignedWithRoad(brg, roadDeg, 35.0)) return null
+                    }
+                    if (freeDrive) {
+                        val rName = r.getName()?.takeIf { it.isNotBlank() }
+                        val rHwy = r.getHighway()
+                        if (startName != null && rName != null && !startName.equals(rName, ignoreCase = true)) return null
+                        if (startName == null && startHwy != null && rHwy != null && startHwy != rHwy) return null
+                    }
+                    val mps = r.getMaximumSpeed(true)
+                    if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return null
+                    val kmh = mps * 3.6
+                    return if (kmh < 150.0) kmh else null
+                }
+                val endM = minOf(total, startMeters + lookAheadMeters)
+                var d = startMeters + 45.0
+                while (d <= endM) {
+                    val kmh = limitAtSample(d)
+                    if (kmh != null && kotlin.math.abs(kmh - base) >= 3.0) {
+                        val confirmM = minOf(total, d + 25.0)
+                        val confirmKmh = if (confirmM > d + 5.0) limitAtSample(confirmM) else kmh
+                        if (confirmKmh != null && kotlin.math.abs(confirmKmh - kmh) < 3.0) {
+                            return@synchronized kmh to (d - startMeters)
+                        }
+                    }
+                    d += 40.0
+                }
+                null
+            }
+        }.getOrNull()
+    }
+
     /** What the speed-limit lookup sees at a point, for the on-demand harness: which files cover it,
      *  the nearest road (name, highway class, distance) and its raw maxspeed, or the exception the
      *  lookup swallowed. Never called by the app. */

@@ -1030,6 +1030,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Lebih keras</string>
     <string name="settings_voice_volume_loudest">Paling keras</string>
+    <string name="settings_voice_volume_custom">Kustom</string>
+    <string name="settings_voice_volume_multiplier">Pengali volume: %1$sx</string>
     <string name="settings_voice_volume_hint">Seberapa keras petunjuk arah lisan diputar melebihi media Anda. Tingkat yang lebih keras berlaku untuk suara Vela; suara sistem hanya dapat dibuat lebih pelan.</string>
     <string name="place_avoid_not_honored">Rute ini mungkin masih menggunakan jalan tol, jalan bebas hambatan, atau feri: Google tidak dapat dihubungi untuk menghindari hal tersebut, dan open router juga tidak dapat melakukannya. Di area yang diunduh, Vela menghindarinya secara offline.</string>
     <string name="settings_lists_export_hint">Cadangkan daftar Anda ke file, atau pulihkan di perangkat lain. Impor juga dapat mengambil daftar dari folder Tersimpan Google Takeout (satu CSV per daftar); setiap tempat di dalamnya akan dicari, sehingga memerlukan koneksi.</string>
@@ -1211,6 +1213,11 @@
     <string name="settings_theme_auto_hint">Terang di siang hari, gelap setelah matahari terbenam, dihitung dari lokasi Anda.</string>
     <string name="settings_nav_day_night">Siang dan malam saat navigasi</string>
     <string name="settings_nav_day_night_hint">Mempertahankan tema pilihan Anda di tempat lain, dan beralih berdasarkan cahaya siang hari hanya saat Anda berkendara.</string>
+    <string name="settings_nav_schedule_enable">Mulai mode gelap sesuai jadwal</string>
+    <string name="settings_nav_schedule_enable_hint">Mengatur tampilan awal peta saat dibuka hingga sistem atau mobil beralih mode siang/malam sendiri.</string>
+    <string name="settings_nav_schedule_sun">Matahari terbenam hingga terbit</string>
+    <string name="settings_nav_schedule_start">Waktu mulai: %1$s</string>
+    <string name="settings_nav_schedule_end">Waktu selesai: %1$s</string>
     <string name="mapscreen_shortcut_add">Tambah</string>
     <string name="settings_road_label">Nama jalan saat ini</string>
     <string name="settings_road_label_off">Nonaktif</string>
@@ -1270,6 +1277,11 @@
     <string name="settings_turn_declutter">Sederhanakan peta saat berbelok</string>
     <string name="settings_turn_declutter_hint">Saat peta berputar mengikuti belokan, hanya nama jalan yang tetap ditampilkan. Tempat, rambu, dan kamera kembali muncul segera setelah peta berhenti berputar. Menjaga tampilan belokan tetap lancar pada ponsel yang lebih lambat.</string>
     <string name="settings_route_trail_hint">Tetap menampilkan bagian rute yang telah Anda lalui dengan warna abu-abu di belakang panah. Jika nonaktif, bagian tersebut disembunyikan sehingga hanya jalan di depan yang ditampilkan.</string>
+    <string name="settings_nav_line_custom">Lebar garis rute kustom</string>
+    <string name="settings_nav_line_multiplier">Lebar garis: %1$sx</string>
+    <string name="settings_speed_upcoming">Tampilkan perubahan batas kecepatan berikutnya</string>
+    <string name="settings_speed_upcoming_hint">Menampilkan batas kecepatan berikutnya beserta jaraknya di depan pada rute atau jalan saat ini.</string>
+    <string name="settings_speed_upcoming_distance">Jarak pandang ke depan: %1$s</string>
     <string name="settings_bike_safe">Rute sepeda mengutamakan jalur sepeda dan jalan yang sepi</string>
     <string name="settings_bike_safe_hint">Rute bersepeda mengutamakan rute sepeda bertanda, jalur sepeda, dan jalan permukiman daripada jalan tercepat, seperti cara Google menentukan rute sepeda. Menggunakan peta offline jika sudah diunduh; jika belum, menggunakan layanan perutean terbuka secara online. Jika nonaktif, rute sepeda tercepat biasa akan digunakan.</string>
     <string name="settings_route_picker">Pemilih rute bergaya Google</string>
@@ -1277,7 +1289,9 @@
     <string name="settings_turn_arrows">Panah belokan pada rute</string>
     <string name="settings_turn_arrows_hint">Panah pendek pada rute yang menunjukkan belokan di depan saat Anda berkendara.</string>
     <string name="settings_route_bar">Bilah jalan di depan</string>
-    <string name="settings_route_bar_hint">Bilah di samping peta yang menampilkan lalu lintas dan hal-hal yang akan dijumpai di sepanjang sisa rute Anda. Hanya menampilkan informasi yang benar-benar diketahui Vela: kemacetan, lampu lalu lintas, rambu berhenti, perlintasan sebidang, polisi tidur, dan kamera pengawas. Hanya tersedia dalam orientasi potret.</string>
+    <string name="settings_route_bar_hint">Bilah di samping peta yang menampilkan lalu lintas dan hal-hal yang akan dijumpai di sepanjang sisa rute Anda. Hanya menampilkan informasi yang benar-benar diketahui Vela: kemacetan, lampu lalu lintas, rambu berhenti, perlintasan sebidang, polisi tidur, dan kamera pengawas.</string>
+    <string name="settings_car_route_bar">Bilah jalan di depan di layar mobil</string>
+    <string name="settings_car_route_bar_hint">Tampilkan juga bilah jalan di depan di Android Auto; jika nonaktif, hanya tampil di ponsel.</string>
     <string name="settings_font">Font</string>
     <string name="settings_font_system">Font sistem</string>
     <string name="settings_font_choose">Pilih berkas font…</string>
@@ -1473,4 +1487,9 @@
     <string name="settings_place_names_more">Selengkapnya</string>
     <string name="settings_place_names_most">Paling banyak</string>
     <string name="settings_place_names_hint">Selengkapnya dan Paling banyak menampilkan nama serta ikon toko, sekolah, dan tempat lain saat peta diperkecil lebih jauh. Area yang sibuk akan terlihat padat, dan pergerakan peta mungkin menjadi sedikit kurang lancar di area tersebut.</string>
+    <string name="settings_backup_title">Cadangan pengaturan</string>
+    <string name="settings_backup_hint">Ekspor pengaturan Anda ke file JSON atau pulihkan di ponsel lain.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="other">%1$d pengaturan dipulihkan</item>
+    </plurals>
 </resources>

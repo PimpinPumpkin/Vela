@@ -42,6 +42,7 @@ object AppTheme {
     /** Whether it is dark outside right now, recomputed by [refreshNight]. Read, never written, by
      *  the theme - so the sun math runs once a minute in one place instead of per composable. */
     val night = mutableStateOf(false)
+    val sunriseSunset = mutableStateOf<Pair<Long, Long>?>(null)
 
     /** Mirrored from the nav state by MapViewModel, so [navDayNight] can act on it. */
     val navigating = mutableStateOf(false)
@@ -112,12 +113,14 @@ object AppTheme {
         val ln = lng
         val now = System.currentTimeMillis()
         val usable = la != null && ln != null && now - at < POINT_MAX_AGE_MS && locationAllowed()
-        night.value = if (usable) {
-            SunTimes.isNight(la!!, ln!!, now)
+        if (usable) {
+            sunriseSunset.value = SunTimes.riseSet(la!!, ln!!, now)
+            night.value = SunTimes.isNight(la, ln, now)
         } else {
+            sunriseSunset.value = null
             // No fix yet (cold launch), location denied or revoked, or the stored point is a day
             // old: fall back to the clock rather than the sun somewhere the phone no longer is.
-            SunTimes.isNightByClock(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))
+            night.value = SunTimes.isNightByClock(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))
         }
     }
 
@@ -164,7 +167,9 @@ fun isMapDark(): Boolean {
     return when (AppTheme.mapMode.value) {
         MapThemeMode.LIGHT -> false
         MapThemeMode.DARK -> true
-        MapThemeMode.FOLLOW -> isAppInDarkTheme()
+        MapThemeMode.FOLLOW -> if (AppTheme.mode.value == ThemeMode.SYSTEM) {
+            app.vela.ui.NavSchedule.phoneDarkOverride(isSystemInDarkTheme())
+        } else isAppInDarkTheme()
     }
 }
 

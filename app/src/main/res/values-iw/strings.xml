@@ -947,6 +947,8 @@
     <string name="settings_voice_volume_normal">רגיל</string>
     <string name="settings_voice_volume_louder">חזק יותר</string>
     <string name="settings_voice_volume_loudest">הכי חזק</string>
+    <string name="settings_voice_volume_custom">מותאם אישית</string>
+    <string name="settings_voice_volume_multiplier">מכפיל עוצמה: %1$sx</string>
     <string name="settings_voice_volume_hint">כמה חזק ההוראות המדוברות מושמעות מעל המדיה שלך. הרמות החזקות יותר חלות על Vela Voice; קולות מערכת אפשר רק להחליש.</string>
     <string name="place_avoid_not_honored">המסלולים האלה עדיין עשויים לעבור בכבישי אגרה, כבישים מהירים או מעבורות: לא ניתן היה להגיע ל-Google כדי לעקוף אותם, והנתב הפתוח לא יכול לעשות זאת. באזור שהורד Vela נמנע מהם ללא חיבור.</string>
     <string name="settings_asr_engines_title">מנוע זיהוי במכשיר</string>
@@ -971,6 +973,11 @@
     <string name="settings_theme_auto_hint">בהיר ביום, כהה אחרי השקיעה, לפי המיקום שלך.</string>
     <string name="settings_nav_day_night">יום ולילה בזמן ניווט</string>
     <string name="settings_nav_day_night_hint">שומר על ערכת הנושא שבחרת בכל מקום אחר, ומחליף לפי אור היום רק בזמן נהיגה.</string>
+    <string name="settings_nav_schedule_enable">הפעל מצב כהה לפי לוח זמנים</string>
+    <string name="settings_nav_schedule_enable_hint">קובע את מראה המפה הראשוני בהפעלה עד שהמערכת או הרכב מחליפים מצב יום/לילה בעצמם.</string>
+    <string name="settings_nav_schedule_sun">משקיעה עד זריחה</string>
+    <string name="settings_nav_schedule_start">שעת התחלה: %1$s</string>
+    <string name="settings_nav_schedule_end">שעת סיום: %1$s</string>
     <string name="mapscreen_shortcut_add">הוסף</string>
     <string name="settings_road_label">שם הכביש הנוכחי</string>
     <string name="settings_road_label_off">כבוי</string>
@@ -988,12 +995,19 @@
     <string name="nav_steps_handle_cd">הצג שלבים</string>
     <string name="settings_route_trail">הכביש מאחוריך</string>
     <string name="settings_route_trail_hint">משאיר את החלק מהמסלול שכבר נסעת משורטט באפור מאחורי החץ. כיבוי מסתיר אותו, כך שמשורטט רק הכביש שלפניך.</string>
+    <string name="settings_nav_line_custom">רוחב קו מסלול מותאם אישית</string>
+    <string name="settings_nav_line_multiplier">רוחב קו: %1$sx</string>
+    <string name="settings_speed_upcoming">הצג שינויים קרובים במגבלת המהירות</string>
+    <string name="settings_speed_upcoming_hint">מציג את מגבלת המהירות הבאה והמרחק אליה במסלול או בכביש הנוכחי.</string>
+    <string name="settings_speed_upcoming_distance">טווח תצוגה מקדימה: %1$s</string>
     <string name="settings_bike_safe">מסלולי אופניים מעדיפים נתיבי אופניים ורחובות שקטים</string>
     <string name="settings_bike_safe_hint">מסלולי רכיבה מעדיפים שבילי אופניים מסומנים, נתיבי אופניים ורחובות מגורים על פני הכביש המהיר ביותר, כמו ש-Google מנתב אופניים. משתמש במפה הלא מקוונת היכן שהורדת אחת, אחרת בנתב פתוח מקוון. כיבוי נותן את מסלול האופניים המהיר ביותר בלבד.</string>
     <string name="settings_route_picker">בורר מסלולים בסגנון Google</string>
     <string name="settings_route_picker_hint">מציג מסלול אחד בכל פעם, כשהאחרים במרחק הקשה והזמנים שלהם על המפה, ו\"התחל\" בתחתית. כבה את זה כדי לחזור לחלונית הקלאסית של Vela, שמציגה את כל המסלולים בבת אחת.</string>
     <string name="settings_route_bar">סרגל הכביש שלפניך</string>
-    <string name="settings_route_bar_hint">רצועה לצד המפה שמציגה תנועה ואת מה שמגיע בהמשך המסלול. מציגה רק את מה ש-Vela באמת יודע: עומסים, רמזורים, תמרורי עצור, מפגשי מסילה, פסי האטה ומצלמות אכיפה. במצב לאורך בלבד.</string>
+    <string name="settings_route_bar_hint">רצועה לצד המפה שמציגה תנועה ואת מה שמגיע בהמשך המסלול. מציגה רק את מה ש-Vela באמת יודע: עומסים, רמזורים, תמרורי עצור, מפגשי מסילה, פסי האטה ומצלמות אכיפה.</string>
+    <string name="settings_car_route_bar">סרגל הכביש שלפניך במסך המכונית</string>
+    <string name="settings_car_route_bar_hint">הצג את סרגל הכביש שלפניך גם ב-Android Auto; כשכבוי, הוא מוצג בטלפון בלבד.</string>
     <string name="settings_font">גופן</string>
     <string name="settings_font_system">גופן המערכת</string>
     <string name="settings_font_choose">בחר קובץ גופן…</string>
@@ -1387,4 +1401,12 @@
     <string name="welcome_google_on_gives">ביקורות, תמונות, תנועה בזמן אמת ו־Street View.</string>
     <string name="car_setting_traffic">תחבורה</string>
     <string name="settings_google_uses_traffic">תחבורה ומסלולים</string>
+    <string name="settings_backup_title">גיבוי הגדרות</string>
+    <string name="settings_backup_hint">ייצא את ההגדרות שלך לקובץ JSON או שחזר אותן בטלפון אחר.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">שוחזרה הגדרה %1$d</item>
+        <item quantity="two">שוחזרו %1$d הגדרות</item>
+        <item quantity="many">שוחזרו %1$d הגדרות</item>
+        <item quantity="other">שוחזרו %1$d הגדרות</item>
+    </plurals>
 </resources>

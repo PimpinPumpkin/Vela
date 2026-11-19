@@ -32,7 +32,7 @@ object StreamedSpeedLimit {
     /** km/h at the point from the first of [uris] (`pmtiles://https://..` or `pmtiles://file://..`)
      *  that has a limit there, or null. Blocking: call off the main thread. */
     @Synchronized
-    fun limitAt(uris: List<String>, lat: Double, lng: Double): Double? {
+    fun limitAt(uris: List<String>, lat: Double, lng: Double, headingDeg: Double? = null): Double? {
         for (uri in uris) {
             val a = archive(uri) ?: continue
             // A header that could not be read (no signal on the first lookup) is held by the
@@ -52,12 +52,49 @@ object StreamedSpeedLimit {
                 held = Held(if (raw == null) emptyList() else runCatching { MvtLines.decode(raw, z, x, y, "maxspeed") }.getOrDefault(emptyList()), now)
                 tiles[key] = held
             }
-            nearest(held.lines, lat, lng)?.let { return it }
+            nearest(held.lines, lat, lng, headingDeg)?.let { return it }
         }
         return null
     }
 
-    private fun nearest(lines: List<MvtLines.Line>, lat: Double, lng: Double): Double? {
+    /** First speed limit change `(limitKmh, distanceAheadMeters)` along [poly] between [startMeters]
+     *  and `startMeters + lookAheadMeters` that differs from [currentLimitKmh], or null. */
+    @Synchronized
+    fun upcomingLimitAlong(
+        uris: List<String>,
+        poly: List<app.vela.core.model.LatLng>,
+        startMeters: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? {
+        val base = currentLimitKmh ?: return null
+        if (uris.isEmpty() || poly.size < 2 || lookAheadMeters < 40.0) return null
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val total = cum.last()
+        if (startMeters >= total - 30.0) return null
+        val endM = minOf(total, startMeters + lookAheadMeters)
+        var d = startMeters + 45.0
+        while (d <= endM) {
+            val pt = app.vela.core.nav.RouteProjection.pointAt(poly, cum, d)
+            val brg = app.vela.core.nav.RouteProjection.bearingAt(poly, cum, d)
+            val kmh = limitAt(uris, pt.lat, pt.lng, brg)
+            if (kmh != null && kotlin.math.abs(kmh - base) >= 3.0) {
+                val confirmM = minOf(total, d + 25.0)
+                val confirmKmh = if (confirmM > d + 5.0) {
+                    val cpt = app.vela.core.nav.RouteProjection.pointAt(poly, cum, confirmM)
+                    val cbrg = app.vela.core.nav.RouteProjection.bearingAt(poly, cum, confirmM)
+                    limitAt(uris, cpt.lat, cpt.lng, cbrg)
+                } else kmh
+                if (confirmKmh != null && kotlin.math.abs(confirmKmh - kmh) < 3.0) {
+                    return kmh to (d - startMeters)
+                }
+            }
+            d += 40.0
+        }
+        return null
+    }
+
+    private fun nearest(lines: List<MvtLines.Line>, lat: Double, lng: Double, headingDeg: Double? = null): Double? {
         val k = 111_320.0 * cos(Math.toRadians(lat))
         // Local time on the phone: a timed limit ("130 @ (19:00-06:00)") is read at each lookup,
         // so the badge changes at 19:00 without the tile being read again.
@@ -74,6 +111,10 @@ object StreamedSpeedLimit {
                 val ax = (pts[i].lng - lng) * k; val ay = (pts[i].lat - lat) * 111_320.0
                 val bx = (pts[i + 1].lng - lng) * k; val by = (pts[i + 1].lat - lat) * 111_320.0
                 val dx = bx - ax; val dy = by - ay
+                if (headingDeg != null && (dx != 0.0 || dy != 0.0)) {
+                    val segDeg = (((Math.toDegrees(kotlin.math.atan2(dx, dy)) + 360.0) % 180.0)).toInt()
+                    if (!app.vela.core.nav.RouteProjection.alignedWithRoad(headingDeg, segDeg, 35.0)) continue
+                }
                 val len = dx * dx + dy * dy
                 val t = if (len == 0.0) 0.0 else (-(ax * dx + ay * dy) / len).coerceIn(0.0, 1.0)
                 val d = hypot(ax + t * dx, ay + t * dy)

@@ -916,6 +916,8 @@
     <string name="settings_voice_volume_normal">一般</string>
     <string name="settings_voice_volume_louder">較大聲</string>
     <string name="settings_voice_volume_loudest">最大聲</string>
+    <string name="settings_voice_volume_custom">自訂</string>
+    <string name="settings_voice_volume_multiplier">音量倍率：%1$sx</string>
     <string name="settings_voice_volume_hint">語音指引蓋過媒體播放時的音量。較大的音量層級只適用於 Vela 語音；系統語音只能調小。</string>
     <string name="settings_asr_engines_title">裝置端辨識引擎</string>
     <string name="voice_capture_examples_title">你可以這樣說</string>
@@ -939,6 +941,11 @@
     <string name="settings_theme_auto_hint">白天使用淺色，日落後使用深色，依你的位置判斷。</string>
     <string name="settings_nav_day_night">導航時切換日夜</string>
     <string name="settings_nav_day_night_hint">其他畫面維持你選擇的佈景主題，只有在行車導航時才依日照切換。</string>
+    <string name="settings_nav_schedule_enable">依排程啟動深色模式</string>
+    <string name="settings_nav_schedule_enable_hint">在啟動時設定地圖的初始外觀，直到系統或車機自行切換日夜模式。</string>
+    <string name="settings_nav_schedule_sun">日落至日出</string>
+    <string name="settings_nav_schedule_start">開始時間：%1$s</string>
+    <string name="settings_nav_schedule_end">結束時間：%1$s</string>
     <string name="mapscreen_shortcut_add">新增</string>
     <string name="settings_road_label">目前道路名稱</string>
     <string name="settings_road_label_off">關閉</string>
@@ -950,10 +957,17 @@
     <string name="nav_steps_handle_cd">顯示步驟</string>
     <string name="settings_route_trail">身後的道路</string>
     <string name="settings_route_trail_hint">已經行駛過的路線會以灰色繪製在箭頭後方。關閉後會隱藏，只繪製前方的道路。</string>
+    <string name="settings_nav_line_custom">自訂路線線寬</string>
+    <string name="settings_nav_line_multiplier">線寬：%1$sx</string>
+    <string name="settings_speed_upcoming">顯示前方速限變化</string>
+    <string name="settings_speed_upcoming_hint">預先顯示路線或目前道路前方的下一個速限與距離。</string>
+    <string name="settings_speed_upcoming_distance">預覽距離：%1$s</string>
     <string name="settings_bike_safe">單車路線優先選擇自行車道和安靜街道</string>
     <string name="settings_bike_safe_hint">單車路線會優先採用標示的自行車路線、自行車道和住宅區街道，而不是最快的道路，作法與 Google 的單車路線相同。已下載離線地圖時會使用離線地圖，否則使用線上的開放路線規劃服務。關閉後只給最快的單車路線。</string>
     <string name="settings_route_bar">前方路況列</string>
-    <string name="settings_route_bar_hint">地圖旁的長條，顯示路況和剩餘路線上即將遇到的狀況。只顯示 Vela 確實知道的資訊：壅塞、紅綠燈、停車再開標誌、平交道、減速丘和監視攝影機。僅限直向模式。</string>
+    <string name="settings_route_bar_hint">地圖旁的長條，顯示路況和剩餘路線上即將遇到的狀況。只顯示 Vela 確實知道的資訊：壅塞、紅綠燈、停車再開標誌、平交道、減速丘和監視攝影機。</string>
+    <string name="settings_car_route_bar">在車載螢幕上顯示前方路況列</string>
+    <string name="settings_car_route_bar_hint">同時在 Android Auto 上顯示前方路況列；關閉時僅於手機顯示。</string>
     <string name="settings_font">字型</string>
     <string name="settings_font_system">系統字型</string>
     <string name="settings_font_choose">選擇字型檔案…</string>
@@ -1403,4 +1417,9 @@
     <string name="mapscreen_location_tip_title">還沒有地點嗎？</string>
     <string name="mapscreen_location_tip_body">僅靠 GPS 通常無法在室內取得定位。在 GrapheneOS 上，請前往「設定」&gt;「位置」&gt;「位置服務」，開啟「網路定位」。</string>
     <string name="mapscreen_location_tip_settings">位置設定</string>
+    <string name="settings_backup_title">設定備份</string>
+    <string name="settings_backup_hint">將設定匯出為 JSON 檔案，或在另一部手機上還原。</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="other">已還原 %1$d 項設定</item>
+    </plurals>
 </resources>

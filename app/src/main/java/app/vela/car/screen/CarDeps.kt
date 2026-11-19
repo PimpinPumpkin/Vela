@@ -27,6 +27,7 @@ data class CarDeps(
     val offlineAddresses: app.vela.core.data.OfflineAddressStore,
     // The shared client, for the UK fuel price file the result rows read (UkFuelPrices.fill).
     val http: okhttp3.OkHttpClient,
+    val maxspeedStore: app.vela.offline.MaxspeedOverlayStore? = null,
 ) {
     // ONE shared map renderer for the whole car session. Per-screen renderer instances DON'T work:
     // swapping the surface callback to a new instance doesn't re-deliver onSurfaceAvailable, so the
@@ -34,6 +35,6 @@ data class CarDeps(
     // (set as the callback in each onStart) and just switch its mode (browse / preview / nav).
     private var sharedRenderer: CarMapRenderer? = null
     fun mapRenderer(ctx: CarContext): CarMapRenderer =
-        sharedRenderer ?: CarMapRenderer(ctx, locationProvider, navSession, routeEngine).also { sharedRenderer = it }
+        sharedRenderer ?: CarMapRenderer(ctx, locationProvider, navSession, routeEngine, maxspeedStore, http).also { sharedRenderer = it }
     fun stopMapRenderer() { sharedRenderer?.stop() }
 }

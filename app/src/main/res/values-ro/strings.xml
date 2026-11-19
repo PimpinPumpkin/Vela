@@ -1040,6 +1040,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Mai tare</string>
     <string name="settings_voice_volume_loudest">Cel mai tare</string>
+    <string name="settings_voice_volume_custom">Personalizat</string>
+    <string name="settings_voice_volume_multiplier">Multiplicator volum: %1$sx</string>
     <string name="settings_voice_volume_hint">Cât de tare se aud instrucțiunile vocale pe dispozitivul tău media. Nivelurile mai ridicate de volum se aplică vocii Vela; volumul vocilor sistemului poate fi redus doar.</string>
     <string name="place_avoid_not_honored">Este posibil ca aceste trasee să includă în continuare porțiuni cu taxă, autostrăzi sau feriboturi: nu s-a putut contacta Google pentru a le ocoli, iar aplicația OpenRouter nu are această posibilitate. Într-o zonă descărcată, Vela le ocolește în modul off-line.</string>
     <string name="settings_lists_export_hint">Creează o copie de rezervă a listelor într-un fișier sau restaurează pe un alt dispozitiv. Funcția de import preia, de asemenea, o listă din dosarul „Salvate” al serviciului Google Takeout (un fișier CSV pentru fiecare listă); fiecare locație din aceasta este căutată, așa că este necesară o conexiune la internet.</string>
@@ -1223,6 +1225,11 @@
     <string name="settings_theme_auto_hint">Luminoasă în timpul zilei, întunecată după apusul soarelui, în funcție de locație.</string>
     <string name="settings_nav_day_night">Zi și noapte, în timpul navigării</string>
     <string name="settings_nav_day_night_hint">Salvează tema aleasă de peste tot și comută în funcție de luminozitate doar în timpul navigării.</string>
+    <string name="settings_nav_schedule_enable">Pornește modul întunecat după program</string>
+    <string name="settings_nav_schedule_enable_hint">Stabilește aspectul inițial al hărții la pornire până când sistemul sau mașina comută automat modul zi/noapte.</string>
+    <string name="settings_nav_schedule_sun">De la apus până la răsărit</string>
+    <string name="settings_nav_schedule_start">Ora de început: %1$s</string>
+    <string name="settings_nav_schedule_end">Ora de sfârșit: %1$s</string>
     <string name="mapscreen_shortcut_add">Adaugă</string>
     <string name="settings_road_label">Denumirea actuală a străzii</string>
     <string name="settings_road_label_off">Oprit</string>
@@ -1277,12 +1284,19 @@
     <string name="settings_turn_declutter">Simplificarea hărții la viraje</string>
     <string name="settings_turn_declutter_hint">În timp ce harta se reîmprospătează la viraje, pe ea rămân doar numele străzilor. Locurile, indicatoarele și camerele de supraveghere reapar imediat ce harta se stabilizează. Virajele rămân fluide chiar și pe telefoanele cu performanțe reduse.</string>
     <string name="settings_route_trail_hint">Afișează în gri, în spatele săgeții, porțiunea de traseu pe care ai parcurs-o deja. Opțiunea „Oprit” o ascunde, astfel încât să fie afișat doar drumul din față.</string>
+    <string name="settings_nav_line_custom">Lățime personalizată a liniei rutei</string>
+    <string name="settings_nav_line_multiplier">Lățime linie: %1$sx</string>
+    <string name="settings_speed_upcoming">Afișează următoarele schimbări ale limitei de viteză</string>
+    <string name="settings_speed_upcoming_hint">Afișează următoarea limită de viteză și distanța până la ea pe traseu sau pe drumul curent.</string>
+    <string name="settings_speed_upcoming_distance">Distanță de anticipare: %1$s</string>
     <string name="settings_bike_safe">Traseele pentru biciclete preferă benzile pentru biciclete și străzile liniștite</string>
     <string name="settings_bike_safe_hint">Traseele pentru biciclete preferă traseele marcate pentru biciclete, benzile pentru biciclete și străzile rezidențiale în locul celui mai rapid traseu rutier, așa cum calculează Google traseele pentru biciclete. Utilizează harta off-line, dacă ai una descărcată; în caz contrar, folosește un serviciu de navigare online. Opțiunea „Oprit” afișează pur și simplu cel mai rapid traseu pentru biciclete.</string>
     <string name="settings_route_picker">Selector de traseu în stilul Google</string>
     <string name="settings_route_picker_hint">Afișează câte un traseu pe rând, celelalte fiind accesibile printr-o atingere, cu duratele lor indicate pe hartă, iar butonul „Start” afișat în partea de jos. Dezactivează această opțiune pentru a afișa panoul clasic al aplicației Vela, care afișează toate traseele simultan.</string>
     <string name="settings_route_bar">Banda de circulație din față</string>
-    <string name="settings_route_bar_hint">O bandă situată lângă hartă, care afișează situația traficului și ce urmează pe restul traseului. Afișează doar informațiile de care dispune efectiv Vela: aglomerație, semafoare, semne de oprire, treceri la nivel cu calea ferată, denivelări de viteză și camere de supraveghere. Doar în orientare verticală.</string>
+    <string name="settings_route_bar_hint">O bandă situată lângă hartă, care afișează situația traficului și ce urmează pe restul traseului. Afișează doar informațiile de care dispune efectiv Vela: aglomerație, semafoare, semne de oprire, treceri la nivel cu calea ferată, denivelări de viteză și camere de supraveghere.</string>
+    <string name="settings_car_route_bar">Banda de circulație din față pe ecranul mașinii</string>
+    <string name="settings_car_route_bar_hint">Afișează banda de circulație din față și pe Android Auto; dezactivată, apare doar pe telefon.</string>
     <string name="settings_font">Font</string>
     <string name="settings_font_system">Font de sistem</string>
     <string name="settings_font_choose">Alege un fișier cu fonturi…</string>
@@ -1519,4 +1533,11 @@
     <string name="settings_place_names_more">Mai multe</string>
     <string name="settings_place_names_most">Cele mai multe</string>
     <string name="settings_place_names_hint">Funcțiile „Mai multe” și „Cele mai multe” afișează numele și pictogramele magazinelor, școlilor și ale altor locuri atunci când se mărește imaginea la o scară mai mare. Într-o zonă aglomerată, harta poate deveni încărcată, iar derularea acesteia poate fi mai puțin fluidă.</string>
+    <string name="settings_backup_title">Copie de rezervă pentru setări</string>
+    <string name="settings_backup_hint">Exportă setările într-un fișier JSON sau restaurează-le pe alt telefon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">S-a restaurat %1$d setare</item>
+        <item quantity="few">S-au restaurat %1$d setări</item>
+        <item quantity="other">S-au restaurat %1$d de setări</item>
+    </plurals>
 </resources>

@@ -225,10 +225,10 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
-  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
+  `MapTilt`, `NavEndConfirm`, `NavLineWidth`, `NavNorthUp`, `NavSchedule`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
-  `RoadNumbers`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
+  `RoadNumbers`, `RouteBarPref`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
   `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
   `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
@@ -868,9 +868,13 @@ the page fills it after load, and a small stub sits beside it.
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
+| Appearance > Start dark mode on a schedule | `NavSchedule.enabled`, `nav_schedule_enabled`, off; `useSun`, `nav_schedule_sun`, true; `startHour` / `startMinute` / `endHour` / `endMinute`, 18:00 to 06:00 | sets the initial map light or dark state at launch on the phone (`ThemeMode.SYSTEM` with `MapThemeMode.FOLLOW`) and on Android Auto until the phone or head unit toggles its day/night signal |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
+| Navigation > Custom route line width | `NavLineWidth.custom`, `nav_line_custom`, off; `widthMultiplier`, `nav_line_multiplier`, 1.0 | scales the route line, alternate route, outline and turn arrow widths from 0.1x to 2.0x |
+| Navigation > Road ahead bar | `RouteBarPref.on`, `route_bar`, false; `RouteBarPref.carOn`, `car_route_bar_on`, true | the road-ahead strip on the phone, and on the car screen when "Road ahead bar on the car screen" is on |
+| Navigation > Show upcoming speed limit changes | `SpeedDisplay.upcomingOn`, `speed_upcoming_on`, false; `SpeedDisplay.upcomingMeters`, `speed_upcoming_m`, 300 | previews the next speed limit change and distance ahead (100 to 1,000 m) along the active route or the road ahead on the phone and car screen |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
@@ -3471,15 +3475,17 @@ when the feature ids match. Two requests at most.
   computed synchronously per keystroke and are all that shows offline. Contacts load into
   memory once. They dedupe against network rows by name plus coarse location, and by feature id.
 - Every row except a contact has a fill-in arrow.
-- `AddressQuery.parse` reads a leading house number and the street's first word that is not a
-  direction or a street type; `matches` needs both as whole words of a result.
+- `AddressQuery.parse` reads a house number and the street's first word that is not a
+  direction or a street type, in either number-first ("912 Miller Dr") or street-first
+  ("Hauptstraße 42") form; `matches` needs both as whole words of a result.
 - A typed address is searched over at least `ADDRESS_SEARCH_SPAN_M` (40 km). When no matching
   result lies that near the view, the suggest request geocodes it. Matching rows lead, by
   `AddressQuery.score` (a point per typed street word, minus one for a different direction or
   street type: "1451 W Covell Blvd" before "1451 East Covell Boulevard"), then nearest.
-- The on-device geocoder's estimates (ids `addr~`, `OfflineAddressStore.isApproximate`) are
-  dropped when another result has the address. Bracketing house numbers over `INTERP_MAX_GAP_M`
-  (300 m) apart are not blended; the nearer one's point is used.
+- The on-device geocoder's estimates (ids `addr~`, `OfflineAddressStore.isApproximate`, covering
+  interpolated positions, neighbor-house fallbacks and street centerlines) are dropped when
+  Google autocomplete answers or when another search result has the address. Bracketing house
+  numbers over `INTERP_MAX_GAP_M` (300 m) apart are not blended; the nearer one's point is used.
 - A place named by a street line whose address holds only the town shows and copies the two
   joined (`Place.fullAddress`). A listing keeps its own address when the first part of that has
   a number (`hasStreetLine`); one without, an address Google files under a category, is joined
@@ -4355,8 +4361,10 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
 
 #### Route line
 
-- `routeWidth()` is the wider of a pixel curve (7 / 11.2 / 11.5 / 11 / 17 / 20.4 dp at z10 / 14 /
-  15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). At 8.5 m it
+- `routeWidth()` is the wider of a pixel curve (6.5 / 8.5 / 9.8 / 11.4 / 13.2 / 17 / 20.4 dp at z10 / 13 /
+  14 / 15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). `scaleRouteStops`
+  and `syncRouteLineWidths` scale the stops, real-meter width, and cap by `NavLineWidth.currentMultiplier()`
+  (0.1x to 2.0x) and apply camera-tilt foreshortening. At 8.5 m it
   covers a two-lane street or one carriageway with a little road showing each side.
 - Alternates use `ALT_REAL_M` (7.65 m), capped at `ALT_CAP_DP` (30), with their edge
   (`vela-alt-route-edge`) inside that width. Both widths follow `roadWidthScale`.
@@ -5425,7 +5433,7 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   `SpeechText.spokenClock` (English) spells out clock times, which otherwise read as a
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
-- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
+- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest, or a custom multiplier from 0.5 to 5) scales the neural voice from a
   leveled base (`VoiceLevel`). The voices render well under full scale: the default Vela voice
   (Piper `en_US-hfc_female-medium`) has a long-run RMS of about 0.053 on a Pixel 4a, a gain of
   2.43 at Normal. Each line gets one gain, `TARGET_RMS` (0.13) over
@@ -5435,7 +5443,10 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   preferences, so the level is the same from the first line of a session. It is not set from
   the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
   gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
-  so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
+  so nothing clips flat. Above a gain of 3.2, `VoiceLevel.apply` high-passes around 85 Hz,
+  applies two-band dynamic de-harshing across upper-mid (~1.2 to 3.4 kHz) and sibilance (>3.4 kHz)
+  bands, and rides a 32-sample look-ahead peak envelope follower before the soft limiter.
+  The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
@@ -5762,7 +5773,10 @@ the catalog, the ones switched off included; a pick runs that search. The one-bu
   safe edge. The speed box and the Re-center pill sit just right of the bar's measured right edge
   (`navBarRightPx`). The step list's height floor is 64 dp (200 dp in portrait), so it stops
   under the banner.
-- The route bar (`RouteBarStrip`) draws in portrait only and never in PiP. It shows the next
+- The route bar (`RouteBarStrip` on the phone in portrait and never in PiP; `CarMapRenderer.drawRouteBar`
+  along the left edge of the car surface via `CarFraming.routeBarBounds`, anchoring above the
+  ETA card with 38 percent top clearance in full-screen left-column mode so the span label
+  clears the dynamic turn card, when `RouteBarPref.on` and `RouteBarPref.carOn` are on) shows the next
   `RouteBar.WINDOW_M` (5,000 m): scaled to a long trip, nearby marks collapse into one pixel.
   Congestion is painted on the track by level; a light and a stop sign are the map's own
   bitmaps (`trafficLightBitmap`, `stopSignBitmap`) on the track, `MINI` (16 dp) tall; cameras,
@@ -6032,15 +6046,24 @@ the same `:core` singletons as the phone (`CarDeps`).
   mute and end alone (user 2026-10-15, after a side-by-side with Google's car screen): pause and
   the search along the route went, they stay on the phone, and the drive's zoom buttons went
   with them; a pinch zooms where the unit takes one. The route line on the car is the phone's
-  blue (`#1f6feb`) at 20 px, the driven part 18 px gray, alternates 14 px.
+  blue (`#1f6feb`) at 20 px, the driven part 18 px gray, alternates 14 px, scaled by
+  `NavLineWidth.currentMultiplier()` and tapered with camera tilt (`routeStrokeAt`, `drawPerspectiveRoute`).
 - `CarBridge` carries the phone controller's spoken alerts (cameras, speeding, closing soon) to a
-  `CarToast`, and the route's lights, stop signs and speed cameras to the renderer. A drive
-  started with the phone UI closed has no controller and gets neither.
+  `CarToast`, and the route's lights, stop signs and speed cameras to the renderer. When a drive
+  starts with the phone UI closed and `CarBridge` is empty, `CarMapRenderer.ensureCarCorridor`
+  loads the corridor controls and speed cameras from `RoadFeatures` or Overpass.
 - Settings > Navigation "Show speed and speed limit" (`SpeedDisplay`, default on) hides the speed
   badge on the phone and the car, and skips the car's limit lookup. Nested under it, "Your speed
   on the car screen" (`CarSpeed`, `car_speed_on`, default off, user 2026-10-15) draws the car's
   own badge; off, the car shows the limit sign alone, in the badge's corner, since a car has a
-  speedometer. The spoken speeding alert is a separate setting. The car's limit sign follows the
+  speedometer. Also nested under it, "Show upcoming speed limit changes" (`SpeedDisplay.upcomingOn`,
+  `speed_upcoming_on`, default off) and its distance slider (`SpeedDisplay.upcomingMeters`,
+  `speed_upcoming_m`, 100..1000 m, default 300 m) sample along the active route polyline or the
+  current road ahead in driving mode and show a compact secondary speed limit sign with distance
+  when the limit ahead differs. `CarMapRenderer.updateSpeedLimit` reads offline `.obf` limits first
+  (`routeEngine.currentRoadLimit` and `upcomingRoadLimit`) and falls back to `MaxspeedOverlayStore`
+  and `StreamedSpeedLimit`, retaining the last resolved limit across untagged gaps up to 150 m.
+  The spoken speeding alert is a separate setting. The car's limit sign follows the
   phone's: the "SPEED LIMIT" rectangle in miles, the red-ring disc in kilometers, and a red
   number past 3 mph or 5 km/h over.
 - The guidance voice is band-limited by the protocol: the Android Auto guidance stream is 16 kHz
@@ -6145,8 +6168,8 @@ The map:
   `controlGlyphPx`: a twentieth of the screen's short side, scaled with zoom as the phone
   scales its glyphs (0.7 at z14, 1 at z15.5, 1.3 at z17), between 16 and 56 px; a light is
   `LIGHT_TALL` (1.4) times that tall.
-- The speed badge and the limit sign draw during a drive and on the drive-mode screen
-  (`setDriveScreen`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
+- The speed badge and the limit sign draw during a drive, on the drive-mode screen
+  (`setDriveScreen`), and in free-drive (`driving`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
   badge's radius is a 18th of the shorter side, 22 to 46 px, and the text, the sign and its
   strokes follow by the same factor, so on an 800 by 480 unit they are three fifths of the old
   fixed size and at 828 px and up the old size.
@@ -6505,6 +6528,10 @@ from GitHub (5.8). With "Use Vela without Google" on, only the open services are
 - `SettingsDump.line` puts the settings on one line in a crash report and at the start of a
   recorded drive: switches, numbers and short option names. Free text and any key that could
   hold a position, an address, a contact, a name, a provider or a font are skipped.
+- `SettingsDump.exportIntent` and `SettingsDump.importFromUri` (Settings > Diagnostics >
+  "Settings backup") export and restore the typed `vela_settings` preferences as a JSON file,
+  excluding internal state keys (`INTERNAL_KEYS`), and call `reloadHolders` to refresh all
+  in-memory setting holders immediately.
 - `SettingsDump.location` is the drive's third note, `location:`: the providers that are on,
   and on GrapheneOS its `Settings.Global` choices `network_location` (off, apple,
   grapheneos_proxy, apple_china), `force_disable_supl` (standard, off, grapheneos_proxy),

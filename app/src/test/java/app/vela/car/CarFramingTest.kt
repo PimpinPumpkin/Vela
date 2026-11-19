@@ -69,4 +69,21 @@ class CarFramingTest {
         // The same segment walked the other way crosses at the same place.
         assertEquals(0.5, clip.crossing(38.5449 - 1_500 / m, -121.7405, 38.5449 - 500 / m, -121.7405), 1e-3)
     }
+
+    @Test fun `route bar clears the dynamic turn card and anchors above the ETA card in fullscreen`() {
+        for (h in listOf(480, 720, 1080)) {
+            val k = (h / 720f).coerceIn(0.65f, 1.15f)
+            val bounds = CarFraming.routeBarBounds(0f, h.toFloat(), h, k, leftColumn = true)
+            assertTrue("height $h should fit", bounds != null)
+            val (topY, botY) = bounds!!
+            // Top stays well below a tall turn card (at least 40% down the surface).
+            assertTrue("height $h topY=$topY", topY >= h * 0.40f)
+            // Bottom stays above the fixed-height ETA card.
+            assertTrue("height $h botY=$botY", botY <= h * 0.78f + 0.5f)
+            assertTrue("height $h barH=${botY - topY}", botY - topY >= 80f * k)
+        }
+        // In split-screen (leftColumn = false), visTop/visBottom already exclude the cards.
+        val split = CarFraming.routeBarBounds(160f, 560f, 720, 1f, leftColumn = false)!!
+        assertTrue(split.first >= 174f && split.second <= 532f)
+    }
 }

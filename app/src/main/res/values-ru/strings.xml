@@ -867,6 +867,8 @@
     <string name="settings_voice_volume_normal">Обычная</string>
     <string name="settings_voice_volume_louder">Громче</string>
     <string name="settings_voice_volume_loudest">Максимальная</string>
+    <string name="settings_voice_volume_custom">Свой</string>
+    <string name="settings_voice_volume_multiplier">Множитель громкости: %1$sx</string>
     <string name="settings_voice_volume_hint">Насколько громко голосовые подсказки звучат поверх вашей музыки. Уровни выше обычного работают с голосом Vela, системные голоса можно только приглушить.</string>
     <string name="settings_asr_engines_title">Движок распознавания на устройстве</string>
     <string name="voice_capture_examples_title">Что можно сказать</string>
@@ -890,6 +892,11 @@
     <string name="settings_theme_auto_hint">Светлая днём, тёмная после заката, по вашему местоположению.</string>
     <string name="settings_nav_day_night">День и ночь при навигации</string>
     <string name="settings_nav_day_night_hint">Везде сохраняет выбранную вами тему и переключается по освещённости только во время поездки.</string>
+    <string name="settings_nav_schedule_enable">Включать тёмную тему по расписанию</string>
+    <string name="settings_nav_schedule_enable_hint">Задаёт начальный вид карты при запуске, пока система или автомобиль сами не переключат режим.</string>
+    <string name="settings_nav_schedule_sun">От заката до рассвета</string>
+    <string name="settings_nav_schedule_start">Время начала: %1$s</string>
+    <string name="settings_nav_schedule_end">Время окончания: %1$s</string>
     <string name="mapscreen_shortcut_add">Добавить</string>
     <string name="settings_road_label">Название текущей дороги</string>
     <string name="settings_road_label_off">Выкл.</string>
@@ -901,10 +908,17 @@
     <string name="nav_steps_handle_cd">Показать шаги</string>
     <string name="settings_route_trail">Пройденный путь</string>
     <string name="settings_route_trail_hint">Оставляет уже пройденную часть маршрута нарисованной серым позади стрелки. Выкл. скрывает её, и рисуется только дорога впереди.</string>
+    <string name="settings_nav_line_custom">Своя ширина линии маршрута</string>
+    <string name="settings_nav_line_multiplier">Ширина линии: %1$sx</string>
+    <string name="settings_speed_upcoming">Показывать предстоящие изменения ограничения скорости</string>
+    <string name="settings_speed_upcoming_hint">Показывает следующее ограничение скорости и расстояние до него на маршруте или текущей дороге.</string>
+    <string name="settings_speed_upcoming_distance">Дальность просмотра: %1$s</string>
     <string name="settings_bike_safe">Веломаршруты по велодорожкам и тихим улицам</string>
     <string name="settings_bike_safe_hint">Велосипедные маршруты предпочитают размеченные велосипедные маршруты, велодорожки и жилые улицы вместо самой быстрой дороги, как это делает Google. Использует офлайн-карту там, где она загружена, иначе открытый маршрутизатор онлайн. Выкл. даёт обычный самый быстрый веломаршрут.</string>
     <string name="settings_route_bar">Полоса дороги впереди</string>
-    <string name="settings_route_bar_hint">Полоса рядом с картой, показывающая пробки и то, что ждёт вас на оставшемся маршруте. Показывает только то, что Vela действительно знает: заторы, светофоры, знаки «стоп», железнодорожные переезды, лежачих полицейских и камеры наблюдения. Только в портретной ориентации.</string>
+    <string name="settings_route_bar_hint">Полоса рядом с картой, показывающая пробки и то, что ждёт вас на оставшемся маршруте. Показывает только то, что Vela действительно знает: заторы, светофоры, знаки «стоп», железнодорожные переезды, лежачих полицейских и камеры наблюдения.</string>
+    <string name="settings_car_route_bar">Полоса дороги впереди на экране автомобиля</string>
+    <string name="settings_car_route_bar_hint">Также показывать полосу дороги впереди в Android Auto; если выключено, она видна только на телефоне.</string>
     <string name="settings_font">Шрифт</string>
     <string name="settings_font_system">Системный шрифт</string>
     <string name="settings_font_choose">Выбрать файл шрифта…</string>
@@ -1366,4 +1380,12 @@
     <string name="trip_shortcut_unsupported">Этот главный экран не умеет закреплять ярлыки</string>
     <string name="trip_shortcut_themed">Как тематические значки</string>
     <string name="settings_places_source_note">При поиске или нажатии на место часы работы, отзывы и фото по-прежнему берутся из Google, что бы вы ни выбрали.</string>
+    <string name="settings_backup_title">Резервная копия настроек</string>
+    <string name="settings_backup_hint">Экспортируйте настройки в файл JSON или восстановите их на другом телефоне.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Восстановлена %1$d настройка</item>
+        <item quantity="few">Восстановлены %1$d настройки</item>
+        <item quantity="many">Восстановлено %1$d настроек</item>
+        <item quantity="other">Восстановлено %1$d настройки</item>
+    </plurals>
 </resources>

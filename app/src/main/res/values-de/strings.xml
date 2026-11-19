@@ -859,6 +859,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Lauter</string>
     <string name="settings_voice_volume_loudest">Am lautesten</string>
+    <string name="settings_voice_volume_custom">Manuell</string>
+    <string name="settings_voice_volume_multiplier">Lautstärkefaktor: %1$sx</string>
     <string name="settings_voice_volume_hint">Wie laut die Sprachansagen über Ihre Medien wiedergegeben werden. Die lauteren Stufen gelten für die Vela-Stimme; Systemstimmen lassen sich nur leiser stellen.</string>
     <string name="settings_asr_engines_title">Erkennungs-Engine auf dem Gerät</string>
     <string name="voice_capture_examples_title">Das können Sie sagen</string>
@@ -882,6 +884,11 @@
     <string name="settings_theme_auto_hint">Tagsüber hell, nach Sonnenuntergang dunkel, ermittelt aus Ihrem Standort.</string>
     <string name="settings_nav_day_night">Tag und Nacht während der Navigation</string>
     <string name="settings_nav_day_night_hint">Behält Ihr gewähltes Design überall sonst bei und wechselt nur während der Fahrt nach Tageslicht.</string>
+    <string name="settings_nav_schedule_enable">Dunkelmodus nach Zeitplan starten</string>
+    <string name="settings_nav_schedule_enable_hint">Legt beim Start fest, ob die Karte dunkel oder hell beginnt, bis das System oder Auto selbst umschaltet.</string>
+    <string name="settings_nav_schedule_sun">Sonnenuntergang bis Sonnenaufgang verwenden</string>
+    <string name="settings_nav_schedule_start">Beginn: %1$s</string>
+    <string name="settings_nav_schedule_end">Ende: %1$s</string>
     <string name="mapscreen_shortcut_add">Hinzufügen</string>
     <string name="settings_road_label">Name der aktuellen Straße</string>
     <string name="settings_road_label_off">Aus</string>
@@ -893,10 +900,17 @@
     <string name="nav_steps_handle_cd">Wegbeschreibung anzeigen</string>
     <string name="settings_route_trail">Strecke hinter Ihnen</string>
     <string name="settings_route_trail_hint">Zeichnet den bereits gefahrenen Teil der Route grau hinter dem Pfeil. Aus blendet ihn aus, sodass nur die Strecke voraus gezeichnet wird.</string>
+    <string name="settings_nav_line_custom">Breite der Routenlinie anpassen</string>
+    <string name="settings_nav_line_multiplier">Linienbreite: %1$sx</string>
+    <string name="settings_speed_upcoming">Kommende Tempolimits anzeigen</string>
+    <string name="settings_speed_upcoming_hint">Zeigt das nächste Tempolimit samt Entfernung auf der Route oder aktuellen Straße vorab an.</string>
+    <string name="settings_speed_upcoming_distance">Vorausschau-Distanz: %1$s</string>
     <string name="settings_bike_safe">Fahrradrouten bevorzugen Radwege und ruhige Straßen</string>
     <string name="settings_bike_safe_hint">Fahrradrouten bevorzugen ausgeschilderte Radrouten, Radwege und Wohnstraßen gegenüber der schnellsten Straße, so wie Google Fahrräder leitet. Nutzt die Offline-Karte, wo eine heruntergeladen ist, sonst online einen offenen Router. Aus ergibt die schlichte schnellste Fahrradroute.</string>
     <string name="settings_route_bar">Leiste für die Strecke voraus</string>
-    <string name="settings_route_bar_hint">Ein Streifen neben der Karte, der den Verkehr und das zeigt, was auf dem Rest Ihrer Route kommt. Zeigt nur, was Vela wirklich weiß: Staus, Ampeln, Stoppschilder, Bahnübergänge, Bodenschwellen und Überwachungskameras. Nur im Hochformat.</string>
+    <string name="settings_route_bar_hint">Ein Streifen neben der Karte, der den Verkehr und das zeigt, was auf dem Rest Ihrer Route kommt. Zeigt nur, was Vela wirklich weiß: Staus, Ampeln, Stoppschilder, Bahnübergänge, Bodenschwellen und Überwachungskameras.</string>
+    <string name="settings_car_route_bar">Leiste für die Strecke voraus auf dem Bildschirm des Autos</string>
+    <string name="settings_car_route_bar_hint">Zeigt die Leiste für die Strecke voraus auch in Android Auto an; deaktiviert erscheint sie nur auf dem Handy.</string>
     <string name="settings_font">Schriftart</string>
     <string name="settings_font_system">Systemschriftart</string>
     <string name="settings_font_choose">Schriftdatei wählen …</string>
@@ -1528,4 +1542,10 @@
     </plurals>
     <string name="settings_trip_batch_share_full">Vollständige Traces teilen</string>
     <string name="settings_trip_batch_saved">Vollstandige Traces abgespeichert</string>
+    <string name="settings_backup_title">Einstellungen sichern</string>
+    <string name="settings_backup_hint">Exportieren Sie Ihre Einstellungen in eine JSON-Datei oder stellen Sie sie auf einem anderen Gerät wieder her.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d Einstellung wiederhergestellt</item>
+        <item quantity="other">%1$d Einstellungen wiederhergestellt</item>
+    </plurals>
 </resources>

@@ -659,6 +659,8 @@
     <string name="settings_voice_volume_normal">Normál</string>
     <string name="settings_voice_volume_louder">Hangosabb</string>
     <string name="settings_voice_volume_loudest">Leghangosabb</string>
+    <string name="settings_voice_volume_custom">Egyéni</string>
+    <string name="settings_voice_volume_multiplier">Hangerő-szorzó: %1$sx</string>
     <string name="settings_voice_volume_hint">Milyen hangosan szól a hangos útvonalvezetés a médialejátszás felett. A hangosabb szintek csak a Vela hangra vonatkoznak; a rendszerhangok csak halkíthatók.</string>
     <string name="place_avoid_not_honored">Ezek az útvonalak továbbra is tartalmazhatnak díjköteles utakat, autópályákat vagy kompokat: a Google nem volt elérhető a kikerülésükhöz, a nyílt útvonaltervező pedig erre nem képes. Letöltött területen a Vela offline is elkerüli őket.</string>
     <string name="settings_lists_export_hint">Mentsd el a listáidat egy fájlba, vagy állítsd vissza egy másik eszközön.</string>
@@ -953,6 +955,11 @@
     <string name="settings_theme_auto_hint">Nappal világos, napnyugta után sötét, a helyzeted alapján kiszámítva.</string>
     <string name="settings_nav_day_night">Nappal és éjszaka navigáció közben</string>
     <string name="settings_nav_day_night_hint">Mindenhol máshol megtartja a választott témádat, és csak vezetés közben vált a napszak szerint.</string>
+    <string name="settings_nav_schedule_enable">Sötét mód indítása ütemezés szerint</string>
+    <string name="settings_nav_schedule_enable_hint">Beállítja a térkép kezdeti megjelenését indításkor, amíg a rendszer vagy az autó magától nem vált.</string>
+    <string name="settings_nav_schedule_sun">Napnyugtától napkeltéig</string>
+    <string name="settings_nav_schedule_start">Kezdés: %1$s</string>
+    <string name="settings_nav_schedule_end">Befejezés: %1$s</string>
     <string name="mapscreen_shortcut_add">Hozzáadás</string>
     <string name="settings_road_label">Jelenlegi út neve</string>
     <string name="settings_road_label_off">Ki</string>
@@ -977,12 +984,19 @@
     <string name="nav_steps_handle_cd">Lépések megjelenítése</string>
     <string name="settings_route_trail">Megtett útszakasz</string>
     <string name="settings_route_trail_hint">Szürkével kirajzolva hagyja az útvonal már megtett részét a nyíl mögött. Kikapcsolva elrejti, így csak az előtted lévő út látszik.</string>
+    <string name="settings_nav_line_custom">Egyéni útvonalvonal-szélesség</string>
+    <string name="settings_nav_line_multiplier">Vonalvastagság: %1$sx</string>
+    <string name="settings_speed_upcoming">Közelgő sebességhatár-változások megjelenítése</string>
+    <string name="settings_speed_upcoming_hint">Megjeleníti a következő sebességhatárt és annak távolságát az útvonaladon vagy az aktuális úton.</string>
+    <string name="settings_speed_upcoming_distance">Előretekintési távolság: %1$s</string>
     <string name="settings_bike_safe">A kerékpáros útvonalak a bringasávokat és a csendes utcákat részesítik előnyben</string>
     <string name="settings_bike_safe_hint">A kerékpáros útvonalak a kijelölt kerékpárutakat, a bringasávokat és a lakóutcákat részesítik előnyben a leggyorsabb úttal szemben, ahogy a Google is tervez kerékpárral. Ahol van letöltött offline térképed, azt használja, egyébként egy nyílt online útvonaltervezőt. Kikapcsolva az egyszerű leggyorsabb kerékpáros útvonalat adja.</string>
     <string name="settings_route_picker">Google-stílusú útvonalválasztó</string>
     <string name="settings_route_picker_hint">Egyszerre egy útvonalat mutat, a többit egy koppintással éred el, az idejük a térképen látszik, az Indítás gomb pedig alul van. Kapcsold ki a Vela klasszikus paneljéhez, amely minden útvonalat egyszerre listáz.</string>
     <string name="settings_route_bar">Előtted lévő út sávja</string>
-    <string name="settings_route_bar_hint">Egy sáv a térkép mellett, ami a forgalmat és az útvonalad hátralévő részén következő dolgokat mutatja. Csak azt jeleníti meg, amit a Vela tényleg tud: torlódás, lámpák, stoptáblák, vasúti átjárók, fekvőrendőrök és térfigyelő kamerák. Csak álló tájolásban.</string>
+    <string name="settings_route_bar_hint">Egy sáv a térkép mellett, ami a forgalmat és az útvonalad hátralévő részén következő dolgokat mutatja. Csak azt jeleníti meg, amit a Vela tényleg tud: torlódás, lámpák, stoptáblák, vasúti átjárók, fekvőrendőrök és térfigyelő kamerák.</string>
+    <string name="settings_car_route_bar">Előtted lévő út sávja az autó képernyőjén</string>
+    <string name="settings_car_route_bar_hint">Az előtted lévő út sávját az Android Auto képernyőjén is megjeleníti; kikapcsolva csak a telefonon látható.</string>
     <string name="settings_font">Betűtípus</string>
     <string name="settings_font_system">Rendszer betűtípusa</string>
     <string name="settings_font_choose">Betűtípusfájl kiválasztása…</string>
@@ -1291,4 +1305,10 @@
     <string name="trip_shortcut_unsupported">Ez a kezdőképernyő nem tud parancsikonokat kitűzni</string>
     <string name="trip_shortcut_themed">A témázott ikonokhoz igazítva</string>
     <string name="settings_places_source_note">A keresés vagy egy helyre koppintás bármelyik beállításnál a Google-től kéri le a nyitvatartást, a véleményeket és a fotókat.</string>
+    <string name="settings_backup_title">Beállítások biztonsági mentése</string>
+    <string name="settings_backup_hint">Exportálja beállításait egy JSON-fájlba, vagy állítsa vissza őket egy másik telefonon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d beállítás visszaállítva</item>
+        <item quantity="other">%1$d beállítás visszaállítva</item>
+    </plurals>
 </resources>

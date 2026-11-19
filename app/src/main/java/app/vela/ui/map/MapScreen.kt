@@ -2913,6 +2913,8 @@ private fun BoxScope.NavCorner(
             speedMps = state.mySpeed,
             limitKmh = postedLimitKmh,
             imperial = Units.imperial.value,
+            upcomingLimitKmh = state.upcomingSpeedLimitKmh,
+            upcomingDistM = state.upcomingSpeedLimitDistM,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
@@ -6812,6 +6814,8 @@ private fun SpeedWidget(
     speedMps: Float?,
     limitKmh: Double?,
     imperial: Boolean,
+    upcomingLimitKmh: Double? = null,
+    upcomingDistM: Double? = null,
     modifier: Modifier = Modifier,
 ) {
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { speedBoxRightPx.intValue = 0 } }
@@ -6893,11 +6897,56 @@ private fun SpeedWidget(
                     }
                 }
             }
+            UpcomingSpeedBadge(upcomingLimitKmh, upcomingDistM, limitDisp, imperial, dark)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("$value", fontSize = 25.sp, fontWeight = FontWeight.Bold, lineHeight = 27.sp, color = if (over) overColor else SheetPalette.ink(dark))
                 Text(unit, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
             }
         }
+    }
+}
+
+@Composable
+private fun UpcomingSpeedBadge(
+    upcomingLimitKmh: Double?,
+    upcomingDistM: Double?,
+    limitDisp: Int?,
+    imperial: Boolean,
+    dark: Boolean,
+) {
+    if (!app.vela.ui.SpeedDisplay.upcomingOn.value) return
+    val upcomingDisp = upcomingLimitKmh?.let { formatSpeedLimit(it).first }?.takeIf { it != limitDisp } ?: return
+    val upcomingDistText = upcomingDistM?.takeIf { it > 0.0 }?.let { formatDistance(it) } ?: return
+    val signInk = Color(0xFF202124)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (imperial) {
+            Surface(
+                shape = RoundedCornerShape(5.dp),
+                color = Color.White,
+                border = BorderStroke(1.2.dp, signInk),
+            ) {
+                Text(
+                    "$upcomingDisp",
+                    color = signInk,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 15.sp,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+        } else {
+            Surface(
+                shape = CircleShape,
+                color = Color.White,
+                border = BorderStroke(2.5.dp, Color(0xFFD32F2F)),
+                modifier = Modifier.size(28.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text("$upcomingDisp", color = signInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Text(upcomingDistText, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
     }
 }
 

@@ -1117,6 +1117,8 @@
     <string name="settings_update_nightly_hint">Posodobite na najnovejšo nočno različico (predizdajo) namesto samo na stabilne izdaje. Nočne različice so novejše, vendar manj preizkušene.</string>
     <string name="settings_update_channel_hint">Stabilna različica prejme eno preizkušeno izdajo na teden. Nočna različica se posodobi vsak dan, ko pride do sprememb. Canary vključuje razvojne spremembe in lahko kadar koli preneha delovati.</string>
     <string name="settings_voice_volume_loudest">Najglasneje</string>
+    <string name="settings_voice_volume_custom">Po meri</string>
+    <string name="settings_voice_volume_multiplier">Množitelj glasnosti: %1$sx</string>
     <string name="settings_voice_volume_hint">Kako glasno se navigacijska navodila predvajajo čez drugo predstavnost. Višje ravni glasnosti veljajo za glas Vela; sistemske glasove je mogoče samo utišati.</string>
     <string name="place_avoid_not_honored">Pot lahko še vedno vključuje cestnine, avtoceste ali trajekte: Google ni bil dosegljiv za izračun poti, ki se jim izogne, odprti usmerjevalnik pa te možnosti ne podpira. Na prenesenem območju se jim Vela izogne brez povezave.</string>
     <string name="settings_lists_export_hint">Varnostno kopirajte sezname v datoteko ali jih obnovite v drugi napravi. Uvozite lahko tudi sezname iz mape »Saved« v Google Takeout (ena datoteka CSV na seznam). Za vsako mesto se poišče ustrezen zadetek, zato je potrebna povezava.</string>
@@ -1251,6 +1253,11 @@
     <string name="settings_map_theme_hint">Tema velja samo za zemljevid: svetle ceste na temnem ozadju aplikacije ali temne ceste na svetlem ozadju. Dnevni in nočni način med vožnjo še vedno vplivata na zemljevid.</string>
     <string name="settings_theme_auto_hint">Podnevi svetla tema, po sončnem zahodu temna, glede na vašo lokacijo.</string>
     <string name="settings_nav_day_night_hint">Povsod drugje ohrani izbrano temo, med vožnjo pa jo spreminja glede na dnevno svetlobo.</string>
+    <string name="settings_nav_schedule_enable">Zaženi temni način po urniku</string>
+    <string name="settings_nav_schedule_enable_hint">Ob zagonu nastavi začetni videz zemljevida, dokler sistem ali avto samodejno ne preklopi načina.</string>
+    <string name="settings_nav_schedule_sun">Od sončnega zahoda do vzhoda</string>
+    <string name="settings_nav_schedule_start">Začetek: %1$s</string>
+    <string name="settings_nav_schedule_end">Konec: %1$s</string>
     <string name="mapscreen_shortcut_add">Dodaj</string>
     <string name="settings_road_label_hint">Določa, kje je med vožnjo prikazano ime ceste. Nad vrstico ostane na sredini in je berljivo tudi pri dolgih imenih; pod puščico se premika skupaj s puščico.</string>
     <string name="settings_pip_turn_card_hint">Med navigacijo v načinu slika-v-sliki prikaže naslednji zavoj kot kartico na vrhu, preostali čas pa spodaj. Izklopljeno: ena vrstica na dnu prikazuje cesto, razdaljo do zavoja in čas prihoda, kot mini zemljevid Google Zemljevidov.</string>
@@ -1272,10 +1279,17 @@
     <string name="search_offline_recheck">Brez povezave. Tapnite za ponovno preverjanje</string>
     <string name="settings_turn_declutter_hint">Med obračanjem zemljevida pri zavoju ostanejo prikazana samo imena ulic. Mesta, prometni znaki in radarji se znova prikažejo, ko se zemljevid ustali. Tako je prikaz zavojev tekoč tudi na počasnejših telefonih.</string>
     <string name="settings_route_trail_hint">Del poti, ki ste jo že prevozili, prikaže sivo za puščico. Če je možnost izklopljena, je prikazana samo cesta pred vami.</string>
+    <string name="settings_nav_line_custom">Širina črte poti po meri</string>
+    <string name="settings_nav_line_multiplier">Širina črte: %1$sx</string>
+    <string name="settings_speed_upcoming">Prikaži prihajajoče spremembe omejitve hitrosti</string>
+    <string name="settings_speed_upcoming_hint">Prikaže naslednjo omejitev hitrosti in razdaljo do nje na poti ali trenutni cesti.</string>
+    <string name="settings_speed_upcoming_distance">Razdalja pogleda naprej: %1$s</string>
     <string name="settings_bike_safe_hint">Kolesarske poti dajejo prednost označenim kolesarskim potem, kolesarskim stezam in stanovanjskim ulicam pred najhitrejšo cesto, podobno kot Google. Uporabi preneseni zemljevid brez povezave, če je na voljo, sicer pa spletni odprti usmerjevalnik. Izklopljeno prikaže najhitrejšo kolesarsko pot.</string>
     <string name="settings_route_picker_hint">Prikaže eno pot naenkrat; druge so na voljo po dotiku, njihovi časi pa so prikazani na zemljevidu. Gumb »Začni« je spodaj. Izklopite možnost, da se vrnete na klasično ploščo Vele, ki hkrati prikaže vse poti.</string>
     <string name="settings_turn_arrows_hint">Med vožnjo na poti prikazuje majhne puščice pri prihajajočih zavojih.</string>
-    <string name="settings_route_bar_hint">Vrstica ob zemljevidu prikazuje promet in dogajanje na preostanku poti. Prikazuje samo podatke, ki jih Vela pozna: zastoje, semaforje, znake stop, železniške prehode, hitrostne ovire in radarje. Samo v pokončnem načinu.</string>
+    <string name="settings_route_bar_hint">Vrstica ob zemljevidu prikazuje promet in dogajanje na preostanku poti. Prikazuje samo podatke, ki jih Vela pozna: zastoje, semaforje, znake stop, železniške prehode, hitrostne ovire in radarje.</string>
+    <string name="settings_car_route_bar">Vrstica s pregledom poti na zaslonu avtomobila</string>
+    <string name="settings_car_route_bar_hint">Prikaži vrstico s pregledom poti tudi v Android Auto; ko je izklopljena, se prikaže le v telefonu.</string>
     <string name="settings_font_flex_hint">Google Sans Flex je odprto licencirana sorodna pisava Googlove pisave. Podpira latinične črke; za druge pisave se uporablja sistemska pisava.</string>
     <string name="settings_traffic_lights_hint">Glasovna navodila z orientacijskimi točkami: zapeljite mimo semaforja, nato zavijte. Samo v angleščini, privzeto izklopljeno.</string>
     <string name="settings_speeding_alert_hint">Ko nekaj sekund vozite nad omejitvijo hitrosti, izgovori »Presegate omejitev hitrosti«. Opozorilo ponovi, če najprej upočasnite, nato pa znova prekoračite omejitev. Deluje samo tam, kjer je omejitev znana in prikazana ob oznaki hitrosti. Privzeto je izklopljeno.</string>
@@ -1404,4 +1418,12 @@
     <string name="place_avoid_short_ferries">Trajekti</string>
     <string name="place_avoid_short_cameras">Radarji</string>
     <string name="trip_shortcut_themed">Uskladi ikone s temo</string>
+    <string name="settings_backup_title">Varnostna kopija nastavitev</string>
+    <string name="settings_backup_hint">Izvozite nastavitve v datoteko JSON ali jih obnovite v drugem telefonu.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Obnovljena %1$d nastavitev</item>
+        <item quantity="two">Obnovljeni %1$d nastavitvi</item>
+        <item quantity="few">Obnovljene %1$d nastavitve</item>
+        <item quantity="other">Obnovljenih %1$d nastavitev</item>
+    </plurals>
 </resources>

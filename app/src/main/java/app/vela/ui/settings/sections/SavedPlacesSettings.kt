@@ -148,7 +148,7 @@ private val IMPORT_MIME = arrayOf(
  * The storage root reads the file system. A picker that cannot honor the start place opens
  * where it always did.
  */
-private object OpenDocumentInDownload : ActivityResultContracts.OpenDocument() {
+internal object OpenDocumentInDownload : ActivityResultContracts.OpenDocument() {
     override fun createIntent(context: android.content.Context, input: Array<String>): android.content.Intent =
         super.createIntent(context, input).putExtra(
             android.provider.DocumentsContract.EXTRA_INITIAL_URI,
@@ -164,7 +164,7 @@ private object OpenDocumentInDownload : ActivityResultContracts.OpenDocument() {
  * which is exactly what was reported. A stripped-down or degoogled ROM without DocumentsUI is a
  * realistic case for this app's users.
  */
-private fun launchImport(context: android.content.Context, launch: () -> Unit) {
+internal fun launchImport(context: android.content.Context, launch: () -> Unit) {
     runCatching { launch() }.onFailure {
         android.widget.Toast.makeText(
             context,

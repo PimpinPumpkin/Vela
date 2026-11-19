@@ -140,7 +140,8 @@ yield in a collision. The white ones yield to cameras, lights, stop signs and pl
 ### The road-ahead bar
 
 "Road ahead bar" (Settings > Navigation, off by default) draws the next `WINDOW_M = 5_000` m of
-the route as a strip on the left edge (`RouteBarStrip`). Scaled to a whole long trip, everything
+the route as a strip on the left edge (`RouteBarStrip` on the phone, `CarMapRenderer.drawRouteBar`
+on the car screen when "Road ahead bar on the car screen" is on). Scaled to a whole long trip, everything
 nearby lands in one pixel. With under 400 m left there is no bar.
 
 - Congestion is painted on the track in amber, red and dark red.
@@ -152,7 +153,7 @@ nearby lands in one pixel. With under 400 m left there is no bar.
 - Marks within `PIN_MERGE_M = 60` m merge, and the kind that says most wins: camera, crossing,
   hump, stop sign, light. A plate camera on a signal mast would otherwise hide behind the light.
 
-The bar is portrait only, since in landscape the left side is the chrome column.
+On the phone the bar is portrait only, since in landscape the left side is the chrome column.
 
 ### Whose stop sign it is
 

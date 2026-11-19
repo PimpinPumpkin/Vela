@@ -9,9 +9,12 @@ their times, and start the drive.
 
 The drive screen is the map with your arrow and the route, a turn card with lane arrows, the
 arrival estimate, and two round buttons, mute and end; pausing and the search along the route are
-done on the phone. A second row on the map recenters and shows the rest of the route. The posted limit sits in
-the bottom corner when Vela knows it; your speed sits beside it only if "Your speed on the car
-screen" is on under Settings > Navigation, since the car has a speedometer of its own.
+done on the phone. A second row on the map recenters and shows the rest of the route. The posted limit
+(and upcoming limit change, when enabled) sits in the bottom corner when Vela knows it; your speed
+sits beside it only if "Your speed on the car screen" is on under Settings > Navigation, since the
+car has a speedometer of its own. When "Road ahead bar" and "Road ahead bar on the car screen" are
+on, the strip along the left edge shows traffic and upcoming lights, stop signs, crossings, humps
+and cameras.
 
 With no route, the map behaves as the phone's does: parked, it is north up and centered on you;
 once you move it turns with the car, tilts and zooms out with speed. The Drive button on the
@@ -41,9 +44,10 @@ Android Auto app sends it. Vela's car code is a service inside the ordinary app
 - Routes come from the phone's directions call ([chapter 5](05-routing.md)). Search and nearby
   places come from the phone's search ([chapter 6](06-search.md)).
 - Lights, stop signs, level crossings, speed humps and speed cameras along the route come from the
-  phone's navigation controller through `CarBridge`. Plate cameras come from the bundled camera
+  phone's navigation controller through `CarBridge`, or are loaded by the car renderer when the
+  phone app was never opened. Plate cameras come from the bundled camera
   set ([chapter 3](03-cameras.md)).
-- The speed limit is read from a downloaded region's routing file ([chapter 8](08-offline.md)).
+- The speed limit (and upcoming speed limit change) is read from a downloaded region's routing file ([chapter 8](08-offline.md)), falling back to the streamed speed-limit overlay online as the phone does.
 
 ## How it is decided
 
@@ -94,8 +98,9 @@ its own layers on top:
 
 - The route, gray behind the arrow and blue ahead, with Google's congestion spans in amber, red
   and dark red.
-- Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5.
-- The speed badge and the limit sign while navigating and in drive mode, unless Settings >
+- Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5, and the
+  road-ahead bar on the left when turned on.
+- The speed badge and the limit sign while navigating, in drive mode and in free-drive, unless Settings >
   Navigation "Show speed and speed limit" is off.
 - One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which
   prints every tile source's attribution and stays when the logo is turned off.
@@ -184,7 +189,7 @@ applies the palette, discards that frame and renders again.
 | Follow system | the car's own day or night signal |
 
 An explicit choice on the phone holds on the car, so a driver who set Vela to dark does not get a
-light map because the head unit says day. Before each render the renderer checks that the look it
+light map because the head unit says day. A custom schedule can be defined in settings to override the car's initial dark mode based on time or sun calculation. Before each render the renderer checks that the look it
 applied is still the current one and applies the palette again if it changed, so the map goes
 dark with the car.
 
@@ -361,9 +366,7 @@ phone. It says nothing about the gate either.
 - Only typed search has an offline fallback. Nearby and search along the route need a connection.
 - The route preview is driving only and shows three routes at most.
 - A drive started from the car with the phone app never opened has no navigation controller, so
-  it gets no corridor dots and no alert toasts.
-- The speed limit sign needs a downloaded region. The phone falls back to an online limit overlay
-  and the car does not.
+  it gets no alert toasts.
 - The speed badge is GPS speed. The manifest asks for `CAR_INFO`, and nothing reads the car's own
   speed yet.
 - Approximate location counts as granted on the car, but guidance takes only GPS fixes of 50 m or

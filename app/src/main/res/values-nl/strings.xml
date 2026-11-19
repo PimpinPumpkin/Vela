@@ -967,6 +967,8 @@
     <string name="settings_voice_volume_normal">Normaal</string>
     <string name="settings_voice_volume_louder">Luider</string>
     <string name="settings_voice_volume_loudest">Luidst</string>
+    <string name="settings_voice_volume_custom">Aangepast</string>
+    <string name="settings_voice_volume_multiplier">Volumevermenigvuldiger: %1$sx</string>
     <string name="settings_voice_volume_hint">Hoe luid gesproken aanwijzingen over je media klinken. De luidere standen gelden voor de Vela-stem; systeemstemmen kunnen alleen zachter.</string>
     <string name="place_avoid_not_honored">Deze routes kunnen nog steeds tolwegen, snelwegen of veerboten gebruiken: Google was niet bereikbaar om eromheen te plannen, en de open routeplanner kan dat niet. In een gedownload gebied vermijdt Vela ze offline.</string>
     <string name="settings_asr_engines_title">Spraakherkenning op het toestel</string>
@@ -991,6 +993,11 @@
     <string name="settings_theme_auto_hint">Licht overdag, donker na zonsondergang, bepaald aan de hand van je locatie.</string>
     <string name="settings_nav_day_night">Dag en nacht tijdens het navigeren</string>
     <string name="settings_nav_day_night_hint">Houdt overal je gekozen thema aan en schakelt alleen tijdens het rijden mee met het daglicht.</string>
+    <string name="settings_nav_schedule_enable">Donkere modus starten volgens schema</string>
+    <string name="settings_nav_schedule_enable_hint">Stelt het eerste kaartthema bij het opstarten in totdat het systeem of de auto zelf omschakelt.</string>
+    <string name="settings_nav_schedule_sun">Van zonsondergang tot zonsopgang</string>
+    <string name="settings_nav_schedule_start">Begintijd: %1$s</string>
+    <string name="settings_nav_schedule_end">Eindtijd: %1$s</string>
     <string name="mapscreen_shortcut_add">Toevoegen</string>
     <string name="settings_road_label">Naam van de huidige weg</string>
     <string name="settings_road_label_off">Uit</string>
@@ -1008,12 +1015,19 @@
     <string name="nav_steps_handle_cd">Stappen tonen</string>
     <string name="settings_route_trail">Weg achter je</string>
     <string name="settings_route_trail_hint">Houdt het deel van de route dat je al hebt gereden in grijs achter de pijl getekend. Uit verbergt het, zodat alleen de weg vooruit wordt getekend.</string>
+    <string name="settings_nav_line_custom">Aangepaste breedte van routelijn</string>
+    <string name="settings_nav_line_multiplier">Lijnbreedte: %1$sx</string>
+    <string name="settings_speed_upcoming">Komende wijzigingen van snelheidslimiet tonen</string>
+    <string name="settings_speed_upcoming_hint">Toont de volgende snelheidslimiet en afstand vooruit op je route of huidige weg.</string>
+    <string name="settings_speed_upcoming_distance">Vooruitkijkafstand: %1$s</string>
     <string name="settings_bike_safe">Fietsroutes kiezen fietspaden en rustige straten</string>
     <string name="settings_bike_safe_hint">Fietsroutes geven de voorkeur aan bewegwijzerde fietsroutes, fietspaden en woonstraten boven de snelste weg, zoals Google fietsroutes berekent. Gebruikt de offlinekaart waar je er een hebt gedownload, en anders online een open router. Uit geeft de gewone snelste fietsroute.</string>
     <string name="settings_route_picker">Routekiezer in Google-stijl</string>
     <string name="settings_route_picker_hint">Toont één route tegelijk, met de andere achter een tik en hun tijden op de kaart, en Start onderaan. Zet dit uit voor het klassieke paneel van Vela, dat alle routes tegelijk toont.</string>
     <string name="settings_route_bar">Balk met de weg vooruit</string>
-    <string name="settings_route_bar_hint">Een strook naast de kaart die het verkeer toont en wat er op de rest van je route aankomt. Toont alleen wat Vela echt weet: files, verkeerslichten, stopborden, spoorwegovergangen, verkeersdrempels en camera\'s. Alleen staand.</string>
+    <string name="settings_route_bar_hint">Een strook naast de kaart die het verkeer toont en wat er op de rest van je route aankomt. Toont alleen wat Vela echt weet: files, verkeerslichten, stopborden, spoorwegovergangen, verkeersdrempels en camera\'s.</string>
+    <string name="settings_car_route_bar">Balk met de weg vooruit op het scherm van de wagen</string>
+    <string name="settings_car_route_bar_hint">Toon de balk met de weg vooruit ook op Android Auto; uitgeschakeld alleen op de telefoon.</string>
     <string name="settings_font">Lettertype</string>
     <string name="settings_font_system">Systeemlettertype</string>
     <string name="settings_font_choose">Een lettertypebestand kiezen…</string>
@@ -1420,5 +1434,11 @@
     <plurals name="settings_takeout_imported">
         <item quantity="one">%1$d plaats geïmporteerd in %2$s.</item>
         <item quantity="other">%1$d plaatsen geïmporteerd in %2$s.</item>
+    </plurals>
+    <string name="settings_backup_title">Instellingen back-uppen</string>
+    <string name="settings_backup_hint">Exporteer je instellingen naar een JSON-bestand of herstel ze op een andere telefoon.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d instelling hersteld</item>
+        <item quantity="other">%1$d instellingen hersteld</item>
     </plurals>
 </resources>

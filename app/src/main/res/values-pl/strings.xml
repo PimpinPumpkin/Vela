@@ -977,6 +977,8 @@
     <string name="settings_voice_volume_normal">Normalnie</string>
     <string name="settings_voice_volume_louder">Głośniej</string>
     <string name="settings_voice_volume_loudest">Najgłośniej</string>
+    <string name="settings_voice_volume_custom">Własny</string>
+    <string name="settings_voice_volume_multiplier">Mnożnik głośności: %1$sx</string>
     <string name="settings_voice_volume_hint">Jak głośno wskazówki głosowe odtwarzają się na tle twoich multimediów. Głośniejsze poziomy dotyczą głosu Vela; głosy systemowe można tylko ściszyć.</string>
     <string name="place_avoid_not_honored">Te trasy mogą nadal prowadzić płatnymi drogami, autostradami lub promami: nie udało się połączyć z Google żeby je ominąć a otwarty planer tras tego nie potrafi. W pobranym obszarze Vela omija je offline.</string>
     <string name="settings_asr_engines_title">Silnik rozpoznawania mowy na urządzeniu</string>
@@ -1001,6 +1003,11 @@
     <string name="settings_theme_auto_hint">Jasny w dzień, ciemny po zachodzie słońca, ustalane na podstawie twojej lokalizacji.</string>
     <string name="settings_nav_day_night">Dzień i noc podczas nawigacji</string>
     <string name="settings_nav_day_night_hint">Wszędzie indziej zachowuje wybrany motyw, a przełącza się według światła dziennego tylko podczas jazdy.</string>
+    <string name="settings_nav_schedule_enable">Uruchamiaj tryb ciemny według harmonogramu</string>
+    <string name="settings_nav_schedule_enable_hint">Ustawia początkowy wygląd mapy przy starcie, dopóki system lub samochód sam nie przełączy trybu dnia i nocy.</string>
+    <string name="settings_nav_schedule_sun">Od zachodu do wschodu słońca</string>
+    <string name="settings_nav_schedule_start">Czas rozpoczęcia: %1$s</string>
+    <string name="settings_nav_schedule_end">Czas zakończenia: %1$s</string>
     <string name="mapscreen_shortcut_add">Dodaj</string>
     <string name="settings_road_label">Nazwa bieżącej drogi</string>
     <string name="settings_road_label_off">Wyłączone</string>
@@ -1018,12 +1025,19 @@
     <string name="nav_steps_handle_cd">Pokaż etapy</string>
     <string name="settings_route_trail">Droga za tobą</string>
     <string name="settings_route_trail_hint">Zachowuje przejechaną część trasy narysowaną na szaro za strzałką. Wył. ukrywa ją, więc rysowana jest tylko droga przed tobą.</string>
+    <string name="settings_nav_line_custom">Własna szerokość linii trasy</string>
+    <string name="settings_nav_line_multiplier">Szerokość linii: %1$sx</string>
+    <string name="settings_speed_upcoming">Pokazuj nadchodzące zmiany limitu prędkości</string>
+    <string name="settings_speed_upcoming_hint">Pokazuje kolejny limit prędkości oraz odległość do niego na trasie lub bieżącej drodze.</string>
+    <string name="settings_speed_upcoming_distance">Odległość wyprzedzenia: %1$s</string>
     <string name="settings_bike_safe">Trasy rowerowe preferują ścieżki rowerowe i spokojne ulice</string>
     <string name="settings_bike_safe_hint">Trasy rowerowe wybierają oznakowane szlaki rowerowe, pasy dla rowerów i ulice osiedlowe zamiast najszybszej drogi, tak jak wyznacza je Google. Korzysta z mapy offline tam, gdzie ją pobrałeś, w przeciwnym razie z otwartego routera online. Wył. daje zwykłą najszybszą trasę rowerową.</string>
     <string name="settings_route_picker">Wybór trasy w stylu Google</string>
     <string name="settings_route_picker_hint">Pokazuje jedną trasę naraz, pozostałe po dotknięciu z czasami na mapie a Start na dole. Wyłącz aby wrócić do klasycznego panelu Veli który pokazuje wszystkie trasy naraz.</string>
     <string name="settings_route_bar">Pasek drogi przed tobą</string>
-    <string name="settings_route_bar_hint">Pasek obok mapy pokazujący ruch i to, co czeka cię na dalszej części trasy. Pokazuje tylko to, co Vela naprawdę wie: korki, sygnalizację, znaki stop, przejazdy kolejowe, progi zwalniające i kamery monitoringu. Tylko w pionie.</string>
+    <string name="settings_route_bar_hint">Pasek obok mapy pokazujący ruch i to, co czeka cię na dalszej części trasy. Pokazuje tylko to, co Vela naprawdę wie: korki, sygnalizację, znaki stop, przejazdy kolejowe, progi zwalniające i kamery monitoringu.</string>
+    <string name="settings_car_route_bar">Pasek drogi przed tobą na ekranie samochodu</string>
+    <string name="settings_car_route_bar_hint">Pokazuje pasek drogi przed tobą również w Android Auto; po wyłączeniu widać go tylko na telefonie.</string>
     <string name="settings_font">Czcionka</string>
     <string name="settings_font_system">Czcionka systemowa</string>
     <string name="settings_font_choose">Wybierz plik czcionki…</string>
@@ -1578,4 +1592,12 @@
     <string name="settings_place_names_more">Więcej</string>
     <string name="settings_place_names_most">WIększość</string>
     <string name="settings_place_names_hint">Po dalszym oddaleniu widoku na mapie „Więcej” i „Większość” wyświetlają nazwy i ikony sklepów, szkół oraz innych miejsc. W ruchliwych obszarach pojawia się duże natężenie ruchu przez co mapa może działać tam mniej płynnie.</string>
+    <string name="settings_backup_title">Kopia zapasowa ustawień</string>
+    <string name="settings_backup_hint">Wyeksportuj ustawienia do pliku JSON lub przywróć je na innym telefonie.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Przywrócono %1$d ustawienie</item>
+        <item quantity="few">Przywrócono %1$d ustawienia</item>
+        <item quantity="many">Przywrócono %1$d ustawień</item>
+        <item quantity="other">Przywrócono %1$d ustawienia</item>
+    </plurals>
 </resources>

@@ -49,4 +49,13 @@ interface RouteEngine {
      *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline
      *  limit data, so the default is null. Call off the main thread. Convert to mph at the UI boundary. */
     fun currentRoadLimit(lat: Double, lng: Double): Double? = null
+
+    /** The first posted speed limit change `(limitKmh, distanceAheadMeters)` along [poly] between
+     *  [startMeters] and `startMeters + lookAheadMeters` that differs from [currentLimitKmh], or null. */
+    fun upcomingRoadLimit(
+        poly: List<LatLng>,
+        startMeters: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? = null
 }

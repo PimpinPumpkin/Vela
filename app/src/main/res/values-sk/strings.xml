@@ -1058,6 +1058,8 @@
     <string name="settings_voice_volume_normal">Normálne</string>
     <string name="settings_voice_volume_louder">Hlasnejšie</string>
     <string name="settings_voice_volume_loudest">Najhlasnejšie</string>
+    <string name="settings_voice_volume_custom">Vlastné</string>
+    <string name="settings_voice_volume_multiplier">Násobiteľ hlasitosti: %1$sx</string>
     <string name="settings_voice_volume_hint">Ako nahlas znejú hlasové pokyny ponad médiá. Vyššie úrovne platia pre hlas Vela; systémové hlasy možno len stíšiť.</string>
     <string name="place_avoid_not_honored">Tieto trasy môžu stále viesť cez spoplatnené úseky, diaľnice alebo trajekty: nepodarilo sa spojiť s Googlom, aby sa im vyhli, a otvorený plánovač to nedokáže. V stiahnutej oblasti sa im Vela vyhne offline.</string>
     <string name="settings_lists_export_hint">Zálohujte si zoznamy do súboru alebo ich obnovte v inom zariadení. Import dokáže načítať aj zoznam z priečinka Uložené v Google Takeout (jeden súbor CSV na zoznam); každé miesto sa v ňom vyhľadá, takže je potrebné pripojenie.</string>
@@ -1263,6 +1265,11 @@
     <string name="settings_theme_auto_hint">Cez deň svetlý, po západe slnka tmavý, podľa vašej polohy.</string>
     <string name="settings_nav_day_night">Deň a noc počas navigácie</string>
     <string name="settings_nav_day_night_hint">Inde ponechá zvolenú tému a podľa denného svetla prepína len počas jazdy.</string>
+    <string name="settings_nav_schedule_enable">Spustiť tmavý režim podľa plánu</string>
+    <string name="settings_nav_schedule_enable_hint">Nastaví počiatočný vzhľad mapy pri spustení, kým systém alebo auto samo neprepne denný či nočný režim.</string>
+    <string name="settings_nav_schedule_sun">Od západu do východu slnka</string>
+    <string name="settings_nav_schedule_start">Čas začiatku: %1$s</string>
+    <string name="settings_nav_schedule_end">Čas konca: %1$s</string>
     <string name="mapscreen_shortcut_add">Pridať</string>
     <string name="settings_road_label">Názov aktuálnej cesty</string>
     <string name="settings_road_label_off">Vypnuté</string>
@@ -1322,6 +1329,11 @@
     <string name="settings_turn_declutter">Zjednodušiť mapu v zákrutách</string>
     <string name="settings_turn_declutter_hint">Kým sa mapa v zákrute otáča, zostávajú na nej len názvy ulíc. Miesta, značky a kamery sa vrátia hneď, ako sa ustáli. Na pomalších telefónoch to zaistí plynulé zákruty.</string>
     <string name="settings_route_trail_hint">Časť trasy, ktorú ste už prešli, zostane za šípkou vykreslená sivou. Vypnuté: zobrazí sa len cesta pred vami.</string>
+    <string name="settings_nav_line_custom">Vlastná šírka čiary trasy</string>
+    <string name="settings_nav_line_multiplier">Šírka čiary: %1$sx</string>
+    <string name="settings_speed_upcoming">Zobrazovať nadchádzajúce zmeny rýchlostného limitu</string>
+    <string name="settings_speed_upcoming_hint">Zobrazí ďalší rýchlostný limit a vzdialenosť pred vami na trase alebo aktuálnej ceste.</string>
+    <string name="settings_speed_upcoming_distance">Vzdialenosť prehľadu dopredu: %1$s</string>
     <string name="settings_bike_safe">Cyklotrasy uprednostňujú cyklopruhy a pokojné ulice</string>
     <string name="settings_bike_safe_hint">Trasy pre bicykel uprednostňujú značené cyklotrasy, cyklopruhy a obytné ulice pred najrýchlejšou cestou, podobne ako Google. Používa offline mapu, ak ju máte stiahnutú, inak otvorený plánovač online. Vypnuté: najrýchlejšia trasa pre bicykel.</string>
     <string name="settings_route_picker">Výber trasy v štýle Google</string>
@@ -1329,7 +1341,9 @@
     <string name="settings_turn_arrows">Šípky odbočiek na trase</string>
     <string name="settings_turn_arrows_hint">Krátke šípky na trase pri najbližších odbočkách počas jazdy.</string>
     <string name="settings_route_bar">Lišta cesty pred vami</string>
-    <string name="settings_route_bar_hint">Pás vedľa mapy, ktorý ukazuje premávku a to, čo vás čaká na zvyšku trasy. Zobrazuje len to, čo Vela skutočne vie: zápchy, semafory, značky STOP, železničné priecestia, spomaľovacie prahy a sledovacie kamery. Iba na výšku.</string>
+    <string name="settings_route_bar_hint">Pás vedľa mapy, ktorý ukazuje premávku a to, čo vás čaká na zvyšku trasy. Zobrazuje len to, čo Vela skutočne vie: zápchy, semafory, značky STOP, železničné priecestia, spomaľovacie prahy a sledovacie kamery.</string>
+    <string name="settings_car_route_bar">Lišta cesty pred vami na obrazovke auta</string>
+    <string name="settings_car_route_bar_hint">Zobrazovať lištu cesty pred vami aj v Android Auto; ak je vypnutá, zobrazuje sa len v telefóne.</string>
     <string name="settings_font">Písmo</string>
     <string name="settings_font_system">Systémové písmo</string>
     <string name="settings_font_choose">Vybrať súbor písma…</string>
@@ -1520,4 +1534,12 @@
     <string name="trip_shortcut_themed">Prispôsobiť tematickým ikonám</string>
     <string name="settings_places_source_more_body">Údaje o miestach vo Vela pochádzajú z Overture Maps, otvorenej databázy podnikov, ktorú spravujú Meta, Microsoft a ďalší, a z AllThePlaces, ktoré zbiera pobočky reťazcov z ich vlastných vyhľadávačov predajní. OpenStreetMap pritom opravuje, kde sa ktorý obchod skutočne nachádza. Vela tieto tri zdroje spája do mapových dlaždíc a poskytuje ich zo svojho repozitára na GitHube, takže informácie o tom, kam sa pozeráte, sa nedostanú k Mete ani Googlu.\n\nÚdaje sa načítavajú počas prezerania mapy a sťahujú sa spolu s regiónom na offline použitie. Tam, kde Vela pre oblasť zatiaľ nemá údaje, mapa použije Google.\n\nVyhľadávanie, podrobnosti o mieste, otváracie hodiny, recenzie a fotky vždy pochádzajú z Googlu, nech zvolíte čokoľvek.</string>
     <string name="update_car_body">Vela bola nainštalovaná spôsobom, ktorý Android Auto akceptuje. Ak túto aktualizáciu nainštalujete tu, tento spôsob sa nahradí a auto prestane Vela zobrazovať, kým súbor nenainštalujete nástrojom, ktorý ste použili prvýkrát (AAEnabler, King Installer).\n\nAk chcete, aby Vela v aute fungovala aj naďalej, uložte súbor a nainštalujte ho týmto spôsobom.</string>
+    <string name="settings_backup_title">Záloha nastavení</string>
+    <string name="settings_backup_hint">Exportujte svoje nastavenia do súboru JSON alebo ich obnovte v inom telefóne.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Obnovené %1$d nastavenie</item>
+        <item quantity="few">Obnovené %1$d nastavenia</item>
+        <item quantity="many">Obnovených %1$d nastavení</item>
+        <item quantity="other">Obnovených %1$d nastavení</item>
+    </plurals>
 </resources>
