@@ -705,6 +705,7 @@ class MapViewModel @Inject constructor(
         if (android.os.Build.VERSION.SDK_INT >= 29) runCatching {
             (appContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).addThermalStatusListener { st ->
                 app.vela.diag.TripNote.add("heat: " + listOf("normal", "light", "moderate", "severe", "critical", "emergency", "shutdown").getOrElse(st) { "$st" })
+                app.vela.ui.map.HeatCap.hot.value = st >= android.os.PowerManager.THERMAL_STATUS_SEVERE
             }
         }
         viewModelScope.launch {

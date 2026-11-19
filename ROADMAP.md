@@ -257,6 +257,11 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
+  forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen
+  on a phone that is hot for real, or whether the voice lines then render in time: read the
+  `voice: waited` notes after a `map: capped` note in a shared trip.
+
 - "Turn the map as you drive" (`TurnWithTravel`, issue #905): on a Pixel 4a with mock fixes at
   10 m/s and no route, off kept the map north-up the whole way and on turned it to the course,
   as before. Not yet seen on a drive or in the car.

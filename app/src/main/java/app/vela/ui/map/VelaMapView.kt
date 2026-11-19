@@ -1282,6 +1282,7 @@ fun VelaMapView(
     // A pinch may also turn the map (see the gesture settings at map start), except while a drive
     // follows the car: the bearing is the camera's there, and a turn would only swing back.
     LaunchedEffect(navMode, navFollowing, mapRef) { mapRef?.uiSettings?.isDisableRotateWhenScaling = navMode && navFollowing }
+    HeatCap.Apply(mapView, mapRef != null, navMode)
     // DRAWING: a finger that comes down on a drawn point owns the gesture. Dragging moves the
     // point, a plain tap removes it; anything else falls through to the map (pan, zoom, and the
     // tap that adds a point). The listener sees the touch before the map's own gestures.

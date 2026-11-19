@@ -6792,6 +6792,12 @@ recomposition. Neither can be parallelized, so the rules send each less work.
   zoom.
 - A phone throttles after a few minutes. Check `dumpsys thermalservice` and alternate A and B
   runs.
+- From thermal status `SEVERE` up, a drive draws the map at `HeatCap.HOT_NAV_MAX_FPS` (30)
+  through MapLibre's `setMaximumFps` (issue #795), and goes back to the display's rate when the
+  status drops or the drive ends. A hot phone was taking 13 to 25 seconds to render a voice
+  line. Pixel 4a, demo drive in Davis, status forced with `cmd thermalservice override-status 3`:
+  59 to 29 fps, and MapLibre's GL thread from about 58 to 30 percent of a core. The trip file
+  notes the cap (`map: capped at 30 fps, phone hot`) beside the `heat:` notes.
 - `:app:generateBaselineProfile` (`baseline-profile.yml`) writes
   `app/src/release/generated/baselineProfiles/baseline-prof.txt` on a Gradle-managed emulator,
   and a release build bakes in the profile it finds there. Never run it on a connected phone:

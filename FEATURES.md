@@ -31,6 +31,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "House numbers" sets how far out numbers show. "Fill missing buildings" draws buildings the map
   lacks.
 - A blue dot with a heading cone, or a wide circle when the fix is approximate.
+- When the phone runs hot during a drive, the map draws at 30 frames a second to leave room for
+  the voice.
 - Driving with no route, the map turns heading-up and shows your speed and the limit. "Turn the
   map as you drive" off keeps it north-up, and two-finger rotation still works.
 - Driving mode: the map alone in the drive's layout with no route, with the speed badge, the
