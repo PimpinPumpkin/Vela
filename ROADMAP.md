@@ -257,6 +257,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- "Turn the map as you drive" (`TurnWithTravel`, issue #905): on a Pixel 4a with mock fixes at
+  10 m/s and no route, off kept the map north-up the whole way and on turned it to the course,
+  as before. Not yet seen on a drive or in the car.
+
 - The open places bake keeps one row for a business Overture lists at several points under one
   name, street address and postcode (#742), and drops a row only BrightQuery, Microsoft or
   Foursquare supplies unless OSM, a chain locator or an OSM landmark backs it (#914). Measured

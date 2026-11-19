@@ -88,6 +88,16 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
             hint = stringResource(R.string.settings_keep_north_up_hint),
         )
         GroupDivider()
+        // Moot under "Keep north up", which holds every view north-up.
+        if (!app.vela.ui.NorthLock.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_turn_with_travel),
+                checked = app.vela.ui.TurnWithTravel.on.value,
+                onCheckedChange = { app.vela.ui.TurnWithTravel.set(context, it) },
+                hint = stringResource(R.string.settings_turn_with_travel_hint),
+            )
+            GroupDivider()
+        }
         ToggleRow(
             label = stringResource(R.string.settings_buildings_3d),
             checked = app.vela.ui.Buildings3d.on.value,

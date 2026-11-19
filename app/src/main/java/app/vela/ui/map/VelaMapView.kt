@@ -2841,9 +2841,9 @@ fun VelaMapView(
                 // walker for the rest of the follow.
                 browseDrive[4] += (browseFix[3] - browseDrive[4]) * (1.0 - kotlin.math.exp(-dt / FREE_HEADING_UP_TAU_S))
                 if (browseDrive[1] < 0.5 && browseDrive[4] > FREE_HEADING_UP_MPS && !browseFix[4].isNaN()) browseDrive[1] = 1.0
-                // "Keep north up": still driving (the beam keeps preferring the GPS course), but
-                // the camera takes the north-up branch below.
-                val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value
+                // "Keep north up", or "Turn the map as you drive" off: still driving (the beam keeps
+                // preferring the GPS course), but the camera takes the north-up branch below.
+                val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value && app.vela.ui.TurnWithTravel.on.value
                 val tiltGoal = if (!browseUserTilt[0].isNaN()) browseUserTilt[0]
                     else if (headingUp) 55.0 else 0.0
                 if (headingUp) {
@@ -2943,7 +2943,7 @@ fun VelaMapView(
                 setMeSource(style, LatLng(dotLat, dotLng), beam)
                 browseDot[0] = dotLat; browseDot[1] = dotLng
                 if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
-                    if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value)) {
+                    if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value && app.vela.ui.TurnWithTravel.on.value)) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
                         // preserved, so a pinch level survives). While driving the aim point

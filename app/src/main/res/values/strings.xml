@@ -258,6 +258,8 @@
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_keep_north_up">Keep north up</string>
     <string name="settings_keep_north_up_hint">The map never turns: two-finger rotation is off and drives stay north-up.</string>
+    <string name="settings_turn_with_travel">Turn the map as you drive</string>
+    <string name="settings_turn_with_travel_hint">With no route, the map turns to your direction once you move at driving speed. Off, it stays north-up until you turn it.</string>
     <string name="settings_start_view">Where the map opens</string>
     <string name="settings_start_view_here">Where I am</string>
     <string name="settings_start_view_last">Where I left the map</string>

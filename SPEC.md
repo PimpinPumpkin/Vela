@@ -869,6 +869,7 @@ the page fills it after load, and a small stub sits beside it.
 | Privacy > Live traffic only when I tap | `RouteTrafficOnTap`, `route_traffic_on_tap`, off | clears `RoutingPrefs.googleTraffic` for each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not prefetched. The chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches |
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
+| Map > Turn the map as you drive | `TurnWithTravel`, `free_heading_up`, on | off, the free-drive follow and the car's no-route view stay north-up at any speed (issue #905). The rotation gesture stays on and drives still turn heading-up. Hidden while Keep north up is on |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
 | Appearance > Map | `AppTheme.mapMode`, `theme_map_mode`, `FOLLOW` | the map's light or dark apart from the app: the app's, Light, Dark, or Day and night by the sun under any app theme (`AUTO`, issue #874); 6.2 has the order of the rules |
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
@@ -2474,8 +2475,8 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   does not reach it.
 - The bearing eases toward the GPS course with a speed-scaled look-ahead
   (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow. With "Keep
-  north up" the follow stays north-up at any speed, flat unless tilted by hand, and the beam still
-  prefers the course.
+  north up", or "Turn the map as you drive" (`TurnWithTravel`) off, the follow stays north-up at
+  any speed, flat unless tilted by hand, and the beam still prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
 - Following a move, the dot is drawn at the eased follow position, so it stays centered as the
@@ -6444,7 +6445,7 @@ The map:
   the phone is at rest (`Stillness`), is a speed of 0. The heading is kept in every view, so a
   north-up map still turns the arrow.
 - The view is heading-up (`headingUp`) while following with no preview and no overview, the
-  phone's `NorthLock` off, and either a drive or the free-drive latch: the smoothed speed
+  phone's `NorthLock` off, and either a drive or, with `TurnWithTravel` on, the free-drive latch: the smoothed speed
   (`DRIVE_SPEED_TAU_S` 1 s) past `DRIVE_LATCH_MPS` (2.5) with a course known. The latch holds
   through a stop and lets go when the follow ends (a pan, a zoom button, the overview); recenter
   sets it again at once when the car is already moving. Heading-up, the camera bearing is the

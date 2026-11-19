@@ -366,7 +366,8 @@ The drive's layout with no route, for a phone on a mount, a tablet or a head uni
 Android Auto. The layers panel ends with a "Driving mode" row, and Settings > Map > "Where the map
 opens" > "Driving mode" starts Vela in it ([chapter 13](13-settings.md)).
 
-- The map is the browse map's own follow, which turns heading-up and tilts once you move
+- The map is the browse map's own follow, which turns heading-up and tilts once you move (unless
+  "Turn the map as you drive" is off)
   ([SPEC 4.7, Free-drive follow](../../SPEC.md)). The location dot stays the dot: the arrow is
   drawn on a route.
 - The bar is the drive's bar with an X where End sits, the mode's name and the time of day.

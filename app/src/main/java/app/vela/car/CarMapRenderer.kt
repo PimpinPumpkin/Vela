@@ -214,10 +214,11 @@ class CarMapRenderer(
     private var heldStill = false // the at-rest sensor is held while a drive is on
     private var routeCum: Pair<app.vela.core.model.Route, DoubleArray>? = null // the route's cumulative meters, for the heading at its progress
 
-    /** Whether the following view turns with the car: during a drive, or moving with no route,
-     *  unless the phone's Settings > Map "Keep north up" is on. */
+    /** Whether the following view turns with the car: during a drive, or moving with no route while
+     *  the phone's "Turn the map as you drive" is on, unless its "Keep north up" is on. */
     private fun headingUp(): Boolean =
-        following && previewRoute == null && !overview && !app.vela.ui.NorthLock.on.value && (navigating() || driving)
+        following && previewRoute == null && !overview && !app.vela.ui.NorthLock.on.value &&
+            (navigating() || (driving && app.vela.ui.TurnWithTravel.on.value))
 
     /** The drive-mode screen is up: no route, the map alone, the speed badge drawn. */
     fun setDriveScreen(on: Boolean) { driveScreen = on; requestRender() }
