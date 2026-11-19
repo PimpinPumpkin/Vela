@@ -10,23 +10,66 @@ package app.vela.core.util
  */
 object AddressQuery {
     private val LEAD = Regex("""^\s*(\d+[a-zA-Z]?)\s+(.+)$""")
+    // Street-first addresses ("Hauptstraße 42", "Straße des 17. Juni 42", "Berliner Str. 15a, Berlin"):
+    // 1-4 digits so 5-digit postal codes ("Davis 95616") do not read as house numbers.
+    private val TRAIL = Regex("""^\s*(.+?\p{L}\.?)\s+(\d{1,4}[a-zA-Z]?)(?:\s*,.*)?$""")
+    // Street-first with trailing town and no comma ("Hauptstraße 42 Berlin").
+    private val TRAIL_WITH_TOWN = Regex("""^\s*(.+?\p{L}\.?)\s+(\d{1,4}[a-zA-Z]?)\s+([\p{L}\s.-]{2,})$""")
     private val SPLIT = Regex("""[^\p{L}\p{N}]+""")
     private val DIRECTIONS = setOf("n", "s", "e", "w", "ne", "nw", "se", "sw", "north", "south", "east", "west")
     private val TYPES = setOf(
         "st", "street", "ave", "av", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard",
         "ct", "court", "pl", "place", "way", "cir", "circle", "ter", "terrace", "hwy", "highway", "pkwy", "parkway",
-        "trl", "trail", "loop", "apt", "unit", "suite", "ste",
+        "trl", "trail", "loop", "apt", "unit", "suite", "ste", "str",
+    )
+    private val HIGHWAY_WORDS = setOf("route", "rte", "interstate", "us", "sr", "cr", "i", "m", "a", "b")
+    private val STREET_SUFFIXES = setOf(
+        "straße", "strasse", "str", "gasse", "weg", "platz", "allee", "ring", "damm", "ufer",
+        "steig", "pfad", "chaussee", "straat", "laan", "plein", "gracht", "gade", "vej",
+        "gatan", "vägen", "katu", "tie", "ulica", "utca",
     )
 
+    private fun looksLikeStreetPrefix(streetPart: String, words: List<String>): Boolean =
+        words.any { w -> w in TYPES || STREET_SUFFIXES.any { s -> w == s || (w.length > s.length + 1 && w.endsWith(s)) } } ||
+            streetPart.trimEnd().endsWith(".")
+
+    /** Returns `(houseNumber, streetPart)` for either number-first ("912 Miller Dr") or
+     *  street-first ("Hauptstraße 42") addresses, or null if [query] is not one. */
+    internal fun splitAddress(query: String): Pair<String, String>? {
+        LEAD.find(query)?.let { return it.groupValues[1].lowercase() to it.groupValues[2] }
+        TRAIL.find(query)?.let { m ->
+            val streetPart = m.groupValues[1].trim()
+            val number = m.groupValues[2]
+            val words = streetPart.lowercase().split(SPLIT).filter { it.isNotEmpty() }
+            if (words.isEmpty()) return null
+            if (words.none { it !in DIRECTIONS && it !in TYPES && it !in HIGHWAY_WORDS && it.length >= 2 }) return null
+            // Reject single-word "City 1010" / "City 8001" 4-digit postal codes unless the word is clearly a street name.
+            if (words.size == 1 && ',' !in query && number.length >= 4 && number.all { it.isDigit() } && !looksLikeStreetPrefix(streetPart, words)) {
+                return null
+            }
+            return number.lowercase() to streetPart
+        }
+        TRAIL_WITH_TOWN.find(query)?.let { m ->
+            val streetPart = m.groupValues[1].trim()
+            val number = m.groupValues[2]
+            val words = streetPart.lowercase().split(SPLIT).filter { it.isNotEmpty() }
+            if (words.isEmpty()) return null
+            if (words.none { it !in DIRECTIONS && it !in TYPES && it !in HIGHWAY_WORDS && it.length >= 2 }) return null
+            if (!looksLikeStreetPrefix(streetPart, words)) return null
+            return number.lowercase() to streetPart
+        }
+        return null
+    }
+
     /** The house number and the street's first distinguishing word, lowercase; null when [query]
-     *  does not start with a number followed by a street. A street made only of a direction and a
+     *  does not look like a house number with a street. A street made only of a direction and a
      *  type ("12 North St") keeps its first word. */
     fun parse(query: String): Pair<String, String>? {
-        val m = LEAD.find(query) ?: return null
-        val words = m.groupValues[2].lowercase().split(SPLIT).filter { it.isNotEmpty() }
+        val (number, streetPart) = splitAddress(query) ?: return null
+        val words = streetPart.lowercase().split(SPLIT).filter { it.isNotEmpty() }
         if (words.isEmpty()) return null
         val street = words.firstOrNull { it !in DIRECTIONS && it !in TYPES } ?: words.first()
-        return m.groupValues[1].lowercase() to street
+        return number to street
     }
 
     private val CANON = mapOf(
@@ -49,8 +92,8 @@ object AddressQuery {
      * 0 for "1451 Covell Place"; [matches] alone found all three equal and the nearest led.
      */
     fun score(query: String, name: String?, address: String?): Int {
-        val m = LEAD.find(query) ?: return 0
-        val typed = canon(m.groupValues[2].substringBefore(','))
+        val (_, streetPart) = splitAddress(query) ?: return 0
+        val typed = canon(streetPart.substringBefore(','))
         val got = canon("${name.orEmpty()} ${address.orEmpty()}").toSet()
         var score = typed.count { it in got }
         val typedDirs = typed.filter { it in CANON_DIRS }.toSet()

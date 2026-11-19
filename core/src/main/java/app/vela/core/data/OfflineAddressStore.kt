@@ -262,9 +262,10 @@ class OfflineAddressStore @Inject constructor(
      *  4. nearest point on the street's centerline geometry (works with zero mapped houses).
      */
     fun geocode(query: String, near: LatLng?, limit: Int = 20): List<Place> {
-        val m = HOUSE_STREET.find(query.trim())
-        val houseNo = m?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
-        val streetPart = (m?.groupValues?.get(2) ?: query).substringBefore(',').trim()
+        val trimmed = query.trim()
+        val split = app.vela.core.util.AddressQuery.splitAddress(trimmed)
+        val houseNo = split?.first?.takeIf { it.isNotBlank() }
+        val streetPart = (split?.second ?: trimmed).substringBefore(',').trim()
         // Every word has to be in the street's name, so a town or a half-typed last word matched
         // nothing. The words are tried as typed, then with the last ones dropped (streetWordTries).
         for (words in streetWordTries(streetPart)) {
@@ -293,8 +294,8 @@ class OfflineAddressStore @Inject constructor(
                     return listOf(placeAt(loc, "$houseNo $street", onStreet.firstOrNull()?.city, near, approximate = true))
                 }
             }
-            // (3) nearest mapped house on the street.
-            return onStreet.map { placeAt(LatLng(it.lat, it.lng), addrLabel(it.hn, it.street), it.city, near) }
+            // (3) nearest mapped house on the street (approximate when a specific house number was asked for).
+            return onStreet.map { placeAt(LatLng(it.lat, it.lng), addrLabel(it.hn, it.street), it.city, near, approximate = houseNo != null) }
                 .distinctBy { it.name }
                 .sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
                 .take(limit)
@@ -531,16 +532,16 @@ class OfflineAddressStore @Inject constructor(
             "terrace", "circle", "highway", "parkway", "trail", "way", "loop", "route",
         )
 
-        // A query is address-like if it starts with a house number or names a street type. Used to decide
-        // whether to run the geocoder alongside the POI search (so "coffee" doesn't hit the address table).
+        // A query is address-like if it starts with a house number, parses as a street-first
+        // address ("Hauptstraße 42"), or names a street type. Used to decide whether to run the
+        // geocoder alongside the POI search (so "coffee" doesn't hit the address table).
         fun looksLikeAddress(query: String): Boolean {
             val q = query.trim().lowercase()
             if (q.isEmpty()) return false
             if (q.first().isDigit()) return true
-            return STREET_TYPE_WORDS.any { Regex("(^|\\s)$it(\\s|$)").containsMatchIn(q) }
+            if (app.vela.core.util.AddressQuery.parse(query) != null) return true
+            return STREET_TYPE_PATTERNS.any { it.containsMatchIn(q) }
         }
-
-        private val HOUSE_STREET = Regex("^\\s*(\\d+[a-zA-Z]?)\\s+(.+)$")
 
         private val ABBREV = mapOf(
             "st" to "street", "str" to "street", "ave" to "avenue", "av" to "avenue",
@@ -557,6 +558,9 @@ class OfflineAddressStore @Inject constructor(
             "lane", "ln", "court", "ct", "place", "pl", "square", "sq", "terrace", "ter", "circle", "cir",
             "highway", "hwy", "parkway", "pkwy", "trail", "trl", "way", "loop", "route",
         )
+
+        private val STREET_TYPE_PATTERNS: List<Regex> =
+            STREET_TYPE_WORDS.map { Regex("(^|\\s)" + Regex.escape(it) + "(\\s|$)") }
 
         /** Lowercase, strip punctuation, expand each abbreviation to its full form → space-joined words.
          *  Applied identically to the stored street and the query so they line up regardless of how the
