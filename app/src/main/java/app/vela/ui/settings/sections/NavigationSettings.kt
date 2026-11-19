@@ -81,7 +81,6 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 
         // Route bar (issue #228). Off by default: it is extra chrome on the nav screen, and the
         // congestion color already on the route line covers some of the same ground.
-        var routeBar by remember { mutableStateOf(prefs.getBoolean("route_bar", false)) }
         GroupDivider()
         // Arrows on the route at the turns ahead (issue #804), on by default.
         ToggleRow(
@@ -93,10 +92,18 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_route_bar),
-            checked = routeBar,
-            onCheckedChange = { routeBar = it; vm.setRouteBar(it) },
+            checked = app.vela.ui.RouteBarPref.on.value,
+            onCheckedChange = { vm.setRouteBar(it) },
             hint = stringResource(R.string.settings_route_bar_hint),
         )
+        if (app.vela.ui.RouteBarPref.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_car_route_bar),
+                checked = app.vela.ui.RouteBarPref.carOn.value,
+                onCheckedChange = { app.vela.ui.RouteBarPref.setCar(context, it) },
+                hint = stringResource(R.string.settings_car_route_bar_hint),
+            )
+        }
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_nav_north_up),
@@ -376,6 +383,32 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 onCheckedChange = { app.vela.ui.CarSpeed.set(context, it) },
                 hint = stringResource(R.string.settings_car_speed_hint),
             )
+            val upcomingOn = app.vela.ui.SpeedDisplay.upcomingOn.value
+            ToggleRow(
+                label = stringResource(R.string.settings_speed_upcoming),
+                checked = upcomingOn,
+                onCheckedChange = { app.vela.ui.SpeedDisplay.setUpcoming(context, it) },
+                hint = stringResource(R.string.settings_speed_upcoming_hint),
+            )
+            if (upcomingOn) {
+                val distM = app.vela.ui.SpeedDisplay.upcomingMeters.value
+                androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        stringResource(R.string.settings_speed_upcoming_distance, app.vela.ui.formatDistance(distM.toDouble())),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    androidx.compose.material3.Slider(
+                        value = distM.toFloat(),
+                        onValueChange = {
+                            val stepped = (kotlin.math.round(it / 50f) * 50f).toInt()
+                            app.vela.ui.SpeedDisplay.setUpcomingMeters(context, stepped)
+                        },
+                        valueRange = 100f..1000f,
+                        steps = 17,
+                        modifier = Modifier.dpadHighlight(DpadShape(12.dp)),
+                    )
+                }
+            }
         }
         // Over-the-limit voice alert (issue #404): its own opt-in, off by default. Sits with the
         // other spoken extras; the timing is in :core SpeedingAlerts.

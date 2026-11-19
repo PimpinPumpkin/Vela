@@ -11,7 +11,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
   numbers, names on the map (English then romanized, English then local, local only, or local
   and English), where the map opens.
 - Places: "Place icons on the map", which places the map draws, what a place page loads.
-- Navigation: route picker, road-ahead bar, arrow, speed limit, road numbers first, custom route line width, zoom keys,
+- Navigation: route picker, road-ahead bar, arrow, speed limit (and upcoming speed limit changes), road numbers first, custom route line width, zoom keys,
   cameras ([chapter 3](03-cameras.md)), traffic rechecks.
 - Voice: spoken directions, street names, the voice library, speed and custom volume multiplier.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,

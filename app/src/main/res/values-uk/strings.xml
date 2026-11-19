@@ -908,10 +908,15 @@
     <string name="settings_route_trail_hint">Залишає пройдену частину маршруту намальованою сірим позаду стрілки. Вимк. приховує її, тож малюється лише дорога попереду.</string>
     <string name="settings_nav_line_custom">Власна ширина лінії маршруту</string>
     <string name="settings_nav_line_multiplier">Ширина лінії: %1$sx</string>
+    <string name="settings_speed_upcoming">Показувати наступні зміни обмеження швидкості</string>
+    <string name="settings_speed_upcoming_hint">Показує наступне обмеження швидкості та відстань до нього на маршруті чи поточній дорозі.</string>
+    <string name="settings_speed_upcoming_distance">Дальність перегляду вперед: %1$s</string>
     <string name="settings_bike_safe">Велосипедні маршрути надають перевагу велодоріжкам і тихим вулицям</string>
     <string name="settings_bike_safe_hint">Велосипедні маршрути обирають позначені велосипедні шляхи, велодоріжки та житлові вулиці замість найшвидшої дороги, як прокладає велосипедні маршрути Google. Використовує офлайн-карту там, де ви її завантажили, інакше відкритий маршрутизатор онлайн. Вимк. дає звичайний найшвидший велосипедний маршрут.</string>
     <string name="settings_route_bar">Панель дороги попереду</string>
-    <string name="settings_route_bar_hint">Смуга збоку карти, яка показує затори й те, що чекає на решті маршруту. Показує лише те, що Vela справді знає: затори, світлофори, знаки «стоп», залізничні переїзди, лежачі поліцейські та камери спостереження. Лише в портретній орієнтації.</string>
+    <string name="settings_route_bar_hint">Смуга збоку карти, яка показує затори й те, що чекає на решті маршруту. Показує лише те, що Vela справді знає: затори, світлофори, знаки «стоп», залізничні переїзди, лежачі поліцейські та камери спостереження.</string>
+    <string name="settings_car_route_bar">Панель дороги попереду на екрані автомобіля</string>
+    <string name="settings_car_route_bar_hint">Також показувати панель дороги попереду в Android Auto; якщо вимкнено, вона показується лише на телефоні.</string>
     <string name="settings_font">Шрифт</string>
     <string name="settings_font_system">Системний шрифт</string>
     <string name="settings_font_choose">Вибрати файл шрифту…</string>

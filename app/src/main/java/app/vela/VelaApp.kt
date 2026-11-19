@@ -111,6 +111,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())
+        app.vela.data.StreamedSpeedLimit.http = http.newBuilder().addInterceptor(app.vela.diag.NetCount).addInterceptor(app.vela.offline.ReleaseRedirects).build()
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
@@ -186,6 +187,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.MapColors.init(this)
         app.vela.ui.MapButtonShape.init(this) // round or square map buttons (issue #797)
         app.vela.ui.TurnArrows.init(this) // arrows on the route at the turns ahead (issue #804)
+        app.vela.ui.RouteBarPref.init(this) // road-ahead bar on/off, phone and car
         app.vela.ui.CarSpeed.init(this) // the car's speed badge, off by default
         app.vela.ui.LiveReviews.init(this)
         app.vela.ui.ShowReviews.init(this)

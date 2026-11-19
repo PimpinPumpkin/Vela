@@ -1331,6 +1331,9 @@
     <string name="settings_route_trail_hint">Časť trasy, ktorú ste už prešli, zostane za šípkou vykreslená sivou. Vypnuté: zobrazí sa len cesta pred vami.</string>
     <string name="settings_nav_line_custom">Vlastná šírka čiary trasy</string>
     <string name="settings_nav_line_multiplier">Šírka čiary: %1$sx</string>
+    <string name="settings_speed_upcoming">Zobrazovať nadchádzajúce zmeny rýchlostného limitu</string>
+    <string name="settings_speed_upcoming_hint">Zobrazí ďalší rýchlostný limit a vzdialenosť pred vami na trase alebo aktuálnej ceste.</string>
+    <string name="settings_speed_upcoming_distance">Vzdialenosť prehľadu dopredu: %1$s</string>
     <string name="settings_bike_safe">Cyklotrasy uprednostňujú cyklopruhy a pokojné ulice</string>
     <string name="settings_bike_safe_hint">Trasy pre bicykel uprednostňujú značené cyklotrasy, cyklopruhy a obytné ulice pred najrýchlejšou cestou, podobne ako Google. Používa offline mapu, ak ju máte stiahnutú, inak otvorený plánovač online. Vypnuté: najrýchlejšia trasa pre bicykel.</string>
     <string name="settings_route_picker">Výber trasy v štýle Google</string>
@@ -1338,7 +1341,9 @@
     <string name="settings_turn_arrows">Šípky odbočiek na trase</string>
     <string name="settings_turn_arrows_hint">Krátke šípky na trase pri najbližších odbočkách počas jazdy.</string>
     <string name="settings_route_bar">Lišta cesty pred vami</string>
-    <string name="settings_route_bar_hint">Pás vedľa mapy, ktorý ukazuje premávku a to, čo vás čaká na zvyšku trasy. Zobrazuje len to, čo Vela skutočne vie: zápchy, semafory, značky STOP, železničné priecestia, spomaľovacie prahy a sledovacie kamery. Iba na výšku.</string>
+    <string name="settings_route_bar_hint">Pás vedľa mapy, ktorý ukazuje premávku a to, čo vás čaká na zvyšku trasy. Zobrazuje len to, čo Vela skutočne vie: zápchy, semafory, značky STOP, železničné priecestia, spomaľovacie prahy a sledovacie kamery.</string>
+    <string name="settings_car_route_bar">Lišta cesty pred vami na obrazovke auta</string>
+    <string name="settings_car_route_bar_hint">Zobrazovať lištu cesty pred vami aj v Android Auto; ak je vypnutá, zobrazuje sa len v telefóne.</string>
     <string name="settings_font">Písmo</string>
     <string name="settings_font_system">Systémové písmo</string>
     <string name="settings_font_choose">Vybrať súbor písma…</string>

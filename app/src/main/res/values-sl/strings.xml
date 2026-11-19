@@ -1281,10 +1281,15 @@
     <string name="settings_route_trail_hint">Del poti, ki ste jo že prevozili, prikaže sivo za puščico. Če je možnost izklopljena, je prikazana samo cesta pred vami.</string>
     <string name="settings_nav_line_custom">Širina črte poti po meri</string>
     <string name="settings_nav_line_multiplier">Širina črte: %1$sx</string>
+    <string name="settings_speed_upcoming">Prikaži prihajajoče spremembe omejitve hitrosti</string>
+    <string name="settings_speed_upcoming_hint">Prikaže naslednjo omejitev hitrosti in razdaljo do nje na poti ali trenutni cesti.</string>
+    <string name="settings_speed_upcoming_distance">Razdalja pogleda naprej: %1$s</string>
     <string name="settings_bike_safe_hint">Kolesarske poti dajejo prednost označenim kolesarskim potem, kolesarskim stezam in stanovanjskim ulicam pred najhitrejšo cesto, podobno kot Google. Uporabi preneseni zemljevid brez povezave, če je na voljo, sicer pa spletni odprti usmerjevalnik. Izklopljeno prikaže najhitrejšo kolesarsko pot.</string>
     <string name="settings_route_picker_hint">Prikaže eno pot naenkrat; druge so na voljo po dotiku, njihovi časi pa so prikazani na zemljevidu. Gumb »Začni« je spodaj. Izklopite možnost, da se vrnete na klasično ploščo Vele, ki hkrati prikaže vse poti.</string>
     <string name="settings_turn_arrows_hint">Med vožnjo na poti prikazuje majhne puščice pri prihajajočih zavojih.</string>
-    <string name="settings_route_bar_hint">Vrstica ob zemljevidu prikazuje promet in dogajanje na preostanku poti. Prikazuje samo podatke, ki jih Vela pozna: zastoje, semaforje, znake stop, železniške prehode, hitrostne ovire in radarje. Samo v pokončnem načinu.</string>
+    <string name="settings_route_bar_hint">Vrstica ob zemljevidu prikazuje promet in dogajanje na preostanku poti. Prikazuje samo podatke, ki jih Vela pozna: zastoje, semaforje, znake stop, železniške prehode, hitrostne ovire in radarje.</string>
+    <string name="settings_car_route_bar">Vrstica s pregledom poti na zaslonu avtomobila</string>
+    <string name="settings_car_route_bar_hint">Prikaži vrstico s pregledom poti tudi v Android Auto; ko je izklopljena, se prikaže le v telefonu.</string>
     <string name="settings_font_flex_hint">Google Sans Flex je odprto licencirana sorodna pisava Googlove pisave. Podpira latinične črke; za druge pisave se uporablja sistemska pisava.</string>
     <string name="settings_traffic_lights_hint">Glasovna navodila z orientacijskimi točkami: zapeljite mimo semaforja, nato zavijte. Samo v angleščini, privzeto izklopljeno.</string>
     <string name="settings_speeding_alert_hint">Ko nekaj sekund vozite nad omejitvijo hitrosti, izgovori »Presegate omejitev hitrosti«. Opozorilo ponovi, če najprej upočasnite, nato pa znova prekoračite omejitev. Deluje samo tam, kjer je omejitev znana in prikazana ob oznaki hitrosti. Privzeto je izklopljeno.</string>

@@ -152,6 +152,8 @@ data class MapUiState(
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via the obf engine),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
                                        // Converted to the display unit at the badge.
+    val upcomingSpeedLimitKmh: Double? = null,
+    val upcomingSpeedLimitDistM: Double? = null,
     val navStarved: Boolean = false, // navigating but guidance hasn't received a usable (GPS, ≤50 m
                                      // accuracy) fix in a while — drives the "Searching for GPS" chip
                                      // when coarse fixes keep the ordinary stale timer from firing
@@ -518,6 +520,7 @@ class MapViewModel @Inject constructor(
     @Volatile private var lastLimitHitLoc: LatLng? = null // last fix that RESOLVED a limit — drives the
                                                           // "forget a stale limit after driving far off it" clear
     private var limitJob: Job? = null // single-flight the off-thread maxspeed snap
+    private var overlayUpcomingJob: Job? = null
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     // The nav side (start/stop/demo/replay, the nav-state observer, dead reckoning, the corridor
@@ -1237,6 +1240,21 @@ class MapViewModel @Inject constructor(
      * (untagged road / no offline graph / pre-`max_speed` graph) hides the badge; a stale non-null is kept
      * until a new road resolves so it doesn't flicker off between snaps.
      */
+    private fun upcomingLimitPath(here: LatLng, lookAheadM: Double): Pair<List<LatLng>, Double>? {
+        val st = _state.value
+        val routePoly = st.activeRoute?.polyline
+        if (st.navigating && routePoly != null && routePoly.size >= 2) {
+            return routePoly to st.nav.traveledM
+        }
+        val bearing = st.myBearing?.toDouble() ?: return null
+        if ((st.mySpeed ?: 0f) < 2.0f && !app.vela.ui.DrivingMode.on.value) return null
+        val rad = Math.toRadians(bearing)
+        val span = lookAheadM + 60.0
+        val dLat = span * Math.cos(rad) / 111_320.0
+        val dLng = span * Math.sin(rad) / (111_320.0 * Math.cos(Math.toRadians(here.lat)).coerceAtLeast(1e-6))
+        return listOf(here, LatLng(here.lat + dLat, here.lng + dLng)) to 0.0
+    }
+
     private fun updateSpeedLimit(here: LatLng) {
         val last = lastLimitLoc
         if (last != null && last.distanceTo(here) < 18.0) return
@@ -1244,11 +1262,28 @@ class MapViewModel @Inject constructor(
         lastLimitLoc = here
         limitJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val kmh = runCatching { routeEngine.currentRoadLimit(here.lat, here.lng) }.getOrNull()
+            val upcoming = if (kmh != null && app.vela.ui.SpeedDisplay.on.value && app.vela.ui.SpeedDisplay.upcomingOn.value) {
+                val lookAheadM = app.vela.ui.SpeedDisplay.upcomingMeters.value.toDouble()
+                upcomingLimitPath(here, lookAheadM)?.let { (poly, startM) ->
+                    runCatching { routeEngine.upcomingRoadLimit(poly, startM, lookAheadM, kmh) }.getOrNull()
+                }
+            } else null
             coroutineContext.ensureActive() // canceled mid-snap by clearSpeedLimit (stopNav/replay teardown)?
                                             // throw rather than resurrect the badge the teardown just cleared (audit 2026-07-06)
             if (kmh != null) {
                 lastLimitHitLoc = here
-                if (kmh != _state.value.speedLimitKmh) _state.update { it.copy(speedLimitKmh = kmh) }
+                if (kmh != _state.value.speedLimitKmh ||
+                    upcoming?.first != _state.value.upcomingSpeedLimitKmh ||
+                    upcoming?.second != _state.value.upcomingSpeedLimitDistM
+                ) {
+                    _state.update {
+                        it.copy(
+                            speedLimitKmh = kmh,
+                            upcomingSpeedLimitKmh = upcoming?.first,
+                            upcomingSpeedLimitDistM = upcoming?.second,
+                        )
+                    }
+                }
             } else if (_state.value.speedLimitKmh != null) {
                 // Untagged snap. Keep the last limit across a brief gap between tagged segments, but
                 // CLEAR it once we've driven far past where it was last resolved — else turning off a
@@ -1256,7 +1291,20 @@ class MapViewModel @Inject constructor(
                 // than blank, since it actively misinforms).
                 val hit = lastLimitHitLoc
                 if (hit == null || hit.distanceTo(here) > SPEED_LIMIT_FORGET_M) {
-                    _state.update { it.copy(speedLimitKmh = null) }
+                    _state.update {
+                        it.copy(
+                            speedLimitKmh = null,
+                            upcomingSpeedLimitKmh = null,
+                            upcomingSpeedLimitDistM = null,
+                        )
+                    }
+                } else if (_state.value.upcomingSpeedLimitKmh != null || _state.value.upcomingSpeedLimitDistM != null) {
+                    _state.update {
+                        it.copy(
+                            upcomingSpeedLimitKmh = null,
+                            upcomingSpeedLimitDistM = null,
+                        )
+                    }
                 }
             }
         }
@@ -7461,8 +7509,12 @@ class MapViewModel @Inject constructor(
      *  next drive/replay starts clean - else a stale limit could flash near the last drive's end point). */
     private fun clearSpeedLimit() {
         limitJob?.cancel()
+        overlayUpcomingJob?.cancel()
         lastLimitLoc = null
         lastLimitHitLoc = null
+        if (_state.value.upcomingSpeedLimitKmh != null || _state.value.upcomingSpeedLimitDistM != null) {
+            _state.update { it.copy(upcomingSpeedLimitKmh = null, upcomingSpeedLimitDistM = null) }
+        }
     }
 
     /** VelaMapView reports romanized road names (local -> basemap Latin) as nav tiles load (issue
@@ -9663,6 +9715,41 @@ class MapViewModel @Inject constructor(
         if (kmh != _state.value.speedLimitOverlayKmh) {
             android.util.Log.i("VelaSpeedB", "overlay maxspeed=$kmh km/h (offline=${_state.value.speedLimitKmh})")
             _state.update { it.copy(speedLimitOverlayKmh = kmh) }
+        }
+        overlayUpcomingJob?.cancel()
+        val st = _state.value
+        if (st.speedLimitKmh != null) return
+        if (kmh == null || !app.vela.ui.SpeedDisplay.on.value || !app.vela.ui.SpeedDisplay.upcomingOn.value) {
+            if (st.upcomingSpeedLimitKmh != null || st.upcomingSpeedLimitDistM != null) {
+                _state.update { it.copy(upcomingSpeedLimitKmh = null, upcomingSpeedLimitDistM = null) }
+            }
+            return
+        }
+        val here = st.myLocation ?: return
+        val uris = st.maxspeedOverlays
+        if (uris.isEmpty()) return
+        val lookAheadM = app.vela.ui.SpeedDisplay.upcomingMeters.value.toDouble()
+        val (poly, startM) = upcomingLimitPath(here, lookAheadM) ?: run {
+            if (st.upcomingSpeedLimitKmh != null || st.upcomingSpeedLimitDistM != null) {
+                _state.update { it.copy(upcomingSpeedLimitKmh = null, upcomingSpeedLimitDistM = null) }
+            }
+            return
+        }
+        overlayUpcomingJob = viewModelScope.launch(Dispatchers.IO) {
+            val upcoming = runCatching {
+                app.vela.data.StreamedSpeedLimit.upcomingLimitAlong(uris, poly, startM, lookAheadM, kmh)
+            }.getOrNull()
+            if (_state.value.speedLimitKmh == null &&
+                (upcoming?.first != _state.value.upcomingSpeedLimitKmh ||
+                    upcoming?.second != _state.value.upcomingSpeedLimitDistM)
+            ) {
+                _state.update {
+                    it.copy(
+                        upcomingSpeedLimitKmh = upcoming?.first,
+                        upcomingSpeedLimitDistM = upcoming?.second,
+                    )
+                }
+            }
         }
     }
 

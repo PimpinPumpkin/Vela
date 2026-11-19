@@ -900,10 +900,15 @@
     <string name="settings_route_trail_hint">Garde la partie de l\'itinéraire déjà parcourue tracée en gris derrière la flèche. Désactivé la masque : seule la route à venir est tracée.</string>
     <string name="settings_nav_line_custom">Largeur personnalisée du tracé</string>
     <string name="settings_nav_line_multiplier">Largeur de ligne : %1$sx</string>
+    <string name="settings_speed_upcoming">Afficher les prochains changements de limitation</string>
+    <string name="settings_speed_upcoming_hint">Affiche la prochaine limitation de vitesse et sa distance sur votre itinéraire ou route actuelle.</string>
+    <string name="settings_speed_upcoming_distance">Distance d\'anticipation : %1$s</string>
     <string name="settings_bike_safe">Les itinéraires vélo privilégient les pistes cyclables et les rues calmes</string>
     <string name="settings_bike_safe_hint">Les itinéraires vélo privilégient les voies cyclables balisées, les pistes cyclables et les rues résidentielles plutôt que la route la plus rapide, comme le fait Google. Utilise la carte hors ligne là où vous en avez téléchargé une, sinon un routeur ouvert en ligne. Désactivé donne simplement l\'itinéraire vélo le plus rapide.</string>
     <string name="settings_route_bar">Barre de la route à venir</string>
-    <string name="settings_route_bar_hint">Une bande à côté de la carte qui montre le trafic et ce qui arrive sur le reste de votre itinéraire. N\'affiche que ce que Vela sait réellement : embouteillages, feux, stops, passages à niveau, ralentisseurs et radars. Mode portrait uniquement.</string>
+    <string name="settings_route_bar_hint">Une bande à côté de la carte qui montre le trafic et ce qui arrive sur le reste de votre itinéraire. N\'affiche que ce que Vela sait réellement : embouteillages, feux, stops, passages à niveau, ralentisseurs et radars.</string>
+    <string name="settings_car_route_bar">Barre de la route à venir sur l\'écran de la voiture</string>
+    <string name="settings_car_route_bar_hint">Affiche également la barre de la route à venir sur Android Auto ; désactivée, elle s\'affiche uniquement sur le téléphone.</string>
     <string name="settings_font">Police</string>
     <string name="settings_font_system">Police du système</string>
     <string name="settings_font_choose">Choisir un fichier de police…</string>

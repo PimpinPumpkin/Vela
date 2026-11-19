@@ -228,7 +228,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `MapTilt`, `NavEndConfirm`, `NavLineWidth`, `NavNorthUp`, `NavSchedule`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
-  `RoadNumbers`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
+  `RoadNumbers`, `RouteBarPref`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
   `SimLocation`, `SpeechPreload`, `SpeedCamWarn`, `SpeedCams`, `SpeedDisplay`,
   `SpeedingAlert`, `SpokenDetail`, `SpokenRoadNames`, `StartView`, `Topography`, `Traffic`,
   `TransitLayer`, `TurnDeclutterPref`, `UiScale`, `Units`, `VoiceSearch`, `WhatsNew`.
@@ -873,6 +873,8 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Custom route line width | `NavLineWidth.custom`, `nav_line_custom`, off; `widthMultiplier`, `nav_line_multiplier`, 1.0 | scales the route line, alternate route, outline and turn arrow widths from 0.1x to 2.0x |
+| Navigation > Road ahead bar | `RouteBarPref.on`, `route_bar`, false; `RouteBarPref.carOn`, `car_route_bar_on`, true | the road-ahead strip on the phone, and on the car screen when "Road ahead bar on the car screen" is on |
+| Navigation > Show upcoming speed limit changes | `SpeedDisplay.upcomingOn`, `speed_upcoming_on`, false; `SpeedDisplay.upcomingMeters`, `speed_upcoming_m`, 300 | previews the next speed limit change and distance ahead (100 to 1,000 m) along the active route or the road ahead on the phone and car screen |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
@@ -5771,7 +5773,10 @@ the catalog, the ones switched off included; a pick runs that search. The one-bu
   safe edge. The speed box and the Re-center pill sit just right of the bar's measured right edge
   (`navBarRightPx`). The step list's height floor is 64 dp (200 dp in portrait), so it stops
   under the banner.
-- The route bar (`RouteBarStrip`) draws in portrait only and never in PiP. It shows the next
+- The route bar (`RouteBarStrip` on the phone in portrait and never in PiP; `CarMapRenderer.drawRouteBar`
+  along the left edge of the car surface via `CarFraming.routeBarBounds`, anchoring above the
+  ETA card with 38 percent top clearance in full-screen left-column mode so the span label
+  clears the dynamic turn card, when `RouteBarPref.on` and `RouteBarPref.carOn` are on) shows the next
   `RouteBar.WINDOW_M` (5,000 m): scaled to a long trip, nearby marks collapse into one pixel.
   Congestion is painted on the track by level; a light and a stop sign are the map's own
   bitmaps (`trafficLightBitmap`, `stopSignBitmap`) on the track, `MINI` (16 dp) tall; cameras,
@@ -6044,13 +6049,21 @@ the same `:core` singletons as the phone (`CarDeps`).
   blue (`#1f6feb`) at 20 px, the driven part 18 px gray, alternates 14 px, scaled by
   `NavLineWidth.currentMultiplier()` and tapered with camera tilt (`routeStrokeAt`, `drawPerspectiveRoute`).
 - `CarBridge` carries the phone controller's spoken alerts (cameras, speeding, closing soon) to a
-  `CarToast`, and the route's lights, stop signs and speed cameras to the renderer. A drive
-  started with the phone UI closed has no controller and gets neither.
+  `CarToast`, and the route's lights, stop signs and speed cameras to the renderer. When a drive
+  starts with the phone UI closed and `CarBridge` is empty, `CarMapRenderer.ensureCarCorridor`
+  loads the corridor controls and speed cameras from `RoadFeatures` or Overpass.
 - Settings > Navigation "Show speed and speed limit" (`SpeedDisplay`, default on) hides the speed
   badge on the phone and the car, and skips the car's limit lookup. Nested under it, "Your speed
   on the car screen" (`CarSpeed`, `car_speed_on`, default off, user 2026-10-15) draws the car's
   own badge; off, the car shows the limit sign alone, in the badge's corner, since a car has a
-  speedometer. The spoken speeding alert is a separate setting. The car's limit sign follows the
+  speedometer. Also nested under it, "Show upcoming speed limit changes" (`SpeedDisplay.upcomingOn`,
+  `speed_upcoming_on`, default off) and its distance slider (`SpeedDisplay.upcomingMeters`,
+  `speed_upcoming_m`, 100..1000 m, default 300 m) sample along the active route polyline or the
+  current road ahead in driving mode and show a compact secondary speed limit sign with distance
+  when the limit ahead differs. `CarMapRenderer.updateSpeedLimit` reads offline `.obf` limits first
+  (`routeEngine.currentRoadLimit` and `upcomingRoadLimit`) and falls back to `MaxspeedOverlayStore`
+  and `StreamedSpeedLimit`, retaining the last resolved limit across untagged gaps up to 150 m.
+  The spoken speeding alert is a separate setting. The car's limit sign follows the
   phone's: the "SPEED LIMIT" rectangle in miles, the red-ring disc in kilometers, and a red
   number past 3 mph or 5 km/h over.
 - The guidance voice is band-limited by the protocol: the Android Auto guidance stream is 16 kHz
@@ -6155,8 +6168,8 @@ The map:
   `controlGlyphPx`: a twentieth of the screen's short side, scaled with zoom as the phone
   scales its glyphs (0.7 at z14, 1 at z15.5, 1.3 at z17), between 16 and 56 px; a light is
   `LIGHT_TALL` (1.4) times that tall.
-- The speed badge and the limit sign draw during a drive and on the drive-mode screen
-  (`setDriveScreen`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
+- The speed badge and the limit sign draw during a drive, on the drive-mode screen
+  (`setDriveScreen`), and in free-drive (`driving`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
   badge's radius is a 18th of the shorter side, 22 to 46 px, and the text, the sign and its
   strokes follow by the same factor, so on an 800 by 480 unit they are three fifths of the old
   fixed size and at 828 px and up the old size.

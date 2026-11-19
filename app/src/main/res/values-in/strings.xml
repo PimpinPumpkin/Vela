@@ -1279,6 +1279,9 @@
     <string name="settings_route_trail_hint">Tetap menampilkan bagian rute yang telah Anda lalui dengan warna abu-abu di belakang panah. Jika nonaktif, bagian tersebut disembunyikan sehingga hanya jalan di depan yang ditampilkan.</string>
     <string name="settings_nav_line_custom">Lebar garis rute kustom</string>
     <string name="settings_nav_line_multiplier">Lebar garis: %1$sx</string>
+    <string name="settings_speed_upcoming">Tampilkan perubahan batas kecepatan berikutnya</string>
+    <string name="settings_speed_upcoming_hint">Menampilkan batas kecepatan berikutnya beserta jaraknya di depan pada rute atau jalan saat ini.</string>
+    <string name="settings_speed_upcoming_distance">Jarak pandang ke depan: %1$s</string>
     <string name="settings_bike_safe">Rute sepeda mengutamakan jalur sepeda dan jalan yang sepi</string>
     <string name="settings_bike_safe_hint">Rute bersepeda mengutamakan rute sepeda bertanda, jalur sepeda, dan jalan permukiman daripada jalan tercepat, seperti cara Google menentukan rute sepeda. Menggunakan peta offline jika sudah diunduh; jika belum, menggunakan layanan perutean terbuka secara online. Jika nonaktif, rute sepeda tercepat biasa akan digunakan.</string>
     <string name="settings_route_picker">Pemilih rute bergaya Google</string>
@@ -1286,7 +1289,9 @@
     <string name="settings_turn_arrows">Panah belokan pada rute</string>
     <string name="settings_turn_arrows_hint">Panah pendek pada rute yang menunjukkan belokan di depan saat Anda berkendara.</string>
     <string name="settings_route_bar">Bilah jalan di depan</string>
-    <string name="settings_route_bar_hint">Bilah di samping peta yang menampilkan lalu lintas dan hal-hal yang akan dijumpai di sepanjang sisa rute Anda. Hanya menampilkan informasi yang benar-benar diketahui Vela: kemacetan, lampu lalu lintas, rambu berhenti, perlintasan sebidang, polisi tidur, dan kamera pengawas. Hanya tersedia dalam orientasi potret.</string>
+    <string name="settings_route_bar_hint">Bilah di samping peta yang menampilkan lalu lintas dan hal-hal yang akan dijumpai di sepanjang sisa rute Anda. Hanya menampilkan informasi yang benar-benar diketahui Vela: kemacetan, lampu lalu lintas, rambu berhenti, perlintasan sebidang, polisi tidur, dan kamera pengawas.</string>
+    <string name="settings_car_route_bar">Bilah jalan di depan di layar mobil</string>
+    <string name="settings_car_route_bar_hint">Tampilkan juga bilah jalan di depan di Android Auto; jika nonaktif, hanya tampil di ponsel.</string>
     <string name="settings_font">Font</string>
     <string name="settings_font_system">Font sistem</string>
     <string name="settings_font_choose">Pilih berkas font…</string>

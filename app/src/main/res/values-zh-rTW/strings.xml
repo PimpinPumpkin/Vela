@@ -959,10 +959,15 @@
     <string name="settings_route_trail_hint">已經行駛過的路線會以灰色繪製在箭頭後方。關閉後會隱藏，只繪製前方的道路。</string>
     <string name="settings_nav_line_custom">自訂路線線寬</string>
     <string name="settings_nav_line_multiplier">線寬：%1$sx</string>
+    <string name="settings_speed_upcoming">顯示前方速限變化</string>
+    <string name="settings_speed_upcoming_hint">預先顯示路線或目前道路前方的下一個速限與距離。</string>
+    <string name="settings_speed_upcoming_distance">預覽距離：%1$s</string>
     <string name="settings_bike_safe">單車路線優先選擇自行車道和安靜街道</string>
     <string name="settings_bike_safe_hint">單車路線會優先採用標示的自行車路線、自行車道和住宅區街道，而不是最快的道路，作法與 Google 的單車路線相同。已下載離線地圖時會使用離線地圖，否則使用線上的開放路線規劃服務。關閉後只給最快的單車路線。</string>
     <string name="settings_route_bar">前方路況列</string>
-    <string name="settings_route_bar_hint">地圖旁的長條，顯示路況和剩餘路線上即將遇到的狀況。只顯示 Vela 確實知道的資訊：壅塞、紅綠燈、停車再開標誌、平交道、減速丘和監視攝影機。僅限直向模式。</string>
+    <string name="settings_route_bar_hint">地圖旁的長條，顯示路況和剩餘路線上即將遇到的狀況。只顯示 Vela 確實知道的資訊：壅塞、紅綠燈、停車再開標誌、平交道、減速丘和監視攝影機。</string>
+    <string name="settings_car_route_bar">在車載螢幕上顯示前方路況列</string>
+    <string name="settings_car_route_bar_hint">同時在 Android Auto 上顯示前方路況列；關閉時僅於手機顯示。</string>
     <string name="settings_font">字型</string>
     <string name="settings_font_system">系統字型</string>
     <string name="settings_font_choose">選擇字型檔案…</string>

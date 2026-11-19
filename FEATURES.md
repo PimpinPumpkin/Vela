@@ -150,11 +150,11 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - The route line is colored by congestion. "Road behind you" keeps the driven part in gray. "Custom route line width" can scale its width from 0.1x to 2x, tapering with camera tilt and distance.
 - The route line is drawn down the middle of the map's roads, where Google's own line would sit a
   lane to one side.
-- Your speed and the posted limit. "Show speed and speed limit" hides them.
+- Your speed and the posted limit. "Show speed and speed limit" hides them, and "Show upcoming speed limit changes" previews the next speed limit and distance ahead on your route or current road (100 m to 1 km).
 - Timed limits follow the clock, such as 100 by day and 130 at night on Dutch motorways. Online
   only for now.
 - "Road ahead bar" is a strip with the traffic, lights, stop signs, crossings and cameras still
-  ahead.
+  ahead, on the phone and in Android Auto ("Road ahead bar on the car screen").
 - Arrows on the route through the turns ahead while you drive, the way Google draws them; off
   under Navigation.
 - "Current road name" goes above the bottom bar, under the arrow, inside the bar, or off. A
@@ -334,7 +334,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Search from the car, preview up to three routes, and start the drive. "Navigate to Starbucks"
   from the car's assistant opens the search on it. Gas stations in car
   results show their fuel price.
-- The drive screen has the map, a turn card with lanes, the arrival estimate and the posted limit;
+- The drive screen has the map, a turn card with lanes, the arrival estimate and the posted limit
+  (plus the upcoming limit change and the road ahead bar when turned on);
   your speed too if you switch it on, since the car has its own speedometer. The map turns with
   the car, tilts and zooms out with speed.
 - With no route the map does the same once you move, and a Drive button puts the list away for a
