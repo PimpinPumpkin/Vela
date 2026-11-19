@@ -277,6 +277,11 @@ off the list when it has been.
   drive, and how often a ban in OpenStreetMap is stale is not measured: read `bans=` in
   `Route.made` on shared trips.
 
+- The map's own "Day and night" (`MapThemeMode.AUTO`, issue #874): the mapping and the rule
+  that hides "Day and night while navigating" are unit-tested. Not yet seen on a phone: a dark
+  app over a light map by day, the map flipping at sunset within a minute, and the switch
+  showing and hiding as the two choices change.
+
 - The drive on the lock screen (`LockScreenNav`, issue #896): on Android 14 and 8.0 emulators
   with a PIN, a running drive showed over the locked phone after the power button, Get a voice
   asked for the PIN first and Back returned to the drive, and pausing put the lock screen back.

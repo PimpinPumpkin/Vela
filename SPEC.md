@@ -870,6 +870,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
+| Appearance > Map | `AppTheme.mapMode`, `theme_map_mode`, `FOLLOW` | the map's light or dark apart from the app: the app's, Light, Dark, or Day and night by the sun under any app theme (`AUTO`, issue #874); 6.2 has the order of the rules |
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
@@ -4287,10 +4288,22 @@ shares (`widenStreets`, the road edges, label colors, the hide list, borders).
   night palettes are `DarkPalette` values (`MODERN_DARK`, `CONTRAST_DARK`) that `applyDark`
   paints; Contrast by day draws as Modern.
 - The map's light or dark is its own setting: `AppTheme.mapMode` (`MapThemeMode` FOLLOW / LIGHT /
-  DARK, pref `theme_map_mode`, Settings > Appearance > Map). `isMapDark()` resolves the nav
-  day/night override first, then the map mode, then the app theme. `isMapAmoled()` is true only
-  while the map follows an app in `ThemeMode.AMOLED`. The map surface, its route colors and the
-  scale bar take these. Sheets, cards, bars and settings keep `isAppInDarkTheme()`.
+  DARK / AUTO, pref `theme_map_mode`, Settings > Appearance > Map). `isMapDark()` resolves the nav
+  day/night override first, then the map mode, then the app theme (`mapDarkOwn`). AUTO ("Day and
+  night") is `AppTheme.night` under any app theme. `isMapAmoled()` is true only while the map
+  follows an app in `ThemeMode.AMOLED`. The map surface, its route colors and the scale bar take
+  these. Sheets, cards, bars and settings keep `isAppInDarkTheme()`. The car map reads the app
+  theme alone (`CarMapRenderer.isNight`, 10.6).
+- `AppTheme.night` is recomputed once a minute while the app is in the foreground (`VelaRoot`),
+  in every mode: the sun at the last position rounded to 0.01 degree (`SunTimes.isNight`), or
+  dark before 07:00 and from 19:00 when that position is more than 24 hours old or location is
+  not granted (`isNightByClock`).
+- "Day and night while navigating" (`AppTheme.navDayNight`, pref `theme_nav_day_night`, off)
+  sets both the app and the map to `AppTheme.night` during a drive or driving mode. Its row is
+  hidden while it would change nothing: the app on AUTO with the map on FOLLOW or AUTO
+  (`navDayNightMatters`).
+- A build from before AUTO reads it from `theme_map_mode` as an unknown name and falls back to
+  FOLLOW without rewriting the key (`mapModeFrom`), so the choice is back after an upgrade.
 - `VelaTheme` puts the AMOLED surfaces on whichever dark scheme is in use
   (`ColorScheme.onTrueBlack`): Vela's own, or the wallpaper's with "Material You colors" on,
   whose accents are kept.
