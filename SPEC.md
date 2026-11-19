@@ -5504,6 +5504,11 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   Davis Unitrans line: 589 stops, 6:55 AM to 9 PM). `Transitous.buildTripStep` treats every stop
   within `LAP_SAME_STOP_M` (30 m) of the nearest as a pass, boards at the pass nearest the tapped
   departure time (the first without one), and shows one lap.
+- A run's stop list (`RouteDetailSheet`) fills the screen. `MapScreen` draws it after the map's
+  floating pieces (the Street View preview, the locate, parking and layers buttons), so none of
+  them shows over it; only the status and download cards are drawn above it. A map link opened
+  while it is up closes it (`openDeepLink`), so the place or Street View the link opens is not
+  under it.
 - `TransitStopCache`: each successful viewport fetch overwrites its area in a 24-area on-disk
   LRU, so visited areas keep their stops offline.
 - `TransitBoardCache`: the newest 48 boards on disk, keyed by stop coordinate to about 10 m, with

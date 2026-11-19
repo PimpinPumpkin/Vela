@@ -3185,6 +3185,9 @@ class MapViewModel @Inject constructor(
         // A trip still being looked up from an earlier link gives way to this one.
         linkTripJob?.cancel()
         clearLinkTrip()
+        // A run's stop list fills the screen above everything a link opens, the Street View viewer
+        // included, so the link closes it.
+        closeRouteDetail()
         if (link.streetView && openStreetViewLink(link)) return
         // The user's choice for links (LinkAction): a plain location link can open directions,
         // and either kind can start the drive once its route lands (the one-tap Start path, so

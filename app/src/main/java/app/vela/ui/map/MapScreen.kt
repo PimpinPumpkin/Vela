@@ -2341,24 +2341,6 @@ fun MapScreen(
             )
         }
 
-        // Tap-through: the stop timeline for a route tapped on the departure board. Drawn over the
-        // place sheet; tapping a stop opens that stop's own board, so the user keeps drilling down
-        // the line the way Google's tap-through does. Also shown (with a spinner) while it loads.
-        app.vela.ui.SheetTransition(
-            targetState = state.takeIf { it.routeDetail != null || it.routeDetailLoading },
-            contentKey = { it != null },
-            animateContent = { it != null },
-            onBack = if (state.routeDetail != null || state.routeDetailLoading) vm::closeRouteDetail else null,
-        ) { snapshot ->
-            if (snapshot != null) app.vela.ui.place.RouteDetailSheet(
-                step = snapshot.routeDetail,
-                title = snapshot.routeDetailTitle,
-                loading = snapshot.routeDetailLoading,
-                onClose = vm::closeRouteDetail,
-                onStopTap = vm::openRouteStop,
-            )
-        }
-
         // In-app Street View (keyless pano tiles on a GL sphere). HALF-SCREEN over the map by
         // default (Google-style: the map underneath shows a rotating view cone at the pano and
         // eases along as you walk), with a corner button to go full screen.
@@ -2633,6 +2615,26 @@ fun MapScreen(
                 // MapScreen keeps.
                 LayersCorner(vm, landscapeChrome, darkTheme)
             }
+
+        // Tap-through: the stop timeline for a route tapped on the departure board. It fills the
+        // screen, so it is drawn after the map's floating pieces (the Street View preview, the
+        // locate and layers buttons), which it covers. Tapping a stop opens that stop's own board,
+        // so the user keeps drilling down the line the way Google's tap-through does. Also shown
+        // (with a spinner) while it loads.
+        app.vela.ui.SheetTransition(
+            targetState = state.takeIf { it.routeDetail != null || it.routeDetailLoading },
+            contentKey = { it != null },
+            animateContent = { it != null },
+            onBack = if (state.routeDetail != null || state.routeDetailLoading) vm::closeRouteDetail else null,
+        ) { snapshot ->
+            if (snapshot != null) app.vela.ui.place.RouteDetailSheet(
+                step = snapshot.routeDetail,
+                title = snapshot.routeDetailTitle,
+                loading = snapshot.routeDetailLoading,
+                onClose = vm::closeRouteDetail,
+                onStopTap = vm::openRouteStop,
+            )
+        }
 
         // --- transient surfaces --------------------------------------------
         if (state.showPsdsTip && state.selected == null && !searchOpen && !state.navigating &&

@@ -6,8 +6,9 @@ From street zoom the map shows a blue badge at each transit stop: round with a b
 a larger rounded square with a train or a subway car at a station. Tap one and the sheet opens on
 its departure board: one row per route and direction, with the route's pill in the agency's
 color, the next departure and a countdown (green when the vehicle is tracked live), and the
-times after it. Tap Stops on a row for the run's stop list: stops already passed are gray, live
-times are green or red, canceled calls are struck through. Tap a stop there to open its board.
+times after it. Tap Stops on a row for the run's stop list, which fills the screen over the map
+and its buttons: stops already passed are gray, live times are green or red, canceled calls are
+struck through. Tap a stop there to open its board.
 
 Directions in transit mode list trips with their times, lines and walks. A trip's card shows
 its first four lines and a count of the rest. Chips set the time
