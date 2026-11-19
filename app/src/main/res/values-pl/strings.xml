@@ -1574,4 +1574,8 @@
     <string name="settings_trip_batch_share_full">Udostępnij pełne ślady trasy</string>
     <string name="settings_trip_batch_saved">Zapisano pełny ślad trasy</string>
     <string name="welcome_trips_title">Twoje trasy</string>
+    <string name="settings_place_names">Nazwy miejsc</string>
+    <string name="settings_place_names_more">Więcej</string>
+    <string name="settings_place_names_most">WIększość</string>
+    <string name="settings_place_names_hint">Po dalszym oddaleniu widoku na mapie „Więcej” i „Większość” wyświetlają nazwy i ikony sklepów, szkół oraz innych miejsc. W ruchliwych obszarach pojawia się duże natężenie ruchu przez co mapa może działać tam mniej płynnie.</string>
 </resources>
