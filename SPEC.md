@@ -224,7 +224,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `Buildings3d`, `CategoryChipsPref`, `ContactsSearch`, `DetailsRetry`, `DynamicColor`,
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
-  `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
+  `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `LockScreenNav`, `MapColors`, `MapPoiPrefs`,
   `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
@@ -873,6 +873,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
 | Navigation > FreeFused | `FreeFused.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `freeFusedOff` dial turns it off for every install |
+| Navigation > Show the drive on the lock screen | `LockScreenNav.on`, `nav_on_lock_screen`, true | `MainActivity` shows over the lock screen while a drive runs and is not paused (10.2, Over the lock screen) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
@@ -5772,6 +5773,12 @@ reuses it.
 - Picture-in-picture: everything after the map call is inside one `if (!pipUi)` gate. The map's
   compass and all gestures are off in PiP, because the system's taps on the window reach the map
   as gestures and detach the follow camera.
+- Over the lock screen: while a drive runs and is not paused, and Settings > Navigation "Show the
+  drive on the lock screen" is on (`LockScreenNav`, on by default), `MainActivity` shows over the
+  lock screen (`setShowWhenLocked`; the window flag on Android 8.0), so the power button wakes the
+  phone to the route instead of the PIN prompt. Paused or ended, the lock screen covers the app
+  again. A drive's chrome has no way to Settings except the no-voice pill, and over a locked phone
+  `openSettings` runs only after `requestDismissKeyguard` succeeds.
 - `MapScreen` takes no new call or parameter. It is at the JVM method-size limit ("Method too
   large" in the debug compile) and at ART's verifier limit, which fails on the phone. New
   floating pieces go in `MapFloaters` (the replay controls, the Street View preview, driving

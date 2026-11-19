@@ -180,6 +180,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Navigation icon" is an arrow, a car, a UFO, a pirate ship or a rubber duck, with "Arrow size" and
   "Arrow colors".
 - "Vibrate on turns", "Keep screen on while navigating" and "Ask before ending navigation".
+- A running drive shows over the lock screen, so the power button wakes the phone to the route.
 - A notification, a picture-in-picture mini map and, on Android 16, a live update carry the drive in
   the background.
 - "Turn card in the mini map" sets the mini map's layout.

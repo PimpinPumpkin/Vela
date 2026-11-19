@@ -16,6 +16,8 @@ import app.vela.ui.theme.VelaTheme
 import app.vela.ui.theme.isAppInDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -72,6 +74,17 @@ class MainActivity : ComponentActivity() {
                             .onFailure { android.util.Log.w("VelaPip", "setPictureInPictureParams failed", it) }
                     }
                 }
+            }
+        }
+        // Over the lock screen while a drive runs and is not paused (Settings > Navigation, on by
+        // default): the power button wakes the phone to the route, not the PIN prompt.
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                vm.state.map { it.navigating && !it.navPaused }.distinctUntilChanged(),
+                androidx.compose.runtime.snapshotFlow { app.vela.ui.LockScreenNav.on.value },
+            ) { driving, on -> driving && on }.distinctUntilChanged().collect { show ->
+                runCatching { app.vela.ui.LockScreenNav.show(this@MainActivity, show) }
+                    .onFailure { android.util.Log.w("VelaLock", "show when locked failed", it) }
             }
         }
         handleIntent(intent)

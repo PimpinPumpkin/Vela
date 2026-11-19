@@ -259,6 +259,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The drive on the lock screen (`LockScreenNav`, issue #896): on an Android 14 emulator with a
+  swipe lock, a running drive showed over the lock screen after the power button, and pausing,
+  ending or the switch off put the lock screen back. Not yet on a phone with a PIN, where Settings
+  over the drive should ask for it, or on Android 8.0, which takes the older window flag.
 - FreeFused, the fused position guidance steers by (`PositionFilter`): on a 15-minute freeway drive it
   stayed within 0.6 m of the GPS fix (median, 4.2 m at most) and refused no fix. Not yet seen on
   a real drive: a stop, and a reflection at a red light between tall buildings. Those were

@@ -68,6 +68,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             switchModifier = topRow,
         )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_lock_screen_nav),
+            checked = app.vela.ui.LockScreenNav.on.value,
+            onCheckedChange = { app.vela.ui.LockScreenNav.set(context, it) },
+            hint = stringResource(R.string.settings_lock_screen_nav_hint),
+        )
 
         // Which route chooser Directions opens. The Google-style picker graduated from an
         // experiment to the default on 2026-09-18; the classic panel stays one toggle away.

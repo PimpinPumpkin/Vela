@@ -328,6 +328,10 @@ the route with traffic and a point for each stop.
 A paused drive shows "Paused" in the bar, turns the line ahead lavender and lets the screen
 sleep. What pause holds, and the live update's conditions, are in [chapter 4](04-navigation.md).
 
+While a drive runs, Vela shows over the lock screen, so the power button brings back the route,
+not the PIN prompt ("Show the drive on the lock screen", Settings > Navigation, on by default).
+Pausing or ending the drive puts the lock screen back over it, and Settings asks for the unlock.
+
 ### Stops during the drive
 
 The step list's first row is the stops row. With no stops it reads "Edit route" and opens the
