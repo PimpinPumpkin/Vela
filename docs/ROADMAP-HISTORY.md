@@ -9,6 +9,11 @@ says so.
 
 ## Shipped
 
+### November 2026
+
+- One list exported on its own (#822), from the list editor's title row. Checked on a Pixel 4a:
+  a list's exported file, imported after the list was deleted, brought it back with its place.
+
 ### October 2026
 
 - Driving mode on the phone (#727): the map alone in the drive's layout with no route, with the

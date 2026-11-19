@@ -521,11 +521,6 @@ off the list when it has been.
   .routeCardinals`, `RoadNameShortTest`). Seen on a 4a in a simulated drive: "Take the ramp on
   the right toward I 80 W". Not seen on the car.
 - The debug export's `input` line (#744): not seen; written for the head unit's report.
-- One list exported on its own (#822): a share button in the list editor's title row, seen on
-  a 4a: it opens the share sheet with `vela-list-<name>.json`, and Delete, Cancel and Save keep
-  their row. A file of that shape picked under Saved places > Your lists > Import came back as
-  the list with its two places and its pins on the map. Not seen: the exported file itself
-  going round, since the share sheet on the rig has no file target.
 - Names under saved pins from z14 (#823): seen on a 4a in dark and light mode at z14 to z16:
   three pins in a downtown grid with their names under them beside the open-places labels, a
   pin on top of the basemap's own label for the same place keeping the pin and losing the name,
