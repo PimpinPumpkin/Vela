@@ -6006,9 +6006,14 @@ bar chip and on the lock screen.
 - The system raises the chip only while the app holds
   `android.permission.POST_PROMOTED_NOTIFICATIONS`, which the user can turn off in the app's
   notification settings. Without it the notification still posts in the shade.
-- A drive has this one notification. No second card pops per spoken turn: two drive
-  notifications sat in the shade at once. Older builds' turn heads-up (id 43) is canceled when
-  the service starts.
+- A drive has this one notification. A line the voice speaks while the app is not visible
+  (`VoiceGuide.onPromptAlert`, after the mute check; picture-in-picture counts as visible)
+  re-posts it on `vela_nav_turns` (HIGH, no sound, no vibration) without only-alert-once, so it
+  drops down as a banner; updates stay on that channel for `ALERT_HOLD_MS` (8 s), then it moves
+  back. The system takes a heads-up down as soon
+  as its channel drops below HIGH, and its heads-up lasts about 5 s. With the turn channel turned
+  off by the user it never moves. A second card per spoken turn (older builds, id 43) put two
+  drive notifications in the shade; one is canceled at service start.
 - The channel `vela_nav_drive` has DEFAULT importance with no sound and no vibration. A LOW
   channel is filed as silent, and a phone that hides silent notifications on the lock screen
   would hide the drive there. A channel's importance is fixed once it exists, so the old LOW

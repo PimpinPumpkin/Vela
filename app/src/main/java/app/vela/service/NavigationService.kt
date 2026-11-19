@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import java.text.DateFormat
@@ -54,6 +55,7 @@ import javax.inject.Inject
 class NavigationService : Service() {
 
     @Inject lateinit var navSession: NavSession
+    @Inject lateinit var voice: app.vela.core.voice.VoiceGuide
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observing = false
@@ -95,9 +97,24 @@ class NavigationService : Service() {
             return START_NOT_STICKY
         }
 
-        // One notification for the whole drive: the turn the voice says is the one this card
-        // shows, and on Android 16 its status-bar chip. A second heads-up card per spoken turn
-        // put two drive notifications in the shade at once.
+        // A turn the voice says while the app is not on screen drops down as a banner. The banner is
+        // the drive's own card, moved to the turn channel (HIGH) for [ALERT_HOLD_MS] and posted to
+        // alert again, then moved back: one notification, never a second card beside it. Held
+        // that long because the system takes a heads-up down as soon as its channel drops below
+        // HIGH. Post-mute hook, so a muted drive pops nothing.
+        voice.onPromptAlert = {
+            if (!app.vela.ui.AppVisibility.foreground.value && turnChannelOn()) {
+                alertUntilMs = android.os.SystemClock.elapsedRealtime() + ALERT_HOLD_MS
+                runCatching { notificationManager().notify(NOTIF_ID, buildNotification(alert = true)) }
+                alertEnd?.cancel()
+                alertEnd = scope.launch {
+                    kotlinx.coroutines.delay(ALERT_HOLD_MS)
+                    val st = navSession.state.value
+                    if (st.navigating && !st.arrived) runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
+                }
+            }
+        }
+        // The per-turn second card older builds posted, in case one is still up.
         runCatching { notificationManager().cancel(OLD_TURN_ALERT_ID) }
 
         if (!observing) {
@@ -157,7 +174,18 @@ class NavigationService : Service() {
         ).joinToString("|")
     }
 
-    private fun buildNotification(): Notification {
+    /** Off when the user turned the turn channel off: the drive's card would vanish while on it. */
+    private fun turnChannelOn(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            (notificationManager().getNotificationChannel(TURN_CHANNEL_ID)?.importance ?: NotificationManager.IMPORTANCE_NONE) >=
+            NotificationManager.IMPORTANCE_HIGH
+
+    private var alertUntilMs = 0L
+    private var alertEnd: kotlinx.coroutines.Job? = null
+
+    /** The drive's card. [alert] posts it to drop down as a banner (a spoken turn in the
+     *  background); while [alertUntilMs] runs, updates stay on the turn channel without alerting. */
+    private fun buildNotification(alert: Boolean = false): Notification {
         ensureChannel()
         val s = navSession.state.value
         // Google-style: lead with the distance to the next turn ("In 500 ft · Turn right
@@ -234,14 +262,15 @@ class NavigationService : Service() {
                 background = accent,
             ).also { cachedGlyph = it; cachedGlyphType = t; cachedGlyphAccent = accent }
         }
-        val b = NotificationCompat.Builder(this, CHANNEL_ID)
+        val turnChannel = alert || android.os.SystemClock.elapsedRealtime() < alertUntilMs
+        val b = NotificationCompat.Builder(this, if (turnChannel) TURN_CHANNEL_ID else CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_nav)
             .setContentTitle(title)
             .setContentText(text)
             .setLargeIcon(largeIcon)
             .setColor(accent) // dynamic accent when Material You is on, VelaTeal otherwise
             .setOngoing(true)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!alert)
             .setShowWhen(false) // the post time is noise on a continuously-updating nav card
             .setContentIntent(open)
             .addAction(
@@ -340,6 +369,7 @@ class NavigationService : Service() {
     }
 
     private fun teardown() {
+        voice.onPromptAlert = null
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
         // Also clear a DETACHED arrival notification (the arrived branch posts one dismissable —
         // tapping Done in-app must not leave it stranded in the shade).
@@ -379,8 +409,8 @@ class NavigationService : Service() {
                         enableVibration(false)
                     },
                 )
-                // Transit's "get off at the next stop" heads-up (TransitGuideService). HIGH so it
-                // pops, but soundless and buzz-free: the voice says it too.
+                // HIGH so a spoken turn's card drops down as a banner (and transit's "get off at the
+                // next stop"), but soundless and buzz-free: the voice is the sound.
                 nm.createNotificationChannel(
                     NotificationChannel(
                         TURN_CHANNEL_ID,
@@ -406,8 +436,11 @@ class NavigationService : Service() {
         /** The live-update bar's color for road that is not congested: the route line's own blue,
          *  so the notification and the map agree about what the drive looks like. */
         private const val TRAFFIC_CLEAR = 0xFF1F6FEB.toInt()
-        /** The per-turn heads-up older builds posted beside this card; cleared in case one is up. */
+        /** The per-turn second card older builds posted beside this one. */
         private const val OLD_TURN_ALERT_ID = 43
+        /** How long a turn's banner keeps the card on the turn channel. The system's heads-up
+         *  lasts about 5 s; moving back sooner takes it down early. */
+        private const val ALERT_HOLD_MS = 8_000L
 
         /** Best-effort: start the background nav service. A failure here (background
          *  start not allowed, OEM restriction) is swallowed — foreground nav, driven
