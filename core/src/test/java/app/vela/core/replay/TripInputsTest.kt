@@ -95,6 +95,26 @@ class TripInputsTest {
         assertTrue("inputs rebase with the fixes", p.inputs.first().msSinceFix == 2L && out.lines().first { it.startsWith("N,") }.split(',')[1] == "2")
     }
 
+    @Test fun `a fix line carries the satellites' signal, and an older one reads without it`() {
+        val now = "$lat,$lng0,1756700000000,90.0,1.2,0,3.0,gps,0,0.3,12.0,0,31.4,9\n"
+        val noStatus = "$lat,$lng0,1756700001000,90.0,1.2,0,3.0,gps,0,0.3,12.0,0,,\n"
+        val old = "$lat,$lng0,1756700002000,90.0,1.2,0,3.0,gps,0,0.3,12.0,0\n"
+        val p = TripLog.parse("META,Davis,1756700000000,,,3109\n" + now + noStatus + old).points
+        assertEquals(31.4f, p[0].signalDbHz!!, 1e-4f); assertEquals(9, p[0].satellitesUsed)
+        assertNull(p[1].signalDbHz); assertNull(p[1].satellitesUsed); assertEquals(false, p[1].still)
+        assertNull(p[2].signalDbHz)
+    }
+
+    @Test fun `a shared copy keeps the signal on the fixes it keeps`() {
+        val n = 200
+        val big = buildString {
+            append("META,Davis,1756700000000,$lat,${lng0 + step * (n - 1)},3109\n")
+            for (i in 0 until n) append("$lat,${lng0 + step * i},${1756700000000L + i * 1000},90.0,15.0,0,4.0,gps,0,0.3,5.0,0,38.5,11\n")
+        }
+        val pts = TripLog.parse(TripScrub.scrub(big)!!.csv).points
+        assertTrue(pts.isNotEmpty() && pts.all { it.signalDbHz == 38.5f && it.satellitesUsed == 11 })
+    }
+
     @Test fun `the audit runs on what the engine was handed`() {
         val report = TripLog.audit(csv())!!
         // One card per input: 11 on the start route (with the reckoned one), 10 on the reroute.

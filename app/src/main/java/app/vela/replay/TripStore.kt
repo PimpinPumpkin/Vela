@@ -98,11 +98,16 @@ class TripStore @Inject constructor(
             // engine's off-route debounce had counted (a reroute about to fire shows as 1, 2, 3).
             // Speed accuracy, course accuracy and the at-rest flag LAST (2026-11-17): what the
             // position filter took from this fix, so a replay can run the filter as the drive did.
+            // The satellites' signal LAST (2026-11-18): the four strongest used satellites' mean
+            // C/N0 and the count used, on a GPS fix with a fresh status (GnssSignal).
+            val sig = if (loc.provider == android.location.LocationManager.GPS_PROVIDER)
+                app.vela.core.location.GnssSignal.latest(android.os.SystemClock.elapsedRealtime()) else null
             f.appendText(
                 "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
                     "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits," +
                     "${if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond else ""}," +
-                    "${if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees else ""},${if (still) 1 else 0}\n",
+                    "${if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees else ""},${if (still) 1 else 0}," +
+                    (sig?.let { String.format(java.util.Locale.US, "%.1f,%d", it.first, it.second) } ?: ",") + "\n",
             )
             lastFixWallMs = System.currentTimeMillis()
         }

@@ -1656,8 +1656,8 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
     distance. The accuracy circle is the model's (`accuracyM`).
   - Steps are ignored for 5 s after a GPS fix at 4 m/s or more: a car's vibration is no walk.
   - The tuning is a walker's (`Q_WALK`) while steps land, a car's otherwise.
-  - `setprop debug.vela.tune.dotLog 1` logs each fix's distance to the dot, the circle and the
-    learned step under `VelaDot`, in meters only.
+  - `setprop debug.vela.tune.dotLog 1` logs each fix's distance to the dot, the circle, the
+    learned step and the satellites' signal under `VelaDot`, in meters only.
   - Three states. Walking: a step in the last 2.5 s; steps move the dot, with `WALK_POSITION_NOISE`
     (0.3 m²/s). Moving: no step but a trusted GPS speed of `MOVE_MPS` (0.8 m/s) or more in the
     last 10 s (a car, a bike, a phone in a bag); guidance's tuning. Stationary: neither. A
@@ -1682,8 +1682,8 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
     in hops of 1 to 4 m.  - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
     came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o` for
     the old smoothing), into a trip named "Location test" until it is turned off. The bearing
-    field of those `N` lines is the compass. Share trimmed keeps the steps and dot positions
-    beside the fixes it keeps (14.3).
+    field of those `N` lines is the compass, and each GPS fix carries the satellites' signal
+    (4.10). Share trimmed keeps the steps and dot positions beside the fixes it keeps (14.3).
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says
@@ -2929,7 +2929,11 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 - The trip format is `core/replay/TripLog`: a `META` header, then route blocks and
   `lat,lng,t,bearing,speed` fixes. Every fix also carries its provider and the engine's
   off-route hit count, and from 2026-11-17 its speed accuracy, course accuracy and the
-  accelerometer's at-rest flag: what the position filter took from it.
+  accelerometer's at-rest flag: what the position filter took from it. From 2026-11-18 a GPS fix
+  also carries the satellites' signal (`GnssSignal`, from the GNSS status the location provider
+  listens to while it runs): the mean C/N0 of the four strongest satellites used in the fix, in
+  dB-Hz, and how many were used, both empty when no status came in the last 2 s. A share keeps
+  them: they hold no position.
 - Trips are segmented. The start route and every mid-drive swap is its own `RP`/`RD`/`M` block,
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.

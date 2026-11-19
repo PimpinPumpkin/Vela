@@ -169,7 +169,20 @@ class LocationProvider @Inject constructor(
                     mgr.requestLocationUpdates(p, minIntervalMs, minDistanceM, listener, Looper.getMainLooper())
                 }
             }
-            awaitClose { mgr.removeUpdates(listener) }
+            // The satellites' signal strength while the updates run (GnssSignal): it tells a fix
+            // under open sky from one through a roof, which the fix's own accuracy does not.
+            val gnss = object : android.location.GnssStatus.Callback() {
+                override fun onSatelliteStatusChanged(status: android.location.GnssStatus) {
+                    val used = ArrayList<Double>()
+                    for (i in 0 until status.satelliteCount) if (status.usedInFix(i)) used += status.getCn0DbHz(i).toDouble()
+                    GnssSignal.update(used, android.os.SystemClock.elapsedRealtime())
+                }
+            }
+            val gnssOn = runCatching { mgr.registerGnssStatusCallback(gnss, android.os.Handler(Looper.getMainLooper())) }.getOrDefault(false)
+            awaitClose {
+                mgr.removeUpdates(listener)
+                if (gnssOn) runCatching { mgr.unregisterGnssStatusCallback(gnss) }
+            }
         }
 
     /** Replay a recorded trip as a synthetic fix stream — same shape as [updates], so

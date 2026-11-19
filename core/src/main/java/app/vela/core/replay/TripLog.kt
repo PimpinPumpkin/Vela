@@ -24,8 +24,10 @@ import app.vela.core.nav.NavReplay
  *   absent on older trips
  * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` — one per maneuver (instruction last; may hold commas)
  * - `<lat>,<lng>,<t>,<bearing>,<speed>,<offRoute>,<accuracy>,<provider>,<offRouteHits>,<speedAcc>,
- *   <bearingAcc>,<still>`: one per recorded GPS fix (all after speed are appended fields, absent
- *   on older trips; the last three are what [app.vela.core.location.PositionFilter] took)
+ *   <bearingAcc>,<still>,<signalDbHz>,<satellitesUsed>`: one per recorded GPS fix (all after speed
+ *   are appended fields, absent on older trips; speedAcc, bearingAcc and still are what
+ *   [app.vela.core.location.PositionFilter] took, and the last two the satellites' signal behind a
+ *   GPS fix, [app.vela.core.location.GnssSignal], empty when the phone sent none)
  * - `K,<t>,<text>`: a nav decision (recheck offered / kept, reroute attempt, swap) or a note on
  *   what the drive ran on; no coordinates, no names, no spoken text
  * - `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`: what the nav engine was
@@ -60,6 +62,8 @@ object TripLog {
         val speedAccuracy: Float? = null,   // the fix's speed accuracy, m/s (2026-11-17+)
         val bearingAccuracy: Float? = null, // the fix's course accuracy, degrees (2026-11-17+)
         val still: Boolean? = null,         // the accelerometer's at-rest flag at this fix (2026-11-17+)
+        val signalDbHz: Float? = null,      // the four strongest used satellites' mean C/N0 (2026-11-18+)
+        val satellitesUsed: Int? = null,    // satellites used in the fix (2026-11-18+)
     ) {
         val latLng: LatLng get() = LatLng(lat, lng)
     }
@@ -227,6 +231,8 @@ object TripLog {
             speedAccuracy = p.getOrNull(9)?.toFloatOrNull(),
             bearingAccuracy = p.getOrNull(10)?.toFloatOrNull(),
             still = p.getOrNull(11)?.takeIf { it.isNotBlank() }?.let { it == "1" },
+            signalDbHz = p.getOrNull(12)?.toFloatOrNull(),
+            satellitesUsed = p.getOrNull(13)?.toIntOrNull(),
         )
     }
 
