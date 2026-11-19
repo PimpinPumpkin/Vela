@@ -1411,6 +1411,9 @@
     <string name="settings_turn_declutter">Simplify the map in turns</string>
     <string name="settings_turn_declutter_hint">While the map swings through a turn, only street names stay on it. Places, signs and cameras come back as soon as it settles. Keeps turns smooth on slower phones.</string>
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in gray behind the arrow. Off hides it, so only the road ahead is drawn.</string>
+    <string name="settings_speed_upcoming">Show upcoming speed limit changes</string>
+    <string name="settings_speed_upcoming_hint">Shows the next speed limit and distance ahead on your route or current road.</string>
+    <string name="settings_speed_upcoming_distance">Look-ahead distance: %1$s</string>
     <string name="settings_bike_safe">Bike routes prefer bike lanes and quiet streets</string>
     <string name="settings_bike_safe_hint">Cycling routes favor signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
     <string name="settings_route_picker">Google-style route picker</string>
@@ -1422,7 +1425,9 @@
     <string name="settings_turn_arrows">Turn arrows on the route</string>
     <string name="settings_turn_arrows_hint">Short arrows on the route at the turns ahead while you drive.</string>
     <string name="settings_route_bar">Road ahead bar</string>
-    <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
+    <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras.</string>
+    <string name="settings_car_route_bar">Road ahead bar on the car screen</string>
+    <string name="settings_car_route_bar_hint">Also show the road ahead bar on Android Auto; off, it shows only on the phone.</string>
     <string name="settings_font">Font</string>
     <string name="settings_font_system">System font</string>
     <string name="settings_font_choose">Choose a font file…</string>

@@ -78,6 +78,13 @@ class OsmMaxspeedTest {
         assertNull(OsmMaxspeed.fromTags(null, null, null, "30 @ (07:00-09:00)", at(MON, 12)))
     }
 
+    @Test fun fromTagsPicksDirectionalLimitWhenTravelDirectionIsKnown() {
+        assertEquals(70.0, OsmMaxspeed.fromTags("50", "70", "30", null, at(MON, 12), isForward = true)!!, 1e-6)
+        assertEquals(30.0, OsmMaxspeed.fromTags("50", "70", "30", null, at(MON, 12), isForward = false)!!, 1e-6)
+        assertEquals(50.0, OsmMaxspeed.fromTags("50", "70", null, null, at(MON, 12), isForward = false)!!, 1e-6)
+        assertNull(OsmMaxspeed.fromTags(null, "70", null, null, at(MON, 12), isForward = false))
+    }
+
     @Test fun weatherAndCommentsAreNeverInForce() {
         assertNull(OsmMaxspeed.conditionalKmh("70 @ wet", at(MON, 12)))
         // "At busy times" is set by the overhead signs, not the clock.

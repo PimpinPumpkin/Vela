@@ -190,7 +190,9 @@ installed `.obf` files.
 - One route, no alternates, no traffic. The arrival time is free-flow.
 
 The same files answer the posted speed limit under the puck (`currentRoadLimit`), from the
-nearest road within `LIMIT_SNAP_M` (25 m). A derestricted or untagged road reads as blank.
+nearest heading-aligned road within `LIMIT_SNAP_M` (25 m), preferring continuity with the previous
+road within 15 m over crossing bridges or underpasses. A derestricted or untagged road reads as
+blank.
 
 ### Searching with no signal
 

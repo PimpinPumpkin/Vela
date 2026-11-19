@@ -45,8 +45,32 @@ interface RouteEngine {
      *  answer false. */
     fun covers(origin: LatLng, destination: LatLng, mode: TravelMode): Boolean = false
 
-    /** The posted speed limit (km/h) of the road nearest ([lat],[lng]), or null if unknown. Only the
-     *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline
-     *  limit data, so the default is null. Call off the main thread. Convert to mph at the UI boundary. */
-    fun currentRoadLimit(lat: Double, lng: Double): Double? = null
+    /** Clear any road-continuity state held between speed-limit lookups. */
+    fun clearRoadLimitContinuity() {}
+
+    /** The posted speed limit (km/h) of the road nearest ([lat],[lng]) matching [headingDeg] when
+     *  known, or null if unknown. Only the on-device engine can answer (from the OSM `maxspeed` in
+     *  the graph); online engines have no offline limit data, so the default is null. Call off the
+     *  main thread. Convert to mph at the UI boundary. */
+    fun currentRoadLimit(lat: Double, lng: Double, headingDeg: Double? = null): Double? = null
+
+    /** The first posted speed limit change `(limitKmh, distanceAheadMeters)` along [poly] between
+     *  [startMeters] and `startMeters + lookAheadMeters` that differs from [currentLimitKmh], or null. */
+    fun upcomingRoadLimit(
+        poly: List<LatLng>,
+        startMeters: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? = null
+
+    /** The first posted speed limit change `(limitKmh, distanceAheadMeters)` along the connected
+     *  road ahead from ([lat],[lng]) moving [headingDeg] within [lookAheadMeters], stopping at
+     *  sharp bends or ambiguous forks, or null. */
+    fun upcomingRoadLimitAhead(
+        lat: Double,
+        lng: Double,
+        headingDeg: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? = null
 }

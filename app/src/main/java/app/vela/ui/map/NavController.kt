@@ -1265,7 +1265,7 @@ internal class NavController(
 
     /** Show or hide the route bar (pref `route_bar`). */
     fun setRouteBar(on: Boolean) {
-        settingsPrefs.edit().putBoolean("route_bar", on).apply()
+        app.vela.ui.RouteBarPref.set(appContext, on)
         _state.update { it.copy(routeBarEnabled = on, routeBar = if (on) it.routeBar else null) }
     }
 

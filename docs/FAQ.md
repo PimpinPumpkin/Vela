@@ -36,7 +36,7 @@ type, address, and often phone and hours).
 | Walking and cycling routes | Open routers on OpenStreetMap data. Google's walk is used only when it is much shorter, with street names from the map | A walk asks Google once for comparison | Yes, with a downloaded region |
 | Live traffic and arrival times | Google | Yes | No. You still get a route and an estimate without traffic |
 | Reroutes while driving | The same as planning, with a short deadline; the phone's own data when there is no signal | Yes, your current position (as long as Google is on) | Yes |
-| Speed limits, traffic lights, stop signs, level crossings | OpenStreetMap, baked per region | Never | Yes |
+| Speed limits, traffic lights, stop signs, level crossings | OpenStreetMap, baked per region; speed limits also stream online per region when no offline region is downloaded | Never | Yes, with a downloaded region |
 | Surveillance and speed cameras | OpenStreetMap and DeFlock, bundled or baked | Never | Yes |
 | Fuel prices on gas stations | US: Google, in the search reply. UK: the government's Fuel Finder data, from a file Vela hosts | US: as part of the search. UK: never | UK: the last file downloaded |
 | Transit departures | Transitous, an open GTFS service; the stop's Google page where Transitous has no coverage | Only for that fallback | The last board seen at a stop, marked with its time |
