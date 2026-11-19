@@ -8045,6 +8045,61 @@ class MapViewModel @Inject constructor(
             )
         }
 
+    fun reloadImportedSettings() {
+        val spd = settingsPrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
+        val vol = settingsPrefs.getFloat("voice_volume", 1.0f)
+        val muted = !settingsPrefs.getBoolean("spoken_directions", true)
+        val alerts = muted && settingsPrefs.getBoolean("spoken_alerts_only", false)
+        val savedRaw = settingsPrefs.getString("voice_engine", null)
+        val savedEngine = when {
+            savedRaw == null || savedRaw.startsWith("vela.") ->
+                if (VelaPiper.isReady(appContext)) VelaPiper.ENGINE_ID else null
+            else -> savedRaw
+        }
+        voice.neural = neuralSynthFor(savedEngine)
+        voice.init(savedEngine)
+        val engineObj = savedEngine?.let { id ->
+            val label = velaLabel(id)
+                ?: voice.availableEngines().firstOrNull { it.packageName == id }?.label ?: id
+            VoiceEngine(id, label)
+        }
+        val activeVoice = VelaPiper.effectiveVoiceId(appContext)
+        voice.setRate(spd)
+        voice.setVolume(vol)
+        voice.muted = muted
+        voice.alertsOnly = alerts
+        app.vela.ui.VoiceAlertsOnly.on.value = alerts
+        navSession.liveRechecks = settingsPrefs.getBoolean("nav_live_rechecks", true)
+        val avoidT = settingsPrefs.getBoolean("avoid_tolls", false)
+        val avoidH = settingsPrefs.getBoolean("avoid_highways", false)
+        val avoidF = settingsPrefs.getBoolean("avoid_ferries", false)
+        app.vela.core.data.RoutingPrefs.avoidTolls = avoidT
+        app.vela.core.data.RoutingPrefs.avoidHighways = avoidH
+        app.vela.core.data.RoutingPrefs.avoidFerries = avoidF
+        _state.update {
+            it.copy(
+                voiceSpeed = spd,
+                voiceMuted = muted,
+                voiceAlertsOnly = alerts,
+                selectedEngine = engineObj,
+                selectedVoiceId = activeVoice,
+                voiceSpeaker = savedSpeakerFor(activeVoice),
+                asrActiveId = app.vela.voice.AsrEngine.active(appContext).id,
+                avoidTolls = avoidT,
+                avoidHighways = avoidH,
+                avoidFerries = avoidF,
+                routeBarEnabled = settingsPrefs.getBoolean("route_bar", false),
+                tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false),
+                tripAutoClear = settingsPrefs.getBoolean(TRIP_AUTO_CLEAR, false),
+                nameTripsOnSave = settingsPrefs.getBoolean("trip_name_on_save", false),
+            )
+        }
+        refreshPlacesOverlays()
+        refreshBuildingOverlays()
+        refreshMaxspeedOverlay()
+        refreshAddressOverlays()
+    }
+
     /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
      *  more invasive than diagnostics, so it's its own toggle. */
     /** Diagnostics > "Record a location test": every location fix as it came (GPS, Wi-Fi and cell),

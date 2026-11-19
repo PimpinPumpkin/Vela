@@ -206,7 +206,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   service/        NavigationService, NavGlyphs
   download/       DownloadService (DownloadWork)
   update/         SelfUpdater, ApkChoice, InstallSource
-  diag/           DiagExporter, DiagScrub, NavTrace, CrashCatcher
+  diag/           DiagExporter, DiagScrub, SettingsDump, NavTrace, CrashCatcher
   replay/         TripStore
   streetview/     PanoramaView, StreetViewTiles
 ```
@@ -7668,6 +7668,13 @@ from GitHub (5.8). With "Use Vela without Google" on, only the open services are
 - `SettingsDump.line` puts the settings on one line in a crash report and at the start of a
   recorded drive: switches, numbers and short option names. Free text and any key that could
   hold a position, an address, a contact, a name, a provider or a font are skipped.
+- `SettingsDump.exportIntent` and `SettingsDump.importFromUri` (Settings > Diagnostics >
+  "Settings backup") export and restore the typed `vela_settings` preferences plus `Units`
+  (`vela_units`) and `WhatsNew.enabled` (`vela_onboarding`) as a JSON file. Import clears prior
+  non-internal keys before writing the backup so default choices restore cleanly, excludes internal
+  and device-local keys (`INTERNAL_KEYS`, including `start_view_loc`, `ui_font_uri` and
+  `diag_enabled`, while keeping `google_session_rotate`), and calls `reloadHolders` and
+  `MapViewModel.reloadImportedSettings` to refresh all in-memory state immediately.
 - `SettingsDump.location` is the drive's third note, `location:`: the providers that are on,
   and on GrapheneOS its `Settings.Global` choices `network_location` (off, apple,
   grapheneos_proxy, apple_china), `force_disable_supl` (standard, off, grapheneos_proxy),

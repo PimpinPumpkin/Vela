@@ -456,6 +456,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you
   choose.
+- "Settings backup" exports your settings to a JSON file and restores them on another phone.
 - A recorded trip can be saved to the phone as its full trace, in a folder you pick, besides
   shared trimmed or whole.
 - "Redact places in exports" hides searches, destinations and place names.

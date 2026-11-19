@@ -68,12 +68,14 @@ import kotlinx.coroutines.withContext
 internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
     SettingsScaffold(stringResource(R.string.settings_diagnostics), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         LaunchedEffect(Unit) { vm.refreshDiagnostics() }
         PageIntro(stringResource(R.string.settings_diagnostics_hint))
         var showDiagConsent by remember { mutableStateOf(false) }
+        var redact by remember { mutableStateOf(prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)) }
         SettingsGroup {
         ToggleRow(
             label = stringResource(R.string.settings_share_diagnostics),
@@ -86,7 +88,6 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         // Issue #507: the export with the searches, destinations, links and place names gone
         // and coordinates at ~10 km, for a report the user means to post publicly. Always shown
         // (it also widens the trim on trip shares, which do not need diagnostics on).
-        var redact by remember { mutableStateOf(prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)) }
         ToggleRow(
             label = stringResource(R.string.settings_diag_redact),
             checked = redact,
@@ -157,6 +158,54 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         }
         }
 
+        val settingsImportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            OpenDocumentInDownload,
+        ) { uri ->
+            if (uri != null) scope.launch {
+                val count = withContext(Dispatchers.IO) { app.vela.diag.SettingsDump.importFromUri(context, uri) }
+                if (count >= 0) {
+                    app.vela.diag.SettingsDump.reloadHolders(context)
+                    vm.reloadImportedSettings()
+                    redact = prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)
+                    android.widget.Toast.makeText(
+                        context,
+                        context.resources.getQuantityString(R.plurals.settings_backup_imported, count, count),
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                } else {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_import_unreadable),
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        SettingsGroup(title = stringResource(R.string.settings_backup_title)) {
+            Hint(stringResource(R.string.settings_backup_hint))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                val backupFocus = remember { List(2) { FocusRequester() } }
+                DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape) {
+                    FilledTonalButton(
+                        modifier = Modifier.dpadRowSibling(backupFocus, 0),
+                        onClick = {
+                            app.vela.diag.SettingsDump.exportIntent(context)?.let {
+                                runCatching { context.startActivity(it) }
+                            }
+                        },
+                    ) { Text(stringResource(R.string.settings_export)) }
+                }
+                Spacer(Modifier.width(8.dp))
+                DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape) {
+                    FilledTonalButton(
+                        modifier = Modifier.dpadRowSibling(backupFocus, 1),
+                        onClick = { launchImport(context) { settingsImportLauncher.launch(arrayOf("application/json", "*/*")) } },
+                    ) { Text(stringResource(R.string.settings_import)) }
+                }
+            }
+        }
+
         // Demo modes (moved here 2026-09-17): test tools, kept apart from the settings people use
         // every day. The Google-style route picker used to sit beside them as an experiment; it is
         // the default now and lives in Settings > Navigation.
@@ -170,7 +219,6 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         var shareTrip by remember { mutableStateOf<app.vela.replay.TripMeta?>(null) }
         // Reading the list opens every trip file (for the row's distance and duration), so it
         // never runs in composition or on the main thread.
-        val scope = rememberCoroutineScope()
         var trips by remember { mutableStateOf<List<app.vela.replay.TripMeta>>(emptyList()) }
         var tripsLoaded by remember { mutableStateOf(false) }
         val reloadTrips: () -> Unit = {

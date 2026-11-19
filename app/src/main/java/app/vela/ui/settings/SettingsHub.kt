@@ -451,6 +451,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Diagnostics
     R.string.settings_share_diagnostics to SettingsSection.DIAGNOSTICS,
     R.string.settings_diag_redact to SettingsSection.DIAGNOSTICS,
+    R.string.settings_backup_title to SettingsSection.DIAGNOSTICS,
     R.string.settings_name_trips to SettingsSection.DIAGNOSTICS,
     R.string.settings_texture_render to SettingsSection.PERFORMANCE,
     R.string.settings_speech_preload to SettingsSection.PERFORMANCE,

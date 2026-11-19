@@ -1635,4 +1635,10 @@
     <string name="place_avoid_short_ferries">Ferries</string>
     <string name="place_avoid_short_cameras">Cameras</string>
     <string name="trip_shortcut_themed">Match themed icons</string>
+    <string name="settings_backup_title">Settings backup</string>
+    <string name="settings_backup_hint">Export your settings to a JSON file or restore them on another phone.</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">Restored %1$d setting</item>
+        <item quantity="other">Restored %1$d settings</item>
+    </plurals>
 </resources>

@@ -99,17 +99,21 @@ object AppFont {
             f.delete(); p.edit().remove(KEY_NAME).apply()
         }
         if (p.getBoolean(KEY_SYSTEM, false)) {
+            family.value = null
+            customName.value = null
             builtin.value = false
             vazirmatn.value = false
             return
         }
         if (p.getBoolean(KEY_VAZIRMATN, false)) {
             family.value = vazirmatnFamily()
+            customName.value = null
             builtin.value = false
             vazirmatn.value = true
             return
         }
         family.value = flexFamily()
+        customName.value = null
         builtin.value = true
         vazirmatn.value = false
     }
