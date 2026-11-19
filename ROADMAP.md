@@ -448,8 +448,9 @@ off the list when it has been.
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
 - The car's lane guidance switch (`CarLanes`, #866), in the car's settings and Settings >
-  Navigation: built, not run on the Desktop Head Unit. Not seen: the turn card near a turn with
-  the switch off and Zoom to the next turn on, or the car's settings list with six rows.
+  Navigation: on the Desktop Head Unit the car's settings list shows all six rows, the two
+  switches follow each other, and a demo drive's ramp step in Davis drew its lane strip with the
+  switch on and none with it off. Not yet in a car, where Zoom to the next turn meets it.
 - Side streets' stop signs left off a drive (#805): the bake's road for a sign from drivable ways
   and the most minor road at a junction, and the 10 m limit for a sign with no road. Needs a
   rebaked region driven down a main street, and one drive with no region (the Overpass path).
