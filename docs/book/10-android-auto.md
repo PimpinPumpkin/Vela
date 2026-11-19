@@ -219,7 +219,9 @@ applies the palette, discards that frame and renders again.
 | Follow system | the car's own day or night signal |
 
 An explicit choice on the phone holds on the car, so a driver who set Vela to dark does not get a
-light map because the head unit says day. Before each render the renderer checks that the look it
+light map because the head unit says day. Settings > Appearance > "Start dark mode on a schedule"
+sets the initial day or night state at launch from sunset to sunrise or custom hours until the car
+toggles its day/night signal. Before each render the renderer checks that the look it
 applied is still the current one and applies the palette again if it changed, so the map goes
 dark with the car.
 
