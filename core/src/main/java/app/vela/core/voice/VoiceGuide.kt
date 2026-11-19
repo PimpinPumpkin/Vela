@@ -402,11 +402,6 @@ class VoiceGuide @Inject constructor(
      *  alerts only, so a trip still shows what the drive meant to say. */
     var onMuted: ((String) -> Unit)? = null
 
-    /** Fired beside [onSpoken] on every line guidance actually speaks. The nav service taps this
-     *  to pop a visible heads-up of the turn while the app is backgrounded - a separate slot so
-     *  it can't clobber the trip recorder's hook (each is set by a different `:app` owner). */
-    var onPromptAlert: (() -> Unit)? = null
-
     /** Real romanized road names (local name -> Latin, from the basemap's name:latin), set by `:app`
      *  as nav tiles load. Used to speak "Rehov Herzl" instead of the ICU skeleton "rhwb hrzl" for a
      *  foreign street; empty by default so nothing changes without it (issue #184). */
@@ -426,7 +421,6 @@ class VoiceGuide @Inject constructor(
         // it names stops and streets, which no log carries otherwise.
         runCatching { if (android.util.Log.isLoggable("VelaSpeak", android.util.Log.DEBUG)) android.util.Log.d("VelaSpeak", text) }
         runCatching { onSpoken?.invoke(text) }
-        runCatching { onPromptAlert?.invoke() }
         if (!ready) {
             pending.addLast(text to interrupt)
             return

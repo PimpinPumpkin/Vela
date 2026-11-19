@@ -6006,6 +6006,9 @@ bar chip and on the lock screen.
 - The system raises the chip only while the app holds
   `android.permission.POST_PROMOTED_NOTIFICATIONS`, which the user can turn off in the app's
   notification settings. Without it the notification still posts in the shade.
+- A drive has this one notification. No second card pops per spoken turn: two drive
+  notifications sat in the shade at once. Older builds' turn heads-up (id 43) is canceled when
+  the service starts.
 - The channel `vela_nav_drive` has DEFAULT importance with no sound and no vibration. A LOW
   channel is filed as silent, and a phone that hides silent notifications on the lock screen
   would hide the drive there. A channel's importance is fixed once it exists, so the old LOW

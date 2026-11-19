@@ -608,8 +608,8 @@ arrow it follows the arrow and is clamped to stay on screen. Above the bar it st
 and has room for a long name. Inside the bar it takes no map space.
 
 The notification shows the current maneuver's glyph, the distance to it, the time and distance
-left and the arrival time, with Pause and End. When the voice speaks while the app is in the
-background, a silent heads-up shows the turn. On Android 16 the notification asks to be promoted
+left and the arrival time, with Pause and End. It is the drive's only notification: no second
+card pops for each spoken turn. On Android 16 the notification asks to be promoted
 to a live update: a status-bar chip with the distance to the next turn, and on the lock screen a
 bar scaled to the route, with the arrow where the car is, traffic colored like the route line
 and a point for each stop ahead.
