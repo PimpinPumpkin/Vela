@@ -282,6 +282,11 @@ off the list when it has been.
   on a Pixel 4a in Davis showed "You've reached" with the stop under the turn card as the voice
   said it. Not yet felt: the buzz with Vibrate on turns on, and a real drive.
 
+- An area tap that would make the outline cross itself goes into a side (issue #846,
+  `core/util/AreaInsert`, SPEC 5.6 Drawing). Unit-tested on squares, a triangle, a concave L,
+  taps on and along a side, and the same shape at the equator and at 60 degrees, with Undo
+  taking off an inserted point. Not yet drawn on a phone.
+
 - The drive on the lock screen (`LockScreenNav`, issue #896): on Android 14 and 8.0 emulators
   with a PIN, a running drive showed over the locked phone after the power button, Get a voice
   asked for the PIN first and Back returned to the drive, and pausing put the lock screen back.

@@ -6062,17 +6062,13 @@ class MapViewModel @Inject constructor(
         clearSearch()
         _state.update { it.copy(selected = null, drawing = DrawState()) }
     }
-    fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.copy(pts = d.pts + listOf(p.lat, p.lng))) } ?: s }
+    fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.add(p.lat, p.lng)) } ?: s }
     fun drawMovePoint(index: Int, to: LatLng) = _state.update { s ->
         s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->
             s.copy(drawing = d.copy(pts = d.pts.toMutableList().also { it[index * 2] = to.lat; it[index * 2 + 1] = to.lng }))
         } ?: s
     }
-    fun drawRemovePoint(index: Int) = _state.update { s ->
-        s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->
-            s.copy(drawing = d.copy(pts = d.pts.filterIndexed { i, _ -> i / 2 != index }))
-        } ?: s
-    }
+    fun drawRemovePoint(index: Int) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.remove(index)) } ?: s }
     /** Opens the shape whose sheet is up in the drawing bar: move, add or remove its points,
      *  change its kind, color or name; Save puts it back where it was kept. */
     fun editOpenedShape() {
@@ -6081,7 +6077,7 @@ class MapViewModel @Inject constructor(
         clearSearch()
         _state.update { it.copy(selected = null, drawing = DrawState(pts = shape.pts, closed = shape.closed, color = shape.color, editOf = shape, name = shape.name)) }
     }
-    fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(pts = d.pts.dropLast(2))) } ?: s }
+    fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.undo()) } ?: s }
     /** The name typed in the drawing bar, kept with the drawing so it outlives the bar. */
     fun drawSetName(name: String) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(name = name)) } ?: s }
     fun drawSetClosed(closed: Boolean) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(closed = closed)) } ?: s }

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.vela.R
+import app.vela.core.util.AreaInsert
 import app.vela.core.util.ShapeMeasure
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadFieldEscape
@@ -51,7 +52,36 @@ data class DrawState(
     /** The name typed so far. Kept here because the bar leaves composition whenever another
      *  sheet takes the bottom slot (a place opened from search), and its own state goes with it. */
     val name: String = "",
-)
+    /** For each point in [pts], the order it was added in. Undo takes off the newest, which is not
+     *  the last in [pts] once an area tap has gone into a side. Out of step with [pts] (a saved
+     *  shape opened for changes) reads as list order. */
+    val added: List<Int> = emptyList(),
+) {
+    private fun addedOrder(): List<Int> = (pts.size / 2).let { n -> if (added.size == n) added else List(n) { it } }
+
+    /** A tapped point. A line takes it at the end, an area where [AreaInsert] puts it so the
+     *  outline does not cross itself. */
+    fun add(lat: Double, lng: Double): DrawState {
+        val order = addedOrder()
+        val at = if (closed) AreaInsert.indexFor(pts, lat, lng) else order.size
+        return copy(
+            pts = pts.subList(0, at * 2) + listOf(lat, lng) + pts.subList(at * 2, pts.size),
+            added = order.subList(0, at) + ((order.maxOrNull() ?: -1) + 1) + order.subList(at, order.size),
+        )
+    }
+
+    fun remove(index: Int): DrawState {
+        val order = addedOrder()
+        if (index !in order.indices) return this
+        return copy(pts = pts.filterIndexed { i, _ -> i / 2 != index }, added = order.filterIndexed { i, _ -> i != index })
+    }
+
+    /** Takes off the point added last, wherever it sits in the outline. */
+    fun undo(): DrawState {
+        val order = addedOrder()
+        return if (order.isEmpty()) this else remove(order.indices.maxBy { order[it] })
+    }
+}
 
 /** The colors offered while drawing (ARGB): red, orange, yellow, green, blue, purple. */
 val DRAW_COLORS = listOf(0xFFE53935, 0xFFFB8C00, 0xFFFDD835, 0xFF43A047, 0xFF1E88E5, 0xFF8E24AA)

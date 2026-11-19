@@ -3930,14 +3930,23 @@ the shared 12 s timeout cuts it off.
 
 - The lists dialog's Draw button sets `MapUiState.drawing` (`DrawState`). Every map tap and
   long press then adds a point (`drawDots`, `onDrawTap`), ahead of all tap resolution. Back
-  removes the last point, then leaves.
+  and Undo remove the point added last, then Back leaves.
+- A line adds each point at its end. An area of 3 or more points places it with
+  `core/util/AreaInsert`, so the outline does not fold over itself: the point goes where its two
+  new sides cross the fewest sides of the outline. The end (between the last point and the
+  first) wins every tie, so an outline traced in order, concave or not, keeps its order. Among
+  the other sides, the one whose split adds the least perimeter wins. A new side that touches a
+  side or runs along it counts as crossing it, so a tap on a side goes into that side. The test
+  is on Web Mercator meters, where the map draws the sides straight. `DrawState.added` keeps
+  when each point came, so Undo takes off the newest wherever it went; a saved shape opened for
+  changes starts in list order.
 - `DrawBar` (reached through `ShapeBottomBar`, because MapScreen is at the method size limit)
   offers Line or Area, six colors (`DRAW_COLORS`), the live measure, a name, Undo and Save.
 - The typed name is kept in `DrawState.name` (`MapViewModel.drawSetName`). The bar leaves
   composition whenever another sheet takes the bottom slot, such as a place opened from search
   while drawing, and starts from the kept name when it returns.
 - A line needs 2 points and an area 3; at most 2,000 points. A finger within 26 dp of a point
-  drags it, and a tap removes it. Points cannot be inserted between two existing ones.
+  drags it, and a tap removes it.
 - Save appends a `MapShape` (width 4, an area filled at 25% opacity) to the list
   `list:drawings` ("My drawings").
 - The unfinished shape and a dot per point (`vela-shapes-dots`) draw from a source of their own

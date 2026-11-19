@@ -300,7 +300,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   Choose a tone or "Say its name" in the list's editor. It works while Vela is open or guiding.
 - A shared Google Maps list link opens with the owner's notes and can be saved as a list.
 - A Google My Maps link opens with its pins, lines and areas, and can be saved.
-- Draw a line or an area on the map from Your lists.
+- Draw a line or an area on the map from Your lists. A point tapped where the area would cross
+  itself goes into its nearest side instead.
 - The parking button saves where you parked, then offers Find my car, which shows how far the car
   is and when you parked. "Parking history" keeps past spots. When a drive ends, the arrival card
   offers to save the spot too.
