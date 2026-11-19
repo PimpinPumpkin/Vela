@@ -5842,7 +5842,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+The picker has 20 languages (`AppLocale.SUPPORTED`). Thai (`th`) has the full interface, its own spoken
+guidance (`ThNavStrings`) and the phone's own Thai voice; Google is still asked in English for
+Thai, because `SearchParser` has no Thai open and closed words yet. Estonian (`et`) has a partial translation
 from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
 spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
