@@ -13,7 +13,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
 - Places: "Place icons on the map", which places the map draws, how far out place names show,
   what a place page loads.
 - Navigation: route picker, road-ahead bar, arrow, speed limit and the over-the-limit warning,
-  lane guidance on the car screen, road numbers first, map keys, cameras
+  lane guidance on the car screen, road numbers first, custom route line width, map keys, cameras
   ([chapter 3](03-cameras.md)), traffic rechecks.
 - Voice: spoken directions, street names, the voice library, speed and custom volume multiplier.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,

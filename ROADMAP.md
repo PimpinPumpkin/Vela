@@ -263,6 +263,11 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Custom route line width multiplier and camera-tilt foreshortening (`NavLineWidth`,
+  `scaleRouteStops`, `CarMapRenderer.drawPerspectiveRoute`; SPEC 3.8, 6.5, 10.6): compiled and
+  visually checked in static tests, not yet checked across a drive at `0.1x` to `2.0x` on phone
+  and Android Auto.
+
 - Custom guidance volume slider up to 5x and two-band de-harshing above 3.2x (`VoiceLevel.apply`,
   `PiperSynth`; SPEC 9.1): unit-tested only. Not yet heard on a phone speaker or car Bluetooth at
   high multipliers (`3x` to `5x`).

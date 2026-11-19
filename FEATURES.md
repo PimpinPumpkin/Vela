@@ -187,7 +187,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   1, 5 or 15 minutes into a new trip, for sharing when the dot misbehaves.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
-- The route line is colored by congestion. "Road behind you" keeps the driven part in gray.
+- The route line is colored by congestion. "Road behind you" keeps the driven part in gray. "Custom route line width" can scale its width from 0.1x to 2x, tapering with camera tilt and distance.
 - The route line is drawn down the middle of the map's roads, where Google's own line would sit a
   lane to one side.
 - Your speed and the posted limit. "Show speed and speed limit" hides them.

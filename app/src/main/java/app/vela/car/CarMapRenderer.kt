@@ -1018,11 +1018,14 @@ class CarMapRenderer(
                 runCatching { drawTurnArrows(canvas, snap, sx, sy) }
                 runCatching { drawCorridor(canvas, snap, sx, sy) }
             } else if (preview != null && preview.polyline.size >= 2) {
-                // Preview screen: the whole route in blue, framed.
+                // Preview screen: the whole route in blue, framed, scaled by the user's line width setting.
+                val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+                otherRoutePaint.strokeWidth = 14f * mult
+                val mainPaint = trafficPaints[0]!!.apply { strokeWidth = 20f * mult }
                 for (other in previewOthers) {
                     if (other.polyline.size >= 2) runCatching { canvas.drawPath(pathOf(snap, other.polyline, other.polyline.indices, sx, sy), otherRoutePaint) }
                 }
-                runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
+                runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), mainPaint) }
                 runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
                 for (b in previewBubbles) runCatching { drawTimeBubble(canvas, snap, b, sx, sy) }
             }
@@ -1050,6 +1053,67 @@ class CarMapRenderer(
         return PointF(px.x * sx, px.y * sy)
     }
 
+    /** Perspective stroke width at screen vertical position [y] for a route line of [basePx]:
+     *  scales with the user's route-line multiplier, zoom level, camera tilt angle, and screen depth
+     *  (wider in the foreground near the bottom of the tilted view, tapering toward the horizon). */
+    private fun routeStrokeAt(basePx: Float, y: Float): Float {
+        val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+        val zoomScale = ((zoom - 11.5) / 5.5).coerceIn(0.60, 1.20).toFloat()
+        val sinTilt = kotlin.math.sin(Math.toRadians(tilt.coerceIn(0.0, 65.0))).toFloat()
+        val h = height.coerceAtLeast(1).toFloat()
+        val depthScale = (1f + sinTilt * ((y / h) - 0.65f) * 0.90f).coerceIn(0.45f, 1.28f)
+        return (basePx * mult * zoomScale * depthScale).coerceAtLeast(3f)
+    }
+
+    /** Draws [poly] over [range] with perspective width tapering when the camera is tilted, or as a
+     *  single path when flat. */
+    private fun drawPerspectiveRoute(
+        canvas: Canvas,
+        snap: MapSnapshot,
+        poly: List<LatLng>,
+        range: IntRange,
+        sx: Float,
+        sy: Float,
+        paint: Paint,
+        basePx: Float,
+    ) {
+        if (tilt <= 1.0) {
+            paint.strokeWidth = routeStrokeAt(basePx, height * 0.65f)
+            canvas.drawPath(pathOf(snap, poly, range, sx, sy), paint)
+            return
+        }
+        val clip = frontClip
+        var prevPt: PointF? = null
+        var prevLatLng: LatLng? = null
+        var prevIn = false
+        for (i in range) {
+            val cur = poly[i]
+            val curIn = clip?.inFront(cur.lat, cur.lng) != false
+            val before = prevLatLng
+            if (clip != null && before != null && prevIn != curIn) {
+                val t = clip.crossing(before.lat, before.lng, cur.lat, cur.lng)
+                val crossPt = projectRaw(snap, before.lat + (cur.lat - before.lat) * t, before.lng + (cur.lng - before.lng) * t, sx, sy)
+                if (prevIn && prevPt != null && crossPt != null) {
+                    paint.strokeWidth = routeStrokeAt(basePx, (prevPt.y + crossPt.y) * 0.5f)
+                    canvas.drawLine(prevPt.x, prevPt.y, crossPt.x, crossPt.y, paint)
+                }
+                prevPt = if (curIn) crossPt else null
+            }
+            if (curIn) {
+                val pt = projectRaw(snap, cur.lat, cur.lng, sx, sy)
+                if (pt != null && prevPt != null) {
+                    paint.strokeWidth = routeStrokeAt(basePx, (prevPt.y + pt.y) * 0.5f)
+                    canvas.drawLine(prevPt.x, prevPt.y, pt.x, pt.y, paint)
+                }
+                prevPt = pt
+            } else {
+                prevPt = null
+            }
+            prevLatLng = cur
+            prevIn = curIn
+        }
+    }
+
     private fun drawRoute(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
         val route = navSession.state.value.route ?: return
         val poly = route.polyline
@@ -1066,8 +1130,10 @@ class CarMapRenderer(
         // Draw the WHOLE route ahead in blue first (robust baseline — always shows), gray behind.
         // A paused drive is lavender ahead, as on the phone, with no traffic colors over it.
         val paused = navSession.state.value.paused
-        if (splitI > 0) canvas.drawPath(pathOf(snap, poly, 0..splitI, sx, sy), drivenPaint)
-        if (splitI < poly.lastIndex) canvas.drawPath(pathOf(snap, poly, splitI..poly.lastIndex, sx, sy), if (paused) pausedPaint else trafficPaints[0]!!)
+        if (splitI > 0) drawPerspectiveRoute(canvas, snap, poly, 0..splitI, sx, sy, drivenPaint, 18f)
+        if (splitI < poly.lastIndex) {
+            drawPerspectiveRoute(canvas, snap, poly, splitI..poly.lastIndex, sx, sy, if (paused) pausedPaint else trafficPaints[0]!!, 20f)
+        }
         runCatching { drawDestination(canvas, snap, poly.last(), sx, sy) }
         if (paused) return
 
@@ -1086,7 +1152,10 @@ class CarMapRenderer(
             if (lvl == 0) continue // free-flow already blue from the baseline
             val a = project(snap, poly[i], sx, sy) ?: continue
             val b = project(snap, poly[i + 1], sx, sy) ?: continue
-            canvas.drawLine(a.x, a.y, b.x, b.y, trafficPaints[lvl] ?: trafficPaints[0]!!)
+            val p = (trafficPaints[lvl] ?: trafficPaints[0]!!).apply {
+                strokeWidth = routeStrokeAt(20f, (a.y + b.y) * 0.5f)
+            }
+            canvas.drawLine(a.x, a.y, b.x, b.y, p)
         }
     }
 
@@ -1111,15 +1180,16 @@ class CarMapRenderer(
             arrows = runCatching { app.vela.core.nav.TurnArrowGeometry.arrows(route, step, route.polyline) }.getOrDefault(emptyList()).take(CAR_ARROWS)
         }
         val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
-        arrowEdge.strokeWidth = 15f * k; arrowBody.strokeWidth = 11f * k
+        val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+        arrowEdge.strokeWidth = 15f * k * mult; arrowBody.strokeWidth = 11f * k * mult
         for (a in arrows) {
             if (a.points.size < 2) continue
             val path = pathOf(snap, a.points, a.points.indices, sx, sy)
             canvas.drawPath(path, arrowEdge)
             val end = project(snap, a.points.last(), sx, sy) ?: run { canvas.drawPath(path, arrowBody); continue }
             val back = project(snap, a.points.last().destinationPoint(app.vela.core.nav.TurnArrowGeometry.HEAD_CHORD_M, a.endBearingDeg + 180.0), sx, sy)
-            val head = back?.let { arrowHead(end, it, 22f * k) }
-            val headOut = back?.let { arrowHead(end, it, 22f * k, grow = 2.5f * k) }
+            val head = back?.let { arrowHead(end, it, 22f * k * mult) }
+            val headOut = back?.let { arrowHead(end, it, 22f * k * mult, grow = 2.5f * k * mult) }
             headOut?.let { canvas.drawPath(it, headEdge) }
             canvas.drawPath(path, arrowBody)
             head?.let { canvas.drawPath(it, headBody) }

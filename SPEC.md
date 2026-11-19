@@ -225,7 +225,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
   `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `LockScreenNav`, `MapColors`, `MapPoiPrefs`,
-  `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NavSchedule`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
+  `MapTilt`, `NavEndConfirm`, `NavLineWidth`, `NavNorthUp`, `NavSchedule`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
   `RoadNumbers`, `RoutePicker`, `RouteTrafficOnTap`, `RouteTrail`, `SatelliteLayer`, `ShowReviews`,
@@ -884,6 +884,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Show the drive on the lock screen | `LockScreenNav.on`, `nav_on_lock_screen`, true | `MainActivity` shows over the lock screen while a drive runs and is not paused (10.2, Over the lock screen) |
 | Navigation > Wake the screen before each turn | `LockScreenNav.wake`, `nav_wake_for_turns`, true | lights the screen as a turn comes near during a drive with the screen off (10.2, Wake for turns) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
+| Navigation > Custom route line width | `NavLineWidth.custom`, `nav_line_custom`, off; `widthMultiplier`, `nav_line_multiplier`, 1.0 | scales the route line, alternate route, outline and turn arrow widths from 0.1x to 2.0x |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
 | Navigation > Lane guidance on the car screen | `CarLanes.on`, `car_lanes_on`, true | lanes on the car's turn card and the cluster's step (10.6); the car's settings have the same switch |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
@@ -5203,8 +5204,10 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
 
 #### Route line
 
-- `routeWidth()` is the wider of a pixel curve (7 / 11.2 / 11.5 / 11 / 17 / 20.4 dp at z10 / 14 /
-  15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). At 8.5 m it
+- `routeWidth()` is the wider of a pixel curve (6.5 / 8.5 / 9.8 / 11.4 / 13.2 / 17 / 20.4 dp at z10 / 13 /
+  14 / 15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). `scaleRouteStops`
+  and `syncRouteLineWidths` scale the stops, real-meter width, and cap by `NavLineWidth.currentMultiplier()`
+  (0.1x to 2.0x) and apply camera-tilt foreshortening. At 8.5 m it
   covers a two-lane street or one carriageway with a little road showing each side.
 - Alternates use `ALT_REAL_M` (7.65 m), capped at `ALT_CAP_DP` (30), with their edge
   (`vela-alt-route-edge`) inside that width. Both widths follow `roadWidthScale`.
@@ -7148,7 +7151,8 @@ the same `:core` singletons as the phone (`CarDeps`).
   phone, and a pinch zooms where the unit takes one. A faster-route offer of a minute or more
   goes first, as "Faster -N min", beside the voice button and not in its place, so the car can
   always mute (#927). The route line on the car is the phone's
-  blue (`#1f6feb`) at 20 px, the driven part 18 px gray, alternates 14 px.
+  blue (`#1f6feb`) at 20 px, the driven part 18 px gray, alternates 14 px, scaled by
+  `NavLineWidth.currentMultiplier()` and tapered with camera tilt (`routeStrokeAt`, `drawPerspectiveRoute`).
 - `CarBridge` carries the phone controller's spoken alerts (cameras, speeding, closing soon) to a
   `CarToast`, and the route's lights, stop signs and speed cameras to the renderer. A drive
   started with the phone UI closed has no controller and gets neither.
