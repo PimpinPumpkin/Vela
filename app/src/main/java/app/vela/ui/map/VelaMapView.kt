@@ -2480,14 +2480,19 @@ fun VelaMapView(
     }
     val latestFix = rememberUpdatedState(myLocation)
     val latestMs = rememberUpdatedState(maxspeedOverlays)
-    LaunchedEffect(speedOverlayOn) {
-        if (!speedOverlayOn) { onRoadLimitKmh(null); return@LaunchedEffect }
+    val latestBrg = rememberUpdatedState(myBearing)
+    val latestSpd = rememberUpdatedState(mySpeed)
+    val latestNav = rememberUpdatedState(navMode)
+    val overlayActive = speedOverlayOn || app.vela.ui.DrivingMode.on.value
+    LaunchedEffect(overlayActive) {
+        if (!overlayActive) { onRoadLimitKmh(null); return@LaunchedEffect }
         while (true) {
             val fix = latestFix.value
             val uris = latestMs.value
+            val brg = latestBrg.value?.toDouble()?.takeIf { latestNav.value || (latestSpd.value ?: 0f) >= 1.5f }
             if (fix != null && uris.isNotEmpty()) {
                 val kmh = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    runCatching { app.vela.data.StreamedSpeedLimit.limitAt(uris, fix.lat, fix.lng) }.getOrNull()
+                    runCatching { app.vela.data.StreamedSpeedLimit.limitAt(uris, fix.lat, fix.lng, brg) }.getOrNull()
                 }
                 onRoadLimitKmh(kmh)
             }
