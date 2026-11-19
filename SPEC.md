@@ -878,6 +878,7 @@ the page fills it after load, and a small stub sits beside it.
 | Navigation > Wake the screen before each turn | `LockScreenNav.wake`, `nav_wake_for_turns`, true | lights the screen as a turn comes near during a drive with the screen off (10.2, Wake for turns) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
+| Navigation > Lane guidance on the car screen | `CarLanes.on`, `car_lanes_on`, true | lanes on the car's turn card and the cluster's step (10.6); the car's settings have the same switch |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
 
@@ -6267,9 +6268,11 @@ the same `:core` singletons as the phone (`CarDeps`).
   (`SearchTemplate`) to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to
   `ActiveNavCarScreen` (`NavigationTemplate`). The landing strip also opens `DriveCarScreen`
   (drive mode, below), `SavedCarScreen` (Home, Work and every saved place, capped at the host's
-  list limit) and `CarSettingsScreen` (spoken directions, the tolls, highways and ferries avoids,
-  and the Traffic layer, written to the phone's `vela_settings` prefs, `RoutingPrefs` and
-  `Traffic`). The route preview passes the `RoutingPrefs` avoids to `directions`.
+  list limit) and `CarSettingsScreen` (spoken directions, lane guidance, the tolls, highways and
+  ferries avoids, and the Traffic layer, written to the phone's `vela_settings` prefs,
+  `RoutingPrefs`, `CarLanes` and `Traffic`). That is six rows, the car library's default list
+  limit (`CONTENT_LIMIT_TYPE_LIST`); a host drops rows past its limit. The route preview passes
+  the `RoutingPrefs` avoids to `directions`.
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
@@ -6289,9 +6292,12 @@ the same `:core` singletons as the phone (`CarDeps`).
   changes, and at most once a second (`TRIP_MIN_GAP_MS`). The host drops faster updates.
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`, `Step` and `Trip`, sets the phone's
   glyph as the icon (`NavGlyphs.bitmap`), and reads the roundabout direction and exit number
-  from the route's geometry. The destination estimate's time left takes the route line's
-  traffic colors from `Route.trafficRatio`: red over 1.4, yellow over 1.15 (the car API allows
-  only its standard colors here), green below, and no color when the route has no live traffic.
+  from the route's geometry. A step with up to eight lanes carries them as `Lane`s and a
+  `LaneImage` bitmap, unless `CarLanes` is off (issue #866). The lane strip grows the card, which
+  shrinks the visible area that Zoom to the next turn frames the turn in, so the camera pulls
+  back out when it appears. The destination estimate's time left takes the route line's traffic colors from `Route.trafficRatio`: red over
+  1.4, yellow over 1.15 (the car API allows only its standard colors here), green below, and no
+  color when the route has no live traffic.
   With a stop ahead the stop's time takes the same color: it describes the route, as the line
   does.
 - On the drive screen a paused drive shows a `MessageInfo` ("Paused") in place of the turn card,

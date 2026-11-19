@@ -353,6 +353,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.NavEndConfirm.set(context, it) },
             hint = stringResource(R.string.settings_confirm_end_nav_hint),
         )
+        // Lane arrows on the car's turn card (issue #866), on by default; the car's settings have
+        // the same switch.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_car_lanes),
+            checked = app.vela.ui.CarLanes.on.value,
+            onCheckedChange = { app.vela.ui.CarLanes.set(context, it) },
+            hint = stringResource(R.string.settings_car_lanes_hint),
+        )
         // The speed + limit badge, phone and car (issue #625). On by default; a dash that shows
         // both already makes it clutter.
         GroupDivider()

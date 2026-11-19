@@ -12,8 +12,11 @@ import androidx.car.app.model.Toggle
 import app.vela.core.data.RoutingPrefs
 
 /**
- * The settings a driver reaches for in the car: spoken directions and the route avoids. They
- * write the same prefs the phone's toggles do, so the two always agree.
+ * The settings a driver reaches for in the car: spoken directions, lane guidance, the route
+ * avoids and the traffic layer. They write the same prefs and holders the phone's toggles do, so
+ * the two always agree. Six rows is the car library's default list limit
+ * (`ConstraintManager.CONTENT_LIMIT_TYPE_LIST`); a host drops rows past its limit, so a seventh
+ * setting needs a second screen.
  */
 class CarSettingsScreen(carContext: CarContext, private val deps: CarDeps) : Screen(carContext) {
 
@@ -24,6 +27,12 @@ class CarSettingsScreen(carContext: CarContext, private val deps: CarDeps) : Scr
             .addItem(
                 toggleRow(app.vela.R.string.car_setting_voice, !deps.voiceGuide.muted) { on ->
                     app.vela.car.CarVoice.set(carContext, deps.voiceGuide, on)
+                },
+            )
+            // Lane arrows on the turn card (issue #866). Off, the card does not grow near a turn.
+            .addItem(
+                toggleRow(app.vela.R.string.car_setting_lanes, app.vela.ui.CarLanes.on.value) { on ->
+                    app.vela.ui.CarLanes.set(carContext, on)
                 },
             )
             .addItem(

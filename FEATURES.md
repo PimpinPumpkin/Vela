@@ -365,8 +365,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Traffic lights and stop signs on the car map are the phone's glyphs, sized to the screen.
 - Camera, speeding and closing-soon alerts appear as car toasts.
 - The time left on the car is green, yellow or red by traffic, like the route line.
-- The car's settings cover spoken directions, avoiding tolls, highways and ferries, and the
-  traffic layer.
+- The car's settings cover spoken directions, lane guidance, avoiding tolls, highways and ferries,
+  and the traffic layer. With lane guidance off the car's turn card does not grow near a turn;
+  the switch is also under Settings > Navigation.
 - The phone and the car share one drive. A trip started on either shows on both.
 - A car with an instrument-cluster display gets the turns there.
 - A car that runs Android itself can show Vela in its map panel.

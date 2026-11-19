@@ -272,6 +272,8 @@
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="settings_car_speed">Your speed on the car screen</string>
     <string name="settings_car_speed_hint">Off, the car screen shows the posted limit alone; the car has its own speedometer.</string>
+    <string name="settings_car_lanes">Lane guidance on the car screen</string>
+    <string name="settings_car_lanes_hint">Off, the car\'s turn card leaves out the lane arrows, so it does not grow as a turn comes near. The phone still shows them.</string>
     <string name="mapvm_area_pack_big">Offline search here uses the place pack for all of %1$s. Get it from Settings > Offline maps.</string> <!-- format: %1$s country or state name -->
     <string name="settings_places_shared_pack">Places cover all of %1$s (%2$s)</string> <!-- format: %1$s country or state name, %2$s a size like "1.9 GB" -->
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
@@ -991,6 +993,7 @@
     <string name="car_setting_avoid_highways">Avoid highways</string>
     <string name="car_setting_avoid_ferries">Avoid ferries</string>
     <string name="car_setting_traffic">Traffic</string>
+    <string name="car_setting_lanes">Lane guidance</string>
     <string name="car_location_title">Allow location</string>
     <string name="car_location_body">Vela needs it to show where you are and give directions</string>
     <string name="car_location_denied">Location is off. Turn it on for Vela in your phone\'s settings.</string>

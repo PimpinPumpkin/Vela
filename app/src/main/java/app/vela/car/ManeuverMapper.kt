@@ -88,9 +88,10 @@ object ManeuverMapper {
         return Step.Builder(cue)
             .setManeuver(carManeuver(m))
             .apply { (m.road?.let(short::shorten) ?: m.ref)?.takeIf { it.isNotBlank() }?.let { setRoad(it as CharSequence) } }
-            // Lane guidance (Google's arrow diagram) — both the Lane metadata and a rendered image.
+            // Lane guidance (Google's arrow diagram): both the Lane metadata and a rendered image,
+            // unless the driver turned it off (CarLanes, issue #866).
             .apply {
-                runCatching {
+                if (app.vela.ui.CarLanes.on.value) runCatching {
                     LaneImage.build(m.lanes)?.let { (lanes, image) ->
                         lanes.forEach { addLane(it) }
                         setLanesImage(image)

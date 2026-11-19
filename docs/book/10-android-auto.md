@@ -11,7 +11,9 @@ The drive screen is the map with your arrow and the route, a turn card with lane
 arrival estimate, and two round buttons, mute and end; pausing and the search along the route are
 done on the phone. A second row on the map recenters and shows the rest of the route. The posted limit sits in
 the bottom corner when Vela knows it; your speed sits beside it only if "Your speed on the car
-screen" is on under Settings > Navigation, since the car has a speedometer of its own.
+screen" is on under Settings > Navigation, since the car has a speedometer of its own. "Lane
+guidance on the car screen", there and in the car's settings, turns the lane arrows off. The turn
+card then does not grow as a turn comes near, which would make Zoom to the next turn pull back out.
 
 With no route, the map behaves as the phone's does: parked, it is north up and centered on you;
 once you move it turns with the car, tilts and zooms out with speed. The Drive button on the
@@ -200,7 +202,7 @@ dark with the car.
 | `DriveCarScreen` | `NavigationTemplate` | Drive mode: the map alone, no route, with search, saved places and a list button back to the landing screen. |
 | `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, each with a numbered pin on its row and the same pin on the map, which frames them with the car. Opened with no category, it lists the phone's quick categories. |
 | `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
-| `CarSettingsScreen` | `ListTemplate` | Spoken directions, the three avoids and the Traffic layer, written to the preferences the phone uses. |
+| `CarSettingsScreen` | `ListTemplate` | Spoken directions, lane guidance, the three avoids and the Traffic layer, written to the preferences the phone uses. Six rows, the car library's default list limit. |
 | `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
 | `RoutePreviewCarScreen` | `RoutePreviewNavigationTemplate` | Up to three driving routes with live-traffic times, and Go. |
 | `ActiveNavCarScreen` | `NavigationTemplate` | The drive. |
@@ -266,7 +268,7 @@ session's place list is not allowed on that display and crashes the app there.
   card are abbreviated as on the phone's pill ("Russell Rd NE"); "Road numbers first" applies here
   too.
 - Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
-  lanes.
+  lanes. With lane guidance off (`CarLanes`) no step carries lanes.
 - The time left is colored by traffic with the route line's thresholds: red when the live time
   runs more than 40% over the typical time, yellow over 15%, green below. A route without live
   traffic leaves it the host's default color.
