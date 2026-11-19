@@ -2228,16 +2228,20 @@ internal fun DepartTimeChooser(
     if (showDatePicker) {
         // NB selectedDateMillis is UTC midnight of the picked day — decode with UTC, not the
         // system zone, or western-hemisphere picks land one day early.
-        val dp = androidx.compose.material3.rememberDatePickerState(
-            initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
-            selectableDates = object : androidx.compose.material3.SelectableDates {
-                // Days before today are grayed out (the confirm clamp still backstops a stale
-                // dialog left open across midnight).
-                override fun isSelectableDate(utcTimeMillis: Long) =
-                    utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-                override fun isSelectableYear(year: Int) = year >= java.time.LocalDate.now().year
-            },
-        )
+        // The week starts on the device region's first day, not the app language's (issue #934).
+        val dp = remember {
+            androidx.compose.material3.DatePickerState(
+                locale = app.vela.ui.AppLocale.calendarLocale(),
+                initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+                selectableDates = object : androidx.compose.material3.SelectableDates {
+                    // Days before today are grayed out (the confirm clamp still backstops a stale
+                    // dialog left open across midnight).
+                    override fun isSelectableDate(utcTimeMillis: Long) =
+                        utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+                    override fun isSelectableYear(year: Int) = year >= java.time.LocalDate.now().year
+                },
+            )
+        }
         PickerDialog(
             onConfirm = {
                 dp.selectedDateMillis?.let { date = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }

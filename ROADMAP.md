@@ -719,6 +719,10 @@ off the list when it has been.
 - Place names More and Most (#852, `MapPoiPrefs.namesSooner`): not seen on a phone. Check names
   arriving a zoom or two sooner on Vela data, Google and Both, and frame rate with Most in a
   dense city on a release build (`scripts/map-fps.sh`).
+- The Depart at date picker's first day of the week from the device region (#934,
+  `AppLocale.calendarLocale`): unit tests on the JVM only. Not seen on a phone: Monday first with
+  the app in English on a German-region phone, Sunday on a US one, and whether Android 14's First
+  day of week setting (the `fw` keyword) moves it.
 
 ### Open from the October 2026 audit
 

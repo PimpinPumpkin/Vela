@@ -5790,6 +5790,13 @@ planned keeps the instructions it was built with.
   time picker dials by it too (it was a fixed 12-hour dial, issues #357 and #762). Transit directions
   times come from the payload's epoch and time zone (`ClockFormat.at`); `ClockFormat.show`
   converts the text of the one page still fetched in English, Google's stop-board fallback.
+- Calendar: the Depart at and Arrive by date picker is drawn in `AppLocale.calendarLocale()`.
+  Month and day names follow the app language; the first day of the week follows the device's
+  region, read from `Resources.getSystem()`. A picked language has no region, and alone it takes
+  the language's home region ("en" starts weeks on Sunday). A language that names a region
+  (`pt-BR`, `zh-TW`) keeps it for the names and gets the device's as the `rg` keyword. The
+  device's `fw` (Android 14's first day of week) and `rg` keywords carry over, its `nu` digits do
+  not. Following the system, the picker takes the device locale whole.
 
 ### 9.5 Query intents
 
