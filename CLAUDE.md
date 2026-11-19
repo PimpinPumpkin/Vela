@@ -440,6 +440,10 @@ signed file the app fetches at launch (SPEC 11).
 
 - A Compose `DropdownMenu` or `AlertDialog` cannot be given focus. Use `VelaMenu` and
   `VelaDialog`.
+- Android 8.x gives focus to the first focusable view after `clearFocus` and when the window
+  opens, even in touch mode. A field whose focus opens something must be unfocusable until a tap
+  arms it there (`SearchBar.armFirst`). Android 9 and up do not do this, so only an API 26 or 27
+  emulator with no keyboard or D-pad shows it.
 - Every screen opens with something focused (`rememberDpadAutoFocus`), every control has a
   focus ring (`dpadHighlight`), and every gesture has a key path. D-pad code calls the touch
   paths. `docs/dpad.md` has the rest. CI runs `dpad_test_suite/audit_static.sh`.

@@ -183,6 +183,10 @@ Search bar (`SearchBar.kt`, `MapScreen`):
   search. In D-pad mode the field is disabled and cannot take focus until armed. OK on the text
   region arms and focuses it, and losing focus disarms it. A field that was only unfocusable
   swallowed taps on phones with both a touchscreen and a keypad.
+- On Android 8.x (API 26 and 27) touch arms the field too (`armFirst`): a tap on the text region
+  arms and focuses it. Those versions hand focus to the first focusable view when the window opens
+  and after every `clearFocus`, in touch mode as well, and on the map that view was this field, so
+  every way out of search reopened it and a cold start opened straight into it.
 - A focused field counts as armed, however it got its focus. A tap focuses it with no arming,
   and the first key typed on a physical keyboard turns D-pad mode on: unarmed, the field was
   disabled under the cursor and everything after the first character was lost.
