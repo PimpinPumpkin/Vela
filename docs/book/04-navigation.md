@@ -211,7 +211,8 @@ speed, the phone is taken as stationary: the dot holds and averages the fixes in
 their scatter, and it moves only when the fixes keep landing to one side of it, so it never
 freezes on a bad first fix either. While the GPS answers, a Wi-Fi fix that disagrees with it
 does not pull the dot. Steps count from the third in a steady rhythm. Settings > Diagnostics > "Record a location test" records every fix,
-step and dot position into a trip that can be shared.
+step and dot position into a trip. Share trimmed cuts the ends as it does for a drive and keeps
+the steps and dot positions in the middle.
 
 Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did before
 the filter, and the dot goes back to its old smoothing, which trails a walker by about 9 m. A

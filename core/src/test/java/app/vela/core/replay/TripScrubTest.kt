@@ -235,6 +235,58 @@ class TripScrubTest {
         assertTrue("a spoken line beside a surviving fix stays", r.csv.contains("Midpoint Road") || r.spokenDropped >= 3)
     }
 
+    /** [trip] with a walk's records after each fix: the dot's position and one step. Between
+     *  [gapFrom] and [gapTo] (fix numbers) the GPS is gone and only the steps are written. */
+    private fun walk(n: Int = 200, gapFrom: Int = -1, gapTo: Int = -1) = buildString {
+        for (line in trip(n).split('\n').filter { it.isNotBlank() }) {
+            val f = line.split(',')
+            val t = f.getOrNull(2)?.toLongOrNull()
+            if (f[0].toDoubleOrNull() != null && t != null) {
+                val i = ((t - 1756700000000L) / 1000).toInt()
+                if (i !in gapFrom until gapTo) {
+                    append(line).append('\n')
+                    append("N,${t + 5}," + TripLog.inputPayload('w', 5, LatLng(originLat, originLng + step * i), null, 4.0, 90.0) + "\n")
+                }
+                append("W,${t + 500},0.550,91.0,0.70\n")
+            } else append(line).append('\n')
+        }
+    }
+
+    @Test fun `a walk keeps its steps and dot positions beside the kept fixes`() {
+        val r = TripScrub.scrub(walk())!!
+        val lines = r.csv.lines()
+        val n = lines.filter { it.startsWith("N,") }
+        val w = lines.filter { it.startsWith("W,") }
+        assertEquals(r.fixesAfter, n.size)
+        assertEquals(r.fixesAfter, w.size)
+        val start = LatLng(originLat, originLng)
+        val end = LatLng(originLat, originLng + step * 199)
+        val inputs = TripLog.parse(r.csv).inputs
+        assertTrue(inputs.all { dist(it.latLng, start) > 400.0 && dist(it.latLng, end) > 400.0 })
+        assertEquals("a step's time rebases with its fix", "500", w.first().split(',')[1])
+    }
+
+    @Test fun `a walk's records inside a mid-trip private zone go with its fixes`() {
+        val mid = LatLng(originLat, originLng + step * 100)
+        val r = TripScrub.scrub(walk(), radiusM = 400.0, extraZones = listOf(mid))!!
+        val inputs = TripLog.parse(r.csv).inputs
+        assertTrue(inputs.isNotEmpty())
+        assertTrue(inputs.none { dist(it.latLng, mid) <= 400.0 })
+        assertEquals(r.fixesAfter, r.csv.lines().count { it.startsWith("W,") })
+    }
+
+    @Test fun `steps far from any kept fix are dropped`() {
+        // No fix for 20 s in the middle of the walk: the steps there trace a path no kept fix
+        // pins down, so only those within EVENT_NEAR_MS of one stay.
+        val r = TripScrub.scrub(walk(gapFrom = 90, gapTo = 110))!!
+        val keptTimes = TripLog.parsePoints(r.csv.split('\n')).map { it.t }
+        val steps = r.csv.lines().filter { it.startsWith("W,") }.map { it.split(',')[1].toLong() }
+        assertTrue(steps.all { s -> keptTimes.any { kotlin.math.abs(it - s) <= TripScrub.EVENT_NEAR_MS } })
+        // Steps land half a second after each whole second: 1.5 and 2.5 s after the last fix
+        // before the gap, and 2.5, 1.5 and 0.5 s before the first one after it.
+        assertEquals(r.fixesAfter + 5, steps.size)
+    }
+
     @Test fun `a route block trimmed to nothing takes its totals and maneuvers with it`() {
         // A short second segment entirely inside the destination zone: its RP is dropped, so its
         // RD and M lines must not survive to be folded into the previous block by the parser.

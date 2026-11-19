@@ -76,7 +76,7 @@ class TripInputsTest {
         assertTrue(TripLog.routingNote(true, true, false, false, true, false, "DRIVE").startsWith("routing: units imperial, avoid tolls on"))
     }
 
-    @Test fun `a shared copy leaves engine inputs and router answers out`() {
+    @Test fun `a shared copy keeps engine inputs beside its kept fixes and leaves router answers out`() {
         val n = 200
         val big = buildString {
             append("META,Davis,1756700000000,$lat,${lng0 + step * (n - 1)},3109\n")
@@ -85,9 +85,14 @@ class TripInputsTest {
             append("RC,1756700100000," + TripLog.candidatePayload("reroute", "open", emptyList(), route(50, 60)) + "\n")
             append("K,1756700100000,route answers (reroute): open router 1 in 700 ms, google not back, heading 90\n")
         }
-        val out = TripScrub.scrub(big)!!.csv
-        assertTrue(out.lines().none { it.startsWith("N,") || it.startsWith("RC,") })
+        val r = TripScrub.scrub(big)!!
+        val out = r.csv
+        assertTrue(out.lines().none { it.startsWith("RC,") })
         assertTrue("the summary has no position and is kept", out.contains("route answers (reroute)"))
+        val p = TripLog.parse(out)
+        assertEquals("one input per kept fix", r.fixesAfter, p.inputs.size)
+        assertTrue("each input still follows its own fix", p.inputs.all { it.afterFix in p.points.indices && it.latLng == p.points[it.afterFix].latLng })
+        assertTrue("inputs rebase with the fixes", p.inputs.first().msSinceFix == 2L && out.lines().first { it.startsWith("N,") }.split(',')[1] == "2")
     }
 
     @Test fun `the audit runs on what the engine was handed`() {

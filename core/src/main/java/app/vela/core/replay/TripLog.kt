@@ -37,13 +37,13 @@ import app.vela.core.nav.NavReplay
  *   dead-reckoned point between fixes, [msSinceFix] after the last fix line.
  *   Empty fields were not passed. A replay feeds the engine these, so it sees what the drive saw.
  * - `W,<t>,<intervalS>,<compassDeg>,<stepLengthM>`: one step of a walk being navigated, as the
- *   dot's FreeFused took it (empty compass: none). A share drops them ([TripScrub]).
+ *   dot's FreeFused took it (empty compass: none).
  * - `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`: one route a router
  *   answered while the drive asked for one (a reroute, a recheck): Google's and the open router's
  *   each, taken or not, so a file says why the route it switched to was the one it got
  *
- * `N` and `RC` lines hold positions, so a shared copy leaves them out ([TripScrub] drops kinds it
- * does not list).
+ * A shared copy keeps `N` and `W` lines only beside the fixes it keeps and leaves `RC` lines out
+ * ([TripScrub], which drops kinds it does not list).
  *
  * The line kind is told by the first field, so [parsePoints] naturally ignores the non-fix lines
  * (their first field never parses as a latitude).

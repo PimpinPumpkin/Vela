@@ -1676,7 +1676,8 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
     came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o` for
     the old smoothing), into a trip named "Location test" until it is turned off. The bearing
-    field of those `N` lines is the compass.
+    field of those `N` lines is the compass. Share trimmed keeps the steps and dot positions
+    beside the fixes it keeps (14.3).
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says
@@ -2974,8 +2975,9 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   (a Google route set aside).
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:
-  a shared copy's route is trimmed and the offsets no longer fit. `N` and `RC` hold positions
-  and are dropped too; the `route answers` note has none and is kept.
+  a shared copy's route is trimmed and the offsets no longer fit. `N` lines stay beside the
+  fixes it keeps and `RC` lines are dropped (14.3); the `route answers` note has no position and
+  is kept.
 - Replay is hermetic: `NavSession.replayMode` suppresses live reroute and recheck fetches, and
   recorded swaps play back through `replaySetRoute`.
 - A file with `N` lines replays them: the engine gets the drive's own inputs (fix, hold or
@@ -6673,7 +6675,12 @@ the geometry.
 - Timestamps rebase to zero.
 - An `S` line survives only if a fix within `EVENT_NEAR_MS` (3 s) survived: it is the spoken
   text and names the street.
-- `N` and `RC` lines are dropped: they hold positions.
+- An `N` line (what the engine or the walking dot was handed) or a `W` line (a step) is kept
+  only when the fix line before it was kept, so an `N` line's time since its fix still counts
+  from a fix in the file. An `N` line also needs its own position outside every zone. A `W` line
+  has no position, but steps strung together retrace a walk, so it also needs a kept fix within
+  `EVENT_NEAR_MS`. A walk or a location test shares its middle with its steps and dot.
+- `RC` lines are dropped: a router's answer runs to the destination.
 - `K`, `J` and `B` lines are kept for the whole drive, the trimmed ends included. They hold no
   position, name or spoken text, and the start of a drive is where its route is planned and
   named. One from before the first surviving fix has a negative time. They show how long the
