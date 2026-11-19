@@ -3,6 +3,7 @@ package app.vela.ui.settings.sections
 import app.vela.ui.icons.Sym
 
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -32,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,6 +49,7 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
+import app.vela.ui.settings.settingsAnchor
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadFieldEscape
 import app.vela.ui.dpadRowSibling
@@ -177,7 +182,8 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         var menuFor by remember { mutableStateOf<String?>(null) }
         // Re-read on entry so a trip recorded since the app launched shows up without
         // a restart (the list was otherwise only refreshed after a delete).
-        LaunchedEffect(Unit) { reloadTrips() }
+        // Keyed on the location test too: a test that stops by itself joins the list.
+        LaunchedEffect(state.locationTestOn) { reloadTrips() }
         Spacer(Modifier.height(4.dp))
         SettingsGroup {
         ToggleRow(
@@ -186,20 +192,14 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             onCheckedChange = { on -> if (on) showTripConsent = true else vm.setTripRecording(false) },
             hint = stringResource(R.string.settings_save_trips_hint),
         )
-        // Naming on save only makes sense while trips are being recorded, so it hides with the
-        // switch above rather than sitting there inert.
         ToggleRow(
             label = stringResource(R.string.settings_trip_auto_clear),
             checked = state.tripAutoClear,
             onCheckedChange = { on -> vm.setTripAutoClear(on); if (on) reloadTrips() },
             hint = stringResource(R.string.settings_trip_auto_clear_hint),
         )
-        ToggleRow(
-            label = stringResource(R.string.settings_location_test),
-            checked = state.locationTestOn,
-            onCheckedChange = { on -> vm.setLocationTest(on); if (!on) reloadTrips() },
-            hint = stringResource(R.string.settings_location_test_hint),
-        )
+        // Naming on save only makes sense while trips are being recorded, so it hides with that
+        // switch rather than sitting there inert.
         if (state.tripRecordingEnabled) {
             ToggleRow(
                 label = stringResource(R.string.settings_name_trips),
@@ -208,6 +208,13 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                 hint = stringResource(R.string.settings_name_trips_hint),
             )
         }
+        GroupDivider()
+        LocationTestRow(
+            on = state.locationTestOn,
+            endsAt = state.locationTestEndsAt,
+            onStart = { vm.startLocationTest(it) },
+            onStop = { vm.stopLocationTest() },
+        )
         if (trips.isNotEmpty()) {
             GroupDivider()
             Hint(stringResource(R.string.settings_recorded_trips_hint))
@@ -743,6 +750,62 @@ private fun TripBatchShareDialog(
                         ).show()
                     }
                 }) { Text(stringResource(R.string.settings_trip_batch_share_full)) }
+            }
+        }
+    }
+}
+
+/** How long a location test can run, in minutes: a room, a short walk, a long one. */
+private val LOCATION_TEST_MINUTES = listOf(1, 5, 15)
+
+/**
+ * Diagnostics > "Record a location test". A chip per length starts a test, which records into a
+ * new trip and stops by itself. While it runs the row counts down and offers Stop.
+ */
+@Composable
+private fun LocationTestRow(on: Boolean, endsAt: Long, onStart: (Int) -> Unit, onStop: () -> Unit) {
+    val label = stringResource(R.string.settings_location_test)
+    Column(Modifier.fillMaxWidth().settingsAnchor(label).padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(R.string.settings_location_test_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Spacer(Modifier.height(8.dp))
+        if (on) {
+            val leftMs by produceState(endsAt - System.currentTimeMillis(), endsAt) {
+                while (true) {
+                    value = endsAt - System.currentTimeMillis()
+                    kotlinx.coroutines.delay(1_000)
+                }
+            }
+            val s = (leftMs.coerceAtLeast(0L) + 999) / 1000
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.settings_location_test_left, "%d:%02d".format(s / 60, s % 60)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                FilledTonalButton(
+                    onClick = onStop,
+                    shape = CircleShape,
+                    modifier = Modifier.dpadHighlight(CircleShape),
+                ) { Text(stringResource(R.string.settings_location_test_stop)) }
+            }
+        } else {
+            val focus = remember { List(LOCATION_TEST_MINUTES.size) { FocusRequester() } }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LOCATION_TEST_MINUTES.forEachIndexed { i, m ->
+                    FilterChip(
+                        selected = false,
+                        onClick = { onStart(m) },
+                        label = { Text(pluralStringResource(R.plurals.settings_location_test_minutes, m, m)) },
+                        shape = CircleShape,
+                        modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(focus, i),
+                    )
+                }
             }
         }
     }

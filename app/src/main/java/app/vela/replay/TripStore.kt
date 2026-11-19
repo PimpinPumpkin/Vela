@@ -164,14 +164,15 @@ class TripStore @Inject constructor(
      * Close the active trip.
      *
      * Returns the saved trip when one was KEPT, so a caller can offer to name it; null when
-     * nothing was recording or the trip was too short to be worth keeping (under 5 fixes -
-     * starting nav and immediately ending it should not leave litter in the list).
+     * nothing was recording or the trip was too short to be worth keeping (under [minFixes] -
+     * starting nav and immediately ending it should not leave litter in the list). A location
+     * test passes 0: a test that got few fixes or none is the finding.
      */
-    fun finishTrip(): TripMeta? = synchronized(lock) {
+    fun finishTrip(minFixes: Int = 5): TripMeta? = synchronized(lock) {
         val f = active ?: return null
         active = null
         return runCatching {
-            if (countFixes(f) < 5) { f.delete(); null } else readMeta(f)
+            if (countFixes(f) < minFixes) { f.delete(); null } else readMeta(f)
         }.getOrNull()
     }
 

@@ -334,6 +334,7 @@ data class MapUiState(
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
     val locationTestOn: Boolean = false, // Diagnostics > Record a location test is recording
+    val locationTestEndsAt: Long = 0L, // when it stops by itself (wall clock, ms)
     val tripAutoClear: Boolean = false, // delete saved drives after TripRetention.KEEP_DAYS
     val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
     // A drive just finished and the user asked to be prompted for its name; the prompt shows on
@@ -7721,21 +7722,34 @@ class MapViewModel @Inject constructor(
     /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
      *  more invasive than diagnostics, so it's its own toggle. */
     /** Diagnostics > "Record a location test": every location fix as it came (GPS, Wi-Fi and cell),
-     *  each step, and where the dot was put, into a trip until it is turned off, so a walk or a
-     *  room where the dot misbehaves can be replayed (TripLog `N` kinds `w` and `o`, `W`). Not
-     *  while a drive records its own trip. */
-    fun setLocationTest(on: Boolean) {
-        if (on == _state.value.locationTestOn) return
-        if (on) {
-            tripStore.startTrip(appContext.getString(R.string.diag_location_test_name), null, System.currentTimeMillis()) ?: return
-            tripStore.note("K", "location test: " + (if (app.vela.core.location.GuidanceFix.rawWhen()) "FreeFused off" else "FreeFused on") +
-                ", build ${app.vela.BuildConfig.VERSION_CODE}")
-            _state.update { it.copy(locationTestOn = true) }
-        } else {
-            _state.update { it.copy(locationTestOn = false) }
-            if (!_state.value.navigating) tripStore.finishTrip()
+     *  each step, and where the dot was put, for [minutes], into a trip of its own, so a walk or a
+     *  room where the dot misbehaves can be replayed (TripLog `N` kinds `w` and `o`, `W`). Every test
+     *  is a new trip, left out of the list until it stops. Not while a drive records its own trip. */
+    fun startLocationTest(minutes: Int) {
+        if (_state.value.locationTestOn) return
+        val now = System.currentTimeMillis()
+        tripStore.startTrip(appContext.getString(R.string.diag_location_test_name), null, now) ?: return
+        tripStore.note("K", "location test: " + (if (app.vela.core.location.GuidanceFix.rawWhen()) "FreeFused off" else "FreeFused on") +
+            ", $minutes min, build ${app.vela.BuildConfig.VERSION_CODE}")
+        val ends = now + minutes * 60_000L
+        _state.update { it.copy(locationTestOn = true, locationTestEndsAt = ends) }
+        // The wall clock, checked every second: a delay counts uptime, which stops while the phone sleeps.
+        locationTestJob?.cancel()
+        locationTestJob = viewModelScope.launch {
+            while (System.currentTimeMillis() < ends) delay(1_000)
+            stopLocationTest()
         }
     }
+
+    fun stopLocationTest() {
+        locationTestJob?.cancel()
+        locationTestJob = null
+        if (!_state.value.locationTestOn) return
+        _state.update { it.copy(locationTestOn = false, locationTestEndsAt = 0L) }
+        if (!_state.value.navigating) tripStore.finishTrip(minFixes = 0)
+    }
+
+    private var locationTestJob: kotlinx.coroutines.Job? = null
 
     fun setTripRecording(on: Boolean) {
         settingsPrefs.edit().putBoolean("trip_recording_on", on).apply()
@@ -7761,7 +7775,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun recordedTrips(): List<app.vela.replay.TripMeta> = tripStore.list()
+    /** The saved trips, less a location test still recording. */
+    fun recordedTrips(): List<app.vela.replay.TripMeta> {
+        val testing = if (_state.value.locationTestOn) tripStore.activeId else null
+        return tripStore.list().filter { it.id != testing }
+    }
     fun deleteTrip(id: String) = tripStore.delete(id)
 
     /** Rename a saved trip. Returns false when the file could not be rewritten, so the caller

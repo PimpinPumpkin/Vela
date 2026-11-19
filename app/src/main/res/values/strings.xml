@@ -457,7 +457,13 @@
     <string name="settings_trip_batch_saved">Saved the full traces</string>
     <string name="settings_name_trips">Name each trip when it is saved</string>
     <string name="settings_location_test">Record a location test</string>
-    <string name="settings_location_test_hint">Records every location fix, each step and where the dot was, until you turn it off. Share it from the list below to report a dot that misbehaves.</string>
+    <string name="settings_location_test_hint">Records every location fix, each step and where the dot was for the time you pick, then stops. Each test is a new trip in the list below, ready to share.</string>
+    <plurals name="settings_location_test_minutes">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <string name="settings_location_test_left">Recording, %1$s left</string> <!-- format -->
+    <string name="settings_location_test_stop">Stop</string>
     <string name="diag_location_test_name">Location test</string>
     <string name="settings_name_trips_hint">After a recorded drive ends, Vela asks what to call it. Off by default; you can always rename a trip later in the list below.</string>
     <string name="trip_name_prompt_title">Name this drive</string>

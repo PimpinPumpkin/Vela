@@ -1680,11 +1680,16 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
     usual. The circle then shows at least that fix's accuracy, lowered by each GPS fix taken to its
     own. A fix that disagrees starts the dot over from it. Otherwise a Wi-Fi fix 11 m off after
     eight minutes sitting still moved the dot 11 m, and the returning GPS walked it back over 7 s
-    in hops of 1 to 4 m.  - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
-    came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o` for
-    the old smoothing), into a trip named "Location test" until it is turned off. The bearing
-    field of those `N` lines is the compass, and each GPS fix carries the satellites' signal
-    (4.10). Share trimmed keeps the steps and dot positions beside the fixes it keeps (14.3).
+    in hops of 1 to 4 m.
+  - Settings > Diagnostics > "Record a location test" (`startLocationTest`) records every fix as
+    it came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o`
+    for the old smoothing), into a new trip named "Location test" for 1, 5 or 15 minutes, then
+    stops by itself. The row counts down and has Stop. The trip list leaves the test out until it
+    stops, so a trip is never shared while it is still being written. A test is kept with any
+    number of fixes, none included; a drive under 5 is dropped. The end is checked against
+    the wall clock each second, since a delay counts uptime and stalls while the phone sleeps.
+    The bearing field of those `N` lines is the compass, and each GPS fix carries the satellites'
+    signal (4.10). Share trimmed keeps the steps and dot positions beside the fixes it keeps (14.3).
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says
