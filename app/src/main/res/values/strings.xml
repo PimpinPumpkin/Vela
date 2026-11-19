@@ -1146,7 +1146,9 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Louder</string>
     <string name="settings_voice_volume_loudest">Loudest</string>
-    <string name="settings_voice_volume_hint">How loud spoken directions play over your media, with the Vela voice or a voice from your phone.</string>
+    <string name="settings_voice_volume_custom">Custom</string>
+    <string name="settings_voice_volume_multiplier">Volume multiplier: %1$sx</string>
+    <string name="settings_voice_volume_hint">How loud spoken directions play over your media, with the Vela voice or a voice from your phone (phone voices boost up to Loudest).</string>
     <string name="place_avoid_not_honored">These routes may still use tolls, highways, or ferries: Google could not be reached to route around them, and the open router cannot. In a downloaded area Vela avoids them offline.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device. Import also takes a list from Google Takeout\'s Saved folder (one CSV per list); each place in it is looked up, so it needs a connection.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>

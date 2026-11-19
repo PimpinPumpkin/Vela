@@ -263,6 +263,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Custom guidance volume slider up to 5x and two-band de-harshing above 3.2x (`VoiceLevel.apply`,
+  `PiperSynth`; SPEC 9.1): unit-tested only. Not yet heard on a phone speaker or car Bluetooth at
+  high multipliers (`3x` to `5x`).
+
 - Dark mode startup schedule (`NavSchedule`; SPEC 3.8, 6.2): unit-tested for car and phone
   overrides. Not yet checked across a real sunset/sunrise transition or head-unit day/night switch.
 

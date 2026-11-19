@@ -24,6 +24,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -212,20 +217,66 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             val volPrefs = androidx.compose.ui.platform.LocalContext.current
                 .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             var voiceVol by remember { mutableStateOf(volPrefs.getFloat("voice_volume", 1.0f)) }
+            val predefinedVols = listOf(0.6f, 1.0f, 1.6f, 2.2f)
+            var isCustomVol by remember { mutableStateOf(volPrefs.getBoolean("voice_volume_custom", !predefinedVols.contains(voiceVol))) }
+
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
             androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val volFocus = remember { List(5) { FocusRequester() } }
                 listOf(
                     0.6f to stringResource(R.string.settings_voice_volume_softer),
                     1.0f to stringResource(R.string.settings_voice_volume_normal),
                     1.6f to stringResource(R.string.settings_voice_volume_louder),
                     2.2f to stringResource(R.string.settings_voice_volume_loudest),
-                ).forEach { (v, label) ->
+                    -1f to stringResource(R.string.settings_voice_volume_custom),
+                ).forEachIndexed { i, (v, label) ->
+                    val isSelected = if (v == -1f) isCustomVol else (voiceVol == v && !isCustomVol)
                     FilterChip(
-                        selected = voiceVol == v,
-                        onClick = { voiceVol = v; vm.setVoiceVolume(v) },
+                        selected = isSelected,
+                        onClick = {
+                            if (v == -1f) {
+                                isCustomVol = true
+                                volPrefs.edit().putBoolean("voice_volume_custom", true).apply()
+                            } else {
+                                isCustomVol = false
+                                volPrefs.edit().putBoolean("voice_volume_custom", false).apply()
+                                voiceVol = v
+                                vm.setVoiceVolume(v)
+                            }
+                        },
                         label = { Text(label) },
                         shape = androidx.compose.foundation.shape.CircleShape,
-                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                        modifier = Modifier
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                            .dpadRowSibling(volFocus, i),
+                    )
+                }
+            }
+            if (isCustomVol) {
+                androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(stringResource(R.string.settings_voice_volume_multiplier, String.format(app.vela.ui.AppLocale.effective(), "%.1f", voiceVol)), style = MaterialTheme.typography.bodyMedium)
+                    androidx.compose.material3.Slider(
+                        value = voiceVol,
+                        onValueChange = {
+                            val newVol = (kotlin.math.round(it * 10f) / 10f).coerceIn(0.5f, 5.0f)
+                            voiceVol = newVol
+                            vm.setVoiceVolume(newVol)
+                        },
+                        valueRange = 0.5f..5.0f,
+                        steps = 44,
+                        modifier = Modifier
+                            .onKeyEvent { ev ->
+                                if (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight) {
+                                    if (ev.type == KeyEventType.KeyDown) {
+                                        val delta = if (ev.key == Key.DirectionRight) 0.1f else -0.1f
+                                        val newVol = (kotlin.math.round((voiceVol + delta) * 10f) / 10f).coerceIn(0.5f, 5.0f)
+                                        voiceVol = newVol
+                                        vm.setVoiceVolume(newVol)
+                                    }
+                                    true
+                                } else false
+                            }
+                            .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
                     )
                 }
             }
