@@ -3808,12 +3808,10 @@ private fun PlaceTabs(
                     }
                     // The newest post only; the Updates tab has them all (Google's layout).
                     if (place.updates.isNotEmpty()) {
-                        UpdatesSection(place.updates.take(1), ink, dim, title = true)
-                        if (place.updates.size > 1) {
-                            TextButton(onClick = { onSelect("Updates") }, modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp))) {
-                                Text(stringResource(R.string.place_updates_all, place.updates.size))
-                            }
-                        }
+                        UpdatesSection(
+                            place.updates.take(1), ink, dim, title = true, total = place.updates.size,
+                            onShowAll = if ("Updates" in tabs) { { onSelect("Updates") } } else null,
+                        )
                     }
                     if (hasAbout) {
                         Text(
@@ -4977,16 +4975,40 @@ private fun PhotosTab(
     }
 }
 
-/** The business's own posts, newest first. */
+/** The business's own posts, newest first. With [onShowAll] the heading ends in "Show all
+ *  [total] updates". */
 @Composable
-private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: Color, dim: Color, title: Boolean) {
+private fun UpdatesSection(
+    updates: List<app.vela.core.model.PlaceUpdate>,
+    ink: Color,
+    dim: Color,
+    title: Boolean,
+    total: Int = updates.size,
+    onShowAll: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     if (title) {
-        Text(
-            stringResource(R.string.place_updates),
-            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
-            modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
-        )
+        // A flow, as on the review card: the button drops under the heading when the two do not
+        // fit side by side. The heading's padding centers it on the 48 dp button and keeps it
+        // where it sits without one.
+        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                stringResource(R.string.place_updates),
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
+                modifier = Modifier.align(Alignment.CenterVertically)
+                    .padding(top = 14.dp, bottom = if (onShowAll != null) 14.dp else 4.dp),
+            )
+            if (onShowAll != null) {
+                TextButton(onClick = onShowAll, modifier = Modifier.align(Alignment.CenterVertically).dpadHighlight(CircleShape)) {
+                    Text(stringResource(R.string.place_updates_all, total), maxLines = 1, softWrap = false)
+                }
+            }
+        }
     }
     updates.forEach { u ->
         var open by remember(u) { mutableStateOf(false) }

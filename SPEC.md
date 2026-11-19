@@ -854,8 +854,9 @@ the page fills it after load, and a small stub sits beside it.
 - Photos tab: a grid filtered by Google's photo categories. With none yet, a food place offers
   a Menu chip (`loadPhotoCategories`, the full walk, once per place).
 - Business posts from `paths.updates` land in `Place.updates` with no extra request. Overview
-  shows the newest with "Show all N updates"; the Updates tab exists when there are two or
-  more.
+  shows the newest. The Updates tab exists when there are two or more, and then Overview's
+  Updates heading ends in "Show all N updates", which opens it. The button drops under the
+  heading when the two do not fit on one line.
 
 #### Settings
 
