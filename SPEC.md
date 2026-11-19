@@ -6968,6 +6968,10 @@ and in `location-guard.yml`.
   retitled `Vela <version>` with the notes regenerated. Each push to `canary` replaces the one
   release on the fixed tag `canary`, which is not a `v0.*` tag. Its notes carry the
   `versionCode:` line the updater reads.
+- Build provenance. On the runs that can publish (a push to `canary`, the nightly schedule, a
+  dispatch), `ci.yml` attests every release APK with `actions/attest-build-provenance`, which
+  needs `id-token: write` and `attestations: write`. A stable is its nightly's file, so it
+  carries the same attestation. The step is `continue-on-error` and never holds a release back.
 - `release.yml` is the manual path to a channel: input `channel` nightly dispatches `ci.yml`
   on `main` and waits for the nightly, and stable then calls `promote-stable.yml` with that
   tag. It refuses any ref but `main`, a `main` that moved after the run started, and a `main`

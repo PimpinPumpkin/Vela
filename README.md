@@ -109,6 +109,13 @@ Check a downloaded file against it before installing:
 apksigner verify --print-certs vela-maps-*.apk
 ```
 
+With the GitHub CLI you can also see which build made the file. This names the
+workflow run and the commit (releases from before November 2026 have none):
+
+```bash
+gh attestation verify vela-maps-*.apk -R PimpinPumpkin/Vela
+```
+
 On the phone, [App Verifier](https://github.com/soupslurpr/AppVerifier) checks
 the same thing. It wants the package name on the first line and the fingerprint
 on the second, so paste this block, not the line above:
