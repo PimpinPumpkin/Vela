@@ -266,8 +266,10 @@ off the list when it has been.
 - The dot on foot (`DotFix`): steps from the accelerometer move it between fixes, and Wi-Fi
   and cell fixes fill in when the GPS is weak. Unit-tested (synthetic walks, a car's
   vibration, a walk indoors on Wi-Fi), and a mock GPS walk on the 4a kept the dot within 0.5 m
-  of every fix, where the old smoothing trailed by about 9 m. Not yet on a real walk: the step
-  detector, the learned step length and the compass offset need a phone in a hand.
+  of every fix, where the old smoothing trailed by about 9 m. Sitting indoors on a phone it held
+  within 0.2 m of the GPS, moving 2 cm a fix. Keeping the dot through a gap is checked on a desk
+  replay of a recorded location test only. Not yet on a real walk: the step detector, the learned
+  step length and the compass offset need a phone in a hand.
 - The car screen's feed through the same filter (`GuidanceFix`): checked on the Desktop Head
   Unit with the phone app open and closed. Not yet in a car.
 - A drive on the open router's line after a reroute returns to Google's line at the next

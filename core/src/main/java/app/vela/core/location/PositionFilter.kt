@@ -200,6 +200,18 @@ class PositionFilter(mode: TravelMode = TravelMode.DRIVE) {
         p[10] = HOLD_SIGMA * HOLD_SIGMA; p[15] = HOLD_SIGMA * HOLD_SIGMA
     }
 
+    /** When the model last took a fix or a step, on the [update] clock; NaN before the first. */
+    val lastFixT: Double get() = if (seeded) lastT else Double.NaN
+
+    /** Carry the model over a gap it would otherwise start over after ([RESEED_S]): the next fix is
+     *  taken as if the last one were a second before it, with the model at rest. For a phone that
+     *  sat still through the gap, where the next fix agrees with the old position. */
+    fun bridge(tSec: Double) {
+        if (!seeded) return
+        lastT = tSec - 1.0
+        holdStill()
+    }
+
     /** Widen the position's uncertainty to at least [sigmaM] (a walk on steps alone drifts with
      *  the distance walked, which the per-step noise does not capture). */
     fun inflate(sigmaM: Double) {

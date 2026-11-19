@@ -210,7 +210,9 @@ the turn prompts follow your steps too. When you are not stepping and the GPS sh
 speed, the phone is taken as stationary: the dot holds and averages the fixes instead of chasing
 their scatter, and it moves only when the fixes keep landing to one side of it, so it never
 freezes on a bad first fix either. While the GPS answers, a Wi-Fi fix that disagrees with it
-does not pull the dot. Steps count from the third in a steady rhythm. Settings > Diagnostics > "Record a location test" records every fix,
+does not pull the dot. After a gap, the app away or the screen off, the dot stays where it was
+when the first fix back agrees with it, and its circle widens until the GPS is back. Steps count
+from the third in a steady rhythm. Settings > Diagnostics > "Record a location test" records every fix,
 step and dot position into a trip. Share trimmed cuts the ends as it does for a drive and keeps
 the steps and dot positions in the middle.
 

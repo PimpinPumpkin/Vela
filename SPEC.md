@@ -1631,10 +1631,10 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   fix (`N` kind `w`); the steps and the compass keep running through it, and each step is
   recorded as a `W` line. The engine is not called on steps.
   - Every GPS fix, any accuracy, as guidance takes one.
-  - Wi-Fi and cell fixes (`network`), weighted by their own accuracy, unless a GPS fix under
-    `NETWORK_GPS_FRESH_S` (3 s) old is at least as accurate. They re-anchor the model only after
-    `NETWORK_REANCHOR_AFTER_S` (30 s) without GPS, so a biased Wi-Fi fix cannot pull a GPS-held
-    dot away. The 12 s quiet rule and `FixRules.betterThanLast` apply to a drive only.
+  - Wi-Fi and cell fixes (`network`), weighted by their own accuracy, under the fresh-GPS rule
+    below. They re-anchor the model only after `NETWORK_REANCHOR_AFTER_S` (30 s) without GPS, so
+    a biased Wi-Fi fix cannot pull a GPS-held dot away. The 12 s quiet rule and
+    `FixRules.betterThanLast` apply to a drive only.
   - Steps (`core/location/StepDetector` through `WalkSense`): the accelerometer at game rate,
     gravity taken off by a 1 s running mean, smoothed at 40 ms, a peak over 1.2 m/s² after a dip
     under -0.6, at least 0.28 s and at most 1.5 s after the last, and its gap within 1.6 times the
@@ -1673,7 +1673,13 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
     GPS is twice as wide and wider than 25 m, and a network drift moves the dot only after 10 s
     without GPS: indoors Wi-Fi and GPS often disagree by tens of meters, and taking both pulled the
     dot back and forth.
-  - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
+  - After a gap over `RESEED_S` (120 s), the app away or the screen off, the first fix back that
+    agrees with the dot, inside both their uncertainties at the 95 percent chi-square cut
+    (`CARRY_GATE` 5.99), carries the dot over (`PositionFilter.bridge`) and is averaged in as
+    usual. The circle then shows at least that fix's accuracy, lowered by each GPS fix taken to its
+    own. A fix that disagrees starts the dot over from it. Otherwise a Wi-Fi fix 11 m off after
+    eight minutes sitting still moved the dot 11 m, and the returning GPS walked it back over 7 s
+    in hops of 1 to 4 m.  - Settings > Diagnostics > "Record a location test" (`setLocationTest`) records every fix as it
     came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o` for
     the old smoothing), into a trip named "Location test" until it is turned off. The bearing
     field of those `N` lines is the compass. Share trimmed keeps the steps and dot positions

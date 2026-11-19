@@ -82,8 +82,12 @@ class DotFix {
     fun walkingAt(tSec: Double): Boolean =
         !lastStepT.isNaN() && tSec - lastStepT <= WALK_HOLD_S && (lastGpsSpeed ?: 0.0) < STEP_IGNORE_MPS
 
+    /** After a gap the dot was carried over ([carryOver]): its circle shows at least this, which
+     *  each GPS fix taken lowers to its own accuracy. */
+    private var staleFloorM = 0.0
+
     val position: LatLng? get() = filter.position
-    val accuracyM: Double get() = filter.accuracyM
+    val accuracyM: Double get() = maxOf(filter.accuracyM, staleFloorM)
 
     /** A GPS fix. */
     fun gps(
@@ -99,6 +103,7 @@ class DotFix {
         @Suppress("NAME_SHADOWING") val bearingDeg = bearingDeg.takeIf { trusted }
         if (trusted && speedMps != null) { goodSpeed = speedMps; goodSpeedT = tSec }
         val lastGood = goodSpeed?.takeIf { tSec - goodSpeedT <= GOOD_SPEED_HOLD_S }
+        carryOver(fix, tSec, accuracyM ?: 10.0)
         // Stationary: no step and no speed the GPS can be trusted for. The phone is not going
         // anywhere, so the dot holds and averages the fixes instead of chasing their scatter
         // (indoors they jump tens of meters a second). Walking, steps move it; moving with no steps
@@ -116,6 +121,7 @@ class DotFix {
         val out = if (stationary) filter.update(fix, tSec, accuracyM, 0.0, STATIONARY_SPEED_ACC, null, null, still = true)
         else filter.update(fix, tSec, accuracyM, speedMps, speedAccMps.takeIf { trusted }, bearingDeg, bearingAccDeg.takeIf { trusted }, still)
         if (out.accepted && (accuracyM ?: 10.0) <= GOOD_FIX_M) stepMetersSinceFix = 0.0
+        if (out.accepted) staleFloorM = minOf(staleFloorM, accuracyM ?: 10.0)
         lastGpsT = tSec
         lastGpsAcc = accuracyM ?: 10.0
         lastGpsSpeed = speedMps
@@ -133,6 +139,7 @@ class DotFix {
         val walking = walkingAt(tSec)
         filter.mode = if (walking) TravelMode.WALK else TravelMode.DRIVE
         val lastGood = goodSpeed?.takeIf { tSec - goodSpeedT <= GOOD_SPEED_HOLD_S }
+        carryOver(fix, tSec, acc)
         filter.positionNoise = if (walking) WALK_POSITION_NOISE else 0.0
         val stationary = !walking && (lastGood ?: 0.0) < MOVE_MPS
         if (stationary) filter.holdStill()
@@ -140,6 +147,27 @@ class DotFix {
         if (gpsAge > NETWORK_DRIFT_AFTER_S) settleDrift(netDrift, fix) else netDrift.reset()
         return if (stationary) filter.update(fix, tSec, acc, 0.0, STATIONARY_SPEED_ACC, null, null, still = true, canReanchor = gpsAge > NETWORK_REANCHOR_AFTER_S)
         else filter.update(fix, tSec, acc, null, null, null, null, still = false, canReanchor = gpsAge > NETWORK_REANCHOR_AFTER_S)
+    }
+
+    /**
+     * The first fix after a gap long enough that the filter would start over from it (the app in
+     * the background, the screen off). When it agrees with where the dot was, inside both their
+     * uncertainties at [CARRY_GATE], the phone may well not have moved: the dot carries over and the
+     * fix is averaged in as usual, instead of the dot jumping to a Wi-Fi fix 10 m off and then
+     * being walked back as the GPS returns. Its circle shows at least that fix's accuracy, and
+     * shrinks as GPS fixes better than it are taken. A fix that disagrees starts the dot over from it, as before.
+     */
+    private fun carryOver(fix: LatLng, tSec: Double, accM: Double) {
+        val at = filter.position ?: return
+        val last = filter.lastFixT
+        if (last.isNaN() || tSec - last <= PositionFilter.RESEED_S) return
+        val sFix = accM / ACC_TO_SIGMA
+        val sDot = filter.accuracyM / ACC_TO_SIGMA
+        val ye = (fix.lng - at.lng) * 111_320.0 * cos(Math.toRadians(at.lat))
+        val yn = (fix.lat - at.lat) * 110_540.0
+        if (ye * ye + yn * yn > CARRY_GATE * (sFix * sFix + sDot * sDot)) return
+        filter.bridge(tSec)
+        staleFloorM = maxOf(staleFloorM, accM)
     }
 
     /** Feed one fix's offset from the dot to its source's [Drift]; when the offset holds, widen the
@@ -211,6 +239,7 @@ class DotFix {
         goodSpeed = null; goodSpeedT = Double.NaN
         gpsDrift.reset(); netDrift.reset()
         lastStepT = Double.NaN; stepTimes.clear()
+        staleFloorM = 0.0
     }
 
     companion object {
@@ -260,6 +289,11 @@ class DotFix {
         /** A network fix may re-anchor the model only once the GPS has been quiet this long. */
         const val NETWORK_REANCHOR_AFTER_S = 30.0
         const val NETWORK_DEFAULT_ACC_M = 500.0
+        /** The chi-square cut for two degrees of freedom at 95 percent: a fix after a gap this close
+         *  to the dot, against both their uncertainties, agrees with it ([carryOver]). */
+        const val CARRY_GATE = 5.99
+        /** Android's accuracy is a 68 percent radius, about 1.5 standard deviations. */
+        private const val ACC_TO_SIGMA = 1.5
         const val CADENCE_WINDOW_S = 4.0
         const val LEARN_MAX_ACC_M = 15.0
         const val LEARN_MIN_MPS = 0.6

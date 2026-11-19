@@ -216,6 +216,42 @@ class DotFixTest {
         assertTrue("largest move $worstStep m", worstStep < 1.5)
     }
 
+    /** A minute sitting still on a GPS that claims half a meter, as a phone indoors does. */
+    private fun settled(): DotFix {
+        val d = DotFix()
+        for (i in 0..60) d.gps(start, i.toDouble(), 0.5, 0.0, 0.02, null, null, still = true)
+        return d
+    }
+
+    @Test fun afterAGapAWifiFixThatAgreesKeepsTheDot() {
+        // Eight minutes with the app away, the phone where it was. The first fix back is Wi-Fi,
+        // 11 m off at 9 m, then the GPS returns at 32 m, 46 m off, then good again.
+        val d = settled()
+        val wifi = d.network(east(3.0, -11.0), 540.0, 9.0)!!
+        assertTrue("moved ${wifi.position.distanceTo(start)} m", wifi.position.distanceTo(start) < 1.5)
+        assertTrue("circle ${d.accuracyM} m", d.accuracyM >= 9.0)
+        d.gps(east(-30.0, -35.0), 541.0, 32.0, 0.2, 0.5, null, null, still = true)
+        assertTrue("a wide fix keeps the circle", d.accuracyM >= 9.0)
+        var at = d.position!!
+        for (i in 2..12) at = d.gps(east(-2.5, -1.5), 540.0 + i, 3.0, 0.0, 0.05, null, null, still = true).position
+        assertTrue("ended ${at.distanceTo(east(-2.5, -1.5))} m from the GPS", at.distanceTo(east(-2.5, -1.5)) < 2.0)
+        assertTrue("circle ${d.accuracyM} m once the GPS is back", d.accuracyM <= 3.5)
+    }
+
+    @Test fun afterAGapAFixFarFromTheDotStartsItOver() {
+        // The phone went somewhere while the app was away.
+        val d = settled()
+        val o = d.network(east(400.0), 600.0, 20.0)!!
+        assertTrue("left ${o.position.distanceTo(east(400.0))} m from the fix", o.position.distanceTo(east(400.0)) < 1.0)
+    }
+
+    @Test fun aShortPauseIsNoGap() {
+        // Under the filter's restart time the Wi-Fi fix waits for the GPS as at any other time.
+        val d = settled()
+        assertNull(d.network(east(3.0, -11.0), 63.0, 9.0))
+        assertTrue(d.accuracyM < 3.0)
+    }
+
     @Test fun aCarsVibrationNeverWalksTheDot() {
         val d = DotFix()
         d.gps(start, 0.0, 5.0, 15.0, 0.3, 90.0, 2.0, still = false)
