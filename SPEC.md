@@ -848,7 +848,11 @@ the page fills it after load, and a small stub sits beside it.
   the tab row shows once the in-flow row scrolls under the sheet top. Over three tabs the row
   scrolls.
 - The tab set is decided from the first reply; a rated or reviewed place gets Photos up front.
-  Placeholders hold the chart's and the histogram's height while those load.
+  Placeholders hold the chart's and the histogram's height while those load. The popular-times
+  placeholder is skipped while `GoogleStanding.limited` is set (that view has no charts) and
+  after `PopularTimesHint.MISSES_OFF` (3) details answers in a row came back with no chart; a
+  chart turns it back on (`popular_times_misses`, issue #904). This keeps a sheet from holding
+  an empty block through a 10 to 20 second fetch that brings no chart.
 - Reviews tab: a full-width button to the all-reviews page, then the loaded list, sorted
   (relevance, highest, lowest) and filtered locally.
 - Photos tab: a grid filtered by Google's photo categories. With none yet, a food place offers

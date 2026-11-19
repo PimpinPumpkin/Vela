@@ -1362,8 +1362,10 @@ fun PlaceSheet(
             }
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
-            // "missing" — it clears to the chart, or to nothing if this place has none.
-            if (place.popularTimes == null && detailsLoading && place.isListing()) {
+            // "missing": it clears to the chart, or to nothing if this place has none. Not after
+            // a run of places that had none (PopularTimesHint, issue #904), and not while Google
+            // gives this session its limited view, which has no charts.
+            if (place.popularTimes == null && detailsLoading && place.isListing() && app.vela.ui.PopularTimesHint.show && !app.vela.web.GoogleStanding.limited.value) {
                 // Sized like the chart (title, day chips, bars) so its arrival moves nothing.
                 SheetSkeleton(dim, listOf(120.dp), height = 14.dp, top = 22.dp)
                 SheetSkeleton(dim, listOf(260.dp), height = 24.dp, top = 12.dp)

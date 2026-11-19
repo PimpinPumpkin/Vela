@@ -144,6 +144,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
         app.vela.ui.NorthLock.init(this) // Settings > Map "Keep north up"
+        app.vela.ui.PopularTimesHint.init(this) // the popular-times placeholder (issue #904)
         app.vela.ui.TurnWithTravel.init(this) // Settings > Map "Turn the map as you drive" (issue #905)
         app.vela.ui.ParkingButton.init(this) // parking button shown with no spot saved (issue #626)
         app.vela.ui.LinkAction.init(this) // what a location link from another app does (discussion #640)

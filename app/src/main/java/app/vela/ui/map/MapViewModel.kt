@@ -4225,7 +4225,7 @@ class MapViewModel @Inject constructor(
         // businesses have no owner description, so this hidden page loaded on nearly every tap.
         // The search reply already carries both when Google has them.
         val complete = p.popularTimes != null && p.reviewCount != null && !p.address.isNullOrBlank() && p.hours.size >= 2
-        if (complete) { thumbPano(p); return }
+        if (complete) { if (p.isListing()) app.vela.ui.PopularTimesHint.answered(true); thumbPano(p); return }
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
             // The details page is a search for "name address" run inside a warmed Google page. Sent
@@ -4271,6 +4271,8 @@ class MapViewModel @Inject constructor(
             val d = cachedDetails ?: (native ?: (if (!pageWanted) null else runCatching { webPopularTimes.fetch(p) }.getOrNull()))
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             if (d != null) mergeDetails(p, d)
+            // Only an answer counts: a fetch that failed or was skipped says nothing about charts.
+            if (d != null && p.isListing()) app.vela.ui.PopularTimesHint.answered(d.popularTimes != null || p.popularTimes != null)
             _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
             thumbPano(p)
         }
