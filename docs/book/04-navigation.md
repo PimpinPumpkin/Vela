@@ -566,7 +566,10 @@ while that timestamp is under an hour old (`RESUME_MAX_AGE_MS`). Resume waits up
 the position where the process died, and a route from there draws the line over road already
 driven. Then it plans a fresh route. If the driver has started something else in those seconds
 (a search, a place, directions or another drive), the resume gives way (`ResumeYield`): the
-resumed drive used to start under it and leave the route sheet over the live drive.
+resumed drive used to start under it and leave the route sheet over the live drive. The prompt
+(`ResumeNavCard`) is at most 480 dp wide, so on a small landscape screen it leaves the map
+buttons clear: full width, it sat over the locate button, and a tap meant for that resumed the
+old drive.
 
 A drive's trip id is saved with it, so a resumed drive records into the trip the killed process
 left: a `resumed:` note, the drive's opening notes again (a resume after an update names the new
