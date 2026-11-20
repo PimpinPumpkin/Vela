@@ -215,13 +215,14 @@ class CarMapRenderer(
     private var heldStill = false // the at-rest sensor is held while a drive is on
     private var routeCum: Pair<app.vela.core.model.Route, DoubleArray>? = null // the route's cumulative meters, for the heading at its progress
 
-    /** Whether the following view turns with the car: during a drive, or moving with no route while
-     *  the phone's "Turn the map as you drive" is on, unless its "Keep north up" is on. */
+    /** Whether the following view turns with the car: during a drive; on the map-only landing screen,
+     *  standing still too, as Google Maps' car screen does; or moving with no route. With no route it
+     *  needs the phone's "Turn the map as you drive", and never with its "Keep north up". */
     private fun headingUp(): Boolean =
         following && previewRoute == null && !overview && !app.vela.ui.NorthLock.on.value &&
-            (navigating() || (driving && app.vela.ui.TurnWithTravel.on.value))
+            (navigating() || ((driving || driveScreen) && app.vela.ui.TurnWithTravel.on.value))
 
-    /** The drive-mode screen is up: no route, the map alone, the speed badge drawn. */
+    /** The map-only landing screen is up: no route, the speed badge drawn, tilted heading-up. */
     fun setDriveScreen(on: Boolean) { driveScreen = on; requestRender() }
 
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
@@ -904,7 +905,7 @@ class CarMapRenderer(
             }
             if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
             runCatching { drawPuck(canvas, snap, sx, sy, camUsed) } // puck always drawn
-            // The speed badge on the drive screen and in drive mode, unless Settings > Navigation
+            // The speed badge on the drive screen and the map-only landing, unless Settings > Navigation
             // "Show speed and speed limit" is off (issue #625).
             if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
             runCatching { drawAttribution(canvas) }

@@ -6438,15 +6438,26 @@ the same `:core` singletons as the phone (`CarDeps`).
   `NavSession.state` and, when a drive starts on the car or on the phone, pops to the landing
   screen and pushes the drive screen. `onCreateScreen` returns the drive screen over the landing
   screen when the car connects during a drive.
-- Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen`
-  (`SearchTemplate`) to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to
-  `ActiveNavCarScreen` (`NavigationTemplate`). The landing strip also opens `DriveCarScreen`
-  (drive mode, below), `SavedCarScreen` (Home, Work and every saved place, capped at the host's
-  list limit) and `CarSettingsScreen` (spoken directions, lane guidance, the tolls, highways and
+- Screens: `MainCarScreen` (the landing, below) to `SearchCarScreen` (`SearchTemplate`) to
+  `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarScreen`
+  (`NavigationTemplate`). The landing strip also opens `SavedCarScreen` (Home, Work and every
+  saved place, capped at the host's list limit) and `CarSettingsScreen` (spoken directions, lane guidance, the tolls, highways and
   ferries avoids, and the Traffic layer, written to the phone's `vela_settings` prefs,
   `RoutingPrefs`, `CarLanes` and `Traffic`). That is six rows, the car library's default list
   limit (`CONTENT_LIMIT_TYPE_LIST`); a host drops rows past its limit. The route preview passes
   the `RoutingPrefs` avoids to `directions`.
+- The landing opens on the map alone, as Google Maps' car screen does: a `NavigationTemplate`
+  with no navigation info, its strip Search (titled), a list button, Saved and Settings, its map
+  strip recenter and zoom. The renderer is in its landing mode (`setDriveScreen`): the speed badge
+  and limit sign, and tilted heading-up from the start, standing still too, with the phone's
+  "Turn the map as you drive" on and "Keep north up" off. The list button shows the destinations
+  card in place (`PlaceListNavigationTemplate`, north-up like the other list screens) and a car
+  button on it puts the card away (issue #899). Without the location permission the card stays,
+  since its first row asks for it.
+- `SearchCarScreen` with nothing typed lists the destinations (`MainCarScreen.destinations`:
+  Home, Work, recents, saved places, one row per location, each with its kind's icon and its
+  address), five at most, then "More nearby", as Google's car search opens on its Recent tab. The
+  keyboard waits for a tap on the box when there is a row to show.
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
@@ -6603,16 +6614,12 @@ The map:
   `controlGlyphPx`: a twentieth of the screen's short side, scaled with zoom as the phone
   scales its glyphs (0.7 at z14, 1 at z15.5, 1.3 at z17), between 16 and 56 px; a light is
   `LIGHT_TALL` (1.4) times that tall.
-- The speed badge and the limit sign draw during a drive and on the drive-mode screen
+- The speed badge and the limit sign draw during a drive and on the map-only landing
   (`setDriveScreen`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
   badge's radius is a 18th of the shorter side, 22 to 46 px, and the text, the sign and its
   strokes follow by the same factor, so on an 800 by 480 unit they are three fifths of the old
   fixed size and at 828 px and up the old size.
 
-Drive mode (`DriveCarScreen`, a `NavigationTemplate` with no navigation info): the map alone, no
-route and no list, opened from the landing strip's Drive action. Its strip holds search, saved
-places and a list action that pops back to the landing screen; the map strip is recenter and
-zoom. A drive started anywhere replaces it with the drive screen through `VelaCarSession`.
 
 ### 10.7 Street View
 

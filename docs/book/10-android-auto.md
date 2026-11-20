@@ -15,10 +15,12 @@ screen" is on under Settings > Navigation, since the car has a speedometer of it
 guidance on the car screen", there and in the car's settings, turns the lane arrows off. The turn
 card then does not grow as a turn comes near, which would make Zoom to the next turn pull back out.
 
-With no route, the map behaves as the phone's does: parked, it is north up and centered on you;
-once you move it turns with the car, tilts and zooms out with speed. The Drive button on the
-landing screen puts the list away and leaves the map alone, with search and your saved places a
-tap away and the limit sign in the corner. The traffic layer from the phone's map shows here when
+The car opens on the map alone, the way Google Maps' car screen does: tilted, turning with the
+car (parked too) and zooming out with speed, with the limit sign in the corner and Search, a list
+button, Saved and Settings along the top. The list button brings up Home, Work, the recents and
+nearby categories beside the map, and the car button on that list puts it away again. Search
+with nothing typed lists the same destinations with their addresses, like Google's Recent tab.
+With "Turn the map as you drive" off on the phone, or "Keep north up" on, the map stays north up. The traffic layer from the phone's map shows here when
 it is on, and the car's settings have a switch for it.
 
 Whether Vela is listed depends on how it was installed. Android Auto refuses an app that Google
@@ -101,7 +103,7 @@ its own layers on top:
 - The route, gray behind the arrow and blue ahead, with Google's congestion spans in amber, red
   and dark red.
 - Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5.
-- The speed badge and the limit sign while navigating and in drive mode, unless Settings >
+- The speed badge and the limit sign while navigating and on the map-only landing, unless Settings >
   Navigation "Show speed and speed limit" is off.
 - One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which
   prints every tile source's attribution and stays when the logo is turned off.
@@ -120,8 +122,8 @@ A snapshot takes roughly 100 to 300 ms, so the car map moves in eased steps. The
 every `TICK_MS` (70 ms) and asks for one snapshot at a time. A request that arrives while one is
 in flight marks the map dirty, and the next snapshot starts when the current one lands.
 
-All screens share one renderer and switch its mode: following (the landing screen, drive mode
-and the drive), preview (the chosen route framed in blue, the other listed routes in gray under
+All screens share one renderer and switch its mode: following (the landing screen and the
+drive), preview (the chosen route framed in blue, the other listed routes in gray under
 it, a red dot at the destination) and results (numbered pins framed with the car). A renderer per
 screen freezes the map, because the host does not deliver the surface again to a new callback. The
 snapshotter is kept across screens while the surface size is unchanged, since a new one reloads
@@ -198,8 +200,7 @@ dark with the car.
 
 | Screen | Template | What it holds |
 | --- | --- | --- |
-| `MainCarScreen` | `PlaceListNavigationTemplate` | The landing list: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby". Buttons for Search, Drive, Saved and Settings. |
-| `DriveCarScreen` | `NavigationTemplate` | Drive mode: the map alone, no route, with search, saved places and a list button back to the landing screen. |
+| `MainCarScreen` | `NavigationTemplate`, `PlaceListNavigationTemplate` | The landing: the map alone with Search, a list button, Saved and Settings. The list button swaps in the destinations card: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby", and a car button that puts it away. |
 | `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, each with a numbered pin on its row and the same pin on the map, which frames them with the car. Opened with no category, it lists the phone's quick categories. |
 | `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
 | `CarSettingsScreen` | `ListTemplate` | Spoken directions, lane guidance, the three avoids and the Traffic layer, written to the preferences the phone uses. Six rows, the car library's default list limit. |

@@ -176,6 +176,11 @@ Small items, one pull request each.
 
 - Turn arrows on the car screen (issue #804). The phone draws them on the route through the
   turns ahead; the car's snapshot map has none yet.
+- The rest of the car screens laid out like Google Maps' on wide and tall screens. The landing
+  is done (the map alone, its list one button away, #899; seen on the Desktop Head Unit at 800 by
+  480, 1280 by 720, the wide layout and 720 by 1280). Next: the drive screen and the route
+  preview side by side with Google's on the same sizes, and the car low in the frame as
+  Google keeps it.
 - Grid cells for the whole catalog. The bake conductor runs the US group and two world shards
   (`tools/bake-schedule.json`). Next: confirm from `cells-manifest.json` that every region has
   cells.

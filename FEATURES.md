@@ -368,8 +368,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - The drive screen has the map, a turn card with lanes, the arrival estimate and the posted limit;
   your speed too if you switch it on, since the car has its own speedometer. The map turns with
   the car, tilts and zooms out with speed.
-- With no route the map does the same once you move, and a Drive button puts the list away for a
-  map-only view with the speed badge.
+- The car opens on the map alone, as Google Maps does: tilted, turning with the car, with the
+  speed badge, Search, Saved and Settings. A list button brings up Home, Work, recents and nearby
+  categories, and Search with nothing typed lists them too.
 - The car map has the phone's parking lot, plaza, field and trail fills, and shows the traffic
   layer when it is on.
 - Buttons for the voice and end over the map, plus recenter and overview; pause, zoom and the
