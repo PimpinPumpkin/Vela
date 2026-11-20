@@ -178,8 +178,10 @@ Small items, one pull request each.
   is done (the map alone, its list one button away, #899; seen on the Desktop Head Unit at 800 by
   480, 1280 by 720, the wide layout and 720 by 1280). The drive screen's turn card is Google's
   teal, and its "then" line follows the phone's rule; the route preview labels each route's time
-  on the map as Google's does (1280 by 720). Next: the same screens at 800 by 480 and 720 by
-  1280; the End button draws blue on the Desktop Head Unit though Vela asks for red.
+  on the map and frames every route beside the card as Google's does, checked at 800 by 480 and
+  1280 by 720; the drive seen at 720 by 1280 too. Next: the preview and the search screens in
+  portrait (the Desktop Head Unit takes no taps there), and the End button, which draws blue on
+  the Desktop Head Unit though Vela asks for red.
 - Grid cells for the whole catalog. The bake conductor runs the US group and two world shards
   (`tools/bake-schedule.json`). Next: confirm from `cells-manifest.json` that every region has
   cells.
