@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 /**
  * Places around the car by category, before a drive: the phone's quick categories, then the
  * nearest results for one of them over the live map. A result previews a route to it, the same
- * as a saved place. ([AlongRouteCarScreen] is the mid-drive twin, where a pick becomes a stop.)
+ * as a saved place.
  *
  * Opened with a [chip] it goes straight to that category's results (the landing screen's
  * category rows); without one it lists every category first.

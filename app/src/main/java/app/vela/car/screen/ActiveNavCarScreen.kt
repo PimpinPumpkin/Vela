@@ -174,7 +174,8 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         }
 
         val strip = ActionStrip.Builder()
-        // A faster-route offer (when present) takes the first slot as a tappable "Faster −N min".
+        // A faster-route offer (when present) comes first as a tappable "Faster −N min", beside the
+        // voice button, not in its place: while an offer stood, the car had no way to mute (#927).
         val faster = s.fasterRoute
         if (faster != null && s.fasterSavingSeconds >= 60) {
             val mins = (s.fasterSavingSeconds / 60).roundToInt().coerceAtLeast(1)
@@ -184,21 +185,20 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                     .setOnClickListener { deps.navSession.acceptFasterRoute(); invalidate() }
                     .build(),
             )
-        } else {
-            // ICONS, NOT TITLES (a real head unit, 2026-09-22): a titled action is drawn as a text
-            // pill ("Mute", "Pause", "End" across the top of the map); every template nav app and
-            // Google's own car UI use round icon buttons, and the icon says what the text said.
-            // The glyph is the mode, and a tap steps On, Alerts only, Off as the phone's does (#842).
-            val voice = deps.voiceGuide
-            val glyph = when {
-                !voice.muted -> app.vela.R.drawable.ic_car_unmute
-                voice.alertsOnly -> app.vela.R.drawable.ic_car_alerts
-                else -> app.vela.R.drawable.ic_car_mute
-            }
-            strip.addAction(
-                carAction(glyph) { app.vela.car.CarVoice.step(carContext, voice); invalidate() },
-            )
         }
+        // ICONS, NOT TITLES (a real head unit, 2026-09-22): a titled action is drawn as a text
+        // pill ("Mute", "Pause", "End" across the top of the map); every template nav app and
+        // Google's own car UI use round icon buttons, and the icon says what the text said.
+        // The glyph is the mode, and a tap steps On, Alerts only, Off as the phone's does (#842).
+        val voice = deps.voiceGuide
+        val glyph = when {
+            !voice.muted -> app.vela.R.drawable.ic_car_unmute
+            voice.alertsOnly -> app.vela.R.drawable.ic_car_alerts
+            else -> app.vela.R.drawable.ic_car_mute
+        }
+        strip.addAction(
+            carAction(glyph) { app.vela.car.CarVoice.step(carContext, voice); invalidate() },
+        )
         // Two buttons up here (user 2026-10-15, after a side-by-side with Google's car screen):
         // mute and end. Pause and the search along the route stay on the phone, where a drive is
         // paused and stops are added; four round buttons over the map read as clutter on a car.

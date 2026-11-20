@@ -209,7 +209,6 @@ dark with the car.
 | `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
 | `RoutePreviewCarScreen` | `RoutePreviewNavigationTemplate` | Up to three driving routes with live-traffic times, and Go. |
 | `ActiveNavCarScreen` | `NavigationTemplate` | The drive. |
-| `AlongRouteCarScreen` | `ListTemplate` | Quick categories, then up to six results around the car. A pick becomes the next stop. |
 
 The place list template throws past six rows (`MAX_ROWS`), so the landing list is cut before it is
 built. A category row carries the map's own marker as a small image (`Row.IMAGE_TYPE_SMALL`). As
@@ -227,14 +226,11 @@ message. Go names a provisional route first, the way the phone does.
 
 The drive's button row holds two actions, the voice and end. The voice button steps on, alerts
 only and off, as the phone's speaker button does, and its glyph is the mode: a speaker, a bell, a
-crossed-out speaker. A faster-route offer that saves a minute or more takes the voice slot. The
-buttons are icons, because the host draws a titled action as a text pill across the map. End is
+crossed-out speaker. A faster-route offer that saves a minute or more goes first, beside the
+voice button rather than in its place, so the car can always mute. The other buttons are icons, because the host draws a titled action as a text pill across the map. End is
 red and carries the primary flag. The host throws on a background color on any other action.
 
-Search along the route is two lists because the host refuses typing while the car moves.
-
-A gas station's price is a second text line on its row in search, nearby and search along the
-route: Google's in the US, the UK government's Fuel Finder in the UK ([chapter 2](02-data-and-rebakes.md)).
+A gas station's price is a second text line on its row in search and nearby: Google's in the US, the UK government's Fuel Finder in the UK ([chapter 2](02-data-and-rebakes.md)).
 The rows show at once; a UK list asks for the Fuel Finder file (downloading it the first time) and
 redraws with the prices, unless a newer search has replaced it.
 
@@ -372,9 +368,7 @@ phone. It says nothing about the gate either.
 - On a head unit that runs the ownership check, a plain sideload of Vela is not listed.
 - The map moves in snapshot steps, well under the phone's frame rate. A live map needs a
   View-backed renderer, which the template surface does not offer.
-- Search along the route searches around the car and sorts by distance. It does not follow the
-  route ahead, and a pick always becomes the next stop.
-- Only typed search has an offline fallback. Nearby and search along the route need a connection.
+- Only typed search has an offline fallback. Nearby needs a connection.
 - The route preview is driving only and shows three routes at most.
 - A drive started from the car with the phone app never opened has no navigation controller, so
   it gets no corridor dots and no alert toasts, and it records no trip.
