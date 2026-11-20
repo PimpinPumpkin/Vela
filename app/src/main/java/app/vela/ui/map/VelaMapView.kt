@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.nativeCanvas
@@ -1027,6 +1028,10 @@ fun VelaMapView(
     // stack currently holds.
     // The drive compass under the drive's column: a 48 dp view whose center is on the buttons' line.
     val compassRightPx = with(density) { (if (navMode && navFabTopPx.intValue > 0) MAP_BUTTON_CENTER_DP - 24.dp else if (navMode && landscapeNow) 8.dp + NAV_FAB_COLUMN_DP else 8.dp).roundToPx() }
+    // The map runs under a navigation bar on the side (landscape on Android 8 head units, #953),
+    // and the compass is placed from the map's edge, so it sat half under the bar while the
+    // buttons beside it, which pad for it, did not.
+    val sideNavRightPx = WindowInsets.navigationBars.getRight(density, androidx.compose.ui.platform.LocalLayoutDirection.current)
     val leftInsetHolder = rememberUpdatedState(cameraLeftInsetPx)
     val compassStock = remember { arrayOfNulls<android.graphics.drawable.Drawable>(1) }
     val compassIsNav = remember { booleanArrayOf(false) }
@@ -5062,7 +5067,7 @@ fun VelaMapView(
         // it), so both margins are measured from the stock image, never from the drive's.
         if (compassStock[0] == null) compassStock[0] = map.uiSettings.compassImage
         val browseRight = with(density) { MAP_BUTTON_CENTER_DP.roundToPx() } - (compassStock[0]?.intrinsicWidth ?: 0) / 2
-        map.uiSettings.setCompassMargins(0, compassTopPx, if (navMode) compassRightPx else browseRight.coerceAtLeast(0), 0)
+        map.uiSettings.setCompassMargins(0, compassTopPx, (if (navMode) compassRightPx else browseRight.coerceAtLeast(0)) + sideNavRightPx, 0)
         // In a drive the compass wears the nav buttons' dress; browsing keeps the map's own.
         val wantNavCompass = navMode
         if (compassIsNav[0] != wantNavCompass) {
