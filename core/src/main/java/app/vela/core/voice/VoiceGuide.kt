@@ -34,11 +34,64 @@ class VoiceGuide @Inject constructor(
     /** Speech-rate multiplier (1.0 = normal, >1 = faster), settable live from Settings. Applied to the
      *  Android TextToSpeech engine; the neural voice reads its own `voice_speed` pref per utterance. */
     @Volatile private var speechRate = 0.97f
-    // Guidance volume (issue #245). The system-TTS path can only ATTENUATE (Android's
-    // KEY_PARAM_VOLUME caps at 1.0); the boost tiers act on the neural voice's own PCM.
+    // Guidance volume (issue #245). The neural voice scales its own PCM. A system engine takes
+    // KEY_PARAM_VOLUME at Normal and below, and the louder steps through [boostSessionFor].
     @Volatile private var volume = 1.0f
     fun setVolume(v: Float) {
         volume = v.coerceIn(0.2f, 3.0f)
+        if (SystemVoiceBoost.gainMb(volume) == 0) synchronized(boostLock) { releaseBoostLocked() }
+    }
+
+    // The louder steps on a system engine (issue #979): the framework clips KEY_PARAM_VOLUME to
+    // 0..1, so a line above Normal plays on an audio session of Vela's (KEY_PARAM_SESSION_ID) that
+    // a LoudnessEnhancer sits on. The engine's TextToSpeechService makes one AudioTrack per
+    // utterance on the session it is given, and the session's effect applies to each of them.
+    private val boostLock = Any()
+    private var boost: android.media.audiofx.LoudnessEnhancer? = null
+    private var boostSession = 0
+    private var boostMb = 0
+    // The device has no enhancer to make: stop asking until the engine is shut down.
+    private var boostUnavailable = false
+
+    /** The audio session a system engine's line at [setting] plays on, with the enhancer set to
+     *  that step's gain ([SystemVoiceBoost.gainMb]). 0 at Normal and below, or when no enhancer can
+     *  be made or set: the line then plays as it always did, at full engine volume. */
+    private fun boostSessionFor(setting: Float): Int {
+        val mb = SystemVoiceBoost.gainMb(setting)
+        if (mb <= 0) return 0
+        synchronized(boostLock) {
+            if (boostUnavailable) return 0
+            val fx = boost ?: run {
+                val session = audioManager?.let { am -> runCatching { am.generateAudioSessionId() }.getOrNull() }
+                val made = session?.takeIf { it > 0 }?.let { s -> runCatching { android.media.audiofx.LoudnessEnhancer(s) }.getOrNull() }
+                if (session == null || made == null) {
+                    boostUnavailable = true
+                    runCatching { android.util.Log.i("VelaDirections", "voice: no loudness enhancer, the system voice plays at full engine volume") }
+                    return 0
+                }
+                boostSession = session
+                boostMb = 0
+                made.also { boost = it }
+            }
+            val set = runCatching {
+                if (mb != boostMb) { fx.setTargetGain(mb); boostMb = mb }
+                fx.setEnabled(true) == android.media.audiofx.AudioEffect.SUCCESS
+            }.getOrDefault(false)
+            if (!set) {
+                // A dead handle (the audio server restarted) or lost control: drop it, the next
+                // line makes a new one.
+                releaseBoostLocked()
+                return 0
+            }
+            return boostSession
+        }
+    }
+
+    private fun releaseBoostLocked() {
+        boost?.let { runCatching { it.release() } }
+        boost = null
+        boostSession = 0
+        boostMb = 0
     }
     fun setRate(rate: Float) {
         speechRate = rate.coerceIn(0.5f, 2.0f)
@@ -537,10 +590,14 @@ class VoiceGuide @Inject constructor(
 
     private fun speakViaSystemNow(engine: TextToSpeech, text: String, interrupt: Boolean, t: String) {
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        val setting = volume
+        val session = boostSessionFor(setting)
         // Same foreign-name romanizing as the neural path (issue #184): the system voice for [t]
         // is Latin-script for the Latin languages, so a foreign road name would otherwise be lost.
         val params = android.os.Bundle().apply {
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume.coerceAtMost(1.0f))
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, SystemVoiceBoost.engineVolume(setting))
+            // An engine that plays its own audio ignores the session and speaks at full volume.
+            if (session > 0) putInt(TextToSpeech.Engine.KEY_PARAM_SESSION_ID, session)
         }
         // A lead-in of silence before the words (issue #802): an output waking from standby, a
         // Bluetooth head unit above all, dropped the first syllables. Longer on Bluetooth
@@ -591,6 +648,10 @@ class VoiceGuide @Inject constructor(
         lastSystemLang = null
         neural?.stop()
         releaseAllFocus()
+        synchronized(boostLock) {
+            releaseBoostLocked()
+            boostUnavailable = false
+        }
     }
 
     private fun requestFocus() {

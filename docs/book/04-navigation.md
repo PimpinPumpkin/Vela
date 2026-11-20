@@ -153,6 +153,12 @@ Prompts duck other audio (`VoiceGuide`). Focus is held for `FOCUS_HOLD_MS = 1500
 so music does not come back up between two prompts, and a phone call that takes focus silences
 guidance. Vela's own voice synthesizes the next lines ahead of time (`NavEngine.upcomingPrompts`).
 
+"Guidance volume" (Settings > Voice) has Softer, Normal, Louder and Loudest. Vela's own voice
+is leveled to a standard loudness and scaled from there, in its own audio. A voice from the
+phone's engine can only be turned down through the engine, so Louder and Loudest play its lines
+on an audio session of Vela's with a loudness enhancer on it, raised by the same factor as
+Vela's voice: +4.1 dB and +6.8 dB, and no further ([SPEC 9.1](../../SPEC.md#91-spoken-guidance)).
+
 Two turns within 130 m of each other are said on one line: "Turn right onto Elm Street, then
 turn left onto Oak Avenue", when the first is announced and again at the first turn. The second
 turn is then said only at the turn itself. Said apart, its approach line landed on top of the

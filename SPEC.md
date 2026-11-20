@@ -5807,7 +5807,18 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   preferences, so the level is the same from the first line of a session. It is not set from
   the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
   gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
-  so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
+  so nothing clips flat.
+- A system TTS takes the setting as `KEY_PARAM_VOLUME` at Normal and below. The framework clips
+  that parameter to 0..1, so above Normal the parameter is 1 and the line plays on an audio
+  session of Vela's (`AudioManager.generateAudioSessionId`, passed as `KEY_PARAM_SESSION_ID`)
+  with a `LoudnessEnhancer` on it (`SystemVoiceBoost`, issue #979). Its target gain is 2000
+  log10 of the setting in millibels, the factor the Vela voice gets over Normal: 408 (+4.1 dB)
+  at Louder, 685 (+6.8 dB) at Loudest. The cap is Loudest (`MAX_SETTING`, 2.2). The engine's
+  `TextToSpeechService` makes one `AudioTrack` per utterance on the session it is given, and
+  the session's effect applies to each. The effect compresses what the gain would push past
+  full scale. One enhancer is kept per `VoiceGuide` and released on `shutdown` and when the
+  setting drops to Normal or below. A device with no enhancer, or an engine that plays its own
+  audio and ignores the session, speaks at full engine volume, as at Normal.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next

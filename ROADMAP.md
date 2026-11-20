@@ -262,6 +262,13 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Louder and Loudest for a voice from the phone's engine (`SystemVoiceBoost`, a
+  `LoudnessEnhancer` on Vela's audio session, issue #979; SPEC 9.1): the step-to-gain mapping is
+  unit-tested only. Not yet heard on a phone with Google TTS or Samsung TTS, through Bluetooth,
+  or in Android Auto. Listen at Normal and Loudest with Test voice; a phone that keeps the same
+  level at both has an engine that ignores the session or no enhancer (logcat `VelaDirections`,
+  "voice: no loudness enhancer"). Check that a loud engine at Loudest does not sound squashed.
+
 - The arrow and the map keeping up in turns (fix age carried forward, a wider and leading heading
   chord, a leading camera that keeps its quick ease until it has caught up; SPEC 4.7): measured on
   a mock turn from a stop on a 4a, not yet on a real drive. A drive with Settings > Diagnostics >
