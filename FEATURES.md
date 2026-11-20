@@ -191,7 +191,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - The compass switches heading-up and north-up. "Start drives north-up" sets the default, and
   "Keep north up" holds every drive north-up.
 - "Navigation icon" is an arrow, a car, a UFO, a pirate ship or a rubber duck, with "Arrow size" and
-  "Arrow colors".
+  "Arrow colors". Tapping the arrow while navigating changes it on the spot.
 - "Vibrate on turns", "Keep screen on while navigating" and "Ask before ending navigation".
 - A running drive shows over the lock screen, so the power button wakes the phone to the route.
 - "Wake the screen before each turn" lights a dark screen as each turn comes near during a drive,

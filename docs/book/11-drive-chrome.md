@@ -225,7 +225,9 @@ the line with short median jogs straightened, so the arrow and the camera hold t
 through one.
 
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
-rubber duck, which in a drive are low-poly 3D models (`ui/map/Puck3D.kt`).
+rubber duck, which in a drive are low-poly 3D models (`ui/map/Puck3D.kt`). A tap on the arrow
+while navigating opens the same choice over the map; a pick shows at once and Cancel puts back
+the old one. The new icon replaces the map symbol's image in place, so the map does not reload.
 
 ### The camera
 

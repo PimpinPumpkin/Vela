@@ -897,6 +897,15 @@ orthographic, from the heading relative to the camera and the camera's tilt
 (`puckOverlayTilt`), back faces culled, faces painted far to near, over a ground shadow. The
 arrow stays flat. Measured on a Pixel 4a demo drive: 60 fps, 0.17% janky frames.
 
+A tap on the arrow while navigating opens the same choice (`ui/map/PuckPicker.kt`): the five
+icons as tiles, drawn as the drive draws them, and the car's colors when the car is picked. A pick
+shows at once. Done keeps it; Cancel, Back or a tap outside puts back the icon the dialog opened
+with. The tap counts within 28 dp of the arrow or half its drawn size, whichever is larger,
+measured to the follow overlay or, off follow, to the symbol at the last applied fix. It is
+checked before any other tap on the map, and not in picture-in-picture. A new icon, size or
+arrow color replaces the symbol's image (`vela-nav-puck`) on the loaded style and is not in
+`styleKey`: a style reload mid-drive blanks the map and rebuilds every layer.
+
 The nav Overview button is a toggle. With `inNavOverview` set (by Overview; cleared by
 Re-center, a pan and the end of the drive) a press re-centers instead of fitting again. The fit
 keeps the chrome clear: in portrait the turn card, the bar, the route bar strip and the button
@@ -4375,9 +4384,9 @@ shares (`widenStreets`, the road edges, label colors, the hide list, borders).
 - `VelaTheme` puts the AMOLED surfaces on whichever dark scheme is in use
   (`ColorScheme.onTrueBlack`): Vela's own, or the wallpaper's with "Material You colors" on,
   whose accents are kept.
-- `styleKey` carries the style URI, the dark and AMOLED flags, the palette, satellite, the puck
-  style, the house-number level and the offline basemap archive. A change in any of them reloads
-  the style.
+- `styleKey` carries the style URI, the dark and AMOLED flags, the palette, satellite, the
+  house-number level, the names mode and the offline basemap archive. A change in any of them
+  reloads the style. The navigation icon is not in it: its image is replaced on the loaded style.
 - Every layer is colored in every palette. An unstyled runtime `LineLayer` renders black, and
   a Liberty layer no dark function names keeps its light colors at night.
 - `applyAmoled` sets colors only. Zoom gates and extrusion geometry come from `applyDark`.

@@ -280,28 +280,29 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Text(
             stringResource(R.string.settings_puck_shape),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp),
         )
-        listOf(
-            app.vela.ui.PuckStyle.SHAPE_ARROW to stringResource(R.string.settings_puck_shape_arrow),
-            app.vela.ui.PuckStyle.SHAPE_CAR to stringResource(R.string.settings_puck_shape_car),
-            app.vela.ui.PuckStyle.SHAPE_UFO to stringResource(R.string.settings_puck_shape_ufo),
-            app.vela.ui.PuckStyle.SHAPE_SHIP to stringResource(R.string.settings_puck_shape_ship),
-            app.vela.ui.PuckStyle.SHAPE_DUCK to stringResource(R.string.settings_puck_shape_duck),
-        ).forEach { (id, label) ->
+        Text(
+            stringResource(R.string.settings_puck_shape_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
+        )
+        app.vela.ui.map.PuckPicker.SHAPES.forEach { (id, labelRes) ->
             SelectableRow(
-                label = label,
+                label = stringResource(labelRes),
                 selected = app.vela.ui.PuckStyle.shape.value == id,
                 onClick = { app.vela.ui.PuckStyle.setShape(context, id) },
             )
         }
         // What the drive will show, drawn by the same code.
         val puckKey = app.vela.ui.PuckStyle.key()
-        val puckPreview = androidx.compose.runtime.remember(puckKey) { run {
-            // The alternatives preview as the 3D model they drive as; the arrow stays its flat self.
-            val mesh = app.vela.ui.map.PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)
-            (if (mesh != null) app.vela.ui.map.puck3DPreviewBitmap(mesh, 202) else app.vela.ui.map.navPuckBitmap()).asImageBitmap()
-        } }
+        val puckPreview = androidx.compose.runtime.remember(puckKey) {
+            // The alternatives preview as the 3D model they drive as; the arrow as it is drawn now.
+            val shape = app.vela.ui.PuckStyle.shape.value
+            if (shape == app.vela.ui.PuckStyle.SHAPE_ARROW) app.vela.ui.map.navPuckBitmap().asImageBitmap()
+            else app.vela.ui.map.puckPreviewBitmap(shape, app.vela.ui.PuckStyle.carColor.value, 202).asImageBitmap()
+        }
         androidx.compose.foundation.Image(
             puckPreview, contentDescription = null,
             modifier = Modifier.padding(start = 20.dp, top = 4.dp).size(64.dp),
@@ -311,11 +312,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                listOf(
-                    "red" to R.string.settings_car_red, "blue" to R.string.settings_car_blue,
-                    "white" to R.string.settings_car_white, "green" to R.string.settings_car_green,
-                    "yellow" to R.string.settings_car_yellow,
-                ).forEach { (id, label) ->
+                app.vela.ui.map.PuckPicker.CAR_COLORS.forEach { (id, label) ->
                     FilterChip(
                         selected = app.vela.ui.PuckStyle.carColor.value == id,
                         onClick = { app.vela.ui.PuckStyle.setCarColor(context, id) },

@@ -4124,6 +4124,18 @@ fun VelaMapView(
                         drawTap.value(LatLng(tapped.latitude, tapped.longitude))
                         return@handleTap true
                     }
+                    // The arrow while navigating: a tap on it picks its icon (PuckPicker). It is the
+                    // follow overlay or, off follow, the symbol at the last applied fix.
+                    if (navModeHolder.value && !app.vela.ui.PipMode.active.value) {
+                        val tp = map.projection.toScreenLocation(tapped)
+                        val at = if (puckOverlayOn.value) android.graphics.PointF(puckOverlayX.floatValue, puckOverlayY.floatValue)
+                            else lastAppliedMe?.let { map.projection.toScreenLocation(MLLatLng(it.lat, it.lng)) }
+                        val hitPx = maxOf(density.density * 28f, 101f * app.vela.ui.PuckStyle.phoneScale())
+                        if (at != null && !at.x.isNaN() && kotlin.math.hypot(tp.x - at.x, tp.y - at.y) <= hitPx) {
+                            PuckPicker.open.value = true
+                            return@handleTap true
+                        }
+                    }
                     val p = map.projection.toScreenLocation(tapped)
                     // Generous hit radius (~16dp) so taps near a POI icon register —
                     // a tight box made the bigger markers feel un-tappable.
@@ -5267,11 +5279,10 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings color-set switch reloads the style, same as a theme flip.
-        // The puck style rides the key too: the symbol image is registered once per style load
-        // (issue #344), so a size/color change reloads to re-register it.
+        // The navigation icon does not: its image is swapped in place (below, at the overlay).
         // The offline basemap rides the key: entering or leaving an installed region reloads the
         // style with its tile source pointed at the local archive (or back at OpenFreeMap).
-        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}|names=${app.vela.ui.MapNames.mode.value}|base=${basemapArchive ?: ""}"
+        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|hn=${app.vela.ui.HouseNumbers.level.value}|names=${app.vela.ui.MapNames.mode.value}|base=${basemapArchive ?: ""}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             // An installed offline basemap wins over every style source: the remote Liberty URL
@@ -5796,6 +5807,10 @@ fun VelaMapView(
             if (a > 0f) drawRect(androidx.compose.ui.graphics.Color(land), alpha = a)
         },
     )
+    // A new navigation icon replaces the symbol's image on the loaded style. The picker changes it
+    // mid-drive, where a style reload blanked the map and rebuilt every layer.
+    val puckImgKey = app.vela.ui.PuckStyle.key()
+    LaunchedEffect(puckImgKey) { styleRef?.let { st -> runCatching { st.addImage(NAV_PUCK_IMG, navPuckBitmap()) } } }
     val puckMesh = if (puckOverlayOn.value) remember(app.vela.ui.PuckStyle.key()) {
         PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)
     } else null
@@ -5835,6 +5850,7 @@ fun VelaMapView(
                 .size(with(density) { sizePx.toDp() }),
         )
     }
+    if (PuckPicker.open.value) PuckPickerDialog(onClose = { PuckPicker.open.value = false })
     }
 }
 
@@ -10672,6 +10688,7 @@ private fun arrowBitmap(): Bitmap {
 internal fun navPuckBitmap(
     scale: Float = app.vela.ui.PuckStyle.phoneScale(),
     whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
+    shape: String = app.vela.ui.PuckStyle.shape.value,
 ): Bitmap {
     // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
     // [scale] is the Settings "Arrow size" (issue #344): Large 1.25x, Extra large 1.5x.
@@ -10681,7 +10698,7 @@ internal fun navPuckBitmap(
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
     // user tuned in July stay byte-identical - only the rendered size grows.
     canvas.scale(size / 176f, size / 176f)
-    when (app.vela.ui.PuckStyle.shape.value) {
+    when (shape) {
         app.vela.ui.PuckStyle.SHAPE_CAR -> { drawCarPuck(canvas, app.vela.ui.PuckStyle.carColor.value); return bmp }
         app.vela.ui.PuckStyle.SHAPE_UFO -> { drawUfoPuck(canvas); return bmp }
         app.vela.ui.PuckStyle.SHAPE_SHIP -> { drawShipPuck(canvas); return bmp }

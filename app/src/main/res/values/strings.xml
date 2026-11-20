@@ -1507,6 +1507,9 @@
     <string name="settings_puck_shape_ufo">UFO</string>
     <string name="settings_puck_shape_ship">Pirate ship</string>
     <string name="settings_puck_shape_duck">Rubber duck</string>
+    <string name="settings_puck_shape_hint">You can also tap the arrow while navigating.</string>
+    <string name="puck_pick_done">Done</string>
+    <string name="puck_pick_cancel">Cancel</string>
     <string name="route_saved_label">Your route: %1$s</string>
     <string name="route_save">Save this route</string>
     <string name="trip_shortcut_add">Add to home screen</string>
