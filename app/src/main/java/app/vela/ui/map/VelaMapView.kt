@@ -420,6 +420,10 @@ private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
  *  of geometry noise, well below a junction turn. */
 private const val CAM_BRG_TURN_DEG = 25.0
+/** An error this big is a turn, not geometry noise (2 to 7 degrees): the turn's constant then holds... */
+private const val CAM_BRG_LATCH_DEG = 12.0
+/** ...until the camera is this close to its target. */
+private const val CAM_BRG_SETTLED_DEG = 3.0
 /**
  * The zoom house numbers start appearing at, shared by the basemap `vela-housenumber` layer and the
  * streamed `vela-addr-*` overlay so the two can never disagree (they draw the same addresses from
@@ -2792,7 +2796,13 @@ fun VelaMapView(
                         "snap: %s, %d roads near, %.1f ms (query %d: %.1f, read %.1f)", if (!roadSnap.lastDistM.isNaN()) String.format(java.util.Locale.US, "%.1f m to the road", roadSnap.lastDistM)
                             else if (roadSnap.snapped) "held" else "none", roads?.size ?: -1, snapQueryMs[0], RoadSnapQuery.queries, RoadSnapQuery.lastQueryMs, RoadSnapQuery.lastConvertMs))
                 } else if (roadSnap.snapped) roadSnap.clear()
-                browseEst.onFix(fx.lat + roadSnap.offLat, fx.lng + roadSnap.offLng, spd, crs, nowMs)
+                // The fix is about 150 ms old (FixAge): carried along its course to now, as on a drive.
+                val leadM = if (crs != null && spd > 1.5 && app.vela.ui.AppTune.value("fixLead", 1.0) >= 0.5)
+                    spd * FixAge.ageMs(loc) / 1000.0 else 0.0
+                val leadBr = Math.toRadians(crs ?: 0.0)
+                val leadLat = leadM * kotlin.math.cos(leadBr) / 111_320.0
+                val leadLng = leadM * kotlin.math.sin(leadBr) / (111_320.0 * kotlin.math.cos(Math.toRadians(fx.lat)).coerceAtLeast(0.1))
+                browseEst.onFix(fx.lat + roadSnap.offLat + leadLat, fx.lng + roadSnap.offLng + leadLng, spd, crs, nowMs)
                 browseFix[3] = spd
                 browseFix[4] = crs ?: Double.NaN
             }
@@ -3444,10 +3454,30 @@ fun VelaMapView(
                 // across the window barely moves on a straight road with kinked geometry. The
                 // clamped ends coincide only at a degenerate route edge; fall back to the
                 // segment there rather than aiming the arrow north.
-                val (wA, _) = pointAtMeters(puckLine, puckCum, puckM - win)
-                val (wB, _) = pointAtMeters(puckLine, puckCum, puckM + win)
+                // A car starts its arc well before the corner's point (a 90 degree turn on a 15 m
+                // radius bends 15 m out), so the heading's chord is at least HEAD_WIN_MIN_M either
+                // side, which starts it turning where the car does; and it is taken HEAD_LEAD_S ahead
+                // of the puck, the time the drawn heading's ease below takes to land.
+                val tuneNow = android.os.SystemClock.elapsedRealtime()
+                if (tuneNow - navPuck.headTuneAtMs > 2_000L) {
+                    navPuck.headTuneAtMs = tuneNow
+                    navPuck.headWinMin = app.vela.ui.AppTune.value("headWinMin", HEAD_WIN_MIN_M).coerceIn(0.0, 40.0)
+                    navPuck.headLeadS = app.vela.ui.AppTune.value("headLeadS", HEAD_LEAD_S).coerceIn(0.0, 2.0)
+                    navPuck.camLeadS = app.vela.ui.AppTune.value("camLeadS", CAM_LEAD_S).coerceIn(0.0, 2.0)
+                }
+                val headWin = maxOf(win, navPuck.headWinMin)
+                val headM = puckM + navPuck.speed * navPuck.headLeadS
+                val (wA, _) = pointAtMeters(puckLine, puckCum, headM - headWin)
+                val (wB, _) = pointAtMeters(puckLine, puckCum, headM + headWin)
                 val chordBrg = if (kotlin.math.abs(wA.lat - wB.lat) + kotlin.math.abs(wA.lng - wB.lng) < 1e-7) segBrg
                     else bearingDeg(wA, wB)
+                // The camera's own ease trails a turn by about CAM_LEAD_S, so it aims that much further on.
+                navPuck.camChord = if (navPuck.camLeadS <= 0.0) Float.NaN else {
+                    val camM = headM + navPuck.speed * navPuck.camLeadS
+                    val (cA, _) = pointAtMeters(puckLine, puckCum, camM - headWin)
+                    val (cB, _) = pointAtMeters(puckLine, puckCum, camM + headWin)
+                    if (kotlin.math.abs(cA.lat - cB.lat) + kotlin.math.abs(cA.lng - cB.lng) < 1e-7) Float.NaN else bearingDeg(cA, cB)
+                }
                 // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
                 // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
@@ -3456,7 +3486,7 @@ fun VelaMapView(
                 // row per frame of the numbers behind the camera, so a real drive can be diagnosed
                 // instead of a simulated one. No-op unless the user turned it on; carries no
                 // position data (see NavTrace).
-                if (app.vela.diag.NavTrace.enabled.value) {
+                if (app.vela.diag.NavTrace.active(android.os.SystemClock.elapsedRealtime())) {
                     app.vela.diag.NavTrace.record(
                         android.os.SystemClock.elapsedRealtime(), navPuck.progressM, navPuck.speed,
                         win, chordBrg, navPuck.displayBearing,
@@ -3564,7 +3594,8 @@ fun VelaMapView(
                     // Compass toggle (user 2026-07-15): north-up keeps the follow (position, zoom,
                     // puck-low framing) but eases bearing to 0 and the tilt flat; the puck arrow
                     // then rotates on the north-up map instead of the map rotating under it.
-                    val brgTgt = if (navNorthUpHolder.value) 0.0 else (navPuck.displayBearing.toDouble() + navYaw + 360.0) % 360.0
+                    val camHead = navPuck.camChord.takeUnless { it.isNaN() } ?: navPuck.displayBearing
+                    val brgTgt = if (navNorthUpHolder.value) 0.0 else (camHead.toDouble() + navYaw + 360.0) % 360.0
                     val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
                     // CAMERA BEARING IS ADAPTIVELY DAMPED (issue #251, the "crinkly roads" residual).
                     // A road digitized from imagery wiggles even where it is physically straight, and
@@ -3580,9 +3611,15 @@ fun VelaMapView(
                     // Small error -> tau 1.6 s (keeps ~24% of the wiggle, vs 59% before); a genuine
                     // turn -> tau 0.35 s, which is actually QUICKER around a corner than the old flat
                     // 0.55. Tilt keeps its own constant - it is not part of this problem.
-                    val brgTau = (CAM_BRG_TAU_STILL +
+                    // Once the error passes CAM_BRG_LATCH_DEG the turn's constant holds until the camera
+                    // is within CAM_BRG_SETTLED_DEG: easing back toward the slow one as the error shrank
+                    // left the map turning for two seconds after the car had finished the turn.
+                    val absDb = kotlin.math.abs(db)
+                    if (absDb >= CAM_BRG_LATCH_DEG) navPuck.camTurning = true
+                    else if (absDb < CAM_BRG_SETTLED_DEG) navPuck.camTurning = false
+                    val brgTau = if (navPuck.camTurning) camTurnTau.toFloat() else (CAM_BRG_TAU_STILL +
                         (camTurnTau - CAM_BRG_TAU_STILL) *
-                        (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
+                        (absDb / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
                     val kBrgAdaptive = (1f - kotlin.math.exp(-dtEase / brgTau)).toDouble()
                     camState[2] = (camState[2] + db * kBrgAdaptive + 360.0) % 360.0
                     // TURN DECLUTTER (user 2026-10-02): while the camera swings, only street names
@@ -5143,7 +5180,13 @@ fun VelaMapView(
         val newFix = myLocation != null && myLocation !== navPuck.lastFixLoc
         if (navMode && newFix && snap != null) {
             navPuck.lastFixLoc = myLocation
-            val m = snap.third
+            // A fix lands about 150 ms after the GPS measured it (FixAge). Carried forward at its
+            // own speed, it says where the car is now; taken as is, the puck drew the car that
+            // far back. The `fixLead` dial at 0 turns this off.
+            val fixAgeMs = FixAge.ageMs(myLocation)
+            val leadM = if (fixAgeMs > 0L && app.vela.ui.AppTune.value("fixLead", 1.0) >= 0.5)
+                (mySpeedRaw?.toDouble() ?: navPuck.kalman.speed).coerceIn(0.0, 70.0) * fixAgeMs / 1000.0 else 0.0
+            val m = snap.third + leadM
             val now = android.os.SystemClock.elapsedRealtime()
             var accepted = false
             var reanchor = false // a genuine discontinuity — reseed the filter rather than average it in
@@ -5228,6 +5271,7 @@ fun VelaMapView(
             // fix simply doesn't measure (predict + decay carry the model).
             mySpeedRaw?.let { navPuck.kalman.update(it.toDouble()) }
             navPuck.speed = navPuck.kalman.speed
+            app.vela.diag.NavTrace.fix(now, m, navPuck.speed, fixAgeMs, accepted)
             if (accepted) navPuck.speedAtAccept = navPuck.speed
         } else if (navMode && newFix && navPuck.engaged) {
             navPuck.lastFixLoc = myLocation
@@ -9746,6 +9790,13 @@ private class NavPuck {
     var fwdRejects = 0            // consecutive over-maxStep forward steps — a persistent one is
                                   // the new reality (long fix gap at speed), accept it rather than
                                   // deadlock targetM against a stale plausibility cap
+    // Heading dials (SPEC 4.7, Position and speed), read every 2 s rather than per frame.
+    var headTuneAtMs = 0L
+    var headWinMin = HEAD_WIN_MIN_M
+    var headLeadS = HEAD_LEAD_S
+    var camLeadS = CAM_LEAD_S
+    var camChord = Float.NaN      // the heading [camLeadS] further on, the camera's target in a turn
+    var camTurning = false        // a turn's error passed CAM_BRG_LATCH_DEG and has not yet settled
     var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
                                   // exactly when the resume fix needs the window big)
@@ -9825,6 +9876,12 @@ private const val PUCK_SMOOTH_SAMPLES = 7
  *  rather than applied as a jump. Short enough that a real correction is not visibly late, long
  *  enough that one noisy fix is not a lurch. */
 private const val PUCK_CORRECT_TIME_S = 0.6
+/** Half the heading chord's length at least, so the arrow starts turning where a car's arc does. */
+private const val HEAD_WIN_MIN_M = 12.0
+/** How far ahead of the puck, in seconds of travel, the heading is taken. */
+private const val HEAD_LEAD_S = 0.3
+/** How much further on the camera aims, for its own ease's lag in a turn. 0 aims at the arrow. */
+private const val CAM_LEAD_S = 0.4
 
 /** Time constant for the smoothing window's WIDTH. Deliberately long: the width is meant to track
  *  the difference between town and motorway, not the difference between two consecutive fixes. */

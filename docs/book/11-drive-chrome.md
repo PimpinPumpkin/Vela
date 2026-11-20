@@ -224,6 +224,15 @@ drawn on the route line itself. Its heading comes from a copy of
 the line with short median jogs straightened, so the arrow and the camera hold their heading
 through one.
 
+The arrow is drawn where the car is now, not where the last fix put it. A GPS fix reaches the
+app about 150 ms after it was measured, so the puck carries each fix forward by its speed times
+that age. In a turn the arrow's heading is the line's direction across at least 12 m either side
+of a point 0.3 s ahead, because a car starts its arc that far before the corner's point and the
+heading's own smoothing takes that long to land. The camera aims 0.4 s further on still, the lag
+of its own easing, and once it has swung more than 12 degrees it keeps its quick easing until it
+has caught up. On a mock turn from a stop that took the map's lag from 1.5 s to 0.5 s and the
+arrow's from 1.0 s to 0.7 s (SPEC 4.7).
+
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
 rubber duck, which in a drive are 3D (`ui/map/Puck3D.kt`): low-poly meshes for the car, UFO and
 ship, and a smooth, glossy duck ray cast per pixel on a worker thread. A tap on the arrow

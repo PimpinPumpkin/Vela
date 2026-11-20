@@ -1192,6 +1192,7 @@ class MapViewModel @Inject constructor(
                 val arrive = awaited && !userPannedSinceLaunch &&
                     _state.value.let { s -> !s.navigating && s.selected == null && !s.directionsOpen && s.results.isEmpty() }
                 startAwaitsFix = false
+                FixAge.set(here, loc.elapsedRealtimeNanos)
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,

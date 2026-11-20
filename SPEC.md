@@ -2257,6 +2257,12 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   `TYPE_ROTATION_VECTOR`, no Google services), projected onto the travel bearing. Its noise is
   cut by the gain `a² / (a² + n²)` with `ACCEL_NOISE` 0.5, which keeps a 4 m/s² brake within 1.5
   percent and cuts 0.3 m/s² of vibration to a quarter.
+- A fix reaches the app about 150 ms after the GPS measured it (a Pixel 9 drive, 580 fixes:
+  139 to 166 ms, p10 to p90). The location handler publishes each fix with its own clock
+  (`Location.elapsedRealtimeNanos`, `FixAge`), and the puck takes its along-route meters carried
+  forward by the fix's speed times its age; the free-drive follow carries the fix along its
+  course the same way. An age over 1 s, or a fix with no clock, is taken as it is. The `fixLead`
+  dial at 0 turns it off.
 - Progress advances in the rate domain: the modeled speed plus `error / PUCK_CORRECT_TIME_S`
   (0.6 s), capped at `1.5 x speed + 2 m/s` of catch-up and `0.25 x speed + 0.5 m/s` of
   hold-back. An ease toward a target under a monotonic clamp stalls and lurches at the fix rate.
@@ -2264,6 +2270,11 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   accepted up to `speed x dt x 2.5 + 60 m`.
 - The smoothing window's width eases toward its speed target with `PUCK_WIN_TAU_S` (2.5 s). On a
   curve the width is a lateral position, so speed noise in it is sideways movement.
+- The arrow's heading is the chord across at least `HEAD_WIN_MIN_M` (12 m) either side of a point
+  `HEAD_LEAD_S` (0.3 s of travel) ahead of the puck, eased with a 0.3 s constant. A car starts its
+  arc about a turn radius before the corner's vertex (15 m for a 90 degree turn on a 15 m radius),
+  and the 5 m window of a pull-away started the arrow turning 5 m before it. The lead is the
+  ease's own lag. Dials `headWinMin` and `headLeadS`.
 - Snap tolerance (`puckSnapTolerance`): driving, 22 m plus a speed term of up to 13 m. Walking
   and cycling, 8 m plus 1.2 times the fix accuracy, capped at 16 m. The heading gate is skipped
   below 1 m/s driving and 2.5 m/s on foot or by bike.
@@ -2279,7 +2290,20 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
 
 - Bearing eases with a time constant from `CAM_BRG_TAU_STILL` (1.6 s) at small error to
   `CAM_BRG_TAU_TURN` (0.35 s) past `CAM_BRG_TURN_DEG` (25 degrees). Geometry noise is a few
-  degrees and a turn is tens.
+  degrees and a turn is tens. Once the error passes `CAM_BRG_LATCH_DEG` (12) the turn constant
+  holds until the camera is within `CAM_BRG_SETTLED_DEG` (3) of its target; easing back toward
+  1.6 s as the error shrank kept the map turning for two seconds after the car had finished.
+- The camera aims at the heading chord `CAM_LEAD_S` (0.4 s of travel) further on than the arrow's,
+  the lag of its own ease in a turn (dial `camLeadS`, 0 aims it at the arrow).
+- Pixel 4a, a 90 degree right turn from a stop taken at 8 m/s (31 degrees a second), fixes 150 ms
+  old, the true path known (`scripts/mockdrive/lagdrive.py` from Davis, `lagcheck.py`): the camera
+  trailed the car's heading by 1.48 s and up to 65 degrees before these changes and by 0.48 s and
+  21 degrees after; the arrow by 1.03 s and 55 degrees, then 0.70 s and 28; the arrow's distance
+  behind the car in the 8 s after pulling away averaged 2.8 m, then 1.5 m. On the straights the
+  camera stayed within 1.2 degrees of the road both ways. A phone on a desk feels no
+  acceleration, so these runs give the speed model nothing between fixes; in a car the
+  accelerometer does (Position and speed). The same runs stopped the arrow 4 to 6 m past the car
+  at the light.
 - Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s, less the
   framing's pull-back (below). A pinch sets an override that a pan or Re-center clears. With
   "Zoom to the next turn" on (Settings > Navigation, off by default) the zoom is the lesser of
@@ -6965,7 +6989,11 @@ from GitHub (5.8). With "Use Vela without Google" on, only the open services are
   path draws only what is on the route (`controlsOnRoute`).
 - `NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
   speed, bearing window, chord bearing, display bearing, camera bearing, frame dt. It holds no
-  position, so unlike a recorded trip it can be attached to a public issue.
+  position, so unlike a recorded trip it can be attached to a public issue. With
+  `debug.vela.tune.navTraceLog 1` (adb only) each row, and each fix the puck takes (its
+  along-route meters, speed and age), also goes to logcat as `VelaNavTrace` on the
+  `elapsedRealtime` clock, which `scripts/mockdrive/lagcheck.py` lines up with MockDrive's send
+  times.
 
 ### 14.3 Sharing a trip
 

@@ -45,6 +45,32 @@ object NavTrace {
         if (!on) clear()
     }
 
+    // `adb shell setprop debug.vela.tune.navTraceLog 1` also writes each row to logcat (tag
+    // VelaNavTrace) on the elapsedRealtime clock, so a mock drive's fix times line up with what was
+    // drawn without exporting the file. The dial is read every 5 s, not per frame.
+    @Volatile private var logRows = false
+    @Volatile private var logCheckedMs = 0L
+
+    private fun logging(nowMs: Long): Boolean {
+        if (nowMs - logCheckedMs > 5_000L) {
+            logCheckedMs = nowMs
+            logRows = app.vela.ui.AppTune.localOn("navTraceLog")
+        }
+        return logRows
+    }
+
+    /** Whether the ticker should call [record] this frame. */
+    fun active(nowMs: Long): Boolean = enabled.value || logging(nowMs)
+
+    /** A fix as the puck took it: meters along the route, the speed and its age. Logcat only. */
+    fun fix(elapsedMs: Long, alongM: Double, speed: Double, ageMs: Long, accepted: Boolean) {
+        if (!logging(elapsedMs)) return
+        android.util.Log.d(
+            "VelaNavTrace",
+            String.format(java.util.Locale.US, "fix er=%d m=%.2f v=%.2f age=%d ok=%d", elapsedMs, alongM, speed, ageMs, if (accepted) 1 else 0),
+        )
+    }
+
     /** Called once per nav frame from the map's motion ticker. No-op unless recording. */
     fun record(
         elapsedMs: Long,
@@ -56,6 +82,15 @@ object NavTrace {
         cameraBearing: Double,
         frameDt: Float,
     ) {
+        if (logging(elapsedMs)) {
+            android.util.Log.d(
+                "VelaNavTrace",
+                String.format(
+                    java.util.Locale.US, "row er=%d p=%.2f v=%.2f win=%.1f chord=%.1f disp=%.1f cam=%.1f",
+                    elapsedMs, progressM, speed, windowM, chordBearing, displayBearing, cameraBearing,
+                ),
+            )
+        }
         if (!enabled.value) return
         synchronized(rows) {
             if (t0 == 0L) t0 = elapsedMs

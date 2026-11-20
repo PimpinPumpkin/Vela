@@ -12,8 +12,10 @@
 //   adb shell cmd location providers add-test-provider gps --supportsSpeed --supportsBearing
 //   adb shell cmd location providers set-test-provider-enabled gps true
 //   adb shell CLASSPATH=/data/local/tmp/mockdrive.dex app_process / MockDrive /data/local/tmp/drive.txt
-// drive.txt: one fix per line, lat,lon,speedMps,bearingDeg[,sleepMs], sent in order, 1 s apart
-// by default. Afterwards remove the provider, set the appop back to default and check that
+// drive.txt: one fix per line, lat,lon,speedMps,bearingDeg[,sleepMs[,ageMs]], sent in order, 1 s
+// apart by default on a fixed schedule (a slow send does not push the rest back). ageMs stamps the
+// fix that long before it is sent, the delay a real GPS fix reaches the app with (about 150 ms on a
+// Pixel 9). Each send prints its number and SystemClock.elapsedRealtime, to line a run up with logcat. Afterwards remove the provider, set the appop back to default and check that
 // `dumpsys location | grep -ci mock` prints 0. A provider left behind has crashed system_server
 // later; reboot only if it will not go away.
 import android.location.Location;
@@ -24,7 +26,7 @@ import java.io.FileReader;
 import java.lang.reflect.Method;
 
 /** Feeds a test provider fixes WITH speed and bearing (the shell's cmd location cannot), as the
- *  shell user through ILocationManager. Lines: lat,lon,speedMps,bearingDeg[,sleepMs]. */
+ *  shell user through ILocationManager. Lines: lat,lon,speedMps,bearingDeg[,sleepMs[,ageMs]]. */
 public class MockDrive {
     public static void main(String[] args) throws Exception {
         Class<?> sm = Class.forName("android.os.ServiceManager");
@@ -37,6 +39,7 @@ public class MockDrive {
         String provider = args.length > 1 ? args[1] : "gps";
         BufferedReader r = new BufferedReader(new FileReader(args[0]));
         String line; int n = 0;
+        long due = SystemClock.elapsedRealtime();
         while ((line = r.readLine()) != null) {
             line = line.trim(); if (line.isEmpty() || line.startsWith("#")) continue;
             String[] p = line.split(",");
@@ -46,14 +49,17 @@ public class MockDrive {
             loc.setSpeed(Float.parseFloat(p[2]));
             loc.setBearing(Float.parseFloat(p[3]));
             loc.setAccuracy(5f);
-            loc.setTime(System.currentTimeMillis());
-            loc.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+            long age = p.length > 5 ? Long.parseLong(p[5]) : 0L;
+            loc.setTime(System.currentTimeMillis() - age);
+            loc.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos() - age * 1_000_000L);
             long sleep = p.length > 4 ? Long.parseLong(p[4]) : 1000L;
             Object[] a = argc == 4 ? new Object[]{provider, loc, "com.android.shell", null} : new Object[]{provider, loc, "com.android.shell"};
             set.invoke(ilm, a);
             n++;
-            System.out.println(n + " " + p[0] + "," + p[1] + " v=" + p[2] + " b=" + p[3]);
-            Thread.sleep(sleep);
+            System.out.println(n + " er=" + SystemClock.elapsedRealtime() + " v=" + p[2] + " b=" + p[3]);
+            due += sleep;
+            long wait = due - SystemClock.elapsedRealtime();
+            if (wait > 0) Thread.sleep(wait);
         }
     }
 }

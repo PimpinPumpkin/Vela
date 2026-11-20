@@ -257,6 +257,13 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The arrow and the map keeping up in turns (fix age carried forward, a wider and leading heading
+  chord, a leading camera that keeps its quick ease until it has caught up; SPEC 4.7): measured on
+  a mock turn from a stop on a 4a, not yet on a real drive. A drive with Settings > Diagnostics >
+  the nav trace on, and a recorded trip, would show it against the fixes. The same mock runs left
+  the arrow 4 to 6 m past the car at a stop, with no accelerometer to say the car braked; a real
+  drive's trace would show whether a car's stops do that too.
+
 - The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
   forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen
   on a phone that is hot for real, or whether the voice lines then render in time: read the
@@ -781,6 +788,14 @@ Found reading everything since 0.4.1912 and not fixed yet.
   before the routing manifest lists them, or their downloads pull the whole state's archives.
 
 ## On the radar
+
+- "Welcome to" a state or a country when a drive crosses its border. Vela's region outlines are
+  cut for downloads and simplified to about 5 km, too rough to say it at the line. A plan: a
+  bundled outline set from Natural Earth (public domain; countries, plus states and provinces in
+  the countries that use them, about 1 to 2 MB simplified), timed by the basemap's own boundary
+  lines where the outlines are off, spoken once past the line and not again on a road that runs
+  along a border. The asset lists every state, so `scripts/check-location.sh` would exclude it
+  like `region_polys.json`. On hold.
 
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
