@@ -11,6 +11,9 @@ says so.
 
 ### November 2026
 
+- The scale bar rides over the free-drive speed box instead of hiding (#848). Seen on a Pixel 4a
+  on a mock drive at 13 m/s with no route: with Show speed on, the bar and the credit sat above
+  the box; with it off, both stayed in the low corner and nothing was held for the box.
 - An area tap that would make the outline cross itself goes into a side (#846). Drawn on a Pixel
   4a: a triangle with a point tapped under its base became a kite, and Back took the point out.
 - The map's own "Day and night" (#874): a dark app over a map that goes by the sun. Checked on a
