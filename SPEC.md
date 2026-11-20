@@ -3013,7 +3013,10 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   steps the same three in the same order (`CarVoice.step`, issue #842) and shows the mode as
   its glyph (`ic_car_unmute`, `ic_car_alerts`, `ic_car_mute`); the car settings switch sets On
   or Off and leaves Alerts only (`CarVoice.set`). Both write the same two prefs; the phone's
-  state follows the prefs through a listener, so the two never disagree.
+  state follows the prefs through a listener, so the two never disagree. Every spoken line and
+  chime goes through `VoiceGuide`, whose `muted` gate is the one check. Muting cuts the line
+  being spoken, drops the queue and drops a line still waiting for its focus lead (9.1). A car
+  host that reads the turns aloud itself is outside this switch (10.6).
 - Bridge openings (`BridgeAlert`, on by default): a drive whose line enters the Netherlands
   (`NdwBridgeOpenings.inNetherlands`) fetches NDW's `planningsfeed_brugopeningen.xml.gz`
   (about 115 KB, DATEX II v3), keeps the bridges within 30 m of the line and asks again every
@@ -3183,7 +3186,9 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   or the car), and network, thermal, memory, screen and GPS changes. No note holds a coordinate,
   a name or spoken text.
 - A trip replay runs at 1x, 3x (default) or 10x, pauses, and seeks. A seek restarts it and runs
-  silently to the chosen moment.
+  silently to the chosen moment, then sets the voice from the mode the speaker button shows
+  (`MapUiState.voiceMuted`), so a mode picked during the run-up holds. Only the newest replay
+  gives the voice back (`NavController.runUpGen`).
 
 ### 4.11 Tap-to-stop during a drive
 
@@ -5790,7 +5795,8 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   pending queue.
 - A fresh focus grant leads the first sample by `FOCUS_LEAD_MS` (350 ms), the time a player that
   pauses on a duck takes to stop. Focus held from the previous prompt (`FOCUS_HOLD_MS` 1500)
-  speaks at once.
+  speaks at once. A line still waiting out the lead is dropped by `stop()`, which a mute calls,
+  and by a focus loss, as a line playing is (`FocusLead`).
 - Text is fixed before the phonemizer. `SpeechText.spokenNumbers` expands three-digit street
   ordinals ("128th" as "one twenty eighth", space not hyphen). `expandForSpeech` rewrites
   `<XX>-<n>` refs to "State Route n" and puts a comma before " toward ".
@@ -6525,6 +6531,12 @@ the same `:core` singletons as the phone (`CarDeps`).
   number past 3 mph or 5 km/h over.
 - The guidance voice is band-limited by the protocol: the Android Auto guidance stream is 16 kHz
   mono.
+- Gearslip, a separate app that stands in for Android Auto on the phone, cannot take another
+  app's navigation audio. It reads the turn in each `updateTrip()` aloud itself, with the phone's
+  text-to-speech, on the car's guidance channel (its `DirectionsVoice`), and its own car setting
+  Sound and voice > Spoken directions turns that voice off. No car API carries a mute, so Vela's
+  On, Alerts only and Off do not reach it: the car's button and the phone's can both show muted
+  while Gearslip speaks.
 
 The map:
 

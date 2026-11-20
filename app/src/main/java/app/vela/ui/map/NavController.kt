@@ -82,6 +82,7 @@ internal class NavController(
 
     private var replayJob: Job? = null
     private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
+    private var runUpGen = 0 // counts replayTrip calls: the newest one owns the run-up's mute
     /** The route the recording's last block holds ([syncTripRoute]). */
     private var lastTripRoute: app.vela.core.model.Route? = null
 
@@ -776,9 +777,13 @@ internal class NavController(
         val totalS = ((fixes.last().t - fixes.first().t) / 1000L).toInt().coerceAtLeast(1)
         _state.update { it.copy(replaying = true, navCameraDetached = false, replayPaused = false, replayTotalS = totalS, replayProgress = from) }
         if (startAt == 0) host.flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
-        // Running up to a later moment: no voice and no buzzes until it gets there.
-        val wasMuted = voice.muted
+        // Running up to a later moment: no voice and no buzzes until it gets there. Then the voice
+        // takes the mode the speaker button shows, which a tap during the run-up may have changed.
+        // Set either way, so a replay that replaces one still running up does not inherit its
+        // silence, and only the newest replay gives the voice back ([runUpGen]).
+        val gen = ++runUpGen
         if (startAt > 0) { voice.muted = true; navSession.silent = true }
+        else { voice.muted = _state.value.voiceMuted; navSession.silent = false }
         val fixIdxSeen = intArrayOf(0)
         val job = scope.launch {
             try {
@@ -884,7 +889,7 @@ internal class NavController(
                     swapAt[fi]?.let { swapTo(it, fi) }
                     fixIdx += 1
                     fixIdxSeen[0] = fixIdx
-                    if (fixIdx == startAt + 1 && startAt > 0) { voice.stop(); voice.muted = wasMuted; navSession.silent = false }
+                    if (fixIdx == startAt + 1 && startAt > 0) { voice.stop(); voice.muted = _state.value.voiceMuted; navSession.silent = false }
                     if (fixIdx >= startAt) ((loc.time - t0) / 1000f / totalS).coerceIn(0f, 1f).let { p ->
                         if (kotlin.math.abs(p - _state.value.replayProgress) >= 0.004f) _state.update { it.copy(replayProgress = p) }
                     }
@@ -938,7 +943,8 @@ internal class NavController(
                     host.updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)
                 }
             } finally {
-                if (startAt > 0 && fixIdxSeen[0] <= startAt) { voice.muted = wasMuted; navSession.silent = false } // stopped mid run-up
+                // Stopped mid run-up, and no newer replay has taken the voice over.
+                if (gen == runUpGen && startAt > 0 && fixIdxSeen[0] <= startAt) { voice.muted = _state.value.voiceMuted; navSession.silent = false }
                 // Only the current replay tears down: a superseded one was already stopped
                 // above, so this stale finally (job guard false) no-ops.
                 if (replayJob === coroutineContext[Job]) {

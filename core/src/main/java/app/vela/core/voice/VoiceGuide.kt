@@ -226,6 +226,9 @@ class VoiceGuide @Inject constructor(
     @Volatile private var focusHeld = false // do we currently hold audio focus? (so a new prompt during
                                             // the release-hold window doesn't needlessly re-request)
     private val focusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    // A line waiting out its focus lead (see afterFocusLead) is dropped by stop(), so a mute
+    // pressed during the wait silences it like the line already playing.
+    private val lead = FocusLead { ms, block -> focusHandler.postDelayed(block, ms) }
     // Abandon focus a beat AFTER the last prompt ends (see releaseFocus) rather than instantly, so the
     // driver's music stays ducked CONTINUOUSLY across closely-spaced prompts instead of snapping back to
     // full between them — the "didn't reliably duck / not ducking enough" bug.
@@ -237,6 +240,7 @@ class VoiceGuide @Inject constructor(
         // listener at all, so Vela kept announcing turns over ringing and active calls. The
         // next scheduled prompt re-fires naturally once the call releases focus.
         if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            lead.stop()
             tts?.stop()
             neural?.stop()
             focusHandler.removeCallbacks(abandonFocusRunnable)
@@ -262,10 +266,9 @@ class VoiceGuide @Inject constructor(
      *  on a transient duck (podcast and audiobook apps do, by Android's own guidance) takes a few
      *  hundred milliseconds to stop, and the first word used to land on top of the music (user
      *  2026-09-19, "pause music a little early"). A fresh grant means nothing of ours is
-     *  speaking, so nothing waits on an interrupt behind the delay. */
-    private fun afterFocusLead(fresh: Boolean, go: () -> Unit) {
-        if (fresh) focusHandler.postDelayed(go, FOCUS_LEAD_MS) else go()
-    }
+     *  speaking, so nothing waits on an interrupt behind the delay. A [stop] (a mute) during the
+     *  wait drops the line; its focus was already given back by [releaseAllFocus]. */
+    private fun afterFocusLead(fresh: Boolean, go: () -> Unit) = lead.run(fresh, FOCUS_LEAD_MS, go)
 
     private fun releaseFocus() {
         synchronized(focusLock) {
@@ -632,6 +635,7 @@ class VoiceGuide @Inject constructor(
 
     fun stop() {
         openerToken++ // cancel any deferred nav-start opener still waiting for its road name
+        lead.stop() // and any line still waiting out its focus lead
         tts?.stop()
         neural?.stop()
         // Drop any queued-but-unspoken prompts: once guidance stops (nav end / mute), a backlog is
@@ -641,6 +645,7 @@ class VoiceGuide @Inject constructor(
     }
 
     fun shutdown() {
+        lead.stop()
         tts?.shutdown()
         tts = null
         ready = false

@@ -269,6 +269,12 @@ off the list when it has been.
   level at both has an engine that ignores the session or no enhancer (logcat `VelaDirections`,
   "voice: no loudness enhancer"). Check that a loud engine at Loudest does not sound squashed.
 
+- Muting drops a line still waiting out its 350 ms focus lead (`FocusLead`, `FocusLeadTest`),
+  and a replay that jumps ahead gives the voice the speaker button's mode after its run-up,
+  with only the newest replay doing so (`NavController.runUpGen`). Not yet heard on a phone:
+  with music playing, mute the moment a prompt is asked; seek a replay, change the mode during
+  the run-up, and check the voice afterward. Not tried in a car either.
+
 - The arrow and the map keeping up in turns (fix age carried forward, a wider and leading heading
   chord, a leading camera that keeps its quick ease until it has caught up; SPEC 4.7): measured on
   a mock turn from a stop on a 4a, not yet on a real drive. A drive with Settings > Diagnostics >
@@ -800,6 +806,12 @@ Found reading everything since 0.4.1912 and not fixed yet.
   before the routing manifest lists them, or their downloads pull the whole state's archives.
 
 ## On the radar
+
+- Vela's mute does not reach Gearslip's own voice, which reads each turn from `updateTrip()`
+  (#927, SPEC 10.6). The car library has no field for a mute, so a fix takes both apps: Gearslip
+  could speak a turn only while the hosted app's own guidance audio plays, which a muted Vela
+  never starts, or read a voice mode Vela publishes to it. Neither has been tried. Until then
+  Gearslip's own Spoken directions switch is the way to silence it.
 
 - "Welcome to" a state or a country when a drive crosses its border. Vela's region outlines are
   cut for downloads and simplified to about 5 km, too rough to say it at the line. A plan: a

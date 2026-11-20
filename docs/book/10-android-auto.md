@@ -282,7 +282,14 @@ A paused drive shows "Paused" in place of the turn card.
 
 The voice is the phone's, sent to the car as Android Auto's guidance audio. A drive started from
 the car picks the engine the phone would: the Vela voice when it is installed and no other engine
-is chosen.
+is chosen. The car's speaker button and the phone's set the same mode, and every line Vela says
+goes through that one switch ([chapter 4](04-navigation.md)).
+
+Gearslip, which stands in for Android Auto on the phone, cannot take another app's navigation
+audio. It reads each turn on Vela's turn card aloud itself, with the phone's text-to-speech, on
+the car's guidance channel. That voice is Gearslip's, and Vela's mute does not reach it: no car
+API carries a mute, so both buttons can show muted while it speaks. Gearslip's own car setting,
+Sound and voice > Spoken directions, turns it off.
 
 ### Android Automotive
 

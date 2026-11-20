@@ -598,8 +598,13 @@ the three with the current one filled, and Settings > Voice > Spoken directions 
 choice. In
 "Alerts only" the speeding, speed camera, plate camera and bridge alerts play two short notes instead
 of speaking, and nothing else is said: the sound a driver who turned the turns off still wants.
-Off is silent throughout. The car's own switch is on or off and leaves "Alerts only"; the phone's
-setting follows whatever the car chose.
+Off is silent throughout. The car's speaker button steps through the same three, and the car's
+settings switch is on or off and leaves "Alerts only"; the phone's setting follows whatever the
+car chose. Every line and chime passes one mute check in `VoiceGuide`. Muting cuts the line being
+spoken and drops the ones queued, including a line still waiting 350 ms for the music to duck.
+A replay that jumps ahead runs there with the voice off, then takes the mode the speaker button
+shows. A car host that speaks the turns with its own voice is not covered by any of this
+([chapter 10](10-android-auto.md#the-voice)).
 ### Bridge openings
 
 In the Netherlands a movable bridge opens for ships many times a day, and a closed road can hold

@@ -121,6 +121,12 @@ whether a car will list Vela.
    Search it for `CAR.VALIDATOR` and `PlayGearheadService`. A reboot stops the capture. Scrub
    any coordinates before attaching it to an issue.
 
+## Gearslip speaks the turns with its own voice
+
+Gearslip, an app that takes Android Auto's place on the phone, reads each turn aloud in the car
+itself. Vela's mute, on the car screen or the phone, does not reach that voice. To silence it,
+turn off Sound and voice > Spoken directions in Gearslip's car settings.
+
 ## Why Vela will not bundle the old Android Auto SDK
 
 Some sideloaded car apps (Fermata, and projects built on it) appear on Android
