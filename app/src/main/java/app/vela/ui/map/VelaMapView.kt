@@ -1033,6 +1033,9 @@ fun VelaMapView(
     // buttons beside it, which pad for it, did not.
     val sideNavRightPx = WindowInsets.navigationBars.getRight(density, androidx.compose.ui.platform.LocalLayoutDirection.current)
     val leftInsetHolder = rememberUpdatedState(cameraLeftInsetPx)
+    // The map buttons' column down the right side: centered MAP_BUTTON_CENTER_DP from the edge,
+    // 48 dp across, so a fit keeps twice the center distance clear.
+    val mapButtonsPx = with(density) { (MAP_BUTTON_CENTER_DP * 2).roundToPx() }
     val compassStock = remember { arrayOfNulls<android.graphics.drawable.Drawable>(1) }
     val compassIsNav = remember { booleanArrayOf(false) }
     val poiTap = rememberUpdatedState(onPoiTap)
@@ -5713,10 +5716,7 @@ fun VelaMapView(
                     // Reserve room at the bottom for the directions panel AND at the top for the
                     // endpoints card, so the route's start/end frame in the VISIBLE strip between
                     // them instead of hiding behind either (user 2026-07-14).
-                    val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
-                    val pad = fp.side
-                    val bottom = fp.bottom
-                    val top = fp.top
+                    val fp = fitPaddingBeside(map.width.toInt(), map.height.toInt(), cameraLeftInsetPx, cameraTopInsetPx, cameraBottomInsetPx, 140, mapButtonsPx)
                     val bounds = builder.build()
                     // A continental trip fit zooms out until nothing has context; past ~12 degrees
                     // of span, frame the DESTINATION area instead - the end point is the part worth
@@ -5733,7 +5733,7 @@ fun VelaMapView(
                         }
                         flightDepth[0]++
                         map.animateCamera(
-                            CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800, flightCb(),
+                            CameraUpdateFactory.newLatLngBounds(bounds, fp[0], fp[1], fp[2], fp[3]), 800, flightCb(),
                         )
                     }
                 }
@@ -5748,11 +5748,11 @@ fun VelaMapView(
                 lastFittedTransitKey = transitFitCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
                 val builder = MLLatLngBounds.Builder()
                 transitFitCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
+                val fp = fitPaddingBeside(map.width.toInt(), map.height.toInt(), cameraLeftInsetPx, cameraTopInsetPx, cameraBottomInsetPx, 140, mapButtonsPx)
                 runCatching {
                     flightDepth[0]++
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 800, flightCb(),
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), fp[0], fp[1], fp[2], fp[3]), 800, flightCb(),
                     )
                 }
             }
@@ -5815,10 +5815,10 @@ fun VelaMapView(
                     val builder = MLLatLngBounds.Builder()
                     cluster.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                     // Keep the cluster above the results sheet (peek covers the bottom half).
-                    val fp = fitPadding(map, 0, cameraBottomInsetPx, 160)
+                    val fp = fitPaddingBeside(map.width.toInt(), map.height.toInt(), cameraLeftInsetPx, 0, cameraBottomInsetPx, 160, mapButtonsPx)
                     runCatching {
                         flightDepth[0]++
-                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 700, flightCb())
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp[0], fp[1], fp[2], fp[3]), 700, flightCb())
                     }
                 }
                 }
@@ -11278,9 +11278,12 @@ internal class FitPadding(val side: Int, val top: Int, val bottom: Int)
  * less than a fifth of the map the insets themselves are trimmed so at least that much
  * of the route is framed instead of nothing.
  */
-internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding {
-    val w = map.width.toInt().coerceAtLeast(1)
-    val h = map.height.toInt().coerceAtLeast(1)
+internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding =
+    fitPadding(map.width.toInt(), map.height.toInt(), topInsetPx, bottomInsetPx, wanted)
+
+internal fun fitPadding(mapW: Int, mapH: Int, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding {
+    val w = mapW.coerceAtLeast(1)
+    val h = mapH.coerceAtLeast(1)
     var top = topInsetPx.coerceAtLeast(0)
     var bottom = bottomInsetPx.coerceAtLeast(0)
     val minStrip = h / 5
@@ -11296,6 +11299,27 @@ internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, w
     val visibleH = (h - top - bottom).coerceAtLeast(1)
     val side = minOf(wanted, w / 6, visibleH / 6).coerceAtLeast(4)
     return FitPadding(side, top + side, bottom + side)
+}
+
+/**
+ * Padding (left, top, right, bottom) for a bounds fit beside a landscape side panel of [leftColPx]
+ * (the route chooser, a place or the results list). The fit's own padding replaces the map's, so
+ * the column has to be in it: centered on the whole map, a route's start sat under the panel. The
+ * top card is in that column too, so the top inset is left out, and the right edge keeps clear of
+ * the map buttons ([buttonsPx]). With no column it is [fitPadding] as before.
+ */
+internal fun fitPaddingBeside(
+    mapW: Int, mapH: Int, leftColPx: Int, topInsetPx: Int, bottomInsetPx: Int, wanted: Int, buttonsPx: Int,
+): IntArray {
+    val left = leftColPx.coerceAtLeast(0)
+    if (left <= 0) {
+        val fp = fitPadding(mapW, mapH, topInsetPx, bottomInsetPx, wanted)
+        return intArrayOf(fp.side, fp.top, fp.side, fp.bottom)
+    }
+    val visW = (mapW - left).coerceAtLeast(1)
+    val fp = fitPadding(visW, mapH, 0, bottomInsetPx, wanted)
+    val right = maxOf(fp.side, buttonsPx).coerceAtMost(visW / 3)
+    return intArrayOf(left + fp.side, fp.top, right, fp.bottom)
 }
 
 /** The route's dark outline (2026-10-03, Google's: a navy edge round its route line, day and night,

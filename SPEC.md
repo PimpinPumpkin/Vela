@@ -6105,8 +6105,11 @@ reuses it.
 - In landscape, route and drive chrome is a left column. Both sheets, the route pickers, the
   endpoints card, the turn card and the nav bar take a start alignment plus
   `landscapeColumn(...)`, which caps the width at `sidePanelWidth()` and pads the display cutout
-  on the start edge. The camera takes `cameraLeftInset` in place of a bottom inset. New route or
-  drive chrome without this spans the screen.
+  on the start edge. The camera takes `cameraLeftInset` in place of a bottom inset, the route
+  chooser's collapsed too (a short screen opens it collapsed). A bounds fit's own padding
+  replaces the map's, so the route, transit and results fits pad with `fitPaddingBeside`: the
+  column on the left, no top inset (the endpoints card is in the column), and the map buttons'
+  width on the right. New route or drive chrome without this spans the screen.
 - `sidePanelWidth()` is 0.56 of the screen width, between `SIDE_PANEL_WIDTH_MIN` (400 dp) and
   `SIDE_PANEL_WIDTH_MAX` (600 dp).
 - Picture-in-picture: everything after the map call is inside one `if (!pipUi)` gate. The map's

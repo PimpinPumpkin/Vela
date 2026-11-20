@@ -428,8 +428,9 @@ fun MapScreen(
         // Nav chrome is a left column in landscape, so the puck must sit clear of it.
         state.navigating -> sidePanelWidthPx
         // The route chooser is a left panel in landscape too (issue #297), so the route it is
-        // asking you to choose has to be framed clear of it.
-        state.directionsOpen && !state.navigating && !dirMinimized -> sidePanelWidthPx
+        // asking you to choose has to be framed clear of it, collapsed as well: a short screen
+        // opens it collapsed, still a third of the map wide, and the route's start sat under it.
+        state.directionsOpen && !state.navigating -> sidePanelWidthPx
         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
             !state.navigating -> sidePanelWidthPx
         else -> 0
