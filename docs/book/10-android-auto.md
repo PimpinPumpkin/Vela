@@ -108,6 +108,15 @@ its own layers on top:
 - One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which
   prints every tile source's attribution and stays when the logo is turned off.
 
+A Vela process that dies while the car is connected (an update, a crash, a low-memory kill) can
+leave the host's surface connected to it. Every lock from the new process then fails ("already
+connected" in the log) and the car keeps showing the dead process's last frame, an old route line
+included, with the buttons doing nothing. Setting the surface callback again hands back the same
+surface. When the locks have failed for `STUCK_SURFACE_MS` (2 s), the car session shows
+`MapReloadCarScreen`, a loading list titled "Loading the map", and goes back as soon as the host
+drops the surface. A list, because the host keeps the map surface alive behind a message screen.
+Back on the map the host builds a new surface and the map draws again.
+
 The style itself carries what the phone adds to Liberty at runtime. The snapshotter can set a
 layer's properties but cannot add one, so `CarStyle` writes the phone's extra layers into the
 patched style's JSON before it loads: the flat fills for pedestrian areas and parking lots (the
@@ -209,6 +218,7 @@ dark with the car.
 | `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
 | `RoutePreviewCarScreen` | `RoutePreviewNavigationTemplate` | Up to three driving routes with live-traffic times, and Go. |
 | `ActiveNavCarScreen` | `NavigationTemplate` | The drive. |
+| `MapReloadCarScreen` | `ListTemplate` | "Loading the map" for a moment, when the map surface is stuck. |
 
 The place list template throws past six rows (`MAX_ROWS`), so the landing list is cut before it is
 built. A category row carries the map's own marker as a small image (`Row.IMAGE_TYPE_SMALL`). As

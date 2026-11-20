@@ -975,6 +975,7 @@
     <string name="car_search">Search</string>
     <string name="car_search_hint">Type to search for a destination</string>
     <string name="car_go">Go</string>
+    <string name="car_map_reloading">Loading the map</string>
     <string name="car_end">End</string>
     <string name="car_mute">Mute</string>
     <string name="car_unmute">Unmute</string>

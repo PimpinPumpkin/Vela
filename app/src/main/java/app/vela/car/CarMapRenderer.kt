@@ -204,6 +204,8 @@ class CarMapRenderer(
             return (shortSidePx / 20f * k.toFloat()).coerceIn(16f, 56f)
         }
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
+        /** Locks failing this long mean a stuck surface, not a screen change in progress. */
+        const val STUCK_SURFACE_MS = 2_000L
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
         const val FLING_TAU_S = 0.35  // a fling's speed falls to a third in this long
         const val FLING_STOP_PX_S = 40.0 // and stops below this
@@ -593,6 +595,7 @@ class CarMapRenderer(
     }
 
     override fun onSurfaceDestroyed(container: SurfaceContainer) {
+        runCatching { onSurfaceGone?.invoke() }
         runCatching { surface?.release() }
         surface = null
         runCatching { snapshotter?.cancel() }
@@ -864,6 +867,31 @@ class CarMapRenderer(
     }
 
     private var lockFailed = false
+    private var lockFailedAtMs = 0L
+    private var surfaceAsked = false
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /**
+     * A Vela process that died while connected (an update, a crash, a low-memory kill) can leave
+     * the host's map surface connected to it, and every lock from the new process then fails
+     * ("already connected") while the car keeps showing the dead process's last frame, an old
+     * route line included. Setting the surface callback again hands back the same stuck surface;
+     * a screen without a map in between makes the host build a new one, so [onSurfaceStuck] (the
+     * car session) shows one for a moment. Once until a lock works again, after the locks have
+     * failed for [STUCK_SURFACE_MS].
+     */
+    private fun askForNewSurface() {
+        if (surfaceAsked || android.os.SystemClock.elapsedRealtime() - lockFailedAtMs < STUCK_SURFACE_MS) return
+        surfaceAsked = true
+        android.util.Log.w("VelaCar", "car surface stuck; rebuilding it")
+        runCatching { onSurfaceStuck?.invoke() }
+    }
+
+    /** Called on the main thread when the map surface will not draw ([askForNewSurface]). */
+    var onSurfaceStuck: (() -> Unit)? = null
+
+    /** Called when the host drops the map surface ([app.vela.car.screen.MapReloadCarScreen]). */
+    var onSurfaceGone: (() -> Unit)? = null
 
     // The ground the snapshot being drawn can show ([FrontClip]); set by [draw] for [project].
     private var frontClip: FrontClip? = null
@@ -876,9 +904,18 @@ class CarMapRenderer(
         if (!s.isValid || width <= 0 || height <= 0) return
         val bmp = runCatching { snap.bitmap }.getOrNull()
         val canvas: Canvas = try { s.lockCanvas(null) } catch (t: Throwable) {
-            if (!lockFailed) { lockFailed = true; android.util.Log.w("VelaCar", "car surface would not lock: ${t.javaClass.simpleName}") }
+            if (!lockFailed) {
+                lockFailed = true
+                lockFailedAtMs = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.w("VelaCar", "car surface would not lock: ${t.javaClass.simpleName}")
+                // Parked, nothing else asks for a frame: try again once the surface counts as stuck.
+                mainHandler.postDelayed({ requestRender() }, STUCK_SURFACE_MS + 100)
+            }
+            askForNewSurface()
             return
         }
+        lockFailed = false
+        surfaceAsked = false
         try {
             if (bmp != null) {
                 // The darkening filter was the night look before the palette could be applied; a

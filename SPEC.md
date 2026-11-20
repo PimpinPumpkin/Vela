@@ -6492,6 +6492,10 @@ the same `:core` singletons as the phone (`CarDeps`).
   `NavSession.state` and, when a drive starts on the car or on the phone, pops to the landing
   screen and pushes the drive screen. `onCreateScreen` returns the drive screen over the landing
   screen when the car connects during a drive.
+- A map surface whose locks fail for `CarMapRenderer.STUCK_SURFACE_MS` (2 s) is stuck on a dead
+  Vela process's connection. The session pushes `MapReloadCarScreen`, a loading `ListTemplate`,
+  which pops 300 ms after the host destroys the surface (3 s at most), and the host gives the map
+  a new one. Once until a lock works again.
 - Screens: `MainCarScreen` (the landing, below) to `SearchCarScreen` (`SearchTemplate`) to
   `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarScreen`
   (`NavigationTemplate`). The landing strip also opens `SavedCarScreen` (Home, Work and every

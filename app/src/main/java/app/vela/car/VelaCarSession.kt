@@ -14,6 +14,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import app.vela.car.screen.CarDeps
 import app.vela.car.screen.MainCarScreen
+import app.vela.car.screen.MapReloadCarScreen
 import app.vela.core.model.LatLng
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,11 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
             deps.navSession.state.map { it.navigating && !it.arrived }.distinctUntilChanged().collect { on ->
                 if (on) showDriveScreen()
             }
+        }
+        // A map surface left stuck by a dead Vela process: a moment off the map gets a new one.
+        val renderer = deps.mapRenderer(carContext)
+        renderer.onSurfaceStuck = {
+            carContext.getCarService(ScreenManager::class.java).push(MapReloadCarScreen(carContext, renderer))
         }
         CarLocationAccess.check(carContext)
         feedJob = scope.launch {
