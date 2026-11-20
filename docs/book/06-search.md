@@ -428,6 +428,11 @@ search field call `searchAlongRoute`:
 - It is one search centered on the route's middle point, with the template's own window (about
   25 km) and no ranking point. There is no nearby pass, ambient merge, address geocoding or
   intent parsing.
+- `QueryNameFilter` narrows a typed brand or chain ("Shell", "mcdo") to the places whose name
+  holds it. "Pizza", "burger" or "gas station" is a kind of place and keeps every result: the
+  words are in the list of words that describe a business, or in the category of most results.
+  When no name matches, every result stays too. A kind word that is in neither, with few
+  categories that carry it, still narrows the list to the names that hold it.
 - `RouteCorridor.alongRoute` keeps results within 3 km of the line and sorts them in travel
   order. The distance shown is the distance along the route to the result plus its distance off
   the line.
