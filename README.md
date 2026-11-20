@@ -330,7 +330,8 @@ Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds. 
 prices come from the UK government's Fuel Finder, through
 [matthewgall/fuelfinder-archive](https://github.com/matthewgall/fuelfinder-archive), and
 contain public sector information licensed under the Open Government Licence v3.0.
-Satellite imagery is Esri World Imagery, with Google imagery where Esri has none
+The A-25, A-30 and Highway 407 ETR toll rates come from the operators' published rate grids, and
+the toll roads' lines from OpenStreetMap. Satellite imagery is Esri World Imagery, with Google imagery where Esri has none
 at close zoom.
 
 ## License

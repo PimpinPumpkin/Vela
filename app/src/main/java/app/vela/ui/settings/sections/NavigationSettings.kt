@@ -78,6 +78,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.RoutePicker.set(context, it) },
             hint = stringResource(R.string.settings_route_picker_hint),
         )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_toll_transponder),
+            checked = app.vela.ui.TollTransponder.on.value,
+            onCheckedChange = { app.vela.ui.TollTransponder.set(context, it) },
+            hint = stringResource(R.string.settings_toll_transponder_hint),
+        )
 
         // Route bar (issue #228). Off by default: it is extra chrome on the nav screen, and the
         // congestion color already on the route line covers some of the same ground.
