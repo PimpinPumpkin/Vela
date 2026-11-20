@@ -11,6 +11,9 @@ says so.
 
 ### November 2026
 
+- Turn arrows on the car screen (#804), the phone's shape for the next three turns, over the
+  light badges. Seen on the Desktop Head Unit at 1280 by 720 on a demo drive: the arrow bent
+  round the right turn on the route line, above the corner's light.
 - The scale bar rides over the free-drive speed box instead of hiding (#848). Seen on a Pixel 4a
   on a mock drive at 13 m/s with no route: with Show speed on, the bar and the credit sat above
   the box; with it off, both stayed in the low corner and nothing was held for the box.

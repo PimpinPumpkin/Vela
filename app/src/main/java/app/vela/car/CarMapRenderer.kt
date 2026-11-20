@@ -204,6 +204,8 @@ class CarMapRenderer(
             return (shortSidePx / 20f * k.toFloat()).coerceIn(16f, 56f)
         }
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
+        /** Turn arrows drawn on the car map, from the step in hand on. */
+        const val CAR_ARROWS = 3
         /** Locks failing this long mean a stuck surface, not a screen change in progress. */
         const val STUCK_SURFACE_MS = 2_000L
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
@@ -971,6 +973,8 @@ class CarMapRenderer(
             if (navigating()) {
                 runCatching { drawRoute(canvas, snap, sx, sy) }
                 runCatching { drawCorridor(canvas, snap, sx, sy) }
+                // Over the light and sign badges: a turn's light sits on its corner, under the arrow.
+                runCatching { drawTurnArrows(canvas, snap, sx, sy) }
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
                 for (other in previewOthers) {
@@ -1040,6 +1044,60 @@ class CarMapRenderer(
             val a = project(snap, poly[i], sx, sy) ?: continue
             val b = project(snap, poly[i + 1], sx, sy) ?: continue
             canvas.drawLine(a.x, a.y, b.x, b.y, trafficPaints[lvl] ?: trafficPaints[0]!!)
+        }
+    }
+
+    // The turn arrows (issue #804), as the phone draws them: a white shaft with Google's indigo
+    // edge inside the route line, and a triangle head. Cut by the shared [TurnArrowGeometry] from
+    // the line drawn here, for the next [CAR_ARROWS] turns, and kept until the route or the step
+    // changes. Settings > Navigation "Turn arrows" turns them off here too.
+    private var arrowsFor: Pair<Route, Int>? = null
+    private var arrows: List<app.vela.core.nav.TurnArrowGeometry.Arrow> = emptyList()
+    private val arrowEdge = strokePaint("#1A1470", 15f)
+    private val arrowBody = strokePaint("#FFFFFF", 11f)
+    private val headEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#1A1470"); style = Paint.Style.FILL }
+    private val headBody = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
+
+    private fun drawTurnArrows(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
+        val st = navSession.state.value
+        val route = st.route ?: return
+        if (st.paused || !app.vela.ui.TurnArrows.on.value) return
+        val step = st.nav.stepIndex
+        if (arrowsFor?.first !== route || arrowsFor?.second != step) {
+            arrowsFor = route to step
+            arrows = runCatching { app.vela.core.nav.TurnArrowGeometry.arrows(route, step, route.polyline) }.getOrDefault(emptyList()).take(CAR_ARROWS)
+        }
+        val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
+        arrowEdge.strokeWidth = 15f * k; arrowBody.strokeWidth = 11f * k
+        for (a in arrows) {
+            if (a.points.size < 2) continue
+            val path = pathOf(snap, a.points, a.points.indices, sx, sy)
+            canvas.drawPath(path, arrowEdge)
+            val end = project(snap, a.points.last(), sx, sy) ?: run { canvas.drawPath(path, arrowBody); continue }
+            val back = project(snap, a.points.last().destinationPoint(app.vela.core.nav.TurnArrowGeometry.HEAD_CHORD_M, a.endBearingDeg + 180.0), sx, sy)
+            val head = back?.let { arrowHead(end, it, 22f * k) }
+            val headOut = back?.let { arrowHead(end, it, 22f * k, grow = 2.5f * k) }
+            headOut?.let { canvas.drawPath(it, headEdge) }
+            canvas.drawPath(path, arrowBody)
+            head?.let { canvas.drawPath(it, headBody) }
+        }
+    }
+
+    /** A triangle with its base centered on [end], pointing away from [back], [w] wide with a
+     *  74 degree tip; [grow] widens it all round for the edge drawn under it. */
+    private fun arrowHead(end: PointF, back: PointF, w: Float, grow: Float = 0f): Path? {
+        val dx = end.x - back.x; val dy = end.y - back.y
+        val len = kotlin.math.hypot(dx, dy)
+        if (len < 0.5f) return null
+        val ux = dx / len; val uy = dy / len
+        val half = w / 2f + grow
+        val h = (w / 2f) / kotlin.math.tan(Math.toRadians(37.0)).toFloat() + grow * 1.6f
+        val bx = end.x - ux * grow; val by = end.y - uy * grow
+        return Path().apply {
+            moveTo(bx + ux * h, by + uy * h)
+            lineTo(bx - uy * half, by + ux * half)
+            lineTo(bx + uy * half, by - ux * half)
+            close()
         }
     }
 

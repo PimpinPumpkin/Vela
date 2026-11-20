@@ -103,6 +103,10 @@ its own layers on top:
 - The route, gray behind the arrow and blue ahead, with Google's congestion spans in amber, red
   and dark red.
 - Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5.
+- During a drive, turn arrows for the next `CAR_ARROWS` (3) turns, cut by the phone's
+  `TurnArrowGeometry` and drawn its way: a white shaft with an indigo edge and a triangle head,
+  over the light badges, because a turn's light sits on its corner. Settings > Navigation "Turn
+  arrows" turns them off here too.
 - The speed badge and the limit sign while navigating and on the map-only landing, unless Settings >
   Navigation "Show speed and speed limit" is off.
 - One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which

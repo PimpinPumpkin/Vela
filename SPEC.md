@@ -4813,6 +4813,11 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
   (`turnArrowHeadSize`); its dark edge is drawn under the white shaft and its white over it, and
   its base sits `TURN_ARROW_HEAD_TUCK_DP` (1 dp) behind the shaft's end, so no dark line crosses
   the joint. Empty outside a drive.
+- The car map draws the same arrows on its canvas (`CarMapRenderer.drawTurnArrows`) for the next
+  `CAR_ARROWS` (3) turns, cut from `route.polyline` (the line it draws) and kept until the route
+  or the step changes: a 15 px indigo edge and an 11 px white body inside the 20 px route line,
+  scaled with the speed badge, and a 74 degree head 22 px across. Drawn after the corridor
+  badges, since a turn's light sits on its corner.
 
 #### Rasters
 
