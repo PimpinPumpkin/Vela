@@ -3719,9 +3719,9 @@ when the feature ids match. Two requests at most.
   runs over a 2.5 km window around the user and leads the list.
 - `SearchPb.build` stretches the template's window to the viewport span, floored at `MIN_SPAN_M`
   (1 km) and capped at 500 km.
-- Ranking and shown distances use `rankFrom`: the user's location within about 50 km of the
-  viewport, else the viewport center. The request bias stays the viewport. `plausibleBias()`
-  discards a point near `0,0`.
+- Ranking uses `rankFrom`: the user's location within about 50 km of the viewport, else the
+  viewport center. The request bias stays the viewport. `plausibleBias()` discards a point near
+  `0,0`.
 - A name match "near you" that replaces a far view's results must not be permanently closed and
   must be within `HOME_NAME_MAX_M` (40 km) of the user.
 - The "more results" row pulls the next three pages. It goes when a pull adds fewer than five or
@@ -3774,9 +3774,22 @@ when the feature ids match. Two requests at most.
   (`shareAddressText`), and the link is the sheet's Copy link (`sharePlaceUrl`). The address shows
   only when the name repeats, the place is unrated, or there is no photo strip. No extra request
   is made per result. A closed place reads in plain red on dark surfaces (`themedStatusColor`).
-- A result's distance is from the point its search ranked from. A tapped map place and a saved
-  or recent place are looked up around their own point, so `MapViewModel.fromHere` sets their
-  distance from the user's position, or none without a fix.
+- A result card and the place sheet show the distance from the user while the fix is live
+  (`ShownDistance`, `!myLocationStale`), however far the view is from the user. Every result list
+  a search publishes (online, offline, Google off, "More results", other branches, the "Open now"
+  search) and every place `selectPlace` opens is measured again from the fix. A map dot carries
+  its distance from the point the dots were fetched around, which `keepAmbientForView` needs, so
+  it is measured only when it is opened. Without a live fix (none yet, location off, the dot gray)
+  a place keeps the distance it came with: from `rankFrom` for Google's pages and Photon, from the
+  window's center for offline rows and Vela's own places with Google off, and from the dots' fetch
+  point for a dot or an ambient extra.
+  A place with no distance (a list member, a planned route's row) gets none. The order the search
+  ranked in is kept; the list's Distance sort orders by the distance shown. A search along a route
+  keeps its distance along the route (`RouteCorridor`).
+- A tapped map place and a saved or recent place are looked up around their own point, so
+  `MapViewModel.fromHere` sets their distance from the user's position, or none without a fix. A
+  place's offline copy (`PlaceCache`) takes the distance the sheet already had, not the one kept
+  from its last visit.
 
 #### Suggestions and addresses
 

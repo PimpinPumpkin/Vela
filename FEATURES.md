@@ -83,8 +83,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 - Search by name, category or address, biased to the area in view.
 - Suggestions as you type, your own recent and saved places first. A row's arrow fills the box.
-- Results as pins and cards with rating, open status, photos and action buttons. A card's Share
-  sends the name, the address and a Google Maps link as text.
+- Results as pins and cards with rating, distance from you (wherever the map is), open status,
+  photos and action buttons. A card's Share sends the name, the address and a Google Maps link as
+  text.
 - "Open now" asks Google for the places open now, so a late search finds what is still open.
 - Filters for Open now, rating, price and Wheelchair accessible. Sort by relevance, rating or
   distance.

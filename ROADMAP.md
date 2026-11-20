@@ -769,6 +769,10 @@ off the list when it has been.
   `AppLocale.calendarLocale`): unit tests on the JVM only. Not seen on a phone: Monday first with
   the app in English on a German-region phone, Sunday on a US one, and whether Android 14's First
   day of week setting (the `fw` keyword) moves it.
+- Result cards and place sheets measuring their distance from you wherever the map is (#916,
+  `ShownDistance`): on a Pixel 4a with mock fixes held in Davis and the map over San Francisco,
+  coffee's first card and its sheet read 64.5 mi. Not yet checked: Open now, the Distance sort,
+  a map dot's sheet, and a search along a route keeping its distance along the route.
 
 ### Open from the October 2026 audit
 

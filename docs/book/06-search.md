@@ -17,7 +17,8 @@ Each result is a card: the name, one line of facts (rating, count, distance, pri
 open or closed line, up to three amenity ticks, up to three photos, and buttons that act without
 opening the place (Directions, Call, Website, Share, and Menu when there are menu photos). All
 of it comes from the one search reply. Nothing is fetched per result, so most cards have one
-photo and none has a review line. The address shows when the place is unrated, when its name
+photo and none has a review line. The distance is from you, however far the map has been moved,
+as long as the phone has a live fix. The address shows when the place is unrated, when its name
 repeats in the list, or when the card has no photos. Share sends the name, the full address and a
 Google Maps link as text, so the address can be pasted into any maps app. An opened list shows
 its places on the same cards.
@@ -246,9 +247,16 @@ on-device address hits + address rows + Google's pages (nearby pass first) + amb
 
 - `plausibleBias` discards a point within half a degree of 0,0. That is the map's untouched
   camera on a device that never had a fix, and biasing to it ranks everything toward open ocean.
-- `rankBias` picks the point that the order and the shown distances are computed from. It is
-  your position when you are within 50 km of the window's center. Otherwise Google ranks from
-  the window center, so browsing another city does not reorder around you.
+- `rankBias` picks the point that the order is computed from. It is your position when you are
+  within 50 km of the window's center. Otherwise Google ranks from the window center, so
+  browsing another city does not reorder around you.
+- The distance a card or a place sheet shows is measured again from you whenever the location
+  dot is live (`ShownDistance`), as Google's cards are: coffee over a city 100 km away reads
+  100 km, not the few hundred meters from the window's center. Every list a search hands to the
+  screen goes through it, the "Open now" search and "More results" included, and so does every
+  place opened from a card, a map dot or a sheet. Only the number changes. The list keeps the
+  order the search ranked it in, and the Distance sort follows the number shown. With the dot
+  gray or no fix at all, each place keeps the distance it came with.
 - A place opened by tapping the map or from Saved and Recent is looked up around its own point,
   so that lookup's distance is to itself. `fromHere` replaces it with the distance from you, or
   with none when there is no fix.

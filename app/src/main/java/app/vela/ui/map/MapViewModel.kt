@@ -2294,8 +2294,9 @@ class MapViewModel @Inject constructor(
 
     /** Rank results from the USER when they are searching where they are (within ~50 km of the
      *  viewport), else from the viewport center. Fixes the "results ordered around some weird
-     *  point" feel: the viewport stays the SEARCH AREA, but the order and the shown distances
-     *  no longer reshuffle around wherever the screen happens to be centered. */
+     *  point" feel: the viewport stays the SEARCH AREA, but the order no longer reshuffles around
+     *  wherever the screen happens to be centered. The distances it measures are what a card shows
+     *  only without a live fix ([shownFromYou]). */
     private fun rankBias(near: LatLng?): LatLng? {
         val me = plausibleBias(_state.value.myLocation) ?: return null
         return me.takeIf { near == null || it.distanceTo(near) < 50_000.0 }
@@ -2414,7 +2415,7 @@ class MapViewModel @Inject constructor(
                 branchFocus = null
                 _state.update {
                     if (it.query != q) it.copy(resultsLoadingMore = false)
-                    else it.copy(results = merged ?: it.results, resultsLoadingMore = false, resultsMoreQuery = null, resultsBranches = false, resultsBranchesLoaded = merged != null)
+                    else it.copy(results = merged?.let { m -> shownFromYou(it, m) } ?: it.results, resultsLoadingMore = false, resultsMoreQuery = null, resultsBranches = false, resultsBranchesLoaded = merged != null)
                 }
             }
             return
@@ -2431,7 +2432,7 @@ class MapViewModel @Inject constructor(
             moreFromPage += 3
             _state.update {
                 if (it.query != q) it.copy(resultsLoadingMore = false)
-                else it.copy(results = it.results + fresh, resultsLoadingMore = false, resultsMoreQuery = if (fresh.size >= 5) q else null)
+                else it.copy(results = it.results + shownFromYou(it, fresh), resultsLoadingMore = false, resultsMoreQuery = if (fresh.size >= 5) q else null)
             }
         }
     }
@@ -2447,6 +2448,12 @@ class MapViewModel @Inject constructor(
      *  distance is to its own center, and read "10 ft" on every such place. */
     private fun fromHere(p: Place): Place =
         p.copy(distanceMeters = plausibleBias(_state.value.myLocation)?.distanceTo(p.location))
+
+    /** [places] with the distance their cards show: from the user while the fix is live, wherever
+     *  the search ranked from (issue #916). Without a live fix each keeps its search's own. The
+     *  order is the search's. */
+    private fun shownFromYou(st: MapUiState, places: List<Place>): List<Place> =
+        app.vela.core.search.ShownDistance.of(places, app.vela.core.search.ShownDistance.from(st.myLocation, st.myLocationStale))
 
     /** Map settled after a user pan: offer "Search this area" while results show. */
     fun onCameraIdle(center: LatLng) {
@@ -2864,7 +2871,7 @@ class MapViewModel @Inject constructor(
                         // No "Offline results" banner — the quiet offline indicator (globe-slash + the
                         // grayed "Offline" in the search bar) already says we're offline.
                         offline.isNotEmpty() ->
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false)
+                            it.copy(results = shownFromYou(it, offline), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false)
                         // Has a downloaded area but nothing matched — don't tell them to download again.
                         haveArea ->
                             it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_match, q), searching = false)
@@ -2955,7 +2962,7 @@ class MapViewModel @Inject constructor(
                     android.util.Log.i("VelaSearch", "far view: ${homeHits.size} name match(es) near you replace ${res.places.size} far result(s)")
                     _state.update {
                         it.copy(
-                            results = homeHits, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null,
+                            results = shownFromYou(it, homeHits), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null,
                             status = null, searching = false, offline = false, resultsMoreQuery = null, resultsLoadingMore = false, resultsBranches = false, resultsBranchesLoaded = false,
                         )
                     }
@@ -3017,7 +3024,7 @@ class MapViewModel @Inject constructor(
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
                         it.copy(
                             // Rows that ARE the typed address come nearest-first, ahead of everything else.
-                            results = localAddrs + addressFirst(geocoded, shownPlaces, near, ::carries) + shownExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
+                            results = shownFromYou(it, localAddrs + addressFirst(geocoded, shownPlaces, near, ::carries) + shownExtra), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
                             // Three full pages back = the window holds more; offer the next three.
                             resultsMoreQuery = if (res.places.size >= 40 || res.focus != null) q else null, resultsLoadingMore = false,
                             resultsBranches = res.focus != null, resultsBranchesLoaded = false,
@@ -3041,7 +3048,7 @@ class MapViewModel @Inject constructor(
                     val offline = offlineSearch(q, near)
                     _state.update {
                         if (offline.isNotEmpty())
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                            it.copy(results = shownFromYou(it, offline), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                         else
                             it.copy(results = emptyList(), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_no_results, q), searching = false, offline = false)
                     }
@@ -3055,7 +3062,7 @@ class MapViewModel @Inject constructor(
                 // as the straight-offline branch so an address still resolves when the scrape times out).
                 val offline = offlineSearch(q, near)
                 if (offline.isNotEmpty()) {
-                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false) }
+                    _state.update { it.copy(results = shownFromYou(it, offline), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false) }
                 } else if (isConnectivityError(e)) {
                     // A dead connection: if there's a downloaded area the query just didn't match it, else
                     // point the user at the offline download instead of a raw "Unable to resolve host".
@@ -3554,7 +3561,10 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
-                selected = withListNote(p), center = p.location, centerZoom = p.areaZoom(), reviews = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
+                // The sheet's distance is from the user while the fix is live (ShownDistance): a map
+                // dot's own is from the point the dots were fetched around. A result along the route
+                // keeps its distance along the route (RouteCorridor), the number its card showed.
+                selected = withListNote(app.vela.core.search.ShownDistance.of(p, if (it.navigating || it.alongRouteDest != null) null else app.vela.core.search.ShownDistance.from(it.myLocation, it.myLocationStale))), center = p.location, centerZoom = p.areaZoom(), reviews = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
                 // Picking a NEW place while a route chooser is open closes it: the chooser
                 // belonged to the previous destination and kept covering the fresh place
@@ -6183,6 +6193,8 @@ class MapViewModel @Inject constructor(
                     selected = rec.place.copy(
                         id = cur.id, location = cur.location, savedNote = cur.savedNote ?: rec.place.savedNote,
                         statusText = null, openNow = null,
+                        // The kept copy's distance is from wherever it was measured on that visit.
+                        distanceMeters = cur.distanceMeters ?: plausibleBias(st.myLocation)?.distanceTo(cur.location),
                     ),
                     reviews = st.reviews.ifEmpty { rec.reviews },
                 )
