@@ -142,12 +142,14 @@ speed badge and the credit go in the stable area, because on a tall screen the m
 over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at
 zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.
 
-The view is heading-up when it follows a moving car: during a drive, and with no route once the
-smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known. The latch holds through a red light and lets go when the follow ends. Heading-up, the
-camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow `PUCK_DOWN` (0.72)
-of the way down, so more road shows ahead. Parked with no route, after a pan, with the phone's
-"Keep north up" on, and with no route while its "Turn the map as you drive" is off, the view is north up, flat and centered on the arrow, which still turns with
-the car. The camera's bearing and tilt ease in, so the switch rotates the map rather than
+The view is heading-up when it follows the car: during a drive, on the map-only landing parked
+or moving, and with no route elsewhere once the smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s)
+with a course known. The latch holds through a red light and lets go when the follow ends.
+Heading-up, the camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow
+`PUCK_DOWN` (0.86) of the way down, about where Google Maps keeps its car, so more road shows
+ahead. On the list card, after a pan, with the phone's "Keep north up" on, and with no route
+while its "Turn the map as you drive" is off, the view is north up, flat and centered on the
+arrow, which still turns with the car. The camera's bearing and tilt ease in, so the switch rotates the map rather than
 snapping it.
 
 Under tilt the ground nearer the camera is drawn larger, so the flat offset would put the arrow

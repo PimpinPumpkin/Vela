@@ -6615,12 +6615,13 @@ The map:
   the phone is at rest (`Stillness`), is a speed of 0. The heading is kept in every view, so a
   north-up map still turns the arrow.
 - The view is heading-up (`headingUp`) while following with no preview and no overview, the
-  phone's `NorthLock` off, and either a drive or, with `TurnWithTravel` on, the free-drive latch: the smoothed speed
+  phone's `NorthLock` off, and either a drive or, with `TurnWithTravel` on, the map-only landing (parked too) or the free-drive latch: the smoothed speed
   (`DRIVE_SPEED_TAU_S` 1 s) past `DRIVE_LATCH_MPS` (2.5) with a course known. The latch holds
   through a stop and lets go when the follow ends (a pan, a zoom button, the overview); recenter
   sets it again at once when the car is already moving. Heading-up, the camera bearing is the
-  heading, the tilt is `CarFraming.NAV_TILT_DEG` (55) and the arrow sits at `PUCK_DOWN` (0.72) of
-  the visible area's height. Otherwise the view is north-up, flat and centered on the arrow.
+  heading, the tilt is `CarFraming.NAV_TILT_DEG` (55) and the arrow sits at `PUCK_DOWN` (0.86) of
+  the visible area's height, as low as Google Maps keeps its car on the same screen (about 0.9 at
+  1280 by 720, drive and landing alike), so more of the road ahead shows. Otherwise the view is north-up, flat and centered on the arrow.
 - Zoom follows speed whenever the view follows a moving car, drive or not: `CarFraming.navZoom`,
   `ZOOM_NEAR` (17.2) at rest to `ZOOM_FAR` (15.0) at `ZOOM_FAR_KMH` (110) and above, a straight
   line between. In a drive with the phone's "Zoom to the next turn" on, the zoom is the lesser of

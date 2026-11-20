@@ -175,7 +175,7 @@ class CarMapRenderer(
         const val CAM_BEARING_EASE = 0.3 // the camera onto the arrow's heading, and back to north
         const val ZOOM_EASE = 0.06    // per tick, so a speed change glides over a second or so
         const val TILT_EASE = 0.05    // per tick: the tilt comes in over about two seconds
-        const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area in a heading-up view
+        const val PUCK_DOWN = 0.86    // the puck sits this far down the VISIBLE area in a heading-up view, low as Google Maps keeps it
         const val TURN_MARGIN_PX = 40.0 // the next maneuver is framed this far under the top of the visible area
         const val PUCK_AIM_PX = 40.0  // how far ahead of the arrow, in ground pixels, its heading is sampled for its turn on screen
         const val DRIVE_LATCH_MPS = 2.5 // the phone's free-drive latch speed, on the smoothed speed
