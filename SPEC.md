@@ -2268,6 +2268,18 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   hold-back. An ease toward a target under a monotonic clamp stalls and lurches at the fix rate.
 - Dead reckoning stops `DEAD_RECKON_S` (3 s) after the last accepted fix. A fix's advance is
   accepted up to `speed x dt x 2.5 + 60 m`.
+- Near a standstill a small forward hop is GPS jitter and is held, unless the model says moving
+  (0.5 m/s), the hop passes 8 m, or the fix's own Doppler speed passes `PULL_AWAY_MPS` (1 m/s;
+  parked Doppler noise reads under 0.4). Without the last, the first fix of a pull-away was held
+  while the model still read 0.
+- The arrow moves forward only, so dead reckoning through a stop can leave it past the car. Once
+  a fix's own speed (or the model's, without one) is under `STOP_SETTLE_MPS` (0.3 m/s) for
+  `STOP_SETTLE_AFTER_MS` (1 s) and three fixes, and the median of the last three is more than
+  `STOP_SETTLE_MIN_M` (2.5 m), or 0.6 of their accuracy, behind the arrow, the arrow glides back
+  onto it at `STOP_SETTLE_RATE_MPS` (2.5 m/s) and the filter is reseeded there. Dial
+  `stopSettle`. On the mock turn from a stop below, the arrow had stopped 5.7 m past the car and
+  stayed there until the car drove up to it; with these two rules its mean error through the 8 s
+  stop is 0.7 m against 5.7, and through the stop and the 8 s after it 1.8 m against 3.8.
 - The smoothing window's width eases toward its speed target with `PUCK_WIN_TAU_S` (2.5 s). On a
   curve the width is a lateral position, so speed noise in it is sideways movement.
 - The arrow's heading is the chord across at least `HEAD_WIN_MIN_M` (12 m) either side of a point
@@ -2303,7 +2315,7 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   camera stayed within 1.2 degrees of the road both ways. A phone on a desk feels no
   acceleration, so these runs give the speed model nothing between fixes; in a car the
   accelerometer does (Position and speed). The same runs stopped the arrow 4 to 6 m past the car
-  at the light.
+  at the light, before the stop settle (Position and speed).
 - Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s, less the
   framing's pull-back (below). A pinch sets an override that a pan or Re-center clears. With
   "Zoom to the next turn" on (Settings > Navigation, off by default) the zoom is the lesser of

@@ -278,9 +278,9 @@ off the list when it has been.
 - The arrow and the map keeping up in turns (fix age carried forward, a wider and leading heading
   chord, a leading camera that keeps its quick ease until it has caught up; SPEC 4.7): measured on
   a mock turn from a stop on a 4a, not yet on a real drive. A drive with Settings > Diagnostics >
-  the nav trace on, and a recorded trip, would show it against the fixes. The same mock runs left
-  the arrow 4 to 6 m past the car at a stop, with no accelerometer to say the car braked; a real
-  drive's trace would show whether a car's stops do that too.
+  the nav trace on, and a recorded trip, would show it against the fixes. The settle back onto the
+  car at a stop and the pull-away fix taken at once (SPEC 4.7) were measured the same way; a real
+  drive's trace would show how far a car's own stops overshoot with the accelerometer helping.
 
 - The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
   forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen

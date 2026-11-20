@@ -3417,6 +3417,11 @@ fun VelaMapView(
                 val maxHoldBack = navPuck.speed * 0.25 + 0.5 // ...and of braking, so it never reverses
                 val corr = (err / PUCK_CORRECT_TIME_S).coerceIn(-maxHoldBack, maxCatchUp)
                 navPuck.progressM += ((navPuck.speed + corr) * dtT.coerceAtMost(0.5)).coerceAtLeast(0.0)
+                // The one way back: stopped past where the car is (STOP_SETTLE_*), glide back onto it.
+                if (!navPuck.settleToM.isNaN()) {
+                    if (navPuck.progressM <= navPuck.settleToM) navPuck.settleToM = Double.NaN
+                    else navPuck.progressM = maxOf(navPuck.settleToM, navPuck.progressM - STOP_SETTLE_RATE_MPS * dtT.coerceAtMost(0.5))
+                }
                 val puckM = puckAt?.let { app.vela.core.nav.RouteSmoothing.mapAlong(it, puckCum, navPuck.progressM) }
                     ?: (navPuck.progressM * (if (routeCum.isNotEmpty() && routeCum.last() > 0.0 && puckCum.isNotEmpty()) puckCum.last() / routeCum.last() else 1.0))
                 val (_, segBrg) = pointAtMeters(puckLine, puckCum, puckM)
@@ -5217,7 +5222,9 @@ fun VelaMapView(
                     // slowest real traveler: a stroll is ~0.9-1.4 m/s (must flow fix-by-fix),
                     // parked doppler noise reads < ~0.4; queue-creep below even that still gets
                     // in once it accumulates past the 8 m noise floor.
-                    fwd in 0.0..maxStep && (navPuck.kalman.speed > 0.5 || fwd > 8.0) -> {
+                    // The fix's own Doppler speed counts too (PULL_AWAY_MPS): pulling away, the
+                    // model still reads 0 from the stop, and the first moving fix was held as jitter.
+                    fwd in 0.0..maxStep && (navPuck.kalman.speed > 0.5 || fwd > 8.0 || (mySpeedRaw ?: 0f) > PULL_AWAY_MPS) -> {
                         navPuck.targetM = m
                         accepted = true
                     }
@@ -5246,6 +5253,31 @@ fun VelaMapView(
                     else -> navPuck.fwdRejects = 0
                 }
                 if (accepted) navPuck.fwdRejects = 0
+                // Stopped past the car. The arrow only ever moves forward, and dead reckoning through
+                // a stop carries it on after the car has halted: a mock turn from a stop left it 4 to
+                // 6 m past the car, where it then waited for the car to drive up to it. After
+                // STOP_SETTLE_AFTER_MS at a standstill, when the median of the last three fixes is
+                // more than STOP_SETTLE_MIN_M (or 0.6 of their accuracy) behind the arrow, it glides
+                // back onto them. The `stopSettle` dial at 0 turns it off.
+                // The fix's own Doppler speed says it first; the model takes seconds to decay to it.
+                val stoppedNow = (mySpeedRaw?.toDouble() ?: navPuck.kalman.speed) < STOP_SETTLE_MPS
+                if (!stoppedNow) { navPuck.stoppedSinceMs = 0L; navPuck.stopFixN = 0; navPuck.settleToM = Double.NaN }
+                else {
+                    if (navPuck.stoppedSinceMs == 0L) navPuck.stoppedSinceMs = now
+                    navPuck.stopFixM[navPuck.stopFixN % 3] = m
+                    navPuck.stopFixN += 1
+                    if (navPuck.stopFixN >= 3 && navPuck.settleToM.isNaN() && now - navPuck.stoppedSinceMs >= STOP_SETTLE_AFTER_MS &&
+                        app.vela.ui.AppTune.value("stopSettle", 1.0) >= 0.5
+                    ) {
+                        val med = navPuck.stopFixM.sorted()[1]
+                        val gap = navPuck.progressM - med
+                        if (gap > maxOf(STOP_SETTLE_MIN_M, 0.6 * (myAccuracyM ?: 5f))) {
+                            navPuck.settleToM = med
+                            navPuck.targetM = med
+                            navPuck.along.reseed(med, myAccuracyM)
+                        }
+                    }
+                }
             }
             navPuck.missCount = 0
             navPuck.headingMisses = 0
@@ -9797,6 +9829,11 @@ private class NavPuck {
     var camLeadS = CAM_LEAD_S
     var camChord = Float.NaN      // the heading [camLeadS] further on, the camera's target in a turn
     var camTurning = false        // a turn's error passed CAM_BRG_LATCH_DEG and has not yet settled
+    // Stopped: the last fixes' along-route meters and since when, for the settle back onto them.
+    val stopFixM = DoubleArray(3)
+    var stopFixN = 0
+    var stoppedSinceMs = 0L
+    var settleToM = Double.NaN    // the arrow glides back to here while the car stays stopped
     var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
                                   // exactly when the resume fix needs the window big)
@@ -9882,6 +9919,17 @@ private const val HEAD_WIN_MIN_M = 12.0
 private const val HEAD_LEAD_S = 0.3
 /** How much further on the camera aims, for its own ease's lag in a turn. 0 aims at the arrow. */
 private const val CAM_LEAD_S = 0.4
+/** Stopped means under this speed, model and fix both. */
+private const val STOP_SETTLE_MPS = 0.3
+/** How long stopped before the arrow may settle back onto the fixes. */
+private const val STOP_SETTLE_AFTER_MS = 1_000L
+/** How far past the fixes the arrow must be before it settles back. */
+private const val STOP_SETTLE_MIN_M = 2.5
+/** How fast it glides back. */
+private const val STOP_SETTLE_RATE_MPS = 2.5
+/** A fix whose own Doppler speed passes this is moving, whatever the model says (parked noise reads
+ *  under 0.4 m/s). */
+private const val PULL_AWAY_MPS = 1.0f
 
 /** Time constant for the smoothing window's WIDTH. Deliberately long: the width is meant to track
  *  the difference between town and motorway, not the difference between two consecutive fixes. */

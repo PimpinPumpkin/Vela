@@ -233,6 +233,10 @@ of its own easing, and once it has swung more than 12 degrees it keeps its quick
 has caught up. On a mock turn from a stop that took the map's lag from 1.5 s to 0.5 s and the
 arrow's from 1.0 s to 0.7 s (SPEC 4.7).
 
+The arrow only moves forward, so carrying on at its modeled speed through a stop can leave it
+past the car. Stopped for a second and three fixes, it glides back onto where the fixes put the
+car, and the first fix of a pull-away is taken at once when its own speed says the car is moving.
+
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
 rubber duck, which in a drive are 3D (`ui/map/Puck3D.kt`): low-poly meshes for the car, UFO and
 ship, and a smooth, glossy duck ray cast per pixel on a worker thread. A tap on the arrow
