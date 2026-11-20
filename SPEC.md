@@ -6562,7 +6562,8 @@ the same `:core` singletons as the phone (`CarDeps`).
   (`showPreview(route, others)`), with a red dot at the destination, and frames all of them.
   Previews, results and the drive's overview fit `fitArea()` (the visible area less
   `MAP_STRIP_DP`, 76 dp, on the right and at the top) at `CarFraming.fitZoom` with
-  `FIT_MARGIN` 0.8, centered there, and frame again when its size changes. With more than one route,
+  `FIT_MARGIN` 0.8, centered there, and frame again when its size changes. `follow()` restores
+  the zoom from before the first framing (`zoomBeforeFrame`; not kept for the drive's overview). With more than one route,
   each carries its time in a bubble at the phone picker's point (`RouteBubblePoints`), the
   selected one filled blue; a bubble under the host's cards is left out. Row times are whole
   minutes, rounded (`formatDuration`'s rounding), because the host truncates a `DurationSpan`. The drive draws the same

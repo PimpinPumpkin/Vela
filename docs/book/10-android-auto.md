@@ -161,7 +161,8 @@ zoom fits the box into that area with a fifth to spare (`CarFraming.fitZoom`); i
 from the box's span alone, the same on every screen, which put most of a route under the card on
 an 800 by 480 unit. When the area changes size, as when the route list replaces its loading
 state, the view is framed again. The preview frames every route offered, not the picked one
-alone. The
+alone. Following again, the map takes back the zoom it had before the framing; the landing used
+to stay zoomed out on the preview's route. The
 speed badge and the credit go in the stable area, because on a tall screen the map buttons stack
 over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at
 zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.

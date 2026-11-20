@@ -240,6 +240,10 @@ class CarMapRenderer(
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
         flingVx = 0.0; flingVy = 0.0
+        // Back from a framed preview or results to the zoom from before them: the landing stayed
+        // zoomed out on the preview's route, the car a dot in a county.
+        zoomBeforeFrame?.let { zoom = it; zoomTarget = it }
+        zoomBeforeFrame = null
         previewRoute = null; previewBubbles = emptyList()
         previewOthers = emptyList()
         resultPins = emptyList()
@@ -1332,6 +1336,8 @@ class CarMapRenderer(
         val c = LatLng((minLat + maxLat) / 2, (minLng + maxLng) / 2)
         center = c
         lastFramed = poly
+        // The drive's overview reframes every frame and its zoom is the speed's when it ends.
+        if (zoomBeforeFrame == null && !navigating()) zoomBeforeFrame = zoom
         val fit = fitArea()
         lastFit = fit.width() to fit.height()
         zoom = if (width > 0 && height > 0 && fit.width() > 0 && fit.height() > 0) {
@@ -1346,6 +1352,7 @@ class CarMapRenderer(
     // What the last framing fitted, and into what size, so a change in the host's cards (the route
     // list arriving after its loading state) frames it again.
     private var lastFramed: List<LatLng>? = null
+    private var zoomBeforeFrame: Double? = null
     private var lastFit: Pair<Int, Int>? = null
 
     /**
