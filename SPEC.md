@@ -6542,7 +6542,10 @@ the same `:core` singletons as the phone (`CarDeps`).
 - On the drive screen a drive paused on the phone shows a `MessageInfo` ("Paused") in place of
   the turn card. A turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card with "Continue on"
   the current road (`Maneuver.roadAt`) under a straight arrow and shows the turn as the next
-  step.
+  step. Closer in, the turn after it is the next step only by the phone's "then" rule
+  (`ManeuverMapper.thenShown`: within `COMPOUND_M`, 500 m, of the turn, and the turn within
+  `LANE_SHOW_M`, 800 m). The card's color is `ManeuverMapper.TURN_CARD` (#008A8B, which the host
+  draws as Google's #006D6F).
 - The preview draws the selected route in blue over the other listed routes in gray
   (`showPreview(route, others)`), with a red dot at the destination. The drive draws the same
   dot, and the line ahead in the phone's paused lavender while the drive is paused.

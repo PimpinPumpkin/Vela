@@ -136,9 +136,20 @@ object ManeuverMapper {
             return b.build()
         }
         b.setCurrentStep(carStep(next), carDistance(distanceToNext, imperial))
-        if (then != null) runCatching { b.setNextStep(carStep(then)) } // "then …" preview
+        if (then != null && thenShown(next, distanceToNext)) runCatching { b.setNextStep(carStep(then)) }
         return b.build()
     }
+
+    /** Up close, the turn after this one shows as "then" only when it follows within 500 m and this
+     *  turn is within [app.vela.ui.nav.LANE_SHOW_M], the phone's rule and Google's car card's: a
+     *  turn miles after the next one is not a "then". */
+    internal fun thenShown(next: VelaManeuver, distanceToNext: Double): Boolean =
+        app.vela.ui.nav.isCompoundNext(next.distanceMeters) && distanceToNext <= app.vela.ui.nav.LANE_SHOW_M
+
+    /** The turn card's color: Google's car card is #006D6F on the Desktop Head Unit, and the host
+     *  draws an app's card color about 20% darker, so this is that teal lifted to land on it. The
+     *  host may still override it for contrast. */
+    val TURN_CARD: CarColor = CarColor.createCustom(0xFF008A8B.toInt(), 0xFF008A8B.toInt())
 
     /** Past this distance to the next turn the card leads with the current road. */
     const val CONTINUE_FAR_M = 1_500.0

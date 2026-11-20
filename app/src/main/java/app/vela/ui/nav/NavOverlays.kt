@@ -457,7 +457,7 @@ private const val BANNER_HEADLINE_LINES = 3
 
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
-private const val LANE_SHOW_M = 800.0
+internal const val LANE_SHOW_M = 800.0
 
 /** Google's nav-banner freeway green, pixel-sampled off the Maps app (#00654F). */
 internal val NavBannerGreen = androidx.compose.ui.graphics.Color(0xFF00654F)

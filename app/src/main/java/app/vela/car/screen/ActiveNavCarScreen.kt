@@ -224,6 +224,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
         return NavigationTemplate.Builder()
             .setNavigationInfo(info)
+            .setBackgroundColor(ManeuverMapper.TURN_CARD)
             .setDestinationTravelEstimate(shownEstimate)
             .setActionStrip(strip.build())
             .setMapActionStrip(mapStrip)
