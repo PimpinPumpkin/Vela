@@ -18,9 +18,12 @@ internal enum class BottomOverlay(val slide: Boolean = true) {
             state.showSteps -> STEPS
             state.navigating && state.navTapCandidate != null -> NAV_STOP_OFFER
             state.navigating && state.results.isEmpty() -> NAV_CONTROLS
-            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null -> TRIP_EDITOR
-            state.directionsOpen && !searchOpen && state.pickOnMap == null && googleStyle && state.travelMode != TravelMode.TRANSIT -> DIRECTIONS
-            state.directionsOpen && !searchOpen && state.pickOnMap == null -> CLASSIC_DIRECTIONS
+            // Never the route chooser over a live drive (the rest of the screen already reads
+            // directionsOpen with !navigating): a drive that began under leftover search results
+            // fell through to it, with a Start button that did nothing.
+            state.editingStops && state.directionsOpen && !state.navigating && !searchOpen && state.pickOnMap == null -> TRIP_EDITOR
+            state.directionsOpen && !state.navigating && !searchOpen && state.pickOnMap == null && googleStyle && state.travelMode != TravelMode.TRANSIT -> DIRECTIONS
+            state.directionsOpen && !state.navigating && !searchOpen && state.pickOnMap == null -> CLASSIC_DIRECTIONS
             state.selected != null && !searchOpen && state.pickOnMap == null && state.streetView == null && !state.streetViewLoading -> PLACE
             state.drawing != null || (state.pendingImport != null && state.results.isEmpty() && !searchOpen) -> SHAPES
             state.results.isNotEmpty() && (!searchOpen || pickingResults) && state.pickOnMap == null && state.streetView == null && !state.streetViewLoading -> RESULTS

@@ -68,4 +68,22 @@ class BottomOverlayTest {
         assertEquals(BottomOverlay.NONE, overlay(results, search = true))
         assertEquals(BottomOverlay.RESULTS, overlay(results, search = true, picking = true))
     }
+
+    @Test fun `a live drive never shows the route chooser, even under leftover results`() {
+        val leftover = MapUiState(navigating = true, directionsOpen = true, selected = place, results = listOf(place))
+        assertEquals(BottomOverlay.PLACE, overlay(leftover))
+        assertEquals(BottomOverlay.PLACE, overlay(leftover, google = false))
+        assertEquals(BottomOverlay.NAV_CONTROLS, overlay(leftover.copy(results = emptyList())))
+    }
+
+    @Test fun `a resume gives way to a trip planned while it waited`() {
+        val tap = MapUiState(query = "coffee", results = listOf(place))
+        assertFalse(ResumeYield.movedOn(tap, tap))
+        assertTrue(ResumeYield.movedOn(tap, tap.copy(selected = place)))
+        assertTrue(ResumeYield.movedOn(tap, tap.copy(directionsOpen = true)))
+        assertTrue(ResumeYield.movedOn(tap, tap.copy(query = "gas")))
+        assertTrue(ResumeYield.movedOn(tap, tap.copy(navigating = true)))
+        // Clearing the search or closing what was open is not a new plan.
+        assertFalse(ResumeYield.movedOn(tap, tap.copy(query = "", results = emptyList())))
+    }
 }

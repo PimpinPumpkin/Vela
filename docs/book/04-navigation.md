@@ -564,7 +564,9 @@ refreshes every five minutes. If the process dies mid-drive, the next launch off
 while that timestamp is under an hour old (`RESUME_MAX_AGE_MS`). Resume waits up to
 `RESUME_FRESH_FIX_WAIT_MS = 8_000` for a fix newer than the one on screen. A cold start shows
 the position where the process died, and a route from there draws the line over road already
-driven. Then it plans a fresh route.
+driven. Then it plans a fresh route. If the driver has started something else in those seconds
+(a search, a place, directions or another drive), the resume gives way (`ResumeYield`): the
+resumed drive used to start under it and leave the route sheet over the live drive.
 
 A drive's trip id is saved with it, so a resumed drive records into the trip the killed process
 left: a `resumed:` note, the drive's opening notes again (a resume after an update names the new

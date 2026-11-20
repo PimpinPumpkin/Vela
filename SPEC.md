@@ -6428,7 +6428,8 @@ one destination per `SettingsSection`. `SettingsHub` holds the category rows and
   cancellation.
 - `BottomOverlay.of` maps `MapUiState` to one stable key: `ARRIVAL`, `NAV_STOPS`, `STEPS`,
   `NAV_STOP_OFFER`, `NAV_CONTROLS`, `TRIP_EDITOR`, `DIRECTIONS`, `CLASSIC_DIRECTIONS`, `PLACE`,
-  `SHAPES`, `RESULTS` or `NONE`. `SheetTransition` keeps the outgoing `MapUiState` snapshot
+  `SHAPES`, `RESULTS` or `NONE`. The three directions keys need `!navigating`, as the rest of
+  the screen reads `directionsOpen`. `SheetTransition` keeps the outgoing `MapUiState` snapshot
   (`BottomOverlayFrame`) until its exit ends. Content slides up over 250 ms and down over 200 ms,
   by its measured height. A detail fetch or a place change under the same key does not replay
   the entrance.

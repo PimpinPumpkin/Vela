@@ -1051,6 +1051,7 @@ internal class NavController(
         val mode = resumeMode
         if (_state.value.myLocation == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_waiting_gps)); return }
         _state.update { it.copy(resumeNavLabel = null) }
+        val atTap = _state.value
         scope.launch {
             // Route from a FRESH fix, not the launch seed. A cold start shows the LAST KNOWN
             // position first (where the process died, minutes and miles ago), and routing from it
@@ -1068,6 +1069,10 @@ internal class NavController(
             var route = routes.firstOrNull()
             if (route?.provisional == true) route = host.nameIfNeeded(route)
             if (route == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_failed)); clearPersistedNav(); return@launch }
+            // The wait for a fix and the route take seconds. A driver who has gone on to plan
+            // something else in them (a search, a place, directions, another drive) has moved on:
+            // the resumed drive started under that and left the route sheet over it.
+            if (ResumeYield.movedOn(atTap, _state.value)) { clearPersistedNav(); return@launch }
             host.destination = dest
             _state.update { it.copy(activeRoute = route, routes = routes) }
             // No address survives a process kill (only the label was persisted); destinationDisplay
