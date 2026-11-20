@@ -298,6 +298,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Saved places show on the map in their list's color at every zoom, smaller far out, with their
   names under the pins from a neighborhood zoom, and can be
   pinned to the search page. A place's Save button shows filled when it is already in a list.
+- Hide a list on the map: "Show on map" off in its editor takes its pins and lines off the map.
+  Opening the list still shows them.
 - "Map buttons" draws the locate and parking buttons round or with square corners.
 - Export saved places and lists to a file and import them, or one list on its own from its
   editor. Import also reads GPX, KML and GeoJSON,

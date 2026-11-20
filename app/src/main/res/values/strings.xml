@@ -1061,6 +1061,8 @@
     <string name="list_new_title">New list</string>
     <string name="list_edit_title">Edit list</string>
     <string name="list_name_label">List name</string>
+    <string name="list_show_on_map">Show on map</string>
+    <string name="list_hidden_on_map">Hidden on map</string>
     <string name="list_icon_label">Icon</string>
     <string name="list_emoji_label">Type any emoji</string>
     <string name="list_color_label">Color</string>

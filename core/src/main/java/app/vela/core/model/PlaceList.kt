@@ -102,6 +102,9 @@ data class PlaceList(
     /** The sound played when a drive passes one of the places: a key of
      *  [app.vela.core.nav.PassAlerts.SOUNDS], or null for none. */
     val alert: String? = null,
+    /** Off: the list's pins and shapes are not drawn on the map unless the list is open
+     *  ([ListsOnMap]). Search and the list pickers still have it. Written only when off. */
+    val onMap: Boolean = true,
 ) {
     /** The custom map's layers, in the order they first appear. */
     val layers: List<String> get() = (places.mapNotNull { it.layer } + shapes.mapNotNull { it.layer }).distinct()

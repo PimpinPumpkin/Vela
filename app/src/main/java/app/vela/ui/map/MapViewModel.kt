@@ -456,7 +456,11 @@ data class MapUiState(
     val cellUpdates: Map<String, List<app.vela.offline.CellStore.Cell>> = emptyMap(), // region id -> installed cells with a newer bake
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
     val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
-)
+) {
+    /** The lists whose pins and shapes draw on the map: those switched on, and the open one
+     *  ([app.vela.core.model.ListsOnMap.shown]). [lists] itself while every list is on. */
+    val listsOnMap: List<app.vela.core.model.PlaceList> get() = app.vela.core.model.ListsOnMap.shown(lists, openListId)
+}
 
 /**
  * State holder for the map experience. Nav itself lives in the shared

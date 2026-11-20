@@ -4095,6 +4095,16 @@ the shared 12 s timeout cuts it off.
   places. From z14 (`SAVED_LABEL_ZOOM`) the place's name draws under the pin (12 px, Noto Sans
   Regular, anchored at the top 1.6 em down, 8 em wide, `textOptional`, so a pin whose name finds
   no room keeps the pin); the dark palette recolors it with every symbol layer.
+- `ListsOnMap.pins` (`core/model/ListsOnMap.kt`) picks the saved pins: each place of a list on
+  the map once, for the first list in the lists' order that holds it, less a custom map's
+  hidden layers, then each quick-save no list drew. A list's shapes draw on the same terms
+  (`ListsOnMap.shown`).
+- "Show on map" in a list's editor sets `PlaceList.onMap` (issue #988). It defaults to true, so
+  older payloads decode, and the JSON carries it only when off, the list export included. A
+  list that is off draws no pins and no shapes unless it is the open list (`openListId`). A
+  place it shares with a list that is on draws for that list, and a quick-save is not a list
+  and always draws. Search, the lists sheet, the place sheet's list picker and the list's sound
+  do not read the switch. The lists sheet tags the list "Hidden on map".
 - A list's editor has a share button in its title row: `PlaceListStore.exportJson(id)` writes that one list
   in the same JSON the export of every list writes, so it imports back as that list, and
   `MapViewModel.exportListIntent` shares it as `vela-list-<name>.json` (issue #822).

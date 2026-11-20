@@ -38,6 +38,15 @@ While the route chooser is open the map shows no places: the archive's icons and
 basemap's points, transit icons, stop badges and saved pins all hide. The destination keeps its
 pin. During a drive the archive shows fuel only ([chapter 11](11-drive-chrome.md)).
 
+### Saved places and lists
+
+What you saved draws as pins in its list's icon and color at every zoom, smaller far out. Each
+list's editor has "Show on map". Turned off, that list's pins and lines leave the map, as Google
+Maps' "Hide on your map" does, so a few lists can stay on screen without the rest. Opening the
+list from Your lists still shows everything in it. A place that is also in a list still on the
+map keeps its pin, and a starred place outside any list always draws. Search and the list
+pickers still offer every list. The rules are in [SPEC section 5.7](../../SPEC.md).
+
 ## Where the data comes from
 
 **Overture Maps Places** is the base: an open business dataset from Meta, Microsoft and others,

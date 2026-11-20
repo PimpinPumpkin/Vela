@@ -295,6 +295,12 @@ off the list when it has been.
   10 m/s and no route, off kept the map north-up the whole way and on turned it to the course,
   as before. Not yet seen on a drive or in the car.
 
+- Hiding a list on the map ("Show on map" in the list editor, `PlaceList.onMap`, issue #988;
+  SPEC 5.7): which pins and shapes draw is unit-tested (`ListsOnMapTest`). On a Pixel 4a a list
+  switched off lost its pin, the lists sheet tagged it "Hidden on map", and switched on again it
+  came back. Not yet checked: a list's lines, opening a hidden list, a place also in a list that
+  is on, the switch through an export and import, and D-pad reaching it.
+
 - The open places bake keeps one row for a business Overture lists at several points under one
   name, street address and postcode (#742), and drops a row only BrightQuery, Microsoft or
   Foursquare supplies unless OSM, a chain locator or an OSM landmark backs it (#914). Measured
