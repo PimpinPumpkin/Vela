@@ -151,7 +151,17 @@ on the new one fails to lock and the map stands still until a collection happens
 ### Framing and following
 
 The templates cover part of the surface. The host reports the visible area, which is uncovered
-now, and the stable area, which is never covered. The arrow is framed in the visible area. The
+now, and the stable area, which is never covered. The arrow is framed in the visible area.
+
+A route preview, search results and the drive's overview are fitted to the fit area
+(`fitArea`): the visible area kept clear of the map buttons down the right side and the action
+strip along the top, even while they are hidden. The visible area takes them in and out as they
+show and hide, so a route framed against it ran under the buttons and a tap moved the map. The
+zoom fits the box into that area with a fifth to spare (`CarFraming.fitZoom`); it used to come
+from the box's span alone, the same on every screen, which put most of a route under the card on
+an 800 by 480 unit. When the area changes size, as when the route list replaces its loading
+state, the view is framed again. The preview frames every route offered, not the picked one
+alone. The
 speed badge and the credit go in the stable area, because on a tall screen the map buttons stack
 over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at
 zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.

@@ -204,6 +204,8 @@ class CarMapRenderer(
             return (shortSidePx / 20f * k.toFloat()).coerceIn(16f, 56f)
         }
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
+        /** The map buttons' column down the right side (a 64 dp button and its margin). */
+        const val MAP_STRIP_DP = 76
         /** Turn arrows drawn on the car map, from the step in hand on. */
         const val CAR_ARROWS = 3
         /** Locks failing this long mean a stuck surface, not a screen change in progress. */
@@ -288,7 +290,8 @@ class CarMapRenderer(
         previewBubbles = previewBubblesFor(route, others)
         resultPins = emptyList()
         following = false
-        frameRoute(route)
+        // Every route offered in view, as Google's preview frames them, not the picked one alone.
+        if (route != null) framePoints(route.polyline + others.flatMap { it.polyline })
         requestRender()
     }
 
@@ -315,7 +318,6 @@ class CarMapRenderer(
     /** A time bubble over its point on the route, skipped where the host's cards cover it. */
     private fun drawTimeBubble(canvas: Canvas, snap: MapSnapshot, b: TimeBubble, sx: Float, sy: Float) {
         val pt = project(snap, b.at, sx, sy) ?: return
-        if (!framingArea().contains(pt.x.toInt(), pt.y.toInt())) return
         val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
         bubbleText.textSize = 24f * k
         bubbleText.color = if (b.picked) Color.WHITE else Color.parseColor("#202124")
@@ -324,6 +326,7 @@ class CarMapRenderer(
         val w = bubbleText.measureText(b.label) + 28f * k
         val h = 40f * k
         val r = android.graphics.RectF(pt.x - w / 2f, pt.y - h / 2f, pt.x + w / 2f, pt.y + h / 2f)
+        if (!android.graphics.RectF(framingArea()).contains(r)) return // half under a card reads as a stray
         canvas.drawRoundRect(r, 9f * k, 9f * k, bubbleFill)
         canvas.drawRoundRect(r, 9f * k, 9f * k, bubbleEdge)
         val fm = bubbleText.fontMetrics
@@ -652,7 +655,7 @@ class CarMapRenderer(
         rendering = false; dirty = false // the canceled snapshot's callback won't fire — unstick the flag
     }
 
-    override fun onVisibleAreaChanged(visibleArea: Rect) { visible = Rect(visibleArea); requestRender() }
+    override fun onVisibleAreaChanged(visibleArea: Rect) { visible = Rect(visibleArea); reframeIfFitChanged(); requestRender() }
     override fun onStableAreaChanged(stableArea: Rect) { stable = Rect(stableArea); requestRender() }
     // The host's STABLE area: the part of the surface no template UI ever covers, in any state.
     // The speed badge and the attribution live in it, because the visible area still had the
@@ -812,8 +815,11 @@ class CarMapRenderer(
         val vis = framingArea()
         val mpp = metersPerPixel(here.lat)
         val up = headingUp()
-        val wantX = vis.exactCenterX()
-        val wantY = if (up) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
+        // A framed route or results sit in the middle of the fit area, clear of the buttons.
+        val framed = !follow && (previewRoute != null || resultPins.isNotEmpty() || (nav && overview))
+        val fit = if (framed) fitArea() else vis
+        val wantX = fit.exactCenterX()
+        val wantY = if (up) vis.top + vis.height() * PUCK_DOWN.toFloat() else fit.exactCenterY()
         // SIDEWAYS, THE CENTER OF PERSPECTIVE MOVES, NOT THE TARGET. Tilted, the road straight
         // ahead runs straight up the screen only through the camera's center of perspective, and
         // the host's cards push the arrow off the surface's middle: with the target moved across
@@ -1325,8 +1331,46 @@ class CarMapRenderer(
         }
         val c = LatLng((minLat + maxLat) / 2, (minLng + maxLng) / 2)
         center = c
-        val span = Math.max(maxLat - minLat, (maxLng - minLng) * cos(Math.toRadians(c.lat))).coerceAtLeast(0.0015)
-        zoom = (ln(360.0 / (span * 1.7)) / ln(2.0)).coerceIn(3.0, 16.0)
+        lastFramed = poly
+        val fit = fitArea()
+        lastFit = fit.width() to fit.height()
+        zoom = if (width > 0 && height > 0 && fit.width() > 0 && fit.height() > 0) {
+            CarFraming.fitZoom(minLat, maxLat, minLng, maxLng, fit.width().toDouble(), fit.height().toDouble())
+        } else {
+            // No surface yet: the old span rule, until the host hands one over.
+            val span = Math.max(maxLat - minLat, (maxLng - minLng) * cos(Math.toRadians(c.lat))).coerceAtLeast(0.0015)
+            (ln(360.0 / (span * 1.7)) / ln(2.0)).coerceIn(3.0, 16.0)
+        }
+    }
+
+    // What the last framing fitted, and into what size, so a change in the host's cards (the route
+    // list arriving after its loading state) frames it again.
+    private var lastFramed: List<LatLng>? = null
+    private var lastFit: Pair<Int, Int>? = null
+
+    /**
+     * The part of the surface a framed route or set of results goes in: the host's visible area,
+     * kept clear of the map buttons down the right side and the action strip along the top even
+     * while they are hidden. The visible area takes them in and out as they show and hide, so a
+     * route framed against it ran under the buttons, and a tap would move the map.
+     */
+    private fun fitArea(): Rect {
+        val vis = framingArea()
+        val d = runCatching { carContext.resources.displayMetrics.density }.getOrDefault(1f)
+        val strip = (MAP_STRIP_DP * d).toInt()
+        val right = minOf(vis.right, width - strip).takeIf { it - vis.left > vis.width() / 2 } ?: vis.right
+        val top = maxOf(vis.top, strip).takeIf { vis.bottom - it > vis.height() / 2 } ?: vis.top
+        return Rect(vis.left, top, right, vis.bottom)
+    }
+
+    /** A preview or results view framed against an area that has since changed size: frame again. */
+    private fun reframeIfFitChanged() {
+        if (following || navigating()) return
+        if (previewRoute == null && resultPins.isEmpty()) return
+        val pts = lastFramed ?: return
+        val fit = fitArea()
+        if (lastFit == fit.width() to fit.height()) return
+        framePoints(pts)
     }
 
     /** Heading = the bearing of the route SEGMENT the puck is on, not the bearing to the nearest
