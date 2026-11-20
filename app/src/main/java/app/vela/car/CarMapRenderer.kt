@@ -229,6 +229,12 @@ class CarMapRenderer(
     /** The map-only landing screen is up: no route, the speed badge drawn, tilted heading-up. */
     fun setDriveScreen(on: Boolean) { driveScreen = on; requestRender() }
 
+    /** The map surface's width in dp, 0 before the host has handed it over. */
+    fun surfaceWidthDp(): Int {
+        val d = runCatching { carContext.resources.displayMetrics.density }.getOrDefault(1f).takeIf { it > 0f } ?: 1f
+        return (width / d).toInt()
+    }
+
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
         flingVx = 0.0; flingVy = 0.0

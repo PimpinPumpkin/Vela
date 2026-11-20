@@ -122,13 +122,20 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
         }
         if (free > fit.size) list.addItem(moreNearbyRow())
 
+        // Beside the card on a narrow map (an 800 by 480 unit, or a split screen), the titled
+        // Search pill reached over the card's header; there it is the icon alone.
+        val narrow = renderer.surfaceWidthDp() in 1 until NARROW_MAP_DP
+        val listSearch = if (!narrow) search else Action.Builder()
+            .setIcon(icon(app.vela.R.drawable.ic_car_search))
+            .setOnClickListener { screenManager.push(SearchCarScreen(carContext, deps)) }
+            .build()
         return PlaceListNavigationTemplate.Builder()
             .setItemList(list.build())
             .setTitle(carContext.getString(app.vela.R.string.app_name))
             .setHeaderAction(Action.APP_ICON)
             .setActionStrip(
                 ActionStrip.Builder()
-                    .addAction(search)
+                    .addAction(listSearch)
                     // Puts the card away and leaves the map alone (issue #899). Not offered while
                     // the card's first row is the location prompt.
                     .apply { if (CarLocationAccess.check(carContext)) addAction(mapAction(app.vela.R.drawable.ic_car_drive) { showList(false) }) }
@@ -183,6 +190,8 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
         private const val MAX_ROWS = 6
         // Destinations on the landing list; the rest of the rows are nearby categories.
         private const val MAX_DESTINATIONS = 3
+        // A map narrower than this has no room for the card and a titled Search side by side.
+        private const val NARROW_MAP_DP = 960
 
         /** A destination row: Home, Work, a recent or a saved place, with its kind's icon. */
         data class Destination(val name: String, val location: LatLng, val address: String?, val iconRes: Int)

@@ -216,7 +216,7 @@ dark with the car.
 
 | Screen | Template | What it holds |
 | --- | --- | --- |
-| `MainCarScreen` | `NavigationTemplate`, `PlaceListNavigationTemplate` | The landing: the map alone with Search, a list button, Saved and Settings. The list button swaps in the destinations card: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby", and a car button that puts it away. |
+| `MainCarScreen` | `NavigationTemplate`, `PlaceListNavigationTemplate` | The landing: the map alone with Search, a list button, Saved and Settings. The list button swaps in the destinations card: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby", and a car button that puts it away. Beside the card on a map narrower than `NARROW_MAP_DP` (960 dp), Search is the icon alone: on an 800 by 480 unit the titled pill reached over the card. |
 | `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, each with a numbered pin on its row and the same pin on the map, which frames them with the car. Opened with no category, it lists the phone's quick categories. |
 | `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
 | `CarSettingsScreen` | `ListTemplate` | Spoken directions, lane guidance, the three avoids and the Traffic layer, written to the preferences the phone uses. Six rows, the car library's default list limit. |
