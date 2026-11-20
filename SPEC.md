@@ -6097,7 +6097,10 @@ reuses it.
   place flips the flag while its wrap-capped card never grows.
 - Top-of-map cards (status, downloads, the update card, notices, the faster-route offer) stack in
   one top-center column, each with its own dismiss. During a drive the column hangs off the turn
-  card's measured bottom edge (`navBannerBottomPx`).
+  card's measured bottom edge (`navBannerBottomPx`). The cards (`clearOfSideNavBar`, on each card
+  because the column is in `MapScreen`) and the layers button keep clear of the navigation bar
+  like the other map buttons: with the bar on the side (landscape on Android 8 head units and
+  older phones, #953) the update card's button and the layers button sat under it.
 - In landscape, route and drive chrome is a left column. Both sheets, the route pickers, the
   endpoints card, the turn card and the nav bar take a start alignment plus
   `landscapeColumn(...)`, which caps the width at `sidePanelWidth()` and pads the display cutout

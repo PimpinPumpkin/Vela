@@ -131,6 +131,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -5685,7 +5686,7 @@ private fun InfoCard(
         }
     }
     Card(
-        modifier.fillMaxWidth().onFocusChanged { held = it.hasFocus },
+        modifier.clearOfSideNavBar().fillMaxWidth().onFocusChanged { held = it.hasFocus },
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark)),
     ) {
         if (pillLabel != null && onPill != null) {
@@ -5735,7 +5736,7 @@ private fun InfoCard(
 @Composable
 private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Card(
-        modifier.fillMaxWidth(),
+        modifier.clearOfSideNavBar().fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -5770,7 +5771,7 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> 
 @Composable
 private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Boolean = false, stage: Int = 0, fileStep: Int? = null, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Card(
-        modifier.fillMaxWidth(),
+        modifier.clearOfSideNavBar().fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -5806,6 +5807,13 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
     }
 }
 
+/** The top-of-map cards stop short of a navigation bar on the side (landscape on Android 8 head
+ *  units and older phones, #953), where the update card's button sat under it. On the cards, not
+ *  on their column, which is in MapScreen (CLAUDE.md, "MapScreen is at two size limits"). */
+@Composable
+private fun Modifier.clearOfSideNavBar(): Modifier =
+    windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
+
 /** "A newer Vela is out" card (self-updater): download with progress, then the system
  *  installer takes over. "Not now" silences this version until a newer one appears. */
 @Composable
@@ -5819,7 +5827,7 @@ private fun UpdateCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier.fillMaxWidth(),
+        modifier.clearOfSideNavBar().fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -5911,7 +5919,7 @@ private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier
         else -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier.clearOfSideNavBar().fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
@@ -5968,7 +5976,7 @@ private fun FasterRouteCard(
         act.value()
     }
     Card(
-        modifier
+        modifier.clearOfSideNavBar()
             .fillMaxWidth()
             .onFocusChanged { held = it.hasFocus },
         // The same dress as every other card in the stack (update, downloads, notices) and the
