@@ -65,7 +65,17 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         if (!callbackSet) {
             runCatching {
                 navManager.setNavigationManagerCallback(object : NavigationManagerCallback {
-                    override fun onStopNavigation() { stopNav() }
+                    override fun onStopNavigation() {
+                        // The host also calls this when the car disconnects, after the session and
+                        // this screen are gone, and that ended the drive on the phone too: a loose
+                        // cable or a wireless dropout stopped guidance. Only a stop while the car is
+                        // connected (another navigation app starting) ends it.
+                        if (!app.vela.car.CarBridge.live || lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED) {
+                            android.util.Log.i("VelaCar", "car left during a drive; the drive goes on")
+                            return
+                        }
+                        stopNav()
+                    }
                     override fun onAutoDriveEnabled() {}
                 })
             }.onSuccess { callbackSet = true }

@@ -6488,6 +6488,9 @@ the same `:core` singletons as the phone (`CarDeps`).
   free-text `q=` opens `SearchCarScreen` on that query, submitted, over the landing list. A drive started
   from the car speaks with the Piper voice when it is installed and chosen (the service attaches
   the synth).
+- The host's `onStopNavigation` ends the drive only while the car session is live and the drive
+  screen not destroyed (`CarBridge.live`). On a disconnect the host calls it after both are gone,
+  and the drive goes on on the phone.
 - `VelaCarSession` is the one place that pushes `ActiveNavCarScreen`: it watches
   `NavSession.state` and, when a drive starts on the car or on the phone, pops to the landing
   screen and pushes the drive screen. `onCreateScreen` returns the drive screen over the landing

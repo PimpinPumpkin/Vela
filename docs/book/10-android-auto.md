@@ -256,7 +256,10 @@ The host draws the turn card, and needs three things first:
 1. `NavigationManager.navigationStarted()`, called after the navigation callback is set. Without
    it the host shows the arrival estimate and no turn card. It must be balanced by
    `navigationEnded()`. The screen ends it on arrival, on stop and when it is destroyed, or the
-   host stays in a navigating state for the next session.
+   host stays in a navigating state for the next session. The callback's `onStopNavigation`
+   ends the drive when another navigation app starts one. The host also calls it when the car
+   disconnects, after the session and the screen are gone, and then the drive goes on on the
+   phone, as Google Maps' does: before, a loose cable or a wireless dropout ended guidance.
 2. `updateTrip()` with the current step and the destination. This is the host's navigation data
    channel. It also feeds the instrument cluster and a head-up display. Vela sends it when
    something it shows has changed, and at most once a second. The drive screen is rebuilt on

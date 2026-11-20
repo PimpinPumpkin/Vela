@@ -839,7 +839,7 @@ class CarMapRenderer(
                 if (android.util.Log.isLoggable("VelaCar", android.util.Log.DEBUG)) {
                     android.util.Log.d(
                         "VelaCar",
-                        "snapshot ${android.os.SystemClock.elapsedRealtime() - startedMs} ms zoom=${"%.1f".format(java.util.Locale.US, zoom)} tilt=${tilt.toInt()} yaw=${turnYaw.toInt()} traffic=${trafficShown == true} speed=${(speedMps * 3.6).toInt()}",
+                        "snapshot ${android.os.SystemClock.elapsedRealtime() - startedMs} ms zoom=${"%.1f".format(java.util.Locale.US, zoom)} tilt=${tilt.toInt()} yaw=${turnYaw.toInt()} traffic=${trafficShown == true} speed=${(speedMps * 3.6).toInt()} cam=${bearingUsed.toInt()} hdg=${heading.toInt()} tgt=${targetHeading.toInt()}",
                     )
                 }
                 // THE STYLE OBSERVER NEVER FIRED IN PRACTICE (Gearslip preview, 2026-09-22: no
