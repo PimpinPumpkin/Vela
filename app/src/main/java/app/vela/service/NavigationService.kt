@@ -62,6 +62,7 @@ class NavigationService : Service() {
 
     /** The live update's tracker puck, drawn once per process. */
     private var cachedPuck: android.graphics.Bitmap? = null
+    private var cachedPuckKey = "" // PuckStyle.key(): the icon can change mid-drive (PuckPicker)
     // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
     // Keyed on the accent too, so flipping Material You mid-drive recolors the arrow.
     private var cachedGlyph: Bitmap? = null
@@ -286,7 +287,9 @@ class NavigationService : Service() {
         // card draws its blue arrow dot there and keeps the turn glyph as the large icon on the
         // right, user 2026-09-22); it used to be the maneuver glyph, which changed shape at every
         // turn and read as the next action rather than the car.
-        val puck = cachedPuck ?: app.vela.ui.map.navPuckBitmap(scale = 1f).also { cachedPuck = it }
+        val puckKey = app.vela.ui.PuckStyle.key()
+        val puck = cachedPuck?.takeIf { cachedPuckKey == puckKey }
+            ?: app.vela.ui.map.navPuckBitmap(scale = 1f).also { cachedPuck = it; cachedPuckKey = puckKey }
         promoteToLiveUpdate(b, s, puck)
         return b.build()
     }

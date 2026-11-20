@@ -10693,6 +10693,8 @@ internal fun navPuckBitmap(
     // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
     // [scale] is the Settings "Arrow size" (issue #344): Large 1.25x, Extra large 1.5x.
     val size = (202 * scale).toInt()
+    // The duck is ray cast at the bitmap's own size, not drawn in the 176-space below.
+    if (shape == app.vela.ui.PuckStyle.SHAPE_DUCK) return SmoothDuck.flat(size)
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
@@ -10702,7 +10704,6 @@ internal fun navPuckBitmap(
         app.vela.ui.PuckStyle.SHAPE_CAR -> { drawCarPuck(canvas, app.vela.ui.PuckStyle.carColor.value); return bmp }
         app.vela.ui.PuckStyle.SHAPE_UFO -> { drawUfoPuck(canvas); return bmp }
         app.vela.ui.PuckStyle.SHAPE_SHIP -> { drawShipPuck(canvas); return bmp }
-        app.vela.ui.PuckStyle.SHAPE_DUCK -> { drawDuckPuck(canvas); return bmp }
     }
     val cx = 88f
     val cy = 88f
@@ -10865,35 +10866,6 @@ private fun drawShipPuck(canvas: Canvas) {
     canvas.drawCircle(cx + 12f, 47f, 3.2f, fill(android.graphics.Color.WHITE))
     canvas.drawLine(cx + 9f, 51.5f, cx + 15f, 51.5f, line(android.graphics.Color.WHITE, 1.4f))
     canvas.drawLine(cx + 3f, 42f, cx + 3f, 58f, line(hex("#4E3118"), 2.2f))
-}
-
-/** A rubber duck from above, beak forward (discussion #611). */
-private fun drawDuckPuck(canvas: Canvas) {
-    val cx = 88f
-    val yellow = hex("#FFD93B"); val edge = hex("#D9A600")
-    softShadow(canvas, android.graphics.RectF(cx - 36f, 36f, cx + 36f, 150f))
-    canvas.drawPath(Path().apply { moveTo(cx - 10f, 138f); lineTo(cx, 156f); lineTo(cx + 10f, 138f); close() }, fill(yellow))
-    val body = android.graphics.RectF(cx - 35f, 60f, cx + 35f, 148f)
-    canvas.drawOval(body, fill(yellow))
-    canvas.drawOval(body, line(edge, 2.5f))
-    canvas.drawOval(android.graphics.RectF(cx - 33f, 88f, cx - 17f, 124f), fill(hex("#FFE77A")))
-    canvas.drawOval(android.graphics.RectF(cx + 17f, 88f, cx + 33f, 124f), fill(hex("#FFE77A")))
-    // A flat bill sticking out past the head, wide at the face and rounded at the tip.
-    val bill = Path().apply {
-        moveTo(cx - 13f, 42f)
-        lineTo(cx - 10f, 24f)
-        quadTo(cx, 12f, cx + 10f, 24f)
-        lineTo(cx + 13f, 42f)
-        close()
-    }
-    canvas.drawPath(bill, fill(hex("#FF8C1A")))
-    canvas.drawPath(bill, line(hex("#C85F00"), 1.5f))
-    canvas.drawCircle(cx, 58f, 25f, fill(yellow))
-    canvas.drawCircle(cx, 58f, 25f, line(edge, 2.5f))
-    for (dx in listOf(-10f, 10f)) {
-        canvas.drawCircle(cx + dx, 52f, 4.2f, fill(android.graphics.Color.BLACK))
-        canvas.drawCircle(cx + dx + 1.3f, 50.8f, 1.4f, fill(android.graphics.Color.WHITE))
-    }
 }
 
 /** A Google-style red map pin with a white center dot, anchored at its bottom tip. */

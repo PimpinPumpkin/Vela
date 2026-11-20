@@ -889,13 +889,22 @@ the page fills it after load, and a small stub sits beside it.
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
-red, blue, white, green, yellow), a UFO, a pirate ship or a rubber duck (`drawUfoPuck`,
-`drawShipPuck`, `drawDuckPuck`). Those are top-down bitmaps for the map symbol, the
-notification and the car screen. In the nav follow overlay the four are 3D models
-(`ui/map/Puck3D.kt`, `PuckModels`): flat-shaded low-poly meshes drawn every frame,
-orthographic, from the heading relative to the camera and the camera's tilt
-(`puckOverlayTilt`), back faces culled, faces painted far to near, over a ground shadow. The
-arrow stays flat. Measured on a Pixel 4a demo drive: 60 fps, 0.17% janky frames.
+red, blue, white, green, yellow), a UFO, a pirate ship (`drawUfoPuck`, `drawShipPuck`) or a
+rubber duck. Those are top-down bitmaps for the map symbol, the notification and the car
+screen. In the nav follow overlay the four are 3D (`ui/map/Puck3D.kt`, `PuckModels`), drawn
+orthographic from the heading relative to the camera and the camera's tilt
+(`puckOverlayTilt`), over a ground shadow. The arrow stays flat.
+
+- The car, UFO and ship are flat-shaded low-poly meshes drawn every frame, back faces culled,
+  faces painted far to near. Pixel 4a demo drive: 60 fps, 0.17% janky frames.
+- The duck (`SmoothDuck`, `DuckRender`) is ray cast per pixel from ellipsoids: body, a tilted
+  rear, head, bill and eyes. Near a join the normal leans toward the other part's, so the
+  pieces read as one molded body; a sky light, a light from the camera's side and a gloss
+  highlight shade it, and pixels on an edge take four more samples. A 202 px render takes 7 to
+  9 ms on a Pixel 4a, so the live duck renders on a worker thread when the heading or tilt
+  moves half a degree and the overlay shows the last finished render; the first frame and a
+  new size render inline. Its top-down bitmap is the same render from straight above. Pixel 4a
+  demo drive: 0.22% janky frames.
 
 A tap on the arrow while navigating opens the same choice (`ui/map/PuckPicker.kt`): the five
 icons as tiles, drawn as the drive draws them, and the car's colors when the car is picked. A pick

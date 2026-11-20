@@ -11,15 +11,27 @@ import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/** A nav icon model, drawn every frame from the camera's tilt and the heading relative to the camera. */
+internal interface PuckModel {
+    /**
+     * Draw centered on ([cx], [cy]) (the ground point under the model), [sizePx] across, facing
+     * [headingDeg] clockwise from screen-up, seen at [tiltDeg] from straight down.
+     */
+    fun draw(canvas: Canvas, cx: Float, cy: Float, sizePx: Float, headingDeg: Float, tiltDeg: Float)
+
+    /** [draw] for a still (Settings, the picker): leaves alone what [draw] keeps for the live icon. */
+    fun drawStill(canvas: Canvas, cx: Float, cy: Float, sizePx: Float, headingDeg: Float, tiltDeg: Float) =
+        draw(canvas, cx, cy, sizePx, headingDeg, tiltDeg)
+}
+
 /**
- * The nav icon alternatives (car, UFO, pirate ship, rubber duck) as small 3D models, drawn every
- * frame from the camera's tilt and the heading relative to the camera, so on a tilted nav map they
- * stand on the road instead of lying on it like a sticker. The default arrow stays flat (Google's
- * does too). Model space: x right, y forward, z up, roughly unit sized; [project] fits it to pixels.
- * Rendering is orthographic with painter's-order faces (sorted by depth, back faces culled) and one
- * fixed light, drawn with a reused Path and Paint so a frame allocates nothing.
+ * The car, UFO and pirate ship as small 3D meshes, so on a tilted nav map they stand on the road
+ * instead of lying on it like a sticker. The default arrow stays flat (Google's does too); the duck
+ * is [SmoothDuck]. Model space: x right, y forward, z up, roughly unit sized. Rendering is
+ * orthographic with painter's-order faces (sorted by depth, back faces culled) and one fixed light,
+ * drawn with a reused Path and Paint so a frame allocates nothing.
  */
-internal class PuckMesh(private val faces: List<Face>) {
+internal class PuckMesh(private val faces: List<Face>) : PuckModel {
     class Face(val pts: FloatArray, val color: Int, val doubleSided: Boolean, val nx: Float, val ny: Float, val nz: Float)
 
     /** Largest distance of any vertex from the model's ground center, for fitting to a size. */
@@ -48,11 +60,7 @@ internal class PuckMesh(private val faces: List<Face>) {
     }
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    /**
-     * Draw centered on ([cx], [cy]) (the ground point under the model), [sizePx] across, facing
-     * [headingDeg] clockwise from screen-up, seen at [tiltDeg] from straight down.
-     */
-    fun draw(canvas: Canvas, cx: Float, cy: Float, sizePx: Float, headingDeg: Float, tiltDeg: Float) {
+    override fun draw(canvas: Canvas, cx: Float, cy: Float, sizePx: Float, headingDeg: Float, tiltDeg: Float) {
         val s = sizePx * 0.46f / radius
         val psi = Math.toRadians(headingDeg.toDouble())
         val th = Math.toRadians(tiltDeg.coerceIn(0f, 80f).toDouble())
@@ -209,14 +217,14 @@ internal object PuckModels {
 
     private fun c(hex: String) = android.graphics.Color.parseColor(hex)
 
-    private val cache = HashMap<String, PuckMesh>()
+    private val cache = HashMap<String, PuckModel>()
 
     /** The model for a shape, or null for the flat arrow. */
-    fun forShape(shape: String, carColor: String): PuckMesh? = when (shape) {
+    fun forShape(shape: String, carColor: String): PuckModel? = when (shape) {
         app.vela.ui.PuckStyle.SHAPE_CAR -> cache.getOrPut("car/$carColor") { car(carColor) }
         app.vela.ui.PuckStyle.SHAPE_UFO -> cache.getOrPut("ufo") { ufo() }
         app.vela.ui.PuckStyle.SHAPE_SHIP -> cache.getOrPut("ship") { ship() }
-        app.vela.ui.PuckStyle.SHAPE_DUCK -> cache.getOrPut("duck") { duck() }
+        app.vela.ui.PuckStyle.SHAPE_DUCK -> cache.getOrPut("duck") { SmoothDuck() }
         else -> null
     }
 
@@ -280,24 +288,121 @@ internal object PuckModels {
         }
         quad(listOf(floatArrayOf(0.03f, 0.32f, 1.30f), floatArrayOf(0.30f, 0.32f, 1.30f), floatArrayOf(0.30f, 0.32f, 1.45f), floatArrayOf(0.03f, 0.32f, 1.45f)), c("#1B1B1B"))
     }.build()
-
-    private fun duck(): PuckMesh = Builder().apply {
-        val yellow = c("#FFD93B")
-        ellipsoid(0f, -0.15f, 0.36f, 0.56f, 0.80f, 0.36f, yellow, slices = 12, stacks = 7)
-        ellipsoid(0f, -0.82f, 0.58f, 0.18f, 0.20f, 0.20f, yellow, slices = 8, stacks = 5) // tail
-        ellipsoid(-0.47f, -0.15f, 0.46f, 0.12f, 0.42f, 0.18f, c("#FFE77A"), slices = 8, stacks = 5)
-        ellipsoid(0.47f, -0.15f, 0.46f, 0.12f, 0.42f, 0.18f, c("#FFE77A"), slices = 8, stacks = 5)
-        ellipsoid(0f, 0.50f, 0.88f, 0.36f, 0.34f, 0.34f, yellow, slices = 12, stacks = 7) // head
-        val beakBase = listOf(floatArrayOf(-0.17f, 0.76f, 0.74f), floatArrayOf(0.17f, 0.76f, 0.74f), floatArrayOf(0.17f, 0.76f, 0.88f), floatArrayOf(-0.17f, 0.76f, 0.88f))
-        val beakTip = listOf(floatArrayOf(-0.11f, 1.10f, 0.77f), floatArrayOf(0.11f, 1.10f, 0.77f), floatArrayOf(0.11f, 1.10f, 0.83f), floatArrayOf(-0.11f, 1.10f, 0.83f))
-        loft(beakBase, beakTip, c("#FF8C1A"))
-        for (x in listOf(-0.17f, 0.17f)) ellipsoid(x, 0.72f, 1.00f, 0.06f, 0.05f, 0.07f, c("#111111"), slices = 6, stacks = 4)
-    }.build()
 }
 
 /** A still of the model for Settings: three-quarter view at a nav-like tilt. */
-internal fun puck3DPreviewBitmap(mesh: PuckMesh, sizePx: Int): Bitmap {
+internal fun puck3DPreviewBitmap(model: PuckModel, sizePx: Int): Bitmap {
     val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-    mesh.draw(Canvas(bmp), sizePx / 2f, sizePx * 0.58f, sizePx * 0.9f, 25f, 50f)
+    model.drawStill(Canvas(bmp), sizePx / 2f, sizePx * 0.58f, sizePx * 0.9f, 25f, 50f)
     return bmp
+}
+
+/**
+ * The rubber duck, smooth and glossy ([DuckRender] ray casts it per pixel). A render takes 7 to
+ * 9 ms at 202 px on a Pixel 4a, too long for the main thread in a turn, so the live icon renders
+ * on a worker thread when the heading or tilt moves half a degree, and the frame shows the last
+ * finished render (one render behind, about 10 ms). The main thread only copies pixels into its
+ * bitmap. The first frame, and a new size, render inline so the icon is never blank.
+ */
+internal class SmoothDuck : PuckModel {
+    private class Job(val n: Int, val heading: Float, val tilt: Float)
+    private class Done(val n: Int, val heading: Float, val tilt: Float, val px: IntArray)
+
+    // Main thread.
+    private var bmp: Bitmap? = null
+    private var bmpHeading = Float.NaN
+    private var bmpTilt = Float.NaN
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    /** Read in [draw] so a finished render redraws the overlay. */
+    private val landed = androidx.compose.runtime.mutableIntStateOf(0)
+
+    // Shared with the worker.
+    private val lock = Any()
+    private var running = false
+    private var next: Job? = null
+    private val done = java.util.concurrent.atomic.AtomicReference<Done?>(null)
+    private var workerIds = IntArray(0) // worker thread only
+
+    override fun draw(canvas: Canvas, cx: Float, cy: Float, sizePx: Float, headingDeg: Float, tiltDeg: Float) {
+        landed.intValue
+        val n = sizePx.toInt().coerceAtLeast(8)
+        val h = Math.round(((headingDeg % 360f) + 360f) % 360f * 2f) / 2f
+        val t = Math.round(tiltDeg.coerceIn(0f, 80f) * 2f) / 2f
+        shadow(canvas, cx, cy, n, t)
+        var b = bmp
+        done.getAndSet(null)?.let { d ->
+            if (b != null && b.width == d.n) {
+                b.setPixels(d.px, 0, d.n, 0, 0, d.n, d.n)
+                bmpHeading = d.heading; bmpTilt = d.tilt
+            }
+        }
+        if (b == null || b.width != n) {
+            b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888).also { bmp = it }
+            b.setPixels(DuckRender.render(n, n, n / 2f, n / 2f, scale(n), h, t), 0, n, 0, 0, n, n)
+            bmpHeading = h; bmpTilt = t
+        } else if (h != bmpHeading || t != bmpTilt) {
+            request(Job(n, h, t))
+        }
+        canvas.drawBitmap(b, cx - n / 2f, cy - n / 2f, paint)
+    }
+
+    private fun request(j: Job) {
+        synchronized(lock) {
+            next = j
+            if (running) return
+            running = true
+        }
+        WORKER.execute(::work)
+    }
+
+    /** Renders the newest request until none is left; older ones are skipped. */
+    private fun work() {
+        while (true) {
+            val j = synchronized(lock) {
+                val x = next
+                next = null
+                if (x == null) { running = false; return }
+                x
+            }
+            if (workerIds.size != j.n * j.n) workerIds = IntArray(j.n * j.n)
+            val px = DuckRender.render(j.n, j.n, j.n / 2f, j.n / 2f, scale(j.n), j.heading, j.tilt, IntArray(j.n * j.n), workerIds)
+            done.set(Done(j.n, j.heading, j.tilt, px))
+            MAIN.post { landed.intValue++ }
+        }
+    }
+
+    override fun drawStill(canvas: Canvas, cx: Float, cy: Float, sizePx: Float, headingDeg: Float, tiltDeg: Float) {
+        val n = sizePx.toInt().coerceAtLeast(8)
+        shadow(canvas, cx, cy, n, tiltDeg)
+        val px = DuckRender.render(n, n, n / 2f, n / 2f, scale(n), headingDeg, tiltDeg)
+        canvas.drawBitmap(Bitmap.createBitmap(px, n, n, Bitmap.Config.ARGB_8888), cx - n / 2f, cy - n / 2f, paint)
+    }
+
+    private fun scale(n: Int) = n * 0.46f / DuckRender.radius
+
+    /** A soft disc under the duck, flattened by the tilt like the road (as [PuckMesh] draws it). */
+    private fun shadow(canvas: Canvas, cx: Float, cy: Float, n: Int, tiltDeg: Float) {
+        val r = DuckRender.FOOTPRINT * scale(n) * 1.05f
+        shadowPaint.shader = RadialGradient(
+            cx, cy, r, intArrayOf(0x55000000, 0x33000000, 0x00000000), floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP,
+        )
+        canvas.save()
+        canvas.scale(1f, cos(Math.toRadians(tiltDeg.toDouble())).toFloat().coerceAtLeast(0.2f), cx, cy)
+        canvas.drawCircle(cx, cy, r, shadowPaint)
+        canvas.restore()
+    }
+
+    companion object {
+        private val WORKER = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "VelaDuck").apply { isDaemon = true } }
+        private val MAIN = android.os.Handler(android.os.Looper.getMainLooper())
+
+        /** The duck seen from straight above, nose up, for the flat icon (map symbol, notification,
+         *  car screen): [sizePx] square, larger in its square than the live icon, which leaves
+         *  room for the tilted view. */
+        fun flat(sizePx: Int): Bitmap {
+            val px = DuckRender.render(sizePx, sizePx, sizePx / 2f, sizePx / 2f, sizePx * 0.56f / DuckRender.radius, 0f, 0f)
+            return Bitmap.createBitmap(px, sizePx, sizePx, Bitmap.Config.ARGB_8888).copy(Bitmap.Config.ARGB_8888, true)
+        }
+    }
 }

@@ -131,6 +131,7 @@ class CarMapRenderer(
     // once per size; the car used to draw its own green chevron (user: "not our pretty puck").
     private var puckBitmap: android.graphics.Bitmap? = null
     private var puckBitmapPx = 0
+    private var puckBitmapKey = "" // PuckStyle.key(): the icon can change mid-drive (PuckPicker)
 
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
@@ -1036,9 +1037,10 @@ class CarMapRenderer(
         // short side, about what the phone draws relative to its width (user 2026-09-22: the
         // fortieth-based size read too small on the car), times the Settings puck size.
         val px = (minOf(width, height) / 8f * app.vela.ui.PuckStyle.scale()).roundToInt().coerceIn(24, 220)
-        val bmp = puckBitmap?.takeIf { puckBitmapPx == px } ?: android.graphics.Bitmap.createScaledBitmap(
+        val key = app.vela.ui.PuckStyle.key()
+        val bmp = puckBitmap?.takeIf { puckBitmapPx == px && puckBitmapKey == key } ?: android.graphics.Bitmap.createScaledBitmap(
             app.vela.ui.map.navPuckBitmap(scale = 1f), px, px, true,
-        ).also { puckBitmap = it; puckBitmapPx = px }
+        ).also { puckBitmap = it; puckBitmapPx = px; puckBitmapKey = key }
         // Turned to the heading as the map draws it: a point a little ahead of the arrow along
         // its heading, projected, gives the direction on the screen. Tilted, a turn on the ground
         // is a wider turn in the picture, so the heading against the camera's bearing (the flat
