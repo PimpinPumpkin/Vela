@@ -2351,7 +2351,11 @@ class MapViewModel @Inject constructor(
         val base = openNowBase ?: s.query.trim()
         if (base.isEmpty() || googleOff() || s.openListId != null || s.pendingImport != null || s.navigating || s.results.isEmpty()) return
         if (MapLinkParser.parseBareCoordinate(base) != null || MapLinkParser.isMapsUrl(base) || MapLinkParser.isShareLink(base)) return
-        val near = plausibleBias(mapCenter) ?: plausibleBias(s.myLocation)
+        // The same spot the search it narrows was made around (#916). The map center moved when
+        // the results were framed, and searching there again lost the nearest places. "Search this
+        // area" makes a new search, so a moved view is taken through that.
+        val near = moreSearch?.takeIf { it.first.startsWith(base) }?.second?.let { plausibleBias(it) }
+            ?: plausibleBias(mapCenter) ?: plausibleBias(s.myLocation)
         if (on) {
             runSearch(base + " " + appContext.getString(R.string.search_open_now_phrase), near, remember = false)
             openNowBase = base

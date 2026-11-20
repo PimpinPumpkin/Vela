@@ -3749,7 +3749,9 @@ when the feature ids match. Two requests at most.
   the chip calls `MapViewModel.searchOpenNow` (through `SearchActions`), which searches the
   same words with `search_open_now_phrase` ("open now") added, and Google answers with open
   places. The search box keeps the user's words and the reworded search is not added to the
-  recents. Off asks the plain search again. A saved or imported list, an offline search and
+  recents. Off asks the plain search again. Both search around the point the search they reword
+  was made around (`moreSearch`), not the map's center, which moved when the results were framed;
+  a view moved by hand is searched with "Search this area" first. A saved or imported list, an offline search and
   Google off keep the local filter only.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
   in-nav search and the car's lists. Every query must be one the offline store expands.
