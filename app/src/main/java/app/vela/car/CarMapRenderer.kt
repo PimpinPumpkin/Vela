@@ -230,7 +230,7 @@ class CarMapRenderer(
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
         flingVx = 0.0; flingVy = 0.0
-        previewRoute = null
+        previewRoute = null; previewBubbles = emptyList()
         previewOthers = emptyList()
         resultPins = emptyList()
         overview = false
@@ -263,7 +263,7 @@ class CarMapRenderer(
      *  way each row of the list is. The numbers match [pinBitmap] on the rows. [follow] clears them. */
     fun showResults(points: List<LatLng>) {
         flingVx = 0.0; flingVy = 0.0
-        previewRoute = null
+        previewRoute = null; previewBubbles = emptyList()
         previewOthers = emptyList()
         resultPins = points
         following = points.isEmpty()
@@ -277,10 +277,49 @@ class CarMapRenderer(
         flingVx = 0.0; flingVy = 0.0
         previewRoute = route
         previewOthers = others
+        previewBubbles = previewBubblesFor(route, others)
         resultPins = emptyList()
         following = false
         frameRoute(route)
         requestRender()
+    }
+
+    /** Each previewed route's time on the map, as Google's car preview labels them: on the
+     *  route's own stretch ([app.vela.ui.map.RouteBubblePoints], the phone picker's placement),
+     *  the picked route's filled in its blue. */
+    private data class TimeBubble(val at: LatLng, val label: String, val picked: Boolean)
+    @Volatile private var previewBubbles: List<TimeBubble> = emptyList()
+
+    private fun previewBubblesFor(route: Route?, others: List<Route>): List<TimeBubble> {
+        if (route == null || others.isEmpty()) return emptyList() // one route: the list says its time
+        val all = listOf(route) + others
+        val points = runCatching { app.vela.ui.map.RouteBubblePoints.of(all.map { it.polyline }) }.getOrNull() ?: return emptyList()
+        return all.mapIndexedNotNull { i, r ->
+            val at = points.getOrNull(i) ?: return@mapIndexedNotNull null
+            TimeBubble(at, app.vela.ui.formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds), i == 0)
+        }
+    }
+
+    private val bubbleFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bubbleEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = Color.parseColor("#33000000") }
+    private val bubbleText = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true }
+
+    /** A time bubble over its point on the route, skipped where the host's cards cover it. */
+    private fun drawTimeBubble(canvas: Canvas, snap: MapSnapshot, b: TimeBubble, sx: Float, sy: Float) {
+        val pt = project(snap, b.at, sx, sy) ?: return
+        if (!framingArea().contains(pt.x.toInt(), pt.y.toInt())) return
+        val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
+        bubbleText.textSize = 24f * k
+        bubbleText.color = if (b.picked) Color.WHITE else Color.parseColor("#202124")
+        bubbleFill.color = if (b.picked) Color.parseColor("#1f6feb") else Color.WHITE
+        bubbleEdge.strokeWidth = 2f * k
+        val w = bubbleText.measureText(b.label) + 28f * k
+        val h = 40f * k
+        val r = android.graphics.RectF(pt.x - w / 2f, pt.y - h / 2f, pt.x + w / 2f, pt.y + h / 2f)
+        canvas.drawRoundRect(r, 9f * k, 9f * k, bubbleFill)
+        canvas.drawRoundRect(r, 9f * k, 9f * k, bubbleEdge)
+        val fm = bubbleText.fontMetrics
+        canvas.drawText(b.label, pt.x, pt.y - (fm.ascent + fm.descent) / 2f, bubbleText)
     }
 
     private val drivenPaint = strokePaint("#7b8494", 18f)
@@ -939,6 +978,7 @@ class CarMapRenderer(
                 }
                 runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
                 runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
+                for (b in previewBubbles) runCatching { drawTimeBubble(canvas, snap, b, sx, sy) }
             }
             if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
             runCatching { drawPuck(canvas, snap, sx, sy, camUsed) } // puck always drawn

@@ -113,7 +113,9 @@ class RoutePreviewCarScreen(
             .build()
 
     private fun routeRow(r: Route): Row {
-        val secs = (r.durationInTrafficSeconds ?: r.durationSeconds).toLong()
+        // Whole minutes, rounded as the phone and the map's time bubbles round them: the host
+        // drops the seconds, and showed 28 min in the row beside a 29 min bubble.
+        val secs = Math.round((r.durationInTrafficSeconds ?: r.durationSeconds) / 60.0) * 60L
         val title = r.summary?.takeIf { it.isNotBlank() } ?: destName
         // The RoutePreviewNavigationTemplate REQUIRES every route row to carry a DurationSpan or
         // DistanceSpan on its title/texts (else "All rows must have either a distance or duration

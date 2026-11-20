@@ -133,7 +133,8 @@ in flight marks the map dirty, and the next snapshot starts when the current one
 
 All screens share one renderer and switch its mode: following (the landing screen and the
 drive), preview (the chosen route framed in blue, the other listed routes in gray under
-it, a red dot at the destination) and results (numbered pins framed with the car). A renderer per
+it, a red dot at the destination, and each route's time in a bubble on its own stretch, as
+Google's car preview labels them: blue on the chosen route, white on the others) and results (numbered pins framed with the car). A renderer per
 screen freezes the map, because the host does not deliver the surface again to a new callback. The
 snapshotter is kept across screens while the surface size is unchanged, since a new one reloads
 the style and the map flashes.
@@ -232,7 +233,8 @@ With no signal, or an empty answer, typed search reads the downloaded place pack
 
 The route preview passes the avoid settings to the directions call and waits up to 15 s for a
 first fix. The template refuses a list without a Go action, so an empty result shows a plain
-message. Go names a provisional route first, the way the phone does.
+message. Go names a provisional route first, the way the phone does. A row's time is rounded to
+the minute before it goes to the host, which drops the seconds, so the row and the bubble agree.
 
 The drive's button row holds two actions, the voice and end. The voice button steps on, alerts
 only and off, as the phone's speaker button does, and its glyph is the mode: a speaker, a bell, a

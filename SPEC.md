@@ -6551,7 +6551,10 @@ the same `:core` singletons as the phone (`CarDeps`).
   `LANE_SHOW_M`, 800 m). The card's color is `ManeuverMapper.TURN_CARD` (#008A8B, which the host
   draws as Google's #006D6F).
 - The preview draws the selected route in blue over the other listed routes in gray
-  (`showPreview(route, others)`), with a red dot at the destination. The drive draws the same
+  (`showPreview(route, others)`), with a red dot at the destination. With more than one route,
+  each carries its time in a bubble at the phone picker's point (`RouteBubblePoints`), the
+  selected one filled blue; a bubble under the host's cards is left out. Row times are whole
+  minutes, rounded (`formatDuration`'s rounding), because the host truncates a `DurationSpan`. The drive draws the same
   dot, and the line ahead in the phone's paused lavender while the drive is paused.
 - Map action strips: recenter, zoom in, zoom out on the landing map; overview (re-frame the
   selected route), zoom in, zoom out on the preview; recenter and an overview toggle
