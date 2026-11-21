@@ -137,6 +137,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -6910,12 +6911,17 @@ private fun speedBoxLift(movingFree: Boolean): androidx.compose.ui.unit.Dp =
  * Route and nav chrome in landscape is a LEFT column (issue #297): width-capped to the side panel
  * and kept clear of a display cutout on that edge. In landscape the notch sits on the left, outside
  * the status-bar insets these cards already pad, so without this the turn card's 12 dp margin ran
- * under it (review 2026-09-12). Portrait is untouched. The caller keeps its own `.align`.
+ * under it (review 2026-09-12). The navigation bar too, when it is on the column's side: in a
+ * right-to-left language the column is on the right, where a side bar is, and the turn card's
+ * arrow sat under the bar (Hebrew, 800 by 480). Portrait is untouched. The caller keeps its own
+ * `.align`.
  */
 @Composable
 internal fun Modifier.landscapeColumn(landscape: Boolean, widthDp: androidx.compose.ui.unit.Dp): Modifier =
     if (!landscape) this
-    else this.widthIn(max = widthDp).windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
+    else this.widthIn(max = widthDp).windowInsetsPadding(
+        WindowInsets.displayCutout.union(WindowInsets.navigationBars).only(WindowInsetsSides.Start),
+    )
 
 /** Where each route's time bubble goes (the Google-style chooser experiment): on the part of the
  *  route that runs farthest from the other routes, so the bubbles sit where the choices differ

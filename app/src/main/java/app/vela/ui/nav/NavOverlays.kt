@@ -459,6 +459,10 @@ private const val BANNER_HEADLINE_LINES = 3
 // just noise telling you to pick a lane for an exit miles ahead.
 internal const val LANE_SHOW_M = 800.0
 
+/** [text] in a first-strong isolate (U+2068 .. U+2069): a figure and its unit ("15.3 mi") keep
+ *  their order and stay together inside a line in a right-to-left language. */
+internal fun bidiIsolate(text: String): String = "\u2068" + text + "\u2069"
+
 /** Google's nav-banner freeway green, pixel-sampled off the Maps app (#00654F). */
 internal val NavBannerGreen = androidx.compose.ui.graphics.Color(0xFF00654F)
 // The nav bottom bar as a drag handle (see NavControls): how far it must be lifted to commit to
@@ -1192,8 +1196,10 @@ fun NavBarTop(
                 var pausedTick by remember { mutableStateOf(0) }
                 LaunchedEffect(paused) { while (paused) { kotlinx.coroutines.delay(30_000); pausedTick++ } }
                 FitText(
-                    formatDistance(shownMeters) +
-                        " · " + formatArrivalClock(shownSeconds).also { pausedTick } +
+                    // Each figure isolated: in a right-to-left language "15.3 mi · 20:45" came out
+                    // "mi · 20:45 15.3", the unit cut from its number (Hebrew).
+                    bidiIsolate(formatDistance(shownMeters)) +
+                        " · " + bidiIsolate(formatArrivalClock(shownSeconds).also { pausedTick }) +
                         when {
                             paused -> " · " + stringResource(R.string.nav_paused)
                             offRoute -> " · " + stringResource(R.string.nav_rerouting)
