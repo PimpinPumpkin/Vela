@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
@@ -989,6 +990,7 @@ fun VelaMapView(
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
     val gap8Px = with(density) { 8.dp.roundToPx() }
     val landscapeNow = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
+    val mapHeightPx = remember { androidx.compose.runtime.mutableIntStateOf(0) } // the map view's height, for the compass
     val compassTopPx = when {
         // LANDSCAPE NAV: the banner is a left COLUMN (issue #297), so it does not cover the
         // top-right at all and there is nothing to drop below - sitting the compass under the
@@ -1028,6 +1030,18 @@ fun VelaMapView(
     // stack currently holds.
     // The drive compass under the drive's column: a 48 dp view whose center is on the buttons' line.
     val compassRightPx = with(density) { (if (navMode && navFabTopPx.intValue > 0) MAP_BUTTON_CENTER_DP - 24.dp else if (navMode && landscapeNow) 8.dp + NAV_FAB_COLUMN_DP else 8.dp).roundToPx() }
+    // Browsing, the zoom buttons ("Prefer buttons over swipes", or a D-pad) stand over the
+    // bottom-right stack, and higher still while results are minimized. On a screen too short for
+    // them and the compass (a landscape phone), the compass moves one column in, beside them. The
+    // worst case decides, so the compass does not hop when the results bar comes and goes.
+    val dpadNow = app.vela.ui.rememberDpadMode()
+    val compassBesideZoom = !navMode && mapHeightPx.intValue > 0 &&
+        (app.vela.ui.PreferButtons.on.value || dpadNow) &&
+        with(density) {
+            val zoomTop = mapHeightPx.intValue - WindowInsets.navigationBars.getBottom(density) -
+                (ZOOM_PILL_BOTTOM_DP + RESULTS_BAR_LIFT_DP + ZOOM_PILL_HEIGHT_DP).roundToPx()
+            compassTopPx + (48.dp + 8.dp).roundToPx() > zoomTop
+        }
     // The map runs under a navigation bar on the side (landscape on Android 8 head units, #953),
     // and the compass is placed from the map's edge, so it sat half under the bar while the
     // buttons beside it, which pad for it, did not.
@@ -4135,7 +4149,7 @@ fun VelaMapView(
     }
 
     androidx.compose.foundation.layout.Box(modifier) {
-    AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize()) { mv ->
+    AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize().onSizeChanged { if (mapHeightPx.intValue != it.height) mapHeightPx.intValue = it.height }) { mv ->
         // Re-assert non-focusability each pass — MapLibre re-enables it on surface
         // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
         if (mv.isFocusable) {
@@ -5102,7 +5116,8 @@ fun VelaMapView(
         // it), so both margins are measured from the stock image, never from the drive's.
         if (compassStock[0] == null) compassStock[0] = map.uiSettings.compassImage
         val browseRight = with(density) { MAP_BUTTON_CENTER_DP.roundToPx() } - (compassStock[0]?.intrinsicWidth ?: 0) / 2
-        map.uiSettings.setCompassMargins(0, compassTopPx, (if (navMode) compassRightPx else browseRight.coerceAtLeast(0)) + sideNavRightPx, 0)
+        val browseStep = if (compassBesideZoom) with(density) { COMPASS_BESIDE_ZOOM_DP.roundToPx() } else 0
+        map.uiSettings.setCompassMargins(0, compassTopPx, (if (navMode) compassRightPx else browseRight.coerceAtLeast(0) + browseStep) + sideNavRightPx, 0)
         // In a drive the compass wears the nav buttons' dress; browsing keeps the map's own.
         val wantNavCompass = navMode
         if (compassIsNav[0] != wantNavCompass) {
@@ -9824,6 +9839,14 @@ private const val PUCK_LEAVE_NOW_M = 12.0
 
 /** How far the center of every map button sits from the screen's end: a 56 dp button at 16 dp. */
 private val MAP_BUTTON_CENTER_DP = 44.dp
+/** MapScreen's zoom buttons: `chromeLift + 144.dp` over the bottom, 81 dp tall, and its
+ *  `chromeLift` while results are minimized. Keep these in step with it. */
+private val ZOOM_PILL_BOTTOM_DP = 144.dp
+private val ZOOM_PILL_HEIGHT_DP = 81.dp
+private val RESULTS_BAR_LIFT_DP = 76.dp
+/** How far in the browse compass moves to stand beside the zoom buttons: their column (56 dp
+ *  around the 44 dp center line) and a gap. */
+private val COMPASS_BESIDE_ZOOM_DP = 64.dp
 
 /** Smallest absolute difference between two compass bearings (deg), 0..180. */
 private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)

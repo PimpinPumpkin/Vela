@@ -6204,6 +6204,11 @@ reuses it.
   dp, the compass at 44 dp less half the stock image), so the four line up when they stack
   in landscape. The compass view is 48 dp whatever image it shows, so the drive compass, whose
   56 dp image is scaled into it, sits at 20 dp under the drive's column, on the same line.
+- Browsing with the zoom buttons shown ("Prefer buttons over swipes" or a D-pad), when the
+  buttons' top with the minimized results lift (`chromeLift`, 76 dp) would reach within 8 dp of
+  the compass's bottom, the compass moves `COMPASS_BESIDE_ZOOM_DP` (64 dp) in, beside them. A
+  landscape phone always meets this. The worst case decides, so the compass stays put when the
+  results bar comes and goes.
 - The layers button (`LayersCorner`, `ui/map/LayersPanel.kt`) opens a `VelaMenu` of picture
   tiles, four to a row, with a label under each. Three groups: Map type has the five looks
   (`MapStyle`, the same pick as Settings > Appearance > Map look) and Satellite; Map details has
