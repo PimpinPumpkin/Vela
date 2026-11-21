@@ -38,6 +38,9 @@ object AppFont {
     /** The bundled Google Sans Flex is the UI font. */
     val builtin = mutableStateOf(false)
 
+    /** True when the bundled Vazirmatn family is selected. */
+    val vazirmatn = mutableStateOf(false)
+
     /** One Font per weight the type scale uses, each pinning the variable font's weight axis. */
     @OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
     private fun flexFamily(): FontFamily = FontFamily(
@@ -52,12 +55,32 @@ object AppFont {
         },
     )
 
+    private fun vazirmatnFamily(): FontFamily = FontFamily(
+        listOf(
+            androidx.compose.ui.text.font.Font(app.vela.R.font.vazirmatn_regular, weight = androidx.compose.ui.text.font.FontWeight.Normal),
+            androidx.compose.ui.text.font.Font(app.vela.R.font.vazirmatn_medium, weight = androidx.compose.ui.text.font.FontWeight.Medium),
+            androidx.compose.ui.text.font.Font(app.vela.R.font.vazirmatn_semibold, weight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+            androidx.compose.ui.text.font.Font(app.vela.R.font.vazirmatn_bold, weight = androidx.compose.ui.text.font.FontWeight.Bold),
+        ),
+    )
+
     fun setBuiltin(context: Context) {
         family.value = flexFamily()
         builtin.value = true
+        vazirmatn.value = false
         customName.value = null
         fontFile(context).delete()
-        prefs(context).edit().remove(KEY_NAME).remove(KEY_SYSTEM).apply()
+        prefs(context).edit().remove(KEY_NAME).remove(KEY_SYSTEM).remove(KEY_VAZIRMATN).apply()
+    }
+
+    /** Select the bundled Persian/Arabic family. */
+    fun setVazirmatn(context: Context) {
+        family.value = vazirmatnFamily()
+        builtin.value = false
+        vazirmatn.value = true
+        customName.value = null
+        fontFile(context).delete()
+        prefs(context).edit().remove(KEY_NAME).remove(KEY_SYSTEM).putBoolean(KEY_VAZIRMATN, true).apply()
     }
 
     /** A font file is a few hundred KB; anything far past that is not a font we want to load. */
@@ -71,12 +94,24 @@ object AppFont {
         if (name != null) {
             val f = fontFile(context)
             val fam = if (f.exists()) load(f) else null
-            if (fam != null) { family.value = fam; customName.value = name; return }
+            if (fam != null) { family.value = fam; customName.value = name; builtin.value = false; vazirmatn.value = false; return }
             // Unreadable now (a corrupt copy): drop the choice and fall through to the default.
             f.delete(); p.edit().remove(KEY_NAME).apply()
         }
-        if (p.getBoolean(KEY_SYSTEM, false)) return
-        family.value = flexFamily(); builtin.value = true
+        if (p.getBoolean(KEY_SYSTEM, false)) {
+            builtin.value = false
+            vazirmatn.value = false
+            return
+        }
+        if (p.getBoolean(KEY_VAZIRMATN, false)) {
+            family.value = vazirmatnFamily()
+            builtin.value = false
+            vazirmatn.value = true
+            return
+        }
+        family.value = flexFamily()
+        builtin.value = true
+        vazirmatn.value = false
     }
 
     /**
@@ -114,7 +149,8 @@ object AppFont {
         family.value = fam
         customName.value = displayName
         builtin.value = false
-        prefs(context).edit().putString(KEY_NAME, displayName).remove(KEY_SYSTEM).apply()
+        vazirmatn.value = false
+        prefs(context).edit().putString(KEY_NAME, displayName).remove(KEY_SYSTEM).remove(KEY_VAZIRMATN).apply()
         return true
     }
 
@@ -123,8 +159,9 @@ object AppFont {
         family.value = null
         customName.value = null
         builtin.value = false
+        vazirmatn.value = false
         fontFile(context).delete()
-        prefs(context).edit().remove(KEY_NAME).putBoolean(KEY_SYSTEM, true).apply()
+        prefs(context).edit().remove(KEY_NAME).remove(KEY_VAZIRMATN).putBoolean(KEY_SYSTEM, true).apply()
     }
 
     /**
@@ -145,4 +182,5 @@ object AppFont {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_NAME = "ui_font_name"
     private const val KEY_SYSTEM = "ui_font_system"
+    private const val KEY_VAZIRMATN = "ui_font_vazirmatn"
 }

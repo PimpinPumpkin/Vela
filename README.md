@@ -199,8 +199,8 @@ repository are published as a searchable site at
   signed file the app checks at launch. When Google shifts a field, a fix reaches
   every install in minutes with no app update. [`SPEC.md`](SPEC.md) sections 3
   and 11 describe it.
-- **The rest.** 19 languages, light and dark themes, optional wallpaper colors,
-  full operation by D-pad on keypad phones, a built-in updater with stable,
+- **The rest.** 20 languages, light and dark themes, optional wallpaper colors,
+  Persian and Hebrew right-to-left interface direction, full operation by D-pad on keypad phones, a built-in updater with stable,
   nightly and canary channels, and Android Auto screens (a car accepts a
   sideloaded app only in some setups; see [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md)).
 
@@ -339,4 +339,4 @@ at close zoom.
 
 Vela is Free Software: you can use, study, share and improve it at your will. You may use, modify and redistribute this project only if your modifications remain open source under the same license.
 
-The app bundles the Google Sans Flex font, copyright The Google Sans Flex Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt). Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.
+The app bundles Google Sans Flex, copyright The Google Sans Flex Authors, and Vazirmatn, copyright The Vazirmatn Project Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt) and [Vazirmatn license](app/src/main/assets/licenses/OFL-Vazirmatn.txt), respectively. Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.

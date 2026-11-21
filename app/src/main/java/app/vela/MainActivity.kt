@@ -83,6 +83,14 @@ class MainActivity : ComponentActivity() {
             // — reading it inside VelaTheme's default arg didn't reliably invalidate
             // VelaTheme, so MaterialTheme never flipped when the user changed it.
             val dark = isAppInDarkTheme()
+            // Keep Compose's layout direction explicit as well as the wrapped Android
+            // Configuration. This prevents a pre-existing LTR CompositionLocal from masking
+            // an RTL app locale (notably Persian and Hebrew).
+            val layoutDirection =
+                if (android.text.TextUtils.getLayoutDirectionFromLocale(AppLocale.effective()) ==
+                    android.view.View.LAYOUT_DIRECTION_RTL
+                ) androidx.compose.ui.unit.LayoutDirection.Rtl
+                else androidx.compose.ui.unit.LayoutDirection.Ltr
             // The system status/nav bar ICONS (clock, wifi, battery) must contrast with the
             // MAP under them, which follows Vela's own theme — not the system's. In light mode
             // the map is white, so the icons must go DARK; edge-to-edge alone left them light
@@ -95,6 +103,7 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalConfiguration provides
                     (liveConfig.value ?: androidx.compose.ui.platform.LocalConfiguration.current),
+                androidx.compose.ui.platform.LocalLayoutDirection provides layoutDirection,
             ) {
                 VelaTheme(darkTheme = dark) {
                     VelaRoot(vm = vm)
