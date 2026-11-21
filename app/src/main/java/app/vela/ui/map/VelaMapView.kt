@@ -5280,7 +5280,7 @@ fun VelaMapView(
                     ) {
                         val med = navPuck.stopFixM.sorted()[1]
                         val gap = navPuck.progressM - med
-                        if (gap > maxOf(STOP_SETTLE_MIN_M, 0.6 * (myAccuracyM ?: 5f))) {
+                        if (gap > maxOf(app.vela.ui.AppTune.value("stopSettleMin", STOP_SETTLE_MIN_M), 0.6 * (myAccuracyM ?: 5f))) {
                             navPuck.settleToM = med
                             navPuck.targetM = med
                             navPuck.along.reseed(med, myAccuracyM)
@@ -9957,7 +9957,11 @@ private const val STOP_SETTLE_MPS = 0.3
 /** How long stopped before the arrow may settle back onto the fixes. */
 private const val STOP_SETTLE_AFTER_MS = 1_000L
 /** How far past the fixes the arrow must be before it settles back. */
-private const val STOP_SETTLE_MIN_M = 2.5
+// 4 m (was 2.5): with GPS braking the arrow stops about 2 m past the car at a hard stop
+// (3.3 m/s2 on the rig), and real GPS put that just over 2.5 often enough that drivers saw a short
+// slide back at lights. Sitting 2 to 4 m ahead at a light reads as nothing; moving backwards does.
+// Dial `stopSettleMin`.
+private const val STOP_SETTLE_MIN_M = 4.0
 /** How fast it glides back. */
 private const val STOP_SETTLE_RATE_MPS = 2.5
 /** A fix whose own Doppler speed passes this is moving, whatever the model says (parked noise reads

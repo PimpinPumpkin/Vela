@@ -2283,7 +2283,8 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
 - The arrow moves forward only, so dead reckoning through a stop can leave it past the car. Once
   a fix's own speed (or the model's, without one) is under `STOP_SETTLE_MPS` (0.3 m/s) for
   `STOP_SETTLE_AFTER_MS` (1 s) and three fixes, and the median of the last three is more than
-  `STOP_SETTLE_MIN_M` (2.5 m), or 0.6 of their accuracy, behind the arrow, the arrow glides back
+  `STOP_SETTLE_MIN_M` (4 m, dial `stopSettleMin`; 2.5 m slid the arrow back at lights once GPS
+  braking had it stopping about 2 m past), or 0.6 of their accuracy, behind the arrow, the arrow glides back
   onto it at `STOP_SETTLE_RATE_MPS` (2.5 m/s) and the filter is reseeded there. Dial
   `stopSettle`. On the mock turn from a stop below, the arrow had stopped 5.7 m past the car and
   stayed there until the car drove up to it; with these two rules its mean error through the 8 s

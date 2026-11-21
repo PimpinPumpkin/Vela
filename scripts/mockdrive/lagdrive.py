@@ -8,7 +8,7 @@ a = sys.argv[1:]; out = a.pop(0); tout = a.pop(0)
 def opt(k, d):
     if k in a: i = a.index(k); v = float(a[i+1]); del a[i:i+2]; return v
     return d
-AGE = opt("--age", 150.0); RAD = opt("--radius", 15.0); STOP = opt("--stop", 18.0); TURNV = opt("--turnv", 8.0)
+AGE = opt("--age", 150.0); RAD = opt("--radius", 15.0); STOP = opt("--stop", 18.0); TURNV = opt("--turnv", 8.0); DEC = opt("--dec", 2.5)
 pts = [tuple(map(float, x.split(","))) for x in a]
 url = ("https://routing.openstreetmap.de/routed-car/route/v1/driving/%s?overview=full&geometries=geojson&steps=true"
        % ";".join("%.6f,%.6f" % (q[1], q[0]) for q in pts))
@@ -83,9 +83,9 @@ def run_to(target, vmax, acc, dec, hold_after):
     v = 0.0
     for _ in range(int(hold_after/dt)): t += dt; T.append((t, s, 0.0))
 for _ in range(int(8/dt)): t += dt; T.append((t, 0.0, 0.0))
-run_to(stopAt, 11.0, 2.0, 2.5, 10.0)
+run_to(stopAt, 11.0, 2.0, DEC, 10.0)
 pull = t
-run_to(min(tot, arcStart + 260), 13.0, 2.2, 2.5, 6.0)
+run_to(min(tot, arcStart + 260), 13.0, 2.2, DEC, 6.0)
 # fixes: send k at k seconds (k>=1), carry the truth at k - AGE
 def truth(tq):
     if tq <= T[0][0]: return T[0]

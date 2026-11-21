@@ -237,8 +237,9 @@ The arrow only moves forward, so carrying on at its modeled speed through a stop
 past the car. Between fixes the model slows at the braking the last two fixes' speeds show, or the
 accelerometer's if that is harder, so the arrow stops with the car: on a mock stop at 2.5 m/s²
 it ran 5.6 m past and then slid back, and now stops 0.7 m past and stays. A real drive showed the
-slide back at every stop. If it still ends more than 2.5 m past, stopped for a second and three
-fixes, it glides back onto where the fixes put the car. The first fix of a pull-away is taken at
+slide back at every stop. Braking harder, at 3.3 m/s², it stops about 2 m past and stays: only
+past 4 m, stopped for a second and three fixes, does it glide back onto where the fixes put the
+car, since sitting a little ahead at a light reads as nothing and moving backwards does not. The first fix of a pull-away is taken at
 once when its own speed says the car is moving.
 
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
