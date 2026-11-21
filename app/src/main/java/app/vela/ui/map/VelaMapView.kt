@@ -1691,6 +1691,18 @@ fun VelaMapView(
         }
     }
 
+    // The car's rate of turn for the gyroscope-turned arrow (GyroTurn, Settings > Diagnostics):
+    // [rate in deg/s, elapsedRealtime of the reading]. Only while that switch is on in a live drive.
+    val gyroYaw = remember { doubleArrayOf(Double.NaN, 0.0) }
+    LaunchedEffect(navMode, replaying, app.vela.ui.GyroTurn.on.value) {
+        gyroYaw[0] = Double.NaN
+        if (!navMode || replaying || !app.vela.ui.GyroTurn.on.value) return@LaunchedEffect
+        motionProvider.yawRate().collect { r ->
+            gyroYaw[0] = r.toDouble()
+            gyroYaw[1] = android.os.SystemClock.elapsedRealtime().toDouble()
+        }
+    }
+
     // Declutter POIs during turn-by-turn (Google-style): POI labels re-run symbol collision on
     // every nav camera rotate/zoom and pop in and out at zoom thresholds. Hide ALL POI tiers
     // while navigating (keeping even the top rank still left labels flickering at the threshold)
@@ -3264,6 +3276,7 @@ fun VelaMapView(
         wasNavRef[0] = true
         navPuck.engaged = false
         navPuck.lastFixV = Double.NaN; navPuck.gpsBrake = 0.0 // a new drive measures its own braking
+        navPuck.gyro.reset()
         val navWin = doubleArrayOf(Double.NaN) // route-split window end (m); relaunch = fresh route = re-anchor
         val cutStart = doubleArrayOf(Double.NaN) // cut piece [start, end] along the route (m)
         val cutEnd = doubleArrayOf(Double.NaN)
@@ -3492,10 +3505,27 @@ fun VelaMapView(
                     val (cB, _) = pointAtMeters(puckLine, puckCum, camM + headWin)
                     if (kotlin.math.abs(cA.lat - cB.lat) + kotlin.math.abs(cA.lng - cB.lng) < 1e-7) Float.NaN else bearingDeg(cA, cB)
                 }
-                // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
-                // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
-                navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
-                    else smoothBearing(navPuck.displayBearing, chordBrg, dtEase, 0.3f)
+                // GYROSCOPE MODE (GyroTurn, Settings > Diagnostics): the arrow turns at the rate the
+                // phone measures the car turning, held to the road's bearing AT the arrow (no
+                // look-ahead), and the camera leads it only by that measured rate. The chord above
+                // turns where the line's corner is drawn, which can be a second off the car's turn.
+                val gyroRate = gyroYaw[0].takeIf { !it.isNaN() && tuneNow - gyroYaw[1] < GYRO_FRESH_MS && app.vela.ui.GyroTurn.on.value }
+                if (gyroRate != null) {
+                    // Switched on mid-drive, or a reading back after a gap: start from what is drawn.
+                    if (navPuck.gyro.heading.isNaN() && !navPuck.displayBearing.isNaN()) navPuck.gyro.seed(navPuck.displayBearing.toDouble())
+                    val (rA, _) = pointAtMeters(puckLine, puckCum, puckM - headWin)
+                    val (rB, _) = pointAtMeters(puckLine, puckCum, puckM + headWin)
+                    val refBrg = if (kotlin.math.abs(rA.lat - rB.lat) + kotlin.math.abs(rA.lng - rB.lng) < 1e-7) segBrg.toDouble()
+                        else bearingDeg(rA, rB).toDouble()
+                    navPuck.displayBearing = navPuck.gyro.update(dtEase.toDouble(), gyroRate, refBrg, navPuck.speed).toFloat()
+                    navPuck.camChord = ((navPuck.displayBearing + (gyroRate * CAM_GYRO_LEAD_S).coerceIn(-CAM_GYRO_LEAD_MAX_DEG, CAM_GYRO_LEAD_MAX_DEG)).toFloat() + 360f) % 360f
+                } else {
+                    navPuck.gyro.reset()
+                    // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
+                    // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
+                    navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
+                        else smoothBearing(navPuck.displayBearing, chordBrg, dtEase, 0.3f)
+                }
                 // Nav smoothness trace (issue #251, Settings > Diagnostics, off by default): one
                 // row per frame of the numbers behind the camera, so a real drive can be diagnosed
                 // instead of a simulated one. No-op unless the user turned it on; carries no
@@ -3505,6 +3535,7 @@ fun VelaMapView(
                         android.os.SystemClock.elapsedRealtime(), navPuck.progressM, navPuck.speed,
                         win, chordBrg, navPuck.displayBearing,
                         mapRef?.cameraPosition?.bearing ?: Double.NaN, dtE,
+                        gyroRate?.toFloat() ?: Float.NaN,
                     )
                 }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
@@ -9853,6 +9884,7 @@ private class NavPuck {
     var stopFixN = 0
     var stoppedSinceMs = 0L
     var settleToM = Double.NaN    // the arrow glides back to here while the car stays stopped
+    val gyro = app.vela.core.location.GyroHeading() // the gyroscope-turned heading (GyroTurn)
     // Braking the GPS speeds show (BRAKE_*): the last fix's Doppler speed and when it came, and the
     // deceleration from the fix before it, applied between fixes so the arrow slows with the car.
     var lastFixV = Double.NaN
@@ -9943,7 +9975,12 @@ private const val HEAD_WIN_MIN_M = 12.0
 private const val HEAD_LEAD_S = 0.3
 /** How much further on the camera aims, for its own ease's lag in a turn. 0 aims at the arrow. */
 private const val CAM_LEAD_S = 0.4
-/** Stopped means under this speed, model and fix both. */
+/** Gyroscope mode (GyroTurn): a yaw reading older than this is not used, and the arrow falls back
+ *  to the route chord. The camera leads the arrow by the measured rate times CAM_GYRO_LEAD_S (its
+ *  own turn easing), at most CAM_GYRO_LEAD_MAX_DEG. */
+private const val GYRO_FRESH_MS = 250.0
+private const val CAM_GYRO_LEAD_S = 0.35
+private const val CAM_GYRO_LEAD_MAX_DEG = 25.0
 /** GPS braking ([NavPuck.gpsBrake]): two fixes this far apart (s) give a deceleration; one of at
  *  least BRAKE_MIN_MPS2 slows the model between fixes, at most BRAKE_MAX_MPS2, and only under
  *  BRAKE_BELOW_MPS: a stop comes from city speed, and a single low Doppler reading on a freeway
@@ -9953,6 +9990,7 @@ private const val BRAKE_MAX_GAP_S = 2.5
 private const val BRAKE_MIN_MPS2 = 0.8
 private const val BRAKE_MAX_MPS2 = 6.0
 private const val BRAKE_BELOW_MPS = 20.0f
+/** Stopped means under this speed, model and fix both. */
 private const val STOP_SETTLE_MPS = 0.3
 /** How long stopped before the arrow may settle back onto the fixes. */
 private const val STOP_SETTLE_AFTER_MS = 1_000L

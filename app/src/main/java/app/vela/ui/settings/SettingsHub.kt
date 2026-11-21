@@ -442,6 +442,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_save_trips to SettingsSection.DIAGNOSTICS,
     R.string.settings_building_debug to SettingsSection.DIAGNOSTICS,
     R.string.settings_nav_trace to SettingsSection.DIAGNOSTICS,
+    R.string.settings_gyro_turn to SettingsSection.DIAGNOSTICS,
     R.string.settings_places_source to SettingsSection.PLACES,
     R.string.settings_cameras_group to SettingsSection.NAVIGATION,
     R.string.voice_capture_examples_title to SettingsSection.SEARCH,

@@ -36,6 +36,51 @@ class MotionProvider @Inject constructor(
 
     val available: Boolean get() = accelSensor != null && rotationSensor != null
 
+    private val gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    // The game rotation vector leaves the magnetometer out (a car's steel and speakers bend it); only
+    // which way is UP is read from it here, and that comes from gravity either way.
+    private val upSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR) ?: rotationSensor
+
+    /**
+     * The car's rate of turn, degrees per second, positive turning clockwise seen from above
+     * ([GyroHeading]): the gyroscope's reading in the phone's own axes, projected onto the world's
+     * vertical, so it holds however the phone is mounted. Lightly low-passed (about 30 ms). Closes at
+     * once without a gyroscope.
+     */
+    fun yawRate(): Flow<Float> = callbackFlow {
+        val sm = sensorManager
+        val gyro = gyroSensor
+        val up = upSensor
+        if (sm == null || gyro == null || up == null) { close(); return@callbackFlow }
+        val rot = FloatArray(9)
+        var haveRot = false
+        var rate = 0f
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent) {
+                when (e.sensor.type) {
+                    Sensor.TYPE_GYROSCOPE -> {
+                        if (!haveRot) return
+                        // Row 3 of the rotation matrix is the world's up axis in the phone's frame.
+                        val wz = rot[6] * e.values[0] + rot[7] * e.values[1] + rot[8] * e.values[2]
+                        // Counter-clockwise about up is positive in rad/s; a bearing turns clockwise.
+                        val dps = -Math.toDegrees(wz.toDouble()).toFloat()
+                        rate += (dps - rate) * 0.5f
+                        trySend(rate)
+                    }
+                    else -> {
+                        SensorManager.getRotationMatrixFromVector(rot, e.values)
+                        haveRot = true
+                    }
+                }
+            }
+
+            override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+        }
+        sm.registerListener(listener, up, SensorManager.SENSOR_DELAY_GAME)
+        sm.registerListener(listener, gyro, SensorManager.SENSOR_DELAY_GAME)
+        awaitClose { sm.unregisterListener(listener) }
+    }
+
     /** Low-passed world-frame horizontal acceleration `[east, north]` (m/s²). Emits while
      *  collected; unregisters on close. The emitted array is REUSED — read, don't retain. */
     fun worldAccel(): Flow<FloatArray> = callbackFlow {

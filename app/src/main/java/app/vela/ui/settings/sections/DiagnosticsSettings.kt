@@ -124,6 +124,13 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             hint = stringResource(R.string.settings_building_debug_hint),
         )
         GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_gyro_turn),
+            checked = app.vela.ui.GyroTurn.on.value,
+            onCheckedChange = { app.vela.ui.GyroTurn.set(context, it) },
+            hint = stringResource(R.string.settings_gyro_turn_hint),
+        )
+        GroupDivider()
         // Nav smoothness trace (issue #251): records the numbers behind the nav camera during a
         // REAL drive so a "map swims / puck jitters" report is diagnosable. Carries no position
         // data by design, so the export is safe to attach to a public issue.

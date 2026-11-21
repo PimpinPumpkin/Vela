@@ -428,6 +428,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Simulate driving (demo)" and "Simulate my location (demo)" run the app without real GPS, on the
   car screen too.
 - "Nav smoothness trace" and "Building overlay debug" are developer aids.
+- "Turn the arrow with the gyroscope" turns the drive arrow when the phone feels the car turn,
+  as a test against following the road ahead.
 
 ## Not in Vela
 

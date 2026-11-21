@@ -81,13 +81,15 @@ object NavTrace {
         displayBearing: Float,
         cameraBearing: Double,
         frameDt: Float,
+        /** The yaw rate turning the arrow (GyroTurn), NaN when the arrow follows the road ahead. */
+        gyroDps: Float,
     ) {
         if (logging(elapsedMs)) {
             android.util.Log.d(
                 "VelaNavTrace",
                 String.format(
-                    java.util.Locale.US, "row er=%d p=%.2f v=%.2f win=%.1f chord=%.1f disp=%.1f cam=%.1f",
-                    elapsedMs, progressM, speed, windowM, chordBearing, displayBearing, cameraBearing,
+                    java.util.Locale.US, "row er=%d p=%.2f v=%.2f win=%.1f chord=%.1f disp=%.1f cam=%.1f gyro=%.1f",
+                    elapsedMs, progressM, speed, windowM, chordBearing, displayBearing, cameraBearing, gyroDps,
                 ),
             )
         }
@@ -98,7 +100,7 @@ object NavTrace {
             rows.addLast(
                 floatArrayOf(
                     (elapsedMs - t0) / 1000f, progressM.toFloat(), speed.toFloat(), windowM.toFloat(),
-                    chordBearing, displayBearing, cameraBearing.toFloat(), frameDt,
+                    chordBearing, displayBearing, cameraBearing.toFloat(), frameDt, gyroDps,
                 ),
             )
         }
@@ -135,11 +137,14 @@ object NavTrace {
                 w.write("# android ${android.os.Build.VERSION.RELEASE} (sdk ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n")
                 val sp = prefs(context)
                 w.write("# settings: north_up_start=${sp.getBoolean("nav_north_up", false)} texture_render=${sp.getBoolean("texture_render", false)}" +
-                    " demo_drive=${sp.getBoolean("demo_drive", false)} faster_route_auto=${sp.getBoolean("faster_route_auto", true)}\n")
+                    " demo_drive=${sp.getBoolean("demo_drive", false)} faster_route_auto=${sp.getBoolean("faster_route_auto", true)}" +
+                    " gyro_turn=${app.vela.ui.GyroTurn.on.value}\n")
                 w.write("# rows ${snapshot.size}, events ${evs.size}; events (route changes and why) are listed after the rows\n")
-                w.write("t_s,progress_m,speed_mps,window_m,chord_deg,display_deg,camera_deg,frame_dt_s\n")
+                w.write("t_s,progress_m,speed_mps,window_m,chord_deg,display_deg,camera_deg,frame_dt_s,gyro_dps\n")
                 for (r in snapshot) {
-                    w.write("${r[0]},${r[1]},${r[2]},${r[3]},${r[4]},${r[5]},${r[6]},${r[7]}\n")
+                    // gyro_dps is empty while the arrow follows the road ahead (GyroTurn off or no reading).
+                    val gyro = if (r[8].isNaN()) "" else r[8].toString()
+                    w.write("${r[0]},${r[1]},${r[2]},${r[3]},${r[4]},${r[5]},${r[6]},${r[7]},$gyro\n")
                 }
                 w.write("\n# events\nt_s,event\n")
                 for ((t, e) in evs) w.write("$t,$e\n")

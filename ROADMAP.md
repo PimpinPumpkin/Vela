@@ -283,6 +283,12 @@ off the list when it has been.
   car at a stop and the pull-away fix taken at once (SPEC 4.7) were measured the same way; a real
   drive's trace would show how far a car's own stops overshoot with the accelerometer helping.
 
+- The gyroscope-turned arrow (`GyroHeading`, Settings > Diagnostics, off by default; SPEC 4.7):
+  its turn direction and its return to the road were checked on the API 26 emulator with an
+  injected turn. Not yet on a drive: flip it partway through a drive with the nav trace on and
+  compare corners both ways (`gyro_dps` says which mode drew each frame). A loose mount that
+  wobbles would show as arrow wobble.
+
 - The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
   forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen
   on a phone that is hot for real, or whether the voice lines then render in time: read the
