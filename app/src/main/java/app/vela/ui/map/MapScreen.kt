@@ -4682,17 +4682,30 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
     // The row scrolls out to the screen edge, under the top chrome's 12 dp side padding, so a
     // chip cut by the edge reads as more to scroll. The first chip still lines up with the
     // search bar. In landscape the row sits beside the bar and only its end runs out.
+    // A navigation bar on the side (landscape with three-button navigation, Android 8 head units)
+    // is not screen to scroll under: the bleed stops at its edge, and a focused chip at the end
+    // of the row stays in view.
     val edge = 12.dp
     val bleedStart = LocalConfiguration.current.let { it.screenWidthDp <= it.screenHeightDp }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val dir = androidx.compose.ui.platform.LocalLayoutDirection.current
+    val nav = androidx.compose.foundation.layout.WindowInsets.navigationBars
+    val ltr = dir == androidx.compose.ui.unit.LayoutDirection.Ltr
+    val navStartPx = if (ltr) nav.getLeft(density, dir) else nav.getRight(density, dir)
+    val navEndPx = if (ltr) nav.getRight(density, dir) else nav.getLeft(density, dir)
+    // Focus on the first or last chip scrolls the row all the way to that end: bringing a chip
+    // into view alone stopped once it touched the screen edge, short of where the row rests.
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
     Row(
         modifier.fillMaxWidth()
             .layout { measurable, constraints ->
-                val start = if (bleedStart) edge.roundToPx() else 0
-                val end = edge.roundToPx()
+                val start = if (bleedStart) edge.roundToPx() - navStartPx else 0
+                val end = edge.roundToPx() - navEndPx
                 val placeable = measurable.measure(constraints.offset(horizontal = start + end))
-                layout(placeable.width - start - end, placeable.height) { placeable.place(-start, 0) }
+                layout(placeable.width - start - end, placeable.height) { placeable.placeRelative(-start, 0) }
             }
-            .horizontalScroll(rememberScrollState())
+            .horizontalScroll(scroll)
             .padding(start = if (bleedStart) edge else 0.dp, end = edge),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -4700,10 +4713,12 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
         // Your lists used to lead this row as a round button. It moved into the search bar beside
         // the settings gear (issue #290): on the far left it competed with the quick-category
         // chips, which are a different kind of control, and the reach was awkward.
-        categories.forEach { (labelRes, query, icon) ->
+        categories.forEachIndexed { i, (labelRes, query, icon) ->
             ElevatedAssistChip(
                 onClick = { onPick(query) },
-                modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp)),
+                modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp)).then(
+                    if (i == 0) Modifier.onFocusChanged { if (it.isFocused) scope.launch { scroll.animateScrollTo(0) } } else Modifier,
+                ),
                 label = { Text(stringResource(labelRes)) },
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 // Full pill, Google-style — the M3 default 8dp corners read dated on a map chip row.
@@ -4718,7 +4733,9 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
             )
         }
         // Every chip, hidden ones included, behind one More (issue #779).
-        MoreCategoriesChip(onPick)
+        Box(Modifier.onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(scroll.maxValue) } }) {
+            MoreCategoriesChip(onPick)
+        }
     }
 }
 

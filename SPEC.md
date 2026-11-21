@@ -6279,7 +6279,8 @@ the user's order and ends with a More chip (`MoreCategoriesChip`), a `VelaMenu` 
 the catalog, the ones switched off included; a pick runs that search. The one-button menu lists
 `all()` only. The row scrolls out to the screen edges, past the top chrome's 12 dp side
 padding, with its first chip in line with the search bar. In landscape, beside the bar, only
-its end runs out.
+its end runs out. A navigation bar on the side ends the row at its edge, and focus on the first
+or last chip scrolls the row all the way to that end.
 
 #### Drive chrome
 
