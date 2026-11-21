@@ -2306,20 +2306,36 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   and the 5 m window of a pull-away started the arrow turning 5 m before it. The lead is the
   ease's own lag. Dials `headWinMin` and `headLeadS`.
 - Gyroscope mode (`GyroHeading`; Settings > Diagnostics > "Turn the arrow with the gyroscope",
-  pref `gyro_turn`, off by default, `GyroTurn`): the heading is turned by the phone's yaw rate and
+  pref `gyro_turn`, on by default, `GyroTurn`): the heading is turned by the phone's yaw rate and
   pulled toward the line's direction across the same window centered on the puck, with no lead.
-  The pull's time constant is `TAU_TURNING_S` (3 s) while the yaw rate or that reference turns at
-  `TURNING_DPS` (6 degrees a second) or more, `TAU_STRAIGHT_S` (1 s) otherwise, and
-  `TAU_STOPPED_S` (0.4 s) under `MIN_SPEED_MPS` (1.5 m/s) or with no reading, when the gyroscope is
-  ignored (a phone picked up at a light turns too). The heading stays within `MAX_OFF_DEG` (75
-  degrees) of the reference. The camera aims at the heading plus the rate times
-  `CAM_GYRO_LEAD_S` (0.35 s), at most `CAM_GYRO_LEAD_MAX_DEG` (25 degrees). The rate is the
-  gyroscope projected on the world's up axis from the game rotation vector
-  (`MotionProvider.yawRate`), each reading averaged half and half with the last; a reading older
-  than `GYRO_FRESH_MS` (250 ms) falls back to the chord. The chord turns where the line's corner is
-  drawn, which on real corners was up to about a second before or after the car. API 26 emulator,
-  a Davis straight at 13 m/s with a 28.6 degree a second gyroscope turn injected for 2.6 s: the
-  arrow went from 91.5 to 40 degrees and was back within 1 degree of the road 3.5 s after.
+  The chord turns where the line's corner is drawn, which on real corners was up to about a
+  second before or after the car.
+  - The rate is the gyroscope projected on the world's up axis from the game rotation vector
+    (`MotionProvider.yawRate`), each reading averaged half and half with the last, then
+    low-passed over `RATE_TAU_S` (0.12 s). A reading older than `GYRO_FRESH_MS` (250 ms) falls
+    back to the chord.
+  - The pull's time constant is `TAU_TURNING_S` (3 s) while the rate or the reference turns at
+    `TURNING_DPS` (6 degrees a second) or more, `TAU_STRAIGHT_S` (1 s) otherwise, and
+    `TAU_STOPPED_S` (0.4 s) under `MIN_SPEED_MPS` (1.5 m/s) or with no reading, when the
+    gyroscope is ignored (a phone picked up at a light turns too).
+  - Route envelope (`gyroEnvelope`): the heading stays between the least and greatest direction
+    the route takes from `GYRO_ENV_BACK_S` (1 s, at least 10 m) behind the puck to
+    `GYRO_ENV_AHEAD_S` (1.5 s, at least 20 m) ahead, in 8 m chords every 4 m, plus
+    `ENV_SLACK_DEG` (2.5), and never past `MAX_OFF_DEG` (75) from the reference. On a straight
+    a wobbling mount cannot turn it. Organic Maps, CoMaps and OsmAnd take the arrow's heading
+    from the route alone and use no gyroscope.
+  - Acceleration cap: a car turning at w and speed v pushes sideways at v * w, a phone twisting
+    on its mount does not. With a horizontal linear acceleration under 250 ms old the rate is
+    held to `accelCapDps`: the acceleration's size over the speed (at least 3 m/s) plus
+    `ACCEL_MARGIN_DPS` (6 degrees a second). The size, never the direction, which hangs on the
+    magnetometer.
+  - The camera aims at the heading plus the low-passed rate times `CAM_GYRO_LEAD_S` (0.35 s),
+    at most `CAM_GYRO_LEAD_MAX_DEG` (25), inside the same envelope.
+  - API 26 emulator, a Davis straight at 12 to 15 m/s: a 28.6 degree a second turn injected
+    for 3 s moved the arrow 3.4 degrees off the road (51 before the envelope); a 5 Hz shake of
+    60 degrees a second, 0.9 (2.7 before the cap). Unit tests: a mount swinging 9.5 degrees
+    twice a second turns the arrow under 2 degrees toward a corner already inside the
+    envelope, and a 30 degree a second turn at 10 m/s is 22 degrees in after one second.
 - Snap tolerance (`puckSnapTolerance`): driving, 22 m plus a speed term of up to 13 m. Walking
   and cycling, 8 m plus 1.2 times the fix accuracy, capped at 16 m. The heading gate is skipped
   below 1 m/s driving and 2.5 m/s on foot or by bike.

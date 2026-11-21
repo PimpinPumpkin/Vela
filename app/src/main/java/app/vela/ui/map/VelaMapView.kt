@@ -1691,6 +1691,7 @@ fun VelaMapView(
     }
     val motionProvider = remember { app.vela.core.location.MotionProvider(context) }
     val worldAccel = remember { floatArrayOf(0f, 0f) }
+    val worldAccelAt = remember { longArrayOf(0L) } // elapsedRealtime of its last reading
     // NOT during a replay (2026-07-16): the trace's fixes are synthetic, but this feed is the
     // phone's REAL accelerometer - a handset sitting on a desk fed live sensor noise into the
     // Kalman while the trace played, and the puck jittered "very slightly all over" (and the
@@ -1702,6 +1703,7 @@ fun VelaMapView(
         motionProvider.worldAccel().collect { a ->
             worldAccel[0] = a[0]
             worldAccel[1] = a[1]
+            worldAccelAt[0] = android.os.SystemClock.elapsedRealtime()
         }
     }
 
@@ -3531,8 +3533,23 @@ fun VelaMapView(
                     val (rB, _) = pointAtMeters(puckLine, puckCum, puckM + headWin)
                     val refBrg = if (kotlin.math.abs(rA.lat - rB.lat) + kotlin.math.abs(rA.lng - rB.lng) < 1e-7) segBrg.toDouble()
                         else bearingDeg(rA, rB).toDouble()
-                    navPuck.displayBearing = navPuck.gyro.update(dtEase.toDouble(), gyroRate, refBrg, navPuck.speed).toFloat()
-                    navPuck.camChord = ((navPuck.displayBearing + (gyroRate * CAM_GYRO_LEAD_S).coerceIn(-CAM_GYRO_LEAD_MAX_DEG, CAM_GYRO_LEAD_MAX_DEG)).toFloat() + 360f) % 360f
+                    // Held to the directions the route takes around the arrow, so a wobbling mount
+                    // cannot turn it on a straight.
+                    val env = navPuck.gyroEnv
+                    gyroEnvelope(puckLine, puckCum, puckM, refBrg,
+                        backM = maxOf(GYRO_ENV_BACK_MIN_M, navPuck.speed * GYRO_ENV_BACK_S),
+                        aheadM = maxOf(GYRO_ENV_AHEAD_MIN_M, navPuck.speed * GYRO_ENV_AHEAD_S), out = env)
+                    val gh = navPuck.gyro
+                    // Capped at the turn the sideways push allows, so a twisting mount is clipped.
+                    val cap = if (android.os.SystemClock.elapsedRealtime() - worldAccelAt[0] > GYRO_FRESH_MS) null
+                        else app.vela.core.location.GyroHeading.accelCapDps(
+                            kotlin.math.hypot(worldAccel[0].toDouble(), worldAccel[1].toDouble()), navPuck.speed)
+                    navPuck.displayBearing = gh.update(dtEase.toDouble(), gyroRate, refBrg, navPuck.speed, env[0], env[1], cap).toFloat()
+                    // The camera leads by the low-passed rate, inside the same envelope.
+                    val lead = (gh.rate * CAM_GYRO_LEAD_S).coerceIn(-CAM_GYRO_LEAD_MAX_DEG, CAM_GYRO_LEAD_MAX_DEG)
+                    val camRel = (app.vela.core.location.GyroHeading.delta(refBrg, gh.heading) + lead)
+                        .coerceIn(app.vela.core.location.GyroHeading.lowEdge(env[0]), app.vela.core.location.GyroHeading.highEdge(env[1]))
+                    navPuck.camChord = (((refBrg + camRel) % 360.0 + 360.0) % 360.0).toFloat()
                 } else {
                     navPuck.gyro.reset()
                     // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
@@ -9908,6 +9925,7 @@ private class NavPuck {
     var stoppedSinceMs = 0L
     var settleToM = Double.NaN    // the arrow glides back to here while the car stays stopped
     val gyro = app.vela.core.location.GyroHeading() // the gyroscope-turned heading (GyroTurn)
+    val gyroEnv = DoubleArray(2) // its route envelope this frame (gyroEnvelope)
     // Braking the GPS speeds show (BRAKE_*): the last fix's Doppler speed and when it came, and the
     // deceleration from the fix before it, applied between fixes so the arrow slows with the car.
     var lastFixV = Double.NaN
@@ -10002,6 +10020,15 @@ private const val CAM_LEAD_S = 0.4
  *  to the route chord. The camera leads the arrow by the measured rate times CAM_GYRO_LEAD_S (its
  *  own turn easing), at most CAM_GYRO_LEAD_MAX_DEG. */
 private const val GYRO_FRESH_MS = 250.0
+/** The route envelope gyroscope mode holds the arrow to ([gyroEnvelope]): from this far behind
+ *  the arrow (the car still finishing a turn the arrow has passed) to this far ahead (a car starts
+ *  its arc about a turn radius before the corner, and the arrow can trail the car), in seconds of
+ *  travel with a floor in meters. Chords GYRO_ENV_STEP_M apart, twice that long. */
+private const val GYRO_ENV_BACK_S = 1.0
+private const val GYRO_ENV_BACK_MIN_M = 10.0
+private const val GYRO_ENV_AHEAD_S = 1.5
+private const val GYRO_ENV_AHEAD_MIN_M = 20.0
+private const val GYRO_ENV_STEP_M = 4.0
 private const val CAM_GYRO_LEAD_S = 0.35
 private const val CAM_GYRO_LEAD_MAX_DEG = 25.0
 /** GPS braking ([NavPuck.gpsBrake]): two fixes this far apart (s) give a deceleration; one of at
@@ -10037,6 +10064,30 @@ private const val PUCK_WIN_TAU_S = 2.5f
  *  2.5-3.5 s apart under canopy, and a 2 s cap made the puck glide-stall-lurch at exactly that
  *  cadence. Still bounds a dropped-signal runaway to ~100 m at highway speed. */
 private const val DEAD_RECKON_S = 3.0
+
+/** Gyroscope mode's route envelope: the least and greatest direction the route takes from [backM]
+ *  behind [atM] to [aheadM] past it, as signed degrees from [refDeg], into [out] (lo, hi). Each is
+ *  the bearing of a chord 2 x GYRO_ENV_STEP_M long. Both stay 0 where the route runs straight. */
+private fun gyroEnvelope(poly: List<LatLng>, cum: DoubleArray, atM: Double, refDeg: Double, backM: Double, aheadM: Double, out: DoubleArray) {
+    var lo = 0.0
+    var hi = 0.0
+    val start = atM - backM
+    val n = ((backM + aheadM) / GYRO_ENV_STEP_M).toInt().coerceIn(1, 64)
+    var p0 = pointAtMeters(poly, cum, start - GYRO_ENV_STEP_M).first
+    var p1 = pointAtMeters(poly, cum, start).first
+    for (k in 1..n + 1) {
+        val p2 = pointAtMeters(poly, cum, start + k * GYRO_ENV_STEP_M).first
+        if (kotlin.math.abs(p0.lat - p2.lat) + kotlin.math.abs(p0.lng - p2.lng) > 1e-7) {
+            val d = app.vela.core.location.GyroHeading.delta(refDeg, bearingDeg(p0, p2).toDouble())
+            if (d < lo) lo = d
+            if (d > hi) hi = d
+        }
+        p0 = p1
+        p1 = p2
+    }
+    out[0] = lo
+    out[1] = hi
+}
 
 private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
     if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f

@@ -176,7 +176,7 @@
     <string name="settings_nav_trace_export">Share nav trace</string>
     <string name="settings_nav_trace_empty">No trace recorded yet. Navigate somewhere first.</string>
     <string name="settings_gyro_turn">Turn the arrow with the gyroscope</string>
-    <string name="settings_gyro_turn_hint">During a drive the arrow turns when the phone feels the car turn, instead of following the road a little ahead. A test: try it on a drive and compare.</string>
+    <string name="settings_gyro_turn_hint">During a drive the arrow turns when the phone feels the car turn, held to the shape of the road. Off, it follows the road a little ahead.</string>
     <string name="settings_voice_vela_name">Vela voice (%1$s)</string> <!-- format -->
     <string name="settings_voice_install_vela">Install the Vela voice (%1$d MB)</string> <!-- format -->
     <string name="settings_voice_install_vela_hint">The recommended navigation voice. Reinstall it here any time it goes missing or a download failed.</string>

@@ -233,12 +233,18 @@ of its own easing, and once it has swung more than 12 degrees it keeps its quick
 has caught up. On a mock turn from a stop that took the map's lag from 1.5 s to 0.5 s and the
 arrow's from 1.0 s to 0.7 s (SPEC 4.7).
 
-A test switch, Settings > Diagnostics > "Turn the arrow with the gyroscope", turns the arrow by
-the rate the phone's gyroscope measures instead. The line ahead turns where its corner is drawn,
-which can be a second before or after the car turns; the gyroscope turns when the car does. The
-road's direction at the arrow pulls the heading back, slowly in a turn and quickly on a straight,
-which also cancels the gyroscope's drift. Stopped, the gyroscope is ignored, since a phone picked
-up at a light turns too. The camera leads the arrow by a third of a second of the measured turn.
+By default the arrow is turned by the rate the phone's gyroscope measures (Settings > Diagnostics
+> "Turn the arrow with the gyroscope"; off goes back to the line ahead). The line ahead turns
+where its corner is drawn, which can be a second before or after the car turns; the gyroscope
+turns when the car does. The road's direction at the arrow pulls the heading back, slowly in a
+turn and quickly on a straight, which also cancels the gyroscope's drift. Stopped, the gyroscope
+is ignored, since a phone picked up at a light turns too.
+
+A phone in a wobbly mount twists without the car turning, so two things hold the arrow to the
+road. It can only point where the route goes from a second behind it to a second and a half
+ahead, which on a straight is a couple of degrees either way. And it can only turn as fast as
+the phone is being pushed sideways: a car turning at speed pushes, a mount twisting does not.
+The camera leads the arrow by a third of a second of the measured turn, inside the same limits.
 The nav trace's `gyro_dps` column says which way each frame was drawn.
 
 The arrow only moves forward, so carrying on at its modeled speed through a stop can leave it
