@@ -900,7 +900,6 @@
     <string name="car_along_route">Cari di sepanjang rute</string>
     <string name="car_along_none">Tidak ada yang ditemukan di sekitar</string>
     <string name="car_stop_added">%1$s ditambahkan sebagai pemberhentian berikutnya</string>
-    <string name="car_continue_on">Lanjutkan di %1$s</string>
     <string name="car_nearby">Di sekitar</string>
     <string name="car_more_nearby">Lainnya di sekitar</string>
     <string name="car_saved">Tersimpan</string>

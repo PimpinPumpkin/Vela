@@ -6602,9 +6602,12 @@ the same `:core` singletons as the phone (`CarDeps`).
   With a stop ahead the stop's time takes the same color: it describes the route, as the line
   does.
 - On the drive screen a drive paused on the phone shows a `MessageInfo` ("Paused") in place of
-  the turn card. A turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card with "Continue on"
-  the current road (`Maneuver.roadAt`) under a straight arrow and shows the turn as the next
-  step. Closer in, the turn after it is the next step only by the phone's "then" rule
+  the turn card. The card leads with the next turn however far off it is, as the phone's does, and
+  draws its lanes only within `LANE_SHOW_M` (800 m). The road you are on is a pill the car map
+  draws centered on the bottom of the stable area, level with the speed badge (`drawRoadName`,
+  `CarRoadName`: the phone pill's `roadLabelAt` rule, shortened, white or #303134 by day or night,
+  off when the phone's road label is off), and goes to the cluster as `Trip.currentRoad`. The
+  turn after the next is the next step only by the phone's "then" rule
   (`ManeuverMapper.thenShown`: within `COMPOUND_M`, 500 m, of the turn, and the turn within
   `LANE_SHOW_M`, 800 m). The card's color is `ManeuverMapper.TURN_CARD` (#008A8B, which the host
   draws as Google's #006D6F).

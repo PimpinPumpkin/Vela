@@ -119,12 +119,11 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val next = s.route?.maneuvers?.getOrNull(s.nav.stepIndex)
         val then = s.route?.maneuvers?.getOrNull(s.nav.stepIndex + 1) // "then …" junction preview
 
-        // The road you are on: the leg's road, following its silent renames (the phone's pill rule).
-        val currentRoad = s.route?.maneuvers?.let { app.vela.core.nav.roadLabelAt(it, s.nav.stepIndex, s.nav.distanceToNextManeuver) }?.let(app.vela.core.util.RoadNameShort::shorten)
-        val continueCue = currentRoad?.let { carContext.getString(app.vela.R.string.car_continue_on, it) }
+        // The road you are on, for the cluster (Trip.currentRoad); the car map draws it as a pill.
+        val currentRoad = app.vela.car.CarRoadName.of(s)
         val info: androidx.car.app.navigation.model.NavigationTemplate.NavigationInfo =
             if (s.paused) androidx.car.app.navigation.model.MessageInfo.Builder(carContext.getString(app.vela.R.string.car_paused)).build()
-            else ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial, continueCue)
+            else ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial)
         val estimate = ManeuverMapper.destinationEstimate(
             s.remainingDistance, s.remainingDuration, System.currentTimeMillis(), imperial,
             trafficRatio = s.route?.trafficRatio,
@@ -152,7 +151,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val shownStep = ManeuverMapper.carDistance(s.nav.distanceToNextManeuver, imperial)
         val tripKey = "${s.nav.stepIndex}|${shownStep.displayDistance}|${shownStep.displayUnit}|" +
             "${(s.remainingDuration / 60).toInt()}|${(s.remainingDistance / 100).toInt()}|" +
-            "${toStop?.let { (it.seconds / 60).toInt() }}|${toStop?.let { (it.distanceM / 100).toInt() }}|${toStop?.label}"
+            "${toStop?.let { (it.seconds / 60).toInt() }}|${toStop?.let { (it.distanceM / 100).toInt() }}|${toStop?.label}|$currentRoad"
         val nowMs = android.os.SystemClock.elapsedRealtime()
         if (navDeclared && next != null && tripKey != lastTripKey && nowMs - lastTripMs >= TRIP_MIN_GAP_MS) {
             lastTripKey = tripKey
@@ -162,9 +161,10 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                     s.remainingDuration * (s.nav.distanceToNextManeuver / s.remainingDistance) else 0.0
                 val trip = androidx.car.app.navigation.model.Trip.Builder()
                     .addStep(
-                        ManeuverMapper.carStep(next),
+                        ManeuverMapper.carStep(next, lanes = s.nav.distanceToNextManeuver <= app.vela.ui.nav.LANE_SHOW_M),
                         ManeuverMapper.stepEstimate(s.nav.distanceToNextManeuver, secsToStep, System.currentTimeMillis(), imperial),
                     )
+                    .apply { currentRoad?.let { setCurrentRoad(it) } }
                     // Destinations go in order of arrival: the next stop, then the trip's end.
                     .apply {
                         if (stopEstimate != null && stopName != null) addDestination(

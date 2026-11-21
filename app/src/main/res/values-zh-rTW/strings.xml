@@ -1070,7 +1070,6 @@
     <string name="car_along_route">沿途搜尋</string>
     <string name="car_along_none">附近找不到結果</string>
     <string name="car_stop_added">已將%1$s加入為下一個途經點</string>
-    <string name="car_continue_on">沿著%1$s繼續行駛</string>
     <string name="map_import_needs_google">Vela 不使用 Google 時，無法開啟分享的 Google 地圖清單。</string>
     <string name="map_link_needs_google">「開啟分享的 Google 地圖連結」已在「設定 ▸ 隱私」中關閉。</string>
     <string name="map_link_unreadable">無法開啟這個連結。</string>

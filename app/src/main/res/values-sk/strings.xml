@@ -922,7 +922,6 @@
     <string name="car_along_route">Hľadať na trase</string>
     <string name="car_along_none">V okolí sa nič nenašlo</string>
     <string name="car_stop_added">%1$s bolo pridané ako ďalšia zastávka</string>
-    <string name="car_continue_on">Pokračujte po %1$s</string>
     <string name="car_nearby">V okolí</string>
     <string name="car_more_nearby">Ďalšie v okolí</string>
     <string name="car_saved">Uložené</string>

@@ -541,7 +541,6 @@
     <string name="car_along_route">Cerca lungo il percorso</string>
     <string name="car_along_none">Nessun risultato nelle vicinanze</string>
     <string name="car_stop_added">Prossima tappa aggiunta: %1$s</string>
-    <string name="car_continue_on">Prosegui su %1$s</string>
     <string name="car_no_route">Nessun percorso disponibile. Controlla la tua posizione.</string>
     <string name="map_parking_saved">Parcheggio salvato</string>
     <string name="map_parking_no_fix">In attesa della posizione</string>

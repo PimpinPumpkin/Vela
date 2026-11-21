@@ -988,7 +988,6 @@
     <string name="car_along_route">Search along route</string>
     <string name="car_along_none">Nothing found nearby</string>
     <string name="car_stop_added">Added %1$s as the next stop</string>
-    <string name="car_continue_on">Continue on %1$s</string>
     <string name="car_nearby">Nearby</string>
     <string name="car_more_nearby">More nearby</string>
     <string name="car_saved">Saved</string>

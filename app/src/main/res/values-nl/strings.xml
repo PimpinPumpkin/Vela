@@ -541,7 +541,6 @@
     <string name="car_along_route">Zoeken langs route</string>
     <string name="car_along_none">Niets gevonden in de buurt</string>
     <string name="car_stop_added">%1$s toegevoegd als volgende stop</string>
-    <string name="car_continue_on">Ga verder op %1$s</string>
     <string name="car_no_route">Geen route beschikbaar. Controleer je locatie.</string>
     <string name="map_parking_saved">Parkeerplek opgeslagen</string>
     <string name="map_parking_no_fix">Wachten op locatie</string>

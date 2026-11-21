@@ -79,8 +79,9 @@ object ManeuverMapper {
     @Volatile var bannedNote: String = ""
 
     /** A car [Step] for the current maneuver: the spoken cue + the road name being entered, its
-     *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). */
-    fun carStep(m: VelaManeuver): Step {
+     *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). [lanes] false
+     *  leaves the lane diagram off: the phone shows it only within [app.vela.ui.nav.LANE_SHOW_M]. */
+    fun carStep(m: VelaManeuver, lanes: Boolean = true): Step {
         val short = app.vela.core.util.RoadNameShort
         val said = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
         // A turn OpenStreetMap bans that Google's route keeps (TurnBans) says so on the car too.
@@ -91,7 +92,7 @@ object ManeuverMapper {
             // Lane guidance (Google's arrow diagram): both the Lane metadata and a rendered image,
             // unless the driver turned it off (CarLanes, issue #866).
             .apply {
-                if (app.vela.ui.CarLanes.on.value) runCatching {
+                if (lanes && app.vela.ui.CarLanes.on.value) runCatching {
                     LaneImage.build(m.lanes)?.let { (lanes, image) ->
                         lanes.forEach { addLane(it) }
                         setLanesImage(image)
@@ -117,25 +118,14 @@ object ManeuverMapper {
     // coerceAtLeast(step) floored every distance to 10 ft/10 m so it never showed 0.
     private fun roundStep(v: Double, step: Double): Double = (Math.round(v / step) * step).coerceAtLeast(0.0)
 
-    /** The next-turn card for the [NavigationTemplate] — current step + distance to it, plus the
-     *  following maneuver as the "then" step (Google's "then turn left" junction preview). */
-    fun routingInfo(next: VelaManeuver?, then: VelaManeuver?, distanceToNext: Double, imperial: Boolean, continueCue: String? = null): RoutingInfo {
+    /** The next-turn card for the [NavigationTemplate]: the next turn and the distance to it, as on
+     *  the phone however far off it is, plus the following maneuver as the "then" step (Google's
+     *  "then turn left" junction preview). The road you are on is the car map's pill
+     *  ([CarRoadName]). */
+    fun routingInfo(next: VelaManeuver?, then: VelaManeuver?, distanceToNext: Double, imperial: Boolean): RoutingInfo {
         val b = RoutingInfo.Builder()
         if (next == null) return b.setLoading(true).build()
-        // A turn still far ahead: the card leads with the road you are ON ("Continue on X" and the
-        // distance to the turn) and shows the turn as the "then" step, the way Google's does; up
-        // close, the turn itself leads with the following one as "then".
-        if (continueCue != null && distanceToNext > CONTINUE_FAR_M) {
-            b.setCurrentStep(
-                Step.Builder(continueCue).setManeuver(
-                    Maneuver.Builder(Maneuver.TYPE_STRAIGHT).apply { glyph(ManeuverType.STRAIGHT)?.let { setIcon(it) } }.build(),
-                ).build(),
-                carDistance(distanceToNext, imperial),
-            )
-            runCatching { b.setNextStep(carStep(next)) }
-            return b.build()
-        }
-        b.setCurrentStep(carStep(next), carDistance(distanceToNext, imperial))
+        b.setCurrentStep(carStep(next, lanes = distanceToNext <= app.vela.ui.nav.LANE_SHOW_M), carDistance(distanceToNext, imperial))
         if (then != null && thenShown(next, distanceToNext)) runCatching { b.setNextStep(carStep(then)) }
         return b.build()
     }
@@ -150,9 +140,6 @@ object ManeuverMapper {
      *  draws an app's card color about 20% darker, so this is that teal lifted to land on it. The
      *  host may still override it for contrast. */
     val TURN_CARD: CarColor = CarColor.createCustom(0xFF008A8B.toInt(), 0xFF008A8B.toInt())
-
-    /** Past this distance to the next turn the card leads with the current road. */
-    const val CONTINUE_FAR_M = 1_500.0
 
     /** A per-STEP [TravelEstimate] (distance + time to the NEXT maneuver) for Trip.addStep — the host's
      *  navigation data channel (cluster/rail). Time is a rough proportional estimate; the host mainly

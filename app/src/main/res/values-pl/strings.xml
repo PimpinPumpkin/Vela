@@ -546,7 +546,6 @@
     <string name="car_along_route">Szukaj wzdłuż trasy</string>
     <string name="car_along_none">Nic nie znaleziono w pobliżu</string>
     <string name="car_stop_added">Dodano %1$s jako następny przystanek</string>
-    <string name="car_continue_on">Jedź dalej: %1$s</string>
     <string name="car_no_route">Brak trasy, sprawdź lokalizację</string>
     <string name="map_parking_saved">Zapisano miejsce parkowania</string>
     <string name="map_parking_no_fix">Oczekiwanie na lokalizację</string>

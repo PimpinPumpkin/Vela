@@ -940,7 +940,6 @@
     <string name="car_along_route">البحث على طول المسار</string>
     <string name="car_along_none">لم يُعثر على شيء قريب</string>
     <string name="car_stop_added">تمت إضافة %1$s كمحطة تالية</string>
-    <string name="car_continue_on">تابع على %1$s</string>
     <string name="car_nearby">قريب</string>
     <string name="car_more_nearby">مزيد من الأماكن القريبة</string>
     <string name="car_saved">المحفوظة</string>

@@ -1070,7 +1070,6 @@
     <string name="car_along_route">ルート沿いを検索</string>
     <string name="car_along_none">近くに見つかりませんでした</string>
     <string name="car_stop_added">%1$s を次の経由地に追加しました</string>
-    <string name="car_continue_on">%1$s をそのまま進む</string>
     <string name="map_import_needs_google">Google なしで Vela を使っている間は、共有された Google マップのリストを開けません。</string>
     <string name="map_link_needs_google">「共有された Google マップのリンクを開く」は 設定 ▸ プライバシー でオフになっています。</string>
     <string name="map_link_unreadable">そのリンクを開けませんでした。</string>

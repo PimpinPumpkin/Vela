@@ -1028,7 +1028,6 @@
     <string name="transit_min_early">%1$d min prej</string>
     <string name="car_faster_route">Hitrejša pot −%1$d min</string>
     <string name="car_stop_added">%1$s je dodan kot naslednji postanek</string>
-    <string name="car_continue_on">Nadaljujte po %1$s</string>
     <string name="car_location_denied">Lokacija je izklopljena. V nastavitvah telefona jo omogočite za Velo.</string>
     <string name="settings_lists_import_is_places">Ta datoteka vsebuje shranjena mesta, ne seznamov. Uvozite jo v Nastavitve &gt; Shranjena mesta &gt; Uvozi.</string>
     <string name="settings_place_names">Imena mest</string>

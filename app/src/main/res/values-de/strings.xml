@@ -1013,7 +1013,6 @@
     <string name="car_along_route">Entlang der Route suchen</string>
     <string name="car_along_none">Nichts in der Nähe gefunden</string>
     <string name="car_stop_added">%1$s als nächster Stopp hinzugefügt</string>
-    <string name="car_continue_on">Weiter auf %1$s</string>
     <string name="map_import_needs_google">Eine geteilte Google Maps-Liste lässt sich nicht öffnen, solange Vela ohne Google läuft.</string>
     <string name="map_link_needs_google">„Geteilte Google Maps-Links öffnen“ ist unter Einstellungen ▸ Datenschutz ausgeschaltet.</string>
     <string name="map_link_unreadable">Dieser Link konnte nicht geöffnet werden.</string>

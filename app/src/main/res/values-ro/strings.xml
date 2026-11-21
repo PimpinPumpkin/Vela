@@ -904,7 +904,6 @@
     <string name="car_along_route">Căutare de-a lungul traseului</string>
     <string name="car_along_none">Nu s-a găsit nimic în apropiere</string>
     <string name="car_stop_added">Am adăugat %1$s ca următoarea oprire</string>
-    <string name="car_continue_on">Continuă pe %1$s</string>
     <string name="car_nearby">În apropiere</string>
     <string name="car_more_nearby">Mai multe în apropiere</string>
     <string name="car_saved">Salvat</string>

@@ -292,10 +292,10 @@ session's place list is not allowed on that display and crashes the app there.
 - A roundabout takes its direction of travel from the route's geometry when it has one, and
   counter-clockwise otherwise. The exit number comes from the router, with a floor of 1 because
   the car API throws on a roundabout with none.
-- Past `CONTINUE_FAR_M` (1,500 m) the card reads "Continue on" and the road you are on, with a
-  straight arrow, and the turn is the "then" step. Closer in, the turn leads, and the turn after
-  it shows as "then" only by the phone's rule (`thenShown`): it follows within 500 m and the first
-  turn is within 800 m. Road names on the card are abbreviated as on the phone's pill ("Russell Rd
+- The card leads with the next turn however far off it is, as the phone's does, and shows its
+  lanes from 800 m out. The turn after it shows as "then" only by the phone's rule (`thenShown`):
+  it follows within 500 m and the first turn is within 800 m. The road you are on is a pill at
+  the bottom of the car map, under the arrow, as on Google's car map and the phone. Road names on the card are abbreviated as on the phone's pill ("Russell Rd
   NE"); "Road numbers first" applies here too.
 - The card is Google's car teal (`TURN_CARD`). The host draws an app's card color about 20% darker,
   so the color set is #008A8B, which lands on Google's #006D6F.

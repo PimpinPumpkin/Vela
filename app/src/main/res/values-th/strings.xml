@@ -945,7 +945,6 @@
     <string name="car_along_route">ค้นหาตามเส้นทาง</string>
     <string name="car_along_none">ไม่พบสถานที่ใกล้เคียง</string>
     <string name="car_stop_added">เพิ่ม %1$s เป็นจุดแวะถัดไปแล้ว</string>
-    <string name="car_continue_on">ตรงไปตาม %1$s</string>
     <string name="car_nearby">ใกล้เคียง</string>
     <string name="car_more_nearby">ใกล้เคียงเพิ่มเติม</string>
     <string name="car_saved">บันทึกไว้</string>

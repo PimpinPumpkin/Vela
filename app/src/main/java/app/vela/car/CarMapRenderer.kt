@@ -166,6 +166,11 @@ class CarMapRenderer(
         }
 
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
+        // The road-name pill: the phone pill's surface colors (white or Google's dark gray, a gray edge).
+        private val ROAD_PILL_NIGHT = Color.parseColor("#303134")
+        private val ROAD_EDGE_NIGHT = Color.parseColor("#5F6368")
+        private val ROAD_EDGE_DAY = Color.parseColor("#DADCE0")
+        private val ROAD_TEXT_DAY = Color.parseColor("#202124")
         val LIMIT_INK = Color.parseColor("#111111")
         val LIMIT_OVER = Color.parseColor("#e8514a") // the phone's over-the-limit red
         val WORLD_CENTER = LatLng(20.0, 0.0)
@@ -1005,6 +1010,7 @@ class CarMapRenderer(
             // The speed badge on the drive screen and the map-only landing, unless Settings > Navigation
             // "Show speed and speed limit" is off (issue #625).
             if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
+            if (navigating()) runCatching { drawRoadName(canvas) }
             runCatching { drawAttribution(canvas) }
         } finally {
             runCatching { s.unlockCanvasAndPost(canvas) }
@@ -1260,6 +1266,43 @@ class CarMapRenderer(
                 canvas.drawText(limit.toString(), lx, ly + 14f * k, limitNum)
             }
         }
+    }
+
+    private val roadPill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val roadPillEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f }
+    private val roadText = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true }
+    private val roadPillRect = RectF()
+
+    /** The road you are on, in a pill centered on the bottom of [safeArea], level with the speed
+     *  badge, as Google's car map and the phone's pill name it ([CarRoadName]). The turn card
+     *  names the next turn. Off with the phone's "Road name" set to off. A long name is cut to
+     *  the room between the speed corner and its mirror on the left. */
+    private fun drawRoadName(canvas: Canvas) {
+        if (app.vela.ui.RoadLabel.mode.value == app.vela.ui.RoadLabel.OFF) return
+        val road = CarRoadName.of(navSession.state.value) ?: return
+        val vis = safeArea()
+        val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
+        roadText.textSize = 26f * k
+        val padX = 18f * k
+        // The speed corner: the badge (92) and the limit sign (up to 84) with their gaps, at k = 1.
+        val reserve = 200f * k + 16f
+        val room = vis.width() - 2f * reserve - 2f * padX
+        if (room < 60f * k) return
+        val text = android.text.TextUtils.ellipsize(road, roadText, room, android.text.TextUtils.TruncateAt.END).toString()
+        if (text.isEmpty()) return
+        val w = roadText.measureText(text) + 2f * padX
+        val h = 46f * k
+        val cx = vis.exactCenterX()
+        val bottom = vis.bottom - 20f
+        roadPillRect.set(cx - w / 2f, bottom - h, cx + w / 2f, bottom)
+        val night = isNight()
+        roadPill.color = if (night) ROAD_PILL_NIGHT else Color.WHITE
+        roadPillEdge.color = if (night) ROAD_EDGE_NIGHT else ROAD_EDGE_DAY
+        roadText.color = if (night) Color.WHITE else ROAD_TEXT_DAY
+        canvas.drawRoundRect(roadPillRect, h / 2f, h / 2f, roadPill)
+        canvas.drawRoundRect(roadPillRect, h / 2f, h / 2f, roadPillEdge)
+        val fm = roadText.fontMetrics
+        canvas.drawText(text, cx, roadPillRect.centerY() - (fm.ascent + fm.descent) / 2f, roadText)
     }
 
     /** Center the camera on [route] and pick a zoom that fits its bounding box (preview screen). */

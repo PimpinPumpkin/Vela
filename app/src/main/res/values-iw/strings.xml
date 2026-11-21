@@ -525,7 +525,6 @@
     <string name="car_along_route">חפש לאורך המסלול</string>
     <string name="car_along_none">לא נמצא דבר בקרבת מקום</string>
     <string name="car_stop_added">%1$s נוסף כעצירה הבאה</string>
-    <string name="car_continue_on">המשך ב%1$s</string>
     <string name="car_no_route">אין מסלול זמין. נא לבדוק את מיקומך.</string>
     <string name="map_parking_saved">מיקום החניה נשמר</string>
     <string name="map_parking_no_fix">ממתין לאיכון מיקום</string>

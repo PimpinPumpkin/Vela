@@ -541,7 +541,6 @@
     <string name="car_along_route">Pesquisar ao longo da rota</string>
     <string name="car_along_none">Nada encontrado por perto</string>
     <string name="car_stop_added">Adicionado como próxima paragem: %1$s</string>
-    <string name="car_continue_on">Continue em %1$s</string>
     <string name="car_no_route">Sem rota, verifique a localização</string>
     <string name="map_parking_saved">Estacionamento guardado</string>
     <string name="map_parking_no_fix">A aguardar a localização</string>

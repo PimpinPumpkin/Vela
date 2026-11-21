@@ -369,9 +369,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Search from the car, preview up to three routes, and start the drive. "Navigate to Starbucks"
   from the car's assistant opens the search on it. Gas stations in car
   results show their fuel price.
-- The drive screen has the map, a turn card with lanes, the arrival estimate and the posted limit;
-  your speed too if you switch it on, since the car has its own speedometer. The map turns with
-  the car, tilts and zooms out with speed.
+- The drive screen has the map, a turn card with the next turn however far off it is (lanes from
+  half a mile out), the road you are on under the arrow, the arrival estimate and the posted
+  limit; your speed too if you switch it on, since the car has its own speedometer. The map turns
+  with the car, tilts and zooms out with speed.
 - The car opens on the map alone, as Google Maps does: tilted, turning with the car, with the
   speed badge, Search, Saved and Settings. A list button brings up Home, Work, recents and nearby
   categories, and Search with nothing typed lists them too.
