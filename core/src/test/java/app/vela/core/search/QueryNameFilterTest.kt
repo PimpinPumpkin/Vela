@@ -99,4 +99,94 @@ class QueryNameFilterTest {
     fun aDescribingWordInANameQueryMayBeInTheCategory() {
         assertEquals(listOf("Shell"), QueryNameFilter.apply("shell gas station", gas).map { it.name })
     }
+
+    @Test
+    fun aWordInManyDifferentNamesIsAKindOfPlace() {
+        // Captured along I-80 from Davis: bubble tea shops, only some named for it.
+        val boba = listOf(
+            place("Teaspoon Davis Boba Cafe", "Bubble tea store"),
+            place("Why Not Boba Cafe?", "Bubble tea store"),
+            place("Wushiland Boba Sacramento", "Bubble tea store"),
+            place("T4 Tea 4", "Bubble tea store"),
+            place("E Ka Tea", "Bubble tea store"),
+        )
+        assertEquals(boba.map { it.name }, QueryNameFilter.apply("boba", boba).map { it.name })
+        val tacos = listOf(
+            place("Lenchitos Tacos", "Mexican restaurant"),
+            place("Sal's Tacos", "Taco restaurant"),
+            place("Taqueria Maya's", "Mexican restaurant"),
+            place("Casa Jalisco", "Mexican restaurant"),
+        )
+        assertEquals(tacos.map { it.name }, QueryNameFilter.apply("tacos", tacos).map { it.name })
+        val pho = listOf(
+            place("Pho Tasty", "Vietnamese restaurant"),
+            place("Pho King 4", "Vietnamese restaurant"),
+            place("Amber Hazel Vietnamese Kitchen", "Vietnamese restaurant"),
+        )
+        assertEquals(pho.map { it.name }, QueryNameFilter.apply("pho", pho).map { it.name })
+    }
+
+    @Test
+    fun aStoreNamedForItsKindDoesNotNarrowTheList() {
+        val stores = listOf(
+            place("Bob's Groceries", "Grocery store"),
+            place("Safeway", "Grocery store"),
+            place("Nugget Markets", "Grocery store"),
+        )
+        assertEquals(stores.map { it.name }, QueryNameFilter.apply("groceries", stores).map { it.name })
+    }
+
+    @Test
+    fun aBrandNarrowsWithStoreNumbersAndDescribingWords() {
+        val drug = listOf(
+            place("CVS Pharmacy", "Pharmacy"),
+            place("CVS", "Pharmacy"),
+            place("CVS Pharmacy #9876", "Pharmacy"),
+            place("Walgreens", "Pharmacy"),
+        )
+        assertEquals(listOf("CVS Pharmacy", "CVS", "CVS Pharmacy #9876"), QueryNameFilter.apply("cvs", drug).map { it.name })
+    }
+
+    @Test
+    fun aNumberAtTheEndOfANameIsPartOfIt() {
+        // "Hoang 99" and "Hoang 2000" are two places named for a word, not a chain of "Hoang".
+        val numbered = listOf(
+            place("Hoang 99", "Vietnamese restaurant"),
+            place("Hoang 2000", "Vietnamese restaurant"),
+            place("Hoang Kitchen", "Vietnamese restaurant"),
+            place("Saigon Bowl", "Vietnamese restaurant"),
+        )
+        assertEquals(numbered.map { it.name }, QueryNameFilter.apply("hoang", numbered).map { it.name })
+        // A store number marked as one is not part of the name.
+        val chain = listOf(place("Jiffy Lube #1234", "Oil change service"), place("Jiffy Lube #88", "Oil change service"), place("Valvoline", "Oil change service"))
+        assertEquals(listOf("Jiffy Lube #1234", "Jiffy Lube #88"), QueryNameFilter.apply("jiffy lube", chain).map { it.name })
+    }
+
+    @Test
+    fun aPlaceNamedJustTheFoodIsNotABrand() {
+        val tacos = listOf(place("Tacos", "Mexican restaurant"), place("Casa Jalisco", "Mexican restaurant"), place("Taqueria Maya's", "Mexican restaurant"))
+        assertEquals(tacos.map { it.name }, QueryNameFilter.apply("tacos", tacos).map { it.name })
+        val boba = listOf(place("Boba", "Bubble tea store"), place("T4 Tea 4", "Bubble tea store"))
+        assertEquals(boba.map { it.name }, QueryNameFilter.apply("boba", boba).map { it.name })
+    }
+
+    @Test
+    fun aBrandKeepsWholeWordsNotTheStartOfOtherNames() {
+        val arco = listOf(place("ARCO", "Gas station"), place("Arco", "Gas station"), place("Arcos Tacos", "Mexican restaurant"), place("Shell", "Gas station"))
+        assertEquals(listOf("ARCO", "Arco"), QueryNameFilter.apply("arco", arco).map { it.name })
+        // A name typed in part still finds its places when no name has the word whole.
+        val food = listOf(place("McDonald's", "Fast food restaurant"), place("McDonald's", "Fast food restaurant"), place("Burger King", "Fast food restaurant"))
+        assertEquals(listOf("McDonald's", "McDonald's"), QueryNameFilter.apply("mcdo", food).map { it.name })
+    }
+
+    @Test
+    fun theRemoteListOfFoodWordsReplacesTheCompiledOne() {
+        val tacos = listOf(place("Tacos", "Mexican restaurant"), place("Tacos", "Mexican restaurant"), place("Casa Jalisco", "Mexican restaurant"))
+        // Compiled list: "taco" describes, every place stays.
+        assertEquals(3, QueryNameFilter.apply("tacos", tacos, QueryNameFilter.FOOD).size)
+        // A remote list without it: "Tacos" is the whole name of most matches, so the list narrows.
+        assertEquals(2, QueryNameFilter.apply("tacos", tacos, setOf("boba")).size)
+        val c = app.vela.core.config.CalibrationStore.parseBundle("""{"version": 99, "nameFilterFoodWords": ["boba", "Phở", ""]}""")!!
+        assertEquals(listOf("boba", "Phở"), c.nameFilterFoodWords)
+    }
 }

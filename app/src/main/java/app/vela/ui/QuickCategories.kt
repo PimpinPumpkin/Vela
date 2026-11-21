@@ -28,6 +28,13 @@ object QuickCategories {
     /** Every chip, most-used first, long tail at the end. Bars is left out while "Hide adult
      *  categories" is on: that filter drops every bar result, so the chip could only come back
      *  empty. Reading [HideAdult.on] here keeps the rows in step when the setting flips. */
+    /** Whether [query] is a chip's own query: a kind of place by construction, so a search along
+     *  a route never reads it as a name (`QueryNameFilter`). */
+    fun isChipQuery(query: String): Boolean {
+        val q = query.trim()
+        return catalog().any { it.query.equals(q, ignoreCase = true) } || q.equals(FUEL_KEY, ignoreCase = true)
+    }
+
     fun catalog(): List<Chip> = listOfNotNull(
         Chip(R.string.cat_restaurants, "Restaurants", Sym.Restaurant),
         Chip(R.string.cat_coffee, "Coffee", Sym.LocalCafe),

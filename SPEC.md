@@ -3807,7 +3807,20 @@ when the feature ids match. Two requests at most.
   naming word is one outside `PlaceNames.GENERIC`, in the singular or the plural; a describing word
   beside it ("shell gas station") may be in the name or in the category. A query that reads as a
   kind of place keeps every result: one with no naming word ("pizza", "burger"), one whose naming
-  words are in the category of at least as many results as in the name, or one no name matches.
+  words are in the category of at least as many results as in the name, one no name matches, or
+  one whose matches are not at least half named exactly the query, describing words and marked
+  store numbers aside. A brand's places carry its name whole ("CVS Pharmacy", "Chevron #4521"); a
+  word in many different names ("Pho Tasty", "Lenchitos Tacos", "Bob's Groceries") is a kind of
+  place's. Describing words are `PlaceNames.GENERIC` and the dishes and drinks that name places
+  but seldom are Google's category (boba, pho, ramen, taco, burrito and the like): `QueryNameFilter.FOOD`,
+  replaced by the remote settings' `nameFilterFoodWords` when it is present (SPEC 11). Each counts
+  in the singular or the plural ("groceries" is "grocery"). A name word matches whole
+  when any result has it whole ("arco" keeps "ARCO", not "Arcos Tacos"), and by its start only
+  when none does ("mcdo"). A number a name ends in is part of the name ("Pho 99" is not plain
+  "pho"); one marked as a store number ("#4521", "Store 12") is not. Davis to Sacramento on I-80, places in the route corridor before and after: without
+  that test "boba" kept 2 of 34, "tacos" 7 of 45, "ramen" 10 of 41, "pho" 4 of 15; with it, all of
+  them. "Chevron" (13 of 18) and "CVS" (8 of 9) narrow either way. A quick-category chip's query
+  skips the filter (`QuickCategories.isChipQuery`): it is a kind of place by construction.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
   in-nav search and the car's lists. Every query must be one the offline store expands.
   `catalog()` is every chip in the default order, `arranged()` the catalog in the user's order
@@ -6949,7 +6962,9 @@ read is not remote, so grep `CalibrationStore` for a new field's name. The bundl
 - Positions: `paths`, `directionsPaths`, `suggestPaths`, `stopBoardIndices`.
 - The browser identity fields.
 - Word tables: `statusClosedWords`, `statusOpenWords`, `transitCategoryWords`,
-  `transitExcludeWords`, `reviewWords`, and the review scrape's CSS `reviewSelectors`.
+  `transitExcludeWords`, `nameFilterFoodWords` (the dishes and drinks a search along a route
+  takes as describing words, SPEC 5.6), `reviewWords`, and the review scrape's CSS
+  `reviewSelectors`.
 - Fleet defaults: `defaultVoiceId`, `defaultVoiceSpeaker`, `defaultVoiceSpeed`,
   `defaultMapPalette`, `defaultPlacesSource`, `classicRoutePicker`.
 - `tuning`: name-to-number dials read with `Calibration.tune(key, compiledDefault)`. View code

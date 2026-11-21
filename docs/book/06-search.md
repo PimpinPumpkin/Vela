@@ -460,8 +460,12 @@ search field call `searchAlongRoute`:
 - `QueryNameFilter` narrows a typed brand or chain ("Shell", "mcdo") to the places whose name
   holds it. "Pizza", "burger" or "gas station" is a kind of place and keeps every result: the
   words are in the list of words that describe a business, or in the category of most results.
-  When no name matches, every result stays too. A kind word that is in neither, with few
-  categories that carry it, still narrows the list to the names that hold it.
+  When no name matches, every result stays too. A brand's places carry its name whole ("CVS
+  Pharmacy"), so the list narrows only when at least half the matching names are the query
+  itself; "boba", "tacos" or "pho" sits inside many different names and keeps every result, and
+  those dishes and drinks are on a short list of describing words too. Once a query is a brand,
+  only names that hold it as a whole word stay, so "Arco" does not bring "Arcos Tacos" along. A
+  chip's query is a kind of place and is never narrowed.
 - `RouteCorridor.alongRoute` keeps results within 3 km of the line and sorts them in travel
   order. The distance shown is the distance along the route to the result plus its distance off
   the line.
