@@ -82,6 +82,45 @@ class NavSession @Inject constructor(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
+    // Parked near the destination and walking off counts as arriving ([WalkAwayArrival]). The
+    // flag says when the step sensor is wanted; the nav service runs it and calls [onWalkStep].
+    private val walkAway = WalkAwayArrival()
+    /** Boot-clock seconds, the step sensor's clock; a test sets its own. */
+    internal var walkClockS: () -> Double = { SystemClock.elapsedRealtimeNanos() / 1e9 }
+    private val _walkWatch = MutableStateFlow(false)
+    val walkWatch: StateFlow<Boolean> = _walkWatch.asStateFlow()
+
+    /** One step from the step sensor ([app.vela.core.location.WalkSense]), boot-clock seconds. */
+    fun onWalkStep(tSec: Double) {
+        val walked = synchronized(walkAway) { walkAway.onStep(tSec) }
+        if (!walked) return
+        val s = _state.value
+        if (!s.navigating || s.arrived || s.paused) return
+        // Quiet: the driver is out of the car and knows it; the arrival card and the trip end
+        // are the same as an arrival at the door.
+        note("arrived: parked near the destination and walked off")
+        synchronized(walkAway) { walkAway.reset() }
+        _walkWatch.value = false
+        _state.update {
+            it.copy(
+                navigating = false,
+                arrived = true,
+                tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
+            )
+        }
+    }
+
+    private fun updateWalkAway(loc: LatLng, speedMps: Double?) {
+        val s = _state.value
+        val dest = destination
+        val toDest = if (dest != null && s.nextStop == null && mode == TravelMode.DRIVE && !replayMode) loc.distanceTo(dest) else null
+        val watch = synchronized(walkAway) {
+            walkAway.onFix(walkClockS(), speedMps, toDest)
+            walkAway.watching
+        }
+        if (_walkWatch.value != watch) _walkWatch.value = watch
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var destination: LatLng? = null
     private var lastRecheckMs = 0L
@@ -274,6 +313,8 @@ class NavSession @Inject constructor(
         voice.init(voiceEngine)
         lastRecheckMs = SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
+        synchronized(walkAway) { walkAway.reset() }
+        _walkWatch.value = false
         // Google's markup gives "Head toward F St"; add the cardinal so guidance
         // says "Head east on F St" like Google's own voice.
         val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.instruction.orEmpty(), route.polyline)
@@ -365,6 +406,8 @@ class NavSession @Inject constructor(
 
     fun stop() {
         quietStart = false
+        synchronized(walkAway) { walkAway.reset() }
+        _walkWatch.value = false
         // A reroute canceled here ends without its own FAILED/adopted line, which made an export
         // read as one attempt hanging for minutes (issue #557). Say so.
         if (rerouteJob?.isActive == true) {
@@ -634,6 +677,7 @@ class NavSession @Inject constructor(
         }
         if (!skipped && interrupting) announceStopsPassed(route, next.traveledM, loc)
         if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
+        if (_state.value.navigating && !_state.value.arrived) updateWalkAway(loc, speedMps)
         // A recheck starts from where the phone is, never from a dead-reckoned or held point, a
         // poor fix, or a fix the engine is already counting as off the line ([recheckFrom]).
         if (recheckFrom(trusted, next.offRouteHits)) maybeRecheck(loc, next)

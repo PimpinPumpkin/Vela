@@ -546,6 +546,14 @@ The drive arrives when any of these holds:
   line, whatever turns remain, for 10 fixes in a row (`PARK_STILL_FIXES`). The first three are
   tested on the last step only, and a car parked just short of a last turn into a lot never
   gets to it. The count keeps a car waiting to turn into the lot from arriving at the entrance.
+- You parked within `WalkAwayArrival.RADIUS_M = 250` of the destination in a straight line and
+  walked off (`WalkAwayArrival`), with no stop left ahead. After `PARKED_S = 15` seconds standing
+  still there, the nav service runs the step sensor (`WalkSense`, the walking dot's step counter),
+  and `STEPS = 16` steps within `WINDOW_S = 15` seconds end the drive as arrived, quietly. Driving
+  at 4 m/s or more, or leaving the radius, starts it over, and the sensor is off again. Steps, not
+  GPS speed: a queue crawling near the destination moves at walking pace, and only feet make a
+  step's rhythm. This is what ends a drive parked at the back of a big lot, now that the car
+  disconnecting no longer ends it.
 
 The voice says which side the destination is on when the route knows it, else "You have
 arrived". Within `DEST_ZONE_M = 150` of the destination nothing reroutes, so parking short of

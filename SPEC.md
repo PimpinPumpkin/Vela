@@ -1984,6 +1984,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   `PARK_STILL_FIXES` (10) fixes in a row (`NavState.stillFixes`), has arrived: the step does not
   move on at a standstill, so a car parked short of a last turn into a lot never reaches the
   last step. The count keeps a car waiting to turn in from arriving at the entrance.
+- Walking off counts as arriving (`WalkAwayArrival`, driving with no stop ahead). Standing still
+  (`STILL_MPS` 0.5 m/s) for `PARKED_S` (15 s) within `RADIUS_M` (250 m) straight-line of the
+  destination sets `NavSession.walkWatch`; `NavigationService` then collects `WalkSense.steps`
+  into `NavSession.onWalkStep`, and `STEPS` (16) within `WINDOW_S` (15 s) arrive with no voice
+  line. `DRIVING_MPS` (4 m/s) or leaving the radius resets it and the sensor stops. Not in replays.
 - The arrival line is "Your destination is on the left/right" when the arrive step has a side,
   else "You have arrived". OSRM and Valhalla put a side on their arrive step; the on-phone router
   and a route named from Google's line do not, so `NavEngine.withArrivalSide` gives one where a

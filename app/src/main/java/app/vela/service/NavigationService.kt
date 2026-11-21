@@ -29,6 +29,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import java.text.DateFormat
@@ -120,6 +122,14 @@ class NavigationService : Service() {
 
         if (!observing) {
             observing = true
+            // The step sensor only while the session is parked near its destination (WalkAwayArrival):
+            // getting out and walking off ends the drive as arrived, the screen off and the phone in
+            // a pocket included. Off again the moment the car drives or the drive ends.
+            @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+            navSession.walkWatch
+                .flatMapLatest { on -> if (on) app.vela.core.location.WalkSense.steps(this) else emptyFlow() }
+                .onEach { navSession.onWalkStep(it.tSec) }
+                .launchIn(scope)
             navSession.state
                 .onEach { s ->
                     when {
