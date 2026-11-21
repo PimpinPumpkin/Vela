@@ -993,9 +993,10 @@ class CarMapRenderer(
             val preview = previewRoute
             if (navigating()) {
                 runCatching { drawRoute(canvas, snap, sx, sy) }
-                runCatching { drawCorridor(canvas, snap, sx, sy) }
-                // Over the light and sign badges: a turn's light sits on its corner, under the arrow.
+                // Under the light and sign glyphs, as on the phone: the stop sign or light at a
+                // turn stays visible on top of its arrow.
                 runCatching { drawTurnArrows(canvas, snap, sx, sy) }
+                runCatching { drawCorridor(canvas, snap, sx, sy) }
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
                 for (other in previewOthers) {
@@ -1183,6 +1184,7 @@ class CarMapRenderer(
     }
 
     private fun drawPuck(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float, camUsed: Double) {
+        puckDrawn = false
         val here = puck ?: return
         val pt = project(snap, here, sx, sy) ?: return
         // Sized to the SCREEN, not a fixed pixel count: a fixed 22 px radius was a fifth of the
@@ -1212,7 +1214,13 @@ class CarMapRenderer(
         canvas.rotate(turn.toFloat(), pt.x, pt.y)
         canvas.drawBitmap(bmp, pt.x - px / 2f, pt.y - px / 2f, dayBitmapPaint)
         canvas.restore()
+        puckBox.set(pt.x - px / 2f, pt.y - px / 2f, pt.x + px / 2f, pt.y + px / 2f)
+        puckDrawn = true
     }
+
+    /** Where this frame's arrow was drawn, for the road pill to keep clear of. */
+    private val puckBox = RectF()
+    private var puckDrawn = false
 
     /** Bottom-right current-speed badge (km/h or mph per the user's units), plus the posted limit
      *  to its left when it is known: the US "SPEED LIMIT" sign in miles, the round red-ring sign
@@ -1276,7 +1284,9 @@ class CarMapRenderer(
     /** The road you are on, in a pill centered on the bottom of [safeArea], level with the speed
      *  badge, as Google's car map and the phone's pill name it ([CarRoadName]). The turn card
      *  names the next turn. Off with the phone's "Road name" set to off. A long name is cut to
-     *  the room between the speed corner and its mirror on the left. */
+     *  the room between the speed corner and its mirror on the left. Where that would touch the
+     *  arrow (a short screen, the arrow low and centered), it moves to the side of the arrow with
+     *  more room, cut to fit there, and is left out when neither side has room for a short name. */
     private fun drawRoadName(canvas: Canvas) {
         if (app.vela.ui.RoadLabel.mode.value == app.vela.ui.RoadLabel.OFF) return
         val road = CarRoadName.of(navSession.state.value) ?: return
@@ -1288,13 +1298,27 @@ class CarMapRenderer(
         val reserve = 200f * k + 16f
         val room = vis.width() - 2f * reserve - 2f * padX
         if (room < 60f * k) return
-        val text = android.text.TextUtils.ellipsize(road, roadText, room, android.text.TextUtils.TruncateAt.END).toString()
+        var text = android.text.TextUtils.ellipsize(road, roadText, room, android.text.TextUtils.TruncateAt.END).toString()
         if (text.isEmpty()) return
-        val w = roadText.measureText(text) + 2f * padX
+        var w = roadText.measureText(text) + 2f * padX
         val h = 46f * k
-        val cx = vis.exactCenterX()
+        var cx = vis.exactCenterX()
         val bottom = vis.bottom - 20f
         roadPillRect.set(cx - w / 2f, bottom - h, cx + w / 2f, bottom)
+        val gap = 8f * k
+        if (puckDrawn && RectF.intersects(roadPillRect, RectF(puckBox.left - gap, puckBox.top - gap, puckBox.right + gap, puckBox.bottom + gap))) {
+            val minX = vis.left + 16f
+            val maxX = vis.right - reserve
+            val leftRoom = puckBox.left - gap - minX
+            val rightRoom = maxX - (puckBox.right + gap)
+            val sideRoom = maxOf(leftRoom, rightRoom) - 2f * padX
+            if (sideRoom < 60f * k) return
+            text = android.text.TextUtils.ellipsize(road, roadText, sideRoom, android.text.TextUtils.TruncateAt.END).toString()
+            if (text.isEmpty()) return
+            w = roadText.measureText(text) + 2f * padX
+            cx = if (leftRoom >= rightRoom) puckBox.left - gap - w / 2f else puckBox.right + gap + w / 2f
+            roadPillRect.set(cx - w / 2f, bottom - h, cx + w / 2f, bottom)
+        }
         val night = isNight()
         roadPill.color = if (night) ROAD_PILL_NIGHT else Color.WHITE
         roadPillEdge.color = if (night) ROAD_EDGE_NIGHT else ROAD_EDGE_DAY

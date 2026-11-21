@@ -4894,8 +4894,8 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
 - The car map draws the same arrows on its canvas (`CarMapRenderer.drawTurnArrows`) for the next
   `CAR_ARROWS` (3) turns, cut from `route.polyline` (the line it draws) and kept until the route
   or the step changes: a 15 px indigo edge and an 11 px white body inside the 20 px route line,
-  scaled with the speed badge, and a 74 degree head 22 px across. Drawn after the corridor
-  badges, since a turn's light sits on its corner.
+  scaled with the speed badge, and a 74 degree head 22 px across. Drawn before the corridor
+  glyphs, as the phone stacks them, so a turn's light or stop sign shows on top of its arrow.
 
 #### Rasters
 
@@ -6651,7 +6651,9 @@ the same `:core` singletons as the phone (`CarDeps`).
   draws its lanes only within `LANE_SHOW_M` (800 m). The road you are on is a pill the car map
   draws centered on the bottom of the stable area, level with the speed badge (`drawRoadName`,
   `CarRoadName`: the phone pill's `roadLabelAt` rule, shortened, white or #303134 by day or night,
-  off when the phone's road label is off), and goes to the cluster as `Trip.currentRoad`. The
+  off when the phone's road label is off; where it would touch the arrow's drawn box it moves to
+  the side of the arrow with more room, cut to fit, and is left out when neither side fits a short
+  name), and goes to the cluster as `Trip.currentRoad`. The
   turn after the next is the next step only by the phone's "then" rule
   (`ManeuverMapper.thenShown`: within `COMPOUND_M`, 500 m, of the turn, and the turn within
   `LANE_SHOW_M`, 800 m). The card's color is `ManeuverMapper.TURN_CARD` (#008A8B, which the host
