@@ -145,6 +145,17 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         }
         }
 
+        // Cluster and wheel status (SPEC 10.9): what the vehicle integrations can do on this head
+        // unit, read live. On a phone or an unsupported car every line reads "not present". It adds
+        // no analytics or telemetry; it only reports local capability states.
+        Spacer(Modifier.height(4.dp))
+        SettingsGroup(title = stringResource(R.string.settings_vehicle_diagnostics)) {
+            for (line in app.vela.vehicle.VehicleCapabilities.report(context)) {
+                Hint("${line.label}: ${line.state.name.lowercase().replace('_', ' ')}" +
+                    (line.detail?.let { " ($it)" } ?: ""))
+            }
+        }
+
         // Demo modes (moved here 2026-09-17): test tools, kept apart from the settings people use
         // every day. The Google-style route picker used to sit beside them as an experiment; it is
         // the default now and lives in Settings > Navigation.

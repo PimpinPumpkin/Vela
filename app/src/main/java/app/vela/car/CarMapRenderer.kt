@@ -9,6 +9,7 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
+import android.content.Context
 import androidx.car.app.CarContext
 import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
@@ -57,10 +58,13 @@ import kotlin.math.roundToInt
  * traffic raster) are written into the style JSON first ([CarStyle]).
  */
 class CarMapRenderer(
-    private val carContext: CarContext,
+    // A CarContext for Android Auto; any Context for a surface of Vela's own (the cluster map).
+    private val context: Context,
     private val locationProvider: LocationProvider,
     private val navSession: NavSession,
     private val routeEngine: RouteEngine? = null,
+    // The speed badge and the limit sign. Off on a cluster, which shows the car's own.
+    private val badges: Boolean = true,
 ) : SurfaceCallback {
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate)
@@ -125,7 +129,7 @@ class CarMapRenderer(
     // Which look the palette was applied FOR. The car flips day/night on its own (the head unit's
     // light sensor or clock), and a palette applied once at style load stayed light through a
     // drive into the evening (user 2026-09-22, stock Pixel 9); requestRender re-applies it when
-    // carContext.isDarkMode no longer matches.
+    // the host's isDarkMode no longer matches.
     @Volatile private var themedNight: Boolean? = null
     // The Vela puck (the same bitmap the phone draws, ui/map/navPuckBitmap), scaled to the screen
     // once per size; the car used to draw its own green chevron (user: "not our pretty puck").
@@ -345,7 +349,10 @@ class CarMapRenderer(
             app.vela.ui.theme.ThemeMode.LIGHT -> false
             app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
             app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
-            else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+            else -> runCatching {
+                (context as? CarContext)?.isDarkMode
+                    ?: ((context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES)
+            }.getOrDefault(false)
         }
     }
 
@@ -384,7 +391,7 @@ class CarMapRenderer(
                 val wide = loc.hasAccuracy() && loc.accuracy > app.vela.core.location.Stillness.ACC_TRUST_M
                 if (speedMps < app.vela.core.location.Stillness.SLOW_MPS && (wide || app.vela.core.location.Stillness.still)) speedMps = 0.0
                 val nav = navigating()
-                if (nav != heldStill) { if (nav) app.vela.core.location.Stillness.hold(carContext) else app.vela.core.location.Stillness.release(); heldStill = nav }
+                if (nav != heldStill) { if (nav) app.vela.core.location.Stillness.hold(context) else app.vela.core.location.Stillness.release(); heldStill = nav }
                 // The same for a fix without a bearing: the direction from the last fix, once it
                 // has moved far enough for that to mean something.
                 val fixCourse: Double? = when {
@@ -523,7 +530,7 @@ class CarMapRenderer(
         // and every future requestRender would no-op — the map freezes after a screen change.
         rendering = false; dirty = false
         if (width <= 0 || height <= 0) return
-        runCatching { MapLibre.getInstance(carContext); app.vela.offline.LocalBasemapTiles.installIntoMapLibre() }
+        runCatching { MapLibre.getInstance(context); app.vela.offline.LocalBasemapTiles.installIntoMapLibre() }
         center = center ?: puck ?: runCatching { locationProvider.lastKnown() }.getOrNull()
         // No location yet (permission not granted, or no fix ever): draw the world rather than a
         // black surface; the first fix flies in to street level.
@@ -561,7 +568,7 @@ class CarMapRenderer(
         // JSON when there is one, else the bundled Liberty asset (the same layer ids as the live
         // style; it is the phone's offline fallback for the same reason).
         styleLayerIds = runCatching {
-            val json = patchedJson ?: carContext.assets.open("styles/liberty-roboto.json").bufferedReader().use { it.readText() }
+            val json = patchedJson ?: context.assets.open("styles/liberty-roboto.json").bufferedReader().use { it.readText() }
             val layers = org.json.JSONObject(json).getJSONArray("layers")
             (0 until layers.length()).map { layers.getJSONObject(it).getString("id") }
         }.getOrDefault(emptyList())
@@ -571,7 +578,7 @@ class CarMapRenderer(
             .withLogo(false)
         themed = false
         trafficShown = null; fuelOnlyShown = null
-        snapshotter = runCatching { QuietSnapshotter(carContext, opts) }.getOrNull()?.also { s2 ->
+        snapshotter = runCatching { QuietSnapshotter(context, opts) }.getOrNull()?.also { s2 ->
             // Vela's own palette on the car map (the same applyMapTheme the phone runs): until
             // 2026-09-21 the car drew stock Liberty under a darkening color filter, which read as
             // "a weird theme that is not ours" (user). This observer is a backstop: for a JSON style
@@ -835,7 +842,7 @@ class CarMapRenderer(
         snapshotter = null
         snapWidth = 0; snapHeight = 0
         rendering = false; dirty = false
-        surface?.let { onSurfaceAvailable(SurfaceContainer(it, width, height, carContext.resources.displayMetrics.densityDpi)) }
+        surface?.let { onSurfaceAvailable(SurfaceContainer(it, width, height, context.resources.displayMetrics.densityDpi)) }
         return true
     }
 
@@ -904,7 +911,7 @@ class CarMapRenderer(
             runCatching { drawPuck(canvas, snap, sx, sy, camUsed) } // puck always drawn
             // The speed badge on the drive screen and in drive mode, unless Settings > Navigation
             // "Show speed and speed limit" is off (issue #625).
-            if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
+            if (badges && (navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
             runCatching { drawAttribution(canvas) }
         } finally {
             runCatching { s.unlockCanvasAndPost(canvas) }

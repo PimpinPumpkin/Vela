@@ -37,6 +37,9 @@ class DiagExporter @Inject constructor(
             append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} — ${Build.MANUFACTURER} ${Build.MODEL}"))
             // Touchscreen, keypad-first and the D-pad devices behind it (SettingsDump.input).
             append(",\"input\":").append(quote(SettingsDump.input(context)))
+            // Which vehicle integrations are available/active here (SPEC 10.9): capability states
+            // and display names only, no vehicle identifiers and no position.
+            append(",\"vehicle\":").append(quote(app.vela.vehicle.VehicleCapabilities.exportLine(context)))
             append(",\"note\":").append(quote(DiagScrub.note(redact)))
             // Requests to Google per day and purpose (counts only, no URLs), Settings > Privacy.
             append(",\"googleRequests\":").append(GoogleUsageStore.exportJson())
