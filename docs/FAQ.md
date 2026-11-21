@@ -103,6 +103,14 @@ while driving" (Settings > Navigation), which works but is newer and rougher tha
 That is what it is for. It runs on GrapheneOS, CalyxOS, /e/OS and any other de-Googled
 Android, with no Play Services and no microG.
 
+## Does Vela work on Android Auto?
+
+Vela has full car screens: search, route choices, turn-by-turn and the map. Getting a car to
+list a sideloaded navigation app is the hard part. On GrapheneOS and other phones without the
+Play Store, use Gearslip or myCar, which replace the Android Auto app on the phone. On stock
+Android, King Installer works with many cars. [ANDROID-AUTO.md](ANDROID-AUTO.md) has the steps
+for each phone.
+
 ## Why can't Vela find me indoors?
 
 Vela asks Android for your position, and on a phone with no network location only GPS
