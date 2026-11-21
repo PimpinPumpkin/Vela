@@ -311,7 +311,11 @@ class NavSession @Inject constructor(
         }
         logRouteFigures("start", route)
         voice.init(voiceEngine)
-        lastRecheckMs = SystemClock.elapsedRealtime()
+        // A drive that starts on a stand-in route (planned on the phone's router because the
+        // network failed while the route was fetched, as on leaving home Wi-Fi) asks again on its
+        // first fix: the network is usually back by the time Start is tapped, and the fast-heal
+        // wait kept Google's route away for 20 s (a real drive, 2026-11-20).
+        lastRecheckMs = if (RouteHeal.degraded(route)) 0L else SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
         synchronized(walkAway) { walkAway.reset() }
         _walkWatch.value = false

@@ -357,7 +357,8 @@ While driving, the session asks for the route again from where you are. It skips
 while off route and while an offer is on screen. A drive on a degraded route, most often one
 planned on the phone's own router because the network dropped as it started (leaving home Wi-Fi),
 asks again on the first fix after the network comes back (`onNetworkBack`), not 20 s later: a real
-drive got Google's route 22 s in, though the network was back after a second. What happens next depends on the candidate:
+drive got Google's route 22 s in, though the network was back after a second. A drive that
+starts on a degraded route asks on its first fix, since the network is usually back by Start. What happens next depends on the candidate:
 
 - Same course, with live traffic: its arrival time corrects yours. The session keeps a
   multiplier on the remaining time (`etaScale`, clamped 0.5 to 2.5, reset on every route swap).

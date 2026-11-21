@@ -2179,7 +2179,8 @@ MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time 
 ```
 
 A validated default network (the view model's network callback) calls `onNetworkBack`: on a
-degraded route it clears the recheck clock, so the next fix rechecks. A recheck fetches from the
+degraded route it clears the recheck clock, so the next fix rechecks. A drive that starts on a
+degraded route starts with the clock clear too. A recheck fetches from the
 current position through the remaining stops. It does not run off
 route, in a replay, with an offer on screen, or with "Live traffic re-checks" off (pref
 `nav_live_rechecks`, `NavSession.liveRechecks`). It starts only from a fix that is the phone's
