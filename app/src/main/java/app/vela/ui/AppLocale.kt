@@ -122,7 +122,7 @@ object AppLocale {
         // Force the RTL/LTR direction from the chosen locale. setLocale only auto-updates
         // layoutDirection when the config's direction wasn't already set, but AdaptiveDensity.wrap
         // runs first and hands over a config with an explicit (LTR) direction, so Hebrew never
-        // flipped the layout without this (found + fixed in the vela-dpad fork).
+        // flipped the layout without this. MainActivity also provides the same direction to Compose.
         config.setLayoutDirection(locale)
         return base.createConfigurationContext(config)
     }

@@ -318,7 +318,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   palette with warm streets on slate; Modern by day), for the Vela look.
 - "Material You colors" tints buttons and accents from your wallpaper. With "AMOLED black" the
   backgrounds stay black.
-- "Font" is Google Sans Flex, the system font or your own font file. "Interface size" scales the
+- "Font" offers Google Sans Flex, Vazirmatn, the system font or your own font file. "Interface size" scales the
   interface.
 - "Page transitions" turns sliding motion off. "Call it just Maps" renames the launcher entry.
 - Settings is a hub of pages with a search box that jumps to the row.

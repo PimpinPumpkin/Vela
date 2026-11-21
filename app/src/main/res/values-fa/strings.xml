@@ -292,6 +292,7 @@
     <string name="settings_font_choose">انتخاب فایل فونت…</string>
     <string name="settings_font_custom">فونت سفارشی</string>
     <string name="settings_font_flex_hint">Google Sans Flex نسخه‌ای از خانوادهٔ فونت‌های Google با مجوز متن‌باز است و حروف لاتین را پوشش می‌دهد.</string>
+    <string name="settings_font_vazirmatn_hint">وزیرمتن یک فونت فارسی و عربی با مجوز آزاد است که تحت مجوز SIL Open Font License 1.1 همراه برنامه ارائه می‌شود.</string>
     <string name="settings_font_system">فونت سیستم</string>
     <string name="settings_hide_adult">پنهان کردن دسته‌های بزرگسالان</string>
     <string name="settings_hide_adult_hint">بارها، کلوب‌ها، کازینوها، فروشگاه‌های مشروبات و مکان‌های شبانه را از جست‌وجو و نقشه پنهان می‌کند.</string>

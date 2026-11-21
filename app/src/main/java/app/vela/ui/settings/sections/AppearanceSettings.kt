@@ -131,9 +131,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
         }
 
-        // FONT (issue #252). Only two states, and deliberately so: the platform font, or a file the
-        // user supplies. We ship no faces of our own - the one people ask for is proprietary and
-        // cannot be redistributed - so the honest offer is "use what you already have a license to".
+        // FONT (issue #252). Bundled open-licensed families, the platform font, or a file the user supplies.
         Spacer(Modifier.height(8.dp))
         val fontBad = stringResource(R.string.settings_font_bad)
         val fontScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -162,6 +160,12 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
             GroupDivider()
             SelectableRow(
+                label = "Vazirmatn",
+                selected = app.vela.ui.AppFont.vazirmatn.value,
+                onClick = { app.vela.ui.AppFont.setVazirmatn(context) },
+            )
+            GroupDivider()
+            SelectableRow(
                 label = stringResource(R.string.settings_font_system),
                 selected = app.vela.ui.AppFont.customName.value == null && !app.vela.ui.AppFont.builtin.value,
                 onClick = { app.vela.ui.AppFont.clear(context) },
@@ -182,6 +186,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
         }
         Hint(stringResource(R.string.settings_font_flex_hint))
+        Hint(stringResource(R.string.settings_font_vazirmatn_hint))
 
         Spacer(Modifier.height(8.dp))
         // Interface size: scales every control and sheet (not the map) - for car/tablet
