@@ -172,6 +172,15 @@ looked up as if you had typed it: it goes to Google's search, to Photon with "Us
 Google" on, or to the downloaded region's address index offline. The result opens under the
 contact's name on this phone only. The name is never sent anywhere.
 
+**Saving where you park (off by default).** With Settings > Map > "Save where I park" on, the
+phone works out where the car was left from the location fixes Vela already gets during a drive
+and keeps the spot on the phone, like the P button does. Nothing is sent anywhere. Its option
+"Also when the car's Bluetooth disconnects" asks for two more permissions when you turn it on:
+Nearby devices, to tell a car's Bluetooth from headphones, and location all the time, so that
+when the car's Bluetooth drops with Vela closed, Vela can take one location fix and save the
+spot. Vela uses location in the background for nothing else. Turning the option off stops it;
+Android's settings take the permissions back.
+
 ## No tracking
 
 Vela has no analytics, no advertising, no crash reporting, and no telemetry of its own that

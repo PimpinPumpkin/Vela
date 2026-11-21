@@ -291,9 +291,12 @@ off the list when it has been.
   estimate can soak up a long, steady turn).
 
 - "Save where I park" (`AutoParking`, `ParkWatch`; SPEC, Parking): the rules are unit-tested and
-  the leave-at-the-destination path was checked on a Pixel 4a with a mock drive. Not yet tried:
-  walking off for real (steps), an Android Auto disconnect in a car, and how often a stop that is
-  not parking gets saved.
+  the leave-at-the-destination path was checked on a Pixel 4a with a mock drive. The Bluetooth
+  option's permission prompts and its save path (through the adb test hook, with Vela not
+  running: the system's last fix, a new fix, and nothing with location all the time refused)
+  were checked on the 4a. Not yet tried: walking off for real (steps), an Android Auto
+  disconnect, a real car's Bluetooth (which class its unit reports), and how often a stop that
+  is not parking gets saved.
 
 - The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
   forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen

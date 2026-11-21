@@ -86,6 +86,8 @@ class ParkWatchTest {
         val w = ParkWatch()
         val (_, t) = drive(w, 60)
         assertNull(w.onLeave(t + 0.5))
+        assertTrue(w.movingAt(t + 0.5))
+        assertFalse(w.movingAt(t + ParkWatch.LEAVE_MAX_AGE_S + 1)) // too old to say
     }
 
     @Test fun `a leave long after the last fix saves nothing`() {

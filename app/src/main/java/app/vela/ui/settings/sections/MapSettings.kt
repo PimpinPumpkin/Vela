@@ -74,12 +74,7 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
             hint = stringResource(R.string.settings_parking_button_hint),
         )
         GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_auto_parking),
-            checked = app.vela.ui.AutoParking.on.value,
-            onCheckedChange = { app.vela.ui.AutoParking.set(context, it) },
-            hint = stringResource(R.string.settings_auto_parking_hint),
-        )
+        AutoParkingRows()
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_two_finger_tilt),
@@ -243,4 +238,53 @@ private fun StartViewRows(homeSet: Boolean) {
         onClick = { StartView.set(context, StartView.DRIVE) },
     )
     Hint(stringResource(R.string.settings_start_view_hint))
+}
+
+/** "Save where I park" and its Bluetooth option (AutoParking). The Bluetooth option asks for
+ *  Nearby devices (Android 12 and up), then for location all the time (Android 10 and up; from
+ *  11 the system shows its settings page for that). Nearby devices refused leaves it off;
+ *  location all the time refused leaves it on, saving only when Vela saw the drive. */
+@Composable
+private fun AutoParkingRows() {
+    val context = LocalContext.current
+    val ap = app.vela.ui.AutoParking
+    fun granted(p: String) = androidx.core.content.ContextCompat.checkSelfPermission(context, p) ==
+        android.content.pm.PackageManager.PERMISSION_GRANTED
+    val background = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { ap.setBluetooth(context, true) }
+    fun askBackground() {
+        if (android.os.Build.VERSION.SDK_INT >= 29 && !granted(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+            background.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } else {
+            ap.setBluetooth(context, true)
+        }
+    }
+    val nearby = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { ok ->
+        if (ok) askBackground()
+        else android.widget.Toast.makeText(context, R.string.settings_auto_parking_bt_denied, android.widget.Toast.LENGTH_LONG).show()
+    }
+    ToggleRow(
+        label = stringResource(R.string.settings_auto_parking),
+        checked = ap.on.value,
+        onCheckedChange = { ap.set(context, it) },
+        hint = stringResource(R.string.settings_auto_parking_hint),
+    )
+    if (ap.on.value) {
+        ToggleRow(
+            label = stringResource(R.string.settings_auto_parking_bt),
+            checked = ap.bluetooth.value,
+            onCheckedChange = { on ->
+                when {
+                    !on -> ap.setBluetooth(context, false)
+                    android.os.Build.VERSION.SDK_INT >= 31 && !granted(android.Manifest.permission.BLUETOOTH_CONNECT) ->
+                        nearby.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
+                    else -> askBackground()
+                }
+            },
+            hint = stringResource(R.string.settings_auto_parking_bt_hint),
+        )
+    }
 }

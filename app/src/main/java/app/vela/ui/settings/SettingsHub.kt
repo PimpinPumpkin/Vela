@@ -309,6 +309,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_transit_lines_trains to SettingsSection.MAP,
     R.string.settings_parking_button to SettingsSection.MAP,
     R.string.settings_auto_parking to SettingsSection.MAP,
+    R.string.settings_auto_parking_bt to SettingsSection.MAP,
     R.string.settings_two_finger_tilt to SettingsSection.MAP,
     R.string.settings_keep_north_up to SettingsSection.MAP,
     R.string.settings_turn_with_travel to SettingsSection.MAP,

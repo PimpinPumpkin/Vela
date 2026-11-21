@@ -29,6 +29,7 @@ class ParkWatch {
     private val steps = ArrayDeque<Double>()
     private var lastT = Double.NaN
     private var lastAt: LatLng? = null
+    private var lastSpeed = Double.NaN
 
     /** A fix at [tSec] (boot clock) and its speed. A fix with no speed is skipped. */
     fun onFix(tSec: Double, at: LatLng, speedMps: Double?) {
@@ -36,6 +37,7 @@ class ParkWatch {
         lastT = tSec
         lastAt = at
         val sp = speedMps ?: return
+        lastSpeed = sp
         if (drove && stillAt == null && tSec - lastDriveS > DROVE_FORGET_S) drove = false
         when {
             sp >= WALK_MAX_MPS -> {
@@ -54,6 +56,11 @@ class ParkWatch {
             }
         }
     }
+
+    /** Whether the last fix, under [LEAVE_MAX_AGE_S] old at [tSec], was faster than a walk: a leave
+     *  signal now (a Bluetooth glitch mid-drive) is not parking. */
+    fun movingAt(tSec: Double): Boolean =
+        !lastT.isNaN() && tSec - lastT <= LEAVE_MAX_AGE_S && lastSpeed >= WALK_MAX_MPS
 
     /** Whether steps are wanted: a drive is on record and the car stands still. */
     val parked: Boolean get() = drove && stillAt != null

@@ -4,6 +4,12 @@
     <!-- Location is AOSP-only (LocationManager); no Play Services needed. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- "Save where I park" > "Also when the car's Bluetooth disconnects" (AutoParking), off by
+         default; both are asked only when that switch is turned on. Nearby devices tells a car's
+         Bluetooth from headphones; location all the time takes the fix when Vela is closed. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -279,6 +285,15 @@
             android:name="android.telephony.PROPERTY_SATELLITE_DATA_OPTIMIZED"
             android:value="${applicationId}" />
 
+        <!-- The car's Bluetooth disconnecting, for "Save where I park" (CarBluetoothReceiver). The
+             broadcast is protected: only the system sends it. -->
+        <receiver
+            android:name=".ui.CarBluetoothReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

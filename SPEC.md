@@ -4181,7 +4181,7 @@ the shared 12 s timeout cuts it off.
   destination or a remaining stop is skipped. The tone plays on the guidance stream through
   `VoiceGuide.placeTone` and `name` is spoken, so muting the voice mutes both. The status card
   shows the place and its list. Fixes only arrive while the map is open or a drive is
-  running; nothing asks for background location. Log tag `VelaPassAlert` (sound and count,
+  running; the alerts ask for no background location. Log tag `VelaPassAlert` (sound and count,
   never the name).
 - Parking is one tap on the P button, with a history. Settings > Map "Parking button"
   (`ParkingButton`, default on) hides the button while no spot is saved. With it on, the
@@ -4205,9 +4205,20 @@ the shared 12 s timeout cuts it off.
   A leave signal needs the car still for `LEAVE_STILL_S` (3 s), the last fix under
   `LEAVE_MAX_AGE_S` (120 s) old and within `LEAVE_NEAR_M` (25 m) of the spot. One spot per
   drive; a drive `DROVE_FORGET_S` (30 min) old with no stop since is forgotten. No fix with the
-  simulated location on counts. Google also uses the car's Bluetooth disconnecting and Play
-  services' activity recognition; Vela has neither (Bluetooth needs the Nearby devices and
-  background location permissions). Log tag `VelaParking` (the trigger, never the place).
+  simulated location on counts. Log tag `VelaParking` (the trigger, never the place).
+- "Also when the car's Bluetooth disconnects" (`AutoParking.bluetooth`, pref `auto_parking_bt`,
+  off, shown under "Save where I park") adds the car's Bluetooth dropping, as Google does.
+  `CarBluetoothReceiver` takes `ACTION_ACL_DISCONNECTED` (a protected broadcast) for a device of
+  class `AUDIO_VIDEO_CAR_AUDIO` or `AUDIO_VIDEO_HANDSFREE`; headphones are other classes. Turning
+  it on asks for Nearby devices (`BLUETOOTH_CONNECT`, Android 12 and up, needed to read the class;
+  refused leaves it off), then location all the time (`ACCESS_BACKGROUND_LOCATION`; refused
+  leaves it on, saving only from what Vela saw). `carBluetoothGone`: the drive Vela saw decides
+  first (a spot by the leave rule, nothing if the car was last seen faster than a walk); with no
+  fix of its own, the system's last GPS fix if under `BT_FRESH_S` (30 s) old, else a new one within
+  `BT_FIX_TIMEOUT_MS` (8 s), falling back to the last fix under `BT_LAST_FIX_MAX_S` (120 s), at
+  `BT_MAX_ACC_M` (50 m) or better and slower than a walk. Nothing with the simulated location on.
+  Test hook: `setprop debug.vela.tune.parkBtTest 1`, then an explicit broadcast of
+  `app.vela.test.CAR_BLUETOOTH_GONE` to the receiver (no device check).
 - The picker both Import buttons open starts in the phone's own storage at Download
   (`DocumentsContract.EXTRA_INITIAL_URI` on the external storage provider's `primary:Download`),
   not in the picker's Downloads view: that view lists the media index, where a file an unzipper

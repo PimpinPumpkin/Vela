@@ -258,6 +258,9 @@
     <string name="settings_parking_button_hint">The P button on the map that saves where you parked. Off: it shows only while a spot is saved.</string>
     <string name="settings_auto_parking">Save where I park</string>
     <string name="settings_auto_parking_hint">After a drive, the spot saves itself when you walk away from the car, when Android Auto disconnects, or when you leave Vela at your destination.</string>
+    <string name="settings_auto_parking_bt">Also when the car\'s Bluetooth disconnects</string>
+    <string name="settings_auto_parking_bt_hint">Asks for Nearby devices, to tell your car from headphones, and for location all the time, so it works with Vela closed.</string>
+    <string name="settings_auto_parking_bt_denied">Without Nearby devices, Vela can\'t tell your car\'s Bluetooth from headphones.</string>
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_keep_north_up">Keep north up</string>

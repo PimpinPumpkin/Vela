@@ -320,6 +320,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   offers to save the spot too.
 - "Save where I park" (off by default) saves the spot by itself after a drive: when you walk
   away from the car, when Android Auto disconnects, or when you leave Vela at your destination.
+  An option adds the car's Bluetooth disconnecting, with Vela closed too.
 - Recent searches and places can be removed one by one or cleared together.
 
 ## Privacy controls
