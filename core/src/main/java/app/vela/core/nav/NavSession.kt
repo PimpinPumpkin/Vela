@@ -932,6 +932,24 @@ class NavSession @Inject constructor(
 
     // --- live re-check ------------------------------------------------------
 
+    /**
+     * The phone has a working connection again (a validated default network). A drive whose route
+     * is degraded, most often one planned on the phone's own router because the network dropped at
+     * the start (leaving home Wi-Fi), asks again on the next fix instead of waiting out the fast-heal
+     * interval: a real drive's Google route came 22 s in, a second after the network was back. At
+     * most once per [NETWORK_BACK_MIN_GAP_MS], since a car between Wi-Fi and cellular flaps.
+     */
+    fun onNetworkBack() {
+        val route = _state.value.route ?: return
+        if (!_state.value.navigating || !RouteHeal.degraded(route)) return
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastNetworkBackMs < NETWORK_BACK_MIN_GAP_MS) return
+        lastNetworkBackMs = now
+        lastRecheckMs = 0L
+        note("network back on a degraded route: re-check on the next fix")
+    }
+    private var lastNetworkBackMs = 0L
+
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
         if (replayMode) return // hermetic replays never fetch live traffic/routes
         if (!liveRechecks) return // privacy opt-out: no periodic current-position requests
@@ -1545,6 +1563,7 @@ class NavSession @Inject constructor(
         const val AUTO_RESUME_HITS = 3
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
+        const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
         // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter

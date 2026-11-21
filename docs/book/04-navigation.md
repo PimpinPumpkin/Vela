@@ -346,6 +346,7 @@ after N ms), will retry while off-route`.
 RECHECK_INTERVAL_MS           = 120_000   // every 2 minutes, spread by plus or minus 25%
 DEGRADED_RECHECK_INTERVAL_MS  =  20_000   // while the route is degraded
 DEGRADED_FAST_TRIES           = 6         // then back to the normal interval
+NETWORK_BACK_MIN_GAP_MS       =  10_000   // a returning network asks at most this often
 MIN_RECHECK_DISTANCE_M        = 1_500     // no rechecks this close to the destination
 SAME_COURSE_M                 = 250       // a candidate within this of the line is the same course
 FASTER_THRESHOLD_S            = 90        // an offer must save more than this
@@ -353,7 +354,10 @@ MIN_PLAUSIBLE_ETA_FRACTION    = 0.4       // a candidate under 40% of the time l
 ```
 
 While driving, the session asks for the route again from where you are. It skips the recheck
-while off route and while an offer is on screen. What happens next depends on the candidate:
+while off route and while an offer is on screen. A drive on a degraded route, most often one
+planned on the phone's own router because the network dropped as it started (leaving home Wi-Fi),
+asks again on the first fix after the network comes back (`onNetworkBack`), not 20 s later: a real
+drive got Google's route 22 s in, though the network was back after a second. What happens next depends on the candidate:
 
 - Same course, with live traffic: its arrival time corrects yours. The session keeps a
   multiplier on the remaining time (`etaScale`, clamped 0.5 to 2.5, reset on every route swap).

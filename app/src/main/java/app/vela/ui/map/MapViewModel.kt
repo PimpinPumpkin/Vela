@@ -2607,6 +2607,10 @@ class MapViewModel @Inject constructor(
             }
             val line = "$event: $summary"
             if (line != lastNet) { lastNet = line; diag.record("net", line); app.vela.diag.TripNote.add("net: $line") }
+            // A working connection again: a drive on a route planned without one asks now.
+            if (caps != null && caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) && event != "blocked") {
+                viewModelScope.launch { navSession.onNetworkBack() }
+            }
         }
         runCatching {
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {

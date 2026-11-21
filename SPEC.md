@@ -2171,13 +2171,16 @@ START_REPLAN_M                 150   Start this far from the route plans again f
 RECHECK_INTERVAL_MS          120_000   each wait drawn +/-25% (Jitter), redrawn per recheck
 DEGRADED_RECHECK_INTERVAL_MS  20_000   while the route is degraded, same spread
 DEGRADED_FAST_TRIES                6   then back to the normal interval
+NETWORK_BACK_MIN_GAP_MS       10_000   NavSession.onNetworkBack at most this often
 MIN_RECHECK_DISTANCE_M         1_500   no recheck this near the destination
 SAME_COURSE_M                    250   a candidate within this of the current line is the same course
 FASTER_THRESHOLD_S                90   minimum saving before a route is offered
 MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time left is not offered
 ```
 
-A recheck fetches from the current position through the remaining stops. It does not run off
+A validated default network (the view model's network callback) calls `onNetworkBack`: on a
+degraded route it clears the recheck clock, so the next fix rechecks. A recheck fetches from the
+current position through the remaining stops. It does not run off
 route, in a replay, with an offer on screen, or with "Live traffic re-checks" off (pref
 `nav_live_rechecks`, `NavSession.liveRechecks`). It starts only from a fix that is the phone's
 own position (`onLocation`'s `fromFix`: not a dead-reckoned point, not a fix the position filter
