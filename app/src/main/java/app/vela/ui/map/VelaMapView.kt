@@ -3263,6 +3263,7 @@ fun VelaMapView(
         }
         wasNavRef[0] = true
         navPuck.engaged = false
+        navPuck.lastFixV = Double.NaN; navPuck.gpsBrake = 0.0 // a new drive measures its own braking
         val navWin = doubleArrayOf(Double.NaN) // route-split window end (m); relaunch = fresh route = re-anchor
         val cutStart = doubleArrayOf(Double.NaN) // cut piece [start, end] along the route (m)
         val cutEnd = doubleArrayOf(Double.NaN)
@@ -3369,7 +3370,7 @@ fun VelaMapView(
                 mapRef?.cameraPosition?.let { cp -> MapPerf.zoom = cp.zoom; MapPerf.tilt = cp.tilt }
                 MapPerf.following = navFollowingHolder.value
                 MapPerf.symbolsHidden = turnDeclutter.active
-                navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
+                navPuck.kalman.predict(if (navPuck.gpsBrake < 0.0) minOf(fwd, navPuck.gpsBrake) else fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
                 // Dead-reckon by INTEGRATING the live modeled speed — over THIS frame's part of
                 // the blind window since the fix (TRACE time; the window caps how far a dropped
@@ -5309,7 +5310,20 @@ fun VelaMapView(
             // held state speed here — the old code — re-injected the stale braking speed at
             // near-unity gain through every stop: the stuck-mph/creeping-puck bug. A doppler-less
             // fix simply doesn't measure (predict + decay carry the model).
-            mySpeedRaw?.let { navPuck.kalman.update(it.toDouble()) }
+            mySpeedRaw?.let { v ->
+                // Braking, from two fixes in a row: the speed each one measured over the time
+                // between them. Between fixes the arrow advances at the modeled speed, and the
+                // accelerometer that slows it can read nothing useful (a phone loose in a
+                // cupholder, on a desk in the rig): a 2.5 m/s2 stop left the arrow 5.6 m past the
+                // car, and then it slid back. The model now slows at whichever is harder.
+                val dtV = (now - navPuck.lastFixVAtMs) / 1000.0
+                val trend = if (!navPuck.lastFixV.isNaN() && dtV in BRAKE_MIN_GAP_S..BRAKE_MAX_GAP_S) (v - navPuck.lastFixV) / dtV else 0.0
+                navPuck.gpsBrake = if (trend <= -BRAKE_MIN_MPS2 && v < app.vela.ui.AppTune.value("gpsBrakeBelow", BRAKE_BELOW_MPS.toDouble()) && app.vela.ui.AppTune.value("gpsBrake", 1.0) >= 0.5)
+                    trend.coerceAtLeast(-BRAKE_MAX_MPS2) else 0.0
+                navPuck.lastFixV = v.toDouble()
+                navPuck.lastFixVAtMs = now
+                navPuck.kalman.update(v.toDouble())
+            }
             navPuck.speed = navPuck.kalman.speed
             app.vela.diag.NavTrace.fix(now, m, navPuck.speed, fixAgeMs, accepted)
             if (accepted) navPuck.speedAtAccept = navPuck.speed
@@ -9839,6 +9853,11 @@ private class NavPuck {
     var stopFixN = 0
     var stoppedSinceMs = 0L
     var settleToM = Double.NaN    // the arrow glides back to here while the car stays stopped
+    // Braking the GPS speeds show (BRAKE_*): the last fix's Doppler speed and when it came, and the
+    // deceleration from the fix before it, applied between fixes so the arrow slows with the car.
+    var lastFixV = Double.NaN
+    var lastFixVAtMs = 0L
+    var gpsBrake = 0.0
     var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
                                   // exactly when the resume fix needs the window big)
@@ -9925,6 +9944,15 @@ private const val HEAD_LEAD_S = 0.3
 /** How much further on the camera aims, for its own ease's lag in a turn. 0 aims at the arrow. */
 private const val CAM_LEAD_S = 0.4
 /** Stopped means under this speed, model and fix both. */
+/** GPS braking ([NavPuck.gpsBrake]): two fixes this far apart (s) give a deceleration; one of at
+ *  least BRAKE_MIN_MPS2 slows the model between fixes, at most BRAKE_MAX_MPS2, and only under
+ *  BRAKE_BELOW_MPS: a stop comes from city speed, and a single low Doppler reading on a freeway
+ *  must not hold the arrow back. The `gpsBrake` dial at 0 turns it off. */
+private const val BRAKE_MIN_GAP_S = 0.4
+private const val BRAKE_MAX_GAP_S = 2.5
+private const val BRAKE_MIN_MPS2 = 0.8
+private const val BRAKE_MAX_MPS2 = 6.0
+private const val BRAKE_BELOW_MPS = 20.0f
 private const val STOP_SETTLE_MPS = 0.3
 /** How long stopped before the arrow may settle back onto the fixes. */
 private const val STOP_SETTLE_AFTER_MS = 1_000L

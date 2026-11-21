@@ -234,8 +234,12 @@ has caught up. On a mock turn from a stop that took the map's lag from 1.5 s to 
 arrow's from 1.0 s to 0.7 s (SPEC 4.7).
 
 The arrow only moves forward, so carrying on at its modeled speed through a stop can leave it
-past the car. Stopped for a second and three fixes, it glides back onto where the fixes put the
-car, and the first fix of a pull-away is taken at once when its own speed says the car is moving.
+past the car. Between fixes the model slows at the braking the last two fixes' speeds show, or the
+accelerometer's if that is harder, so the arrow stops with the car: on a mock stop at 2.5 m/s²
+it ran 5.6 m past and then slid back, and now stops 0.7 m past and stays. A real drive showed the
+slide back at every stop. If it still ends more than 2.5 m past, stopped for a second and three
+fixes, it glides back onto where the fixes put the car. The first fix of a pull-away is taken at
+once when its own speed says the car is moving.
 
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
 rubber duck, which in a drive are 3D (`ui/map/Puck3D.kt`): low-poly meshes for the car, UFO and

@@ -2285,6 +2285,14 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   `stopSettle`. On the mock turn from a stop below, the arrow had stopped 5.7 m past the car and
   stayed there until the car drove up to it; with these two rules its mean error through the 8 s
   stop is 0.7 m against 5.7, and through the stop and the 8 s after it 1.8 m against 3.8.
+- GPS braking (`NavPuck.gpsBrake`): two fixes `BRAKE_MIN_GAP_S`..`BRAKE_MAX_GAP_S` (0.4 to 2.5 s)
+  apart whose Doppler speeds fall by at least `BRAKE_MIN_MPS2` (0.8 m/s²), the later one under
+  `BRAKE_BELOW_MPS` (20 m/s), set a deceleration (at most `BRAKE_MAX_MPS2`, 6 m/s²) that the speed
+  model's predict step takes until the next fix, when it is harder than the accelerometer's. The
+  settle above was gliding the arrow back at every stop (a real drive; mock stop at 2.5 m/s²: 5.6 m
+  past, 5.6 m back). With it the mock stop ends 0.7 m past with no glide back, at a cost of 0.3 m
+  more behind in the 3 s after pull-away and 0.06 s more heading lag through the turn after. Dials
+  `gpsBrake` (0 off) and `gpsBrakeBelow` (m/s).
 - The smoothing window's width eases toward its speed target with `PUCK_WIN_TAU_S` (2.5 s). On a
   curve the width is a lateral position, so speed noise in it is sideways movement.
 - The arrow's heading is the chord across at least `HEAD_WIN_MIN_M` (12 m) either side of a point
