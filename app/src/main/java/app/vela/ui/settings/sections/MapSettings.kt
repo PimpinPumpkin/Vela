@@ -75,6 +75,13 @@ internal fun MapSettingsScreen(onBack: () -> Unit, homeSet: Boolean = false) {
         )
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_auto_parking),
+            checked = app.vela.ui.AutoParking.on.value,
+            onCheckedChange = { app.vela.ui.AutoParking.set(context, it) },
+            hint = stringResource(R.string.settings_auto_parking_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_two_finger_tilt),
             checked = app.vela.ui.MapTilt.on.value,
             onCheckedChange = { app.vela.ui.MapTilt.set(context, it) },

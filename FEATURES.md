@@ -318,6 +318,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - The parking button saves where you parked, then offers Find my car, which shows how far the car
   is and when you parked. "Parking history" keeps past spots. When a drive ends, the arrival card
   offers to save the spot too.
+- "Save where I park" (off by default) saves the spot by itself after a drive: when you walk
+  away from the car, when Android Auto disconnects, or when you leave Vela at your destination.
 - Recent searches and places can be removed one by one or cleared together.
 
 ## Privacy controls

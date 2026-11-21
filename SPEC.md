@@ -4190,6 +4190,24 @@ the shared 12 s timeout cuts it off.
   "Find my car" opens the spot as a sheet whose facts line gives the distance from you and how
   long ago it was saved (`ParkingActions.parkedAt`). On a key-first device the arrival card opens
   with focus on Done, and each of its buttons draws the focus ring.
+- "Save where I park" (Settings > Map, `AutoParking`, pref `auto_parking`, off by default) saves
+  the spot by itself, to the same store and history. `ParkWatch` keeps the place the car stood
+  still (`STILL_MPS` 0.5 m/s or slower) after a GPS fix at `DRIVING_MPS` (4 m/s) or faster; a fix
+  faster than `WALK_MAX_MPS` (2.5 m/s) starts it over, and until the first step a still fix
+  within `SETTLE_M` (10 m) moves it (a slow reverse into the space). It is saved when:
+  - the driver walks off: `STEPS` (16) steps within `WINDOW_S` (15 s), once the car has stood
+    `PARKED_S` (10 s). Steps, not speed: a crawl in a queue moves at walking pace too. The map
+    counts steps (`WalkSense`) while the car stands still after a drive with Vela on screen;
+  - the car's screen disconnects (`VelaCarSession.onDestroy`);
+  - a drive ends with the driver walking off (`NavSession.onWalkedOff`);
+  - Vela leaves the screen while a drive is on or has arrived, within `PARK_NEAR_DEST_M` (400 m)
+    of its destination. Leaving it anywhere else (at a light) saves nothing.
+  A leave signal needs the car still for `LEAVE_STILL_S` (3 s), the last fix under
+  `LEAVE_MAX_AGE_S` (120 s) old and within `LEAVE_NEAR_M` (25 m) of the spot. One spot per
+  drive; a drive `DROVE_FORGET_S` (30 min) old with no stop since is forgotten. No fix with the
+  simulated location on counts. Google also uses the car's Bluetooth disconnecting and Play
+  services' activity recognition; Vela has neither (Bluetooth needs the Nearby devices and
+  background location permissions). Log tag `VelaParking` (the trigger, never the place).
 - The picker both Import buttons open starts in the phone's own storage at Download
   (`DocumentsContract.EXTRA_INITIAL_URI` on the external storage provider's `primary:Download`),
   not in the picker's Downloads view: that view lists the media index, where a file an unzipper

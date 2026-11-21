@@ -698,6 +698,7 @@ class MapViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { app.vela.ui.AppVisibility.foreground.collect { app.vela.diag.TripNote.add(if (it) "app: on screen" else "app: off screen") } }
+        startAutoParking()
         // "Place icons" picked in the Layers menu applies at once, not at the next pan: the
         // other place switches reach onPoiPrefsChanged from the screen, this one had no caller.
         viewModelScope.launch {
@@ -1056,6 +1057,9 @@ class MapViewModel @Inject constructor(
                 val fixRtNanos = if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L
                 val dt = if (lastFixRtNanos > 0L) (fixRtNanos - lastFixRtNanos) / 1e9 else -1.0
                 if (lastFixRtNanos > 0L && dt <= 0.0) return@collect // duplicate/reordered delivery — drop it
+                if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    app.vela.ui.AutoParking.onFix(fixRtNanos / 1e9, LatLng(loc.latitude, loc.longitude), if (loc.hasSpeed()) loc.speed.toDouble() else null)
+                }
                 // A NETWORK fix must also be better than the last fix, aged (Organic Maps'
                 // isLocationBetterThanLast): the last fix's accuracy radius grows 5 m (or the speed)
                 // per second, and the new one has to beat it. Before GPS locks the network feed
@@ -6336,6 +6340,43 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** "Save where I park" ([app.vela.ui.AutoParking]): a spot saved anywhere shows on the map;
+     *  steps are counted while the car stands still after a drive with Vela on screen; Vela leaving
+     *  the screen near a drive's destination, or a drive ending on foot, is the phone leaving the
+     *  car. Leaving the screen anywhere else (at a light) is not. */
+    private fun startAutoParking() {
+        val ap = app.vela.ui.AutoParking
+        viewModelScope.launch {
+            ap.saved.collect {
+                restoreParkingSpot()
+                if (app.vela.ui.AppVisibility.foreground.value) {
+                    android.widget.Toast.makeText(appContext, app.vela.R.string.map_parking_auto_saved, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        viewModelScope.launch {
+            app.vela.ui.AppVisibility.foreground.collect { fg ->
+                if (fg) return@collect
+                val s = navSession.state.value
+                val dest = s.route?.polyline?.lastOrNull() ?: return@collect
+                val here = _state.value.myLocation ?: return@collect
+                if ((s.navigating || s.arrived) && here.distanceTo(dest) <= PARK_NEAR_DEST_M) ap.leave("off screen at the destination")
+            }
+        }
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                ap.parked,
+                app.vela.ui.AppVisibility.foreground,
+                androidx.compose.runtime.snapshotFlow { ap.on.value },
+                _state.map { it.replaying }.distinctUntilChanged(),
+            ) { parked, fg, on, replaying -> parked && fg && on && !replaying }.distinctUntilChanged().collectLatest { wanted ->
+                if (!wanted) return@collectLatest
+                app.vela.core.location.WalkSense.steps(appContext).collect { ap.onStep(it.tSec) }
+            }
+        }
+        navSession.onWalkedOff = { ap.leave("drive ended on foot") }
+    }
+
     private fun restoreParkingSpot() {
         val history = parkingStore.history()
         val current = parkingStore.current()
@@ -11052,6 +11093,8 @@ class MapViewModel @Inject constructor(
 
     companion object {
         const val DRAWINGS_LIST_ID = "list:drawings"
+        /** Vela leaving the screen this near a drive's destination saves the parking spot (AutoParking). */
+        private const val PARK_NEAR_DEST_M = 400.0
         /** A name match "near you" that replaces a far view's results is within this of you. */
         private const val HOME_NAME_MAX_M = 40_000.0
         /** Id prefix of a results row that stands for a custom map's planned route. */

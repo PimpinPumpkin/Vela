@@ -256,6 +256,8 @@
     <string name="nav_end_confirm_keep">Keep going</string>
     <string name="settings_parking_button">Parking button</string>
     <string name="settings_parking_button_hint">The P button on the map that saves where you parked. Off: it shows only while a spot is saved.</string>
+    <string name="settings_auto_parking">Save where I park</string>
+    <string name="settings_auto_parking_hint">After a drive, the spot saves itself when you walk away from the car, when Android Auto disconnects, or when you leave Vela at your destination.</string>
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_keep_north_up">Keep north up</string>
@@ -1006,6 +1008,7 @@
     <string name="car_location_denied">Location is off. Turn it on for Vela in your phone\'s settings.</string>
     <string name="car_no_route">No route available. Check your location.</string>
     <string name="map_parking_saved">Parking spot saved</string>
+    <string name="map_parking_auto_saved">Saved where you parked</string>
     <string name="map_parking_no_fix">Waiting for a location fix</string>
     <string name="map_parking_cleared">Parking spot cleared</string>
     <string name="map_parked_car">Parked car</string>

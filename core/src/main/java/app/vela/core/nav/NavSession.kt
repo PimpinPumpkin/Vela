@@ -89,6 +89,8 @@ class NavSession @Inject constructor(
     internal var walkClockS: () -> Double = { SystemClock.elapsedRealtimeNanos() / 1e9 }
     private val _walkWatch = MutableStateFlow(false)
     val walkWatch: StateFlow<Boolean> = _walkWatch.asStateFlow()
+    /** Called when a drive ends by the driver walking off: the app saves the parking spot. */
+    @Volatile var onWalkedOff: (() -> Unit)? = null
 
     /** One step from the step sensor ([app.vela.core.location.WalkSense]), boot-clock seconds. */
     fun onWalkStep(tSec: Double) {
@@ -108,6 +110,7 @@ class NavSession @Inject constructor(
                 tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
             )
         }
+        onWalkedOff?.invoke()
     }
 
     private fun updateWalkAway(loc: LatLng, speedMps: Double?) {

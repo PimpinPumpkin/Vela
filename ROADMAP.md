@@ -290,6 +290,11 @@ off the list when it has been.
   real turn to show it never holds back a real one (the linear acceleration sensor's gravity
   estimate can soak up a long, steady turn).
 
+- "Save where I park" (`AutoParking`, `ParkWatch`; SPEC, Parking): the rules are unit-tested and
+  the leave-at-the-destination path was checked on a Pixel 4a with a mock drive. Not yet tried:
+  walking off for real (steps), an Android Auto disconnect in a car, and how often a stop that is
+  not parking gets saved.
+
 - The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
   forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen
   on a phone that is hot for real, or whether the voice lines then render in time: read the

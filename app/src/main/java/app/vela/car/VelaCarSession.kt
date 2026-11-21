@@ -95,6 +95,10 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
      */
     private fun carFix(loc: android.location.Location) {
         val now = android.os.SystemClock.elapsedRealtime()
+        if (loc.provider == android.location.LocationManager.GPS_PROVIDER && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+            val t = (if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L) / 1e9
+            app.vela.ui.AutoParking.onFix(t, LatLng(loc.latitude, loc.longitude), if (loc.hasSpeed()) loc.speed.toDouble() else null)
+        }
         if (app.vela.core.location.GuidanceFix.phoneFeeding(now)) return
         val acc = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null
         val sp = if (loc.hasSpeed()) loc.speed.toDouble() else null
@@ -119,6 +123,8 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
+        // The car's screen going away with the car stopped after a drive: the driver is leaving it.
+        app.vela.ui.AutoParking.leave("car screen disconnected")
         CarBridge.live = false
         feedJob?.cancel()
         scope.cancel()
