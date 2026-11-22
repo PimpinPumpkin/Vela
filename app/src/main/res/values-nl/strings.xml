@@ -1487,7 +1487,6 @@
     <string name="nav_bridge_open_ahead">Brug verderop is open</string>
     <string name="nav_bridge_opening_ahead">Brug verderop: geplande opening om %1$s</string>
     <string name="settings_zoom_key_none">Niet ingesteld</string>
-    <string name="settings_zoom_keys_hint">Twee toetsen die overal op de kaart inzoomen, zoals 2 en 5 op een toetsenbord. In een tekstveld typen ze nog steeds.</string>
     <string name="settings_zoom_key_press">Druk op de te gebruiken toets. De pijlen, OK en Terug worden geaccepteerd.</string>
     <string name="settings_zoom_key_clear">Wissen</string>
     <string name="settings_zoom_to_turn">Zoom naar de volgende afslag</string>
