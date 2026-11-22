@@ -82,6 +82,48 @@ class NavSession @Inject constructor(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
+    // Parked near the destination and walking off counts as arriving ([WalkAwayArrival]). The
+    // flag says when the step sensor is wanted; the nav service runs it and calls [onWalkStep].
+    private val walkAway = WalkAwayArrival()
+    /** Boot-clock seconds, the step sensor's clock; a test sets its own. */
+    internal var walkClockS: () -> Double = { SystemClock.elapsedRealtimeNanos() / 1e9 }
+    private val _walkWatch = MutableStateFlow(false)
+    val walkWatch: StateFlow<Boolean> = _walkWatch.asStateFlow()
+    /** Called when a drive ends by the driver walking off: the app saves the parking spot. */
+    @Volatile var onWalkedOff: (() -> Unit)? = null
+
+    /** One step from the step sensor ([app.vela.core.location.WalkSense]), boot-clock seconds. */
+    fun onWalkStep(tSec: Double) {
+        val walked = synchronized(walkAway) { walkAway.onStep(tSec) }
+        if (!walked) return
+        val s = _state.value
+        if (!s.navigating || s.arrived || s.paused) return
+        // Quiet: the driver is out of the car and knows it; the arrival card and the trip end
+        // are the same as an arrival at the door.
+        note("arrived: parked near the destination and walked off")
+        synchronized(walkAway) { walkAway.reset() }
+        _walkWatch.value = false
+        _state.update {
+            it.copy(
+                navigating = false,
+                arrived = true,
+                tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
+            )
+        }
+        onWalkedOff?.invoke()
+    }
+
+    private fun updateWalkAway(loc: LatLng, speedMps: Double?) {
+        val s = _state.value
+        val dest = destination
+        val toDest = if (dest != null && s.nextStop == null && mode == TravelMode.DRIVE && !replayMode) loc.distanceTo(dest) else null
+        val watch = synchronized(walkAway) {
+            walkAway.onFix(walkClockS(), speedMps, toDest)
+            walkAway.watching
+        }
+        if (_walkWatch.value != watch) _walkWatch.value = watch
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var destination: LatLng? = null
     private var lastRecheckMs = 0L
@@ -105,6 +147,17 @@ class NavSession @Inject constructor(
     @Volatile private var lastTrustedFix: LatLng? = null
     @Volatile private var lastTrustedFixMs = 0L
     @Volatile private var lastTrustedSpeedMps = 0.0
+    /** The last course the car showed while moving, and where: a car stopped at a light still
+     *  points that way, and a reroute from the stop keeps it ([heldCourse]). */
+    @Volatile private var movingCourse: Double? = null
+    @Volatile private var movingCourseAt: LatLng? = null
+    /** The road the car drove, oldest first: the last [TRACK_KEEP_M] of trusted fixes, a point
+     *  every [TRACK_STEP_M]. A reroute's route that runs back along it turns the car round. */
+    private val track = ArrayDeque<LatLng>()
+    private val trackLock = Any()
+    /** The current route was adopted by a reroute that started inside the normal cooldown
+     *  ([rerouteCooldownMs]): the next one waits the full time. */
+    @Volatile private var lastAdoptQuick = false
     /** Consecutive paused fixes that are moving AND back on the route (see [maybeAutoResume]). */
     private var backOnRouteHits = 0
     /** Auto-resume is ARMED only once the stop has actually happened - a fix that is stationary or
@@ -126,9 +179,17 @@ class NavSession @Inject constructor(
     @Volatile private var lastRerouteAdoptMs = 0L
     /** WHY the current route was adopted - stamped at every swap site, read by the trip recorder
      *  so the file distinguishes a wrong-turn reroute from a chosen faster route or a silent
-     *  heal: "start", "reroute", "faster", "heal", "stop-added". */
+     *  heal: "start", "start-replan", "reroute", "faster", "heal", "stop-added". */
     @Volatile var lastSwapReason: String = "start"
     @Volatile private var lastRerouteSpokeMs = 0L
+
+    /** A drive started away from its route ([START_REPLAN_M]) is planning again from where the car
+     *  is: no chime, no "Rerouting", no turn prompts for the old line, and the opener is said for
+     *  the route that lands (or for the old one if none does). */
+    @Volatile private var quietStart = false
+
+    /** The units of the last fix, for a line spoken outside the per-fix loop ([resumeLine]). */
+    @Volatile private var lastImperial = false
     @Volatile private var sessionGen = 0
     // A FAILED reroute must clear the engine's offRoute latch so it retries — but writing nav
     // state from the reroute coroutine races the in-flight onLocation frame (whose route-identity
@@ -221,6 +282,8 @@ class NavSession @Inject constructor(
         stops: List<NavStop> = emptyList(),
         mode: TravelMode = TravelMode.DRIVE,
         destinationAddress: String = "",
+        from: LatLng? = null,
+        fromCourseDeg: Double? = null,
     ) {
         // The arrival says its side whichever router made the route (NavEngine.withArrivalSide).
         @Suppress("NAME_SHADOWING") val route = NavEngine.withArrivalSide(route, destination)
@@ -234,6 +297,12 @@ class NavSession @Inject constructor(
         // this one, and inheriting its streak would send the first reroute straight to the ladder.
         rerouteFailStreak = 0
         rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
+        // Nor do the last drive's reroute timers: a cooldown from it would skip this start's replan.
+        rerouteStartedMs = 0L; lastRerouteAdoptMs = 0L; lastRerouteSpokeMs = 0L
+        quietStart = false
+        // The last drive's road and course say nothing about this one.
+        synchronized(trackLock) { track.clear() }
+        movingCourse = null; movingCourseAt = null; lastAdoptQuick = false
         dismissedFasterKey = 0L
         dismissedFasterSaving = 0.0
         etaScale = 1.0
@@ -245,8 +314,14 @@ class NavSession @Inject constructor(
         }
         logRouteFigures("start", route)
         voice.init(voiceEngine)
-        lastRecheckMs = SystemClock.elapsedRealtime()
+        // A drive that starts on a stand-in route (planned on the phone's router because the
+        // network failed while the route was fetched, as on leaving home Wi-Fi) asks again on its
+        // first fix: the network is usually back by the time Start is tapped, and the fast-heal
+        // wait kept Google's route away for 20 s (a real drive, 2026-11-20).
+        lastRecheckMs = if (RouteHeal.degraded(route)) 0L else SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
+        synchronized(walkAway) { walkAway.reset() }
+        _walkWatch.value = false
         // Google's markup gives "Head toward F St"; add the cardinal so guidance
         // says "Head east on F St" like Google's own voice.
         val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.instruction.orEmpty(), route.polyline)
@@ -279,7 +354,18 @@ class NavSession @Inject constructor(
         // speakOpener (not speak): briefly hold the opener until the first road's real romanized name
         // has loaded from the map tiles, so a foreign street isn't read as an ICU skeleton at T=0 while
         // the nav-zoom tiles are still loading (issue #184). Falls through to speaking after a short cap.
-        voice.speakOpener(openerFor(route))
+        // Go pressed away from the route (planned before the car moved off, or from a stale fix): plan
+        // again from here before saying anything, the way Google's Start does, instead of opening
+        // on the old line and saying "Rerouting" a few seconds in.
+        val away = from != null && !replayMode && route.polyline.size >= 2 &&
+            RouteProjection.alongMeters(route.polyline, RouteProjection.cumulative(route.polyline), from, START_REPLAN_M) == null
+        if (away) {
+            quietStart = true
+            note("start: the car is over ${START_REPLAN_M.toInt()} m from the route, planning again from here")
+            reroute(from!!, fromCourseDeg)
+        } else {
+            voice.speakOpener(openerFor(route))
+        }
         diag.record(
             "nav",
             "start → ${destinationLabel.ifBlank { "destination" }} " +
@@ -326,6 +412,9 @@ class NavSession @Inject constructor(
     }
 
     fun stop() {
+        quietStart = false
+        synchronized(walkAway) { walkAway.reset() }
+        _walkWatch.value = false
         // A reroute canceled here ends without its own FAILED/adopted line, which made an export
         // read as one attempt hanging for minutes (issue #557). Say so.
         if (rerouteJob?.isActive == true) {
@@ -447,8 +536,8 @@ class NavSession @Inject constructor(
 
     fun onLocation(
         loc: LatLng, imperial: Boolean = false, speedMps: Double? = null, accuracyM: Double? = null, bearingDeg: Double? = null,
-        // False when [loc] is not this fix's own position: a dead-reckoned point, or the last good
-        // position an outlier hold kept. Such a point steers the drive but never starts a recheck.
+        // False when [loc] is not this fix's own position: a dead-reckoned point, or the position
+        // filter's model for a fix it refused. Such a point steers the drive but never starts a recheck.
         fromFix: Boolean = true,
     ) {
         val s = _state.value
@@ -458,9 +547,24 @@ class NavSession @Inject constructor(
         // the engine is what makes the hold total - events are what speak, reroute, count stops
         // and arrive, and they are all downstream of this call.
         lastLoc = loc
+        lastImperial = imperial
         lastBearing = departCourse(bearingDeg, speedMps, accuracyM)
+        lastBearing?.let { movingCourse = it; movingCourseAt = loc }
         val trusted = fromFix && (accuracyM == null || accuracyM <= RECHECK_MAX_ACC_M)
-        if (trusted) { lastTrustedFix = loc; lastTrustedFixMs = SystemClock.elapsedRealtime(); lastTrustedSpeedMps = speedMps ?: 0.0 }
+        if (trusted) {
+            lastTrustedFix = loc; lastTrustedFixMs = SystemClock.elapsedRealtime(); lastTrustedSpeedMps = speedMps ?: 0.0
+            synchronized(trackLock) {
+                if (track.isEmpty() || track.last().distanceTo(loc) >= TRACK_STEP_M) {
+                    track.addLast(loc)
+                    var len = 0.0
+                    for (i in track.size - 1 downTo 1) len += track.elementAt(i).distanceTo(track.elementAt(i - 1))
+                    while (track.size > 2 && len > TRACK_KEEP_M) {
+                        len -= track.elementAt(0).distanceTo(track.elementAt(1))
+                        track.removeFirst()
+                    }
+                }
+            }
+        }
         if (s.paused) {
             // Whatever is driven during the hold was driven: the first fix after it is not a jump.
             synchronized(stopLock) { progressRoute = null }
@@ -559,8 +663,9 @@ class NavSession @Inject constructor(
         val spokeNow = events.any { it is NavEvent.Speak }
         events.forEach { ev ->
             when (ev) {
-                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                is NavEvent.Haptic -> if (!silent) haptics.cue(ev.type, ev.approaching, mode)
+                // A start that is planning again says nothing about the old line.
+                is NavEvent.Speak -> if (!quietStart) voice.speak(ev.text, ev.interrupt)
+                is NavEvent.Haptic -> if (!silent && !quietStart) haptics.cue(ev.type, ev.approaching, mode)
                 NavEvent.Arrived -> {
                     note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
                     _state.update {
@@ -579,6 +684,7 @@ class NavSession @Inject constructor(
         }
         if (!skipped && interrupting) announceStopsPassed(route, next.traveledM, loc)
         if (_state.value.navigating) prewarmPrompts(route, next, speedMps ?: 0.0, imperial, spokeNow)
+        if (_state.value.navigating && !_state.value.arrived) updateWalkAway(loc, speedMps)
         // A recheck starts from where the phone is, never from a dead-reckoned or held point, a
         // poor fix, or a fix the engine is already counting as off the line ([recheckFrom]).
         if (recheckFrom(trusted, next.offRouteHits)) maybeRecheck(loc, next)
@@ -683,6 +789,12 @@ class NavSession @Inject constructor(
         toSpeak.forEach { label -> voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label)) }
         // The count, never the stop's name: a note goes into the trip file and out with a share.
         if (toSpeak.isNotEmpty()) note("reached a stop: $passedNow of $stopCount passed")
+        // Seen and felt as well as heard (issue #955): a card and a buzz, also with the voice muted.
+        // Not while a replay runs through fixes to reach a moment ([silent]).
+        if (toSpeak.isNotEmpty() && !silent) {
+            haptics.stopReached(mode)
+            toSpeak.forEach { label -> onStopReached?.invoke(label) }
+        }
     }
 
     /** Every nav decision the session makes, for the diag ring AND the trip file (`K` lines,
@@ -695,6 +807,10 @@ class NavSession @Inject constructor(
     @Volatile var plannedWayName: String? = null
     /** The drive left its saved route and is now routed plainly ([plannedWayName] as it was). */
     var onLeftPlannedWay: ((String) -> Unit)? = null
+    /** A stop on the drive was just reached, with its label (may be blank): once per stop, as the
+     *  voice says "You've reached <stop>", and never for a silent via or the destination. Called on
+     *  the location thread. The label is a place name: never log it or write it to the trip. */
+    var onStopReached: ((String) -> Unit)? = null
     private fun note(msg: String) { diag.record("nav", msg); onNote?.invoke(msg) }
 
     /**
@@ -720,7 +836,7 @@ class NavSession @Inject constructor(
             note("resumed off the route -> rerouting")
             reroute(loc, lastBearing)
         } else {
-            voice.speak(_state.value.maneuverText, interrupt = false)
+            voice.speak(resumeLine(), interrupt = false)
         }
     }
 
@@ -747,8 +863,20 @@ class NavSession @Inject constructor(
             backOnRouteHits = 0
             note("auto-resumed: moving and back on the route")
             _state.update { it.copy(paused = false) }
-            voice.speak(_state.value.maneuverText, interrupt = false)
+            voice.speak(resumeLine(), interrupt = false)
         }
+    }
+
+    /** What a resumed drive says: the step ahead with its distance, in its spoken wording (street
+     *  names per the spoken-names switch). Said bare, "Make a U-turn" sounded due now when it was
+     *  half a mile off. Inside [RESUME_BARE_M] it is said bare, as a turn-now line is. */
+    private fun resumeLine(): String {
+        val st = _state.value
+        val m = st.route?.maneuvers?.getOrNull(st.nav.stepIndex) ?: return st.maneuverText
+        val line = m.spokenInstruction()
+        val d = st.nav.distanceToNextManeuver
+        val nav = app.vela.core.i18n.NavStringsRegistry.current()
+        return if (d > RESUME_BARE_M) nav.inThen(nav.spokenDistance(d, lastImperial), line) else line
     }
 
     /** How far [loc] sits off the route line, in meters, measured the way the engine measures it
@@ -811,6 +939,24 @@ class NavSession @Inject constructor(
 
     // --- live re-check ------------------------------------------------------
 
+    /**
+     * The phone has a working connection again (a validated default network). A drive whose route
+     * is degraded, most often one planned on the phone's own router because the network dropped at
+     * the start (leaving home Wi-Fi), asks again on the next fix instead of waiting out the fast-heal
+     * interval: a real drive's Google route came 22 s in, a second after the network was back. At
+     * most once per [NETWORK_BACK_MIN_GAP_MS], since a car between Wi-Fi and cellular flaps.
+     */
+    fun onNetworkBack() {
+        val route = _state.value.route ?: return
+        if (!_state.value.navigating || !RouteHeal.degraded(route)) return
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastNetworkBackMs < NETWORK_BACK_MIN_GAP_MS) return
+        lastNetworkBackMs = now
+        lastRecheckMs = 0L
+        note("network back on a degraded route: re-check on the next fix")
+    }
+    private var lastNetworkBackMs = 0L
+
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
         if (replayMode) return // hermetic replays never fetch live traffic/routes
         if (!liveRechecks) return // privacy opt-out: no periodic current-position requests
@@ -826,13 +972,18 @@ class NavSession @Inject constructor(
             degradedRouteRef = currentRoute
             degradedFastRechecks = 0
         }
-        val degraded = currentRoute != null && RouteHeal.degraded(currentRoute)
+        // A car on a route that is not Google's line (a reroute that had to take the open
+        // router's) is back on Google's line within seconds of a re-check that brings it forward,
+        // so the fast cadence asks for it, and asks down to [OFF_LINE_MIN_RECHECK_M] from the
+        // end: the open router's way into the destination is where it goes wrong.
+        val offLine = currentRoute != null && mode == TravelMode.DRIVE && RouteHeal.offGoogleLine(currentRoute)
+        val degraded = currentRoute != null && (RouteHeal.degraded(currentRoute) || offLine)
         val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
         // Spread by +/-25%, redrawn after every recheck: an exact 120 s beat is a rhythm every
         // install shares (see Jitter).
         val interval = ((if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS) * recheckSpread).toLong()
         if (now - lastRecheckMs < interval) return
-        if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
+        if (nav.offRoute || nav.remainingDistance < (if (offLine && fastHeal) OFF_LINE_MIN_RECHECK_M else MIN_RECHECK_DISTANCE_M)) return
         if (recheckJob?.isActive == true) return
         // An offer is already on screen — don't fetch/re-speak over it every interval.
         if (_state.value.fasterRoute != null) return
@@ -903,7 +1054,16 @@ class NavSession @Inject constructor(
             // alone (the naming services missed the deadline, most often on a reroute's short
             // one) kept its bare "Turn left" for the rest of the drive, through every re-check
             // that came back named. Any of the three qualifies; none may be taken away.
-            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate) else null
+            // Google's line may replace a route that is not, but never by turning the car round:
+            // a re-check asks without a heading, and right after the reroute that set Google's
+            // routes aside the car is still going the other way.
+            val lineOk = mode == TravelMode.DRIVE && RouteHeal.offGoogleLine(current) && run {
+                val h = lastBearing ?: movingCourse ?: return@run false
+                !app.vela.core.data.RouteGeometry.startsAgainst(candidate.polyline, h) &&
+                    !app.vela.core.data.RouteGeometry.startsBehind(candidate.polyline, h) &&
+                    !app.vela.core.data.RouteGeometry.goesBack(candidate.polyline, trackTo(car, h))
+            }
+            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate, lineOk) else null
             if (gains != null) {
                 lastSwapReason = "heal"
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
@@ -1033,6 +1193,52 @@ class NavSession @Inject constructor(
             (accuracyM == null || accuracyM <= NavEngine.HEADING_MAX_ACC_M) && (speedMps ?: 99.0) >= headingMinMps()
         }
 
+    /** The course the car last showed while moving, for a reroute from a stop: only while it
+     *  is within [HELD_COURSE_MAX_M] of where it showed it, and while its track since has not
+     *  turned off it ([app.vela.core.data.RouteGeometry.courseStillHeld]): a car that crawled
+     *  round a corner or turned in the road no longer points that way. */
+    private fun heldCourse(loc: LatLng): Double? {
+        val at = movingCourseAt ?: return null
+        val course = movingCourse ?: return null
+        if (at.distanceTo(loc) > HELD_COURSE_MAX_M) return null
+        val since = synchronized(trackLock) {
+            ArrayList<LatLng>(track.size + 1).also { out ->
+                out.addAll(track)
+                if (out.isEmpty() || out.last().distanceTo(loc) >= 1.0) out.add(loc)
+            }
+        }
+        if (!app.vela.core.data.RouteGeometry.courseStillHeld(course, at, since)) {
+            note("reroute: at a stop, the car turned since its last course, not keeping it")
+            return null
+        }
+        return course
+    }
+
+    /** The car's track ending at [to] (or where the last trusted fix was), from where it last
+     *  turned round given its course [headingDeg] ([app.vela.core.data.RouteGeometry.sinceTurnRound]). */
+    private fun trackTo(to: LatLng?, headingDeg: Double?): List<LatLng> {
+        val out = synchronized(trackLock) {
+            val out = ArrayList<LatLng>(track.size + 1)
+            out.addAll(track)
+            if (to != null && (out.isEmpty() || out.last().distanceTo(to) >= 1.0)) out.add(to)
+            out
+        }
+        return app.vela.core.data.RouteGeometry.sinceTurnRound(out, headingDeg)
+    }
+
+    /**
+     * How long after an adopted reroute the next may start. The full [REROUTE_COOLDOWN_MS] keeps
+     * a fix biased off the road from rerouting every few seconds; but a route the car never
+     * joined (it went another way at once, under [JOINED_M] along it) was wrong, and the driver
+     * sat [REROUTE_COOLDOWN_MS] with it. Once per wrong turn: a quick one is followed by a full
+     * wait, so a biased fix still settles.
+     */
+    private fun rerouteCooldownMs(): Long {
+        val s = _state.value
+        val unjoined = lastSwapReason == "reroute" && !lastAdoptQuick && s.nav.traveledM < JOINED_M
+        return if (unjoined) REROUTE_COOLDOWN_UNJOINED_MS else REROUTE_COOLDOWN_MS
+    }
+
     private fun reroute(loc: LatLng, headingDeg: Double? = null) {
         if (replayMode) {
             note("replay: live reroute suppressed (recorded swaps play back instead)")
@@ -1045,7 +1251,8 @@ class NavSession @Inject constructor(
         // too, 4 s later another "Rerouting…" — forever). The engine keeps emitting RerouteNeeded
         // while deviated (the latch clears on failure below), so a skipped request here is simply
         // retried by the next qualifying fix after the cooldown.
-        val gate = rerouteGate(rerouteJob?.isActive == true, rerouteStartedMs, lastRerouteAdoptMs, now, rerouteDeadlineMs)
+        val cooldownMs = rerouteCooldownMs()
+        val gate = rerouteGate(rerouteJob?.isActive == true, rerouteStartedMs, lastRerouteAdoptMs, now, rerouteDeadlineMs, cooldownMs)
         // A skipped request must leave a way back in (issue #258, several reroutes close together):
         // RerouteNeeded fires on the RISING EDGE of the off-route latch, so a request dropped by the
         // cooldown - a route adopted seconds ago that the driver is already off, often because it
@@ -1064,7 +1271,7 @@ class NavSession @Inject constructor(
             RerouteGate.START -> Unit
         }
         // Announce sparsely: the first attempt of a burst speaks, silent retries don't re-announce.
-        if (now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
+        if (!quietStart && now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
             lastRerouteSpokeMs = now
             // Google's earcon first (a soft two-note chime), then the spoken word - the chime
             // registers even when a prompt is mid-sentence or the ear expects music (user 2026-07-16).
@@ -1083,6 +1290,12 @@ class NavSession @Inject constructor(
         val remainingStops = planStops.filter { !it.silent }
         val leftPlannedWay = planStops.size != remainingStops.size
         val gen = sessionGen
+        // A car stopped at a light points the way it was going: the reroute keeps that course
+        // (2026-11-11, a recorded wrong turn: from a stop, unpinned, both routers sent the car
+        // back the way it came, and it pulled away the other way).
+        val course = headingDeg ?: heldCourse(loc)?.also { note("reroute: at a stop, keeping the course ${it.toInt()}") }
+        val quick = cooldownMs < REROUTE_COOLDOWN_MS && now - lastRerouteAdoptMs < REROUTE_COOLDOWN_MS
+        if (quick) note("reroute: the car never joined the last route, not waiting out the cooldown")
         // The route we were following when we went off-route. If the driver returns to THIS line while
         // we're fetching (see the back-on-course check below), we abandon the reroute rather than swap.
         val fromRoute = _state.value.route
@@ -1115,7 +1328,7 @@ class NavSession @Inject constructor(
             // drive. That is the "Re-routing" spinner that never exits and only a restart clears
             // (reported on a real drive; the same trap the avoid path hit, see
             // AVOID_ONDEVICE_TIMEOUT_MS). The orphan finishes into the void and is discarded.
-            fun ask(from: LatLng, heading: Double?, budgetMs: Long) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+            fun ask(from: LatLng, heading: Double?, budgetMs: Long, verdict: app.vela.core.data.TurnRoundVerdict) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                 runCatching {
                     dataSource.directions(
                         from, dest, mode, remainingStops.map { it.location },
@@ -1129,6 +1342,8 @@ class NavSession @Inject constructor(
                         // The fetch's own share of the deadline (issue #557): the open router, Google
                         // and the downloaded region each get a slice instead of the first eating it all.
                         budgetMs = budgetMs,
+                        behind = trackTo(from, heading),
+                        turnRound = verdict,
                     )
                 }
                     .getOrNull()?.let { routes ->
@@ -1136,7 +1351,8 @@ class NavSession @Inject constructor(
                         driveable(routes, from, dest, nameWithinMs = left.coerceAtLeast(0L), departBearingDeg = heading)
                     }?.takeIf { it.reaches(dest) }
             }
-            val fetch = ask(loc, headingDeg, attempt.budgetMs)
+            var verdict = app.vela.core.data.TurnRoundVerdict()
+            val fetch = ask(loc, course, attempt.budgetMs, verdict)
             var landed = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
             val timedOut = landed == null && !fetch.isCompleted
             if (landed == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
@@ -1162,9 +1378,42 @@ class NavSession @Inject constructor(
                 kotlinx.coroutines.delay(waitMs)
                 if (gen != sessionGen) return@launch
                 val from = trustedNow() ?: break
-                val again = ask(from, lastBearing ?: headingDeg, left)
-                landed = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); got }
-                if (landed === got) break
+                val v = app.vela.core.data.TurnRoundVerdict()
+                val again = ask(from, lastBearing ?: course, left, v)
+                val next = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); null }
+                if (next == null) break
+                landed = next; verdict = v
+            }
+            // A ROUTE THAT TURNS A MOVING CAR ROUND WHERE IT IS IS ASKED AGAIN A MOMENT LATER
+            // (OsmAnd does the same) when nothing that turns round less was offered: no route went
+            // on or round a block, and from a few seconds further on one often does. Not shown or
+            // said meanwhile; after [BACK_ASKS] tries the last answer is taken. A route that turns
+            // round further on is drivable from here and is taken at once, as is a turn-round when
+            // going on was offered and cost too much more ([TurnRoundVerdict.lessCostsMore]).
+            var backAsks = 0
+            while (mode == TravelMode.DRIVE && backAsks < BACK_ASKS) {
+                val got = landed ?: break
+                val speed = lastTrustedSpeedMps
+                if (speed < BACK_ASK_MIN_MPS) break
+                val h = lastBearing ?: course ?: break
+                val turnsHere = app.vela.core.data.RouteGeometry.startsAgainst(got.polyline, h) || app.vela.core.data.RouteGeometry.startsBehind(got.polyline, h)
+                if (!turnsHere) break
+                if (verdict.lessCostsMore) {
+                    note("reroute: its route turns the car round, going on costs too much more, taking it")
+                    break
+                }
+                val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_FINISH_RESERVE_MS - BACK_ASK_WAIT_MS
+                if (left < LATE_TURN_MIN_LEFT_MS) break
+                backAsks++
+                note("reroute: its route turns the car round at ${speed.toInt()} m/s and nothing goes on, asking again in ${BACK_ASK_WAIT_MS / 1000} s")
+                kotlinx.coroutines.delay(BACK_ASK_WAIT_MS)
+                if (gen != sessionGen) return@launch
+                val from = trustedNow() ?: break
+                val v = app.vela.core.data.TurnRoundVerdict()
+                val again = ask(from, lastBearing ?: course, left, v)
+                val next = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); null }
+                if (next == null) break
+                landed = next; verdict = v
             }
             val r = landed
             val tookMs = SystemClock.elapsedRealtime() - now
@@ -1185,6 +1434,7 @@ class NavSession @Inject constructor(
             val forSkippedStop = synchronized(stopLock) { skipHoldRoute != null && skipHoldRoute === fromRoute }
             if (!forSkippedStop && _state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
                 note("reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
+                openQuietStart(fromRoute)
                 return@launch
             }
             if (r == null) {
@@ -1198,6 +1448,7 @@ class NavSession @Inject constructor(
                 val why = if (timedOut) "deadline ${attempt.timeoutMs / 1000} s" else "nothing usable"
                 note("reroute FAILED (streak $rerouteFailStreak, $why after $tookMs ms), will retry while off-route")
                 pendingLatchClear.set(true)
+                openQuietStart(fromRoute)
                 return@launch
             }
             // New route starts here → recompute the marks, reset the counter. Unlike the faster-route
@@ -1232,7 +1483,8 @@ class NavSession @Inject constructor(
                     (if (r.hasLiveTraffic) "" else ", no traffic"),
             )
             rerouteFailStreak = 0 // a route landed: back to lean, fast attempts
-            lastSwapReason = "reroute"
+            lastAdoptQuick = quick
+            lastSwapReason = if (quietStart) "start-replan" else "reroute"
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
             etaScale = 1.0 // the fresh route carries fresh traffic
@@ -1251,7 +1503,16 @@ class NavSession @Inject constructor(
                     nextStop = seededNextStop(r, r.durationInTrafficSeconds ?: r.durationSeconds),
                 )
             }
+            openQuietStart(r)
         }
+    }
+
+    /** The drive's opener, for a start that was planning again ([quietStart]): said once, for the
+     *  route the drive now has. */
+    private fun openQuietStart(route: Route?) {
+        if (!quietStart) return
+        quietStart = false
+        route?.let { voice.speakOpener(openerFor(it)) }
     }
 
     /**
@@ -1309,6 +1570,7 @@ class NavSession @Inject constructor(
         const val AUTO_RESUME_HITS = 3
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
+        const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
         // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter
@@ -1316,6 +1578,7 @@ class NavSession @Inject constructor(
         // for miles, and calibrating our ETA from a route we are not driving would lie.
         const val SAME_COURSE_M = 250.0
         const val MIN_RECHECK_DISTANCE_M = 1_500.0 // don't bother near the destination
+        const val OFF_LINE_MIN_RECHECK_M = 300.0    // ...except to bring back Google's line (RouteHeal.offGoogleLine)
         /** A recheck starts only from a fix rated this good or better. */
         const val RECHECK_MAX_ACC_M = 30.0
         /** What a recheck brings back is taken only when the last trusted fix is this recent... */
@@ -1328,13 +1591,17 @@ class NavSession @Inject constructor(
          *  and not already counted as off the line. */
         fun recheckFrom(trustedFix: Boolean, offRouteHits: Int): Boolean = trustedFix && offRouteHits == 0
 
-        /** The steps a driver slows down for. A slight bend, a fork or a ramp is taken at speed. */
-        private val SLOW_TURNS = setOf(
+        /** The steps the car has to be in place for: a turn it slows down for, or a ramp, an exit
+         *  or a fork it needs the right lane for. A slight bend needs neither. Without the ramps a
+         *  reroute at freeway speed kept an exit two seconds ahead and announced it too late. */
+        private val PLACED_STEPS = setOf(
             ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT,
             ManeuverType.UTURN, ManeuverType.ROUNDABOUT,
+            ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT, ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,
+            ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
         )
 
-        /** Meters along [route] from [car] to its first step of [SLOW_TURNS]: 0 when the car is level
+        /** Meters along [route] from [car] to its first step of [PLACED_STEPS]: 0 when the car is level
          *  with it or past it, null when the car is not on the line or there is no such step. A step
          *  sits where the engine puts it, at the sum of the step lengths before it. */
         fun firstTurnAheadM(route: Route, car: LatLng): Double? {
@@ -1345,7 +1612,7 @@ class NavSession @Inject constructor(
             if (perp > CAR_ON_CANDIDATE_M) return null
             var at = 0.0
             route.maneuvers.forEachIndexed { i, m ->
-                if (i > 0 && m.type in SLOW_TURNS) return (at - along).coerceAtLeast(0.0)
+                if (i > 0 && m.type in PLACED_STEPS) return (at - along).coerceAtLeast(0.0)
                 at += m.distanceMeters
             }
             return null
@@ -1378,6 +1645,20 @@ class NavSession @Inject constructor(
         const val FASTER_THRESHOLD_S = 90.0        // only offer if it saves real time
         const val FASTER_CHIME_LEAD_MS = 450L       // the faster-route chime, then the spoken offer
         const val REROUTE_COOLDOWN_MS = 10_000L    // min gap between ADOPTED reroutes (no reroute storms)
+        /** The gap after a reroute whose route the car never joined ([rerouteCooldownMs]). */
+        const val REROUTE_COOLDOWN_UNJOINED_MS = 3_000L
+        /** Meters along an adopted route that count as having joined it. */
+        const val JOINED_M = 50.0
+        /** A route that turns the car round is asked again this often, this long apart, while the
+         *  car moves at least [BACK_ASK_MIN_MPS]. */
+        const val BACK_ASKS = 2
+        const val BACK_ASK_WAIT_MS = 3_000L
+        const val BACK_ASK_MIN_MPS = 4.0
+        /** A stopped car keeps its moving course for a reroute this far from where it showed it. */
+        const val HELD_COURSE_MAX_M = 25.0
+        /** The car's track ([track]): how much is kept, and how far apart its points are. */
+        const val TRACK_KEEP_M = 300.0
+        const val TRACK_STEP_M = 5.0
         // Deadline on one reroute FETCH: generous next to Google's 1-3 s but far under the retry
         // ladders' worst case; past it the position the request was computed from is stale anyway.
         const val REROUTE_FETCH_TIMEOUT_MS = 20_000L
@@ -1407,11 +1688,12 @@ class NavSession @Inject constructor(
             // The deadline THIS attempt is running under - an escalated attempt is allowed longer,
             // and judging it by the lean deadline would declare a healthy fetch wedged and kill it.
             deadlineMs: Long = REROUTE_FETCH_TIMEOUT_MS,
+            cooldownMs: Long = REROUTE_COOLDOWN_MS,
         ): RerouteGate = when {
             jobActive && now - jobStartedMs >= deadlineMs + REROUTE_STUCK_GRACE_MS ->
                 RerouteGate.ABANDON_STUCK_AND_START
             jobActive -> RerouteGate.SKIP_IN_FLIGHT
-            now - lastAdoptMs < REROUTE_COOLDOWN_MS -> RerouteGate.SKIP_COOLDOWN
+            now - lastAdoptMs < cooldownMs -> RerouteGate.SKIP_COOLDOWN
             else -> RerouteGate.START
         }
         /** Does a request the gate turned away need the off-route latch cleared so a later fix can
@@ -1452,6 +1734,8 @@ class NavSession @Inject constructor(
             else RerouteAttempt(urgent = true, timeoutMs = REROUTE_FETCH_TIMEOUT_MS)
 
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
+        const val START_REPLAN_M = 150.0           // Start this far from the route plans again from the car, quietly
+        const val RESUME_BARE_M = 60.0             // a resumed drive says the step ahead without its distance this close
         const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute
                                                    // is abandoned as "back on course" — >1 so a single grazing
                                                    // fix can't kill a legitimate missed-turn reroute (tune from

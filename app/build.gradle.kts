@@ -17,7 +17,7 @@ dependencies {
     testImplementation(libs.junit) // app-module unit tests (SearchGatesTest, DiagScrubTest)
     // Android's org.json is a STUB on the unit-test classpath: every method throws "not mocked",
     // so code that parses JSON (the delta patch header) cannot be tested without a real one.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260719")
 }
 
 android {
@@ -297,7 +297,7 @@ dependencies {
 // On-demand harnesses need their -D properties in the test JVM; Gradle does not forward them
 // (the same trap core/build.gradle.kts documents for velaTrip).
 tasks.withType<Test>().configureEach {
-    listOf("velaPmtiles", "velaLat", "velaLng", "velaArchive", "velaArchiveUrl", "velaPatch", "velaFingerprint").forEach { k ->
+    listOf("velaPmtiles", "velaLat", "velaLng", "velaArchive", "velaArchiveUrl", "velaPatch", "velaFingerprint", "velaDuck").forEach { k ->
         System.getProperty(k)?.let { systemProperty(k, it) }
     }
 }

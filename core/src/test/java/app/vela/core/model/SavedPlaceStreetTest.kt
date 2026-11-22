@@ -45,4 +45,10 @@ class SavedPlaceStreetTest {
         assertEquals(null, sp("38.5449, -121.7405", "Davis, CA 95616").labelMended())
         assertEquals(null, sp("Elm Street 5", null).labelMended())
     }
+
+    @Test fun `an address saved as a listing still keeps its street when it is relabeled`() {
+        // Google filed the address under a category, so it was saved as a listing, not a point.
+        assertEquals("1451 W Covell Blvd, Davis, CA 95616", sp("1451 W Covell Blvd", "Davis, CA 95616").addressKeepingStreet())
+        assertEquals("Davis, CA 95616", sp("Davis Food Co-op", "Davis, CA 95616").addressKeepingStreet())
+    }
 }

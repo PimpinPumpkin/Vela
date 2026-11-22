@@ -71,7 +71,7 @@ GrapheneOS and other ROMs with no GMS. License GPLv3. Distribution is F-Droid an
 | Fuel prices on gas stations | US: Google's search reply. UK: the government's Fuel Finder, trimmed and hosted on the `fuel-gb` release (5.8) | US: in the search. UK: no | UK: the last file downloaded |
 | Bridge openings (Netherlands) | NDW open data, `planningsfeed_brugopeningen` | No | No |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
-| Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
+| Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off, answers nothing, or answers with walking only | Yes, unless Google is off | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | Viewed panoramas |
 | Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
 
@@ -224,7 +224,7 @@ The main classes by package. Parentheses name a class inside the preceding file.
   `Buildings3d`, `CategoryChipsPref`, `ContactsSearch`, `DetailsRetry`, `DynamicColor`,
   `FasterRouteAuto`, `Flock`, `FlockDetour`, `FlockNavAlert`, `FlockRouteAlert`,
   `FullPlaceLoad`, `GoogleFree`, `HideAdult`, `HideExternalLinks`, `HouseNumbers`,
-  `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `MapColors`, `MapPoiPrefs`,
+  `LayersButton`, `LinkAction`, `LiveReviews`, `LoadPhotos`, `LockScreenNav`, `MapColors`, `MapPoiPrefs`,
   `MapTilt`, `NavEndConfirm`, `NavNorthUp`, `NorthLock`, `OfflinePlaces`, `Onboarding`,
   `OtherLocationsAuto`, `PageTransitions`, `ParkingButton`, `PauseInBar`, `PhotosOnTap`,
   `PipTurnCard`, `PreferButtons`, `PuckStyle`, `QuickChipsPref`, `RegionUpdates`, `ReviewsOnTap`, `RoadLabel`,
@@ -322,6 +322,7 @@ Results are at `root[64][i]`, and each entry's place node is `[1]`. The keys are
 | `hours203`, `hours118` | `[1][203][0]`, `[1][118][0][3][0]` | weekly hours (3.3) |
 | `departments` | `[1][118]` | per entry: name `[0]`, hours `[3][0]`, status `[3][1][4][0]` |
 | `closedFlag` | `[1][23]` | 1 = permanently closed |
+| `editMenu` | `[1][96][5]` | "Suggest an edit" entries, kind at `[6]`; kind 3 ("Reopen this place") on a closed place. A place's own reply only, not a list |
 | `popularTimes` | `[1][84]` | `[0]` holds 7 days, each `[dow, [[hour, percent, ...], ...]]` |
 | none | regex over the entry | Street View thumbnail pano id and yaw (`SearchParser.svThumb`) |
 
@@ -343,6 +344,13 @@ Shape rules:
   start like their open words. The integers beside the text (`statusCodeRich`,
   `statusCodeSimple`) are style markers and are not read: reading them colors closed places
   green.
+- A temporary closure usually sends no status text and no hours. `SearchParser.hasReopenAction`
+  reads it from `editMenu`: open places carried kinds 1 and 2, a closed one 3 in place of 1
+  (San Francisco and Davis listings). The status words ("Temporarily closed" and its
+  translations) still count. `closedFlag` wins: a permanently closed place also carries kind 3.
+  `PlaceDetails` carries the closure and the category, so a place opened from a map label, whose
+  first reply is a summary without them, gets both through `mergeDetails`. A closed place's sheet
+  says so in red and not "Hours not listed".
 
 #### Other locations of a business
 
@@ -541,9 +549,10 @@ OkHttp (no GREASE, ECH or ALPS)
   `cronet-runtime` release; CI fetches the pinned one from there, else packs it. The jars are
   Java 25 class files, which AGP 9.4's R8 reads and AGP 8.10's does not. Protobuf is shaded
   inside them (`org.chromium.net.internal`), so it does not clash with OsmAnd's.
-- The all-in-one APK carries Cronet for arm64-v8a and armeabi-v7a only. On x86 and x86_64 the
-  engine fails to load once and Google requests stay on OkHttp. The per-chip x86 APKs carry
-  their own.
+- A build made without the per-chip split (`-PabiSplits`, a local build) carries Cronet for
+  arm64-v8a and armeabi-v7a only. On x86 and x86_64 the engine fails to load once and Google
+  requests stay on OkHttp. Release builds are split, and every APK, the all-in-one included,
+  carries Cronet for its chips.
 - Cronet advertises `gzip, deflate, br` and strips `zstd` from a caller's `Accept-Encoding`, so
   `zstd` is not sent.
 - Coil loads images through the shared client with `GoogleTransport.imageHeaders` in front, so
@@ -580,11 +589,12 @@ OkHttp (no GREASE, ECH or ALPS)
     `passes through:`.
   - Any proxy failure returns null and the WebView loads the request itself.
   - Cost on a Pixel 9 place tap: about 0.2 s on the review page's load (2.15 s against 1.92 s).
-- Page telemetry (`play.google.com/log`, `gen_204`, `ogads-pa.*`) is answered locally with an
-  empty 200 only when Settings > Privacy "Block Google's page telemetry" is on
-  (`web/GoogleTelemetry`, pref `block_google_telemetry`, default off). It works with the proxy
-  on or off, and the dial `webProxyBlockLogs` overrides it when set. It is off by default
-  because a browser that never sends telemetry looks less like one.
+- Ad, analytics and logging requests (`play.google.com/log`, `gen_204`, `log204`,
+  `csi.gstatic.com`, the ad hosts) are always answered with an empty body on the hidden pages
+  and All reviews (`BlockedHosts`, below). Settings > Privacy "Block Google's page telemetry"
+  (`web/GoogleTelemetry`, pref `block_google_telemetry`, default off) adds the account bar's
+  `ogads-pa.*` calls, answered locally with an empty 200. It works with the proxy on or off,
+  and the dial `webProxyBlockLogs` overrides it when set.
 - A bridge object is visible to the page's scripts, so bridge names are random per process.
   Scripts are written with `VelaBridge` and `VelaPanel` and pass through `JsNames.of`.
 
@@ -838,14 +848,19 @@ the page fills it after load, and a small stub sits beside it.
   the tab row shows once the in-flow row scrolls under the sheet top. Over three tabs the row
   scrolls.
 - The tab set is decided from the first reply; a rated or reviewed place gets Photos up front.
-  Placeholders hold the chart's and the histogram's height while those load.
+  Placeholders hold the chart's and the histogram's height while those load. The popular-times
+  placeholder is skipped while `GoogleStanding.limited` is set (that view has no charts) and
+  after `PopularTimesHint.MISSES_OFF` (3) details answers in a row came back with no chart; a
+  chart turns it back on (`popular_times_misses`, issue #904). This keeps a sheet from holding
+  an empty block through a 10 to 20 second fetch that brings no chart.
 - Reviews tab: a full-width button to the all-reviews page, then the loaded list, sorted
   (relevance, highest, lowest) and filtered locally.
 - Photos tab: a grid filtered by Google's photo categories. With none yet, a food place offers
   a Menu chip (`loadPhotoCategories`, the full walk, once per place).
 - Business posts from `paths.updates` land in `Place.updates` with no extra request. Overview
-  shows the newest with "Show all N updates"; the Updates tab exists when there are two or
-  more.
+  shows the newest. The Updates tab exists when there are two or more, and then Overview's
+  Updates heading ends in "Show all N updates", which opens it. The button drops under the
+  heading when the two do not fit on one line.
 
 #### Settings
 
@@ -858,23 +873,47 @@ the page fills it after load, and a small stub sits beside it.
 | Privacy > Live traffic only when I tap | `RouteTrafficOnTap`, `route_traffic_on_tap`, off | clears `RoutingPrefs.googleTraffic` for each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not prefetched. The chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches |
 | Navigation > Start drives north-up | `NavNorthUp`, `nav_north_up`, off | sets `navNorthUp` at every drive start. The compass still toggles it per drive, and a tap while the camera is detached also re-centers |
 | Map > Keep north up | `NorthLock`, `keep_north_up`, off | the rotation gesture is off (set after `setAllGesturesEnabled`, which turns it back on), a resting camera more than `NORTH_LOCK_SLACK_DEG` (0.05) off north is turned back at camera idle (a following drive camera is left to its ticker), drives start with `navNorthUp` and the compass toggle keeps it, `VelaMapView` treats `navNorthUp` as on whatever the state says, the free-drive follow stays north-up, the drive compass fades at north, and the car map is north-up, flat and centered while following |
+| Map > Turn the map as you drive | `TurnWithTravel`, `free_heading_up`, on | off, the free-drive follow and the car's no-route view stay north-up at any speed (issue #905). The rotation gesture stays on and drives still turn heading-up. Hidden while Keep north up is on |
 | Navigation > Navigation icon | `PuckStyle.shape`, `puck_shape`, arrow | see below |
+| Appearance > Map | `AppTheme.mapMode`, `theme_map_mode`, `FOLLOW` | the map's light or dark apart from the app: the app's, Light, Dark, or Day and night by the sun under any app theme (`AUTO`, issue #874); 6.2 has the order of the rules |
 | Appearance > Map buttons | `MapButtonShape.mode`, `map_button_shape`, `round` | the locate and parking buttons round, or with 16 dp corners (`square`); the FABs read it through `mapButtonShape`, a getter in place of `CircleShape`'s, so `MapScreen` grows no bytecode |
 | Navigation > Road numbers first | `RoadNumbers`, `road_numbers`, off | mirrored into `core/nav/RoadNumbers.preferred`: `roadLabel` and `instructionRoad` put the number on every road that has one (issue #836) |
 | Navigation > Zoom out as far as | `ZoomToTurn.floor`, `zoom_to_turn_floor`, 0 | the floor of Zoom to the next turn, 12, 10 or 8 (Town, Region, Far); 0 is no pick, and the `turnZoomMin` dial decides (4.7, Framing) |
+| Navigation > FreeFused | `FreeFused.on`, `fused_position`, true | guidance steers by `PositionFilter`'s position; off, by the fix as it came, and the dot takes the low-pass while navigating (4.6, Fixes). The `freeFusedOff` dial turns it off for every install |
+| Navigation > Show the drive on the lock screen | `LockScreenNav.on`, `nav_on_lock_screen`, true | `MainActivity` shows over the lock screen while a drive runs and is not paused (10.2, Over the lock screen) |
+| Navigation > Wake the screen before each turn | `LockScreenNav.wake`, `nav_wake_for_turns`, true | lights the screen as a turn comes near during a drive with the screen off (10.2, Wake for turns) |
 | Navigation > Turn arrows on the route | `TurnArrows.on`, `turn_arrows_on`, true | arrows on the route through the turns ahead during a drive (issue #804) |
 | Navigation > Your speed on the car screen | `CarSpeed.on`, `car_speed_on`, false | the car's speed badge; off, the limit sign alone |
+| Navigation > Lane guidance on the car screen | `CarLanes.on`, `car_lanes_on`, true | lanes on the car's turn card and the cluster's step (10.6); the car's settings have the same switch |
 | Map > Where the map opens | `StartView.mode`, `start_view`, `here` | the view the map starts on: `here`, `last`, `home`, `place` or `drive`, which is `here` in driving mode (4.7, Where the map opens and Driving mode) |
 | Map > Names on the map | `MapNames.mode`, `map_names`, `english_latin` | which name a road or place label shows for a Latin-script UI: English then the basemap's romanized name, English then the local name, the local name alone, or local and English (4.10, the label rules); rides `styleKey` |
 
 The navigation icon is the arrow, a top-down car (`drawCarPuck`, color pref `puck_car_color`:
-red, blue, white, green, yellow), a UFO, a pirate ship or a rubber duck (`drawUfoPuck`,
-`drawShipPuck`, `drawDuckPuck`). Those are top-down bitmaps for the map symbol, the
-notification and the car screen. In the nav follow overlay the four are 3D models
-(`ui/map/Puck3D.kt`, `PuckModels`): flat-shaded low-poly meshes drawn every frame,
-orthographic, from the heading relative to the camera and the camera's tilt
-(`puckOverlayTilt`), back faces culled, faces painted far to near, over a ground shadow. The
-arrow stays flat. Measured on a Pixel 4a demo drive: 60 fps, 0.17% janky frames.
+red, blue, white, green, yellow), a UFO, a pirate ship (`drawUfoPuck`, `drawShipPuck`) or a
+rubber duck. Those are top-down bitmaps for the map symbol, the notification and the car
+screen. In the nav follow overlay the four are 3D (`ui/map/Puck3D.kt`, `PuckModels`), drawn
+orthographic from the heading relative to the camera and the camera's tilt
+(`puckOverlayTilt`), over a ground shadow. The arrow stays flat.
+
+- The car, UFO and ship are flat-shaded low-poly meshes drawn every frame, back faces culled,
+  faces painted far to near. Pixel 4a demo drive: 60 fps, 0.17% janky frames.
+- The duck (`SmoothDuck`, `DuckRender`) is ray cast per pixel from ellipsoids: body, a tilted
+  rear, head, bill and eyes. Near a join the normal leans toward the other part's, so the
+  pieces read as one molded body; a sky light, a light from the camera's side and a gloss
+  highlight shade it, and pixels on an edge take four more samples. A 202 px render takes 7 to
+  9 ms on a Pixel 4a, so the live duck renders on a worker thread when the heading or tilt
+  moves half a degree and the overlay shows the last finished render; the first frame and a
+  new size render inline. Its top-down bitmap is the same render from straight above. Pixel 4a
+  demo drive: 0.22% janky frames.
+
+A tap on the arrow while navigating opens the same choice (`ui/map/PuckPicker.kt`): the five
+icons as tiles, drawn as the drive draws them, and the car's colors when the car is picked. A pick
+shows at once. Done keeps it; Cancel, Back or a tap outside puts back the icon the dialog opened
+with. The tap counts within 28 dp of the arrow or half its drawn size, whichever is larger,
+measured to the follow overlay or, off follow, to the symbol at the last applied fix. It is
+checked before any other tap on the map, and not in picture-in-picture. A new icon, size or
+arrow color replaces the symbol's image (`vela-nav-puck`) on the loaded style and is not in
+`styleKey`: a style reload mid-drive blanks the map and rebuilds every layer.
 
 The nav Overview button is a toggle. With `inNavOverview` set (by Overview; cleared by
 Re-center, a pan and the end of the drive) a press re-centers instead of fitting again. The fit
@@ -944,7 +983,47 @@ files read back.
 ### 4.2 The hybrid route, traffic and alternates
 
 `HybridRoute` builds the `GOOGLE_HYBRID` route for DRIVE. Nothing is routed through sampled
-points, so the result cannot loop, and it is Google's line exactly.
+points, so the result cannot loop, and it is Google's line exactly, except where a turn on it is
+banned (below).
+
+#### Turn bans
+
+Google's line can take a turn that OpenStreetMap bans (issue #947). `TurnBans.check` runs before
+the stretches, on Google's top line and the open route's top.
+
+- A candidate is a corner of Google's line of at least `CORNER_DEG` (35 degrees), `END_CLEAR_M`
+  (60 m) from either trip end, where some pass of the open route comes within `SAME_JUNCTION_M`
+  (15 m), arriving within `SAME_HEADING_DEG` (30 degrees) of Google's approach and leaving more
+  than that from Google's exit. At most `MAX_CANDIDATES` (3) per route, nearest the start.
+- Each candidate is driven by FOSSGIS OSRM (`RouteGeometry.probeTurn`) from `PROBE_M` (40 m)
+  before the corner to 40 m after it on Google's line, headings pinned within 30 degrees, snap
+  radius `PROBE_RADIUS_M` (15 m). A road missing from OpenStreetMap fails the snap and is no ban.
+- An answer at most 70 m longer than the line between the ends drove the turn. One at least
+  120 m longer with both ends snapped within 12 m went round. Only when OSRM goes round is
+  Valhalla asked the same (`ValhallaRouter.probeTurn`), and only when both go round is the turn
+  banned.
+- A banned turn whose way round adds at most `SPLICE_MAX_EXTRA_M` (1.5 km) and
+  `SPLICE_MAX_EXTRA_S` (150 s) is replaced by OSRM's way round (`TurnBans.splice`): the length,
+  times, the leg it is in and the traffic spans after it move with it. A dearer one leaves
+  Google's line as it is and marks the turn (`TurnBans.mark`, `Maneuver.mayBeBanned`, a turn
+  within `MARK_NEAR_M` (30 m) of the corner): the turn card, the step list and the glance screen
+  say "This turn may not be allowed. Check the signs." and the car's step cue ends "(may not be
+  allowed)". The stretches, the naming and the checks that follow (`viaReaches`,
+  `spurWithTurn`, `applyTraffic`) all use the spliced line.
+- A ban is remembered for the session with its corner and the headings in and out
+  (`TurnBans.knownOn`, 32 at most). A later route that turns there the same way is caught
+  without the open route or a probe. A replan during a drive (`urgent`, or with the car's
+  heading) replaces a known or new ban up to `REROUTE_MAX_EXTRA_M` (10 km) whatever the time, so
+  a driver who obeyed the sign is not sent back to it.
+- The probes give up after `PROBE_TIMEOUT_MS` (1.5 s, 0.8 s on an urgent replan) and Google's
+  line stands. Answers are kept for the session by junction and headings, so a reroute does not
+  ask again. `Route.made` gets `bans=<banned>/<asked>`, `banKnown`, `banSplice`, `banExtra`,
+  `banKept` and `banLate`.
+- On #947's junction both routers went 866 and 869 m round for 82 m of line, and the phone's
+  route replaced it (+778 m).
+- `setprop debug.vela.tune.turnBansOff 1` keeps Google's turns, and
+  `debug.vela.tune.turnBanSpliceMaxM <m>` sets the fresh-plan limit (0 keeps and marks every
+  ban, to see the warning). Both adb-only, read at launch.
 
 #### Stretches
 
@@ -1097,8 +1176,9 @@ via-snap below applies. The line drawn for a hybrid is `Route.drawPolyline` (4.8
 
 #### LineNamer
 
-`LineNamer` (`core/data/naming`) keeps a route's line and derives its steps. It gives no lanes
-or sign destinations and ignores Google's step positions.
+`LineNamer` (`core/data/naming`) keeps a route's line and derives its steps. It gives no lanes.
+Google's keyless step list is not used, but its exits are (`Route.exitSigns`, below), and so
+are its steps' street names for turns the tiles leave bare (`Route.stepNames`, below).
 
 - Sampling: every 8 m, heading over 16 m either side.
 - Turns: peaks of the heading change across 32 m either side, 35 degrees or more, at least 30 m
@@ -1107,8 +1187,82 @@ or sign destinations and ignores Google's step positions.
   of the line. Runs under 40 m are absorbed.
 - A turn is announced when the name changes across it or it bends 70 degrees or more. A name
   change without a turn is a rename folded into the step before.
-- Driving phrases follow road class: joining a motorway or trunk is a ramp, leaving one an exit,
-  a split under 55 degrees between two a keep.
+- Driving phrases come from link roads (`ramp=1` in `transportation`, car classes only), said
+  once each the way a router that reads junctions says them. A sample is on a link when a link
+  running its way is within `LINK_OFF_M` (12 m) and no named street is more than `LINK_TIE_M`
+  (1 m) nearer, so a numbered link, which is also in the names layer, counts. A run of such
+  samples, gaps of `LINK_GAP` (2 samples) bridged, is a ramp when it is `RAMP_MIN_M` (80 m) long
+  and a motorway or trunk is at one end; a shorter link is a slip lane. The roads at its ends are
+  the nearest named runs off it within 128 m.
+  - From a highway it is an exit ("Take the exit onto" the road it leads to), said where the
+    line moves onto the link: at the bend there, else at the link's start, on the side the
+    heading moves across 64 m either side. Back onto a highway of the same name it is a keep
+    (express and local lanes).
+  - Onto a highway from anything else it is "Take the ramp onto" the highway, at the bend onto
+    the link. When the road just past that bend is a named street, the bend is a turn onto it
+    and the ramp is its own step where the line moves onto the link.
+  - A bend with the line on the link both sides is a curve of the ramp and says nothing. A bend
+    off its far end is a plain turn onto the street, and onto a highway only at `CURVE_DEG`
+    (50 degrees) or more, under which it is a merge and quiet. A link onto a highway that ends
+    in such a turn is a turn lane, and the turn is its only step.
+- With no link, a bend onto or off a motorway or trunk is an at-grade turn ("Turn left onto"
+  it). A bend under `CURVE_DEG` on a highway with no other named road after it is a curve and
+  quiet (Organic Maps says nothing for one way out under 50 degrees). A split under 55 degrees
+  between two highways is a keep.
+- A bend keeps the road when the name is the same; a change of ref or class alone is not a turn.
+- In a car, lines of classes a car does not drive (`path`, `rail`, `transit`, `aerialway`,
+  `pier`, `raceway`, `busway`, `bus_guideway`, `bridleway`) never name the line, and a named
+  footpath beside a road does not make strict naming unsure.
+- Two plain turns the same way within `SPLIT_TURN_M` (50 m, OsmAnd's figure), the second onto the
+  street the first went onto and at least one of them changing road, are one turn of their
+  summed angle. Two bends that both keep the name are a hairpin and stay two.
+- Measured with `NamingStudyTest.tileStepCensus` on 39 lines in `google_lines`, both modes,
+  against the rule this replaced (any bend onto a motorway or trunk a ramp, off one an exit):
+  exits 41 to 69 (the old count includes at-grade turns and second exits at a ramp's end),
+  keeps 8 to 25, an exit said twice within 500 m 4 to 2, same-way turns onto one street within
+  60 m 13 to 0, steps 780 to 841. The Davis line from Richards Boulevard onto I 80 and off at
+  Chiles Road says the ramp, the exit, the left onto Chiles Road and the right onto Mace
+  Boulevard, the four steps Google gives. Where the line runs under an elevated highway (FDR
+  Drive in New York) the tiles cannot tell the two roads apart.
+- Exit numbers and signs come from Google's own exits on the same reply (`Route.exitSigns`).
+  `DirectionsParser.exitSigns` reads every step of the route, also the ones without `<step>`
+  markup: `[7][2]` is the maneuver's own point, `[14]` the whole instruction as parts with the
+  names flagged, and the array the step heads carries its icon. A step is an exit when its
+  text says "exit" or "junction" or its icon is `dir-tt-ramp-left`/`-right` (the side), and it
+  is no roundabout's. The words before each name say what it is: after "exit" or "junction"
+  the number, after "toward", "signs for" or "ramp to" a sign, after "for" or "onto" the road.
+  Signs are written as the open router's are: route numbers, a colon, places ("I-5 N:
+  Redding"). A sign that repeats the number is dropped. The reply is always `hl=en`.
+  - Each of Google's exits within `SIGN_OFF_M` (20 m) of the line goes to the tiles' exit
+    nearest it along the line within `SIGN_ALONG_M` (150 m), which takes its number, its signs
+    and its side ("Take exit 4A toward I-5 N: Redding").
+  - With no step within 150 m, a tiles' exit up to `SIGN_LATE_M` (400 m) past it is the same
+    exit seen late and moves back to Google's point. With none, Google's exit is added, unless
+    it is within a turn window of an end of the line (a hybrid stretch's neighbor may say it).
+  - On 7 lines kept with their replies (`google_lines/<name>.exits`), all 16 of Google's exits
+    are said once: 13 matched, 2 added where the tiles had no link (Denver exit 284, San
+    Francisco exit 423A), 1 moved back 296 m. Two sides were wrong from the bend and are
+    Google's now. The 39 lines without replies are unchanged.
+- Bare turns take Google's street (`Route.stepNames`, `DirectionsParser.stepNames`, the same
+  `[7][2]` and `[14]` parts): every step's point, the name after "onto ", "stay on " or
+  "becomes ", and the side from a name that is "left" or "right". A plain turn with no name
+  (strict mode leaves the short middle of a grid jog bare, since the street does not run
+  `STRICT_RUN_M` past it) takes the street of the nearest unused step within `STEP_NAME_M`
+  (25 m) that turns the same way or says no side. The route number then comes from the tiles
+  only when they have the same street there.
+  - A bare bend under 55 degrees with no step within `CURVE_STEP_M` (40 m), where the nearest
+    street within 30 m a turn window either side has the same name (or none), is the road
+    curving and is dropped. Google's silence alone is not enough: from Trafalgar Square its
+    keyless reply has one "Head toward" step for 1.1 km past a real bear-left onto Pall Mall.
+  - This runs before the same-way merge, which also joins two turns within `SPLIT_TURN_M` when
+    one took a step's street and Google has no other step at the other one (a wide corner the
+    tiles read as two bends).
+  - Measured on the 7 lines kept with their replies (`google_lines/<name>.names`, written by
+    `NamingStudyTest.tileStepCensus` from a `<name>.raw` reply beside a line; `-DvelaNoSteps`
+    for the before side): in strict mode 8 bare turns named and 3 bare slight bends on curves
+    dropped, in lenient mode 1 curve dropped. The other 32 lines are unchanged. A Davis to El
+    Macero reply outside the set also had a corner said twice ("Turn right", then "Turn right
+    onto Mace Boulevard" 32 m on), now said once.
 - Walking ignores the name of a road bridge of tertiary class or higher, marked from
   `transportation` bridge segments within 6 m, since `transportation_name` has no bridge flag.
 - Under `MIN_NAMED_SHARE` (60%) of the line named, or `MIN_NAMED_SHARE_WALK` (50%), the result
@@ -1213,6 +1367,14 @@ refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
   no geometry a "straight" is dropped.
 - `osrmPhrase` phrases "turn straight" as continue, and a `notification` step (a change of
   travel mode on the same way) as a continue, a silent CONTINUE when straight.
+- `RouteGeometry.bentRenames`: a CONTINUE onto a road with another name, where the line turns
+  `RENAME_TURN_DEG` (60) degrees or more within 10 m of the step (`StepAudit.bendAt`), is a turn,
+  "Turn left onto 2nd Street" (sharp from 135). OSRM reads a rename's modifier at the node, so a
+  street that turns a corner into another came out "straight" or "slight" and went unsaid. A
+  road that keeps its name round a bend, or changes it and curves 30 m on, stays silent. On the
+  54 stored Google lines it adds the Davis corner Google words "Turn left onto 2nd St" and, on
+  OSRM's own route, a left from one street onto another in Boston, and nothing else.
+  `RenameCornerTest`.
 - A ferry leg says the language's `ferry()` phrase ("Take the ferry") with a straight arrow: an
   OSRM step with mode `ferry` (foot) or the intersection class `ferry` (bicycle, where the mode
   is `pushing bike`), and Valhalla's ferry entry (type 28). Leaving the ferry is a continue.
@@ -1223,15 +1385,24 @@ within `RAMP_TURN_MAX_M` (600 m) by a merge onto a named road, is the turn onto 
 on-ramp. It takes the language's ramp phrase toward the merge's ref or name ("Take the ramp on
 the left toward I 80"). Type, arrow and lanes are unchanged.
 
-`RouteGeometry.foldTurnLanes`, all three routers, last. A turn lane mapped as its own way
+`RouteGeometry.stayOnForks`, all three routers, after the passes below. A fork or keep whose
+sign's first route (`NavStrings.signParts`, `routeKey`: I, US or a state or provincial route and
+its number, however written) is the road the car is on, the end of the step before it, says so:
+"Keep left to stay on I 80 West" (`NavStrings.stayOn`). Read as "toward" the same road it
+sounded like a road to join. Only the instruction changes; the no-street form keeps "Keep left".
+English only; a language without `stayOn` keeps its text.
+
+`RouteGeometry.foldTurnLanes`, all three routers. A turn lane mapped as its own way
 splits one turn in two: an unnamed slight turn where the lane leaves the road, then the turn
 onto the street the same way ("Turn slight right, then turn slight right onto" a street, for one
-right turn at a divided corner). The pair becomes one TURN_LEFT or TURN_RIGHT at the first
+right turn at a divided corner). A slip lane that joins the street going straight (a STRAIGHT
+or CONTINUE second step) is the same turn: on the stored lines, Davis's "Turn right onto Mace
+Blvd" and one in Tel Aviv. The pair becomes one TURN_LEFT or TURN_RIGHT at the first
 step's place, onto the second step's road, with both lengths and times, the first step's lanes
 and lights, and the second's renames moved by the first's length. Only when the first step runs
-at most `TURN_LANE_MAX_M` (120 m) and bends the line at most `TURN_LANE_PEEL_DEG` (45) degrees
-(the 30 m before it against the lane), and the line turns `TURN_LANE_MIN_DEG` (60) to
-`TURN_LANE_MAX_DEG` (135) degrees across both. On the 39 stored Google lines it folds three
+at most `TURN_LANE_MAX_M` (120 m), bends the line at most `TURN_LANE_PEEL_DEG` (45) degrees
+(the 30 m before it against the lane; any angle for a slip lane, which holds the whole turn),
+and the line turns `TURN_LANE_MIN_DEG` (60) to `TURN_LANE_MAX_DEG` (135) degrees across both. On the 39 stored Google lines it folds three
 pairs, each a turn lane on the map: a 29 m connector off a dual carriageway, a left-turn lane
 mapped beside a one-way street, and a dual carriageway's approach to a junction
 (`NamingStudyTest.turnLanesOnCapturedLines`, and `replayCapturedLines` lists them). Every folded
@@ -1324,7 +1495,12 @@ During a drive:
 - `NavEngine.stopMarks(route, stops)` projects each stop onto the line in order. A stop over
   `STOP_ON_ROUTE_M` (150 m) from it has a null mark.
 - `NavSession` holds the stops, the marks and a passed counter, and speaks one cue per stop when
-  progress comes within `STOP_ARRIVE_TOL_M` (25 m) of its mark.
+  progress comes within `STOP_ARRIVE_TOL_M` (25 m) of its mark. With each cue it calls
+  `onStopReached` with the stop's label, and buzzes once (`Haptics.stopReached`, 120 ms, a 100 ms
+  gap, 450 ms) when the mode's "Vibrate on turns" is on. The app shows the label in the status
+  card for 8 s ("You've reached <stop>"), with the voice muted too. Neither happens for a silent
+  stop or while a replay runs through fixes to reach a moment (`silent`). The label is a place
+  name and goes into no log line or `K` note.
 - Rechecks fetch with `stops.drop(passedStops)`, so a traffic re-check never pulls a drive off
   a saved route or a camera detour. A reroute after leaving the route drops the silent stops
   and fetches through the real ones only: the driver is taken on from here, not back to the
@@ -1488,6 +1664,104 @@ Each fix that reaches `NavSession.onLocation` runs in this order: project it ont
   radius: under poor sky a receiver's accuracy figure halves and doubles from fix to fix, and a
   multipath leap taken as is becomes the position the outlier hold then keeps against the next
   good fixes. A first lock sharpening on a phone with no network location still lands at once.
+- Guidance steers by FreeFused, Vela's own fused position (`core/location/PositionFilter`), run
+  on every guidance fix: the phone's feed and the car screen's share one (`GuidanceFix`), and a replay of
+  a file without `N` lines runs its own. While navigating the dot is the fused position too:
+  the nav arrow is placed from the dot, and the speed-adaptive low-pass in `sanePosition`
+  trailed a car slowing for a turn by 3 to 6 m (median 3.5 m at 2 to 8 m/s on a real drive),
+  so turns showed late. With no drive on, the dot is the dot's own FreeFused (`DotFix`, below).
+  - Settings > Navigation "FreeFused" (`FreeFused`, pref `fused_position`, on) off, or the
+    calibration dial `freeFusedOff` at 1, steers by the fix as it came (`GuidanceFix.rawWhen`):
+    the car screen's feed too, and the dot takes the low-pass (`sanePosition`, which trails a
+    walker by about 9 m and a slow car by up to 12 m) whether navigating or not. The filter is still fed, so turning it back on mid-drive finds it current. A trip
+    records those inputs as `N` kind `r` and notes `guidance: raw fix` at the start.
+  - A Kalman filter over east, north and both velocities with a full 4x4 covariance. Each fix
+    gives its position, with the accuracy taken as 1.5 standard deviations (at least 3 m), and
+    its Doppler velocity: the speed's accuracy along the course (0.5 m/s when the fix has none)
+    and speed times the course's accuracy across it (8 degrees when none). Acceleration noise is
+    `Q_DRIVE` (4), `Q_STOPPED` (0.2) or `Q_REST` (0.02).
+  - A fix past the 99.9 percent chi-square cut (`GATE`, 13.8) from the prediction is not taken:
+    guidance steers with the model's position and `fromFix` is false. Moving, the third in a row
+    (`MAX_REJECTED`, 2) re-anchors the model on it, and so does one in the first `WARMUP_S`
+    (30 s) after the model starts, so a bad first fix in a garage does not pin it.
+  - Stopped means a Doppler speed under `REST_MPS` (0.5 m/s) at both ends of the interval. Stopped
+    with the phone at rest (`Stillness`), the velocity is set to zero before predicting, without
+    the pull on the position a velocity correction makes, and no fix that leaps is ever taken: a
+    reflection off a building at a red light is the GPS, not the car. Stopped by the Doppler
+    alone, `MAX_REJECTED_STOPPED` (20) in a row give way. The accelerometer alone is not trusted:
+    it reads at rest while a car creeps at walking pace.
+  - The first fix that reads stopped raises the position variance to the fix's own, so the
+    stop's fixes place the car in a few seconds instead of the model creeping from where the
+    braking left it.
+  - A Doppler velocity further from the model than `MAX_ACCEL_MPS2` (8 m/s²) × dt plus three
+    times its noise is a glitch (0 at freeway speed for one fix): not taken, but the second in a
+    row is.
+  - A gap over `RESEED_S` (120 s) starts the model over. A shorter one grows its uncertainty, so
+    the first fix after a tunnel is taken.
+- The dot with no drive on is `core/location/DotFix`, one more `PositionFilter` the view model
+  feeds on the main thread, while FreeFused is on. A drive's dot stays guidance's. A walk being
+  navigated (travel mode WALK) takes the dot's: its dot, and the engine steers by it on each GPS
+  fix (`N` kind `w`); the steps and the compass keep running through it, and each step is
+  recorded as a `W` line. The engine is not called on steps.
+  - Every GPS fix, any accuracy, as guidance takes one.
+  - Wi-Fi and cell fixes (`network`), weighted by their own accuracy, under the fresh-GPS rule
+    below. They re-anchor the model only after `NETWORK_REANCHOR_AFTER_S` (30 s) without GPS, so
+    a biased Wi-Fi fix cannot pull a GPS-held dot away. The 12 s quiet rule and
+    `FixRules.betterThanLast` apply to a drive only.
+  - Steps (`core/location/StepDetector` through `WalkSense`): the accelerometer at game rate,
+    gravity taken off by a 1 s running mean, smoothed at 40 ms, a peak over 1.2 m/s² after a dip
+    under -0.6, at least 0.28 s and at most 1.5 s after the last, and its gap within 1.6 times the
+    gap before (`RHYTHM_RATIO`). A step is reported from the third in rhythm, so a bump or a hand
+    fidgeting while sitting counts for nothing. No permission. Registered only while the map shows in
+    the foreground with FreeFused on and no drive or replay. Each step is a velocity measurement
+    (`PositionFilter.step`): `stepLengthM` over the interval, toward the compass heading
+    (`compassHeading`) plus a learned offset, 0.3 m/s along and the heading's accuracy across.
+    The dot moves with each step.
+  - Learned while walking from a GPS fix of 15 m or better at 0.6 to 3.5 m/s: the step length
+    (GPS speed over the step rate of the last 4 s, 0.4 to 1.2 m, 0.72 m to start) and the
+    compass-to-course angle (a weighted circular mean). Before 4 samples the compass alone is
+    taken at 35 degrees; with samples that agree under 0.75 (a phone in a pocket) a step goes
+    along the model's own course.
+  - No step for `STOP_AFTER_S` (1.2 s) and the GPS under 0.6 m/s: the walker stopped, and the
+    velocity is set to zero (`holdStill`), so the next fix does not carry the dot on.
+  - Steps with no GPS fix for 3 s widen the circle to at least a tenth of the distance walked
+    since the last fix of 20 m or better (`inflate`): on steps alone the error grows with the
+    distance. The accuracy circle is the model's (`accuracyM`).
+  - Steps are ignored for 5 s after a GPS fix at 4 m/s or more: a car's vibration is no walk.
+  - The tuning is a walker's (`Q_WALK`) while steps land, a car's otherwise.
+  - `setprop debug.vela.tune.dotLog 1` logs each fix's distance to the dot, the circle, the
+    learned step and the satellites' signal under `VelaDot`, in meters only.
+  - Three states. Walking: a step in the last 2.5 s; steps move the dot, with `WALK_POSITION_NOISE`
+    (0.3 m²/s). Moving: no step but a trusted GPS speed of `MOVE_MPS` (0.8 m/s) or more in the
+    last 10 s (a car, a bike, a phone in a bag); guidance's tuning. Stationary: neither. A
+    stationary fix is taken as one at rest (speed 0, at rest), so the dot holds and averages the
+    fixes and never jumps to a far one, so indoor fixes jumping tens of meters a second do not move
+    it.
+  - A stationary dot moves only on a held drift (`Drift`, one per source): a running mean of where
+    the fixes land relative to the dot (rate 0.2). When its offset is over 6 m and over 0.75 of the
+    fixes' whole spread for 3 fixes in a row, the dot's uncertainty is widened to it (`inflate`)
+    and the next fixes move it there. Scatter averages out; a dot that started 40 m out comes back
+    within about 6 s. A fix wider than 20 m (`DOPPLER_MAX_ACC_M`) gives no speed or course.
+  - While a GPS fix is under `NETWORK_GPS_FRESH_S` (5 s) old, a network fix is taken only when the
+    GPS is twice as wide and wider than 25 m, and a network drift moves the dot only after 10 s
+    without GPS: indoors Wi-Fi and GPS often disagree by tens of meters, and taking both pulled the
+    dot back and forth.
+  - After a gap over `RESEED_S` (120 s), the app away or the screen off, the first fix back that
+    agrees with the dot, inside both their uncertainties at the 95 percent chi-square cut
+    (`CARRY_GATE` 5.99), carries the dot over (`PositionFilter.bridge`) and is averaged in as
+    usual. The circle then shows at least that fix's accuracy, lowered by each GPS fix taken to its
+    own. A fix that disagrees starts the dot over from it. Otherwise a Wi-Fi fix 11 m off after
+    eight minutes sitting still moved the dot 11 m, and the returning GPS walked it back over 7 s
+    in hops of 1 to 4 m.
+  - Settings > Diagnostics > "Record a location test" (`startLocationTest`) records every fix as
+    it came, GPS, Wi-Fi and cell, each step (`W`) and where the dot was put (`N` kind `w`, or `o`
+    for the old smoothing), into a new trip named "Location test" for 1, 5 or 15 minutes, then
+    stops by itself. The row counts down and has Stop. The trip list leaves the test out until it
+    stops, so a trip is never shared while it is still being written. A test is kept with any
+    number of fixes, none included; a drive under 5 is dropped. The end is checked against
+    the wall clock each second, since a delay counts uptime and stalls while the phone sleeps.
+    The bearing field of those `N` lines is the compass, and each GPS fix carries the satellites'
+    signal (4.10). Share trimmed keeps the steps and dot positions beside the fixes it keeps (14.3).
 - Time between fixes comes from `elapsedRealtimeNanos`. `loc.time` mixes GNSS UTC with the
   system clock.
 - A fix wider than `Stillness.ACC_TRUST_M` (30 m) under `Stillness.SLOW_MPS` (3 m/s) says
@@ -1515,6 +1789,16 @@ penalty, and a jump over `REACQUIRE_JUMP_M` (1,500 m) must repeat for three fixe
 progress holds. Off-route distance is the distance of that projection, never the whole route's
 nearest point.
 
+A route whose start lies within `ARRIVE_PROX_M` (40 m) of its end, and under a third of its
+length from it, is a round trip (`NavEngine.loopGuardM`). Until progress is a third of the way
+round, at most `DEST_ZONE_M` (150 m), neither search matches anything in the last stretch of
+that length, not even the part of a segment that crosses into it. Without this, a 400 m and a
+600 m square loop whose first fix sat 15 m up the road the trip comes back on arrived on that fix
+(`NavEngineRoundTripTest`); loops longer than the window were not affected. Each step's mark is
+found forward of the one before (`geomFor`), and the depart step's is scored from the start with
+`ANCHOR_PENALTY`, so a depart point a meter nearer the way back does not put every step at the
+end.
+
 `NavEngine.offRouteCorridor(mode, accuracyM)` scales the corridor with the fix's accuracy,
 clamped to 3 to 40 m and taken as `DEFAULT_ACC_M` (12 m) when absent. `farOffDistance` is twice
 the corridor, capped.
@@ -1541,6 +1825,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   (`headingMinMps`; walking and cycling keep their moving floor). A car pulling away from a
   light between tall buildings was read crawling backward along its own route at 2.7 to
   3.9 m/s for three fixes, on the line, and was rerouted three times in 50 s.
+  A course within 60 degrees of the route's bearing `HEADING_NEAR_M` (25 m) ahead or behind is
+  not against it. Mid-turn the course has swung while the fix still projects before the corner,
+  or not swung enough once it projects past it, and a right turn from a stop, taken as told,
+  rerouted 3 s later (real drive 2026-11-17). A wrong turn points away from the road on both
+  sides of the corner and still counts.
 - No reroute fires while both the route left and the straight-line distance to the destination
   are under `DEST_ZONE_M` (150 m). The request is held until the car leaves that zone.
 - Turn prompts are muted while off route.
@@ -1550,8 +1839,16 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Prompt distances scale with speed v: far `max(400 m, v × 35 s)`, near `max(150 m, v × 10 s)`,
   each rounded to 50 m, and turn-now `v × 2.5 s` clamped to 25 to 90 m. `spoken` stores band
   slots, so each prompt speaks the true distance.
+- In `FULL`, any maneuver at `SpokenDetail.FAST_MPS` (22.2 m/s, 80 km/h) or more, and a ramp,
+  fork, keep, U-turn (`SpokenDetail.exitLike`) or turn onto an on-ramp (`NavEngine.onRampTurn`: a
+  nameless turn whose next spoken step, within 600 m, is a merge) at `EXIT_ONE_LINE_MPS` (15 m/s)
+  or more, has one approach line instead of two (`oneApproach`): `bandsFor` gives both slots
+  `max(near, v × FAST_APPROACH_S)`, `FAST_APPROACH_S` 15 s ("In a quarter mile" from 50 to 80
+  mph), so they are said together. Then comes the turn-now line. Far, near and turn-now made
+  eight lines of one exit, the fork on its ramp and the merge after it, and a car near 50 mph got
+  far, near and turn-now or one line by turns.
 - "How much the voice says" (`SpokenDetail`, Settings, Voice) has three values. `FULL` is the
-  far, near and turn-now lines above. `BRIEF` says each maneuver once, in its short form with no
+  lines above. `BRIEF` says each maneuver once, in its short form with no
   street name: a ramp, fork, keep or U-turn at the far distance and keeping its exit number, any
   other maneuver at the near distance, and nothing at the turn. `EXITS` is `BRIEF` for ramps,
   forks, keeps, U-turns and the arrival only; any other maneuver is spoken only at
@@ -1561,8 +1858,15 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   standstill the card and the road name stay on the turn in hand until the car is at it. The
   turn-now line is still said 25 m out, once (`TURN_NOW_SLOT` in `spoken`). Both used to happen
   25 m out: a car waiting at a stop line 20 m short of a left turn was shown the turn after it.
-- A step's first prompt carries lane guidance. Later prompts speak `NavStrings.repeatShort`. A
-  merge skips the far band. Arrival gets one near-band cue.
+- A step's first prompt carries lane guidance. Its approach repeats speak
+  `NavStrings.repeatShort`. Its line at the turn, and a "then" that names it, speak
+  `repeatWithRoute` for a ramp, fork or keep: the head and the first route number on its sign
+  ("Keep slight right toward US 50 East"), so the voice names the road the banner shows where
+  the choice is made. A sign with places only says the head alone. English marks the sign with
+  " toward "; the other languages have no override and say `repeatShort`. A "then" leaves out a
+  route its own line just named ("Keep slight left toward I 80 West, then keep slight left").
+  A merge is said once: its near-band line, or the "then" of the step before it. At the merge
+  itself it only buzzes. Arrival gets one near-band cue.
 - In English a lane clause on a ramp of the same side drops the ramp's side: "Use the right
   lane to take the ramp toward ...", not "... the ramp on the right toward ...".
 - A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
@@ -1618,8 +1922,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Two turns within `CHAIN_M` (130 m) of each other along the road are said on one line
   (`NavEngine.chainedNext`, `NavStrings.thenNext`): "Turn right onto Elm Street, then turn left
   onto Oak Avenue", on the first turn's first line and on its line at the turn. The second
-  turn's approach lines are then not said (`NavState.chainedStep`); its line at the turn is. Not
-  on a line with lane guidance, a stop or a traffic-light lead, and never onto the arrival.
+  turn's approach lines are then not said (`NavState.chainedStep`); its line at the turn is,
+  unless the line at the first turn named it in the same words and its own would come within
+  `CHAIN_REPEAT_S` (5 s) at the current pace (`chainRepeatsSoon`, slot `TURN_NOW_SAID_SLOT` in
+  `chainedBands`). Then it only buzzes: at 25 m/s two forks 45 m apart said "keep slight right"
+  twice in two seconds. Not on a line with lane guidance, a stop or a traffic-light lead, and
+  never onto the arrival.
   `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
   turns apart, as before. The chained line is not among `upcomingPrompts`, so the voice renders
   it when it is spoken.
@@ -1627,8 +1935,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   fire as the first turn is made (the far band plus `BAND_MERGE_S` of travel, `dueNext`), rides
   on the first turn's line at the turn only: "Take the ramp, then keep slight left". Its bands
   the car reaches within `BAND_MERGE_S` of the turn count as said (`NavState.chainedBands`); a
-  later one is still said. Not onto a merge, a roundabout or a step with lane guidance, and
-  never from a roundabout.
+  later one is still said; a merge named this way counts as said. A "then" says the step's lanes
+  (`withLanes`): "Take the exit toward US 50 East, then use the left lane to keep slight left".
+  Not onto a roundabout, and never from a roundabout.
 - The chained line at the first turn has to end before the second turn's own line, which
   interrupts (`turnNowLine`): the time to the second turn's turn-now point at the current pace
   against `SPEECH_CPS` (13 letters a second) plus `SPEECH_LEAD_S` (0.6 s). When the whole line
@@ -1645,6 +1954,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   the stop leg and the prepared prompts pass over it (`NavEngine.quiet`). An exit step after
   anything but its entry (a route that starts in the ring) still speaks. The drive camera still
   frames the exit (`NavTurnTarget`).
+- A roundabout said at its near band by its own approach has no line at its entry, only the
+  buzz: the words would be the same, about 10 s later, while the driver is yielding. The entry
+  line still comes when it carries the step after the roundabout (a "then" or a due step), or
+  when the roundabout was only said as another turn's "then". `upcomingPrompts` leaves it out
+  too.
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
 - Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, off by default,
   English only). With it on, `NavController.lightCues` looks up the signals along each route
@@ -1670,6 +1984,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   `PARK_STILL_FIXES` (10) fixes in a row (`NavState.stillFixes`), has arrived: the step does not
   move on at a standstill, so a car parked short of a last turn into a lot never reaches the
   last step. The count keeps a car waiting to turn in from arriving at the entrance.
+- Walking off counts as arriving (`WalkAwayArrival`, driving with no stop ahead). Standing still
+  (`STILL_MPS` 0.5 m/s) for `PARKED_S` (15 s) within `RADIUS_M` (250 m) straight-line of the
+  destination sets `NavSession.walkWatch`; `NavigationService` then collects `WalkSense.steps`
+  into `NavSession.onWalkStep`, and `STEPS` (16) within `WINDOW_S` (15 s) arrive with no voice
+  line. `DRIVING_MPS` (4 m/s) or leaving the radius resets it and the sensor stops. Not in replays.
 - The arrival line is "Your destination is on the left/right" when the arrive step has a side,
   else "You have arrived". OSRM and Valhalla put a side on their arrive step; the on-phone router
   and a route named from Google's line do not, so `NavEngine.withArrivalSide` gives one where a
@@ -1723,7 +2042,24 @@ REACH_MIN_M                     25   and never closer than this
 LATE_TURN_PAST_M                10   an ask again waits until the car is this far past that turn
 LATE_TURN_ASKS                   2   asks again for one reroute when its first turn is out of reach
 LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its wait
+REROUTE_COOLDOWN_UNJOINED_MS 3_000   the gap after a reroute whose route the car never joined
+JOINED_M                        50   meters along an adopted route that count as joining it
+BACK_ASKS                        2   asks again for one reroute whose route turns the car round where it is
+BACK_ASK_WAIT_MS             3_000   the wait before each of them
+BACK_ASK_MIN_MPS               4.0   only while the car moves at least this fast
+HELD_COURSE_MAX_M               25   a stopped car keeps its moving course this far from where it showed it
+TRACK_KEEP_M                   300   the car's own track kept for the turn-round test
+START_REPLAN_M                 150   Start this far from the route plans again from the car, quietly
 ```
+
+- Start away from the route: when the car's last live fix (accuracy 50 m or better) is more than
+  `START_REPLAN_M` from the route line, `NavSession.start` plans again from it at once, through
+  `reroute` with the car's course while it moves at 3 m/s or more (`from`, `fromCourseDeg`;
+  `launchNav`, and the car screen's Start with its last fix). Until that answer lands
+  (`quietStart`) there is no chime, no "Rerouting", no buzz and no prompt or turn haptic for the
+  old line, and the opener is said for the route that lands, or for the old one when the fetch
+  fails or is discarded. The adopted block's reason is `start-replan`. A new session also clears
+  the last drive's reroute timers, so its cooldown cannot skip this replan.
 
 - `NavSession.rerouteGate` allows one fetch at a time and enforces the cooldown. A job older
   than its deadline plus the grace is abandoned and a new one starts. The fetch runs on an
@@ -1746,7 +2082,12 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   canceled when the fetch returns or is canceled, and ends at its own timeout.
 - When the open router gives nothing, `RerouteFallback.pick` takes Google's route if it is
   already back, otherwise races Google against the on-device router inside the remaining budget.
-  Google's routes are tagged `GOOGLE_ABBREVIATED`.
+  Google's routes are tagged `GOOGLE_ABBREVIATED`. A fallback's routes, and the phone-first
+  routes above, are one router's answers alone: on a reroute the one that turns the car round
+  least leads while it costs little more (`RouteGeometry.leastTurning`, the `turnRank` and
+  allowance of the turn-round rules below), and their `RC` lines carry the same flags. The
+  adb switch `debug.vela.tune.openRouterDown` at 1 (read at launch, `RouterTestHooks`) makes the
+  open router answer nothing, to try these paths on a test phone.
 - A reroute pins its departure heading. OSRM gets `bearings=<heading>,65` for the first
   waypoint and an empty entry for every later one; the count must match the coordinates or the
   request is rejected. Planning fetches and stationary fixes send none, and neither does a fix
@@ -1758,18 +2099,38 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   with no heading. An unpinned snap began a reroute on a cross street, round a block, across the
   road the car was on.
 - Google's request carries no heading. On a fetch that has one, a Google route whose first 80 m
-  run more than 120 degrees off it (`RouteGeometry.startsAgainst`) is set aside when the open
-  router answered, so the hybrid cannot tell a moving car to turn around. `forwardChoice`
-  limits what that may cost: a forward Google route within `FORWARD_MAX_EXTRA_S` (180 s) or
-  `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
-  is that close without traffic, else the best route, turn-around and all. The open router's
+  run more than 120 degrees off it (`RouteGeometry.startsAgainst`, measured at the point 80 m
+  along the line, not the first vertex past it) is set aside when the open router answered, so
+  the hybrid cannot tell a moving car to turn around. So is one that backs up: a point of its
+  first 60 m more than 12 m behind its start along the heading (`RouteGeometry.startsBehind`),
+  a U-turn to the street just passed that then turns off it, which reads as sideways at 80 m.
+  A reroute also passes the car's own track
+  (`behind`, the last `TRACK_KEEP_M` of trusted fixes), and a route that runs 30 m or more back
+  along it, within 25 m and more than 135 degrees off the way the car drove it, in its first
+  400 m turns the car round too (`RouteGeometry.goesBack`): a U-turn onto either side of the
+  road, or the way round a small block back to a missed turn, which starts the car's way and
+  passed the heading test. A loop ramp never comes back onto the road driven and is not caught.
+  The track starts where the car last turned round (`RouteGeometry.sinceTurnRound`): its newest
+  stretch more than 135 degrees off the car's course, and everything before it, is left out.
+  Kept whole, the track of a car that had made its own U-turn read every route on back down the
+  road as turning it round again, and the reroute waited out both back re-asks.
+  Both routers' routes are tested (`forwardPick`) and ranked (`turnRank`): one that goes on
+  beats one that turns the car round further on (round a block, back from the next exit), which
+  beats one that turns it round where it is (`startsAgainst` or `startsBehind`), while it costs
+  no more than the allowance below over the best. When the open router's best turns round, the
+  lowest-ranked of its alternates within that allowance leads, and Google's best is set aside
+  only for an open route ranked below it. `forwardChoice`
+  limits what that may cost: a Google route of a lower rank within `FORWARD_MAX_EXTRA_S` (180 s)
+  or `FORWARD_MAX_EXTRA_SHARE` (8 percent) of the best one, else the open router's route when it
+  is that close without traffic, rank by rank, else the best route, turn-around and all. The open router's
   time is first put on Google's clock (its length at the best route's average speed, factor
   held to 0.5 to 3), because its own free-flow time runs fast. The open router's route taken
   that way keeps the set-aside best route's clock and traffic (`applyTraffic` with `speedCal`,
   spans carried where the roads are shared), as a trip through stops does when Google's detour
   is not taken. Without them its ETA stayed short until the recheck's heal.
-- A driving reroute's first turn must be one the car can still make. A turn, sharp turn, U-turn
-  or roundabout entry (`NavSession.firstTurnAheadM`) under `REACH_S` seconds away at the newest
+- A driving reroute's first turn must be one the car can still make. A turn, sharp turn, U-turn,
+  roundabout entry, ramp, exit, fork or keep (`NavSession.firstTurnAheadM`, `PLACED_STEPS`; a
+  ramp or a fork needs the car in its lane) under `REACH_S` seconds away at the newest
   trusted fix's speed, and never under `REACH_MIN_M`, is out of reach (`turnOutOfReach`, only at
   `HEADING_MIN_MPS` and up). The first line is said after "Rerouting", a second or more after
   the route lands. The fetch then waits until the car is `LATE_TURN_PAST_M` past that turn at
@@ -1779,6 +2140,23 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
   turn. A failed ask keeps the answer in hand. Pinned to the heading, the open router sends a car
   that has to turn round into the nearest side street, which can be a meter ahead when the route
   lands.
+- A route that still turns a moving car round where it is (at `BACK_ASK_MIN_MPS` or more, by
+  `startsAgainst` or `startsBehind` against its newest course) is not shown or said when no
+  route that turns round less was offered: the fetch waits `BACK_ASK_WAIT_MS` and asks again
+  from the newest trusted fix, up to `BACK_ASKS` times, then takes the last answer. A route
+  that turns round further on is taken at once, and so is a turn-round when a route that turns
+  round less was offered and cost more than the allowance (`TurnRoundVerdict.lessCostsMore`,
+  filled in by `directions`): from a few seconds on, the answer is the same.
+- A car stopped at a light points the way it was going: a reroute from a fix with no course
+  keeps the last moving course while the car is within `HELD_COURSE_MAX_M` of where it showed
+  it (`NavSession.heldCourse`). Unpinned, both routers sent a car back the way it came from a
+  stop, and it pulled away the other way. Once the car is `HELD_TURN_CHECK_M` (10 m) from that
+  point, the bearing of the newest 10 m of its track must be within `HELD_TURN_MAX_DEG` (45
+  degrees) of the course (`RouteGeometry.courseStillHeld`), or the reroute goes unpinned: under
+  the heading speed a car crawls round a corner or turns in the road and shows no course.
+- A reroute whose route the car never joined (under `JOINED_M` along it when it went off
+  again) is followed by `REROUTE_COOLDOWN_UNJOINED_MS`, not the full cooldown, once: the next
+  waits the full time, so a fix biased off the road still settles.
 - A reroute that lands after the driver is back on the original route is discarded
   (`route === fromRoute && onRouteStreak >= BACK_ON_COURSE_HITS`). One grazing fix is not enough.
 - A provisional route is never driven raw. `NavSession.driveable` names a provisional top
@@ -1793,16 +2171,21 @@ LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its 
 RECHECK_INTERVAL_MS          120_000   each wait drawn +/-25% (Jitter), redrawn per recheck
 DEGRADED_RECHECK_INTERVAL_MS  20_000   while the route is degraded, same spread
 DEGRADED_FAST_TRIES                6   then back to the normal interval
+NETWORK_BACK_MIN_GAP_MS       10_000   NavSession.onNetworkBack at most this often
 MIN_RECHECK_DISTANCE_M         1_500   no recheck this near the destination
 SAME_COURSE_M                    250   a candidate within this of the current line is the same course
 FASTER_THRESHOLD_S                90   minimum saving before a route is offered
 MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time left is not offered
 ```
 
-A recheck fetches from the current position through the remaining stops. It does not run off
+A validated default network (the view model's network callback) calls `onNetworkBack`: on a
+degraded route it clears the recheck clock, so the next fix rechecks. A drive that starts on a
+degraded route starts with the clock clear too. A recheck fetches from the
+current position through the remaining stops. It does not run off
 route, in a replay, with an offer on screen, or with "Live traffic re-checks" off (pref
 `nav_live_rechecks`, `NavSession.liveRechecks`). It starts only from a fix that is the phone's
-own position (`onLocation`'s `fromFix`: not a dead-reckoned point, not an outlier hold), rated
+own position (`onLocation`'s `fromFix`: not a dead-reckoned point, not a fix the position filter
+refused), rated
 `RECHECK_MAX_ACC_M` (30 m) or better, with no off-route hits counted (`recheckFrom`). What it
 brings back is dropped unless the last such fix, at most `TRUSTED_FIX_MAX_AGE_MS` (5 s) old, lies
 within `CAR_ON_CANDIDATE_M` (50 m) of the candidate's first km (`startsAtCar`). A real drive
@@ -1821,6 +2204,16 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
   re-check that could not build the hybrid answers with the open router's own route, and the
   same-course test (five samples) cannot see a short detour. The note in the trip says which
   was gained.
+- Same course, and the current route is not Google's line (`RouteHeal.offGoogleLine`: the open
+  router's own route, or an on-device one) while the candidate is (`GOOGLE_HYBRID` or
+  `GOOGLE_LINE_NAMED`, real steps, names not short): in a car the candidate replaces it
+  silently (the `line` gain), unless it turns the car round from its last course
+  (`RouteGeometry.startsAgainst`, `startsBehind`, or `goesBack` along the track since its last
+  turn round); with no course known it waits. A reroute that set every Google route aside for
+  turning the car round adopts the open router's route, and that route keeps the open router's
+  way into the destination, which can be the street next to the right one (a real drive,
+  2026-11-17). Such a route is re-checked on the fast cadence, and down to
+  `OFF_LINE_MIN_RECHECK_M` (300 m) from the end instead of `MIN_RECHECK_DISTANCE_M`.
 - Same road (`RouteGeometry.sameRoad`: every point along the candidate, every 50 m or more
   with at most 400 read, past its first 100 m, within 40 m of the current line): never offered.
   Its lower time is fresher traffic, and the recalibration above has taken it.
@@ -1844,15 +2237,16 @@ replaying, `NavController` synthesizes 1 Hz fixes along the route through
 it until a fix says where the car went, so a feed that stalls at a junction no longer carries
 the puck down a turn the driver did not take (issue #745; a reporter's puck ran a turn and some
 forty seconds of road on a stalled feed). The "searching for GPS" chip stays up, the first real fix re-anchors, and
-synthesized fixes are never recorded into a trip.
+a recorded trip keeps each synthesized fix as an `N` line of kind `d`, never as a fix line.
 
 #### Pause
 
 While `NavSession.paused` is set, `onLocation` records the fix and returns before the engine.
 Nothing downstream runs: no off-route detection, reroute, arrival, stop cue, voice, recheck or
-offer. The puck keeps moving because it is drawn from the raw fix, and the arrival clock slides
+offer. The puck keeps moving because the position it is drawn from is not held, and the arrival clock slides
 on a 30-second tick. Resume reroutes once when the fix is outside the corridor, otherwise speaks
-the current instruction. Auto-resume is armed by the stop: a stationary or off-route fix sets
+the step ahead with its distance in its spoken wording (`resumeLine`: "In half a mile, make a
+U-turn"), bare inside `RESUME_BARE_M` (60 m); auto-resume says the same. Auto-resume is armed by the stop: a stationary or off-route fix sets
 `autoResumeArmed`, and then `AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes resume.
 Without the arming step a pause taken at speed would resume itself three fixes later.
 
@@ -1872,13 +2266,76 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   `TYPE_ROTATION_VECTOR`, no Google services), projected onto the travel bearing. Its noise is
   cut by the gain `a² / (a² + n²)` with `ACCEL_NOISE` 0.5, which keeps a 4 m/s² brake within 1.5
   percent and cuts 0.3 m/s² of vibration to a quarter.
+- A fix reaches the app about 150 ms after the GPS measured it (a Pixel 9 drive, 580 fixes:
+  139 to 166 ms, p10 to p90). The location handler publishes each fix with its own clock
+  (`Location.elapsedRealtimeNanos`, `FixAge`), and the puck takes its along-route meters carried
+  forward by the fix's speed times its age; the free-drive follow carries the fix along its
+  course the same way. An age over 1 s, or a fix with no clock, is taken as it is. The `fixLead`
+  dial at 0 turns it off.
 - Progress advances in the rate domain: the modeled speed plus `error / PUCK_CORRECT_TIME_S`
   (0.6 s), capped at `1.5 x speed + 2 m/s` of catch-up and `0.25 x speed + 0.5 m/s` of
   hold-back. An ease toward a target under a monotonic clamp stalls and lurches at the fix rate.
 - Dead reckoning stops `DEAD_RECKON_S` (3 s) after the last accepted fix. A fix's advance is
   accepted up to `speed x dt x 2.5 + 60 m`.
+- Near a standstill a small forward hop is GPS jitter and is held, unless the model says moving
+  (0.5 m/s), the hop passes 8 m, or the fix's own Doppler speed passes `PULL_AWAY_MPS` (1 m/s;
+  parked Doppler noise reads under 0.4). Without the last, the first fix of a pull-away was held
+  while the model still read 0.
+- The arrow moves forward only, so dead reckoning through a stop can leave it past the car. Once
+  a fix's own speed (or the model's, without one) is under `STOP_SETTLE_MPS` (0.3 m/s) for
+  `STOP_SETTLE_AFTER_MS` (1 s) and three fixes, and the median of the last three is more than
+  `STOP_SETTLE_MIN_M` (4 m, dial `stopSettleMin`; 2.5 m slid the arrow back at lights once GPS
+  braking had it stopping about 2 m past), or 0.6 of their accuracy, behind the arrow, the arrow glides back
+  onto it at `STOP_SETTLE_RATE_MPS` (2.5 m/s) and the filter is reseeded there. Dial
+  `stopSettle`. On the mock turn from a stop below, the arrow had stopped 5.7 m past the car and
+  stayed there until the car drove up to it; with these two rules its mean error through the 8 s
+  stop is 0.7 m against 5.7, and through the stop and the 8 s after it 1.8 m against 3.8.
+- GPS braking (`NavPuck.gpsBrake`): two fixes `BRAKE_MIN_GAP_S`..`BRAKE_MAX_GAP_S` (0.4 to 2.5 s)
+  apart whose Doppler speeds fall by at least `BRAKE_MIN_MPS2` (0.8 m/s²), the later one under
+  `BRAKE_BELOW_MPS` (20 m/s), set a deceleration (at most `BRAKE_MAX_MPS2`, 6 m/s²) that the speed
+  model's predict step takes until the next fix, when it is harder than the accelerometer's. The
+  settle above was gliding the arrow back at every stop (a real drive; mock stop at 2.5 m/s²: 5.6 m
+  past, 5.6 m back). With it the mock stop ends 0.7 m past with no glide back, at a cost of 0.3 m
+  more behind in the 3 s after pull-away and 0.06 s more heading lag through the turn after. Dials
+  `gpsBrake` (0 off) and `gpsBrakeBelow` (m/s).
 - The smoothing window's width eases toward its speed target with `PUCK_WIN_TAU_S` (2.5 s). On a
   curve the width is a lateral position, so speed noise in it is sideways movement.
+- The arrow's heading is the chord across at least `HEAD_WIN_MIN_M` (12 m) either side of a point
+  `HEAD_LEAD_S` (0.3 s of travel) ahead of the puck, eased with a 0.3 s constant. A car starts its
+  arc about a turn radius before the corner's vertex (15 m for a 90 degree turn on a 15 m radius),
+  and the 5 m window of a pull-away started the arrow turning 5 m before it. The lead is the
+  ease's own lag. Dials `headWinMin` and `headLeadS`.
+- Gyroscope mode (`GyroHeading`; Settings > Diagnostics > "Turn the arrow with the gyroscope",
+  pref `gyro_turn`, on by default, `GyroTurn`): the heading is turned by the phone's yaw rate and
+  pulled toward the line's direction across the same window centered on the puck, with no lead.
+  The chord turns where the line's corner is drawn, which on real corners was up to about a
+  second before or after the car.
+  - The rate is the gyroscope projected on the world's up axis from the game rotation vector
+    (`MotionProvider.yawRate`), each reading averaged half and half with the last, then
+    low-passed over `RATE_TAU_S` (0.12 s). A reading older than `GYRO_FRESH_MS` (250 ms) falls
+    back to the chord.
+  - The pull's time constant is `TAU_TURNING_S` (3 s) while the rate or the reference turns at
+    `TURNING_DPS` (6 degrees a second) or more, `TAU_STRAIGHT_S` (1 s) otherwise, and
+    `TAU_STOPPED_S` (0.4 s) under `MIN_SPEED_MPS` (1.5 m/s) or with no reading, when the
+    gyroscope is ignored (a phone picked up at a light turns too).
+  - Route envelope (`gyroEnvelope`): the heading stays between the least and greatest direction
+    the route takes from `GYRO_ENV_BACK_S` (1 s, at least 10 m) behind the puck to
+    `GYRO_ENV_AHEAD_S` (1.5 s, at least 20 m) ahead, in 8 m chords every 4 m, plus
+    `ENV_SLACK_DEG` (2.5), and never past `MAX_OFF_DEG` (75) from the reference. On a straight
+    a wobbling mount cannot turn it. Organic Maps, CoMaps and OsmAnd take the arrow's heading
+    from the route alone and use no gyroscope.
+  - Acceleration cap: a car turning at w and speed v pushes sideways at v * w, a phone twisting
+    on its mount does not. With a horizontal linear acceleration under 250 ms old the rate is
+    held to `accelCapDps`: the acceleration's size over the speed (at least 3 m/s) plus
+    `ACCEL_MARGIN_DPS` (6 degrees a second). The size, never the direction, which hangs on the
+    magnetometer.
+  - The camera aims at the heading plus the low-passed rate times `CAM_GYRO_LEAD_S` (0.35 s),
+    at most `CAM_GYRO_LEAD_MAX_DEG` (25), inside the same envelope.
+  - API 26 emulator, a Davis straight at 12 to 15 m/s: a 28.6 degree a second turn injected
+    for 3 s moved the arrow 3.4 degrees off the road (51 before the envelope); a 5 Hz shake of
+    60 degrees a second, 0.9 (2.7 before the cap). Unit tests: a mount swinging 9.5 degrees
+    twice a second turns the arrow under 2 degrees toward a corner already inside the
+    envelope, and a 30 degree a second turn at 10 m/s is 22 degrees in after one second.
 - Snap tolerance (`puckSnapTolerance`): driving, 22 m plus a speed term of up to 13 m. Walking
   and cycling, 8 m plus 1.2 times the fix accuracy, capped at 16 m. The heading gate is skipped
   below 1 m/s driving and 2.5 m/s on foot or by bike.
@@ -1894,7 +2351,20 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
 
 - Bearing eases with a time constant from `CAM_BRG_TAU_STILL` (1.6 s) at small error to
   `CAM_BRG_TAU_TURN` (0.35 s) past `CAM_BRG_TURN_DEG` (25 degrees). Geometry noise is a few
-  degrees and a turn is tens.
+  degrees and a turn is tens. Once the error passes `CAM_BRG_LATCH_DEG` (12) the turn constant
+  holds until the camera is within `CAM_BRG_SETTLED_DEG` (3) of its target; easing back toward
+  1.6 s as the error shrank kept the map turning for two seconds after the car had finished.
+- The camera aims at the heading chord `CAM_LEAD_S` (0.4 s of travel) further on than the arrow's,
+  the lag of its own ease in a turn (dial `camLeadS`, 0 aims it at the arrow).
+- Pixel 4a, a 90 degree right turn from a stop taken at 8 m/s (31 degrees a second), fixes 150 ms
+  old, the true path known (`scripts/mockdrive/lagdrive.py` from Davis, `lagcheck.py`): the camera
+  trailed the car's heading by 1.48 s and up to 65 degrees before these changes and by 0.48 s and
+  21 degrees after; the arrow by 1.03 s and 55 degrees, then 0.70 s and 28; the arrow's distance
+  behind the car in the 8 s after pulling away averaged 2.8 m, then 1.5 m. On the straights the
+  camera stayed within 1.2 degrees of the road both ways. A phone on a desk feels no
+  acceleration, so these runs give the speed model nothing between fixes; in a car the
+  accelerometer does (Position and speed). The same runs stopped the arrow 4 to 6 m past the car
+  at the light, before the stop settle (Position and speed).
 - Zoom runs from 18.5 at a standstill to 15.8 at 30 m/s, on a speed eased over 0.6 s, less the
   framing's pull-back (below). A pinch sets an override that a pan or Re-center clears. With
   "Zoom to the next turn" on (Settings > Navigation, off by default) the zoom is the lesser of
@@ -2112,14 +2582,42 @@ values go into `mutableFloatStateOf` holders read in the draw phase.
   does not reach it.
 - The bearing eases toward the GPS course with a speed-scaled look-ahead
   (`FREE_LOOKAHEAD_TAU_S` 2.5 s). The fly-in to street zoom runs once per follow. With "Keep
-  north up" the follow stays north-up at any speed, flat unless tilted by hand, and the beam still
-  prefers the course.
+  north up", or "Turn the map as you drive" (`TurnWithTravel`) off, the follow stays north-up at
+  any speed, flat unless tilted by hand, and the beam still prefers the course.
 - Below 0.5 m/s, target moves under `FOLLOW_STILL_DEADBAND_M` (2 m) are ignored, so a parked
   car lets the loop go idle.
-- The dot is drawn at the eased follow position, so it stays centered as the map glides. While
-  the follow glides back in from where a pan left the camera (`browseSeeking`), it is drawn at the
-  fix until the camera is within `SEEK_DONE_M` (3 m) of it; drawn at the eased position then, it
-  jumped to the screen's center and rode back with the map.
+- Road snap (`core/location/RoadSnap`, issue #803). Once the follow is driving (the heading-up
+  latch above, kept with the map north-up too), each fix is moved onto the road it runs along
+  before it reaches `FollowEstimator`, and the dot drawn at the fix carries the same offset. The
+  roads are the drawn road lines in a box around the fix (`RoadSnapQuery`,
+  `queryRenderedFeatures` on the 21 Liberty road layers that are not casings, rail or paths), so
+  the online and the downloaded basemap both work. The query waits for the render thread, so one
+  answer covers about `AHEAD_S` (4 s) of driving (`MIN_AHEAD_M` 30 to `MAX_AHEAD_M` 120 m past
+  `MAX_M`) and is reused for up to 6 s while it still covers the fix.
+  - A road counts within `MAX_M` (30 m) of the fix and `MAX_ANGLE_DEG` (35) of the GPS course,
+    either way unless it is one-way. Service roads add `SERVICE_PENALTY_M` (20 m), so a street
+    beats a nearer alley. Driveways, parking aisles, paths, tracks, busways and rail do not count.
+  - No snap starts under `START_MPS` (4 m/s), or when another road elsewhere is within
+    `AMBIGUOUS_M` (8 m) of the best (a fork, ramps, a frontage road). The road that continues the
+    last snap gets `STICK_BONUS_M` (6 m).
+  - Two fixes in a row with no road let go. Slow or stopped, the offset holds until the fix is
+    `HOLD_M` (25 m) from where it was set, so the dot stays on the road at a light.
+  - The offset eases in and out over `SNAP_EASE_S` (0.6 s). The accuracy halo stays on the fix.
+    The `roadSnapOff` dial turns it off.
+  - Pixel 4a, a 4.4 minute mock drive in Davis with every fix 18 m right of the road: 203 of 250
+    fixes snapped at 17.7 to 18.4 m, and it let go at turns and through an interchange's ramps.
+    The same drive on the road moved no fix more than 0.5 m. The query ran 57 times, 15 ms median
+    and 75 ms at most on the main thread; on every fix it cost 13 ms a second.
+- Following a move, the dot is drawn at the eased follow position, so it stays centered as the
+  map glides. It is drawn at the fix while standing still (below 0.5 m/s, where the camera rests
+  up to `FOLLOW_STILL_DEADBAND_M` off it), while a pinch, a pan or a flight has the camera, and
+  while the follow glides back in from where a gesture left it (`browseSeeking`, until the camera
+  is within `SEEK_DONE_M` (3 m) of the fix). Drawn at the eased position then, it jumped to the
+  screen's center and rode back with the map.
+- A switch between the two carries the gap over and fades it out over `DOT_HANDOFF_TAU_S`
+  (0.25 s); a gap over `DOT_HANDOFF_MAX_M` (30 m) is a jump and is not carried. Switching
+  outright moved the dot by up to 3 m, 40 px at z20, at the start and end of each pinch.
+  `browseDot` holds where the ticker drew it, and a recomposition repaints there.
 - A two-finger tilt pauses the follow's camera writes and becomes its tilt target
   (`browseUserTilt`) in place of the automatic 0 or 55 degrees. It survives a pan, a sheet and
   the locate button. The compass, visible while a tilt is held, returns the map to north and
@@ -2552,8 +3050,8 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   one route; a cluster within 60 m of one already tried is skipped. `CameraDetour.choose` is
   the one rule for both: fewest cameras, ties to the faster, beating the leader within the cap.
 - A kept route leads the list and carries its waypoint plan (`Route.detourPlan`). A drive on it
-  holds the detour points as silent stops, which every reroute and recheck routes through and
-  nothing speaks or lists. `NavSession.withSilentVias` puts those still ahead back in after a
+  holds the detour points as silent stops, which every recheck routes through and nothing speaks
+  or lists. A reroute drops them (4.4): a driver who left the detour's way is taken on from there. `NavSession.withSilentVias` puts those still ahead back in after a
   mid-drive stops edit.
 
 #### Alerts
@@ -2576,7 +3074,10 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   steps the same three in the same order (`CarVoice.step`, issue #842) and shows the mode as
   its glyph (`ic_car_unmute`, `ic_car_alerts`, `ic_car_mute`); the car settings switch sets On
   or Off and leaves Alerts only (`CarVoice.set`). Both write the same two prefs; the phone's
-  state follows the prefs through a listener, so the two never disagree.
+  state follows the prefs through a listener, so the two never disagree. Every spoken line and
+  chime goes through `VoiceGuide`, whose `muted` gate is the one check. Muting cuts the line
+  being spoken, drops the queue and drops a line still waiting for its focus lead (9.1). A car
+  host that reads the turns aloud itself is outside this switch (10.6).
 - Bridge openings (`BridgeAlert`, on by default): a drive whose line enters the Netherlands
   (`NdwBridgeOpenings.inNetherlands`) fetches NDW's `planningsfeed_brugopeningen.xml.gz`
   (about 115 KB, DATEX II v3), keeps the bridges within 30 m of the line and asks again every
@@ -2631,10 +3132,20 @@ Cross-street labels are points Vela places, not line-center labels on the basema
 
 - The trip format is `core/replay/TripLog`: a `META` header, then route blocks and
   `lat,lng,t,bearing,speed` fixes. Every fix also carries its provider and the engine's
-  off-route hit count.
+  off-route hit count, and from 2026-11-17 its speed accuracy, course accuracy and the
+  accelerometer's at-rest flag: what the position filter took from it. From 2026-11-18 a GPS fix
+  also carries the satellites' signal (`GnssSignal`, from the GNSS status the location provider
+  listens to while it runs): the mean C/N0 of the four strongest satellites used in the fix, in
+  dB-Hz, and how many were used, both empty when no status came in the last 2 s. A share keeps
+  them: they hold no position.
 - Trips are segmented. The start route and every mid-drive swap is its own `RP`/`RD`/`M` block,
   active from the fix where it appears. Auditing or replaying a multi-block trip against one
   merged route corrupts it.
+- A drive resumed after its process died records into the trip it interrupted: `launchNav`
+  saves the trip id under `trip` in `vela_nav_resume`, and resume reopens that file
+  (`TripStore.resumeTrip`), writes a `resumed:` note and its route as a block with reason
+  `resume`. With no trip to continue it starts one. The fixes either side of the restart have
+  a gap between them.
 - `RD` carries the route's provenance flags and source name, then `named=KofN` (how many of
   its lefts, rights and U-turns name a road or a number; ramps, exits, merges, forks and
   roundabouts are not counted, since a sign names them) and `Route.made`, how the steps were put
@@ -2654,16 +3165,55 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   turns of the candidate against the current route's. An `eta:` note every 30 s records
   minutes and kilometers left, the step, the traffic ratio, the number of congestion stretches
   and the route's source.
+- An `N` line is one call of the nav engine as the drive made it:
+  `N,<t>,<kind>,<msSinceFix>,<lat>,<lng>,<speed>,<accuracy>,<bearing>`. Kind `f` is the position
+  filter's position for a fix it took, `h` its position for a fix it refused, `r` the fix as it
+  came with FreeFused off, `w` the dot's FreeFused on a walk, `d` a dead-reckoned point between
+  fixes. A walk's steps are `W,<t>,<intervalS>,<compassDeg>,<stepLengthM>` lines, dropped from a
+  shared copy. Files from before the filter (2026-11-17) wrote the fix as it came for `f`
+  and the position an outlier hold kept for `h`, and from 2026-11-11 to 11-17 also `h` for the
+  dot's low-passed point;
+  `msSinceFix` counts from the last fix line, and an empty field was not passed. The location
+  path writes the route block first if the route changed (`NavController.syncTripRoute`), so an
+  input never lands ahead of the route it ran against. A file runs about 600 KB per hour of
+  driving, 39 percent of it `N` lines and 3 percent `RC` (a 4-minute Davis mock drive with two
+  reroutes, 40 KB).
+- A `routing:` note at the start says the units, the avoid switches, Google traffic, rechecks
+  and the travel mode.
+- Each route fetch during a drive writes what the routers answered (`TripLines`): a
+  `route answers (reroute|ladder|plan):` note with each router's count and time, how many of
+  each turn the car round, the heading and how many of Google's were set aside, and an `RC` line
+  per route: `RC,<t>,<stage>,<source>,<flags>,<etaS>,<distanceM>,<encoded-polyline>`, source
+  `open`, `google`, `phone` or a fallback's, flags `back` (it turns the car round), `later` (it
+  does so further on, not where the car is) and `aside`
+  (a Google route set aside).
 - `TripScrub` drops unknown line kinds, so a new line kind needs a decision there on whether it
   is safe to share. It keeps or drops an `M` line's extra fields with the line, and drops `T`:
-  a shared copy's route is trimmed and the offsets no longer fit.
+  a shared copy's route is trimmed and the offsets no longer fit. `N` lines stay beside the
+  fixes it keeps and `RC` lines are dropped (14.3); the `route answers` note has no position and
+  is kept.
 - Replay is hermetic: `NavSession.replayMode` suppresses live reroute and recheck fetches, and
   recorded swaps play back through `replaySetRoute`.
+- A file with `N` lines replays them: the engine gets the drive's own inputs (fix, hold or
+  dead-reckoned point, speed, accuracy, heading) at the moment it got them, the fixes move the
+  dot, and a route swap lands at the first input that ran on the new block or at the fix where
+  the block was written, whichever is first. The engine speaks in the units of the `routing:`
+  note. An older file derives the inputs from the fixes as a drive would: GPS fixes of 50 m or
+  better only, with their accuracy, and the fix's heading while moving (a recorded 0 is none).
+- Re-drive, the debug dial `debug.vela.tune.replayLive` at 1: the replay runs at 1x with
+  `replayMode` off and plays none of the recorded swaps, so today's code reroutes live from the
+  drive's own inputs. It is how a rerouting change is tried on a recorded wrong turn. Nothing is
+  written to a trip; the nav notes and route answers go to logcat (`VelaTrip`, and `VelaRC` for
+  the routes when that tag is set to DEBUG).
 - The map scales the puck's clocks by `replaySpeedup`: the chosen speed for a trip replay and 1
   for a demo drive, unless `debug.vela.tune.demoSpeedup` is set.
 - `NavReplay` runs fixes through the real `NavEngine` and checks cards and voice against the
   maneuver positions, flagging silent turns, early announcements and wrong distances.
-  `TripLog.audit(csv)` is the one-call entry. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
+  `TripLog.audit(csv)` is the one-call entry. With `N` lines it runs the engine's own inputs,
+  headings included; without them it passes each fix's recorded speed, as a live drive does:
+  prompt distances, the line at the turn and chained-turn timing scale with speed, and a replay
+  without it is timed for a crawl. Not the fix's bearing: one the phone gave none is recorded
+  with 0, which reads as north. The on-demand harnesses take `-DvelaTrip=<abs.csv>`
   and `-DvelaSeg=<n>`, forwarded to the test JVM in `core/build.gradle.kts`.
 - Demo drive (pref `demo_drive`, off by default): `DemoTrace.fromRoute` turns a planned route
   into one `ReplayFix` per second and runs it down the same hermetic path. The drive keeps a
@@ -2690,10 +3240,16 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   stall of `STALL_MS` (250) or more, under `LOW_FPS` (20) map frames during a gesture, or a
   main-thread pass of 100 ms or more, at most one per `MIN_GAP_MS` (2 s). A `camera:` note marks
   the camera leaving or rejoining the car. A summary is written every 10 s.
-- Other `K` notes: build and settings, each spoken line's wait and render time, and network,
-  thermal, memory, screen and GPS changes. No note holds a coordinate, a name or spoken text.
+- An `S` line is a line the voice said. With the voice muted or on alerts only, the line it
+  would have said is still written, as `S` with `(muted) ` in front (`VoiceGuide.onMuted`).
+- Other `K` notes: build and settings, each spoken line's wait and render time, a change of the
+  voice mode (`voice: on`, `voice: alerts only`, `voice: off`, from the speaker button, Settings
+  or the car), and network, thermal, memory, screen and GPS changes. No note holds a coordinate,
+  a name or spoken text.
 - A trip replay runs at 1x, 3x (default) or 10x, pauses, and seeks. A seek restarts it and runs
-  silently to the chosen moment.
+  silently to the chosen moment, then sets the voice from the mode the speaker button shows
+  (`MapUiState.voiceMuted`), so a mode picked during the run-up holds. Only the newest replay
+  gives the voice back (`NavController.runUpGen`).
 
 ### 4.11 Tap-to-stop during a drive
 
@@ -2707,7 +3263,7 @@ bar.
   stray touch at speed re-routes nobody.
 - The card prices the stop. One route through the candidate is fetched, bounded at
   `NAV_DETOUR_TIMEOUT_MS` (8 s), and `DetourEstimate.minutesAdded` compares it with the drive's
-  live remaining time. The candidate goes first in the waypoint list, where `NavSession.addStop`
+  live remaining time. The candidate goes last in the waypoint list, where `addStopDuringNav`
   puts it. A difference under `MIN_SHOW_S` (20 s) or over `MAX_PLAUSIBLE_S` (3 h) shows no
   figure. The fetch changes nothing in the session.
 - The card dismisses itself after 10 s, or 25 s under `dpadMode`, shown as a countdown ring
@@ -2768,6 +3324,15 @@ results are up. Over an older archive they stay, or its parks would vanish, and 
 vegetation exclusion (wood, forest, tree, grass, wetland) must not cover park or garden. In
 drive navigation they show fuel only.
 
+Where they hide for the one-set archive or the ambient pool (browsing, at most one marker),
+`vela-osm-parking` shows the basemap's car parks with no name (class `parking`): the bake drops
+places without a name and Google's dots have no parking lots, so those lots had no icon at all
+(issue #935). A named lot is in those sources and would draw twice. It is one layer over the
+`poi` source-layer below `poi_r20`, rank under 20 from z15 and every rank from z18, as the tiers.
+Keeping the three tiers up with a parking filter instead cost frames over Shinjuku's dense tiles;
+the one layer did not measure (Shinjuku, z17 pan on a 4a, three runs each: 38 fps median with
+it, 41 hidden, 50 for a placebo layer hidden).
+
 Over an older archive `osmFillIn` drops OSM points whose name matches a drawn open icon within
 80 m (`OSM_AREA_TWIN_M`, 1,500 m, for area classes). It is viewport-only, rendered-only and
 grow-only (`OSM_EXCLUDE_MAX` 1,500 names; each `setFilter` re-lays the source), and throttled to
@@ -2784,11 +3349,15 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles (
 
 - Overture: businesses only; its park, school, campus, housing and transit rows are dropped.
   Categories are the `categories.primary` set, and a release with `taxonomy` is mapped back
-  through `tools/overture-taxonomy-map.csv`.
+  through `tools/overture-taxonomy-map.csv`. A row's suppliers (side table `sups`) are the
+  datasets in its `sources` other than `Overture` (the confidence) and `Overture-signals` (an
+  operating-status signal). A record has one supplier; a second appears when another dataset
+  confirms a property, such as BrightQuery's operating status on a Meta record.
 - AllThePlaces: the newest weekly run (`data.alltheplaces.xyz/runs/latest.json` unless `ATP_RUN`
   pins one; the last pinned id is the fallback). Rows come from the world PMTiles
   (`pmtiles extract --bbox`, tippecanoe-decode, jq), filtered and mapped by `isbiz` and
-  `osmcat`. Confidence 0.85. Chains carry OSM-syntax `hours`.
+  `osmcat`. Confidence 0.85. Chains carry OSM-syntax `hours`. Rows are kept once per id: a
+  point on a tile edge decodes once per tile it touches.
 - OSM business nodes: the Geofabrik extract through `osmium tags-filter` and geojsonseq (strip
   the 0x1e separator before jq), same macros. Confidence 0.8; the id is the node id. Ways and
   relations stay out: a building centroid is the same guess as a parcel point.
@@ -2807,8 +3376,49 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles (
   by house number (`fuel@<number>`).
 - Rows with the same core key within 60 m fold too, when every word of one snap key is in the
   other. A shared core alone folded the Empire State Building into "Empire Beauty School".
-- Leader: the row standing for a landmark, then not a kiosk, confidence, more fields.
+- Leader: the row standing for a landmark, then not a kiosk, confidence, more fields. A
+  dropped row's suppliers move to its leader.
+- `tools/places-corrections.csv` (`id,reason`) lists rows Vela knows are wrong, by Overture
+  GERS id or `atp:` / `osm:` id. They are deleted before the folds. The list is empty.
 - The OVERLAP family (5.5) stays app-side: it needs the kinds and the pool's shared words.
+
+#### Address twins and single-supplier rows
+
+Both rules run after scoring and the OSM pairing, before the tenant rules. A row is backed when
+a second source lists it: an OSM business node or a locator point with the same `nkey` or the
+same brand within about 150 m, an OSM pair or locator snap (`srcbonus`), an OSM landmark of the
+same name (`markdupes`), or the row is itself an OSM or locator row. `almanac_backed` is an
+empty hook for register evidence (an inspection or a license that saw the place open).
+
+- Address twins (#742): rows with the same snap key, the same `akey` (the street line from
+  `anorm`, punctuation out, starting with a house number) and the same `pckey` (the postcode,
+  ZIP+4 cut to the ZIP) are one business at any distance. A row with no postcode is left out.
+  Kept: the landmark's row, then not a kiosk, then the row nearest the Overture address point
+  with the same number, first non-direction street word (`stword`) and postcode, when one is
+  within 250 m, then a backed row, then confidence, then more fields. The kept row takes the
+  dropped rows' suppliers, backing, hours, phone and website. The address point read is the same
+  one as the unit snap's (`addrsrc`).
+- Single supplier (#914): an Overture row whose only supplier is BrightQuery, Microsoft or
+  Foursquare and that is not backed is deleted, unless its category is one a missing place
+  costs more than a phantom (`lonekeep`): fuel, charging and truck stops, hospitals, emergency
+  rooms, urgent care, pharmacies, post offices, colleges, libraries, fire and police stations,
+  courthouses, town halls and airports. `medical_center` stays under the rule: 19 of its 469
+  such rows in the Delaware box read as a hospital, the rest as practices. The rule runs only
+  when the bake has an OSM extract, without which nothing could back most rows. Confidence does not separate these: 99% of the
+  Microsoft-only and Foursquare-only rows in the Delaware box score 0.75 or more. Against
+  health inspections and license registers (Vela Almanac), a restaurant listed only by one of
+  the three is found about a tenth as often as one a mapper confirmed.
+
+| Box (Overture 2026-10-21.0) | Rows before | Address twins | Single supplier dropped | Kept by `lonekeep` | Rows after |
+| --- | --- | --- | --- | --- | --- |
+| Delaware, whole box | 171,408 | 2,022 | 71,020 | 1,109 | 98,349 |
+| Delaware, inside the state | 48,694 | 522 | 19,191 | 270 | 28,975 |
+| Davis and Sacramento | 86,238 | 818 | 39,094 | 395 | 46,321 |
+
+In the Delaware box 949 of 1,994 twin groups were decided by the address point, 144 by
+backing and 901 by confidence; in the Davis and Sacramento box 735, 7 and 71 of 813. None of
+the single-supplier rows carry a brand. The rows kept by `lonekeep` in the Delaware box were
+mostly pharmacies (247), post offices (149), gas stations (146) and hospitals (104).
 
 #### Positions
 
@@ -2979,6 +3589,10 @@ Density is decided by rank, not by collision. The named numbers are calibration 
   or a landmark gets a name: a label is glyph layout plus a collision pass over four anchors.
 - Everything below the cut draws as a category-colored dot. Dots thin by opacity steps, because
   a filter cannot read zoom: none below z15, `rank` <= 6 at z15, <= 15 at z16, all from z17.
+- Settings > Places > "Place names" (`MapPoiPrefs.namesSooner`, pref `map_poi_names_sooner`:
+  Default 0, More 1, Most 2) moves every icon and label step in this table, and the ambient
+  label steps (5.4), out by that many zooms. The dot steps and the overlap zooms stay. The tiles
+  cap what can draw: a z15 tile holds only places baked for z15 (5.2, Ranks and minzoom).
 - Icon overlap is allowed from z18 on the open layer and z17 on the ambient layer. Below those,
   Google's extras lose collision to the open icons.
 - Route preview: the basemap tiers, the open layer, transit icons, stop badges and saved pins
@@ -2999,6 +3613,8 @@ sinks.
 
 - The on-screen set is capped by zoom, `ambientCapMin` (45) at z14 to `ambientCapMax` (140) at
   z17.5.
+- Labels (`ambientLabelField`): prominence >= 6.0 below z15.5, >= 5.0 from z15.5, >= 3.0 from
+  z16.5, every place from z17.5. "Place names" moves these steps out (5.3).
 - The collision sort key is `(10 - prominence) * 1000 + i`, never the list index: the streamed
   pool re-ranks as terms land, and an index key reshuffles placement on every partial upload.
 - Sticky ranking (`AmbientStability`): a settled view is painted several times with different
@@ -3091,16 +3707,31 @@ Then:
 - Offline or with Google off (`googleOff()`), the tap runs no search, reviews or photos. An open
   place shows its tile data or the remembered listing.
 - The `VelaTap` log line carries each gate's counts (`cross=N`) and no coordinates.
+- A tap Google did not match keeps the open data's address, which is often a city alone. With
+  no street line (no digit) it takes the address at its point (`fillUnlinkedAddress`): the
+  on-device address index (`OfflineAddressStore.reverseGeocode`, `completeAddress`), else the
+  reverse geocode a dropped pin gets. Google was just asked about this place by name and point,
+  so the second request adds nothing it did not have.
+- Any selected place with no street line that is not a Google listing (an open-data place, a
+  saved place kept without an address) is filled from the on-device address index, online or
+  offline (`backfillOfflineAddress`). That fill never asks Google.
+- That fill can land before the place's Google details with the nearest street alone, and a
+  numbered street has digits ("East 8th Street, Davis, CA"). When the details bring an address
+  with a house number (`hasHouseNumber`: a plain number in the first part, not an ordinal) and
+  the one showing has none, the details' address replaces it (`mergeDetails`); otherwise the
+  address showing stays.
 
 #### The same-business rule
 
 `core/util/PlaceNames` is one rule for the tap resolve, the Both-mode twin hiding and, mirrored
 in SQL, the bake's dedupe. `PlaceNamesMatchTest` pins it.
 
-- `normalized` folds accents (and ß, æ, ø, œ, ł, đ, ё), drops parentheticals, legal forms (LLC,
-  Inc, GmbH, SARL, S.r.l., B.V., ООО, Kft), chain tails ("by Wyndham"), a leading "The" and a
+- `normalized` folds accents (and ß, æ, ø, œ, ł, đ, ё), drops parentheticals, legal forms written
+  as one word (LLC, Inc, GmbH, SARL, Srl, BV, ООО, Kft), chain tails ("by Wyndham"), a leading "The" and a
   trailing store number, reads "&" as "and", keeps a possessive on its word, expands
-  abbreviations (St, Ave, NY, Dr, Str., ул.) and joins dotted initials ("U.S." is "us").
+  abbreviations (St, Ave, NY, Dr, Str., ул.) and joins dotted initials ("U.S." is "us"). A legal
+  form written with dots (S.r.l., B.V.) survives, because the legal-form test runs before the
+  initials are joined.
 - `match(a, b, extraGeneric)` answers EXACT (normalized equal), VARIANT (one name is the other
   plus only generic words: "CVS", "CVS Pharmacy"), OVERLAP or NONE.
 - OVERLAP: nested with non-generic extra words ("SpeeDee-Midas" over "SpeeDee"); two
@@ -3125,8 +3756,8 @@ in SQL, the bake's dedupe. `PlaceNamesMatchTest` pins it.
 - `same` is EXACT only; `agree` is anything but NONE.
 - `sameBusiness(a, kindA, b, kindB)` refuses an OVERLAP between two known, different icon
   groups (a fuel station and the pizza place on its lot). EXACT and VARIANT cross kinds
-  ("Safeway Pharmacy", "Safeway"). Two names that reduce to one four-letter word match when
-  their kinds agree.
+  ("Safeway Pharmacy", "Safeway"). Two names that reduce to one identifying word, the same word of four
+  letters or more, match when their kinds agree.
 - `sameFuelLot(kindA, kindB, distance, numberA, numberB)` calls two fuel stations within
   `FUEL_LOT_M` (30 m, short of a road plus two setbacks) one station whatever their names. Two
   known house numbers that differ refuse it. Ambient features carry `hn` for it.
@@ -3149,9 +3780,9 @@ when the feature ids match. Two requests at most.
   runs over a 2.5 km window around the user and leads the list.
 - `SearchPb.build` stretches the template's window to the viewport span, floored at `MIN_SPAN_M`
   (1 km) and capped at 500 km.
-- Ranking and shown distances use `rankFrom`: the user's location within about 50 km of the
-  viewport, else the viewport center. The request bias stays the viewport. `plausibleBias()`
-  discards a point near `0,0`.
+- Ranking uses `rankFrom`: the user's location within about 50 km of the viewport, else the
+  viewport center. The request bias stays the viewport. `plausibleBias()` discards a point near
+  `0,0`.
 - A name match "near you" that replaces a far view's results must not be permanently closed and
   must be within `HOME_NAME_MAX_M` (40 km) of the user.
 - The "more results" row pulls the next three pages. It goes when a pull adds fewer than five or
@@ -3159,14 +3790,37 @@ when the feature ids match. Two requests at most.
 - "Search this area" keeps the results inside the view, padded by 10% per side
   (`AreaNarrow.PAD`), or the whole answer when none fall inside. A list the pan minimized stays
   minimized until the search answers (`runSearch(expand = false)`): opened at once, it still held
-  the old results and the map framed them before the new ones.
+  the old results and the map framed them before the new ones. The camera's remembered center
+  becomes its own target after the pan, at the view's zoom (`centerZoom`), so the map does not
+  move: a center alone flies at the browse zoom (15.5).
 - Filters are local to the fetched results and also drop the map pins. "Open now" also asks
   again: the fetch is about 60 results, and late at night nearly all of them are closed, so
   the chip calls `MapViewModel.searchOpenNow` (through `SearchActions`), which searches the
   same words with `search_open_now_phrase` ("open now") added, and Google answers with open
   places. The search box keeps the user's words and the reworded search is not added to the
-  recents. Off asks the plain search again. A saved or imported list, an offline search and
+  recents. Off asks the plain search again. Both search around the point the search they reword
+  was made around (`moreSearch`), not the map's center, which moved when the results were framed;
+  a view moved by hand is searched with "Search this area" first. A saved or imported list, an offline search and
   Google off keep the local filter only.
+- A search along a route keeps a typed name to its own places (`QueryNameFilter`): the places whose
+  name holds every naming word of the query, where a word may be the start of a name word. A
+  naming word is one outside `PlaceNames.GENERIC`, in the singular or the plural; a describing word
+  beside it ("shell gas station") may be in the name or in the category. A query that reads as a
+  kind of place keeps every result: one with no naming word ("pizza", "burger"), one whose naming
+  words are in the category of at least as many results as in the name, one no name matches, or
+  one whose matches are not at least half named exactly the query, describing words and marked
+  store numbers aside. A brand's places carry its name whole ("CVS Pharmacy", "Chevron #4521"); a
+  word in many different names ("Pho Tasty", "Lenchitos Tacos", "Bob's Groceries") is a kind of
+  place's. Describing words are `PlaceNames.GENERIC` and the dishes and drinks that name places
+  but seldom are Google's category (boba, pho, ramen, taco, burrito and the like): `QueryNameFilter.FOOD`,
+  replaced by the remote settings' `nameFilterFoodWords` when it is present (SPEC 11). Each counts
+  in the singular or the plural ("groceries" is "grocery"). A name word matches whole
+  when any result has it whole ("arco" keeps "ARCO", not "Arcos Tacos"), and by its start only
+  when none does ("mcdo"). A number a name ends in is part of the name ("Pho 99" is not plain
+  "pho"); one marked as a store number ("#4521", "Store 12") is not. Davis to Sacramento on I-80, places in the route corridor before and after: without
+  that test "boba" kept 2 of 34, "tacos" 7 of 45, "ramen" 10 of 41, "pho" 4 of 15; with it, all of
+  them. "Chevron" (13 of 18) and "CVS" (8 of 9) narrow either way. A quick-category chip's query
+  skips the filter (`QuickCategories.isChipQuery`): it is a kind of place by construction.
 - A search along a route prices its places (`AlongRouteDetour`, `MapDataSource.detourAlongRoute`):
   one OSRM `table` request on the FOSSGIS car backend for up to `MAX_PLACES` (30) of the places the
   corridor kept. Each place gets two anchors on the route, `ANCHOR_M` (3,000 m) before and after
@@ -3210,12 +3864,27 @@ when the feature ids match. Two requests at most.
   result order, and losers draw as small dots.
 - Result cards show the name, a facts line, the open-or-closed line, amenity ticks, up to three
   photos from the search reply, and buttons that act without opening the place (Directions,
-  Call, Website, Share, Menu). The address shows only when the name repeats, the place is
-  unrated, or there is no photo strip. No extra request is made per result. A closed place
-  reads in plain red on dark surfaces (`themedStatusColor`).
-- A result's distance is from the point its search ranked from. A tapped map place and a saved
-  or recent place are looked up around their own point, so `MapViewModel.fromHere` sets their
-  distance from the user's position, or none without a fix.
+  Call, Website, Share, Menu). Share sends the name, the address and the link, one to a line
+  (`sharePlaceText`). The name and address are the text the sheet's Share > Address sends
+  (`shareAddressText`), and the link is the sheet's Copy link (`sharePlaceUrl`). The address shows
+  only when the name repeats, the place is unrated, or there is no photo strip. No extra request
+  is made per result. A closed place reads in plain red on dark surfaces (`themedStatusColor`).
+- A result card and the place sheet show the distance from the user while the fix is live
+  (`ShownDistance`, `!myLocationStale`), however far the view is from the user. Every result list
+  a search publishes (online, offline, Google off, "More results", other branches, the "Open now"
+  search) and every place `selectPlace` opens is measured again from the fix. A map dot carries
+  its distance from the point the dots were fetched around, which `keepAmbientForView` needs, so
+  it is measured only when it is opened. Without a live fix (none yet, location off, the dot gray)
+  a place keeps the distance it came with: from `rankFrom` for Google's pages and Photon, from the
+  window's center for offline rows and Vela's own places with Google off, and from the dots' fetch
+  point for a dot or an ambient extra.
+  A place with no distance (a list member, a planned route's row) gets none. The order the search
+  ranked in is kept; the list's Distance sort orders by the distance shown. A search along a route
+  keeps its distance along the route (`RouteCorridor`).
+- A tapped map place and a saved or recent place are looked up around their own point, so
+  `MapViewModel.fromHere` sets their distance from the user's position, or none without a fix. A
+  place's offline copy (`PlaceCache`) takes the distance the sheet already had, not the one kept
+  from its last visit.
 
 #### Suggestions and addresses
 
@@ -3241,7 +3910,9 @@ when the feature ids match. Two requests at most.
   dropped when another result has the address. Bracketing house numbers over `INTERP_MAX_GAP_M`
   (300 m) apart are not blended; the nearer one's point is used.
 - A place named by a street line whose address holds only the town shows and copies the two
-  joined (`Place.fullAddress`).
+  joined (`Place.fullAddress`). A listing keeps its own address when the first part of that has
+  a number (`hasStreetLine`); one without, an address Google files under a category, is joined
+  too.
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
   requires a decimal point in both halves and range-checks.
 
@@ -3300,7 +3971,8 @@ when the feature ids match. Two requests at most.
   saved from a search carries its street as the name and the locality as the address, so a
   rename, and setting Home or Work, moves the street into the address first
   (`SavedPlace.addressKeepingStreet`: a point whose address does not already start with its
-  name), once: the record is then marked `streetKept`, so a second rename leaves the address
+  name, or a record named by a street line whose address has none, an address Google filed under
+  a category and so saved as a listing), once: the record is then marked `streetKept`, so a second rename leaves the address
   alone. Whether the place is a point is read off the stored record, never off the Place a row
   hands in, which carries no listing fields. An address picked from a search as Home or Work is
   kept as a point (`MapViewModel.isAddressPick`: a result with no category, rating or reviews),
@@ -3450,14 +4122,23 @@ the shared 12 s timeout cuts it off.
 
 - The lists dialog's Draw button sets `MapUiState.drawing` (`DrawState`). Every map tap and
   long press then adds a point (`drawDots`, `onDrawTap`), ahead of all tap resolution. Back
-  removes the last point, then leaves.
+  and Undo remove the point added last, then Back leaves.
+- A line adds each point at its end. An area of 3 or more points places it with
+  `core/util/AreaInsert`, so the outline does not fold over itself: the point goes where its two
+  new sides cross the fewest sides of the outline. The end (between the last point and the
+  first) wins every tie, so an outline traced in order, concave or not, keeps its order. Among
+  the other sides, the one whose split adds the least perimeter wins. A new side that touches a
+  side or runs along it counts as crossing it, so a tap on a side goes into that side. The test
+  is on Web Mercator meters, where the map draws the sides straight. `DrawState.added` keeps
+  when each point came, so Undo takes off the newest wherever it went; a saved shape opened for
+  changes starts in list order.
 - `DrawBar` (reached through `ShapeBottomBar`, because MapScreen is at the method size limit)
   offers Line or Area, six colors (`DRAW_COLORS`), the live measure, a name, Undo and Save.
 - The typed name is kept in `DrawState.name` (`MapViewModel.drawSetName`). The bar leaves
   composition whenever another sheet takes the bottom slot, such as a place opened from search
   while drawing, and starts from the kept name when it returns.
 - A line needs 2 points and an area 3; at most 2,000 points. A finger within 26 dp of a point
-  drags it, and a tap removes it. Points cannot be inserted between two existing ones.
+  drags it, and a tap removes it.
 - Save appends a `MapShape` (width 4, an area filled at 25% opacity) to the list
   `list:drawings` ("My drawings").
 - The unfinished shape and a dot per point (`vela-shapes-dots`) draw from a source of their own
@@ -3470,6 +4151,10 @@ the shared 12 s timeout cuts it off.
   drops the four layers and `ensureShapeLayers` seats them again on the fresh raster.
 - The shape sheet's menu has "Edit this drawing" (`DrawState.editOf`, saved back in place) and
   "Delete this drawing" (`ShapeActions.delete`, `MapViewModel.deleteOpenedShape`).
+- The ruler (issue #910) is the same tool with `DrawState.measure` set, opened from the layers
+  panel's "Measure distance" row (`MapViewModel.startMeasure`). An orange line; its bar
+  (`MeasureBar`) shows the total and, from three points, the last leg, with Undo and Done. Done
+  and Back clear it; nothing is saved.
 
 ### 5.7 Saved places, lists, parking and imports
 
@@ -3491,6 +4176,16 @@ the shared 12 s timeout cuts it off.
   places. From z14 (`SAVED_LABEL_ZOOM`) the place's name draws under the pin (12 px, Noto Sans
   Regular, anchored at the top 1.6 em down, 8 em wide, `textOptional`, so a pin whose name finds
   no room keeps the pin); the dark palette recolors it with every symbol layer.
+- `ListsOnMap.pins` (`core/model/ListsOnMap.kt`) picks the saved pins: each place of a list on
+  the map once, for the first list in the lists' order that holds it, less a custom map's
+  hidden layers, then each quick-save no list drew. A list's shapes draw on the same terms
+  (`ListsOnMap.shown`).
+- "Show on map" in a list's editor sets `PlaceList.onMap` (issue #988). It defaults to true, so
+  older payloads decode, and the JSON carries it only when off, the list export included. A
+  list that is off draws no pins and no shapes unless it is the open list (`openListId`). A
+  place it shares with a list that is on draws for that list, and a quick-save is not a list
+  and always draws. Search, the lists sheet, the place sheet's list picker and the list's sound
+  do not read the switch. The lists sheet tags the list "Hidden on map".
 - A list's editor has a share button in its title row: `PlaceListStore.exportJson(id)` writes that one list
   in the same JSON the export of every list writes, so it imports back as that list, and
   `MapViewModel.exportListIntent` shares it as `vela-list-<name>.json` (issue #822).
@@ -3518,7 +4213,7 @@ the shared 12 s timeout cuts it off.
   destination or a remaining stop is skipped. The tone plays on the guidance stream through
   `VoiceGuide.placeTone` and `name` is spoken, so muting the voice mutes both. The status card
   shows the place and its list. Fixes only arrive while the map is open or a drive is
-  running; nothing asks for background location. Log tag `VelaPassAlert` (sound and count,
+  running; the alerts ask for no background location. Log tag `VelaPassAlert` (sound and count,
   never the name).
 - Parking is one tap on the P button, with a history. Settings > Map "Parking button"
   (`ParkingButton`, default on) hides the button while no spot is saved. With it on, the
@@ -3527,6 +4222,35 @@ the shared 12 s timeout cuts it off.
   "Find my car" opens the spot as a sheet whose facts line gives the distance from you and how
   long ago it was saved (`ParkingActions.parkedAt`). On a key-first device the arrival card opens
   with focus on Done, and each of its buttons draws the focus ring.
+- "Save where I park" (Settings > Map, `AutoParking`, pref `auto_parking`, off by default) saves
+  the spot by itself, to the same store and history. `ParkWatch` keeps the place the car stood
+  still (`STILL_MPS` 0.5 m/s or slower) after a GPS fix at `DRIVING_MPS` (4 m/s) or faster; a fix
+  faster than `WALK_MAX_MPS` (2.5 m/s) starts it over, and until the first step a still fix
+  within `SETTLE_M` (10 m) moves it (a slow reverse into the space). It is saved when:
+  - the driver walks off: `STEPS` (16) steps within `WINDOW_S` (15 s), once the car has stood
+    `PARKED_S` (10 s). Steps, not speed: a crawl in a queue moves at walking pace too. The map
+    counts steps (`WalkSense`) while the car stands still after a drive with Vela on screen;
+  - the car's screen disconnects (`VelaCarSession.onDestroy`);
+  - a drive ends with the driver walking off (`NavSession.onWalkedOff`);
+  - Vela leaves the screen while a drive is on or has arrived, within `PARK_NEAR_DEST_M` (400 m)
+    of its destination. Leaving it anywhere else (at a light) saves nothing.
+  A leave signal needs the car still for `LEAVE_STILL_S` (3 s), the last fix under
+  `LEAVE_MAX_AGE_S` (120 s) old and within `LEAVE_NEAR_M` (25 m) of the spot. One spot per
+  drive; a drive `DROVE_FORGET_S` (30 min) old with no stop since is forgotten. No fix with the
+  simulated location on counts. Log tag `VelaParking` (the trigger, never the place).
+- "Also when the car's Bluetooth disconnects" (`AutoParking.bluetooth`, pref `auto_parking_bt`,
+  off, shown under "Save where I park") adds the car's Bluetooth dropping, as Google does.
+  `CarBluetoothReceiver` takes `ACTION_ACL_DISCONNECTED` (a protected broadcast) for a device of
+  class `AUDIO_VIDEO_CAR_AUDIO` or `AUDIO_VIDEO_HANDSFREE`; headphones are other classes. Turning
+  it on asks for Nearby devices (`BLUETOOTH_CONNECT`, Android 12 and up, needed to read the class;
+  refused leaves it off), then location all the time (`ACCESS_BACKGROUND_LOCATION`; refused
+  leaves it on, saving only from what Vela saw). `carBluetoothGone`: the drive Vela saw decides
+  first (a spot by the leave rule, nothing if the car was last seen faster than a walk); with no
+  fix of its own, the system's last GPS fix if under `BT_FRESH_S` (30 s) old, else a new one within
+  `BT_FIX_TIMEOUT_MS` (8 s), falling back to the last fix under `BT_LAST_FIX_MAX_S` (120 s), at
+  `BT_MAX_ACC_M` (50 m) or better and slower than a walk. Nothing with the simulated location on.
+  Test hook: `setprop debug.vela.tune.parkBtTest 1`, then an explicit broadcast of
+  `app.vela.test.CAR_BLUETOOTH_GONE` to the receiver (no device check).
 - The picker both Import buttons open starts in the phone's own storage at Download
   (`DocumentsContract.EXTRA_INITIAL_URI` on the external storage provider's `primary:Download`),
   not in the picker's Downloads view: that view lists the media index, where a file an unzipper
@@ -3603,6 +4327,17 @@ are not in the saved-places export.
   most `SavedRoutes.MAX_STOPS` (10). A run is never offered as an alternate. `openSavedRoute`
   starts it in its own mode from "Your routes" or the Settings list.
 - A trip takes at most 10 stops: `addStop` refuses the eleventh and `applyTrip` truncates.
+- "Back to start" in the trip editor (issue #929) adds a copy of the first row as the
+  destination. Like every edit there it applies on Done. It is hidden when the last row is
+  already the first and when the old destination would be an eleventh stop, and with key input
+  focus moves to Done, since the row is gone.
+- A trip from "your location" back to it with a place between is a round trip. `applyTrip`
+  ends it at the fix of that moment, a place with id `round-trip-end` named "Starting point",
+  while the start follows the fix as any trip from your location does. `tripPointsForEditor`
+  shows that end as "your location" again, so reopening the editor shows the trip as built and
+  a pinned shortcut stores it as "your location"; `openTripShortcut` opens such a shortcut on
+  its first stop. With no fix, or nothing between the two ends, `applyTrip` does nothing.
+  Arrival waits for the end: 4.6, Progress and off route.
 - "Add stop" in the trip editor (`beginPickStopFromEditor`) comes back to the editor when the
   place is picked or the pick is cancelled, with the new stop as the last row before the
   destination. "Add stop" on the route card still lands on the route.
@@ -3815,16 +4550,28 @@ shares (`widenStreets`, the road edges, label colors, the hide list, borders).
   night palettes are `DarkPalette` values (`MODERN_DARK`, `CONTRAST_DARK`) that `applyDark`
   paints; Contrast by day draws as Modern.
 - The map's light or dark is its own setting: `AppTheme.mapMode` (`MapThemeMode` FOLLOW / LIGHT /
-  DARK, pref `theme_map_mode`, Settings > Appearance > Map). `isMapDark()` resolves the nav
-  day/night override first, then the map mode, then the app theme. `isMapAmoled()` is true only
-  while the map follows an app in `ThemeMode.AMOLED`. The map surface, its route colors and the
-  scale bar take these. Sheets, cards, bars and settings keep `isAppInDarkTheme()`.
+  DARK / AUTO, pref `theme_map_mode`, Settings > Appearance > Map). `isMapDark()` resolves the nav
+  day/night override first, then the map mode, then the app theme (`mapDarkOwn`). AUTO ("Day and
+  night") is `AppTheme.night` under any app theme. `isMapAmoled()` is true only while the map
+  follows an app in `ThemeMode.AMOLED`. The map surface, its route colors and the scale bar take
+  these. Sheets, cards, bars and settings keep `isAppInDarkTheme()`. The car map reads the app
+  theme alone (`CarMapRenderer.isNight`, 10.6).
+- `AppTheme.night` is recomputed once a minute while the app is in the foreground (`VelaRoot`),
+  in every mode: the sun at the last position rounded to 0.01 degree (`SunTimes.isNight`), or
+  dark before 07:00 and from 19:00 when that position is more than 24 hours old or location is
+  not granted (`isNightByClock`).
+- "Day and night while navigating" (`AppTheme.navDayNight`, pref `theme_nav_day_night`, off)
+  sets both the app and the map to `AppTheme.night` during a drive or driving mode. Its row is
+  hidden while it would change nothing: the app on AUTO with the map on FOLLOW or AUTO
+  (`navDayNightMatters`).
+- A build from before AUTO reads it from `theme_map_mode` as an unknown name and falls back to
+  FOLLOW without rewriting the key (`mapModeFrom`), so the choice is back after an upgrade.
 - `VelaTheme` puts the AMOLED surfaces on whichever dark scheme is in use
   (`ColorScheme.onTrueBlack`): Vela's own, or the wallpaper's with "Material You colors" on,
   whose accents are kept.
-- `styleKey` carries the style URI, the dark and AMOLED flags, the palette, satellite, the puck
-  style, the house-number level and the offline basemap archive. A change in any of them reloads
-  the style.
+- `styleKey` carries the style URI, the dark and AMOLED flags, the palette, satellite, the
+  house-number level, the names mode and the offline basemap archive. A change in any of them
+  reloads the style. The navigation icon is not in it: its image is replaced on the loaded style.
 - Every layer is colored in every palette. An unstyled runtime `LineLayer` renders black, and
   a Liberty layer no dark function names keeps its light colors at night.
 - `applyAmoled` sets colors only. Zoom gates and extrusion geometry come from `applyDark`.
@@ -3938,16 +4685,26 @@ basemap anyway. A walk or a ride keeps it at opacity 0.
   tile template on `pmtiles.vela.invalid` through the map's HTTP client (`overlaySource`, headers
   read on IO first by `prefetchStreamed`). A downloaded archive file (`pmtiles://file://`) still
   goes to MapLibre as it is; that path loads.
+- A rebake replaces a streamed archive under the same address. `PmtilesReader.HttpRangeReader`
+  takes the file's total length from the first reply's `Content-Range` (its `ETag` when there is
+  no length), and a reply from a file of another length answers null and marks the archive
+  `replaced`. `StreamedPmtiles` then opens the address again, header and directories, once for all
+  the tile reads that found it, and reads the tile from the new file; `StreamedSpeedLimit` opens
+  it again on its next lookup, so a running app never reads the new file at the old offsets.
+  Tiles MapLibre cached from the old file stay until its cache drops them.
 - The pmtiles path never cold-fetches a tile clamped two or more levels below the camera.
 - Past a GeoJSON source's maxzoom every overscaled tile lays out all of its parent tile's
-  features, so point sources set one. The route line sources set none.
+  features, so point sources set one. The route line sources set none. A point is placed on its
+  tile's grid, about 0.9 m at z12, so the location dot's source (`ME_SRC`) takes the full depth
+  (z22): at z12 the moving dot stepped from grid point to grid point, 13 px at z19.
 
 | maxzoom | GeoJSON sources |
 | --- | --- |
 | 18 | ambient, markers, traffic controls, transit stops |
 | 16 | plate cameras, their clusters, speed cameras, transit line labels, custom-map shapes, the shape being drawn |
+| 22 | me (the location dot, see above) |
 | 14 | accuracy disc, transit lines |
-| 12 | me, parking, saved, Street View |
+| 12 | parking, saved, Street View |
 
 - Every `setGeoJson` and `setProperties` is identity-gated by a `lastApplied` holder. Every such
   holder is reset in the style-reload block, or a theme, palette or satellite flip leaves sources
@@ -3998,7 +4755,10 @@ collision. Hidden in the overview with the other `vela-nav-` layers.
   `vela-addr-<i>` (the address overlay). `vela-housenumber` is hidden while an address overlay is
   mounted, so an address never draws twice.
 - Both gate on `houseNumberMinZoom()` (`HouseNumbers`, pref `housenumber_zoom`: near 18.3, normal
-  17.8, far 17.3) and fade in over the next 0.6 levels (`houseNumberFade`).
+  17.8, far 17.3, furthest 16.8) and fade in over the next 0.6 levels (`houseNumberFade`).
+  Furthest is opt-in and labeled as slower: panning central London at z17 on a Pixel 4a ran
+  24 fps median with it against 38-40 at far, where z17 shows no numbers. Under an address
+  overlay it starts at the overlay's z17.
 - The address archives carry tiles only at z16-17, so `vela-addr-*` has minzoom 17 and its gate is
   the text field, empty below `houseNumberMinZoom()`. With the gate as the layer minzoom a cold
   source fetched nothing. With an opacity gate every hidden number still ran placement.
@@ -4163,6 +4923,11 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
   (`turnArrowHeadSize`); its dark edge is drawn under the white shaft and its white over it, and
   its base sits `TURN_ARROW_HEAD_TUCK_DP` (1 dp) behind the shaft's end, so no dark line crosses
   the joint. Empty outside a drive.
+- The car map draws the same arrows on its canvas (`CarMapRenderer.drawTurnArrows`) for the next
+  `CAR_ARROWS` (3) turns, cut from `route.polyline` (the line it draws) and kept until the route
+  or the step changes: a 15 px indigo edge and an 11 px white body inside the 20 px route line,
+  scaled with the speed badge, and a 74 degree head 22 px across. Drawn before the corridor
+  glyphs, as the phone stacks them, so a turn's light or stop sign shows on top of its arrow.
 
 #### Rasters
 
@@ -4715,7 +5480,9 @@ spend it and fail other workflows with HTTP 403, so the bakes have no crons of t
    left, and does nothing at all under 60.
 
 Its state is `state.json` on the `bake-conductor` release, and its run never fails. Cadences
-(`everyHours`): a seventh of the places catalog every 24 h (`slice` is the UTC weekday); place
+(`everyHours`): a seventh of the places catalog every 24 h. Each of the seven slices is due 6.5 days
+after its own last dispatch (`slices` in the state), today's UTC weekday first, then the longest
+wait, so a day the conductor missed is caught up at the next free hour (`due_slice`). Place
 packs, road features, basemap and grid cells every 30 days; routing files, buildings, addresses
 and maxspeed every 90 days. ALPR cameras keep their own weekly cron, and UK fuel prices their own
 hourly one (5.8): that job fetches one small file and spends no API request while its source is
@@ -4802,16 +5569,24 @@ a region a frame touches. The bake is 7.6.1 to 7.6.4, the app side 7.6.5.
 #### 7.6.1 Grid
 
 Cells are the tiles of one global grid at `STEP` degrees (`cells_grid.py`, 0.5 by default),
-each clipped to the region's header box (clamped by `clamp-bbox.py`). A tile with no part of
-the region's polygon in it is not a cell, and a cell with no road and no pack row is dropped.
+each clipped to the region's header box (clamped by `clamp-bbox.py`). Each ring of the region
+polygon is clipped to the tile, and a tile where every clipped ring has zero area is not a
+cell: it touches the region only at an edge or a corner, or sits in a bay of a concave polygon,
+where clipping leaves a flat outline. Only rings with area go into the cell's cutline. Without
+a polygon the tile's box is the cell. A cell with no road and no pack row is dropped.
 
 The key is the tile's SW corner, fixed width: `[ns]DD.D[ew]DDD.D`, for example `n38.5w075.5`.
 The cell id is `<region>.<key>` (`delaware.n38.5w075.5`); region ids hold no dot, so the first
 dot splits them.
 
-A release holds 1000 assets, the zips plus the fragment. A region with more than `MAX_CELLS`
-(999) cells is regridded at double the step until it fits (`CELL_STEP` sets the start; past
-8 degrees the bake fails). The app never assumes a cell size: every cell carries its box.
+A release holds 1000 assets, the zips plus the fragment. A re-bake starts at the step of the
+cells already on the region's release (the largest cell side in its fragment), because a new
+step renames every cell: phones keep the old cells, which the manifest no longer lists and which
+never update, and the release would hold both sets. A new region starts at 0.5 degrees, and
+`CELL_STEP` overrides both. A region with more than `MAX_CELLS` (999) cells is regridded at
+double the step until it fits; past 8 degrees the bake fails. A published region whose step
+changes ends its bake with a warning. The app never assumes a cell size: every cell carries its
+box.
 
 #### 7.6.2 Bake
 
@@ -4936,10 +5711,10 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 
 | Piece | Source |
 | --- | --- |
-| Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. |
+| Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. A realtime time more than `Transitous.EARLY_DOUBT_S` (180 s) before its timetable time is replaced by the timetable time and loses its realtime mark (`trustLive`), on boards, trip stop lists and planned legs: a vehicle waiting to start its run is predicted as already on its way. |
 | Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
-| Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off or answers nothing. |
+| Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off, answers nothing, or answers with walking only. After a walk-only answer the planner's itineraries that ride something are listed first and Google's walk last (`TransitOrder.ridesBeforeWalk`); Google's feed misses lines the open feeds carry (Niš's suburban lines). |
 
 #### Lines on the map
 
@@ -5012,6 +5787,11 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   Davis Unitrans line: 589 stops, 6:55 AM to 9 PM). `Transitous.buildTripStep` treats every stop
   within `LAP_SAME_STOP_M` (30 m) of the nearest as a pass, boards at the pass nearest the tapped
   departure time (the first without one), and shows one lap.
+- A run's stop list (`RouteDetailSheet`) fills the screen. `MapScreen` draws it after the map's
+  floating pieces (the Street View preview, the locate, parking and layers buttons), so none of
+  them shows over it; only the status and download cards are drawn above it. A map link opened
+  while it is up closes it (`openDeepLink`), so the place or Street View the link opens is not
+  under it.
 - `TransitStopCache`: each successful viewport fetch overwrites its area in a 24-area on-disk
   LRU, so visited areas keep their stops offline.
 - `TransitBoardCache`: the newest 48 boards on disk, keyed by stop coordinate to about 10 m, with
@@ -5044,6 +5824,10 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - A badge is `["name", int, "#fill", "#text"]`. Inside the line facet `[5, badge]` it can come
   with no fill, a line the agency gives no color; the trip summary writes some lines that way
   while their own leg gives a fill. A summary line with no color takes its ride leg's.
+- A line badge (`LinePill`) keeps the agency's fill. When that fill is under
+  `BadgeContrast.MIN_RATIO` (1.7, WCAG's contrast formula) against the sheet or an inset row of
+  the theme (a white or pale yellow line on the light sheet, a navy or black one on the dark
+  sheet), it gets a 1 dp outline in the theme's secondary text color at 70% (issue #888).
 - Mode comes from icon filenames only: mode words in nearby text also occur in place names.
 - A ridden leg in Japan has no generic vehicle icon. Its operator icon's path decides:
   `shinkansen` a train, `metro` or `subway` a subway, `jp2ltr` or `jp-jr` a train, any other a
@@ -5069,7 +5853,7 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   planner's leg geometry for a ride whose two ends are within 300 m of the stops, and sends no
   `maxTransfers`: the public instance answers nothing with `maxTransfers=0`. A bus without a
   path takes the road route through its stops when that is at most 1.8 times their
-  straight-line chain.
+  straight-line chain plus 300 m.
 - Guidance in a pocket (issue #880): `startTransitNav` starts `service/TransitGuideService`, a
   location foreground service that keeps the fixes and the voice going with the screen off, and
   `MapViewModel.publishTransitNotice` writes its card into `TransitGuide.notice` at every leg
@@ -5149,12 +5933,22 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
 - `showStatus` cards dismiss after `STATUS_AUTO_MS` (10 s) with a draining bar
   (`InfoCard(autoMs)`), frozen while focused. A card with a fix (`statusVoiceAction`) stays.
   `flashStatus` cards drain over their own duration.
+- A system TTS keeps the voice chosen in its own settings (`TextToSpeech.defaultVoice`) when that
+  voice speaks the directions' language, offline and installed (`VoiceGuide.ownVoice`). Otherwise
+  it sets the language and takes the best-rated installed offline voice for it
+  (`selectBestVoice`). Always taking the best-rated voice spoke with one the user had not picked,
+  in engines with several voices a language.
+- A system TTS speaks with `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` and `CONTENT_TYPE_SPEECH`
+  (`setAudioAttributes` in `onInit`), as Vela's own voice and the focus request do. Unlabeled,
+  its prompts played as music, and a car or a projection app that routes audio by usage mixed
+  them into the music instead of ducking it.
 - Audio focus is refcounted through the utterance callbacks. A system TTS `speak()` returning
   `ERROR` fires no callback, so that path rolls back its acquire. A failed `onInit` clears the
   pending queue.
 - A fresh focus grant leads the first sample by `FOCUS_LEAD_MS` (350 ms), the time a player that
   pauses on a duck takes to stop. Focus held from the previous prompt (`FOCUS_HOLD_MS` 1500)
-  speaks at once.
+  speaks at once. A line still waiting out the lead is dropped by `stop()`, which a mute calls,
+  and by a focus loss, as a line playing is (`FocusLead`).
 - Text is fixed before the phonemizer. `SpeechText.spokenNumbers` expands three-digit street
   ordinals ("128th" as "one twenty eighth", space not hyphen). `expandForSpeech` rewrites
   `<XX>-<n>` refs to "State Route n" and puts a comma before " toward ".
@@ -5171,11 +5965,22 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   preferences, so the level is the same from the first line of a session. It is not set from
   the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
   gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
-  so nothing clips flat. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0: Android can only attenuate.
+  so nothing clips flat.
+- A system TTS takes the setting as `KEY_PARAM_VOLUME` at Normal and below. The framework clips
+  that parameter to 0..1, so above Normal the parameter is 1 and the line plays on an audio
+  session of Vela's (`AudioManager.generateAudioSessionId`, passed as `KEY_PARAM_SESSION_ID`)
+  with a `LoudnessEnhancer` on it (`SystemVoiceBoost`, issue #979). Its target gain is 2000
+  log10 of the setting in millibels, the factor the Vela voice gets over Normal: 408 (+4.1 dB)
+  at Louder, 685 (+6.8 dB) at Loudest. The cap is Loudest (`MAX_SETTING`, 2.2). The engine's
+  `TextToSpeechService` makes one `AudioTrack` per utterance on the session it is given, and
+  the session's effect applies to each. The effect compresses what the gain would push past
+  full scale. One enhancer is kept per `VoiceGuide` and released on `shutdown` and when the
+  setting drops to Normal or below. A device with no enhancer, or an engine that plays its own
+  audio and ignores the session, speaks at full engine volume, as at Normal.
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
-  spoken turn (far at max(400 m, 35 s), near at max(150 m, 10 s), and turn-now), up to
+  spoken turn (the approach bands above and turn-now), up to
   `MAX_PREPARED` (8), at background priority.
 - A line asked to be spoken drops every prepare still queued and ends the one being rendered at
   its next phrase. A phrase is one engine call and cannot be cut, so the line waits for the
@@ -5240,6 +6045,40 @@ Two tiers, both keyless.
 `RECORD_AUDIO` is requested at the point of use. `listen()` returns a typed result (`Text`,
 `NoSpeech`, `Failed(reason)`) and the UI explains every failure.
 
+Sounds-like street names. Tier 1 writes a street name the way it heard it, often split and
+spelled by sound ("Kur fürsten damm"). `MapViewModel.applyVoiceQuery` reads it twice with
+`VoiceStreetRetry`:
+
+- Before the search: when the whole transcript, house numbers aside, sounds like one street near
+  the search center (`SoundsLike.rewrite` with `whole`), that street's name is put in the search
+  field and searched. Google and the downloaded index both answer a misheard name with something
+  (near Davis, "Sicka more Lane" got 17 places from Google and "Sickamore Lain" 30 from the index), so a retry on empty results alone would rarely run.
+- After it: when the search ends with no results, the words that sound like a street are swapped
+  for its name once and searched again. A search that found anything is never retried, and the
+  retry is never retried.
+- Tier 2 hands over through `fillQuery` and gets neither.
+- `setprop debug.vela.tune.voiceText "<words>"` (adb only) makes tier 1 return those words as
+  heard, so the voice search can be tested on a phone without speaking.
+
+- Candidates are the street names within `RADIUS_M` (3,000 m, a box) of the search center: the
+  `transportation_name` features of the basemap tiles the map has loaded (`name` and
+  `name:latin`, read once per retry, none below zoom 12), and the downloaded address index and
+  place packs (`OfflineAddressStore.streetNamesNear`, at most 5,000). The map's names are read on
+  the main thread, so each voice search pays that query once (timed in the `VelaSearch` "voice
+  street names" line).
+- `core/search/SoundsLike.rewrite` compares Kölner Phonetik codes. Each word alone, runs of two
+  and three adjacent words, and the whole transcript are tried with the spaces removed. A word
+  with a digit is never in a run. Words outside the run stay where they were.
+- A run matches a street when the codes are equal, the code has at least `MIN_CODE` (5) digits,
+  the name has at least `MIN_LETTERS` (6) letters, the spelling is within a third of the run's
+  letters (two edits at least), and the run is not already that street's name.
+- Several streets with the run's code: the closest spelling wins when it is the run's letters
+  exactly or `CLEAR_MARGIN` (2) edits closer than the next. Otherwise there is no rewrite. The
+  run covering the most letters wins, and two different rewrites that tie give none.
+- Languages: every app language written in Latin script (`SoundsLike.LANGS`). Kölner Phonetik is
+  German's; elsewhere its consonant classes serve as a general key. Arabic, Greek, Hebrew, Hindi,
+  Japanese, Russian, Thai, Ukrainian and Chinese get no retry.
+
 The model load is crash-sentineled: a truncated or corrupt archive makes sherpa-onnx abort
 natively, which cannot be caught, and warm-up runs at startup, so a bad model would crash every
 launch. A strike counter is raised before
@@ -5248,7 +6087,9 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 19 languages (`AppLocale.SUPPORTED`). Estonian (`et`) has a partial translation
+The picker has 20 languages (`AppLocale.SUPPORTED`). Thai (`th`) has the full interface, its own spoken
+guidance (`ThNavStrings`) and the phone's own Thai voice; Google is still asked in English for
+Thai, because `SearchParser` has no Thai open and closed words yet. Estonian (`et`) has a partial translation
 from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
 spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
 
@@ -5285,6 +6126,13 @@ planned keeps the instructions it was built with.
   time picker dials by it too (it was a fixed 12-hour dial, issues #357 and #762). Transit directions
   times come from the payload's epoch and time zone (`ClockFormat.at`); `ClockFormat.show`
   converts the text of the one page still fetched in English, Google's stop-board fallback.
+- Calendar: the Depart at and Arrive by date picker is drawn in `AppLocale.calendarLocale()`.
+  Month and day names follow the app language; the first day of the week follows the device's
+  region, read from `Resources.getSystem()`. A picked language has no region, and alone it takes
+  the language's home region ("en" starts weeks on Sunday). A language that names a region
+  (`pt-BR`, `zh-TW`) keeps it for the names and gets the device's as the `rg` keyword. The
+  device's `fw` (Android 14's first day of week) and `rg` keywords carry over, its `nu` digits do
+  not. Following the system, the picker takes the device locale whole.
 
 ### 9.5 Query intents
 
@@ -5294,10 +6142,12 @@ means a plain search, so the parser cannot make a query worse. Word tables cover
 language but Estonian, with English as a fallback in each.
 
 - A bare verb counts only before home or work or an explicit "from A to B".
-- The Home and Work chips (`openShortcut`) open the same bare place the typed intent does:
-  `Place(id, name = the chip's label, location, address)` through `selectPlace`, so a stop,
-  origin or destination picked from the chip is named "Home" or "Work". `selectSaved` is not
-  used for them: it enriches by searching the address and dressed Home as the business there.
+- The Home and Work chips (`openShortcut`, through `selectContactPlace`) and the typed or
+  spoken intent (`selectPlace(lookup = false)`) open the same bare place:
+  `Place(id, name = the chip's label, location, address)`, so a stop, origin or destination
+  picked from them is named "Home" or "Work". Nothing is asked about it: no details search,
+  reviews, photos or departures. A lookup searches "Home <address>" on Google and can dress Home
+  as the business there.
 - A bare "X to Y" is a route only when X is not a question word or a verb.
 - `routeBetween` runs the whole phrase as a search first, so a place whose name contains "to"
   stays a place.
@@ -5357,17 +6207,50 @@ reuses it.
   place flips the flag while its wrap-capped card never grows.
 - Top-of-map cards (status, downloads, the update card, notices, the faster-route offer) stack in
   one top-center column, each with its own dismiss. During a drive the column hangs off the turn
-  card's measured bottom edge (`navBannerBottomPx`).
+  card's measured bottom edge (`navBannerBottomPx`). The cards (`clearOfSideNavBar`, on each card
+  because the column is in `MapScreen`) and the layers button keep clear of the navigation bar
+  like the other map buttons: with the bar on the side (landscape on Android 8 head units and
+  older phones, #953) the update card's button and the layers button sat under it. The compass,
+  which MapLibre places from the map's own edge, adds the bar's width to its right margin.
 - In landscape, route and drive chrome is a left column. Both sheets, the route pickers, the
   endpoints card, the turn card and the nav bar take a start alignment plus
   `landscapeColumn(...)`, which caps the width at `sidePanelWidth()` and pads the display cutout
-  on the start edge. The camera takes `cameraLeftInset` in place of a bottom inset. New route or
-  drive chrome without this spans the screen.
+  and the navigation bar on the start edge (in a right-to-left language the column is on the
+  right, where a side navigation bar is). The camera takes `cameraLeftInset` in place of a bottom inset, the route
+  chooser's collapsed too (a short screen opens it collapsed). A bounds fit's own padding
+  replaces the map's, so the route, transit and results fits pad with `fitPaddingBeside`: the
+  column on the left, no top inset (the endpoints card is in the column), and the map buttons'
+  width on the right. New route or drive chrome without this spans the screen.
+- Mixed figures in one line (the drive bar's "15.3 mi · 20:45") put each figure in a first-strong
+  isolate (`bidiIsolate`, U+2068..U+2069), so in a right-to-left language a unit stays beside its
+  number.
 - `sidePanelWidth()` is 0.56 of the screen width, between `SIDE_PANEL_WIDTH_MIN` (400 dp) and
   `SIDE_PANEL_WIDTH_MAX` (600 dp).
 - Picture-in-picture: everything after the map call is inside one `if (!pipUi)` gate. The map's
   compass and all gestures are off in PiP, because the system's taps on the window reach the map
   as gestures and detach the follow camera.
+- Over the lock screen: while a drive runs and is not paused, and Settings > Navigation "Show the
+  drive on the lock screen" is on (`LockScreenNav`, on by default), `MainActivity` shows over the
+  lock screen (`setShowWhenLocked`; the window flag on Android 8.0), so the power button wakes the
+  phone to the route instead of the PIN prompt. Paused or ended, the lock screen covers the app
+  again. A drive's chrome has no way to Settings except the no-voice pill, and over a locked phone
+  `openSettings` runs only after `requestDismissKeyguard` succeeds.
+- Wake for turns: with "Wake the screen before each turn" on (`LockScreenNav.wake`, on by
+  default, shown only under the switch above), a driving route that is not paused, no car session
+  (`CarBridge.live`) and the screen off, the screen lights when the next turn is under
+  `WAKE_LEAD_S` (25 s) away at the route's pace (remaining distance over remaining time), clamped
+  to `WAKE_MIN_M` (200 m) and `WAKE_MAX_M` (1000 m) (`turnNear`). Once per step. It takes a
+  `SCREEN_BRIGHT_WAKE_LOCK` with `ACQUIRE_CAUSES_WAKEUP` (permission `WAKE_LOCK`), held until
+  `WAKE_AFTER_MS` (4 s) after the step's turn stops being near, at most `WAKE_MAX_MS` (2 min); a
+  near turn while it is still lit extends it. The screen then goes dark at the phone's own screen
+  timeout, counted from the wake: an app cannot switch the screen off. The window's keep-awake
+  flag comes off for the wake, or the screen would stay on for the rest of the drive, and goes
+  back on the next touch or a power-button wake (a screen-on more than 2 s after the wake).
+  A screen lit this way shows the glance screen (`nav/TurnGlance`, over everything in `VelaRoot`,
+  while `LockScreenNav.glance`): black, the turn glyph at 140 dp, the distance at 64 sp, the
+  instruction, the lanes, and "then" with the next glyph when `isCompoundNext`. A touch, any key
+  but volume (`MainActivity.dispatchKeyEvent`) or a power-button wake brings back the whole drive.
+  Android 14 logs "Allowing device wake-up without android.permission.TURN_SCREEN_ON" and wakes.
 - `MapScreen` takes no new call or parameter. It is at the JVM method-size limit ("Method too
   large" in the debug compile) and at ART's verifier limit, which fails on the phone. New
   floating pieces go in `MapFloaters` (the replay controls, the Street View preview, driving
@@ -5398,12 +6281,17 @@ reuses it.
   dp, the compass at 44 dp less half the stock image), so the four line up when they stack
   in landscape. The compass view is 48 dp whatever image it shows, so the drive compass, whose
   56 dp image is scaled into it, sits at 20 dp under the drive's column, on the same line.
+- Browsing with the zoom buttons shown ("Prefer buttons over swipes" or a D-pad), when the
+  buttons' top with the minimized results lift (`chromeLift`, 76 dp) would reach within 8 dp of
+  the compass's bottom, the compass moves `COMPASS_BESIDE_ZOOM_DP` (64 dp) in, beside them. A
+  landscape phone always meets this. The worst case decides, so the compass stays put when the
+  results bar comes and goes.
 - The layers button (`LayersCorner`, `ui/map/LayersPanel.kt`) opens a `VelaMenu` of picture
   tiles, four to a row, with a label under each. Three groups: Map type has the five looks
   (`MapStyle`, the same pick as Settings > Appearance > Map look) and Satellite; Map details has
   traffic, transit lines, terrain and 3D buildings; Place icons has Vela data, Google and Both
-  (`MapPoiPrefs.placesSource`). The "Use Vela without Google" switch stays a row under them. Every
-  tile flips the holder Settings flips (`MapLook`, `SatelliteLayer`, `Traffic`, `TransitLayer`,
+  (`MapPoiPrefs.placesSource`). The "Use Vela without Google" switch stays a row under them,
+  then the "Driving mode" and "Measure distance" rows. Every tile flips the holder Settings flips (`MapLook`, `SatelliteLayer`, `Traffic`, `TransitLayer`,
   `Topography`, `Buildings3d`, `GoogleFree`). The chosen or on tile has a 2.5 dp `primary` ring on
   its picture and a `primary` label. Map type is one choice: picking a look while satellite is on
   turns satellite off, and the satellite tile toggles. A look's picture is drawn in Compose from
@@ -5421,7 +6309,10 @@ reuses it.
 `VelaMenu`, or none. Decided inside `CategoryChips`. The row shows `QuickCategories.all()` in
 the user's order and ends with a More chip (`MoreCategoriesChip`), a `VelaMenu` of every chip in
 the catalog, the ones switched off included; a pick runs that search. The one-button menu lists
-`all()` only.
+`all()` only. The row scrolls out to the screen edges, past the top chrome's 12 dp side
+padding, with its first chip in line with the search bar. In landscape, beside the bar, only
+its end runs out. A navigation bar on the side ends the row at its edge, and focus on the first
+or last chip scrolls the row all the way to that end.
 
 #### Drive chrome
 
@@ -5573,6 +6464,14 @@ bar chip and on the lock screen.
 - The system raises the chip only while the app holds
   `android.permission.POST_PROMOTED_NOTIFICATIONS`, which the user can turn off in the app's
   notification settings. Without it the notification still posts in the shade.
+- A drive has this one notification. A line the voice speaks while the app is not visible
+  (`VoiceGuide.onPromptAlert`, after the mute check; picture-in-picture counts as visible)
+  re-posts it on `vela_nav_turns` (HIGH, no sound, no vibration) without only-alert-once, so it
+  drops down as a banner; updates stay on that channel for `ALERT_HOLD_MS` (8 s), then it moves
+  back. The system takes a heads-up down as soon
+  as its channel drops below HIGH, and its heads-up lasts about 5 s. With the turn channel turned
+  off by the user it never moves. A second card per spoken turn (older builds, id 43) put two
+  drive notifications in the shade; one is canceled at service start.
 - The channel `vela_nav_drive` has DEFAULT importance with no sound and no vibration. A LOW
   channel is filed as silent, and a phone that hides silent notifications on the lock screen
   would hide the drive there. A channel's importance is fixed once it exists, so the old LOW
@@ -5654,7 +6553,8 @@ one destination per `SettingsSection`. `SettingsHub` holds the category rows and
   cancellation.
 - `BottomOverlay.of` maps `MapUiState` to one stable key: `ARRIVAL`, `NAV_STOPS`, `STEPS`,
   `NAV_STOP_OFFER`, `NAV_CONTROLS`, `TRIP_EDITOR`, `DIRECTIONS`, `CLASSIC_DIRECTIONS`, `PLACE`,
-  `SHAPES`, `RESULTS` or `NONE`. `SheetTransition` keeps the outgoing `MapUiState` snapshot
+  `SHAPES`, `RESULTS` or `NONE`. The three directions keys need `!navigating`, as the rest of
+  the screen reads `directionsOpen`. `SheetTransition` keeps the outgoing `MapUiState` snapshot
   (`BottomOverlayFrame`) until its exit ends. Content slides up over 250 ms and down over 200 ms,
   by its measured height. A detail fetch or a place change under the same key does not replay
   the entrance.
@@ -5712,22 +6612,48 @@ the same `:core` singletons as the phone (`CarDeps`).
   `ClusterSession`, one bare `NavigationTemplate`, because that display rejects the place-list
   template. Its content comes from `updateTrip()`.
 - `VelaCarSession` runs its own AOSP location feed into the shared `NavSession` (GPS fixes at 50
-  m accuracy or better, or the simulated position), so navigation runs with the phone UI closed. It handles
+  m accuracy or better, or the simulated position), so navigation runs with the phone UI closed.
+  Its fixes go through the same position filter as the phone's (`GuidanceFix`, one
+  `PositionFilter` for both feeds) with their accuracy, a course while moving and the at-rest speed
+  rule. While the phone's feed has handed the engine a fix within `GuidanceFix.PHONE_FRESH_MS`
+  (2.5 s), the car's stands down, and a fix both feeds received reaches the engine once: before,
+  with the phone app alive, every fix reached the engine twice, the car's raw. A drive started
+  from the car records no trip (`TripStore.startTrip` runs only from the phone's `launchNav`). It handles
   `androidx.car.app.action.NAVIGATE` geo intents: coordinates open the route preview, and a
   free-text `q=` opens `SearchCarScreen` on that query, submitted, over the landing list. A drive started
   from the car speaks with the Piper voice when it is installed and chosen (the service attaches
   the synth).
+- The host's `onStopNavigation` ends the drive only while the car session is live and the drive
+  screen not destroyed (`CarBridge.live`). On a disconnect the host calls it after both are gone,
+  and the drive goes on on the phone.
 - `VelaCarSession` is the one place that pushes `ActiveNavCarScreen`: it watches
   `NavSession.state` and, when a drive starts on the car or on the phone, pops to the landing
   screen and pushes the drive screen. `onCreateScreen` returns the drive screen over the landing
   screen when the car connects during a drive.
-- Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen`
-  (`SearchTemplate`) to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to
-  `ActiveNavCarScreen` (`NavigationTemplate`). The landing strip also opens `DriveCarScreen`
-  (drive mode, below), `SavedCarScreen` (Home, Work and every saved place, capped at the host's
-  list limit) and `CarSettingsScreen` (spoken directions, the tolls, highways and ferries avoids,
-  and the Traffic layer, written to the phone's `vela_settings` prefs, `RoutingPrefs` and
-  `Traffic`). The route preview passes the `RoutingPrefs` avoids to `directions`.
+- A map surface whose locks fail for `CarMapRenderer.STUCK_SURFACE_MS` (2 s) is stuck on a dead
+  Vela process's connection. The session pushes `MapReloadCarScreen`, a loading `ListTemplate`,
+  which pops 300 ms after the host destroys the surface (3 s at most), and the host gives the map
+  a new one. Once until a lock works again.
+- Screens: `MainCarScreen` (the landing, below) to `SearchCarScreen` (`SearchTemplate`) to
+  `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarScreen`
+  (`NavigationTemplate`). The landing strip also opens `SavedCarScreen` (Home, Work and every
+  saved place, capped at the host's list limit) and `CarSettingsScreen` (spoken directions, lane guidance, the tolls, highways and
+  ferries avoids, and the Traffic layer, written to the phone's `vela_settings` prefs,
+  `RoutingPrefs`, `CarLanes` and `Traffic`). That is six rows, the car library's default list
+  limit (`CONTENT_LIMIT_TYPE_LIST`); a host drops rows past its limit. The route preview passes
+  the `RoutingPrefs` avoids to `directions`.
+- The landing opens on the map alone, as Google Maps' car screen does: a `NavigationTemplate`
+  with no navigation info, its strip Search (titled), a list button, Saved and Settings, its map
+  strip recenter and zoom. The renderer is in its landing mode (`setDriveScreen`): the speed badge
+  and limit sign, and tilted heading-up from the start, standing still too, with the phone's
+  "Turn the map as you drive" on and "Keep north up" off. The list button shows the destinations
+  card in place (`PlaceListNavigationTemplate`, north-up like the other list screens) and a car
+  button on it puts the card away (issue #899). Without the location permission the card stays,
+  since its first row asks for it.
+- `SearchCarScreen` with nothing typed lists the destinations (`MainCarScreen.destinations`:
+  Home, Work, recents, saved places, one row per location, each with its kind's icon and its
+  address), five at most, then "More nearby", as Google's car search opens on its Recent tab. The
+  keyboard waits for a tap on the box when there is a row to show.
 - The landing list has six rows. At most `MAX_DESTINATIONS` (3) are destinations. Nearby
   categories fill the rest (`NearbyCarScreen.driving()`: gas, EV charging, restaurants, coffee,
   parking), ending in "More nearby" when they do not all fit. `NearbyCarScreen` lists the six
@@ -5747,23 +6673,43 @@ the same `:core` singletons as the phone (`CarDeps`).
   changes, and at most once a second (`TRIP_MIN_GAP_MS`). The host drops faster updates.
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`, `Step` and `Trip`, sets the phone's
   glyph as the icon (`NavGlyphs.bitmap`), and reads the roundabout direction and exit number
-  from the route's geometry.
-- On the drive screen a paused drive shows a `MessageInfo` ("Paused") in place of the turn card,
-  and the strip has Pause/Resume. A turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card
-  with "Continue on" the current road (`Maneuver.roadAt`) under a straight arrow and shows the
-  turn as the next step. A
-  search icon opens `AlongRouteCarScreen`: the quick categories as rows, a pick searches around
-  the car, and a result becomes the NEXT stop through `NavSession.addStop(atEnd = false)`: the
-  car has no stops editor to move it with.
+  from the route's geometry. A step with up to eight lanes carries them as `Lane`s and a
+  `LaneImage` bitmap, unless `CarLanes` is off (issue #866). The lane strip grows the card, which
+  shrinks the visible area that Zoom to the next turn frames the turn in, so the camera pulls
+  back out when it appears. The destination estimate's time left takes the route line's traffic colors from `Route.trafficRatio`: red over
+  1.4, yellow over 1.15 (the car API allows only its standard colors here), green below, and no
+  color when the route has no live traffic.
+  With a stop ahead the stop's time takes the same color: it describes the route, as the line
+  does.
+- On the drive screen a drive paused on the phone shows a `MessageInfo` ("Paused") in place of
+  the turn card. The card leads with the next turn however far off it is, as the phone's does, and
+  draws its lanes only within `LANE_SHOW_M` (800 m). The road you are on is a pill the car map
+  draws centered on the bottom of the stable area, level with the speed badge (`drawRoadName`,
+  `CarRoadName`: the phone pill's `roadLabelAt` rule, shortened, white or #303134 by day or night,
+  off when the phone's road label is off; where it would touch the arrow's drawn box it moves to
+  the side of the arrow with more room, cut to fit, and is left out when neither side fits a short
+  name), and goes to the cluster as `Trip.currentRoad`. The
+  turn after the next is the next step only by the phone's "then" rule
+  (`ManeuverMapper.thenShown`: within `COMPOUND_M`, 500 m, of the turn, and the turn within
+  `LANE_SHOW_M`, 800 m). The card's color is `ManeuverMapper.TURN_CARD` (#008A8B, which the host
+  draws as Google's #006D6F).
 - The preview draws the selected route in blue over the other listed routes in gray
-  (`showPreview(route, others)`), with a red dot at the destination. The drive draws the same
+  (`showPreview(route, others)`), with a red dot at the destination, and frames all of them.
+  Previews, results and the drive's overview fit `fitArea()` (the visible area less
+  `MAP_STRIP_DP`, 76 dp, on the right and at the top) at `CarFraming.fitZoom` with
+  `FIT_MARGIN` 0.8, centered there, and frame again when its size changes. `follow()` restores
+  the zoom from before the first framing (`zoomBeforeFrame`; not kept for the drive's overview). With more than one route,
+  each carries its time in a bubble at the phone picker's point (`RouteBubblePoints`), the
+  selected one filled blue; a bubble under the host's cards is left out. Row times are whole
+  minutes, rounded (`formatDuration`'s rounding), because the host truncates a `DurationSpan`. The drive draws the same
   dot, and the line ahead in the phone's paused lavender while the drive is paused.
 - Map action strips: recenter, zoom in, zoom out on the landing map; overview (re-frame the
   selected route), zoom in, zoom out on the preview; recenter and an overview toggle
   (`toggleOverview`, exempt from the pan auto-recenter) on the drive. The drive's top strip is
-  mute and end alone (user 2026-10-15, after a side-by-side with Google's car screen): pause and
-  the search along the route went, they stay on the phone, and the drive's zoom buttons went
-  with them; a pinch zooms where the unit takes one. The route line on the car is the phone's
+  the voice button and End, as on Google's car screen: pausing and adding stops are on the
+  phone, and a pinch zooms where the unit takes one. A faster-route offer of a minute or more
+  goes first, as "Faster -N min", beside the voice button and not in its place, so the car can
+  always mute (#927). The route line on the car is the phone's
   blue (`#1f6feb`) at 20 px, the driven part 18 px gray, alternates 14 px.
 - `CarBridge` carries the phone controller's spoken alerts (cameras, speeding, closing soon) to a
   `CarToast`, and the route's lights, stop signs and speed cameras to the renderer. A drive
@@ -5777,6 +6723,12 @@ the same `:core` singletons as the phone (`CarDeps`).
   number past 3 mph or 5 km/h over.
 - The guidance voice is band-limited by the protocol: the Android Auto guidance stream is 16 kHz
   mono.
+- Gearslip, a separate app that stands in for Android Auto on the phone, cannot take another
+  app's navigation audio. It reads the turn in each `updateTrip()` aloud itself, with the phone's
+  text-to-speech, on the car's guidance channel (its `DirectionsVoice`), and its own car setting
+  Sound and voice > Spoken directions turns that voice off. No car API carries a mute, so Vela's
+  On, Alerts only and Off do not reach it: the car's button and the phone's can both show muted
+  while Gearslip speaks.
 
 The map:
 
@@ -5830,12 +6782,13 @@ The map:
   the phone is at rest (`Stillness`), is a speed of 0. The heading is kept in every view, so a
   north-up map still turns the arrow.
 - The view is heading-up (`headingUp`) while following with no preview and no overview, the
-  phone's `NorthLock` off, and either a drive or the free-drive latch: the smoothed speed
+  phone's `NorthLock` off, and either a drive or, with `TurnWithTravel` on, the map-only landing (parked too) or the free-drive latch: the smoothed speed
   (`DRIVE_SPEED_TAU_S` 1 s) past `DRIVE_LATCH_MPS` (2.5) with a course known. The latch holds
   through a stop and lets go when the follow ends (a pan, a zoom button, the overview); recenter
   sets it again at once when the car is already moving. Heading-up, the camera bearing is the
-  heading, the tilt is `CarFraming.NAV_TILT_DEG` (55) and the arrow sits at `PUCK_DOWN` (0.72) of
-  the visible area's height. Otherwise the view is north-up, flat and centered on the arrow.
+  heading, the tilt is `CarFraming.NAV_TILT_DEG` (55) and the arrow sits at `PUCK_DOWN` (0.86) of
+  the visible area's height, as low as Google Maps keeps its car on the same screen (about 0.9 at
+  1280 by 720, drive and landing alike), so more of the road ahead shows. Otherwise the view is north-up, flat and centered on the arrow.
 - Zoom follows speed whenever the view follows a moving car, drive or not: `CarFraming.navZoom`,
   `ZOOM_NEAR` (17.2) at rest to `ZOOM_FAR` (15.0) at `ZOOM_FAR_KMH` (110) and above, a straight
   line between. In a drive with the phone's "Zoom to the next turn" on, the zoom is the lesser of
@@ -5877,16 +6830,12 @@ The map:
   `controlGlyphPx`: a twentieth of the screen's short side, scaled with zoom as the phone
   scales its glyphs (0.7 at z14, 1 at z15.5, 1.3 at z17), between 16 and 56 px; a light is
   `LIGHT_TALL` (1.4) times that tall.
-- The speed badge and the limit sign draw during a drive and on the drive-mode screen
+- The speed badge and the limit sign draw during a drive and on the map-only landing
   (`setDriveScreen`), with `SpeedDisplay` on. They scale with the screen (issue #817): the
   badge's radius is a 18th of the shorter side, 22 to 46 px, and the text, the sign and its
   strokes follow by the same factor, so on an 800 by 480 unit they are three fifths of the old
   fixed size and at 828 px and up the old size.
 
-Drive mode (`DriveCarScreen`, a `NavigationTemplate` with no navigation info): the map alone, no
-route and no list, opened from the landing strip's Drive action. Its strip holds search, saved
-places and a list action that pops back to the landing screen; the map strip is recenter and
-zoom. A drive started anywhere replaces it with the drive screen through `VelaCarSession`.
 
 ### 10.7 Street View
 
@@ -5917,6 +6866,9 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
 
 - `StreetViewTiles` stitches the highest level at most 4096 px wide and `PanoramaView` textures
   it onto a GLES2 sphere. Never stitch the full 16384x8192 level: about 400 MB of texture.
+- Beside it, the level at most `PREVIEW_W` (1024 px, two tiles on a modern pano) loads too and is
+  shown first when it lands before the full one, which then fades in over it. Two more tile
+  requests per pano, for the pano already being fetched. Only the full picture is cached.
 - The tile pyramid is not one shape. Modern panoramas are `512 * 2^z` wide. Captures from before
   about 2016 are `416 * 2^z` and some have only four levels. The grid is sized from the
   panorama's own level dimensions, or the loader requests tiles past the edge and paints black
@@ -5943,6 +6895,16 @@ WebGL embed serves a stripped shell that renders black on ANGLE. Do not retry it
 
 #### Viewer
 
+- Walk arrows are chevrons lying on the road (`GroundArrows`): 6 m out along each neighbor's
+  bearing, seen from 2.5 m up, projected through the panorama's own camera (yaw, pitch,
+  horizontal field of view), so they turn and foreshorten as the view moves and drop off the
+  bottom when it looks up. A tap within 72 dp of a chevron walks there (`PanoramaView.onTap`);
+  invisible 56 dp boxes on them carry TalkBack's label and D-pad focus.
+- A walk moves at once: the view zooms in up to 14 degrees over 450 ms while the next pano
+  loads, and the next pano fades in over 350 ms from that zoom, easing back out. It faces the
+  compass direction you were looking, as Google's does. Its heading and texture land on the same
+  GL frame (`setPanorama(bitmap, heading, face)`), since aiming first turned the old picture by
+  the new pano's heading at every corner. The spinner waits 700 ms on a step.
 - The viewer is a top-aligned pane over the live map (0.55 of the height, or full screen), not a
   dialog. It reports its pose so the map draws the puck and a view cone. The camera eases to the
   panorama on each hop only, never per yaw frame. A tap on the visible map moves the panorama
@@ -6013,7 +6975,9 @@ read is not remote, so grep `CalibrationStore` for a new field's name. The bundl
 - Positions: `paths`, `directionsPaths`, `suggestPaths`, `stopBoardIndices`.
 - The browser identity fields.
 - Word tables: `statusClosedWords`, `statusOpenWords`, `transitCategoryWords`,
-  `transitExcludeWords`, `reviewWords`, and the review scrape's CSS `reviewSelectors`.
+  `transitExcludeWords`, `nameFilterFoodWords` (the dishes and drinks a search along a route
+  takes as describing words, SPEC 5.6), `reviewWords`, and the review scrape's CSS
+  `reviewSelectors`.
 - Fleet defaults: `defaultVoiceId`, `defaultVoiceSpeaker`, `defaultVoiceSpeed`,
   `defaultMapPalette`, `defaultPlacesSource`, `classicRoutePicker`.
 - `tuning`: name-to-number dials read with `Calibration.tune(key, compiledDefault)`. View code
@@ -6164,6 +7128,12 @@ recomposition. Neither can be parallelized, so the rules send each less work.
   zoom.
 - A phone throttles after a few minutes. Check `dumpsys thermalservice` and alternate A and B
   runs.
+- From thermal status `SEVERE` up, a drive draws the map at `HeatCap.HOT_NAV_MAX_FPS` (30)
+  through MapLibre's `setMaximumFps` (issue #795), and goes back to the display's rate when the
+  status drops or the drive ends. A hot phone was taking 13 to 25 seconds to render a voice
+  line. Pixel 4a, demo drive in Davis, status forced with `cmd thermalservice override-status 3`:
+  59 to 29 fps, and MapLibre's GL thread from about 58 to 30 percent of a core. The trip file
+  notes the cap (`map: capped at 30 fps, phone hot`) beside the `heat:` notes.
 - `:app:generateBaselineProfile` (`baseline-profile.yml`) writes
   `app/src/release/generated/baselineProfiles/baseline-prof.txt` on a Gradle-managed emulator,
   and a release build bakes in the profile it finds there. Never run it on a connected phone:
@@ -6243,8 +7213,13 @@ from GitHub (5.8). With "Use Vela without Google" on, only the open services are
   (`refreshMaxspeedOverlay`, `refreshBuildingOverlays`), and during a drive the whole-view sign
   path draws only what is on the route (`controlsOnRoute`).
 - `NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
-  speed, bearing window, chord bearing, display bearing, camera bearing, frame dt. It holds no
-  position, so unlike a recorded trip it can be attached to a public issue.
+  speed, bearing window, chord bearing, display bearing, camera bearing, frame dt, and the yaw
+  rate that turned the arrow (`gyro_dps`, empty unless gyroscope mode drew the frame; the header
+  says whether the switch was on). It holds no position, so unlike a recorded trip it can be attached to a public issue. With
+  `debug.vela.tune.navTraceLog 1` (adb only) each row, and each fix the puck takes (its
+  along-route meters, speed and age), also goes to logcat as `VelaNavTrace` on the
+  `elapsedRealtime` clock, which `scripts/mockdrive/lagcheck.py` lines up with MockDrive's send
+  times.
 
 ### 14.3 Sharing a trip
 
@@ -6258,6 +7233,12 @@ the geometry.
 - Timestamps rebase to zero.
 - An `S` line survives only if a fix within `EVENT_NEAR_MS` (3 s) survived: it is the spoken
   text and names the street.
+- An `N` line (what the engine or the walking dot was handed) or a `W` line (a step) is kept
+  only when the fix line before it was kept, so an `N` line's time since its fix still counts
+  from a fix in the file. An `N` line also needs its own position outside every zone. A `W` line
+  has no position, but steps strung together retrace a walk, so it also needs a kept fix within
+  `EVENT_NEAR_MS`. A walk or a location test shares its middle with its steps and dot.
+- `RC` lines are dropped: a router's answer runs to the destination.
 - `K`, `J` and `B` lines are kept for the whole drive, the trimmed ends included. They hold no
   position, name or spoken text, and the start of a drive is where its route is planned and
   named. One from before the first surviving fix has a negative time. They show how long the
@@ -6313,12 +7294,17 @@ and in `location-guard.yml`.
   root `build.gradle.kts` pins the build tools' own libraries, none of which is in the app. CI
   validates the Gradle wrapper jar.
 - Channels. A push to `main` or `canary` builds and tests only. The nightly prerelease
-  `v0.5.<run>` is cut by `ci.yml` at 10:30 UTC when `main` has moved, or on dispatch, titled
+  `v0.5.<run>` is cut by `ci.yml` at 10:30 UTC when `main` has moved in a file that can reach
+  the app (`scripts/app-changed.sh`; a dispatch only needs `main` to have moved), titled
   `Vela <version> nightly` with notes that open "Nightly build." `promote-stable.yml` (Mondays
   16:00 UTC) promotes the newest nightly to stable: same tag, same signed APK, no rebuild,
   retitled `Vela <version>` with the notes regenerated. Each push to `canary` replaces the one
   release on the fixed tag `canary`, which is not a `v0.*` tag. Its notes carry the
   `versionCode:` line the updater reads.
+- Build provenance. On the runs that can publish (a push to `canary`, the nightly schedule, a
+  dispatch), `ci.yml` attests every release APK with `actions/attest-build-provenance`, which
+  needs `id-token: write` and `attestations: write`. A stable is its nightly's file, so it
+  carries the same attestation. The step is `continue-on-error` and never holds a release back.
 - `release.yml` is the manual path to a channel: input `channel` nightly dispatches `ci.yml`
   on `main` and waits for the nightly, and stable then calls `promote-stable.yml` with that
   tag. It refuses any ref but `main`, a `main` that moved after the run started, and a `main`
@@ -6364,9 +7350,17 @@ carries `<prefix>-arm64.apk`, `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and `<pref
   per check; `appReleaseTags` keeps each run's real tag name) and reads `releases/tags/<tag>`,
   canary reads its rolling tag. The releases list is never fetched:
   the data releases carry about 450 assets each and made a check 4 to 9 MB.
-- A stable check with nothing newer is 1 request. Nightly and canary checks are 2 to 4. An
+- Canary takes the newest nightly in its place only when the nightly's code is higher and it
+  holds canary's commit (`canaryPick`): `compare/<nightly commit>...<canary commit>?per_page=1&page=2`
+  answers `behind` or `identical`. The commits are the releases' `target_commitish`. Page 2 leaves
+  out the file list (about 10 KB; page 1 for a canary 26 commits ahead of `main` was 450 KB). A
+  failed compare keeps canary, and an unreadable canary release offers nothing. A nightly cut
+  from a `main` that lacks canary's commits has the higher run number whenever it was cut after
+  canary's last push.
+- A stable check with nothing newer is 1 request. Nightly and canary checks are 2 to 4, and a
+  canary check adds the compare when the nightly's code is higher. An
   offered update adds at most `HISTORY_MAX_RELEASES` (8) for the notes of the versions between
-  installed and offered. Every check logs one `VelaUpdate` line.
+  installed and offered. Every check logs one `VelaUpdate` line, and the compare one more.
 - `ApkChoice` picks the file for `Build.SUPPORTED_ABIS`. The download uses a client with no call
   timeout. `ApkCheck` requires the zip magic bytes, the release's size and its SHA-256 when
   GitHub publishes one.

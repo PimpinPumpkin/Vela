@@ -35,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -267,6 +269,7 @@ fun TripEditorSheet(
     // Rows need stable keys even when the same place appears twice or two are "you".
     data class Row0(val key: Int, val point: TripPoint)
     var order by remember(points) { mutableStateOf(points.mapIndexed { i, p -> Row0(i, p) }) }
+    val doneFocus = remember { FocusRequester() }
     var dragIdx by remember { mutableStateOf(-1) }
     var dragDy by remember { mutableStateOf(0f) }
     val rowHeightPx = with(LocalDensity.current) { ROW_HEIGHT.toPx() }
@@ -401,9 +404,32 @@ fun TripEditorSheet(
                 Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
             }
+            // Round trip (issue #929): the first row again as the destination, so the trip ends
+            // where it starts. Not when it already does, nor at the stop limit, where the old
+            // destination could not become a stop.
+            val startPoint = order.first().point
+            if (order.last().point != startPoint && order.size - 1 <= app.vela.core.nav.SavedRoutes.MAX_STOPS) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .dpadHighlight(RoundedCornerShape(8.dp))
+                        .clickable {
+                            order = order + Row0(order.maxOf { it.key } + 1, startPoint)
+                            // The row goes now the trip ends at its start: keys move on to Done.
+                            if (dpadMode) runCatching { doneFocus.requestFocus() }
+                        }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Sym.UTurnLeft, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Text(stringResource(R.string.trip_back_to_start), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                }
+            }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Button(onClick = { onApply(order.map { it.point }) }) {
+                Button(onClick = { onApply(order.map { it.point }) }, modifier = Modifier.focusRequester(doneFocus)) {
                     Text(stringResource(R.string.nav_done))
                 }
             }

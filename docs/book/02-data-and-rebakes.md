@@ -28,7 +28,7 @@ exist nowhere else, so nothing may delete these releases ([chapter 12](12-releas
 | Offline routing | OpenStreetMap, through OsmAndMapCreator | `obf-regions`, `obf-manifest.json` | 90 days (`obf-us`, `obf-a`, `obf-b`), staged | Whole file, on Update |
 | Place packs (offline search) | OpenStreetMap | `poi-packs`, `poi-pack-manifest.json` | 30 days (`poi-a`, `poi-b`) | Row-level delta or the whole pack |
 | Road features (traffic lights, stop signs, crossings, speed humps, speed cameras) | OpenStreetMap | `road-features`, `road-features-manifest.json` | 30 days (`roads-a`, `roads-b`) | The file for the region you are in, again when `updatedAt` changes |
-| Grid cells, a region in 0.5 degree pieces | OpenStreetMap and the region's places archive | `cells-<region>`, with `cells-manifest.json` on `grid-cells` | 30 days (`cells-us`, `cells-a`, `cells-b`) | The whole cell when `rev` is newer |
+| Grid cells, a region in square pieces (0.5 degrees, larger for a big region) | OpenStreetMap and the region's places archive | `cells-<region>`, with `cells-manifest.json` on `grid-cells` | 30 days (`cells-us`, `cells-a`, `cells-b`) | The whole cell when `rev` is newer |
 | Surveillance cameras | DeFlock's camera nodes in OpenStreetMap | `flock-cameras`, `flock-manifest.json` | Its own cron, Mondays 08:17 UTC | At app start when `version` is newer |
 | UK fuel prices | The UK government's Fuel Finder, through matthewgall/fuelfinder-archive | `fuel-gb`, `fuel-gb-manifest.json` | Its own cron, hourly at :23 (`fuel-gb.yml`), published when the source changed | When a UK gas station needs a price, checked again at most every 3 hours |
 | Buildings, where OSM has gaps | Microsoft building footprints (ODbL) | `building-overlays`, `building-overlay-manifest.json` | 90 days (`buildings-us`, `buildings-world`, `buildings-chunk`) | Streamed. A saved copy is never refreshed |
@@ -95,8 +95,10 @@ request.
 
 ### The daily seventh of places
 
-The places catalog is sorted by id, and a row bakes on the day where `index % 7` equals the UTC
-weekday (Monday is 0): 64 regions a day. OpenStreetMap is the one source anybody can correct, so
+The places catalog is sorted by id and cut into seven slices by `index % 7`: 64 regions each.
+Each slice is due a week after its own last bake, and the conductor bakes the one for today's
+UTC weekday first (Monday is 0). A day it misses, behind another bake, is caught up at the next
+free hour instead of waiting a week. OpenStreetMap is the one source anybody can correct, so
 a fix there reaches the map within a week. The whole catalog is not baked daily because every
 rebake offers the archive again to everyone who downloaded the region. Each bake reads the
 newest Overture release and AllThePlaces run.
@@ -114,8 +116,7 @@ release, and at least one region is newer. The replaced manifest is kept as
 A cycle that runs out of retries with regions still failing is not clean, and nothing is
 published. It becomes clean when each of those regions has been baked since, for example by a
 dispatch of that one region after a fix: the conductor sees a file newer than the cycle's last
-attempt. Before that rule a single failed region held the whole catalog's update back for the
-90 days until the next cycle.
+attempt.
 
 The bake indexes roads only, from an extract that `osmium tags-filter` has cut to about a third
 of its bytes to fit a 16 GB runner. An extract with more than 250 MB of roads (`OBF_SPLIT_MB`)
@@ -179,6 +180,13 @@ measurements are in [SPEC 7.2](../../SPEC.md).
 A part is listed in the app once the routing manifest carries it, so its place pack, places,
 basemap, road features and grid cells are baked first. A part downloaded before its own places
 and basemap archives exist would pull the whole state's.
+
+### Grid-cell boundaries
+
+Grid cells cover the region's land. A tile that only touches the region polygon at an edge or a
+corner, or lies in a bay of it, is not a cell. A re-bake keeps the cell size the region already
+has, so installed cells keep their ids. The clipping and cell-size rules are in
+[SPEC 7.6.1](../../SPEC.md#761-grid).
 
 ### How a manifest is published
 
@@ -251,8 +259,10 @@ to -129.9.
 ### How your phone picks up a new build
 
 Streamed data (places, buildings, house numbers, speed limits) is read by HTTP range requests
-against a fixed URL, so a rebuilt archive shows up once the map's tile cache drops the old bytes.
-Settings > Offline maps > Clear map cache forces it. The places and basemap stores cache a
+against a fixed URL. A rebake replaces the file there. The reader notices on its next read,
+because the file's length changed, and opens the new file before reading on. Tiles the map
+already cached from the old file stay until the map's tile cache drops them; Settings > Offline
+maps > Clear map cache forces it. The places and basemap stores cache a
 manifest for 60 minutes (`MANIFEST_TTL_MS`), so a long-running app still sees a new bake.
 
 Downloaded data stays as downloaded until it is updated. That includes the map you see online: a
@@ -319,9 +329,9 @@ regions is [chapter 8](08-offline.md).
 - Overture publishes about monthly. In between, the weekly places rebake refreshes only the
   OpenStreetMap and AllThePlaces parts.
 - A routing region that fails all its retries holds back the Update offer for every routing
-  region, because the staged manifest is published only after a clean cycle and the next cycle
-  is 90 days later. Until then the fix is by hand: dispatch the missing regions with
-  `staging: true` and copy the staging manifest over the live one.
+  region until it is baked. Dispatching the missing regions with `staging: true` makes the
+  cycle clean, and the conductor publishes the staged manifest at its next hourly run.
+  Otherwise the next cycle is 90 days later.
 - Routing files have no patch, so a routing update is always the whole file and never automatic.
   A places or basemap patch exists only from the previous revision, so a phone two rebakes behind
   takes the whole file.

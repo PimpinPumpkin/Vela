@@ -69,4 +69,20 @@ class CarFramingTest {
         // The same segment walked the other way crosses at the same place.
         assertEquals(0.5, clip.crossing(38.5449 - 1_500 / m, -121.7405, 38.5449 - 500 / m, -121.7405), 1e-3)
     }
+
+    @Test fun `a box fits the visible area, not one size for every screen`() {
+        // Davis to Sacramento, a wide box.
+        val wide = CarFraming.fitZoom(38.54, 38.60, -121.75, -121.48, 1000.0, 600.0)
+        val narrow = CarFraming.fitZoom(38.54, 38.60, -121.75, -121.48, 250.0, 600.0)
+        assertEquals(2.0, wide - narrow, 1e-9) // a quarter of the width, two zoom levels out
+        // At the fitted zoom the box's width in pixels is the margin's share of the area.
+        val px = 512.0 * Math.pow(2.0, wide) * (0.27 / 360.0)
+        assertEquals(1000.0 * CarFraming.FIT_MARGIN, px, 1e-6)
+    }
+
+    @Test fun `a tall box is fitted on its height`() {
+        val z = CarFraming.fitZoom(38.50, 38.70, -121.75, -121.74, 1000.0, 300.0)
+        val taller = CarFraming.fitZoom(38.50, 38.70, -121.75, -121.74, 1000.0, 600.0)
+        assertEquals(1.0, taller - z, 1e-9)
+    }
 }

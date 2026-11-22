@@ -10,8 +10,8 @@
 #    that includes commit messages, which are the user-facing changelog. Slipped on 2026-09-18 in a
 #    commit message and twice in drafted issue replies, all three by the assistant.
 # 3. NO EM DASHES. They are the clearest machine tell in English prose, and this text is public.
-#    The rule covers commit messages, and the same rule applies by hand to issue and PR comments,
-#    release notes and docs.
+#    The rule covers commit messages and English text, and the same rule applies by hand to issue
+#    and PR comments, release notes and docs. Translations may use dashes; en-GB is English.
 set -euo pipefail
 RANGE="${1:-origin/main..HEAD}"
 FAIL=0
@@ -28,14 +28,15 @@ if [ -n "$MSGS" ]; then
     echo "FAIL: a commit message uses a British spelling" >&2; FAIL=1
   fi
 fi
-# Em dashes in what this change ADDS. Only added lines: the repo carries plenty of older ones and
-# a whole-file test would fail every change that touches those files without preventing a thing.
-# This script is excluded from its own scan: it has to contain the words it looks for.
-ADDED="$(git diff "$RANGE" -U0 -- '*.md' '*.kt' '*.xml' '*.sh' '*.yml' ':(exclude)scripts/check-writing.sh' 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
-# The spelling check reads English text only: a translation is another language ("utilisé" is
-# French, not a British "utilise"), and the en-GB file exists to be British. Em dashes are still
-# checked in every file, translations included.
+# What this change ADDS. Only added lines: the repo carries plenty of older ones and a whole-file
+# test would fail every change that touches those files without preventing a thing. This script is
+# excluded from its own scan: it has to contain the words it looks for.
+# Both checks read English text only. A translation is another language ("utilisé" is French, not a
+# British "utilise") and may use the dashes its language uses. The en-GB file exists to be British,
+# so it is spared the spelling check but still checked for em dashes.
 ADDED_EN="$(git diff "$RANGE" -U0 -- '*.md' '*.kt' '*.xml' '*.sh' '*.yml' ':(exclude)scripts/check-writing.sh' ':(exclude)app/src/main/res/values-*/*' 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
+ADDED="$ADDED_EN
+$(git diff "$RANGE" -U0 -- 'app/src/main/res/values-en-rGB/*' 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
 # The keyword lists that must carry BOTH spellings, the en-GB strings file and the Open Government
 # Licence's own name are the exceptions CLAUDE.md names; they are data, not prose.
 if grep -inE "$BRITISH" <<<"$ADDED_EN" | grep -viE "values-en-rGB|centre\"|centre'|fitness_centre|arts_centre|neighbourhood|cancelled\(\)|isCancelled|open.government.licence" >/dev/null 2>&1; then

@@ -15,8 +15,11 @@ import app.vela.core.util.SunTimes
 enum class ThemeMode { SYSTEM, LIGHT, DARK, AMOLED, AUTO }
 
 /** The MAP's own light/dark, apart from the app's (user 2026-09-28: a light map under dark
- *  settings, or the other way round). FOLLOW = whatever the app resolves to. */
-enum class MapThemeMode { FOLLOW, LIGHT, DARK }
+ *  settings, or the other way round). FOLLOW = whatever the app resolves to. AUTO = by the sun
+ *  ([AppTheme.night]) whatever the app is, so a dark app can sit over a day and night map (issue
+ *  #874). Stored by name under the same key: a build from before AUTO fails `valueOf` on it and
+ *  falls back to FOLLOW, without rewriting it, so the choice is back after an upgrade. */
+enum class MapThemeMode { FOLLOW, LIGHT, DARK, AUTO }
 
 /**
  * App-wide appearance preference. A process-wide reactive holder (like [app.vela.ui.Units]):
@@ -62,8 +65,7 @@ object AppTheme {
         mode.value = runCatching { ThemeMode.valueOf(prefs(context).getString(KEY, null) ?: "SYSTEM") }
             .getOrDefault(ThemeMode.SYSTEM)
         navDayNight.value = prefs(context).getBoolean(KEY_NAV_DAY_NIGHT, false)
-        mapMode.value = runCatching { MapThemeMode.valueOf(prefs(context).getString(KEY_MAP, null) ?: "FOLLOW") }
-            .getOrDefault(MapThemeMode.FOLLOW)
+        mapMode.value = mapModeFrom(prefs(context).getString(KEY_MAP, null))
         val p = prefs(context)
         if (p.contains(KEY_LAT)) {
             lat = p.getFloat(KEY_LAT, 0f).toDouble()
@@ -82,6 +84,7 @@ object AppTheme {
     fun setMap(context: Context, value: MapThemeMode) {
         mapMode.value = value
         prefs(context).edit().putString(KEY_MAP, value.name).apply()
+        refreshNight()
     }
 
     fun setNavDayNight(context: Context, value: Boolean) {
@@ -127,6 +130,10 @@ object AppTheme {
             android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
+    /** The stored map mode; nothing stored, or a name this build does not know, is FOLLOW. */
+    internal fun mapModeFrom(stored: String?): MapThemeMode =
+        runCatching { MapThemeMode.valueOf(stored ?: "FOLLOW") }.getOrDefault(MapThemeMode.FOLLOW)
+
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "theme_mode"
     private const val KEY_NAV_DAY_NIGHT = "theme_nav_day_night"
@@ -160,13 +167,26 @@ fun isMapDark(): Boolean {
     // A look Vela does not paint is as dark as it comes: Vela's layers over it follow the look.
     val look = app.vela.ui.MapLook.style.value
     if (!look.painted) return look.darkLook
-    if ((AppTheme.navigating.value || app.vela.ui.DrivingMode.on.value) && AppTheme.navDayNight.value) return AppTheme.night.value
-    return when (AppTheme.mapMode.value) {
+    val driveDayNight = (AppTheme.navigating.value || app.vela.ui.DrivingMode.on.value) && AppTheme.navDayNight.value
+    return mapDarkOwn(AppTheme.mapMode.value, driveDayNight) { AppTheme.night.value } ?: isAppInDarkTheme()
+}
+
+/** The map's light or dark from its own settings, or null when it follows the app: the day and
+ *  night while driving override first, then the map's mode. [night] is read only when it decides,
+ *  so a fixed map does not recompose at sunset. Plain Kotlin for the unit test. */
+internal fun mapDarkOwn(mode: MapThemeMode, driveDayNight: Boolean, night: () -> Boolean): Boolean? =
+    if (driveDayNight) night() else when (mode) {
         MapThemeMode.LIGHT -> false
         MapThemeMode.DARK -> true
-        MapThemeMode.FOLLOW -> isAppInDarkTheme()
+        MapThemeMode.AUTO -> night()
+        MapThemeMode.FOLLOW -> null
     }
-}
+
+/** Whether "Day and night while navigating" can change anything. It cannot while the app goes by
+ *  the sun and the map follows the app or goes by the sun too; with a fixed map under an app on
+ *  AUTO it still turns that map day and night for drives. */
+internal fun navDayNightMatters(mode: ThemeMode, mapMode: MapThemeMode): Boolean =
+    mode != ThemeMode.AUTO || mapMode == MapThemeMode.LIGHT || mapMode == MapThemeMode.DARK
 
 /** The map's true-black palette: only while the map follows an AMOLED app theme. */
 @Composable

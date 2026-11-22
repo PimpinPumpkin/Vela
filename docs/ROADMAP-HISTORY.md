@@ -9,6 +9,22 @@ says so.
 
 ## Shipped
 
+### November 2026
+
+- Turn arrows on the car screen (#804), the phone's shape for the next three turns, over the
+  light badges. Seen on the Desktop Head Unit at 1280 by 720 on a demo drive: the arrow bent
+  round the right turn on the route line, above the corner's light.
+- The scale bar rides over the free-drive speed box instead of hiding (#848). Seen on a Pixel 4a
+  on a mock drive at 13 m/s with no route: with Show speed on, the bar and the credit sat above
+  the box; with it off, both stayed in the low corner and nothing was held for the box.
+- An area tap that would make the outline cross itself goes into a side (#846). Drawn on a Pixel
+  4a: a triangle with a point tapped under its base became a kite, and Back took the point out.
+- The map's own "Day and night" (#874): a dark app over a map that goes by the sun. Checked on a
+  Pixel 4a with the simulated location moved to London by day: the map drew light under the dark
+  app.
+- One list exported on its own (#822), from the list editor's title row. Checked on a Pixel 4a:
+  a list's exported file, imported after the list was deleted, brought it back with its place.
+
 ### October 2026
 
 - Driving mode on the phone (#727): the map alone in the drive's layout with no route, with the
@@ -444,7 +460,13 @@ Once listed as dead and since fixed. Do not trust older notes that say otherwise
   doubtful places and 16% for confident ones, so a dead site says nothing.
 - Overture's `update_time` or confidence as a sign of life. `update_time` is the import
   date: a rule that spared recently updated rows spared 1,473 of 1,527 closed ones in the
-  District of Columbia. Closed restaurants sit at confidence 0.92 to 0.99.
+  District of Columbia. Closed restaurants sit at confidence 0.92 to 0.99. A higher confidence
+  floor (#914) would keep the phantoms: 99% of the Delaware box's Microsoft-only and
+  Foursquare-only rows score 0.75 or more. The bake drops by supplier instead (SPEC 5.2).
+- One row per unbranded name in a region (#742). Overture gives many chains no brand: with the
+  address-twin and single-supplier rules applied, 816 unbranded names still repeat across
+  Delaware at points over 150 m apart (2,297 rows), Walgreens, LabCorp and USPS among them.
+  The bake folds by name, street address and postcode instead.
 - Merging Microsoft's footprints into the basemap archive. Only 12% of Delaware's Microsoft
   footprints are in OSM, and the merged archive is 42.4 MB against 42.5 MB for the two
   apart. The render-time coverage gate also has to stay while the online basemap is

@@ -199,8 +199,8 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             }
             Hint(stringResource(R.string.settings_voice_test_hint))
             // Guidance volume (issue #245): tiers, not a slider - the useful range is small and
-            // discrete choices read instantly. Boost applies to the Vela voice's own audio;
-            // system voices can only be made softer (Android caps their volume param at 1.0).
+            // discrete choices read instantly. The Vela voice scales its own audio; a system voice
+            // is boosted by a LoudnessEnhancer on its audio session (VoiceGuide, SystemVoiceBoost).
             // Beside Test voice, not under Advanced: a voice that is too quiet is the first thing
             // someone comes here for, and the tiers sat below the fold in a collapsed section.
             Spacer(Modifier.height(10.dp))

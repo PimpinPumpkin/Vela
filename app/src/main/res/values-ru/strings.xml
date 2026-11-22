@@ -1038,7 +1038,6 @@
     <string name="car_along_route">Поиск по маршруту</string>
     <string name="car_along_none">Поблизости ничего не найдено</string>
     <string name="car_stop_added">Следующая остановка: %1$s</string>
-    <string name="car_continue_on">Продолжайте движение · %1$s</string>
     <string name="map_import_needs_google">Общий список Google Maps нельзя открыть, пока Vela работает без Google.</string>
     <string name="map_link_needs_google">«Открывать присланные ссылки Google Maps» выключено в Настройках &gt; Конфиденциальность.</string>
     <string name="map_link_unreadable">Не удалось открыть эту ссылку.</string>

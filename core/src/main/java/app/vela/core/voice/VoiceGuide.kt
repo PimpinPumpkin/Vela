@@ -34,11 +34,64 @@ class VoiceGuide @Inject constructor(
     /** Speech-rate multiplier (1.0 = normal, >1 = faster), settable live from Settings. Applied to the
      *  Android TextToSpeech engine; the neural voice reads its own `voice_speed` pref per utterance. */
     @Volatile private var speechRate = 0.97f
-    // Guidance volume (issue #245). The system-TTS path can only ATTENUATE (Android's
-    // KEY_PARAM_VOLUME caps at 1.0); the boost tiers act on the neural voice's own PCM.
+    // Guidance volume (issue #245). The neural voice scales its own PCM. A system engine takes
+    // KEY_PARAM_VOLUME at Normal and below, and the louder steps through [boostSessionFor].
     @Volatile private var volume = 1.0f
     fun setVolume(v: Float) {
         volume = v.coerceIn(0.2f, 3.0f)
+        if (SystemVoiceBoost.gainMb(volume) == 0) synchronized(boostLock) { releaseBoostLocked() }
+    }
+
+    // The louder steps on a system engine (issue #979): the framework clips KEY_PARAM_VOLUME to
+    // 0..1, so a line above Normal plays on an audio session of Vela's (KEY_PARAM_SESSION_ID) that
+    // a LoudnessEnhancer sits on. The engine's TextToSpeechService makes one AudioTrack per
+    // utterance on the session it is given, and the session's effect applies to each of them.
+    private val boostLock = Any()
+    private var boost: android.media.audiofx.LoudnessEnhancer? = null
+    private var boostSession = 0
+    private var boostMb = 0
+    // The device has no enhancer to make: stop asking until the engine is shut down.
+    private var boostUnavailable = false
+
+    /** The audio session a system engine's line at [setting] plays on, with the enhancer set to
+     *  that step's gain ([SystemVoiceBoost.gainMb]). 0 at Normal and below, or when no enhancer can
+     *  be made or set: the line then plays as it always did, at full engine volume. */
+    private fun boostSessionFor(setting: Float): Int {
+        val mb = SystemVoiceBoost.gainMb(setting)
+        if (mb <= 0) return 0
+        synchronized(boostLock) {
+            if (boostUnavailable) return 0
+            val fx = boost ?: run {
+                val session = audioManager?.let { am -> runCatching { am.generateAudioSessionId() }.getOrNull() }
+                val made = session?.takeIf { it > 0 }?.let { s -> runCatching { android.media.audiofx.LoudnessEnhancer(s) }.getOrNull() }
+                if (session == null || made == null) {
+                    boostUnavailable = true
+                    runCatching { android.util.Log.i("VelaDirections", "voice: no loudness enhancer, the system voice plays at full engine volume") }
+                    return 0
+                }
+                boostSession = session
+                boostMb = 0
+                made.also { boost = it }
+            }
+            val set = runCatching {
+                if (mb != boostMb) { fx.setTargetGain(mb); boostMb = mb }
+                fx.setEnabled(true) == android.media.audiofx.AudioEffect.SUCCESS
+            }.getOrDefault(false)
+            if (!set) {
+                // A dead handle (the audio server restarted) or lost control: drop it, the next
+                // line makes a new one.
+                releaseBoostLocked()
+                return 0
+            }
+            return boostSession
+        }
+    }
+
+    private fun releaseBoostLocked() {
+        boost?.let { runCatching { it.release() } }
+        boost = null
+        boostSession = 0
+        boostMb = 0
     }
     fun setRate(rate: Float) {
         speechRate = rate.coerceIn(0.5f, 2.0f)
@@ -173,6 +226,9 @@ class VoiceGuide @Inject constructor(
     @Volatile private var focusHeld = false // do we currently hold audio focus? (so a new prompt during
                                             // the release-hold window doesn't needlessly re-request)
     private val focusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    // A line waiting out its focus lead (see afterFocusLead) is dropped by stop(), so a mute
+    // pressed during the wait silences it like the line already playing.
+    private val lead = FocusLead { ms, block -> focusHandler.postDelayed(block, ms) }
     // Abandon focus a beat AFTER the last prompt ends (see releaseFocus) rather than instantly, so the
     // driver's music stays ducked CONTINUOUSLY across closely-spaced prompts instead of snapping back to
     // full between them — the "didn't reliably duck / not ducking enough" bug.
@@ -184,6 +240,7 @@ class VoiceGuide @Inject constructor(
         // listener at all, so Vela kept announcing turns over ringing and active calls. The
         // next scheduled prompt re-fires naturally once the call releases focus.
         if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            lead.stop()
             tts?.stop()
             neural?.stop()
             focusHandler.removeCallbacks(abandonFocusRunnable)
@@ -209,10 +266,9 @@ class VoiceGuide @Inject constructor(
      *  on a transient duck (podcast and audiobook apps do, by Android's own guidance) takes a few
      *  hundred milliseconds to stop, and the first word used to land on top of the music (user
      *  2026-09-19, "pause music a little early"). A fresh grant means nothing of ours is
-     *  speaking, so nothing waits on an interrupt behind the delay. */
-    private fun afterFocusLead(fresh: Boolean, go: () -> Unit) {
-        if (fresh) focusHandler.postDelayed(go, FOCUS_LEAD_MS) else go()
-    }
+     *  speaking, so nothing waits on an interrupt behind the delay. A [stop] (a mute) during the
+     *  wait drops the line; its focus was already given back by [releaseAllFocus]. */
+    private fun afterFocusLead(fresh: Boolean, go: () -> Unit) = lead.run(fresh, FOCUS_LEAD_MS, go)
 
     private fun releaseFocus() {
         synchronized(focusLock) {
@@ -307,6 +363,17 @@ class VoiceGuide @Inject constructor(
         // language it has no voice for.
         t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
+        // Labeled as navigation guidance, as the focus request and Vela's own voice are (issue
+        // #949). Unlabeled, the engine played as music: a car or a projection app routing audio by
+        // usage mixed the prompts into the music instead of ducking it.
+        runCatching {
+            t.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+        }
         systemReady = true
         systemInitFailed = false
         lastSystemLang = null // force setLanguage on the first utterance
@@ -325,6 +392,16 @@ class VoiceGuide @Inject constructor(
         pending.clear()
         last?.let { (text, interrupt) -> speakNow(text, interrupt) }
     }
+
+    /** The engine's default voice, which is the one chosen in its own settings, when it speaks
+     *  language [t], works offline and is installed; else null. */
+    private fun ownVoice(t: TextToSpeech, lang: String): android.speech.tts.Voice? = runCatching {
+        t.defaultVoice?.takeIf {
+            it.locale.language == Locale.forLanguageTag(lang).language &&
+                !it.isNetworkConnectionRequired &&
+                it.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true
+        }
+    }.getOrNull()
 
     /** Pick the highest-quality voice for [lang] that works offline — engines
      *  often default to a low-quality or download-required voice; this lifts
@@ -377,9 +454,13 @@ class VoiceGuide @Inject constructor(
      *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
     var onSpoken: ((String) -> Unit)? = null
 
+    /** Fired instead of [onSpoken] for a line guidance would have said with the voice muted or on
+     *  alerts only, so a trip still shows what the drive meant to say. */
+    var onMuted: ((String) -> Unit)? = null
+
     /** Fired beside [onSpoken] on every line guidance actually speaks. The nav service taps this
-     *  to pop a visible heads-up of the turn while the app is backgrounded - a separate slot so
-     *  it can't clobber the trip recorder's hook (each is set by a different `:app` owner). */
+     *  to drop the drive's card down as a banner while the app is backgrounded - a separate slot
+     *  so it can't clobber the trip recorder's hook (each is set by a different `:app` owner). */
     var onPromptAlert: (() -> Unit)? = null
 
     /** Real romanized road names (local name -> Latin, from the basemap's name:latin), set by `:app`
@@ -393,7 +474,10 @@ class VoiceGuide @Inject constructor(
     private val OPENER_MAX_WAIT_MS = 2500L // cap the nav-start opener's wait for its romanized road name
 
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
-        if (muted && !ignoreMute) return
+        if (muted && !ignoreMute) {
+            runCatching { onMuted?.invoke(text) }
+            return
+        }
         // The line itself, only when a developer asks (adb shell setprop log.tag.VelaSpeak DEBUG):
         // it names stops and streets, which no log carries otherwise.
         runCatching { if (android.util.Log.isLoggable("VelaSpeak", android.util.Log.DEBUG)) android.util.Log.d("VelaSpeak", text) }
@@ -481,13 +565,21 @@ class VoiceGuide @Inject constructor(
             return
         }
         if (t != lastSystemLang) {
-            val avail = runCatching { engine.setLanguage(Locale(t)) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
-            if (avail < TextToSpeech.LANG_AVAILABLE) {
-                working = false
-                langUnavailable?.invoke(t) // "download a <language> voice" — don't mangle it through the wrong one
-                return
+            // The voice picked in the engine's own settings, when it speaks [t]: kept as it is
+            // (issue #944). Choosing the best-rated voice for the language instead spoke with a
+            // voice the user had not picked in engines with several per language.
+            val own = ownVoice(engine, t)
+            if (own != null) {
+                runCatching { engine.voice = own }
+            } else {
+                val avail = runCatching { engine.setLanguage(Locale(t)) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
+                if (avail < TextToSpeech.LANG_AVAILABLE) {
+                    working = false
+                    langUnavailable?.invoke(t) // "download a <language> voice": never read it with the wrong one
+                    return
+                }
+                selectBestVoice(engine, Locale(t))
             }
-            selectBestVoice(engine, Locale(t))
             engine.setSpeechRate(speechRate)
             engine.setPitch(1.0f)
             lastSystemLang = t
@@ -501,10 +593,14 @@ class VoiceGuide @Inject constructor(
 
     private fun speakViaSystemNow(engine: TextToSpeech, text: String, interrupt: Boolean, t: String) {
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        val setting = volume
+        val session = boostSessionFor(setting)
         // Same foreign-name romanizing as the neural path (issue #184): the system voice for [t]
         // is Latin-script for the Latin languages, so a foreign road name would otherwise be lost.
         val params = android.os.Bundle().apply {
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume.coerceAtMost(1.0f))
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, SystemVoiceBoost.engineVolume(setting))
+            // An engine that plays its own audio ignores the session and speaks at full volume.
+            if (session > 0) putInt(TextToSpeech.Engine.KEY_PARAM_SESSION_ID, session)
         }
         // A lead-in of silence before the words (issue #802): an output waking from standby, a
         // Bluetooth head unit above all, dropped the first syllables. Longer on Bluetooth
@@ -539,6 +635,7 @@ class VoiceGuide @Inject constructor(
 
     fun stop() {
         openerToken++ // cancel any deferred nav-start opener still waiting for its road name
+        lead.stop() // and any line still waiting out its focus lead
         tts?.stop()
         neural?.stop()
         // Drop any queued-but-unspoken prompts: once guidance stops (nav end / mute), a backlog is
@@ -548,6 +645,7 @@ class VoiceGuide @Inject constructor(
     }
 
     fun shutdown() {
+        lead.stop()
         tts?.shutdown()
         tts = null
         ready = false
@@ -555,6 +653,10 @@ class VoiceGuide @Inject constructor(
         lastSystemLang = null
         neural?.stop()
         releaseAllFocus()
+        synchronized(boostLock) {
+            releaseBoostLocked()
+            boostUnavailable = false
+        }
     }
 
     private fun requestFocus() {

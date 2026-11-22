@@ -44,6 +44,22 @@ fun parseRouteRef(label: String): RouteRef {
     return RouteRef(type, number, dir, t)
 }
 
+/** The route a sign part, a ref or a road name names, as (family, number): ("I", "5") for
+ *  "I 80 West", "I-80" or "Interstate 80"; ("US", "50"); ("S", "99") for a state or provincial
+ *  route ("CA 99", "SR 520", "Highway 1"). Null for a place name or a street ("NE 8th Street"). */
+fun routeKey(label: String): Pair<String, String>? {
+    val m = ROUTE_KEY.find(label.trim()) ?: return null
+    val prefix = m.groupValues[1].uppercase().replace(".", "").replace(" ", "")
+    val family = when (prefix) {
+        "I", "INTERSTATE" -> "I"
+        "US", "USHWY" -> "US"
+        "SR", "STATEROUTE", "HWY", "HIGHWAY" -> "S"
+        else -> if (prefix in STATE_PROVINCE) "S" else return null
+    }
+    return family to m.groupValues[2].uppercase()
+}
+private val ROUTE_KEY = Regex("""^(I|Interstate|US|U\.S\.|SR|State Route|Hwy|Highway|[A-Z]{2})[\s-]*(\d{1,4}[A-Za-z]?)\b""")
+
 /** Words a road name is made of when it only says its route number again ("State Route 9"). */
 private val ROUTE_WORDS: Set<String> = setOf(
     "state", "route", "rte", "rt", "highway", "hwy", "sr", "sh", "us", "interstate", "county", "road", "cr",

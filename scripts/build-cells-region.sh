@@ -121,6 +121,16 @@ bake_mapcreator "$WORK"
 # The cells (scripts/cells_grid.py): STEP degree tiles of a global grid, clipped to the box and
 # to the region's polygon. STEP starts at 0.5 and doubles until the region fits one release
 # (Alaska: 4949 half-degree box tiles; its land fits at a coarser step).
+# A re-bake keeps the cell size its release already has: a new size renames every cell, so a phone
+# would keep its old cells beside the new ones (the manifest no longer lists them), and the release
+# would hold both sets past its 1000 files. The step still doubles when the region no longer fits.
+if [ -z "${CELL_STEP:-}" ] && [ "${CELLS_UPLOAD:-0}" = "1" ] \
+  && gh release download "$TAG" --repo "$REPO" -p "$TAG.json" -O "$WORK/published.json" --clobber 2>/dev/null; then
+  CELL_STEP=$(jq -r '[.cells[] | ([(.bbox[2] - .bbox[0]), (.bbox[3] - .bbox[1])] | max)] | max // 0' "$WORK/published.json" \
+    | awk '{ s = 0.5; while (s < $1 - 1e-6) s *= 2; print s }')
+  echo "→ published cells are $CELL_STEP degrees; keeping that size"
+fi
+PUBLISHED_STEP="${CELL_STEP:-}"
 STEP="${CELL_STEP:-0.5}"
 while :; do
   rm -rf "$WORK/regions"; mkdir -p "$WORK/regions"
@@ -133,6 +143,9 @@ while :; do
   [ "$(awk -v s="$STEP" 'BEGIN { print (s > 8) }')" = 0 ] || { echo "::error::$ID does not fit $MAX_CELLS cells at 8 degrees"; exit 1; }
 done
 echo "→ $NCELLS grid cells at $STEP degrees"
+if [ -n "$PUBLISHED_STEP" ] && [ "$STEP" != "$PUBLISHED_STEP" ]; then
+  echo "::warning::$ID cells change size ($PUBLISHED_STEP to $STEP degrees): installed cells stop updating, and the old zips stay on $TAG until deleted"
+fi
 
 # The extract is first cut to what the two per-cell filters can keep (the union of their tag
 # expressions), then one osmium pass writes every cell of a batch; complete_ways keeps a way that

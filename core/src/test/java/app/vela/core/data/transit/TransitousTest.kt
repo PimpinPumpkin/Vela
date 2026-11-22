@@ -43,6 +43,29 @@ class TransitousTest {
         assertEquals(TransitMode.BUS, downtown.mode)
     }
 
+    // #946: a bus waiting to start its run reports its position, and the feed predicts it as on
+    // its way. Twelve minutes early is that; one minute early is a bus running early.
+    @Test
+    fun `a live time far ahead of the timetable shows the timetable, without the live mark`() {
+        fun early(live: String, sched: String) = Transitous.StopTime(
+            place = Transitous.StPlace(departure = live, scheduledDeparture = sched, tz = "UTC"),
+            mode = "BUS", realTime = true, headsign = "Depot", routeShortName = "7",
+        )
+        val board = Transitous.buildBoard(
+            listOf(early("2026-01-01T10:02:00Z", "2026-01-01T10:12:00Z"), early("2026-01-01T10:29:00Z", "2026-01-01T10:30:00Z")),
+            stationName = null,
+        )!!
+        val ups = board.lines.single().upcoming
+        assertEquals(Transitous.parseIso("2026-01-01T10:12:00Z"), ups[0].epochSec)
+        assertTrue(!ups[0].realtime)
+        assertEquals(Transitous.parseIso("2026-01-01T10:29:00Z"), ups[1].epochSec)
+        assertTrue(ups[1].realtime)
+        // Late is always trusted, and no timetable leaves the live time alone.
+        assertEquals(100L, Transitous.trustLive(100L, 40L))
+        assertEquals(100L, Transitous.trustLive(100L, null))
+        assertNull(Transitous.trustLive(100L, 100L + Transitous.EARLY_DOUBT_S + 1))
+    }
+
     @Test
     fun `canceled runs are dropped, empty board is null`() {
         assertNull(Transitous.buildBoard(listOf(st("1", "A", "2026-01-01T10:00:00Z", canceled = true)), null))

@@ -65,7 +65,17 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         if (!callbackSet) {
             runCatching {
                 navManager.setNavigationManagerCallback(object : NavigationManagerCallback {
-                    override fun onStopNavigation() { stopNav() }
+                    override fun onStopNavigation() {
+                        // The host also calls this when the car disconnects, after the session and
+                        // this screen are gone, and that ended the drive on the phone too: a loose
+                        // cable or a wireless dropout stopped guidance. Only a stop while the car is
+                        // connected (another navigation app starting) ends it.
+                        if (!app.vela.car.CarBridge.live || lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED) {
+                            android.util.Log.i("VelaCar", "car left during a drive; the drive goes on")
+                            return
+                        }
+                        stopNav()
+                    }
                     override fun onAutoDriveEnabled() {}
                 })
             }.onSuccess { callbackSet = true }
@@ -109,14 +119,14 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val next = s.route?.maneuvers?.getOrNull(s.nav.stepIndex)
         val then = s.route?.maneuvers?.getOrNull(s.nav.stepIndex + 1) // "then …" junction preview
 
-        // The road you are on: the leg's road, following its silent renames (the phone's pill rule).
-        val currentRoad = s.route?.maneuvers?.let { app.vela.core.nav.roadLabelAt(it, s.nav.stepIndex, s.nav.distanceToNextManeuver) }?.let(app.vela.core.util.RoadNameShort::shorten)
-        val continueCue = currentRoad?.let { carContext.getString(app.vela.R.string.car_continue_on, it) }
+        // The road you are on, for the cluster (Trip.currentRoad); the car map draws it as a pill.
+        val currentRoad = app.vela.car.CarRoadName.of(s)
         val info: androidx.car.app.navigation.model.NavigationTemplate.NavigationInfo =
             if (s.paused) androidx.car.app.navigation.model.MessageInfo.Builder(carContext.getString(app.vela.R.string.car_paused)).build()
-            else ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial, continueCue)
+            else ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial)
         val estimate = ManeuverMapper.destinationEstimate(
             s.remainingDistance, s.remainingDuration, System.currentTimeMillis(), imperial,
+            trafficRatio = s.route?.trafficRatio,
         )
         // With a stop ahead the estimate on screen is the stop's, as on the phone's bar, named
         // where the host can show a line with it (car API 5).
@@ -127,6 +137,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             ManeuverMapper.destinationEstimate(
                 it.distanceM, it.seconds, System.currentTimeMillis(), imperial,
                 tripText = if (carContext.carAppApiLevel >= 5) carContext.getString(app.vela.R.string.nav_bar_to_stop, stopName) else null,
+                trafficRatio = s.route?.trafficRatio,
             )
         } ?: estimate
 
@@ -140,7 +151,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val shownStep = ManeuverMapper.carDistance(s.nav.distanceToNextManeuver, imperial)
         val tripKey = "${s.nav.stepIndex}|${shownStep.displayDistance}|${shownStep.displayUnit}|" +
             "${(s.remainingDuration / 60).toInt()}|${(s.remainingDistance / 100).toInt()}|" +
-            "${toStop?.let { (it.seconds / 60).toInt() }}|${toStop?.let { (it.distanceM / 100).toInt() }}|${toStop?.label}"
+            "${toStop?.let { (it.seconds / 60).toInt() }}|${toStop?.let { (it.distanceM / 100).toInt() }}|${toStop?.label}|$currentRoad"
         val nowMs = android.os.SystemClock.elapsedRealtime()
         if (navDeclared && next != null && tripKey != lastTripKey && nowMs - lastTripMs >= TRIP_MIN_GAP_MS) {
             lastTripKey = tripKey
@@ -150,9 +161,10 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                     s.remainingDuration * (s.nav.distanceToNextManeuver / s.remainingDistance) else 0.0
                 val trip = androidx.car.app.navigation.model.Trip.Builder()
                     .addStep(
-                        ManeuverMapper.carStep(next),
+                        ManeuverMapper.carStep(next, lanes = s.nav.distanceToNextManeuver <= app.vela.ui.nav.LANE_SHOW_M),
                         ManeuverMapper.stepEstimate(s.nav.distanceToNextManeuver, secsToStep, System.currentTimeMillis(), imperial),
                     )
+                    .apply { currentRoad?.let { setCurrentRoad(it) } }
                     // Destinations go in order of arrival: the next stop, then the trip's end.
                     .apply {
                         if (stopEstimate != null && stopName != null) addDestination(
@@ -172,7 +184,8 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         }
 
         val strip = ActionStrip.Builder()
-        // A faster-route offer (when present) takes the first slot as a tappable "Faster −N min".
+        // A faster-route offer (when present) comes first as a tappable "Faster −N min", beside the
+        // voice button, not in its place: while an offer stood, the car had no way to mute (#927).
         val faster = s.fasterRoute
         if (faster != null && s.fasterSavingSeconds >= 60) {
             val mins = (s.fasterSavingSeconds / 60).roundToInt().coerceAtLeast(1)
@@ -182,21 +195,20 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                     .setOnClickListener { deps.navSession.acceptFasterRoute(); invalidate() }
                     .build(),
             )
-        } else {
-            // ICONS, NOT TITLES (a real head unit, 2026-09-22): a titled action is drawn as a text
-            // pill ("Mute", "Pause", "End" across the top of the map); every template nav app and
-            // Google's own car UI use round icon buttons, and the icon says what the text said.
-            // The glyph is the mode, and a tap steps On, Alerts only, Off as the phone's does (#842).
-            val voice = deps.voiceGuide
-            val glyph = when {
-                !voice.muted -> app.vela.R.drawable.ic_car_unmute
-                voice.alertsOnly -> app.vela.R.drawable.ic_car_alerts
-                else -> app.vela.R.drawable.ic_car_mute
-            }
-            strip.addAction(
-                carAction(glyph) { app.vela.car.CarVoice.step(carContext, voice); invalidate() },
-            )
         }
+        // ICONS, NOT TITLES (a real head unit, 2026-09-22): a titled action is drawn as a text
+        // pill ("Mute", "Pause", "End" across the top of the map); every template nav app and
+        // Google's own car UI use round icon buttons, and the icon says what the text said.
+        // The glyph is the mode, and a tap steps On, Alerts only, Off as the phone's does (#842).
+        val voice = deps.voiceGuide
+        val glyph = when {
+            !voice.muted -> app.vela.R.drawable.ic_car_unmute
+            voice.alertsOnly -> app.vela.R.drawable.ic_car_alerts
+            else -> app.vela.R.drawable.ic_car_mute
+        }
+        strip.addAction(
+            carAction(glyph) { app.vela.car.CarVoice.step(carContext, voice); invalidate() },
+        )
         // Two buttons up here (user 2026-10-15, after a side-by-side with Google's car screen):
         // mute and end. Pause and the search along the route stay on the phone, where a drive is
         // paused and stops are added; four round buttons over the map read as clutter on a car.
@@ -222,6 +234,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
         return NavigationTemplate.Builder()
             .setNavigationInfo(info)
+            .setBackgroundColor(ManeuverMapper.TURN_CARD)
             .setDestinationTravelEstimate(shownEstimate)
             .setActionStrip(strip.build())
             .setMapActionStrip(mapStrip)

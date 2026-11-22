@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * with the phone UI closed has no controller and gets none of this, which is the same as before.
  */
 object CarBridge {
+    /** A car session is up ([VelaCarSession]): the phone's screen stays as the user left it. */
+    @Volatile var live = false
+
     /** One-line messages for a [androidx.car.app.CarToast]: the camera, speeding and closing-soon
      *  alerts, which were spoken only (a muted car heard nothing). */
     val toasts = MutableSharedFlow<String>(extraBufferCapacity = 8)

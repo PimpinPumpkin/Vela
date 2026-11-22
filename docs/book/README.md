@@ -29,6 +29,29 @@ Every chapter has the same four parts:
 | 12 | [Releases](12-releases.md) | Channels, version codes, the in-app updater |
 | 13 | [Settings and page motion](13-settings.md) | The Settings pages, Back, page transitions, keypad focus |
 
+## The engines
+
+The names the chapters use for Vela's main parts, and where each is explained.
+
+| Name | What it does | Chapter |
+| --- | --- | --- |
+| `HybridRoute` | A drive on Google's line: the open router's turns where the two routes share the road, turns named from the map where they part | [5](05-routing.md) |
+| OSRM | The open router, online on the FOSSGIS server: every turn with names, exits and lanes, no traffic | [5](05-routing.md) |
+| `ObfRouteEngine` | OsmAnd's router on the phone, over the downloaded region files | [5](05-routing.md), [8](08-offline.md) |
+| Valhalla | Bike-safe routes, and fitting a line another router drew to the roads | [5](05-routing.md) |
+| `LineNamer`, `RoadNameTiles` | Name each stretch of Google's line from the map's vector tiles | [5](05-routing.md) |
+| `NavEngine` | Runs on each fix: where you are on the route, what to say, whether you left it | [4](04-navigation.md) |
+| `NavSession` | The one drive the phone and the car screen share: reroutes, rechecks, stops | [4](04-navigation.md) |
+| `RouteHeal` | When a recheck's route replaces yours, and the way back to Google's line after a reroute | [4](04-navigation.md) |
+| FreeFused (`PositionFilter`) | The fused position guidance steers by: the GPS fix with the speed and course the GPS measures. Settings > Navigation can turn it off | [4](04-navigation.md) |
+| `GuidanceFix` | Shares that filter between the phone's feed and the car screen's | [4](04-navigation.md), [10](10-android-auto.md) |
+| `GoogleMapsDataSource` | Every request to Google: search, place details, routes, traffic | [7](07-talking-to-google.md) |
+| Calibration | The signed remote settings file: request templates, word tables, dials | [7](07-talking-to-google.md) |
+| `OfflinePoiStore`, `OfflineAddressStore` | Places and addresses from the downloaded packs | [6](06-search.md), [8](08-offline.md) |
+| Transitous | Departure boards and stops | [9](09-transit.md) |
+| Piper | The Vela voices, run on the phone by sherpa-onnx | [2](02-data-and-rebakes.md) |
+| `StepAudit` | Checks that a route's steps match its line: each turn where the line bends that way, no bend left unsaid | [5](05-routing.md) |
+
 ## Not written yet
 
 - The map itself: label sizes, day and night styles, 3D buildings, frame rate, the layers panel

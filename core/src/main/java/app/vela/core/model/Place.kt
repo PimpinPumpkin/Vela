@@ -140,11 +140,15 @@ data class PlaceDetails(
      *  reply had none: the thumbnail above the card reads it (`Place.svPanoId`). */
     val svPanoId: String? = null,
     val svYawDeg: Double? = null,
+    /** The place's category and a closure Google marked: a map label's first reply may lack both. */
+    val category: String? = null,
+    val temporarilyClosed: Boolean = false,
 ) {
     val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null &&
         rating == null && reviewCount == null && hours.isEmpty() && address == null && phone == null &&
         website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
-        about.isEmpty() && featuredReview == null && updates.isEmpty() && svPanoId == null
+        about.isEmpty() && featuredReview == null && updates.isEmpty() && svPanoId == null &&
+        category == null && !temporarilyClosed
 }
 
 /** One business post: its text, when it was posted, an optional link and photo. */
@@ -222,16 +226,53 @@ data class SearchResult(
 
 private val STREET_LINE = Regex("""^\d+[A-Za-z]?\s+\S""")
 
+/** Whether [address]'s first part carries a number: "314 F St, Davis" does, "Davis, CA 95616" not. */
+internal fun hasStreetLine(address: String): Boolean = address.substringBefore(',').any { it.isDigit() }
+
+private val HOUSE_NUMBER = Regex("""^\d+[A-Za-z]?$|^\d+[-/]\d+[A-Za-z]?$""")
+private val ORDINAL = Regex("""^\d+(st|nd|rd|th)$""", RegexOption.IGNORE_CASE)
+
+/**
+ * Whether [address]'s first part has a house number: a plain number among its words ("1004 24th
+ * St", "Hauptstraße 5", "12-14 King St"), never an ordinal ("24th St", "1st Ave"). A numbered
+ * street is not an address: the street the on-device index gives when it knows no house there
+ * ("East 8th Street, Davis, CA") has digits and no number.
+ */
+fun hasHouseNumber(address: String?): Boolean {
+    val first = address?.substringBefore(',')?.trim().orEmpty()
+    return first.split(' ', '\t', '#').any { w -> HOUSE_NUMBER.matches(w) && !ORDINAL.matches(w) }
+}
+
+/**
+ * The address a place picked from a contact shows: the one saved in the contact, on one line,
+ * which is the person's own and full. A contact that holds only a street line takes the town from
+ * [geocoded] (the geocoder's answer for it), and one with no address the geocoder's. The geocoder
+ * gave a house only its town and ZIP, so it used to be all the sheet showed.
+ */
+fun contactAddressLine(saved: String, geocoded: String?): String? {
+    val own = saved.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(", ").replace(Regex("""\s+"""), " ").trim()
+    val g = geocoded?.trim()?.ifBlank { null }
+    return when {
+        own.isEmpty() -> g
+        own.contains(',') || g == null -> own
+        hasHouseNumber(g) -> g
+        g.contains(own, ignoreCase = true) -> g
+        else -> "$own, $g"
+    }
+}
+
 /**
  * The address to show and copy. A place found by its typed address is NAMED by the street line
  * ("1451 W Covell Blvd") and its address field holds only the rest ("Davis, CA 95616"), so the
  * address row read, and copied, as a town and a ZIP code. When the name is a street line that the
- * address does not already start with, and the place is not a business, the two are joined.
+ * address does not already start with, the two are joined. A listing keeps its own address when
+ * that has a street line; a house Google files under a category does not, and is joined too.
  */
 fun Place.fullAddress(): String? {
     val a = address?.trim()?.ifBlank { null } ?: return null
     val n = name.trim()
-    if (category != null || rating != null || id.startsWith("shape:") || !STREET_LINE.containsMatchIn(n)) return a
+    if (id.startsWith("shape:") || !STREET_LINE.containsMatchIn(n)) return a
+    if ((category != null || rating != null) && hasStreetLine(a)) return a
     val house = n.substringBefore(' ')
     if (a.startsWith(house, ignoreCase = true) || a.contains(n, ignoreCase = true)) return a
     return "$n, $a"

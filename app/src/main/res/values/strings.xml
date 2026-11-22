@@ -87,6 +87,10 @@
     <string name="settings_vibrate_hint">Direction-coded buzzes at each turn, distinct for left vs right, so you can follow a route by feel. Set it per travel mode (e.g. on for cycling and walking, off while driving).</string>
     <string name="settings_keep_screen_on">Keep screen on while navigating</string>
     <string name="settings_keep_screen_on_hint">Keeps the screen awake during turn-by-turn.</string>
+    <string name="settings_lock_screen_nav">Show the drive on the lock screen</string>
+    <string name="settings_lock_screen_nav_hint">The power button wakes the phone to the route instead of the lock screen. Settings still asks you to unlock.</string>
+    <string name="settings_wake_for_turns">Wake the screen before each turn</string>
+    <string name="settings_wake_for_turns_hint">With the screen off during a drive, the next turn shows in large type on black as it comes near. A tap or the power button brings back the map.</string>
     <string name="map_voice_downloading">Downloading Vela Voice · %1$d%%</string>
     <string name="map_voice_installing">Installing Vela Voice…</string>
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
@@ -171,6 +175,8 @@
     <string name="settings_nav_trace_hint">Records how the map camera moves while you navigate, so a jittery or swimming map can be diagnosed. Contains no location data, only headings, speeds and timings, so it is safe to attach to a bug report.</string>
     <string name="settings_nav_trace_export">Share nav trace</string>
     <string name="settings_nav_trace_empty">No trace recorded yet. Navigate somewhere first.</string>
+    <string name="settings_gyro_turn">Turn the arrow with the gyroscope</string>
+    <string name="settings_gyro_turn_hint">During a drive the arrow turns when the phone feels the car turn, held to the shape of the road. Off, it follows the road a little ahead.</string>
     <string name="settings_voice_vela_name">Vela voice (%1$s)</string> <!-- format -->
     <string name="settings_voice_install_vela">Install the Vela voice (%1$d MB)</string> <!-- format -->
     <string name="settings_voice_install_vela_hint">The recommended navigation voice. Reinstall it here any time it goes missing or a download failed.</string>
@@ -250,10 +256,17 @@
     <string name="nav_end_confirm_keep">Keep going</string>
     <string name="settings_parking_button">Parking button</string>
     <string name="settings_parking_button_hint">The P button on the map that saves where you parked. Off: it shows only while a spot is saved.</string>
+    <string name="settings_auto_parking">Save where I park</string>
+    <string name="settings_auto_parking_hint">After a drive, the spot saves itself when you walk away from the car, when Android Auto disconnects, or when you leave Vela at your destination.</string>
+    <string name="settings_auto_parking_bt">Also when the car\'s Bluetooth disconnects</string>
+    <string name="settings_auto_parking_bt_hint">Asks for Nearby devices, to tell your car from headphones, and for location all the time, so it works with Vela closed.</string>
+    <string name="settings_auto_parking_bt_denied">Without Nearby devices, Vela can\'t tell your car\'s Bluetooth from headphones.</string>
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_keep_north_up">Keep north up</string>
     <string name="settings_keep_north_up_hint">The map never turns: two-finger rotation is off and drives stay north-up.</string>
+    <string name="settings_turn_with_travel">Turn the map as you drive</string>
+    <string name="settings_turn_with_travel_hint">With no route, the map turns to your direction once you move at driving speed. Off, it stays north-up until you turn it.</string>
     <string name="settings_start_view">Where the map opens</string>
     <string name="settings_start_view_here">Where I am</string>
     <string name="settings_start_view_last">Where I left the map</string>
@@ -268,6 +281,8 @@
     <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="settings_car_speed">Your speed on the car screen</string>
     <string name="settings_car_speed_hint">Off, the car screen shows the posted limit alone; the car has its own speedometer.</string>
+    <string name="settings_car_lanes">Lane guidance on the car screen</string>
+    <string name="settings_car_lanes_hint">Off, the car\'s turn card leaves out the lane arrows, so it does not grow as a turn comes near. The phone still shows them.</string>
     <string name="mapvm_area_pack_big">Offline search here uses the place pack for all of %1$s. Get it from Settings > Offline maps.</string> <!-- format: %1$s country or state name -->
     <string name="settings_places_shared_pack">Places cover all of %1$s (%2$s)</string> <!-- format: %1$s country or state name, %2$s a size like "1.9 GB" -->
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
@@ -322,6 +337,7 @@
     <string name="settings_house_numbers_near">Only when zoomed right in</string>
     <string name="settings_house_numbers_normal">Normal</string>
     <string name="settings_house_numbers_far">Further out</string>
+    <string name="settings_house_numbers_furthest">Furthest out (slower in big cities)</string>
     <string name="settings_house_numbers_hint">House numbers come from OpenStreetMap and, in the US, OpenAddresses. A building that has no number in either shows none, even though search still finds the address through Google.</string>
     <string name="settings_show_pois">Show places</string>
     <string name="settings_show_pois_hint">Business and place icons on the browse map. Off = a clean map; searched places still show.</string>
@@ -348,6 +364,10 @@
     <string name="settings_poi_size_default">Default</string>
     <string name="settings_poi_size_large">Large</string>
     <string name="settings_poi_icon_size_hint">Small suits low-resolution screens like car head units, where the default icons render oversized.</string>
+    <string name="settings_place_names">Place names</string>
+    <string name="settings_place_names_more">More</string>
+    <string name="settings_place_names_most">Most</string>
+    <string name="settings_place_names_hint">More and Most show the names and icons of shops, schools and other places when zoomed further out. A busy area gets crowded, and the map can move less smoothly there.</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
     <string name="nav_edit_route">Edit route</string>
@@ -383,7 +403,7 @@
     <string name="google_usage_kind_lists">Shared lists</string>
     <string name="google_usage_kind_page">Google pages (%1$s)</string>
     <string name="google_usage_kind_other">Other</string>
-    <string name="settings_block_google_telemetry_hint">Google\'s pages report on themselves: logging pings and the account bar\'s background calls. Nothing Vela shows needs them. They go out by default because a browser that never sends them looks less like a person to Google, and that is part of what decides whether your session gets the limited view. Turn this on to answer them on the phone instead.</string>
+    <string name="settings_block_google_telemetry_hint">Vela never lets Google\'s pages send their logging pings or ad requests. Turn this on to also answer the account bar\'s background calls on the phone.</string>
     <string name="settings_google_session_limited">Right now Google is giving this phone a limited view: fewer photos per page, no popular times on some places, and More reviews loads nothing. It usually lifts on its own after a while. A brand-new session starts out limited too, so starting one rarely helps.</string>
     <string name="place_limited_view">Google is showing a limited view right now, so popular times and more reviews may be missing here.</string>
     <string name="settings_google_session_hint">Google remembers this phone by a cookie, so what Vela looks up while it lasts can be linked together, without any name or account. Starting a new one caps that. A new session gets a shorter view from Google for a while (fewer reviews, popular times missing on some places).</string>
@@ -450,6 +470,15 @@
     <string name="settings_trip_batch_share_full">Share full traces</string>
     <string name="settings_trip_batch_saved">Saved the full traces</string>
     <string name="settings_name_trips">Name each trip when it is saved</string>
+    <string name="settings_location_test">Record a location test</string>
+    <string name="settings_location_test_hint">Records every location fix, each step and where the dot was for the time you pick, then stops. Each test is a new trip in the list below, ready to share.</string>
+    <plurals name="settings_location_test_minutes">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <string name="settings_location_test_left">Recording, %1$s left</string> <!-- format -->
+    <string name="settings_location_test_stop">Stop</string>
+    <string name="diag_location_test_name">Location test</string>
     <string name="settings_name_trips_hint">After a recorded drive ends, Vela asks what to call it. Off by default; you can always rename a trip later in the list below.</string>
     <string name="trip_name_prompt_title">Name this drive</string>
     <string name="trip_name_prompt_save">Save name</string>
@@ -534,6 +563,8 @@
     <string name="place_move_stop_down">Move stop down</string>
     <string name="place_remove_stop">Remove stop</string>
     <string name="place_add_stop">Add stop</string>
+    <string name="trip_back_to_start">Back to start</string>
+    <string name="trip_start_point">Starting point</string>
     <string name="stops_editor_title">Stops</string>
     <string name="stops_edit">Edit stops</string>
     <string name="steps_stop_at">Stop: %1$s</string>
@@ -730,6 +761,8 @@
     <string name="nav_maneuver_continue">Continue</string>
     <string name="nav_gps_lost">Searching for GPS…</string>
     <string name="nav_compound_then">then</string>
+    <string name="nav_turn_may_be_banned">This turn may not be allowed. Check the signs.</string>
+    <string name="nav_turn_may_be_banned_short">may not be allowed</string>
     <string name="nav_preview_tap_resume">Preview, tap to resume</string>
     <string name="nav_rerouting">rerouting…</string>
     <string name="nav_voice_button">Spoken directions: on, alerts only or off</string>
@@ -951,6 +984,7 @@
     <string name="car_search">Search</string>
     <string name="car_search_hint">Type to search for a destination</string>
     <string name="car_go">Go</string>
+    <string name="car_map_reloading">Loading the map</string>
     <string name="car_end">End</string>
     <string name="car_mute">Mute</string>
     <string name="car_unmute">Unmute</string>
@@ -961,7 +995,6 @@
     <string name="car_along_route">Search along route</string>
     <string name="car_along_none">Nothing found nearby</string>
     <string name="car_stop_added">Added %1$s as the next stop</string>
-    <string name="car_continue_on">Continue on %1$s</string>
     <string name="car_nearby">Nearby</string>
     <string name="car_more_nearby">More nearby</string>
     <string name="car_saved">Saved</string>
@@ -974,11 +1007,13 @@
     <string name="car_setting_avoid_highways">Avoid highways</string>
     <string name="car_setting_avoid_ferries">Avoid ferries</string>
     <string name="car_setting_traffic">Traffic</string>
+    <string name="car_setting_lanes">Lane guidance</string>
     <string name="car_location_title">Allow location</string>
     <string name="car_location_body">Vela needs it to show where you are and give directions</string>
     <string name="car_location_denied">Location is off. Turn it on for Vela in your phone\'s settings.</string>
     <string name="car_no_route">No route available. Check your location.</string>
     <string name="map_parking_saved">Parking spot saved</string>
+    <string name="map_parking_auto_saved">Saved where you parked</string>
     <string name="map_parking_no_fix">Waiting for a location fix</string>
     <string name="map_parking_cleared">Parking spot cleared</string>
     <string name="map_parked_car">Parked car</string>
@@ -1036,6 +1071,8 @@
     <string name="list_new_title">New list</string>
     <string name="list_edit_title">Edit list</string>
     <string name="list_name_label">List name</string>
+    <string name="list_show_on_map">Show on map</string>
+    <string name="list_hidden_on_map">Hidden on map</string>
     <string name="list_icon_label">Icon</string>
     <string name="list_emoji_label">Type any emoji</string>
     <string name="list_color_label">Color</string>
@@ -1077,6 +1114,9 @@
     <string name="draw_undo">Remove the last point</string>
     <string name="draw_cancel">Cancel</string>
     <string name="draw_save">Save</string>
+    <string name="measure_distance">Measure distance</string>
+    <string name="measure_hint">Tap the map to measure from point to point</string>
+    <string name="measure_total_leg">%1$s in all · last leg %2$s</string>
     <string name="draw_saved">Saved “%1$s” to My drawings</string>
     <string name="draw_list_name">My drawings</string>
     <string name="draw_delete">Delete this drawing</string>
@@ -1093,7 +1133,7 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Louder</string>
     <string name="settings_voice_volume_loudest">Loudest</string>
-    <string name="settings_voice_volume_hint">How loud spoken directions play over your media. Louder tiers apply to the Vela voice; system voices can only be made softer.</string>
+    <string name="settings_voice_volume_hint">How loud spoken directions play over your media, with the Vela voice or a voice from your phone.</string>
     <string name="place_avoid_not_honored">These routes may still use tolls, highways, or ferries: Google could not be reached to route around them, and the open router cannot. In a downloaded area Vela avoids them offline.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device. Import also takes a list from Google Takeout\'s Saved folder (one CSV per list); each place in it is looked up, so it needs a connection.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
@@ -1457,6 +1497,8 @@
     <string name="place_updates_all">Show all %1$d updates</string> <!-- format -->
     <string name="settings_nav_north_up">Start drives north-up</string>
     <string name="settings_nav_north_up_hint">The map stays flat with north at the top while you drive. Tap the compass during a drive to switch.</string>
+    <string name="settings_fused_position">FreeFused</string>
+    <string name="settings_fused_position_hint">Guidance blends the GPS fix with the speed and heading the GPS measures, so a jump off a tall building is ignored. Off follows the raw GPS fix, as Vela did before.</string>
     <string name="settings_zoom_to_turn">Zoom to the next turn</string>
     <string name="settings_zoom_to_turn_hint">The map zooms out until the next turn sits just under the turn card, turns toward a turn off to the side, and zooms back in as you near it. Made for long stretches between turns; street names and traffic lights do not show that far out. On the car screen too.</string>
     <string name="settings_zoom_to_turn_floor">Zoom out as far as</string>
@@ -1477,6 +1519,9 @@
     <string name="settings_puck_shape_ufo">UFO</string>
     <string name="settings_puck_shape_ship">Pirate ship</string>
     <string name="settings_puck_shape_duck">Rubber duck</string>
+    <string name="settings_puck_shape_hint">You can also tap the arrow while navigating.</string>
+    <string name="puck_pick_done">Done</string>
+    <string name="puck_pick_cancel">Cancel</string>
     <string name="route_saved_label">Your route: %1$s</string>
     <string name="route_save">Save this route</string>
     <string name="trip_shortcut_add">Add to home screen</string>
@@ -1487,6 +1532,8 @@
     <string name="route_save_default_from">%1$s to %2$s</string> <!-- format -->
     <string name="route_saved_toast">Route saved. It shows up next to the others whenever you ask for this trip.</string>
     <string name="nav_left_your_route">Left “%1$s”. Taking the fastest way.</string>
+    <string name="nav_reached_stop">You\'ve reached %1$s</string>
+    <string name="nav_reached_your_stop">You\'ve reached your stop</string>
     <string name="list_sound_label">Sound when you drive past one</string>
     <string name="list_sound_off">Off</string>
     <string name="list_sound_ping">Ping</string>

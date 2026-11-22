@@ -380,6 +380,20 @@ object Transitous {
             .replace(AFTER_SLASH) { "/" + it.groupValues[1].uppercase() }
     }
 
+    /**
+     * A live time more than [EARLY_DOUBT_S] before its timetable time is not shown (#946). A
+     * vehicle waiting to start its run already reports its position, and the feed then predicts it
+     * as on its way: a stop two minutes from the start read "2 min" for a bus leaving in twelve.
+     * Running that early is rare, so the timetable time is shown instead, without the live mark.
+     * Returns the live time when it is trusted, else null.
+     */
+    internal fun trustLive(liveSec: Long?, schedSec: Long?): Long? = when {
+        liveSec == null -> null
+        schedSec != null && schedSec - liveSec > EARLY_DOUBT_S -> null
+        else -> liveSec
+    }
+    const val EARLY_DOUBT_S = 180L
+
     private const val PAIR_MERGE_M = 160.0
     private const val LAP_SAME_STOP_M = 30.0
     private const val COLOCATED_M = 3.0
@@ -395,13 +409,15 @@ object Transitous {
         if (groups.isEmpty()) return null
         val lines = groups.map { (k, ts) ->
             val deps = ts.mapNotNull { t ->
-                val iso = t.place.departure ?: t.place.scheduledDeparture ?: return@mapNotNull null
-                val epoch = parseIso(iso) ?: return@mapNotNull null
+                val sched = t.place.scheduledDeparture?.let { parseIso(it) }
+                val live = trustLive(t.place.departure?.let { parseIso(it) }, sched)
+                val epoch = live ?: sched ?: return@mapNotNull null
                 StopDeparture(
                     clockText = clockText(epoch, t.place.tz),
                     epochSec = epoch,
                     // realTime = the feed is live-tracking this run; that's the green-dot signal.
-                    realtime = t.realTime,
+                    // Not when its live time was too early to trust (trustLive).
+                    realtime = t.realTime && live != null,
                     tripId = t.tripId,
                 )
             }.sortedBy { it.epochSec ?: Long.MAX_VALUE }
@@ -526,10 +542,9 @@ object Transitous {
     }
 
     private fun stopTime(st: TripStop, legCanceled: Boolean): TransitStopTime {
-        val shown = st.departure ?: st.arrival ?: st.scheduledDeparture ?: st.scheduledArrival
         val sched = st.scheduledDeparture ?: st.scheduledArrival
-        val shownEpoch = shown?.let { parseIso(it) }
         val schedEpoch = sched?.let { parseIso(it) }
+        val shownEpoch = trustLive((st.departure ?: st.arrival)?.let { parseIso(it) }, schedEpoch) ?: schedEpoch
         val moved = schedEpoch != null && shownEpoch != null && schedEpoch != shownEpoch
         return TransitStopTime(
             name = st.name,
@@ -713,7 +728,8 @@ object Transitous {
     }
 
     private fun stopTime(o: JSONObject, liveKey: String, schedKey: String, tz: String?): TransitStopTime {
-        val live = parseIso(o.optString(liveKey, "")); val sched = parseIso(o.optString(schedKey, ""))
+        val sched = parseIso(o.optString(schedKey, ""))
+        val live = trustLive(parseIso(o.optString(liveKey, "")), sched)
         val shown = live ?: sched
         return TransitStopTime(
             name = o.optString("name", ""), code = o.optString("stopCode", "").takeIf { it.isNotBlank() },

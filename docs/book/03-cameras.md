@@ -100,9 +100,10 @@ includes live traffic through the point. Logcat tag `VelaFlockRoute` prints the 
 try.
 
 The kept route carries its waypoints (`Route.detourPlan`), and a drive started on it holds them
-as silent stops ([chapter 4](04-navigation.md)). Reroutes and traffic rechecks route through
-them, so a wrong turn does not lead back past the cameras. They are never spoken or listed, and
-a stops edit keeps them.
+as silent stops ([chapter 4](04-navigation.md)). Traffic rechecks route through them, so a
+fresher route keeps the detour. A reroute drops them and takes you on from where you are, and
+that route is not checked for cameras. They are never spoken or listed, and a stops edit keeps
+them.
 
 ### The warnings
 
@@ -116,7 +117,8 @@ Plate cameras are projected onto each driven route once, from memory, and heads 
 along it become one alert in the plural. The projection is keyed on the route's ends and length,
 so a traffic refresh of the same course does not repeat an alert. A drive started right after
 launch waits up to 60 s for the dataset. The card shows for 6 s. Both switches work with the map
-layer off.
+layer off. In Driving mode, with no route, both warnings read a straight line ahead of the car
+instead ([chapter 11](11-drive-chrome.md)).
 
 The speed camera warning needs the Speed cameras layer on and shows the same card. Its cameras
 come from a 150 m corridor of the road-features file and must project onto the route within

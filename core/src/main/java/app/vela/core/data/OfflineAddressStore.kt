@@ -223,6 +223,36 @@ class OfflineAddressStore @Inject constructor(
         .rawQuery("SELECT COUNT(*) FROM street", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 } + OfflinePacks.count("streetpt")
 
+    /** The names of the streets with a centerline point in a box [radiusM] each way from [loc], from
+     *  this index and every installed pack, [limit] at most. The voice search's sounds-like retry
+     *  reads them (`SoundsLike`). */
+    fun streetNamesNear(loc: LatLng, radiusM: Double, limit: Int = STREET_NAMES_MAX): List<String> {
+        val dLat = radiusM / 111_320.0
+        val dLng = radiusM / (111_320.0 * Math.cos(Math.toRadians(loc.lat))).coerceAtLeast(1.0)
+        val box = arrayOf(
+            (loc.lat - dLat).toString(), (loc.lat + dLat).toString(),
+            (loc.lng - dLng).toString(), (loc.lng + dLng).toString(),
+        )
+        val out = LinkedHashSet<String>()
+        runCatching {
+            helper.readableDatabase.rawQuery(
+                "SELECT DISTINCT street FROM street WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? LIMIT $limit",
+                box,
+            ).use { c -> while (c.moveToNext()) c.getString(0)?.let { out += it } }
+        }
+        for (pack in OfflinePacks.dbs) {
+            if (out.size >= limit) break
+            runCatching {
+                pack.rawQuery(
+                    "SELECT street FROM streetname WHERE sid IN " +
+                        "(SELECT sid FROM streetpt WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?) LIMIT $limit",
+                    box,
+                ).use { c -> while (c.moveToNext() && out.size < limit) c.getString(0)?.let { out += it } }
+            }
+        }
+        return out.toList()
+    }
+
     /**
      * Forward-geocode a typed address → matching Places (nearest first). Empty if nothing matches.
      * Layered so an arbitrary address in a downloaded area resolves even where OSM is thin:
@@ -470,6 +500,7 @@ class OfflineAddressStore @Inject constructor(
         private const val REV_BOX_DEG = 0.0016 // ~180 m lat/lng box for the reverse-geocode nearest scan
         private const val REV_ADDR_M = 60.0    // accept a mapped house this close as the POI's address
         private const val REV_STREET_M = 150.0 // else fall back to a street name this close
+        private const val STREET_NAMES_MAX = 5_000 // names handed to the sounds-like retry at most
 
         /**
          * The street words [geocode] tries for [streetPart] (the text after the house number and

@@ -633,6 +633,7 @@ fun StepRow(
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                 color = ink,
                             )
+                            if (m.mayBeBanned) TurnBanWarning(ink)
                             val signs = roadSigns(m.instruction, m.ref)
                             if (signs.isNotEmpty()) {
                                 FlowRow(

@@ -595,7 +595,6 @@
     <string name="car_along_route">Keresés az útvonal mentén</string>
     <string name="car_along_none">Nincs találat a közelben</string>
     <string name="car_stop_added">Következő megállóként hozzáadva: %1$s</string>
-    <string name="car_continue_on">Haladj tovább: %1$s</string>
     <string name="car_no_route">Nincs elérhető útvonal, ellenőrizd a helyzeted</string>
     <string name="map_parking_saved">Parkolóhely mentve</string>
     <string name="map_parking_no_fix">GPS-bemérésre várakozás</string>

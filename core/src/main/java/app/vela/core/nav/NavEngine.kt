@@ -31,6 +31,18 @@ object NavEngine {
     private const val ADVANCE_MIN_M = 5.0
     /** In [NavState.spoken]: the turn-now line of the step has been said (0 and 1 are the bands). */
     const val TURN_NOW_SLOT = 2
+    /** In [NavState.spoken]: the step's turn-now WORDS were already said as the "then" of the line
+     *  just before, so its turn-now point buzzes without speaking ([CHAIN_REPEAT_S]). */
+    const val TURN_NOW_SAID_SLOT = 3
+    /** A chained step whose own turn-now line would come within this many seconds of the "then"
+     *  that named it, in the same words, is not said again: at speed two forks 45 m apart said
+     *  "keep slight right" twice in two seconds. */
+    const val CHAIN_REPEAT_S = 5.0
+    /** The full voice's one approach line ([oneApproach]) comes this many seconds before a
+     *  maneuver: a quarter mile at 65 mph. */
+    const val FAST_APPROACH_S = 15.0
+    /** From this pace (15 m/s, 34 mph) an exit, fork or keep gets the one approach line too. */
+    const val EXIT_ONE_LINE_MPS = 15.0
     /** A band the car reaches within this many seconds of a prompt is taken as said by it. */
     private const val BAND_MERGE_S = 8.0
     /** The voice's pace in letters a second and the lead before its first sound: how long a line takes. */
@@ -63,6 +75,8 @@ object NavEngine {
      *  crawling backward along its own route at 2.7 to 3.9 m/s for three fixes, right on the
      *  line, and the route was dropped for one that sent it the other way. */
     const val HEADING_MIN_MPS = 5.0
+    /** How far ahead or behind a turn the route makes still counts as the way to go for the heading term. */
+    private const val HEADING_NEAR_M = 25.0
     /** A fix the phone rates worse than this says nothing about the course (NavSession). */
     const val HEADING_MAX_ACC_M = 30.0
 
@@ -305,7 +319,13 @@ object NavEngine {
             // and the plain nearest one put progress 600 m ahead on the way IN, skipping the
             // roundabout's steps and misreading the next card by that much (a captured Milton
             // Keynes route, 2026-10-02).
-            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0, anchorM = state.traveledM)
+            // A round trip ends where it starts: until the car is [loopGuardM] in, the route's last
+            // stretch is no match for a fix. On a loop short enough for the window to reach its end,
+            // a fix at the start that drifted 15 m onto the road the trip comes back on read as the
+            // end of the trip, and the drive arrived as it set off.
+            val guardM = loopGuardM(route.polyline, total)
+            val capM = if (guardM > 0.0 && state.traveledM < guardM) total - guardM else Double.POSITIVE_INFINITY
+            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0, anchorM = state.traveledM, capM = capM)
             if (wD <= ON_ROUTE_M && state.traveledM <= total) {
                 traveled = maxOf(state.traveledM, wM)
                 offDist = wD
@@ -322,7 +342,7 @@ object NavEngine {
                 // near a far leg would otherwise teleport progress, firing every stop cue it passes
                 // (permanently) and skipping turns; a genuine gap (tunnel) keeps producing the same
                 // far match and gets adopted on the 3rd fix.
-                val (gM, gD) = projectNearAnchor(route.polyline, cum, loc, state.traveledM)
+                val (gM, gD) = projectNearAnchor(route.polyline, cum, loc, state.traveledM, capM)
                 val bigJump = kotlin.math.abs(gM - state.traveledM) > REACQUIRE_JUMP_M && gD >= 20.0
                 if (gD <= ON_ROUTE_M && (!bigJump || reacquireHits >= 2)) {
                     traveled = gM
@@ -358,10 +378,17 @@ object NavEngine {
         // carried on with its turns, no reroute, no redrawn line. Turn transients and lane changes
         // are absorbed by the same OFF_ROUTE_HITS debounce; a legit route turn flips the snapped
         // segment's bearing along with the driver's, so it doesn't accumulate hits.
+        // The course is held against the road just ahead and just behind too ([HEADING_NEAR_M]):
+        // mid-turn it has swung while the projection still sits before the corner, or not swung
+        // enough when the fix is already placed past it, and a turn the route makes was read as
+        // driving against it (a reroute 3 s after a right turn from a stop, taken as told, real
+        // drive 2026-11-17). A wrong turn points away from the road on both sides of the corner.
+        fun against(m: Double) = routeBearingAt(route.polyline, cum, m)?.let { rb ->
+            kotlin.math.abs(((bearingDeg!! - rb + 540.0) % 360.0) - 180.0) > HEADING_OFF_DEG
+        }
         val headingOff = moving && (speedMps ?: 99.0) >= headingMinMps && bearingDeg != null &&
-            routeBearingAt(route.polyline, cum, traveled)?.let { rb ->
-                kotlin.math.abs(((bearingDeg - rb + 540.0) % 360.0) - 180.0) > HEADING_OFF_DEG
-            } == true
+            against(traveled) == true && against(minOf(total, traveled + HEADING_NEAR_M)) != false &&
+            against(maxOf(0.0, traveled - HEADING_NEAR_M)) != false
         val offHits = when {
             offDist <= offRouteM && !headingOff -> 0
             !moving && offDist <= farOffM -> state.offRouteHits
@@ -503,10 +530,18 @@ object NavEngine {
         // byte-identical, the T is what moves the open-road prompt earlier (~+0.2 mi at 70 mph).
         val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
         val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
+        // At highway pace the full voice gives a maneuver ONE approach line, FAST_APPROACH_S out
+        // ("In a quarter mile" from 50 to 80 mph), and its line at the turn (oneApproach). Far,
+        // near and at the turn made eight lines of one exit, the fork on its ramp and the merge
+        // after it. Both bands are the same distance, so they are said as one.
+        val detail = SpokenDetail.mode
+        fun bandsFor(i: Int): Pair<Double, Double> =
+            if (detail == SpokenDetail.Mode.FULL && oneApproach(maneuvers, i, v)) {
+                maxOf(nearM, round50(v * FAST_APPROACH_S)).let { it to it }
+            } else farM to nearM
         // The line at the turn, ~2.5 s before it (the fixed 25 m fired ≤1 s before a 75 mph gore
         // point). Needed by the approach prompts too, which must end before it cuts in.
         val turnNowM = (v * 2.5).coerceIn(ARRIVE_RADIUS_M, 90.0)
-        val detail = SpokenDetail.mode
 
         // The next stop is said after the last maneuver before it ("Turn left onto Covell
         // Boulevard, then Davis Food Co-op will be on your right"), and "into the parking lot"
@@ -537,23 +572,30 @@ object NavEngine {
         // soon as this turn is made rides on the line at this turn only: "Take the ramp, then keep
         // left". Said apart, "Take the exit" and "In a quarter mile, keep slight left" came a
         // second apart. Its bands the car reaches within BAND_MERGE_S of here count as said; a
-        // later one is still said. Not for a step with lanes, whose first line carries them.
+        // later one is still said. A step with lanes says them in the "then".
         val laterIdx = if (nextIdx >= 0 || isArrive || isDepart || thenStopHere) -1 else dueNext(maneuvers, manAlong, idxCur, farM + v.coerceAtLeast(MIN_PACE_MPS) * BAND_MERGE_S)
-        val laterBands = if (laterIdx < 0) emptySet() else {
+        // A merge named in the "then" is said: it has one line, and this was it.
+        val laterBands = if (laterIdx < 0) emptySet() else if (maneuvers[laterIdx].type == ManeuverType.MERGE) setOf(0, 1) else {
             val gap = manAlong[laterIdx] - manAlong[idxCur]
             val pace = v.coerceAtLeast(MIN_PACE_MPS)
-            listOf(farM, nearM).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
+            bandsFor(laterIdx).toList().withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
         }
         var chainedNow = false
         var chainedIdx = -1
+        // The words the "then" gave the chained step, and whether they were said at this turn.
+        var thenSaid: String? = null
+        var thenAtTurn = false
         fun withNext(line: String, idx: Int = nextIdx): String {
             if (idx < 0) return line
             // In the shorter settings the second turn loses its street name too, as its own line would.
             val next = maneuvers[idx]
             val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
             else next.instructionNoRoad ?: next.spokenInstruction()
-            val both = nav().thenNext(line, nav().repeatShort(nextText))
-            if (both != line) { chainedNow = true; chainedIdx = idx }
+            // thenSaid keeps the words without the lanes: chainRepeatsSoon compares them with the
+            // step's own line at its turn.
+            val plain = thenShort(target, next, nextText)
+            val both = nav().thenNext(line, withLanes(next, plain))
+            if (both != line) { chainedNow = true; chainedIdx = idx; thenSaid = plain; thenAtTurn = false }
             return both
         }
         // The line at the turn, with the next turn on it when the two are chained. That next turn
@@ -571,14 +613,17 @@ object NavEngine {
             val pace = v.coerceAtLeast(MIN_PACE_MPS)
             val toNextNow = dtn + (manAlong[idx] - manAlong[idxCur]) - turnNowM
             fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
-            if (fits(full)) return full
+            if (fits(full)) { thenAtTurn = true; return full }
             val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
             val next = maneuvers[idx]
-            val nextNamed = nav().repeatShort(next.spokenInstruction())
+            val nextNamed = thenShort(target, next, next.spokenInstruction())
             // An exit keeps its sign: "take exit 12" without it says too little.
             val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
-            val named = nav().thenNext(bare, nextNamed)
-            return if (fits(named)) named else nav().thenNext(bare, nextBare)
+            val named = nav().thenNext(bare, withLanes(next, nextNamed))
+            thenAtTurn = true
+            if (fits(named)) { thenSaid = nextNamed; return named }
+            thenSaid = nextBare
+            return nav().thenNext(bare, withLanes(next, nextBare))
         }
         if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
             // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
@@ -600,7 +645,7 @@ object NavEngine {
             }
         }
         if (!voiceSilent && detail == SpokenDetail.Mode.FULL) {
-            val bands = listOf(farM, nearM)
+            val bands = bandsFor(idxCur).toList()
             val due = bands.withIndex().filter { (slot, d) ->
                 dtn <= d && slot !in spoken &&
                     // Arrival gets ONE approach cue at the near band ("your destination will be
@@ -651,8 +696,8 @@ object NavEngine {
                 // the car reaches the turn-now point before the line could end, the first prompt
                 // keeps its lanes and drops the tail, as a repeat does.
                 if (firstForStep && !isArrive && (dtn - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
-                    val short = nav().repeatShort(lotLine ?: target.spokenInstruction())
-                    line = nav().inThen(distancePhrase, wrap(if (lane != null) nav().useLanesToDo(lane.side, lane.count, short) else short))
+                    val brief = nav().repeatShort(lotLine ?: target.spokenInstruction())
+                    line = nav().inThen(distancePhrase, wrap(if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief))
                 }
                 events += NavEvent.Speak(line)
                 // A band the car reaches within BAND_MERGE_S of this line is said by it: entering
@@ -686,9 +731,19 @@ object NavEngine {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
-                    val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else nav().repeatShort(lotLine ?: target.spokenInstruction())
+                    val turnText = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else lotLine?.let { nav().repeatShort(it) } ?: short(target, target.spokenInstruction())
+                    // A roundabout said at its near band by its own approach is not said again at
+                    // its entry, where the driver is yielding and the words would be the same. The
+                    // line still comes when it carries the step after it (roundabouts in a row).
+                    val ringSaid = target.type == ManeuverType.ROUNDABOUT && 1 in spoken &&
+                        state.chainedStep != idxCur && nextIdx < 0 && laterIdx < 0
+                    // A merge says one line, the road it joins, on its approach or as the "then" of
+                    // the step before. At the merge itself there is nothing to choose.
+                    val mergeSaid = target.type == ManeuverType.MERGE && 1 in spoken && nextIdx < 0 && laterIdx < 0
                     // The shorter modes said their one line on the approach; the buzz below stays.
-                    if (detail == SpokenDetail.Mode.FULL) events += NavEvent.Speak(turnNowLine(withStop(turnText)), interrupt = true)
+                    if (detail == SpokenDetail.Mode.FULL && !ringSaid && !mergeSaid && TURN_NOW_SAID_SLOT !in spoken) {
+                        events += NavEvent.Speak(turnNowLine(withStop(turnText)), interrupt = true)
+                    }
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 spoken = spoken + TURN_NOW_SLOT
@@ -765,7 +820,8 @@ object NavEngine {
             stopCuedAtM = stopCuedAt,
             stillFixes = stillFixes,
             chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
-            chainedBands = if (!chainedNow) state.chainedBands else if (chainedIdx == laterIdx) laterBands else setOf(0, 1),
+            chainedBands = if (!chainedNow) state.chainedBands else (if (chainedIdx == laterIdx) laterBands else setOf(0, 1)) +
+                (if (thenAtTurn && chainRepeatsSoon(maneuvers, manAlong, idxCur, chainedIdx, dtn, turnNowM, v, thenSaid)) setOf(TURN_NOW_SAID_SLOT) else emptySet()),
         )
         return newState to events
     }
@@ -783,6 +839,24 @@ object NavEngine {
     private const val SIDE_SPAN_M = 25.0
     /** More bend than this through the mark and the side is not said (a corner, a U-turn). */
     private const val SIDE_MAX_BEND_DEG = 45.0
+
+    /** Whether step [i], approached at [speedMps], gets one approach line instead of two in the full
+     *  voice: anything at [SpokenDetail.FAST_MPS] or more, and an exit, fork, keep, U-turn or the
+     *  turn onto an on-ramp ([onRampTurn]) from [EXIT_ONE_LINE_MPS], so a car near 50 mph on the
+     *  way to an exit is not given far, near and at the turn by turns. */
+    internal fun oneApproach(ms: List<Maneuver>, i: Int, speedMps: Double): Boolean =
+        speedMps >= SpokenDetail.FAST_MPS ||
+            speedMps >= EXIT_ONE_LINE_MPS && (SpokenDetail.exitLike(ms[i].type) || onRampTurn(ms, i))
+
+    /** A turn onto a nameless road whose next spoken step, within 600 m, is a merge: the turn onto
+     *  an on-ramp (`RouteGeometry.rampTurns` words it "Take the ramp"). */
+    internal fun onRampTurn(ms: List<Maneuver>, i: Int): Boolean {
+        val m = ms[i]
+        if (turnLeftOf(m.type) == null || !m.road.isNullOrBlank() || !m.ref.isNullOrBlank() || m.distanceMeters > 600.0) return false
+        var j = i + 1
+        while (j < ms.size && quiet(ms, j)) j++
+        return j < ms.size && ms[j].type == ManeuverType.MERGE
+    }
 
     /** The voice says nothing for maneuver [i] in any setting: a continue or a straight-on with no
      *  real fork in its lanes, or a roundabout's own exit ([ringExit]). */
@@ -825,12 +899,27 @@ object NavEngine {
         return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
     }
 
+    /** True when step [j], named as "then [said]" on the turn-now line of step [k], would say the
+     *  same words at its own turn-now point within [CHAIN_REPEAT_S] of now ([dtn] meters short of
+     *  [k], at [speedMps]). */
+    internal fun chainRepeatsSoon(
+        ms: List<Maneuver>, manAlong: DoubleArray, k: Int, j: Int, dtn: Double, turnNowM: Double,
+        speedMps: Double, said: String?,
+    ): Boolean {
+        if (said == null || j !in ms.indices) return false
+        val own = short(ms[j], ms[j].spokenInstruction())
+        // A "then" that left out the route the line before it had just said counts as the same words.
+        if (!own.equals(said, ignoreCase = true) && !nav().repeatShort(ms[j].spokenInstruction()).equals(said, ignoreCase = true)) return false
+        val toOwnNow = dtn + (manAlong[j] - manAlong[k]) - turnNowM
+        return toOwnNow / speedMps.coerceAtLeast(MIN_PACE_MPS) < CHAIN_REPEAT_S
+    }
+
     /** A "then" past [CHAIN_M] means soon: never for a step further than this. */
     const val THEN_SOON_M = 500.0
 
     /** The next maneuver after [k] whose first prompt is due the moment [k] is made: within
-     *  [dueM] (the far band plus what the car covers in BAND_MERGE_S) and [THEN_SOON_M], not the arrival, a merge or a roundabout, with no lanes
-     *  to say; else -1. */
+     *  [dueM] (the far band plus what the car covers in BAND_MERGE_S) and [THEN_SOON_M], not the
+     *  arrival or a roundabout; else -1. */
     internal fun dueNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int, dueM: Double): Int {
         var j = k + 1
         while (j < ms.size && quiet(ms, j)) j++
@@ -838,7 +927,6 @@ object NavEngine {
         // A roundabout's entry and exit lines count exits and stay its own.
         val rings = setOf(ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT)
         if (ms[k].type in rings || ms[j].type in rings) return -1
-        if (ms[j].type == ManeuverType.MERGE || app.vela.core.model.laneGuidance(ms[j].lanes) != null) return -1
         val gap = manAlong[j] - manAlong[k]
         return if (gap <= dueM && gap <= THEN_SOON_M) j else -1
     }
@@ -982,17 +1070,22 @@ object NavEngine {
             val lane = app.vela.core.model.laneGuidance(m.lanes)
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
-            val short = nav().repeatShort(m.spokenInstruction())
-            val farSpoken = leg >= far * 0.85 && m.type != ManeuverType.MERGE
-            val anyApproach = leg >= near * 0.85 || said.isNotEmpty()
-            val now = if (anyApproach) short else nav().spokenSign(m.spokenInstruction())
+            val brief = nav().repeatShort(m.spokenInstruction())
+            // One approach line where update says one (oneApproach).
+            val one = oneApproach(ms, i, speedMps)
+            val approach = if (one) maxOf(near, round50(speedMps * FAST_APPROACH_S)) else near
+            val farSpoken = !one && leg >= far * 0.85 && m.type != ManeuverType.MERGE
+            val anyApproach = leg >= approach * 0.85 || said.isNotEmpty()
+            val now = if (anyApproach) short(m, m.spokenInstruction()) else nav().spokenSign(m.spokenInstruction())
             val lines = ArrayList<String>()
             if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), if (lane != null) full else lightLead(m, far, full))
-            if (leg >= near * 0.85 && 1 !in said) lines += nav().inThen(
-                spokenDistance(near, imperial),
-                if (farSpoken || said.isNotEmpty()) lightLead(m, near, short) else if (lane != null) full else lightLead(m, near, full),
+            if (leg >= approach * 0.85 && 1 !in said) lines += nav().inThen(
+                spokenDistance(approach, imperial),
+                if (farSpoken || said.isNotEmpty()) lightLead(m, approach, brief) else if (lane != null) full else lightLead(m, approach, full),
             )
-            if (TURN_NOW_SLOT !in said) lines += now
+            val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said)
+            val mergeSaid = m.type == ManeuverType.MERGE && anyApproach
+            if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid && !mergeSaid) lines += now
             // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
             out += if (i == fromStep && nearestFirst) lines.reversed() else lines
         }
@@ -1016,6 +1109,33 @@ object NavEngine {
     private const val LIGHT_AHEAD_MIN_M = 20.0
 
     private fun nav() = app.vela.core.i18n.NavStringsRegistry.current()
+
+    /** Ramps, forks and keeps: their short lines keep the first route number on the sign. */
+    private val SIGN_STEPS = setOf(
+        ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT, ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,
+        ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
+    )
+
+    /** The short form of [text], step [m]'s instruction, for its line at the turn and for a "then"
+     *  that names it: a ramp, fork or keep keeps the route it heads for ("Keep slight right toward
+     *  US 50 East"), so the voice names the road the banner shows at the moment it matters; anything
+     *  else drops its sign ([NavStrings.repeatShort]). The approach repeats stay without it. */
+    private fun short(m: Maneuver, text: String): String =
+        if (m.type in SIGN_STEPS) nav().repeatWithRoute(text) else nav().repeatShort(text)
+
+    /** [part], step [next]'s words in a "then", with the lanes it needs in front: "then use the left
+     *  lane to keep slight left". A chained step's own approach lines, which would say them, are
+     *  taken as said. */
+    private fun withLanes(next: Maneuver, part: String): String =
+        app.vela.core.model.laneGuidance(next.lanes)?.let { nav().useLanesToDo(it.side, it.count, part) } ?: part
+
+    /** [short] for step [next] as the "then" of [cur]'s line, without a route [cur] already named:
+     *  "Keep slight left toward I 80 West, then keep slight left", not the route twice. */
+    private fun thenShort(cur: Maneuver, next: Maneuver, text: String): String {
+        fun route(m: Maneuver) = nav().signParts(m.spokenInstruction()).firstNotNullOfOrNull { routeKey(it) }
+        val r = route(next)
+        return if (r != null && r == route(cur)) nav().repeatShort(text) else short(next, text)
+    }
 
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — now localized via the
      *  active [NavStrings] (English is byte-identical to the old inline logic). */
@@ -1102,7 +1222,9 @@ object NavEngine {
         for (k in maneuvers.indices) {
             // +0.5 nudge past the previous position: a segment ENDING exactly at fromM still
             // overlaps the window and its (earlier) projection would win the strict-less tie.
-            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total)
+            // The first step is anchored at the start: a round trip passes its start again at the
+            // end, and a depart point a meter nearer the way back put every step at the end.
+            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total, anchorM = if (k == 0) 0.0 else null)
             manAlong[k] = (
                 if (wd <= ON_ROUTE_M) wm
                 else projectNearAnchor(route.polyline, cum, maneuvers[k].location, fromM).first
@@ -1122,8 +1244,9 @@ object NavEngine {
      *  along-route window `[loM, hiM]`. Returns (meters-along-route, perpendicular-meters).
      *  Windowing is what stops a route that passes near itself from matching a far leg; a
      *  caller passes the window around the last known progress. Returns the clamped window
-     *  start with a huge distance if no segment falls in the window. */
-    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double, anchorM: Double? = null): Pair<Double, Double> {
+     *  start with a huge distance if no segment falls in the window. Nothing past [capM] is
+     *  matched, not even the rest of a segment that crosses it. */
+    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double, anchorM: Double? = null, capM: Double = Double.POSITIVE_INFINITY): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
         var bestScore = Double.MAX_VALUE
         var bestD = Double.MAX_VALUE
@@ -1132,6 +1255,7 @@ object NavEngine {
         val mPerDegLng = 111_320.0 * cos(Math.toRadians(p.lat))
         for (i in 0 until path.size - 1) {
             if (cum[i + 1] < loM || cum[i] > hiM) continue // segment entirely outside the window
+            if (cum[i] >= capM) continue
             val a = path[i]
             val b = path[i + 1]
             val ax = (a.lng - p.lng) * mPerDegLng
@@ -1141,7 +1265,7 @@ object NavEngine {
             val dx = bx - ax
             val dy = by - ay
             val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, tMax(cum, i, capM))
             val d = hypot(ax + t * dx, ay + t * dy)
             val along = cum[i] + t * (cum[i + 1] - cum[i])
             // With an anchor, a pass farther along has to be that much nearer to win (2 cm per
@@ -1164,8 +1288,9 @@ object NavEngine {
      *  perpendicular distance, the pass NEAREST the anchor wins. A far leg must be >20 m
      *  perpendicular-closer per km of along-distance to beat a near match — impossible inside
      *  the ON_ROUTE acceptance band, so re-acquire can no longer teleport progress onto the
-     *  return leg. Returns (meters-along-route, ACTUAL perpendicular meters of the winner). */
-    internal fun projectNearAnchor(path: List<LatLng>, cum: DoubleArray, p: LatLng, anchorM: Double): Pair<Double, Double> {
+     *  return leg. Returns (meters-along-route, ACTUAL perpendicular meters of the winner).
+     *  Nothing past [capM] is matched. */
+    internal fun projectNearAnchor(path: List<LatLng>, cum: DoubleArray, p: LatLng, anchorM: Double, capM: Double = Double.POSITIVE_INFINITY): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
         var bestScore = Double.MAX_VALUE
         var bestD = Double.MAX_VALUE
@@ -1173,6 +1298,7 @@ object NavEngine {
         val mPerDegLat = 111_320.0
         val mPerDegLng = 111_320.0 * cos(Math.toRadians(p.lat))
         for (i in 0 until path.size - 1) {
+            if (cum[i] >= capM) continue
             val a = path[i]
             val b = path[i + 1]
             val ax = (a.lng - p.lng) * mPerDegLng
@@ -1182,7 +1308,7 @@ object NavEngine {
             val dx = bx - ax
             val dy = by - ay
             val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, tMax(cum, i, capM))
             val d = hypot(ax + t * dx, ay + t * dy)
             val along = cum[i] + t * (cum[i + 1] - cum[i])
             val score = d + ANCHOR_PENALTY * kotlin.math.abs(along - anchorM)
@@ -1193,6 +1319,20 @@ object NavEngine {
             }
         }
         return bestAlong to bestD
+    }
+
+    /** The farthest a projection onto segment [i] may run before it passes [capM]. */
+    private fun tMax(cum: DoubleArray, i: Int, capM: Double): Double =
+        if (cum[i + 1] <= capM || cum[i + 1] <= cum[i]) 1.0 else ((capM - cum[i]) / (cum[i + 1] - cum[i])).coerceIn(0.0, 1.0)
+
+    /** A route that ends where it starts (a round trip: its start within [ARRIVE_PROX_M] of its
+     *  end, and the two under a third of its length apart): how far in [update] keeps progress off
+     *  its last stretch, a third of the route at most [DEST_ZONE_M]. 0 for any other route, so a
+     *  reroute that starts farther from the destination is matched as before. */
+    internal fun loopGuardM(poly: List<LatLng>, total: Double): Double {
+        if (poly.size < 2) return 0.0
+        val gap = poly.first().distanceTo(poly.last())
+        return if (gap <= ARRIVE_PROX_M && gap < total / 3) minOf(DEST_ZONE_M, total / 3) else 0.0
     }
 
 }

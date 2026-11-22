@@ -6,8 +6,9 @@ From street zoom the map shows a blue badge at each transit stop: round with a b
 a larger rounded square with a train or a subway car at a station. Tap one and the sheet opens on
 its departure board: one row per route and direction, with the route's pill in the agency's
 color, the next departure and a countdown (green when the vehicle is tracked live), and the
-times after it. Tap Stops on a row for the run's stop list: stops already passed are gray, live
-times are green or red, canceled calls are struck through. Tap a stop there to open its board.
+times after it. Tap Stops on a row for the run's stop list, which fills the screen over the map
+and its buttons: stops already passed are gray, live times are green or red, canceled calls are
+struck through. Tap a stop there to open its board.
 
 Directions in transit mode list trips with their times, lines and walks. A trip's card shows
 its first four lines and a count of the rest. Chips set the time
@@ -74,6 +75,11 @@ direction, sorted by next departure.
 - Canceled calls and runs are left off.
 - The time is the realtime departure when the feed has one, else the timetable time, in the
   stop's time zone and the app's 12 or 24 hour clock.
+- A realtime time more than 3 minutes before the timetable is not shown (`trustLive`): a
+  vehicle waiting to start its run already reports its position, and the feed predicts it as on
+  its way, so a stop two minutes from the start read "2 min" for a bus leaving in twelve. The
+  timetable time shows instead, without green. The same rule holds on a trip's stop list and a
+  planned trip's legs.
 - Green is the feed's own realtime flag, so a tracked vehicle that is on time is green too.
 - Two departures on one row at the same time are one vehicle. A stop can arrive through two
   agencies' feeds or a merged curb pair, and the trip ids differ between the copies.
@@ -107,7 +113,7 @@ on each side and repeats only when the view's center leaves the middle half of t
 While the layer has stops, the basemap's own bus icons are filtered out so a stop cannot draw
 twice at slightly different corners. Rail and airport icons stay on the basemap.
 
-The icons hide during a drive. Settings has a "Transit stops" switch with three under it, for bus
+The icons hide during a drive and a route preview. Settings has a "Transit stops" switch with three under it, for bus
 stops, subway and tram stops, and train stations (`TransitLayer.showsStop`). A tap goes to the
 stop or the business beside it, whichever is nearer on screen.
 
@@ -146,7 +152,10 @@ match "10". This list has no earlier stops and no canceled flags.
 ### Transit directions
 
 `MapViewModel.transitTrips` asks Google first, and the planner (`Transitous.plan`) when Google is
-off or returns nothing.
+off, returns nothing, or returns walking only. Google's feed misses lines that the open feeds
+carry: for a trip from a village on the edge of Niš, Google answers a 50 minute walk and the planner
+answers three suburban lines at 20 minutes each. After a walk-only answer the planner's trips that ride
+something are listed first and Google's walk last; with none, Google's walk stands alone.
 
 Google serves transit itineraries only to a real browser engine. A plain HTTP request in transit
 mode gets a driving route back, measured from OkHttp and curl. `WebDirectionsFetcher` loads the
@@ -175,6 +184,9 @@ https://www.google.com/maps/dir/<origin>/<destination>/data=!4m2!4m1!3e3?hl=<lan
   `bus2.png` is the vehicle icon.
 - A pill can have no color. The trip summary lists some lines that way, and the trip card then
   draws them in the colors their ride leg gives.
+- A pill keeps the agency's own color. A color that would melt into the sheet behind it, such
+  as a white line on the light sheet or the black Northern line on the dark one, gets a thin
+  gray outline (`BadgeContrast`).
 - The vehicle type comes from icon file names only, because a stop name can contain "bus". Where
   a leg has only an operator icon, as in Japan, its path decides: JR and the lettered lines are
   trains, a `metro` or `subway` operator is a subway.
@@ -200,7 +212,7 @@ link:
 1. `Transitous.legShape` asks the planner for a trip between the two stops and takes the path of
    a ride whose ends are within 300 m of them (`LEG_SHAPE_STOP_M`).
 2. A bus with no path gets the road route through its stops (`busRoadPath`), refused when it is
-   over 1.8 times the stops' straight-line chain, which is what a stop placed across a barrier
+   more than 1.8 times the stops' straight-line chain plus 300 m, which is what a stop placed across a barrier
    produces.
 3. Rail with no published path keeps its straight lines.
 
@@ -227,8 +239,10 @@ restart in airplane mode.
 ### Guidance
 
 `TransitNavSheet` takes the bottom half of the screen, with the trip drawn above it and the
-camera on the current leg. Each leg is spoken as it begins. Next and Back step by hand, at the
-bottom of the sheet on every card; the remaining legs scroll in the room above them.
+camera on the current leg. Each leg is spoken as it begins. Next and Back step by hand, at
+the bottom of the sheet on every card. The current leg and the legs after it scroll between the
+header and those two buttons, which keep their full height when a leg's walk steps or stops are
+open. A leg left open closes on Next.
 
 A leg advances by itself when you reach its end. It must first arm by being more than 90 m from
 that end (`TRANSIT_ARM_M`), then advances within 40 m (`TRANSIT_ARRIVE_M`). Arming keeps a
@@ -274,6 +288,4 @@ a start the system refuses leaves guidance working in the app, as before.
 - Guidance does not re-plan after a missed connection.
 - A scheduled trip is sent to Google in the phone's time zone, which is wrong for a trip planned
   in another zone.
-- A merged stop keeps one member's modes, so the stop-kind switches can hide an icon that
-  another kind of vehicle also serves.
 - The colored-lines endpoint is experimental upstream. A changed reply reads as no lines.

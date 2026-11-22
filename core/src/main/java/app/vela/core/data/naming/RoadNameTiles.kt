@@ -14,8 +14,10 @@ import kotlin.math.ln
 import kotlin.math.sinh
 import kotlin.math.tan
 
-/** A named street line from the map's vector tiles (OpenMapTiles `transportation_name`). */
-data class NamedLine(val name: String, val ref: String?, val cls: String?, val points: List<LatLng>, val bridge: Boolean = false)
+/** A named street line from the map's vector tiles (OpenMapTiles `transportation_name`). With
+ *  [link] it is instead a link road (`ramp` in the `transportation` layer): no name, and only
+ *  there to tell a ramp from an at-grade turn onto a highway. */
+data class NamedLine(val name: String, val ref: String?, val cls: String?, val points: List<LatLng>, val bridge: Boolean = false, val link: Boolean = false)
 
 /**
  * The street names [LineNamer] labels a line with, read from the same vector tiles the map draws
@@ -112,7 +114,8 @@ object RoadNameTiles {
 
     /** The named street lines of one tile. Pure protobuf reading, no library: Tile.layers (3) ->
      *  Layer name (1), features (2), keys (3), values (4), extent (5) -> Feature tags (2), type (3),
-     *  geometry (4). Only line features of `transportation_name` that carry a name are kept. */
+     *  geometry (4). Only line features of `transportation_name` that carry a name are kept, plus
+     *  the link roads of `transportation` as [NamedLine.link] lines. */
     fun decode(raw: ByteArray, z: Int, x: Int, y: Int): List<NamedLine> {
         val bytes = if (raw.size > 2 && raw[0] == 0x1f.toByte() && raw[1] == 0x8b.toByte())
             GZIPInputStream(ByteArrayInputStream(raw)).use { it.readBytes() } else raw
@@ -130,7 +133,7 @@ object RoadNameTiles {
         // A named line lying on a bridge segment of the same class is elevated: a flyover's name must
         // not label the street a walker takes underneath it. The names layer carries no bridge flag.
         return out.map { l ->
-            val segs = bridges.filter { it.first == l.cls }.map { it.second }
+            val segs = if (l.link) emptyList() else bridges.filter { it.first == l.cls }.map { it.second }
             if (segs.isEmpty()) l else {
                 val on = l.points.count { p -> segs.any { b -> b.zipWithNext().any { (a, c) -> segDist(p, a, c) < 6.0 } } }
                 if (on * 2 > l.points.size) l.copy(bridge = true) else l
@@ -192,21 +195,24 @@ object RoadNameTiles {
             }
             if (type != 2) continue // lines only
             var fname: String? = null; var ref: String? = null; var cls: String? = null; var brunnel: String? = null
+            var ramp: String? = null
             var i = 0
             while (i + 1 < tags.size) {
                 val k = keys.getOrNull(tags[i]); val v = values.getOrNull(tags[i + 1])
-                when (k) { "name" -> fname = v; "ref" -> ref = v; "class" -> cls = v; "brunnel" -> brunnel = v }
+                when (k) { "name" -> fname = v; "ref" -> ref = v; "class" -> cls = v; "brunnel" -> brunnel = v; "ramp" -> ramp = v }
                 i += 2
             }
             if (bridgeLayer) {
-                if (brunnel != "bridge") continue
-                fname = "\u0000"
-            } else if (fname.isNullOrBlank() && ref.isNullOrBlank()) continue
+                if (brunnel != "bridge" && ramp != "1") continue
+                for (part in lineParts(geom) { gx, gy -> toLatLng(gx, gy) }) {
+                    if (brunnel == "bridge") bridges += cls to part
+                    // `ramp` also marks steps, which are paths.
+                    if (ramp == "1" && cls !in NOT_CAR_ROADS) out += NamedLine("", null, cls, part, link = true)
+                }
+                continue
+            }
+            if (fname.isNullOrBlank() && ref.isNullOrBlank()) continue
             for (part in lineParts(geom) { gx, gy -> toLatLng(gx, gy) }) out += NamedLine(fname ?: ref!!, ref, cls, part)
-        }
-        if (bridgeLayer) {
-            for (l in out.filter { it.name == "\u0000" }) bridges += l.cls to l.points
-            out.removeAll { it.name == "\u0000" }
         }
     }
 
@@ -344,12 +350,18 @@ object RoadNameTiles {
         }
     }
 
+    /** A tag value as text: a string, or an integer (int 4, uint 5, sint 6) in decimal, which is
+     *  how `ramp` comes. */
     private fun readValue(b: ByteArray, s: Int, e: Int): String? {
         val p = Pb(b, s, e)
         while (p.more()) {
             val (field, wire) = p.key()
-            if (field == 1 && wire == 2) return p.string()
-            p.skip(wire)
+            when {
+                field == 1 && wire == 2 -> return p.string()
+                (field == 4 || field == 5) && wire == 0 -> return p.varint().toString()
+                field == 6 && wire == 0 -> return p.varint().let { (it ushr 1) xor -(it and 1) }.toString()
+                else -> p.skip(wire)
+            }
         }
         return null
     }

@@ -1026,7 +1026,6 @@
     <string name="car_along_route">Sök längs rutten</string>
     <string name="car_along_none">Inget hittades i närheten</string>
     <string name="car_stop_added">%1$s lades till som nästa stopp</string>
-    <string name="car_continue_on">Fortsätt på %1$s</string>
     <string name="map_import_needs_google">En delad Google Maps-lista kan inte öppnas medan Vela körs utan Google.</string>
     <string name="map_link_needs_google">”Öppna delade Google Maps-länkar” är av under Inställningar &gt; Integritet.</string>
     <string name="map_link_unreadable">Kunde inte öppna den länken.</string>

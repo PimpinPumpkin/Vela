@@ -48,8 +48,9 @@ class NavAuditRegressionTest {
         Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto $name", at(atM), afterM, dur, road = name)
 
     @Test fun `prompt distances scale with speed`() {
-        // Exit 900 m ahead at highway speed: fixed 400 m gave 12 s of warning; at 34 m/s the far
-        // band is ~850 m, so the prompt must fire HERE — and must NOT fire at city speed.
+        // A turn 480 m ahead: at 34 m/s its one approach line comes FAST_APPROACH_S out (500 m), so
+        // it fires here; at city speed the far band is 450 m and it does not. Nothing is said
+        // 840 m out at highway speed.
         val r = route(
             3000.0,
             listOf(
@@ -58,13 +59,16 @@ class NavAuditRegressionTest {
                 Maneuver(ManeuverType.ARRIVE, "Arrive", at(3000.0), 0.0, 0.0),
             ),
         )
-        val state = NavState(stepIndex = 1, traveledM = 1100.0)
-        val loc = at(1160.0) // dtn ≈ 840 m
-        val (_, slowEvents) = NavEngine.update(r, state, loc, speedMps = 13.0) // city: far band = 400
-        assertTrue("no prompt at 840 m at city speed", slowEvents.none { it is NavEvent.Speak })
-        val (_, fastEvents) = NavEngine.update(r, state, loc, speedMps = 34.0) // highway: far ≈ 850
+        val far = NavState(stepIndex = 1, traveledM = 1100.0)
+        val (_, farEvents) = NavEngine.update(r, far, at(1160.0), speedMps = 34.0) // dtn ≈ 840 m
+        assertTrue("no prompt at 840 m at highway speed", farEvents.none { it is NavEvent.Speak })
+        val state = NavState(stepIndex = 1, traveledM = 1460.0)
+        val loc = at(1520.0) // dtn ≈ 480 m
+        val (_, slowEvents) = NavEngine.update(r, state, loc, speedMps = 13.0) // city: far band = 450
+        assertTrue("no prompt at 480 m at city speed", slowEvents.none { it is NavEvent.Speak })
+        val (_, fastEvents) = NavEngine.update(r, state, loc, speedMps = 34.0) // highway: 500
         assertTrue(
-            "prompt fires at 840 m at highway speed",
+            "prompt fires at 480 m at highway speed",
             fastEvents.filterIsInstance<NavEvent.Speak>().any { it.text.contains("Turn right onto Exit Rd") },
         )
     }

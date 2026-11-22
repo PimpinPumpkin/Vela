@@ -333,6 +333,8 @@ data class MapUiState(
     val voiceAlertsOnly: Boolean = false, // muted, with the speeding and camera alerts as a chime (issue 735)
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
+    val locationTestOn: Boolean = false, // Diagnostics > Record a location test is recording
+    val locationTestEndsAt: Long = 0L, // when it stops by itself (wall clock, ms)
     val tripAutoClear: Boolean = false, // delete saved drives after TripRetention.KEEP_DAYS
     val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
     // A drive just finished and the user asked to be prompted for its name; the prompt shows on
@@ -454,7 +456,11 @@ data class MapUiState(
     val cellUpdates: Map<String, List<app.vela.offline.CellStore.Cell>> = emptyMap(), // region id -> installed cells with a newer bake
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
     val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
-)
+) {
+    /** The lists whose pins and shapes draw on the map: those switched on, and the open one
+     *  ([app.vela.core.model.ListsOnMap.shown]). [lists] itself while every list is on. */
+    val listsOnMap: List<app.vela.core.model.PlaceList> get() = app.vela.core.model.ListsOnMap.shown(lists, openListId)
+}
 
 /**
  * State holder for the map experience. Nav itself lives in the shared
@@ -510,6 +516,11 @@ class MapViewModel @Inject constructor(
     private var destination: LatLng? = null
     private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
+
+    /** The dot's FreeFused while no drive is on: GPS, Wi-Fi and cell fixes and the steps between
+     *  them ([app.vela.core.location.DotFix]). Main thread only: the location collector and the
+     *  step collector both run on it. */
+    private val dotFix = app.vela.core.location.DotFix()
     private var staleTimerJob: Job? = null
     @Volatile private var lastVoiceLangHinted: String? = null // last language we told the user they lack a
                                                               // voice for — so the hint shows once, not per prompt
@@ -598,8 +609,19 @@ class MapViewModel @Inject constructor(
         // trip answers "what did it say", "was it actually dropping frames" and "what did the
         // drive cost" by itself.
         voice.onSpoken = { tripStore.note("S", it) }
-        navSession.onNote = { tripStore.note("K", it); app.vela.diag.NavTrace.event(it) } // nav decisions (rechecks, reroutes, swaps)
+        voice.onMuted = { tripStore.note("S", "(muted) $it") }
+        navSession.onNote = { // nav decisions (rechecks, reroutes, swaps); a replay's to logcat
+            tripStore.note("K", it); app.vela.diag.NavTrace.event(it)
+            if (_state.value.replaying) android.util.Log.i("VelaTrip", it)
+        }
         navSession.onLeftPlannedWay = { name -> flashStatus(appContext.getString(R.string.nav_left_your_route, name), 8_000L) }
+        // A stop reached mid-drive (issue #955): the card the voice's "You've reached" line goes
+        // with, shown with the voice muted too. Called on the location thread, so posted to main.
+        navSession.onStopReached = { label ->
+            val msg = if (label.isBlank()) appContext.getString(R.string.nav_reached_your_stop)
+            else appContext.getString(R.string.nav_reached_stop, label)
+            viewModelScope.launch { flashStatus(msg, 8_000L) }
+        }
         // The GraphHopper graphs retired 2026-09-15: reclaim any old install and say so once.
         viewModelScope.launch(Dispatchers.IO) {
             val gone = app.vela.offline.LegacyGraphs.purge(appContext.filesDir)
@@ -608,6 +630,17 @@ class MapViewModel @Inject constructor(
         // EVERYTHING ELSE A DRIVE'S RECORDING NEEDS (2026-10-04): notes from outside the nav
         // code reach the trip through TripNote (the voice's timing, the network, heat, memory, the
         // app leaving the screen, GPS going quiet), only while a real drive is on.
+        // The routers' answers (TripLines): the same rule, a real drive's file only.
+        app.vela.core.diag.TripLines.sink = { tag, line ->
+            val s = _state.value
+            if (s.navigating) {
+                // A replay's (a re-drive's) answers reach logcat only: the summary always, the
+                // routes when asked for (adb shell setprop log.tag.VelaRC DEBUG).
+                if (tag == "K") android.util.Log.i("VelaTrip", line)
+                else if (android.util.Log.isLoggable("VelaRC", android.util.Log.DEBUG)) android.util.Log.d("VelaRC", line)
+                if (!s.replaying || s.demoDriving) tripStore.note(tag, line)
+            }
+        }
         app.vela.diag.TripNote.sink = { n ->
             val s = _state.value
             // Logged for every drive, a replay included (a replay is how a drive gets looked at
@@ -632,7 +665,15 @@ class MapViewModel @Inject constructor(
                             "places ${app.vela.ui.MapPoiPrefs.placesSource.value}, icon ${app.vela.ui.PuckStyle.key()}",
                     )
                     app.vela.diag.TripNote.add("settings: " + app.vela.diag.SettingsDump.line(appContext))
+                    app.vela.diag.TripNote.add(
+                        app.vela.core.replay.TripLog.routingNote(
+                            app.vela.ui.Units.imperial.value, app.vela.core.data.RoutingPrefs.avoidTolls,
+                            app.vela.core.data.RoutingPrefs.avoidHighways, app.vela.core.data.RoutingPrefs.avoidFerries,
+                            app.vela.core.data.RoutingPrefs.googleTraffic, navSession.liveRechecks, _state.value.travelMode.name,
+                        ),
+                    )
                     app.vela.diag.TripNote.add("location: " + app.vela.diag.SettingsDump.location(appContext))
+                    app.vela.diag.TripNote.add("guidance: " + if (app.vela.core.location.GuidanceFix.rawWhen()) "raw fix (FreeFused off)" else "FreeFused")
                     app.vela.core.location.Stillness.hold(appContext); stillHeld = true // the at-rest sensor, for the drive
                     app.vela.diag.NetCount.drain(); netTick = 0; lastDataNote = null
                 }
@@ -657,6 +698,7 @@ class MapViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { app.vela.ui.AppVisibility.foreground.collect { app.vela.diag.TripNote.add(if (it) "app: on screen" else "app: off screen") } }
+        startAutoParking()
         // "Place icons" picked in the Layers menu applies at once, not at the next pan: the
         // other place switches reach onPoiPrefsChanged from the screen, this one had no caller.
         viewModelScope.launch {
@@ -668,6 +710,7 @@ class MapViewModel @Inject constructor(
         if (android.os.Build.VERSION.SDK_INT >= 29) runCatching {
             (appContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).addThermalStatusListener { st ->
                 app.vela.diag.TripNote.add("heat: " + listOf("normal", "light", "moderate", "severe", "critical", "emergency", "shutdown").getOrElse(st) { "$st" })
+                app.vela.ui.map.HeatCap.hot.value = st >= android.os.PowerManager.THERMAL_STATUS_SEVERE
             }
         }
         viewModelScope.launch {
@@ -922,8 +965,9 @@ class MapViewModel @Inject constructor(
             launch {
                 var last = Float.NaN
                 var lastPushMs = 0L
+                // A walk being navigated keeps it: the dot's steps go the way the compass points.
                 kotlinx.coroutines.flow.combine(
-                    _state.map { it.navigating }.distinctUntilChanged(),
+                    _state.map { it.navigating && it.travelMode != TravelMode.WALK }.distinctUntilChanged(),
                     app.vela.ui.AppVisibility.foreground,
                 ) { nav, fg -> !nav && fg }.distinctUntilChanged().collectLatest { wanted ->
                     if (!wanted) return@collectLatest
@@ -944,6 +988,27 @@ class MapViewModel @Inject constructor(
                     }
                 }
             }
+            // Steps for the dot's FreeFused (DotFix.step): the accelerometer at game rate, registered
+            // only while the map shows in the foreground with FreeFused on and no drive or replay, as
+            // the compass is. Each step moves the dot between fixes.
+            launch {
+                kotlinx.coroutines.flow.combine(
+                    _state.map { it.replaying || (it.navigating && it.travelMode != TravelMode.WALK) }.distinctUntilChanged(),
+                    app.vela.ui.AppVisibility.foreground,
+                    androidx.compose.runtime.snapshotFlow { app.vela.ui.FreeFused.on.value },
+                ) { busy, fg, on -> !busy && fg && on }.distinctUntilChanged().collectLatest { wanted ->
+                    if (!wanted) return@collectLatest
+                    app.vela.core.location.WalkSense.steps(appContext).collect { st ->
+                        if (app.vela.ui.SimLocation.point.value != null || app.vela.core.location.GuidanceFix.rawWhen()) return@collect
+                        dotFix.compassDeg = _state.value.compassHeading?.toDouble()
+                        val o = dotFix.step(st.tSec, st.intervalS) ?: return@collect
+                        // A walk being navigated records its steps (TripLog `W`), so it can be replayed.
+                        if (_state.value.navigating || _state.value.locationTestOn) tripStore.recordStep(st.intervalS, dotFix.compassDeg, dotFix.stepLengthM)
+                        if (_state.value.locationTestOn && !_state.value.navigating) tripStore.recordInput('w', o.position, null, dotFix.accuracyM, dotFix.compassDeg)
+                        _state.update { it.copy(myLocation = o.position, myAccuracyM = dotFix.accuracyM.toFloat()) }
+                    }
+                }
+            }
             var lastFixRtNanos = 0L
             var lastGpsMs = 0L
             var lastSpeedEvidenceMs = 0L
@@ -958,6 +1023,9 @@ class MapViewModel @Inject constructor(
                 // flight when a replay began (cancel hadn't landed yet), drop every real fix while the
                 // trace is playing so it can't snap the puck back to the user's actual location.
                 if (_state.value.replaying) return@collect
+                // A location test records every fix as it came, before anything below drops one.
+                val testRec = _state.value.locationTestOn && !navSession.state.value.navigating
+                if (testRec) tripStore.record(loc, still = app.vela.core.location.Stillness.still)
                 val nowMs = android.os.SystemClock.elapsedRealtime()
                 val isGps = loc.provider == android.location.LocationManager.GPS_PROVIDER
                 // Provider gating, OsmAnd-style (useOnlyGPS): a NETWORK (BeaconDB wifi/cell) fix
@@ -967,8 +1035,15 @@ class MapViewModel @Inject constructor(
                 // DOT only when GPS has been quiet a while (cold start / garage / dead antenna —
                 // a GPS-less phone still deserves a coarse position), and it NEVER steers
                 // guidance: the navSession feed below is GPS-only.
+                // With FreeFused on and no drive, DotFix weighs every network fix against the GPS
+                // itself (DotFix.network); a drive keeps the rule above.
+                val navNow = navSession.state.value.navigating
+                // A walk being navigated steers by the dot's FreeFused too: steps carry it between
+                // fixes, and the walking corridor is narrow enough that their lead matters.
+                val walkNav = navNow && _state.value.travelMode == TravelMode.WALK
+                val dotFused = !app.vela.core.location.GuidanceFix.rawWhen() && (!navNow || walkNav)
                 if (!isGps) {
-                    if (nowMs - lastGpsMs < NETWORK_FIX_QUIET_MS && lastGpsMs > 0L) return@collect
+                    if (!dotFused && nowMs - lastGpsMs < NETWORK_FIX_QUIET_MS && lastGpsMs > 0L) return@collect
                 } else {
                     lastGpsMs = nowMs
                 }
@@ -982,13 +1057,16 @@ class MapViewModel @Inject constructor(
                 val fixRtNanos = if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L
                 val dt = if (lastFixRtNanos > 0L) (fixRtNanos - lastFixRtNanos) / 1e9 else -1.0
                 if (lastFixRtNanos > 0L && dt <= 0.0) return@collect // duplicate/reordered delivery — drop it
+                if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    app.vela.ui.AutoParking.onFix(fixRtNanos / 1e9, LatLng(loc.latitude, loc.longitude), if (loc.hasSpeed()) loc.speed.toDouble() else null)
+                }
                 // A NETWORK fix must also be better than the last fix, aged (Organic Maps'
                 // isLocationBetterThanLast): the last fix's accuracy radius grows 5 m (or the speed)
                 // per second, and the new one has to beat it. Before GPS locks the network feed
                 // alternates a 40 m Wi-Fi fix with a 1500 m cell one, and taking every one of them
                 // walked the dot around the neighborhood (issue #630). GPS fixes are always taken.
                 val accM = if (loc.hasAccuracy()) loc.accuracy else if (isGps) 10f else 1000f
-                if (!isGps && !lastAccM.isNaN()) {
+                if (!isGps && !lastAccM.isNaN() && !dotFused) {
                     val ageS = (fixRtNanos - lastAccRtNanos) / 1e9
                     val sp = ((_state.value.mySpeed ?: 0f) + (if (loc.hasSpeed()) loc.speed else 0f)) / 2.0
                     if (!app.vela.core.location.FixRules.betterThanLast(accM, lastAccM, ageS, sp)) return@collect
@@ -1001,8 +1079,56 @@ class MapViewModel @Inject constructor(
                     _state.value.myAccuracyM, accM, shownIsGps = prevWasGps, newIsGps = isGps,
                     movedM = prev?.distanceTo(rawHere) ?: 0.0,
                 )
-                // Drop outlier leaps + hold the dot when parked (see sanePosition).
-                val here = if (upgrade) { posOutlierStreak[0] = 0; rawHere } else sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                // Guidance's fused position for this fix (PositionFilter through GuidanceFix, the
+                // filter the car screen's feed shares; while this feed runs, that one stands down),
+                // taken once: the engine steers by it below, and while navigating the dot does too.
+                val fused = if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    app.vela.core.location.GuidanceFix.phoneFed(nowMs)
+                    app.vela.core.location.GuidanceFix.take(
+                        rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                        if (loc.hasSpeed()) loc.speed.toDouble() else null,
+                        if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+                        if (loc.hasBearing()) loc.bearing.toDouble() else null,
+                        if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+                        still = app.vela.core.location.Stillness.still,
+                    )
+                } else null
+                // The dot's FreeFused (DotFix) takes every fix while FreeFused is on, so it is current
+                // when a drive ends; a network fix it does not take (fresh, better GPS) changes nothing.
+                val dot = if (app.vela.core.location.GuidanceFix.rawWhen()) null else if (isGps) {
+                    dotFix.compassDeg = _state.value.compassHeading?.toDouble()
+                    dotFix.gps(
+                        rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                        if (loc.hasSpeed()) loc.speed.toDouble() else null,
+                        if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+                        if (loc.hasBearing()) loc.bearing.toDouble() else null,
+                        if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+                        still = app.vela.core.location.Stillness.still,
+                    )
+                } else {
+                    dotFix.network(rawHere, fixRtNanos / 1e9, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null)
+                        ?: if (dotFused) return@collect else null
+                }
+                // While navigating the dot is guidance's fused position: the nav arrow is placed from
+                // the dot, and the old low-pass trailed a car slowing for a turn by 3 to 6 m (a real
+                // drive, 2026-11-17). With no drive it is the dot's own FreeFused, which follows a
+                // walker without the low-pass's lag (up to 9 m at walking pace) and takes the steps
+                // between fixes. FreeFused off: the low-pass with its outlier hold (sanePosition).
+                val navigatingNow = navNow && !_state.value.replaying
+                // adb only (`setprop debug.vela.tune.dotLog 1`): how far the dot sits from the fix, in
+                // meters, never a position.
+                if (dot != null && app.vela.ui.AppTune.localOn("dotLog")) android.util.Log.d(
+                    "VelaDot", String.format(java.util.Locale.US, "%s fix (%.0f m): dot moved %.1f m, %.1f m from the fix, circle %.1f m, %s, step %.2f m, signal %s",
+                        if (isGps) "gps" else "network", accM, prev?.distanceTo(dot.position) ?: 0.0, dot.position.distanceTo(rawHere), dotFix.accuracyM,
+                        if (dotFix.walkingAt(fixRtNanos / 1e9)) "walking" else "not walking", dotFix.stepLengthM,
+                        app.vela.core.location.GnssSignal.latest(android.os.SystemClock.elapsedRealtime())?.let { String.format(java.util.Locale.US, "%.0f dB-Hz from %d", it.first, it.second) } ?: "none"),
+                )
+                val here = when {
+                    navigatingNow && fused != null && !fused.raw && !walkNav -> { posOutlierStreak[0] = 0; fused.out.position }
+                    dotFused && dot != null -> { posOutlierStreak[0] = 0; dot.position }
+                    upgrade -> { posOutlierStreak[0] = 0; rawHere }
+                    else -> sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                }
                 lastAccM = accM
                 lastAccRtNanos = fixRtNanos
                 val movedM = prev?.distanceTo(here) ?: 0.0
@@ -1074,6 +1200,7 @@ class MapViewModel @Inject constructor(
                 val arrive = awaited && !userPannedSinceLaunch &&
                     _state.value.let { s -> !s.navigating && s.selected == null && !s.directionsOpen && s.results.isEmpty() }
                 startAwaitsFix = false
+                FixAge.set(here, loc.elapsedRealtimeNanos)
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,
@@ -1084,7 +1211,7 @@ class MapViewModel @Inject constructor(
                         mySpeedRaw = measured,
                         // Drives the map's accuracy halo: a coarse-permission or network fix reports
                         // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
-                        myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
+                        myAccuracyM = if (dotFused && dot != null) dotFix.accuracyM.toFloat() else if (loc.hasAccuracy()) loc.accuracy else null,
                         showPsdsTip = false, myLocationStale = false,
                         center = if (arrive) here else it.center ?: here.takeUnless { userPannedSinceLaunch },
                         recenterTick = if (arrive) it.recenterTick + 1 else it.recenterTick,
@@ -1096,7 +1223,10 @@ class MapViewModel @Inject constructor(
                 maybeAdvanceTransitNav(here)
                 if (_state.value.transitNav != null) publishTransitNotice(here)
                 // Save the fix to the active trip (no-op unless one is recording).
-                tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits)
+                if (testRec) tripStore.recordInput(
+                    if (dotFused && dot != null) 'w' else 'o', here, speed?.toDouble(),
+                    (if (dotFused && dot != null) dotFix.accuracyM else accM.toDouble()), _state.value.compassHeading?.toDouble(),
+                ) else tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits, still = app.vela.core.location.Stillness.still)
                 passAlert(here, speed?.toDouble(), nowMs)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
@@ -1107,17 +1237,38 @@ class MapViewModel @Inject constructor(
                 // accuracy for minutes), SAY so — the frozen banner used to be indistinguishable
                 // from working nav (the stale timer never fires while coarse fixes keep coming).
                 if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
-                    navSession.onLocation(
-                        here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
+                    // Guidance steers by Vela's own fused position (PositionFilter): the fix and its
+                    // Doppler velocity, with the accelerometer's at-rest flag. The dot's low-pass
+                    // trails a slow car by up to 12 m; the raw fix takes a reflection off a building
+                    // at a red light as the car. A fix the filter does not take steers with the
+                    // model's position and never starts a recheck. It was taken above ([fused]).
+                    val take = fused ?: return@collect
+                    // On foot with FreeFused on, the engine gets the dot's position (steps included).
+                    val walkSteer = dot?.takeIf { walkNav && dotFused }
+                    val steerAt = walkSteer?.position ?: take.out.position
+                    val held = if (walkSteer != null) !walkSteer.accepted else !take.out.accepted
+                    // The drive's record of what the engine is handed (TripLog `N`), after the
+                    // route it runs against, so a replay feeds the engine the same.
+                    if (!_state.value.replaying && navSession.state.value.navigating) {
+                        nav.syncTripRoute()
+                        tripStore.recordInput(
+                            if (walkSteer != null) 'w' else if (take.raw) 'r' else if (held) 'h' else 'f', steerAt, speed?.toDouble(),
+                            if (loc.hasAccuracy()) loc.accuracy.toDouble() else null, fixBearing?.toDouble(),
+                        )
+                    }
+                    // A fix the car's feed already handed the engine (before this feed's first) is not
+                    // handed again: the engine would count its off-route hit twice.
+                    if (take.fresh) navSession.onLocation(
+                        steerAt, app.vela.ui.Units.imperial.value, speed?.toDouble(),
                         accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
                         // Course for the engine's heading-vs-route off-route term and the
                         // reroute's departure heading. Fresh only: stopped = null.
                         bearingDeg = fixBearing?.toDouble(),
-                        // An outlier hold steers with the last good position; it never starts a recheck.
-                        fromFix = here == rawHere,
+                        // A fix the filter did not take steers with its model; it never starts a recheck.
+                        fromFix = !held,
                     )
                     nav.lastNavFedMs = nowMs
-                    nav.recordDriveFix(here)
+                    nav.recordDriveFix(steerAt)
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
                     // Driving mode with no route: the speeding and camera alerts run from the fixes (issue #727).
                     if (app.vela.ui.DrivingMode.on.value && !_state.value.navigating) nav.drivingModeFix(here, fixBearing?.toDouble())
@@ -1536,7 +1687,7 @@ class MapViewModel @Inject constructor(
             if (hit == null) { searchRecent(address); return@launch }
             // A bare place on purpose: whatever else the geocoder knew about that spot is not
             // the contact's, so the sheet shows the person, the address and the actions.
-            selectContactPlace(Place(id = hit.id, name = name, location = hit.location, address = hit.address ?: address))
+            selectContactPlace(Place(id = hit.id, name = name, location = hit.location, address = app.vela.core.model.contactAddressLine(address, hit.address)))
         }
     }
 
@@ -2074,15 +2225,14 @@ class MapViewModel @Inject constructor(
             is app.vela.core.search.QueryIntent.Home -> {
                 val home = _state.value.home ?: run { showStatus(appContext.getString(R.string.intent_home_unset)); return true }
                 _state.update { it.copy(query = q, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
-                // A BARE place under the shortcut's own name: selectSaved enriches by searching
-                // the address, which dresses Home as the business at that address (the same
-                // trap the contact pick had, issue #342).
-                selectPlace(Place(id = home.id, name = appContext.getString(R.string.shortcut_home), location = home.location, address = home.address)); routeToSelected()
+                // A BARE place under the shortcut's own name, with no lookup, as the chip opens it:
+                // a lookup searches "Home <address>" on Google and can dress Home as a business.
+                selectPlace(Place(id = home.id, name = appContext.getString(R.string.shortcut_home), location = home.location, address = home.address), lookup = false); routeToSelected()
             }
             is app.vela.core.search.QueryIntent.Work -> {
                 val work = _state.value.work ?: run { showStatus(appContext.getString(R.string.intent_work_unset)); return true }
                 _state.update { it.copy(query = q, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
-                selectPlace(Place(id = work.id, name = appContext.getString(R.string.shortcut_work), location = work.location, address = work.address)); routeToSelected()
+                selectPlace(Place(id = work.id, name = appContext.getString(R.string.shortcut_work), location = work.location, address = work.address), lookup = false); routeToSelected()
             }
             is app.vela.core.search.QueryIntent.NavigateTo -> {
                 openDirectionsOnResult = true
@@ -2152,8 +2302,9 @@ class MapViewModel @Inject constructor(
 
     /** Rank results from the USER when they are searching where they are (within ~50 km of the
      *  viewport), else from the viewport center. Fixes the "results ordered around some weird
-     *  point" feel: the viewport stays the SEARCH AREA, but the order and the shown distances
-     *  no longer reshuffle around wherever the screen happens to be centered. */
+     *  point" feel: the viewport stays the SEARCH AREA, but the order no longer reshuffles around
+     *  wherever the screen happens to be centered. The distances it measures are what a card shows
+     *  only without a live fix ([shownFromYou]). */
     private fun rankBias(near: LatLng?): LatLng? {
         val me = plausibleBias(_state.value.myLocation) ?: return null
         return me.takeIf { near == null || it.distanceTo(near) < 50_000.0 }
@@ -2208,7 +2359,11 @@ class MapViewModel @Inject constructor(
         val base = openNowBase ?: s.query.trim()
         if (base.isEmpty() || googleOff() || s.openListId != null || s.pendingImport != null || s.navigating || s.results.isEmpty()) return
         if (MapLinkParser.parseBareCoordinate(base) != null || MapLinkParser.isMapsUrl(base) || MapLinkParser.isShareLink(base)) return
-        val near = plausibleBias(mapCenter) ?: plausibleBias(s.myLocation)
+        // The same spot the search it narrows was made around (#916). The map center moved when
+        // the results were framed, and searching there again lost the nearest places. "Search this
+        // area" makes a new search, so a moved view is taken through that.
+        val near = moreSearch?.takeIf { it.first.startsWith(base) }?.second?.let { plausibleBias(it) }
+            ?: plausibleBias(mapCenter) ?: plausibleBias(s.myLocation)
         if (on) {
             runSearch(base + " " + appContext.getString(R.string.search_open_now_phrase), near, remember = false)
             openNowBase = base
@@ -2225,21 +2380,30 @@ class MapViewModel @Inject constructor(
         val here = plausibleBias(mapCenter)
         // The results are narrowed to this view (AreaNarrow), and the camera's remembered center
         // becomes this view's: with the old one the map flew back to where the first search was
-        // made before moving to the new results (issue #670).
+        // made before moving to the new results (issue #670). It is the camera's own target at
+        // the view's own zoom, so the map stays put: a new center flies at the browse zoom, and
+        // the view jumped to street level while the search ran (#891).
         narrowToView = viewport?.copyOf(4)
         narrowAskedMs = android.os.SystemClock.elapsedRealtime()
-        if (here != null) _state.update { it.copy(center = here) }
+        val zoom = viewport?.getOrNull(4)
+        val target = idleTarget ?: here
+        if (here != null) _state.update { it.copy(center = target, centerZoom = zoom) }
         // A list a pan minimized stays down until this search answers (#891): opened at once,
         // with the old results still in it, the map framed the old area first and then the new.
         runSearch(_state.value.query.trim(), here, expand = false)
         val job = searchJob
         viewModelScope.launch {
             job?.join()
-            if (searchJob === job) _state.update { it.copy(resultsCollapsed = false) }
+            if (searchJob === job) _state.update {
+                // The zoom was for that one move; a later fly to a new center takes its own.
+                it.copy(resultsCollapsed = false, centerZoom = if (it.center == target && it.centerZoom == zoom) null else it.centerZoom)
+            }
         }
     }
     /** Set by [searchThisArea] for the one search it starts: the view to keep the results to. */
     private var narrowToView: DoubleArray? = null
+    /** The camera's target after the last pan (the viewport's middle differs under a sheet or tilt). */
+    private var idleTarget: LatLng? = null
     private var narrowAskedMs = 0L
 
     // "More results" (2026-09-13): the search fetches three pages; this pulls the next three of
@@ -2263,7 +2427,7 @@ class MapViewModel @Inject constructor(
                 branchFocus = null
                 _state.update {
                     if (it.query != q) it.copy(resultsLoadingMore = false)
-                    else it.copy(results = merged ?: it.results, resultsLoadingMore = false, resultsMoreQuery = null, resultsBranches = false, resultsBranchesLoaded = merged != null)
+                    else it.copy(results = merged?.let { m -> shownFromYou(it, m) } ?: it.results, resultsLoadingMore = false, resultsMoreQuery = null, resultsBranches = false, resultsBranchesLoaded = merged != null)
                 }
             }
             return
@@ -2280,7 +2444,7 @@ class MapViewModel @Inject constructor(
             moreFromPage += 3
             _state.update {
                 if (it.query != q) it.copy(resultsLoadingMore = false)
-                else it.copy(results = it.results + fresh, resultsLoadingMore = false, resultsMoreQuery = if (fresh.size >= 5) q else null)
+                else it.copy(results = it.results + shownFromYou(it, fresh), resultsLoadingMore = false, resultsMoreQuery = if (fresh.size >= 5) q else null)
             }
         }
     }
@@ -2297,9 +2461,16 @@ class MapViewModel @Inject constructor(
     private fun fromHere(p: Place): Place =
         p.copy(distanceMeters = plausibleBias(_state.value.myLocation)?.distanceTo(p.location))
 
+    /** [places] with the distance their cards show: from the user while the fix is live, wherever
+     *  the search ranked from (issue #916). Without a live fix each keeps its search's own. The
+     *  order is the search's. */
+    private fun shownFromYou(st: MapUiState, places: List<Place>): List<Place> =
+        app.vela.core.search.ShownDistance.of(places, app.vela.core.search.ShownDistance.from(st.myLocation, st.myLocationStale))
+
     /** Map settled after a user pan: offer "Search this area" while results show. */
     fun onCameraIdle(center: LatLng) {
         mapCenter = center
+        idleTarget = center
         maybeOfferRouting()
         if (_state.value.results.isNotEmpty() && _state.value.selected == null) {
             _state.update { it.copy(showSearchThisArea = true) }
@@ -2440,6 +2611,10 @@ class MapViewModel @Inject constructor(
             }
             val line = "$event: $summary"
             if (line != lastNet) { lastNet = line; diag.record("net", line); app.vela.diag.TripNote.add("net: $line") }
+            // A working connection again: a drive on a route planned without one asks now.
+            if (caps != null && caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) && event != "blocked") {
+                viewModelScope.launch { navSession.onNetworkBack() }
+            }
         }
         runCatching {
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
@@ -2712,7 +2887,7 @@ class MapViewModel @Inject constructor(
                         // No "Offline results" banner — the quiet offline indicator (globe-slash + the
                         // grayed "Offline" in the search bar) already says we're offline.
                         offline.isNotEmpty() ->
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false)
+                            it.copy(results = shownFromYou(it, offline), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false)
                         // Has a downloaded area but nothing matched — don't tell them to download again.
                         haveArea ->
                             it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_match, q), searching = false)
@@ -2803,7 +2978,7 @@ class MapViewModel @Inject constructor(
                     android.util.Log.i("VelaSearch", "far view: ${homeHits.size} name match(es) near you replace ${res.places.size} far result(s)")
                     _state.update {
                         it.copy(
-                            results = homeHits, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null,
+                            results = shownFromYou(it, homeHits), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null,
                             status = null, searching = false, offline = false, resultsMoreQuery = null, resultsLoadingMore = false, resultsBranches = false, resultsBranchesLoaded = false,
                         )
                     }
@@ -2865,7 +3040,7 @@ class MapViewModel @Inject constructor(
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
                         it.copy(
                             // Rows that ARE the typed address come nearest-first, ahead of everything else.
-                            results = localAddrs + addressFirst(geocoded, shownPlaces, near, ::carries) + shownExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
+                            results = shownFromYou(it, localAddrs + addressFirst(geocoded, shownPlaces, near, ::carries) + shownExtra), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
                             // Three full pages back = the window holds more; offer the next three.
                             resultsMoreQuery = if (res.places.size >= 40 || res.focus != null) q else null, resultsLoadingMore = false,
                             resultsBranches = res.focus != null, resultsBranchesLoaded = false,
@@ -2889,7 +3064,7 @@ class MapViewModel @Inject constructor(
                     val offline = offlineSearch(q, near)
                     _state.update {
                         if (offline.isNotEmpty())
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                            it.copy(results = shownFromYou(it, offline), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                         else
                             it.copy(results = emptyList(), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_no_results, q), searching = false, offline = false)
                     }
@@ -2903,7 +3078,7 @@ class MapViewModel @Inject constructor(
                 // as the straight-offline branch so an address still resolves when the scrape times out).
                 val offline = offlineSearch(q, near)
                 if (offline.isNotEmpty()) {
-                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false) }
+                    _state.update { it.copy(results = shownFromYou(it, offline), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false) }
                 } else if (isConnectivityError(e)) {
                     // A dead connection: if there's a downloaded area the query just didn't match it, else
                     // point the user at the offline download instead of a raw "Unable to resolve host".
@@ -2983,7 +3158,11 @@ class MapViewModel @Inject constructor(
             }
             try {
                 val res = dataSource.search(query, route[route.size / 2])
-                val along = RouteCorridor.alongRoute(res.places, route)
+                // A brand or a chain typed by name ("Shell") keeps only places with that name.
+                // A kind of place ("pizza", "gas station") keeps every result, and a chip's query
+                // always is one: "EV charging station" read as a name kept only an EVgo.
+                val named = if (app.vela.ui.QuickCategories.isChipQuery(query)) res.places else app.vela.core.search.QueryNameFilter.apply(query, res.places)
+                val along = RouteCorridor.alongRoute(named, route)
                 // "Searched and nothing happened" has three different causes (the search came back
                 // empty, the corridor filter dropped everything, or the results arrived and the
                 // sheet did not show) and none of them used to leave a trace.
@@ -3047,6 +3226,9 @@ class MapViewModel @Inject constructor(
         // A trip still being looked up from an earlier link gives way to this one.
         linkTripJob?.cancel()
         clearLinkTrip()
+        // A run's stop list fills the screen above everything a link opens, the Street View viewer
+        // included, so the link closes it.
+        closeRouteDetail()
         if (link.streetView && openStreetViewLink(link)) return
         // The user's choice for links (LinkAction): a plain location link can open directions,
         // and either kind can start the drive once its route lands (the one-tap Start path, so
@@ -3361,7 +3543,8 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun selectPlace(p: Place) {
+    /** Open [p]. [lookup] false opens it as it is, asking nothing about it (Home and Work). */
+    fun selectPlace(p: Place, lookup: Boolean = true) {
         // A custom map's planned route, picked from the list: its line's own sheet.
         if (p.id.startsWith(ROUTE_ROW_ID)) {
             shapeForRow(p)?.let { openShape(it, p.location); _state.update { s -> s.copy(center = p.location) } }
@@ -3403,7 +3586,10 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
-                selected = withListNote(p), center = p.location, centerZoom = p.areaZoom(), reviews = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
+                // The sheet's distance is from the user while the fix is live (ShownDistance): a map
+                // dot's own is from the point the dots were fetched around. A result along the route
+                // keeps its distance along the route (RouteCorridor), the number its card showed.
+                selected = withListNote(app.vela.core.search.ShownDistance.of(p, if (it.navigating || it.alongRouteDest != null) null else app.vela.core.search.ShownDistance.from(it.myLocation, it.myLocationStale))), center = p.location, centerZoom = p.areaZoom(), reviews = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
                 // Picking a NEW place while a route chooser is open closes it: the chooser
                 // belonged to the previous destination and kept covering the fresh place
@@ -3413,14 +3599,16 @@ class MapViewModel @Inject constructor(
                 stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
             )
         }
-        requestReviews(p)
-        fetchPhotos(p)
-        // A star or a list entry kept from a map label before its listing was known looks the
-        // listing up first; the details fetch follows with it, or without it on a miss.
-        if (!(p.featureId == null && keptAwaiting(p.id, p.location) && relinkKept(p, detailsOnMiss = true))) fetchPlaceDetails(p)
-        fetchStopDepartures(p)
+        if (lookup) {
+            requestReviews(p)
+            fetchPhotos(p)
+            // A star or a list entry kept from a map label before its listing was known looks the
+            // listing up first; the details fetch follows with it, or without it on a miss.
+            if (!(p.featureId == null && keptAwaiting(p.id, p.location) && relinkKept(p, detailsOnMiss = true))) fetchPlaceDetails(p)
+            fetchStopDepartures(p)
+        }
         backfillOfflineAddress(p)
-        rememberRecentPlace(SavedPlace.of(p))
+        rememberRecentPlace(SavedPlace.of(p).let { if (lookup) it else it.copy(bare = true) })
         showViewedCopy(p)
     }
 
@@ -3904,7 +4092,15 @@ class MapViewModel @Inject constructor(
                     streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,
                     streetViewHistorical = false)
             }
-            val live = if (fetched != null) runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull() else null
+            // A two-tile picture first, so the next spot shows at once and sharpens when the full
+            // level lands (32 tiles on a modern pano); the walk can go on from the preview.
+            val full = if (fetched != null) async { runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull() } else null
+            if (full != null) launch {
+                val quick = runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano, app.vela.streetview.StreetViewTiles.PREVIEW_W) }.getOrNull()
+                if (quick == null || full.isCompleted) { quick?.recycle(); return@launch }
+                _state.update { it.copy(streetViewBitmap = quick, streetViewLoading = false) }
+            }
+            val live = full?.await()
             val bmp = live ?: savedStreetViewImage(pano.panoId)
             if (bmp == null) {
                 _state.update { it.copy(streetViewLoading = false, streetView = null) }
@@ -3912,7 +4108,11 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             if (live != null) saveStreetView(pano, live)
+            // The preview goes once the GPU has surely copied it (the upload runs on the next GL
+            // frame; recycling under it would crash).
+            val preview = _state.value.streetViewBitmap?.takeIf { it !== bmp }
             _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+            if (preview != null) viewModelScope.launch { kotlinx.coroutines.delay(2_000); preview.recycle() }
         }
     }
 
@@ -4005,17 +4205,20 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
-     *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
-     *  index (nearest mapped house, else nearest street) so it still shows an address. Only when offline,
-     *  only when the place lacks one, and only if it's still the selected place when the lookup returns. */
+    /** A place with no street line (a POI that OSM or Overture gave no address, most US chains, or a
+     *  saved place kept without one) shows a bare sheet. Reverse-geocode its location against the
+     *  on-device address index (nearest mapped house, else nearest street) so it still shows an
+     *  address. Never asks Google: online, a Google listing gets its address from the detail fetch,
+     *  and a saved place's location is not sent anywhere for this. Only when the place lacks one,
+     *  and only if it's still the selected place when the lookup returns. */
     private fun backfillOfflineAddress(p: Place) {
         // Fire when there's no real street line, not only when address is fully blank: OSM often tags a POI
         // with just `addr:state`/`addr:city` (a chain came back as bare state initials), which is useless. Treat an
         // address with no digit (no house number) as "needs a street".
         // A street line with no city, state or ZIP gets those from the places around it too.
         val hasStreet = !p.address.isNullOrBlank() && p.address!!.any { it.isDigit() }
-        if (isOnline() || (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(p.address!!))) return
+        if (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(p.address!!)) return
+        if (isOnline() && p.featureId != null) return
         viewModelScope.launch {
             val addr = withContext(Dispatchers.IO) {
                 val street = if (hasStreet) p.address else runCatching { addressStore.reverseGeocode(p.location) }.getOrNull()
@@ -4058,7 +4261,7 @@ class MapViewModel @Inject constructor(
         // businesses have no owner description, so this hidden page loaded on nearly every tap.
         // The search reply already carries both when Google has them.
         val complete = p.popularTimes != null && p.reviewCount != null && !p.address.isNullOrBlank() && p.hours.size >= 2
-        if (complete) { thumbPano(p); return }
+        if (complete) { if (p.isListing()) app.vela.ui.PopularTimesHint.answered(true); thumbPano(p); return }
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
             // The details page is a search for "name address" run inside a warmed Google page. Sent
@@ -4104,6 +4307,8 @@ class MapViewModel @Inject constructor(
             val d = cachedDetails ?: (native ?: (if (!pageWanted) null else runCatching { webPopularTimes.fetch(p) }.getOrNull()))
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             if (d != null) mergeDetails(p, d)
+            // Only an answer counts: a fetch that failed or was skipped says nothing about charts.
+            if (d != null && p.isListing()) app.vela.ui.PopularTimesHint.answered(d.popularTimes != null || p.popularTimes != null)
             _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
             thumbPano(p)
         }
@@ -4144,7 +4349,12 @@ class MapViewModel @Inject constructor(
                     rating = sel.rating ?: d.rating,
                     reviewCount = sel.reviewCount ?: d.reviewCount,
                     hours = if (d.hours.size > sel.hours.size) d.hours else sel.hours,
-                    address = sel.address?.ifBlank { null } ?: d.address,
+                    // Google's address wins when it has a house number and the one showing has
+                    // not: the on-device fill (backfillOfflineAddress) can land first with the
+                    // nearest street alone, and on a numbered street that read as an address.
+                    address = sel.address?.ifBlank { null }
+                        ?.takeUnless { !app.vela.core.model.hasHouseNumber(it) && app.vela.core.model.hasHouseNumber(d.address) }
+                        ?: d.address ?: sel.address,
                     phone = sel.phone ?: d.phone,
                     website = sel.website ?: d.website,
                     statusText = sel.statusText ?: d.statusText,
@@ -4157,6 +4367,9 @@ class MapViewModel @Inject constructor(
                     // The pano and its heading travel together, so the yaw is never another view's.
                     svPanoId = sel.svPanoId ?: d.svPanoId,
                     svYawDeg = if (sel.svPanoId != null) sel.svYawDeg else d.svYawDeg,
+                    // A map label opens on a summary that may lack both (issue #930).
+                    category = sel.category ?: d.category,
+                    temporarilyClosed = sel.temporarilyClosed || d.temporarilyClosed,
                 ),
             )
         }
@@ -5255,10 +5468,34 @@ class MapViewModel @Inject constructor(
           } finally {
             stopResolving() // nothing resolved, an error, or a cancel: the label's own data shows
             // Still the tapped label after a real lookup: Google had nothing that matched.
-            if (willResolve) _state.update {
-                if (isPlaceholder(it.selected, placeholder)) it.copy(tapUnlinkedFor = placeholder.id) else it
+            if (willResolve) {
+                _state.update {
+                    if (isPlaceholder(it.selected, placeholder)) it.copy(tapUnlinkedFor = placeholder.id) else it
+                }
+                if (isPlaceholder(_state.value.selected, placeholder)) fillUnlinkedAddress(_state.value.selected ?: placeholder, placeholder)
             }
           }
+        }
+    }
+
+    /** A tapped map place Google could not match keeps the open data's address, often only a city
+     *  ("San Francisco, CA") or nothing. Give it the address at its point: the on-device address
+     *  index first, then the same reverse geocode a dropped pin gets. Google was just asked about
+     *  this place by name and location, so the second ask tells it nothing new. */
+    private fun fillUnlinkedAddress(shown: Place, placeholder: Place) {
+        val hasStreet = !shown.address.isNullOrBlank() && shown.address!!.any { it.isDigit() }
+        if (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(shown.address!!)) return
+        viewModelScope.launch {
+            val addr = withContext(Dispatchers.IO) {
+                val local = runCatching { addressStore.reverseGeocode(shown.location) }.getOrNull()
+                    ?.let { runCatching { addressStore.completeAddress(it, shown.location) }.getOrNull() ?: it }
+                local ?: if (isOnline()) runCatching { dataSource.reverseGeocode(shown.location) }.getOrNull()?.address
+                    ?.takeIf { a -> a.any { it.isDigit() } } else null
+            } ?: return@launch
+            _state.update { st ->
+                val sel = st.selected
+                if (isPlaceholder(sel, placeholder) && sel != null && sel.address == shown.address) st.copy(selected = sel.copy(address = addr)) else st
+            }
         }
     }
 
@@ -5864,17 +6101,19 @@ class MapViewModel @Inject constructor(
         clearSearch()
         _state.update { it.copy(selected = null, drawing = DrawState()) }
     }
-    fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.copy(pts = d.pts + listOf(p.lat, p.lng))) } ?: s }
+    /** The ruler (issue #910): the drawing bar in measure mode, which saves nothing. */
+    fun startMeasure() {
+        if (_state.value.navigating) return
+        clearSearch()
+        _state.update { it.copy(selected = null, drawing = DrawState(measure = true, color = DRAW_COLORS[1])) }
+    }
+    fun drawAddPoint(p: LatLng) = _state.update { s -> s.drawing?.let { d -> if (d.pts.size >= 4000) s else s.copy(drawing = d.add(p.lat, p.lng)) } ?: s }
     fun drawMovePoint(index: Int, to: LatLng) = _state.update { s ->
         s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->
             s.copy(drawing = d.copy(pts = d.pts.toMutableList().also { it[index * 2] = to.lat; it[index * 2 + 1] = to.lng }))
         } ?: s
     }
-    fun drawRemovePoint(index: Int) = _state.update { s ->
-        s.drawing?.takeIf { index * 2 + 1 < it.pts.size }?.let { d ->
-            s.copy(drawing = d.copy(pts = d.pts.filterIndexed { i, _ -> i / 2 != index }))
-        } ?: s
-    }
+    fun drawRemovePoint(index: Int) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.remove(index)) } ?: s }
     /** Opens the shape whose sheet is up in the drawing bar: move, add or remove its points,
      *  change its kind, color or name; Save puts it back where it was kept. */
     fun editOpenedShape() {
@@ -5883,7 +6122,7 @@ class MapViewModel @Inject constructor(
         clearSearch()
         _state.update { it.copy(selected = null, drawing = DrawState(pts = shape.pts, closed = shape.closed, color = shape.color, editOf = shape, name = shape.name)) }
     }
-    fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(pts = d.pts.dropLast(2))) } ?: s }
+    fun drawUndo() = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.undo()) } ?: s }
     /** The name typed in the drawing bar, kept with the drawing so it outlives the bar. */
     fun drawSetName(name: String) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(name = name)) } ?: s }
     fun drawSetClosed(closed: Boolean) = _state.update { s -> s.drawing?.let { d -> s.copy(drawing = d.copy(closed = closed)) } ?: s }
@@ -5979,6 +6218,8 @@ class MapViewModel @Inject constructor(
                     selected = rec.place.copy(
                         id = cur.id, location = cur.location, savedNote = cur.savedNote ?: rec.place.savedNote,
                         statusText = null, openNow = null,
+                        // The kept copy's distance is from wherever it was measured on that visit.
+                        distanceMeters = cur.distanceMeters ?: plausibleBias(st.myLocation)?.distanceTo(cur.location),
                     ),
                     reviews = st.reviews.ifEmpty { rec.reviews },
                 )
@@ -6106,6 +6347,43 @@ class MapViewModel @Inject constructor(
                 center = spot, recenterTick = it.recenterTick + 1,
             )
         }
+    }
+
+    /** "Save where I park" ([app.vela.ui.AutoParking]): a spot saved anywhere shows on the map;
+     *  steps are counted while the car stands still after a drive with Vela on screen; Vela leaving
+     *  the screen near a drive's destination, or a drive ending on foot, is the phone leaving the
+     *  car. Leaving the screen anywhere else (at a light) is not. */
+    private fun startAutoParking() {
+        val ap = app.vela.ui.AutoParking
+        viewModelScope.launch {
+            ap.saved.collect {
+                restoreParkingSpot()
+                if (app.vela.ui.AppVisibility.foreground.value) {
+                    android.widget.Toast.makeText(appContext, app.vela.R.string.map_parking_auto_saved, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        viewModelScope.launch {
+            app.vela.ui.AppVisibility.foreground.collect { fg ->
+                if (fg) return@collect
+                val s = navSession.state.value
+                val dest = s.route?.polyline?.lastOrNull() ?: return@collect
+                val here = _state.value.myLocation ?: return@collect
+                if ((s.navigating || s.arrived) && here.distanceTo(dest) <= PARK_NEAR_DEST_M) ap.leave("off screen at the destination")
+            }
+        }
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                ap.parked,
+                app.vela.ui.AppVisibility.foreground,
+                androidx.compose.runtime.snapshotFlow { ap.on.value },
+                _state.map { it.replaying }.distinctUntilChanged(),
+            ) { parked, fg, on, replaying -> parked && fg && on && !replaying }.distinctUntilChanged().collectLatest { wanted ->
+                if (!wanted) return@collectLatest
+                app.vela.core.location.WalkSense.steps(appContext).collect { ap.onStep(it.tSec) }
+            }
+        }
+        navSession.onWalkedOff = { ap.leave("drive ended on foot") }
     }
 
     private fun restoreParkingSpot() {
@@ -6299,28 +6577,34 @@ class MapViewModel @Inject constructor(
     }
 
     /** The planning trip as the full-trip editor's rows (issue #516): start, stops, destination in
-     *  travel order, with null meaning "your location". */
+     *  travel order, with null meaning "your location". A round trip's end ([applyTrip]) reads as
+     *  "your location" again, so the editor and a pinned shortcut keep it a round trip. */
     fun tripPointsForEditor(): List<app.vela.ui.place.TripPoint> {
         val s = _state.value
         val place = s.selected
+        fun point(p: Place?) = app.vela.ui.place.TripPoint(p?.takeUnless { it.id == ROUND_TRIP_END_ID })
         val start = if (s.directionsReversed) place else s.directionsOrigin
         val end = if (s.directionsReversed) s.directionsOrigin else place
-        return listOf(app.vela.ui.place.TripPoint(start)) +
+        return listOf(point(start)) +
             s.directionsWaypoints.map { app.vela.ui.place.TripPoint(it) } +
-            app.vela.ui.place.TripPoint(end)
+            point(end)
     }
 
     /** Apply a full-trip edit (issue #516): the first point becomes the start and the last the
      *  destination, whatever they were before; "your location" in the middle becomes a stop at the
      *  current fix. Maps back onto the chooser's model (selected / directionsOrigin / reversed, with
-     *  stops always in travel order) and reroutes once. */
+     *  stops always in travel order) and reroutes once. A trip from "your location" back to it
+     *  with a place between is a round trip (issue #929): its end is the current fix, held as a
+     *  fixed point, while the start follows you as any trip from your location does. */
     fun applyTrip(points: List<app.vela.ui.place.TripPoint>) {
         if (points.size < 2) return
         val s = _state.value
-        val start = points.first().place
-        val end = points.last().place
-        if (start == null && end == null) return // both ends "you": nothing to route
         val me = s.myLocation
+        val start = points.first().place
+        val roundTrip = start == null && points.subList(1, points.size - 1).any { it.place != null }
+        val end = points.last().place
+            ?: if (roundTrip) me?.let { Place(id = ROUND_TRIP_END_ID, name = appContext.getString(R.string.trip_start_point), location = it) } else null
+        if (start == null && end == null) return // both ends "you" and nothing between, or no fix yet
         val mids = points.subList(1, points.size - 1).mapNotNull { p ->
             p.place ?: me?.let { Place(id = "me", name = appContext.getString(R.string.mapscreen_your_location), location = it) }
         }.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
@@ -6344,7 +6628,8 @@ class MapViewModel @Inject constructor(
 
     /** A home-screen trip shortcut was tapped: open the route picker on that trip. */
     fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
-        val anchor = points.last() ?: points.first() ?: return
+        // A round trip has "your location" at both ends: it opens on its first stop.
+        val anchor = points.last() ?: points.first() ?: points.firstNotNullOfOrNull { it } ?: return
         launchLink = true
         linkMode = mode
         selectPlace(anchor)
@@ -6386,9 +6671,8 @@ class MapViewModel @Inject constructor(
         val baseline = s.nav.remainingDuration
         if (baseline <= 0.0) return
         navTapDetourJob = viewModelScope.launch {
-            // The candidate goes FIRST, which is where NavSession.addStop puts it: the figure has to
-            // price the drive the button would actually build.
-            // Last, where addStopDuringNav will put it.
+            // The candidate goes last, where addStopDuringNav puts it: the figure has to price the
+            // drive the button would actually build.
             val stops = nav.navRemainingStops().map { it.location } + p.location
             val route = withTimeoutOrNull(NAV_DETOUR_TIMEOUT_MS) {
                 runCatching {
@@ -7086,16 +7370,23 @@ class MapViewModel @Inject constructor(
     }
 
     /** Transit itineraries: Google's page first (traffic-aware and history-aware times), Transitous'
-     *  own planner when Google is off or answered nothing (2026-09-28). One shape either way. */
+     *  own planner when Google is off, answered nothing, or answered with walking only. One shape
+     *  either way. */
     private suspend fun transitTrips(origin: LatLng, dest: LatLng, timeModeIn: Int = 0, timeEpochSecIn: Long? = null, prefer: Set<Int> = emptySet(), routePref: Int = 0): List<app.vela.core.model.TransitItinerary> {
         // The screenshot clock dial turns "leave now" into "depart at" the pinned time.
         val demo = app.vela.ui.DemoClock.epochSec()
         val timeMode = if (timeModeIn == 0 && demo != null) 1 else timeModeIn
         val timeEpochSec = if (timeModeIn == 0 && demo != null) demo else timeEpochSecIn
         val google = if (googleOff()) emptyList() else runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer, routePref) }.getOrDefault(emptyList())
-        if (google.isNotEmpty()) return google
+        val walkOnly = app.vela.core.data.transit.TransitOrder.walkOnly(google)
+        if (google.isNotEmpty() && !walkOnly) return google
         val planned = withContext(Dispatchers.IO) {
             runCatching { app.vela.core.data.transit.Transitous.plan(http, origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
+        }
+        if (walkOnly) {
+            val out = app.vela.core.data.transit.TransitOrder.ridesBeforeWalk(google, planned, routePref)
+            android.util.Log.i("VelaTransit", "google walk only: planner rides ${out.size - google.size}")
+            return out
         }
         // The open planner has no such flag here: order its answers by the same preference.
         return app.vela.core.data.transit.TransitOrder.byPreference(planned, routePref)
@@ -7408,8 +7699,11 @@ class MapViewModel @Inject constructor(
         app.vela.ui.VoiceAlertsOnly.on.value = alerts
         // State before the prefs: the prefs listener runs inline on the main thread and compares
         // the two, so the other order called this once more for nothing.
+        val changed = muted != _state.value.voiceMuted || alerts != _state.value.voiceAlertsOnly
         _state.update { it.copy(voiceMuted = muted, voiceAlertsOnly = alerts) }
         settingsPrefs.edit().putBoolean("spoken_directions", !muted).putBoolean("spoken_alerts_only", alerts).apply()
+        // A drive that goes quiet reads the same in its trip as a voice that broke. Say which.
+        if (changed) tripStore.note("K", "voice: " + when { !muted -> "on"; alerts -> "alerts only"; else -> "off" })
     }
 
     /** Settings -> Data & privacy: periodic in-drive traffic re-checks (they send the current
@@ -7531,6 +7825,36 @@ class MapViewModel @Inject constructor(
 
     /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
      *  more invasive than diagnostics, so it's its own toggle. */
+    /** Diagnostics > "Record a location test": every location fix as it came (GPS, Wi-Fi and cell),
+     *  each step, and where the dot was put, for [minutes], into a trip of its own, so a walk or a
+     *  room where the dot misbehaves can be replayed (TripLog `N` kinds `w` and `o`, `W`). Every test
+     *  is a new trip, left out of the list until it stops. Not while a drive records its own trip. */
+    fun startLocationTest(minutes: Int) {
+        if (_state.value.locationTestOn) return
+        val now = System.currentTimeMillis()
+        tripStore.startTrip(appContext.getString(R.string.diag_location_test_name), null, now) ?: return
+        tripStore.note("K", "location test: " + (if (app.vela.core.location.GuidanceFix.rawWhen()) "FreeFused off" else "FreeFused on") +
+            ", $minutes min, build ${app.vela.BuildConfig.VERSION_CODE}")
+        val ends = now + minutes * 60_000L
+        _state.update { it.copy(locationTestOn = true, locationTestEndsAt = ends) }
+        // The wall clock, checked every second: a delay counts uptime, which stops while the phone sleeps.
+        locationTestJob?.cancel()
+        locationTestJob = viewModelScope.launch {
+            while (System.currentTimeMillis() < ends) delay(1_000)
+            stopLocationTest()
+        }
+    }
+
+    fun stopLocationTest() {
+        locationTestJob?.cancel()
+        locationTestJob = null
+        if (!_state.value.locationTestOn) return
+        _state.update { it.copy(locationTestOn = false, locationTestEndsAt = 0L) }
+        if (!_state.value.navigating) tripStore.finishTrip(minFixes = 0)
+    }
+
+    private var locationTestJob: kotlinx.coroutines.Job? = null
+
     fun setTripRecording(on: Boolean) {
         settingsPrefs.edit().putBoolean("trip_recording_on", on).apply()
         _state.update { it.copy(tripRecordingEnabled = on) }
@@ -7555,7 +7879,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun recordedTrips(): List<app.vela.replay.TripMeta> = tripStore.list()
+    /** The saved trips, less a location test still recording. */
+    fun recordedTrips(): List<app.vela.replay.TripMeta> {
+        val testing = if (_state.value.locationTestOn) tripStore.activeId else null
+        return tripStore.list().filter { it.id != testing }
+    }
     fun deleteTrip(id: String) = tripStore.delete(id)
 
     /** Rename a saved trip. Returns false when the file could not be rewritten, so the caller
@@ -8239,13 +8567,58 @@ class MapViewModel @Inject constructor(
         onLevel: (Float) -> Unit,
         onListening: () -> Unit,
         canceled: () -> Boolean,
-    ): app.vela.voice.VoiceResult =
-        asrRecognizer.listen(onLevel, onListening, canceled)
+    ): app.vela.voice.VoiceResult {
+        // adb only (`setprop debug.vela.tune.voiceText "<words>"`): the words come back as heard,
+        // so a phone test of the voice search needs no speaking.
+        app.vela.ui.AppTune.text("voiceText")?.let { return app.vela.voice.VoiceResult.Text(it) }
+        return asrRecognizer.listen(onLevel, onListening, canceled)
+    }
 
-    /** Apply a transcript from either voice tier as the query and run the search. */
+    /** Apply a transcript from the on-device recognizer as the query and run the search. When the
+     *  whole transcript, house number aside, sounds like a street near the search center, that
+     *  street's own name is searched instead (SPEC 9.3). */
     fun applyVoiceQuery(text: String) {
         onQueryChange(text)
-        search() // intents first ("take me home"), else the plain search
+        voiceRetryJob?.cancel()
+        val center = plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation)
+        if (center == null) { search(); return }
+        voiceRetryJob = viewModelScope.launch {
+            val lang = app.vela.ui.AppLocale.effective().language
+            val street = VoiceStreetRetry.rewrite(text, lang, center, addressStore, whole = true)
+            if (_state.value.query != text) return@launch // the user typed or searched meanwhile
+            if (street != null) {
+                android.util.Log.i("VelaSearch", "voice: the words sound like a street nearby, searching its name")
+                fillQuery(street)
+                search()
+                return@launch
+            }
+            val before = searchJob
+            search() // intents first ("take me home"), else the plain search
+            retryVoiceSearch(text, searchJob?.takeIf { it !== before }, center)
+        }
+    }
+
+    private var voiceRetryJob: Job? = null
+
+    /**
+     * When the search [job] that [heard] started ends with no results, swap the heard words for the
+     * nearest-sounding street near the search center and search once more, with the rewrite in the
+     * search field (SPEC 9.3). Once only: the second search goes through [search], not here. Null
+     * [job] means the transcript was an intent or a link and no search ran. Runs inside
+     * [applyVoiceQuery]'s job, so a new voice search cancels it.
+     */
+    private suspend fun retryVoiceSearch(heard: String, job: Job?, center: LatLng) {
+        if (job == null) return
+        job.join()
+        if (job.isCancelled || _state.value.results.isNotEmpty()) return
+        val shown = _state.value.query
+        val lang = app.vela.ui.AppLocale.effective().language
+        val rewritten = VoiceStreetRetry.rewrite(heard, lang, center, addressStore) ?: return
+        // The user typed, searched again or left while the names were read.
+        if (searchJob !== job || _state.value.query != shown || _state.value.results.isNotEmpty()) return
+        android.util.Log.i("VelaSearch", "voice retry: searching the nearest-sounding street")
+        fillQuery(rewritten)
+        search()
     }
 
     /** Make an already-downloaded voice active: persist the pick, reload the synth (the single switch
@@ -10729,6 +11102,8 @@ class MapViewModel @Inject constructor(
 
     companion object {
         const val DRAWINGS_LIST_ID = "list:drawings"
+        /** Vela leaving the screen this near a drive's destination saves the parking spot (AutoParking). */
+        private const val PARK_NEAR_DEST_M = 400.0
         /** How long an along-route search waits for the open router to price its places. */
         private const val DETOUR_WAIT_MS = 3_000L
         /** A name match "near you" that replaces a far view's results is within this of you. */
@@ -10739,6 +11114,8 @@ class MapViewModel @Inject constructor(
         private const val TRIP_AT_START_M = 150.0
         /** Within this of the first stop, the trip runs from you to it and on; farther, it is shown as planned. */
         private const val TRIP_NEAR_M = 50_000.0
+        /** Id of a round trip's end: where you were when it was planned ([MapViewModel.applyTrip]). */
+        private const val ROUND_TRIP_END_ID = "round-trip-end"
         /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
         const val CELLS_DOWNLOAD_ID = "cells"
         /** How long an informational heads-up card stays before dismissing itself. */

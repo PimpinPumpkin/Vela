@@ -53,6 +53,13 @@ import app.vela.core.model.StreetViewLink
 import app.vela.core.model.StreetViewPano
 import app.vela.core.model.StreetViewTime
 import app.vela.streetview.PanoramaView
+import app.vela.streetview.GroundArrows
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
@@ -120,9 +127,20 @@ fun StreetViewScreen(
             val wPx = with(density) { maxWidth.toPx() }
             val hPx = with(density) { maxHeight.toPx() }
 
-            // Live camera yaw / fov, polled each frame so the arrows track where you look.
+            // Live camera yaw / pitch / fov, polled each frame so the arrows track where you look.
             var yaw by remember { mutableFloatStateOf(0f) }
+            var pitch by remember { mutableFloatStateOf(0f) }
             var fov by remember { mutableFloatStateOf(75f) }
+            // A step toward a neighbor is under way: the view is moving forward, the arrows are
+            // down, and the next pano keeps the direction you were looking (as Google's does).
+            var walking by remember { mutableStateOf(false) }
+            var panoView by remember { mutableStateOf<PanoramaView?>(null) }
+            fun walk(link: StreetViewLink) {
+                if (walking) return
+                walking = true
+                panoView?.beginWalk()
+                onMove(link)
+            }
 
             if (pano != null) {
                 val ctx = LocalContext.current
@@ -134,19 +152,23 @@ fun StreetViewScreen(
                 // AndroidView actually swap instances; the effects below are view-keyed so the
                 // fresh view gets the texture and the CURRENT look direction re-fed.
                 val view = remember(full) { PanoramaView(ctx) }
-                DisposableEffect(view) { onDispose { view.onPause() } }
-                // Re-aim on each new pano OR new view OR heading change. A pano we were already
-                // showing (fullscreen toggle, or time travel swapping in the historical capture's
-                // heading) keeps the user's current compass yaw; a genuinely new pano faces its
-                // requested direction (Google's yaw / look-at target / down the street).
+                DisposableEffect(view) { panoView = view; onDispose { view.onPause() } }
+                // Aim and texture land together, when the picture is in: aiming the new pano's
+                // heading at the OLD picture swung it at every corner while the next one loaded.
+                // A pano we were already showing (fullscreen toggle, time travel swapping in the
+                // historical capture's heading) and a walk keep the user's compass yaw; a newly
+                // opened pano faces its requested direction (Google's yaw, the look-at target).
                 var seenPano by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(view, pano.panoId, pano.headingDeg) {
-                    val face = if (pano.panoId == seenPano) yaw
-                    else (pano.initialFacingDeg ?: pano.headingDeg).toFloat()
-                    seenPano = pano.panoId
-                    view.setCompass(pano.headingDeg.toFloat(), face)
+                val aimPano by androidx.compose.runtime.rememberUpdatedState(pano)
+                LaunchedEffect(view, bitmap) {
+                    val bmp = bitmap?.takeUnless { it.isRecycled } ?: return@LaunchedEffect
+                    val cur = aimPano
+                    val face = if (seenPano != null && (cur.panoId == seenPano || walking)) yaw
+                    else (cur.initialFacingDeg ?: cur.headingDeg).toFloat()
+                    seenPano = cur.panoId
+                    view.setPanorama(bmp, cur.headingDeg.toFloat(), face)
+                    walking = false
                 }
-                LaunchedEffect(view, bitmap) { bitmap?.let { view.setPanorama(it) } }
                 // Report the pose to the map underneath: immediately on each pano (position hop),
                 // then whenever the compass yaw moves ~a degree - not every frame, so the map's
                 // cone update stays a trickle instead of a 60 Hz recomposition storm.
@@ -164,6 +186,7 @@ fun StreetViewScreen(
                     while (true) {
                         androidx.compose.runtime.withFrameNanos { }
                         yaw = view.currentYawDeg()
+                        pitch = view.currentPitchDeg()
                         fov = view.currentFovDeg()
                         if (sentYaw.isNaN() || abs(normDeg(yaw - sentYaw)) > 1f) {
                             sentYaw = yaw
@@ -216,7 +239,7 @@ fun StreetViewScreen(
                                     Key.Back -> { engaged = false; true }
                                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                                         val fwd = pano.neighbors.minByOrNull { abs(normDeg(it.bearingDeg.toFloat() - yaw)) }
-                                        if (fwd != null && abs(normDeg(fwd.bearingDeg.toFloat() - yaw)) < 60f) onMove(fwd)
+                                        if (fwd != null && abs(normDeg(fwd.bearingDeg.toFloat() - yaw)) < 60f) walk(fwd)
                                         true
                                     }
                                     else -> false
@@ -232,41 +255,74 @@ fun StreetViewScreen(
                 )
             }
 
-            // Walk arrows: one tappable chevron per neighbor that's within the visible arc. Shown in
-            // historical views too (the neighbor graph is the base pano's, so you can still walk from
-            // an older capture - it lands on that neighbor's imagery). Hidden only while loading.
-            if (pano != null && bitmap != null && !loading) {
-                val halfFov = fov * 0.5f
-                for (link in pano.neighbors) {
-                    val delta = normDeg(link.bearingDeg.toFloat() - yaw) // -180..180
-                    if (abs(delta) > halfFov * 0.92f) continue
-                    val fracX = delta / halfFov                          // -1..1 across the view
-                    val xPx = wPx / 2f + fracX * (wPx * 0.42f)
-                    val yPx = hPx * 0.66f
-                    val arrowSize = 52.dp
-                    val halfArrow = with(density) { arrowSize.toPx() / 2f }
-                    Surface(
-                        onClick = { onMove(link) },
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.82f),
-                        modifier = Modifier
-                            .offset { IntOffset((xPx - halfArrow).roundToInt(), (yPx - halfArrow).roundToInt()) }
-                            .dpadHighlight(CircleShape)
-                            .size(arrowSize),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Sym.ArrowUpward,
-                                contentDescription = stringResource(R.string.street_view_move),
-                                tint = Color(0xFF1A1A1A),
-                                modifier = Modifier.rotate(delta), // lean toward the street's direction
-                            )
-                        }
+            // Walk arrows: a chevron on the road per neighbor, projected through the panorama's
+            // own camera (GroundArrows), so it turns and foreshortens as you look around. Shown in
+            // historical views too (the neighbor graph is the base pano's, so you can still walk
+            // from an older capture). Down while loading or mid-step, and they fade back in.
+            val arrowsUp = pano != null && bitmap != null && !loading && !walking
+            // In after a step lands; gone at once when one starts (a fade-out drew the next pano's
+            // arrows over the old picture).
+            val fadeIn by androidx.compose.animation.core.animateFloatAsState(if (arrowsUp) 1f else 0f, androidx.compose.animation.core.tween(if (arrowsUp) 220 else 0), label = "svArrows")
+            val arrowAlpha = if (arrowsUp) fadeIn else 0f
+            if (pano != null && arrowAlpha > 0f) {
+                val scale = (wPx / hPx).coerceIn(0.6f, 1.4f).toDouble() * 0.8
+                val shapes = pano.neighbors.map { link ->
+                    GroundArrows.chevron(link.bearingDeg, yaw.toDouble(), pitch.toDouble(), fov.toDouble(), wPx, hPx, scale)
+                        ?.takeIf { pts -> pts.all { it.x > -wPx * 0.5f && it.x < wPx * 1.5f && it.y < hPx * 1.2f } }
+                }
+                val centers = shapes.map { pts -> pts?.let { Offset(it.sumOf { p -> p.x.toDouble() }.toFloat() / it.size, it.sumOf { p -> p.y.toDouble() }.toFloat() / it.size) } }
+                val reach = with(density) { 72.dp.toPx() }
+                // A tap that misses a chevron's hit box but lands near it still walks.
+                androidx.compose.runtime.SideEffect {
+                    panoView?.onTap = { x, y ->
+                        if (arrowsUp) GroundArrows.pick(Offset(x, y), centers, reach)?.let { walk(pano.neighbors[it]) }
                     }
+                }
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    for (pts in shapes) {
+                        if (pts == null) continue
+                        val path = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(pts[0].x, pts[0].y)
+                            for (k in 1 until pts.size) lineTo(pts[k].x, pts[k].y)
+                            close()
+                        }
+                        // A soft shadow on the road, then the white chevron with a thin dark edge so it
+                        // reads on pale concrete as well as on asphalt.
+                        translate(0f, 3.dp.toPx()) { drawPath(path, Color.Black.copy(alpha = 0.28f * arrowAlpha)) }
+                        drawPath(path, Color.White.copy(alpha = 0.94f * arrowAlpha))
+                        drawPath(path, Color.Black.copy(alpha = 0.35f * arrowAlpha), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx()))
+                    }
+                }
+                // Invisible hit boxes on the chevrons, for TalkBack and D-pad focus.
+                val moveLabel = stringResource(R.string.street_view_move)
+                if (arrowsUp) pano.neighbors.forEachIndexed { i, link ->
+                    val c = centers[i] ?: return@forEachIndexed
+                    val box = 56.dp
+                    val half = with(density) { box.toPx() / 2f }
+                    Box(
+                        Modifier
+                            .offset { IntOffset((c.x - half).roundToInt(), (c.y - half).roundToInt()) }
+                            .size(box)
+                            .dpadHighlight(CircleShape)
+                            .clip(CircleShape)
+                            .clickable(onClickLabel = null) { walk(link) }
+                            .semantics { contentDescription = moveLabel },
+                    )
                 }
             }
 
-            if (loading || (pano != null && bitmap == null)) {
+            // The spinner waits a moment on a step: the forward move covers a quick load, and a
+            // spinner flashed over it reads as stutter. A first open has nothing to show, so at once.
+            val busy = loading || (pano != null && bitmap == null)
+            var spin by remember { mutableStateOf(false) }
+            LaunchedEffect(busy) {
+                spin = false
+                if (busy) {
+                    if (panoView != null && pano != null) kotlinx.coroutines.delay(700)
+                    spin = true
+                }
+            }
+            if (busy && spin) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.align(Alignment.Center))
             }
 
