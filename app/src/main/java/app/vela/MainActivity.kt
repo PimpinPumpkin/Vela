@@ -16,6 +16,8 @@ import app.vela.ui.theme.VelaTheme
 import app.vela.ui.theme.isAppInDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -74,6 +76,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // Over the lock screen while a drive runs and is not paused (Settings > Navigation, on by
+        // default): the power button wakes the phone to the route, not the PIN prompt.
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                vm.state.map { it.navigating && !it.navPaused }.distinctUntilChanged(),
+                androidx.compose.runtime.snapshotFlow { app.vela.ui.LockScreenNav.on.value },
+            ) { driving, on -> driving && on }.distinctUntilChanged().collect { show ->
+                runCatching { app.vela.ui.LockScreenNav.show(this@MainActivity, show) }
+                    .onFailure { android.util.Log.w("VelaLock", "show when locked failed", it) }
+                if (!show) app.vela.ui.LockScreenNav.driveStopped()
+            }
+        }
+        // Wake the screen before each turn (Settings > Navigation, on by default): the drive's
+        // step whose turn is near, or -1.
+        lifecycleScope.launch {
+            vm.state.map { s ->
+                if (s.navigating && !s.navPaused && s.travelMode == app.vela.core.model.TravelMode.DRIVE &&
+                    app.vela.ui.LockScreenNav.turnNear(s.nav.distanceToNextManeuver, s.nav.remainingDistance, s.nav.remainingDuration)
+                ) s.nav.stepIndex else -1
+            }.distinctUntilChanged().collect { step ->
+                runCatching { app.vela.ui.LockScreenNav.turnStep(this@MainActivity, step) }
+                    .onFailure { android.util.Log.w("VelaLock", "turn wake failed", it) }
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         handleIntent(intent)
         // After the intent, before the map exists: a link keeps the camera, anything else opens
         // on the view chosen in Settings > Map.
@@ -124,6 +154,11 @@ class MainActivity : ComponentActivity() {
     /** The assigned zoom keys (Settings > Navigation, issue #694). A key that types is offered
      *  only after nothing else took it, so a digit still types in a text field. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        // Any key but volume ends a turn wake's glance screen, as a touch does.
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isVolumeKey()) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
+        }
         val typing = event.isPrintingKey
         if (!typing && app.vela.ui.ZoomKeys.handle(event)) return true
         if (super.dispatchKeyEvent(event)) return true
@@ -154,6 +189,30 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+    }
+
+    /** The screen came on: the power button gives a drive its keep-awake back after a turn wake. */
+    private val screenOn = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this@MainActivity, s.navigating && !s.navPaused, screenOn = true)
+        }
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun android.view.KeyEvent.isVolumeKey() = keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+        keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_MUTE
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(screenOn) }
+        super.onDestroy()
     }
 
     override fun onStart() {

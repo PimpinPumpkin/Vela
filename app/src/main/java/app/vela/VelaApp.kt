@@ -108,12 +108,16 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         if (app.vela.ui.AppTune.localOn("netLog")) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
         // A test switch for the routes' fallbacks (ValhallaRouter.matchOff). adb only.
         app.vela.core.data.ValhallaRouter.matchOff = app.vela.ui.AppTune.localOn("noMatch")
+        // Google's turns kept even where both open routers find them banned (TurnBans). adb only.
+        app.vela.core.data.naming.TurnBans.off = app.vela.ui.AppTune.localOn("turnBansOff")
+        app.vela.ui.AppTune.local("turnBanSpliceMaxM")?.let { app.vela.core.data.naming.TurnBans.spliceMaxM = it }
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
+        app.vela.core.data.RouterTestHooks.openRouterDown = app.vela.ui.AppTune.localOn("openRouterDown")
         app.vela.offline.StorageLocation.init(this)
         app.vela.offline.RoadNameTileSource.install(this) // street names for LineNamer (issue #478)
         Units.init(this)
@@ -140,6 +144,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
         app.vela.ui.NorthLock.init(this) // Settings > Map "Keep north up"
+        app.vela.ui.PopularTimesHint.init(this) // the popular-times placeholder (issue #904)
+        app.vela.ui.TurnWithTravel.init(this) // Settings > Map "Turn the map as you drive" (issue #905)
         app.vela.ui.ParkingButton.init(this) // parking button shown with no spot saved (issue #626)
         app.vela.ui.LinkAction.init(this) // what a location link from another app does (discussion #640)
         app.vela.ui.StartView.init(this) // where the map opens, and the view picked for it
@@ -166,6 +172,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // instantly, route counts are reliable), then refresh from the hosted manifest so the data updates
         // without an app release (weekly CI cron re-hosts a newer version; a bump swaps it in on next launch).
         CoroutineScope(Dispatchers.IO).launch {
+            // The "maps app" entry follows the launcher's name (one call, then a no-op).
+            runCatching { app.vela.ui.AppNameAlias.syncPanel(this@VelaApp) }
             // The catalog regions' real boundaries (issue #599): until this lands, region picks
             // fall back to their boxes, which is what they always were.
             app.vela.offline.RegionPolys.ensureLoaded(this@VelaApp)
@@ -184,6 +192,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.MapButtonShape.init(this) // round or square map buttons (issue #797)
         app.vela.ui.TurnArrows.init(this) // arrows on the route at the turns ahead (issue #804)
         app.vela.ui.CarSpeed.init(this) // the car's speed badge, off by default
+        app.vela.ui.CarLanes.init(this) // lane guidance on the car's turn card, on by default (issue #866)
         app.vela.ui.LiveReviews.init(this)
         app.vela.ui.ShowReviews.init(this)
         app.vela.ui.LoadPhotos.init(this)
@@ -205,6 +214,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.RoadLabel.init(this)
         app.vela.ui.NavNorthUp.init(this)
         app.vela.ui.ZoomToTurn.init(this) // zoom out to the next turn while driving, off by default (issue #781)
+        app.vela.ui.FreeFused.init(this) // guidance by FreeFused, the fused position, on by default
+        app.vela.ui.LockScreenNav.init(this) // a drive shows over the lock screen, on by default
         app.vela.ui.PuckStyle.init(this)
         app.vela.ui.HouseNumbers.init(this) // house-number zoom gate (issue #329)
         app.vela.ui.MapNames.init(this) // which name a map label shows (issue #738)
@@ -225,6 +236,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.VoiceSearch.init(this)
         app.vela.ui.ContactsSearch.init(this) // contacts-in-search toggle (issue #243)
         app.vela.diag.NavTrace.init(this) // opt-in nav smoothness trace (issue #251)
+        app.vela.ui.GyroTurn.init(this) // the drive arrow turned by the gyroscope (Diagnostics)
+        app.vela.ui.AutoParking.init(this) // "Save where I park" (Settings > Map)
         app.vela.ui.MapLook.init(this) // which OpenFreeMap look the basemap loads (issue #750); before MapFonts
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)
         Onboarding.init(this)

@@ -44,6 +44,8 @@ class SelfUpdater @Inject constructor(
         // The file's SHA-256 as GitHub publishes it for every release asset ("digest"), hex.
         // Null when the release answer carries none; the size is checked either way.
         val sha256: String? = null,
+        // The commit the release was built from (its `target_commitish` when that is a SHA).
+        val commit: String? = null,
     )
 
     // The APK is ~80 MB — same no-call-timeout rule as every large download (the shared
@@ -71,8 +73,8 @@ class SelfUpdater @Inject constructor(
      *  too (the check is best-effort; a launch must never block or complain about it).
      *  stable = releases/latest; nightly = highest-code v0.* prerelease; canary = the rolling
      *  fixed-tag `canary` release (versionCode read from its notes, since the tag never
-     *  changes), falling back to the newest nightly when that is ahead so a stale canary
-     *  never strands its users behind the fleet. */
+     *  changes), or the newest nightly when that is ahead and holds canary's commit
+     *  ([canaryPick]). */
     suspend fun check(installedVersionCode: Int, channel: String = CHANNEL_STABLE): UpdateInfo? = withContext(Dispatchers.IO) {
         val currentVersionCode = legacyCode(installedVersionCode)
         runCatching {
@@ -83,7 +85,7 @@ class SelfUpdater @Inject constructor(
                 val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull() ?: return null
                 val code = 2000 + run
                 val apk = pickApk(o.getJSONArray("assets")) ?: return null
-                return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"), ApkCheck.digestOf(apk.optString("digest")))
+                return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"), ApkCheck.digestOf(apk.optString("digest")), commitOf(o))
             }
             var requests = 0; var bytes = 0L
             val started = System.currentTimeMillis()
@@ -107,7 +109,7 @@ class SelfUpdater @Inject constructor(
                 val code = Regex("""versionCode:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull()?.let(::legacyCode) ?: return null
                 val name = Regex("""versionName:\s*(\S+)""").find(body)?.groupValues?.get(1) ?: "canary"
                 val apk = pickApk(o.getJSONArray("assets")) ?: return null
-                UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body, ApkCheck.digestOf(apk.optString("digest")))
+                UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body, ApkCheck.digestOf(apk.optString("digest")), commitOf(o))
             }.getOrNull()
             // THE RELEASES LIST IS NEVER FETCHED (2026-09-22). The repository's data releases
             // (obf-regions, places-overlays, basemap-tiles, road-features) each list ~450 assets,
@@ -136,8 +138,15 @@ class SelfUpdater @Inject constructor(
                 }
                 return null
             }
+            // Does the nightly built from [nightlyCommit] hold [canaryCommit]? Compared with the
+            // nightly as base, a canary it holds is "behind" or "identical". Page 2 of one commit
+            // per page leaves out the file list: about 10 KB either way, where page 1 of a canary
+            // ahead of main carried its whole diff (450 KB measured).
+            fun nightlyHolds(nightlyCommit: String, canaryCommit: String): Boolean? = runCatching {
+                compareHolds(JSONObject(getJson(app.vela.core.config.VelaLinks.api("/compare/$nightlyCommit...$canaryCommit?per_page=1&page=2"))).optString("status"))
+            }.getOrNull().also { android.util.Log.d("VelaUpdate", "nightly ${nightlyCommit.take(9)} holds canary ${canaryCommit.take(9)}: $it") }
             val candidate = when (channel) {
-                CHANNEL_CANARY -> listOfNotNull(canaryInfo(), nightlyInfo()).maxByOrNull { it.versionCode }
+                CHANNEL_CANARY -> canaryPick(canaryInfo(), nightlyInfo(), ::nightlyHolds)
                 CHANNEL_NIGHTLY -> nightlyInfo()
                 else -> releaseToInfo(JSONObject(getJson(app.vela.core.config.VelaLinks.api("/releases/latest"))))
             }
@@ -245,6 +254,41 @@ class SelfUpdater @Inject constructor(
 /** The notes to show for [picked] (issue #330): every release in [history] with a code above
  *  [currentVersionCode] and at or below the picked one, newest first, each under its version,
  *  when there are at least two; else the picked release's own notes. */
+/** A release's commit: `target_commitish` when it is a full SHA (CI creates every app release
+ *  with `--target $GITHUB_SHA`), else null. */
+internal fun commitOf(release: JSONObject): String? =
+    release.optString("target_commitish").takeIf { SHA.matches(it) }
+
+private val SHA = Regex("^[0-9a-f]{40}$")
+
+/** A GitHub compare status, read with the nightly as base and canary as head: true when the
+ *  nightly holds canary's commit, false when canary has commits it lacks, null when unknown. */
+internal fun compareHolds(status: String?): Boolean? = when (status) {
+    "behind", "identical" -> true
+    "ahead", "diverged" -> false
+    else -> null
+}
+
+/**
+ * The canary channel's offer. A nightly is cut from `main`, which can lack what is on canary,
+ * and its run number is higher whenever it was cut after canary's last push: a Weblate merge or
+ * the weekly stats commit moves `main`, and pull request runs count too. So the nightly wins only
+ * when it is newer and [holds] says it has canary's commit. Anything unknown keeps canary. No
+ * readable canary release offers nothing: a check during a canary publish (the old release is
+ * deleted before the new one is made) must not move the phone to a nightly.
+ */
+internal fun canaryPick(
+    canary: SelfUpdater.UpdateInfo?,
+    nightly: SelfUpdater.UpdateInfo?,
+    holds: (nightlyCommit: String, canaryCommit: String) -> Boolean?,
+): SelfUpdater.UpdateInfo? {
+    if (canary == null) return null
+    if (nightly == null || nightly.versionCode <= canary.versionCode) return canary
+    val n = nightly.commit ?: return canary
+    val c = canary.commit ?: return canary
+    return if (holds(n, c) == true) nightly else canary
+}
+
 internal fun cumulativeNotes(history: List<Pair<SelfUpdater.UpdateInfo, String>>, currentVersionCode: Int, picked: SelfUpdater.UpdateInfo): String {
     val between = history
         .filter { (info, _) -> info.versionCode > currentVersionCode && info.versionCode <= picked.versionCode }

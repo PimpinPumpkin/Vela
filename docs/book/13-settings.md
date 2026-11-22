@@ -4,15 +4,17 @@
 
 Settings opens over the map as a list of twelve pages with a search field above it.
 
-- Appearance: theme, font, interface size, map look (the Vela look on Liberty, or OpenFreeMap's
-  Bright, Positron, Fiord or Black as served), map colors, map buttons (round or square), units,
-  clock, language, directions language, Page transitions.
-- Map: traffic, transit lines, terrain, tilt, "Keep north up", 3D buildings, map buttons, house
+- Appearance: theme, the map's own light or dark, font, interface size, map look (the Vela look
+  on Liberty, or OpenFreeMap's Bright, Positron, Fiord or Black as served), map colors, map
+  buttons (round or square), units, clock, language, directions language, Page transitions.
+- Map: traffic, transit lines, terrain, tilt, "Keep north up", "Turn the map as you drive", 3D buildings, map buttons, house
   numbers, names on the map (English then romanized, English then local, local only, or local
   and English), where the map opens.
-- Places: "Place icons on the map", which places the map draws, what a place page loads.
-- Navigation: route picker, road-ahead bar, arrow, speed limit, road numbers first, zoom keys,
-  cameras ([chapter 3](03-cameras.md)), traffic rechecks.
+- Places: "Place icons on the map", which places the map draws, how far out place names show,
+  what a place page loads.
+- Navigation: route picker, road-ahead bar, arrow, speed limit and the over-the-limit warning,
+  lane guidance on the car screen, road numbers first, zoom keys, cameras
+  ([chapter 3](03-cameras.md)), traffic rechecks.
 - Voice: spoken directions, street names, the voice library, speed and volume.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,
   a page of its own under Search for which category chips show and in what order.
@@ -66,6 +68,24 @@ buttons, which is pushed on top of Search, so Back from it returns to Search.
 is added to it by hand. A query is a case-insensitive substring match on those labels. The
 chosen label travels with the destination entry, and the row built with that label
 (`Modifier.settingsAnchor`) scrolls into view.
+
+### Light and dark
+
+Settings > Appearance has three choices that decide light or dark.
+
+- The theme: follow the system, Light, Dark, AMOLED black, or "Day and night", which is light
+  from sunrise to sunset at your location.
+- Map: "Same as the app", Light, Dark, or "Day and night". The last puts the map on the sun
+  whatever the theme is, so the app can stay dark while the map is light by day.
+- "Day and night while navigating" puts both the app and the map on the sun during a drive or
+  in driving mode, whatever the two choices above say. Its switch is hidden when the theme is
+  "Day and night" and the map follows the app or is on "Day and night" too, since it would
+  change nothing.
+
+The sun is worked out once a minute from your last position, rounded to about a kilometer.
+Without a position from the last day, or without location permission, the app counts 7 pm to
+7 am as night. The car screen takes the theme and ignores the map choice
+([chapter 10](10-android-auto.md#theme)). [SPEC 6.2](../../SPEC.md) has the rules in order.
 
 ### Where the map opens
 
@@ -127,6 +147,6 @@ rest of keypad operation.
   option on.
 - When Settings is the first thing in a session to take focus, focus requests do nothing until
   a key is pressed. That first press lands on Back.
-- Open search, picking an area or a point on the map, the alternates list, a minimized route
-  picker, and the place sheet and step list during a drive handle Back themselves and do not
+- Open search, picking an area or a point on the map, transit guidance, the alternates list, a
+  minimized route picker, and the place sheet and step list during a drive handle Back themselves and do not
   follow the swipe. Back during a drive asks before ending it.

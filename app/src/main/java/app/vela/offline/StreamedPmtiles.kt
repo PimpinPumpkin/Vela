@@ -20,14 +20,23 @@ import java.util.concurrent.TimeUnit
  * answers those tile requests from [PmtilesReader.Archive.http]: the header and the directory
  * pages are read once per archive and kept, then each tile is one range read. MapLibre caches
  * the tiles it gets back the way it caches any tile.
+ *
+ * A rebake replaces the file under the same address. The reader notices on its next read
+ * ([PmtilesReader.Archive.replaced]), and the archive is opened again, header and all, before the
+ * tile is read, so a running app never reads the new file at the old file's offsets.
  */
 object StreamedPmtiles : Interceptor {
     const val HOST = "pmtiles.vela.invalid"
     private const val PREFIX = "pmtiles://"
 
-    private class Entry(val archive: PmtilesReader.Archive, val header: PmtilesReader.Header)
+    private class Entry(val url: String, val archive: PmtilesReader.Archive, val header: PmtilesReader.Header)
     private val entries = ConcurrentHashMap<String, Entry>()
-    private val client by lazy {
+    private val reopenLock = Any()
+
+    /** Tests swap the HTTP client. */
+    @Volatile internal var clientOverride: okhttp3.OkHttpClient? = null
+    private val client get() = clientOverride ?: defaultClient
+    private val defaultClient by lazy {
         okhttp3.OkHttpClient.Builder()
             .addInterceptor(ReleaseRedirects) // the signed address of a release file, kept between reads
             .callTimeout(30, TimeUnit.SECONDS)
@@ -45,11 +54,7 @@ object StreamedPmtiles : Interceptor {
     fun tileSet(uri: String): org.maplibre.android.style.sources.TileSet? {
         val url = uri.removePrefix(PREFIX)
         val key = keyOf(url)
-        val e = entries[key] ?: run {
-            val archive = PmtilesReader.Archive.http(client, url)
-            val h = archive.header ?: return null
-            Entry(archive, h).also { entries[key] = it }
-        }
+        val e = entries[key] ?: (open(url) ?: return null).also { entries[key] = it }
         return org.maplibre.android.style.sources.TileSet("2.2.0", "https://$HOST/$key/{z}/{x}/{y}.pbf").apply {
             minZoom = e.header.minZoom.toFloat()
             maxZoom = e.header.maxZoom.toFloat()
@@ -64,6 +69,37 @@ object StreamedPmtiles : Interceptor {
         return "{\"type\":\"vector\",\"tiles\":[\"https://$HOST/$key/{z}/{x}/{y}.pbf\"],\"minzoom\":${e.header.minZoom},\"maxzoom\":${e.header.maxZoom}}"
     }
 
+    private fun open(url: String): Entry? {
+        val archive = PmtilesReader.Archive.http(client, url)
+        val h = archive.header ?: return null
+        return Entry(url, archive, h)
+    }
+
+    /** Opens the archive at [url] if it is not open yet, and returns its tile key (tests). */
+    internal fun register(url: String): String? {
+        val key = keyOf(url)
+        if (entries[key] == null) entries[key] = open(url) ?: return null
+        return key
+    }
+
+    /** The tile at z/x/y of the archive under [key], read again from a fresh open when the file
+     *  behind its address was replaced. Null when the archive does not hold it. */
+    internal fun tileBytes(key: String, z: Int, x: Int, y: Int): ByteArray? {
+        val e = entries[key] ?: return null
+        e.archive.tile(z, x, y)?.let { return it }
+        if (!e.archive.replaced) return null
+        return reopen(key, e)?.archive?.tile(z, x, y)
+    }
+
+    /** Opens [stale]'s address again, once for all the tile reads that found it replaced. When the
+     *  new header cannot be read the stale entry stays, and the next tile tries again. */
+    private fun reopen(key: String, stale: Entry): Entry? = synchronized(reopenLock) {
+        entries[key]?.takeIf { it !== stale }?.let { return it }
+        val fresh = open(stale.url) ?: return null
+        entries[key] = fresh
+        fresh
+    }
+
     private fun keyOf(url: String): String =
         MessageDigest.getInstance("SHA-1").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }.take(20)
 
@@ -73,10 +109,9 @@ object StreamedPmtiles : Interceptor {
         val req = chain.request()
         if (req.url.host != HOST) return chain.proceed(req)
         val m = TILE.find(req.url.encodedPath)
-        val e = m?.let { entries[it.groupValues[1]] }
         // The HTTP reader has no shared state between reads, so tiles are read as MapLibre asks
         // for them, in parallel.
-        val bytes = if (m == null || e == null) null else e.archive.tile(m.groupValues[2].toInt(), m.groupValues[3].toInt(), m.groupValues[4].toInt())
+        val bytes = m?.let { tileBytes(it.groupValues[1], it.groupValues[2].toInt(), it.groupValues[3].toInt(), it.groupValues[4].toInt()) }
         val type = "application/x-protobuf"
         return Response.Builder()
             .request(req)

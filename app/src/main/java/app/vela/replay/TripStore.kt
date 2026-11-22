@@ -71,8 +71,22 @@ class TripStore @Inject constructor(
         return id
     }
 
+    /** The recording trip's id, or null. */
+    val activeId: String? get() = active?.nameWithoutExtension
+
+    /** Record again into the trip [id] a killed process left behind, so a resumed drive stays
+     *  one trip. False when one is already recording or the file is gone (pruned, deleted). */
+    fun resumeTrip(id: String): Boolean = synchronized(lock) {
+        if (active != null) return false
+        val f = File(dir, "$id.csv")
+        if (!f.isFile) return false
+        active = f
+        lastFixWallMs = 0L
+        true
+    }
+
     /** Append a fix to the active trip (no-op if none is recording). */
-    fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0) = synchronized(lock) {
+    fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0, still: Boolean = false) = synchronized(lock) {
         val f = active ?: return
         runCatching {
             // offRoute + accuracy LAST (appended columns, 2026-07-16): the parser reads fixes by
@@ -82,10 +96,43 @@ class TripStore @Inject constructor(
             // provider + offRouteHits LAST (appended columns, 2026-09-13): which provider the fix
             // came from (a network fix that slipped in explains a teleport) and how far the
             // engine's off-route debounce had counted (a reroute about to fire shows as 1, 2, 3).
+            // Speed accuracy, course accuracy and the at-rest flag LAST (2026-11-17): what the
+            // position filter took from this fix, so a replay can run the filter as the drive did.
+            // The satellites' signal LAST (2026-11-18): the four strongest used satellites' mean
+            // C/N0 and the count used, on a GPS fix with a fresh status (GnssSignal).
+            val sig = if (loc.provider == android.location.LocationManager.GPS_PROVIDER)
+                app.vela.core.location.GnssSignal.latest(android.os.SystemClock.elapsedRealtime()) else null
             f.appendText(
                 "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
-                    "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits\n",
+                    "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits," +
+                    "${if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond else ""}," +
+                    "${if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees else ""},${if (still) 1 else 0}," +
+                    (sig?.let { String.format(java.util.Locale.US, "%.1f,%d", it.first, it.second) } ?: ",") + "\n",
             )
+            lastFixWallMs = System.currentTimeMillis()
+        }
+        Unit
+    }
+
+    @Volatile private var lastFixWallMs = 0L
+
+    /** Append what the nav engine was just handed as an `N` line ([TripLog.Input]), timed from
+     *  the last fix line so a replay can hand it over at the same moment. No-op unless recording. */
+    fun recordInput(kind: Char, loc: LatLng, speedMps: Double?, accuracyM: Double?, bearingDeg: Double?) = synchronized(lock) {
+        val f = active ?: return
+        val now = System.currentTimeMillis()
+        val since = if (lastFixWallMs > 0L) now - lastFixWallMs else 0L
+        runCatching { f.appendText("N,$now," + TripLog.inputPayload(kind, since, loc, speedMps, accuracyM, bearingDeg) + "\n") }
+        Unit
+    }
+
+    /** A step of a walk being navigated (TripLog `W`): the time since the step before, the compass
+     *  heading the dot took it toward (empty when none) and the step length then learned. */
+    fun recordStep(intervalS: Double, compassDeg: Double?, stepLengthM: Double) = synchronized(lock) {
+        val f = active ?: return
+        runCatching {
+            f.appendText(String.format(java.util.Locale.US, "W,%d,%.3f,%s,%.2f\n", System.currentTimeMillis(), intervalS,
+                compassDeg?.let { String.format(java.util.Locale.US, "%.1f", it) }.orEmpty(), stepLengthM))
         }
         Unit
     }
@@ -117,14 +164,15 @@ class TripStore @Inject constructor(
      * Close the active trip.
      *
      * Returns the saved trip when one was KEPT, so a caller can offer to name it; null when
-     * nothing was recording or the trip was too short to be worth keeping (under 5 fixes -
-     * starting nav and immediately ending it should not leave litter in the list).
+     * nothing was recording or the trip was too short to be worth keeping (under [minFixes] -
+     * starting nav and immediately ending it should not leave litter in the list). A location
+     * test passes 0: a test that got few fixes or none is the finding.
      */
-    fun finishTrip(): TripMeta? = synchronized(lock) {
+    fun finishTrip(minFixes: Int = 5): TripMeta? = synchronized(lock) {
         val f = active ?: return null
         active = null
         return runCatching {
-            if (countFixes(f) < 5) { f.delete(); null } else readMeta(f)
+            if (countFixes(f) < minFixes) { f.delete(); null } else readMeta(f)
         }.getOrNull()
     }
 

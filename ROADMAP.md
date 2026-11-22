@@ -26,9 +26,10 @@ Set 2026-10-07.
    waits until it can be its own job: a full pass over the sheets, the gestures and D-pad
    operation, on both test phones.
 4. Read places from Vela Almanac, a separate open dataset of US places with dated evidence of
-   what is still open. It replaces the three closure steps in the places bake and later the
-   merge itself. Blocked on its first published files. The bake then reads one file per
-   state.
+   what is still open, built on Overture. It publishes monthly: four releases so far, and the
+   2026-11-01 build passed. Its README still says it is not ready to use. Vela has no reader
+   for it yet. Its open evidence would plug into the places bake's `almanac_backed` hook for
+   US regions, where it backs a row against the single-supplier rule.
 5. F-Droid's own catalog. The official catalog builds every app from source and cannot take
    the prebuilt voice runtime (sherpa-onnx) or the prebuilt Cronet. The work is a build
    flavor that compiles or leaves out each of them, and reproducible output. Not started.
@@ -173,6 +174,14 @@ drive".
 
 Small items, one pull request each.
 
+- The rest of the car screens laid out like Google Maps' on wide and tall screens. The landing
+  is done (the map alone, its list one button away, #899; seen on the Desktop Head Unit at 800 by
+  480, 1280 by 720, the wide layout and 720 by 1280). The drive screen's turn card is Google's
+  teal, and its "then" line follows the phone's rule; the route preview labels each route's time
+  on the map and frames every route beside the card as Google's does, checked at 800 by 480 and
+  1280 by 720; the drive seen at 720 by 1280 too. Next: the preview and the search screens in
+  portrait (the Desktop Head Unit takes no taps there), and the End button, which draws blue on
+  the Desktop Head Unit though Vela asks for red.
 - Grid cells for the whole catalog. The bake conductor runs the US group and two world shards
   (`tools/bake-schedule.json`). Next: confirm from `cells-manifest.json` that every region has
   cells.
@@ -198,9 +207,6 @@ Small items, one pull request each.
   started offline never picks up the patched style until the process restarts.
 - The first-line shortening measures speech in characters, so a Japanese, Chinese or Hebrew
   line is read as short and keeps its sign tail.
-- Duplicate names in the open places bake (#742). Overture carries one unbranded name at
-  several points with the same confidence, so a pin lands on the wrong one. Two fixes at the
-  bake: one row per unbranded name in a region, and a corrections list Vela maintains.
 - The neural voice's phonemizer. espeak, in front of the Piper model, misreads text that is
   not prose: "5:49 PM" came out as "five foot nine". `SpeechText` works around it case by
   case. The fix is a model that normalizes its own input and is fast enough on a Pixel 4a.
@@ -257,11 +263,196 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Louder and Loudest for a voice from the phone's engine (`SystemVoiceBoost`, a
+  `LoudnessEnhancer` on Vela's audio session, issue #979; SPEC 9.1): the step-to-gain mapping is
+  unit-tested only. Not yet heard on a phone with Google TTS or Samsung TTS, through Bluetooth,
+  or in Android Auto. Listen at Normal and Loudest with Test voice; a phone that keeps the same
+  level at both has an engine that ignores the session or no enhancer (logcat `VelaDirections`,
+  "voice: no loudness enhancer"). Check that a loud engine at Loudest does not sound squashed.
+
+- Muting drops a line still waiting out its 350 ms focus lead (`FocusLead`, `FocusLeadTest`),
+  and a replay that jumps ahead gives the voice the speaker button's mode after its run-up,
+  with only the newest replay doing so (`NavController.runUpGen`). Not yet heard on a phone:
+  with music playing, mute the moment a prompt is asked; seek a replay, change the mode during
+  the run-up, and check the voice afterward. Not tried in a car either.
+
+- The arrow and the map keeping up in turns (fix age carried forward, a wider and leading heading
+  chord, a leading camera that keeps its quick ease until it has caught up; SPEC 4.7): measured on
+  a mock turn from a stop on a 4a, not yet on a real drive. A drive with Settings > Diagnostics >
+  the nav trace on, and a recorded trip, would show it against the fixes. The settle back onto the
+  car at a stop and the pull-away fix taken at once (SPEC 4.7) were measured the same way; a real
+  drive's trace would show how far a car's own stops overshoot with the accelerometer helping.
+
+- The gyroscope-turned arrow (`GyroHeading`, on by default; SPEC 4.7): turn direction, return to
+  the road, and holding against an injected shake and a fake turn were checked on the API 26
+  emulator. Not yet on a drive: flip it partway through a drive with the nav trace on and compare
+  corners both ways (`gyro_dps` says which mode drew each frame). The acceleration cap needs a
+  real turn to show it never holds back a real one (the linear acceleration sensor's gravity
+  estimate can soak up a long, steady turn).
+
+- "Save where I park" (`AutoParking`, `ParkWatch`; SPEC, Parking): the rules are unit-tested and
+  the leave-at-the-destination path was checked on a Pixel 4a with a mock drive. The Bluetooth
+  option's permission prompts and its save path (through the adb test hook, with Vela not
+  running: the system's last fix, a new fix, and nothing with location all the time refused)
+  were checked on the 4a. Not yet tried: walking off for real (steps), an Android Auto
+  disconnect, a real car's Bluetooth (which class its unit reports), and how often a stop that
+  is not parking gets saved.
+
+- The 30 fps map on a hot phone (`HeatCap`, issue #795): on a Pixel 4a with the thermal status
+  forced to severe, a demo drive went from 59 to 29 fps and back when it was reset. Not yet seen
+  on a phone that is hot for real, or whether the voice lines then render in time: read the
+  `voice: waited` notes after a `map: capped` note in a shared trip.
+
+- The no-route dot snapped to the road (`RoadSnap`, issue #803): on a Pixel 4a, a mock drive with
+  every fix 18 m off the road put the dot on the road for 203 of 250 fixes and let go at turns
+  and ramps. Not yet seen with a real weak GPS, on a divided road, or on a head unit.
+
+- "Turn the map as you drive" (`TurnWithTravel`, issue #905): on a Pixel 4a with mock fixes at
+  10 m/s and no route, off kept the map north-up the whole way and on turned it to the course,
+  as before. Not yet seen on a drive or in the car.
+
+- Hiding a list on the map ("Show on map" in the list editor, `PlaceList.onMap`, issue #988;
+  SPEC 5.7): which pins and shapes draw is unit-tested (`ListsOnMapTest`). On a Pixel 4a a list
+  switched off lost its pin, the lists sheet tagged it "Hidden on map", and switched on again it
+  came back. Not yet checked: a list's lines, opening a hidden list, a place also in a list that
+  is on, the switch through an export and import, and D-pad reaching it.
+
+- The open places bake keeps one row for a business Overture lists at several points under one
+  name, street address and postcode (#742), and drops a row only BrightQuery, Microsoft or
+  Foursquare supplies unless OSM, a chain locator or an OSM landmark backs it (#914). Measured
+  in local bakes of the Delaware and Davis-Sacramento boxes (SPEC 5.2): 40% of the rows inside
+  Delaware go. Hospitals, emergency rooms, fuel, pharmacies and other civic kinds are exempt.
+  Not yet in a published archive or looked at on a phone. The corrections list
+  (`tools/places-corrections.csv`) is empty.
+
+- The location dot holds still through a pinch (`browseDot`, `ME_SRC` at z22): on a Pixel 4a with
+  the simulated location in Davis, a recorded pinch sweep from z15 to z20 had the dot leave its
+  spot and come back eight times before (up to 44 px) and not once after. Not yet seen while
+  walking or driving, where the dot is drawn at the eased camera and the hand-over fades in.
+
+- A turn Google takes that OpenStreetMap bans (`TurnBans`, issue #947): on a Pixel 4a, the
+  reporter's trip found the banned left, both routers went round, and the planned route took the
+  legal way (+778 m); with `turnBanSpliceMaxM 0` the turn was kept and the turn card showed the
+  warning. The reroute that replaces a remembered ban is unit-tested only. Not yet seen on a
+  drive, and how often a ban in OpenStreetMap is stale is not measured: read `bans=` in
+  `Route.made` on shared trips.
+
+- Round trips (issue #929): "Back to start" in the Stops sheet, and a trip from your location
+  back to it ending at a fixed "Starting point". `NavEngineRoundTripTest` parks a car at the
+  start of 400 m to 2 km loops, with the fix on the road back too, and drives round: no arrival
+  until the end, every turn in order. On a Pixel 4a in Davis, Back to start built the trip and
+  hid itself, and a demo drive (8 km) did not arrive as it set off, said "You've reached" at the
+  stop and arrived at "Starting point". Not yet seen: a pinned round-trip shortcut, and a drive.
+
+- The card and buzz at each stop reached (issue #955, `NavSession.onStopReached`): a unit test
+  drives a session past two stops and a silent via and gets one call per stop, and a demo drive
+  on a Pixel 4a in Davis showed "You've reached" with the stop under the turn card as the voice
+  said it. Not yet felt: the buzz with Vibrate on turns on, and a real drive.
+
+- The drive on the lock screen (`LockScreenNav`, issue #896): on Android 14 and 8.0 emulators
+  with a PIN, a running drive showed over the locked phone after the power button, Get a voice
+  asked for the PIN first and Back returned to the drive, and pausing put the lock screen back.
+  With a swipe lock, ending the drive and the switch off did too. Wake for turns: on the Pixel
+  4a's demo drive in Davis the screen lit about 180 m before a right turn and went dark 40 s
+  later at a 30 s screen timeout; the glance screen showed the turn, and a tap or a power press
+  brought back the map. Not yet on a phone in a car.
+- FreeFused, the fused position guidance steers by (`PositionFilter`): on a 15-minute freeway drive it
+  stayed within 0.6 m of the GPS fix (median, 4.2 m at most) and refused no fix. Not yet seen on
+  a real drive: a stop, and a reflection at a red light between tall buildings. Those were
+  checked on desk replays of three recorded drives and the 4a canyon mock drive only.
+- The dot on foot (`DotFix`): steps from the accelerometer move it between fixes, and Wi-Fi
+  and cell fixes fill in when the GPS is weak. Unit-tested (synthetic walks, a car's
+  vibration, a walk indoors on Wi-Fi), and a mock GPS walk on the 4a kept the dot within 0.5 m
+  of every fix, where the old smoothing trailed by about 9 m. Sitting indoors on a phone it held
+  within 0.2 m of the GPS, moving 2 cm a fix. Keeping the dot through a gap is checked on a desk
+  replay of a recorded location test only. Not yet on a real walk: the step detector, the learned
+  step length and the compass offset need a phone in a hand.
+- The car screen's feed through the same filter (`GuidanceFix`): checked on the Desktop Head
+  Unit with the phone app open and closed. Not yet in a car.
+- A drive on the open router's line after a reroute returns to Google's line at the next
+  re-check that does not turn the car round: seen on a mock drive on the 4a. Not yet on a real
+  reroute.
+- A place's address takes Google's when it has a house number and the first fill did not:
+  unit-tested. The race between the two fills was not reproduced on the 4a.
+
+- Highway steps on a route named from the tiles (`LineNamer`) come from the link roads: a turn
+  straight onto or off a highway at an intersection says "Turn left onto", an exit is said once
+  where the line leaves the highway and the end of the ramp is a plain turn, curves along a ramp
+  or a highway say nothing, and two turns onto one street within 50 m are one. Checked with the
+  tile step census on the 39 captured Google lines and the Davis I 80 route against Google
+  Maps' steps; not yet heard on a drive.
+- Exits on those routes take Google's exit number, signs and side ("Take exit 4A toward I-5 N:
+  Redding"), and an exit the tiles miss is said where Google has it. Checked on 7 trips kept
+  with Google's replies (16 exits, all said once); not yet heard on a drive, and the phone's
+  reply has not been looked at for the same step fields (only the Mac's).
+
+- Unnamed car parks show their P under the open places layer and Google's dots (issue #935,
+  `vela-osm-parking`): seen on the 4a at the reporter's lot; frame rate measured in Shinjuku.
+  Not looked at in a city with many unnamed lots at z15 to z16, where clutter would show.
+- Temporarily closed places (issue #930): the "Reopen this place" entry in a place's edit menu
+  marks the closure when Google sends no status text. Checked on the 4a against open San
+  Francisco listings (no kind 3) and a permanently closed Davis one (kind 3). No temporarily
+  closed listing was at hand to see its sheet.
+- A phone's own text-to-speech engine (issues #949, #944): its prompts are labeled navigation
+  guidance, and it keeps the voice picked in its own settings when that voice speaks the
+  directions' language. Neither test phone nor the emulator has a system engine, so neither has
+  been heard yet: check with `adb shell dumpsys audio` (the player's usage) and an engine with
+  several voices a language.
+- A misheard spoken street searched as the nearby street that sounds like it (issue #798, SPEC
+  9.3): on a Pixel 4a with transcripts fed in by `debug.vela.tune.voiceText`, "Sickamore Lain" in
+  Davis was searched as Sycamore Lane with Google on and off, and "coffee", a place name and
+  "pizza on Sickamore Lain" were left alone. Reading the street names took 93 to 109 ms, 643 ms
+  the first time. Not yet tried with real German dictation through Whisper.
+
+- A roundabout is said on its approach and only buzzes at its entry, unless the entry line
+  carries the next step: replayed on a recorded drive, the roundabout got its two approach
+  lines and none at the entry. Not heard on a drive, nor through roundabouts in a row.
+- A fork said as the "then" of the fork 45 m before it is not said again at its own turn
+  (`CHAIN_REPEAT_S`): unit-tested at 25 m/s. The trip replay passes no speed, so it cannot show
+  this. Not heard on a freeway interchange.
+- A reroute whose first step is a ramp, exit or fork the car cannot reach in 5 s asks again past
+  it (`PLACED_STEPS`): unit-tested. Not seen on a freeway reroute.
+- The line at a ramp, fork or keep names the first route on its sign, and a fork toward the
+  road the car is on says "to stay on" it (`repeatWithRoute`, `stayOnForks`): unit-tested and
+  replayed on a recorded interchange. Not heard on a drive; "stay on" not seen on a real route.
+- A reroute turns down routes that turn the car round (back along its own track, backing up,
+  or set off against it) for one that goes on and costs little more, then for one that turns
+  round further on over one that turns round where the car is, from both routers or from one
+  alone when the open router is out; asks again 3 s later when the route turns a moving car
+  round where it is and nothing better was offered; keeps the last course at a stop unless the
+  track turned off it; and waits 3 s, not 10, after a route the car never joined. Unit-tested,
+  and re-driven on a recorded Davis drive with two missed turns on the 4a: the old code rerouted
+  four times and sat 30 s on a turn-around; the new code rerouted once per missed turn, set
+  Google's turn-around aside both times, and its route matched the road driven. The track
+  starts at the car's last turn-round: on a mock drive on a divided Davis road, the reroute
+  after the car's own U-turn took its route at once, where the uncut track held it 7 s. With the
+  open router off (`openRouterDown`) on the Davis mock drive, Google's alternate that went on
+  led at the first missed turn, and at the second, where Google's one route turned the car
+  round, the re-ask fired and its answer went on (adopted after 4.2 s, no reroute after). Not
+  seen on a real drive. The held-course turn check is unit-tested only.
+- A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
+  replay feeds those inputs back: checked on the 4a, where the replay went off route and
+  swapped routes in the drive's order. Also on the 4a with a Davis mock drive: a seek to three
+  quarters ran both reroutes silently and played on from 3:00 of 3:54 on the drive's last
+  route; two 10 s GPS gaps left 10 dead-reckoned points, and the replay went through them with
+  no false off-route; a trip recorded before `N` lines replayed its six reroutes in order.
+  Re-drive (`replayLive`) used on the 4a only. Not tried on a real drive's file.
+- A missed exit on I 80 at Davis (mock drive on the 4a): every answer went on to the next exit,
+  none was flagged as turning round, and the reroute was adopted in 1.2 s; missing the next
+  exit too, the second in 1.0 s.
+
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each
-  ran locally against the live servers and files. None has run on GitHub yet, which needs them
-  on main.
+  ran locally against the live servers and files. They are on main and none has run on GitHub
+  yet.
+- The car's time left is colored by traffic (#928): seen on a real Android Auto connection on a
+  debug build. Not seen on a release build, on the desktop head unit or in heavy traffic.
+- Android Automotive 10 and 11 keep Vela in the home screen's map pane (#879): on the
+  Automotive 14 emulator the pane, the app list and Home behave as before, with one task, and on
+  a 4a links and shares reach the running map and the "maps app" entry follows the "Maps" name.
+  Not seen on an Automotive 10 or 11 car, which is what it is for. A share from inside another
+  app now lands in Vela's own task; that was not tried by hand.
 - A ferry leg on a walk or a ride says "Take the ferry" (#824): seen in the step list on a 4a,
   walk and bike. Not heard on a real crossing. The phrase in the 17 other languages has not been
   read by a native speaker, and the on-device router's ferry legs are not phrased this way.
@@ -321,6 +512,10 @@ off the list when it has been.
   ahead of time (`NavEngine.upcomingPrompts`).
 - The next stop on Android Auto, and the trip's own time beside it. Built, not run on the
   Desktop Head Unit.
+- The car's lane guidance switch (`CarLanes`, #866), in the car's settings and Settings >
+  Navigation: on the Desktop Head Unit the car's settings list shows all six rows, the two
+  switches follow each other, and a demo drive's ramp step in Davis drew its lane strip with the
+  switch on and none with it off. Not yet in a car, where Zoom to the next turn meets it.
 - Side streets' stop signs left off a drive (#805): the bake's road for a sign from drivable ways
   and the most minor road at a junction, and the 10 m limit for a sign with no road. Needs a
   rebaked region driven down a main street, and one drive with no region (the Overpass path).
@@ -418,11 +613,6 @@ off the list when it has been.
   .routeCardinals`, `RoadNameShortTest`). Seen on a 4a in a simulated drive: "Take the ramp on
   the right toward I 80 W". Not seen on the car.
 - The debug export's `input` line (#744): not seen; written for the head unit's report.
-- One list exported on its own (#822): a share button in the list editor's title row, seen on
-  a 4a: it opens the share sheet with `vela-list-<name>.json`, and Delete, Cancel and Save keep
-  their row. A file of that shape picked under Saved places > Your lists > Import came back as
-  the list with its two places and its pins on the map. Not seen: the exported file itself
-  going round, since the share sheet on the rig has no file target.
 - Names under saved pins from z14 (#823): seen on a 4a in dark and light mode at z14 to z16:
   three pins in a downtown grid with their names under them beside the open-places labels, a
   pin on top of the basemap's own label for the same place keeping the pin and losing the name,
@@ -460,6 +650,9 @@ off the list when it has been.
   a drive started during the run.
 - The transit guidance pane's last card ends with Done (#811): seen on a 4a, a four-leg bus trip stepped to its end, the card's Back and Done, and Done back on the map.
 - An expanded transit route stays expanded across a swipe of the sheet (#812, `TransitExpanded`): seen on a 4a, a bus itinerary expanded, the sheet dropped to its card by its handle and raised again with the legs still open.
+- The transit guidance pane scrolls its legs, and Back and Next keep their height (#853). Not
+  seen on a phone: a current walk leg with its steps open, a ride leg with its stops open, the
+  list back at the top on each step, large fonts, landscape, and D-pad focus through the list.
 - One Share on the route picker (#814): seen on a 4a, Start and Add stops below, Route options, Share and Close in the header.
 - Saved routes named from a named start (#815): seen on a 4a, a trip from a named start saved under both names by default, and the list row with the start and the end under it; a route from the phone's own position still reads Route to the end.
 - Drawings and custom maps above the satellite imagery (#816): seen on a 4a, a three-point line
@@ -549,9 +742,6 @@ off the list when it has been.
   landing there for `adb pull`. Not seen: GrapheneOS's own picker on the P9.
 - The Street View window as a 360° button when there is no picture (user, 2026-10-18): seen on
   a 4a on a saved point, the figure over "360°", and a tap opening the viewer on that block.
-- The scale bar riding over the free-drive speed box instead of hiding (#848): seen on a 4a at
-  rest, the bar through a restart and three pans. Not seen: a phone moving without a route,
-  with Show speed on (the bar and credit raised) or off (both in place).
 - A 700 ms lead-in on Bluetooth outputs (#802, 300 ms still clipped some lines for one
   reporter): not seen or heard; there is no Bluetooth output on the test rig. Which output the
   reporter uses is unconfirmed.
@@ -594,6 +784,17 @@ off the list when it has been.
 - The open router's reroute taken because Google's routes started against the car keeps
   Google's clock and traffic (the ETA read 9 minutes until a heal 35 s later made it 12): code
   only, through the helper trips with stops use. Not driven.
+- Place names More and Most (#852, `MapPoiPrefs.namesSooner`): not seen on a phone. Check names
+  arriving a zoom or two sooner on Vela data, Google and Both, and frame rate with Most in a
+  dense city on a release build (`scripts/map-fps.sh`).
+- The Depart at date picker's first day of the week from the device region (#934,
+  `AppLocale.calendarLocale`): unit tests on the JVM only. Not seen on a phone: Monday first with
+  the app in English on a German-region phone, Sunday on a US one, and whether Android 14's First
+  day of week setting (the `fw` keyword) moves it.
+- Result cards and place sheets measuring their distance from you wherever the map is (#916,
+  `ShownDistance`): on a Pixel 4a with mock fixes held in Davis and the map over San Francisco,
+  coffee's first card and its sheet read 64.5 mi. Not yet checked: Open now, the Distance sort,
+  a map dot's sheet, and a search along a route keeping its distance along the route.
 
 ### Open from the October 2026 audit
 
@@ -631,6 +832,20 @@ Found reading everything since 0.4.1912 and not fixed yet.
   before the routing manifest lists them, or their downloads pull the whole state's archives.
 
 ## On the radar
+
+- Vela's mute does not reach Gearslip's own voice, which reads each turn from `updateTrip()`
+  (#927, SPEC 10.6). The car library has no field for a mute, so a fix takes both apps: Gearslip
+  could speak a turn only while the hosted app's own guidance audio plays, which a muted Vela
+  never starts, or read a voice mode Vela publishes to it. Neither has been tried. Until then
+  Gearslip's own Spoken directions switch is the way to silence it.
+
+- "Welcome to" a state or a country when a drive crosses its border. Vela's region outlines are
+  cut for downloads and simplified to about 5 km, too rough to say it at the line. A plan: a
+  bundled outline set from Natural Earth (public domain; countries, plus states and provinces in
+  the countries that use them, about 1 to 2 MB simplified), timed by the basemap's own boundary
+  lines where the outlines are off, spoken once past the line and not again on a road that runs
+  along a border. The asset lists every state, so `scripts/check-location.sh` would exclude it
+  like `region_polys.json`. On hold.
 
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
@@ -673,14 +888,8 @@ Found reading everything since 0.4.1912 and not fixed yet.
   which need a bake of their own. Not started.
 - Transit routing over OpenStreetMap's route relations (#809): the bus and tram lines mappers
   have drawn carry their stops and order, and Organic Maps routes over them with no timetable.
-  Google's feed misses whole cities (Niš has its coaches and none of its city lines), and
-  Transitous has no feed there either, so a planner over the relations in the downloaded
-  region would answer where neither does, without times. Its own engine; not started.
-- Snapping the dot to the road with no route (#803): the browse and driving-mode dot is the raw
-  fix, and a weak head unit GPS puts it a lane or a row of houses off. Vela already finds the
-  road under the car for the speed limit; a snap onto it while moving, released at junctions
-  and when the fix leaves the road, is the shape. Waiting on the reporter's recording and his
-  unit's accuracy figure. Not started.
+  Where neither Google nor the open GTFS feeds have a city's lines, a planner over the relations
+  in the downloaded region would answer, without times. Its own engine; not started.
 - A swinging heading at a standstill and a speed readout that jumps at a steady speed (#818,
   #819, one Pixel 10 Pro, phone and car): the fix handler takes a bearing over 0.5 m/s and
   derives one from 3 m of movement, which may be too loose for that unit's fixes. Needs a
@@ -850,6 +1059,9 @@ and how well one city's license feed matches the bake.
 First step: FDIC and SNAP as two adapters in the places bake, confirm and close only,
 measured on the District of Columbia and Sacramento. National registers outside the USA
 (France's Sirene, the UK Food Standards Agency's list) come after the US shape is proven.
+
+The places bake has the hook: an id in `almanac_backed` counts as a second source, so a
+register that saw a place open keeps a single-supplier row (SPEC 5.2). Nothing fills it yet.
 
 ### Vela traffic layer
 

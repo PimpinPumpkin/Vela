@@ -90,7 +90,10 @@ from OpenStreetMap live, padded by `GEOCODE_PAD_DEG` (0.09 degrees, about 10 km 
 
 ### Grid cells
 
-Cells are 0.5 degree tiles of one global grid, clipped to the region. Each is a zip of its
+Cells are square tiles of one global grid, 0.5 degrees unless the region needs larger ones to
+fit one release, clipped to the region. A tile that only touches the region at an edge or a
+corner is not a cell. A re-bake keeps the region's cell size, so installed cells keep their ids
+and keep updating. Each is a zip of its
 routing file, its place pack and its slice of the region's places tiles
 ([SPEC 7.6](../../SPEC.md)). `CellStore` installs the parts under the cell's id into the
 stores a region download fills, so routing, search and the places layer read them with no
@@ -101,7 +104,7 @@ down. Downloaded lists them as one row per region. Downloading the whole region 
 removes its cells, or search would list each place twice. An update pulls the zip again.
 
 Delaware is 10 cells and 37.7 MB against 75.6 MB for the whole region. Four trips across cell
-edges route exactly as over the region file (`ObfCellsProbeTest`). In the region that holds
+edges route within 2% of the distance over the region file (`ObfCellsProbeTest`). In the region that holds
 the Bay Area the largest cell is 93 MB.
 
 ### Which region a point is in
@@ -205,10 +208,7 @@ and [chapter 6](06-search.md) has the matching and ranking rules:
   with the last ones dropped (`streetWordTries`), and anything after a comma is left out. A
   town, a state, a ZIP or a half-typed last word ("Covell Bl") still finds the street.
 - A pack's street id (`sid`) is a 63-bit hash of the normalized name, so the app reads it as a
-  Long. Read as an Int from 2026-07-07 to 2026-10-18, it was cut to its low 32 bits, matched
-  no address or centerline row, and every typed address in a downloaded region found nothing;
-  the list was then the places whose text matched, often bus stops named after nearby corners.
-  The reverse lookup joins the tables in SQL and was never affected.
+  Long. Read as an Int it matches no address or centerline row.
 
 A pack is one SQLite file per region. Street names are stored once and the millions of
 address and centerline rows point at them by number, so a whole-state pack answers as fast as
@@ -315,6 +315,6 @@ every fetch (`RegionCatalog`), so installed regions still list with no signal.
 - Deleting a region leaves its building overlay and road features. Only Delete all offline
   data removes those.
 - House numbers from the address overlay are streamed only, so they are missing offline.
-- Only patches are automatic. A region's places are rebaked about once a week, and an archive
+- Only patches and grid cells update on their own. A region's places are rebaked about once a week, and an archive
   with no patch from its installed revision waits for a tap on Update.
 - A phone that has never fetched the catalog shows an empty catalog offline.

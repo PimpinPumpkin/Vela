@@ -11,12 +11,16 @@ The drive screen is the map with your arrow and the route, a turn card with lane
 arrival estimate, and two round buttons, mute and end; pausing and the search along the route are
 done on the phone. A second row on the map recenters and shows the rest of the route. The posted limit sits in
 the bottom corner when Vela knows it; your speed sits beside it only if "Your speed on the car
-screen" is on under Settings > Navigation, since the car has a speedometer of its own.
+screen" is on under Settings > Navigation, since the car has a speedometer of its own. "Lane
+guidance on the car screen", there and in the car's settings, turns the lane arrows off. The turn
+card then does not grow as a turn comes near, which would make Zoom to the next turn pull back out.
 
-With no route, the map behaves as the phone's does: parked, it is north up and centered on you;
-once you move it turns with the car, tilts and zooms out with speed. The Drive button on the
-landing screen puts the list away and leaves the map alone, with search and your saved places a
-tap away and the limit sign in the corner. The traffic layer from the phone's map shows here when
+The car opens on the map alone, the way Google Maps' car screen does: tilted, turning with the
+car (parked too) and zooming out with speed, with the limit sign in the corner and Search, a list
+button, Saved and Settings along the top. The list button brings up Home, Work, the recents and
+nearby categories beside the map, and the car button on that list puts it away again. Search
+with nothing typed lists the same destinations with their addresses, like Google's Recent tab.
+With "Turn the map as you drive" off on the phone, or "Keep north up" on, the map stays north up. The traffic layer from the phone's map shows here when
 it is on, and the car's settings have a switch for it.
 
 Whether Vela is listed depends on how it was installed. Android Auto refuses an app that Google
@@ -73,7 +77,11 @@ session and opens the drive screen when a drive starts, whichever side started i
 connects in the middle of a drive opens on the drive screen, with the landing list under it.
 
 Each projection is a `VelaCarSession`. It collects fixes from the location provider and passes
-them to the session under the phone's gate: GPS provider only, accuracy 50 m or better. With
+them to the session under the phone's gate: GPS provider only, accuracy 50 m or better. They go
+through the same position filter as the phone's fixes, with their accuracy and course, so a
+reflection off a building at a red light does not reroute the car either. While the phone app is
+open its feed is the drive's and the car's stands down; each fix reaches the engine once. This is
+the feed under Android Auto, Android Automotive, Gearslip and myCar alike. With
 "Simulate my location" on, the pinned point counts as the fix, and a demo drive started on the
 phone moves the car's arrow too. Guidance
 therefore runs with the phone's screen off and the app never opened. In that case the service
@@ -95,10 +103,23 @@ its own layers on top:
 - The route, gray behind the arrow and blue ahead, with Google's congestion spans in amber, red
   and dark red.
 - Dots for lights, stop signs, level crossings, speed humps and cameras, from zoom 13.5.
-- The speed badge and the limit sign while navigating and in drive mode, unless Settings >
+- During a drive, turn arrows for the next `CAR_ARROWS` (3) turns, cut by the phone's
+  `TurnArrowGeometry` and drawn its way: a white shaft with an indigo edge and a triangle head,
+  under the light and stop sign glyphs, as on the phone, so the sign at a turn shows on top of
+  its arrow. Settings > Navigation "Turn arrows" turns them off here too.
+- The speed badge and the limit sign while navigating and on the map-only landing, unless Settings >
   Navigation "Show speed and speed limit" is off.
 - One credit line, `© OpenStreetMap`. `QuietSnapshotter` overrides the library's overlay, which
   prints every tile source's attribution and stays when the logo is turned off.
+
+A Vela process that dies while the car is connected (an update, a crash, a low-memory kill) can
+leave the host's surface connected to it. Every lock from the new process then fails ("already
+connected" in the log) and the car keeps showing the dead process's last frame, an old route line
+included, with the buttons doing nothing. Setting the surface callback again hands back the same
+surface. When the locks have failed for `STUCK_SURFACE_MS` (2 s), the car session shows
+`MapReloadCarScreen`, a loading list titled "Loading the map", and goes back as soon as the host
+drops the surface. A list, because the host keeps the map surface alive behind a message screen.
+Back on the map the host builds a new surface and the map draws again.
 
 The style itself carries what the phone adds to Liberty at runtime. The snapshotter can set a
 layer's properties but cannot add one, so `CarStyle` writes the phone's extra layers into the
@@ -114,9 +135,10 @@ A snapshot takes roughly 100 to 300 ms, so the car map moves in eased steps. The
 every `TICK_MS` (70 ms) and asks for one snapshot at a time. A request that arrives while one is
 in flight marks the map dirty, and the next snapshot starts when the current one lands.
 
-All screens share one renderer and switch its mode: following (the landing screen, drive mode
-and the drive), preview (the chosen route framed in blue, the other listed routes in gray under
-it, a red dot at the destination) and results (numbered pins framed with the car). A renderer per
+All screens share one renderer and switch its mode: following (the landing screen and the
+drive), preview (the chosen route framed in blue, the other listed routes in gray under
+it, a red dot at the destination, and each route's time in a bubble on its own stretch, as
+Google's car preview labels them: blue on the chosen route, white on the others) and results (numbered pins framed with the car). A renderer per
 screen freezes the map, because the host does not deliver the surface again to a new callback. The
 snapshotter is kept across screens while the surface size is unchanged, since a new one reloads
 the style and the map flashes.
@@ -129,17 +151,30 @@ on the new one fails to lock and the map stands still until a collection happens
 ### Framing and following
 
 The templates cover part of the surface. The host reports the visible area, which is uncovered
-now, and the stable area, which is never covered. The arrow is framed in the visible area. The
+now, and the stable area, which is never covered. The arrow is framed in the visible area.
+
+A route preview, search results and the drive's overview are fitted to the fit area
+(`fitArea`): the visible area kept clear of the map buttons down the right side and the action
+strip along the top, even while they are hidden. The visible area takes them in and out as they
+show and hide, so a route framed against it ran under the buttons and a tap moved the map. The
+zoom fits the box into that area with a fifth to spare (`CarFraming.fitZoom`); it used to come
+from the box's span alone, the same on every screen, which put most of a route under the card on
+an 800 by 480 unit. When the area changes size, as when the route list replaces its loading
+state, the view is framed again. The preview frames every route offered, not the picked one
+alone. Following again, the map takes back the zoom it had before the framing; the landing used
+to stay zoomed out on the preview's route. The
 speed badge and the credit go in the stable area, because on a tall screen the map buttons stack
 over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles (78271.517 at
 zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.
 
-The view is heading-up when it follows a moving car: during a drive, and with no route once the
-smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known. The latch holds through a red light and lets go when the follow ends. Heading-up, the
-camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow `PUCK_DOWN` (0.72)
-of the way down, so more road shows ahead. Parked with no route, after a pan, and with the phone's
-"Keep north up" on, the view is north up, flat and centered on the arrow, which still turns with
-the car. The camera's bearing and tilt ease in, so the switch rotates the map rather than
+The view is heading-up when it follows the car: during a drive, on the map-only landing parked
+or moving, and with no route elsewhere once the smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s)
+with a course known. The latch holds through a red light and lets go when the follow ends.
+Heading-up, the camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow
+`PUCK_DOWN` (0.86) of the way down, about where Google Maps keeps its car, so more road shows
+ahead. On the list card, after a pan, with the phone's "Keep north up" on, and with no route
+while its "Turn the map as you drive" is off, the view is north up, flat and centered on the
+arrow, which still turns with the car. The camera's bearing and tilt ease in, so the switch rotates the map rather than
 snapping it.
 
 Under tilt the ground nearer the camera is drawn larger, so the flat offset would put the arrow
@@ -192,15 +227,14 @@ dark with the car.
 
 | Screen | Template | What it holds |
 | --- | --- | --- |
-| `MainCarScreen` | `PlaceListNavigationTemplate` | The landing list: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby". Buttons for Search, Drive, Saved and Settings. |
-| `DriveCarScreen` | `NavigationTemplate` | Drive mode: the map alone, no route, with search, saved places and a list button back to the landing screen. |
+| `MainCarScreen` | `NavigationTemplate`, `PlaceListNavigationTemplate` | The landing: the map alone with Search, a list button, Saved and Settings. The list button swaps in the destinations card: up to `MAX_DESTINATIONS` (3) of Home, Work, recents and saved places, then nearby categories, then "More nearby", and a car button that puts it away. Beside the card on a map narrower than `NARROW_MAP_DP` (960 dp), Search is the icon alone: on an 800 by 480 unit the titled pill reached over the card. |
 | `NearbyCarScreen` | `PlaceListNavigationTemplate`, `ListTemplate` | The six nearest results for a category, each with a numbered pin on its row and the same pin on the map, which frames them with the car. Opened with no category, it lists the phone's quick categories. |
 | `SavedCarScreen` | `ListTemplate` | Home, Work and every saved place, up to the host's list limit. |
-| `CarSettingsScreen` | `ListTemplate` | Spoken directions, the three avoids and the Traffic layer, written to the preferences the phone uses. |
+| `CarSettingsScreen` | `ListTemplate` | Spoken directions, lane guidance, the three avoids and the Traffic layer, written to the preferences the phone uses. Six rows, the car library's default list limit. |
 | `SearchCarScreen` | `SearchTemplate` | Up to six rows. Contacts lead with up to two when contact search is on. |
 | `RoutePreviewCarScreen` | `RoutePreviewNavigationTemplate` | Up to three driving routes with live-traffic times, and Go. |
 | `ActiveNavCarScreen` | `NavigationTemplate` | The drive. |
-| `AlongRouteCarScreen` | `ListTemplate` | Quick categories, then up to six results around the car. A pick becomes the next stop. |
+| `MapReloadCarScreen` | `ListTemplate` | "Loading the map" for a moment, when the map surface is stuck. |
 
 The place list template throws past six rows (`MAX_ROWS`), so the landing list is cut before it is
 built. A category row carries the map's own marker as a small image (`Row.IMAGE_TYPE_SMALL`). As
@@ -214,18 +248,16 @@ With no signal, or an empty answer, typed search reads the downloaded place pack
 
 The route preview passes the avoid settings to the directions call and waits up to 15 s for a
 first fix. The template refuses a list without a Go action, so an empty result shows a plain
-message. Go names a provisional route first, the way the phone does.
+message. Go names a provisional route first, the way the phone does. A row's time is rounded to
+the minute before it goes to the host, which drops the seconds, so the row and the bubble agree.
 
 The drive's button row holds two actions, the voice and end. The voice button steps on, alerts
 only and off, as the phone's speaker button does, and its glyph is the mode: a speaker, a bell, a
-crossed-out speaker. A faster-route offer that saves a minute or more takes the voice slot. The
-buttons are icons, because the host draws a titled action as a text pill across the map. End is
+crossed-out speaker. A faster-route offer that saves a minute or more goes first, beside the
+voice button rather than in its place, so the car can always mute. The other buttons are icons, because the host draws a titled action as a text pill across the map. End is
 red and carries the primary flag. The host throws on a background color on any other action.
 
-Search along the route is two lists because the host refuses typing while the car moves.
-
-A gas station's price is a second text line on its row in search, nearby and search along the
-route: Google's in the US, the UK government's Fuel Finder in the UK ([chapter 2](02-data-and-rebakes.md)).
+A gas station's price is a second text line on its row in search and nearby: Google's in the US, the UK government's Fuel Finder in the UK ([chapter 2](02-data-and-rebakes.md)).
 The rows show at once; a UK list asks for the Fuel Finder file (downloading it the first time) and
 redraws with the prices, unless a newer search has replaced it.
 
@@ -239,7 +271,10 @@ The host draws the turn card, and needs three things first:
 1. `NavigationManager.navigationStarted()`, called after the navigation callback is set. Without
    it the host shows the arrival estimate and no turn card. It must be balanced by
    `navigationEnded()`. The screen ends it on arrival, on stop and when it is destroyed, or the
-   host stays in a navigating state for the next session.
+   host stays in a navigating state for the next session. The callback's `onStopNavigation`
+   ends the drive when another navigation app starts one. The host also calls it when the car
+   disconnects, after the session and the screen are gone, and then the drive goes on on the
+   phone, as Google Maps' does: before, a loose cable or a wireless dropout ended guidance.
 2. `updateTrip()` with the current step and the destination. This is the host's navigation data
    channel. It also feeds the instrument cluster and a head-up display. Vela sends it when
    something it shows has changed, and at most once a second. The drive screen is rebuilt on
@@ -257,12 +292,18 @@ session's place list is not allowed on that display and crashes the app there.
 - A roundabout takes its direction of travel from the route's geometry when it has one, and
   counter-clockwise otherwise. The exit number comes from the router, with a floor of 1 because
   the car API throws on a roundabout with none.
-- Past `CONTINUE_FAR_M` (1,500 m) the card reads "Continue on" and the road you are on, with a
-  straight arrow, and the turn is the "then" step. Closer in, the turn leads. Road names on the
-  card are abbreviated as on the phone's pill ("Russell Rd NE"); "Road numbers first" applies here
-  too.
+- The card leads with the next turn however far off it is, as the phone's does, and shows its
+  lanes from 800 m out. The turn after it shows as "then" only by the phone's rule (`thenShown`):
+  it follows within 500 m and the first turn is within 800 m. The road you are on is a pill at
+  the bottom of the car map, under the arrow, as on Google's car map and the phone. Road names on the card are abbreviated as on the phone's pill ("Russell Rd
+  NE"); "Road numbers first" applies here too.
+- The card is Google's car teal (`TURN_CARD`). The host draws an app's card color about 20% darker,
+  so the color set is #008A8B, which lands on Google's #006D6F.
 - Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
-  lanes.
+  lanes. With lane guidance off (`CarLanes`) no step carries lanes.
+- The time left is colored by traffic with the route line's thresholds: red when the live time
+  runs more than 40% over the typical time, yellow over 15%, green below. A route without live
+  traffic leaves it the host's default color.
 - Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to
   kilometers at 1,000 m. Zero is allowed so the host can say "now".
 
@@ -272,19 +313,30 @@ A paused drive shows "Paused" in place of the turn card.
 
 The voice is the phone's, sent to the car as Android Auto's guidance audio. A drive started from
 the car picks the engine the phone would: the Vela voice when it is installed and no other engine
-is chosen.
+is chosen. The car's speaker button and the phone's set the same mode, and every line Vela says
+goes through that one switch ([chapter 4](04-navigation.md)).
+
+Gearslip, which stands in for Android Auto on the phone, cannot take another app's navigation
+audio. It reads each turn on Vela's turn card aloud itself, with the phone's text-to-speech, on
+the car's guidance channel. That voice is Gearslip's, and Vela's mute does not reach it: no car
+API carries a mute, so both buttons can show muted while it speaks. Gearslip's own car setting,
+Sound and voice > Spoken directions, turns it off.
 
 ### Android Automotive
 
 Android Automotive is Android running in the car itself. Vela's templated screens belong to
-Android Auto, and on Automotive the ordinary app runs. Two manifest declarations serve it:
+Android Auto, and on Automotive the ordinary app runs. These manifest declarations serve it:
 
-- Each launcher alias has a second intent filter with `MAIN`, `DEFAULT` and
-  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map panel of
+- A hidden alias pair, `.MapsPanel` and `.MapsPanelGeneric`, answers `MAIN`, `DEFAULT` and
+  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map pane of
   its home screen. The start is an implicit intent, which only matches a filter that declares
-  `DEFAULT`, so the category cannot sit on the launcher filter alone. On a phone the same filter
-  answers "open maps" requests.
-- `MainActivity` and both aliases carry `distractionOptimized`. Without it the car grays Vela out
+  `DEFAULT`. On a phone the same filter answers "open maps" requests. `AppNameAlias` enables the
+  one whose label matches the launcher's name ("call it just Maps").
+- `MainActivity` is `singleTask`, `resizeableActivity` and `allowEmbedded`. Automotive 10 and 11
+  embed the pane with an ActivityView, which starts an app that does not allow embedding full
+  screen instead. Automotive 14 embeds it either way. One task holds the map wherever it was
+  started from: the pane, the app list, a link or a share.
+- `MainActivity` and every alias carry `distractionOptimized`. Without it the car grays Vela out
   of its app list once the car is in gear.
 
 ### The install gate
@@ -349,12 +401,10 @@ phone. It says nothing about the gate either.
 - On a head unit that runs the ownership check, a plain sideload of Vela is not listed.
 - The map moves in snapshot steps, well under the phone's frame rate. A live map needs a
   View-backed renderer, which the template surface does not offer.
-- Search along the route searches around the car and sorts by distance. It does not follow the
-  route ahead, and a pick always becomes the next stop.
-- Only typed search has an offline fallback. Nearby and search along the route need a connection.
+- Only typed search has an offline fallback. Nearby needs a connection.
 - The route preview is driving only and shows three routes at most.
 - A drive started from the car with the phone app never opened has no navigation controller, so
-  it gets no corridor dots and no alert toasts.
+  it gets no corridor dots and no alert toasts, and it records no trip.
 - The speed limit sign needs a downloaded region. The phone falls back to an online limit overlay
   and the car does not.
 - The speed badge is GPS speed. The manifest asks for `CAR_INFO`, and nothing reads the car's own

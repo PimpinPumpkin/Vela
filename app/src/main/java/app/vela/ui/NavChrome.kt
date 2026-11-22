@@ -30,7 +30,8 @@ object RoadLabel {
 /** The navigation arrow's size and colors (issue #344): three sizes for eyes that want a bigger
  *  target, and a white-disc variant so the puck does not blend into the blue route line. Both the
  *  follow-mode Compose overlay and the map symbol draw from the same bitmap, so one holder feeds
- *  both; the map style key carries [key] so a change re-registers the symbol image. */
+ *  both. A change of [key] replaces the symbol's image on the loaded style (VelaMapView), and a
+ *  tap on the arrow while navigating opens the icon choice (PuckPicker). */
 object PuckStyle {
     const val SIZE_NORMAL = "normal"
     const val SIZE_LARGE = "large"

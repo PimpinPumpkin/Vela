@@ -128,6 +128,48 @@ object PmtilesReader {
         fun read(offset: Long, length: Int): ByteArray?
     }
 
+    /**
+     * Range reads of one archive over HTTP, each one `Range` request answered 206, that notice when
+     * the file behind the address is replaced (a rebake uploads under the same release URL). The
+     * first reply sets the file's identity: its total length from `Content-Range`, or its `ETag`
+     * when a reply carries no length. Two bakes of a region never come out the same length.
+     * A reply from another file answers null and sets [replaced], and so does every read after it,
+     * so a reader never takes the new file's bytes at the old file's offsets.
+     */
+    class HttpRangeReader(private val client: okhttp3.OkHttpClient, private val url: String) : RangeReader {
+        @Volatile private var identity: Pair<Long?, String?>? = null
+
+        @Volatile var replaced = false
+            private set
+
+        override fun read(offset: Long, length: Int): ByteArray? {
+            if (replaced) return null
+            return runCatching {
+                client.newCall(
+                    okhttp3.Request.Builder().url(url).header("Range", "bytes=$offset-${offset + length - 1}").build(),
+                ).execute().use { r ->
+                    if (r.code != 206) return@use null
+                    val total = r.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+                    val etag = r.header("ETag")?.removePrefix("W/")?.trim('"')?.takeIf { it.isNotEmpty() }
+                    val seen = identity
+                    if (seen == null) identity = total to etag
+                    else if (differs(seen, total, etag)) { replaced = true; return@use null }
+                    r.body?.bytes()?.takeIf { it.size == length }
+                }
+            }.getOrNull()
+        }
+
+        companion object {
+            /** Another file: a different total length, or with no length on either reply a
+             *  different ETag. */
+            internal fun differs(seen: Pair<Long?, String?>, total: Long?, etag: String?): Boolean = when {
+                seen.first != null && total != null -> seen.first != total
+                seen.second != null && etag != null -> seen.second != etag
+                else -> false
+            }
+        }
+    }
+
     /** One archive, file or HTTP, held for many tile reads: the header once and each directory page
      *  once (directories are cached across searches too, keyed by the archive's own header so a
      *  rebaked file never reuses a stale one), and [tiles] reads a batch of tiles in as few ranges
@@ -138,6 +180,10 @@ object PmtilesReader {
         private val headBytes: ByteArray? by lazy { reader.read(0, HEADER_LEN) }
         val header: Header? by lazy { headBytes?.let(::parseHeader) }
         private val key: String by lazy { keyBase + "|" + (headBytes?.contentHashCode() ?: 0) }
+
+        /** The file behind an HTTP address was replaced since this archive read its header: every
+         *  read now answers null, and the owner opens the address again ([HttpRangeReader]). */
+        val replaced: Boolean get() = (reader as? HttpRangeReader)?.replaced == true
 
         private fun dir(h: Header, offset: Long, length: Long): List<Entry>? {
             if (length <= 0 || length > 64L * 1024 * 1024) return null
@@ -218,15 +264,9 @@ object PmtilesReader {
                 return Archive("${file.absolutePath}|${file.length()}|${file.lastModified()}", reader) { runCatching { f.close() } }
             }
 
-            /** An archive served over HTTP (the places archives on the release host): each read is
-             *  one `Range` request, answered 206. */
-            fun http(client: okhttp3.OkHttpClient, url: String): Archive = Archive(url, RangeReader { offset, length ->
-                runCatching {
-                    client.newCall(
-                        okhttp3.Request.Builder().url(url).header("Range", "bytes=$offset-${offset + length - 1}").build(),
-                    ).execute().use { r -> if (r.code == 206) r.body?.bytes()?.takeIf { it.size == length } else null }
-                }.getOrNull()
-            })
+            /** An archive served over HTTP (the places archives on the release host), read through
+             *  [HttpRangeReader]. */
+            fun http(client: okhttp3.OkHttpClient, url: String): Archive = Archive(url, HttpRangeReader(client, url))
         }
     }
 

@@ -71,9 +71,9 @@ the reply is written. Nominatim's maintainer has written here (SPEC 15, the Over
 
 No commit, pull request, issue comment, release note or file carries a `Co-Authored-By` line
 for an AI, a "Generated with" line, or anything like it. This overrides whatever the tooling
-asks for. `scripts/check-writing.sh [range]` checks commit messages and added lines for
-attribution, British spellings and em dashes; the pre-push hook runs it on the range being
-pushed. Install the hooks once per clone:
+asks for. `scripts/check-writing.sh [range]` checks commit messages and added English lines for
+attribution, British spellings and em dashes (translations may use dashes); the pre-push hook
+runs it on the range being pushed. Install the hooks once per clone:
 
 ```
 bash scripts/install-hooks.sh
@@ -149,9 +149,9 @@ addresses and "checked on a drive to X" notes add up to where the developer live
   `org.jetbrains.kotlin.android` plugin and no `kotlinOptions`.
 - Do not take core-ktx 1.19, navigation-compose 2.10 or hilt-navigation-compose 1.4 in
   passing. They pull Compose from 1.7 to 1.10 across the app, which is its own job.
-- The Gradle setup action stays on v5. From v6 its caching is closed source under Gradle's
-  terms. Every action in every workflow is pinned to a commit SHA, and a new workflow declares
-  `permissions:`.
+- The Gradle actions (setup and wrapper validation) stay on v5. From v6 their caching is closed
+  source under Gradle's terms. Every action in every workflow is pinned to a commit SHA, and a
+  new workflow declares `permissions:`.
 - Library versions held for the build tools' sake (lint, the plugin classpath, the baseline
   profile module) are at the top and bottom of the root `build.gradle.kts`.
 
@@ -440,6 +440,10 @@ signed file the app fetches at launch (SPEC 11).
 
 - A Compose `DropdownMenu` or `AlertDialog` cannot be given focus. Use `VelaMenu` and
   `VelaDialog`.
+- Android 8.x gives focus to the first focusable view after `clearFocus` and when the window
+  opens, even in touch mode. A field whose focus opens something must be unfocusable until a tap
+  arms it there (`SearchBar.armFirst`). Android 9 and up do not do this, so only an API 26 or 27
+  emulator with no keyboard or D-pad shows it.
 - Every screen opens with something focused (`rememberDpadAutoFocus`), every control has a
   focus ring (`dpadHighlight`), and every gesture has a key path. D-pad code calls the touch
   paths. `docs/dpad.md` has the rest. CI runs `dpad_test_suite/audit_static.sh`.
@@ -561,21 +565,31 @@ signed file the app fetches at launch (SPEC 11).
 - Log tags worth knowing: `VelaDirections`, `VelaSteps`, `VelaCapture` and `VelaSpeak` (set to
   DEBUG; `VelaSpeak` prints every spoken line, names included, so only on a test phone),
   `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
-  `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`.
+  `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`, `VelaDot` (`setprop debug.vela.tune.dotLog 1`),
+  `VelaNavTrace` (`setprop debug.vela.tune.navTraceLog 1`: the arrow's progress and headings per
+  frame, for `scripts/mockdrive/lagcheck.py`).
 - The Android Auto desktop head unit shows Vela's car screens but skips the car's install
   check. Book chapter 10 has the setup.
 - Restore whatever a test changed on the phone.
 
 Checks to run before trusting a routing change: `core/nav/StepAudit`, then
 `NamingStudyTest.replayCapturedLines` (`-DvelaStudy=1`), then a few real trips on a phone with
-the step list read by hand. Probe tests that need a region file take `-DvelaObf=<folder>`.
+the step list read by hand. A change to naming from the tiles (`LineNamer`, `RoadNameTiles`)
+also runs `NamingStudyTest.tileStepCensus -DvelaCensus=<file>` before and after and diffs the two
+files: every step of the captured lines, both modes. `-DvelaOne=<file name>` adds each bend's
+inputs. A line with a `<name>.exits` beside it also has Google's exits from its reply. Probe tests that need a region file take `-DvelaObf=<folder>`.
 `RoadCenterTest.deskLine` (`-DvelaNudge=<file>`) nudges a captured line and writes it out for
 drawing.
 
 Reading a shared trip (`SPEC.md` 4.10 has the line kinds): each route block's `RD` line says
 what made the steps (`source=`, `named=KofN`, then `Route.made`), the `K` notes say what the
-drive decided, and `S` lines are what the voice said. To see how a route in it would be named
-now, save its `RP` line as the only `.txt` in a folder and run
+drive decided, and `S` lines are what the voice said (or, marked `(muted)`, would have said).
+`N` lines are what the nav engine was handed and `RC` lines every route a router answered, with
+a `route answers` note per fetch; both hold positions, so read them through masked tools only.
+To try a rerouting change on a recorded wrong turn, replay the trip on a phone with
+`adb shell setprop debug.vela.tune.replayLive 1` (re-drive, SPEC 4.10).
+To see how a route in it would be named now, save its `RP` line as the only `.txt` in a folder
+and run
 `NamingStudyTest.replayCapturedLines -DvelaStudy=1 -DvelaOne=1 -DvelaLines=<folder>`.
 
 ## Where things are written down

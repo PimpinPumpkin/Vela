@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.vela.R
+import app.vela.core.util.AreaInsert
 import app.vela.core.util.ShapeMeasure
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadFieldEscape
@@ -51,7 +52,39 @@ data class DrawState(
     /** The name typed so far. Kept here because the bar leaves composition whenever another
      *  sheet takes the bottom slot (a place opened from search), and its own state goes with it. */
     val name: String = "",
-)
+    /** For each point in [pts], the order it was added in. Undo takes off the newest, which is not
+     *  the last in [pts] once an area tap has gone into a side. Out of step with [pts] (a saved
+     *  shape opened for changes) reads as list order. */
+    val added: List<Int> = emptyList(),
+    /** The ruler (issue #910): a line that is only measured. Nothing is saved, and closing the bar
+     *  clears it. */
+    val measure: Boolean = false,
+) {
+    private fun addedOrder(): List<Int> = (pts.size / 2).let { n -> if (added.size == n) added else List(n) { it } }
+
+    /** A tapped point. A line takes it at the end, an area where [AreaInsert] puts it so the
+     *  outline does not cross itself. */
+    fun add(lat: Double, lng: Double): DrawState {
+        val order = addedOrder()
+        val at = if (closed) AreaInsert.indexFor(pts, lat, lng) else order.size
+        return copy(
+            pts = pts.subList(0, at * 2) + listOf(lat, lng) + pts.subList(at * 2, pts.size),
+            added = order.subList(0, at) + ((order.maxOrNull() ?: -1) + 1) + order.subList(at, order.size),
+        )
+    }
+
+    fun remove(index: Int): DrawState {
+        val order = addedOrder()
+        if (index !in order.indices) return this
+        return copy(pts = pts.filterIndexed { i, _ -> i / 2 != index }, added = order.filterIndexed { i, _ -> i != index })
+    }
+
+    /** Takes off the point added last, wherever it sits in the outline. */
+    fun undo(): DrawState {
+        val order = addedOrder()
+        return if (order.isEmpty()) this else remove(order.indices.maxBy { order[it] })
+    }
+}
 
 /** The colors offered while drawing (ARGB): red, orange, yellow, green, blue, purple. */
 val DRAW_COLORS = listOf(0xFFE53935, 0xFFFB8C00, 0xFFFDD835, 0xFF43A047, 0xFF1E88E5, 0xFF8E24AA)
@@ -64,6 +97,7 @@ val DRAW_COLORS = listOf(0xFFE53935, 0xFFFB8C00, 0xFFFDD835, 0xFF43A047, 0xFF1E8
  */
 @Composable
 fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
+    if (draw.measure) { MeasureBar(draw, vm); return }
     // The field edits this copy, so typing never waits on the view model's state; every change is
     // also handed to the view model, which is what the bar starts from when it comes back.
     var name by remember { mutableStateOf(draw.name) }
@@ -115,6 +149,47 @@ fun BoxScope.DrawBar(draw: DrawState, vm: MapViewModel) {
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { vm.saveDrawing(name) }, enabled = enough, shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape)) {
                     Text(stringResource(R.string.draw_save))
+                }
+            }
+        }
+    }
+}
+
+/** The ruler's bar (issue #910): the total so far and the last leg, Undo and Done. Taps on the map
+ *  add points and points move and come off as they do while drawing. */
+@Composable
+private fun BoxScope.MeasureBar(draw: DrawState, vm: MapViewModel) {
+    val points = draw.pts.size / 2
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 6.dp,
+        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp).fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.measure_distance), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                when {
+                    points == 0 -> stringResource(R.string.measure_hint)
+                    points == 1 -> stringResource(R.string.draw_hint_more)
+                    points == 2 -> formatDistance(ShapeMeasure.lengthM(draw.pts))
+                    else -> stringResource(
+                        R.string.measure_total_leg,
+                        formatDistance(ShapeMeasure.lengthM(draw.pts)),
+                        formatDistance(ShapeMeasure.lengthM(draw.pts.subList(draw.pts.size - 4, draw.pts.size))),
+                    )
+                },
+                style = if (points >= 2) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyMedium,
+                color = if (points >= 2) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (points >= 1) Text(stringResource(R.string.draw_hint_points), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = vm::drawUndo, enabled = points > 0, modifier = Modifier.dpadHighlight(CircleShape)) {
+                    Icon(Sym.Undo, contentDescription = stringResource(R.string.draw_undo))
+                }
+                Spacer(Modifier.weight(1f))
+                Button(onClick = vm::cancelDrawing, shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape)) {
+                    Text(stringResource(R.string.nav_done))
                 }
             }
         }

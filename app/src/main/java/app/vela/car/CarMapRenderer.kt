@@ -131,6 +131,7 @@ class CarMapRenderer(
     // once per size; the car used to draw its own green chevron (user: "not our pretty puck").
     private var puckBitmap: android.graphics.Bitmap? = null
     private var puckBitmapPx = 0
+    private var puckBitmapKey = "" // PuckStyle.key(): the icon can change mid-drive (PuckPicker)
 
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
@@ -165,6 +166,11 @@ class CarMapRenderer(
         }
 
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
+        // The road-name pill: the phone pill's surface colors (white or Google's dark gray, a gray edge).
+        private val ROAD_PILL_NIGHT = Color.parseColor("#303134")
+        private val ROAD_EDGE_NIGHT = Color.parseColor("#5F6368")
+        private val ROAD_EDGE_DAY = Color.parseColor("#DADCE0")
+        private val ROAD_TEXT_DAY = Color.parseColor("#202124")
         val LIMIT_INK = Color.parseColor("#111111")
         val LIMIT_OVER = Color.parseColor("#e8514a") // the phone's over-the-limit red
         val WORLD_CENTER = LatLng(20.0, 0.0)
@@ -174,7 +180,7 @@ class CarMapRenderer(
         const val CAM_BEARING_EASE = 0.3 // the camera onto the arrow's heading, and back to north
         const val ZOOM_EASE = 0.06    // per tick, so a speed change glides over a second or so
         const val TILT_EASE = 0.05    // per tick: the tilt comes in over about two seconds
-        const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area in a heading-up view
+        const val PUCK_DOWN = 0.86    // the puck sits this far down the VISIBLE area in a heading-up view, low as Google Maps keeps it
         const val TURN_MARGIN_PX = 40.0 // the next maneuver is framed this far under the top of the visible area
         const val PUCK_AIM_PX = 40.0  // how far ahead of the arrow, in ground pixels, its heading is sampled for its turn on screen
         const val DRIVE_LATCH_MPS = 2.5 // the phone's free-drive latch speed, on the smoothed speed
@@ -203,6 +209,12 @@ class CarMapRenderer(
             return (shortSidePx / 20f * k.toFloat()).coerceIn(16f, 56f)
         }
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
+        /** The map buttons' column down the right side (a 64 dp button and its margin). */
+        const val MAP_STRIP_DP = 76
+        /** Turn arrows drawn on the car map, from the step in hand on. */
+        const val CAR_ARROWS = 3
+        /** Locks failing this long mean a stuck surface, not a screen change in progress. */
+        const val STUCK_SURFACE_MS = 2_000L
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
         const val FLING_TAU_S = 0.35  // a fling's speed falls to a third in this long
         const val FLING_STOP_PX_S = 40.0 // and stops below this
@@ -214,18 +226,30 @@ class CarMapRenderer(
     private var heldStill = false // the at-rest sensor is held while a drive is on
     private var routeCum: Pair<app.vela.core.model.Route, DoubleArray>? = null // the route's cumulative meters, for the heading at its progress
 
-    /** Whether the following view turns with the car: during a drive, or moving with no route,
-     *  unless the phone's Settings > Map "Keep north up" is on. */
+    /** Whether the following view turns with the car: during a drive; on the map-only landing screen,
+     *  standing still too, as Google Maps' car screen does; or moving with no route. With no route it
+     *  needs the phone's "Turn the map as you drive", and never with its "Keep north up". */
     private fun headingUp(): Boolean =
-        following && previewRoute == null && !overview && !app.vela.ui.NorthLock.on.value && (navigating() || driving)
+        following && previewRoute == null && !overview && !app.vela.ui.NorthLock.on.value &&
+            (navigating() || ((driving || driveScreen) && app.vela.ui.TurnWithTravel.on.value))
 
-    /** The drive-mode screen is up: no route, the map alone, the speed badge drawn. */
+    /** The map-only landing screen is up: no route, the speed badge drawn, tilted heading-up. */
     fun setDriveScreen(on: Boolean) { driveScreen = on; requestRender() }
+
+    /** The map surface's width in dp, 0 before the host has handed it over. */
+    fun surfaceWidthDp(): Int {
+        val d = runCatching { carContext.resources.displayMetrics.density }.getOrDefault(1f).takeIf { it > 0f } ?: 1f
+        return (width / d).toInt()
+    }
 
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
         flingVx = 0.0; flingVy = 0.0
-        previewRoute = null
+        // Back from a framed preview or results to the zoom from before them: the landing stayed
+        // zoomed out on the preview's route, the car a dot in a county.
+        zoomBeforeFrame?.let { zoom = it; zoomTarget = it }
+        zoomBeforeFrame = null
+        previewRoute = null; previewBubbles = emptyList()
         previewOthers = emptyList()
         resultPins = emptyList()
         overview = false
@@ -258,7 +282,7 @@ class CarMapRenderer(
      *  way each row of the list is. The numbers match [pinBitmap] on the rows. [follow] clears them. */
     fun showResults(points: List<LatLng>) {
         flingVx = 0.0; flingVy = 0.0
-        previewRoute = null
+        previewRoute = null; previewBubbles = emptyList()
         previewOthers = emptyList()
         resultPins = points
         following = points.isEmpty()
@@ -272,10 +296,50 @@ class CarMapRenderer(
         flingVx = 0.0; flingVy = 0.0
         previewRoute = route
         previewOthers = others
+        previewBubbles = previewBubblesFor(route, others)
         resultPins = emptyList()
         following = false
-        frameRoute(route)
+        // Every route offered in view, as Google's preview frames them, not the picked one alone.
+        if (route != null) framePoints(route.polyline + others.flatMap { it.polyline })
         requestRender()
+    }
+
+    /** Each previewed route's time on the map, as Google's car preview labels them: on the
+     *  route's own stretch ([app.vela.ui.map.RouteBubblePoints], the phone picker's placement),
+     *  the picked route's filled in its blue. */
+    private data class TimeBubble(val at: LatLng, val label: String, val picked: Boolean)
+    @Volatile private var previewBubbles: List<TimeBubble> = emptyList()
+
+    private fun previewBubblesFor(route: Route?, others: List<Route>): List<TimeBubble> {
+        if (route == null || others.isEmpty()) return emptyList() // one route: the list says its time
+        val all = listOf(route) + others
+        val points = runCatching { app.vela.ui.map.RouteBubblePoints.of(all.map { it.polyline }) }.getOrNull() ?: return emptyList()
+        return all.mapIndexedNotNull { i, r ->
+            val at = points.getOrNull(i) ?: return@mapIndexedNotNull null
+            TimeBubble(at, app.vela.ui.formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds), i == 0)
+        }
+    }
+
+    private val bubbleFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bubbleEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = Color.parseColor("#33000000") }
+    private val bubbleText = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true }
+
+    /** A time bubble over its point on the route, skipped where the host's cards cover it. */
+    private fun drawTimeBubble(canvas: Canvas, snap: MapSnapshot, b: TimeBubble, sx: Float, sy: Float) {
+        val pt = project(snap, b.at, sx, sy) ?: return
+        val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
+        bubbleText.textSize = 24f * k
+        bubbleText.color = if (b.picked) Color.WHITE else Color.parseColor("#202124")
+        bubbleFill.color = if (b.picked) Color.parseColor("#1f6feb") else Color.WHITE
+        bubbleEdge.strokeWidth = 2f * k
+        val w = bubbleText.measureText(b.label) + 28f * k
+        val h = 40f * k
+        val r = android.graphics.RectF(pt.x - w / 2f, pt.y - h / 2f, pt.x + w / 2f, pt.y + h / 2f)
+        if (!android.graphics.RectF(framingArea()).contains(r)) return // half under a card reads as a stray
+        canvas.drawRoundRect(r, 9f * k, 9f * k, bubbleFill)
+        canvas.drawRoundRect(r, 9f * k, 9f * k, bubbleEdge)
+        val fm = bubbleText.fontMetrics
+        canvas.drawText(b.label, pt.x, pt.y - (fm.ascent + fm.descent) / 2f, bubbleText)
     }
 
     private val drivenPaint = strokePaint("#7b8494", 18f)
@@ -590,6 +654,7 @@ class CarMapRenderer(
     }
 
     override fun onSurfaceDestroyed(container: SurfaceContainer) {
+        runCatching { onSurfaceGone?.invoke() }
         runCatching { surface?.release() }
         surface = null
         runCatching { snapshotter?.cancel() }
@@ -599,7 +664,7 @@ class CarMapRenderer(
         rendering = false; dirty = false // the canceled snapshot's callback won't fire — unstick the flag
     }
 
-    override fun onVisibleAreaChanged(visibleArea: Rect) { visible = Rect(visibleArea); requestRender() }
+    override fun onVisibleAreaChanged(visibleArea: Rect) { visible = Rect(visibleArea); reframeIfFitChanged(); requestRender() }
     override fun onStableAreaChanged(stableArea: Rect) { stable = Rect(stableArea); requestRender() }
     // The host's STABLE area: the part of the surface no template UI ever covers, in any state.
     // The speed badge and the attribution live in it, because the visible area still had the
@@ -759,8 +824,11 @@ class CarMapRenderer(
         val vis = framingArea()
         val mpp = metersPerPixel(here.lat)
         val up = headingUp()
-        val wantX = vis.exactCenterX()
-        val wantY = if (up) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
+        // A framed route or results sit in the middle of the fit area, clear of the buttons.
+        val framed = !follow && (previewRoute != null || resultPins.isNotEmpty() || (nav && overview))
+        val fit = if (framed) fitArea() else vis
+        val wantX = fit.exactCenterX()
+        val wantY = if (up) vis.top + vis.height() * PUCK_DOWN.toFloat() else fit.exactCenterY()
         // SIDEWAYS, THE CENTER OF PERSPECTIVE MOVES, NOT THE TARGET. Tilted, the road straight
         // ahead runs straight up the screen only through the camera's center of perspective, and
         // the host's cards push the arrow off the surface's middle: with the target moved across
@@ -794,7 +862,7 @@ class CarMapRenderer(
                 if (android.util.Log.isLoggable("VelaCar", android.util.Log.DEBUG)) {
                     android.util.Log.d(
                         "VelaCar",
-                        "snapshot ${android.os.SystemClock.elapsedRealtime() - startedMs} ms zoom=${"%.1f".format(java.util.Locale.US, zoom)} tilt=${tilt.toInt()} yaw=${turnYaw.toInt()} traffic=${trafficShown == true} speed=${(speedMps * 3.6).toInt()}",
+                        "snapshot ${android.os.SystemClock.elapsedRealtime() - startedMs} ms zoom=${"%.1f".format(java.util.Locale.US, zoom)} tilt=${tilt.toInt()} yaw=${turnYaw.toInt()} traffic=${trafficShown == true} speed=${(speedMps * 3.6).toInt()} cam=${bearingUsed.toInt()} hdg=${heading.toInt()} tgt=${targetHeading.toInt()}",
                     )
                 }
                 // THE STYLE OBSERVER NEVER FIRED IN PRACTICE (Gearslip preview, 2026-09-22: no
@@ -861,6 +929,31 @@ class CarMapRenderer(
     }
 
     private var lockFailed = false
+    private var lockFailedAtMs = 0L
+    private var surfaceAsked = false
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /**
+     * A Vela process that died while connected (an update, a crash, a low-memory kill) can leave
+     * the host's map surface connected to it, and every lock from the new process then fails
+     * ("already connected") while the car keeps showing the dead process's last frame, an old
+     * route line included. Setting the surface callback again hands back the same stuck surface;
+     * a screen without a map in between makes the host build a new one, so [onSurfaceStuck] (the
+     * car session) shows one for a moment. Once until a lock works again, after the locks have
+     * failed for [STUCK_SURFACE_MS].
+     */
+    private fun askForNewSurface() {
+        if (surfaceAsked || android.os.SystemClock.elapsedRealtime() - lockFailedAtMs < STUCK_SURFACE_MS) return
+        surfaceAsked = true
+        android.util.Log.w("VelaCar", "car surface stuck; rebuilding it")
+        runCatching { onSurfaceStuck?.invoke() }
+    }
+
+    /** Called on the main thread when the map surface will not draw ([askForNewSurface]). */
+    var onSurfaceStuck: (() -> Unit)? = null
+
+    /** Called when the host drops the map surface ([app.vela.car.screen.MapReloadCarScreen]). */
+    var onSurfaceGone: (() -> Unit)? = null
 
     // The ground the snapshot being drawn can show ([FrontClip]); set by [draw] for [project].
     private var frontClip: FrontClip? = null
@@ -873,9 +966,18 @@ class CarMapRenderer(
         if (!s.isValid || width <= 0 || height <= 0) return
         val bmp = runCatching { snap.bitmap }.getOrNull()
         val canvas: Canvas = try { s.lockCanvas(null) } catch (t: Throwable) {
-            if (!lockFailed) { lockFailed = true; android.util.Log.w("VelaCar", "car surface would not lock: ${t.javaClass.simpleName}") }
+            if (!lockFailed) {
+                lockFailed = true
+                lockFailedAtMs = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.w("VelaCar", "car surface would not lock: ${t.javaClass.simpleName}")
+                // Parked, nothing else asks for a frame: try again once the surface counts as stuck.
+                mainHandler.postDelayed({ requestRender() }, STUCK_SURFACE_MS + 100)
+            }
+            askForNewSurface()
             return
         }
+        lockFailed = false
+        surfaceAsked = false
         try {
             if (bmp != null) {
                 // The darkening filter was the night look before the palette could be applied; a
@@ -891,6 +993,9 @@ class CarMapRenderer(
             val preview = previewRoute
             if (navigating()) {
                 runCatching { drawRoute(canvas, snap, sx, sy) }
+                // Under the light and sign glyphs, as on the phone: the stop sign or light at a
+                // turn stays visible on top of its arrow.
+                runCatching { drawTurnArrows(canvas, snap, sx, sy) }
                 runCatching { drawCorridor(canvas, snap, sx, sy) }
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
@@ -899,12 +1004,14 @@ class CarMapRenderer(
                 }
                 runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
                 runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
+                for (b in previewBubbles) runCatching { drawTimeBubble(canvas, snap, b, sx, sy) }
             }
             if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
             runCatching { drawPuck(canvas, snap, sx, sy, camUsed) } // puck always drawn
-            // The speed badge on the drive screen and in drive mode, unless Settings > Navigation
+            // The speed badge on the drive screen and the map-only landing, unless Settings > Navigation
             // "Show speed and speed limit" is off (issue #625).
             if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
+            if (navigating()) runCatching { drawRoadName(canvas) }
             runCatching { drawAttribution(canvas) }
         } finally {
             runCatching { s.unlockCanvasAndPost(canvas) }
@@ -960,6 +1067,60 @@ class CarMapRenderer(
             val a = project(snap, poly[i], sx, sy) ?: continue
             val b = project(snap, poly[i + 1], sx, sy) ?: continue
             canvas.drawLine(a.x, a.y, b.x, b.y, trafficPaints[lvl] ?: trafficPaints[0]!!)
+        }
+    }
+
+    // The turn arrows (issue #804), as the phone draws them: a white shaft with Google's indigo
+    // edge inside the route line, and a triangle head. Cut by the shared [TurnArrowGeometry] from
+    // the line drawn here, for the next [CAR_ARROWS] turns, and kept until the route or the step
+    // changes. Settings > Navigation "Turn arrows" turns them off here too.
+    private var arrowsFor: Pair<Route, Int>? = null
+    private var arrows: List<app.vela.core.nav.TurnArrowGeometry.Arrow> = emptyList()
+    private val arrowEdge = strokePaint("#1A1470", 15f)
+    private val arrowBody = strokePaint("#FFFFFF", 11f)
+    private val headEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#1A1470"); style = Paint.Style.FILL }
+    private val headBody = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
+
+    private fun drawTurnArrows(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
+        val st = navSession.state.value
+        val route = st.route ?: return
+        if (st.paused || !app.vela.ui.TurnArrows.on.value) return
+        val step = st.nav.stepIndex
+        if (arrowsFor?.first !== route || arrowsFor?.second != step) {
+            arrowsFor = route to step
+            arrows = runCatching { app.vela.core.nav.TurnArrowGeometry.arrows(route, step, route.polyline) }.getOrDefault(emptyList()).take(CAR_ARROWS)
+        }
+        val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
+        arrowEdge.strokeWidth = 15f * k; arrowBody.strokeWidth = 11f * k
+        for (a in arrows) {
+            if (a.points.size < 2) continue
+            val path = pathOf(snap, a.points, a.points.indices, sx, sy)
+            canvas.drawPath(path, arrowEdge)
+            val end = project(snap, a.points.last(), sx, sy) ?: run { canvas.drawPath(path, arrowBody); continue }
+            val back = project(snap, a.points.last().destinationPoint(app.vela.core.nav.TurnArrowGeometry.HEAD_CHORD_M, a.endBearingDeg + 180.0), sx, sy)
+            val head = back?.let { arrowHead(end, it, 22f * k) }
+            val headOut = back?.let { arrowHead(end, it, 22f * k, grow = 2.5f * k) }
+            headOut?.let { canvas.drawPath(it, headEdge) }
+            canvas.drawPath(path, arrowBody)
+            head?.let { canvas.drawPath(it, headBody) }
+        }
+    }
+
+    /** A triangle with its base centered on [end], pointing away from [back], [w] wide with a
+     *  74 degree tip; [grow] widens it all round for the edge drawn under it. */
+    private fun arrowHead(end: PointF, back: PointF, w: Float, grow: Float = 0f): Path? {
+        val dx = end.x - back.x; val dy = end.y - back.y
+        val len = kotlin.math.hypot(dx, dy)
+        if (len < 0.5f) return null
+        val ux = dx / len; val uy = dy / len
+        val half = w / 2f + grow
+        val h = (w / 2f) / kotlin.math.tan(Math.toRadians(37.0)).toFloat() + grow * 1.6f
+        val bx = end.x - ux * grow; val by = end.y - uy * grow
+        return Path().apply {
+            moveTo(bx + ux * h, by + uy * h)
+            lineTo(bx - uy * half, by + ux * half)
+            lineTo(bx + uy * half, by - ux * half)
+            close()
         }
     }
 
@@ -1023,6 +1184,7 @@ class CarMapRenderer(
     }
 
     private fun drawPuck(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float, camUsed: Double) {
+        puckDrawn = false
         val here = puck ?: return
         val pt = project(snap, here, sx, sy) ?: return
         // Sized to the SCREEN, not a fixed pixel count: a fixed 22 px radius was a fifth of the
@@ -1035,9 +1197,10 @@ class CarMapRenderer(
         // short side, about what the phone draws relative to its width (user 2026-09-22: the
         // fortieth-based size read too small on the car), times the Settings puck size.
         val px = (minOf(width, height) / 8f * app.vela.ui.PuckStyle.scale()).roundToInt().coerceIn(24, 220)
-        val bmp = puckBitmap?.takeIf { puckBitmapPx == px } ?: android.graphics.Bitmap.createScaledBitmap(
+        val key = app.vela.ui.PuckStyle.key()
+        val bmp = puckBitmap?.takeIf { puckBitmapPx == px && puckBitmapKey == key } ?: android.graphics.Bitmap.createScaledBitmap(
             app.vela.ui.map.navPuckBitmap(scale = 1f), px, px, true,
-        ).also { puckBitmap = it; puckBitmapPx = px }
+        ).also { puckBitmap = it; puckBitmapPx = px; puckBitmapKey = key }
         // Turned to the heading as the map draws it: a point a little ahead of the arrow along
         // its heading, projected, gives the direction on the screen. Tilted, a turn on the ground
         // is a wider turn in the picture, so the heading against the camera's bearing (the flat
@@ -1051,7 +1214,13 @@ class CarMapRenderer(
         canvas.rotate(turn.toFloat(), pt.x, pt.y)
         canvas.drawBitmap(bmp, pt.x - px / 2f, pt.y - px / 2f, dayBitmapPaint)
         canvas.restore()
+        puckBox.set(pt.x - px / 2f, pt.y - px / 2f, pt.x + px / 2f, pt.y + px / 2f)
+        puckDrawn = true
     }
+
+    /** Where this frame's arrow was drawn, for the road pill to keep clear of. */
+    private val puckBox = RectF()
+    private var puckDrawn = false
 
     /** Bottom-right current-speed badge (km/h or mph per the user's units), plus the posted limit
      *  to its left when it is known: the US "SPEED LIMIT" sign in miles, the round red-ring sign
@@ -1105,6 +1274,59 @@ class CarMapRenderer(
                 canvas.drawText(limit.toString(), lx, ly + 14f * k, limitNum)
             }
         }
+    }
+
+    private val roadPill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val roadPillEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f }
+    private val roadText = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true }
+    private val roadPillRect = RectF()
+
+    /** The road you are on, in a pill centered on the bottom of [safeArea], level with the speed
+     *  badge, as Google's car map and the phone's pill name it ([CarRoadName]). The turn card
+     *  names the next turn. Off with the phone's "Road name" set to off. A long name is cut to
+     *  the room between the speed corner and its mirror on the left. Where that would touch the
+     *  arrow (a short screen, the arrow low and centered), it moves to the side of the arrow with
+     *  more room, cut to fit there, and is left out when neither side has room for a short name. */
+    private fun drawRoadName(canvas: Canvas) {
+        if (app.vela.ui.RoadLabel.mode.value == app.vela.ui.RoadLabel.OFF) return
+        val road = CarRoadName.of(navSession.state.value) ?: return
+        val vis = safeArea()
+        val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
+        roadText.textSize = 26f * k
+        val padX = 18f * k
+        // The speed corner: the badge (92) and the limit sign (up to 84) with their gaps, at k = 1.
+        val reserve = 200f * k + 16f
+        val room = vis.width() - 2f * reserve - 2f * padX
+        if (room < 60f * k) return
+        var text = android.text.TextUtils.ellipsize(road, roadText, room, android.text.TextUtils.TruncateAt.END).toString()
+        if (text.isEmpty()) return
+        var w = roadText.measureText(text) + 2f * padX
+        val h = 46f * k
+        var cx = vis.exactCenterX()
+        val bottom = vis.bottom - 20f
+        roadPillRect.set(cx - w / 2f, bottom - h, cx + w / 2f, bottom)
+        val gap = 8f * k
+        if (puckDrawn && RectF.intersects(roadPillRect, RectF(puckBox.left - gap, puckBox.top - gap, puckBox.right + gap, puckBox.bottom + gap))) {
+            val minX = vis.left + 16f
+            val maxX = vis.right - reserve
+            val leftRoom = puckBox.left - gap - minX
+            val rightRoom = maxX - (puckBox.right + gap)
+            val sideRoom = maxOf(leftRoom, rightRoom) - 2f * padX
+            if (sideRoom < 60f * k) return
+            text = android.text.TextUtils.ellipsize(road, roadText, sideRoom, android.text.TextUtils.TruncateAt.END).toString()
+            if (text.isEmpty()) return
+            w = roadText.measureText(text) + 2f * padX
+            cx = if (leftRoom >= rightRoom) puckBox.left - gap - w / 2f else puckBox.right + gap + w / 2f
+            roadPillRect.set(cx - w / 2f, bottom - h, cx + w / 2f, bottom)
+        }
+        val night = isNight()
+        roadPill.color = if (night) ROAD_PILL_NIGHT else Color.WHITE
+        roadPillEdge.color = if (night) ROAD_EDGE_NIGHT else ROAD_EDGE_DAY
+        roadText.color = if (night) Color.WHITE else ROAD_TEXT_DAY
+        canvas.drawRoundRect(roadPillRect, h / 2f, h / 2f, roadPill)
+        canvas.drawRoundRect(roadPillRect, h / 2f, h / 2f, roadPillEdge)
+        val fm = roadText.fontMetrics
+        canvas.drawText(text, cx, roadPillRect.centerY() - (fm.ascent + fm.descent) / 2f, roadText)
     }
 
     /** Center the camera on [route] and pick a zoom that fits its bounding box (preview screen). */
@@ -1180,8 +1402,49 @@ class CarMapRenderer(
         }
         val c = LatLng((minLat + maxLat) / 2, (minLng + maxLng) / 2)
         center = c
-        val span = Math.max(maxLat - minLat, (maxLng - minLng) * cos(Math.toRadians(c.lat))).coerceAtLeast(0.0015)
-        zoom = (ln(360.0 / (span * 1.7)) / ln(2.0)).coerceIn(3.0, 16.0)
+        lastFramed = poly
+        // The drive's overview reframes every frame and its zoom is the speed's when it ends.
+        if (zoomBeforeFrame == null && !navigating()) zoomBeforeFrame = zoom
+        val fit = fitArea()
+        lastFit = fit.width() to fit.height()
+        zoom = if (width > 0 && height > 0 && fit.width() > 0 && fit.height() > 0) {
+            CarFraming.fitZoom(minLat, maxLat, minLng, maxLng, fit.width().toDouble(), fit.height().toDouble())
+        } else {
+            // No surface yet: the old span rule, until the host hands one over.
+            val span = Math.max(maxLat - minLat, (maxLng - minLng) * cos(Math.toRadians(c.lat))).coerceAtLeast(0.0015)
+            (ln(360.0 / (span * 1.7)) / ln(2.0)).coerceIn(3.0, 16.0)
+        }
+    }
+
+    // What the last framing fitted, and into what size, so a change in the host's cards (the route
+    // list arriving after its loading state) frames it again.
+    private var lastFramed: List<LatLng>? = null
+    private var zoomBeforeFrame: Double? = null
+    private var lastFit: Pair<Int, Int>? = null
+
+    /**
+     * The part of the surface a framed route or set of results goes in: the host's visible area,
+     * kept clear of the map buttons down the right side and the action strip along the top even
+     * while they are hidden. The visible area takes them in and out as they show and hide, so a
+     * route framed against it ran under the buttons, and a tap would move the map.
+     */
+    private fun fitArea(): Rect {
+        val vis = framingArea()
+        val d = runCatching { carContext.resources.displayMetrics.density }.getOrDefault(1f)
+        val strip = (MAP_STRIP_DP * d).toInt()
+        val right = minOf(vis.right, width - strip).takeIf { it - vis.left > vis.width() / 2 } ?: vis.right
+        val top = maxOf(vis.top, strip).takeIf { vis.bottom - it > vis.height() / 2 } ?: vis.top
+        return Rect(vis.left, top, right, vis.bottom)
+    }
+
+    /** A preview or results view framed against an area that has since changed size: frame again. */
+    private fun reframeIfFitChanged() {
+        if (following || navigating()) return
+        if (previewRoute == null && resultPins.isEmpty()) return
+        val pts = lastFramed ?: return
+        val fit = fitArea()
+        if (lastFit == fit.width() to fit.height()) return
+        framePoints(pts)
     }
 
     /** Heading = the bearing of the route SEGMENT the puck is on, not the bearing to the nearest

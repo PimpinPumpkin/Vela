@@ -152,6 +152,9 @@ fun ManeuverBanner(
     // Off-route latch: the banner headline becomes "Rerouting..." (Google-style) instead of a stale
     // old-route instruction. Step preview still shows the previewed step normally.
     offRoute: Boolean = false,
+    // OpenStreetMap bans this turn and the way round was too long to take instead (TurnBans):
+    // a warning line under the instruction.
+    mayBeBanned: Boolean = false,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
     onExitPreview: () -> Unit = {},
@@ -362,6 +365,7 @@ fun ManeuverBanner(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                        if (mayBeBanned) TurnBanWarning(content)
                     }
                     // The arrive step names WHERE you're arriving (Google-style): the business or
                     // label, and its address when that adds anything. Skip a line that would just
@@ -453,7 +457,11 @@ private const val BANNER_HEADLINE_LINES = 3
 
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
-private const val LANE_SHOW_M = 800.0
+internal const val LANE_SHOW_M = 800.0
+
+/** [text] in a first-strong isolate (U+2068 .. U+2069): a figure and its unit ("15.3 mi") keep
+ *  their order and stay together inside a line in a right-to-left language. */
+internal fun bidiIsolate(text: String): String = "\u2068" + text + "\u2069"
 
 /** Google's nav-banner freeway green, pixel-sampled off the Maps app (#00654F). */
 internal val NavBannerGreen = androidx.compose.ui.graphics.Color(0xFF00654F)
@@ -511,6 +519,21 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
 internal fun routeKey(label: String): String {
     val compact = label.uppercase().replace(Regex("[\\s-]"), "")
     return Regex("^([A-Z]*?)(\\d+)").find(compact)?.let { it.groupValues[1] + it.groupValues[2] } ?: compact
+}
+
+/** "This turn may not be allowed": OpenStreetMap bans the turn Google takes (TurnBans). */
+@Composable
+internal fun TurnBanWarning(color: Color, modifier: Modifier = Modifier) {
+    Row(modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(app.vela.ui.icons.SymOutlined.Warning, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            stringResource(R.string.nav_turn_may_be_banned),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = color,
+        )
+    }
 }
 
 @Composable
@@ -1173,8 +1196,10 @@ fun NavBarTop(
                 var pausedTick by remember { mutableStateOf(0) }
                 LaunchedEffect(paused) { while (paused) { kotlinx.coroutines.delay(30_000); pausedTick++ } }
                 FitText(
-                    formatDistance(shownMeters) +
-                        " · " + formatArrivalClock(shownSeconds).also { pausedTick } +
+                    // Each figure isolated: in a right-to-left language "15.3 mi · 20:45" came out
+                    // "mi · 20:45 15.3", the unit cut from its number (Hebrew).
+                    bidiIsolate(formatDistance(shownMeters)) +
+                        " · " + bidiIsolate(formatArrivalClock(shownSeconds).also { pausedTick }) +
                         when {
                             paused -> " · " + stringResource(R.string.nav_paused)
                             offRoute -> " · " + stringResource(R.string.nav_rerouting)

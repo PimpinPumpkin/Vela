@@ -27,7 +27,9 @@ How these are drawn is [chapter 11](11-drive-chrome.md).
   Network (Wi-Fi and cell) fixes never reach guidance. They may move the dot only after GPS has
   been silent for 12 s (`NETWORK_FIX_QUIET_MS`). A GPS fix with a reported accuracy worse than
   50 m moves the dot and is not fed to the loop.
-- The map screen's view model feeds the fixes, and under Android Auto the car session does.
+- The map screen's view model feeds the fixes. The car screen's session feeds them only while
+  the phone app's own feed is not running, as on an Automotive head unit. Both go through the
+  same position filter (`GuidanceFix`), and a fix reaches the engine once.
   `NavigationService` keeps the process alive and mirrors the drive into the notification. A
   drive still works when the foreground service cannot start.
 - Beyond the map and speed-limit tiles for the area on screen, your position leaves the phone as
@@ -63,29 +65,40 @@ returns before it.
 Progress along the route only moves forward. A fix is matched inside a window around the
 progress so far, so a route that passes over itself cannot jump to a later leg.
 
+A round trip ends where it starts, so as the car leaves it is also at the end. Until the car is a
+third of the way round (150 m at most), the fix is not matched to the last stretch of that
+length. On a loop short enough for the 600 m window to reach its end, a fix at the start that
+drifted 15 m onto the road the trip comes back on read as the end of the trip, and the drive
+arrived as it set off. The depart step's own mark is measured from the start for the same
+reason.
+
 ### What the voice says, and when
 
 ```
 far prompt   = max(400 m, speed x 35 s)
 near prompt  = max(150 m, speed x 10 s)
+one prompt   = max(near, speed x 15 s)    // anything at 50 mph or more; exits from 34 mph
 turn now     = speed x 2.5 s, clamped 25..90 m   // also where the step advances
 PASSED_SLACK_M = 75    // a maneuver this far behind was passed in a gap: advance silently
 ```
 
-Each step gets at most a far and a near prompt, then the short turn-now line. At 30 m/s (about
-67 mph) the far prompt comes 1,050 m out and the near one 300 m out. In town the 400 m and 150 m
-floors apply. A prompt speaks the real distance, so a turn 40 m into a short step is not
-announced as "in 400 meters". A band the car would reach within 8 s of a prompt counts as said
-by it, so entering a step 170 m before its turn does not give "in 170 meters" and then "in 150
-meters" three seconds apart. The turn-now line interrupts whatever is playing, so a first prompt
-that could not end before it (13 letters a second, plus 0.6 s to start) keeps its lane clause and
-drops the sign's "toward" tail, the way a repeat does.
+A turn in town gets a far and a near prompt, then the short turn-now line, with the 400 m and
+150 m floors. Any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
+turn onto an on-ramp at 55 km/h (34 mph) or more, gets one prompt about 15 s out and the
+turn-now line: at 29 m/s (65 mph) that is "In a quarter mile" 450 m out, then "Take exit 12" at
+the gore. With far and near prompts too, an exit, the fork on its ramp and the merge after it
+took eight lines in two minutes. A prompt speaks the real distance, so a turn 40 m into a short
+step is not announced as "in 400 meters". A band the car would reach within 8 s of a prompt
+counts as said by it, so entering a step 170 m before its turn does not give "in 170 meters" and
+then "in 150 meters" three seconds apart. The turn-now line interrupts whatever is playing, so a
+first prompt that could not end before it (13 letters a second, plus 0.6 s to start) keeps its
+lane clause and drops the sign's "toward" tail, the way a repeat does.
 
 That is the Everything setting. "How much the voice says" in Settings, Voice has two shorter
 ones (`SpokenDetail`). Brief says each maneuver once, with no street name: "In 150 meters, turn
-left". An exit, fork or keep is said from the far distance and keeps its exit number, because
-that is what the sign overhead reads; a turn is said from the near distance; nothing is repeated
-at the turn. Highway exits only is Brief for exits, forks, keeps, U-turns and the arrival, and
+left". An exit, fork, keep or U-turn, and any maneuver at 80 km/h (50 mph) or more, is said
+from the far distance, and an exit keeps its number, because that is what the sign overhead
+reads; a slower turn is said from the near distance; nothing is repeated at the turn. Highway exits only is Brief for exits, forks, keeps, U-turns and the arrival, and
 silence for the rest. The route carries no road class, so a turn off a fast road is told apart
 from a turn in town by speed: at 80 km/h (50 mph) or more it is spoken. Roundabouts and merges
 stay silent. The buzz at a turn stays in all three.
@@ -98,8 +111,13 @@ turn. The voice says "turn left" 25 m out either way.
   same side does not say the side again: "Use the right lane to take the ramp toward ...".
 - A turn with no street name right after a short ramp is the ramp splitting, said "Keep right"
   or "Keep left", not "Turn right".
-- In English a later prompt for the same step drops the sign's "toward ..." tail.
-- A merge gets only the near prompt. The destination gets one near prompt, and so does each stop
+- In English an approach repeat for the same step drops the sign's "toward ..." tail. The line
+  at a ramp, fork or keep names the first route on its sign again ("Keep slight right toward US
+  50 East"), because that is where the choice is made and the banner shows it.
+- A fork or keep that heads for the road the car is already on says so: "Keep left to stay on I
+  80 West", on the banner and in the voice.
+- A merge is said once, on its near prompt or as the "then" of the step before it, and only
+  buzzes where it joins. The destination gets one near prompt, and so does each stop
   (see Stops below).
 - The destination is said with its side, "Your destination is on the right", from the router or,
   when the router gives none, from where the destination's pin sits against the end of the line.
@@ -110,8 +128,13 @@ turn. The voice says "turn left" 25 m out either way.
   exit's line: "Take the exit toward ..., then keep left". The merge at the ramp's end is folded
   into the step before it.
 - A continue or a straight-on is silent unless its lanes show a real fork.
-- A roundabout is said at its entry, with the exit to take. Its own exit step right after the
-  entry says nothing and is never the "then" of a chained line.
+- A roundabout is said on its approach, with the exit to take, and buzzes at its entry. A line
+  at the entry would repeat the approach line while the driver is yielding, so it comes only
+  when it carries what follows the roundabout, such as the next roundabout. Its own exit step
+  right after the entry says nothing and is never the "then" of a chained line.
+- Two steps close together are said on one line ("Keep slight left, then keep slight right").
+  The second one's own line at its turn is left out when it would come within 5 seconds and say
+  the same words; it still buzzes.
 - A turn lane mapped as its own way does not split a turn in two. A short unnamed slight turn
   followed by a turn the same way, adding up to a real turn, is one "Turn right onto" the street,
   said where the lane leaves the road.
@@ -130,6 +153,12 @@ Prompts duck other audio (`VoiceGuide`). Focus is held for `FOCUS_HOLD_MS = 1500
 so music does not come back up between two prompts, and a phone call that takes focus silences
 guidance. Vela's own voice synthesizes the next lines ahead of time (`NavEngine.upcomingPrompts`).
 
+"Guidance volume" (Settings > Voice) has Softer, Normal, Louder and Loudest. Vela's own voice
+is leveled to a standard loudness and scaled from there, in its own audio. A voice from the
+phone's engine can only be turned down through the engine, so Louder and Loudest play its lines
+on an audio session of Vela's with a loudness enhancer on it, raised by the same factor as
+Vela's voice: +4.1 dB and +6.8 dB, and no further ([SPEC 9.1](../../SPEC.md#91-spoken-guidance)).
+
 Two turns within 130 m of each other are said on one line: "Turn right onto Elm Street, then
 turn left onto Oak Avenue", when the first is announced and again at the first turn. The second
 turn is then said only at the turn itself. Said apart, its approach line landed on top of the
@@ -138,8 +167,9 @@ apart.
 
 A next step up to 500 m on whose first prompt would come as soon as the turn is made joins the
 line at the turn only: "Take the ramp, then keep slight left". Said apart, the two came a
-second apart. Its later prompt is still said when it comes well after. A merge, a roundabout or
-a step with lanes to say keeps its own lines.
+second apart. Its later prompt is still said when it comes well after. A step with lanes says
+them in the "then" ("then use the left lane to keep slight left"), and a merge said this way is
+not said again. A roundabout keeps its own lines.
 
 An exit with no number and no sign says "Take the ramp toward" the road it leads to, taken from
 the fork or merge after it, instead of a bare "Take the exit".
@@ -169,10 +199,40 @@ moving floor     = 2.0 / 1.0 / 0.6 m/s (drive / bike / walk)
 OFF_ROUTE_HITS   = 3      // hits before the drive counts as off route
 HEADING_OFF_DEG  = 60     // heading this far against the route's direction is a hit
 HEADING_MIN_MPS  = 5      // driving: the heading counts only this fast, from a fix of 30 m or better
+HEADING_NEAR_M   = 25     // a course matching the route this far ahead or behind is not against it
 ```
 
 For driving, a 5 m fix gives a 28 m corridor, a fix with no accuracy figure 42 m, and a 30 m fix
 70 m.
+
+The engine steers by FreeFused, Vela's own fused position (`PositionFilter`). Each GPS fix and its Doppler
+speed and course go through a Kalman filter. It follows the fix without lag and skips a fix that
+leaps away from how the car is moving; three such fixes in a row while moving are taken as real.
+While the car is stopped and the phone at rest it skips every fix that leaps, so a reflection off
+a building at a red light cannot reroute. While you navigate, the dot and the arrow ride the same
+position.
+
+With no drive on, the dot runs its own FreeFused (`DotFix`) and takes everything the phone has:
+every GPS fix; Wi-Fi and cell fixes when the GPS is quiet or worse, each weighed by its own
+accuracy; and steps. Steps come from the accelerometer, with no permission. Each one moves the
+dot toward the compass heading by the walker's step length, so the dot moves between GPS fixes
+and stops when the walker stops. The step length and the angle between the compass and the way
+the GPS says you walk are learned on the way, so a phone held crooked still steps the right way.
+A car's vibration is never taken as steps. Walking navigation steers by the same position, so
+the turn prompts follow your steps too. When you are not stepping and the GPS shows no real
+speed, the phone is taken as stationary: the dot holds and averages the fixes instead of chasing
+their scatter, and it moves only when the fixes keep landing to one side of it, so it never
+freezes on a bad first fix either. While the GPS answers, a Wi-Fi fix that disagrees with it
+does not pull the dot. After a gap, the app away or the screen off, the dot stays where it was
+when the first fix back agrees with it, and its circle widens until the GPS is back. Steps count
+from the third in a steady rhythm. Settings > Diagnostics > "Record a location test" records every fix,
+step and dot position for 1, 5 or 15 minutes into a new trip, with how strong the satellite signals behind each GPS fix
+were. Share trimmed cuts the ends as it does for a drive and keeps
+the steps and dot positions in the middle.
+
+Settings > Navigation "FreeFused" off steers by the raw GPS fix instead, the way Vela did before
+the filter, and the dot goes back to its old smoothing, which trails a walker by about 9 m. A
+remote setting can turn it off for everyone without a release.
 
 Each fix changes a hit count:
 
@@ -185,6 +245,9 @@ Each fix changes a hit count:
   Driving, this needs 5 m/s and a fix of 30 m or better: from a crawl the GPS course is noise,
   and drift after a light once read as backing down the route. A reroute pins its start to
   the car's heading only from such a fix too.
+  A course that matches the road up to 25 m ahead or behind is not against the route, so a turn
+  the route makes does not count while the car is halfway round it. A wrong turn points away
+  from the road on both sides of the corner and still counts.
 - Stationary: the count holds, unless the fix is past the far distance. A red light cannot cause
   a reroute. Creeping out of a parking lot still can.
 
@@ -201,11 +264,18 @@ REROUTE_SPEAK_MIN_MS       = 30_000   // "Rerouting" is spoken at most this ofte
 BACK_ON_COURSE_HITS        = 2        // on-route fixes that discard a reroute in flight
 ```
 
+Start pressed more than 150 m from the route (`START_REPLAN_M`), on a route planned before the
+car moved off or from an old fix, plans again from where the car is before saying anything. There
+is no chime and no "Rerouting": the drive opens with the new route's first instruction, the way
+Google's Start does.
+
 Going off route asks for a reroute. `NavSession.rerouteGate` decides whether it starts:
 
 - One fetch runs at a time. A request while one is out is dropped.
 - A request inside the cooldown is dropped, so fixes biased toward a parallel road cannot cause
-  a reroute storm.
+  a reroute storm. When the car never joined the route the last reroute gave (it went another
+  way at once, under 50 m along it), the next may start after 3 s instead, once; the one after
+  waits the full 10 s.
 - A fetch still running past its deadline plus the grace is abandoned and a new one starts. The
   fetch runs on its own scope so the deadline can abandon it. `withTimeoutOrNull` cannot
   interrupt a blocked socket read or the on-phone router, and a fetch stuck there used to block
@@ -242,12 +312,14 @@ The heading is the fix's course at the start point. Without it, a reroute comput
 meters down the wrong road often says to turn around. The open router and the on-phone router
 both take it. Google's request has no heading, so a Google route that starts against yours is
 set aside when the open router answered, unless going on would cost minutes more than turning
-around (book 5). A stopped car has no fresh course and sends none.
-Planning sends none.
+around (book 5). A car stopped at a light keeps the course it showed while moving, within 25 m of
+where it showed it, unless its track since turned off it (`NavSession.heldCourse`). Planning
+sends no heading.
 
 The pinned heading has a side effect: a car that has to turn round is sent into the nearest side
-street, which can be a car length ahead when the answer lands. A driving reroute whose first turn
-is less than 5 seconds away at the car's speed, and never less than 25 m, is not driven
+street, which can be a car length ahead when the answer lands. On a freeway the answer can
+start with an exit the car is already passing. A driving reroute whose first turn, ramp, exit
+or fork is less than 5 seconds away at the car's speed, and never less than 25 m, is not driven
 (`NavSession.turnOutOfReach`). The fetch waits until the car is 10 m past that turn and asks
 again from there, at most twice. Asked again at once, from the same fix, the answer is the same
 turn. If an ask fails, the answer in hand is driven.
@@ -274,6 +346,7 @@ after N ms), will retry while off-route`.
 RECHECK_INTERVAL_MS           = 120_000   // every 2 minutes, spread by plus or minus 25%
 DEGRADED_RECHECK_INTERVAL_MS  =  20_000   // while the route is degraded
 DEGRADED_FAST_TRIES           = 6         // then back to the normal interval
+NETWORK_BACK_MIN_GAP_MS       =  10_000   // a returning network asks at most this often
 MIN_RECHECK_DISTANCE_M        = 1_500     // no rechecks this close to the destination
 SAME_COURSE_M                 = 250       // a candidate within this of the line is the same course
 FASTER_THRESHOLD_S            = 90        // an offer must save more than this
@@ -281,16 +354,25 @@ MIN_PLAUSIBLE_ETA_FRACTION    = 0.4       // a candidate under 40% of the time l
 ```
 
 While driving, the session asks for the route again from where you are. It skips the recheck
-while off route and while an offer is on screen. What happens next depends on the candidate:
+while off route and while an offer is on screen. A drive on a degraded route, most often one
+planned on the phone's own router because the network dropped as it started (leaving home Wi-Fi),
+asks again on the first fix after the network comes back (`onNetworkBack`), not 20 s later: a real
+drive got Google's route 22 s in, though the network was back after a second. A drive that
+starts on a degraded route asks on its first fix, since the network is usually back by Start. What happens next depends on the candidate:
 
 - Same course, with live traffic: its arrival time corrects yours. The session keeps a
   multiplier on the remaining time (`etaScale`, clamped 0.5 to 2.5, reset on every route swap).
   Without it the arrival time would carry the traffic measured at the last route fetch for the
   rest of the drive.
 - Same course, and the current route is degraded: the candidate replaces it silently when it is
-  better in steps, street names or traffic and worse in none (`RouteHeal`). A route whose names
-  missed the planning deadline is asked for again about every 20 seconds, six times, and gets
-  its names within the first answer that has them.
+  better in steps, street names or traffic and worse in none (`RouteHeal`). A degraded route is
+  asked for again about every 20 seconds, six times, then on the normal interval. A route whose
+  names missed the planning deadline gets them from the first answer that has them.
+- Same course, and you are on the open router's or the phone's own route because a reroute set
+  Google's aside (each one turned you round): the first recheck that brings Google's line
+  without turning you round takes it. With no course known it waits. Those six fast rechecks run
+  down to 300 m from the end, because the open router's way into the destination can be the
+  street next to the right one.
 - The same roads: never offered, whatever it saves. Every point along it, every 50 m or more,
   lies within 40 m of your line (`RouteGeometry.sameRoad`); the five-sample same-course test
   cannot tell a parallel street from the same one. Its lower time is fresher traffic, and it
@@ -321,8 +403,10 @@ NAV_STARVED_MS  = 10_000   // no guidance-quality fix for this long: show the ch
 ```
 
 It feeds one synthetic fix a second along the route through the normal loop, so the banner, the
-voice and the arrow keep working. The first real fix takes over. Synthetic fixes are not written
-to a recorded trip.
+voice and the arrow keep working. It stops 15 m short of the next turn (`DR_TURN_HOLD_M`) and
+waits there for a fix, so it never takes a turn the driver may not. The first real fix takes
+over. A recorded trip keeps the synthetic fixes among the engine's inputs and leaves them out of
+the GPS trace.
 
 ### Pause
 
@@ -330,13 +414,14 @@ Pause holds the drive where it is:
 
 - The route, the stops and the figures stay as they are.
 - No off-route detection, reroute, arrival, stop cue, voice, recheck or offer.
-- The arrow keeps following you, because it is drawn from the raw fix.
+- The arrow keeps following you. It is drawn from your position, which the pause does not hold.
 - The arrival clock keeps moving, on a 30 second tick.
 - The bar says "Paused", the line ahead turns lavender (`ROUTE_PAUSED_COLOR`), and the screen
   is allowed to sleep.
 
 Resuming checks where you are. Off the route, it reroutes once from there. On it, it speaks the
-current instruction.
+step ahead with its distance ("In half a mile, make a U-turn"), so a turn far off does not sound
+due now.
 
 A paused drive resumes itself when you drive away, because driving on behind a frozen banner is
 worse than never pausing:
@@ -355,7 +440,10 @@ strip. The phone is usually in a cradle when the driver decides to pull in.
 ### Stops
 
 A stop counts as passed when progress comes within `STOP_ARRIVE_TOL_M = 25` of its mark on the
-route, and the voice says "You've reached <stop>".
+route, and the voice says "You've reached <stop>". The same words show in the status card under
+the turn card for 8 seconds, with the voice muted too, and the phone gives a short buzz then a
+long one when "Vibrate on turns" is on for the travel mode (`NavSession.onStopReached`,
+`Haptics.stopReached`). The destination keeps its own arrival card.
 
 The voice also says a stop is coming, the way it says the destination is:
 
@@ -425,14 +513,15 @@ mark on the route, the bar shows the whole trip again.
 
 Adding or removing a stop mid-drive replans once through the new list (`NavSession.setStops`).
 The order is the user's, so the replan skips the cooldown and the back-on-course discard and
-cancels a reroute in flight. An added stop goes first. If the fetch fails the list is kept, and
+cancels a reroute in flight. If the fetch fails the list is kept, and
 the next reroute or recheck routes through it. The controls (search along the route, the stops
 editor, "Remove next", tapping a place) are in [chapter 11](11-drive-chrome.md). How the replan
 is routed is in [chapter 5](05-routing.md).
 
 When "Try side streets around cameras" builds a detour ([chapter 3](03-cameras.md)), its points
-ride along as `NavStop.silent` stops. Every reroute and recheck routes through them, and they
-are never spoken, listed or shown as a divider. The stops editor sees only the visible stops,
+ride along as `NavStop.silent` stops. Traffic rechecks route through them. A reroute drops them
+and takes you on from where you are, since leaving the detour's stretch declines it. They are
+never spoken, listed or shown as a divider. The stops editor sees only the visible stops,
 and the silent ones still ahead are put back in route order on Done.
 
 **Closing soon.** When a drive starts (`NavController.maybeWarnClosingSoon`), a place that
@@ -462,6 +551,14 @@ The drive arrives when any of these holds:
   line, whatever turns remain, for 10 fixes in a row (`PARK_STILL_FIXES`). The first three are
   tested on the last step only, and a car parked just short of a last turn into a lot never
   gets to it. The count keeps a car waiting to turn into the lot from arriving at the entrance.
+- You parked within `WalkAwayArrival.RADIUS_M = 250` of the destination in a straight line and
+  walked off (`WalkAwayArrival`), with no stop left ahead. After `PARKED_S = 15` seconds standing
+  still there, the nav service runs the step sensor (`WalkSense`, the walking dot's step counter),
+  and `STEPS = 16` steps within `WINDOW_S = 15` seconds end the drive as arrived, quietly. Driving
+  at 4 m/s or more, or leaving the radius, starts it over, and the sensor is off again. Steps, not
+  GPS speed: a queue crawling near the destination moves at walking pace, and only feet make a
+  step's rhythm. This is what ends a drive parked at the back of a big lot, now that the car
+  disconnecting no longer ends it.
 
 The voice says which side the destination is on when the route knows it, else "You have
 arrived". Within `DEST_ZONE_M = 150` of the destination nothing reroutes, so parking short of
@@ -480,7 +577,17 @@ refreshes every five minutes. If the process dies mid-drive, the next launch off
 while that timestamp is under an hour old (`RESUME_MAX_AGE_MS`). Resume waits up to
 `RESUME_FRESH_FIX_WAIT_MS = 8_000` for a fix newer than the one on screen. A cold start shows
 the position where the process died, and a route from there draws the line over road already
-driven. Then it plans a fresh route.
+driven. Then it plans a fresh route. If the driver has started something else in those seconds
+(a search, a place, directions or another drive), the resume gives way (`ResumeYield`): the
+resumed drive used to start under it and leave the route sheet over the live drive. The prompt
+(`ResumeNavCard`) is at most 480 dp wide, so on a small landscape screen it leaves the map
+buttons clear: full width, it sat over the locate button, and a tap meant for that resumed the
+old drive.
+
+A drive's trip id is saved with it, so a resumed drive records into the trip the killed process
+left: a `resumed:` note, the drive's opening notes again (a resume after an update names the new
+build), and the new route as a block with reason `resume`. With no trip to continue, because
+recording was off then or the file is gone, it starts one.
 
 ### The speed-limit badge and the speeding alert
 
@@ -509,8 +616,13 @@ the three with the current one filled, and Settings > Voice > Spoken directions 
 choice. In
 "Alerts only" the speeding, speed camera, plate camera and bridge alerts play two short notes instead
 of speaking, and nothing else is said: the sound a driver who turned the turns off still wants.
-Off is silent throughout. The car's own switch is on or off and leaves "Alerts only"; the phone's
-setting follows whatever the car chose.
+Off is silent throughout. The car's speaker button steps through the same three, and the car's
+settings switch is on or off and leaves "Alerts only"; the phone's setting follows whatever the
+car chose. Every line and chime passes one mute check in `VoiceGuide`. Muting cuts the line being
+spoken and drops the ones queued, including a line still waiting 350 ms for the music to duck.
+A replay that jumps ahead runs there with the voice off, then takes the mode the speaker button
+shows. A car host that speaks the turns with its own voice is not covered by any of this
+([chapter 10](10-android-auto.md#the-voice)).
 ### Bridge openings
 
 In the Netherlands a movable bridge opens for ships many times a day, and a closed road can hold
@@ -535,8 +647,9 @@ arrow it follows the arrow and is clamped to stay on screen. Above the bar it st
 and has room for a long name. Inside the bar it takes no map space.
 
 The notification shows the current maneuver's glyph, the distance to it, the time and distance
-left and the arrival time, with Pause and End. When the voice speaks while the app is in the
-background, a silent heads-up shows the turn. On Android 16 the notification asks to be promoted
+left and the arrival time, with Pause and End. It is the drive's only notification. When the voice
+says a turn while the app is in the background, that same notification drops down as a banner,
+with no sound of its own. On Android 16 the notification asks to be promoted
 to a live update: a status-bar chip with the distance to the next turn, and on the lock screen a
 bar scaled to the route, with the arrow where the car is, traffic colored like the route line
 and a point for each stop ahead.
@@ -565,24 +678,27 @@ Two switches in Settings > Diagnostics make every nav screen testable at a desk:
 A simulated drive and a replayed trip never reroute or recheck (`NavSession.replayMode`). Both
 switches reach the car screens too. Turn both off before a real drive.
 
+A recorded trip keeps what the nav engine was handed on every fix, and every route the routers
+answered during the drive. Its replay feeds the engine those same inputs, so it goes off route
+and speaks where the drive did, in the drive's units, and swaps routes where the drive did. To
+try a change to rerouting on a recorded wrong turn, replay the trip with
+`adb shell setprop debug.vela.tune.replayLive 1`: it runs at the drive's pace and reroutes live
+with today's code instead of playing the recorded swaps.
+
 ## Limits
 
 - Paused, the distance left stays the route's remaining distance, because Vela cannot know how
   far you will wander. The arrival time does move.
 - A long pause does not re-plan. Resume gives the same route, rerouted from where you are if you
   moved. Traffic that changed while you sat is noticed by the next scheduled recheck.
-- The Android Auto feed (`VelaCarSession`) passes a fix's position and speed only. With no
-  accuracy its fixes use the default 42 m corridor. With no heading they never count the heading
-  rule, they reroute with no heading, and inside the corridor they reset the off-route count,
-  which slows detection of a wrong turn onto a parallel road. A fix with no speed arms the
-  auto-resume and never fires it, so resume by hand there. Passing accuracy, course and a derived
-  speed the way the phone's feed does would fix all three.
+- The car screen's feed (`VelaCarSession`) steers through the phone's position filter with the
+  fix's accuracy and course, but derives no speed from movement: a fix with no speed arms the
+  auto-resume and never fires it, so resume by hand there. A drive started from the car records
+  no trip.
 - A stop's side is the side its pin is on. A pin set on the far side of a divided road, or behind
   the building, gives that side.
 - "Into the parking lot" needs the lot's aisles mapped in OpenStreetMap and present in the map's
   z14 tiles. Where they are not, the turn stays a plain "Turn left".
-- A reroute that cannot pass every remaining stop says it could not include your stops. The
-  check counts the camera detour's silent points, so a drive with no visible stops can hear it.
 - A drive resumed after the app was killed has no stops, visible or silent. Only the destination
   is saved.
 - The on-phone router takes the reroute heading as a soft preference, in the angle convention

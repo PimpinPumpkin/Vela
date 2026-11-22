@@ -72,9 +72,9 @@ class NavPromptGapTest {
         val lanes = listOf(Lane(listOf("straight"), valid = false), Lane(listOf("straight", "slight right"), valid = true))
         val ramp = Maneuver(ManeuverType.RAMP_RIGHT, "Take the ramp on the right toward I 80 West: Sacramento, Davis", b, 300.0, 20.0, lanes = lanes)
         val route = route(ramp)
-        // Far out the whole sign is said.
+        // Its one approach line, about 15 s out (200 m at 15 m/s), says the whole sign.
         var state = NavEngine.update(route, NavState(), a, speedMps = 15.0).first
-        val (_, far) = NavEngine.update(route, state, north(b, -400.0), speedMps = 15.0)
+        val (_, far) = NavEngine.update(route, state, north(b, -195.0), speedMps = 15.0)
         assertEquals(1, spoken(far).size)
         assertTrue(spoken(far)[0].text, spoken(far)[0].text.contains("right lane") && spoken(far)[0].text.contains("toward I 80 West"))
         // Entering the step 107 m out at 15 m/s, the line at the turn comes in under 5 s: the

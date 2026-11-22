@@ -12,7 +12,7 @@ Rules:
   - touches nothing but app/src/main/res/values-<language>/strings.xml
   - every string key exists in the English file and is translatable there
   - each translation carries exactly the placeholders its English string has
-  - no web address, no markup link and no em dash in any translation
+  - no web address and no markup link in any translation
 It cannot judge what a translation SAYS. A rude word in a language nobody here reads passes, as
 it would pass a person who cannot read it either; who may translate is set in Weblate.
 """
@@ -24,9 +24,9 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "PimpinPumpkin/Vela")
 WEBLATE_LOGIN, WEBLATE_ID, WEBLATE_REPO = "weblate", 1607653, "weblate/Vela"
 PATH = re.compile(r"^app/src/main/res/values-[A-Za-z]{2,3}(-r?[A-Za-z0-9]{2,4})?/strings\.xml$")
 PLACEHOLDER = re.compile(r"%(?:\d+\$)?[sdf]|%%")
+# Dashes are the translator's call: the no-em-dash rule is for this repository's English.
 FORBIDDEN = [(re.compile(r"https?://|www\.", re.I), "a web address"),
-             (re.compile(r"<\s*a\b|href\s*=", re.I), "a link"),
-             (re.compile("—"), "an em dash")]
+             (re.compile(r"<\s*a\b|href\s*=", re.I), "a link")]
 MAX_BYTES = 2_000_000
 
 

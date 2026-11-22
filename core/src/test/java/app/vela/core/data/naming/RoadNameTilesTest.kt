@@ -20,6 +20,13 @@ class RoadNameTilesTest {
         }
     }
 
+    @Test fun theLinkRoadsOfAnInterchangeComeMarked() {
+        // The I 80 ramps at Richards Boulevard are in this tile, with no name.
+        val links = RoadNameTiles.decode(fixture(), 14, 2651, 6288).filter { it.link }
+        assertTrue(links.any { it.cls == "motorway" })
+        assertTrue(links.all { it.name.isEmpty() && !it.bridge })
+    }
+
     @Test fun thirdStreetRunsEastWest() {
         val third = RoadNameTiles.decode(fixture(), 14, 2651, 6288).filter { it.name == "3rd Street" }.flatMap { it.points }
         val latSpan = third.maxOf { it.lat } - third.minOf { it.lat }

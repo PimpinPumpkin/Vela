@@ -1,5 +1,6 @@
 package app.vela.car
 
+import androidx.car.app.model.CarColor
 import androidx.car.app.model.CarText
 import androidx.car.app.model.Distance
 import androidx.car.app.navigation.model.Maneuver
@@ -74,17 +75,24 @@ object ManeuverMapper {
 
     private const val GLYPH_PX = 128
 
+    /** "may not be allowed", in the car's language; set when the car session starts. */
+    @Volatile var bannedNote: String = ""
+
     /** A car [Step] for the current maneuver: the spoken cue + the road name being entered, its
-     *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). */
-    fun carStep(m: VelaManeuver): Step {
+     *  street words abbreviated as on the phone's pill (`RoadNameShort`, issue #837). [lanes] false
+     *  leaves the lane diagram off: the phone shows it only within [app.vela.ui.nav.LANE_SHOW_M]. */
+    fun carStep(m: VelaManeuver, lanes: Boolean = true): Step {
         val short = app.vela.core.util.RoadNameShort
-        val cue: CharSequence = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        val said = short.inText(m.instruction, m.road).ifBlank { m.road?.takeIf { it.isNotBlank() }?.let(short::shorten) ?: m.ref?.takeIf { it.isNotBlank() } ?: " " }
+        // A turn OpenStreetMap bans that Google's route keeps (TurnBans) says so on the car too.
+        val cue: CharSequence = if (m.mayBeBanned && bannedNote.isNotBlank()) "$said ($bannedNote)" else said
         return Step.Builder(cue)
             .setManeuver(carManeuver(m))
             .apply { (m.road?.let(short::shorten) ?: m.ref)?.takeIf { it.isNotBlank() }?.let { setRoad(it as CharSequence) } }
-            // Lane guidance (Google's arrow diagram) — both the Lane metadata and a rendered image.
+            // Lane guidance (Google's arrow diagram): both the Lane metadata and a rendered image,
+            // unless the driver turned it off (CarLanes, issue #866).
             .apply {
-                runCatching {
+                if (lanes && app.vela.ui.CarLanes.on.value) runCatching {
                     LaneImage.build(m.lanes)?.let { (lanes, image) ->
                         lanes.forEach { addLane(it) }
                         setLanesImage(image)
@@ -110,31 +118,28 @@ object ManeuverMapper {
     // coerceAtLeast(step) floored every distance to 10 ft/10 m so it never showed 0.
     private fun roundStep(v: Double, step: Double): Double = (Math.round(v / step) * step).coerceAtLeast(0.0)
 
-    /** The next-turn card for the [NavigationTemplate] — current step + distance to it, plus the
-     *  following maneuver as the "then" step (Google's "then turn left" junction preview). */
-    fun routingInfo(next: VelaManeuver?, then: VelaManeuver?, distanceToNext: Double, imperial: Boolean, continueCue: String? = null): RoutingInfo {
+    /** The next-turn card for the [NavigationTemplate]: the next turn and the distance to it, as on
+     *  the phone however far off it is, plus the following maneuver as the "then" step (Google's
+     *  "then turn left" junction preview). The road you are on is the car map's pill
+     *  ([CarRoadName]). */
+    fun routingInfo(next: VelaManeuver?, then: VelaManeuver?, distanceToNext: Double, imperial: Boolean): RoutingInfo {
         val b = RoutingInfo.Builder()
         if (next == null) return b.setLoading(true).build()
-        // A turn still far ahead: the card leads with the road you are ON ("Continue on X" and the
-        // distance to the turn) and shows the turn as the "then" step, the way Google's does; up
-        // close, the turn itself leads with the following one as "then".
-        if (continueCue != null && distanceToNext > CONTINUE_FAR_M) {
-            b.setCurrentStep(
-                Step.Builder(continueCue).setManeuver(
-                    Maneuver.Builder(Maneuver.TYPE_STRAIGHT).apply { glyph(ManeuverType.STRAIGHT)?.let { setIcon(it) } }.build(),
-                ).build(),
-                carDistance(distanceToNext, imperial),
-            )
-            runCatching { b.setNextStep(carStep(next)) }
-            return b.build()
-        }
-        b.setCurrentStep(carStep(next), carDistance(distanceToNext, imperial))
-        if (then != null) runCatching { b.setNextStep(carStep(then)) } // "then …" preview
+        b.setCurrentStep(carStep(next, lanes = distanceToNext <= app.vela.ui.nav.LANE_SHOW_M), carDistance(distanceToNext, imperial))
+        if (then != null && thenShown(next, distanceToNext)) runCatching { b.setNextStep(carStep(then)) }
         return b.build()
     }
 
-    /** Past this distance to the next turn the card leads with the current road. */
-    const val CONTINUE_FAR_M = 1_500.0
+    /** Up close, the turn after this one shows as "then" only when it follows within 500 m and this
+     *  turn is within [app.vela.ui.nav.LANE_SHOW_M], the phone's rule and Google's car card's: a
+     *  turn miles after the next one is not a "then". */
+    internal fun thenShown(next: VelaManeuver, distanceToNext: Double): Boolean =
+        app.vela.ui.nav.isCompoundNext(next.distanceMeters) && distanceToNext <= app.vela.ui.nav.LANE_SHOW_M
+
+    /** The turn card's color: Google's car card is #006D6F on the Desktop Head Unit, and the host
+     *  draws an app's card color about 20% darker, so this is that teal lifted to land on it. The
+     *  host may still override it for contrast. */
+    val TURN_CARD: CarColor = CarColor.createCustom(0xFF008A8B.toInt(), 0xFF008A8B.toInt())
 
     /** A per-STEP [TravelEstimate] (distance + time to the NEXT maneuver) for Trip.addStep — the host's
      *  navigation data channel (cluster/rail). Time is a rough proportional estimate; the host mainly
@@ -151,7 +156,9 @@ object ManeuverMapper {
     /** Destination ETA estimate: remaining distance, remaining time, and arrival wall-clock. */
     /** [tripText] is a line the host shows with the estimate ("To Davis Food Co-op" while a stop
      *  is ahead); it needs car API level 5, so the caller passes it only there. */
-    fun destinationEstimate(remainingMeters: Double, remainingSeconds: Double, nowEpochMillis: Long, imperial: Boolean, tripText: String? = null): TravelEstimate {
+    /** [trafficRatio] is the route's live time over its typical time; it colors the time left
+     *  as the phone colors the route line: green when traffic is light, yellow, then red. */
+    fun destinationEstimate(remainingMeters: Double, remainingSeconds: Double, nowEpochMillis: Long, imperial: Boolean, tripText: String? = null, trafficRatio: Double? = null): TravelEstimate {
         // Clamp remaining ≥ 0 so a momentary NavEngine overshoot can't show a past arrival time.
         val remaining = remainingSeconds.coerceAtLeast(0.0)
         val arrivalMs = nowEpochMillis + (remaining * 1000).toLong()
@@ -160,7 +167,17 @@ object ManeuverMapper {
         return TravelEstimate.Builder(carDistance(remainingMeters, imperial), arrival)
             .setRemainingTimeSeconds(remaining.toLong())
             .apply { if (!tripText.isNullOrBlank()) setTripText(androidx.car.app.model.CarText.create(tripText)) }
+            .apply { trafficColor(trafficRatio)?.let { setRemainingTimeColor(it) } }
             .build()
+    }
+
+    /** The phone's route-line thresholds: over 1.4x the typical time is heavy, over 1.15x moderate. */
+    private fun trafficColor(ratio: Double?): CarColor? = when {
+        ratio == null -> null
+        ratio > 1.4 -> CarColor.RED
+        // The car API allows only its standard colors here; a custom amber throws.
+        ratio > 1.15 -> CarColor.YELLOW
+        else -> CarColor.GREEN
     }
 
 }

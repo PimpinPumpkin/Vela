@@ -25,7 +25,8 @@ on:
     # only skips when every changed file matches. Escape hatch either way: put
     # "[skip ci]" in the commit subject to suppress a run, or touch any code file to
     # force one. Keep this list to things that provably never reach the APK - workflow
-    # files are NOT ignored on purpose (they change the build itself).
+    # files are NOT ignored on purpose (they change the build itself). The cron nightly
+    # reads the same list from scripts/app-changed.sh; keep the two in step.
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -47,8 +48,11 @@ on:
 
 # `contents: write` is needed to publish releases. The publish step is gated to
 # push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.
+# `id-token` and `attestations` sign the APKs' build provenance (the attest step).
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -62,7 +66,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '17'
@@ -198,11 +202,22 @@ jobs:
           ${{ vars.ABI_SPLITS == 'true' && '-PabiSplits' || '' }}
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vela-maps-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Attest the APKs
+        # Build provenance (issue #982): `gh attestation verify <apk> -R PimpinPumpkin/Vela`
+        # proves a release APK was built by this workflow from the commit it names. The release
+        # steps copy these files unchanged, so the digests match, and a stable is the nightly's
+        # APK. Only on the runs that can publish, and it never holds a release back.
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/canary')
+        continue-on-error: true
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: app/build/outputs/apk/release/*.apk
 
       - name: Publish canary build (rolling release)
         # The canary CHANNEL: every push to the canary branch replaces the single APK on the
@@ -269,6 +284,13 @@ jobs:
              [ "$(git rev-parse "${LAST}^{commit}")" = "$(git rev-parse HEAD)" ] && \
              [ "${{ github.event.inputs.force || 'false' }}" != "true" ]; then
             echo "main has not moved since $LAST - no nightly today."
+            exit 0
+          fi
+          # The cron skips a main that moved only in docs, the website or repo metadata (the
+          # weekly reach snapshot cut identical nightlies). A dispatch always cuts.
+          if [ -n "$LAST" ] && [ "${{ github.event_name }}" = "schedule" ] && \
+             ! bash scripts/app-changed.sh "$LAST" HEAD; then
+            echo "only docs or the website changed since $LAST - no nightly today."
             exit 0
           fi
           VER="0.5.${{ github.run_number }}"

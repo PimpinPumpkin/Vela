@@ -20,3 +20,7 @@ updates:
       # wrapper checksum step; do not lift this without reading the terms.
       - dependency-name: "gradle/actions/setup-gradle"
         update-types: [ "version-update:semver-major" ]
+      # Same repository and the same v6 terms. Wrapper validation does no caching, but it stays on
+      # the v5 line with setup-gradle.
+      - dependency-name: "gradle/actions/wrapper-validation"
+        update-types: [ "version-update:semver-major" ]

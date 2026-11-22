@@ -1,6 +1,6 @@
 # Languages and translating
 
-Vela's interface is offered in 19 languages. Translations are done by the community on
+Vela's interface is offered in 20 languages. Translations are done by the community on
 Weblate:
 
 **<https://hosted.weblate.org/engage/vela-maps/>**
@@ -30,6 +30,7 @@ are separate systems, so support differs by language.
 | Chinese (Simplified) | `zh` | yes | yes | yes (Mandarin) | yes |
 | Chinese (Traditional) | `zh-TW` | yes | yes | yes (the Mandarin voice) | yes |
 | Japanese | `ja` | yes | yes | system voice | yes |
+| Thai | `th` | yes | yes | system voice | yes |
 | Hebrew | `he` | yes | yes | system voice | yes |
 
 - **App text** means the language has its own string file. A string nobody has translated yet
@@ -38,7 +39,7 @@ are separate systems, so support differs by language.
 - **Spoken directions** are built from grammar templates per language (`NavStrings` in
   `:core`), so cases and word order are right.
 - **Vela voice** is the downloadable neural voice (Piper). There is no Piper voice for
-  Japanese, Hebrew or Estonian, so those use the phone's own text-to-speech in that language.
+  Japanese, Thai, Hebrew or Estonian, so those use the phone's own text-to-speech in that language.
   If the phone has none, navigation stays silent and a hint points at the voice settings.
 - **Dictation** runs on the phone. The default model is multilingual Whisper, set to the app
   language: tiny for English, base for any other language, with small as a bigger option.
@@ -79,7 +80,6 @@ pull request. The English original is `app/src/main/res/values/strings.xml`.
 - **Plurals need your language's categories.** Russian, Ukrainian and Polish need `one`,
   `few`, `many`, `other`; Hebrew `one`, `two`, `many`, `other`; Chinese and Japanese only
   `other`. Weblate shows the right set.
-- **No em dashes.** Use a comma or a colon, or rephrase. A numeric range is the one exception.
 - **Escape apostrophes** as `\'` when editing the file by hand. On Weblate, type a plain one.
 - **Never translate data:** place names, street names, reviews.
 - **Keep it short.** These strings sit on chips, rows and buttons.
@@ -133,7 +133,7 @@ and remove keys.
 `weblate-automerge.yml` merges such a pull request after CI passes, when
 `scripts/weblate-automerge-check.py` finds that it comes from Weblate's account and fork,
 touches only `values-<lang>/strings.xml`, uses only keys that exist in English, keeps every
-placeholder, and adds no web address, link or em dash. The repository variable
+placeholder, and adds no web address or link. The repository variable
 `WEBLATE_AUTOMERGE=off` switches it off. It cannot judge what a translation says.
 
 New strings go into the English file only, in the same commit as the feature.

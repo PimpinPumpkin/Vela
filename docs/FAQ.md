@@ -40,7 +40,7 @@ type, address, and often phone and hours).
 | Surveillance and speed cameras | OpenStreetMap and DeFlock, bundled or baked | Never | Yes |
 | Fuel prices on gas stations | US: Google, in the search reply. UK: the government's Fuel Finder data, from a file Vela hosts | US: as part of the search. UK: never | UK: the last file downloaded |
 | Transit departures | Transitous, an open GTFS service; the stop's Google page where Transitous has no coverage | Only for that fallback | The last board seen at a stop, marked with its time |
-| Transit directions | Google; Transitous' own planner when Google is off or has nothing | Yes, unless Google is off | No |
+| Transit directions | Google; Transitous' own planner when Google is off, has nothing, or has only a walk | Yes, unless Google is off | No |
 | Satellite view (off by default) | Esri World Imagery; Google's imagery for close zoom where Esri has none | Only those close-ups | No |
 | Traffic overlay (off by default) | Google's traffic tiles | Yes, while it is on | No |
 | Street View | Google | Yes | No |

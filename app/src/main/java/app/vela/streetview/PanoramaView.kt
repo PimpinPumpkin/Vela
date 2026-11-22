@@ -34,7 +34,8 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
     companion object {
         /** Crossfade/morph duration between panos. Renderer mirrors this in FADE_NANOS. */
-        const val FADE_MS = 300L
+        const val FADE_MS = 350L
+        private const val WALK_GIVE_UP_MS = 8000L
     }
 
     init {
@@ -54,13 +55,45 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
      *  texture and crossfades to this one (a "morph" into the next spot, not a hard snap), so we
      *  drive continuous rendering for the length of the fade then fall back to render-on-demand. */
     fun setPanorama(bitmap: Bitmap) {
-        queueEvent { renderer.setTexture(bitmap) }
+        queueEvent { renderer.setTexture(bitmap, null) }
+        startFade()
+    }
+
+    /** [bitmap] with the camera turned to face [faceCompassDeg] on it, both applied on the same GL
+     *  frame. Aiming first and loading later turned the OLD picture by the new pano's heading
+     *  while the new one loaded (a swing at every corner). */
+    fun setPanorama(bitmap: Bitmap, panoHeadingDeg: Float, faceCompassDeg: Float) {
+        panoHeading = panoHeadingDeg
+        val yawRad = Math.toRadians((faceCompassDeg - panoHeadingDeg - 90.0 + 720.0) % 360.0).toFloat()
+        queueEvent { renderer.setTexture(bitmap, yawRad) }
+        startFade()
+    }
+
+    private fun startFade() {
         renderMode = RENDERMODE_CONTINUOUSLY
         removeCallbacks(stopFade)
         postDelayed(stopFade, FADE_MS + 100L)
     }
 
+    /** A step toward the next pano started: the view moves forward at once (a short zoom in)
+     *  and holds there until [setPanorama] brings the next one, which lands from that zoom. */
+    fun beginWalk() {
+        queueEvent { renderer.beginWalk() }
+        renderMode = RENDERMODE_CONTINUOUSLY
+        removeCallbacks(stopFade)
+        // A step whose pano never comes (the viewer closes on a failed load) stops redrawing.
+        postDelayed(stopFade, WALK_GIVE_UP_MS)
+    }
+
     private val stopFade = Runnable { renderMode = RENDERMODE_WHEN_DIRTY }
+
+    /** A tap (no drag, no pinch) on the panorama, in view pixels. */
+    var onTap: ((x: Float, y: Float) -> Unit)? = null
+    private var downX = 0f
+    private var downY = 0f
+    private var downAt = 0L
+    private var tapOk = false
+    private val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
 
     /**
      * Orient the camera by COMPASS. Google's equirect puts the CAPTURE heading at the texture
@@ -79,6 +112,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
     fun currentYawDeg(): Float =
         ((Math.toDegrees(renderer.yawRad().toDouble()) + panoHeading + 90.0) % 360.0 + 360.0).toFloat() % 360f
     fun currentFovDeg(): Float = renderer.fovDeg()
+    fun currentPitchDeg(): Float = Math.toDegrees(renderer.pitchRad().toDouble()).toFloat()
 
     /** D-pad look-around: pan by a fraction of the view per key press (the fork's engage-model key
      *  path for the drag gesture - every gesture needs one, docs/dpad.md rule 3). */
@@ -102,12 +136,15 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 lastX = e.x; lastY = e.y; pointerId = e.getPointerId(0)
+                downX = e.x; downY = e.y; downAt = e.eventTime; tapOk = true
             }
+            MotionEvent.ACTION_POINTER_DOWN -> tapOk = false
             MotionEvent.ACTION_MOVE -> if (!scaleDetector.isInProgress && pointerId != -1) {
                 val i = e.findPointerIndex(pointerId)
                 if (i != -1) {
                     val dx = e.getX(i) - lastX
                     val dy = e.getY(i) - lastY
+                    if (kotlin.math.hypot(e.getX(i) - downX, e.getY(i) - downY) > touchSlop) tapOk = false
                     lastX = e.getX(i); lastY = e.getY(i)
                     // Drag scales by the current FOV over the view size, so a full-screen swipe
                     // moves ~one field of view - a natural "grab the world" feel at any zoom.
@@ -124,7 +161,12 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
                     }
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> pointerId = -1
+            MotionEvent.ACTION_UP -> {
+                pointerId = -1
+                if (tapOk && !scaleDetector.isInProgress && e.eventTime - downAt < android.view.ViewConfiguration.getLongPressTimeout()) onTap?.invoke(e.x, e.y)
+                tapOk = false
+            }
+            MotionEvent.ACTION_CANCEL -> { pointerId = -1; tapOk = false }
         }
         return true
     }
@@ -165,7 +207,22 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
         fun setYaw(r: Float) { yaw = r }
         fun yawRad(): Float = yaw
+        fun pitchRad(): Float = pitch
         fun fovDeg(): Float = fovX
+
+        // The forward move of a walk, in degrees of zoom: it eases in from the tap while the next
+        // pano loads, and the next pano lands from wherever it got to, easing back out.
+        private var walkStartNanos = 0L
+        private var dollyFrom = 0f
+        private var pendingYaw: Float? = null
+
+        fun beginWalk() { walkStartNanos = System.nanoTime(); dollyFrom = 0f }
+
+        private fun walkDolly(now: Long): Float {
+            if (walkStartNanos == 0L) return 0f
+            val t = ((now - walkStartNanos).toFloat() / WALK_IN_NANOS).coerceIn(0f, 1f)
+            return WALK_DOLLY_DEG * (1f - (1f - t) * (1f - t)) // ease out
+        }
 
         /** Vertical fov (deg) derived from the canonical horizontal fov and the live aspect. */
         private fun vFovDeg(): Float {
@@ -187,7 +244,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
         fun zoomBy(scale: Float) { fovX = (fovX / scale).coerceIn(30f, 110f) }
 
-        fun setTexture(bmp: Bitmap) { pendingBitmap = bmp }
+        fun setTexture(bmp: Bitmap, yawRad: Float?) { pendingBitmap = bmp; pendingYaw = yawRad }
 
         override fun onSurfaceCreated(gl: javax.microedition.khronos.opengles.GL10?, cfg: javax.microedition.khronos.egl.EGLConfig?) {
             GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -210,29 +267,39 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         }
 
         override fun onDrawFrame(gl: javax.microedition.khronos.opengles.GL10?) {
+            val now = System.nanoTime()
+            pendingBitmap?.takeIf { it.isRecycled }?.let { pendingBitmap = null; pendingYaw = null }
             pendingBitmap?.let { bmp ->
                 // Keep the OUTGOING texture around and crossfade into the new one. A new fade that
                 // lands mid-fade just discards the previous outgoing frame (rapid walking).
                 val newId = uploadTexture(bmp)
+                // The walk's forward move so far is where the new pano starts from.
+                dollyFrom = walkDolly(now)
+                walkStartNanos = 0L
                 if (texId != 0) {
                     if (texPrev != 0) GLES20.glDeleteTextures(1, intArrayOf(texPrev), 0)
                     texPrev = texId
-                    fadeStartNanos = System.nanoTime()
+                    fadeStartNanos = now
                 }
                 texId = newId
+                pendingYaw?.let { yaw = it }
+                pendingYaw = null
                 pendingBitmap = null
             }
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
             if (texId == 0) return
 
-            // Crossfade progress 0..1. A subtle forward "dolly" (zoom in a few degrees, easing back
-            // out as the fade completes) sells stepping FORWARD into the next pano rather than a flat
-            // dissolve. When texPrev is 0 there's nothing to fade from - draw the new one outright.
+            // Crossfade progress 0..1. A walk zooms in from the tap while the next pano loads; the
+            // new pano fades in at that zoom and eases back out, so the step reads as moving forward
+            // instead of a dissolve. When texPrev is 0 there's nothing to fade from.
             val fading = texPrev != 0
             val mix = if (fading) {
-                ((System.nanoTime() - fadeStartNanos).toFloat() / FADE_NANOS).coerceIn(0f, 1f)
+                ((now - fadeStartNanos).toFloat() / FADE_NANOS).coerceIn(0f, 1f)
             } else 1f
-            val drawFov = vFovDeg() - DOLLY_DEG * (1f - mix)
+            val ease = mix * mix * (3f - 2f * mix)
+            val dolly = if (walkStartNanos != 0L) walkDolly(now) else dollyFrom * (1f - ease)
+            if (!fading || mix >= 1f) dollyFrom = if (walkStartNanos != 0L) dollyFrom else 0f
+            val drawFov = (vFovDeg() - dolly).coerceAtLeast(10f)
 
             Matrix.perspectiveM(proj, 0, drawFov, aspect, 0.05f, 20f)
             // Look direction from yaw/pitch (yaw=0 faces -Z). Camera at the origin.
@@ -352,8 +419,9 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
         companion object {
             private const val DRAG_SENSITIVITY = 1.7f
-            private const val DOLLY_DEG = 5f            // forward "step into it" zoom during the fade
-            private const val FADE_NANOS = 300_000_000f // keep in step with PanoramaView.FADE_MS (300 ms)
+            private const val WALK_DOLLY_DEG = 14f       // how far a walk zooms in while the next pano loads
+            private const val WALK_IN_NANOS = 450_000_000f
+            private const val FADE_NANOS = 350_000_000f // keep in step with PanoramaView.FADE_MS (350 ms)
             private const val VERT =
                 "uniform mat4 uMvp; attribute vec4 aPos; attribute vec2 aUv; varying vec2 vUv;" +
                     "void main(){ vUv = aUv; gl_Position = uMvp * aPos; }"

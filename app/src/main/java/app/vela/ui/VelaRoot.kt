@@ -56,8 +56,12 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     val page by navController.currentBackStackEntryAsState()
     val showSettings = page?.destination?.route?.let { it != app.vela.ui.settings.MAP_ROUTE } == true
     ZoomKeys.mapShowing = !showSettings
+    val rootContext = androidx.compose.ui.platform.LocalContext.current
+    // Over a locked phone (a drive on the lock screen), Settings waits for the unlock.
     val openSettings: () -> Unit = {
-        navController.navigate(app.vela.ui.settings.SettingsSection.HUB.route) { launchSingleTop = true }
+        app.vela.ui.LockScreenNav.unlockThen(rootContext) {
+            navController.navigate(app.vela.ui.settings.SettingsSection.HUB.route) { launchSingleTop = true }
+        }
     }
     // Location permission launcher for onboarding. The map no longer fires the raw system dialog on
     // its own (see MapScreen); this owns the first ask. A grant starts location immediately (coarse-
@@ -167,9 +171,11 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
             onOpenSettings = openSettings,
             // The no-voice heads-up's pill: straight into the voice library.
             onOpenVoiceSettings = {
-                openSettings()
-                navController.navigate(app.vela.ui.settings.SettingsSection.VOICE.route)
-                navController.currentBackStackEntry?.savedStateHandle?.set("openLibrary", true)
+                app.vela.ui.LockScreenNav.unlockThen(rootContext) {
+                    navController.navigate(app.vela.ui.settings.SettingsSection.HUB.route) { launchSingleTop = true }
+                    navController.navigate(app.vela.ui.settings.SettingsSection.VOICE.route)
+                    navController.currentBackStackEntry?.savedStateHandle?.set("openLibrary", true)
+                }
             },
         )
         SettingsScreen(vm = vm, navController = navController)
@@ -214,6 +220,8 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         // window (not a child Dialog) — genuinely full-screen and rotation-safe. Last child = top
         // z-order, above the map + sheet + settings.
         PlaceOverlays()
+        // The glance screen of a turn wake (Settings > Navigation), over everything.
+        app.vela.ui.nav.TurnGlance(vm)
     }
     }
 }

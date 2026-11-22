@@ -53,7 +53,7 @@ dependencies {
     testImplementation(libs.junit)
     // The real org.json for the on-demand obf harness (ObfSpeedLimitProbeTest): the engine reads
     // its region index with JSONArray, and Android's unit-test jar only stubs it.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260719")
 }
 
 // Forward the trip-audit harness property into the TEST JVM (see NavReplayTest.auditSharedTripLog):
@@ -70,6 +70,8 @@ tasks.withType<Test>().configureEach {
     System.getProperty("velaOne")?.let { systemProperty("velaOne", it) }
     System.getProperty("velaLines")?.let { systemProperty("velaLines", it) }
     System.getProperty("velaNudge")?.let { systemProperty("velaNudge", it) }
+    System.getProperty("velaCensus")?.let { systemProperty("velaCensus", it) }
+    System.getProperty("velaNoSteps")?.let { systemProperty("velaNoSteps", it) }
     System.getProperty("velaFeedProbe")?.let { systemProperty("velaFeedProbe", it) }
     // Painted-roads bake (PaintedRoadsBakeTest): a whole state's streets need a big heap.
     System.getProperty("velaPaintIn")?.let { systemProperty("velaPaintIn", it); maxHeapSize = "20g" }

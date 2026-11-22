@@ -14,7 +14,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.nativeCanvas
@@ -386,6 +388,12 @@ private const val FOLLOW_STILL_DEADBAND_M = 2.0
 private const val FREE_HEADING_UP_TAU_S = 4.0
 /** The follow's glide in from a pan is over once the camera is this close to the fix. */
 private const val SEEK_DONE_M = 3.0
+/** The gap between the fix and the eased camera fades out over this when the dot switches between
+ *  them; a gap wider than DOT_HANDOFF_MAX_M is a jump and is not carried. */
+private const val DOT_HANDOFF_TAU_S = 0.25f
+/** Seconds over which the no-route dot slides onto a road and back off it (RoadSnap, #803). */
+private const val SNAP_EASE_S = 0.6f
+private const val DOT_HANDOFF_MAX_M = 30.0
 private const val FREE_HEADING_UP_MPS = 3.0
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
@@ -414,6 +422,10 @@ private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
  *  of geometry noise, well below a junction turn. */
 private const val CAM_BRG_TURN_DEG = 25.0
+/** An error this big is a turn, not geometry noise (2 to 7 degrees): the turn's constant then holds... */
+private const val CAM_BRG_LATCH_DEG = 12.0
+/** ...until the camera is this close to its target. */
+private const val CAM_BRG_SETTLED_DEG = 3.0
 /**
  * The zoom house numbers start appearing at, shared by the basemap `vela-housenumber` layer and the
  * streamed `vela-addr-*` overlay so the two can never disagree (they draw the same addresses from
@@ -978,6 +990,7 @@ fun VelaMapView(
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
     val gap8Px = with(density) { 8.dp.roundToPx() }
     val landscapeNow = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
+    val mapHeightPx = remember { androidx.compose.runtime.mutableIntStateOf(0) } // the map view's height, for the compass
     val compassTopPx = when {
         // LANDSCAPE NAV: the banner is a left COLUMN (issue #297), so it does not cover the
         // top-right at all and there is nothing to drop below - sitting the compass under the
@@ -1017,7 +1030,26 @@ fun VelaMapView(
     // stack currently holds.
     // The drive compass under the drive's column: a 48 dp view whose center is on the buttons' line.
     val compassRightPx = with(density) { (if (navMode && navFabTopPx.intValue > 0) MAP_BUTTON_CENTER_DP - 24.dp else if (navMode && landscapeNow) 8.dp + NAV_FAB_COLUMN_DP else 8.dp).roundToPx() }
+    // Browsing, the zoom buttons ("Prefer buttons over swipes", or a D-pad) stand over the
+    // bottom-right stack, and higher still while results are minimized. On a screen too short for
+    // them and the compass (a landscape phone), the compass moves one column in, beside them. The
+    // worst case decides, so the compass does not hop when the results bar comes and goes.
+    val dpadNow = app.vela.ui.rememberDpadMode()
+    val compassBesideZoom = !navMode && mapHeightPx.intValue > 0 &&
+        (app.vela.ui.PreferButtons.on.value || dpadNow) &&
+        with(density) {
+            val zoomTop = mapHeightPx.intValue - WindowInsets.navigationBars.getBottom(density) -
+                (ZOOM_PILL_BOTTOM_DP + RESULTS_BAR_LIFT_DP + ZOOM_PILL_HEIGHT_DP).roundToPx()
+            compassTopPx + (48.dp + 8.dp).roundToPx() > zoomTop
+        }
+    // The map runs under a navigation bar on the side (landscape on Android 8 head units, #953),
+    // and the compass is placed from the map's edge, so it sat half under the bar while the
+    // buttons beside it, which pad for it, did not.
+    val sideNavRightPx = WindowInsets.navigationBars.getRight(density, androidx.compose.ui.platform.LocalLayoutDirection.current)
     val leftInsetHolder = rememberUpdatedState(cameraLeftInsetPx)
+    // The map buttons' column down the right side: centered MAP_BUTTON_CENTER_DP from the edge,
+    // 48 dp across, so a fit keeps twice the center distance clear.
+    val mapButtonsPx = with(density) { (MAP_BUTTON_CENTER_DP * 2).roundToPx() }
     val compassStock = remember { arrayOfNulls<android.graphics.drawable.Drawable>(1) }
     val compassIsNav = remember { booleanArrayOf(false) }
     val poiTap = rememberUpdatedState(onPoiTap)
@@ -1125,9 +1157,18 @@ fun VelaMapView(
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
     val myFixRawHolder = rememberUpdatedState(myFixRaw)         // raw fix, for the free-drive follow estimator
     val browseEst = remember { FollowEstimator() }              // the continuously integrated follow position
+    // The no-route dot snap onto the road under it (issue #803), and the offset [dlat,dlng] the
+    // dot carries now, eased toward the snap's so it slides on and off the road.
+    val roadSnap = remember { app.vela.core.location.RoadSnap() }
+    val snapOff = remember { doubleArrayOf(0.0, 0.0) }
+    val snapQueryMs = remember { doubleArrayOf(0.0) } // the last snap's query and pick, for the dotLog line
     val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
+    // Where the follow ticker last drew the dot [lat,lng] (NaN = not yet), the offset it carries
+    // across a hand-over between the fix and the eased camera [dlat,dlng], and which it was on.
+    val browseDot = remember { doubleArrayOf(Double.NaN, Double.NaN, 0.0, 0.0) }
+    val browseDotOnFix = remember { booleanArrayOf(true) }
     val browseBeam = remember { floatArrayOf(Float.NaN) }              // smoothed browse heading (NaN = idle, use raw)
     val browseAtt = remember { doubleArrayOf(0.0, 0.0) } // next-frame [bearing (signed), tilt], recomputed from the LIVE camera each frame
     // Free-drive dead reckon: the last fix + its speed/course, so the follow target GLIDES between
@@ -1274,12 +1315,16 @@ fun VelaMapView(
     // A pinch may also turn the map (see the gesture settings at map start), except while a drive
     // follows the car: the bearing is the camera's there, and a turn would only swing back.
     LaunchedEffect(navMode, navFollowing, mapRef) { mapRef?.uiSettings?.isDisableRotateWhenScaling = navMode && navFollowing }
+    HeatCap.Apply(mapView, mapRef != null, navMode)
     // DRAWING: a finger that comes down on a drawn point owns the gesture. Dragging moves the
     // point, a plain tap removes it; anything else falls through to the map (pan, zoom, and the
     // tap that adds a point). The listener sees the touch before the map's own gestures.
+    // The same effect lends the voice search's retry the loaded street names (VoiceStreetRetry).
     DisposableEffect(mapView, mapRef) {
         val map = mapRef
         if (map == null) onDispose { } else {
+            val streets: (LatLng, Double) -> List<String> = { c, r -> streetNamesNear(map, c, r) }
+            VoiceStreetRetry.mapStreets = streets
             val grabPx = 26f * context.resources.displayMetrics.density
             val slopPx = 8f * context.resources.displayMetrics.density
             var held = -1
@@ -1319,7 +1364,10 @@ fun VelaMapView(
                     else -> held >= 0 // a second finger while a point is held: ignored
                 }
             }
-            onDispose { mapView.setOnTouchListener(null) }
+            onDispose {
+                mapView.setOnTouchListener(null)
+                if (VoiceStreetRetry.mapStreets === streets) VoiceStreetRetry.mapStreets = null
+            }
         }
     }
     // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
@@ -1643,6 +1691,7 @@ fun VelaMapView(
     }
     val motionProvider = remember { app.vela.core.location.MotionProvider(context) }
     val worldAccel = remember { floatArrayOf(0f, 0f) }
+    val worldAccelAt = remember { longArrayOf(0L) } // elapsedRealtime of its last reading
     // NOT during a replay (2026-07-16): the trace's fixes are synthetic, but this feed is the
     // phone's REAL accelerometer - a handset sitting on a desk fed live sensor noise into the
     // Kalman while the trace played, and the puck jittered "very slightly all over" (and the
@@ -1654,6 +1703,19 @@ fun VelaMapView(
         motionProvider.worldAccel().collect { a ->
             worldAccel[0] = a[0]
             worldAccel[1] = a[1]
+            worldAccelAt[0] = android.os.SystemClock.elapsedRealtime()
+        }
+    }
+
+    // The car's rate of turn for the gyroscope-turned arrow (GyroTurn, Settings > Diagnostics):
+    // [rate in deg/s, elapsedRealtime of the reading]. Only while that switch is on in a live drive.
+    val gyroYaw = remember { doubleArrayOf(Double.NaN, 0.0) }
+    LaunchedEffect(navMode, replaying, app.vela.ui.GyroTurn.on.value) {
+        gyroYaw[0] = Double.NaN
+        if (!navMode || replaying || !app.vela.ui.GyroTurn.on.value) return@LaunchedEffect
+        motionProvider.yawRate().collect { r ->
+            gyroYaw[0] = r.toDouble()
+            gyroYaw[1] = android.os.SystemClock.elapsedRealtime().toDouble()
         }
     }
 
@@ -1701,7 +1763,7 @@ fun VelaMapView(
         // This write races applyData's ambient/search suppression of the same layers: forcing
         // VISIBLE on nav end while its gate still says NONE left doubled icons until the next
         // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
-        lastOsmPoiVis = null; lastPreviewTransitHidden = null
+        lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null
         lastPoiFuelOnly = null
         // Stop signs + lights are a NAV aid from z15.4 — a hair UNDER the nav camera's 15.5 zoom
         // floor, so they can't blink out at highway speed (the old 16 sat above the floor and the
@@ -2024,7 +2086,7 @@ fun VelaMapView(
     }
     LaunchedEffect(placesOneSet, styleRef) {
         osmOneSet = placesOneSet
-        lastOsmPoiVis = null; lastPreviewTransitHidden = null // applyData re-decides the basemap point layers' visibility
+        lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null // applyData re-decides the basemap point layers' visibility
         styleRef?.let { st -> if (placesOneSet) OSM_POI_LAYERS.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE)) } }
     }
     LaunchedEffect(placesPending, styleRef, osmBusinesses) {
@@ -2048,8 +2110,11 @@ fun VelaMapView(
         openHiddenIds = hiddenOpenPlaceIds
         styleRef?.let { runCatching { applyOpenPlacesHidden(it) } }
     }
-    LaunchedEffect(placesOverlays, styleRef, darkTheme, poiIconScale, poiLabelScale) {
+    // Settings > Places > Place names: every icon and name step below moves out by this many zooms.
+    val namesSooner = app.vela.ui.MapPoiPrefs.namesSooner.intValue
+    LaunchedEffect(placesOverlays, styleRef, darkTheme, poiIconScale, poiLabelScale, namesSooner) {
         val style = styleRef ?: return@LaunchedEffect
+        fun z(at: Float) = at - namesSooner
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
         // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
         openHiddenIds = hiddenOpenPlaceIds
@@ -2224,13 +2289,13 @@ fun VelaMapView(
                             Expression.step(
                                 Expression.zoom(),
                                 icon,
-                                Expression.stop(13f, topOr("crank", 2, 6.0, icon)),
-                                Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
+                                Expression.stop(z(13f), topOr("crank", 2, 6.0, icon)),
+                                Expression.stop(z(15f), topOr("rank", 1, 5.0, icon)),
                                 // Prominence escapes tightened 2026-09-16 (4.0 -> 5.0 at z16, 3.0 -> 4.5 at
                                 // z17): a Manhattan 400 m cell holds 3,000+ places and any shop with a
                                 // website scores about 4, so the old escape drew hundreds per block.
-                                Expression.stop(16f, topOr("rank", rankZ16, promZ16, icon)),
-                                Expression.stop(17f, topOr("rank", rankZ17, promZ17, icon)),
+                                Expression.stop(z(16f), topOr("rank", rankZ16, promZ16, icon)),
+                                Expression.stop(z(17f), topOr("rank", rankZ17, promZ17, icon)),
                                 // FULL-FAT ICON BUDGET at street zoom (user 2026-09-16: "have a
                                 // limit to the full fat POIs period if too many are on screen...
                                 // minimizing to little circle dots is an alternative if we are too
@@ -2240,11 +2305,11 @@ fun VelaMapView(
                                 // from 19.5. A place below the cut still draws as a dot (the dots
                                 // tier is unfiltered from z17), which is the "see more later when
                                 // we zoom in" behavior rather than a place disappearing.
-                                Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
-                                Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
-                                Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
+                                Expression.stop(z(17.5f), unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
+                                Expression.stop(z(18.5f), unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
+                                Expression.stop(z(19.5f), unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
                                 // Right on top of a building its offices get their pins too.
-                                Expression.stop(GENERIC_ICON_ZOOM, blockBudget(iconCapMax, 4.5, icon)),
+                                Expression.stop(z(GENERIC_ICON_ZOOM), blockBudget(iconCapMax, 4.5, icon)),
                             ),
                         ),
                         // Scaled like every other icon layer. Without this the open places layer
@@ -2275,10 +2340,10 @@ fun VelaMapView(
                             Expression.step(
                                 Expression.zoom(),
                                 name,
-                                Expression.stop(13f, topOr("crank", 2, 6.0, name)),
-                                Expression.stop(15f, topOr("rank", 1, 5.0, name)),
-                                Expression.stop(16f, topOr("rank", rankZ16, promZ16, name)),
-                                Expression.stop(17f, topOr("rank", rankZ17, promZ17, name)),
+                                Expression.stop(z(13f), topOr("crank", 2, 6.0, name)),
+                                Expression.stop(z(15f), topOr("rank", 1, 5.0, name)),
+                                Expression.stop(z(16f), topOr("rank", rankZ16, promZ16, name)),
+                                Expression.stop(z(17f), topOr("rank", rankZ17, promZ17, name)),
                                 // Labels stay THINNED at max zoom (2026-09-16). Icons come in for
                                 // everything from 17.5 (the stop below), but labeling every one of
                                 // them is what costs: each label is glyph layout plus a collision
@@ -2291,10 +2356,10 @@ fun VelaMapView(
                                 // A label only where its ICON draws (the same budget and generic
                                 // rule), then the label cap on top: a name floating with no icon
                                 // read as broken (Midtown, 2026-09-16).
-                                Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name))))),
-                                Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
-                                Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
-                                Expression.stop(GENERIC_ICON_ZOOM, blockBudget(iconCapMax, 4.5, name)),
+                                Expression.stop(z(17.5f), unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name))))),
+                                Expression.stop(z(18.5f), unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(z(19.5f), unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(z(GENERIC_ICON_ZOOM), blockBudget(iconCapMax, 4.5, name)),
                             ),
                         ),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -2351,7 +2416,7 @@ fun VelaMapView(
         fillLast[0] = Double.NaN // new sources: the next idle runs the pass regardless of movement
         osmHideBusiness = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
-        lastOsmPoiVis = null; lastPreviewTransitHidden = null
+        lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
         if (placesNavFuelOnly || placesNavDriveSet || placesPreviewHidden) applyOpenPlacesHidden(style)
     }
@@ -2619,6 +2684,11 @@ fun VelaMapView(
     // (re)load and whenever the Settings value changes. Low-density screens (car head units)
     // render the fixed-px bitmaps physically huge - a 0.7x here is the fix that doesn't touch
     // phones (their default stays 1.0).
+    // The ambient layer is made once per style with the setting it had then; a change re-sets its names.
+    LaunchedEffect(styleRef, namesSooner) {
+        val st = styleRef ?: return@LaunchedEffect
+        runCatching { st.getLayer(AMBIENT_LAYER)?.setProperties(PropertyFactory.textField(ambientLabelField(namesSooner))) }
+    }
     LaunchedEffect(styleRef, poiIconScale, poiLabelScale) {
         val st = styleRef ?: return@LaunchedEffect
         val sc = poiIconScale
@@ -2699,11 +2769,13 @@ fun VelaMapView(
         if (navMode || !driveFollowing) {
             browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
             browseCam[0] = Double.NaN
+            browseDot[0] = Double.NaN; browseDot[2] = 0.0; browseDot[3] = 0.0
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0; browseDrive[4] = 0.0
             browseZoomGoal[0] = Double.NaN
             if (navMode) browseUserTilt[0] = Double.NaN // a pan or a sheet keeps the angle, like Google's
             browseEst.reset()
+            roadSnap.clear(); snapOff[0] = 0.0; snapOff[1] = 0.0; RoadSnapQuery.clear()
             browseEngaged[0] = false; browseSeeking[0] = false
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
             return@LaunchedEffect
@@ -2745,7 +2817,28 @@ fun VelaMapView(
                 val crs = myBearingHolder.value?.toDouble()
                 val raw = myFixRawHolder.value
                 val fx = if (spd > 1.5 && raw != null) raw else loc
-                browseEst.onFix(fx.lat, fx.lng, spd, crs, nowMs)
+                // Driving with no route: move the fix onto the road it runs along (RoadSnap), from
+                // the roads the map has drawn. The query blocks on the render thread, so one answer
+                // covers the next few seconds of road (RoadSnapQuery).
+                val snapMap = mapRef
+                if (browseDrive[1] > 0.5 && snapMap != null && !app.vela.ui.AppTune.on("roadSnapOff", false)) {
+                    val t0 = System.nanoTime()
+                    val roads = if (spd >= app.vela.core.location.RoadSnap.START_MPS && crs != null)
+                        RoadSnapQuery.roadsNear(snapMap, style, fx.lat, fx.lng, spd, nowMs) else null
+                    roadSnap.onFix(fx.lat, fx.lng, spd, crs, roads, nowMs)
+                    snapQueryMs[0] = (System.nanoTime() - t0) / 1e6
+                    // adb only (`setprop debug.vela.tune.dotLog 1`): meters, never a position.
+                    if (app.vela.ui.AppTune.localOn("dotLog")) android.util.Log.d("VelaDot", String.format(java.util.Locale.US,
+                        "snap: %s, %d roads near, %.1f ms (query %d: %.1f, read %.1f)", if (!roadSnap.lastDistM.isNaN()) String.format(java.util.Locale.US, "%.1f m to the road", roadSnap.lastDistM)
+                            else if (roadSnap.snapped) "held" else "none", roads?.size ?: -1, snapQueryMs[0], RoadSnapQuery.queries, RoadSnapQuery.lastQueryMs, RoadSnapQuery.lastConvertMs))
+                } else if (roadSnap.snapped) roadSnap.clear()
+                // The fix is about 150 ms old (FixAge): carried along its course to now, as on a drive.
+                val leadM = if (crs != null && spd > 1.5 && app.vela.ui.AppTune.value("fixLead", 1.0) >= 0.5)
+                    spd * FixAge.ageMs(loc) / 1000.0 else 0.0
+                val leadBr = Math.toRadians(crs ?: 0.0)
+                val leadLat = leadM * kotlin.math.cos(leadBr) / 111_320.0
+                val leadLng = leadM * kotlin.math.sin(leadBr) / (111_320.0 * kotlin.math.cos(Math.toRadians(fx.lat)).coerceAtLeast(0.1))
+                browseEst.onFix(fx.lat + roadSnap.offLat + leadLat, fx.lng + roadSnap.offLng + leadLng, spd, crs, nowMs)
                 browseFix[3] = spd
                 browseFix[4] = crs ?: Double.NaN
             }
@@ -2824,9 +2917,9 @@ fun VelaMapView(
                 // walker for the rest of the follow.
                 browseDrive[4] += (browseFix[3] - browseDrive[4]) * (1.0 - kotlin.math.exp(-dt / FREE_HEADING_UP_TAU_S))
                 if (browseDrive[1] < 0.5 && browseDrive[4] > FREE_HEADING_UP_MPS && !browseFix[4].isNaN()) browseDrive[1] = 1.0
-                // "Keep north up": still driving (the beam keeps preferring the GPS course), but
-                // the camera takes the north-up branch below.
-                val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value
+                // "Keep north up", or "Turn the map as you drive" off: still driving (the beam keeps
+                // preferring the GPS course), but the camera takes the north-up branch below.
+                val headingUp = browseDrive[1] > 0.5 && !northLockHolder.value && app.vela.ui.TurnWithTravel.on.value
                 val tiltGoal = if (!browseUserTilt[0].isNaN()) browseUserTilt[0]
                     else if (headingUp) 55.0 else 0.0
                 if (headingUp) {
@@ -2884,7 +2977,36 @@ fun VelaMapView(
             // Skip the native calls when nothing moved enough to see (a settled follow at a red
             // light shouldn't re-upload the point + re-drive the camera 60×/s). ~1e-6 deg is well
             // under a pixel at street zoom; 0.4 deg of heading is invisible on the cone.
-            val moved = lastBrowse[0].isNaN() || attSettling ||
+            // WHERE THE DOT IS DRAWN. Following a move, at the eased camera position (at the raw fix
+            // the dot teleported forward on the map each 1 Hz fix while the camera eased to catch
+            // up). On the fix itself while standing still (the camera rests up to
+            // FOLLOW_STILL_DEADBAND_M off it), while a pinch or a pan has the camera, and while the
+            // camera glides back to the fix after one (#889). Switching between the two used to
+            // jump the dot by the gap, up to 3 m: 40 px at z20, at the end of every pinch and when
+            // a pinch began (user 2026-11-18). The gap is now carried across the switch and faded
+            // out over DOT_HANDOFF_TAU_S, so the dot never jumps.
+            if (browseSeeking[0] && !browseCam[0].isNaN() && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
+            val onFix = cam == null || scaling[0] || shoving[0] || twoDown[0] || browseFlying[0] || browseSeeking[0] || browseFix[3] < 0.5
+            // The road snap's offset, eased in and out (the follow estimate takes it with each fix).
+            val snapK = 1.0 - kotlin.math.exp(-dt / SNAP_EASE_S).toDouble()
+            snapOff[0] += (roadSnap.offLat - snapOff[0]) * snapK
+            snapOff[1] += (roadSnap.offLng - snapOff[1]) * snapK
+            if (kotlin.math.abs(snapOff[0] - roadSnap.offLat) < 1e-8 && kotlin.math.abs(snapOff[1] - roadSnap.offLng) < 1e-8) { snapOff[0] = roadSnap.offLat; snapOff[1] = roadSnap.offLng }
+            val baseLat = if (onFix) loc.lat + snapOff[0] else camLat
+            val baseLng = if (onFix) loc.lng + snapOff[1] else camLng
+            if (onFix != browseDotOnFix[0]) {
+                browseDotOnFix[0] = onFix
+                if (!browseDot[0].isNaN() && LatLng(browseDot[0], browseDot[1]).distanceTo(LatLng(baseLat, baseLng)) < DOT_HANDOFF_MAX_M) {
+                    browseDot[2] = browseDot[0] - baseLat; browseDot[3] = browseDot[1] - baseLng
+                }
+            }
+            val fade = kotlin.math.exp(-dt / DOT_HANDOFF_TAU_S).toDouble()
+            browseDot[2] *= fade; browseDot[3] *= fade
+            if (kotlin.math.abs(browseDot[2]) < 1e-8 && kotlin.math.abs(browseDot[3]) < 1e-8) { browseDot[2] = 0.0; browseDot[3] = 0.0 }
+            val dotLat = baseLat + browseDot[2]
+            val dotLng = baseLng + browseDot[3]
+            val dotMoved = browseDot[0].isNaN() || kotlin.math.abs(dotLat - browseDot[0]) > 1e-7 || kotlin.math.abs(dotLng - browseDot[1]) > 1e-7
+            val moved = lastBrowse[0].isNaN() || attSettling || dotMoved ||
                 kotlin.math.abs(camLat - lastBrowse[0]) > 1e-6 ||
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
@@ -2898,18 +3020,11 @@ fun VelaMapView(
             }
             if (moved || !zoomEase.isNaN() || browseFlying[0]) idleFrames = 0
             if (moved || !zoomEase.isNaN()) {
-                // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
-                // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to
-                // catch up (the visible hop). At the eased position the dot stays centered and glides with
-                // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
-                // while pinching, when the camera isn't easing.)
-                // Not while the camera glides in from a pan: drawn at the eased position then, the dot
-                // jumped to the screen's center and rode back with the map (#889).
-                if (browseSeeking[0] && loc.distanceTo(LatLng(browseCam[0], browseCam[1])) < SEEK_DONE_M) browseSeeking[0] = false
-                val puckAt = if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0] && !browseSeeking[0]) LatLng(camLat, camLng) else loc
-                setMeSource(style, puckAt, beam)
+                // The dot where the block above put it (the eased position, or the fix).
+                setMeSource(style, LatLng(dotLat, dotLng), beam)
+                browseDot[0] = dotLat; browseDot[1] = dotLng
                 if (cam != null && !scaling[0] && !shoving[0] && !twoDown[0] && !browseFlying[0]) {
-                    if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value)) {
+                    if (attSettling || !zoomEase.isNaN() || (browseDrive[1] > 0.5 && !northLockHolder.value && app.vela.ui.TurnWithTravel.on.value)) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
                         // preserved, so a pinch level survives). While driving the aim point
@@ -3176,6 +3291,8 @@ fun VelaMapView(
         }
         wasNavRef[0] = true
         navPuck.engaged = false
+        navPuck.lastFixV = Double.NaN; navPuck.gpsBrake = 0.0 // a new drive measures its own braking
+        navPuck.gyro.reset()
         val navWin = doubleArrayOf(Double.NaN) // route-split window end (m); relaunch = fresh route = re-anchor
         val cutStart = doubleArrayOf(Double.NaN) // cut piece [start, end] along the route (m)
         val cutEnd = doubleArrayOf(Double.NaN)
@@ -3282,7 +3399,7 @@ fun VelaMapView(
                 mapRef?.cameraPosition?.let { cp -> MapPerf.zoom = cp.zoom; MapPerf.tilt = cp.tilt }
                 MapPerf.following = navFollowingHolder.value
                 MapPerf.symbolsHidden = turnDeclutter.active
-                navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
+                navPuck.kalman.predict(if (navPuck.gpsBrake < 0.0) minOf(fwd, navPuck.gpsBrake) else fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
                 // Dead-reckon by INTEGRATING the live modeled speed — over THIS frame's part of
                 // the blind window since the fix (TRACE time; the window caps how far a dropped
@@ -3338,6 +3455,11 @@ fun VelaMapView(
                 val maxHoldBack = navPuck.speed * 0.25 + 0.5 // ...and of braking, so it never reverses
                 val corr = (err / PUCK_CORRECT_TIME_S).coerceIn(-maxHoldBack, maxCatchUp)
                 navPuck.progressM += ((navPuck.speed + corr) * dtT.coerceAtMost(0.5)).coerceAtLeast(0.0)
+                // The one way back: stopped past where the car is (STOP_SETTLE_*), glide back onto it.
+                if (!navPuck.settleToM.isNaN()) {
+                    if (navPuck.progressM <= navPuck.settleToM) navPuck.settleToM = Double.NaN
+                    else navPuck.progressM = maxOf(navPuck.settleToM, navPuck.progressM - STOP_SETTLE_RATE_MPS * dtT.coerceAtMost(0.5))
+                }
                 val puckM = puckAt?.let { app.vela.core.nav.RouteSmoothing.mapAlong(it, puckCum, navPuck.progressM) }
                     ?: (navPuck.progressM * (if (routeCum.isNotEmpty() && routeCum.last() > 0.0 && puckCum.isNotEmpty()) puckCum.last() / routeCum.last() else 1.0))
                 val (_, segBrg) = pointAtMeters(puckLine, puckCum, puckM)
@@ -3375,23 +3497,76 @@ fun VelaMapView(
                 // across the window barely moves on a straight road with kinked geometry. The
                 // clamped ends coincide only at a degenerate route edge; fall back to the
                 // segment there rather than aiming the arrow north.
-                val (wA, _) = pointAtMeters(puckLine, puckCum, puckM - win)
-                val (wB, _) = pointAtMeters(puckLine, puckCum, puckM + win)
+                // A car starts its arc well before the corner's point (a 90 degree turn on a 15 m
+                // radius bends 15 m out), so the heading's chord is at least HEAD_WIN_MIN_M either
+                // side, which starts it turning where the car does; and it is taken HEAD_LEAD_S ahead
+                // of the puck, the time the drawn heading's ease below takes to land.
+                val tuneNow = android.os.SystemClock.elapsedRealtime()
+                if (tuneNow - navPuck.headTuneAtMs > 2_000L) {
+                    navPuck.headTuneAtMs = tuneNow
+                    navPuck.headWinMin = app.vela.ui.AppTune.value("headWinMin", HEAD_WIN_MIN_M).coerceIn(0.0, 40.0)
+                    navPuck.headLeadS = app.vela.ui.AppTune.value("headLeadS", HEAD_LEAD_S).coerceIn(0.0, 2.0)
+                    navPuck.camLeadS = app.vela.ui.AppTune.value("camLeadS", CAM_LEAD_S).coerceIn(0.0, 2.0)
+                }
+                val headWin = maxOf(win, navPuck.headWinMin)
+                val headM = puckM + navPuck.speed * navPuck.headLeadS
+                val (wA, _) = pointAtMeters(puckLine, puckCum, headM - headWin)
+                val (wB, _) = pointAtMeters(puckLine, puckCum, headM + headWin)
                 val chordBrg = if (kotlin.math.abs(wA.lat - wB.lat) + kotlin.math.abs(wA.lng - wB.lng) < 1e-7) segBrg
                     else bearingDeg(wA, wB)
-                // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
-                // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
-                navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
-                    else smoothBearing(navPuck.displayBearing, chordBrg, dtEase, 0.3f)
+                // The camera's own ease trails a turn by about CAM_LEAD_S, so it aims that much further on.
+                navPuck.camChord = if (navPuck.camLeadS <= 0.0) Float.NaN else {
+                    val camM = headM + navPuck.speed * navPuck.camLeadS
+                    val (cA, _) = pointAtMeters(puckLine, puckCum, camM - headWin)
+                    val (cB, _) = pointAtMeters(puckLine, puckCum, camM + headWin)
+                    if (kotlin.math.abs(cA.lat - cB.lat) + kotlin.math.abs(cA.lng - cB.lng) < 1e-7) Float.NaN else bearingDeg(cA, cB)
+                }
+                // GYROSCOPE MODE (GyroTurn, Settings > Diagnostics): the arrow turns at the rate the
+                // phone measures the car turning, held to the road's bearing AT the arrow (no
+                // look-ahead), and the camera leads it only by that measured rate. The chord above
+                // turns where the line's corner is drawn, which can be a second off the car's turn.
+                val gyroRate = gyroYaw[0].takeIf { !it.isNaN() && tuneNow - gyroYaw[1] < GYRO_FRESH_MS && app.vela.ui.GyroTurn.on.value }
+                if (gyroRate != null) {
+                    // Switched on mid-drive, or a reading back after a gap: start from what is drawn.
+                    if (navPuck.gyro.heading.isNaN() && !navPuck.displayBearing.isNaN()) navPuck.gyro.seed(navPuck.displayBearing.toDouble())
+                    val (rA, _) = pointAtMeters(puckLine, puckCum, puckM - headWin)
+                    val (rB, _) = pointAtMeters(puckLine, puckCum, puckM + headWin)
+                    val refBrg = if (kotlin.math.abs(rA.lat - rB.lat) + kotlin.math.abs(rA.lng - rB.lng) < 1e-7) segBrg.toDouble()
+                        else bearingDeg(rA, rB).toDouble()
+                    // Held to the directions the route takes around the arrow, so a wobbling mount
+                    // cannot turn it on a straight.
+                    val env = navPuck.gyroEnv
+                    gyroEnvelope(puckLine, puckCum, puckM, refBrg,
+                        backM = maxOf(GYRO_ENV_BACK_MIN_M, navPuck.speed * GYRO_ENV_BACK_S),
+                        aheadM = maxOf(GYRO_ENV_AHEAD_MIN_M, navPuck.speed * GYRO_ENV_AHEAD_S), out = env)
+                    val gh = navPuck.gyro
+                    // Capped at the turn the sideways push allows, so a twisting mount is clipped.
+                    val cap = if (android.os.SystemClock.elapsedRealtime() - worldAccelAt[0] > GYRO_FRESH_MS) null
+                        else app.vela.core.location.GyroHeading.accelCapDps(
+                            kotlin.math.hypot(worldAccel[0].toDouble(), worldAccel[1].toDouble()), navPuck.speed)
+                    navPuck.displayBearing = gh.update(dtEase.toDouble(), gyroRate, refBrg, navPuck.speed, env[0], env[1], cap).toFloat()
+                    // The camera leads by the low-passed rate, inside the same envelope.
+                    val lead = (gh.rate * CAM_GYRO_LEAD_S).coerceIn(-CAM_GYRO_LEAD_MAX_DEG, CAM_GYRO_LEAD_MAX_DEG)
+                    val camRel = (app.vela.core.location.GyroHeading.delta(refBrg, gh.heading) + lead)
+                        .coerceIn(app.vela.core.location.GyroHeading.lowEdge(env[0]), app.vela.core.location.GyroHeading.highEdge(env[1]))
+                    navPuck.camChord = (((refBrg + camRel) % 360.0 + 360.0) % 360.0).toFloat()
+                } else {
+                    navPuck.gyro.reset()
+                    // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
+                    // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
+                    navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
+                        else smoothBearing(navPuck.displayBearing, chordBrg, dtEase, 0.3f)
+                }
                 // Nav smoothness trace (issue #251, Settings > Diagnostics, off by default): one
                 // row per frame of the numbers behind the camera, so a real drive can be diagnosed
                 // instead of a simulated one. No-op unless the user turned it on; carries no
                 // position data (see NavTrace).
-                if (app.vela.diag.NavTrace.enabled.value) {
+                if (app.vela.diag.NavTrace.active(android.os.SystemClock.elapsedRealtime())) {
                     app.vela.diag.NavTrace.record(
                         android.os.SystemClock.elapsedRealtime(), navPuck.progressM, navPuck.speed,
                         win, chordBrg, navPuck.displayBearing,
                         mapRef?.cameraPosition?.bearing ?: Double.NaN, dtE,
+                        gyroRate?.toFloat() ?: Float.NaN,
                     )
                 }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
@@ -3495,7 +3670,8 @@ fun VelaMapView(
                     // Compass toggle (user 2026-07-15): north-up keeps the follow (position, zoom,
                     // puck-low framing) but eases bearing to 0 and the tilt flat; the puck arrow
                     // then rotates on the north-up map instead of the map rotating under it.
-                    val brgTgt = if (navNorthUpHolder.value) 0.0 else (navPuck.displayBearing.toDouble() + navYaw + 360.0) % 360.0
+                    val camHead = navPuck.camChord.takeUnless { it.isNaN() } ?: navPuck.displayBearing
+                    val brgTgt = if (navNorthUpHolder.value) 0.0 else (camHead.toDouble() + navYaw + 360.0) % 360.0
                     val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
                     // CAMERA BEARING IS ADAPTIVELY DAMPED (issue #251, the "crinkly roads" residual).
                     // A road digitized from imagery wiggles even where it is physically straight, and
@@ -3511,9 +3687,15 @@ fun VelaMapView(
                     // Small error -> tau 1.6 s (keeps ~24% of the wiggle, vs 59% before); a genuine
                     // turn -> tau 0.35 s, which is actually QUICKER around a corner than the old flat
                     // 0.55. Tilt keeps its own constant - it is not part of this problem.
-                    val brgTau = (CAM_BRG_TAU_STILL +
+                    // Once the error passes CAM_BRG_LATCH_DEG the turn's constant holds until the camera
+                    // is within CAM_BRG_SETTLED_DEG: easing back toward the slow one as the error shrank
+                    // left the map turning for two seconds after the car had finished the turn.
+                    val absDb = kotlin.math.abs(db)
+                    if (absDb >= CAM_BRG_LATCH_DEG) navPuck.camTurning = true
+                    else if (absDb < CAM_BRG_SETTLED_DEG) navPuck.camTurning = false
+                    val brgTau = if (navPuck.camTurning) camTurnTau.toFloat() else (CAM_BRG_TAU_STILL +
                         (camTurnTau - CAM_BRG_TAU_STILL) *
-                        (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
+                        (absDb / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
                     val kBrgAdaptive = (1f - kotlin.math.exp(-dtEase / brgTau)).toDouble()
                     camState[2] = (camState[2] + db * kBrgAdaptive + 360.0) % 360.0
                     // TURN DECLUTTER (user 2026-10-02): while the camera swings, only street names
@@ -3984,7 +4166,7 @@ fun VelaMapView(
     }
 
     androidx.compose.foundation.layout.Box(modifier) {
-    AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize()) { mv ->
+    AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize().onSizeChanged { if (mapHeightPx.intValue != it.height) mapHeightPx.intValue = it.height }) { mv ->
         // Re-assert non-focusability each pass — MapLibre re-enables it on surface
         // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
         if (mv.isFocusable) {
@@ -4054,6 +4236,18 @@ fun VelaMapView(
                     if (drawActive.value) {
                         drawTap.value(LatLng(tapped.latitude, tapped.longitude))
                         return@handleTap true
+                    }
+                    // The arrow while navigating: a tap on it picks its icon (PuckPicker). It is the
+                    // follow overlay or, off follow, the symbol at the last applied fix.
+                    if (navModeHolder.value && !app.vela.ui.PipMode.active.value) {
+                        val tp = map.projection.toScreenLocation(tapped)
+                        val at = if (puckOverlayOn.value) android.graphics.PointF(puckOverlayX.floatValue, puckOverlayY.floatValue)
+                            else lastAppliedMe?.let { map.projection.toScreenLocation(MLLatLng(it.lat, it.lng)) }
+                        val hitPx = maxOf(density.density * 28f, 101f * app.vela.ui.PuckStyle.phoneScale())
+                        if (at != null && !at.x.isNaN() && kotlin.math.hypot(tp.x - at.x, tp.y - at.y) <= hitPx) {
+                            PuckPicker.open.value = true
+                            return@handleTap true
+                        }
                     }
                     val p = map.projection.toScreenLocation(tapped)
                     // Generous hit radius (~16dp) so taps near a POI icon register —
@@ -4939,7 +5133,8 @@ fun VelaMapView(
         // it), so both margins are measured from the stock image, never from the drive's.
         if (compassStock[0] == null) compassStock[0] = map.uiSettings.compassImage
         val browseRight = with(density) { MAP_BUTTON_CENTER_DP.roundToPx() } - (compassStock[0]?.intrinsicWidth ?: 0) / 2
-        map.uiSettings.setCompassMargins(0, compassTopPx, if (navMode) compassRightPx else browseRight.coerceAtLeast(0), 0)
+        val browseStep = if (compassBesideZoom) with(density) { COMPASS_BESIDE_ZOOM_DP.roundToPx() } else 0
+        map.uiSettings.setCompassMargins(0, compassTopPx, (if (navMode) compassRightPx else browseRight.coerceAtLeast(0) + browseStep) + sideNavRightPx, 0)
         // In a drive the compass wears the nav buttons' dress; browsing keeps the map's own.
         val wantNavCompass = navMode
         if (compassIsNav[0] != wantNavCompass) {
@@ -5049,7 +5244,8 @@ fun VelaMapView(
         // second): the ticker draws the puck at the EASED follow point, but each fix's
         // recomposition ran this paint with the RAW fix - the dot teleported forward and the
         // ticker's next frame pulled it back. Paint the eased point while the ticker owns it.
-        val mePaint = if (!navMode && driveFollowing && !browseCam[0].isNaN()) LatLng(browseCam[0], browseCam[1]) else displayLoc
+        // Following, the ticker owns the dot: a recomposition repaints where it last drew it.
+        val mePaint = if (!navMode && driveFollowing && !browseDot[0].isNaN()) LatLng(browseDot[0], browseDot[1]) else displayLoc
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         // Gated on the fix being NEW (identity — the ViewModel makes a fresh LatLng per fix and
         // recompositions re-pass the same instance): this block runs in a recomposing scope, and
@@ -5061,7 +5257,13 @@ fun VelaMapView(
         val newFix = myLocation != null && myLocation !== navPuck.lastFixLoc
         if (navMode && newFix && snap != null) {
             navPuck.lastFixLoc = myLocation
-            val m = snap.third
+            // A fix lands about 150 ms after the GPS measured it (FixAge). Carried forward at its
+            // own speed, it says where the car is now; taken as is, the puck drew the car that
+            // far back. The `fixLead` dial at 0 turns this off.
+            val fixAgeMs = FixAge.ageMs(myLocation)
+            val leadM = if (fixAgeMs > 0L && app.vela.ui.AppTune.value("fixLead", 1.0) >= 0.5)
+                (mySpeedRaw?.toDouble() ?: navPuck.kalman.speed).coerceIn(0.0, 70.0) * fixAgeMs / 1000.0 else 0.0
+            val m = snap.third + leadM
             val now = android.os.SystemClock.elapsedRealtime()
             var accepted = false
             var reanchor = false // a genuine discontinuity — reseed the filter rather than average it in
@@ -5092,7 +5294,9 @@ fun VelaMapView(
                     // slowest real traveler: a stroll is ~0.9-1.4 m/s (must flow fix-by-fix),
                     // parked doppler noise reads < ~0.4; queue-creep below even that still gets
                     // in once it accumulates past the 8 m noise floor.
-                    fwd in 0.0..maxStep && (navPuck.kalman.speed > 0.5 || fwd > 8.0) -> {
+                    // The fix's own Doppler speed counts too (PULL_AWAY_MPS): pulling away, the
+                    // model still reads 0 from the stop, and the first moving fix was held as jitter.
+                    fwd in 0.0..maxStep && (navPuck.kalman.speed > 0.5 || fwd > 8.0 || (mySpeedRaw ?: 0f) > PULL_AWAY_MPS) -> {
                         navPuck.targetM = m
                         accepted = true
                     }
@@ -5121,6 +5325,31 @@ fun VelaMapView(
                     else -> navPuck.fwdRejects = 0
                 }
                 if (accepted) navPuck.fwdRejects = 0
+                // Stopped past the car. The arrow only ever moves forward, and dead reckoning through
+                // a stop carries it on after the car has halted: a mock turn from a stop left it 4 to
+                // 6 m past the car, where it then waited for the car to drive up to it. After
+                // STOP_SETTLE_AFTER_MS at a standstill, when the median of the last three fixes is
+                // more than STOP_SETTLE_MIN_M (or 0.6 of their accuracy) behind the arrow, it glides
+                // back onto them. The `stopSettle` dial at 0 turns it off.
+                // The fix's own Doppler speed says it first; the model takes seconds to decay to it.
+                val stoppedNow = (mySpeedRaw?.toDouble() ?: navPuck.kalman.speed) < STOP_SETTLE_MPS
+                if (!stoppedNow) { navPuck.stoppedSinceMs = 0L; navPuck.stopFixN = 0; navPuck.settleToM = Double.NaN }
+                else {
+                    if (navPuck.stoppedSinceMs == 0L) navPuck.stoppedSinceMs = now
+                    navPuck.stopFixM[navPuck.stopFixN % 3] = m
+                    navPuck.stopFixN += 1
+                    if (navPuck.stopFixN >= 3 && navPuck.settleToM.isNaN() && now - navPuck.stoppedSinceMs >= STOP_SETTLE_AFTER_MS &&
+                        app.vela.ui.AppTune.value("stopSettle", 1.0) >= 0.5
+                    ) {
+                        val med = navPuck.stopFixM.sorted()[1]
+                        val gap = navPuck.progressM - med
+                        if (gap > maxOf(app.vela.ui.AppTune.value("stopSettleMin", STOP_SETTLE_MIN_M), 0.6 * (myAccuracyM ?: 5f))) {
+                            navPuck.settleToM = med
+                            navPuck.targetM = med
+                            navPuck.along.reseed(med, myAccuracyM)
+                        }
+                    }
+                }
             }
             navPuck.missCount = 0
             navPuck.headingMisses = 0
@@ -5144,8 +5373,22 @@ fun VelaMapView(
             // held state speed here — the old code — re-injected the stale braking speed at
             // near-unity gain through every stop: the stuck-mph/creeping-puck bug. A doppler-less
             // fix simply doesn't measure (predict + decay carry the model).
-            mySpeedRaw?.let { navPuck.kalman.update(it.toDouble()) }
+            mySpeedRaw?.let { v ->
+                // Braking, from two fixes in a row: the speed each one measured over the time
+                // between them. Between fixes the arrow advances at the modeled speed, and the
+                // accelerometer that slows it can read nothing useful (a phone loose in a
+                // cupholder, on a desk in the rig): a 2.5 m/s2 stop left the arrow 5.6 m past the
+                // car, and then it slid back. The model now slows at whichever is harder.
+                val dtV = (now - navPuck.lastFixVAtMs) / 1000.0
+                val trend = if (!navPuck.lastFixV.isNaN() && dtV in BRAKE_MIN_GAP_S..BRAKE_MAX_GAP_S) (v - navPuck.lastFixV) / dtV else 0.0
+                navPuck.gpsBrake = if (trend <= -BRAKE_MIN_MPS2 && v < app.vela.ui.AppTune.value("gpsBrakeBelow", BRAKE_BELOW_MPS.toDouble()) && app.vela.ui.AppTune.value("gpsBrake", 1.0) >= 0.5)
+                    trend.coerceAtLeast(-BRAKE_MAX_MPS2) else 0.0
+                navPuck.lastFixV = v.toDouble()
+                navPuck.lastFixVAtMs = now
+                navPuck.kalman.update(v.toDouble())
+            }
             navPuck.speed = navPuck.kalman.speed
+            app.vela.diag.NavTrace.fix(now, m, navPuck.speed, fixAgeMs, accepted)
             if (accepted) navPuck.speedAtAccept = navPuck.speed
         } else if (navMode && newFix && navPuck.engaged) {
             navPuck.lastFixLoc = myLocation
@@ -5197,11 +5440,10 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings color-set switch reloads the style, same as a theme flip.
-        // The puck style rides the key too: the symbol image is registered once per style load
-        // (issue #344), so a size/color change reloads to re-register it.
+        // The navigation icon does not: its image is swapped in place (below, at the overlay).
         // The offline basemap rides the key: entering or leaving an installed region reloads the
         // style with its tile source pointed at the local archive (or back at OpenFreeMap).
-        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}|names=${app.vela.ui.MapNames.mode.value}|base=${basemapArchive ?: ""}"
+        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|hn=${app.vela.ui.HouseNumbers.level.value}|names=${app.vela.ui.MapNames.mode.value}|base=${basemapArchive ?: ""}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             // An installed offline basemap wins over every style source: the remote Liberty URL
@@ -5261,7 +5503,7 @@ fun VelaMapView(
                 }
                 ensureLayers(style, painted)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
-                lastOsmPoiVis = null; lastPreviewTransitHidden = null
+                lastOsmPoiVis = null; lastOsmParkVis = null; lastPreviewTransitHidden = null
                 lastPoiFuelOnly = null
                 lastNavLabelKey = null
                 lastControlsVis = null
@@ -5551,10 +5793,7 @@ fun VelaMapView(
                     // Reserve room at the bottom for the directions panel AND at the top for the
                     // endpoints card, so the route's start/end frame in the VISIBLE strip between
                     // them instead of hiding behind either (user 2026-07-14).
-                    val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
-                    val pad = fp.side
-                    val bottom = fp.bottom
-                    val top = fp.top
+                    val fp = fitPaddingBeside(map.width.toInt(), map.height.toInt(), cameraLeftInsetPx, cameraTopInsetPx, cameraBottomInsetPx, 140, mapButtonsPx)
                     val bounds = builder.build()
                     // A continental trip fit zooms out until nothing has context; past ~12 degrees
                     // of span, frame the DESTINATION area instead - the end point is the part worth
@@ -5571,7 +5810,7 @@ fun VelaMapView(
                         }
                         flightDepth[0]++
                         map.animateCamera(
-                            CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800, flightCb(),
+                            CameraUpdateFactory.newLatLngBounds(bounds, fp[0], fp[1], fp[2], fp[3]), 800, flightCb(),
                         )
                     }
                 }
@@ -5586,11 +5825,11 @@ fun VelaMapView(
                 lastFittedTransitKey = transitFitCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
                 val builder = MLLatLngBounds.Builder()
                 transitFitCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
+                val fp = fitPaddingBeside(map.width.toInt(), map.height.toInt(), cameraLeftInsetPx, cameraTopInsetPx, cameraBottomInsetPx, 140, mapButtonsPx)
                 runCatching {
                     flightDepth[0]++
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 800, flightCb(),
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), fp[0], fp[1], fp[2], fp[3]), 800, flightCb(),
                     )
                 }
             }
@@ -5653,10 +5892,10 @@ fun VelaMapView(
                     val builder = MLLatLngBounds.Builder()
                     cluster.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                     // Keep the cluster above the results sheet (peek covers the bottom half).
-                    val fp = fitPadding(map, 0, cameraBottomInsetPx, 160)
+                    val fp = fitPaddingBeside(map.width.toInt(), map.height.toInt(), cameraLeftInsetPx, 0, cameraBottomInsetPx, 160, mapButtonsPx)
                     runCatching {
                         flightDepth[0]++
-                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 700, flightCb())
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp[0], fp[1], fp[2], fp[3]), 700, flightCb())
                     }
                 }
                 }
@@ -5726,6 +5965,10 @@ fun VelaMapView(
             if (a > 0f) drawRect(androidx.compose.ui.graphics.Color(land), alpha = a)
         },
     )
+    // A new navigation icon replaces the symbol's image on the loaded style. The picker changes it
+    // mid-drive, where a style reload blanked the map and rebuilt every layer.
+    val puckImgKey = app.vela.ui.PuckStyle.key()
+    LaunchedEffect(puckImgKey) { styleRef?.let { st -> runCatching { st.addImage(NAV_PUCK_IMG, navPuckBitmap()) } } }
     val puckMesh = if (puckOverlayOn.value) remember(app.vela.ui.PuckStyle.key()) {
         PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)
     } else null
@@ -5765,6 +6008,7 @@ fun VelaMapView(
                 .size(with(density) { sizePx.toDp() }),
         )
     }
+    if (PuckPicker.open.value) PuckPickerDialog(onClose = { PuckPicker.open.value = false })
     }
 }
 
@@ -5888,6 +6132,32 @@ private fun ensureLayers(style: Style, painted: Boolean) {
     // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
     // forests flat color. Rebuild each tier's rank-band filter with vegetation excluded.
     applyPoiTierFilters(style, fuelOnly = false)
+    // (2b) Car parks with no name (issue #935), for when the tiers hide under the open places
+    // archive or Google's dots: neither has one. One layer over the poi source-layer with its
+    // own filter, not the three tiers narrowed: in Shinjuku the tiers kept up but filtered to
+    // parking cost about as much as drawing nothing with them hidden saved. Ranks as the tiers:
+    // under 20 from z15, every one from z18. Below the tiers, so a business wins a collision.
+    if (style.getLayer(OSM_PARKING_LAYER) == null && style.getLayer("poi_r20") != null) {
+        val src = basemapSrc(style)
+        if (src != null) {
+            val unnamed = Expression.any(Expression.not(Expression.has("name")), Expression.eq(Expression.get("name"), Expression.literal("")))
+            val ranked = Expression.any(Expression.lt(Expression.get("rank"), Expression.literal(20)), Expression.gte(Expression.zoom(), Expression.literal(18)))
+            val park = SymbolLayer(OSM_PARKING_LAYER, src).withSourceLayer("poi")
+                .withFilter(Expression.all(
+                    Expression.match(Expression.geometryType(), Expression.literal(false), Expression.stop("Point", true), Expression.stop("MultiPoint", true)),
+                    Expression.eq(Expression.get("class"), Expression.literal("parking")), unnamed, ranked,
+                ))
+                .withProperties(
+                    PropertyFactory.iconImage("vela-poi-parking"),
+                    PropertyFactory.iconSize(0.8f),
+                    PropertyFactory.symbolSortKey(Expression.get("rank")),
+                    PropertyFactory.visibility(Property.NONE),
+                )
+            park.minZoom = 15f
+            runCatching { style.addLayerBelow(park, "poi_r20") }
+            lastOsmParkVis = null
+        }
+    }
 
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
     if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
@@ -6247,37 +6517,7 @@ private fun ensureLayers(style: Style, painted: Boolean) {
                 // dense areas - every label is collision work with four candidate anchors, and an
                 // EMPTY textField skips label placement entirely (a textOpacity of 0 would still
                 // place and collide it, paying the cost invisibly).
-                PropertyFactory.textField(
-                    Expression.step(
-                        Expression.zoom(),
-                        // below z15.5: only true landmarks (malls, big-box, the 1000-review anchors)
-                        Expression.switchCase(
-                            Expression.gte(Expression.get("prominence"), Expression.literal(6.0)),
-                            Expression.get("name"),
-                            Expression.literal(""),
-                        ),
-                        // z15.5+: established places join
-                        Expression.stop(
-                            15.5f,
-                            Expression.switchCase(
-                                Expression.gte(Expression.get("prominence"), Expression.literal(5.0)),
-                                Expression.get("name"),
-                                Expression.literal(""),
-                            ),
-                        ),
-                        // z16.5+ (street level): any real business; 0-review junk stays a bare dot
-                        Expression.stop(
-                            16.5f,
-                            Expression.switchCase(
-                                Expression.gte(Expression.get("prominence"), Expression.literal(3.0)),
-                                Expression.get("name"),
-                                Expression.literal(""),
-                            ),
-                        ),
-                        // z17.5+ (single-lot zoom): everything visible gets its name
-                        Expression.stop(17.5f, Expression.get("name")),
-                    ),
-                ),
+                PropertyFactory.textField(ambientLabelField(app.vela.ui.MapPoiPrefs.namesSooner.intValue)),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(
                     Expression.interpolate(
@@ -6655,7 +6895,11 @@ PropertyFactory.iconPadding(2f),
         )
     }
     if (style.getSource(ME_SRC) == null) {
-        style.addSource(GeoJsonSource(ME_SRC, GeoJsonOptions().withMaxZoom(12)))
+        // The full tile depth, unlike the other point sources: a point is placed on its tile's grid,
+        // and at z12 that grid is about 0.9 m, so the moving dot stepped from one grid point to the
+        // next, 13 px at z19 and 30 px past z20, while the map under it held still. One point costs
+        // nothing to re-cut.
+        style.addSource(GeoJsonSource(ME_SRC, GeoJsonOptions().withMaxZoom(22)))
         // Heading beam first so it sits BENEATH the dot (Google order): the
         // translucent cone fans out from under the dot in the facing direction.
         style.addLayer(
@@ -6916,6 +7160,9 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
 }
 
 private val OSM_POI_LAYERS = listOf("poi_r1", "poi_r7", "poi_r20")
+/** The basemap's unnamed car parks, shown where the tiers hide (issue #935). */
+private const val OSM_PARKING_LAYER = "vela-osm-parking"
+private var lastOsmParkVis: String? = null
 // Basemap point classes that stand for an AREA, and how far such a point may sit from the open
 // place of the same name and still be it.
 private val OSM_AREA_CLASSES = setOf("golf", "park", "stadium", "cemetery", "zoo", "college", "school", "hospital", "campsite", "garden")
@@ -7068,6 +7315,9 @@ private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nul
 /** Below this camera zoom the nav road-name pass does not run (see the pass). The nav camera's own
  *  floor is 15.5 and the callouts fade in from 15, so nothing is lost. */
 private const val NAV_LABEL_PASS_MIN_ZOOM = 14.6
+/** Below this camera zoom the voice search's retry reads no street names from the map (see
+ *  [streetNamesNear]). */
+private const val STREET_NAMES_MIN_ZOOM = 12.0
 /** Measuring only: `adb shell setprop debug.vela.navLabelProbe true` runs the pass at any zoom. */
 private val NAV_LABEL_PASS_PROBE: Boolean by lazy {
     runCatching { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java).invoke(null, "debug.vela.navLabelProbe") == "true" }.getOrDefault(false)
@@ -8726,6 +8976,27 @@ private const val GENERIC_REVEAL_ZOOM = 19.5f
 private const val GENERIC_ICON_ZOOM = 20.3f
 private const val ROAD_NAME_SPACING_CLOSE_PX = 300.0
 
+/** The Google ambient layer's names by zoom x prominence, every step moved out by [sooner] zooms
+ *  (Settings > Places > Place names). */
+private fun ambientLabelField(sooner: Int): Expression {
+    fun from(prom: Double) = Expression.switchCase(
+        Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
+        Expression.get("name"),
+        Expression.literal(""),
+    )
+    return Expression.step(
+        Expression.zoom(),
+        // below z15.5: only true landmarks (malls, big-box, the 1000-review anchors)
+        from(6.0),
+        // z15.5+: established places join
+        Expression.stop(15.5f - sooner, from(5.0)),
+        // z16.5+ (street level): any real business; 0-review junk stays a bare dot
+        Expression.stop(16.5f - sooner, from(3.0)),
+        // z17.5+ (single-lot zoom): everything visible gets its name
+        Expression.stop(17.5f - sooner, Expression.get("name")),
+    )
+}
+
 private fun widenStreets(style: StyleLayers) {
     val scale = roadWidthScale()
     val edges = roadEdgesOn() && !app.vela.ui.MapColors.classic()
@@ -9585,6 +9856,14 @@ private const val PUCK_LEAVE_NOW_M = 12.0
 
 /** How far the center of every map button sits from the screen's end: a 56 dp button at 16 dp. */
 private val MAP_BUTTON_CENTER_DP = 44.dp
+/** MapScreen's zoom buttons: `chromeLift + 144.dp` over the bottom, 81 dp tall, and its
+ *  `chromeLift` while results are minimized. Keep these in step with it. */
+private val ZOOM_PILL_BOTTOM_DP = 144.dp
+private val ZOOM_PILL_HEIGHT_DP = 81.dp
+private val RESULTS_BAR_LIFT_DP = 76.dp
+/** How far in the browse compass moves to stand beside the zoom buttons: their column (56 dp
+ *  around the 44 dp center line) and a gap. */
+private val COMPASS_BESIDE_ZOOM_DP = 64.dp
 
 /** Smallest absolute difference between two compass bearings (deg), 0..180. */
 private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)
@@ -9633,6 +9912,25 @@ private class NavPuck {
     var fwdRejects = 0            // consecutive over-maxStep forward steps — a persistent one is
                                   // the new reality (long fix gap at speed), accept it rather than
                                   // deadlock targetM against a stale plausibility cap
+    // Heading dials (SPEC 4.7, Position and speed), read every 2 s rather than per frame.
+    var headTuneAtMs = 0L
+    var headWinMin = HEAD_WIN_MIN_M
+    var headLeadS = HEAD_LEAD_S
+    var camLeadS = CAM_LEAD_S
+    var camChord = Float.NaN      // the heading [camLeadS] further on, the camera's target in a turn
+    var camTurning = false        // a turn's error passed CAM_BRG_LATCH_DEG and has not yet settled
+    // Stopped: the last fixes' along-route meters and since when, for the settle back onto them.
+    val stopFixM = DoubleArray(3)
+    var stopFixN = 0
+    var stoppedSinceMs = 0L
+    var settleToM = Double.NaN    // the arrow glides back to here while the car stays stopped
+    val gyro = app.vela.core.location.GyroHeading() // the gyroscope-turned heading (GyroTurn)
+    val gyroEnv = DoubleArray(2) // its route envelope this frame (gyroEnvelope)
+    // Braking the GPS speeds show (BRAKE_*): the last fix's Doppler speed and when it came, and the
+    // deceleration from the fix before it, applied between fixes so the arrow slows with the car.
+    var lastFixV = Double.NaN
+    var lastFixVAtMs = 0L
+    var gpsBrake = 0.0
     var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
                                   // exactly when the resume fix needs the window big)
@@ -9712,6 +10010,51 @@ private const val PUCK_SMOOTH_SAMPLES = 7
  *  rather than applied as a jump. Short enough that a real correction is not visibly late, long
  *  enough that one noisy fix is not a lurch. */
 private const val PUCK_CORRECT_TIME_S = 0.6
+/** Half the heading chord's length at least, so the arrow starts turning where a car's arc does. */
+private const val HEAD_WIN_MIN_M = 12.0
+/** How far ahead of the puck, in seconds of travel, the heading is taken. */
+private const val HEAD_LEAD_S = 0.3
+/** How much further on the camera aims, for its own ease's lag in a turn. 0 aims at the arrow. */
+private const val CAM_LEAD_S = 0.4
+/** Gyroscope mode (GyroTurn): a yaw reading older than this is not used, and the arrow falls back
+ *  to the route chord. The camera leads the arrow by the measured rate times CAM_GYRO_LEAD_S (its
+ *  own turn easing), at most CAM_GYRO_LEAD_MAX_DEG. */
+private const val GYRO_FRESH_MS = 250.0
+/** The route envelope gyroscope mode holds the arrow to ([gyroEnvelope]): from this far behind
+ *  the arrow (the car still finishing a turn the arrow has passed) to this far ahead (a car starts
+ *  its arc about a turn radius before the corner, and the arrow can trail the car), in seconds of
+ *  travel with a floor in meters. Chords GYRO_ENV_STEP_M apart, twice that long. */
+private const val GYRO_ENV_BACK_S = 1.0
+private const val GYRO_ENV_BACK_MIN_M = 10.0
+private const val GYRO_ENV_AHEAD_S = 1.5
+private const val GYRO_ENV_AHEAD_MIN_M = 20.0
+private const val GYRO_ENV_STEP_M = 4.0
+private const val CAM_GYRO_LEAD_S = 0.35
+private const val CAM_GYRO_LEAD_MAX_DEG = 25.0
+/** GPS braking ([NavPuck.gpsBrake]): two fixes this far apart (s) give a deceleration; one of at
+ *  least BRAKE_MIN_MPS2 slows the model between fixes, at most BRAKE_MAX_MPS2, and only under
+ *  BRAKE_BELOW_MPS: a stop comes from city speed, and a single low Doppler reading on a freeway
+ *  must not hold the arrow back. The `gpsBrake` dial at 0 turns it off. */
+private const val BRAKE_MIN_GAP_S = 0.4
+private const val BRAKE_MAX_GAP_S = 2.5
+private const val BRAKE_MIN_MPS2 = 0.8
+private const val BRAKE_MAX_MPS2 = 6.0
+private const val BRAKE_BELOW_MPS = 20.0f
+/** Stopped means under this speed, model and fix both. */
+private const val STOP_SETTLE_MPS = 0.3
+/** How long stopped before the arrow may settle back onto the fixes. */
+private const val STOP_SETTLE_AFTER_MS = 1_000L
+/** How far past the fixes the arrow must be before it settles back. */
+// 4 m (was 2.5): with GPS braking the arrow stops about 2 m past the car at a hard stop
+// (3.3 m/s2 on the rig), and real GPS put that just over 2.5 often enough that drivers saw a short
+// slide back at lights. Sitting 2 to 4 m ahead at a light reads as nothing; moving backwards does.
+// Dial `stopSettleMin`.
+private const val STOP_SETTLE_MIN_M = 4.0
+/** How fast it glides back. */
+private const val STOP_SETTLE_RATE_MPS = 2.5
+/** A fix whose own Doppler speed passes this is moving, whatever the model says (parked noise reads
+ *  under 0.4 m/s). */
+private const val PULL_AWAY_MPS = 1.0f
 
 /** Time constant for the smoothing window's WIDTH. Deliberately long: the width is meant to track
  *  the difference between town and motorway, not the difference between two consecutive fixes. */
@@ -9721,6 +10064,30 @@ private const val PUCK_WIN_TAU_S = 2.5f
  *  2.5-3.5 s apart under canopy, and a 2 s cap made the puck glide-stall-lurch at exactly that
  *  cadence. Still bounds a dropped-signal runaway to ~100 m at highway speed. */
 private const val DEAD_RECKON_S = 3.0
+
+/** Gyroscope mode's route envelope: the least and greatest direction the route takes from [backM]
+ *  behind [atM] to [aheadM] past it, as signed degrees from [refDeg], into [out] (lo, hi). Each is
+ *  the bearing of a chord 2 x GYRO_ENV_STEP_M long. Both stay 0 where the route runs straight. */
+private fun gyroEnvelope(poly: List<LatLng>, cum: DoubleArray, atM: Double, refDeg: Double, backM: Double, aheadM: Double, out: DoubleArray) {
+    var lo = 0.0
+    var hi = 0.0
+    val start = atM - backM
+    val n = ((backM + aheadM) / GYRO_ENV_STEP_M).toInt().coerceIn(1, 64)
+    var p0 = pointAtMeters(poly, cum, start - GYRO_ENV_STEP_M).first
+    var p1 = pointAtMeters(poly, cum, start).first
+    for (k in 1..n + 1) {
+        val p2 = pointAtMeters(poly, cum, start + k * GYRO_ENV_STEP_M).first
+        if (kotlin.math.abs(p0.lat - p2.lat) + kotlin.math.abs(p0.lng - p2.lng) > 1e-7) {
+            val d = app.vela.core.location.GyroHeading.delta(refDeg, bearingDeg(p0, p2).toDouble())
+            if (d < lo) lo = d
+            if (d > hi) hi = d
+        }
+        p0 = p1
+        p1 = p2
+    }
+    out[0] = lo
+    out[1] = hi
+}
 
 private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
     if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f
@@ -9796,6 +10163,35 @@ private fun nearestStreetName(map: MapLibreMap, lat: Double, lng: Double): Strin
         }
     }
     return bestName
+}
+
+/** The names of the roads in the loaded transportation_name tiles with a vertex in a box
+ *  [radiusM] each way from [center], for the voice search's sounds-like retry
+ *  ([VoiceStreetRetry]). Empty below [STREET_NAMES_MIN_ZOOM]: zoomed out, the loaded tiles hold
+ *  the major roads of a whole region and the query materializes all of them on the main thread. */
+private fun streetNamesNear(map: MapLibreMap, center: LatLng, radiusM: Double): List<String> {
+    if (map.cameraPosition.zoom < STREET_NAMES_MIN_ZOOM) return emptyList()
+    val src = map.style?.let { st -> basemapSrc(st)?.let { st.getSourceAs<org.maplibre.android.style.sources.VectorSource>(it) } } ?: return emptyList()
+    val feats = runCatching { src.querySourceFeatures(arrayOf("transportation_name"), null) }.getOrNull() ?: return emptyList()
+    val dLat = radiusM / 111_320.0
+    val dLng = radiusM / (111_320.0 * kotlin.math.cos(Math.toRadians(center.lat))).coerceAtLeast(1.0)
+    fun inBox(p: Point) = kotlin.math.abs(p.latitude() - center.lat) <= dLat && kotlin.math.abs(p.longitude() - center.lng) <= dLng
+    val out = LinkedHashSet<String>()
+    for (f in feats) {
+        val name = runCatching { f.getStringProperty("name") }.getOrNull()?.takeIf { it.isNotBlank() } ?: continue
+        val latin = runCatching { f.getStringProperty("name:latin") }.getOrNull()?.takeIf { it.isNotBlank() && it != name }
+        if (name in out && (latin == null || latin in out)) continue
+        val near = when (val g = f.geometry()) {
+            is org.maplibre.geojson.LineString -> g.coordinates().any(::inBox)
+            is org.maplibre.geojson.MultiLineString -> g.coordinates().any { line -> line.any(::inBox) }
+            is Point -> inBox(g)
+            else -> false
+        }
+        if (!near) continue
+        out += name
+        latin?.let { out += it }
+    }
+    return out.toList()
 }
 
 private fun bearingDeg(a: LatLng, b: LatLng): Float {
@@ -10276,6 +10672,14 @@ private fun applyData(
         }
         lastOsmPoiVis = osmPoiVis
     }
+    // Where the tiers step aside for the open places archive or Google's dots, the unnamed car
+    // parks neither draws stay (issue #935). Not while driving, previewing a route or showing
+    // several results, as the tiers.
+    val osmParkVis = if (poisEnabled && !previewing && !navMode && markers.size <= 1 && (osmOneSet || ambientCoversView)) Property.VISIBLE else Property.NONE
+    if (osmParkVis != lastOsmParkVis) {
+        style.getLayer(OSM_PARKING_LAYER)?.setProperties(PropertyFactory.visibility(osmParkVis))
+        lastOsmParkVis = osmParkVis
+    }
     // Route preview hides the transit icons with the rest (basemap stations and the stop badges).
     // Never touched while navigating: the nav declutter effect owns both layers then.
     if (!navMode && previewing != lastPreviewTransitHidden) {
@@ -10538,20 +10942,22 @@ private fun arrowBitmap(): Bitmap {
 internal fun navPuckBitmap(
     scale: Float = app.vela.ui.PuckStyle.phoneScale(),
     whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
+    shape: String = app.vela.ui.PuckStyle.shape.value,
 ): Bitmap {
     // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
     // [scale] is the Settings "Arrow size" (issue #344): Large 1.25x, Extra large 1.5x.
     val size = (202 * scale).toInt()
+    // The duck is ray cast at the bitmap's own size, not drawn in the 176-space below.
+    if (shape == app.vela.ui.PuckStyle.SHAPE_DUCK) return SmoothDuck.flat(size)
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
     // user tuned in July stay byte-identical - only the rendered size grows.
     canvas.scale(size / 176f, size / 176f)
-    when (app.vela.ui.PuckStyle.shape.value) {
+    when (shape) {
         app.vela.ui.PuckStyle.SHAPE_CAR -> { drawCarPuck(canvas, app.vela.ui.PuckStyle.carColor.value); return bmp }
         app.vela.ui.PuckStyle.SHAPE_UFO -> { drawUfoPuck(canvas); return bmp }
         app.vela.ui.PuckStyle.SHAPE_SHIP -> { drawShipPuck(canvas); return bmp }
-        app.vela.ui.PuckStyle.SHAPE_DUCK -> { drawDuckPuck(canvas); return bmp }
     }
     val cx = 88f
     val cy = 88f
@@ -10714,35 +11120,6 @@ private fun drawShipPuck(canvas: Canvas) {
     canvas.drawCircle(cx + 12f, 47f, 3.2f, fill(android.graphics.Color.WHITE))
     canvas.drawLine(cx + 9f, 51.5f, cx + 15f, 51.5f, line(android.graphics.Color.WHITE, 1.4f))
     canvas.drawLine(cx + 3f, 42f, cx + 3f, 58f, line(hex("#4E3118"), 2.2f))
-}
-
-/** A rubber duck from above, beak forward (discussion #611). */
-private fun drawDuckPuck(canvas: Canvas) {
-    val cx = 88f
-    val yellow = hex("#FFD93B"); val edge = hex("#D9A600")
-    softShadow(canvas, android.graphics.RectF(cx - 36f, 36f, cx + 36f, 150f))
-    canvas.drawPath(Path().apply { moveTo(cx - 10f, 138f); lineTo(cx, 156f); lineTo(cx + 10f, 138f); close() }, fill(yellow))
-    val body = android.graphics.RectF(cx - 35f, 60f, cx + 35f, 148f)
-    canvas.drawOval(body, fill(yellow))
-    canvas.drawOval(body, line(edge, 2.5f))
-    canvas.drawOval(android.graphics.RectF(cx - 33f, 88f, cx - 17f, 124f), fill(hex("#FFE77A")))
-    canvas.drawOval(android.graphics.RectF(cx + 17f, 88f, cx + 33f, 124f), fill(hex("#FFE77A")))
-    // A flat bill sticking out past the head, wide at the face and rounded at the tip.
-    val bill = Path().apply {
-        moveTo(cx - 13f, 42f)
-        lineTo(cx - 10f, 24f)
-        quadTo(cx, 12f, cx + 10f, 24f)
-        lineTo(cx + 13f, 42f)
-        close()
-    }
-    canvas.drawPath(bill, fill(hex("#FF8C1A")))
-    canvas.drawPath(bill, line(hex("#C85F00"), 1.5f))
-    canvas.drawCircle(cx, 58f, 25f, fill(yellow))
-    canvas.drawCircle(cx, 58f, 25f, line(edge, 2.5f))
-    for (dx in listOf(-10f, 10f)) {
-        canvas.drawCircle(cx + dx, 52f, 4.2f, fill(android.graphics.Color.BLACK))
-        canvas.drawCircle(cx + dx + 1.3f, 50.8f, 1.4f, fill(android.graphics.Color.WHITE))
-    }
 }
 
 /** A Google-style red map pin with a white center dot, anchored at its bottom tip. */
@@ -11045,9 +11422,12 @@ internal class FitPadding(val side: Int, val top: Int, val bottom: Int)
  * less than a fifth of the map the insets themselves are trimmed so at least that much
  * of the route is framed instead of nothing.
  */
-internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding {
-    val w = map.width.toInt().coerceAtLeast(1)
-    val h = map.height.toInt().coerceAtLeast(1)
+internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding =
+    fitPadding(map.width.toInt(), map.height.toInt(), topInsetPx, bottomInsetPx, wanted)
+
+internal fun fitPadding(mapW: Int, mapH: Int, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding {
+    val w = mapW.coerceAtLeast(1)
+    val h = mapH.coerceAtLeast(1)
     var top = topInsetPx.coerceAtLeast(0)
     var bottom = bottomInsetPx.coerceAtLeast(0)
     val minStrip = h / 5
@@ -11063,6 +11443,27 @@ internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, w
     val visibleH = (h - top - bottom).coerceAtLeast(1)
     val side = minOf(wanted, w / 6, visibleH / 6).coerceAtLeast(4)
     return FitPadding(side, top + side, bottom + side)
+}
+
+/**
+ * Padding (left, top, right, bottom) for a bounds fit beside a landscape side panel of [leftColPx]
+ * (the route chooser, a place or the results list). The fit's own padding replaces the map's, so
+ * the column has to be in it: centered on the whole map, a route's start sat under the panel. The
+ * top card is in that column too, so the top inset is left out, and the right edge keeps clear of
+ * the map buttons ([buttonsPx]). With no column it is [fitPadding] as before.
+ */
+internal fun fitPaddingBeside(
+    mapW: Int, mapH: Int, leftColPx: Int, topInsetPx: Int, bottomInsetPx: Int, wanted: Int, buttonsPx: Int,
+): IntArray {
+    val left = leftColPx.coerceAtLeast(0)
+    if (left <= 0) {
+        val fp = fitPadding(mapW, mapH, topInsetPx, bottomInsetPx, wanted)
+        return intArrayOf(fp.side, fp.top, fp.side, fp.bottom)
+    }
+    val visW = (mapW - left).coerceAtLeast(1)
+    val fp = fitPadding(visW, mapH, 0, bottomInsetPx, wanted)
+    val right = maxOf(fp.side, buttonsPx).coerceAtMost(visW / 3)
+    return intArrayOf(left + fp.side, fp.top, right, fp.bottom)
 }
 
 /** The route's dark outline (2026-10-03, Google's: a navy edge round its route line, day and night,

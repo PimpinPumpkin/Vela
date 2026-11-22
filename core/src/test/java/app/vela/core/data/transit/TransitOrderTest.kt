@@ -35,4 +35,22 @@ class TransitOrderTest {
         assertEquals(120, TransitOrder.minutesOf("2 h"))
         assertEquals(0, TransitOrder.minutesOf(null))
     }
+
+    private val googleWalk = TransitItinerary(durationText = "W", steps = listOf(walk("50 min")))
+
+    @Test
+    fun `a walk-only answer gives way to the planner's rides, kept last`() {
+        assertEquals(true, TransitOrder.walkOnly(listOf(googleWalk)))
+        assertEquals(true, TransitOrder.walkOnly(listOf(TransitItinerary(durationText = "E"))))
+        assertEquals(false, TransitOrder.walkOnly(listOf(googleWalk, oneRideMidWalk)))
+        assertEquals(false, TransitOrder.walkOnly(emptyList()))
+        val out = TransitOrder.ridesBeforeWalk(listOf(googleWalk), listOf(twoRidesShortWalk, oneRideLongWalk, googleWalk), 2)
+        assertEquals(listOf("B", "A", "W"), out.map { it.durationText })
+    }
+
+    @Test
+    fun `a planner with no ride leaves Google's walk alone`() {
+        assertEquals(listOf("W"), TransitOrder.ridesBeforeWalk(listOf(googleWalk), listOf(googleWalk), 0).map { it.durationText })
+        assertEquals(listOf("W"), TransitOrder.ridesBeforeWalk(listOf(googleWalk), emptyList(), 0).map { it.durationText })
+    }
 }

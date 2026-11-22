@@ -70,4 +70,22 @@ class QuickCategoriesTest {
     @Test fun `the fuel chip is keyed by one name whatever its query says`() {
         assertEquals("Gas station", QuickCategories.FUEL_KEY)
     }
+
+    @Test fun `a chip's own query is a kind of place, a brand is not`() {
+        for (q in listOf("EV charging station", "Things to do", "Groceries", "Gas station", "restaurants ")) {
+            assertEquals(q, true, QuickCategories.isChipQuery(q))
+        }
+        assertEquals(false, QuickCategories.isChipQuery("EVgo"))
+        assertEquals(false, QuickCategories.isChipQuery("Chevron"))
+    }
+
+    @Test fun `a store named for a chip's kind does not cut the list to itself`() {
+        // "groceries" is not on the generic list (its singular is), so a store named for it is the
+        // only name that holds it; it is not the whole name of most matches, so the filter keeps
+        // every store, and a chip's query skips the filter anyway.
+        fun p(id: String, name: String) = app.vela.core.model.Place(id = id, name = name, location = app.vela.core.model.LatLng(38.54, -121.74), category = "Grocery store")
+        val food = listOf(p("a", "Groceries Plus"), p("b", "Davis Food Co-op"), p("c", "Nugget Markets"))
+        assertEquals(3, app.vela.core.search.QueryNameFilter.apply("Groceries", food).size)
+        assertEquals(true, QuickCategories.isChipQuery("Groceries"))
+    }
 }

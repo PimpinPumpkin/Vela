@@ -53,6 +53,15 @@ class Haptics @Inject constructor(
         runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 60, 60, 60, 60, 60, 90, 320), -1)) }
     }
 
+    /** A stop on the drive reached, with the spoken "You've reached <stop>" and its card: a short
+     *  pulse then a long one, unlike any turn or the reroute buzz. Honors the same per-mode
+     *  "Vibrate on turns" setting. */
+    fun stopReached(mode: TravelMode) {
+        if (!enabled(mode)) return
+        val v = vibrator?.takeIf { it.hasVibrator() } ?: return
+        runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 120, 100, 450), -1)) }
+    }
+
     private fun isLeft(t: ManeuverType) = t in LEFTS
     private fun isRight(t: ManeuverType) = t in RIGHTS
 

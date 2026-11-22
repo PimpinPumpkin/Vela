@@ -39,7 +39,10 @@ data class SavedPlace(
     fun addressKeepingStreet(): String? {
         val street = name.trim()
         val rest = address?.trim()?.ifBlank { null } ?: return address
-        if (!isPoint || streetKept || street.isBlank() || rest.startsWith(street, ignoreCase = true)) return address
+        // An address Google files under a category is saved as a listing, not a point; its street
+        // is still only in the name while the address has none.
+        val addressNamed = isPoint || (isStreetLine(street) && !hasStreetLine(rest))
+        if (!addressNamed || streetKept || street.isBlank() || rest.startsWith(street, ignoreCase = true)) return address
         return "$street, $rest"
     }
 

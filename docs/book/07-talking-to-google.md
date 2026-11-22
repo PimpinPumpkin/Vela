@@ -53,7 +53,8 @@ A cookieless session in the EU is redirected to `consent.google.com`. Both cooki
 `CONSENT` to a value not starting with `YES`.
 
 Every request goes through one shared OkHttp client (`CoreModule`) with a 12 s call timeout, so
-one hung request cannot stall a batch. OkHttp builds the request, holds the cookies and sets the
+one hung request cannot stall a batch. A reply of megabytes (a shared list, a My Maps map) uses a
+copy of it with a 90 s deadline. OkHttp builds the request, holds the cookies and sets the
 deadline. When the host is Google's, `GoogleTransport.hook` hands the request to
 `CronetTransport`, which sends it through Cronet, Chromium's network stack, so the TLS handshake
 and HTTP/2 settings are Chrome's. If Cronet cannot load or fails before answering, OkHttp sends
@@ -136,14 +137,15 @@ then rejects a blank value, anything outside printable ASCII and anything longer
 `CalibrationStore` starts from the cached bundle if one is on disk and its signature still
 verifies, and otherwise from the compiled `Calibration.DEFAULT`, so the app works with no
 network. Once per process, without blocking anything, it fetches `calibration.json` and its
-signature from the repository's `main` branch, or from the website's copy when GitHub does not
-answer, and adopts the remote bundle only if all three hold:
+signature from where the last bundle said the file lives, then from the repository's `main`
+branch, then from the website's copy. A copy whose signature fails moves on to the next address.
+It adopts the remote bundle only if all three hold:
 
 1. The signature verifies: ECDSA over P-256 with SHA-256, against `PINNED_PUBLIC_KEY`. The
    private key is never in the repository.
 2. Every endpoint host is in `ALLOWED_HOSTS` (`www.google.com`, `google.com`), so a correctly
    signed bundle still cannot point search, directions, reviews, photos, autocomplete or the
-   session warm-up anywhere else.
+   session warm-up anywhere else. Every link in its `links` is `https` and has a known name.
 3. Its `version` is higher than the active one. `DEFAULT.version` is 1 so that any published
    bundle wins.
 
@@ -161,6 +163,8 @@ can override only the thing that moved. The bundle carries:
   setting always wins.
 - Notices. Level `urgent` is a dialog; `info`, `warn` and `error` are dismissable cards on the
   bare map. Dismissal is remembered per notice `id`.
+- The project's own links (`links`, [SPEC 11.4](../../SPEC.md#114-the-projects-own-links)), so a
+  push can move where the app finds its repository, its downloads and this file.
 - Tuning dials and parsing code, both below.
 
 To publish a change, edit the file, raise `version`, run `scripts/sign-calibration.sh` (it
@@ -263,11 +267,11 @@ the app over Cronet, with the WebView's own cookies so the page keeps its sessio
   `Sec-Fetch-*` and `Sec-CH-UA` headers the way Chrome derives them.
 - A failed proxy request returns null and the WebView loads it itself.
 
-Google's pages also report on themselves: `play.google.com/log`, `gen_204` pings and the
-account bar's `ogads-pa` calls. Nothing Vela reads depends on them. Settings > Privacy > "Block
-Google's page telemetry" (off by default) answers them on the phone with an empty 200, with
-the proxy on or off. They are sent by default because a session whose pages never send them
-looks less like a browser's.
+Google's pages also report on themselves. Every hidden page and the All reviews page answer ad,
+analytics and logging requests with an empty body (`web/BlockedHosts`): `play.google.com/log`,
+`gen_204` and `log204` pings, `csi.gstatic.com` and the ad hosts. Nothing Vela reads depends on
+them. Settings > Privacy > "Block Google's page telemetry" (off by default) also answers the
+account bar's `ogads-pa` calls with an empty 200, with the proxy on or off.
 
 Logcat `VelaWebProxy` prints each path once as `carries:`, `answers locally:` or
 `passes through:` (sent by the WebView itself, with the header).
@@ -332,6 +336,10 @@ name plus its address, as a plain request, and each reply is merged into the she
 The details page loads only when no try returned popular times or a review count, and not
 during a drive or with the route chooser open.
 
+A Google listing whose replies named no Street View panorama gets one more request once the
+details are in: the nearest panorama on its street, for the thumbnail (`thumbPano`). It is
+skipped with Load photos off, with Load photos only when I tap on, and with Google off.
+
 Both RPCs need the header `x-maps-diversion-context-bin` (`Calibration.rpcContext`, `CAE=`).
 Without it the gallery answers zero photos and the feed answers empty.
 
@@ -377,8 +385,9 @@ it gives and what Google sees, and sets the switch before the map is composed. "
 Google is used for" on that page opens the per-feature switches, the same list Settings >
 Privacy shows while Google is on (`GoogleUsesSection`): the place source, reviews, photos,
 popular times, tapped-place lookups, and the traffic requests of a route and a drive. The page
-also carries the two plate camera questions, which have nothing to do with Google and sit there
-so the first run stays one page shorter. With it on:
+also carries the two plate camera questions and the two saved-drive questions (keep drives on
+the phone, delete them after 30 days), which have nothing to do with Google and sit there so
+the first run stays one page shorter. With it on:
 
 - Search answers from Photon and the downloaded place packs: names and addresses, and
   categories only where a region is downloaded. Google's autocomplete returns nothing, so the
@@ -421,15 +430,15 @@ about the calibration.
 
 `scripts/check-chrome-ua.py` compares the Chrome major Vela claims with Chrome's Windows stable.
 It fails when stable has been a major ahead for 7 days (`GRACE_DAYS`, since a new major reaches
-people in stages), when Vela claims a Chrome that has not shipped, or when the pushed `secChUa`
-is not what Chrome of that major sends. Builds that predate the derived hint send the pushed
+people in stages), when Vela claims a Chrome that has not shipped, when the pushed `secChUa` is
+not what Chrome of that major sends, or when `chromeFullVersion` is not a build of that major. Builds that predate the derived hint send the pushed
 `secChUa` as it is, so the bundle has to carry the right string.
 
 ## Limits
 
-- The handshake is Chrome's only while Cronet carries the request. The all-in-one APK ships
-  Cronet for ARM only, so on an x86 emulator or Chromebook, and after any Cronet failure,
-  Google requests go over OkHttp with OkHttp's handshake.
+- The handshake is Chrome's only while Cronet carries the request. After a Cronet failure, and
+  on an x86 phone running a build made without the per-chip split (a local build), Google
+  requests go over OkHttp with OkHttp's handshake.
 - Chrome sends an `X-Client-Data` header to Google and Vela does not.
 - One phone is two sessions from one IP address: search, autocomplete and directions on the
   app's session, the per-place requests on the WebView's.
@@ -445,8 +454,6 @@ is not what Chrome of that major sends. Builds that predate the derived hint sen
 - The map's own Google tiles (the traffic overlay and the satellite fallback) go through the
   map engine's HTTP client. They do not carry the browser identity and are not counted.
 - Nothing moves the claimed Chrome version on its own. A person edits, signs and commits.
-- A wrong `chromeFullVersion` is printed on the health run's summary but does not fail the
-  run: `check-chrome-ua.py` resets its exit code after that test.
 - The bundle is fetched once per process, after start. Requests sent before it lands use the
   previous bundle, and a process that keeps running does not see a later push. Some values are
   read once: `ambientFanoutPermits` at process start, and the user agent and the POST shim when

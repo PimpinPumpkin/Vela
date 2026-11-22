@@ -45,6 +45,9 @@ class SearchCarScreen(
     private var contacts: List<ContactAddresses.Entry> = emptyList()
     private var searching = false
     private var searchJob: Job? = null
+    /** What is in the box now; blank shows the destinations. */
+    private var typed = ""
+
 
     init {
         // Searched once the screen exists, so the first invalidate reaches the host.
@@ -61,15 +64,32 @@ class SearchCarScreen(
             override fun onSearchTextChanged(searchText: String) = runSearch(searchText, submit = false)
             override fun onSearchSubmitted(searchText: String) = runSearch(searchText, submit = true)
         }
+        // With nothing typed the list is the destinations, as Google's car search opens on its
+        // Recent tab: the keyboard waits for a tap on the box so they can be seen.
+        val landing = if (initialQuery == null) MainCarScreen.destinations(deps) else emptyList()
         val builder = SearchTemplate.Builder(callback)
             .setHeaderAction(Action.BACK)
-            .setShowKeyboardByDefault(initialQuery == null)
+            .setShowKeyboardByDefault(initialQuery == null && landing.isEmpty())
         initialQuery?.let { builder.setInitialSearchText(it) }
         if (searching) {
             builder.setLoading(true)
         } else {
             val list = ItemList.Builder()
-            if (results.isEmpty() && contacts.isEmpty() && queries.isEmpty()) {
+            if (results.isEmpty() && contacts.isEmpty() && queries.isEmpty() && typed.isBlank() && landing.isNotEmpty()) {
+                landing.take(LANDING_ROWS - 1).forEach { d ->
+                    list.addItem(
+                        MainCarScreen.destinationRow(carContext, d, browsable = false) {
+                            screenManager.push(RoutePreviewCarScreen(carContext, deps, d.name, d.location))
+                        },
+                    )
+                }
+                list.addItem(
+                    Row.Builder()
+                        .setTitle(carContext.getString(app.vela.R.string.car_more_nearby))
+                        .setOnClickListener { screenManager.push(NearbyCarScreen(carContext, deps)) }
+                        .build(),
+                )
+            } else if (results.isEmpty() && contacts.isEmpty() && queries.isEmpty()) {
                 list.setNoItemsMessage(carContext.getString(app.vela.R.string.car_search_hint))
             } else {
                 contacts.forEach { e ->
@@ -114,6 +134,7 @@ class SearchCarScreen(
 
     private fun runSearch(text: String, submit: Boolean) {
         searchJob?.cancel()
+        typed = text
         if (text.isBlank()) {
             results = emptyList(); queries = emptyList(); contacts = emptyList(); searching = false; invalidate(); return
         }
@@ -194,5 +215,7 @@ class SearchCarScreen(
     private companion object {
         /** The autocomplete window around the car: a town, like the phone's default. */
         const val SUGGEST_SPAN_M = 20_000.0
+        /** Rows with nothing typed, the last being nearby places: the six a result list shows. */
+        const val LANDING_ROWS = 6
     }
 }

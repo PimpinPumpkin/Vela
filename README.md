@@ -109,6 +109,13 @@ Check a downloaded file against it before installing:
 apksigner verify --print-certs vela-maps-*.apk
 ```
 
+With the GitHub CLI you can also see which build made the file. This names the
+workflow run and the commit (releases from before November 2026 have none):
+
+```bash
+gh attestation verify vela-maps-*.apk -R PimpinPumpkin/Vela
+```
+
 On the phone, [App Verifier](https://github.com/soupslurpr/AppVerifier) checks
 the same thing. It wants the package name on the first line and the fingerprint
 on the second, so paste this block, not the line above:
@@ -199,7 +206,7 @@ repository are published as a searchable site at
   signed file the app checks at launch. When Google shifts a field, a fix reaches
   every install in minutes with no app update. [`SPEC.md`](SPEC.md) sections 3
   and 11 describe it.
-- **The rest.** 19 languages, light and dark themes, optional wallpaper colors,
+- **The rest.** 20 languages, light and dark themes, optional wallpaper colors,
   full operation by D-pad on keypad phones, a built-in updater with stable,
   nightly and canary channels, and Android Auto screens (a car accepts a
   sideloaded app only in some setups; see [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md)).

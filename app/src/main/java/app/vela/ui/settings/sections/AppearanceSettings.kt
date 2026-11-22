@@ -103,13 +103,21 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.DARK,
                 onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.DARK) },
             )
+            GroupDivider()
+            // The map by the sun under any app theme (issue #874): a dark app over a day and
+            // night map.
+            SelectableRow(
+                label = stringResource(R.string.settings_theme_auto),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.AUTO,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.AUTO) },
+            )
         }
         Hint(stringResource(R.string.settings_map_theme_hint))
 
-        // Orthogonal to the mode above, and only meaningful alongside a FIXED choice: keep the app
-        // dark by preference, but drive by a light map in daylight. Hidden under AUTO, where it
-        // would claim to do something already happening.
-        if (AppTheme.mode.value != ThemeMode.AUTO) {
+        // Orthogonal to the modes above: keep the app dark by preference, but drive by a light map
+        // in daylight. Hidden where it would claim to do something already happening (the app on
+        // AUTO with the map following it or on AUTO too).
+        if (app.vela.ui.theme.navDayNightMatters(AppTheme.mode.value, AppTheme.mapMode.value)) {
             Spacer(Modifier.height(8.dp))
             SettingsGroup {
                 ToggleRow(

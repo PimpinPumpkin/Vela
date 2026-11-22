@@ -25,6 +25,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -145,6 +146,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -1248,8 +1250,8 @@ fun PlaceSheet(
                 }
             }
 
-            // A permanently-closed POI already says so in red above — don't also
-            // nag "Hours not listed" beneath it (the dead-POI hours are moot).
+            // A closed POI, for good or for now, already says so in red above, so "Hours not
+            // listed" is not said beneath it: Google sends no hours for either.
             // The list owner's personal note, carried over from an imported Google Maps list
             // ("this restaurant's fish is better than its chicken") — the part of a shared
             // list Google itself throws away on export, kept front and center here.
@@ -1277,7 +1279,7 @@ fun PlaceSheet(
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving) {
+            } else if (place.category != null && !place.permanentlyClosed && !place.temporarilyClosed && !isTransitStop && !resolving) {
                 // Not while the listing is still being looked up: the map's data lacking hours
                 // says nothing about Google's, which usually has them.
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
@@ -1360,8 +1362,10 @@ fun PlaceSheet(
             }
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
-            // "missing" — it clears to the chart, or to nothing if this place has none.
-            if (place.popularTimes == null && detailsLoading && place.isListing()) {
+            // "missing": it clears to the chart, or to nothing if this place has none. Not after
+            // a run of places that had none (PopularTimesHint, issue #904), and not while Google
+            // gives this session its limited view, which has no charts.
+            if (place.popularTimes == null && detailsLoading && place.isListing() && app.vela.ui.PopularTimesHint.show && !app.vela.web.GoogleStanding.limited.value) {
                 // Sized like the chart (title, day chips, bars) so its arrival moves nothing.
                 SheetSkeleton(dim, listOf(120.dp), height = 14.dp, top = 22.dp)
                 SheetSkeleton(dim, listOf(260.dp), height = 24.dp, top = 12.dp)
@@ -2226,16 +2230,20 @@ internal fun DepartTimeChooser(
     if (showDatePicker) {
         // NB selectedDateMillis is UTC midnight of the picked day — decode with UTC, not the
         // system zone, or western-hemisphere picks land one day early.
-        val dp = androidx.compose.material3.rememberDatePickerState(
-            initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
-            selectableDates = object : androidx.compose.material3.SelectableDates {
-                // Days before today are grayed out (the confirm clamp still backstops a stale
-                // dialog left open across midnight).
-                override fun isSelectableDate(utcTimeMillis: Long) =
-                    utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-                override fun isSelectableYear(year: Int) = year >= java.time.LocalDate.now().year
-            },
-        )
+        // The week starts on the device region's first day, not the app language's (issue #934).
+        val dp = remember {
+            androidx.compose.material3.DatePickerState(
+                locale = app.vela.ui.AppLocale.calendarLocale(),
+                initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+                selectableDates = object : androidx.compose.material3.SelectableDates {
+                    // Days before today are grayed out (the confirm clamp still backstops a stale
+                    // dialog left open across midnight).
+                    override fun isSelectableDate(utcTimeMillis: Long) =
+                        utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+                    override fun isSelectableYear(year: Int) = year >= java.time.LocalDate.now().year
+                },
+            )
+        }
         PickerDialog(
             onConfirm = {
                 dp.selectedDateMillis?.let { date = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }
@@ -2472,30 +2480,30 @@ fun TransitNavSheet(
                 IconButton(onClick = onEnd) { Icon(Sym.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             Spacer(Modifier.height(8.dp))
-            // Current leg, large.
-            if (step != null && !nav.arrived) {
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
-                ) { TransitStepRow(step, ink, dim, onWalkDirections) }
-            } else {
-                Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+            // The legs scroll in all the room between the header and the buttons, so Back and Next
+            // stay at the bottom on every card (issue #831) and a leg with its walk steps or stops
+            // open never squeezes them (issue #853).
+            val scroll = rememberScrollState()
+            LaunchedEffect(nav.stepIndex) { scroll.scrollTo(0) }
+            Column(Modifier.weight(1f).verticalScroll(scroll)) {
+                // Current leg, large. Keyed on the step, so a leg left open closes on Next.
+                if (step != null && !nav.arrived) key(nav.stepIndex) {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
+                    ) { TransitStepRow(step, ink, dim, onWalkDirections) }
+                } else {
+                    Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+                }
+                Spacer(Modifier.height(16.dp))
+                // Remaining legs as a compact timeline.
+                val remaining = itin.steps.drop(nav.stepIndex + 1)
+                if (remaining.isNotEmpty()) {
+                    Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
+                    Spacer(Modifier.height(6.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { remaining.forEach { TransitStepRow(it, ink, dim) } }
+                }
             }
-            Spacer(Modifier.height(16.dp))
-            // Remaining legs as a compact timeline.
-            val remaining = itin.steps.drop(nav.stepIndex + 1)
-            if (remaining.isNotEmpty()) {
-                Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
-                Spacer(Modifier.height(6.dp))
-                // The list takes all the room above the buttons and scrolls inside it. It used to
-                // share that room with a spacer, and a short list left the buttons floating on the
-                // one card whose list was short (issue #831).
-                Column(
-                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
+            Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_back))
@@ -3179,16 +3187,21 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
 }
 
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no color is supplied. */
+ *  transit pills; falls back to the theme primary when no color is supplied. A color that would
+ *  melt into the sheet (a white line on the light sheet) keeps its fill and gets a thin outline
+ *  ([BadgeContrast]). */
 @Composable
 private fun LinePill(line: TransitLine) {
     val fallback = MaterialTheme.colorScheme.primary
     val bg = parseHexColor(line.colorHex) ?: fallback
     val fg = parseHexColor(line.textColorHex) ?: if (bg.luminance() > 0.5f) Color(0xFF202124) else Color.White
+    val dark = isAppInDarkTheme()
+    val shape = RoundedCornerShape(6.dp)
     Row(
         Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(shape)
             .background(bg)
+            .then(if (BadgeContrast.needsOutline(bg, dark)) Modifier.border(1.dp, app.vela.ui.SheetPalette.dim(dark).copy(alpha = 0.7f), shape) else Modifier)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -3521,6 +3534,31 @@ internal fun sharePlaceUrl(place: Place): String {
     else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
 }
 
+/** The name over the address, or the address alone when it already starts with the name.
+ *  Null when the place has no address. The sheet's Share > Address sends this. */
+internal fun shareAddressText(place: Place): String? =
+    place.fullAddress()?.let { addr -> if (addr.startsWith(place.name)) addr else "${place.name}\n$addr" }
+
+/** The name, the address and the link, one to a line: what a result card's Share sends, so the
+ *  address arrives as text a non-Google maps app can take (issue #903). */
+internal fun sharePlaceText(place: Place): String =
+    listOfNotNull(shareAddressText(place) ?: place.name.ifBlank { null }, sharePlaceUrl(place)).joinToString("\n")
+
+/** Opens the system share sheet on [text]. */
+internal fun shareText(context: Context, text: String) {
+    runCatching {
+        context.startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text),
+                context.getString(R.string.place_share_place),
+            ),
+        )
+    }
+}
+
+/** A result card's Share. */
+internal fun sharePlace(context: Context, place: Place) = shareText(context, sharePlaceText(place))
+
 /** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
  *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
  *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
@@ -3801,12 +3839,10 @@ private fun PlaceTabs(
                     }
                     // The newest post only; the Updates tab has them all (Google's layout).
                     if (place.updates.isNotEmpty()) {
-                        UpdatesSection(place.updates.take(1), ink, dim, title = true)
-                        if (place.updates.size > 1) {
-                            TextButton(onClick = { onSelect("Updates") }, modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp))) {
-                                Text(stringResource(R.string.place_updates_all, place.updates.size))
-                            }
-                        }
+                        UpdatesSection(
+                            place.updates.take(1), ink, dim, title = true, total = place.updates.size,
+                            onShowAll = if ("Updates" in tabs) { { onSelect("Updates") } } else null,
+                        )
                     }
                     if (hasAbout) {
                         Text(
@@ -4389,33 +4425,13 @@ private fun SharePill(place: Place) {
     val lng = place.location.lng
 
     fun share(text: String) {
-        runCatching {
-            context.startActivity(
-                Intent.createChooser(
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, text)
-                    },
-                    context.getString(R.string.place_share_place),
-                ),
-            )
-        }
+        shareText(context, text)
         open = false
     }
 
-    // Open this exact place on the Google Maps website (in the browser), not share a link. Prefer the
-    // place's own cid deep-link (opens the real place page); fall back to a name+coords query.
-    // The place's own link: the cid deep link when the place has a feature id (opens THE STORE in
-    // Google Maps or Vela), else a name + coordinate search.
-    fun placeUrl(): String {
-        val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
-            ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
-        return if (cid != null) "https://www.google.com/maps?cid=$cid"
-            else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
-    }
-
+    // Open this exact place on the Google Maps website (in the browser), not share a link.
     fun openWeb() {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(placeUrl()))) }
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sharePlaceUrl(place)))) }
         open = false
     }
 
@@ -4423,7 +4439,7 @@ private fun SharePill(place: Place) {
     // same link Open-on-web uses: this used to copy a bare coordinate query, so the recipient got
     // a pin instead of the place (issue #359).
     fun copyLink() {
-        val url = placeUrl()
+        val url = sharePlaceUrl(place)
         runCatching {
             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, url))
@@ -4472,8 +4488,8 @@ private fun SharePill(place: Place) {
             // degoogled-friendly way to send a pin.
             item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
             item(stringResource(R.string.place_share_coordinates)) { share("$lat, $lng") }
-            place.fullAddress()?.let { addr ->
-                item(stringResource(R.string.place_share_address)) { share(if (addr.startsWith(place.name)) addr else "${place.name}\n$addr") }
+            shareAddressText(place)?.let { text ->
+                item(stringResource(R.string.place_share_address)) { share(text) }
             }
         }
     }
@@ -4970,16 +4986,40 @@ private fun PhotosTab(
     }
 }
 
-/** The business's own posts, newest first. */
+/** The business's own posts, newest first. With [onShowAll] the heading ends in "Show all
+ *  [total] updates". */
 @Composable
-private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: Color, dim: Color, title: Boolean) {
+private fun UpdatesSection(
+    updates: List<app.vela.core.model.PlaceUpdate>,
+    ink: Color,
+    dim: Color,
+    title: Boolean,
+    total: Int = updates.size,
+    onShowAll: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     if (title) {
-        Text(
-            stringResource(R.string.place_updates),
-            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
-            modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
-        )
+        // A flow, as on the review card: the button drops under the heading when the two do not
+        // fit side by side. The heading's padding centers it on the 48 dp button and keeps it
+        // where it sits without one.
+        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                stringResource(R.string.place_updates),
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
+                modifier = Modifier.align(Alignment.CenterVertically)
+                    .padding(top = 14.dp, bottom = if (onShowAll != null) 14.dp else 4.dp),
+            )
+            if (onShowAll != null) {
+                TextButton(onClick = onShowAll, modifier = Modifier.align(Alignment.CenterVertically).dpadHighlight(CircleShape)) {
+                    Text(stringResource(R.string.place_updates_all, total), maxLines = 1, softWrap = false)
+                }
+            }
+        }
     }
     updates.forEach { u ->
         var open by remember(u) { mutableStateOf(false) }

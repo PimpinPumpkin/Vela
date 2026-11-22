@@ -17,8 +17,11 @@ Each result is a card: the name, one line of facts (rating, count, distance, pri
 open or closed line, up to three amenity ticks, up to three photos, and buttons that act without
 opening the place (Directions, Call, Website, Share, and Menu when there are menu photos). All
 of it comes from the one search reply. Nothing is fetched per result, so most cards have one
-photo and none has a review line. The address shows when the place is unrated, when its name
-repeats in the list, or when the card has no photos.
+photo and none has a review line. The distance is from you, however far the map has been moved,
+as long as the phone has a live fix. The address shows when the place is unrated, when its name
+repeats in the list, or when the card has no photos. Share sends the name, the full address and a
+Google Maps link as text, so the address can be pasted into any maps app. An opened list shows
+its places on the same cards.
 
 Some things you type are commands. "Take me home", "Davis to San Francisco", "nearest pharmacy"
 and "what's my ETA" are read as actions first. With no signal the box searches the regions you
@@ -73,7 +76,9 @@ The request carries the text, the viewport center and the viewport height as the
 clamped to 2 to 500 km. `SUGGEST_SPAN_M` (20 km) is the window before the map has a viewport,
 and a typed address gets at least `ADDRESS_SEARCH_SPAN_M` (40 km). The search endpoint ranks by
 prominence over the whole window, which answers a bare house number with a ZIP code in another
-state. The autocomplete lists the nearby houses with that number first.
+state. The autocomplete lists nearby houses with that number, mixed with the same number on
+streets abroad. For a bare number Vela keeps only the rows within `SUGGEST_NEAR_M` (80 km) of the
+bias point when there are any.
 
 A suggestion with a location is a place row. One without is a query row ("Starbucks", "cvs
 pharmacy hours"), and tapping it runs that text as a search. At most eight place rows and three
@@ -130,9 +135,13 @@ name, the way Home and Work open. Online it asks Google search and takes, among 
 hits, one with no rating and no category, so the house wins over a shop at the same address.
 Offline, or when that misses, it asks the on-device geocoder. The opened place carries only the
 name, the point and the address, so a business at that spot does not lend it a rating or hours.
+The address shown is the one saved in the contact, on one line (`contactAddressLine`): for a
+house the geocoder often knows only the town and ZIP. A contact that holds only a street line takes the town from the geocoder.
 If nothing geocodes, the address runs as a plain search.
 
-A saved pin or address opens as saved, with no lookup. A saved business looks up its listing
+A saved pin or address opens as itself and never turns into a listing. Online with Google on,
+its address is searched once at its point, and the businesses within
+`SAVED_ENRICH_SAME_SPOT_M` (30 m) show under "Also at this location". A saved business looks up its listing
 for photos and reviews. It accepts a hit within `SAVED_ENRICH_SAME_SPOT_M` (30 m), or within
 `SAVED_ENRICH_MAX_M` (250 m) when the names agree, and keeps a name you gave it.
 
@@ -153,8 +162,9 @@ cursor at the end.
 ### Search on Enter
 
 `search()` biases to the viewport center, or to your position before the map has one. The text
-first goes to the intent parser (below). If that declines, `runSearch` checks two shapes before
-searching. Pasted coordinates drop a pin. A pasted Google Maps share link opens the place it
+first goes to the intent parser (below). If that declines, `runSearch` checks three shapes
+before searching. A pasted Google Maps address, such as a place or a trip planned on a desktop,
+opens the way the same link opens from another app. Pasted coordinates drop a pin. A pasted Google Maps share link opens the place it
 points to, imports a shared list as results with a Save offer, or imports a My Maps custom map.
 With Google off, list and custom map imports are refused, and a short link is resolved only
 while "Open shared Google Maps links" is on.
@@ -190,14 +200,16 @@ say offline or failed.
 "Search this area" (`searchThisArea`) reruns the query over the new viewport and keeps the
 results inside the view plus 10% (`AreaNarrow`). When none are inside, the whole answer shows.
 The list stays minimized until the new results arrive, so the map does not first fly back to the
-old ones.
+old ones, and the map keeps the view you searched: it does not zoom in while the search runs.
 
 The results sheet shows while there are results, no place is open and the search field is closed
 (`SearchGates`). A search submitted while picking a stop or an endpoint shows its results the same
-way, over the map; the search page's gray background goes away with its entry page, where it used
-to stay and read as a black map under the results. After a search from a view under 2.5 km tall, the camera stays where it is when
-enough results fall in the visible part of the map: one for a name, three for a kind of place
-(`SearchKind`). Otherwise it frames the first 12 results.
+way, over the map; the search page's gray background goes away with its entry page. After a
+search from a view under 2.5 km tall, the camera stays where it is when enough results fall in
+the visible part of the map: one for a name, three for a kind of place (`SearchKind`).
+Otherwise, when the first result is a country, a state, a city or a postal code, the map goes to
+it at that kind's own zoom (`areaZoom`), because Google sends an area with no bounds. Any other
+search frames its first 12 results, leaving out a stray far from the rest.
 
 ### Other locations of a business
 
@@ -235,9 +247,16 @@ on-device address hits + address rows + Google's pages (nearby pass first) + amb
 
 - `plausibleBias` discards a point within half a degree of 0,0. That is the map's untouched
   camera on a device that never had a fix, and biasing to it ranks everything toward open ocean.
-- `rankBias` picks the point that the order and the shown distances are computed from. It is
-  your position when you are within 50 km of the window's center. Otherwise Google ranks from
-  the window center, so browsing another city does not reorder around you.
+- `rankBias` picks the point that the order is computed from. It is your position when you are
+  within 50 km of the window's center. Otherwise Google ranks from the window center, so
+  browsing another city does not reorder around you.
+- The distance a card or a place sheet shows is measured again from you whenever the location
+  dot is live (`ShownDistance`), as Google's cards are: coffee over a city 100 km away reads
+  100 km, not the few hundred meters from the window's center. Every list a search hands to the
+  screen goes through it, the "Open now" search and "More results" included, and so does every
+  place opened from a card, a map dot or a sheet. Only the number changes. The list keeps the
+  order the search ranked it in, and the Distance sort follows the number shown. With the dot
+  gray or no fix at all, each place keeps the distance it came with.
 - A place opened by tapping the map or from Saved and Recent is looked up around its own point,
   so that lookup's distance is to itself. `fromHere` replaces it with the distance from you, or
   with none when there is no fix.
@@ -261,13 +280,23 @@ Every submitted query, typed or spoken, first goes through `QueryIntents.parse(t
 | Search | "where is the nearest pharmacy near me" | Strips the filler and searches "pharmacy" |
 | Eta | "what's my ETA" | While navigating, speaks and shows the remaining time |
 
-Null means plain search. There are word tables for 15 languages, which covers every app language
+Null means plain search. There are word tables for 16 languages, which covers every app language
 except Estonian. English is tried as a fallback in each, because "navigate to" on a French phone
 is common. Settings > Search lists example phrases (`VoiceCommandExamples`), and a test parses
 every one.
 
 The mic turns speech into text with Vela's on-device model when it is installed, or with an
 installed voice-input app, and is hidden when neither exists (`VoiceSearch`).
+
+The on-device model writes a street name the way it heard it, so "Kurfürstendamm" can come out
+as "Kur fürsten damm" and find nothing useful. When everything said, a house number aside, sounds
+like a street within 3 km of the search center, Vela searches that street's name instead, and
+the box shows it. A spoken search with no results gets one more try (`VoiceStreetRetry`): the
+words that sound like a nearby street are replaced by its name, and the search runs again. "Sound
+like" means an equal Kölner Phonetik code (`core/search/SoundsLike`). The street names come from
+the map tiles already loaded and from downloaded regions. A match needs a code of five digits or
+more and one clear winner, or nothing is changed. The rules are in
+[SPEC section 9.3](../../SPEC.md).
 
 Guards:
 
@@ -430,6 +459,15 @@ search field call `searchAlongRoute`:
   the start, at most 6, so the search reaches about 120 km ahead. The windows run at the same
   time and their results merge by place id. There is no nearby pass, ambient merge, address
   geocoding or intent parsing.
+- `QueryNameFilter` narrows a typed brand or chain ("Shell", "mcdo") to the places whose name
+  holds it. "Pizza", "burger" or "gas station" is a kind of place and keeps every result: the
+  words are in the list of words that describe a business, or in the category of most results.
+  When no name matches, every result stays too. A brand's places carry its name whole ("CVS
+  Pharmacy"), so the list narrows only when at least half the matching names are the query
+  itself; "boba", "tacos" or "pho" sits inside many different names and keeps every result, and
+  those dishes and drinks are on a short list of describing words too. Once a query is a brand,
+  only names that hold it as a whole word stay, so "Arco" does not bring "Arcos Tacos" along. A
+  chip's query is a kind of place and is never narrowed.
 - `RouteCorridor.alongRoute` keeps results within 3 km of the line and sorts them in travel
   order. The distance shown is the distance along the route to the result plus its distance off
   the line.
