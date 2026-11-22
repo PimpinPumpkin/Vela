@@ -258,6 +258,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   A name is found with or without its accents: "cafe" finds "Café".
 - Offline routes cover driving, walking and cycling, with spoken turns, speed limits and avoid
   options, and are labeled offline.
+- Leaving Google's route with no signal, the offline reroute goes back onto it a few km on and
+  keeps the rest of Google's route, its roads, names, lanes and exits, unless that is a long way
+  round.
 - A drive on an offline route switches to Google's route with live traffic once the signal is
   back, on other roads too, with a chime and "Route updated with live traffic". It waits until no
   turn is close.

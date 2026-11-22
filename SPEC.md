@@ -2080,6 +2080,18 @@ START_REPLAN_M                 150   Start this far from the route plans again f
   (`abandonableAsync`): a scope returns only when its children have finished, and as a child the
   blocked call would hold the phone's route for the rest of `URGENT_OSRM_TIMEOUT_MS`. The call is
   canceled when the fetch returns or is canceled, and ends at its own timeout.
+- Back onto the route it left (`RouteRejoin`): when a driving reroute adopts an on-device route
+  and the route the car left was not one (or was itself joined, `RouteRejoin.joined`), with no
+  stops left and at least `REJOIN_MIN_LEFT_MS` (3 s) of the deadline, the reroute asks again
+  from the car to the old route's first step `REJOIN_AHEAD_M` (3 km) past where the car left it
+  (`RouteRejoin.target`). That way back is followed by the old route's steps from that step on,
+  so Google's roads, names, lanes and exits stay (`RouteRejoin.splice`, `Route.made` "rejoin=").
+  It is refused when the way back ends over `JOIN_GAP_M` (40 m) from the point, or its last
+  `APPROACH_M` (40 m) runs over `APPROACH_DEG` (45) off the old route's course into it (the old
+  step there would be wrong), and it is kept only when no longer than the plain reroute times
+  `REJOIN_MAX_LONGER` (1.15) plus `REJOIN_SLACK_M` (800 m). The joined route is offline and
+  trafficless, so it is a stand-in (`RouteHeal.standIn`). OsmAnd's recalculation does the same
+  with its previous route (`recalculateDistanceHelp`, 10 km).
 - When the open router gives nothing, `RerouteFallback.pick` takes Google's route if it is
   already back, otherwise races Google against the on-device router inside the remaining budget.
   Google's routes are tagged `GOOGLE_ABBREVIATED`. A fallback's routes, and the phone-first

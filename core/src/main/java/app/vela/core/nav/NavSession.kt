@@ -751,6 +751,7 @@ class NavSession @Inject constructor(
             "route $reason: ${route.source.name}, trip ${route.durationSeconds.toInt()}s typical, " +
                 "${route.durationInTrafficSeconds?.toInt()?.let { "${it}s" } ?: "no"} live, " +
                 "${route.maneuvers.size} steps summing ${route.maneuvers.sumOf { it.durationSeconds }.toInt()}s" +
+                (if (RouteRejoin.joined(route)) ", ${route.made}" else "") +
                 (if (route.legTimes.size >= 2) ", legs " + route.legTimes.joinToString(" ") { "${it.typicalSeconds.toInt()}/${it.trafficSeconds?.toInt() ?: "-"}s ${it.distanceMeters.toInt()}m" } else ""),
         )
     }
@@ -1445,7 +1446,48 @@ class NavSession @Inject constructor(
                 if (next == null) break
                 landed = next; verdict = v
             }
-            val r = landed
+            // LEFT GOOGLE'S ROUTE WITH NO SIGNAL: a reroute the phone's router answered goes back
+            // onto the route the car left instead, a few km on, and keeps the rest of it with its
+            // names, lanes and exits (RouteRejoin). Not on a drive with stops left, and not when
+            // the way back runs much longer than the plain reroute.
+            suspend fun rejoined(full: Route): Route? {
+                val driven = fromRoute ?: return null
+                if (!full.isOffline || mode != TravelMode.DRIVE || remainingStops.isNotEmpty()) return null
+                if (driven.isOffline && !RouteRejoin.joined(driven)) return null
+                if (_state.value.route !== driven) return null
+                val t = RouteRejoin.target(driven, driven.distanceMeters - _state.value.nav.remainingDistance) ?: return null
+                val car = trustedNow() ?: return null
+                val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_FINISH_RESERVE_MS
+                if (left < REJOIN_MIN_LEFT_MS) return null
+                val heading = lastBearing ?: course
+                val back = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    runCatching {
+                        dataSource.directions(
+                            car, t.point, mode, emptyList(),
+                            avoidTolls = RoutingPrefs.avoidTolls,
+                            avoidHighways = RoutingPrefs.avoidHighways,
+                            avoidFerries = RoutingPrefs.avoidFerries,
+                            urgent = true,
+                            departBearingDeg = heading,
+                            budgetMs = left,
+                            behind = trackTo(car, heading),
+                        )
+                    }.getOrNull()
+                }
+                val head = kotlinx.coroutines.withTimeoutOrNull(left) { back.await() }
+                    .also { if (it == null) back.cancel() }
+                    ?.firstOrNull { it.isOffline && it.drivable }
+                val joined = head?.let { RouteRejoin.splice(it, driven, t) }
+                val ok = joined != null &&
+                    joined.distanceMeters <= full.distanceMeters * RouteRejoin.REJOIN_MAX_LONGER + RouteRejoin.REJOIN_SLACK_M
+                note(
+                    if (ok) "reroute: back onto the route it left ${(t.alongM - (driven.distanceMeters - _state.value.nav.remainingDistance)).toInt()} m on, " +
+                        "${joined!!.distanceMeters.toInt()} m against ${full.distanceMeters.toInt()} m for the plain reroute"
+                    else "reroute: kept the plain reroute (${when { head == null -> "no way back"; joined == null -> "the way back comes in on another road"; else -> "the way back is ${joined.distanceMeters.toInt()} m against ${full.distanceMeters.toInt()} m" }})",
+                )
+                return if (ok) joined else null
+            }
+            val r = landed?.let { full -> rejoined(full) ?: full }
             val tookMs = SystemClock.elapsedRealtime() - now
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
             // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
@@ -1601,6 +1643,7 @@ class NavSession @Inject constructor(
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
         const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
+        const val REJOIN_MIN_LEFT_MS = 3_000L     // a reroute asks for the way back only with this much of its deadline left
         const val STAND_IN_RETRY_MS = 15_000L     // a stand-in waiting out a near turn asks again after this
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
