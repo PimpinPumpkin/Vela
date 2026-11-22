@@ -950,9 +950,9 @@ class NavSession @Inject constructor(
      * interval: a real drive's Google route came 22 s in, a second after the network was back. At
      * most once per [NETWORK_BACK_MIN_GAP_MS], since a car between Wi-Fi and cellular flaps.
      */
-    fun onNetworkBack() {
+    fun onNetworkBack(staleTraffic: Boolean = false) {
         val route = _state.value.route ?: return
-        if (!_state.value.navigating || !RouteHeal.degraded(route)) return
+        if (!_state.value.navigating || (!RouteHeal.degraded(route) && !staleTraffic)) return
         val now = SystemClock.elapsedRealtime()
         if (now - lastNetworkBackMs < NETWORK_BACK_MIN_GAP_MS) return
         lastNetworkBackMs = now
@@ -960,6 +960,10 @@ class NavSession @Inject constructor(
         note("network back on a degraded route: re-check on the next fix")
     }
     private var lastNetworkBackMs = 0L
+    /** Set by the app after a while with no connection during a drive: the arrival time keeps its
+     *  figure but shows white, as with no live traffic. Cleared when the connection is back, with
+     *  [onNetworkBack] asked to re-check at once. */
+    @Volatile var trafficStale = false
     @Volatile private var standInRetryAtMs = 0L
 
     /** Drive [candidate] from here, a re-check's route on a line the car is on. */

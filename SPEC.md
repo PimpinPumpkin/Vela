@@ -6251,6 +6251,13 @@ reuses it.
   replaces the map's, so the route, transit and results fits pad with `fitPaddingBeside`: the
   column on the left, no top inset (the endpoints card is in the column), and the map buttons'
   width on the right. New route or drive chrome without this spans the screen.
+- The drive bar's arrival time goes white, the color of no live traffic, after
+  `TRAFFIC_STALE_MS` (2 min) with the app offline (`MapUiState.offline`, itself latched 3 s), and
+  keeps its figure (`MapUiState.etaTrafficRatio`, `NavSession.trafficStale`). Online again, the
+  color comes back at once and `onNetworkBack(staleTraffic = true)` re-checks on the next fix, on
+  any route, for fresh traffic. A lost network runs the offline check again `LOST_RECHECK_MS`
+  (2 s) later: Android can still name the lost network as active during `onLost`, and Wi-Fi
+  turned off mid-drive never latched offline.
 - Mixed figures in one line (the drive bar's "15.3 mi · 20:45", the place page's "496 m · Grocery
   store" and holiday hours) put each part in a first-strong isolate (`bidiIsolate`,
   U+2068..U+2069), so in a right-to-left language a unit stays beside its number.
@@ -6742,7 +6749,7 @@ the same `:core` singletons as the phone (`CarDeps`).
   shrinks the visible area that Zoom to the next turn frames the turn in, so the camera pulls
   back out when it appears. The destination estimate's time left takes the route line's traffic colors from `Route.trafficRatio`: red over
   1.4, yellow over 1.15 (the car API allows only its standard colors here), green below, and no
-  color when the route has no live traffic.
+  color when the route has no live traffic or the traffic is stale (`NavSession.trafficStale`).
   With a stop ahead the stop's time takes the same color: it describes the route, as the line
   does.
 - On the drive screen a drive paused on the phone shows a `MessageInfo` ("Paused") in place of

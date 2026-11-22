@@ -231,6 +231,9 @@ data class MapUiState(
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    // No connection for TRAFFIC_STALE_MS during a drive: the arrival time keeps its figure but
+    // goes white, the color of no live traffic ([NavSession.trafficStale]).
+    val trafficStale: Boolean = false,
     // ALPR/Flock cameras counted near each route option (index-aligned with `routes`), for the route
     // picker's opt-in "passes N cameras" badge. Empty when the alert is off or not yet computed.
     val flockOnRoute: List<Int> = emptyList(),
@@ -457,6 +460,9 @@ data class MapUiState(
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
     val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
 ) {
+    /** The drive bar's traffic ratio: none (a white arrival time) when the traffic is stale. */
+    val etaTrafficRatio: Double? get() = if (trafficStale) null else activeRoute?.trafficRatio
+
     /** The lists whose pins and shapes draw on the map: those switched on, and the open one
      *  ([app.vela.core.model.ListsOnMap.shown]). [lists] itself while every list is on. */
     val listsOnMap: List<app.vela.core.model.PlaceList> get() = app.vela.core.model.ListsOnMap.shown(lists, openListId)
@@ -2574,6 +2580,25 @@ class MapViewModel @Inject constructor(
         }
         refresh()
         refreshConnectivity = { refresh() }
+        // A drive offline for TRAFFIC_STALE_MS shows its arrival time white; back online, it asks
+        // for fresh traffic on the next fix instead of waiting for the next re-check.
+        viewModelScope.launch {
+            var staleJob: kotlinx.coroutines.Job? = null
+            _state.map { it.offline }.distinctUntilChanged().collect { off ->
+                staleJob?.cancel()
+                if (off) {
+                    staleJob = launch {
+                        delay(TRAFFIC_STALE_MS)
+                        navSession.trafficStale = true
+                        _state.update { it.copy(trafficStale = true) }
+                    }
+                } else if (navSession.trafficStale) {
+                    navSession.trafficStale = false
+                    _state.update { it.copy(trafficStale = false) }
+                    navSession.onNetworkBack(staleTraffic = true)
+                }
+            }
+        }
         // Any response Vela gets clears a latched offline flag at once.
         app.vela.core.net.NetHealth.onResponse = {
             // A response IS the internet: clear the flag even if the system still says no network.
@@ -2620,7 +2645,15 @@ class MapViewModel @Inject constructor(
         runCatching {
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: android.net.Network) { lastDefaultNetwork = network; note("available", runCatching { cm.getNetworkCapabilities(network) }.getOrNull()); refresh() }
-                override fun onLost(network: android.net.Network) { if (lastDefaultNetwork == network) lastDefaultNetwork = null; note("lost", null); refresh() }
+                override fun onLost(network: android.net.Network) {
+                    if (lastDefaultNetwork == network) lastDefaultNetwork = null
+                    note("lost", null)
+                    refresh()
+                    // Android can still name the lost network as active while this runs, so the
+                    // check above reads online and nothing asks again: Wi-Fi turned off mid-drive
+                    // never latched offline. Ask once more when the change has settled.
+                    viewModelScope.launch { delay(LOST_RECHECK_MS); refresh() }
+                }
                 override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) { lastDefaultNetwork = network; note("link", caps); refresh() }
                 // Blocked and unblocked (doze, standby, background limits): the network did not change,
                 // only whether this app may use it. Unhandled, an unblock never cleared "offline".
@@ -11097,6 +11130,10 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        /** Offline this long during a drive and the arrival time goes white (MapUiState.trafficStale). */
+        const val TRAFFIC_STALE_MS = 120_000L
+        /** After a lost network, the offline check runs again this much later. */
+        const val LOST_RECHECK_MS = 2_000L
         const val DRAWINGS_LIST_ID = "list:drawings"
         /** Vela leaving the screen this near a drive's destination saves the parking spot (AutoParking). */
         private const val PARK_NEAR_DEST_M = 400.0

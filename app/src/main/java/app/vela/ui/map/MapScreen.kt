@@ -1748,7 +1748,7 @@ fun MapScreen(
                         paused = state.navPaused,
                         onStop = requestEndNav,
                         onSteps = close,
-                        trafficRatio = state.activeRoute?.trafficRatio,
+                        trafficRatio = state.etaTrafficRatio,
                         showListButton = false,
                         handleUp = false,
                         roadName = barRoadName(state),
@@ -1884,7 +1884,7 @@ fun MapScreen(
                             stopsRow = { app.vela.ui.nav.NavStopsRow(stopLabels, onEdit = vm::openStopsEditor, onRemoveNext = vm::removeNextStop) },
                         )
                     },
-                    trafficRatio = state.activeRoute?.trafficRatio,
+                    trafficRatio = state.etaTrafficRatio,
                     showListButton = navListButton,
                     onPause = if (navPauseInBar) vm::toggleNavPause else null,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the

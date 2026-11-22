@@ -263,6 +263,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Leaving Google's route with no signal, the offline reroute goes back onto it a few km on and
   keeps the rest of Google's route, its roads, names, lanes and exits, unless that is a long way
   round.
+- After two minutes with no signal on a drive, the arrival time turns white, the color of no live
+  traffic, and keeps its estimate. With signal again it takes fresh traffic at once.
 - A drive on an offline route switches to Google's route with live traffic once the signal is
   back, on other roads too, with a chime and "Route updated with live traffic". It waits until no
   turn is close.
