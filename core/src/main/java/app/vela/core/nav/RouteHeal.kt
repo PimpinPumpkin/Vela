@@ -59,31 +59,15 @@ object RouteHeal {
      * dead spot. Google's route takes its place on other roads too ([StandIn.SWITCH]): the driver
      * never chose the stand-in, its time has no traffic to weigh Google's against, and a much
      * longer Google route most often goes round something the phone's map does not know is shut.
-     * It waits ([StandIn.WAIT]) while the first turn on either route is nearer than
-     * [standInClearM] at [speedMps] ([currentTurnM], [candidateTurnM]; null for none): a route
-     * changed just before a turn reads as a wrong prompt. [lineOk]: the caller drives a car and
-     * found that [candidate] does not turn it round. The same roads come back through [gains].
+     * It switches at once, near turn or not, as Google does: waiting sent the car down the
+     * stand-in's turn, which Google's route does not take. It waits ([StandIn.WAIT]) only when
+     * the candidate's first turn is already out of reach ([firstTurnOutOfReach], the reroute's
+     * own test, [NavSession.turnOutOfReach]). [lineOk]: the caller drives a car and found that
+     * [candidate] does not turn it round. The same roads come back through [gains].
      */
-    fun standIn(
-        current: Route,
-        candidate: Route,
-        lineOk: Boolean,
-        currentTurnM: Double?,
-        candidateTurnM: Double?,
-        speedMps: Double = 0.0,
-    ): StandIn {
+    fun standIn(current: Route, candidate: Route, lineOk: Boolean, firstTurnOutOfReach: Boolean): StandIn {
         if (!current.isOffline || !lineOk || !googleLine(candidate) || !candidate.drivable) return StandIn.NO
         if (!candidate.hasRealSteps || candidate.namesShort || !candidate.hasLiveTraffic) return StandIn.NO
-        val clear = standInClearM(speedMps)
-        val near = (currentTurnM ?: Double.MAX_VALUE) < clear || (candidateTurnM ?: Double.MAX_VALUE) < clear
-        return if (near) StandIn.WAIT else StandIn.SWITCH
+        return if (firstTurnOutOfReach) StandIn.WAIT else StandIn.SWITCH
     }
-
-    /** No route change while a turn on either route is nearer than this: [STAND_IN_TURN_CLEAR_S]
-     *  at the car's speed, and never under [STAND_IN_TURN_CLEAR_MIN_M]. 195 m in town at 30 mph,
-     *  450 m on a freeway at 67 mph: a fixed 300 m kept a car in a street grid waiting block
-     *  after block. */
-    fun standInClearM(speedMps: Double): Double = maxOf(STAND_IN_TURN_CLEAR_MIN_M, speedMps * STAND_IN_TURN_CLEAR_S)
-    const val STAND_IN_TURN_CLEAR_S = 15.0
-    const val STAND_IN_TURN_CLEAR_MIN_M = 150.0
 }

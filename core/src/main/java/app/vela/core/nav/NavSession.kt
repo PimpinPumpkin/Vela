@@ -1132,9 +1132,9 @@ class NavSession @Inject constructor(
                 )
                 return@launch
             }
-            // A STAND-IN gives way to Google's route on other roads too (RouteHeal.standIn), with
-            // the faster-route chime and a line on screen so the change is not a surprise.
-            when (RouteHeal.standIn(current, candidate, lineOk, firstTurnAheadM(current, car), firstTurnAheadM(candidate, car), lastTrustedSpeedMps)) {
+            // A STAND-IN gives way to Google's route on other roads too (RouteHeal.standIn), at once,
+            // with the faster-route chime and a line on screen so the change is not a surprise.
+            when (RouteHeal.standIn(current, candidate, lineOk, turnOutOfReach(firstTurnAheadM(candidate, car), lastTrustedSpeedMps))) {
                 RouteHeal.StandIn.SWITCH -> {
                     lastSwapReason = "stand-in"
                     adoptRecheck(candidate, candidateEta, remainingStops)
@@ -1145,7 +1145,7 @@ class NavSession @Inject constructor(
                 }
                 RouteHeal.StandIn.WAIT -> {
                     standInRetryAtMs = SystemClock.elapsedRealtime() + STAND_IN_RETRY_MS
-                    note("recheck: Google's route is back, waiting for the turn ahead to pass before switching")
+                    note("recheck: Google's route is back, its first turn is out of reach, asking again past it")
                     return@launch
                 }
                 RouteHeal.StandIn.NO -> Unit
@@ -1667,7 +1667,7 @@ class NavSession @Inject constructor(
         const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
         const val BACK_TO_ROUTE_BEHIND_M = 500.0  // the way back may point this far behind where the car left the route
         const val REJOIN_MIN_LEFT_MS = 3_000L     // a reroute asks for the way back only with this much of its deadline left
-        const val STAND_IN_RETRY_MS = 15_000L     // a stand-in waiting out a near turn asks again after this
+        const val STAND_IN_RETRY_MS = 15_000L     // a stand-in whose new first turn was out of reach asks again after this
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
         // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter
