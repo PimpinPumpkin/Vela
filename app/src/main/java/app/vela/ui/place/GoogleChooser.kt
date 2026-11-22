@@ -316,11 +316,14 @@ fun GoogleStyleDirectionsPanel(
                         // rounds to the same minute and used to claim it too.
                         val isFastest = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest } == routes.indexOf(route)
                         val via = route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
+                        // The toll note shows on the open route too, as Google's card says it, not only
+                        // in the list of other routes.
+                        val tolls = route.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) }
                         Text(
                             when {
-                                isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via).joinToString(" · ")
-                                deltaMin >= 1 -> listOfNotNull(stringResource(R.string.exp_chooser_slower, formatDuration(eta - fastest)), via).joinToString(" · ")
-                                else -> via ?: ""
+                                isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via, tolls).joinToString(" · ")
+                                deltaMin >= 1 -> listOfNotNull(stringResource(R.string.exp_chooser_slower, formatDuration(eta - fastest)), via, tolls).joinToString(" · ")
+                                else -> listOfNotNull(via, tolls).joinToString(" · ")
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = dim,

@@ -130,6 +130,18 @@ internal fun RouteTrafficOnTapRow(vm: app.vela.ui.map.MapViewModel, compact: Boo
     )
 }
 
+/** A second directions request per planned drive, with tolls avoided ([app.vela.ui.TollOption]). */
+@Composable
+internal fun NoTollRouteRow(compact: Boolean = false) {
+    val context = LocalContext.current
+    ToggleRow(
+        label = stringResource(R.string.settings_toll_option),
+        checked = app.vela.ui.TollOption.on.value,
+        onCheckedChange = { app.vela.ui.TollOption.set(context, it) },
+        hint = if (compact) null else stringResource(R.string.settings_toll_option_hint),
+    )
+}
+
 /** The traffic and route re-check during navigation, a Google request about every two minutes. */
 @Composable
 internal fun LiveRechecksRow(vm: app.vela.ui.map.MapViewModel, compact: Boolean = false) {
@@ -172,6 +184,8 @@ internal fun GoogleUsesSection(vm: app.vela.ui.map.MapViewModel, topRow: Modifie
     Spacer(Modifier.height(8.dp))
     SettingsGroup(title = stringResource(R.string.settings_google_uses_traffic)) {
         RouteTrafficOnTapRow(vm, compact = true)
+        GroupDivider()
+        NoTollRouteRow(compact = true)
         GroupDivider()
         LiveRechecksRow(vm, compact = true)
         GroupDivider()
