@@ -6862,7 +6862,11 @@ The map:
   snaps the puck to the route during a drive, glides it between the roughly 1 Hz fixes with
   `FollowEstimator`, and eases the heading (`BEARING_EASE` 0.22 per `TICK_MS` 70 ms tick), the
   camera bearing (`CAM_BEARING_EASE` 0.3, then equal to the heading), the tilt (`TILT_EASE` 0.05)
-  and the zoom (`ZOOM_EASE` 0.06). A fix with no speed takes the distance since the last fix over
+  and the zoom (`ZOOM_EASE` 0.06). With Zoom to the next turn, `followZoom` frames the turn for
+  the flatter of the camera's tilt now and the tilt it is heading for (`turnZoom` at the current
+  tilt while it is more than `TILT_FRAME_SLACK_DEG` short of `tiltAt` of the solved zoom): framed
+  for a tilt not yet reached, the turn slid off the top, under the turn card, where the view
+  tilts up from top-down about a mile out on a freeway (#995). A fix with no speed takes the distance since the last fix over
   the time between them (0.2 to 5 s apart), capped at `FIX_SPEED_MAX_MPS` (70): read as parked,
   it held the zoom at its closest. A fix with no bearing takes the direction from the last fix
   once it has moved `FIX_COURSE_MIN_M` (3 m).

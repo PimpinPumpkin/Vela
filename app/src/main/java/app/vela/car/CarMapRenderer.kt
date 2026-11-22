@@ -180,6 +180,7 @@ class CarMapRenderer(
         const val CAM_BEARING_EASE = 0.3 // the camera onto the arrow's heading, and back to north
         const val ZOOM_EASE = 0.06    // per tick, so a speed change glides over a second or so
         const val TILT_EASE = 0.05    // per tick: the tilt comes in over about two seconds
+        const val TILT_FRAME_SLACK_DEG = 0.5 // a tilt this close to its target frames the turn as if there
         const val PUCK_DOWN = 0.86    // the puck sits this far down the VISIBLE area in a heading-up view, low as Google Maps keeps it
         const val TURN_MARGIN_PX = 40.0 // the next maneuver is framed this far under the top of the visible area
         const val PUCK_AIM_PX = 40.0  // how far ahead of the arrow, in ground pixels, its heading is sampled for its turn on screen
@@ -769,7 +770,15 @@ class CarMapRenderer(
         }
         val target = turnPoint ?: run { turnYaw = 0.0; return speed }
         val upPx = framingArea().height() * PUCK_DOWN - TURN_MARGIN_PX
-        val raw = app.vela.ui.map.NavFraming.turnZoomFlattening(from.distanceTo(target), upPx, height.toDouble(), CarFraming.NAV_TILT_DEG, from.lat)
+        val ground = from.distanceTo(target)
+        val solved = app.vela.ui.map.NavFraming.turnZoomFlattening(ground, upPx, height.toDouble(), CarFraming.NAV_TILT_DEG, from.lat)
+        // The zoom is solved for the tilt the camera is heading for, and the tilt eases in over
+        // about two seconds (TILT_EASE). Until it arrives the camera is flatter and shows less road,
+        // so where the view tilts up from top-down, about a mile from a freeway turn, the turn slid
+        // off the top, under the turn card (#995). Framed for the flatter of the two, it stays in.
+        val raw = if (!solved.isNaN() && tilt < app.vela.ui.map.NavFraming.tiltAt(solved, CarFraming.NAV_TILT_DEG) - TILT_FRAME_SLACK_DEG) {
+            app.vela.ui.map.NavFraming.turnZoom(ground, upPx, height.toDouble(), tilt, from.lat)
+        } else solved
         turnYaw = app.vela.ui.map.NavFraming.turnYaw(heading, from.bearingTo(target), speed, raw)
         return app.vela.ui.map.NavFraming.withTurn(speed, raw, app.vela.ui.map.NavFraming.turnFloor())
     }
