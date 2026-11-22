@@ -767,6 +767,12 @@
     <string name="nav_turn_may_be_banned_short">may not be allowed</string>
     <string name="nav_preview_tap_resume">Preview, tap to resume</string>
     <string name="nav_rerouting">rerouting…</string>
+    <string name="nav_no_signal">No signal</string>
+    <string name="nav_back_to_route_left">The route is %1$s to your left</string> <!-- format: a distance -->
+    <string name="nav_back_to_route_right">The route is %1$s to your right</string> <!-- format: a distance -->
+    <string name="nav_back_to_route_ahead">The route is %1$s ahead</string> <!-- format: a distance -->
+    <string name="nav_back_to_route_behind">The route is %1$s behind you</string> <!-- format: a distance -->
+    <string name="nav_back_to_route_away">The route is %1$s away</string> <!-- format: a distance -->
     <string name="nav_voice_button">Spoken directions: on, alerts only or off</string>
     <string name="nav_steps">Steps</string>
     <string name="nav_pause">Pause the drive</string>

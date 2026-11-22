@@ -605,6 +605,15 @@ class NavSession @Inject constructor(
         // measured on this very route (planRoute): against another route they mean nothing.
         val scale = etaScale
         val toStop = synchronized(stopLock) { if (route === planRoute) nextStop(route, stops, stopMarks, passedStops, next, scale) else null }
+        // Off the route with no signal and no way back planned: where the route is, for the banner.
+        // Cleared by a real return to the line, not by the off-route latch a failed reroute lets
+        // go so it can ask again.
+        if (!offline || next.onRouteStreak >= BACK_ON_COURSE_HITS) noSignalReroute = false
+        val back = if (noSignalReroute) {
+            val cum = backCum?.takeIf { it.first === route.polyline }?.second
+                ?: RouteProjection.cumulative(route.polyline).also { backCum = route.polyline to it }
+            BackToRoute.of(route.polyline, cum, loc, course ?: lastBearing, next.traveledM - BACK_TO_ROUTE_BEHIND_M)
+        } else null
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while
         // this update was computing on the OLD route — writing `next` (old-route traveledM /
         // stepIndex) onto the fresh route corrupted progress and could false-arrive right after
@@ -616,7 +625,8 @@ class NavSession @Inject constructor(
                 // The live-traffic ETA calibration (etaScale, set by the recheck) applies to the
                 // PUBLISHED remaining time only - the engine's own value stays pristine (it never
                 // reads it back; it recomputes from the route's step durations each fix).
-                val scaledNav = if (scale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * scale)
+                val scaledNav = (if (scale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * scale))
+                    .copy(backToRoute = back)
                 it.copy(
                     nav = scaledNav,
                     maneuverText = maneuver?.instruction.orEmpty(),
@@ -964,6 +974,12 @@ class NavSession @Inject constructor(
      *  figure but shows white, as with no live traffic. Cleared when the connection is back, with
      *  [onNetworkBack] asked to re-check at once. */
     @Volatile var trafficStale = false
+    /** Set by the app: no usable connection ([MapUiState.offline] in the app). */
+    @Volatile var offline = false
+    /** A reroute failed while [offline]: the banner shows where the route is ([BackToRoute])
+     *  instead of "Rerouting..." until the car is back on it, a route lands or the signal is back. */
+    @Volatile private var noSignalReroute = false
+    private var backCum: Pair<List<LatLng>, DoubleArray>? = null
     @Volatile private var standInRetryAtMs = 0L
 
     /** Drive [candidate] from here, a re-check's route on a line the car is on. */
@@ -1521,6 +1537,7 @@ class NavSession @Inject constructor(
                 // state from here raced the in-flight onLocation frame) — 4 more deviated fixes
                 // then request again (~4 s natural backoff, OsmAnd-style retry-while-deviated).
                 rerouteFailStreak++
+                if (offline) noSignalReroute = true
                 val why = if (timedOut) "deadline ${attempt.timeoutMs / 1000} s" else "nothing usable"
                 note("reroute FAILED (streak $rerouteFailStreak, $why after $tookMs ms), will retry while off-route")
                 pendingLatchClear.set(true)
@@ -1559,6 +1576,7 @@ class NavSession @Inject constructor(
                     (if (r.hasLiveTraffic) "" else ", no traffic"),
             )
             rerouteFailStreak = 0 // a route landed: back to lean, fast attempts
+            noSignalReroute = false
             lastAdoptQuick = quick
             lastSwapReason = if (quietStart) "start-replan" else "reroute"
             lastRecheckMs = SystemClock.elapsedRealtime()
@@ -1647,6 +1665,7 @@ class NavSession @Inject constructor(
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
         const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
+        const val BACK_TO_ROUTE_BEHIND_M = 500.0  // the way back may point this far behind where the car left the route
         const val REJOIN_MIN_LEFT_MS = 3_000L     // a reroute asks for the way back only with this much of its deadline left
         const val STAND_IN_RETRY_MS = 15_000L     // a stand-in waiting out a near turn asks again after this
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route

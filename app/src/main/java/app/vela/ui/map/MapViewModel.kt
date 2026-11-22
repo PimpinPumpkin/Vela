@@ -2585,6 +2585,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             var staleJob: kotlinx.coroutines.Job? = null
             _state.map { it.offline }.distinctUntilChanged().collect { off ->
+                navSession.offline = off
                 staleJob?.cancel()
                 if (off) {
                     staleJob = launch {
@@ -9854,7 +9855,10 @@ class MapViewModel @Inject constructor(
         // tiles win; offline it is still far better than an empty screen.
         val shallow = file != null &&
             (basemapStore.maxZoomOf(file) ?: app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM) < app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM
-        val usable = file?.takeUnless { shallow && !cantStream }
+        // On a drive, the map saved along the route (OfflineMaps.saveRouteStrip) has the streets a
+        // shallow archive lacks, so offline the streamed map stays while the view is on it.
+        val onStrip = _state.value.navigating && center != null && app.vela.offline.OfflineMaps.stripCovers(center)
+        val usable = file?.takeUnless { shallow && (!cantStream || onStrip) }
         if (shallow) android.util.Log.i("VelaBasemap", "installed basemap is shallow (max zoom < ${app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM}); using it only offline")
         val uri = usable?.let { "pmtiles://file://${it.absolutePath}" }
         if (uri != _state.value.basemapArchive) {

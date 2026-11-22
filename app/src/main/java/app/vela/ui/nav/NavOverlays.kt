@@ -153,6 +153,9 @@ fun ManeuverBanner(
     // Off-route latch: the banner headline becomes "Rerouting..." (Google-style) instead of a stale
     // old-route instruction. Step preview still shows the previewed step normally.
     offRoute: Boolean = false,
+    // Off the route with no signal and no way back planned (NavSession): "No signal" and where
+    // the route is, instead of a "Rerouting..." that never ends.
+    backToRoute: app.vela.core.nav.BackToRoute? = null,
     // OpenStreetMap bans this turn and the way round was too long to take instead (TurnBans):
     // a warning line under the instruction.
     mayBeBanned: Boolean = false,
@@ -183,8 +186,11 @@ fun ManeuverBanner(
     // step, then the new card slides in from the opposite edge — like flicking a
     // pager. Below threshold it springs back.
     // The "Then" tab hangs off the card's lower left: the card's corner is square where they meet.
+    // Off the route the old route's next step and lanes are stale: neither shows while it asks
+    // for a new one, nor with no signal to ask with.
+    val offLine = (offRoute || backToRoute != null) && !previewing
     val thenShown = nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
-        (previewing || distanceMeters <= laneShowM)
+        (previewing || distanceMeters <= laneShowM) && !offLine
     // A long next step can make the tab as wide as the card: then the right corner squares off too.
     var cardW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var tabW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -279,12 +285,15 @@ fun ManeuverBanner(
     ) {
         Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 8.dp else 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val rerouting = offRoute && !previewing
+                val noSignal = backToRoute != null && !previewing
+                val rerouting = (offRoute || noSignal) && !previewing
                 // The refresh glyph SPINS while rerouting (user 2026-07-16: nothing moved, so a
                 // slow fetch read as frozen). The angle is read in graphicsLayer - a draw-phase
                 // read, so the infinite transition never recomposes the banner; it only exists
                 // while rerouting is showing at all.
-                if (rerouting) {
+                if (noSignal) {
+                    Icon(Sym.PublicOff, contentDescription = null, modifier = Modifier.size(if (compact) 36.dp else 54.dp))
+                } else if (rerouting) {
                     val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "reroute")
                     val angle by spin.animateFloat(
                         initialValue = 0f, targetValue = 360f,
@@ -312,7 +321,11 @@ fun ManeuverBanner(
                         // One line that shrinks to fit beside the shield: wrapped at large text it
                         // took two headline lines. Reset only when its length changes, not on
                         // every distance tick.
-                        val distText = if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters)
+                        val distText = when {
+                            noSignal -> stringResource(R.string.nav_no_signal)
+                            rerouting -> stringResource(R.string.nav_rerouting)
+                            else -> formatDistance(distanceMeters)
+                        }
                         val distStyle = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium
                         FitText(
                             distText,
@@ -346,6 +359,25 @@ fun ManeuverBanner(
                     // drop to a dim one-liner below - present to confirm against the physical
                     // sign, subordinate, and harmless if a monster sign ellipsizes it
                     // (user-agreed design 2026-07-16).
+                    if (noSignal && backToRoute != null) {
+                        val far = formatDistance(backToRoute.meters)
+                        Text(
+                            stringResource(
+                                when (backToRoute.side) {
+                                    app.vela.core.nav.BackToRoute.Side.LEFT -> R.string.nav_back_to_route_left
+                                    app.vela.core.nav.BackToRoute.Side.RIGHT -> R.string.nav_back_to_route_right
+                                    app.vela.core.nav.BackToRoute.Side.AHEAD -> R.string.nav_back_to_route_ahead
+                                    app.vela.core.nav.BackToRoute.Side.BEHIND -> R.string.nav_back_to_route_behind
+                                    null -> R.string.nav_back_to_route_away
+                                },
+                                far,
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = BANNER_HEADLINE_LINES,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     if (!rerouting) {
                         val full = text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }
                         val headline = app.vela.core.i18n.NavStringsRegistry.current().spokenSign(full)
@@ -394,7 +426,7 @@ fun ManeuverBanner(
             // otherwise the arrows sit there for miles telling you to "be in the right lane" for an exit
             // way ahead, which is just noise. The distance gate covers BOTH paths (the count-based hint
             // was just as noisy). In step-preview (swiping ahead) always show, since you're inspecting a step.
-            if (previewing || distanceMeters <= laneShowM) {
+            if ((previewing || distanceMeters <= laneShowM) && !offLine) {
                 if (lanes.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
                     LaneDiagram(lanes, type, on = content)

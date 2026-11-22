@@ -5153,6 +5153,17 @@ destination), because MapLibre's path change opens a new database and carries no
 `adb shell setprop debug.vela.sdtest true` makes the shared-storage app folder stand in for a
 card.
 
+#### No signal off the route
+
+When a reroute fails while the app is offline (`NavSession.offline`, mirrored from
+`MapUiState.offline`), the banner stops saying "Rerouting…": it reads "No signal" under the
+offline globe, and where the route is, "The route is 300 m to your left" (`NavState.backToRoute`,
+`BackToRoute.of`: the nearest point of the route at most `BACK_TO_ROUTE_BEHIND_M` (500 m) behind
+where the car left it, and its side from the car's course: ahead, right, behind, left, or "away"
+with no course). Reroutes keep being asked in the background. It ends when the car is back on the
+line (`BACK_ON_COURSE_HITS` fixes in a row), a route lands, or the signal is back. Off the route,
+with or without signal, the banner shows neither the old route's lanes nor its "Then" step.
+
 #### The map along the route
 
 `NavController.saveRouteStrip` saves the map along a drive's route when the drive starts, and
@@ -5164,7 +5175,10 @@ come down: at zoom 14 about 2 km wide. Tiles already in the cache are not fetche
 strip at a time: when a new one is done it deletes the last (`deleteRouteStrip`), so tiles the two
 share are not fetched again. The region is marked in its
 metadata (`routeStrip`), `OfflineMaps.list` leaves it out of the saved areas, and "Delete all
-offline data" takes it with the rest. Not on a metered network with Data Saver on. Setting
+offline data" takes it with the rest. Not on a metered network with Data Saver on. Offline on
+a drive, `pickBasemapArchive` keeps the streamed map, and so the strip's tiles, instead of
+mounting a shallow downloaded basemap while the view is within `STRIP_COVER_M` (600 m) of the
+strip (`OfflineMaps.stripCovers`): a shallow archive draws no streets that close. Setting
 "Save the map along the route" (`OfflineMaps.routeStrip`, pref `route_strip`, on): off also
 deletes the strip.
 

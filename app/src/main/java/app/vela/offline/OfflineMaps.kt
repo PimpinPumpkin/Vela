@@ -154,6 +154,7 @@ object OfflineMaps {
             if (along >= STRIP_MAX_M) break
         }
         if (points.size < 2) return
+        val kept = points.map { app.vela.core.model.LatLng(it.latitude(), it.longitude()) }
         val definition = org.maplibre.android.offline.OfflineGeometryRegionDefinition(
             styleUrl,
             org.maplibre.geojson.LineString.fromLngLats(points),
@@ -174,6 +175,7 @@ object OfflineMaps {
                         fun finish(line: String) {
                             if (done) return
                             done = true
+                            stripLine = kept
                             region.setDownloadState(OfflineRegion.STATE_INACTIVE)
                             android.util.Log.i("VelaOffline", line)
                             deleteRouteStrip(context, keep = region.id) {}
@@ -199,11 +201,24 @@ object OfflineMaps {
         android.util.Log.i("VelaOffline", "route strip: ${points.size} points, ${(along / 1000).toInt()} km")
     }
 
+    /** The line of the last strip saved this run, null before one is done or after it is deleted. */
+    @Volatile private var stripLine: List<app.vela.core.model.LatLng>? = null
+
+    /** Whether [p] sits on the saved strip: within [STRIP_COVER_M] of its line, inside the tiles
+     *  the line crosses at zoom 14. Offline, the map keeps those streamed tiles there instead of
+     *  a shallow downloaded basemap, which draws no streets that close. */
+    fun stripCovers(p: app.vela.core.model.LatLng): Boolean {
+        val line = stripLine ?: return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(line)
+        return app.vela.core.nav.RouteProjection.alongMeters(line, cum, p, STRIP_COVER_M) != null
+    }
+
     /** Remove the map along the route, all but region [keep], then [onDone]. */
     fun deleteRouteStrip(context: Context, keep: Long? = null, onDone: () -> Unit) {
         all(context) { regions ->
             val strips = regions.filter { isRouteStrip(it) && it.id != keep }
             var left = strips.size
+            if (keep == null) stripLine = null
             if (left == 0) { onDone(); return@all }
             strips.forEach { r ->
                 r.setDownloadState(OfflineRegion.STATE_INACTIVE)
@@ -260,4 +275,5 @@ object OfflineMaps {
     const val STRIP_STEP_M = 50.0
     const val STRIP_MIN_Z = 11.0
     const val STRIP_MAX_Z = 14.0
+    const val STRIP_COVER_M = 600.0
 }
